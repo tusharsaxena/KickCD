@@ -1,0 +1,21 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.zip
+*.tar.gz
+build/
+dist/
+
+# WoW SavedVariables (in case anyone tests in-place)
+*.lua.bak
+WTF/

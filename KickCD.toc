@@ -1,0 +1,51 @@
+## Interface: 120005
+## Title: Ka0s |cff00ff00KickCD|r
+## Notes: Tracks interrupt + CC cooldowns and shows a target castbar.
+## Author: Ka0s
+## Version: 0.1.0
+## IconTexture: Interface\AddOns\KickCD\media\icon
+## SavedVariables: KickCDDB
+## DefaultState: enabled
+## Category-enUS: Combat
+## X-License: MIT
+
+# Libraries (must load first)
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\AceAddon-3.0\AceAddon-3.0.lua
+libs\AceEvent-3.0\AceEvent-3.0.lua
+libs\AceDB-3.0\AceDB-3.0.lua
+libs\AceDBOptions-3.0\AceDBOptions-3.0.lua
+libs\AceConsole-3.0\AceConsole-3.0.lua
+libs\AceConfigRegistry-3.0\AceConfigRegistry-3.0.xml
+libs\AceConfig-3.0\AceConfig-3.0.xml
+libs\AceConfigDialog-3.0\AceConfigDialog-3.0.xml
+libs\AceGUI-3.0\AceGUI-3.0.xml
+libs\LibSharedMedia-3.0\lib.xml
+
+# Locales
+locales\enUS.lua
+
+# Core
+core\Compat.lua
+core\Util.lua
+core\Database.lua
+core\KickCD.lua
+
+# Defaults
+defaults\Spells.lua
+
+# Modules
+modules\Tracker.lua
+modules\Cooldowns.lua
+modules\IconGrid.lua
+modules\Castbar.lua
+modules\TestMode.lua
+
+# Settings (last — depend on everything else being initialized)
+settings\Panel.lua
+settings\General.lua
+settings\Icons.lua
+settings\Castbar.lua
+settings\Spells.lua
+settings\Profiles.lua
