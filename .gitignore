@@ -6,16 +6,23 @@ desktop.ini
 # Editors
 .vscode/
 .idea/
+.vs/
+*.code-workspace
 *.swp
 *.swo
 *~
+*.bak
 
 # Build artifacts
 *.zip
 *.tar.gz
+*.luac
 build/
 dist/
 
 # WoW SavedVariables (in case anyone tests in-place)
 *.lua.bak
 WTF/
+
+# Claude Code (per-user local settings)
+.claude/settings.local.json

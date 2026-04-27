@@ -154,7 +154,6 @@ The following are explicitly deferred:
 - **WeakAuras export** of the configuration.
 - **Drag-and-drop** spell reordering (arrows only in v0.1).
 - **Pet-cast** interrupts (Hunter pet Bullhead, Warlock Felhunter Spell Lock) — researched but deferred; can be added by user manually via the spell-list editor.
-- **CurseForge / Wago** packaging automation — manual zip for v0.1.
 
 ---
 

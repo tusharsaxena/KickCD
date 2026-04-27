@@ -245,8 +245,7 @@ All B-agents depend on Phase 1 being complete and assume the message contracts i
 2. **Lua syntax sweep** — `find . -name '*.lua' -exec luac -p {} \;` if `luac` is available; else visual.
 3. **Version stamp** — confirm `## Version: 0.1.0` and `KickCD.VERSION = "0.1.0"` are consistent.
 4. **README polish** — add UAT pointer, screenshot placeholders, "known issues" pulled from research §9.
-5. **Build a packaging zip script** — `tools/package.sh` that creates `KickCD-0.1.0.zip` excluding `docs/`, `.git/`, `tools/`, and OS junk.
-6. Update `MEMORY.md` if new project memories surfaced during build.
+5. Update `MEMORY.md` if new project memories surfaced during build.
 
 ---
 
