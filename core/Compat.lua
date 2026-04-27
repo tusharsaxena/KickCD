@@ -122,21 +122,23 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- The signature of Settings.RegisterAddOnSetting has shifted across
--- 10.0 → 10.2 → 11.0 → Midnight. We want callers to always use the
--- newest 7-arg form:
+-- 10.0 → 10.2 → 11.0 → 12.0. Blizzard's modern (12.0+) form is:
 --
---   Settings.RegisterAddOnSetting(category, variable, name, defaultValue, varType)
+--   (category, variable, variableKey, variableTbl, variableType, defaultValue)
 --
--- ...but Blizzard has, at various points, used these signatures:
+-- where variableTbl must be a real table that Blizzard reads/writes via
+-- variableTbl[variableKey]. KickCD's authoritative store is db.profile,
+-- so we hand the API a per-call scratch table seeded with the current
+-- value; SetValueChangedCallback (Panel.lua) mirrors live edits back into
+-- db.profile.
+--
+-- Older shapes still attempted as fallbacks:
 --
 --   (variable, name, table, type, defaultValue)                      -- 10.0
 --   (category, variable, variableKey, table, type, name, default)    -- 10.2
---   (category, variable, name, defaultValue, varType)                -- 11.0+
+--   (category, name, variable, table, type, defaultValue)            -- 11.0
 --
--- The shim tries the newest form first and falls back through the older
--- shapes on pcall failure. The variable identifier is forwarded as the
--- "variable key" in older forms. We always return whatever the underlying
--- API returns so the caller can chain SetValueChangedCallback() etc.
+-- The shim tries the newest form first and falls back on pcall failure.
 
 --- Register an addon setting in the Blizzard Settings panel.
 -- @param category    Settings category object (from Settings.RegisterVerticalLayoutCategory)
@@ -150,24 +152,31 @@ function Compat.RegisterAddOnSetting(category, variable, name, defaultValue, var
         return nil
     end
 
-    -- 1) Newest signature (Midnight / 11.0+):
-    --    (category, variable, name, defaultValue, varType)
+    -- Per-call scratch table. Blizzard writes to scratch[variable] when the
+    -- user changes the setting; SetValueChangedCallback in Panel.lua mirrors
+    -- those writes into db.profile. Pre-seeded with the current value so
+    -- the panel reflects state correctly on open.
+    local scratch = { [variable] = defaultValue }
+
+    -- 1) Modern 12.0+ signature:
+    --    (category, variable, variableKey, variableTbl, variableType, defaultValue)
     local ok, setting = pcall(Settings.RegisterAddOnSetting,
-        category, variable, name, defaultValue, varType)
+        category, variable, variable, scratch, varType, defaultValue)
     if ok and setting then return setting end
 
-    -- 2) Mid-DF signature (10.2):
+    -- 2) 11.0 signature:
+    --    (category, name, variable, variableTbl, variableType, defaultValue)
+    ok, setting = pcall(Settings.RegisterAddOnSetting,
+        category, name, variable, scratch, varType, defaultValue)
+    if ok and setting then return setting end
+
+    -- 3) 10.2 signature:
     --    (category, variable, variableKey, variableTbl, varType, name, default)
-    --    We don't have a backing table at this layer — pass an empty table
-    --    so the API has somewhere to write. Live values are pushed through
-    --    SetValueChangedCallback in the settings/* files, so the table itself
-    --    is only used as an internal scratch space by the older API.
-    local scratch = {}
     ok, setting = pcall(Settings.RegisterAddOnSetting,
         category, variable, variable, scratch, varType, name, defaultValue)
     if ok and setting then return setting end
 
-    -- 3) Earliest 10.0 signature:
+    -- 4) 10.0 signature:
     --    (variable, name, variableTbl, varType, defaultValue)
     ok, setting = pcall(Settings.RegisterAddOnSetting,
         variable, name, scratch, varType, defaultValue)

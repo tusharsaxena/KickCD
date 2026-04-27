@@ -1,7 +1,8 @@
 -- settings/General.lua — KickCD v0.1
 -- See docs/TECHNICAL_DESIGN.md §5.2 and docs/REQUIREMENTS.md FR-6.2.1, FR-8
 --
--- "General" subcategory under "Ka0s KickCD". Three sections:
+-- General widgets live directly on the top-level "Ka0s KickCD" category
+-- (no "General" subcategory). Three sections:
 --   * Master controls — enable, lock, test mode
 --   * Appearance      — global scale + alpha
 --   * Position        — reset position button
@@ -14,28 +15,20 @@ local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local L      = KickCD.L
 
 -- Builder is invoked by Panel.lua once the main Settings category exists.
--- Returning the subcategory lets Panel record it in KickCD.Settings.sub.general
--- for downstream consumers (e.g. Profiles tab linking to General via a
--- "see also" link in v0.2).
 local function Build(mainCategory)
-    if not (Settings and Settings.RegisterVerticalLayoutSubcategory) then
-        return nil
-    end
+    if not Settings then return nil end
 
     local H = KickCD.Settings.Helpers
-    local sub = Settings.RegisterVerticalLayoutSubcategory(mainCategory, L["General"])
 
     -- ---------------------------------------------------------------
     -- Section: Master controls
     -- ---------------------------------------------------------------
-    H.AddSectionHeader(sub, L["General"])
-
-    H.CreateCheckbox(sub, "KickCD_general_enabled",
+    H.CreateCheckbox(mainCategory, "KickCD_general_enabled",
         L["Enable KickCD"],
         L["Master enable for the addon."],
         "general", "enabled")
 
-    H.CreateCheckbox(sub, "KickCD_general_locked",
+    H.CreateCheckbox(mainCategory, "KickCD_general_locked",
         L["Lock frame"],
         L["When unlocked, you can drag the icon grid and castbar."],
         "general", "locked")
@@ -44,7 +37,7 @@ local function Build(mainCategory)
     -- setting persists), we call KickCD:ToggleTestMode() so the UI flips
     -- immediately. ToggleTestMode is wired in modules/TestMode.lua and
     -- is safe to invoke when the module is missing (it prints a warning).
-    H.CreateCheckbox(sub, "KickCD_general_testMode",
+    H.CreateCheckbox(mainCategory, "KickCD_general_testMode",
         L["Test mode"],
         L["Show a fake cast on a 5-second loop for previewing layout. Auto-disables in combat."],
         "general", "testMode",
@@ -66,15 +59,15 @@ local function Build(mainCategory)
     -- ---------------------------------------------------------------
     -- Section: Appearance
     -- ---------------------------------------------------------------
-    H.AddSectionHeader(sub, L["Scale"] .. " / " .. L["Alpha"])
+    H.AddSectionHeader(mainCategory, L["Scale"] .. " / " .. L["Alpha"])
 
-    H.CreateSlider(sub, "KickCD_general_scale",
+    H.CreateSlider(mainCategory, "KickCD_general_scale",
         L["Scale"],
         L["Master scale for the entire addon."],
         "general", "scale",
         0.5, 2.0, 0.05, "%.2fx")
 
-    H.CreateSlider(sub, "KickCD_general_alpha",
+    H.CreateSlider(mainCategory, "KickCD_general_alpha",
         L["Alpha"],
         L["Global alpha for icons + castbar."],
         "general", "alpha",
@@ -83,7 +76,7 @@ local function Build(mainCategory)
     -- ---------------------------------------------------------------
     -- Section: Position
     -- ---------------------------------------------------------------
-    H.AddSectionHeader(sub, L["Reset position"])
+    H.AddSectionHeader(mainCategory, L["Reset position"])
 
     -- Reset button: restores both anchors to the documented defaults
     -- (TECHNICAL_DESIGN §4 / REQUIREMENTS FR-8.1) and fires a general
@@ -107,10 +100,10 @@ local function Build(mainCategory)
         H.FireConfigChanged("icons")
         H.FireConfigChanged("castbar")
     end
-    H.AddButton(sub, L["Reset position"],
+    H.AddButton(mainCategory, L["Reset position"],
         L["Reset position"], resetPosition)
 
-    return sub
+    return mainCategory
 end
 
 -- Register the builder with Panel.lua. Panel will invoke it when the main

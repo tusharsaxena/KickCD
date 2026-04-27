@@ -34,6 +34,12 @@ function Profiles:Register()
     if not (KickCD.db and KickCD.db.profile) then
         return false
     end
+    -- AceConfigDialog calls Settings.GetCategory(parentID) which on 12.0+
+    -- requires the numeric category ID. Panel.lua stamps this once the
+    -- main "Ka0s KickCD" category is registered; until then, retry.
+    if not KickCD.SettingsCategoryID then
+        return false
+    end
 
     -- AceDBOptions returns a fully-formed AceConfig-3.0 options table that
     -- describes the entire profile management UI. We register it under a
@@ -47,13 +53,10 @@ function Profiles:Register()
     -- Settings shim still routes legacy panels through Settings, so this
     -- shows up as a sibling subcategory next to General/Icons/Castbar/Spells
     -- under the KickCD parent — meeting REQUIREMENTS FR-6.2.5.
-    --
-    -- AceConfigDialog appName is parsed by SetParent: the third arg
-    -- positions the panel as a child of "Ka0s KickCD" in the tree.
     local frame = AceConfigDialog:AddToBlizOptions(
         "KickCD-Profiles",
         L["Profiles"],
-        L["Ka0s KickCD"])
+        KickCD.SettingsCategoryID)
 
     KickCD.Settings = KickCD.Settings or {}
     KickCD.Settings.sub = KickCD.Settings.sub or {}
