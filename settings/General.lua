@@ -1,81 +1,105 @@
 -- settings/General.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §5.2 and docs/REQUIREMENTS.md FR-6.2.1, FR-8
 --
--- General widgets live directly on the top-level "Ka0s KickCD" category
--- (no "General" subcategory). Three sections:
---   * Master controls — enable, lock
---   * Appearance      — global scale + alpha
---   * Position        — reset position button
+-- General canvas panel. Declares its schema entries (master enable,
+-- lock, master scale/alpha, debug log) and registers a builder that
+-- renders them via Helpers.RenderSchema. The "Reset position" action
+-- is appended manually because anchors live outside the simple
+-- key=value space the schema covers.
 --
--- Every setter writes to db.profile and fires
---   KickCD_CONFIG_CHANGED { section = "general" }
--- so that IconGrid live-updates without a /reload (FR-6.4).
+-- Every schema entry here is automatically wired into /kcd get|set,
+-- so adding a new General option = one row in this file.
 
 local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local L      = KickCD.L
+local H      = KickCD.Settings.Helpers
+local Schema = KickCD.Settings.Schema
 
--- Builder is invoked by Panel.lua once the main Settings category exists.
-local function Build(mainCategory)
-    if not Settings then return nil end
+local function add(t) Schema[#Schema + 1] = t end
 
-    local H = KickCD.Settings.Helpers
+add{
+    panel    = "general",  section = "general",  group = L["Master controls"],
+    path     = "enabled",  type    = "bool",
+    label    = L["Enable KickCD"],
+    tooltip  = L["Master enable for the addon."],
+    default  = true,
+}
 
-    -- ---------------------------------------------------------------
-    -- Section: Master controls
-    -- ---------------------------------------------------------------
-    H.CreateCheckbox(mainCategory, "KickCD_general_enabled",
-        L["Enable KickCD"],
-        L["Master enable for the addon."],
-        "general", "enabled")
+add{
+    panel    = "general",  section = "general",  group = L["Master controls"],
+    path     = "locked",   type    = "bool",
+    label    = L["Lock frame"],
+    tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
+    default  = true,
+}
 
-    H.CreateCheckbox(mainCategory, "KickCD_general_locked",
-        L["Lock frame"],
-        L["When unlocked, you can drag the icon grid to reposition it."],
-        "general", "locked")
+add{
+    panel    = "general",  section = "general",  group = L["Appearance"],
+    path     = "scale",    type    = "number",
+    label    = L["Master scale"],
+    tooltip  = L["Scale multiplier applied to the entire icon grid."],
+    default  = 1.0,
+    min = 0.5, max = 2.0, step = 0.05, fmt = "%.2fx",
+}
 
-    -- ---------------------------------------------------------------
-    -- Section: Appearance
-    -- ---------------------------------------------------------------
-    H.AddSectionHeader(mainCategory, L["Scale"] .. " / " .. L["Alpha"])
+add{
+    panel    = "general",  section = "general",  group = L["Appearance"],
+    path     = "alpha",    type    = "number",
+    label    = L["Master alpha"],
+    tooltip  = L["Global opacity for the icon grid."],
+    default  = 1.0,
+    min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
+}
 
-    H.CreateSlider(mainCategory, "KickCD_general_scale",
-        L["Scale"],
-        L["Master scale for the entire addon."],
-        "general", "scale",
-        0.5, 2.0, 0.05, "%.2fx")
+add{
+    panel    = "general",  section = "general",  group = L["Debug"],
+    path     = "debugLog", type    = "bool",
+    label    = L["Internal-message logging"],
+    tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
+    default  = false,
+    onChange = function(v) KickCD._debugLog = v and true or false end,
+}
 
-    H.CreateSlider(mainCategory, "KickCD_general_alpha",
-        L["Alpha"],
-        L["Global alpha for the icon grid."],
-        "general", "alpha",
-        0.0, 1.0, 0.05, "%.2f")
+-- ---------------------------------------------------------------------
+-- Builder
+-- ---------------------------------------------------------------------
 
-    -- ---------------------------------------------------------------
-    -- Section: Position
-    -- ---------------------------------------------------------------
-    H.AddSectionHeader(mainCategory, L["Reset position"])
-
-    -- Reset button: restores the icon grid anchor to the documented default
-    -- (TECHNICAL_DESIGN §4 / REQUIREMENTS FR-8.1) and fires a general
-    -- CONFIG_CHANGED + an "icons" CONFIG_CHANGED so IconGrid re-applies the
-    -- anchor and re-runs ApplyLock().
-    local function resetPosition()
-        if not (KickCD.db and KickCD.db.profile) then return end
-        KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
-        KickCD.db.profile.anchors.icons =
-            { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
-        H.FireConfigChanged("general")
-        H.FireConfigChanged("icons")
-    end
-    H.AddButton(mainCategory, L["Reset position"],
-        L["Reset position"], resetPosition)
-
-    return mainCategory
+local function resetPosition()
+    if not (KickCD.db and KickCD.db.profile) then return end
+    KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
+    KickCD.db.profile.anchors.icons =
+        { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
+    H.FireConfigChanged("general")
+    H.FireConfigChanged("icons")
 end
 
--- Register the builder with Panel.lua. Panel will invoke it when the main
--- category is ready (immediately if Settings is already initialized, or
--- on PLAYER_LOGIN / ADDON_LOADED("Blizzard_Settings") otherwise).
+local function Build(mainCategory)
+    if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
+        return nil
+    end
+
+    local ctx
+    ctx = H.CreatePanel("KickCDGeneralPanel", L["General"], {
+        panelKey       = "general",
+        defaultsButton = true,
+    })
+    if ctx.panel.defaultsBtn then
+        ctx.panel.defaultsBtn:SetScript("OnClick", function()
+            H.RestoreDefaults("general", ctx)
+        end)
+    end
+
+    H.RenderSchema(ctx, "general")
+
+    H.Section(ctx, L["Position"])
+    H.Button(ctx,
+        L["Reset position"], L["Reset"],
+        L["Restore the icon grid to its default screen position."],
+        resetPosition)
+
+    return Settings.RegisterCanvasLayoutSubcategory(
+        mainCategory, ctx.panel, L["General"])
+end
+
 if KickCD.Settings and KickCD.Settings.RegisterTab then
     KickCD.Settings.RegisterTab("general", Build)
 end

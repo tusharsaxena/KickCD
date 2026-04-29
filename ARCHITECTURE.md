@@ -21,11 +21,11 @@ KickCD (AceAddon)
 │   ├── Cooldowns.lua — polls C_Spell.GetSpellCooldown, emits KickCD_SPELL_STATE
 │   └── IconGrid.lua  — owns KickCDIconGrid frame and pooled icon widgets
 └── settings/
-    ├── Panel.lua     — top-level category + per-tab builder mailbox + widget helpers
-    ├── General.lua   — enable / lock / scale / alpha / reset position
-    ├── Icons.lua     — icon grid sizing, colors, layout
-    ├── Spells.lua    — per-class+spec spell editor
-    └── Profiles.lua  — AceDBOptions profile UI (AceConfig)
+    ├── Panel.lua     — top-level category + canvas-panel framework + schema renderer
+    ├── General.lua   — schema rows for enable/lock/scale/alpha/debugLog + Reset position button
+    ├── Icons.lua     — schema rows for icon grid sizing, colors, layout
+    ├── Spells.lua    — unified header + AceGUI per-class+spec spell editor
+    └── Profiles.lua  — unified header + AceDBOptions UI (AceConfig in a SimpleGroup)
 ```
 
 External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, AceAddon-3.0, AceEvent-3.0, AceDB-3.0, AceDBOptions-3.0, AceConsole-3.0, AceConfig-3.0, AceGUI-3.0, LibSharedMedia-3.0.
@@ -61,7 +61,81 @@ StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE",
                                                          desaturate / SetCooldown (gated by issecretvalue)
 ```
 
-User input (drag, settings panel, slash command) writes to `db.profile` and fires `KickCD_CONFIG_CHANGED` (or `KickCD_PROFILE_CHANGED` from AceDB callbacks). IconGrid handles each section appropriately.
+User input (drag, settings panel widget, slash command) flows through
+`Helpers.Set(path, section, value)` in `settings/Panel.lua`, which
+writes `db.profile.<path>` and fires
+`KickCD_CONFIG_CHANGED { section = ... }`. IconGrid handles each section
+appropriately. AceDB callbacks fire `KickCD_PROFILE_CHANGED` on
+profile change/copy/reset.
+
+## Settings UI framework
+
+The settings tabs are not native vertical-layout subcategories; they are
+**canvas-layout** panels that share one custom header and a schema-driven
+widget renderer.
+
+### Panel chrome
+
+`Helpers.CreatePanel(name, title, opts)` builds a Frame compatible with
+`Settings.RegisterCanvasLayoutSubcategory` and stamps a unified header on
+top:
+
+* Title FontString (`GameFontNormalHuge`) at top-left
+* `Defaults` button (`UIPanelButtonTemplate`) at top-right when
+  `opts.defaultsButton` is true (General/Icons/Spells); omitted on
+  Profiles
+* `Options_HorizontalDivider` atlas underneath, full panel width
+* A `body` Frame anchored beneath the header that hosts the panel's
+  content
+
+The function returns a `ctx` table with `panel`, `body`, a layout
+`cursor`, and a `refreshers` array; the caller threads this through the
+section/widget helpers.
+
+### Schema (`KickCD.Settings.Schema`)
+
+A flat array; each row declares one option:
+
+```lua
+{ panel, section, group, path, type, label, tooltip, default,
+  min, max, step, fmt,            -- numbers
+  values,                          -- strings (dropdown); array or fn
+  onChange = function(v) ... end } -- optional
+```
+
+`type ∈ { bool, number, string, color }`. The same row drives:
+
+| Surface | How |
+|---|---|
+| Panel widget | `Helpers.RenderField(ctx, def)` dispatches by type to `makeCheckbox` / `makeSlider` / `makeDropdown` / `makeColorPicker`; each registers a refresher closure on `ctx.refreshers` |
+| `/kcd list` | groups schema by `panel`, prints `path = formattedValue` |
+| `/kcd get <path>` | `Helpers.FindSchema(path)` + `formatValue` |
+| `/kcd set <path> <value>` | type-aware parse (clamp numbers, validate dropdown values, parse `r g b [a]` for colors) → `Helpers.Set` → `onChange` → `Helpers.RefreshAllPanels` |
+| `Defaults` button | `Helpers.RestoreDefaults(panelKey, ctx)` resets every panel row to `def.default`, runs `onChange`, fires per-section `KickCD_CONFIG_CHANGED`, re-runs the panel's refreshers |
+
+**Adding an option = one schema row.** UI, slash CLI, and Defaults reset
+are wired automatically.
+
+### Custom-body tabs
+
+* **Spells** — AceGUI editor (class/spec dropdowns, Add spell button,
+  scrollable row list) parented to `ctx.body`. Header `Defaults` button
+  opens the existing `KICKCD_RESET_SPELLS` StaticPopup (resets the
+  current class+spec only).
+* **Profiles** — `AceConfigDialog:Open("KickCD-Profiles", container)`
+  renders the AceDBOptions options table into an AceGUI `SimpleGroup`
+  parented to `ctx.body`. No `Defaults` button — AceDBOptions has its
+  own destructive controls.
+
+### Widget binding
+
+Canvas widgets bind directly to `db.profile` via `Helpers.Get(path)` /
+`Helpers.Set(path, section, value)`. They do **not** go through
+`Settings.RegisterAddOnSetting` — the Compat shim for that API exists
+but has no live callers. Modern dropdowns use
+`MenuUtil.CreateContextMenu` (12.0+); sliders use `OptionsSliderTemplate`
+with hand-laid label/value FontStrings; color swatches drive
+`ColorPickerFrame` via `OpenColorPicker`.
 
 ## Closed message contract
 
@@ -122,7 +196,7 @@ Spell APIs and the Settings registration API have churned across recent expansio
 | `Compat.GetSpellTexture(id)` | `C_Spell.GetSpellTexture` → `_G.GetSpellTexture` | Texture may be secret on guarded spells; gate with `issecretvalue` before `SetTexture`. |
 | `Compat.GetSpellCharges(id)` | `C_Spell.GetSpellCharges` (table) → `_G.GetSpellCharges` (tuple) | Charges may be secret on guarded spells. |
 | `Compat.IsSpellUsable(id)` | `C_Spell.IsSpellUsable` → `_G.IsUsableSpell` | Returns `(usable, noMana)` regardless of underlying shape. |
-| `Compat.RegisterAddOnSetting(...)` | `Settings.RegisterAddOnSetting` | Tries the 12.0+ `(category, variable, variableKey, variableTbl, varType, default)` shape first; falls back through 11.0 / 10.2 / 10.0 shapes via `pcall`. |
+| `Compat.RegisterAddOnSetting(...)` | `Settings.RegisterAddOnSetting` | Tries the 12.0+ `(category, variable, variableKey, variableTbl, varType, name, default)` shape first; falls back through 11.0 / 10.0 shapes via `pcall`. **Vestigial** — no live caller; canvas-layout panels bind directly to `db.profile`. |
 
 Modules call into `Compat.*` exclusively; direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell.
 
@@ -147,7 +221,16 @@ Two ordered tables in `core/KickCD.lua` (`COMMANDS` for top-level, `DEBUG_COMMAN
 - `/kcd <unknown>` → "unknown command" + help.
 - `/kcd options` is aliased to `/kcd config` for backward compat.
 
-Adding a command is a one-row append; help text is generated from the same rows that drive dispatch.
+`OnSlashCommand` lowercases only the command name and preserves case in
+the rest of the input, so schema paths like `icons.primarySize` survive
+unchanged through `/kcd set ...`. `runDebug` lowercases its own
+subcommand for backward compat.
+
+Three of the top-level commands (`list`, `get`, `set`) are
+schema-driven and gain new entries automatically as schema rows are
+added — see the **Settings UI framework** section above.
+
+Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 
 ## Conventions
 

@@ -1,11 +1,10 @@
 -- settings/Profiles.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §5.4, docs/REQUIREMENTS.md FR-6.2.5 + FR-10.4
 --
--- Pure delegation to AceDBOptions-3.0. The AceDBOptions:GetOptionsTable call
--- builds the full create / switch / copy / reset / delete UI plus the
--- per-character / per-class / per-realm / per-faction / default scope
--- dropdowns automatically — there's no widget code we need to write here,
--- only the wiring. AceConfig + AceConfigDialog do the rendering.
+-- Profiles canvas panel. Uses the unified header (no Defaults button —
+-- profile management has its own destructive controls inside the
+-- AceDBOptions UI). The body hosts an AceGUI SimpleGroup container
+-- into which AceConfigDialog renders the AceDBOptions options table
+-- on first show.
 
 local KickCD = LibStub and LibStub("AceAddon-3.0", true)
                   and LibStub("AceAddon-3.0"):GetAddon("KickCD", true)
@@ -17,71 +16,77 @@ local L = KickCD.L or setmetatable({}, { __index = function(_, k) return k end }
 local Profiles = {}
 KickCD.SettingsProfiles = Profiles
 
---- Build the Profiles subcategory under the main KickCD settings category.
--- Idempotent: if the libs are missing or the parent category isn't ready,
--- we silently no-op. The PLAYER_LOGIN driver below retries until both
--- conditions are satisfied.
-function Profiles:Register()
-    if self._registered then return true end
-    if not LibStub then return false end
+local function Build(mainCategory)
+    if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
+        return nil
+    end
+    if not LibStub then return nil end
 
-    local AceDBOptions   = LibStub("AceDBOptions-3.0",   true)
-    local AceConfig      = LibStub("AceConfig-3.0",      true)
+    local AceDBOptions    = LibStub("AceDBOptions-3.0",    true)
+    local AceConfig       = LibStub("AceConfig-3.0",       true)
     local AceConfigDialog = LibStub("AceConfigDialog-3.0", true)
-    if not (AceDBOptions and AceConfig and AceConfigDialog) then
-        return false
+    local AceGUI          = LibStub("AceGUI-3.0",          true)
+    if not (AceDBOptions and AceConfig and AceConfigDialog and AceGUI) then
+        return nil
     end
-    if not (KickCD.db and KickCD.db.profile) then
-        return false
-    end
-    -- AceConfigDialog calls Settings.GetCategory(parentID) which on 12.0+
-    -- requires the numeric category ID. Panel.lua stamps this once the
-    -- main "Ka0s KickCD" category is registered; until then, retry.
-    if not KickCD.SettingsCategoryID then
-        return false
-    end
+    if not (KickCD.db and KickCD.db.profile) then return nil end
 
-    -- AceDBOptions returns a fully-formed AceConfig-3.0 options table that
-    -- describes the entire profile management UI. We register it under a
-    -- KickCD-namespaced key so it can be opened independently and added
-    -- to Blizzard's settings tree.
+    local H = KickCD.Settings and KickCD.Settings.Helpers
+    if not (H and H.CreatePanel) then return nil end
+
+    -- Register the AceConfig options once. AceDBOptions returns a fully
+    -- formed options table covering create / switch / copy / reset /
+    -- delete plus per-character / per-class / per-realm / per-faction /
+    -- default scope dropdowns.
     local opts = AceDBOptions:GetOptionsTable(KickCD.db)
     AceConfig:RegisterOptionsTable("KickCD-Profiles", opts)
 
-    -- AddToBlizOptions returns a Frame compatible with the legacy
-    -- InterfaceOptions panel. On modern clients (10.0+) Blizzard's
-    -- Settings shim still routes legacy panels through Settings, so this
-    -- shows up as a sibling subcategory next to General/Icons/Spells
-    -- under the KickCD parent — meeting REQUIREMENTS FR-6.2.5.
-    local frame = AceConfigDialog:AddToBlizOptions(
-        "KickCD-Profiles",
-        L["Profiles"],
-        KickCD.SettingsCategoryID)
+    local ctx = H.CreatePanel("KickCDProfilesPanel", L["Profiles"], {
+        panelKey       = "profiles",
+        defaultsButton = false,    -- explicit: per spec, no Defaults here
+    })
 
-    KickCD.Settings = KickCD.Settings or {}
-    KickCD.Settings.sub = KickCD.Settings.sub or {}
-    KickCD.Settings.sub.profiles = frame
+    -- AceGUI SimpleGroup parented to our body. AceConfigDialog:Open
+    -- accepts any AceGUI container as the rendering target; we point
+    -- it at this group so the AceDBOptions widgets land inside our
+    -- canvas frame instead of opening their own window.
+    local container = AceGUI:Create("SimpleGroup")
+    container:SetLayout("Fill")
+    container.frame:SetParent(ctx.body)
+    container.frame:ClearAllPoints()
+    container.frame:SetPoint("TOPLEFT",     ctx.body, "TOPLEFT",      8, -8)
+    container.frame:SetPoint("BOTTOMRIGHT", ctx.body, "BOTTOMRIGHT", -8, 8)
 
-    self._registered = true
-    return true
+    -- Open lazily on first show. Re-Open()ing on every show is cheap
+    -- (AceConfigDialog reuses the existing widget tree if one exists)
+    -- and ensures the UI reflects the current profile after a switch.
+    ctx.panel:SetScript("OnShow", function()
+        AceConfigDialog:Open("KickCD-Profiles", container)
+    end)
+
+    local sub = Settings.RegisterCanvasLayoutSubcategory(
+        mainCategory, ctx.panel, L["Profiles"])
+
+    Profiles._registered = true
+    Profiles._panel      = ctx.panel
+    return sub
 end
 
--- Drive registration from PLAYER_LOGIN. PLAYER_LOGIN fires once per session
--- after every addon's OnInitialize and OnEnable, so KickCD.db is guaranteed
--- to be in place by the time we get here. If a prerequisite is somehow
--- missing (e.g. AceDBOptions not vendored), we retry briefly and then give
--- up silently — Profiles is non-essential to runtime behavior.
-local f = CreateFrame("Frame")
-f:RegisterEvent("PLAYER_LOGIN")
-f:SetScript("OnEvent", function()
-    if not Profiles:Register() then
-        local attempts = 0
-        local ticker
-        ticker = C_Timer.NewTicker(0.25, function()
-            attempts = attempts + 1
-            if Profiles:Register() or attempts >= 8 then
-                if ticker and ticker.Cancel then ticker:Cancel() end
-            end
-        end)
+if KickCD.Settings and KickCD.Settings.RegisterTab then
+    KickCD.Settings.RegisterTab("profiles", Build)
+end
+
+-- Back-compat shim: earlier code paths drove Profiles:Register() from
+-- a PLAYER_LOGIN ticker. The unified pattern routes everything through
+-- KickCD.Settings.Register, but a legacy caller can still invoke this.
+function Profiles:Register()
+    if self._registered then return true end
+    if KickCD.Settings and KickCD.Settings.main then
+        local sub = Build(KickCD.Settings.main)
+        if sub then
+            KickCD.Settings.sub.profiles = sub
+            return true
+        end
     end
-end)
+    return false
+end

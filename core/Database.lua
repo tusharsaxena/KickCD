@@ -18,10 +18,11 @@ KickCD.Database = Database
 -- ---------------------------------------------------------------------------
 
 local DEFAULT_PROFILE = {
-    enabled = true,
-    locked  = true,
-    scale   = 1.0,
-    alpha   = 1.0,
+    enabled  = true,
+    locked   = true,
+    scale    = 1.0,
+    alpha    = 1.0,
+    debugLog = false,
 
     icons = {
         primarySize      = 48,

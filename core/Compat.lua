@@ -142,18 +142,17 @@ end
 -- The signature of Settings.RegisterAddOnSetting has shifted across
 -- 10.0 → 10.2 → 11.0 → 12.0. Blizzard's modern (12.0+) form is:
 --
---   (category, variable, variableKey, variableTbl, variableType, defaultValue)
+--   (category, variable, variableKey, variableTbl, variableType, name, defaultValue)
 --
 -- where variableTbl must be a real table that Blizzard reads/writes via
--- variableTbl[variableKey]. KickCD's authoritative store is db.profile,
--- so we hand the API a per-call scratch table seeded with the current
--- value; SetValueChangedCallback (Panel.lua) mirrors live edits back into
--- db.profile.
+-- variableTbl[variableKey], and `name` is the display label shown in the
+-- panel. KickCD's authoritative store is db.profile, so we hand the API
+-- a per-call scratch table seeded with the current value;
+-- SetValueChangedCallback (Panel.lua) mirrors live edits back into db.profile.
 --
--- Older shapes still attempted as fallbacks:
+-- Older shapes attempted as fallbacks:
 --
 --   (variable, name, table, type, defaultValue)                      -- 10.0
---   (category, variable, variableKey, table, type, name, default)    -- 10.2
 --   (category, name, variable, table, type, defaultValue)            -- 11.0
 --
 -- The shim tries the newest form first and falls back on pcall failure.
@@ -177,9 +176,9 @@ function Compat.RegisterAddOnSetting(category, variable, name, defaultValue, var
     local scratch = { [variable] = defaultValue }
 
     -- 1) Modern 12.0+ signature:
-    --    (category, variable, variableKey, variableTbl, variableType, defaultValue)
+    --    (category, variable, variableKey, variableTbl, variableType, name, defaultValue)
     local ok, setting = pcall(Settings.RegisterAddOnSetting,
-        category, variable, variable, scratch, varType, defaultValue)
+        category, variable, variable, scratch, varType, name, defaultValue)
     if ok and setting then return setting end
 
     -- 2) 11.0 signature:
@@ -188,13 +187,7 @@ function Compat.RegisterAddOnSetting(category, variable, name, defaultValue, var
         category, name, variable, scratch, varType, defaultValue)
     if ok and setting then return setting end
 
-    -- 3) 10.2 signature:
-    --    (category, variable, variableKey, variableTbl, varType, name, default)
-    ok, setting = pcall(Settings.RegisterAddOnSetting,
-        category, variable, variable, scratch, varType, name, defaultValue)
-    if ok and setting then return setting end
-
-    -- 4) 10.0 signature:
+    -- 3) 10.0 signature:
     --    (variable, name, variableTbl, varType, defaultValue)
     ok, setting = pcall(Settings.RegisterAddOnSetting,
         variable, name, scratch, varType, defaultValue)

@@ -36,33 +36,91 @@ L["Icons"]                       = "Icons"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
--- General tab
+-- General tab — section headers
+L["Master controls"]             = "Master controls"
+L["Appearance"]                  = "Appearance"
+L["Position"]                    = "Position"
+L["Debug"]                       = "Debug"
+
+-- General tab — controls
 L["Enable KickCD"]               = "Enable KickCD"
 L["Master enable for the addon."] = "Master enable for the addon."
 L["Lock frame"]                  = "Lock frame"
 L["When unlocked, you can drag the icon grid to reposition it."] =
     "When unlocked, you can drag the icon grid to reposition it."
-L["Scale"]                       = "Scale"
-L["Alpha"]                       = "Alpha"
+L["Master scale"]                = "Master scale"
+L["Scale multiplier applied to the entire icon grid."] =
+    "Scale multiplier applied to the entire icon grid."
+L["Master alpha"]                = "Master alpha"
+L["Global opacity for the icon grid."] =
+    "Global opacity for the icon grid."
 L["Reset position"]              = "Reset position"
+L["Reset"]                       = "Reset"
+L["Restore the icon grid to its default screen position."] =
+    "Restore the icon grid to its default screen position."
+L["Internal-message logging"]    = "Internal-message logging"
+L["Print every internal message to chat. Useful for diagnosing module wiring."] =
+    "Print every internal message to chat. Useful for diagnosing module wiring."
 
--- Icons tab
+-- Icons tab — section headers
+L["Sizing"]                      = "Sizing"
+L["Visual states"]               = "Visual states"
+L["Annotations"]                 = "Annotations"
+
+-- Icons tab — controls
 L["Primary size"]                = "Primary size"
+L["Pixel size of the primary interrupt icon."] =
+    "Pixel size of the primary interrupt icon."
 L["Secondary size"]              = "Secondary size"
+L["Secondary icon size as a fraction of the primary."] =
+    "Secondary icon size as a fraction of the primary."
 L["Layout"]                      = "Layout"
+L["Arrange icons horizontally or vertically."] =
+    "Arrange icons horizontally or vertically."
 L["Horizontal"]                  = "Horizontal"
 L["Vertical"]                    = "Vertical"
 L["Primary anchor"]              = "Primary anchor"
+L["Where the primary icon sits relative to the secondaries."] =
+    "Where the primary icon sits relative to the secondaries."
 L["Left"]                        = "Left"
 L["Right"]                       = "Right"
 L["Top"]                         = "Top"
 L["Bottom"]                      = "Bottom"
 L["Gap"]                         = "Gap"
+L["Pixel gap between adjacent icons."] =
+    "Pixel gap between adjacent icons."
 L["Ready alpha"]                 = "Ready alpha"
+L["Icon alpha when the spell is off cooldown."] =
+    "Icon alpha when the spell is off cooldown."
 L["Cooldown alpha"]              = "Cooldown alpha"
+L["Icon alpha while the spell is on cooldown."] =
+    "Icon alpha while the spell is on cooldown."
 L["Cooldown tint"]               = "Cooldown tint"
+L["RGB tint applied to icons during cooldown."] =
+    "RGB tint applied to icons during cooldown."
 L["Show cooldown text"]          = "Show cooldown text"
+L["Render numeric seconds remaining on each icon."] =
+    "Render numeric seconds remaining on each icon."
+L["Font"]                        = "Font"
+L["Font for the cooldown text overlay."] =
+    "Font for the cooldown text overlay."
+L["Font size"]                   = "Font size"
+L["Cooldown text size in pixels."] =
+    "Cooldown text size in pixels."
 L["Show charges"]                = "Show charges"
+L["Render a charges badge for spells with charges."] =
+    "Render a charges badge for spells with charges."
+
+-- Unified panel chrome
+L["Defaults"]                    = "Defaults"
+
+-- Slash commands (/kcd list|get|set)
+L["Available settings:"]         = "Available settings:"
+L["Setting not found: %s"]       = "Setting not found: %s"
+L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
+L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"
+L["Invalid value for %s"]        = "Invalid value for %s"
+L["Allowed values: %s"]          = "Allowed values: %s"
 
 -- Spells editor
 L["Class"]                       = "Class"
