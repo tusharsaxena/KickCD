@@ -83,18 +83,25 @@ local function Build(mainCategory)
         defaultsButton = true,
     })
     if ctx.panel.defaultsBtn then
-        ctx.panel.defaultsBtn:SetScript("OnClick", function()
+        ctx.panel.defaultsBtn:SetCallback("OnClick", function()
             H.RestoreDefaults("general", ctx)
         end)
     end
 
-    H.RenderSchema(ctx, "general")
-
-    H.Section(ctx, L["Position"])
-    H.Button(ctx,
-        L["Reset position"], L["Reset"],
-        L["Restore the icon grid to its default screen position."],
-        resetPosition)
+    -- Defer the AceGUI render until the panel becomes visible: build-time
+    -- happens at PLAYER_LOGIN when ctx.body has 0 width, and AceGUI lays
+    -- children out against the container's current width.
+    local rendered = false
+    ctx.panel:SetScript("OnShow", function()
+        if rendered then return end
+        rendered = true
+        H.RenderSchema(ctx, "general")
+        H.Section(ctx, L["Position"])
+        H.Button(ctx,
+            L["Reset position"], L["Reset"],
+            L["Restore the icon grid to its default screen position."],
+            resetPosition)
+    end)
 
     return Settings.RegisterCanvasLayoutSubcategory(
         mainCategory, ctx.panel, L["General"])

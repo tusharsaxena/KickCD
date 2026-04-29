@@ -131,12 +131,20 @@ local function Build(mainCategory)
         defaultsButton = true,
     })
     if ctx.panel.defaultsBtn then
-        ctx.panel.defaultsBtn:SetScript("OnClick", function()
+        ctx.panel.defaultsBtn:SetCallback("OnClick", function()
             H.RestoreDefaults("icons", ctx)
         end)
     end
 
-    H.RenderSchema(ctx, "icons")
+    -- Defer the AceGUI render until the panel becomes visible: build-time
+    -- happens at PLAYER_LOGIN when ctx.body has 0 width, and AceGUI lays
+    -- children out against the container's current width.
+    local rendered = false
+    ctx.panel:SetScript("OnShow", function()
+        if rendered then return end
+        rendered = true
+        H.RenderSchema(ctx, "icons")
+    end)
 
     return Settings.RegisterCanvasLayoutSubcategory(
         mainCategory, ctx.panel, L["Icons"])

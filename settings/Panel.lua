@@ -1,4 +1,4 @@
--- settings/Panel.lua — KickCD v0.1
+-- settings/Panel.lua — KickCD v0.2
 --
 -- Settings UI framework. Every tab — General, Icons, Spells, Profiles —
 -- is registered as a canvas-layout subcategory and shares one header
@@ -7,12 +7,18 @@
 -- body.
 --
 -- General and Icons are driven entirely from a declarative schema
--- (KickCD.Settings.Schema). The same schema feeds the
--- /kcd list|get|set slash commands (see core/KickCD.lua), so adding a
--- new option is one row that auto-wires both UI and CLI.
+-- (KickCD.Settings.Schema). Schema rows render as AceGUI widgets
+-- (CheckBox / Slider / Dropdown / ColorPicker / Heading) inside an
+-- AceGUI ScrollFrame parented to ctx.body, so the visual style matches
+-- the AceGUI-driven Spells / Profiles tabs and other AceGUI-using
+-- addons (e.g. Consumable Master).
+--
+-- The same schema feeds /kcd list|get|set (see core/KickCD.lua), so
+-- adding a new option = one row that auto-wires UI and CLI.
 
 local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local L      = KickCD.L
+local AceGUI = LibStub("AceGUI-3.0")
 
 KickCD.Settings = KickCD.Settings or {}
 KickCD.Settings.main      = nil
@@ -103,29 +109,24 @@ end
 -- Layout constants
 -- ---------------------------------------------------------------------
 
-local PADDING_X       = 16
-local HEADER_HEIGHT   = 42
-local HEADER_BTN_W    = 110
-local HEADER_BTN_H    = 26
-local SECTION_GAP     = 14
-local SECTION_HEIGHT  = 22
-local ROW_GAP         = 8
-local CHECKBOX_H      = 24
-local SLIDER_H        = 36
-local DROPDOWN_H      = 28
-local COLOR_H         = 24
-local BUTTON_H        = 26
-local CONTROL_W       = 200
+local PADDING_X     = 16
+local HEADER_HEIGHT = 42
+local DEFAULTS_W    = 110
 
 -- ---------------------------------------------------------------------
--- Tooltip helper
+-- Tooltip helper — works on AceGUI widgets (via SetCallback) and plain
+-- Blizzard frames (via HookScript). Anchors on widget.frame when the
+-- target is an AceGUI widget.
 -- ---------------------------------------------------------------------
 
 local function attachTooltip(widget, label, tooltip)
-    if not (widget and widget.HookScript) then return end
-    widget:HookScript("OnEnter", function(self)
+    if not widget then return end
+    local anchor = widget.frame or widget
+    if not anchor then return end
+
+    local function show()
         if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
         if label and label ~= "" then
             GameTooltip:SetText(label, 1, 1, 1)
         end
@@ -133,33 +134,43 @@ local function attachTooltip(widget, label, tooltip)
             GameTooltip:AddLine(tooltip, nil, nil, nil, true)
         end
         GameTooltip:Show()
-    end)
-    widget:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end
+    local function hide() if GameTooltip then GameTooltip:Hide() end end
+
+    if widget.SetCallback then
+        widget:SetCallback("OnEnter", show)
+        widget:SetCallback("OnLeave", hide)
+    elseif widget.HookScript then
+        widget:HookScript("OnEnter", show)
+        widget:HookScript("OnLeave", hide)
+    end
 end
 Helpers.AttachTooltip = attachTooltip
 
 -- ---------------------------------------------------------------------
--- Header (title + Defaults button + divider) — see KCD001.png
+-- Header (title + Defaults button + divider)
 -- ---------------------------------------------------------------------
 
-local function buildHeader(parent, title, opts)
-    opts = opts or {}
-
-    local titleFS = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    titleFS:SetPoint("TOPLEFT", parent, "TOPLEFT", PADDING_X, -8)
+local function buildHeader(panel, title, opts)
+    local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING_X, -8)
     titleFS:SetText(title)
 
-    local divider = parent:CreateTexture(nil, "ARTWORK")
+    local divider = panel:CreateTexture(nil, "ARTWORK")
     divider:SetAtlas("Options_HorizontalDivider", true)
-    divider:SetPoint("TOPLEFT",  parent, "TOPLEFT",   PADDING_X, -HEADER_HEIGHT)
-    divider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -PADDING_X, -HEADER_HEIGHT)
+    divider:SetPoint("TOPLEFT",  panel, "TOPLEFT",   PADDING_X, -HEADER_HEIGHT)
+    divider:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING_X, -HEADER_HEIGHT)
 
     local defaultsBtn
     if opts.defaultsButton then
-        defaultsBtn = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-        defaultsBtn:SetSize(HEADER_BTN_W, HEADER_BTN_H)
-        defaultsBtn:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -PADDING_X, -8)
+        defaultsBtn = AceGUI:Create("Button")
         defaultsBtn:SetText(L["Defaults"])
+        defaultsBtn:SetWidth(DEFAULTS_W)
+        defaultsBtn.frame:SetParent(panel)
+        defaultsBtn.frame:ClearAllPoints()
+        defaultsBtn.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT",
+                                   -PADDING_X, -8)
+        defaultsBtn.frame:Show()
         attachTooltip(defaultsBtn, L["Defaults"], opts.defaultsTooltip)
     end
 
@@ -169,7 +180,8 @@ end
 -- ---------------------------------------------------------------------
 -- CreatePanel — Frame compatible with RegisterCanvasLayoutSubcategory
 -- with the unified header stamped on top. Returns a `ctx` table the
--- caller threads through Section/RenderField/RenderSchema etc.
+-- caller threads through Section / RenderField / RenderSchema /
+-- Button / RestoreDefaults.
 -- ---------------------------------------------------------------------
 
 function Helpers.CreatePanel(name, title, opts)
@@ -190,56 +202,34 @@ function Helpers.CreatePanel(name, title, opts)
     panel.body = body
 
     local ctx = {
-        panel      = panel,
-        body       = body,
-        cursor     = { y = -8 },
-        refreshers = {},
-        lastGroup  = nil,
-        panelKey   = opts.panelKey,
+        panel       = panel,
+        body        = body,
+        scroll      = nil,           -- lazy AceGUI ScrollFrame
+        refreshers  = {},
+        lastGroup   = nil,
+        panelKey    = opts.panelKey,
     }
     KickCD.Settings._panels[#KickCD.Settings._panels + 1] = ctx
     return ctx
 end
 
 -- ---------------------------------------------------------------------
--- Section header (sub-section grouping inside a panel body)
+-- Lazy AceGUI scroll container. Tabs that drive ctx.body directly
+-- (Spells, Profiles) never trigger this; they place their own AceGUI
+-- containers on top of ctx.body.
 -- ---------------------------------------------------------------------
 
-function Helpers.Section(ctx, label)
-    ctx.cursor.y = ctx.cursor.y - SECTION_GAP
-    local header = CreateFrame("Frame", nil, ctx.body)
-    header:SetHeight(SECTION_HEIGHT)
-    header:SetPoint("TOPLEFT",  ctx.body, "TOPLEFT",   PADDING_X, ctx.cursor.y)
-    header:SetPoint("TOPRIGHT", ctx.body, "TOPRIGHT", -PADDING_X, ctx.cursor.y)
-
-    local fs = header:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    fs:SetPoint("LEFT", header, "LEFT", 0, 4)
-    fs:SetText(label)
-
-    local div = header:CreateTexture(nil, "ARTWORK")
-    div:SetColorTexture(0.4, 0.4, 0.4, 0.6)
-    div:SetHeight(1)
-    div:SetPoint("BOTTOMLEFT",  header, "BOTTOMLEFT",  0, 0)
-    div:SetPoint("BOTTOMRIGHT", header, "BOTTOMRIGHT", 0, 0)
-
-    ctx.cursor.y = ctx.cursor.y - SECTION_HEIGHT - 4
-    return header
-end
-
--- ---------------------------------------------------------------------
--- Widget creators — bound directly to db.profile via Helpers.Get/Set.
--- Each creator advances ctx.cursor.y and registers a refresher closure
--- so the widget can re-sync its display after a Defaults reset or a
--- /kcd set issued from chat.
--- ---------------------------------------------------------------------
-
-local function rowFrame(ctx, height)
-    local row = CreateFrame("Frame", nil, ctx.body)
-    row:SetHeight(height)
-    row:SetPoint("TOPLEFT",  ctx.body, "TOPLEFT",   PADDING_X, ctx.cursor.y)
-    row:SetPoint("TOPRIGHT", ctx.body, "TOPRIGHT", -PADDING_X, ctx.cursor.y)
-    ctx.cursor.y = ctx.cursor.y - height - ROW_GAP
-    return row
+local function ensureScroll(ctx)
+    if ctx.scroll then return ctx.scroll end
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetLayout("List")
+    scroll.frame:SetParent(ctx.body)
+    scroll.frame:ClearAllPoints()
+    scroll.frame:SetPoint("TOPLEFT",     ctx.body, "TOPLEFT",      PADDING_X - 4, -8)
+    scroll.frame:SetPoint("BOTTOMRIGHT", ctx.body, "BOTTOMRIGHT", -(PADDING_X - 4), 8)
+    scroll.frame:Show()
+    ctx.scroll = scroll
+    return scroll
 end
 
 local function fireOnChange(def, value)
@@ -251,155 +241,149 @@ local function fireOnChange(def, value)
     end
 end
 
+-- ---------------------------------------------------------------------
+-- Section header — AceGUI Heading (full-width label flanked by side
+-- divider textures, matches AceConfigDialog group separators).
+-- ---------------------------------------------------------------------
+
+function Helpers.Section(ctx, label)
+    local scroll = ensureScroll(ctx)
+    local h = AceGUI:Create("Heading")
+    h:SetText(label)
+    h:SetFullWidth(true)
+    scroll:AddChild(h)
+    return h
+end
+
+-- ---------------------------------------------------------------------
+-- Widget creators — each binds directly to db.profile via
+-- Helpers.Get/Set, registers a refresher closure so the widget can
+-- re-sync after a Defaults reset or a /kcd set, and adds itself to
+-- the panel's AceGUI ScrollFrame container.
+-- ---------------------------------------------------------------------
+
 local function makeCheckbox(ctx, def)
-    local row = rowFrame(ctx, CHECKBOX_H)
-    local cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-    cb:SetSize(CHECKBOX_H, CHECKBOX_H)
-    cb:SetPoint("LEFT", row, "LEFT", 0, 0)
-    cb.text:SetText(def.label or def.path)
-    cb.text:SetPoint("LEFT", cb, "RIGHT", 4, 1)
+    local scroll = ensureScroll(ctx)
+    local cb = AceGUI:Create("CheckBox")
+    cb:SetLabel(def.label or def.path)
+    cb:SetFullWidth(true)
+    cb:SetValue(Helpers.Get(def.path) and true or false)
 
     local function refresh()
-        cb:SetChecked(Helpers.Get(def.path) and true or false)
+        cb:SetValue(Helpers.Get(def.path) and true or false)
     end
-    refresh()
 
-    cb:SetScript("OnClick", function(self)
-        local v = self:GetChecked() and true or false
+    cb:SetCallback("OnValueChanged", function(_, _, value)
+        local v = value and true or false
         Helpers.Set(def.path, def.section, v)
         fireOnChange(def, v)
     end)
 
     attachTooltip(cb, def.label, def.tooltip)
+    scroll:AddChild(cb)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
     return cb
 end
 
-local function snapToStep(value, min, step)
+-- AceGUI's Slider writes its raw numeric value into the editbox via
+-- UpdateText() inside the C-side OnValueChanged handler. To honour
+-- def.fmt ("%.2fx", "%d px"), we PostHook the inner slider's
+-- OnValueChanged so our formatted text overwrites UpdateText's, and we
+-- also re-format after each SetValue() (refresh path).
+local function snapToStep(value, mn, step)
     if not (step and step > 0) then return value end
-    return math.floor((value - min) / step + 0.5) * step + min
+    return math.floor((value - mn) / step + 0.5) * step + mn
 end
 
 local function makeSlider(ctx, def)
-    local row = rowFrame(ctx, SLIDER_H)
+    local scroll = ensureScroll(ctx)
+    local s = AceGUI:Create("Slider")
+    s:SetLabel(def.label or def.path)
+    s:SetSliderValues(def.min or 0, def.max or 1, def.step or 1)
+    s:SetIsPercent(false)
+    s:SetFullWidth(true)
 
-    local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-    label:SetText(def.label or def.path)
+    local function applyFormat(value)
+        if not (def.fmt and s.editbox) then return end
+        local snapped = snapToStep(value, def.min or 0, def.step or 0)
+        local ok, str = pcall(string.format, def.fmt, snapped)
+        if ok then s.editbox:SetText(str) end
+    end
 
-    local valueFS = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    valueFS:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
-
-    local slider = CreateFrame("Slider", nil, row, "OptionsSliderTemplate")
-    slider:SetPoint("BOTTOMLEFT",  row, "BOTTOMLEFT",  0, 4)
-    slider:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 4)
-    slider:SetMinMaxValues(def.min or 0, def.max or 1)
-    slider:SetValueStep(def.step or 1)
-    slider:SetObeyStepOnDrag(true)
-    if slider.Low  then slider.Low:SetText("")  end
-    if slider.High then slider.High:SetText("") end
-    if slider.Text then slider.Text:SetText("") end
-
-    local function format(v)
-        if def.fmt then return def.fmt:format(v) end
-        return tostring(v)
+    -- HookScript runs after AceGUI's Slider_OnValueChanged (which calls
+    -- UpdateText), so our formatted text wins.
+    if s.slider then
+        s.slider:HookScript("OnValueChanged", function(slider, newvalue)
+            if slider.setup then return end
+            applyFormat(newvalue)
+        end)
     end
 
     local function refresh()
         local v = Helpers.Get(def.path)
         if type(v) ~= "number" then v = def.default or def.min or 0 end
-        slider:SetValue(v)
-        valueFS:SetText(format(v))
+        s:SetValue(v)
+        applyFormat(v)
     end
-    refresh()
 
-    slider:SetScript("OnValueChanged", function(self, value, userInput)
+    s:SetCallback("OnMouseUp", function(_, _, value)
         local snapped = snapToStep(value, def.min or 0, def.step or 0)
-        valueFS:SetText(format(snapped))
-        if userInput then
-            Helpers.Set(def.path, def.section, snapped)
-            fireOnChange(def, snapped)
-        end
+        Helpers.Set(def.path, def.section, snapped)
+        fireOnChange(def, snapped)
+        applyFormat(snapped)
     end)
 
-    attachTooltip(label,  def.label, def.tooltip)
-    attachTooltip(slider, def.label, def.tooltip)
+    attachTooltip(s, def.label, def.tooltip)
+    scroll:AddChild(s)
+    refresh()
     ctx.refreshers[#ctx.refreshers + 1] = refresh
-    return slider
+    return s
 end
 
 local function makeDropdown(ctx, def)
-    local row = rowFrame(ctx, DROPDOWN_H)
-
-    local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("LEFT", row, "LEFT", 0, 0)
-    label:SetText(def.label or def.path)
-
-    local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-    btn:SetSize(CONTROL_W, 22)
-    btn:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    local scroll = ensureScroll(ctx)
+    local dd = AceGUI:Create("Dropdown")
+    dd:SetLabel(def.label or def.path)
+    dd:SetFullWidth(true)
 
     local function valuesList()
         if type(def.values) == "function" then return def.values() or {} end
         return def.values or {}
     end
 
-    local function labelFor(value)
-        for _, item in ipairs(valuesList()) do
-            if item.value == value then return item.label end
+    local function applyList()
+        local items, order = {}, {}
+        for i, item in ipairs(valuesList()) do
+            items[item.value] = item.label or tostring(item.value)
+            order[i] = item.value
         end
-        return tostring(value)
+        dd:SetList(items, order)
     end
+    applyList()
+    dd:SetValue(Helpers.Get(def.path))
 
     local function refresh()
-        btn:SetText(labelFor(Helpers.Get(def.path)))
+        applyList()                            -- LSM lists may grow over time
+        dd:SetValue(Helpers.Get(def.path))
     end
-    refresh()
 
-    btn:SetScript("OnClick", function(self)
-        if MenuUtil and MenuUtil.CreateContextMenu then
-            MenuUtil.CreateContextMenu(self, function(_, root)
-                for _, item in ipairs(valuesList()) do
-                    local val = item.value
-                    root:CreateRadio(item.label,
-                        function() return Helpers.Get(def.path) == val end,
-                        function()
-                            Helpers.Set(def.path, def.section, val)
-                            fireOnChange(def, val)
-                            refresh()
-                        end)
-                end
-            end)
-        end
+    dd:SetCallback("OnValueChanged", function(_, _, value)
+        Helpers.Set(def.path, def.section, value)
+        fireOnChange(def, value)
     end)
 
-    attachTooltip(label, def.label, def.tooltip)
-    attachTooltip(btn,   def.label, def.tooltip)
+    attachTooltip(dd, def.label, def.tooltip)
+    scroll:AddChild(dd)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
-    return btn
+    return dd
 end
 
 local function makeColorPicker(ctx, def)
-    local row = rowFrame(ctx, COLOR_H)
-
-    local label = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    label:SetPoint("LEFT", row, "LEFT", 0, 0)
-    label:SetText(def.label or def.path)
-
-    local swatch = CreateFrame("Button", nil, row, "BackdropTemplate")
-    swatch:SetSize(60, COLOR_H - 4)
-    swatch:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-    if swatch.SetBackdrop then
-        swatch:SetBackdrop({
-            bgFile   = "Interface\\Buttons\\WHITE8x8",
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-        })
-        swatch:SetBackdropBorderColor(0.2, 0.2, 0.2, 1)
-    end
-    local bg = swatch:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT",     swatch, "TOPLEFT",     1, -1)
-    bg:SetPoint("BOTTOMRIGHT", swatch, "BOTTOMRIGHT", -1, 1)
+    local scroll = ensureScroll(ctx)
+    local cp = AceGUI:Create("ColorPicker")
+    cp:SetLabel(def.label or def.path)
+    cp:SetHasAlpha(true)
+    cp:SetFullWidth(true)
 
     local function readColor()
         local c = Helpers.Get(def.path)
@@ -407,55 +391,21 @@ local function makeColorPicker(ctx, def)
         return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
     end
 
-    local function applyColor(r, g, b, a)
-        Helpers.Set(def.path, def.section, { r, g, b, a })
-        bg:SetColorTexture(r, g, b, a)
-        fireOnChange(def, { r, g, b, a })
-    end
+    cp:SetColor(readColor())
 
     local function refresh()
-        local r, g, b, a = readColor()
-        bg:SetColorTexture(r, g, b, a)
+        cp:SetColor(readColor())
     end
-    refresh()
 
-    swatch:SetScript("OnClick", function()
-        local r, g, b, a = readColor()
-        local info = {
-            swatchFunc = function()
-                local nr, ng, nb
-                if ColorPickerFrame.GetColorRGB then
-                    nr, ng, nb = ColorPickerFrame:GetColorRGB()
-                else
-                    nr, ng, nb = ColorPickerFrame.r, ColorPickerFrame.g, ColorPickerFrame.b
-                end
-                local na = 1 - (OpacitySliderFrame and OpacitySliderFrame:GetValue() or 0)
-                applyColor(nr, ng, nb, na)
-            end,
-            opacityFunc = function()
-                local na = 1 - (OpacitySliderFrame and OpacitySliderFrame:GetValue() or 0)
-                local cr, cg, cb = readColor()
-                applyColor(cr, cg, cb, na)
-            end,
-            cancelFunc = function(prev)
-                if not prev then return end
-                local pr = prev.r or prev[1] or 1
-                local pg = prev.g or prev[2] or 1
-                local pb = prev.b or prev[3] or 1
-                local pa = 1 - (prev.opacity or 0)
-                applyColor(pr, pg, pb, pa)
-            end,
-            hasOpacity = true,
-            opacity    = 1 - (a or 1),
-            r = r, g = g, b = b,
-        }
-        if OpenColorPicker then OpenColorPicker(info) end
+    cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a)
+        Helpers.Set(def.path, def.section, { r, g, b, a or 1 })
+        fireOnChange(def, { r, g, b, a or 1 })
     end)
 
-    attachTooltip(label,  def.label, def.tooltip)
-    attachTooltip(swatch, def.label, def.tooltip)
+    attachTooltip(cp, def.label, def.tooltip)
+    scroll:AddChild(cp)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
-    return swatch
+    return cp
 end
 
 -- Generic field renderer — dispatches by def.type.
@@ -466,19 +416,35 @@ function Helpers.RenderField(ctx, def)
     if def.type == "color"  then return makeColorPicker(ctx, def) end
 end
 
--- Inline action button (not a setting — used for "Reset position" etc.)
-function Helpers.Button(ctx, label, buttonText, tooltip, onClick)
-    local row = rowFrame(ctx, BUTTON_H)
-    local lbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    lbl:SetPoint("LEFT", row, "LEFT", 0, 0)
-    lbl:SetText(label)
+-- Inline action button (label on the left, button on the right).
+-- Used for "Reset position" et al. — not a setting.
+function Helpers.Button(ctx, labelText, buttonText, tooltip, onClick)
+    local scroll = ensureScroll(ctx)
 
-    local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-    btn:SetSize(120, 22)
-    btn:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-    btn:SetText(buttonText)
-    btn:SetScript("OnClick", function() if onClick then onClick() end end)
-    attachTooltip(btn, label, tooltip)
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+    row:SetHeight(28)
+
+    local lbl = AceGUI:Create("Label")
+    lbl:SetText(labelText or "")
+    lbl:SetWidth(280)
+    row:AddChild(lbl)
+
+    local btn = AceGUI:Create("Button")
+    btn:SetText(buttonText or "")
+    btn:SetWidth(140)
+    btn:SetCallback("OnClick", function()
+        if not onClick then return end
+        local ok, err = pcall(onClick)
+        if not ok and KickCD.Util then
+            KickCD.Util.print("button onClick failed: " .. tostring(err))
+        end
+    end)
+    row:AddChild(btn)
+
+    attachTooltip(btn, labelText, tooltip)
+    scroll:AddChild(row)
     return btn
 end
 
@@ -494,6 +460,7 @@ function Helpers.RenderSchema(ctx, panelKey)
         end
         Helpers.RenderField(ctx, def)
     end
+    if ctx.scroll and ctx.scroll.DoLayout then ctx.scroll:DoLayout() end
 end
 
 -- Refresh every widget on every panel ctx — called after a slash-cmd

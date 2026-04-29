@@ -446,7 +446,7 @@ local function ensurePanel()
     body  = ctx.body
 
     if panel.defaultsBtn then
-        panel.defaultsBtn:SetScript("OnClick", function()
+        panel.defaultsBtn:SetCallback("OnClick", function()
             StaticPopup_Show("KICKCD_RESET_SPELLS")
         end)
     end

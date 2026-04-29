@@ -61,14 +61,21 @@ All four tabs (General, Icons, Spells, Profiles) are registered as
 **canvas-layout subcategories** so they share one custom header design:
 
 * `GameFontNormalHuge` title on the left
-* `Defaults` button on the right (`UIPanelButtonTemplate`) — present on
-  General/Icons/Spells, omitted on Profiles
+* `Defaults` button on the right (AceGUI `Button`, which wraps
+  `UIPanelButtonTemplate`) — present on General/Icons/Spells, omitted on
+  Profiles. Wire its handler with
+  `ctx.panel.defaultsBtn:SetCallback("OnClick", fn)` (NOT `:SetScript`,
+  since the AceGUI widget object isn't a Blizzard Frame).
 * `Options_HorizontalDivider` atlas underneath, full panel width
 
 The header is built by `Helpers.CreatePanel(name, title, opts)` in
-`settings/Panel.lua`. It returns a `ctx` table (`{ panel, body, cursor,
-refreshers, lastGroup }`) that the per-tab builder threads through the
-rest of the layout helpers.
+`settings/Panel.lua`. It returns a `ctx` table (`{ panel, body, scroll,
+refreshers, lastGroup, panelKey }`) that the per-tab builder threads
+through the rest of the layout helpers. `ctx.scroll` is the AceGUI
+`ScrollFrame` (created lazily on first widget add) that hosts schema
+widgets; tabs that don't use the schema renderer (Spells / Profiles)
+parent their own AceGUI containers to `ctx.body` directly and never
+trigger the lazy scroll.
 
 ### `KickCD.Settings.Schema` is the single source of truth
 
@@ -130,9 +137,21 @@ involvement. Each widget creator pushes a refresher closure into
 `ctx.refreshers` so its display can re-sync after a Defaults reset or
 a slash-cmd `/kcd set`.
 
-Modern dropdowns use `MenuUtil.CreateContextMenu` (12.0+). Sliders use
-`OptionsSliderTemplate` with hand-laid label/value FontStrings. Color
-swatches use `ColorPickerFrame` via `OpenColorPicker`.
+Schema widgets are AceGUI widgets — `CheckBox`, `Slider`, `Dropdown`,
+`ColorPicker`, `Heading` for sections, `Button` + `Label` inside a
+`SimpleGroup` for inline action rows — added to a single AceGUI
+`ScrollFrame` per tab. This matches the visual style of AceConfig-driven
+addons (e.g. Consumable Master) and keeps every widget on the
+`Helpers.Set` / `Helpers.Get` data path. The slider's value editbox is
+post-formatted via a `HookScript` on the inner Blizzard Slider so
+`def.fmt` (`"%.2fx"`, `"%d px"`) wins over AceGUI's raw-numeric
+`UpdateText`.
+
+Schema rendering is **deferred to the panel's `OnShow`** because at
+build time (PLAYER_LOGIN) `ctx.body` has zero width and AceGUI's
+List-layout pass against the AceGUI `ScrollFrame` would size every
+fullwidth child to zero. See the `local rendered = false; OnShow{...}`
+guard in `settings/General.lua` and `settings/Icons.lua`.
 
 ### `Compat.RegisterAddOnSetting` is vestigial
 
