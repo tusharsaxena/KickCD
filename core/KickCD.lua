@@ -48,8 +48,9 @@ function KickCD:OnInitialize()
         self.Database:Init()
     end
 
-    -- Slash commands. Both /kickcd and /kcd open the settings panel by
-    -- default; subcommands route to OnSlashCommand for diagnostics.
+    -- Slash commands. Both /kickcd and /kcd dispatch to OnSlashCommand,
+    -- which prints the help index when called bare and routes to the
+    -- COMMANDS / DEBUG_COMMANDS dispatch tables otherwise.
     self:RegisterChatCommand("kickcd", "OnSlashCommand")
     self:RegisterChatCommand("kcd",    "OnSlashCommand")
 end
@@ -62,81 +63,111 @@ end
 -- ---------------------------------------------------------------------------
 -- Slash command dispatch
 -- ---------------------------------------------------------------------------
-
-local DEBUG_HELP = {
-    "|cff00ff00KickCD|r debug subcommands:",
-    "  /kickcd debug spells  — print active spell list + cooldown state",
-    "  /kickcd debug target  — print Tracker's view of the current target",
-    "  /kickcd debug log     — toggle internal-message logging",
-}
+--
+-- Two ordered tables drive the entire slash UX: COMMANDS for top-level
+-- subcommands and DEBUG_COMMANDS for /kcd debug ... Each entry is
+-- {name, description, fn}. The dispatcher (a) prints the help index when
+-- invoked with no args, (b) looks up by name, (c) re-prints help on an
+-- unknown name. Help text is generated from the same tables, so adding a
+-- command means adding a single row.
 
 local function trim(s)
     return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-function KickCD:OnSlashCommand(input)
-    local msg = trim(input):lower()
+local function p(self, ...)
+    local fn = self.Util and self.Util.print or print
+    fn(...)
+end
 
-    if msg == "" or msg == "config" or msg == "options" then
-        return self:OpenSettings(msg)
+-- Set db.profile.locked and notify IconGrid via the closed CONFIG_CHANGED
+-- message (section "general"). IconGrid listens for that section and re-runs
+-- ApplyLock to flip EnableMouse / RegisterForDrag.
+local function setLocked(self, value)
+    if not (self.db and self.db.profile) then
+        return p(self, "|cff00ff00KickCD|r: db not initialized yet")
     end
+    self.db.profile.locked = value and true or false
+    self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
+    p(self, "|cff00ff00KickCD|r: icon grid " .. (value and "locked" or "unlocked"))
+end
 
-    if msg == "test" then
-        if self.ToggleTestMode then
-            self:ToggleTestMode()
-        else
-            (self.Util and self.Util.print or print)("test mode module not loaded")
+-- Forward declarations so command tables and dispatchers can reference each
+-- other without ordering pain.
+local printHelp, runDebug
+
+local COMMANDS = {
+    {"help",   "List available commands",
+        function(self) printHelp(self) end},
+    {"config", "Open the settings panel",
+        function(self) self:OpenSettings() end},
+    {"lock",   "Lock the icon grid in place",
+        function(self) setLocked(self, true) end},
+    {"unlock", "Unlock the icon grid for dragging",
+        function(self) setLocked(self, false) end},
+    {"toggle", "Toggle the icon grid lock state",
+        function(self)
+            local cur = self.db and self.db.profile and self.db.profile.locked
+            setLocked(self, not cur)
+        end},
+    {"debug",  "Debug subcommands — try `/kcd debug` for the list",
+        function(self, rest) runDebug(self, rest) end},
+}
+
+local DEBUG_COMMANDS = {
+    {"spells", "Print the watched spell list with cooldown state",
+        function(self)
+            local m = self:GetModule("Cooldowns", true)
+            if m and m.DebugDump then m:DebugDump()
+            else p(self, "Cooldowns module not loaded") end
+        end},
+    {"log",    "Toggle internal-message logging",
+        function(self)
+            self._debugLog = not self._debugLog
+            p(self, "internal-message logging " .. (self._debugLog and "ON" or "OFF"))
+        end},
+}
+
+local function findCommand(list, name)
+    for _, entry in ipairs(list) do
+        if entry[1] == name then return entry end
+    end
+end
+
+function printHelp(self)
+    p(self, "|cff00ff00KickCD|r v" .. KickCD.VERSION .. " — slash commands:")
+    for _, entry in ipairs(COMMANDS) do
+        p(self, ("  /kcd %-7s — %s"):format(entry[1], entry[2]))
+    end
+end
+
+function runDebug(self, rest)
+    if rest == nil or rest == "" then
+        p(self, "|cff00ff00KickCD|r debug subcommands:")
+        for _, entry in ipairs(DEBUG_COMMANDS) do
+            p(self, ("  /kcd debug %-7s — %s"):format(entry[1], entry[2]))
         end
         return
     end
-
-    -- /kickcd debug ... — split out the subcommand.
-    local sub = msg:match("^debug%s+(%S+)") or (msg == "debug" and "" or nil)
-    if sub then
-        return self:OnDebugCommand(sub)
-    end
-
-    -- Unknown — print usage.
-    local p = self.Util and self.Util.print or print
-    p("|cff00ff00KickCD|r v" .. KickCD.VERSION
-        .. " — /kickcd [config|test|debug spells|debug target|debug log]")
+    local entry = findCommand(DEBUG_COMMANDS, rest)
+    if entry then return entry[3](self) end
+    p(self, "|cff00ff00KickCD|r: unknown debug subcommand '" .. rest .. "'")
+    runDebug(self, "")
 end
 
--- The actual debug helpers are implemented by the modules that own the data
--- (Cooldowns owns spell state, Tracker owns target state). We invoke a
--- conventional Debug() method on each module if it exists, so this file
--- doesn't have to know module internals. Modules that haven't implemented
--- Debug() simply get a "not available" message.
-function KickCD:OnDebugCommand(sub)
-    local p = self.Util and self.Util.print or print
+function KickCD:OnSlashCommand(input)
+    local msg = trim(input):lower()
+    if msg == "" then return printHelp(self) end
 
-    if sub == "" then
-        for _, line in ipairs(DEBUG_HELP) do p(line) end
-        return
-    end
+    local cmd, rest = msg:match("^(%S+)%s*(.*)$")
+    -- Backward-compat alias.
+    if cmd == "options" then cmd = "config" end
 
-    if sub == "spells" then
-        local m = self:GetModule("Cooldowns", true)
-        if m and m.DebugDump then m:DebugDump()
-        else p("Cooldowns module not loaded") end
-        return
-    end
+    local entry = findCommand(COMMANDS, cmd)
+    if entry then return entry[3](self, rest) end
 
-    if sub == "target" then
-        local m = self:GetModule("Tracker", true)
-        if m and m.DebugDump then m:DebugDump()
-        else p("Tracker module not loaded") end
-        return
-    end
-
-    if sub == "log" then
-        self._debugLog = not self._debugLog
-        p("internal-message logging " .. (self._debugLog and "ON" or "OFF"))
-        return
-    end
-
-    p("unknown debug subcommand: " .. sub)
-    for _, line in ipairs(DEBUG_HELP) do p(line) end
+    p(self, "|cff00ff00KickCD|r: unknown command '" .. cmd .. "'")
+    printHelp(self)
 end
 
 -- ---------------------------------------------------------------------------

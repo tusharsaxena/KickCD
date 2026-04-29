@@ -18,11 +18,10 @@ KickCD.Database = Database
 -- ---------------------------------------------------------------------------
 
 local DEFAULT_PROFILE = {
-    enabled  = true,
-    locked   = true,
-    testMode = false,
-    scale    = 1.0,
-    alpha    = 1.0,
+    enabled = true,
+    locked  = true,
+    scale   = 1.0,
+    alpha   = 1.0,
 
     icons = {
         primarySize      = 48,
@@ -39,22 +38,8 @@ local DEFAULT_PROFILE = {
         showCharges      = true,
     },
 
-    castbar = {
-        width                 = 240,
-        height                = 22,
-        font                  = "Friz Quadrata TT",
-        fontSize              = 12,
-        texture               = "Blizzard",   -- LibSharedMedia key
-        border                = "None",
-        interruptibleColor    = { 1.0, 0.82, 0, 1 },
-        notInterruptibleColor = { 0.5, 0.5, 0.5, 1 },
-        showSpark             = true,
-        showIcon              = true,
-    },
-
     anchors = {
-        icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 },
-        castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -150 },
+        icons = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 },
     },
 
     -- spells[CLASS][SPEC] = { { spellID, category, enabled }, ... } in priority order.

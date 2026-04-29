@@ -51,7 +51,7 @@ function Profiles:Register()
     -- AddToBlizOptions returns a Frame compatible with the legacy
     -- InterfaceOptions panel. On modern clients (10.0+) Blizzard's
     -- Settings shim still routes legacy panels through Settings, so this
-    -- shows up as a sibling subcategory next to General/Icons/Castbar/Spells
+    -- shows up as a sibling subcategory next to General/Icons/Spells
     -- under the KickCD parent — meeting REQUIREMENTS FR-6.2.5.
     local frame = AceConfigDialog:AddToBlizOptions(
         "KickCD-Profiles",

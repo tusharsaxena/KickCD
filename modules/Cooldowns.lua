@@ -55,25 +55,33 @@ local function PollSpell(spellID)
     local name = KickCD.Compat.GetSpellInfo(spellID)
     if not name then return nil end
 
-    local start, duration = KickCD.Compat.GetSpellCooldown(spellID)
-    local usable          = KickCD.Compat.IsSpellUsable(spellID)
-    local cur, maxC       = KickCD.Compat.GetSpellCharges(spellID)
+    local start, duration, _, _, isActive = KickCD.Compat.GetSpellCooldown(spellID)
+    local usable    = KickCD.Compat.IsSpellUsable(spellID)
+    local cur, maxC = KickCD.Compat.GetSpellCharges(spellID)
 
-    -- "ready" means cooldown has elapsed AND IsSpellUsable agrees the spell
-    -- is currently available. For charge-spells we additionally require at
-    -- least one charge — IsSpellUsable already reflects that on most
-    -- builds, but we double-check defensively.
-    local now      = GetTime()
-    local cdActive = duration and duration > 0 and start and (start + duration) > now
-    local hasCharges = (cur == nil) or (cur > 0)
-    local ready    = (not cdActive) and usable and hasCharges
+    -- 12.0 secret-value safety: never compare start/duration in tainted scope.
+    -- Use the plain `isActive` boolean from C_Spell.GetSpellCooldown instead.
+    local cdActive = isActive
+    -- Charges may also come back secret on guarded spells. If so, conserva-
+    -- tively assume the spell has charges available — better to flag a spell
+    -- as ready when it isn't than to spam errors.
+    local hasCharges
+    if cur == nil then
+        hasCharges = true
+    elseif issecretvalue and issecretvalue(cur) then
+        hasCharges = true
+    else
+        hasCharges = cur > 0
+    end
+    local ready = (not cdActive) and usable and hasCharges
 
     return {
         spellID  = spellID,
         ready    = ready,
-        start    = start    or 0,
-        duration = duration or 0,
-        charges  = cur,      -- nil for charge-less spells; that's fine
+        isActive = isActive,
+        start    = start,    -- pass through opaquely (may be secret)
+        duration = duration, -- ditto; downstream uses are C-side / gated
+        charges  = cur,
         _maxC    = maxC,
     }
 end
@@ -81,14 +89,18 @@ end
 --- Determine whether two state snapshots differ enough to merit emitting
 --- KickCD_SPELL_STATE. We compare the user-visible fields only; modRate
 --- and other internal info are ignored.
+--- Note: 12.0 secret-value protection means we cannot diff start/duration
+--- (the `>` and `-` ops error on secret values). The Cooldown frame ticks
+--- itself once SetCooldown is called, so per-tick re-emission isn't needed.
 local function StateChanged(prev, next_)
     if not prev then return true end
     if prev.ready    ~= next_.ready    then return true end
-    if prev.charges  ~= next_.charges  then return true end
-    -- Cooldown timing: small float jitter (<10ms) is normal — coarsely
-    -- compare to avoid emitting on every COOLDOWN tick when nothing changed.
-    if math.abs((prev.start or 0)    - (next_.start or 0))    > 0.01 then return true end
-    if math.abs((prev.duration or 0) - (next_.duration or 0)) > 0.01 then return true end
+    if prev.isActive ~= next_.isActive then return true end
+    -- Charges may be secret on guarded spells; only diff when both are plain.
+    local a, b = prev.charges, next_.charges
+    local aSecret = a ~= nil and issecretvalue and issecretvalue(a)
+    local bSecret = b ~= nil and issecretvalue and issecretvalue(b)
+    if not (aSecret or bSecret) and a ~= b then return true end
     return false
 end
 
@@ -125,6 +137,7 @@ function Cooldowns:Rebuild()
                 KickCD:SendMessage("KickCD_SPELL_STATE", {
                     spellID  = state.spellID,
                     ready    = state.ready,
+                    isActive = state.isActive,
                     start    = state.start,
                     duration = state.duration,
                     charges  = state.charges,
@@ -148,6 +161,7 @@ function Cooldowns:Refresh()
             KickCD:SendMessage("KickCD_SPELL_STATE", {
                 spellID  = next_.spellID,
                 ready    = next_.ready,
+                isActive = next_.isActive,
                 start    = next_.start,
                 duration = next_.duration,
                 charges  = next_.charges,
@@ -223,10 +237,18 @@ function Cooldowns:DebugDump()
     for _, id in ipairs(ids) do
         local s = self.watched[id]
         local name = KickCD.Compat.GetSpellInfo(id) or "?"
-        p(("  [%d] %s ready=%s dur=%.1f charges=%s"):format(
+        -- duration may be a 12.0 "secret value" — %.1f formatting would error.
+        local durStr
+        if s.duration ~= nil and issecretvalue and issecretvalue(s.duration) then
+            durStr = "secret"
+        else
+            durStr = string.format("%.1f", s.duration or 0)
+        end
+        p(("  [%d] %s ready=%s active=%s dur=%s charges=%s"):format(
             id, name,
             tostring(s.ready),
-            s.duration or 0,
+            tostring(s.isActive),
+            durStr,
             tostring(s.charges)))
     end
 end

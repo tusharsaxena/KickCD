@@ -1,6 +1,6 @@
 ## Interface: 120005
 ## Title: Ka0s |cff00ff00KickCD|r
-## Notes: Tracks interrupt + CC cooldowns and shows a target castbar.
+## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
 ## Author: Ka0s
 ## Version: 0.1.0
 ## IconTexture: Interface\AddOns\KickCD\media\icon
@@ -34,16 +34,12 @@ core\KickCD.lua
 defaults\Spells.lua
 
 # Modules
-modules\Tracker.lua
 modules\Cooldowns.lua
 modules\IconGrid.lua
-modules\Castbar.lua
-modules\TestMode.lua
 
 # Settings (last — depend on everything else being initialized)
 settings\Panel.lua
 settings\General.lua
 settings\Icons.lua
-settings\Castbar.lua
 settings\Spells.lua
 settings\Profiles.lua

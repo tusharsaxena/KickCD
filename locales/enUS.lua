@@ -27,13 +27,12 @@ KickCD.L = L
 -- Addon shell
 L["Ka0s KickCD"]                 = "Ka0s KickCD"
 L["KickCD"]                      = "KickCD"
-L["Tracks interrupt and CC cooldowns and shows a target castbar."] =
-    "Tracks interrupt and CC cooldowns and shows a target castbar."
+L["Tracks interrupt and CC cooldowns on a movable icon grid."] =
+    "Tracks interrupt and CC cooldowns on a movable icon grid."
 
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"
-L["Castbar"]                     = "Castbar"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
@@ -41,11 +40,8 @@ L["Profiles"]                    = "Profiles"
 L["Enable KickCD"]               = "Enable KickCD"
 L["Master enable for the addon."] = "Master enable for the addon."
 L["Lock frame"]                  = "Lock frame"
-L["When unlocked, you can drag the icon grid and castbar."] =
-    "When unlocked, you can drag the icon grid and castbar."
-L["Test mode"]                   = "Test mode"
-L["Show a fake cast on a 5-second loop for previewing layout. Auto-disables in combat."] =
-    "Show a fake cast on a 5-second loop for previewing layout. Auto-disables in combat."
+L["When unlocked, you can drag the icon grid to reposition it."] =
+    "When unlocked, you can drag the icon grid to reposition it."
 L["Scale"]                       = "Scale"
 L["Alpha"]                       = "Alpha"
 L["Reset position"]              = "Reset position"
@@ -67,18 +63,6 @@ L["Cooldown alpha"]              = "Cooldown alpha"
 L["Cooldown tint"]               = "Cooldown tint"
 L["Show cooldown text"]          = "Show cooldown text"
 L["Show charges"]                = "Show charges"
-
--- Castbar tab
-L["Width"]                       = "Width"
-L["Height"]                      = "Height"
-L["Font"]                        = "Font"
-L["Font size"]                   = "Font size"
-L["Texture"]                     = "Texture"
-L["Border"]                      = "Border"
-L["Interruptible color"]         = "Interruptible color"
-L["Not-interruptible color"]     = "Not-interruptible color"
-L["Show spark"]                  = "Show spark"
-L["Show icon"]                   = "Show icon"
 
 -- Spells editor
 L["Class"]                       = "Class"

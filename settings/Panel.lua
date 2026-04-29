@@ -8,7 +8,7 @@
 --   2. Stamps KickCD.SettingsCategoryID so core/KickCD.lua's OpenSettings()
 --      can find us (see EXECUTION_PLAN §6 / contract).
 --   3. Exposes a small `KickCD.Settings` table that per-tab files
---      (General/Icons/Castbar/Spells/Profiles) push their subcategories
+--      (General/Icons/Spells/Profiles) push their subcategories
 --      into, in display order.
 --   4. Provides widget helpers reused by every tab so each settings file
 --      stays focused on its widget list rather than boilerplate.
@@ -32,11 +32,11 @@ local L      = KickCD.L
 
 KickCD.Settings = KickCD.Settings or {
     main      = nil,
-    sub       = {},      -- { general=, icons=, castbar=, spells=, profiles= }
+    sub       = {},      -- { general=, icons=, spells=, profiles= }
     builders  = {},      -- { general=fn, icons=fn, ... }
     -- Display order; the Settings panel renders subcategories in registration
     -- order, so we walk this list when invoking builders.
-    order     = { "general", "icons", "castbar", "spells", "profiles" },
+    order     = { "general", "icons", "spells", "profiles" },
 }
 
 -- ---------------------------------------------------------------------------
@@ -66,7 +66,7 @@ end
 
 --- Send the closed KickCD_CONFIG_CHANGED message. Centralized so we can
 --- skip-fire when the addon's Settings layer isn't fully wired yet.
--- @param section "general"|"icons"|"castbar"|"spells"
+-- @param section "general"|"icons"|"spells"
 function Helpers.FireConfigChanged(section)
     if KickCD and KickCD.SendMessage then
         KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = section })
@@ -114,10 +114,10 @@ end
 -- @param variable unique string id ("KickCD_general_enabled")
 -- @param label    localized display name
 -- @param tooltip  localized tooltip (may be nil)
--- @param section  "general"|"icons"|"castbar" — for CONFIG_CHANGED
+-- @param section  "general"|"icons" — for CONFIG_CHANGED
 -- @param path     dotted profile path ("enabled", "icons.showCharges", ...)
 -- @param onChange optional extra side-effect callback(value) run AFTER the
---                 db write + message fire. Used by General's testMode toggle.
+--                 db write + message fire.
 function Helpers.CreateCheckbox(sub, variable, label, tooltip, section, path, onChange)
     if not Settings or not Settings.CreateCheckbox then return nil end
     local current = Helpers.Get(path)
@@ -228,7 +228,7 @@ end
 -- @param variable unique string id
 -- @param label    localized label
 -- @param tooltip  localized tooltip
--- @param section  "icons"|"castbar"
+-- @param section  "icons"
 -- @param path     dotted profile path to a {r,g,b,a} array
 function Helpers.CreateColorPicker(sub, variable, label, tooltip, section, path)
     local current = Helpers.Get(path)

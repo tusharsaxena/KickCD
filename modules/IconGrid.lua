@@ -2,14 +2,13 @@
 -- See docs/TECHNICAL_DESIGN.md §3.6, REQUIREMENTS.md FR-2 / FR-8
 --
 -- Owns one parent frame (KickCDIconGrid) and N child icon widgets, each
--- pooled and reused on rebuild so we never churn frames. Listens to
--- the closed internal-message set:
+-- pooled and reused on rebuild so we never churn frames. The grid is
+-- always visible (no enemy-cast-driven show/hide); listens to:
 --
---   KickCD_TARGET_CAST_START  -> build active list, lay out, show
---   KickCD_TARGET_CAST_END    -> hide
---   KickCD_SPELL_STATE        -> route to the matching active icon's :Apply
---   KickCD_CONFIG_CHANGED     -> "icons" relayouts; "spells" rebuilds; ignore others
---   KickCD_PROFILE_CHANGED    -> rebuild + re-anchor
+--   KickCD_SPELL_STATE       -> route to the matching active icon's :Apply
+--   KickCD_CONFIG_CHANGED    -> "icons" relayouts; "spells" rebuilds; "general" re-applies lock
+--   KickCD_PROFILE_CHANGED   -> rebuild + re-anchor
+--   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild for the new spec
 --
 -- This file fires no messages. The grid is the consumer end of the pipeline.
 
@@ -69,8 +68,10 @@ end
 -- Per-icon widget construction
 -- ---------------------------------------------------------------------------
 
+-- Methods copied onto each button via Mixin() in CreateIconWidget. We can't
+-- setmetatable() a Frame widget — that would clobber the C-side metatable
+-- where ClearAllPoints/Show/SetAlpha/etc. live, and they'd become nil calls.
 local Icon = {}
-Icon.__index = Icon
 
 local function CreateIconWidget(parent)
     -- A Button (not a Frame) so a future click-to-cast hook is one
@@ -133,7 +134,7 @@ local function CreateIconWidget(parent)
     btn.cfg     = nil
 
     -- Mix in the Icon methods. The button itself is the public widget.
-    return setmetatable(btn, Icon)
+    return Mixin(btn, Icon)
 end
 
 -- Apply a KickCD_SPELL_STATE payload to this icon. Code shape mirrors
@@ -150,8 +151,17 @@ function Icon:Apply(state)
         local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
         self.icon:SetVertexColor(r, g, b)
         self:SetAlpha(cfg.cooldownAlpha or 0.4)
-        if state and state.start and state.duration and state.duration > 0 then
-            self.cooldown:SetCooldown(state.start, state.duration)
+        -- 12.0 secret-value safety: gate the swipe on `isActive` (plain bool
+        -- from C_Spell.GetSpellCooldown) AND on start/duration being plain.
+        -- Cooldown:SetCooldown rejects secret values from tainted execution
+        -- ("Secret values are only allowed during untainted execution"), so
+        -- when timing is protected we leave the icon desaturated/dimmed
+        -- (already done above) without the radial sweep.
+        local s, d = state and state.start, state and state.duration
+        local sSecret = s ~= nil and issecretvalue and issecretvalue(s)
+        local dSecret = d ~= nil and issecretvalue and issecretvalue(d)
+        if state and state.isActive and s and d and not (sSecret or dSecret) then
+            self.cooldown:SetCooldown(s, d)
             self.cooldown:Show()
         else
             self.cooldown:Hide()
@@ -159,9 +169,13 @@ function Icon:Apply(state)
     end
 
     -- Charges badge (FR-2.7). Hidden unless there's an actual charge count
-    -- to show; SetText only when visible to avoid layout thrash.
-    if cfg.showCharges and state and state.charges and state.charges > 0 then
-        self.chargesText:SetText(state.charges)
+    -- to show; SetText only when visible to avoid layout thrash. Charges
+    -- may be "secret" on guarded spells; skip the badge in that case rather
+    -- than erroring on the > 0 comparison.
+    local c = state and state.charges
+    local cSecret = c ~= nil and issecretvalue and issecretvalue(c)
+    if cfg.showCharges and c and not cSecret and c > 0 then
+        self.chargesText:SetText(c)
         self.chargesText:Show()
     else
         self.chargesText:Hide()
@@ -268,7 +282,12 @@ function IconGrid:BuildActiveList()
             if name then
                 local btn = self:AcquireIcon(entry.spellID)
                 local tex = KickCD.Compat.GetSpellTexture(entry.spellID)
-                if tex then btn.icon:SetTexture(tex) end
+                -- Texture may be a 12.0 "secret value" on guarded spells
+                -- (Mind Freeze etc.); SetTexture rejects them from tainted
+                -- execution, so skip the call and leave the icon blank
+                -- rather than erroring out of BuildActiveList partway.
+                local texSecret = tex ~= nil and issecretvalue and issecretvalue(tex)
+                if tex and not texSecret then btn.icon:SetTexture(tex) end
                 btn:ApplyTextConfig(KickCD.db.profile.icons)
                 -- Initial state: assume ready until Cooldowns sends a real
                 -- KickCD_SPELL_STATE. Apply{} (no payload) treats the icon
@@ -389,14 +408,12 @@ function IconGrid:Layout()
         btn:ApplyTextConfig(cfg)
     end
 
-    -- Empty-list decision: hide the grid entirely. There's nothing useful
-    -- to display when the player has no enabled, known spells in this spec
-    -- — better to stay invisible than to flash an empty frame on every
-    -- target change. The Tracker will still call Show() on us; we override
-    -- by hiding inside this branch.
+    -- Empty-list decision: keep the frame visible at primary-icon size so
+    -- the user can still drag it to reposition. The frame has no fill so
+    -- "empty" reads as a small invisible square at its anchor; that's a
+    -- minor cosmetic issue compared to losing the drag handle entirely.
     if #ordered == 0 then
         grid:SetSize(primarySize, primarySize)
-        grid:Hide()
         return
     end
 
@@ -454,7 +471,6 @@ function IconGrid:EnsureGrid()
     grid:SetFrameStrata("MEDIUM")
     grid:SetClampedToScreen(true)
     grid:SetMovable(true)
-    grid:Hide()
 
     -- Anchor from the saved profile. Util.ApplyAnchor unconditionally
     -- targets UIParent so we don't have to serialize a relativeTo.
@@ -481,44 +497,35 @@ end
 
 function IconGrid:OnEnable()
     self:EnsureGrid()
+    self:BuildActiveList()
+    self:Layout()
+    if grid then grid:Show() end
 
-    -- Internal-message subscriptions. Names exactly match TECHNICAL_DESIGN §1
-    -- — this module is a strict subscriber and never sends. If a new message
-    -- name appears in the design doc it must be added here explicitly.
-    self:RegisterMessage("KickCD_TARGET_CAST_START", "OnCastStart")
-    self:RegisterMessage("KickCD_TARGET_CAST_END",   "OnCastEnd")
-    self:RegisterMessage("KickCD_SPELL_STATE",       "OnSpellState")
-    self:RegisterMessage("KickCD_CONFIG_CHANGED",    "OnConfigChanged")
-    self:RegisterMessage("KickCD_PROFILE_CHANGED",   "OnProfileChanged")
+    -- Internal-message subscriptions. The grid is a strict subscriber and
+    -- never sends.
+    self:RegisterMessage("KickCD_SPELL_STATE",     "OnSpellState")
+    self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
+
+    -- Spec / login events: rebuild against the new spec's spell list. The
+    -- Cooldowns module hooks the same events to refresh its watched set, so
+    -- both sides stay in sync.
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
 end
 
 function IconGrid:OnDisable()
     self:UnregisterAllMessages()
+    self:UnregisterAllEvents()
     if grid then grid:Hide() end
 end
 
 -- ---------------------------------------------------------------------------
--- Message handlers
+-- Message / event handlers
 -- ---------------------------------------------------------------------------
-
-function IconGrid:OnCastStart(_evt, payload)
-    -- Build/re-build the active list every cast so spec swaps mid-session
-    -- don't show stale icons. The pool absorbs the cost — this is a couple
-    -- of hash ops + a layout pass, no frame creation.
-    self:EnsureGrid()
-    self:BuildActiveList()
-    self:Layout()
-    if #ordered > 0 then
-        grid:Show()
-    end
-end
-
-function IconGrid:OnCastEnd(_evt, payload)
-    if grid then grid:Hide() end
-end
 
 function IconGrid:OnSpellState(_evt, payload)
-    -- Payload contract per §1: { spellID, ready, start, duration, charges }.
+    -- Payload contract per §1: { spellID, ready, isActive, start, duration, charges }.
     -- We only update icons currently in the active pool — Cooldowns may
     -- watch a slightly larger or stale set during config transitions.
     if not (payload and payload.spellID) then return end
@@ -532,34 +539,28 @@ function IconGrid:OnConfigChanged(_evt, payload)
         -- Re-layout only — widgets and their textures don't need to change
         -- when only sizing/colors/alphas changed.
         self:Layout()
-        if grid and grid:IsShown() and #ordered == 0 then grid:Hide() end
         self:ApplyLock()
     elseif section == "spells" then
-        -- Spell list changed under us — rebuild from the profile but only
-        -- re-show if a cast is currently in progress (i.e. the grid was
-        -- already visible). Otherwise we'd flash icons during a settings
-        -- edit with no active target.
-        local wasShown = grid and grid:IsShown()
+        -- Spell list changed under us — rebuild from the profile and stay
+        -- visible. Lock state is unaffected.
         self:BuildActiveList()
         self:Layout()
-        if wasShown and #ordered > 0 then
-            grid:Show()
-        elseif grid then
-            grid:Hide()
-        end
     elseif section == "general" then
-        -- General-tab edits include the lock toggle. Cheap to re-apply
-        -- unconditionally; ignored sections cost a single string compare.
+        -- General-tab edits include the lock toggle and the Reset position
+        -- button. Re-apply the anchor in case the latter was used, then
+        -- refresh the lock state.
+        if grid then
+            local anchor = KickCD.db and KickCD.db.profile
+                and KickCD.db.profile.anchors and KickCD.db.profile.anchors.icons
+            if anchor then KickCD.Util.ApplyAnchor(grid, anchor) end
+        end
         self:ApplyLock()
     end
-    -- Other sections ("castbar") aren't ours; ignore silently per the closed
-    -- subscriber list in TECHNICAL_DESIGN §1.
 end
 
 function IconGrid:OnProfileChanged(_evt, payload)
-    -- Full reset: re-anchor (new profile may have a different saved
-    -- position), rebuild the active list against the new spell defaults,
-    -- and re-apply the lock state.
+    -- Full reset: re-anchor, rebuild the active list against the new
+    -- profile's spell defaults, and re-apply the lock state. Stay visible.
     if grid then
         local anchor = KickCD.db and KickCD.db.profile
             and KickCD.db.profile.anchors and KickCD.db.profile.anchors.icons
@@ -569,8 +570,20 @@ function IconGrid:OnProfileChanged(_evt, payload)
     self:BuildActiveList()
     self:Layout()
     self:ApplyLock()
-    -- Don't Show() here — wait for the next KickCD_TARGET_CAST_START.
-    if grid then grid:Hide() end
+    if grid then grid:Show() end
+end
+
+function IconGrid:OnSpecChanged(_evt, unit)
+    -- PLAYER_SPECIALIZATION_CHANGED fires for any unit; only react for the
+    -- player.
+    if unit and unit ~= "player" then return end
+    self:BuildActiveList()
+    self:Layout()
+end
+
+function IconGrid:OnPlayerEnteringWorld()
+    self:BuildActiveList()
+    self:Layout()
 end
 
 -- Expose the module so the orchestrator's debug slash commands can poke at it.

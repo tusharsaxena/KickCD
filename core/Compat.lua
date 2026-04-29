@@ -25,27 +25,45 @@ KickCD.Compat = Compat
 -- Spell APIs
 -- ---------------------------------------------------------------------------
 
+-- 12.0 secret-value protection: certain spells (notably interrupts) return
+-- "secret" timing values from C_Spell.GetSpellCooldown. Comparing or doing
+-- arithmetic on a secret value from tainted (addon) execution errors out,
+-- and there is NO addon-side strip: securecallfunction does not clear our
+-- own taint, tonumber/tostring propagate the flag, and `+0` arithmetic is
+-- itself the operation that errors. The supported pattern (per Cell et al.
+-- in 12.0) is to detect via `issecretvalue()` and degrade gracefully —
+-- pass timing through opaquely (Blizzard C methods like Cooldown:SetCooldown
+-- handle secret values fine) and use the plain boolean `info.isActive` for
+-- "is on cooldown" decisions.
+
 --- Cooldown info for a spell.
 -- @param spellID number
--- @return startTime, duration, isEnabled, modRate
---   On error / no cooldown: 0, 0, false, 1
+-- @return startTime, duration, isEnabled, modRate, isActive
+--   On error / no cooldown: 0, 0, false, 1, false
+--   startTime/duration/modRate may be "secret" — never compare or do
+--   arithmetic on them in tainted scope; pass them straight to C-side APIs
+--   (Cooldown:SetCooldown) or gate with issecretvalue() first.
 function Compat.GetSpellCooldown(spellID)
     if C_Spell and C_Spell.GetSpellCooldown then
         local info = C_Spell.GetSpellCooldown(spellID)
-        if info then
-            return info.startTime or 0,
-                   info.duration or 0,
-                   info.isEnabled ~= false,
-                   info.modRate or 1
-        end
-        return 0, 0, false, 1
+        if not info then return 0, 0, false, 1, false end
+        return info.startTime or 0,
+               info.duration  or 0,
+               info.isEnabled ~= false,
+               info.modRate   or 1,
+               info.isActive  == true
     end
-    -- Pre-10.2.5 fallback (unlikely on Midnight, but cheap insurance)
+    -- Pre-12.0 fallback: no secret values, no isActive field — derive it
+    -- from duration after confirming the value is plain.
     if _G.GetSpellCooldown then
         local s, d, e, m = _G.GetSpellCooldown(spellID)
-        return s or 0, d or 0, e ~= false, m or 1
+        local active = false
+        if d and not (issecretvalue and issecretvalue(d)) then
+            active = d > 0
+        end
+        return s or 0, d or 0, e ~= false, m or 1, active
     end
-    return 0, 0, false, 1
+    return 0, 0, false, 1, false
 end
 
 --- File ID of the spell's icon texture.
