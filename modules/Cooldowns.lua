@@ -1,5 +1,4 @@
 -- modules/Cooldowns.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §3.5
 --
 -- Per-spell cooldown observer. Owns a `watched` table keyed by spellID
 -- derived from the active spec's spell list in the current profile, polls
@@ -8,9 +7,15 @@
 -- since the last emission. This avoids spamming the IconGrid on every
 -- SPELL_UPDATE_COOLDOWN tick.
 --
+-- Both Rebuild and Refresh short-circuit when db.profile.enabled is
+-- false (master disable); a "general" KickCD_CONFIG_CHANGED triggers a
+-- full Rebuild so the watched-list comes back online when the user
+-- re-enables.
+--
 -- Message contract (closed):
 --   FIRE:    KickCD_SPELL_STATE { spellID, ready, start, duration, charges }
---   LISTEN:  KickCD_PROFILE_CHANGED, KickCD_CONFIG_CHANGED (section=="spells")
+--   LISTEN:  KickCD_PROFILE_CHANGED,
+--            KickCD_CONFIG_CHANGED (section=="spells" or "general")
 
 local KickCD    = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local Cooldowns = KickCD:NewModule("Cooldowns", "AceEvent-3.0")
@@ -104,11 +109,22 @@ local function StateChanged(prev, next_)
     return false
 end
 
+--- True when the master enable flag is set. Defaults to true on a fresh
+--- profile, so a missing field reads as enabled.
+local function isEnabled()
+    local profile = KickCD.db and KickCD.db.profile
+    if not profile then return true end
+    return profile.enabled ~= false
+end
+
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
 --- one initial KickCD_SPELL_STATE per surviving spell. Skips spells the
---- player doesn't know.
+--- player doesn't know. Short-circuits to an empty watched-list when the
+--- master enable is off.
 function Cooldowns:Rebuild()
     self.watched = {}
+
+    if not isEnabled() then return end
 
     local profile = KickCD.db and KickCD.db.profile
     if not profile or type(profile.spells) ~= "table" then
@@ -153,6 +169,7 @@ end
 --- Re-poll all watched spells, fire KickCD_SPELL_STATE only for those whose
 --- state changed since last poll.
 function Cooldowns:Refresh()
+    if not isEnabled() then return end
     if not self.watched then return end
     for id, prev in pairs(self.watched) do
         local next_ = PollSpell(id)
@@ -212,7 +229,11 @@ function Cooldowns:OnProfileChanged()
 end
 
 function Cooldowns:OnConfigChanged(_, payload)
-    if payload and payload.section == "spells" then
+    local section = payload and payload.section
+    if section == "spells" or section == "general" then
+        -- "general" covers the master enable flipping on/off — rebuild
+        -- so the watched list comes back fully populated when re-enabled
+        -- and is cleared when disabled.
         self:Rebuild()
     end
 end

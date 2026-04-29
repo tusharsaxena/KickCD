@@ -106,7 +106,15 @@ local COMMANDS = {
     {"help",   "List available commands",
         function(self) printHelp(self) end},
     {"config", "Open the settings panel",
-        function(self) self:OpenSettings() end},
+        function(self)
+            if InCombatLockdown and InCombatLockdown() then
+                p(self, "|cff00ff00KickCD|r: " ..
+                    (self.L and self.L["Cannot open settings during combat."]
+                     or "Cannot open settings during combat."))
+                return
+            end
+            self:OpenSettings()
+        end},
     {"lock",   "Lock the icon grid in place",
         function(self) setLocked(self, true) end},
     {"unlock", "Unlock the icon grid for dragging",

@@ -27,16 +27,40 @@ local DEFAULT_PROFILE = {
     icons = {
         primarySize      = 48,
         secondarySize    = 0.7,        -- multiplier of primary
-        layout           = "horizontal", -- "horizontal" | "vertical"
-        primaryAnchor    = "left",      -- "left"|"right"|"top"|"bottom"
+        -- Anchor of the secondary block on the primary. The first word
+        -- (TOP/BOTTOM/LEFT/RIGHT) picks the side of the primary the block
+        -- attaches to; the second (CENTER plus the perpendicular axis
+        -- alignment, LEFT/RIGHT for TOP/BOTTOM sides, TOP/BOTTOM for
+        -- LEFT/RIGHT sides) picks where on that side. 12 valid values.
+        anchor           = "RIGHT_CENTER",
         gap              = 4,
+        zoom             = 0.08,        -- 0..0.25 — TexCoord inset that crops the Blizzard icon border
         readyAlpha       = 1.0,
         cooldownAlpha    = 0.4,
         cooldownTint     = { 1, 0.4, 0.4, 1 },
+        borderShow       = false,
+        borderColor      = { 0, 0, 0, 1 },
+        borderSize       = 1,
         showCooldownText = false,
         cooldownTextFont = "Friz Quadrata TT",
         cooldownTextSize = 14,
+        cooldownTextFlags = "OUTLINE", -- "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
         showCharges      = true,
+        -- Secondary-icon block. `rows × cols` capacity, geometric:
+        --   * `rows` = vertical extent (number of horizontal lines, up/down).
+        --   * `cols` = horizontal extent (number of vertical lines, left/right).
+        -- secondaryGrow is a compound "<primary>_<secondary>" picking the
+        -- fill direction inside the block (any of 8 combinations of
+        -- right/left/down/up). It's independent of `anchor`: anchor places
+        -- the block, grow arranges icons within it.
+        -- secondaryOffsetX/Y shift the entire block by N pixels from where
+        -- it would naturally land. Positive X = right, positive Y = down
+        -- (screen convention; converted to WoW's y-up internally).
+        secondaryRows    = 1,
+        secondaryCols    = 6,
+        secondaryGrow    = "right_down",
+        secondaryOffsetX = 0,
+        secondaryOffsetY = 0,
     },
 
     anchors = {
@@ -64,14 +88,98 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 1
+local LATEST_VERSION = 4
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
 -- structure was right from the start. Future patches add entries here.
 local Migrations = {
     [1] = function(db) end,  -- initial — no-op
-    -- [2] = function(db) ... end,
+
+    -- v2: reworked the icons.* layout model.
+    --   * primaryAnchor (corner-anchored 2D grid pivot) replaced by an
+    --     axis-aware grow direction (left/right/up/down); drop the
+    --     stored value so /kcd list and saved-vars reflect the live shape.
+    --   * secondaryGrow's enum changed from "horizontal"/"vertical" to
+    --     "right"/"left"/"down"/"up". Old values map: horizontal→right,
+    --     vertical→down.
+    --   * secondaryRows / secondaryCols stay in the model (rebuilt as
+    --     part of the rework), so leave any saved values alone.
+    [2] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            local icons = profile.icons
+            if type(icons) == "table" then
+                icons.primaryAnchor = nil
+                local g = icons.secondaryGrow
+                if g == "horizontal" then
+                    icons.secondaryGrow = "right"
+                elseif g == "vertical" then
+                    icons.secondaryGrow = "down"
+                end
+            end
+        end
+    end,
+
+    -- v3: secondaryGrow gained a wrap-direction component. The single-axis
+    -- enum ("right"/"left"/"down"/"up") was replaced by a compound form
+    -- "<primary>_<secondary>" that also picks which side extra rows/cols
+    -- accumulate. Old values map to the most natural wrap (down for
+    -- horizontal, right for vertical):
+    --   right → right_down,  left → left_down
+    --   down  → down_right,  up   → up_right
+    [3] = function(db)
+        local map = {
+            right = "right_down",
+            left  = "left_down",
+            down  = "down_right",
+            up    = "up_right",
+        }
+        for _, profile in pairs(db.profiles or {}) do
+            local icons = profile.icons
+            if type(icons) == "table" then
+                local g = icons.secondaryGrow
+                if map[g] then icons.secondaryGrow = map[g] end
+            end
+        end
+    end,
+
+    -- v4: replaced `layout` (horizontal/vertical) with `anchor` — a
+    -- 12-option enum that names which corner/edge of the primary the
+    -- secondary block attaches to ({TOP,BOTTOM,LEFT,RIGHT}_{CENTER,...}).
+    -- The old behavior placed the block adjacent to the primary on the
+    -- side picked by `secondaryGrow`'s primary axis, with perpendicular
+    -- centering when the perpendicular extent was 1 and corner alignment
+    -- otherwise. Translate that to an anchor value here so the rendered
+    -- block looks identical after the upgrade.
+    [4] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            local icons = profile.icons
+            if type(icons) == "table" then
+                local grow    = icons.secondaryGrow or "right_down"
+                local primary = grow:match("^(%a+)_") or "right"
+                local second  = grow:match("_(%a+)$")
+                local rows    = icons.secondaryRows or 1
+                local cols    = icons.secondaryCols or 6
+
+                local side, perp, alignByDir
+                if primary == "right" then
+                    side, perp = "RIGHT", rows
+                    alignByDir = (second == "down") and "TOP" or "BOTTOM"
+                elseif primary == "left" then
+                    side, perp = "LEFT", rows
+                    alignByDir = (second == "down") and "TOP" or "BOTTOM"
+                elseif primary == "down" then
+                    side, perp = "BOTTOM", cols
+                    alignByDir = (second == "right") and "LEFT" or "RIGHT"
+                else  -- up
+                    side, perp = "TOP", cols
+                    alignByDir = (second == "right") and "LEFT" or "RIGHT"
+                end
+                icons.anchor = side .. "_" .. ((perp == 1) and "CENTER" or alignByDir)
+                icons.layout = nil
+            end
+        end
+    end,
 }
 
 function Database:RunMigrations()

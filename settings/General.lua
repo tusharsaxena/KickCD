@@ -3,8 +3,9 @@
 -- General canvas panel. Declares its schema entries (master enable,
 -- lock, master scale/alpha, debug log) and registers a builder that
 -- renders them via Helpers.RenderSchema. The "Reset position" action
--- is appended manually because anchors live outside the simple
--- key=value space the schema covers.
+-- is injected as a button after the Master controls schema rows via
+-- the afterGroup callback (anchors live outside the simple key=value
+-- space the schema covers, so they can't be a schema row themselves).
 --
 -- Every schema entry here is automatically wired into /kcd get|set,
 -- so adding a new General option = one row in this file.
@@ -53,7 +54,7 @@ add{
 add{
     panel    = "general",  section = "general",  group = L["Debug"],
     path     = "debugLog", type    = "bool",
-    label    = L["Internal-message logging"],
+    label    = L["Debug"],
     tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
     default  = false,
     onChange = function(v) KickCD._debugLog = v and true or false end,
@@ -95,12 +96,15 @@ local function Build(mainCategory)
     ctx.panel:SetScript("OnShow", function()
         if rendered then return end
         rendered = true
-        H.RenderSchema(ctx, "general")
-        H.Section(ctx, L["Position"])
-        H.Button(ctx,
-            L["Reset position"], L["Reset"],
-            L["Restore the icon grid to its default screen position."],
-            resetPosition)
+        H.RenderSchema(ctx, "general", {
+            [L["Master controls"]] = function(ctxRef)
+                H.InlineButton(ctxRef,
+                    L["Reset position"],
+                    L["Restore the icon grid to its default screen position."],
+                    resetPosition,
+                    160)
+            end,
+        })
     end)
 
     return Settings.RegisterCanvasLayoutSubcategory(

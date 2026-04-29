@@ -108,6 +108,38 @@ local function validateSpellInput(input)
     return nil
 end
 
+-- Build the set of spellIDs the Blizzard Cooldown Manager would surface for
+-- the currently selected (class, spec). Walks every CooldownViewerCategory
+-- enum value and unions the spellIDs they expose. Returns nil when the API
+-- is unavailable (older clients) so callers can fall back to lenient
+-- validation.
+local function getCooldownManagerSpellSet()
+    if not C_CooldownViewer then return nil end
+    local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
+    local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
+    if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
+        return nil
+    end
+
+    local set = {}
+    local seenAny = false
+    for _, category in pairs(Enum.CooldownViewerCategory) do
+        local ok, ids = pcall(getCategorySet, category)
+        if ok and type(ids) == "table" then
+            for _, cdID in ipairs(ids) do
+                local ok2, info = pcall(getInfo, cdID)
+                if ok2 and type(info) == "table" and info.spellID then
+                    set[info.spellID] = true
+                    seenAny = true
+                end
+            end
+        end
+    end
+
+    if not seenAny then return nil end
+    return set
+end
+
 -- ---------------------------------------------------------------------------
 -- Debounced commit pipeline
 -- ---------------------------------------------------------------------------
@@ -152,13 +184,27 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
     OnAccept = function(self)
         local edit = self.EditBox or self.editBox
         local input = edit:GetText()
-        local id = validateSpellInput(input)
+        local id, resolvedName = validateSpellInput(input)
         if not id then
             if KickCD.Util and KickCD.Util.print then
                 KickCD.Util.print(L["Invalid spell"] .. ": " .. tostring(input))
             end
             return
         end
+
+        local cmSet = getCooldownManagerSpellSet()
+        if cmSet then
+            if not cmSet[id] then
+                local name = resolvedName or getSpellName(id) or tostring(id)
+                if KickCD.Util and KickCD.Util.print then
+                    KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+                end
+                return
+            end
+        elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+            KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+        end
+
         local list = getActiveList()
         if not list then return end
         for _, e in ipairs(list) do
@@ -263,13 +309,30 @@ local function buildRow(AceGUI, parent, list, index)
     icon:SetWidth(28)
     icon:SetHeight(24)
     icon:SetCallback("OnClick", function() end)
+    if icon.image and icon.image.SetDesaturated then
+        icon.image:SetDesaturated(entry.enabled == false)
+    end
+    local function showSpellTooltip(widget)
+        if not entry.spellID then return end
+        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+        GameTooltip:SetSpellByID(entry.spellID)
+        GameTooltip:Show()
+    end
+    local function hideSpellTooltip() GameTooltip:Hide() end
+    icon:SetCallback("OnEnter", showSpellTooltip)
+    icon:SetCallback("OnLeave", hideSpellTooltip)
     row:AddChild(icon)
 
     local label = AceGUI:Create("Label")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
-    label:SetText(name .. "  (#" .. tostring(entry.spellID) .. ")")
+    label:SetText(name)
     label:SetWidth(220)
     row:AddChild(label)
+    if label.frame and label.frame.HookScript then
+        label.frame:EnableMouse(true)
+        label.frame:HookScript("OnEnter", function() showSpellTooltip(label) end)
+        label.frame:HookScript("OnLeave", hideSpellTooltip)
+    end
 
     local check = AceGUI:Create("CheckBox")
     check:SetLabel("")
@@ -277,6 +340,9 @@ local function buildRow(AceGUI, parent, list, index)
     check:SetWidth(40)
     check:SetCallback("OnValueChanged", function(_, _, value)
         entry.enabled = value and true or false
+        if icon.image and icon.image.SetDesaturated then
+            icon.image:SetDesaturated(not value)
+        end
         commitSoon()
     end)
     row:AddChild(check)
@@ -294,6 +360,14 @@ local function buildRow(AceGUI, parent, list, index)
         entry.category = value
         commitSoon()
     end)
+    if dd.frame and dd.frame.HookScript then
+        dd.frame:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["Category for future filtering. Currently informational only."])
+            GameTooltip:Show()
+        end)
+        dd.frame:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    end
     row:AddChild(dd)
 
     local upBtn = makeRowIconBtn(AceGUI, {
@@ -351,49 +425,101 @@ local function releaseAceGUITree()
     end
 end
 
-local function buildSpellsHeader(AceGUI, parent, classes)
+-- Title-cases a SCREAMING_TOKEN like "DEATHKNIGHT" or "BLOOD" into "Deathknight"
+-- / "Blood". Splits compound class tokens that appear glued together
+-- ("DEATHKNIGHT" -> "Death Knight", "DEMONHUNTER" -> "Demon Hunter") so the
+-- merged dropdown reads naturally.
+local CLASS_DISPLAY_OVERRIDES = {
+    DEATHKNIGHT = "Death Knight",
+    DEMONHUNTER = "Demon Hunter",
+}
+
+local function titleCaseToken(token)
+    if not token then return "" end
+    local s = token:lower():gsub("^%l", string.upper)
+    return s
+end
+
+local function classDisplayName(classFile)
+    if CLASS_DISPLAY_OVERRIDES[classFile] then return CLASS_DISPLAY_OVERRIDES[classFile] end
+    if LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[classFile] then
+        return LOCALIZED_CLASS_NAMES_MALE[classFile]
+    end
+    return titleCaseToken(classFile)
+end
+
+local function classColorHex(classFile)
+    local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile]
+    if not c then return "ffffffff" end
+    if c.colorStr then return c.colorStr end
+    return ("ff%02x%02x%02x"):format(
+        math.floor((c.r or 1) * 255 + 0.5),
+        math.floor((c.g or 1) * 255 + 0.5),
+        math.floor((c.b or 1) * 255 + 0.5))
+end
+
+local function classIconMarkup(classFile)
+    if CreateAtlasMarkup then
+        local atlas = "classicon-" .. classFile:lower()
+        local ok, markup = pcall(CreateAtlasMarkup, atlas, 16, 16)
+        if ok and markup then return markup end
+    end
+    return ("|TInterface\\Icons\\ClassIcon_%s:14:14:0:0|t"):format(classFile:lower())
+end
+
+local function buildSpecEntries()
+    local entries = {}
+    if type(KickCD.DefaultSpells) ~= "table" then return entries end
+
+    local classOrder = sortedKeys(KickCD.DefaultSpells)
+    for _, classFile in ipairs(classOrder) do
+        local specs = sortedKeys(KickCD.DefaultSpells[classFile])
+        local hex   = classColorHex(classFile)
+        local icon  = classIconMarkup(classFile)
+        local className = classDisplayName(classFile)
+        for _, specToken in ipairs(specs) do
+            local specName = titleCaseToken(specToken)
+            local plain    = specName .. " " .. className
+            local label    = ("%s |c%s%s|r"):format(icon, hex, plain)
+            entries[#entries + 1] = {
+                value     = classFile .. "/" .. specToken,
+                label     = label,
+                classFile = classFile,
+                specToken = specToken,
+            }
+        end
+    end
+    return entries
+end
+
+local function buildSpellsHeader(AceGUI, parent)
     headerWidgets = {}
 
-    local classDD = AceGUI:Create("Dropdown")
-    local classItems, classOrder = {}, {}
-    for i, c in ipairs(classes) do
-        classItems[c] = c
-        classOrder[i] = c
+    local entries = buildSpecEntries()
+    local items, order = {}, {}
+    for i, e in ipairs(entries) do
+        items[e.value] = e.label
+        order[i]       = e.value
     end
-    classDD:SetLabel(L["Class"])
-    classDD:SetList(classItems, classOrder)
-    classDD:SetValue(selectedClass)
-    classDD:SetWidth(160)
-    classDD:SetCallback("OnValueChanged", function(_, _, value)
-        selectedClass = value
-        local specs = sortedKeys(KickCD.DefaultSpells and KickCD.DefaultSpells[value])
-        selectedSpec = specs[1]
-        Spells:RefreshRows()
-    end)
-    classDD.frame:SetParent(parent)
-    classDD.frame:ClearAllPoints()
-    classDD.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, -16)
-    classDD.frame:Show()
-    headerWidgets[#headerWidgets + 1] = classDD
 
     local specDD = AceGUI:Create("Dropdown")
-    local specs = sortedKeys(KickCD.DefaultSpells and KickCD.DefaultSpells[selectedClass])
-    local specItems, specOrder = {}, {}
-    for i, s in ipairs(specs) do
-        specItems[s] = s
-        specOrder[i] = s
-    end
     specDD:SetLabel(L["Specialization"])
-    specDD:SetList(specItems, specOrder)
-    specDD:SetValue(selectedSpec)
-    specDD:SetWidth(160)
+    specDD:SetList(items, order)
+    if selectedClass and selectedSpec then
+        specDD:SetValue(selectedClass .. "/" .. selectedSpec)
+    end
+    specDD:SetWidth(280)
     specDD:SetCallback("OnValueChanged", function(_, _, value)
-        selectedSpec = value
-        Spells:RefreshRows()
+        local classFile, specToken = value:match("^([^/]+)/(.+)$")
+        if classFile and specToken then
+            selectedClass = classFile
+            selectedSpec  = specToken
+            Spells:RefreshRows()
+        end
     end)
     specDD.frame:SetParent(parent)
     specDD.frame:ClearAllPoints()
-    specDD.frame:SetPoint("LEFT", classDD.frame, "RIGHT", 12, 0)
+    specDD.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, -16)
     specDD.frame:Show()
     headerWidgets[#headerWidgets + 1] = specDD
 
@@ -443,7 +569,7 @@ function Spells:RefreshRows()
         selectedSpec = specs[1]
     end
 
-    buildSpellsHeader(AceGUI, body, classes)
+    buildSpellsHeader(AceGUI, body)
 
     container = AceGUI:Create("ScrollFrame")
     container:SetLayout("List")

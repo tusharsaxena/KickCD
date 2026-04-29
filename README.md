@@ -5,13 +5,13 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 KickCD is a lightweight, single-folder WoW addon that helps the player make
-informed interrupt decisions in real time. When the current target is a
-hostile unit casting an interruptible spell, KickCD shows a movable icon grid
-of the player's interrupt + cast-stopping CC abilities (with cooldown swipes
-and a clear ready/not-ready state) plus a movable minimal target castbar with
-cast name, time remaining, and an interruptibility-color border. Defaults are
-sensible per class and spec; everything is configurable through the standard
-Blizzard Settings panel.
+informed interrupt decisions in real time. It shows a movable, persistently-
+visible icon grid of the player's interrupt + cast-stopping CC abilities,
+with cooldown swipes and a clear ready/not-ready state. Defaults are sensible
+per class and spec; the secondary block can be anchored to any of 12 points
+on the primary icon (top/bottom/left/right × center/perpendicular alignments)
+and filled in any of 8 grow directions. Everything is configurable through
+the standard Blizzard Settings panel.
 
 ## Status
 
@@ -36,8 +36,10 @@ Backward compatibility with TWW 11.2.x is not a goal of this release.
 - `/kcd` — same, shorter alias.
 - `/kickcd debug` — verbose debug print (target state, watched-spell state).
 
-The settings panel exposes five subcategories: General, Icons, Castbar,
-Spells (per-class+spec list editor), and Profiles (Ace3 AceDBOptions).
+The settings panel exposes four subcategories: General, Icons (size, layout,
+anchor + grow direction, border, annotations), Spells (per-class+spec list
+editor), and Profiles (Ace3 AceDBOptions). The cast-bar pipeline was
+removed at commit `59fb5c0` and will be re-added in a later release.
 
 ## Documentation
 

@@ -225,9 +225,27 @@ local function ensureScroll(ctx)
     scroll:SetLayout("List")
     scroll.frame:SetParent(ctx.body)
     scroll.frame:ClearAllPoints()
+    -- Right-edge inset of PADDING_X+12 leaves room for the scrollbar
+    -- (which AceGUI nudges 20px to the right of the scrollframe when
+    -- visible) without it being flush against the panel border.
     scroll.frame:SetPoint("TOPLEFT",     ctx.body, "TOPLEFT",      PADDING_X - 4, -8)
-    scroll.frame:SetPoint("BOTTOMRIGHT", ctx.body, "BOTTOMRIGHT", -(PADDING_X - 4), 8)
+    scroll.frame:SetPoint("BOTTOMRIGHT", ctx.body, "BOTTOMRIGHT", -(PADDING_X + 12), 8)
     scroll.frame:Show()
+
+    -- AceGUI's ScrollFrame normally has its width/height set by a parent
+    -- AceGUI container during DoLayout, which fires OnWidthSet/OnHeightSet
+    -- and updates content.width / the scrollbar visibility. We parent it
+    -- to a Blizzard frame via anchors instead, so those callbacks never
+    -- fire and `content.width` stays nil. Hook OnSizeChanged to forward
+    -- the actual size into AceGUI and then re-run DoLayout + FixScroll so
+    -- the scrollbar appears whenever the body resizes (panel open / show).
+    scroll.frame:SetScript("OnSizeChanged", function(_, w, h)
+        if scroll.OnWidthSet  then scroll:OnWidthSet(w)  end
+        if scroll.OnHeightSet then scroll:OnHeightSet(h) end
+        if scroll.DoLayout    then scroll:DoLayout()     end
+        if scroll.FixScroll   then scroll:FixScroll()    end
+    end)
+
     ctx.scroll = scroll
     return scroll
 end
@@ -244,14 +262,46 @@ end
 -- ---------------------------------------------------------------------
 -- Section header — AceGUI Heading (full-width label flanked by side
 -- divider textures, matches AceConfigDialog group separators).
+--
+-- Visual tweaks vs raw AceGUI defaults:
+--   * Larger label font (GameFontNormalLarge) so the section title
+--     stands out from body widgets.
+--   * Extra vertical breathing room above and below by inserting a
+--     SimpleGroup spacer between consecutive sections (skipped on the
+--     first section since the panel header already provides whitespace
+--     above the first group), plus a trailing spacer to push the first
+--     widget of the section away from the heading.
 -- ---------------------------------------------------------------------
+
+local SECTION_TOP_SPACER    = 10
+local SECTION_BOTTOM_SPACER = 6
+local SECTION_HEADING_H     = 26
+
+local function addSpacer(scroll, height)
+    local sp = AceGUI:Create("SimpleGroup")
+    sp:SetLayout(nil)
+    sp:SetFullWidth(true)
+    sp:SetHeight(height)
+    scroll:AddChild(sp)
+end
 
 function Helpers.Section(ctx, label)
     local scroll = ensureScroll(ctx)
+
+    if ctx.lastGroup ~= nil then
+        addSpacer(scroll, SECTION_TOP_SPACER)
+    end
+
     local h = AceGUI:Create("Heading")
     h:SetText(label)
     h:SetFullWidth(true)
+    h:SetHeight(SECTION_HEADING_H)
+    if h.label and h.label.SetFontObject and _G.GameFontNormalLarge then
+        h.label:SetFontObject(_G.GameFontNormalLarge)
+    end
     scroll:AddChild(h)
+
+    addSpacer(scroll, SECTION_BOTTOM_SPACER)
     return h
 end
 
@@ -416,6 +466,33 @@ function Helpers.RenderField(ctx, def)
     if def.type == "color"  then return makeColorPicker(ctx, def) end
 end
 
+-- Standalone action button (no label row). Used for actions that read
+-- naturally from the button text alone, e.g. "Reset position".
+function Helpers.InlineButton(ctx, buttonText, tooltip, onClick, width)
+    local scroll = ensureScroll(ctx)
+
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+    row:SetHeight(28)
+
+    local btn = AceGUI:Create("Button")
+    btn:SetText(buttonText or "")
+    btn:SetWidth(width or 160)
+    btn:SetCallback("OnClick", function()
+        if not onClick then return end
+        local ok, err = pcall(onClick)
+        if not ok and KickCD.Util then
+            KickCD.Util.print("button onClick failed: " .. tostring(err))
+        end
+    end)
+    row:AddChild(btn)
+
+    attachTooltip(btn, buttonText, tooltip)
+    scroll:AddChild(row)
+    return btn
+end
+
 -- Inline action button (label on the left, button on the right).
 -- Used for "Reset position" et al. — not a setting.
 function Helpers.Button(ctx, labelText, buttonText, tooltip, onClick)
@@ -452,13 +529,27 @@ end
 -- Schema-driven render
 -- ---------------------------------------------------------------------
 
-function Helpers.RenderSchema(ctx, panelKey)
-    for _, def in ipairs(Helpers.SchemaForPanel(panelKey)) do
+-- afterGroup is an optional { [groupName] = function(ctx) ... end } map.
+-- The callback runs once, immediately after the last schema row of that
+-- group is rendered (and before the next group's section header). Used
+-- by the General tab to drop the "Reset position" button into the
+-- "Master controls" group instead of giving it its own subsection.
+function Helpers.RenderSchema(ctx, panelKey, afterGroup)
+    local rows = Helpers.SchemaForPanel(panelKey)
+    for i, def in ipairs(rows) do
         if def.group and def.group ~= ctx.lastGroup then
             Helpers.Section(ctx, def.group)
             ctx.lastGroup = def.group
         end
         Helpers.RenderField(ctx, def)
+
+        local nextDef = rows[i + 1]
+        if afterGroup and def.group
+           and (not nextDef or nextDef.group ~= def.group)
+           and afterGroup[def.group] then
+            afterGroup[def.group](ctx)
+            afterGroup[def.group] = nil  -- one-shot
+        end
     end
     if ctx.scroll and ctx.scroll.DoLayout then ctx.scroll:DoLayout() end
 end
@@ -520,7 +611,7 @@ local function RegisterPanel()
         return
     end
 
-    local main = Settings.RegisterVerticalLayoutCategory(L["Ka0s KickCD"])
+    local main = Settings.RegisterVerticalLayoutCategory(L["KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main
     KickCD.SettingsCategoryID = main:GetID()

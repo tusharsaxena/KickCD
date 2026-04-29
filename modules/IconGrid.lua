@@ -1,14 +1,17 @@
 -- modules/IconGrid.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §3.6, REQUIREMENTS.md FR-2 / FR-8
 --
 -- Owns one parent frame (KickCDIconGrid) and N child icon widgets, each
--- pooled and reused on rebuild so we never churn frames. The grid is
--- always visible (no enemy-cast-driven show/hide); listens to:
+-- pooled and reused on rebuild so we never churn frames. Visibility is
+-- gated on db.profile.enabled (master enable); when enabled, the grid
+-- is persistently visible (no enemy-cast-driven show/hide). Listens to:
 --
 --   KickCD_SPELL_STATE       -> route to the matching active icon's :Apply
---   KickCD_CONFIG_CHANGED    -> "icons" relayouts; "spells" rebuilds; "general" re-applies lock
---   KickCD_PROFILE_CHANGED   -> rebuild + re-anchor
---   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild for the new spec
+--   KickCD_CONFIG_CHANGED    -> "icons" relayouts (zoom/border/font/grid);
+--                                "spells" rebuilds;
+--                                "general" re-applies lock, scale, alpha,
+--                                  master-enable visibility, anchor.
+--   KickCD_PROFILE_CHANGED   -> rebuild + re-anchor + reapply general
+--   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild
 --
 -- This file fires no messages. The grid is the consumer end of the pipeline.
 
@@ -34,15 +37,19 @@ local ordered = {}
 -- (e.g., test rigs that load us early).
 local grid
 
--- Standard "crop the WoW icon border" coords. The 0.08 inset removes the
--- ugly built-in 4-px frame on every Blizzard spell icon.
-local ICON_TEXCOORDS = { 0.08, 0.92, 0.08, 0.92 }
-
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
 
 local floor = math.floor
+
+-- True when the master enable flag is set. Defaults to true on a fresh
+-- profile, so a missing field reads as enabled.
+local function isEnabled()
+    local profile = KickCD.db and KickCD.db.profile
+    if not profile then return true end
+    return profile.enabled ~= false
+end
 
 local function safeUnpackColor(c, fr, fg, fb, fa)
     -- Util.Unpack handles nil with sane defaults but we want module-specific
@@ -81,13 +88,28 @@ local function CreateIconWidget(parent)
     btn:SetSize(48, 48)
     btn:EnableMouse(false) -- the grid as a whole handles drag, not individual icons
 
-    -- Spell icon texture. Crop the Blizzard border with TexCoord so square
-    -- icons look clean at any size. Using SetAllPoints(btn) lets the texture
-    -- track the button's size when we resize it during layout.
+    -- Spell icon texture. The TexCoord crop is applied by ApplyAppearance
+    -- from cfg.zoom; we leave it untouched here so the user-configurable
+    -- value is the single source of truth.
     local tex = btn:CreateTexture(nil, "ARTWORK")
     tex:SetAllPoints(btn)
-    tex:SetTexCoord(unpack(ICON_TEXCOORDS))
     btn.icon = tex
+
+    -- Per-icon border. Four edge textures on a high OVERLAY sublayer so
+    -- they paint over the icon texture; the cooldown swipe lives on a
+    -- separate child frame and so isn't affected by this draw layer.
+    -- Using textures rather than a BackdropTemplate avoids cross-version
+    -- backdrop quirks.
+    local function makeEdge()
+        local t = btn:CreateTexture(nil, "OVERLAY", nil, 7)
+        t:SetColorTexture(0, 0, 0, 1)
+        t:Hide()
+        return t
+    end
+    btn.borderTop    = makeEdge()
+    btn.borderBottom = makeEdge()
+    btn.borderLeft   = makeEdge()
+    btn.borderRight  = makeEdge()
 
     -- Cooldown swipe. CooldownFrameTemplate gives us the radial sweep + the
     -- built-in OmniCC integration "for free" — any OmniCC-like addon will
@@ -182,6 +204,54 @@ function Icon:Apply(state)
     end
 end
 
+-- Apply zoom (icon TexCoord crop) and border (visibility / color /
+-- thickness). Called from Layout() so any /kcd set or panel change
+-- takes effect on the next layout pass without a full rebuild.
+function Icon:ApplyAppearance(cfg)
+    cfg = cfg or KickCD.db.profile.icons
+    local z = cfg.zoom or 0.08
+    self.icon:SetTexCoord(z, 1 - z, z, 1 - z)
+
+    local show = cfg.borderShow and true or false
+    if show then
+        local size = cfg.borderSize or 1
+        if size < 1 then size = 1 end
+        local r, g, b, a = safeUnpackColor(cfg.borderColor, 0, 0, 0, 1)
+
+        for _, t in ipairs({
+            self.borderTop, self.borderBottom,
+            self.borderLeft, self.borderRight,
+        }) do
+            t:SetColorTexture(r, g, b, a)
+            t:ClearAllPoints()
+            t:Show()
+        end
+
+        -- Top / bottom span the full width; left / right inset between them
+        -- so the corners overlap correctly and we don't double-paint pixels.
+        self.borderTop:SetPoint("TOPLEFT",  self, "TOPLEFT",  0, 0)
+        self.borderTop:SetPoint("TOPRIGHT", self, "TOPRIGHT", 0, 0)
+        self.borderTop:SetHeight(size)
+
+        self.borderBottom:SetPoint("BOTTOMLEFT",  self, "BOTTOMLEFT",  0, 0)
+        self.borderBottom:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
+        self.borderBottom:SetHeight(size)
+
+        self.borderLeft:SetPoint("TOPLEFT",    self, "TOPLEFT",    0, -size)
+        self.borderLeft:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0,  size)
+        self.borderLeft:SetWidth(size)
+
+        self.borderRight:SetPoint("TOPRIGHT",    self, "TOPRIGHT",    0, -size)
+        self.borderRight:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0,  size)
+        self.borderRight:SetWidth(size)
+    else
+        self.borderTop:Hide()
+        self.borderBottom:Hide()
+        self.borderLeft:Hide()
+        self.borderRight:Hide()
+    end
+end
+
 -- Wire the cooldown text on/off for this icon in response to a config
 -- change. Kept separate from Apply because the cooldown text follows the
 -- swipe driver itself, not the per-state payload.
@@ -200,7 +270,10 @@ function Icon:ApplyTextConfig(cfg)
             fontPath = f
         end
         if fontPath then
-            self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, "OUTLINE")
+            local flags = cfg.cooldownTextFlags or "OUTLINE"
+            -- SetFont expects an empty string (not "NONE") to mean "no flags".
+            if flags == "NONE" then flags = "" end
+            self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
         end
         -- Make the swipe drive the text via OmniCC-style handoff: when there's
         -- no third-party display, we let the CooldownFrameTemplate count down
@@ -305,90 +378,190 @@ end
 -- Layout
 -- ---------------------------------------------------------------------------
 --
--- Primary at index 1 sits at the grid's anchor origin and is sized to
--- icons.primarySize. Secondaries are sized to primarySize * secondarySize
--- and tiled in the configured direction. primaryAnchor names where the
--- primary lives relative to its secondaries:
+-- The primary sits at one corner/edge of the grid frame; the `rows × cols`
+-- secondary block attaches to one of 12 anchor points on the primary.
+-- Layout is computed in three independent steps:
 --
---   "left"   primary on the left  → secondaries extend rightward
---   "right"  primary on the right → secondaries extend leftward
---   "top"    primary on top       → secondaries extend downward
---   "bottom" primary on bottom    → secondaries extend upward
+--   1. ANCHOR — picks where the block sits relative to the primary. The
+--      first word (TOP/BOTTOM/LEFT/RIGHT) is the side; the second
+--      (CENTER plus the alignment along the perpendicular axis: LEFT/RIGHT
+--      for TOP/BOTTOM sides, TOP/BOTTOM for LEFT/RIGHT sides) picks where
+--      on that side. 12 valid combinations.
+--   2. GROW — fill order inside the block as a compound "<primary>_<secondary>"
+--      direction (8 combinations of right/left/down/up). The primary axis
+--      decides whether fill is row-major (right/left) or column-major
+--      (down/up); the secondary axis decides which way the next row/column
+--      goes after the first wraps. Anchor and grow are orthogonal: any
+--      anchor works with any grow direction.
+--   3. ROWS × COLS — block dimensions. `rows` is the vertical extent
+--      (icons stacked up/down), `cols` the horizontal extent (icons
+--      arranged left/right). Always geometric — never axis-relative.
+--
+-- secondaryOffsetX / secondaryOffsetY shift the entire block in screen-pixel
+-- space (positive X = right, positive Y = down) without moving the primary.
 --
 -- Pixel-floor every offset so we don't end up with sub-pixel positions
--- on fractional UIScale values (which causes a one-pixel blur on icons).
+-- on fractional UIScale values (which would blur icons by one pixel).
 
-local function layoutHorizontal(primary, secondaries, primarySize, secondarySize, gap, primaryAnchor)
-    primary:ClearAllPoints()
-    primary:SetSize(primarySize, primarySize)
-
-    -- Secondaries are vertically centered relative to the primary so two
-    -- different icon sizes don't look stacked top-edge-aligned.
-    local secYOffset = floor((primarySize - secondarySize) / 2)
-
-    if primaryAnchor == "right" then
-        primary:SetPoint("TOPRIGHT", grid, "TOPRIGHT", 0, 0)
-        local x = -(primarySize + gap)
-        for _, btn in ipairs(secondaries) do
-            btn:SetSize(secondarySize, secondarySize)
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPRIGHT", grid, "TOPRIGHT", floor(x), -secYOffset)
-            x = x - (secondarySize + gap)
+-- Anchor-point parser. Returns (side, align) where side ∈ {TOP,BOTTOM,LEFT,RIGHT}
+-- and align is the second word (CENTER, LEFT, RIGHT, TOP, BOTTOM as applicable).
+local function parseAnchor(value)
+    local side, align = (value or ""):match("^(%a+)_(%a+)$")
+    if side == "TOP" or side == "BOTTOM" then
+        if align == "CENTER" or align == "LEFT" or align == "RIGHT" then
+            return side, align
         end
-    else
-        -- Default ("left"): primary at TOPLEFT, secondaries flow right.
-        primary:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, 0)
-        local x = primarySize + gap
-        for _, btn in ipairs(secondaries) do
-            btn:SetSize(secondarySize, secondarySize)
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPLEFT", grid, "TOPLEFT", floor(x), -secYOffset)
-            x = x + secondarySize + gap
+    elseif side == "LEFT" or side == "RIGHT" then
+        if align == "CENTER" or align == "TOP" or align == "BOTTOM" then
+            return side, align
         end
     end
-
-    -- Bounding box: primary height (always tallest) + total secondary span.
-    local secCount = #secondaries
-    local secSpan  = secCount > 0 and (secCount * secondarySize + secCount * gap) or 0
-    local width    = primarySize + secSpan
-    -- Empty-list edge case: still set a non-zero size so the frame can be
-    -- dragged in unlock mode and the user can spot where it lives.
-    if width <= 0 then width = primarySize end
-    return floor(width), primarySize
+    return "RIGHT", "CENTER"
 end
 
-local function layoutVertical(primary, secondaries, primarySize, secondarySize, gap, primaryAnchor)
-    primary:ClearAllPoints()
-    primary:SetSize(primarySize, primarySize)
+-- Grow-direction parser. Returns (primaryAxis, secondaryAxis) where
+-- primary is the in-line fill direction and secondary is the wrap.
+local function parseGrow(value)
+    local primary, secondary = (value or ""):match("^(%a+)_(%a+)$")
+    local horiz = { right = true, left = true }
+    local vert  = { down  = true, up   = true }
+    if not ((horiz[primary] and vert[secondary]) or
+            (vert[primary]  and horiz[secondary])) then
+        primary, secondary = "right", "down"
+    end
+    return primary, secondary
+end
 
-    local secXOffset = floor((primarySize - secondarySize) / 2)
+-- Compute the secondaries block's TOPLEFT relative to the grid frame's
+-- TOPLEFT, plus the primary's TOPLEFT and the grid frame's full
+-- bounding-box size — all in screen-pixel space (y grows downward; the
+-- caller flips the sign when handing the value to SetPoint).
+local function placeBlock(side, align, primarySize, blockW, blockH, gap)
+    local gridW, gridH, primaryX, primaryY, blockX, blockY
 
-    if primaryAnchor == "bottom" then
-        primary:SetPoint("BOTTOMLEFT", grid, "BOTTOMLEFT", 0, 0)
-        local y = primarySize + gap
-        for _, btn in ipairs(secondaries) do
-            btn:SetSize(secondarySize, secondarySize)
-            btn:ClearAllPoints()
-            btn:SetPoint("BOTTOMLEFT", grid, "BOTTOMLEFT", secXOffset, floor(y))
-            y = y + secondarySize + gap
+    if side == "TOP" then
+        gridW = math.max(primarySize, blockW)
+        gridH = blockH + gap + primarySize
+        blockY    = 0
+        primaryY  = blockH + gap
+        if align == "CENTER" then
+            primaryX = floor((gridW - primarySize) / 2)
+            blockX   = floor((gridW - blockW) / 2)
+        elseif align == "LEFT" then
+            primaryX, blockX = 0, 0
+        else  -- RIGHT
+            primaryX = gridW - primarySize
+            blockX   = gridW - blockW
         end
-    else
-        -- Default ("top"): primary at TOPLEFT, secondaries flow downward.
-        primary:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, 0)
-        local y = -(primarySize + gap)
-        for _, btn in ipairs(secondaries) do
-            btn:SetSize(secondarySize, secondarySize)
-            btn:ClearAllPoints()
-            btn:SetPoint("TOPLEFT", grid, "TOPLEFT", secXOffset, floor(y))
-            y = y - (secondarySize + gap)
+    elseif side == "BOTTOM" then
+        gridW = math.max(primarySize, blockW)
+        gridH = primarySize + gap + blockH
+        primaryY = 0
+        blockY   = primarySize + gap
+        if align == "CENTER" then
+            primaryX = floor((gridW - primarySize) / 2)
+            blockX   = floor((gridW - blockW) / 2)
+        elseif align == "LEFT" then
+            primaryX, blockX = 0, 0
+        else  -- RIGHT
+            primaryX = gridW - primarySize
+            blockX   = gridW - blockW
+        end
+    elseif side == "LEFT" then
+        gridW = blockW + gap + primarySize
+        gridH = math.max(primarySize, blockH)
+        blockX    = 0
+        primaryX  = blockW + gap
+        if align == "CENTER" then
+            primaryY = floor((gridH - primarySize) / 2)
+            blockY   = floor((gridH - blockH) / 2)
+        elseif align == "TOP" then
+            primaryY, blockY = 0, 0
+        else  -- BOTTOM
+            primaryY = gridH - primarySize
+            blockY   = gridH - blockH
+        end
+    else  -- RIGHT
+        gridW = primarySize + gap + blockW
+        gridH = math.max(primarySize, blockH)
+        primaryX = 0
+        blockX   = primarySize + gap
+        if align == "CENTER" then
+            primaryY = floor((gridH - primarySize) / 2)
+            blockY   = floor((gridH - blockH) / 2)
+        elseif align == "TOP" then
+            primaryY, blockY = 0, 0
+        else  -- BOTTOM
+            primaryY = gridH - primarySize
+            blockY   = gridH - blockH
         end
     end
 
-    local secCount = #secondaries
-    local secSpan  = secCount > 0 and (secCount * secondarySize + secCount * gap) or 0
-    local height   = primarySize + secSpan
+    return gridW, gridH, primaryX, primaryY, blockX, blockY
+end
+
+local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
+                           anchor, grow, rows, cols, offX, offY)
+    primary:ClearAllPoints()
+    primary:SetSize(primarySize, primarySize)
+
+    local side, align         = parseAnchor(anchor)
+    local primaryAxis, secAxis = parseGrow(grow)
+
+    local step = secondarySize + gap
+    -- Block bounding box is the icons' rectangular extent — not cols*step,
+    -- since the trailing gap doesn't belong to the block. (cols-1)*step
+    -- gives the offset of the last icon's left edge; + secondarySize
+    -- closes the right edge.
+    local blockW = (cols - 1) * step + secondarySize
+    local blockH = (rows - 1) * step + secondarySize
+
+    local gridW, gridH, primaryX, primaryY, blockX, blockY =
+        placeBlock(side, align, primarySize, blockW, blockH, gap)
+
+    primary:SetPoint("TOPLEFT", grid, "TOPLEFT", floor(primaryX), floor(-primaryY))
+
+    -- Fill order: row-major if grow's primary axis is horizontal,
+    -- column-major if vertical.
+    local rowMajor = (primaryAxis == "right" or primaryAxis == "left")
+    -- `c=0` lives at the right edge if either axis is "left"; `r=0` at
+    -- the bottom edge if either axis is "up".
+    local invertX = (primaryAxis == "left") or (secAxis == "left")
+    local invertY = (primaryAxis == "up")   or (secAxis == "up")
+
+    local cap = rows * cols
+    for i = 1, math.min(#secondaries, cap) do
+        local r, c
+        if rowMajor then
+            r = floor((i - 1) / cols)
+            c = (i - 1) - r * cols
+        else
+            c = floor((i - 1) / rows)
+            r = (i - 1) - c * rows
+        end
+        local cVis = invertX and (cols - 1 - c) or c
+        local rVis = invertY and (rows - 1 - r) or r
+
+        local btn = secondaries[i]
+        btn:SetSize(secondarySize, secondarySize)
+        btn:ClearAllPoints()
+        btn:SetPoint("TOPLEFT", grid, "TOPLEFT",
+            floor(blockX + cVis * step + offX),
+            floor(-(blockY + rVis * step + offY)))
+    end
+
+    -- Hide overflow secondaries — pool keeps them around for next rebuild.
+    for i = cap + 1, #secondaries do
+        secondaries[i]:Hide()
+    end
+
+    -- Add abs(offset) to the grid bounding box so dragging stays sane
+    -- when the user has shifted the block off the primary's footprint.
+    local width  = gridW + math.abs(offX)
+    local height = gridH + math.abs(offY)
+    if width  <= 0 then width  = primarySize end
     if height <= 0 then height = primarySize end
-    return primarySize, floor(height)
+    return floor(width), floor(height)
 end
 
 function IconGrid:Layout()
@@ -398,13 +571,19 @@ function IconGrid:Layout()
     local primarySize   = cfg.primarySize or 48
     local secondarySize = floor(primarySize * (cfg.secondarySize or 0.7))
     local gap           = cfg.gap or 4
-    local layout        = cfg.layout or "horizontal"
-    local primaryAnchor = cfg.primaryAnchor or "left"
+    local anchor        = cfg.anchor or "RIGHT_CENTER"
+    local grow          = cfg.secondaryGrow or "right_down"
+    local rows          = cfg.secondaryRows or 1
+    local cols          = cfg.secondaryCols or 6
+    local offX          = cfg.secondaryOffsetX or 0
+    local offY          = cfg.secondaryOffsetY or 0
 
-    -- Re-bind cfg + text config on every layout pass so changes to color/
-    -- alpha/font apply without a full rebuild (FR-6.4: live updates).
+    -- Re-bind cfg + text/appearance config on every layout pass so changes
+    -- to color/alpha/font/zoom/border apply without a full rebuild.
     for _, btn in ipairs(ordered) do
         btn.cfg = cfg
+        btn:Show()
+        btn:ApplyAppearance(cfg)
         btn:ApplyTextConfig(cfg)
     end
 
@@ -421,13 +600,20 @@ function IconGrid:Layout()
     local secondaries = {}
     for i = 2, #ordered do secondaries[i - 1] = ordered[i] end
 
-    local w, h
-    if layout == "vertical" then
-        w, h = layoutVertical(primary, secondaries, primarySize, secondarySize, gap, primaryAnchor)
-    else
-        w, h = layoutHorizontal(primary, secondaries, primarySize, secondarySize, gap, primaryAnchor)
-    end
+    local w, h = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
+                             anchor, grow, rows, cols, offX, offY)
     grid:SetSize(w, h)
+end
+
+-- Apply general-tab visual settings (scale, alpha) to the parent frame.
+-- Per-icon alpha continues to be set by Icon:Apply (cfg.readyAlpha /
+-- cfg.cooldownAlpha) and multiplies naturally with the parent's alpha.
+function IconGrid:ApplyGeneral()
+    if not grid then return end
+    local profile = KickCD.db and KickCD.db.profile
+    if not profile then return end
+    grid:SetScale(profile.scale or 1.0)
+    grid:SetAlpha(profile.alpha or 1.0)
 end
 
 -- ---------------------------------------------------------------------------
@@ -487,6 +673,7 @@ function IconGrid:EnsureGrid()
     -- without permanently breaking drag — calling SetMovable(false) on a
     -- locked frame would prevent unlock without a reload.
     self:ApplyLock()
+    self:ApplyGeneral()
 
     return grid
 end
@@ -499,7 +686,9 @@ function IconGrid:OnEnable()
     self:EnsureGrid()
     self:BuildActiveList()
     self:Layout()
-    if grid then grid:Show() end
+    if grid then
+        if isEnabled() then grid:Show() else grid:Hide() end
+    end
 
     -- Internal-message subscriptions. The grid is a strict subscriber and
     -- never sends.
@@ -537,7 +726,9 @@ function IconGrid:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
     if section == "icons" then
         -- Re-layout only — widgets and their textures don't need to change
-        -- when only sizing/colors/alphas changed.
+        -- when only sizing/colors/alphas changed. Layout() also calls
+        -- ApplyAppearance/ApplyTextConfig per-icon so zoom/border/font
+        -- changes flow through the same path.
         self:Layout()
         self:ApplyLock()
     elseif section == "spells" then
@@ -546,13 +737,16 @@ function IconGrid:OnConfigChanged(_evt, payload)
         self:BuildActiveList()
         self:Layout()
     elseif section == "general" then
-        -- General-tab edits include the lock toggle and the Reset position
-        -- button. Re-apply the anchor in case the latter was used, then
-        -- refresh the lock state.
+        -- General-tab edits include the master enable, the lock toggle,
+        -- master scale / alpha, and the Reset position button. Apply
+        -- scale/alpha unconditionally; toggle visibility on the master
+        -- enable.
         if grid then
             local anchor = KickCD.db and KickCD.db.profile
                 and KickCD.db.profile.anchors and KickCD.db.profile.anchors.icons
             if anchor then KickCD.Util.ApplyAnchor(grid, anchor) end
+            self:ApplyGeneral()
+            if isEnabled() then grid:Show() else grid:Hide() end
         end
         self:ApplyLock()
     end
@@ -560,7 +754,7 @@ end
 
 function IconGrid:OnProfileChanged(_evt, payload)
     -- Full reset: re-anchor, rebuild the active list against the new
-    -- profile's spell defaults, and re-apply the lock state. Stay visible.
+    -- profile's spell defaults, and re-apply the lock + general state.
     if grid then
         local anchor = KickCD.db and KickCD.db.profile
             and KickCD.db.profile.anchors and KickCD.db.profile.anchors.icons
@@ -570,7 +764,10 @@ function IconGrid:OnProfileChanged(_evt, payload)
     self:BuildActiveList()
     self:Layout()
     self:ApplyLock()
-    if grid then grid:Show() end
+    self:ApplyGeneral()
+    if grid then
+        if isEnabled() then grid:Show() else grid:Hide() end
+    end
 end
 
 function IconGrid:OnSpecChanged(_evt, unit)
