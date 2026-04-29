@@ -210,6 +210,44 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
 -- AceGUI rows
 -- ---------------------------------------------------------------------------
 
+-- Builds a row action button (Move up / Move down / Remove) as an AceGUI Icon
+-- widget so the row matches ConsumableMaster's iconography rather than the
+-- old "Up" / "Dn" / "X" text labels. opts.image is a texture path; opts.atlas
+-- swaps in a Blizzard atlas via the inner texture's SetAtlas — needed for
+-- transmog-icon-remove (the red "no entry" glyph) which has no plain path.
+local function makeRowIconBtn(AceGUI, opts)
+    local btn = AceGUI:Create("Icon")
+    btn:SetImageSize(22, 22)
+    btn:SetWidth(30)
+    btn:SetHeight(26)
+    if opts.atlas and btn.image and btn.image.SetAtlas then
+        btn.image:SetAtlas(opts.atlas)
+    elseif opts.image then
+        btn:SetImage(opts.image)
+    end
+    if opts.disabled then
+        if btn.image then
+            if btn.image.SetDesaturated then btn.image:SetDesaturated(true) end
+            if btn.image.SetVertexColor then btn.image:SetVertexColor(0.45, 0.45, 0.45) end
+        end
+    else
+        if btn.image then
+            if btn.image.SetDesaturated then btn.image:SetDesaturated(false) end
+            if btn.image.SetVertexColor then btn.image:SetVertexColor(1, 1, 1) end
+        end
+        btn:SetCallback("OnClick", opts.onClick)
+    end
+    if opts.tooltip then
+        btn:SetCallback("OnEnter", function(widget)
+            GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+            GameTooltip:SetText(opts.tooltip)
+            GameTooltip:Show()
+        end)
+        btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+    end
+    return btn
+end
+
 local function buildRow(AceGUI, parent, list, index)
     local entry = list[index]
     if not entry then return end
@@ -258,35 +296,38 @@ local function buildRow(AceGUI, parent, list, index)
     end)
     row:AddChild(dd)
 
-    local upBtn = AceGUI:Create("Button")
-    upBtn:SetText(L["Move up"] == "Move up" and "Up" or L["Move up"])
-    upBtn:SetWidth(50)
-    upBtn:SetDisabled(index == 1)
-    upBtn:SetCallback("OnClick", function()
-        if index <= 1 then return end
-        list[index], list[index - 1] = list[index - 1], list[index]
-        commitSoon()
-    end)
+    local upBtn = makeRowIconBtn(AceGUI, {
+        image    = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-Up]],
+        tooltip  = L["Move up"],
+        disabled = index == 1,
+        onClick  = function()
+            if index <= 1 then return end
+            list[index], list[index - 1] = list[index - 1], list[index]
+            commitSoon()
+        end,
+    })
     row:AddChild(upBtn)
 
-    local downBtn = AceGUI:Create("Button")
-    downBtn:SetText(L["Move down"] == "Move down" and "Dn" or L["Move down"])
-    downBtn:SetWidth(50)
-    downBtn:SetDisabled(index == #list)
-    downBtn:SetCallback("OnClick", function()
-        if index >= #list then return end
-        list[index], list[index + 1] = list[index + 1], list[index]
-        commitSoon()
-    end)
+    local downBtn = makeRowIconBtn(AceGUI, {
+        image    = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up]],
+        tooltip  = L["Move down"],
+        disabled = index == #list,
+        onClick  = function()
+            if index >= #list then return end
+            list[index], list[index + 1] = list[index + 1], list[index]
+            commitSoon()
+        end,
+    })
     row:AddChild(downBtn)
 
-    local rmBtn = AceGUI:Create("Button")
-    rmBtn:SetText("X")
-    rmBtn:SetWidth(40)
-    rmBtn:SetCallback("OnClick", function()
-        table.remove(list, index)
-        commitSoon()
-    end)
+    local rmBtn = makeRowIconBtn(AceGUI, {
+        atlas   = "transmog-icon-remove",
+        tooltip = L["Remove"],
+        onClick = function()
+            table.remove(list, index)
+            commitSoon()
+        end,
+    })
     row:AddChild(rmBtn)
 
     return row
