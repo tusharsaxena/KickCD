@@ -335,11 +335,11 @@ local function makeCheckbox(ctx, def)
     return cb
 end
 
--- AceGUI's Slider writes its raw numeric value into the editbox via
--- UpdateText() inside the C-side OnValueChanged handler. To honour
--- def.fmt ("%.2fx", "%d px"), we PostHook the inner slider's
--- OnValueChanged so our formatted text overwrites UpdateText's, and we
--- also re-format after each SetValue() (refresh path).
+-- The slider's editbox is left to AceGUI's default formatter (integer step
+-- → integer text, float step → 2-decimal text). Unit hints (px, ×) belong
+-- in def.label, not appended to the value. def.fmt is still consulted by
+-- the /kcd get|list slash output where text-only context benefits from a
+-- "48 px" / "1.50x" rendering.
 local function snapToStep(value, mn, step)
     if not (step and step > 0) then return value end
     return math.floor((value - mn) / step + 0.5) * step + mn
@@ -353,34 +353,16 @@ local function makeSlider(ctx, def)
     s:SetIsPercent(false)
     s:SetFullWidth(true)
 
-    local function applyFormat(value)
-        if not (def.fmt and s.editbox) then return end
-        local snapped = snapToStep(value, def.min or 0, def.step or 0)
-        local ok, str = pcall(string.format, def.fmt, snapped)
-        if ok then s.editbox:SetText(str) end
-    end
-
-    -- HookScript runs after AceGUI's Slider_OnValueChanged (which calls
-    -- UpdateText), so our formatted text wins.
-    if s.slider then
-        s.slider:HookScript("OnValueChanged", function(slider, newvalue)
-            if slider.setup then return end
-            applyFormat(newvalue)
-        end)
-    end
-
     local function refresh()
         local v = Helpers.Get(def.path)
         if type(v) ~= "number" then v = def.default or def.min or 0 end
         s:SetValue(v)
-        applyFormat(v)
     end
 
     s:SetCallback("OnMouseUp", function(_, _, value)
         local snapped = snapToStep(value, def.min or 0, def.step or 0)
         Helpers.Set(def.path, def.section, snapped)
         fireOnChange(def, snapped)
-        applyFormat(snapped)
     end)
 
     attachTooltip(s, def.label, def.tooltip)

@@ -464,7 +464,46 @@ local function classIconMarkup(classFile)
         local ok, markup = pcall(CreateAtlasMarkup, atlas, 16, 16)
         if ok and markup then return markup end
     end
-    return ("|TInterface\\Icons\\ClassIcon_%s:14:14:0:0|t"):format(classFile:lower())
+    return ("|TInterface\\Icons\\ClassIcon_%s:16:16:0:0|t"):format(classFile:lower())
+end
+
+-- [classFile] = { [specToken] = iconFileID }. Built lazily from
+-- GetSpecializationInfoForClassID; spec tokens are normalized to match the
+-- keys used in defaults/Spells.lua (uppercased, spaces stripped, so "Beast
+-- Mastery" -> "BEASTMASTERY").
+local specIconCache
+
+local function buildSpecIconCache()
+    local cache = {}
+    if not (GetNumClasses and GetClassInfo
+            and GetNumSpecializationsForClassID and GetSpecializationInfoForClassID) then
+        return cache
+    end
+    for classID = 1, GetNumClasses() do
+        local _, classFile = GetClassInfo(classID)
+        if classFile then
+            cache[classFile] = {}
+            local nSpecs = GetNumSpecializationsForClassID(classID) or 0
+            for i = 1, nSpecs do
+                local _, specName, _, icon = GetSpecializationInfoForClassID(classID, i)
+                if specName and icon then
+                    local token = specName:upper():gsub("%s+", "")
+                    cache[classFile][token] = icon
+                end
+            end
+        end
+    end
+    return cache
+end
+
+local function specIconMarkup(classFile, specToken)
+    if not specIconCache then specIconCache = buildSpecIconCache() end
+    local byClass = specIconCache[classFile]
+    local icon = byClass and byClass[specToken]
+    if icon then
+        return ("|T%s:16:16:0:0|t"):format(tostring(icon))
+    end
+    return ""
 end
 
 local function buildSpecEntries()
@@ -474,13 +513,13 @@ local function buildSpecEntries()
     local classOrder = sortedKeys(KickCD.DefaultSpells)
     for _, classFile in ipairs(classOrder) do
         local specs = sortedKeys(KickCD.DefaultSpells[classFile])
-        local hex   = classColorHex(classFile)
-        local icon  = classIconMarkup(classFile)
+        local hex       = classColorHex(classFile)
+        local cIcon     = classIconMarkup(classFile)
         local className = classDisplayName(classFile)
         for _, specToken in ipairs(specs) do
             local specName = titleCaseToken(specToken)
-            local plain    = specName .. " " .. className
-            local label    = ("%s |c%s%s|r"):format(icon, hex, plain)
+            local sIcon    = specIconMarkup(classFile, specToken)
+            local label    = ("%s %s |c%s%s %s|r"):format(cIcon, sIcon, hex, className, specName)
             entries[#entries + 1] = {
                 value     = classFile .. "/" .. specToken,
                 label     = label,

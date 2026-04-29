@@ -7,9 +7,7 @@
 - ✅ Rename the settings panel and entry name in the TOC file to "KickCD" - but the addon name and all references in the addon should continue to be "Ka0s KickCD"
 - ✅ Gracefully handle /kcd config in combat (show error message - do not open settings panel)
 - ✅ In the general panel, move the reset position to master controls header, remove the label (just the button) and delete the position sub header
-
-### All tabs
-
+- ✅ Some of the edit boxes sometimes add " px" or " x" or some other text when you change the value via the sliders - do not do this - if you need to specify that it is pixels add that in the label e.g. Primary size (in px)
 - ✅ Add some vertical spacing between the sub-header (e.g. Appearance, Debug) and the actual contents inside that sub-header (add spacing both above and below)
 - ✅ Increase the font size of the sub-header (e.g. Appearance, Debug)
 - ✅ Change the look and feel of buttons and drop downs - ask me for screenshots of what this should look like - refer to https://github.com/tusharsaxena/consumablemaster settings panel where it has the look and feel that i want
@@ -42,12 +40,11 @@
 - ✅ When hovering over the spell icon or spell name, show the in game tooltip for that spell
 - ✅ Remove the spell id aftyer the spell name
 - ✅ Some of the spell icons are destaurated - remove this desaturation (desturation should only happen if the checkbox is de-selected)
+- ✅ In the Spells > Spec selector, use both class icons and spec icons - [class icon][spec icon] [Class Name] [Spec Name]
 
 ## Enhancements
 
-- ☐ In the Spells > Spec selector, use both class icons and spec icons - [class icon][spec icon] [Class Name] [Spec Name]
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
-- ☐ Some of the edit boxes sometimes add " px" or " x" or some other text when you change the value via the sliders - do not do this - if you need to specify that it is pixels add that in the label e.g. Primary size (in px)
 - ☐ Do not apply the visual states settings (i.e. reduce alpha, change color of icons) for GCD cooldowns - only when the actual spell is on cooldown
 - ☐ Cooldown text shows sometimes (mostly it doesn't show)
 - ☐ Cooldown coloring is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time

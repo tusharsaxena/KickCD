@@ -52,7 +52,7 @@ local GROW_VALUES = {
 add{
     panel = "icons", section = "icons", group = L["Sizing"],
     path  = "icons.primarySize", type = "number",
-    label = L["Primary size"],
+    label = L["Primary size (in px)"],
     tooltip = L["Pixel size of the primary interrupt icon."],
     default = 48, min = 24, max = 96, step = 2, fmt = "%d px",
 }
@@ -66,7 +66,7 @@ add{
 add{
     panel = "icons", section = "icons", group = L["Sizing"],
     path  = "icons.gap", type = "number",
-    label = L["Gap"],
+    label = L["Gap (in px)"],
     tooltip = L["Pixel gap between adjacent icons."],
     default = 4, min = 0, max = 24, step = 1, fmt = "%d px",
 }
@@ -112,14 +112,14 @@ add{
 add{
     panel = "icons", section = "icons", group = L["Layout"],
     path  = "icons.secondaryOffsetX", type = "number",
-    label = L["X offset"],
+    label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", group = L["Layout"],
     path  = "icons.secondaryOffsetY", type = "number",
-    label = L["Y offset"],
+    label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift applied to the secondary block (positive = down, negative = up)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
@@ -165,7 +165,7 @@ add{
 add{
     panel = "icons", section = "icons", group = L["Border"],
     path  = "icons.borderSize", type = "number",
-    label = L["Border thickness"],
+    label = L["Border thickness (in px)"],
     tooltip = L["Border thickness in pixels."],
     default = 1, min = 0, max = 4, step = 1, fmt = "%d px",
 }
