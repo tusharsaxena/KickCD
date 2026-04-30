@@ -184,8 +184,7 @@ function Castbar:EnsureFrame()
 
     -- ----------------------------------------------------------------
     -- Bar area is a non-StatusBar Frame container; the two state bars
-    -- live inside it side-by-side (same anchors, alpha-switched), and
-    -- the spark / name / time text are children so they sit above both.
+    -- live inside it side-by-side (same anchors, alpha-switched).
     -- ----------------------------------------------------------------
     frame.bar = CreateFrame("Frame", nil, frame)
 
@@ -197,11 +196,22 @@ function Castbar:EnsureFrame()
         sb:SetValue(0)
     end
 
+    -- Overlay frame above the bars. Spark and the name/time text live
+    -- here so they draw on TOP of the bar's filled status texture —
+    -- otherwise the StatusBar children of frame.bar would render on top
+    -- of any FontString/Texture parented to frame.bar at OVERLAY layer
+    -- (child frames always draw above their parent's draw layers,
+    -- regardless of layer name). frame.overlay sits at a higher
+    -- FrameLevel than the bars, so its OVERLAY-layer children win.
+    frame.overlay = CreateFrame("Frame", nil, frame.bar)
+    frame.overlay:SetAllPoints(frame.bar)
+    frame.overlay:SetFrameLevel(frame.bar.interruptible:GetFrameLevel() + 1)
+
     -- Spark texture (overlay at the right edge of the inner status texture).
     -- We anchor it to the interruptible bar's status texture: both bars
     -- share the same SetMinMaxValues / SetValue calls each frame, so their
     -- inner textures are the same width — anchoring to either is fine.
-    frame.spark = frame.bar:CreateTexture(nil, "OVERLAY")
+    frame.spark = frame.overlay:CreateTexture(nil, "OVERLAY")
     frame.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
     frame.spark:SetBlendMode("ADD")
     frame.spark:SetSize(20, 30)
@@ -210,15 +220,14 @@ function Castbar:EnsureFrame()
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- crop the Blizzard border
 
-    -- Spell name (anchored relative to bar in ApplyConfig). Color is
-    -- per-state and curve-evaluated on a single FontString — no need
-    -- to stack two FontStrings.
-    frame.nameText = frame.bar:CreateFontString(nil, "OVERLAY")
+    -- Spell name + remaining time on the overlay frame (above the bars).
+    -- Color is per-state and curve-evaluated on a single FontString —
+    -- no need to stack two FontStrings.
+    frame.nameText = frame.overlay:CreateFontString(nil, "OVERLAY")
     frame.nameText:SetJustifyH("LEFT")
     frame.nameText:SetWordWrap(false)
 
-    -- Remaining time (anchored to the right edge of the bar in ApplyConfig).
-    frame.timeText = frame.bar:CreateFontString(nil, "OVERLAY")
+    frame.timeText = frame.overlay:CreateFontString(nil, "OVERLAY")
     frame.timeText:SetJustifyH("RIGHT")
 
     -- ----------------------------------------------------------------
@@ -634,6 +643,12 @@ function Castbar:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START",  "OnChannelStart")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP",   "OnCastStop")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", "OnCastDelayed")
+    -- Catch dynamic interruptibility transitions mid-cast (e.g. boss casts
+    -- that toggle interrupt-immunity via an aura). The events fire on the
+    -- transition, not at cast start, so the initial value still comes from
+    -- UnitCastingInfo.notInterruptible captured in Compat.GetCastingInfo.
+    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE",     "OnInterruptibilityChanged")
+    self:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "OnInterruptibilityChanged")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
 
     self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
@@ -679,6 +694,16 @@ end
 function Castbar:OnCastStop(_evt, unit)
     if unit ~= "target" then return end
     self:Stop()
+end
+
+function Castbar:OnInterruptibilityChanged(evt, unit)
+    if unit ~= "target" then return end
+    if not current then return end
+    -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
+    -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
+    -- interruptible. Update the record's bool and re-apply visuals.
+    current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+    self:ApplyState()
 end
 
 function Castbar:OnCastDelayed(_evt, unit)
@@ -732,6 +757,57 @@ function Castbar:OnProfileChanged()
     self:ApplyConfig()
     self:ApplyLock()
     if isVisible() then self:Reevaluate() else self:Stop() end
+end
+
+--- Print diagnostic info about the current target's cast and what the
+--- bar's logic decided about interruptibility. Wired to /kcd debug castbar.
+--- Does NOT call tostring or format on notInterruptible / spellID / name —
+--- those may be secret in combat. Uses tostring(type(...)) / boolean
+--- branching with `not not` to avoid arithmetic on secrets.
+function Castbar:DebugDump()
+    local print = KickCD.Util and KickCD.Util.print or _G.print
+    print("|cff00ff00KickCD|r castbar state:")
+
+    if not UnitExists("target") then
+        print("  no target")
+        return
+    end
+    print("  target = " .. (UnitName("target") or "?")
+        .. ", isUnit=" .. (UnitIsUnit("target", "player") and "self" or "other"))
+
+    if not current then
+        print("  no active cast tracked (current = nil)")
+        local rec = KickCD.Compat.GetCastingInfo("target")
+        if rec then
+            print("  but Compat.GetCastingInfo returned a record — debug a missed event?")
+        end
+        return
+    end
+
+    print("  current.isChannel = " .. tostring(current.isChannel))
+    -- Don't tostring/format secret values. Use type() and a curve eval to
+    -- safely report the boolean state without arithmetic on a secret.
+    local nintType = type(current.notInterruptible)
+    print("  current.notInterruptible: type=" .. nintType
+        .. ", isSecret=" .. tostring(_G.issecretvalue and _G.issecretvalue(current.notInterruptible) or false))
+    if nintType == "boolean" then
+        -- Plain boolean — safe to tostring.
+        print("    plain value = " .. tostring(current.notInterruptible))
+    elseif nintType == "nil" then
+        print("    plain nil (treated as interruptible)")
+    else
+        -- Likely secret. Use the curve evaluator to surface a safe int.
+        if _G.C_CurveUtil and _G.C_CurveUtil.EvaluateColorValueFromBoolean then
+            -- Pass to FontString:SetText via a hidden frame to render and
+            -- read back. Cleanest: just say "secret" and trust the curve.
+            print("    secret-tainted; visual state determined via "
+                .. "C_CurveUtil.EvaluateColorValueFromBoolean")
+        end
+    end
+    print("  duration: " .. (current.duration and "present" or "nil"))
+    print("  texture:  type=" .. type(current.texture))
+    print("  spellID:  type=" .. type(current.spellID))
+    print("  name:     type=" .. type(current.name))
 end
 
 -- Expose for /kcd debug + future tooling.

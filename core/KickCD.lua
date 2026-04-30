@@ -141,6 +141,12 @@ local DEBUG_COMMANDS = {
             if m and m.DebugDump then m:DebugDump()
             else p(self, "Cooldowns module not loaded") end
         end},
+    {"castbar", "Print the current target cast bar state",
+        function(self)
+            local m = self:GetModule("Castbar", true)
+            if m and m.DebugDump then m:DebugDump()
+            else p(self, "Castbar module not loaded") end
+        end},
     {"log",    "Toggle internal-message logging",
         function(self)
             self._debugLog = not self._debugLog
