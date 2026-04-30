@@ -51,8 +51,8 @@ Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown
         │                                    Compat.IsSpellUsable / GetSpellCharges
         │                                          │
         │                                          ▼
-        │                                  { ready, isActive, cdObject, charges }
-        │                                  (cdObject:GetRemainingDuration is secret in combat)
+        │                                  { ready, isActive, cdObject, chargeCdObject, charges }
+        │                                  (Get…Duration on either object is secret in combat)
         ▼
 StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE", payload)
                                                           │
@@ -149,7 +149,7 @@ Internal messages travel over AceEvent's per-addon bus (`KickCD:SendMessage` / `
 
 | Message | Sender | Listeners | Payload | Notes |
 |---|---|---|---|---|
-| `KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, charges }` | `cdObject` is the secret-aware `CooldownDuration` from `C_Spell.GetSpellCooldownDuration`; non-nil whenever `isActive` is true. `:GetRemainingDuration()` on it is secret in combat — only pass directly to C methods. `charges` may also be secret. |
+| `KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` | `cdObject` is the secret-aware `CooldownDuration` from `C_Spell.GetSpellCooldownDuration`; non-nil whenever `isActive` is true (real CD or just-GCD). `chargeCdObject` is set when the spell has charges and at least one is missing while `isActive=false` — i.e. a recharge timer is ticking but the spell is still castable; the IconGrid renders the recharge swipe + countdown text without the cooldown alpha/tint. `:GetRemainingDuration()` on either handle is secret in combat — only pass directly to C methods. `charges` may also be secret. |
 | `KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set`, `core/KickCD.lua` (lock/unlock) | `IconGrid`, `Cooldowns` | `{ section = "general"\|"icons"\|"spells" }` | section-keyed for cheap dispatch |
 | `KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback) | `IconGrid`, `Cooldowns` | `{ newProfileKey }` | fires for `OnProfileChanged` / `Copied` / `Reset` |
 
@@ -178,7 +178,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         secondaryRows, secondaryCols,
         secondaryOffsetX, secondaryOffsetY,
         -- Visual states (drives the alpha/tint curves in IconGrid)
-        readyAlpha, cooldownAlpha, cooldownTint,
+        readyAlpha, cooldownAlpha, cooldownTint, suppressGCDSwipe,
         -- Border
         borderShow, borderColor, borderSize,
         -- Annotations
@@ -200,7 +200,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 global = { dbVersion = N }    -- migration cursor, see Database.RunMigrations
 ```
 
-Forward-only migrations bring older saved-vars up to the current schema (`Database.Migrations[1..4]` in `core/Database.lua`). Notably `v4` translated the old `layout` (horizontal/vertical) + `primaryAnchor` pair into the unified 12-option `anchor` enum.
+Forward-only migrations bring older saved-vars up to the current schema (`Database.Migrations[1..11]` in `core/Database.lua`). Notable transitions: `v4` translated the old `layout` (horizontal/vertical) + `primaryAnchor` pair into the unified 12-option `anchor` enum; `v5/v6/v7/v8` introduced and refined the cast-bar shape; `v9` added the addon-wide visibility mode and per-slot ready glow; `v10` split the conflated `glowType ∈ {"none","proc","pixel"}` into orthogonal `glowTrigger` + `glowType` (LibCustomGlow's effect names), mapping old `"none"` → `trigger="never", type="proc"` and old `"proc"` / `"pixel"` → `trigger="always"` with the type preserved; `v11` added `icons.suppressGCDSwipe` (default on) so the cooldown swipe + countdown text follow the icon body's existing GCD-as-ready behavior.
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
 

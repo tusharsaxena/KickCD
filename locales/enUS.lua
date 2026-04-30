@@ -106,6 +106,9 @@ L["Icon alpha while the spell is on cooldown."] =
 L["Cooldown tint"]               = "Cooldown tint"
 L["RGB tint applied to icons during cooldown."] =
     "RGB tint applied to icons during cooldown."
+L["Suppress GCD swipe + text"]   = "Suppress GCD swipe + text"
+L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."] =
+    "Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."
 L["Show cooldown text"]          = "Show cooldown text"
 L["Render numeric seconds remaining on each icon."] =
     "Render numeric seconds remaining on each icon."
@@ -174,6 +177,7 @@ L["incapacitate"]                = "Incapacitate"
 L["silence"]                     = "Silence"
 L["root"]                        = "Root"
 L["fear"]                        = "Fear"
+L["displace"]                    = "Displace"
 L["racial"]                      = "Racial"
 L["other"]                       = "Other"
 

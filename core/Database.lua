@@ -44,6 +44,12 @@ local DEFAULT_PROFILE = {
         readyAlpha       = 1.0,
         cooldownAlpha    = 0.4,
         cooldownTint     = { 1, 0.4, 0.4, 1 },
+        -- When true, the cooldown swipe + countdown text are hidden
+        -- during the global cooldown period (≤ ~1.6s remaining); only
+        -- real cooldowns render the swipe/text. The icon-body alpha and
+        -- tint already treat GCD as "ready" via curve evaluation; this
+        -- toggle extends the same suppression to the swipe and text.
+        suppressGCDSwipe = true,
         borderShow       = false,
         borderColor      = { 0, 0, 0, 1 },
         borderSize       = 1,
@@ -204,7 +210,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 10
+local LATEST_VERSION = 11
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -464,6 +470,20 @@ local Migrations = {
             if type(icons) == "table" then
                 migrate(icons, "primary")
                 migrate(icons, "secondary")
+            end
+        end
+    end,
+
+    -- v11: added icons.suppressGCDSwipe (hides swipe + countdown text
+    -- during the GCD-only window). Default ON because the icon body's
+    -- alpha/tint already treats GCD as "ready" — most users expect the
+    -- swipe and text to follow suit. Existing profiles that haven't
+    -- opted out get the new behavior.
+    [11] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            local icons = profile.icons
+            if type(icons) == "table" and icons.suppressGCDSwipe == nil then
+                icons.suppressGCDSwipe = true
             end
         end
     end,

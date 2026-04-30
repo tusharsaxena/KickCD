@@ -37,10 +37,18 @@
 -- re-enables.
 --
 -- Message contract (closed):
---   FIRE:    KickCD_SPELL_STATE { spellID, ready, isActive, cdObject, charges }
---            cdObject is the secret-aware duration object — non-nil
---            whenever the legacy isActive flag is true (real CD or just
---            GCD; the IconGrid distinguishes via curve evaluation).
+--   FIRE:    KickCD_SPELL_STATE
+--              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--            cdObject is the secret-aware duration object for the
+--            spell-level cooldown — non-nil whenever the legacy isActive
+--            flag is true (real CD or just GCD; the IconGrid
+--            distinguishes via curve evaluation).
+--            chargeCdObject is the duration object for the recharge
+--            timer of a partially-charged spell (charges < maxCharges
+--            while isActive=false). The IconGrid renders its swipe +
+--            countdown text but does NOT apply the cooldown alpha/tint —
+--            the spell IS castable (state.ready stays true), it just
+--            has fewer charges available than max.
 --   LISTEN:  KickCD_PROFILE_CHANGED,
 --            KickCD_CONFIG_CHANGED (section=="spells" or "general")
 
@@ -81,7 +89,7 @@ end
 
 --- Compute the freshly-polled state for a single spellID.
 -- @param spellID number
--- @return table|nil  { spellID, ready, isActive, cdObject, charges }
+-- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --   Returns nil if the spell isn't actually known by the player (skip it
 --   per FR-2.8).
 function Cooldowns:PollSpell(spellID)
@@ -120,6 +128,23 @@ function Cooldowns:PollSpell(spellID)
         hasCharges = cur > 0
     end
 
+    -- Charge-recharge handle: when the spell has charges and the
+    -- spell-level cooldown is NOT active (i.e. at least one charge is
+    -- available), a missing charge is silently recharging in the
+    -- background. The IconGrid uses this to render the recharge swipe +
+    -- countdown text WITHOUT applying the on-cooldown alpha/tint — the
+    -- spell IS castable, it just has fewer charges available than max.
+    --
+    -- GetSpellCooldownDuration returns nil at full charges and the
+    -- recharge timer otherwise, so we can call it unconditionally here
+    -- (no Lua compare on possibly-secret cur/maxC needed). For combat
+    -- when both cur and maxC are secret we trust the API — if it says
+    -- there's no cooldown, there isn't one.
+    local chargeCdObject
+    if cur ~= nil and not isActive then
+        chargeCdObject = KickCD.Compat.GetSpellCooldownDuration(spellID)
+    end
+
     -- `ready` is the canonical "this spell can be cast right now" boolean.
     -- It's used for the spec-locked-spells filter and for downstream UI
     -- "show charges?" decisions, but NOT for visual states — visual states
@@ -129,21 +154,23 @@ function Cooldowns:PollSpell(spellID)
     local ready = (not isActive) and usable and hasCharges
 
     if KickCD._debugLog then
-        dprint(("poll [%d] %s isActive=%s usable=%s ready=%s cdObj=%s"):format(
+        dprint(("poll [%d] %s isActive=%s usable=%s ready=%s cdObj=%s chargeCdObj=%s"):format(
             spellID, tostring(name),
             tostring(isActive),
             tostring(usable),
             tostring(ready),
-            cdObject and "yes" or "nil"))
+            cdObject and "yes" or "nil",
+            chargeCdObject and "yes" or "nil"))
     end
 
     return {
-        spellID  = spellID,
-        ready    = ready,
-        isActive = isActive == true,
-        cdObject = cdObject,
-        charges  = cur,
-        _maxC    = maxC,
+        spellID        = spellID,
+        ready          = ready,
+        isActive       = isActive == true,
+        cdObject       = cdObject,
+        chargeCdObject = chargeCdObject,
+        charges        = cur,
+        _maxC          = maxC,
     }
 end
 
@@ -154,9 +181,10 @@ end
 --- charges available ↔ none).
 local function StateChanged(prev, next_)
     if not prev then return true end
-    if prev.ready    ~= next_.ready    then return true end
-    if prev.isActive ~= next_.isActive then return true end
-    if prev.cdObject ~= next_.cdObject then return true end
+    if prev.ready          ~= next_.ready          then return true end
+    if prev.isActive       ~= next_.isActive       then return true end
+    if prev.cdObject       ~= next_.cdObject       then return true end
+    if prev.chargeCdObject ~= next_.chargeCdObject then return true end
     -- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted
     -- numbers for charged spells (Blood Boil, Death Grip, talented Mind
     -- Freeze...). We can't `~=` two secrets without erroring. Previously
@@ -224,11 +252,12 @@ function Cooldowns:Rebuild()
             if state then
                 self.watched[id] = state
                 KickCD:SendMessage("KickCD_SPELL_STATE", {
-                    spellID  = state.spellID,
-                    ready    = state.ready,
-                    isActive = state.isActive,
-                    cdObject = state.cdObject,
-                    charges  = state.charges,
+                    spellID        = state.spellID,
+                    ready          = state.ready,
+                    isActive       = state.isActive,
+                    cdObject       = state.cdObject,
+                    chargeCdObject = state.chargeCdObject,
+                    charges        = state.charges,
                 })
             elseif KickCD._debugLog then
                 local p = KickCD.Util and KickCD.Util.print or print
@@ -248,11 +277,12 @@ function Cooldowns:Refresh()
         if next_ and StateChanged(prev, next_) then
             self.watched[id] = next_
             KickCD:SendMessage("KickCD_SPELL_STATE", {
-                spellID  = next_.spellID,
-                ready    = next_.ready,
-                isActive = next_.isActive,
-                cdObject = next_.cdObject,
-                charges  = next_.charges,
+                spellID        = next_.spellID,
+                ready          = next_.ready,
+                isActive       = next_.isActive,
+                cdObject       = next_.cdObject,
+                chargeCdObject = next_.chargeCdObject,
+                charges        = next_.charges,
             })
             if KickCD._debugLog then
                 dprint(("emit  [%d] ready=%s isActive=%s cdObj=%s"):format(
@@ -346,11 +376,12 @@ function Cooldowns:DebugDump()
         local name = KickCD.Compat.GetSpellInfo(id) or "?"
         -- We deliberately don't print remaining time — :GetRemainingDuration()
         -- is secret in combat and even tostring would error in tainted scope.
-        p(("  [%d] %s ready=%s active=%s cdObj=%s charges=%s"):format(
+        p(("  [%d] %s ready=%s active=%s cdObj=%s chargeCdObj=%s charges=%s"):format(
             id, name,
             tostring(s.ready),
             tostring(s.isActive),
             s.cdObject and "yes" or "nil",
+            s.chargeCdObject and "yes" or "nil",
             safeStr(s.charges)))
     end
 end

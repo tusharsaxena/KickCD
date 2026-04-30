@@ -82,7 +82,13 @@ local GCD_UPPER = 1.6
 -- frame / Frame:SetAlphaFromBoolean / Texture:SetVertexColor accept as
 -- arguments without taint errors. This is FIH's cdReadyCurve pattern,
 -- generalized to KickCD's per-state visuals.
-local alphaCurve, tintCurve
+--
+-- gcdSuppressCurve drives the cooldown swipe + countdown text alpha when
+-- cfg.suppressGCDSwipe is true: 0 below GCD_UPPER (hide), 1 above (show).
+-- Applied via SetAlphaFromBoolean(true, curveValue, 0) so the (possibly
+-- secret) numeric result rides through Blizzard's C method without
+-- needing to be read in Lua.
+local alphaCurve, tintCurve, gcdSuppressCurve
 
 -- True when the master enable flag is set. Defaults to true on a fresh
 -- profile, so a missing field reads as enabled.
@@ -174,6 +180,19 @@ local function BuildCurves()
     alphaCurve:AddPoint(GCD_UPPER,     readyAlpha)
     alphaCurve:AddPoint(GCD_UPPER + 0.001, cooldownAlpha)
     alphaCurve:AddPoint(3600,          cooldownAlpha)
+
+    -- Step from 0 (hide swipe + text) to 1 (show) at GCD_UPPER. Same
+    -- shape as alphaCurve but the values are visibility flags rather
+    -- than alphas. The output rides through SetAlphaFromBoolean(true,
+    -- value, 0) when cfg.suppressGCDSwipe is on.
+    gcdSuppressCurve = C_CurveUtil.CreateCurve()
+    if gcdSuppressCurve.SetType and Enum and Enum.LuaCurveType then
+        gcdSuppressCurve:SetType(Enum.LuaCurveType.Linear)
+    end
+    gcdSuppressCurve:AddPoint(0,                 0)
+    gcdSuppressCurve:AddPoint(GCD_UPPER,         0)
+    gcdSuppressCurve:AddPoint(GCD_UPPER + 0.001, 1)
+    gcdSuppressCurve:AddPoint(3600,              1)
 
     if C_CurveUtil.CreateColorCurve and CreateColor then
         tintCurve = C_CurveUtil.CreateColorCurve()
@@ -330,18 +349,28 @@ end
 -- legal), so we live with a single fixed format. "%.1f" is the same shape
 -- FIH uses for its timer.
 --
--- The OnUpdate calls SetFormattedText every ~0.1s; we never decide "is it
--- 0 yet?" — the Cooldowns module flips state.isActive=false when the
--- legacy isActive boolean transitions, and Apply will then call
--- StopCooldownText.
-function Icon:StartCooldownText(cdObject)
+-- The OnUpdate calls SetFormattedText every ~0.1s. For full spell-level
+-- cooldowns we additionally re-poll the plain `isActive` bool from
+-- Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN can lag the actual
+-- cooldown end by a few hundred ms, leaving the text stuck at "0.0"
+-- until Cooldowns:Refresh re-emits SPELL_STATE. Because isActive is
+-- plain (taint-safe), reading it here is free; on the flip we kill the
+-- text + clear the swipe locally and let Cooldowns catch up via its
+-- own event handler shortly after.
+--
+-- For the charge-recharge path (cdObject = state.chargeCdObject,
+-- isFullCooldown=false), the spell-level isActive stays false the
+-- whole time so we skip that early-exit branch — SPELL_UPDATE_CHARGES
+-- handles the recharge-end transition with adequate latency.
+function Icon:StartCooldownText(cdObject, isFullCooldown)
     local cfg = self.cfg or KickCD.db.profile.icons
     if not cfg.showCooldownText or not cdObject then
         self:StopCooldownText()
         return
     end
-    self._cdObject = cdObject
-    self._cdAcc    = 0
+    self._cdObject       = cdObject
+    self._cdAcc          = 0
+    self._isFullCooldown = isFullCooldown and true or false
     -- Initial paint. SetFormattedText handles the secret value via its
     -- C-side argument path; the same pattern works inside OnUpdate.
     self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
@@ -354,6 +383,17 @@ function Icon:StartCooldownText(cdObject)
         if not obj then
             s:StopCooldownText()
             return
+        end
+        if s._isFullCooldown then
+            local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(s.spellID)
+            if not isActive then
+                s:StopCooldownText()
+                if s.cooldown then
+                    s.cooldown:Hide()
+                    s.cooldown:Clear()
+                end
+                return
+            end
         end
         s.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
     end)
@@ -477,13 +517,45 @@ function Icon:UpdateGlow(state)
     self:StartGlow(kind, color)
 end
 
+-- Apply the configured GCD-suppression alpha mask to the cooldown
+-- swipe + countdown text using a duration object. When
+-- cfg.suppressGCDSwipe is on, the gcdSuppressCurve evaluates to 0 below
+-- GCD_UPPER (hide) and 1 above (show). The result is fed through
+-- SetAlphaFromBoolean(true, value, 0) — both args may be secret-tainted
+-- in combat but the C method handles it.
+local function applyGcdSuppressionAlpha(icon, cdObject)
+    local cfg = icon.cfg or KickCD.db.profile.icons
+    if cfg and cfg.suppressGCDSwipe and gcdSuppressCurve and cdObject
+        and icon.cooldown.SetAlphaFromBoolean and icon.cooldownText.SetAlphaFromBoolean
+    then
+        local visAlpha = cdObject:EvaluateRemainingDuration(gcdSuppressCurve)
+        icon.cooldown:SetAlphaFromBoolean(true, visAlpha, 0)
+        icon.cooldownText:SetAlphaFromBoolean(true, visAlpha, 0)
+    else
+        icon.cooldown:SetAlpha(1)
+        icon.cooldownText:SetAlpha(1)
+    end
+end
+
 -- Apply a KickCD_SPELL_STATE payload to this icon. Payload shape:
---   { spellID, ready, isActive, cdObject, charges }
--- cdObject is the secret-aware CooldownDuration handle (non-nil whenever
--- the legacy isActive flag is true). The GCD-vs-real-CD distinction is
--- made here, C-side, by evaluating the duration object against the
--- alpha/tint curves built in BuildCurves — that way Lua never has to
--- compare the spell's secret-tainted remaining time directly.
+--   { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--
+-- Three branches:
+--   1. cdObject non-nil — full spell-level cooldown (real CD or
+--      just-GCD). Curves drive the icon-body alpha / tint so a GCD-only
+--      window still reads as "ready"; a real CD past the GCD threshold
+--      dims and tints the icon. Swipe + text render unconditionally,
+--      gated on cfg.suppressGCDSwipe via gcdSuppressCurve.
+--   2. chargeCdObject non-nil — partial-charge recharge timer ticking
+--      while at least one charge is still available. Render swipe + text
+--      WITHOUT mutating alpha / tint — the spell IS castable
+--      (state.ready stays true), it just has fewer charges than max.
+--   3. otherwise — no cooldown at all. Plain ready
+--      visuals; no swipe / text.
+--
+-- The GCD-vs-real-CD and ready-vs-charging distinctions all happen
+-- C-side via curve evaluation; Lua never compares the spell's
+-- secret-tainted remaining time directly.
 function Icon:Apply(state)
     local cfg = self.cfg or KickCD.db.profile.icons
     -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
@@ -492,10 +564,7 @@ function Icon:Apply(state)
     self._lastState = state
 
     if state and state.cdObject and alphaCurve then
-        -- Cooldown active (real CD or just GCD). Curves drive the visuals
-        -- so a GCD-only window still reads as "ready" (alpha=readyAlpha,
-        -- tint=white), while a real CD past the GCD threshold dims and
-        -- tints the icon.
+        -- Branch 1: full cooldown.
         local alpha = state.cdObject:EvaluateRemainingDuration(alphaCurve)
         -- SetAlphaFromBoolean accepts secret values for its alpha args
         -- (FIH uses the same pattern for its cdReadyCurve). Passing `true`
@@ -515,15 +584,31 @@ function Icon:Apply(state)
 
         self.cooldown:SetCooldownFromDurationObject(state.cdObject)
         self.cooldown:Show()
-        self:StartCooldownText(state.cdObject)
+        self:StartCooldownText(state.cdObject, true)
+        applyGcdSuppressionAlpha(self, state.cdObject)
 
         if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
             KickCD.Util.print(("IconGrid: apply [%d] active (curve)"):format(
                 state.spellID or -1))
         end
+    elseif state and state.chargeCdObject then
+        -- Branch 2: charge recharge ticking; spell is still castable.
+        -- Show swipe + countdown text but keep the icon body at ready
+        -- visuals (no alpha dim, no tint shift). state.ready stays true
+        -- so the glow trigger keeps firing as configured.
+        self:SetAlpha(cfg.readyAlpha or 1.0)
+        self.icon:SetVertexColor(1, 1, 1)
+        self.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
+        self.cooldown:Show()
+        self:StartCooldownText(state.chargeCdObject, false)
+        applyGcdSuppressionAlpha(self, state.chargeCdObject)
+
+        if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+            KickCD.Util.print(("IconGrid: apply [%d] charging (curve)"):format(
+                state.spellID or -1))
+        end
     else
-        -- No active cooldown of any kind. Plain ready visuals — no need
-        -- for curve indirection here, the values are all plain.
+        -- Branch 3: no active cooldown of any kind. Plain ready visuals.
         self:SetAlpha(cfg.readyAlpha or 1.0)
         self.icon:SetVertexColor(1, 1, 1)
         self.cooldown:Hide()

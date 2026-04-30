@@ -48,18 +48,28 @@
 - ✅ Add icon glow when spells are ready (proc, pixel) — separate type+color settings for primary and secondary icons
 - ✅ Add a dropdown for glows: Show always / show when target is casting / show when target is casting interruptible / never. Glow style picker (Button / Proc / Pixel / Auto cast) is independent of the trigger.
 - ✅ Adopt LibCustomGlow-1.0 as the glow rendering backend — gives access to Blizzard's full glow palette (rotating rays, proc flipbook, pixel border, autocast sparkles)
+- ✅ Sometimes the cooldown text gets stuck at 0.0 for a few seconds even after it comes off cooldown
+- ✅ Cooldown text and swipe shows for GCD actions, add a toggle to disable this (only show for genuine cooldowns) — `icons.suppressGCDSwipe`, default on
+- ✅ Cooldown text and swipe doesnt show when a spell with charges is partially off cooldown — added `chargeCdObject` to SPELL_STATE; swipe + text render without changing alpha/tint while the spell is still castable
+- ✅ "When target is casting an interruptible spell" is not working - it still shows the addon when a non interruptible spell is being cast. This applies to both the general visibility, and the glow settings classifiers
+- ✅ On secondary icons, if a glow is meannt to be shown, it appears like the glow initial animation is redrawn every 0.1 seconds - makes it very janky. This does not happen in the alwats trigger case, only if some other option is selected
 
 ## Not Yet Started
 
-- ☐ "When target is casting an interruptible spell" is not working - it still shows the addon when a non interruptible spell is being cast. This applies to both the general visibility, and the glow settings classifiers
-- ☐ On secondary icons, if a glow is meannt to be shown, it appears like the glow initial animation is redrawn every 0.1 seconds - makes it very janky. This does not happen in the alwats trigger case, only if some other option is selected
 - ☐ Add a glowing background animated texture behind the cast bars - this will give a strong indication that a cast is happening. Color this animated texture the same color as the castbar color (depending on interuptable/non-interuptable). Add this as a toggleable feature separately for interuptable/non-interuptable. Also add a texture selector and color selector (default color is same as bar color, with a checkbox to select same as bar color)
-
-## Later
-
+- ☐ Bug — partial-charge swipe: New chargeCdObject field on the SPELL_STATE payload. Cooldowns:PollSpell calls GetSpellCooldownDuration whenever the spell has charges and the spell-level cooldown is inactive — Blizzard's API returns nil at full charges, so no Lua compare on possibly-secret cur < maxC is needed. Icon:Apply gains a third branch: when cdObject is nil but chargeCdObject is non-nil, it renders the swipe + countdown text without touching alpha/tint (icon stays at readyAlpha, white tint). state.ready stays true so the glow trigger keeps firing as configured.
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
-- ☐ Sometimes the cooldown text gets stuck at 0.0 for a few seconds even after it comes off cooldown
-- ☐ Cooldown text and swipe shows for GCD actions, add a toggle to disable this (only show for genuine cooldowns)
-- ☐ Cooldown text and swipe doesnt show when a spell with charges is partially off cooldown (i.e. spell has 2 charges, 1 charge has been used)
 - ☐ Add the ability to add items along with spells for tracking
+
+## Pre Release
+
 - ☐ Remove all DB migration paths
+- ☐ Documentation MD files have become too large and bloated. Split CLAUDE.md and ARCHITECTURE.md into smaller files with every file being a section have having a naming convention like CLAUDE_<SECTION_NAME>.md. The main file references these sub files. 
+- ☐ Remove all external refs
+- ☐ Do a deep review of the addon code and update CLAUDE_*.md and ARCHITECTURE_*.md
+- ☐ Do a PE review of the codebase
+- ☐ Do a deep review of all settings panels
+- ☐ Update default settings
+- ☐ Change addon icon
+- ☐ Take screenshots and in combat video (convert to GIF)
+- ☐ Update README with critical settings (especially visibility), FAQS, Troubleshooting and Changelog

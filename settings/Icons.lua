@@ -146,6 +146,13 @@ add{
     tooltip = L["RGB tint applied to icons during cooldown."],
     default = { 1, 0.4, 0.4, 1 },
 }
+add{
+    panel = "icons", section = "icons", group = L["Visual states"],
+    path  = "icons.suppressGCDSwipe", type = "bool",
+    label = L["Suppress GCD swipe + text"],
+    tooltip = L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."],
+    default = true,
+}
 
 -- Border -------------------------------------------------------------
 add{
