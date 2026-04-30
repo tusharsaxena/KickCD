@@ -224,39 +224,92 @@ add{
 }
 
 -- Ready glow ---------------------------------------------------------
--- Per-slot glow shown whenever the spell is castable (off cooldown,
--- usable, has charges). Primary and secondary icons each get their
--- own type+color so a player can flag the primary in one style and
--- the supports in another.
+-- Per-slot glow with two orthogonal dropdowns:
+--
+--   * Trigger — WHEN the glow fires:
+--       - "never"                       : glow off
+--       - "always"                      : whenever the spell is ready
+--       - "target_casting"              : ready AND target is casting
+--       - "target_casting_interruptible": ready AND target is casting
+--                                         an interruptible spell
+--
+--   * Type — WHICH visual is rendered (LibCustomGlow effects):
+--       - "button"   : Blizzard rotating rays + spark
+--       - "proc"     : Modern Blizzard proc flipbook
+--       - "pixel"    : Animated pixel-art border
+--       - "autocast" : Pet auto-cast sparkle particles
+--
+-- Color is a single RGBA tuple shared across types (each LCG function
+-- accepts the same {r,g,b,a} shape). Primary and secondary icons each
+-- get their own trigger + type + color.
 
-local GLOW_VALUES = {
-    { value = "none",  label = L["None"]  },
-    { value = "proc",  label = L["Proc"]  },
-    { value = "pixel", label = L["Pixel"] },
+local GLOW_TRIGGER_VALUES = {
+    { value = "never",                       label = L["Never"]                                       },
+    { value = "always",                      label = L["Always"]                                      },
+    { value = "target_casting",              label = L["When target is casting"]                      },
+    { value = "target_casting_interruptible", label = L["When target is casting an interruptible spell"] },
 }
 
+local GLOW_TYPE_VALUES = {
+    { value = "button",   label = L["Button (rotating rays)"] },
+    { value = "proc",     label = L["Proc (flipbook)"]        },
+    { value = "pixel",    label = L["Pixel border"]           },
+    { value = "autocast", label = L["Auto cast sparkles"]     },
+}
+
+-- Schema rows are interleaved primary/secondary so the two-column
+-- renderer in settings/Panel.lua (Helpers.RenderSchema, pairs adjacent
+-- entries into a Flow row) produces a layout where the left column is
+-- the primary slot's controls and the right column mirrors it on the
+-- secondary slot:
+--
+--   Primary glow trigger | Secondary glow trigger
+--   Primary glow style   | Secondary glow style
+--   Primary glow color   | Secondary glow color
+
+-- Trigger row -----------------------------------------------------
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.primaryGlowTrigger", type = "string",
+    label = L["Primary glow trigger"],
+    tooltip = L["When to show the glow on the primary icon."],
+    default = "never",
+    values  = GLOW_TRIGGER_VALUES,
+}
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.secondaryGlowTrigger", type = "string",
+    label = L["Secondary glow trigger"],
+    tooltip = L["When to show the glow on secondary icons."],
+    default = "never",
+    values  = GLOW_TRIGGER_VALUES,
+}
+
+-- Style row -------------------------------------------------------
 add{
     panel = "icons", section = "icons", group = L["Ready glow"],
     path  = "icons.primaryGlowType", type = "string",
-    label = L["Primary glow"],
-    tooltip = L["Glow style on the primary icon when the spell is ready to cast."],
-    default = "none",
-    values  = GLOW_VALUES,
+    label = L["Primary glow style"],
+    tooltip = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
+    default = "proc",
+    values  = GLOW_TYPE_VALUES,
 }
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.secondaryGlowType", type = "string",
+    label = L["Secondary glow style"],
+    tooltip = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
+    default = "proc",
+    values  = GLOW_TYPE_VALUES,
+}
+
+-- Color row -------------------------------------------------------
 add{
     panel = "icons", section = "icons", group = L["Ready glow"],
     path  = "icons.primaryGlowColor", type = "color",
     label = L["Primary glow color"],
     tooltip = L["Glow color on the primary icon."],
     default = { 0.95, 0.95, 0.32, 1 },
-}
-add{
-    panel = "icons", section = "icons", group = L["Ready glow"],
-    path  = "icons.secondaryGlowType", type = "string",
-    label = L["Secondary glow"],
-    tooltip = L["Glow style on secondary icons when the spell is ready to cast."],
-    default = "none",
-    values  = GLOW_VALUES,
 }
 add{
     panel = "icons", section = "icons", group = L["Ready glow"],

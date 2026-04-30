@@ -275,45 +275,14 @@ local function CreateIconWidget(parent)
     charges:Hide()
     btn.chargesText = charges
 
-    -- Ready glow. Owned by a child Frame so its OnUpdate animation doesn't
-    -- collide with the icon's own OnUpdate (used by the cooldown text
-    -- overlay). Frame level is bumped above the cooldown swipe and the
-    -- per-icon border textures so the glow always renders on top.
+    -- Ready glow. A plain child Frame sized to the icon; LibCustomGlow
+    -- attaches its own animated children (textures + AnimationGroups)
+    -- when StartGlow runs. Frame level is bumped above the cooldown
+    -- swipe and the per-icon border textures so the glow always renders
+    -- on top.
     local glow = CreateFrame("Frame", nil, btn)
     glow:SetAllPoints(btn)
     glow:SetFrameLevel(btn:GetFrameLevel() + 5)
-    glow:Hide()
-
-    -- Proc style: Blizzard's IconAlert texture (the standard yellow
-    -- spell-activation highlight) drawn centered with a slight overscale
-    -- so the glow bleeds past the icon edge. SetVertexColor recolors it
-    -- so the user can pick a non-yellow shade. Animation pulses scale +
-    -- alpha via OnUpdate.
-    local proc = glow:CreateTexture(nil, "OVERLAY", nil, 7)
-    proc:SetTexture("Interface\\SpellActivationOverlay\\IconAlert")
-    proc:SetTexCoord(0.00781250, 0.50781250, 0.27734375, 0.52734375)
-    proc:SetBlendMode("ADD")
-    proc:SetPoint("CENTER", btn, "CENTER", 0, 0)
-    proc:Hide()
-    glow.proc = proc
-
-    -- Pixel style: 4 colored 2px line textures around the icon edge.
-    -- Anchored to the button so they track size changes for free; corners
-    -- overlap by 2px (top/bottom span the full width; left/right inset
-    -- between them) so we don't leave 1px gaps. Animation pulses alpha.
-    local function makePixel()
-        local t = glow:CreateTexture(nil, "OVERLAY", nil, 7)
-        t:SetColorTexture(1, 1, 1, 1)
-        t:SetBlendMode("ADD")
-        t:Hide()
-        return t
-    end
-    glow.pixelTop    = makePixel()
-    glow.pixelBottom = makePixel()
-    glow.pixelLeft   = makePixel()
-    glow.pixelRight  = makePixel()
-    glow._kind       = "none"
-    glow._elapsed    = 0
     btn.glow = glow
 
     -- Per-instance state: cfg points at db.profile.icons during Apply so we
@@ -400,143 +369,108 @@ end
 -- Ready glow
 -- ---------------------------------------------------------------------------
 --
--- Two glow kinds are drawn entirely from this module — no external lib:
+-- Glow rendering is delegated to LibCustomGlow-1.0 (vendored under
+-- libs/LibCustomGlow-1.0). The library handles the textures, animations,
+-- and frame-level management for each effect; we only own the trigger
+-- decision and the per-slot config plumbing.
 --
---   * "proc"  — Blizzard's IconAlert spell-activation texture, recolored
---               and pulsed via scale + alpha. Visually similar to the
---               standard ActionButton overlay glow.
---   * "pixel" — A simple 4-line colored border around the icon, alpha-
---               pulsed in unison.
+-- Trigger values (db.profile.icons.{primary,secondary}GlowTrigger):
+--   * "never"                       — glow off
+--   * "always"                      — glow whenever the spell is ready
+--   * "target_casting"              — only while target is casting (any spell)
+--   * "target_casting_interruptible" — only for interruptible target casts
 --
--- The glow shows when state.ready is true (spell is castable: not on
--- cooldown, usable, has charges). On every other state it hides. Primary
--- and secondary icons read independent type+color settings — Layout
--- stamps `_isPrimary` on each icon so we know which slot we're in.
+-- Type values map 1:1 to LibCustomGlow's four glow effects:
+--   * "button"   — LCG.ButtonGlow_Start   (Blizzard rotating rays + spark)
+--   * "proc"     — LCG.ProcGlow_Start     (modern Blizzard proc flipbook)
+--   * "pixel"    — LCG.PixelGlow_Start    (animated pixel border)
+--   * "autocast" — LCG.AutoCastGlow_Start (pet auto-cast sparkles)
+--
+-- Primary and secondary icons read independent trigger / type / color
+-- settings — Layout stamps `_isPrimary` on each icon so UpdateGlow knows
+-- which slot it's in.
 
-local TWO_PI = math.pi * 2
-
-local function glowOnUpdate(self, elapsed)
-    self._elapsed = (self._elapsed or 0) + elapsed
-    -- Phase ∈ [0, 2π) over a 1.4s period; sin maps to [-1, 1] which we
-    -- scale to [0.5, 1] for alpha and [1, 1.15] for proc-glow scale.
-    local phase = (self._elapsed * (TWO_PI / 1.4)) % TWO_PI
-    local s     = (math.sin(phase) + 1) * 0.5         -- 0..1
-    if self._kind == "proc" and self.proc:IsShown() then
-        local a = 0.5 + s * 0.5                       -- 0.5..1.0
-        self.proc:SetAlpha(a * (self._alphaScale or 1))
-        local size = self._procBaseSize or 0
-        if size > 0 then
-            local k = 1.0 + s * 0.10                  -- 1.0..1.10
-            self.proc:SetSize(size * k, size * k)
-        end
-    elseif self._kind == "pixel" then
-        local a = 0.4 + s * 0.6                       -- 0.4..1.0
-        a = a * (self._alphaScale or 1)
-        self.pixelTop:SetAlpha(a)
-        self.pixelBottom:SetAlpha(a)
-        self.pixelLeft:SetAlpha(a)
-        self.pixelRight:SetAlpha(a)
-    end
-end
-
-function Icon:StopGlow()
-    if not self.glow then return end
-    self.glow:SetScript("OnUpdate", nil)
-    self.glow.proc:Hide()
-    self.glow.pixelTop:Hide()
-    self.glow.pixelBottom:Hide()
-    self.glow.pixelLeft:Hide()
-    self.glow.pixelRight:Hide()
-    self.glow:Hide()
-    self.glow._kind = "none"
-end
+local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
+-- Per-frame key passed to LCG so addons sharing a button (e.g. Masque
+-- ports) can coexist without each other's glow effects. ButtonGlow_Stop
+-- doesn't take a key (only one Blizzard-style glow per frame); the
+-- other three Stop fns do.
+local LCG_KEY = "KickCD"
 
 local function unpackGlowColor(c)
     if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
     return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
 end
 
-function Icon:StartGlow(kind, color)
-    local glow = self.glow
-    if not glow then return end
-    local r, g, b, a = unpackGlowColor(color)
-
-    -- Hide any previously-active widgets so a kind change (proc → pixel)
-    -- doesn't leave the old kind painted underneath.
-    glow.proc:Hide()
-    glow.pixelTop:Hide()
-    glow.pixelBottom:Hide()
-    glow.pixelLeft:Hide()
-    glow.pixelRight:Hide()
-
-    glow._kind       = kind
-    glow._elapsed    = 0
-    glow._alphaScale = a   -- color's alpha multiplies the pulse
-
-    if kind == "proc" then
-        local w, h = self:GetSize()
-        local base = math.max(w, h) * 1.4
-        glow._procBaseSize = base
-        glow.proc:SetVertexColor(r, g, b, 1)
-        glow.proc:SetAlpha(a)
-        glow.proc:SetSize(base, base)
-        glow.proc:Show()
-    elseif kind == "pixel" then
-        local TH = 2
-        local function place(t)
-            t:SetColorTexture(r, g, b, 1)
-            t:SetAlpha(a)
-            t:Show()
-        end
-        place(glow.pixelTop)
-        place(glow.pixelBottom)
-        place(glow.pixelLeft)
-        place(glow.pixelRight)
-
-        glow.pixelTop:ClearAllPoints()
-        glow.pixelTop:SetPoint("BOTTOMLEFT",  self, "TOPLEFT",  -TH, 0)
-        glow.pixelTop:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT",  TH, 0)
-        glow.pixelTop:SetHeight(TH)
-
-        glow.pixelBottom:ClearAllPoints()
-        glow.pixelBottom:SetPoint("TOPLEFT",     self, "BOTTOMLEFT",  -TH, 0)
-        glow.pixelBottom:SetPoint("TOPRIGHT",    self, "BOTTOMRIGHT",  TH, 0)
-        glow.pixelBottom:SetHeight(TH)
-
-        glow.pixelLeft:ClearAllPoints()
-        glow.pixelLeft:SetPoint("TOPRIGHT",    self, "TOPLEFT",     0, 0)
-        glow.pixelLeft:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT",  0, 0)
-        glow.pixelLeft:SetWidth(TH)
-
-        glow.pixelRight:ClearAllPoints()
-        glow.pixelRight:SetPoint("TOPLEFT",    self, "TOPRIGHT",    0, 0)
-        glow.pixelRight:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT", 0, 0)
-        glow.pixelRight:SetWidth(TH)
-    else
-        return self:StopGlow()
-    end
-
-    glow:Show()
-    glow:SetScript("OnUpdate", glowOnUpdate)
+function Icon:StopGlow()
+    local g = self.glow
+    if not (g and LCG) then return end
+    -- Stop every effect kind unconditionally so a stale glow from a
+    -- previous type doesn't linger when the user switches types.
+    LCG.ButtonGlow_Stop(g)
+    LCG.PixelGlow_Stop(g, LCG_KEY)
+    LCG.AutoCastGlow_Stop(g, LCG_KEY)
+    LCG.ProcGlow_Stop(g, LCG_KEY)
 end
 
--- Decide glow visibility from the current state and config; called from
--- Apply (state changed) and from ApplyAppearance (icon size or per-slot
--- config changed). state.ready is the canonical "spell can be cast"
--- boolean — see modules/Cooldowns.lua.
+function Icon:StartGlow(kind, color)
+    local g = self.glow
+    if not (g and LCG) then return end
+    local r, gr, b, a = unpackGlowColor(color)
+    local c = { r, gr, b, a }
+    -- Stop first so a kind change (e.g. button → pixel) doesn't stack.
+    self:StopGlow()
+    if kind == "button" then
+        LCG.ButtonGlow_Start(g, c)
+    elseif kind == "proc" then
+        LCG.ProcGlow_Start(g, { color = c, key = LCG_KEY })
+    elseif kind == "pixel" then
+        -- (frame, color, N, frequency, length, th, xOffset, yOffset, border, key, frameLevel)
+        LCG.PixelGlow_Start(g, c, nil, nil, nil, nil, nil, nil, nil, LCG_KEY)
+    elseif kind == "autocast" then
+        -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
+        LCG.AutoCastGlow_Start(g, c, nil, nil, nil, 0, 0, LCG_KEY)
+    end
+end
+
+-- Resolve the trigger condition for this icon's slot. Reuses the same
+-- helpers the addon-wide visibility mode uses so triggers and visibility
+-- stay in lockstep semantically.
+local function triggerSatisfied(trigger)
+    if trigger == "always" then
+        return true
+    elseif trigger == "target_casting" then
+        return isTargetCasting()
+    elseif trigger == "target_casting_interruptible" then
+        return KickCD.Compat
+           and KickCD.Compat.IsCastingInterruptible
+           and KickCD.Compat.IsCastingInterruptible("target")
+           or false
+    end
+    -- "never" or unknown — glow off.
+    return false
+end
+
+-- Decide glow visibility from the current state, config, and trigger
+-- condition. Called from Apply (state changed), ApplyTextConfig
+-- (per-slot config changed via Layout), and IconGrid:RefreshAllGlows
+-- (target / cast events fire the trigger reevaluation). state.ready is
+-- the canonical "spell can be cast" boolean — see modules/Cooldowns.lua.
 function Icon:UpdateGlow(state)
     local cfg = self.cfg or KickCD.db.profile.icons
     if not cfg then return self:StopGlow() end
 
-    local kind, color
+    local trigger, kind, color
     if self._isPrimary then
-        kind, color = cfg.primaryGlowType,   cfg.primaryGlowColor
+        trigger, kind, color =
+            cfg.primaryGlowTrigger,   cfg.primaryGlowType,   cfg.primaryGlowColor
     else
-        kind, color = cfg.secondaryGlowType, cfg.secondaryGlowColor
+        trigger, kind, color =
+            cfg.secondaryGlowTrigger, cfg.secondaryGlowType, cfg.secondaryGlowColor
     end
 
     local ready = state and state.ready and true or false
-    if not ready or kind == nil or kind == "none" then
+    if not ready or not triggerSatisfied(trigger) then
         self:StopGlow()
         return
     end
@@ -1161,7 +1095,7 @@ function IconGrid:OnEnable()
     -- the user hasn't opted into a gated mode is a few cheap callbacks.
     self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
     self:RegisterEvent("PLAYER_REGEN_ENABLED",          "OnRegenEnabled")
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "RefreshVisibility")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("UNIT_SPELLCAST_START",          "OnTargetCastEvent")
     self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnTargetCastEvent")
     self:RegisterEvent("UNIT_SPELLCAST_FAILED",         "OnTargetCastEvent")
@@ -1253,11 +1187,32 @@ end
 
 --- UNIT_SPELLCAST_* events fire for any unit. We only care about the
 --- "target" unit because that's what the "target_casting" visibility
---- mode keys off of. Filter here so RefreshVisibility doesn't re-run on
---- every player / nameplate cast.
+--- mode + the glow trigger key off of. Filter here so RefreshVisibility
+--- and RefreshAllGlows don't re-run on every player / nameplate cast.
 function IconGrid:OnTargetCastEvent(_evt, unit)
     if unit ~= "target" then return end
     self:RefreshVisibility()
+    self:RefreshAllGlows()
+end
+
+--- PLAYER_TARGET_CHANGED handler. Both the "target_casting" /
+--- "target_casting_interruptible" visibility modes AND the same-named
+--- glow triggers depend on the target's cast state, so a target swap
+--- requires re-evaluating both.
+function IconGrid:OnTargetChanged()
+    self:RefreshVisibility()
+    self:RefreshAllGlows()
+end
+
+--- Re-run UpdateGlow for every active icon against its last-known state.
+--- Called when the trigger condition could have changed (target swap,
+--- target cast start/stop, interruptibility flip) — the icons' Cooldowns
+--- state hasn't moved but the glow gate has, so we need to push the new
+--- decision through.
+function IconGrid:RefreshAllGlows()
+    for _, btn in ipairs(ordered) do
+        if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end
+    end
 end
 
 --- Maintain the event-driven combat flag. Reading InCombatLockdown() at

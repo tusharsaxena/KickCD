@@ -46,12 +46,14 @@
 - ✅ Add auto sizing option for the cast bar, which intelligently resizes the cast bar basis the orientation, growth direction and width of the icons shown (both primary and secondary)
 - ✅ General Tab: add setting to always show vs. show in combat vs. show when target is casting
 - ✅ Add icon glow when spells are ready (proc, pixel) — separate type+color settings for primary and secondary icons
+- ✅ Add a dropdown for glows: Show always / show when target is casting / show when target is casting interruptible / never. Glow style picker (Button / Proc / Pixel / Auto cast) is independent of the trigger.
+- ✅ Adopt LibCustomGlow-1.0 as the glow rendering backend — gives access to Blizzard's full glow palette (rotating rays, proc flipbook, pixel border, autocast sparkles)
 
 ## Not Yet Started
 
+- ☐ "When target is casting an interruptible spell" is not working - it still shows the addon when a non interruptible spell is being cast. This applies to both the general visibility, and the glow settings classifiers
+- ☐ On secondary icons, if a glow is meannt to be shown, it appears like the glow initial animation is redrawn every 0.1 seconds - makes it very janky. This does not happen in the alwats trigger case, only if some other option is selected
 - ☐ Add a glowing background animated texture behind the cast bars - this will give a strong indication that a cast is happening. Color this animated texture the same color as the castbar color (depending on interuptable/non-interuptable). Add this as a toggleable feature separately for interuptable/non-interuptable. Also add a texture selector and color selector (default color is same as bar color, with a checkbox to select same as bar color)
-- ☐ Add a dropdown for glows to Show always/show when casting/show when casting interruptible/never. If not never, give options of what kind of glow to show.
-- ☐ Do a detailed dive deep into button glows in wow midnight api, and tell me the different types of glows available, and what config options are possible - design a better glow interface for selecting glow options
 
 ## Later
 

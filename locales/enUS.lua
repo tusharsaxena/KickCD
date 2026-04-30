@@ -119,18 +119,27 @@ L["Show charges"]                = "Show charges"
 L["Render a charges badge for spells with charges."] =
     "Render a charges badge for spells with charges."
 L["Ready glow"]                  = "Ready glow"
-L["Primary glow"]                = "Primary glow"
-L["Glow style on the primary icon when the spell is ready to cast."] =
-    "Glow style on the primary icon when the spell is ready to cast."
+L["Never"]                       = "Never"
+L["Primary glow trigger"]        = "Primary glow trigger"
+L["When to show the glow on the primary icon."] =
+    "When to show the glow on the primary icon."
+L["Primary glow style"]          = "Primary glow style"
+L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."] =
+    "Visual style of the primary-icon glow. Inert when the trigger is set to Never."
 L["Primary glow color"]          = "Primary glow color"
 L["Glow color on the primary icon."] = "Glow color on the primary icon."
-L["Secondary glow"]              = "Secondary glow"
-L["Glow style on secondary icons when the spell is ready to cast."] =
-    "Glow style on secondary icons when the spell is ready to cast."
+L["Secondary glow trigger"]      = "Secondary glow trigger"
+L["When to show the glow on secondary icons."] =
+    "When to show the glow on secondary icons."
+L["Secondary glow style"]        = "Secondary glow style"
+L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."] =
+    "Visual style of secondary-icon glow. Inert when the trigger is set to Never."
 L["Secondary glow color"]        = "Secondary glow color"
 L["Glow color on secondary icons."] = "Glow color on secondary icons."
-L["Proc"]                        = "Proc"
-L["Pixel"]                       = "Pixel"
+L["Button (rotating rays)"]      = "Button (rotating rays)"
+L["Proc (flipbook)"]             = "Proc (flipbook)"
+L["Pixel border"]                = "Pixel border"
+L["Auto cast sparkles"]          = "Auto cast sparkles"
 
 -- Unified panel chrome
 L["Defaults"]                    = "Defaults"

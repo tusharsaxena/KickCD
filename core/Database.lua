@@ -72,15 +72,26 @@ local DEFAULT_PROFILE = {
         secondaryOffsetX = 0,
         secondaryOffsetY = 0,
 
-        -- Per-icon ready glow. "none" disables; "proc" draws Blizzard's
-        -- spell-activation pulse texture at the icon center; "pixel" draws
-        -- a sin-pulsed colored border. Primary and secondary icons each
-        -- carry their own kind + color so a player can flag the primary
-        -- with one style and the supports with another.
-        primaryGlowType    = "none",
-        primaryGlowColor   = { 0.95, 0.95, 0.32, 1 },
-        secondaryGlowType  = "none",
-        secondaryGlowColor = { 0.95, 0.95, 0.32, 1 },
+        -- Per-icon ready glow. The trigger picks WHEN the glow fires and
+        -- the type picks WHICH visual. Trigger values:
+        --   * "never"                       — glow off
+        --   * "always"                      — glow whenever the spell is ready
+        --   * "target_casting"              — only while target is casting
+        --   * "target_casting_interruptible" — only for interruptible target casts
+        -- Type values map to LibCustomGlow's four glow effects:
+        --   * "button"   — Blizzard's spell-activation rotating rays + spark
+        --   * "proc"     — Blizzard's modern proc flipbook
+        --   * "pixel"    — animated pixel-art border
+        --   * "autocast" — pet auto-cast sparkle particles
+        -- Primary and secondary icons each carry their own trigger / type /
+        -- color so a player can flag the primary with one style and the
+        -- supports with another.
+        primaryGlowTrigger   = "never",
+        primaryGlowType      = "proc",
+        primaryGlowColor     = { 0.95, 0.95, 0.32, 1 },
+        secondaryGlowTrigger = "never",
+        secondaryGlowType    = "proc",
+        secondaryGlowColor   = { 0.95, 0.95, 0.32, 1 },
     },
 
     castbar = {
@@ -193,7 +204,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 9
+local LATEST_VERSION = 10
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -424,6 +435,35 @@ local Migrations = {
                 if icons.primaryGlowColor   == nil then icons.primaryGlowColor   = { 0.95, 0.95, 0.32, 1 } end
                 if icons.secondaryGlowType  == nil then icons.secondaryGlowType  = "none" end
                 if icons.secondaryGlowColor == nil then icons.secondaryGlowColor = { 0.95, 0.95, 0.32, 1 } end
+            end
+        end
+    end,
+
+    -- v10: split the single "glow type" enum into orthogonal trigger +
+    -- type fields, and switched the rendering backend to LibCustomGlow.
+    -- v9's "none" maps to trigger="never" (glow disabled, type seeded to
+    -- a sane "proc" default for when the user re-enables it). v9's "proc"
+    -- and "pixel" map to trigger="always" and keep the existing type
+    -- (LCG has matching ProcGlow / PixelGlow effects).
+    [10] = function(db)
+        local function migrate(icons, prefix)
+            local typeKey    = prefix .. "GlowType"
+            local triggerKey = prefix .. "GlowTrigger"
+            local oldType    = icons[typeKey]
+            if oldType == "none" or oldType == nil then
+                icons[triggerKey] = "never"
+                icons[typeKey]    = "proc"  -- placeholder for re-enable
+            else
+                icons[triggerKey] = "always"
+                -- icons[typeKey] kept as-is ("proc" or "pixel" — both
+                -- are valid LCG effect names).
+            end
+        end
+        for _, profile in pairs(db.profiles or {}) do
+            local icons = profile.icons
+            if type(icons) == "table" then
+                migrate(icons, "primary")
+                migrate(icons, "secondary")
             end
         end
     end,
