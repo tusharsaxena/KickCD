@@ -21,6 +21,10 @@
 --   KickCD_CONFIG_CHANGED  -> "castbar" reskins/relays the bar; "general"
 --                             re-applies lock + anchor; other sections ignored.
 --   KickCD_PROFILE_CHANGED -> re-anchor + reskin + re-evaluate.
+--   KickCD_GRID_LAYOUT     -> re-anchor (in PRIMARY anchor mode the primary
+--                             icon button reference may have changed) and
+--                             re-apply auto-size (the grid frame may have
+--                             resized).
 --
 -- This file fires no messages. The bar is a strict subscriber.
 --
@@ -113,8 +117,17 @@ local function fetchFont(name)
 end
 
 -- ---------------------------------------------------------------------------
--- Lock / drag persistence
+-- Lock / drag persistence + anchoring
 -- ---------------------------------------------------------------------------
+--
+-- Two anchor modes:
+--   * FREE    — the bar floats free of the icon grid. The user drags it to
+--               position; OnDragStop persists the anchor to anchors.castbar.
+--   * PRIMARY — the bar is SetPoint'd to the icon grid's primary icon
+--               button (or grid frame fallback when no spell is being
+--               watched). Dragging is disabled in this mode because the bar
+--               position is determined by the icon position and the user-
+--               configured (anchorPoint, castbarPoint, offset) tuple.
 
 local function onDragStart(self)
     if KickCD.db and KickCD.db.profile and KickCD.db.profile.locked then return end
@@ -129,25 +142,71 @@ local function onDragStop(self)
     end
 end
 
+--- (Re)anchor the cast-bar frame based on the active anchor mode.
+--- FREE   -> apply the saved anchor against UIParent.
+--- PRIMARY -> SetPoint(castbarPoint, primaryIcon, anchorPoint, offX, offY).
+---           Falls back to the grid frame, then to the saved free anchor.
+function Castbar:ApplyAnchor()
+    if not frame then return end
+    local c = cfg()
+    local mode = c.anchorMode or "FREE"
+
+    if mode == "PRIMARY" then
+        local target
+        if KickCD.IconGrid and KickCD.IconGrid.GetPrimaryIcon then
+            target = KickCD.IconGrid:GetPrimaryIcon()
+        end
+        if not target and KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
+            target = KickCD.IconGrid:GetGridFrame()
+        end
+        if target then
+            frame:ClearAllPoints()
+            frame:SetPoint(
+                c.castbarPoint   or "BOTTOM",
+                target,
+                c.anchorPoint    or "TOP",
+                c.anchorOffsetX  or 0,
+                c.anchorOffsetY  or 0)
+            return
+        end
+        -- Target not yet built — fall through to the saved free anchor so
+        -- the bar at least has a position to render at while we wait.
+    end
+
+    local saved = KickCD.db and KickCD.db.profile
+        and KickCD.db.profile.anchors and KickCD.db.profile.anchors.castbar
+    KickCD.Util.ApplyAnchor(frame, saved or
+        { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 })
+end
+
 function Castbar:ApplyLock()
     if not frame then return end
-    local locked = KickCD.db and KickCD.db.profile and KickCD.db.profile.locked
-    if locked then
-        frame:RegisterForDrag()
-        frame:EnableMouse(false)
-        if frame.dragHint then frame.dragHint:Hide() end
-        -- When locked, the bar is only visible during a real cast — hide
-        -- if nothing is being cast right now.
-        if not current then frame:Hide() end
-    else
+    local c              = cfg()
+    local primaryAnchor  = (c.anchorMode == "PRIMARY")
+    local profileLocked  = KickCD.db and KickCD.db.profile and KickCD.db.profile.locked
+    -- PRIMARY anchor mode forces drag-disabled — the bar's position is
+    -- determined by the icon-grid anchor + offsets, not by dragging.
+    local dragAllowed    = (not profileLocked) and (not primaryAnchor)
+
+    if dragAllowed then
         frame:EnableMouse(true)
         frame:RegisterForDrag("LeftButton")
         if frame.dragHint then frame.dragHint:Show() end
-        -- When unlocked, force-show a preview state so the user has a
-        -- frame to grab even when no target is casting. ShowPreview is a
-        -- no-op while a real cast is animating.
-        if not current and isVisible() then
+    else
+        frame:EnableMouse(false)
+        frame:RegisterForDrag()
+        if frame.dragHint then frame.dragHint:Hide() end
+    end
+
+    -- Visibility for the empty (no-cast) state:
+    --   * UI unlocked + sub-module visible → show preview (so the user can
+    --     see where the bar will appear, even in PRIMARY anchor mode).
+    --   * UI locked → hide the empty bar; only show during real casts.
+    if not current then
+        if (not profileLocked) and isVisible() then
             self:ShowPreview()
+        else
+            frame:Hide()
         end
     end
 end
@@ -164,10 +223,9 @@ function Castbar:EnsureFrame()
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
 
-    local anchor = KickCD.db and KickCD.db.profile
-        and KickCD.db.profile.anchors and KickCD.db.profile.anchors.castbar
-    KickCD.Util.ApplyAnchor(frame, anchor or
-        { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 })
+    -- Initial anchor — ApplyAnchor() handles both FREE and PRIMARY modes.
+    -- Called again at OnEnable / OnConfigChanged / OnGridLayout time.
+    self:ApplyAnchor()
 
     frame:SetScript("OnDragStart", onDragStart)
     frame:SetScript("OnDragStop",  onDragStop)
@@ -342,8 +400,40 @@ function Castbar:ApplyConfig()
     local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
     local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
 
+    local isVertical = (c.orientation == "VERTICAL")
+    -- For HORIZONTAL: grow="LEFT" reverses fill (right-anchored texture grows
+    -- right→left). For VERTICAL: grow="DOWN" reverses fill (top-anchored
+    -- texture grows top→bottom). The default non-reverse case is
+    -- HORIZONTAL/RIGHT (left→right) and VERTICAL/UP (bottom→top), which is
+    -- what most cast bars use.
+    local reverseFill
+    if isVertical then
+        reverseFill = (c.growDirection == "DOWN")
+    else
+        reverseFill = (c.growDirection == "LEFT")
+    end
+
     local width  = math.max(40, c.width  or 250)
     local height = math.max(8,  c.height or 24)
+
+    -- Auto-size override: when enabled, pull the orientation-relevant
+    -- dimension from the icon grid frame so the bar visually matches the
+    -- grid's footprint. The orthogonal dimension stays user-configured.
+    -- Re-runs after every KickCD_GRID_LAYOUT message so the bar tracks the
+    -- grid as icons are added/removed/resized.
+    if c.autoSize and KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
+        local gridFrame = KickCD.IconGrid:GetGridFrame()
+        if gridFrame then
+            if isVertical then
+                local h = gridFrame:GetHeight()
+                if h and h > 0 then height = math.floor(h) end
+            else
+                local w = gridFrame:GetWidth()
+                if w and w > 0 then width = math.floor(w) end
+            end
+        end
+    end
+
     frame:SetSize(width, height)
 
     -- Per-state backgrounds (alpha-switched in ApplyState).
@@ -358,47 +448,95 @@ function Castbar:ApplyConfig()
     frame.bar.uninterruptible:SetStatusBarTexture(fetchStatusBarTexture(unintCfg.statusBarTexture))
     frame.bar.uninterruptible:SetStatusBarColor(unpackColor(unintCfg.barColor, 0.85, 0.1, 0.1, 1))
 
-    -- Icon position decides bar inset. "OFF" hides the icon entirely
-    -- and gives the bar full frame width; "LEFT" / "RIGHT" anchor the
-    -- icon and inset the bar by iconSize on the matching side.
+    -- Apply orientation + reverse-fill on both stacked StatusBars. Blizzard
+    -- handles all the C-side texture growth math, so we never have to do
+    -- per-frame arithmetic ourselves (which would error on secret
+    -- CastingDuration values in combat).
+    local barOrient = isVertical and "VERTICAL" or "HORIZONTAL"
+    frame.bar.interruptible:SetOrientation(barOrient)
+    frame.bar.uninterruptible:SetOrientation(barOrient)
+    frame.bar.interruptible:SetReverseFill(reverseFill)
+    frame.bar.uninterruptible:SetReverseFill(reverseFill)
+
+    -- Icon position decides bar inset. "OFF" hides the icon entirely and
+    -- gives the bar the full frame; "LEFT" / "RIGHT" inset the bar on the
+    -- corresponding side. In VERTICAL orientation, LEFT is remapped to TOP
+    -- and RIGHT to BOTTOM since literal left/right doesn't make sense for
+    -- a tall bar.
     local iconPos  = c.iconPosition or "LEFT"
     local iconSize = math.max(0, c.iconSize or height)
-    if iconSize > height then iconSize = height end
+    -- Cap iconSize at the perpendicular dimension of the frame so the icon
+    -- never visually overflows the bar.
+    local cap = isVertical and width or height
+    if iconSize > cap then iconSize = cap end
     local showIcon = (iconPos ~= "OFF") and (iconSize > 0)
+
     frame.icon:ClearAllPoints()
     frame.bar:ClearAllPoints()
     if showIcon then
         frame.icon:Show()
         frame.icon:SetSize(iconSize, iconSize)
-        if iconPos == "RIGHT" then
-            frame.icon:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
-            frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
-            frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -iconSize, 0)
+        if isVertical then
+            if iconPos == "RIGHT" then
+                -- BOTTOM in vertical mode.
+                frame.icon:SetPoint("BOTTOM", frame, "BOTTOM", 0, 0)
+                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
+                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, iconSize)
+            else
+                -- TOP in vertical mode (default).
+                frame.icon:SetPoint("TOP", frame, "TOP", 0, 0)
+                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, -iconSize)
+                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, 0)
+            end
         else
-            frame.icon:SetPoint("LEFT", frame, "LEFT", 0, 0)
-            frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      iconSize, 0)
-            frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+            if iconPos == "RIGHT" then
+                frame.icon:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
+                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -iconSize, 0)
+            else
+                frame.icon:SetPoint("LEFT", frame, "LEFT", 0, 0)
+                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      iconSize, 0)
+                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, 0)
+            end
         end
     else
         frame.icon:Hide()
         frame.bar:SetAllPoints(frame)
     end
 
-    -- Spark — anchor to the interruptible bar's inner status texture's
-    -- RIGHT edge. Both stacked bars receive identical SetMinMaxValues /
-    -- SetValue calls every frame, so their inner textures are the same
-    -- width — anchoring to either gives the same fill-edge position.
-    -- Blizzard resizes the inner texture C-side as the bar value changes,
-    -- so the spark follows the fill edge automatically without any
-    -- Lua-side `barWidth * (elapsed / total)` math (which would error on
-    -- secret CastingDuration returns).
+    -- Spark — anchor to the fill edge of the interruptible bar's inner
+    -- status texture. Both stacked bars receive identical
+    -- SetMinMaxValues / SetValue calls every frame, so their textures are
+    -- the same size; anchoring to either gives the same fill-edge position.
+    -- The fill edge depends on orientation + reverseFill:
+    --   * HORIZONTAL non-reverse  → texture grows L→R, fill edge = RIGHT
+    --   * HORIZONTAL reverse      → texture grows R→L, fill edge = LEFT
+    --   * VERTICAL   non-reverse  → texture grows B→T, fill edge = TOP
+    --   * VERTICAL   reverse      → texture grows T→B, fill edge = BOTTOM
+    -- The natural Blizzard spark is a tall vertical line; for VERTICAL
+    -- orientation we rotate it 90° so it reads as a horizontal slash
+    -- across the bar's fill edge.
     if c.showSpark ~= false then
         frame.spark:Show()
-        frame.spark:SetHeight(height + 6)
         frame.spark:ClearAllPoints()
+        if isVertical then
+            -- Spark sized to span the bar's width; rotation 90° makes the
+            -- texture's tall line render as a horizontal one.
+            frame.spark:SetSize(width + 6, 20)
+            if frame.spark.SetRotation then frame.spark:SetRotation(math.pi / 2) end
+        else
+            frame.spark:SetSize(20, height + 6)
+            if frame.spark.SetRotation then frame.spark:SetRotation(0) end
+        end
         local fill = frame.bar.interruptible:GetStatusBarTexture()
         if fill then
-            frame.spark:SetPoint("CENTER", fill, "RIGHT", 0, 0)
+            local sparkAnchor
+            if isVertical then
+                sparkAnchor = reverseFill and "BOTTOM" or "TOP"
+            else
+                sparkAnchor = reverseFill and "LEFT"   or "RIGHT"
+            end
+            frame.spark:SetPoint("CENTER", fill, sparkAnchor, 0, 0)
         end
     else
         frame.spark:Hide()
@@ -699,6 +837,7 @@ function Castbar:OnEnable()
 
     self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage("KickCD_GRID_LAYOUT",     "OnGridLayout")
 
     -- Snap to the current target's state on enable in case we logged in
     -- staring at a casting mob.
@@ -773,6 +912,10 @@ end
 function Castbar:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
     if section == "castbar" then
+        -- Anchor mode + offsets and orientation/grow may have changed; apply
+        -- both before reskin so ApplyConfig sees the right frame size when
+        -- it computes auto-size and child anchors.
+        self:ApplyAnchor()
         self:ApplyConfig()
         if not isVisible() then
             self:Stop()
@@ -794,15 +937,28 @@ function Castbar:OnConfigChanged(_evt, payload)
 end
 
 function Castbar:OnProfileChanged()
-    if frame then
-        local anchor = KickCD.db and KickCD.db.profile
-            and KickCD.db.profile.anchors and KickCD.db.profile.anchors.castbar
-        KickCD.Util.ApplyAnchor(frame, anchor or
-            { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 })
-    end
+    self:ApplyAnchor()
     self:ApplyConfig()
     self:ApplyLock()
     if isVisible() then self:Reevaluate() else self:Stop() end
+end
+
+--- Fired by IconGrid after every Layout()/BuildActiveList() pass. The grid
+--- frame may have resized (auto-size needs to track) and the primary icon
+--- button reference may have changed (PRIMARY anchor mode needs to retarget).
+function Castbar:OnGridLayout()
+    if not frame then return end
+    local c = cfg()
+    -- PRIMARY mode: re-target the primary icon button (which may have been
+    -- released to pool and a new one acquired).
+    if c.anchorMode == "PRIMARY" then
+        self:ApplyAnchor()
+    end
+    -- Auto-size: re-run ApplyConfig so the bar's dimensions track the grid's
+    -- current footprint. Skip the no-op ApplyConfig when neither is active.
+    if c.autoSize then
+        self:ApplyConfig()
+    end
 end
 
 --- Print diagnostic info about the current target's cast and what the

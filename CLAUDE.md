@@ -65,6 +65,7 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 | `KickCD_SPELL_STATE` | Cooldowns | `{ spellID, ready, isActive, cdObject, charges }` |
 | `KickCD_CONFIG_CHANGED` | settings/* + slash | `{ section = "general"\|"icons"\|"spells"\|"castbar" }` |
 | `KickCD_PROFILE_CHANGED` | Database (AceDB callback) | `{ newProfileKey }` |
+| `KickCD_GRID_LAYOUT` | IconGrid (after every Layout pass) | `{}` |
 
 **Don't invent new messages without a reason.** The closed list is documented in this file and in module headers; new entries should appear here too. `cdObject` is the secret-aware `CooldownDuration` handle from `C_Spell.GetSpellCooldownDuration`, non-nil whenever the legacy `isActive` flag is true (real CD or just-GCD; the IconGrid disambiguates downstream). It can be:
 - Passed to `Cooldown:SetCooldownFromDurationObject` for the swipe.

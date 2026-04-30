@@ -80,6 +80,41 @@ local DEFAULT_PROFILE = {
         fontSize     = 12,
         fontFlags    = "OUTLINE",
 
+        -- Anchoring. "FREE" = a free-floating frame the user drags around
+        -- (saved to anchors.castbar). "PRIMARY" = anchored to the icon grid's
+        -- primary icon at (anchorPoint, castbarPoint, offset). Anchoring to
+        -- the primary icon button means the cast bar follows the grid for
+        -- free if the user drags the grid; the cast bar itself becomes
+        -- non-draggable in this mode.
+        --
+        -- anchorPoint  is the standard 9-point anchor (TOPLEFT/TOP/TOPRIGHT/
+        --              LEFT/CENTER/RIGHT/BOTTOMLEFT/BOTTOM/BOTTOMRIGHT) on the
+        --              primary icon's frame.
+        -- castbarPoint is the same 9-point anchor on the cast bar itself.
+        anchorMode    = "FREE",
+        anchorPoint   = "TOP",
+        castbarPoint  = "BOTTOM",
+        anchorOffsetX = 0,
+        anchorOffsetY = 8,
+
+        -- Orientation + growth. Driven via StatusBar:SetOrientation and
+        -- SetReverseFill so all the per-frame arithmetic stays C-side.
+        --
+        -- HORIZONTAL + RIGHT: cast fills left → right (default).
+        -- HORIZONTAL + LEFT:  cast fills right → left.
+        -- VERTICAL + UP:      cast fills bottom → top.
+        -- VERTICAL + DOWN:    cast fills top → bottom.
+        --
+        -- Channels drain in the same direction the equivalent cast would fill.
+        orientation   = "HORIZONTAL",
+        growDirection = "RIGHT",
+
+        -- Auto-size to the icon grid's matching dimension. When ON and the
+        -- bar is anchored to the primary icon, horizontal bars take the
+        -- icon grid's full width and vertical bars take its full height —
+        -- the orthogonal dimension stays the user-configured width/height.
+        autoSize     = false,
+
         -- Per-text-element anchor + offset. Position is one of
         -- "INSIDE_LEFT", "INSIDE_RIGHT", "CENTER", "OUTSIDE_LEFT",
         -- "OUTSIDE_RIGHT". OffsetX/Y are pixel deltas applied on top
@@ -142,7 +177,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 7
+local LATEST_VERSION = 8
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -337,6 +372,26 @@ local Migrations = {
                 if cb.timePosition == nil then cb.timePosition = "INSIDE_RIGHT" end
                 if cb.timeOffsetX  == nil then cb.timeOffsetX  = 0              end
                 if cb.timeOffsetY  == nil then cb.timeOffsetY  = 0              end
+            end
+        end
+    end,
+
+    -- v8: introduced cast bar anchoring relative to the primary icon, plus
+    -- orientation / growth direction and auto-size. Pre-v8 profiles default
+    -- to FREE-anchor (existing behavior preserved — bar stays where the
+    -- user dragged it via anchors.castbar) and HORIZONTAL/RIGHT growth.
+    [8] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            local cb = profile.castbar
+            if type(cb) == "table" then
+                if cb.anchorMode    == nil then cb.anchorMode    = "FREE"       end
+                if cb.anchorPoint   == nil then cb.anchorPoint   = "TOP"        end
+                if cb.castbarPoint  == nil then cb.castbarPoint  = "BOTTOM"     end
+                if cb.anchorOffsetX == nil then cb.anchorOffsetX = 0            end
+                if cb.anchorOffsetY == nil then cb.anchorOffsetY = 8            end
+                if cb.orientation   == nil then cb.orientation   = "HORIZONTAL" end
+                if cb.growDirection == nil then cb.growDirection = "RIGHT"      end
+                if cb.autoSize      == nil then cb.autoSize      = false        end
             end
         end
     end,

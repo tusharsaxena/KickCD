@@ -41,12 +41,12 @@
 - ✅ For icons, charges text shows out of combat but not in combat
 - ✅ Add as setting for General -> Reset all settings
 - ✅ Rearrange all settings panel so every row of settings has 2 columns split exactly halfway through the width of the panel. Also increase vertical spacing between rows
+- ✅ Add position settings for the cast bar. Give it anchor settings relative to the primary icon (TOP LEFT, TOP CENTER, TOP RIGHT, etc) and anchor position of the cast bar
+- ✅ Add orientation (horizontal and vertical) and growth direction (left/right for horizontal and up/down for vertical)
+- ✅ Add auto sizing option for the cast bar, which intelligently resizes the cast bar basis the orientation, growth direction and width of the icons shown (both primary and secondary)
 
 ## Not Yet Started
 
-- ☐ Add position settings for the cast bar. Give it anchor settings relative to the primary icon (TOP LEFT, TOP CENTER, TOP RIGHT, etc) and anchor position of the cast bar
-- ☐ Add orientation (horizontal and vertical) and growth direction (left/right for horizontal and up/down for vertical)
-- ☐ Add auto sizing option for the cast bar, which intelligently resizes the cast bar basis the orientation, growth direction and width of the icons shown (both primary and secondary)
 - ☐ General Tab: add setting to always show vs. show in combat vs. show when target is casting
 - ☐ Add icon glow when spells are ready (proc, action bar, cdm, pixel, etc). Have separatye glow settings for primary and seconday icons
 - ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
@@ -54,5 +54,8 @@
 ## Later
 
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
-- ☐ Cooldown swipe shows for GCD actions, but not when the spell is on a longer cooldown
+- ☐ Sometimes the cooldown text gets stuck at 0.0 for a few seconds even after it comes off cooldown
+- ☐ Cooldown text and swipe shows for GCD actions, add a toggle to disable this (only show for genuine cooldowns)
+- ☐ Cooldown text and swipe doesnt show when a spell with charges is partially off cooldown (i.e. spell has 2 charges, 1 charge has been used)
 - ☐ Add the ability to add items along with spells for tracking
+- ☐ Remove all DB migration paths

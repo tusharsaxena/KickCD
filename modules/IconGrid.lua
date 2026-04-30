@@ -13,7 +13,13 @@
 --   KickCD_PROFILE_CHANGED   -> rebuild + re-anchor + reapply general
 --   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild
 --
--- This file fires no messages. The grid is the consumer end of the pipeline.
+-- Emits:
+--   KickCD_GRID_LAYOUT       -> fired at the end of every IconGrid:Layout()
+--                               so dependent modules (notably modules/Castbar.lua,
+--                               which can anchor relative to the primary icon
+--                               and/or auto-size to the grid) can sync after
+--                               the grid frame's size and the primary icon
+--                               button reference settle. Payload is {}.
 
 local KickCD   = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local IconGrid = KickCD:NewModule("IconGrid", "AceEvent-3.0")
@@ -758,6 +764,9 @@ function IconGrid:Layout()
     -- minor cosmetic issue compared to losing the drag handle entirely.
     if #ordered == 0 then
         grid:SetSize(primarySize, primarySize)
+        if KickCD.SendMessage then
+            KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+        end
         return
     end
 
@@ -768,6 +777,12 @@ function IconGrid:Layout()
     local w, h = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
                              anchor, grow, rows, cols, offX, offY)
     grid:SetSize(w, h)
+
+    -- Notify dependent modules (Castbar) that grid geometry / primary icon
+    -- reference may have changed.
+    if KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+    end
 end
 
 -- Apply general-tab visual settings (scale, alpha) to the parent frame.
@@ -960,6 +975,22 @@ end
 function IconGrid:OnPlayerEnteringWorld()
     self:BuildActiveList()
     self:Layout()
+end
+
+-- ---------------------------------------------------------------------------
+-- Public accessors
+-- ---------------------------------------------------------------------------
+
+--- Return the parent grid frame (KickCDIconGrid) or nil if not yet built.
+--- Used by the cast bar module so it can anchor itself relative to the grid.
+function IconGrid:GetGridFrame()
+    return grid
+end
+
+--- Return the primary icon button (first laid-out icon) or nil if no spells
+--- are currently watched. Used by the cast bar module's PRIMARY anchor mode.
+function IconGrid:GetPrimaryIcon()
+    return ordered[1]
 end
 
 -- Expose the module so the orchestrator's debug slash commands can poke at it.

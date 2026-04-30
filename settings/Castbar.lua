@@ -33,6 +33,104 @@ add{
     end,
 }
 
+-- Position ------------------------------------------------------------
+-- 9-point anchor values shared by both the "anchor on primary icon" and
+-- "anchor on cast bar" dropdowns.
+local NINE_POINT_VALUES = {
+    { value = "TOPLEFT",     label = L["Top left"]     },
+    { value = "TOP",         label = L["Top"]          },
+    { value = "TOPRIGHT",    label = L["Top right"]    },
+    { value = "LEFT",        label = L["Left"]         },
+    { value = "CENTER",      label = L["Center"]       },
+    { value = "RIGHT",       label = L["Right"]        },
+    { value = "BOTTOMLEFT",  label = L["Bottom left"]  },
+    { value = "BOTTOM",      label = L["Bottom"]       },
+    { value = "BOTTOMRIGHT", label = L["Bottom right"] },
+}
+
+add{
+    panel = "castbar", section = "castbar", group = L["Position"],
+    path  = "castbar.anchorMode", type = "string",
+    label = L["Anchor mode"],
+    tooltip = L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."],
+    default = "FREE",
+    values  = {
+        { value = "FREE",    label = L["Free (drag to move)"]      },
+        { value = "PRIMARY", label = L["Anchored to primary icon"] },
+    },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Position"],
+    path  = "castbar.anchorPoint", type = "string",
+    label = L["Anchor on primary icon"],
+    tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
+    default = "TOP",
+    values  = NINE_POINT_VALUES,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Position"],
+    path  = "castbar.castbarPoint", type = "string",
+    label = L["Anchor on cast bar"],
+    tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
+    default = "BOTTOM",
+    values  = NINE_POINT_VALUES,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Position"],
+    path  = "castbar.anchorOffsetX", type = "number",
+    label = L["X offset (in px)"],
+    tooltip = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."],
+    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Position"],
+    path  = "castbar.anchorOffsetY", type = "number",
+    label = L["Y offset (in px)"],
+    tooltip = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
+    default = 8, min = -200, max = 200, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+
+-- Orientation --------------------------------------------------------
+add{
+    panel = "castbar", section = "castbar", group = L["Orientation"],
+    path  = "castbar.orientation", type = "string",
+    label = L["Orientation"],
+    tooltip = L["Horizontal: bar stretches across width. Vertical: bar runs up/down."],
+    default = "HORIZONTAL",
+    values  = {
+        { value = "HORIZONTAL", label = L["Horizontal"] },
+        { value = "VERTICAL",   label = L["Vertical"]   },
+    },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Orientation"],
+    path  = "castbar.growDirection", type = "string",
+    label = L["Grow direction"],
+    tooltip = L["For Horizontal orientation pick Left or Right; for Vertical orientation pick Up or Down. Decides which side the cast bar fills toward."],
+    default = "RIGHT",
+    values  = {
+        { value = "RIGHT", label = L["Right (horizontal)"] },
+        { value = "LEFT",  label = L["Left (horizontal)"]  },
+        { value = "UP",    label = L["Up (vertical)"]      },
+        { value = "DOWN",  label = L["Down (vertical)"]    },
+    },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Orientation"],
+    path  = "castbar.autoSize", type = "bool",
+    label = L["Auto-size to icon grid"],
+    tooltip = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
+    default = false,
+    onChange = reskin,
+}
+
 -- Sizing -------------------------------------------------------------
 add{
     panel = "castbar", section = "castbar", group = L["Sizing"],
