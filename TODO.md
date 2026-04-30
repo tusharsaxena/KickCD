@@ -36,7 +36,7 @@
 
 ## Not Yet Started
 
-- ☐ Color code cast bar based on interruptable, non interruptable.
+- ✅ Color code cast bar based on interruptable, non interruptable.
 - ☐ Cast bar icon should be left/right/off
 - ☐ Cast bar text position anchors (inside left, inside right, center, outside left, outside right) - with x/y offset - for both the text elements independently (spell name, spell timer)
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
