@@ -24,7 +24,7 @@ KickCD.Settings = KickCD.Settings or {}
 KickCD.Settings.main      = nil
 KickCD.Settings.sub       = {}
 KickCD.Settings.builders  = {}
-KickCD.Settings.order     = { "general", "icons", "spells", "profiles" }
+KickCD.Settings.order     = { "general", "icons", "castbar", "spells", "profiles" }
 KickCD.Settings.Schema    = KickCD.Settings.Schema or {}
 KickCD.Settings._panels   = KickCD.Settings._panels or {}
 

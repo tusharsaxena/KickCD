@@ -309,7 +309,7 @@ function listSettings(self)
         byPanel[key] = byPanel[key] or {}
         table.insert(byPanel[key], def)
     end
-    for _, key in ipairs({ "general", "icons", "spells", "profiles" }) do
+    for _, key in ipairs({ "general", "icons", "castbar", "spells", "profiles" }) do
         local list = byPanel[key]
         if list then
             p(self, "  [" .. key .. "]")

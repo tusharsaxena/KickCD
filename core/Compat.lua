@@ -172,6 +172,87 @@ function Compat.IsSpellUsable(spellID)
 end
 
 -- ---------------------------------------------------------------------------
+-- Cast / channel info (target cast bar)
+-- ---------------------------------------------------------------------------
+--
+-- 12.0 secret-value protection: UnitCastingInfo / UnitChannelInfo positions
+-- 4-5 (startTimeMS / endTimeMS) come back tainted in combat for spells the
+-- player can interrupt with a protected interrupt. C_Spell.GetSpellInfo's
+-- ENTIRE return table is also secret-tainted in that scenario (every
+-- field — castTime, iconID, ...). Doing arithmetic / comparison / format
+-- on a secret raises a Lua error in tainted (addon) scope, and the usual
+-- "detox" workarounds (tonumber, +0, securecallfunction) don't help.
+--
+-- Solution: never read the secret timestamps. Blizzard ships
+-- UnitCastingDuration(unit) / UnitChannelDuration(unit) which return a
+-- CastingDuration object whose :GetTotalDuration / :GetElapsedDuration /
+-- :GetRemainingDuration / :GetStartTime / :GetEndTime methods all return
+-- PLAIN numbers — safe to compare, format, and feed straight into
+-- StatusBar:SetValue. This is the same trick UltimateCastbars uses and is
+-- conceptually identical to the CooldownDuration object KickCD already
+-- consumes in modules/Cooldowns.lua, EXCEPT the cast variant's
+-- :GetRemainingDuration stays plain in combat (cooldown's goes secret —
+-- they are different objects despite the similar shape).
+--
+-- We pull `name` / `texture` / `notInterruptible` / `spellID` straight
+-- out of UnitCastingInfo without inspection. They may be secret-tainted
+-- in combat, but the consumers we feed them to (Texture:SetTexture,
+-- FontString:SetText, C_CurveUtil.EvaluateColorValueFromBoolean) accept
+-- secret values without erroring — Blizzard's protection is on
+-- arithmetic, not on UI rendering. Storing them as Lua locals is fine
+-- as long as we never compare or format them ourselves.
+--
+-- Record shape:
+--   { name, texture, spellID, notInterruptible, isChannel,
+--     duration }                         -- CastingDuration object
+
+local function buildCastRecord(name, texture, notInterruptible, spellID,
+                               isChannel, duration)
+    return {
+        name             = name,
+        texture          = texture,
+        spellID          = spellID,
+        notInterruptible = notInterruptible,  -- may be secret; only feed to
+                                              -- C_CurveUtil, never compare
+        isChannel        = isChannel and true or false,
+        duration         = duration,          -- CastingDuration; methods
+                                              -- return plain numbers
+    }
+end
+
+--- Casting info for a unit, secret-value safe.
+-- @param unit string ("target", "focus", ...)
+-- @return record (table)|nil   nil when the unit isn't casting AND isn't channeling.
+function Compat.GetCastingInfo(unit)
+    if _G.UnitCastingInfo then
+        local name, _, texture, _, _, _, _, notInterruptible, spellID =
+            _G.UnitCastingInfo(unit)
+        if name then
+            local duration = _G.UnitCastingDuration and _G.UnitCastingDuration(unit) or nil
+            return buildCastRecord(
+                name, texture, notInterruptible, spellID, false, duration)
+        end
+    end
+    return Compat.GetChannelInfo(unit)
+end
+
+--- Channel info for a unit, secret-value safe. Same record shape as the
+--- cast variant. Channels run total → 0 (full to empty); the consumer
+--- chooses elapsed-vs-remaining for the bar value.
+function Compat.GetChannelInfo(unit)
+    if not _G.UnitChannelInfo then return nil end
+    -- UnitChannelInfo's signature is one position shorter than
+    -- UnitCastingInfo: there's no isTradeSkill at position 6, so
+    -- notInterruptible lands at 7 (not 8) and spellID at 8 (not 9).
+    local name, _, texture, _, _, _, notInterruptible, spellID =
+        _G.UnitChannelInfo(unit)
+    if not name then return nil end
+    local duration = _G.UnitChannelDuration and _G.UnitChannelDuration(unit) or nil
+    return buildCastRecord(
+        name, texture, notInterruptible, spellID, true, duration)
+end
+
+-- ---------------------------------------------------------------------------
 -- Settings.RegisterAddOnSetting shim
 -- ---------------------------------------------------------------------------
 --

@@ -44,12 +44,13 @@
 
 ## Enhancements
 
+- ☐ Color code cast bar based on interruptable, non interruptable.
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
 - ✅ Do not apply the visual states settings (i.e. reduce alpha, change color of icons) for GCD cooldowns - only when the actual spell is on cooldown
 - ✅ Cooldown text doesnt show up after i use a spell - it should always show (text should obey visual state rules like cooldown alpha)
 - ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
 - ☐ Cooldown swipe shows for GCD actions, but not when the spell is on a longer cooldown
 - ☐ General Tab: add setting to always show vs. show in combat vs. show when target is casting
-- ☐ Add a target castbar (do not style the default castbar — create a new one; refer)
+- ✅ Add a target castbar (do not style the default castbar — create a new one; refer)
 - ☐ Add the ability to add items along with spells for tracking
 - ☐ Add icon glow when primary interrupt spell is ready (proc, action bar, cdm, pixel, etc)

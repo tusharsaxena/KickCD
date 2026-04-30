@@ -6,7 +6,7 @@ Guidance for Claude (or any AI agent) working on this addon.
 
 KickCD is a WoW addon that tracks the player's interrupt and CC cooldowns and shows them on a movable, persistently-visible icon grid. Target: WoW 12.0 (Midnight). Mainline branch is `master`.
 
-The cast bar pipeline (Castbar / Tracker / TestMode modules) was removed at commit `59fb5c0`; it will be re-added later. The icon grid is the only visible UI.
+The original cast-bar pipeline (Castbar / Tracker / TestMode modules) was removed at commit `59fb5c0` because its `OnUpdate` did arithmetic on `startTimeMS` / `endTimeMS` from `UnitCastingInfo`, which 12.0 returns as secret values. A fresh `modules/Castbar.lua` was re-added later with explicit secret-value gating (see "Cast bar module" below). The TestMode preview was not re-added.
 
 ## Critical: 12.0 secret-value protection
 
@@ -52,8 +52,9 @@ TOC load order (see `KickCD.toc`):
 7. `defaults/Spells.lua` — populates `KickCD.DefaultSpells` (per-class+spec interrupt list); merged into the profile by `Database:BuildSpells` on first profile creation.
 8. `modules/Cooldowns.lua` — polls cooldown state, emits `KickCD_SPELL_STATE`.
 9. `modules/IconGrid.lua` — owns the `KickCDIconGrid` frame and per-icon widgets; persistent visibility.
-10. `settings/Panel.lua` — registers the top-level Blizzard Settings category and the per-tab builder mailbox.
-11. `settings/{General,Icons,Spells,Profiles}.lua` — register their tabs via `KickCD.Settings.RegisterTab`.
+10. `modules/Castbar.lua` — owns the `KickCDCastbar` frame; mirrors the player's target's cast/channel via secret-value-gated `UnitCastingInfo` shims (see "Cast bar module" below).
+11. `settings/Panel.lua` — registers the top-level Blizzard Settings category and the per-tab builder mailbox.
+12. `settings/{General,Icons,Castbar,Spells,Profiles}.lua` — register their tabs via `KickCD.Settings.RegisterTab`.
 
 ## The closed message bus
 
@@ -62,7 +63,7 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 | Message | Sender | Payload |
 |---|---|---|
 | `KickCD_SPELL_STATE` | Cooldowns | `{ spellID, ready, isActive, cdObject, charges }` |
-| `KickCD_CONFIG_CHANGED` | settings/* + slash | `{ section = "general"\|"icons"\|"spells" }` |
+| `KickCD_CONFIG_CHANGED` | settings/* + slash | `{ section = "general"\|"icons"\|"spells"\|"castbar" }` |
 | `KickCD_PROFILE_CHANGED` | Database (AceDB callback) | `{ newProfileKey }` |
 
 **Don't invent new messages without a reason.** The closed list is documented in this file and in module headers; new entries should appear here too. `cdObject` is the secret-aware `CooldownDuration` handle from `C_Spell.GetSpellCooldownDuration`, non-nil whenever the legacy `isActive` flag is true (real CD or just-GCD; the IconGrid disambiguates downstream). It can be:
@@ -189,6 +190,56 @@ historical context, but **no live code calls it**. The canvas widgets
 bind directly to `db.profile` and don't go through Blizzard's Setting
 object lifecycle at all. Don't reach for the shim when adding new UI;
 use the schema + `Helpers.RenderField` instead.
+
+## Cast bar module
+
+`modules/Castbar.lua` shows the player's target's cast/channel on a separately-anchored bar (`db.profile.anchors.castbar`). The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves both. While unlocked, the bar shows a placeholder preview when no target is casting so it can be grabbed.
+
+The original implementation broke in 12.0 because `UnitCastingInfo` positions 4–5 (`startTimeMS` / `endTimeMS`) come back as secret values in tainted scope for casts the player can interrupt with a protected interrupt. Arithmetic / compare / format / `tostring` on a secret raises a Lua error, so an `OnUpdate` doing `(GetTime() - startSec) / (endSec - startSec)` blows up the moment combat opens against an interruptable target.
+
+**The key API: `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)`.** These return a `CastingDuration` object whose `:GetTotalDuration()` / `:GetElapsedDuration()` / `:GetRemainingDuration()` / `:GetStartTime()` / `:GetEndTime()` methods supply the timing primitives. This is structurally similar to the `CooldownDuration` object KickCD already uses in `modules/Cooldowns.lua` — and **subject to the same secret-in-combat protection**. The methods *do* return secret-tainted numbers in combat for protected casts. The trick is identical to the cooldown pattern: never bind the return to a Lua local; pass the method call **directly as an argument** to a Blizzard C method that accepts secret args. The technique is the same UltimateCastbars uses for its target/focus bar.
+
+The Compat shim funnels both UnitCastingInfo (for `name` / `texture` / `notInterruptible` / `spellID`) and UnitCastingDuration (for the timing object) into a single record:
+
+```
+{ name, texture, spellID, notInterruptible, isChannel, duration }
+```
+
+The OnUpdate loop drives the bar by passing the duration methods *as arguments* to Blizzard C methods:
+
+```lua
+frame.bar:SetMinMaxValues(0, d:GetTotalDuration())
+if current.isChannel then
+    frame.bar:SetValue(d:GetRemainingDuration())   -- drains total → 0
+else
+    frame.bar:SetValue(d:GetElapsedDuration())     -- fills 0 → total
+end
+frame.timeText:SetFormattedText(
+    "%.1f / %.1f", d:GetRemainingDuration(), d:GetTotalDuration())
+```
+
+`SetMinMaxValues`, `SetValue`, and `SetFormattedText` all accept secret args without erroring; the format string is interpreted C-side. **No `local total = d:GetTotalDuration()` followed by `if total > 0` anywhere** — that's the four-iteration trap.
+
+**End-of-cast detection lives in events, not OnUpdate.** `if remaining <= 0 then Stop() end` would be a secret comparison and would error. Stop happens on `UNIT_SPELLCAST_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_STOP` (filtered to `unit == "target"`).
+
+**The spark uses a static anchor, not per-frame arithmetic.** Computing `frame.spark:SetPoint("CENTER", frame.bar, "LEFT", barWidth * (elapsed / total), 0)` would error on the `elapsed / total` division. Instead, anchor once in `ApplyConfig` to `frame.bar:GetStatusBarTexture()`'s RIGHT edge — Blizzard reanchors the inner status texture C-side as the bar value changes, so the spark follows the fill edge automatically for both casts (texture grows left → right) and channels (texture shrinks right → left).
+
+**`name` and `texture` may themselves be secret in combat for protected casts.** Pass them through to `FontString:SetText` and `Texture:SetTexture` anyway — those C methods accept secret args without erroring (Blizzard's protection is on arithmetic, not on UI render calls). Do **not** call `tostring(name)`, `:format("...", name)`, `if name == "..." then`, or any operation that'd treat the value as data — same secret-value guard the original Castbar tripped on `endTimeMS`.
+
+**`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)` if you ever need to branch on it (e.g., to draw a different bar color for non-interruptable casts). KickCD doesn't currently differentiate but stores the field for future use.
+
+**Anti-pattern that I tried and burned my hands on:** sourcing `castTime` from `C_Spell.GetSpellInfo(spellID)` to size a fallback timeline. The whole returned table is tainted in combat against an interruptable target — *every* field comes back secret (`name`, `castTime`, `iconID`, `minRange`, `maxRange`, `originalIconID`). Reading `info.castTime` into a Lua local and comparing it to `0` errors the same way `endTimeMS` does. UnitCastingDuration sidesteps the whole problem — there's no reason to fall back when the duration object is available.
+
+**Anti-patterns explicitly avoided** (each one was tried and broke; don't repeat):
+- Reading `startTimeMS` / `endTimeMS` from `UnitCastingInfo` and doing `(now - start) / (end - start)` arithmetic. (The original v0.1 Castbar bug.)
+- Sourcing `castTime` from `C_Spell.GetSpellInfo(spellID)` for a fallback timeline. The whole returned table is tainted.
+- Binding `CastingDuration:Get…Duration()` returns to a Lua local for `if x > 0` / `x / y` / `x <= 0`. Pass the method calls as arguments only.
+- Computing the spark position from `barWidth * (elapsed / total)`. Anchor to `bar:GetStatusBarTexture():RIGHT` and let Blizzard reposition C-side.
+- Detecting end-of-cast in OnUpdate via `if remaining <= 0`. Use `UNIT_SPELLCAST_STOP` and friends.
+- `tonumber` / `tostring` / `+0` / `securecallfunction` "detox" of secret values — see `core/Compat.lua` line 28.
+- Using `CastingBarFrameTemplate` and pointing it at `"target"`. Its built-in `OnUpdate` does `GetTime() < self.maxValue`, which becomes `GetTime() < <secret>` and errors once the addon sets `maxValue` from a secret `endTime`.
+- Restyling `TargetFrameSpellBar` (the default UI cast bar) instead of building a fresh frame.
+- Gating `name` / `texture` / `notInterruptible` with `issecretvalue` and replacing with placeholders. They may be secret, but `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` accept secret args without erroring — gating just makes the bar look worse for no benefit.
 
 ## Frame mixin pattern
 

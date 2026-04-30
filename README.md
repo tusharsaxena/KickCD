@@ -5,13 +5,19 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 KickCD is a lightweight, single-folder WoW addon that helps the player make
-informed interrupt decisions in real time. It shows a movable, persistently-
-visible icon grid of the player's interrupt + cast-stopping CC abilities,
-with cooldown swipes and a clear ready/not-ready state. Defaults are sensible
-per class and spec; the secondary block can be anchored to any of 12 points
-on the primary icon (top/bottom/left/right × center/perpendicular alignments)
-and filled in any of 8 grow directions. Everything is configurable through
-the standard Blizzard Settings panel.
+informed interrupt decisions in real time. It pairs two pieces of UI:
+
+- A movable, persistently-visible **icon grid** of the player's interrupt +
+  cast-stopping CC abilities, with cooldown swipes and a clear ready/not-ready
+  state. Defaults are sensible per class and spec; the secondary block can be
+  anchored to any of 12 points on the primary icon (top/bottom/left/right ×
+  center/perpendicular alignments) and filled in any of 8 grow directions.
+- An independently-movable **target cast bar** that shows the current target's
+  cast or channel — spell icon, name, and remaining time — and remains accurate
+  in combat against interruptable enemies (handles 12.0 secret-value
+  protection via `UnitCastingDuration`).
+
+Everything is configurable through the standard Blizzard Settings panel.
 
 ## Status
 
@@ -36,10 +42,11 @@ Backward compatibility with TWW 11.2.x is not a goal of this release.
 - `/kcd` — same, shorter alias.
 - `/kickcd debug` — verbose debug print (target state, watched-spell state).
 
-The settings panel exposes four subcategories: General, Icons (size, layout,
-anchor + grow direction, border, annotations), Spells (per-class+spec list
-editor), and Profiles (Ace3 AceDBOptions). The cast-bar pipeline was
-removed at commit `59fb5c0` and will be re-added in a later release.
+The settings panel exposes five subcategories: General, Icons (size, layout,
+anchor + grow direction, border, annotations), Cast bar (size, icon, font,
+texture, colors, border), Spells (per-class+spec list editor), and Profiles
+(Ace3 AceDBOptions). Use `/kcd unlock` to drag the icon grid and the cast
+bar into position, then `/kcd lock` to fix them.
 
 ## Documentation
 

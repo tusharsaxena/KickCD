@@ -63,8 +63,29 @@ local DEFAULT_PROFILE = {
         secondaryOffsetY = 0,
     },
 
+    castbar = {
+        enabled          = true,
+        width            = 250,
+        height           = 24,
+        iconSize         = 24,
+        iconPosition     = "LEFT",      -- "LEFT" or "RIGHT"
+        showSpark        = true,
+        showName         = true,
+        showTime         = true,
+        font             = "Friz Quadrata TT",
+        fontSize         = 12,
+        fontFlags        = "OUTLINE",
+        statusBarTexture = "Blizzard",
+        barColor         = { 0.7, 0.2, 0.2, 1 },
+        bgColor          = { 0,   0,   0,   0.5 },
+        borderShow       = false,
+        borderColor      = { 0,   0,   0,   1 },
+        borderSize       = 1,
+    },
+
     anchors = {
-        icons = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 },
+        icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 },
+        castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 },
     },
 
     -- spells[CLASS][SPEC] = { { spellID, category, enabled }, ... } in priority order.
@@ -88,7 +109,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 4
+local LATEST_VERSION = 5
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -177,6 +198,43 @@ local Migrations = {
                 end
                 icons.anchor = side .. "_" .. ((perp == 1) and "CENTER" or alignByDir)
                 icons.layout = nil
+            end
+        end
+    end,
+
+    -- v5: introduced the cast-bar module. Existing profiles get the
+    -- castbar sub-table seeded with the same defaults a fresh profile
+    -- would pick up, plus the castbar anchor entry.
+    [5] = function(db)
+        local function castbarDefaults()
+            return {
+                enabled          = true,
+                width            = 250,
+                height           = 24,
+                iconSize         = 24,
+                iconPosition     = "LEFT",
+                showSpark        = true,
+                showName         = true,
+                showTime         = true,
+                font             = "Friz Quadrata TT",
+                fontSize         = 12,
+                fontFlags        = "OUTLINE",
+                statusBarTexture = "Blizzard",
+                barColor         = { 0.7, 0.2, 0.2, 1 },
+                bgColor          = { 0,   0,   0,   0.5 },
+                borderShow       = false,
+                borderColor      = { 0,   0,   0,   1 },
+                borderSize       = 1,
+            }
+        end
+        for _, profile in pairs(db.profiles or {}) do
+            if not profile.castbar then
+                profile.castbar = castbarDefaults()
+            end
+            profile.anchors = profile.anchors or {}
+            if not profile.anchors.castbar then
+                profile.anchors.castbar =
+                    { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 }
             end
         end
     end,

@@ -36,10 +36,12 @@ defaults\Spells.lua
 # Modules
 modules\Cooldowns.lua
 modules\IconGrid.lua
+modules\Castbar.lua
 
 # Settings (last — depend on everything else being initialized)
 settings\Panel.lua
 settings\General.lua
 settings\Icons.lua
+settings\Castbar.lua
 settings\Spells.lua
 settings\Profiles.lua
