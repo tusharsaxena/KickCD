@@ -429,10 +429,27 @@ local function makeColorPicker(ctx, def)
         cp:SetColor(readColor())
     end
 
-    cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a)
+    -- AceGUI's ColorPicker only fires `OnValueConfirmed` via the alpha
+    -- callback path, which in modern WoW (SetupColorPickerAndShow API)
+    -- means it fires on **Cancel** (where cancelFunc invokes the alpha
+    -- branch with the original color) but NOT on **OK** (where the
+    -- picker just hides without an extra callback). So we'd be missing
+    -- every confirmed write if we listened to OnValueConfirmed alone.
+    --
+    -- Listen to both:
+    --   * OnValueChanged fires during drag while the picker is visible.
+    --     Treat it as the primary write — gives a live preview AND
+    --     persists the value before the user even clicks OK.
+    --   * OnValueConfirmed fires (only) when the user cancels, with
+    --     the ORIGINAL color. We commit it too, which writes the
+    --     original back over any intermediate drag values, effectively
+    --     reverting on cancel — matching user expectation.
+    local function commit(r, g, b, a)
         Helpers.Set(def.path, def.section, { r, g, b, a or 1 })
         fireOnChange(def, { r, g, b, a or 1 })
-    end)
+    end
+    cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) commit(r, g, b, a) end)
+    cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a) commit(r, g, b, a) end)
 
     attachTooltip(cp, def.label, def.tooltip)
     scroll:AddChild(cp)
