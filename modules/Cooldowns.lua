@@ -7,13 +7,40 @@
 -- since the last emission. This avoids spamming the IconGrid on every
 -- SPELL_UPDATE_COOLDOWN tick.
 --
+-- 12.0 secret-value strategy:
+--   * In COMBAT, every watched spell's start/duration AND its
+--     CooldownDuration:GetRemainingDuration() come back as secret-tainted
+--     numbers. Any arithmetic / comparison / format / tostring on those
+--     values from tainted scope errors out. (Out of combat, the same
+--     calls return plain numbers — that's why a comparison-based filter
+--     can look correct in testing but blow up the moment combat opens.)
+--   * The CooldownDuration object itself is safe to pass through to
+--     Blizzard C methods. The IconGrid module routes it to:
+--       - Cooldown:SetCooldownFromDurationObject  (swipe)
+--       - FontString:SetFormattedText             (countdown text)
+--       - cdObj:EvaluateRemainingDuration(curve)  (GCD-vs-real-CD filter
+--                                                  for alpha/tint visuals)
+--   * UNIT_SPELLCAST_SUCCEEDED is suppressed by Blizzard for protected
+--     interrupts (Mind Freeze, Pummel, Kick, ...) — the event simply does
+--     not fire when the player casts one of those spells. So a cast-event
+--     tracker can never disambiguate "real CD" from "just GCD" for the
+--     primary icon. Instead, we hand the duration object straight to the
+--     IconGrid; the IconGrid evaluates it against a step-shaped curve
+--     (ready alpha for remaining ≤ ~GCD upper bound, cooldown alpha
+--     beyond), and Blizzard's curve evaluation runs C-side so no Lua
+--     comparison ever happens. This is the same pattern FIH uses for its
+--     cdReadyCurve.
+--
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
 -- false (master disable); a "general" KickCD_CONFIG_CHANGED triggers a
 -- full Rebuild so the watched-list comes back online when the user
 -- re-enables.
 --
 -- Message contract (closed):
---   FIRE:    KickCD_SPELL_STATE { spellID, ready, start, duration, charges }
+--   FIRE:    KickCD_SPELL_STATE { spellID, ready, isActive, cdObject, charges }
+--            cdObject is the secret-aware duration object — non-nil
+--            whenever the legacy isActive flag is true (real CD or just
+--            GCD; the IconGrid distinguishes via curve evaluation).
 --   LISTEN:  KickCD_PROFILE_CHANGED,
 --            KickCD_CONFIG_CHANGED (section=="spells" or "general")
 
@@ -46,12 +73,18 @@ end
 -- Watched-list management
 -- ---------------------------------------------------------------------------
 
+local function dprint(...)
+    if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+        KickCD.Util.print("Cooldowns:", ...)
+    end
+end
+
 --- Compute the freshly-polled state for a single spellID.
 -- @param spellID number
--- @return table|nil  { spellID, ready, start, duration, charges }
+-- @return table|nil  { spellID, ready, isActive, cdObject, charges }
 --   Returns nil if the spell isn't actually known by the player (skip it
 --   per FR-2.8).
-local function PollSpell(spellID)
+function Cooldowns:PollSpell(spellID)
     -- Reject obviously-bad IDs early.
     if not spellID or type(spellID) ~= "number" then return nil end
 
@@ -60,16 +93,24 @@ local function PollSpell(spellID)
     local name = KickCD.Compat.GetSpellInfo(spellID)
     if not name then return nil end
 
-    local start, duration, _, _, isActive = KickCD.Compat.GetSpellCooldown(spellID)
+    -- Plain-bool active flag from the legacy API. We deliberately discard
+    -- start/duration here — they're secret in combat and the duration
+    -- object covers every legitimate downstream use.
+    local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(spellID)
     local usable    = KickCD.Compat.IsSpellUsable(spellID)
     local cur, maxC = KickCD.Compat.GetSpellCharges(spellID)
 
-    -- 12.0 secret-value safety: never compare start/duration in tainted scope.
-    -- Use the plain `isActive` boolean from C_Spell.GetSpellCooldown instead.
-    local cdActive = isActive
-    -- Charges may also come back secret on guarded spells. If so, conserva-
-    -- tively assume the spell has charges available — better to flag a spell
-    -- as ready when it isn't than to spam errors.
+    -- Secret-aware cooldown handle. We never call :GetRemainingDuration()
+    -- on it from Lua; the IconGrid passes it through to
+    -- Cooldown:SetCooldownFromDurationObject (swipe),
+    -- FontString:SetFormattedText (text), and
+    -- cdObj:EvaluateRemainingDuration(curve) (GCD-vs-real-CD visual filter)
+    -- — all of which accept secret values via C-side argument paths.
+    local cdObject = isActive and KickCD.Compat.GetSpellCooldownDuration(spellID) or nil
+
+    -- Charges may come back secret on guarded spells. If so, conservatively
+    -- assume the spell has charges available — better to flag a spell as
+    -- ready when it isn't than to spam errors.
     local hasCharges
     if cur == nil then
         hasCharges = true
@@ -78,29 +119,44 @@ local function PollSpell(spellID)
     else
         hasCharges = cur > 0
     end
-    local ready = (not cdActive) and usable and hasCharges
+
+    -- `ready` is the canonical "this spell can be cast right now" boolean.
+    -- It's used for the spec-locked-spells filter and for downstream UI
+    -- "show charges?" decisions, but NOT for visual states — visual states
+    -- are derived in the IconGrid by evaluating cdObject against curves so
+    -- that a GCD-only "active" period reads as ready visually while still
+    -- being uncastable.
+    local ready = (not isActive) and usable and hasCharges
+
+    if KickCD._debugLog then
+        dprint(("poll [%d] %s isActive=%s usable=%s ready=%s cdObj=%s"):format(
+            spellID, tostring(name),
+            tostring(isActive),
+            tostring(usable),
+            tostring(ready),
+            cdObject and "yes" or "nil"))
+    end
 
     return {
         spellID  = spellID,
         ready    = ready,
-        isActive = isActive,
-        start    = start,    -- pass through opaquely (may be secret)
-        duration = duration, -- ditto; downstream uses are C-side / gated
+        isActive = isActive == true,
+        cdObject = cdObject,
         charges  = cur,
         _maxC    = maxC,
     }
 end
 
 --- Determine whether two state snapshots differ enough to merit emitting
---- KickCD_SPELL_STATE. We compare the user-visible fields only; modRate
---- and other internal info are ignored.
---- Note: 12.0 secret-value protection means we cannot diff start/duration
---- (the `>` and `-` ops error on secret values). The Cooldown frame ticks
---- itself once SetCooldown is called, so per-tick re-emission isn't needed.
+--- KickCD_SPELL_STATE. The IconGrid drives its swipe and countdown text
+--- via the cdObject reference once it's handed over, so per-tick re-
+--- emission isn't needed — only state transitions matter (ready ↔ on-CD,
+--- charges available ↔ none).
 local function StateChanged(prev, next_)
     if not prev then return true end
     if prev.ready    ~= next_.ready    then return true end
     if prev.isActive ~= next_.isActive then return true end
+    if prev.cdObject ~= next_.cdObject then return true end
     -- Charges may be secret on guarded spells; only diff when both are plain.
     local a, b = prev.charges, next_.charges
     local aSecret = a ~= nil and issecretvalue and issecretvalue(a)
@@ -147,15 +203,14 @@ function Cooldowns:Rebuild()
     for _, entry in ipairs(list) do
         if entry.enabled ~= false then
             local id = entry.spellID
-            local state = PollSpell(id)
+            local state = self:PollSpell(id)
             if state then
                 self.watched[id] = state
                 KickCD:SendMessage("KickCD_SPELL_STATE", {
                     spellID  = state.spellID,
                     ready    = state.ready,
                     isActive = state.isActive,
-                    start    = state.start,
-                    duration = state.duration,
+                    cdObject = state.cdObject,
                     charges  = state.charges,
                 })
             elseif KickCD._debugLog then
@@ -172,17 +227,23 @@ function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
     for id, prev in pairs(self.watched) do
-        local next_ = PollSpell(id)
+        local next_ = self:PollSpell(id)
         if next_ and StateChanged(prev, next_) then
             self.watched[id] = next_
             KickCD:SendMessage("KickCD_SPELL_STATE", {
                 spellID  = next_.spellID,
                 ready    = next_.ready,
                 isActive = next_.isActive,
-                start    = next_.start,
-                duration = next_.duration,
+                cdObject = next_.cdObject,
                 charges  = next_.charges,
             })
+            if KickCD._debugLog then
+                dprint(("emit  [%d] ready=%s isActive=%s cdObj=%s"):format(
+                    next_.spellID,
+                    tostring(next_.ready),
+                    tostring(next_.isActive),
+                    next_.cdObject and "yes" or "nil"))
+            end
         end
     end
 end
@@ -258,18 +319,13 @@ function Cooldowns:DebugDump()
     for _, id in ipairs(ids) do
         local s = self.watched[id]
         local name = KickCD.Compat.GetSpellInfo(id) or "?"
-        -- duration may be a 12.0 "secret value" — %.1f formatting would error.
-        local durStr
-        if s.duration ~= nil and issecretvalue and issecretvalue(s.duration) then
-            durStr = "secret"
-        else
-            durStr = string.format("%.1f", s.duration or 0)
-        end
-        p(("  [%d] %s ready=%s active=%s dur=%s charges=%s"):format(
+        -- We deliberately don't print remaining time — :GetRemainingDuration()
+        -- is secret in combat and even tostring would error in tainted scope.
+        p(("  [%d] %s ready=%s active=%s cdObj=%s charges=%s"):format(
             id, name,
             tostring(s.ready),
             tostring(s.isActive),
-            durStr,
+            s.cdObject and "yes" or "nil",
             tostring(s.charges)))
     end
 end

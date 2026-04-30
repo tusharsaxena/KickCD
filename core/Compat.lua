@@ -66,6 +66,42 @@ function Compat.GetSpellCooldown(spellID)
     return 0, 0, false, 1, false
 end
 
+--- Secret-safe cooldown handle for a spell.
+-- @param spellID number
+-- @return CooldownDuration|nil  An opaque duration object as returned by
+--   C_Spell.GetSpellCooldownDuration. Useful methods:
+--     :GetRemainingDuration()           — returns the seconds remaining.
+--                                         **Plain number out of combat,
+--                                         secret-tainted in combat.** Only
+--                                         pass directly into a Blizzard C
+--                                         method (FontString:SetFormattedText,
+--                                         Cooldown:SetCooldownFromDurationObject
+--                                         et al.) — never bind it to a Lua
+--                                         local for compare / format /
+--                                         tostring, or you'll get
+--                                         "attempt to compare local
+--                                         '...' (a secret number value)".
+--     :EvaluateRemainingDuration(curve) — pass remaining through a numeric
+--                                         or color curve; same caveat
+--                                         applies to the result.
+--     The object itself can be handed straight to
+--     Cooldown:SetCooldownFromDurationObject for the radial swipe — that C
+--     method handles the secret value internally.
+--   Returns nil when the spell has no active cooldown (or the API is missing
+--   on a pre-12.0 client).
+--
+-- This is the API to reach for whenever you need timing info for a watched
+-- spell — it works for both interrupt-style protected spells (whose raw
+-- start/duration come back as 12.0 "secret values" that error on any
+-- arithmetic / comparison) and ordinary spells alike. See
+-- FloatingInterruptHighlight's Core.lua for the canonical usage pattern.
+function Compat.GetSpellCooldownDuration(spellID)
+    if C_Spell and C_Spell.GetSpellCooldownDuration then
+        return C_Spell.GetSpellCooldownDuration(spellID)
+    end
+    return nil
+end
+
 --- File ID of the spell's icon texture.
 -- @param spellID number
 -- @return number|nil  fileID suitable for Texture:SetTexture()

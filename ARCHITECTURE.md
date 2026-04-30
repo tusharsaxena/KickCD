@@ -18,8 +18,8 @@ KickCD (AceAddon)
 ├── defaults/
 │   └── Spells.lua    — per-class+spec default interrupt lists (KickCD.DefaultSpells)
 ├── modules/
-│   ├── Cooldowns.lua — polls C_Spell.GetSpellCooldown, emits KickCD_SPELL_STATE
-│   └── IconGrid.lua  — owns KickCDIconGrid frame and pooled icon widgets
+│   ├── Cooldowns.lua — polls Compat.GetSpellCooldown + GetSpellCooldownDuration, emits KickCD_SPELL_STATE
+│   └── IconGrid.lua  — owns KickCDIconGrid frame and pooled icon widgets; runs alpha/tint curves C-side
 └── settings/
     ├── Panel.lua     — top-level category + canvas-panel framework + schema renderer
     ├── General.lua   — schema rows for enable/lock/scale/alpha/debugLog + Reset position button
@@ -46,11 +46,13 @@ External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, Ac
 Game event (SPELL_UPDATE_COOLDOWN, ...)
         │
         ▼
-Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown / IsSpellUsable / GetSpellCharges
+Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown          (isActive, plain bool)
+        │                                    Compat.GetSpellCooldownDuration  (cdObject, secret-aware)
+        │                                    Compat.IsSpellUsable / GetSpellCharges
         │                                          │
         │                                          ▼
-        │                                  { start, duration, isActive, charges }
-        │                                  (start/duration may be "secret values")
+        │                                  { ready, isActive, cdObject, charges }
+        │                                  (cdObject:GetRemainingDuration is secret in combat)
         ▼
 StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE", payload)
                                                           │
@@ -58,8 +60,12 @@ StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE",
                                           IconGrid:OnSpellState ──► btn:Apply(state)
                                                                           │
                                                                           ▼
-                                                         desaturate / SetCooldown (gated by issecretvalue)
+                                          alphaCurve / tintCurve evaluated C-side → SetAlphaFromBoolean / SetVertexColor
+                                          cdObject → SetCooldownFromDurationObject (swipe)
+                                          cdObject:GetRemainingDuration → SetFormattedText (countdown)
 ```
+
+The GCD-vs-real-CD visual decision is made entirely C-side via `cdObject:EvaluateRemainingDuration(curve)`. The IconGrid maintains step-shaped alpha and color curves built from `cfg.readyAlpha` / `cfg.cooldownAlpha` / `cfg.cooldownTint`: remaining ≤ ~1.6s evaluates to ready visuals, anything beyond evaluates to cooldown visuals. Lua never compares the secret remaining time directly. See `modules/IconGrid.lua` `BuildCurves`.
 
 User input (drag, settings panel widget, slash command) flows through
 `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which
@@ -143,7 +149,7 @@ Internal messages travel over AceEvent's per-addon bus (`KickCD:SendMessage` / `
 
 | Message | Sender | Listeners | Payload | Notes |
 |---|---|---|---|---|
-| `KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, start, duration, charges }` | `start`/`duration`/`charges` may be secret |
+| `KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, charges }` | `cdObject` is the secret-aware `CooldownDuration` from `C_Spell.GetSpellCooldownDuration`; non-nil whenever `isActive` is true. `:GetRemainingDuration()` on it is secret in combat — only pass directly to C methods. `charges` may also be secret. |
 | `KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set`, `core/KickCD.lua` (lock/unlock) | `IconGrid`, `Cooldowns` | `{ section = "general"\|"icons"\|"spells" }` | section-keyed for cheap dispatch |
 | `KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback) | `IconGrid`, `Cooldowns` | `{ newProfileKey }` | fires for `OnProfileChanged` / `Copied` / `Reset` |
 
@@ -153,19 +159,30 @@ The set is closed by convention — module headers and `CLAUDE.md` reference thi
 
 Single saved-variable: `KickCDDB`, an AceDB-3.0 store. Default scope is per-character (the `true` arg in `AceDB:New`); the user can switch to default / per-class / per-realm via the Profiles tab.
 
-Profile shape (see `core/Database.lua`):
+Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
 ```lua
 {
-    enabled = true,
-    locked  = true,           -- icon grid drag lock
-    scale   = 1.0,            -- master scale
-    alpha   = 1.0,            -- master alpha
+    enabled  = true,
+    locked   = true,           -- icon grid drag lock
+    scale    = 1.0,            -- master scale
+    alpha    = 1.0,            -- master alpha
+    debugLog = false,          -- mirrors /kcd debug log; toggles internal-message logging
 
     icons = {
-        primarySize, secondarySize, layout, primaryAnchor, gap,
+        -- Sizing
+        primarySize, secondarySize, gap, zoom,
+        -- Layout (12 anchor points + 8 grow directions; orthogonal)
+        anchor,                                -- "TOP_LEFT" | "RIGHT_CENTER" | ...
+        secondaryGrow,                         -- "right_down" | "up_left" | ...
+        secondaryRows, secondaryCols,
+        secondaryOffsetX, secondaryOffsetY,
+        -- Visual states (drives the alpha/tint curves in IconGrid)
         readyAlpha, cooldownAlpha, cooldownTint,
-        showCooldownText, cooldownTextFont, cooldownTextSize,
+        -- Border
+        borderShow, borderColor, borderSize,
+        -- Annotations
+        showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
         showCharges,
     },
     anchors = {
@@ -183,6 +200,8 @@ Profile shape (see `core/Database.lua`):
 global = { dbVersion = N }    -- migration cursor, see Database.RunMigrations
 ```
 
+Forward-only migrations bring older saved-vars up to the current schema (`Database.Migrations[1..4]` in `core/Database.lua`). Notably `v4` translated the old `layout` (horizontal/vertical) + `primaryAnchor` pair into the unified 12-option `anchor` enum.
+
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
 
 ## Compat layer
@@ -192,6 +211,7 @@ Spell APIs and the Settings registration API have churned across recent expansio
 | Compat function | Wraps | 12.0 caveats |
 |---|---|---|
 | `Compat.GetSpellCooldown(id)` | `C_Spell.GetSpellCooldown` (table) → `_G.GetSpellCooldown` (tuple) | Returns `(start, duration, isEnabled, modRate, isActive)`; `start`/`duration`/`modRate` may be secret. Use `isActive` (plain) for "is on cooldown" decisions. |
+| `Compat.GetSpellCooldownDuration(id)` | `C_Spell.GetSpellCooldownDuration` | Returns a secret-aware `CooldownDuration` object (or nil). Pass to `Cooldown:SetCooldownFromDurationObject`, `FontString:SetFormattedText("%.1f", obj:GetRemainingDuration())`, or `obj:EvaluateRemainingDuration(curve)`. **`:GetRemainingDuration()` is secret in combat** — only pass directly to a C method; never bind to a Lua local for compare / format / tostring. |
 | `Compat.GetSpellInfo(id)` | `C_Spell.GetSpellInfo` (table) → `_G.GetSpellInfo` (tuple) | — |
 | `Compat.GetSpellTexture(id)` | `C_Spell.GetSpellTexture` → `_G.GetSpellTexture` | Texture may be secret on guarded spells; gate with `issecretvalue` before `SetTexture`. |
 | `Compat.GetSpellCharges(id)` | `C_Spell.GetSpellCharges` (table) → `_G.GetSpellCharges` (tuple) | Charges may be secret on guarded spells. |
@@ -238,4 +258,4 @@ Adding a regular command is a one-row append; help text is generated from the sa
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
 - Internal communication is via the closed message set; modules do not call each other directly across boundaries.
 - Module files are header-commented with their job and message contract; keep both in sync with the code.
-- 12.0 secret values: rule of thumb is "operate on `isActive` / `isEnabled` for decisions; pass `start` / `duration` opaquely or gate with `issecretvalue`." See `CLAUDE.md` for the full pattern catalogue.
+- 12.0 secret values: rule of thumb is "operate on `isActive` / `isEnabled` (plain bools) for decisions; pass the `cdObject` from `Compat.GetSpellCooldownDuration` opaquely to C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `EvaluateRemainingDuration`); never bind `:GetRemainingDuration()` to a Lua local in combat." Visual decisions that depend on remaining time (e.g. GCD-vs-real-CD filter) live in C-side curves built by `IconGrid.BuildCurves` and applied via `SetAlphaFromBoolean` / `SetVertexColor`. See `CLAUDE.md` for the full pattern catalogue.

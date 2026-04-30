@@ -23,6 +23,18 @@ WoW 12.0 introduced "secret values" on certain protected API returns — notably
 
 **The rule:** never compare, do arithmetic on, format, or pass to most Blizzard C methods a value that might be secret. Either use a sibling field that is plain (e.g. `info.isActive` and `info.isEnabled` come back plain), or gate the operation with `issecretvalue(v)` and degrade gracefully (skip the op, hide the visual, etc.).
 
+**Preferred workaround for cooldown timing:** use `C_Spell.GetSpellCooldownDuration(spellID)` (wrapped as `KickCD.Compat.GetSpellCooldownDuration`). It returns a `CooldownDuration` object that can be:
+
+- Passed straight to `Cooldown:SetCooldownFromDurationObject(obj)` to drive the swipe.
+- Passed to `FontString:SetFormattedText("%.1f", obj:GetRemainingDuration())` to render countdown text.
+- Evaluated against a `C_CurveUtil.CreateCurve` / `CreateColorCurve` via `obj:EvaluateRemainingDuration(curve)` and the result passed to `Frame:SetAlphaFromBoolean(true, alpha, 0)` / `Texture:SetVertexColor(color:GetRGB())`.
+
+**Critical caveat:** `obj:GetRemainingDuration()` returns a *secret-tainted* number in combat (plain out of combat). It is **only** safe as a direct argument to a Blizzard C method. Binding it to a Lua local for a comparison, format, tostring, or arithmetic op will error with "attempt to compare local '...' (a secret number value)" the moment combat opens. The same caveat applies to whatever `EvaluateRemainingDuration` returns — pass it through to a C method, never inspect it.
+
+This is the API `FloatingInterruptHighlight` uses, and we've adopted the same pattern: `modules/Cooldowns.lua` emits the duration object opaquely, `modules/IconGrid.lua` evaluates it against step-shaped alpha/tint curves to derive GCD-vs-real-CD visuals C-side. Reach for `C_Spell.GetSpellCooldown`'s raw `startTime`/`duration` only when you genuinely need them — and even then, gate with `issecretvalue` first because in combat *every* watched spell's timings come back secret.
+
+Why curves instead of a `UNIT_SPELLCAST_SUCCEEDED` cast tracker for GCD filtering? Blizzard suppresses that event for protected interrupts (Mind Freeze, Pummel, Kick, Spear Hand Strike, …) — the event simply does not fire when the player casts one of those spells in tainted scope. So a cast-event tracker can never flip the primary icon's state. Curve evaluation runs entirely C-side and works for protected and unprotected spells alike.
+
 The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-based pattern; see comments in `core/Compat.lua` and `modules/IconGrid.lua` for the rationale recorded in-tree.
 
 Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
@@ -49,11 +61,16 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 
 | Message | Sender | Payload |
 |---|---|---|
-| `KickCD_SPELL_STATE` | Cooldowns | `{ spellID, ready, isActive, start, duration, charges }` |
+| `KickCD_SPELL_STATE` | Cooldowns | `{ spellID, ready, isActive, cdObject, charges }` |
 | `KickCD_CONFIG_CHANGED` | settings/* + slash | `{ section = "general"\|"icons"\|"spells" }` |
 | `KickCD_PROFILE_CHANGED` | Database (AceDB callback) | `{ newProfileKey }` |
 
-**Don't invent new messages without a reason.** The closed list is documented in this file and in module headers; new entries should appear here too. `start` and `duration` in the spell-state payload may be secret values — never compare or do arithmetic on them downstream; gate with `issecretvalue` or use `isActive` (always plain).
+**Don't invent new messages without a reason.** The closed list is documented in this file and in module headers; new entries should appear here too. `cdObject` is the secret-aware `CooldownDuration` handle from `C_Spell.GetSpellCooldownDuration`, non-nil whenever the legacy `isActive` flag is true (real CD or just-GCD; the IconGrid disambiguates downstream). It can be:
+- Passed to `Cooldown:SetCooldownFromDurationObject` for the swipe.
+- Passed to `FontString:SetFormattedText("%.1f", cdObj:GetRemainingDuration())` for countdown text.
+- Evaluated against a `C_CurveUtil.CreateCurve` / `CreateColorCurve` via `cdObj:EvaluateRemainingDuration(curve)` to produce alpha / color values that ride through `Frame:SetAlphaFromBoolean(true, alpha, 0)` and `Texture:SetVertexColor(color:GetRGB())`.
+
+The legacy `start` / `duration` raw timings are NOT in the payload precisely because they go secret in combat for every watched spell and break arithmetic in tainted scope. **`cdObject:GetRemainingDuration()` is also secret in combat** — only ever pass it directly to a C method as an argument; never hold it in a Lua local for compare / format / tostring. The GCD-vs-real-CD visual filter lives entirely in `modules/IconGrid.lua` as a step-shaped alpha/tint curve evaluated C-side: `UNIT_SPELLCAST_SUCCEEDED` is suppressed for protected interrupts (Mind Freeze, Pummel, Kick, …) so a cast-event tracker would never flip the primary icon's state — the curve sidesteps that by reading remaining only inside Blizzard's curve evaluator.
 
 ## Icon grid layout model
 
@@ -198,7 +215,7 @@ There is no automated test harness. Verification is manual:
   is clamped to `[min, max]`; string must match a `values[i].value`;
   color takes 3–4 floats (`r g b [a]`). On success, any open panel
   refreshes its widgets via `Helpers.RefreshAllPanels()`.
-- `/kcd debug spells` — dump the watched cooldown list with `ready / active / dur / charges` per spell. `dur=secret` is expected for protected interrupts.
+- `/kcd debug spells` — dump the watched cooldown list with `ready / active / cdObj / charges` per spell. `cdObj=yes` means a duration object is held; `nil` means the spell is off cooldown. We deliberately do NOT print remaining time — `:GetRemainingDuration()` is secret in combat and `tostring` would error in tainted scope.
 - `/kcd debug log` — toggle internal-message logging (mirrors the
   General → Debug checkbox; both write `db.profile.debugLog`).
 - `/kcd lock` / `/kcd unlock` / `/kcd toggle` — exercise the icon grid lock state.

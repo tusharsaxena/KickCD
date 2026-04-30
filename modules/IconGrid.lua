@@ -43,6 +43,26 @@ local grid
 
 local floor = math.floor
 
+-- Upper bound on the global cooldown duration. WoW's GCD is haste-modified
+-- (typically 1.0–1.5s); 1.6s comfortably covers the unhasted case plus a
+-- small fp epsilon. The alpha/tint curves treat any remaining ≤ this value
+-- as "GCD only — show as ready" and remaining > this value as "real CD —
+-- apply visual states." Sub-second precision isn't critical because the
+-- transition is a step, not a gradient.
+local GCD_UPPER = 1.6
+
+-- Step-shaped curves used to derive per-icon alpha and tint without ever
+-- comparing the spell's secret-tainted remaining time in Lua scope. Built
+-- from cfg.readyAlpha / cfg.cooldownAlpha / cfg.cooldownTint by
+-- BuildCurves(); rebuilt whenever those settings change.
+--
+-- Why curves: cdObject:EvaluateRemainingDuration(curve) runs C-side, takes
+-- the (possibly secret) remaining time, and returns a value the Cooldown
+-- frame / Frame:SetAlphaFromBoolean / Texture:SetVertexColor accept as
+-- arguments without taint errors. This is FIH's cdReadyCurve pattern,
+-- generalized to KickCD's per-state visuals.
+local alphaCurve, tintCurve
+
 -- True when the master enable flag is set. Defaults to true on a fresh
 -- profile, so a missing field reads as enabled.
 local function isEnabled()
@@ -56,6 +76,43 @@ local function safeUnpackColor(c, fr, fg, fb, fa)
     -- fallbacks for the cooldown tint, so wrap it.
     if not c then return fr or 1, fg or 1, fb or 1, fa or 1 end
     return KickCD.Util.Unpack(c)
+end
+
+--- (Re)build the alpha/tint curves from db.profile.icons. Called once on
+--- enable and again on any "icons" config change. Cheap — these are tiny
+--- 4-point curves, recreating them per change is fine.
+local function BuildCurves()
+    if not (C_CurveUtil and C_CurveUtil.CreateCurve) then return end
+
+    local cfg = (KickCD.db and KickCD.db.profile and KickCD.db.profile.icons) or {}
+    local readyAlpha    = cfg.readyAlpha    or 1.0
+    local cooldownAlpha = cfg.cooldownAlpha or 0.4
+    local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+
+    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
+    -- between adjacent points is FIH's trick for a sharp transition under
+    -- linear interpolation (LuaCurveType.Linear is the default).
+    alphaCurve = C_CurveUtil.CreateCurve()
+    if alphaCurve.SetType and Enum and Enum.LuaCurveType then
+        alphaCurve:SetType(Enum.LuaCurveType.Linear)
+    end
+    alphaCurve:AddPoint(0,             readyAlpha)
+    alphaCurve:AddPoint(GCD_UPPER,     readyAlpha)
+    alphaCurve:AddPoint(GCD_UPPER + 0.001, cooldownAlpha)
+    alphaCurve:AddPoint(3600,          cooldownAlpha)
+
+    if C_CurveUtil.CreateColorCurve and CreateColor then
+        tintCurve = C_CurveUtil.CreateColorCurve()
+        if tintCurve.SetType and Enum and Enum.LuaCurveType then
+            tintCurve:SetType(Enum.LuaCurveType.Linear)
+        end
+        tintCurve:AddPoint(0,             CreateColor(1, 1, 1, 1))
+        tintCurve:AddPoint(GCD_UPPER,     CreateColor(1, 1, 1, 1))
+        tintCurve:AddPoint(GCD_UPPER + 0.001, CreateColor(r, g, b, 1))
+        tintCurve:AddPoint(3600,          CreateColor(r, g, b, 1))
+    else
+        tintCurve = nil
+    end
 end
 
 -- Resolve the active spec key the same way Database/Cooldowns do:
@@ -126,9 +183,13 @@ local function CreateIconWidget(parent)
     end
     btn.cooldown = cd
 
-    -- Optional cooldown text overlay (FR-2.6). Created up-front so we can
-    -- show/hide it cheaply on config-change without recreating the FontString.
-    -- Anchored CENTER for the typical "big number in the middle" look.
+    -- Cooldown text overlay (FR-2.6). We drive this FontString ourselves
+    -- (via an OnUpdate started from Apply) instead of relying on
+    -- CooldownFrameTemplate's built-in countdown numbers — those only
+    -- render while the swipe is animating, which means they never appear
+    -- for secret-protected interrupts where SetCooldown is skipped.
+    -- Owning the text also lets us honor cooldownTextFont/Size/Flags and
+    -- inherit the parent button's alpha (so the text dims with cooldownAlpha).
     local cdText = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     cdText:SetPoint("CENTER", btn, "CENTER", 0, 0)
     cdText:Hide()
@@ -159,34 +220,112 @@ local function CreateIconWidget(parent)
     return Mixin(btn, Icon)
 end
 
--- Apply a KickCD_SPELL_STATE payload to this icon. Code shape mirrors
--- TECHNICAL_DESIGN §3.6 — identical branching and field names so any future
--- merge of additional state (usability, OOR) drops in cleanly.
+-- Drive the cooldownText FontString from a CooldownDuration object.
+--
+-- 12.0 secret-value protection means we cannot read :GetRemainingDuration()
+-- into a Lua local in combat (the value is itself secret-tainted, and
+-- tostring / string.format / `<` / `-` all error). The trick FIH uses is to
+-- pass the secret directly into a Blizzard C method as a function argument
+-- — argument passing crosses into C without ever holding the value in a
+-- tainted Lua local. FontString:SetFormattedText(fmt, arg) does the
+-- formatting C-side, so this works:
+--
+--     fontString:SetFormattedText("%.1f", cdObj:GetRemainingDuration())
+--
+-- We can't conditionally choose the format (no comparison on remaining is
+-- legal), so we live with a single fixed format. "%.1f" is the same shape
+-- FIH uses for its timer.
+--
+-- The OnUpdate calls SetFormattedText every ~0.1s; we never decide "is it
+-- 0 yet?" — the Cooldowns module flips state.isActive=false when the
+-- legacy isActive boolean transitions, and Apply will then call
+-- StopCooldownText.
+function Icon:StartCooldownText(cdObject)
+    local cfg = self.cfg or KickCD.db.profile.icons
+    if not cfg.showCooldownText or not cdObject then
+        self:StopCooldownText()
+        return
+    end
+    self._cdObject = cdObject
+    self._cdAcc    = 0
+    -- Initial paint. SetFormattedText handles the secret value via its
+    -- C-side argument path; the same pattern works inside OnUpdate.
+    self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
+    self.cooldownText:Show()
+    self:SetScript("OnUpdate", function(s, elapsed)
+        s._cdAcc = (s._cdAcc or 0) + elapsed
+        if s._cdAcc < 0.1 then return end
+        s._cdAcc = 0
+        local obj = s._cdObject
+        if not obj then
+            s:StopCooldownText()
+            return
+        end
+        s.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
+    end)
+end
+
+function Icon:StopCooldownText()
+    self:SetScript("OnUpdate", nil)
+    self._cdObject = nil
+    self.cooldownText:Hide()
+end
+
+-- Apply a KickCD_SPELL_STATE payload to this icon. Payload shape:
+--   { spellID, ready, isActive, cdObject, charges }
+-- cdObject is the secret-aware CooldownDuration handle (non-nil whenever
+-- the legacy isActive flag is true). The GCD-vs-real-CD distinction is
+-- made here, C-side, by evaluating the duration object against the
+-- alpha/tint curves built in BuildCurves — that way Lua never has to
+-- compare the spell's secret-tainted remaining time directly.
 function Icon:Apply(state)
     local cfg = self.cfg or KickCD.db.profile.icons
-    if state and state.ready then
-        self.icon:SetVertexColor(1, 1, 1)
-        self:SetAlpha(cfg.readyAlpha or 1.0)
-        self.cooldown:Hide()
-        self.cooldown:SetCooldown(0, 0)
-    else
-        local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
-        self.icon:SetVertexColor(r, g, b)
-        self:SetAlpha(cfg.cooldownAlpha or 0.4)
-        -- 12.0 secret-value safety: gate the swipe on `isActive` (plain bool
-        -- from C_Spell.GetSpellCooldown) AND on start/duration being plain.
-        -- Cooldown:SetCooldown rejects secret values from tainted execution
-        -- ("Secret values are only allowed during untainted execution"), so
-        -- when timing is protected we leave the icon desaturated/dimmed
-        -- (already done above) without the radial sweep.
-        local s, d = state and state.start, state and state.duration
-        local sSecret = s ~= nil and issecretvalue and issecretvalue(s)
-        local dSecret = d ~= nil and issecretvalue and issecretvalue(d)
-        if state and state.isActive and s and d and not (sSecret or dSecret) then
-            self.cooldown:SetCooldown(s, d)
-            self.cooldown:Show()
+    -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
+    -- toggles showCooldownText (or any other visual state) mid-cooldown
+    -- without waiting for the next SPELL_STATE message.
+    self._lastState = state
+
+    if state and state.cdObject and alphaCurve then
+        -- Cooldown active (real CD or just GCD). Curves drive the visuals
+        -- so a GCD-only window still reads as "ready" (alpha=readyAlpha,
+        -- tint=white), while a real CD past the GCD threshold dims and
+        -- tints the icon.
+        local alpha = state.cdObject:EvaluateRemainingDuration(alphaCurve)
+        -- SetAlphaFromBoolean accepts secret values for its alpha args
+        -- (FIH uses the same pattern for its cdReadyCurve). Passing `true`
+        -- as the condition selects the second arg unconditionally.
+        if self.SetAlphaFromBoolean then
+            self:SetAlphaFromBoolean(true, alpha, 0)
         else
-            self.cooldown:Hide()
+            self:SetAlpha(alpha)
+        end
+
+        if tintCurve then
+            local color = state.cdObject:EvaluateRemainingDuration(tintCurve)
+            if color and color.GetRGB then
+                self.icon:SetVertexColor(color:GetRGB())
+            end
+        end
+
+        self.cooldown:SetCooldownFromDurationObject(state.cdObject)
+        self.cooldown:Show()
+        self:StartCooldownText(state.cdObject)
+
+        if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+            KickCD.Util.print(("IconGrid: apply [%d] active (curve)"):format(
+                state.spellID or -1))
+        end
+    else
+        -- No active cooldown of any kind. Plain ready visuals — no need
+        -- for curve indirection here, the values are all plain.
+        self:SetAlpha(cfg.readyAlpha or 1.0)
+        self.icon:SetVertexColor(1, 1, 1)
+        self.cooldown:Hide()
+        self.cooldown:Clear()
+        self:StopCooldownText()
+        if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+            KickCD.Util.print(("IconGrid: apply [%d] ready"):format(
+                state and state.spellID or -1))
         end
     end
 
@@ -252,40 +391,38 @@ function Icon:ApplyAppearance(cfg)
     end
 end
 
--- Wire the cooldown text on/off for this icon in response to a config
--- change. Kept separate from Apply because the cooldown text follows the
--- swipe driver itself, not the per-state payload.
+-- Wire the cooldown text font / size / flags on this icon in response to a
+-- config change. The built-in CooldownFrameTemplate countdown numbers are
+-- always suppressed — we render our own FontString via StartCooldownText
+-- so the text displays even when the swipe is hidden (interrupts) and
+-- inherits parent alpha for free.
 function Icon:ApplyTextConfig(cfg)
     cfg = cfg or KickCD.db.profile.icons
-    if cfg.showCooldownText then
-        local mediaFont = nil
-        local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-        if LSM then
-            mediaFont = LSM:Fetch("font", cfg.cooldownTextFont or "")
-        end
-        local fontPath = mediaFont
-        if not fontPath then
-            -- Fallback to whatever NumberFontNormal already provides.
-            local f = self.cooldownText:GetFont()
-            fontPath = f
-        end
-        if fontPath then
-            local flags = cfg.cooldownTextFlags or "OUTLINE"
-            -- SetFont expects an empty string (not "NONE") to mean "no flags".
-            if flags == "NONE" then flags = "" end
-            self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
-        end
-        -- Make the swipe drive the text via OmniCC-style handoff: when there's
-        -- no third-party display, we let the CooldownFrameTemplate count down
-        -- itself by un-hiding its built-in numbers. We do NOT set a per-frame
-        -- OnUpdate here — that would burn CPU on every visible icon.
-        if self.cooldown.SetHideCountdownNumbers then
-            self.cooldown:SetHideCountdownNumbers(false)
-        end
+    if self.cooldown.SetHideCountdownNumbers then
+        self.cooldown:SetHideCountdownNumbers(true)
+    end
+
+    local mediaFont = nil
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        mediaFont = LSM:Fetch("font", cfg.cooldownTextFont or "")
+    end
+    local fontPath = mediaFont
+    if not fontPath then
+        fontPath = self.cooldownText:GetFont()
+    end
+    if fontPath then
+        local flags = cfg.cooldownTextFlags or "OUTLINE"
+        if flags == "NONE" then flags = "" end
+        self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
+    end
+
+    -- Re-render so a showCooldownText toggle (or any other visual state
+    -- change) flowing through Layout takes effect immediately on a
+    -- currently-active cooldown, without waiting for the next SPELL_STATE.
+    if self._lastState then
+        self:Apply(self._lastState)
     else
-        if self.cooldown.SetHideCountdownNumbers then
-            self.cooldown:SetHideCountdownNumbers(true)
-        end
         self.cooldownText:Hide()
     end
 end
@@ -299,8 +436,10 @@ function IconGrid:AcquireIcon(spellID)
     if not btn then
         btn = CreateIconWidget(grid)
     end
-    btn.spellID = spellID
-    btn.cfg     = KickCD.db.profile.icons
+    btn.spellID    = spellID
+    btn.cfg        = KickCD.db.profile.icons
+    btn._lastState = nil
+    btn._cdObject  = nil
     btn:ClearAllPoints()
     btn:Show()
     pool.active[spellID] = btn
@@ -311,7 +450,10 @@ function IconGrid:ReleaseAll()
     for spellID, btn in pairs(pool.active) do
         btn:Hide()
         btn:ClearAllPoints()
-        btn.spellID = nil
+        btn.spellID    = nil
+        btn._lastState = nil
+        btn._cdObject  = nil
+        btn:SetScript("OnUpdate", nil)
         -- Reset cooldown so a stale swipe doesn't reappear on re-acquire.
         if btn.cooldown then btn.cooldown:Clear() end
         if btn.chargesText then btn.chargesText:Hide() end
@@ -684,6 +826,7 @@ end
 
 function IconGrid:OnEnable()
     self:EnsureGrid()
+    BuildCurves()
     self:BuildActiveList()
     self:Layout()
     if grid then
@@ -714,7 +857,8 @@ end
 -- ---------------------------------------------------------------------------
 
 function IconGrid:OnSpellState(_evt, payload)
-    -- Payload contract per §1: { spellID, ready, isActive, start, duration, charges }.
+    -- Payload contract per CLAUDE.md:
+    --   { spellID, ready, isActive, cdObject, charges }
     -- We only update icons currently in the active pool — Cooldowns may
     -- watch a slightly larger or stale set during config transitions.
     if not (payload and payload.spellID) then return end
@@ -729,6 +873,7 @@ function IconGrid:OnConfigChanged(_evt, payload)
         -- when only sizing/colors/alphas changed. Layout() also calls
         -- ApplyAppearance/ApplyTextConfig per-icon so zoom/border/font
         -- changes flow through the same path.
+        BuildCurves()  -- readyAlpha/cooldownAlpha/cooldownTint may have moved
         self:Layout()
         self:ApplyLock()
     elseif section == "spells" then
@@ -761,6 +906,7 @@ function IconGrid:OnProfileChanged(_evt, payload)
         KickCD.Util.ApplyAnchor(grid, anchor or
             { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 })
     end
+    BuildCurves()
     self:BuildActiveList()
     self:Layout()
     self:ApplyLock()
