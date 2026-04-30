@@ -220,6 +220,25 @@ local function buildCastRecord(name, texture, notInterruptible, spellID,
     }
 end
 
+-- The raw UnitCastingInfo.notInterruptible field reports whether the
+-- spell is FLAGGED uninterruptible — i.e. whether spell-interrupt
+-- mechanics work on it AT ALL (Counterspell, Mind Freeze, Polymorph
+-- in PvP, ...). It does NOT consider the per-player practical
+-- interruptibility: you can't interrupt a friendly cast, you can't
+-- interrupt your own self-cast, regardless of the API flag.
+--
+-- For the cast bar's color logic, "I can interrupt this" is the
+-- useful question, so we override notInterruptible to true (force
+-- "uninterruptible" visuals) when the player can't attack the unit.
+-- This catches mount casts on yourself, friendly NPC casts, etc.
+-- For hostile units the raw API flag is returned unchanged.
+local function effectiveNotInterruptible(unit, raw)
+    if _G.UnitCanAttack and unit and not _G.UnitCanAttack("player", unit) then
+        return true
+    end
+    return raw
+end
+
 --- Casting info for a unit, secret-value safe.
 -- @param unit string ("target", "focus", ...)
 -- @return record (table)|nil   nil when the unit isn't casting AND isn't channeling.
@@ -230,7 +249,8 @@ function Compat.GetCastingInfo(unit)
         if name then
             local duration = _G.UnitCastingDuration and _G.UnitCastingDuration(unit) or nil
             return buildCastRecord(
-                name, texture, notInterruptible, spellID, false, duration)
+                name, texture, effectiveNotInterruptible(unit, notInterruptible),
+                spellID, false, duration)
         end
     end
     return Compat.GetChannelInfo(unit)
@@ -249,7 +269,8 @@ function Compat.GetChannelInfo(unit)
     if not name then return nil end
     local duration = _G.UnitChannelDuration and _G.UnitChannelDuration(unit) or nil
     return buildCastRecord(
-        name, texture, notInterruptible, spellID, true, duration)
+        name, texture, effectiveNotInterruptible(unit, notInterruptible),
+        spellID, true, duration)
 end
 
 -- ---------------------------------------------------------------------------

@@ -228,6 +228,8 @@ frame.timeText:SetFormattedText(
 
 **`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)`, which is a Blizzard secure function that accepts a (possibly secret) boolean and a pair of plain values, returning whichever matches.
 
+**Friendly-target override.** The raw `notInterruptible` from `UnitCastingInfo` reports whether the spell is *flagged* uninterruptible (whether spell-interrupt mechanics work on it at all). It does **not** consider whether *you* can practically interrupt the cast — you can't interrupt yourself, you can't interrupt friendlies, regardless of the flag. `Compat.effectiveNotInterruptible(unit, raw)` overrides the value to `true` (force "uninterruptible" visuals) when `UnitCanAttack("player", unit)` is false. This is why a mount cast on yourself colors red even though `UnitCastingInfo.notInterruptible` is `false` — the mount's API flag says "interruptible" (because Counterspell would work on you in PvP), but from the user's perspective the cast is non-interruptable. UCB's bar happens to also color these casts red, but for a different reason (UCB defaults to class-color for player targets).
+
 KickCD uses this to render distinct visuals for interruptible vs uninterruptible casts. The cast bar carries **stacked dual widgets** for everything that can't be expressed as a scalar curve evaluation:
 
 - `frame.bgInterruptible` / `frame.bgUninterruptible` — two BACKGROUND textures, alpha-switched.

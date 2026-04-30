@@ -772,8 +772,10 @@ function Castbar:DebugDump()
         print("  no target")
         return
     end
+    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", "target")
     print("  target = " .. (UnitName("target") or "?")
-        .. ", isUnit=" .. (UnitIsUnit("target", "player") and "self" or "other"))
+        .. ", isUnit="    .. (UnitIsUnit("target", "player") and "self" or "other")
+        .. ", canAttack=" .. tostring(canAttack and true or false))
 
     if not current then
         print("  no active cast tracked (current = nil)")
