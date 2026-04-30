@@ -216,6 +216,25 @@ local function CreateIconWidget(parent)
     btn.spellID = nil
     btn.cfg     = nil
 
+    -- Hover tooltip. Only fires when EnableMouse(true) on the icon, which
+    -- IconGrid:ApplyLock toggles based on (locked AND icons.showTooltip).
+    -- While unlocked, EnableMouse(false) so the grid frame retains the
+    -- mouse for dragging.
+    btn:SetScript("OnEnter", function(self)
+        local profile = KickCD.db and KickCD.db.profile
+        local cfg = profile and profile.icons
+        if not (cfg and cfg.showTooltip and self.spellID) then return end
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetSpellByID then
+            GameTooltip:SetSpellByID(self.spellID)
+        end
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function()
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+
     -- Mix in the Icon methods. The button itself is the public widget.
     return Mixin(btn, Icon)
 end
@@ -329,14 +348,24 @@ function Icon:Apply(state)
         end
     end
 
-    -- Charges badge (FR-2.7). Hidden unless there's an actual charge count
-    -- to show; SetText only when visible to avoid layout thrash. Charges
-    -- may be "secret" on guarded spells; skip the badge in that case rather
-    -- than erroring on the > 0 comparison.
+    -- Charges badge (FR-2.7). In combat, charges may come back secret on
+    -- guarded spells: we can't `> 0` a secret in tainted scope without
+    -- erroring, so we conservatively assume "show" when the value is
+    -- secret (matching Cooldowns:PollSpell's hasCharges policy) and let
+    -- SetFormattedText render the value C-side — that C method accepts
+    -- secret args. Out of combat, the value is a plain number and we use
+    -- the standard `> 0` gate.
     local c = state and state.charges
-    local cSecret = c ~= nil and issecretvalue and issecretvalue(c)
-    if cfg.showCharges and c and not cSecret and c > 0 then
-        self.chargesText:SetText(c)
+    local show = false
+    if cfg.showCharges and c then
+        if issecretvalue and issecretvalue(c) then
+            show = true
+        else
+            show = c > 0
+        end
+    end
+    if show then
+        self.chargesText:SetFormattedText("%d", c)
         self.chargesText:Show()
     else
         self.chargesText:Hide()
@@ -777,13 +806,23 @@ end
 
 function IconGrid:ApplyLock()
     if not grid then return end
-    local locked = KickCD.db and KickCD.db.profile and KickCD.db.profile.locked
+    local profile  = KickCD.db and KickCD.db.profile
+    local locked   = profile and profile.locked
+    local showTip  = profile and profile.icons and profile.icons.showTooltip
     if locked then
         grid:RegisterForDrag()        -- clear all drag buttons
         grid:EnableMouse(false)
     else
         grid:EnableMouse(true)
         grid:RegisterForDrag("LeftButton")
+    end
+    -- Per-icon mouse follows (locked AND showTooltip): when locked the
+    -- grid frame doesn't capture mouse, so individual icons can claim
+    -- it for hover tooltips. When unlocked, the grid wants mouse for
+    -- drag and icons must pass through.
+    local enableIconMouse = (locked and showTip) and true or false
+    for _, btn in ipairs(ordered) do
+        btn:EnableMouse(enableIconMouse)
     end
 end
 

@@ -215,6 +215,13 @@ add{
     tooltip = L["Render a charges badge for spells with charges."],
     default = true,
 }
+add{
+    panel = "icons", section = "icons", group = L["Annotations"],
+    path  = "icons.showTooltip", type = "bool",
+    label = L["Show tooltip on hover"],
+    tooltip = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
+    default = false,
+}
 
 -- ---------------------------------------------------------------------
 -- Builder

@@ -46,6 +46,10 @@ local DEFAULT_PROFILE = {
         cooldownTextSize = 14,
         cooldownTextFlags = "OUTLINE", -- "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
         showCharges      = true,
+        -- Hover-tooltip on individual icons. The grid swallows mouse for
+        -- drag while unlocked, so tooltips only fire while locked AND
+        -- this flag is true (see modules/IconGrid.lua:ApplyLock).
+        showTooltip      = false,
         -- Secondary-icon block. `rows × cols` capacity, geometric:
         --   * `rows` = vertical extent (number of horizontal lines, up/down).
         --   * `cols` = horizontal extent (number of vertical lines, left/right).
