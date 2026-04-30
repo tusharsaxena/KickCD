@@ -68,13 +68,24 @@ local DEFAULT_PROFILE = {
         width        = 250,
         height       = 24,
         iconSize     = 24,
-        iconPosition = "LEFT",      -- "LEFT" or "RIGHT"
+        iconPosition = "LEFT",      -- "LEFT", "RIGHT", or "OFF"
         showSpark    = true,
         showName     = true,
         showTime     = true,
         font         = "Friz Quadrata TT",
         fontSize     = 12,
         fontFlags    = "OUTLINE",
+
+        -- Per-text-element anchor + offset. Position is one of
+        -- "INSIDE_LEFT", "INSIDE_RIGHT", "CENTER", "OUTSIDE_LEFT",
+        -- "OUTSIDE_RIGHT". OffsetX/Y are pixel deltas applied on top
+        -- of the anchor.
+        namePosition = "INSIDE_LEFT",
+        nameOffsetX  = 0,
+        nameOffsetY  = 0,
+        timePosition = "INSIDE_RIGHT",
+        timeOffsetX  = 0,
+        timeOffsetY  = 0,
 
         -- Per-state appearance (interruptible vs uninterruptible casts).
         -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
@@ -127,7 +138,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 6
+local LATEST_VERSION = 7
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -302,6 +313,26 @@ local Migrations = {
                 cb.borderShow       = nil
                 cb.borderColor      = nil
                 cb.borderSize       = nil
+            end
+        end
+    end,
+
+    -- v7: added per-text-element position anchors plus X/Y offset for
+    -- the spell-name and remaining-time labels on the cast bar. Default
+    -- positions match the v6 layout: name inside-left, time inside-right.
+    -- Also added the "OFF" option to iconPosition (no migration needed —
+    -- old "LEFT" / "RIGHT" values still parse fine; the dropdown just
+    -- gains a new value).
+    [7] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            local cb = profile.castbar
+            if type(cb) == "table" then
+                if cb.namePosition == nil then cb.namePosition = "INSIDE_LEFT"  end
+                if cb.nameOffsetX  == nil then cb.nameOffsetX  = 0              end
+                if cb.nameOffsetY  == nil then cb.nameOffsetY  = 0              end
+                if cb.timePosition == nil then cb.timePosition = "INSIDE_RIGHT" end
+                if cb.timeOffsetX  == nil then cb.timeOffsetX  = 0              end
+                if cb.timeOffsetY  == nil then cb.timeOffsetY  = 0              end
             end
         end
     end,

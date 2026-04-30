@@ -33,15 +33,20 @@
 - ✅ Some of the spell icons are destaurated - remove this desaturation (desturation should only happen if the checkbox is de-selected)
 - ✅ In the Spells > Spec selector, use both class icons and spec icons - [class icon][spec icon] [Class Name] [Spec Name]
 - ✅ Add a target castbar (do not style the default castbar — create a new one; refer)
+- ✅ Color code cast bar based on interruptable, non interruptable.
 
 ## Not Yet Started
 
-- ✅ Color code cast bar based on interruptable, non interruptable.
-- ☐ Cast bar icon should be left/right/off
-- ☐ Cast bar text position anchors (inside left, inside right, center, outside left, outside right) - with x/y offset - for both the text elements independently (spell name, spell timer)
+- ✅ Cast bar icon position settings should be left/right/off (off is new)
+- ✅ Cast bar text position anchors (inside left, inside right, center, outside left, outside right) - with x/y offset - for both the text elements independently (spell name, spell timer)
+- ☐ Cast bar border color is not being used - it seems to be using the bar color as the border color
+- ☐ For icons, show in game tooltip when hovering over an icon (with a setting to toggle this behavior on and off)
+- ☐ For icons, charges text shows out of combat but not in combat
+- ☐ Add as setting for General -> Reset all settings
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
 - ☐ General Tab: add setting to always show vs. show in combat vs. show when target is casting
-- ☐ Add the ability to add items along with spells for tracking
+- ☐ Rearrange all settings panel so every row of settings has 2 columns split exactly halfway through the width of the panel. Also increase vertical spacing between rows
 - ☐ Add icon glow when primary interrupt spell is ready (proc, action bar, cdm, pixel, etc)
 - ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
 - ☐ Cooldown swipe shows for GCD actions, but not when the spell is on a longer cooldown
+- ☐ Add the ability to add items along with spells for tracking

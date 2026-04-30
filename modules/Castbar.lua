@@ -235,11 +235,21 @@ function Castbar:EnsureFrame()
     -- own edgeFile / edgeSize / color via SetBackdrop+SetBackdropBorderColor;
     -- alphas are curve-switched in ApplyState. Border show toggles fold
     -- into the curve directly so disabled-side stays alpha=0.
+    --
+    -- Frame level must be HIGHER than the stacked StatusBars; otherwise
+    -- the bar's filled status texture (which sits at level +2 because
+    -- it's a grandchild of frame) renders ON TOP of the border's edge
+    -- and makes the border look like it's tinted by the bar color.
+    -- Bumping borders to bar level + 2 puts them above both the bars
+    -- (level +2) and the overlay text/spark layer (level +3).
     -- ----------------------------------------------------------------
     frame.borderInterruptible   = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     frame.borderUninterruptible = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     frame.borderInterruptible:SetAllPoints(frame)
     frame.borderUninterruptible:SetAllPoints(frame)
+    local barLevel = frame.bar.interruptible:GetFrameLevel()
+    frame.borderInterruptible:SetFrameLevel(barLevel + 2)
+    frame.borderUninterruptible:SetFrameLevel(barLevel + 2)
 
     -- Subtle "drag me" hint, shown only while unlocked.
     frame.dragHint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -285,6 +295,35 @@ local UNINT_FALLBACK = {
     borderSize       = 2,
 }
 
+-- A 4px inset on the inside positions keeps text from touching the bar
+-- border. The user's offsetX is added on top so they can pull the text
+-- further out or push it back in.
+local INSIDE_INSET  = 4
+local OUTSIDE_INSET = 4
+
+local function anchorTextElement(fs, bar, position, ox, oy)
+    fs:ClearAllPoints()
+    if position == "INSIDE_RIGHT" then
+        fs:SetJustifyH("RIGHT")
+        fs:SetPoint("RIGHT", bar, "RIGHT", -INSIDE_INSET + ox, oy)
+    elseif position == "CENTER" then
+        fs:SetJustifyH("CENTER")
+        fs:SetPoint("CENTER", bar, "CENTER", ox, oy)
+    elseif position == "OUTSIDE_LEFT" then
+        -- Text floats just to the left of the bar (right-justified so the
+        -- text grows outward from the bar's left edge).
+        fs:SetJustifyH("RIGHT")
+        fs:SetPoint("RIGHT", bar, "LEFT", -OUTSIDE_INSET + ox, oy)
+    elseif position == "OUTSIDE_RIGHT" then
+        fs:SetJustifyH("LEFT")
+        fs:SetPoint("LEFT", bar, "RIGHT", OUTSIDE_INSET + ox, oy)
+    else
+        -- INSIDE_LEFT (default).
+        fs:SetJustifyH("LEFT")
+        fs:SetPoint("LEFT", bar, "LEFT", INSIDE_INSET + ox, oy)
+    end
+end
+
 local function applyBorder(borderFrame, sc)
     -- BackdropTemplate's SetBackdrop wants the table verbatim each call.
     -- edgeFile is an LSM border texture; edgeSize is the thickness of that
@@ -319,16 +358,19 @@ function Castbar:ApplyConfig()
     frame.bar.uninterruptible:SetStatusBarTexture(fetchStatusBarTexture(unintCfg.statusBarTexture))
     frame.bar.uninterruptible:SetStatusBarColor(unpackColor(unintCfg.barColor, 0.85, 0.1, 0.1, 1))
 
-    -- Icon position decides bar inset.
+    -- Icon position decides bar inset. "OFF" hides the icon entirely
+    -- and gives the bar full frame width; "LEFT" / "RIGHT" anchor the
+    -- icon and inset the bar by iconSize on the matching side.
+    local iconPos  = c.iconPosition or "LEFT"
     local iconSize = math.max(0, c.iconSize or height)
     if iconSize > height then iconSize = height end
-    local showIcon = iconSize > 0
+    local showIcon = (iconPos ~= "OFF") and (iconSize > 0)
     frame.icon:ClearAllPoints()
     frame.bar:ClearAllPoints()
     if showIcon then
         frame.icon:Show()
         frame.icon:SetSize(iconSize, iconSize)
-        if (c.iconPosition or "LEFT") == "RIGHT" then
+        if iconPos == "RIGHT" then
             frame.icon:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
             frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
             frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -iconSize, 0)
@@ -374,12 +416,16 @@ function Castbar:ApplyConfig()
     -- applied in ApplyState via curve-evaluated channels.
     frame.timeText:SetTextColor(1, 1, 1, 1)
 
-    -- Re-anchor labels inside the bar.
-    frame.nameText:ClearAllPoints()
-    frame.timeText:ClearAllPoints()
-    frame.nameText:SetPoint("LEFT",  frame.bar, "LEFT",   4, 0)
-    frame.nameText:SetPoint("RIGHT", frame.bar, "RIGHT", -4, 0)
-    frame.timeText:SetPoint("RIGHT", frame.bar, "RIGHT", -4, 0)
+    -- Position labels per their independent anchor settings. INSIDE_*
+    -- variants pin the text to a bar edge (with a 4px breathing-room
+    -- inset that the user's offsetX adds to). OUTSIDE_* variants float
+    -- the text just past the bar edge so multi-line layouts can put
+    -- name above and time below the bar by combining OUTSIDE positions
+    -- with appropriate Y offsets. CENTER pins to bar center.
+    anchorTextElement(frame.nameText, frame.bar,
+        c.namePosition or "INSIDE_LEFT",  c.nameOffsetX or 0, c.nameOffsetY or 0)
+    anchorTextElement(frame.timeText, frame.bar,
+        c.timePosition or "INSIDE_RIGHT", c.timeOffsetX or 0, c.timeOffsetY or 0)
 
     if c.showName == false then frame.nameText:Hide() else frame.nameText:Show() end
     if c.showTime == false then frame.timeText:Hide() else frame.timeText:Show() end
@@ -810,6 +856,35 @@ function Castbar:DebugDump()
     print("  texture:  type=" .. type(current.texture))
     print("  spellID:  type=" .. type(current.spellID))
     print("  name:     type=" .. type(current.name))
+
+    -- Configured per-state colors as actually read from the live db.profile.
+    -- Useful for verifying that color-picker writes are persisting and that
+    -- ApplyConfig sees the updated values.
+    local function fmtColor(c)
+        if type(c) ~= "table" then return "(missing)" end
+        return ("{%.2f, %.2f, %.2f, %.2f}"):format(
+            c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
+    end
+    local cfg = KickCD.db and KickCD.db.profile and KickCD.db.profile.castbar or {}
+    local intCfg = cfg.interruptible   or {}
+    local nintCfg = cfg.uninterruptible or {}
+    print("  configured colors:")
+    print("    interruptible   bar="    .. fmtColor(intCfg.barColor)
+        .. " border=" .. fmtColor(intCfg.borderColor)
+        .. " bg="     .. fmtColor(intCfg.bgColor))
+    print("    uninterruptible bar="    .. fmtColor(nintCfg.barColor)
+        .. " border=" .. fmtColor(nintCfg.borderColor)
+        .. " bg="     .. fmtColor(nintCfg.bgColor))
+
+    -- And the colors actually live on the StatusBar widgets right now.
+    local function fmtStatusColor(sb)
+        if not sb or not sb.GetStatusBarColor then return "(no widget)" end
+        local r, g, b, a = sb:GetStatusBarColor()
+        return ("{%.2f, %.2f, %.2f, %.2f}"):format(r or 0, g or 0, b or 0, a or 1)
+    end
+    print("  live SetStatusBarColor:")
+    print("    interruptible   = " .. fmtStatusColor(frame and frame.bar and frame.bar.interruptible))
+    print("    uninterruptible = " .. fmtStatusColor(frame and frame.bar and frame.bar.uninterruptible))
 end
 
 -- Expose for /kcd debug + future tooling.

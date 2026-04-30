@@ -64,11 +64,12 @@ add{
     panel = "castbar", section = "castbar", group = L["Layout"],
     path  = "castbar.iconPosition", type = "string",
     label = L["Icon position"],
-    tooltip = L["Side of the bar the spell icon sits on."],
+    tooltip = L["Where to place the spell icon, or hide it entirely."],
     default = "LEFT",
     values  = {
         { value = "LEFT",  label = L["Left"]  },
         { value = "RIGHT", label = L["Right"] },
+        { value = "OFF",   label = L["Off"]   },
     },
     onChange = reskin,
 }
@@ -81,7 +82,15 @@ add{
     onChange = reskin,
 }
 
--- Text ---------------------------------------------------------------
+-- Text -----------------------------------------------------------------
+local TEXT_POSITION_VALUES = {
+    { value = "INSIDE_LEFT",   label = L["Inside left"]   },
+    { value = "INSIDE_RIGHT",  label = L["Inside right"]  },
+    { value = "CENTER",        label = L["Center"]        },
+    { value = "OUTSIDE_LEFT",  label = L["Outside left"]  },
+    { value = "OUTSIDE_RIGHT", label = L["Outside right"] },
+}
+
 add{
     panel = "castbar", section = "castbar", group = L["Text"],
     path  = "castbar.showName", type = "bool",
@@ -127,6 +136,60 @@ add{
         { value = "THICKOUTLINE", label = L["Thick outline"] },
         { value = "MONOCHROME",   label = L["Monochrome"]    },
     },
+    onChange = reskin,
+}
+
+-- Spell name position --------------------------------------------------
+add{
+    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    path  = "castbar.namePosition", type = "string",
+    label = L["Anchor"],
+    tooltip = L["Where to anchor the spell name relative to the bar."],
+    default = "INSIDE_LEFT",
+    values  = TEXT_POSITION_VALUES,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    path  = "castbar.nameOffsetX", type = "number",
+    label = L["X offset (in px)"],
+    tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
+    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    path  = "castbar.nameOffsetY", type = "number",
+    label = L["Y offset (in px)"],
+    tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
+    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+
+-- Cast time position ---------------------------------------------------
+add{
+    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    path  = "castbar.timePosition", type = "string",
+    label = L["Anchor"],
+    tooltip = L["Where to anchor the remaining-time text relative to the bar."],
+    default = "INSIDE_RIGHT",
+    values  = TEXT_POSITION_VALUES,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    path  = "castbar.timeOffsetX", type = "number",
+    label = L["X offset (in px)"],
+    tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
+    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    path  = "castbar.timeOffsetY", type = "number",
+    label = L["Y offset (in px)"],
+    tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
+    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
     onChange = reskin,
 }
 
