@@ -73,6 +73,20 @@ local function resetPosition()
     H.FireConfigChanged("icons")
 end
 
+-- StaticPopup for "Reset all settings" — irreversible, so confirm
+-- before wiping. Helpers.RestoreAllDefaults walks every schema-driven
+-- panel and resets each row to def.default; spells and profiles are
+-- left alone (they have their own destructive controls).
+StaticPopupDialogs["KICKCD_RESET_ALL"] = {
+    text         = L["Reset every schema-driven setting (General, Icons, Cast bar) to addon defaults? Spells and profiles are not affected."],
+    button1      = L["Yes"],
+    button2      = L["No"],
+    timeout      = 0,
+    whileDead    = true,
+    hideOnEscape = true,
+    OnAccept     = function() H.RestoreAllDefaults() end,
+}
+
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil
@@ -102,6 +116,11 @@ local function Build(mainCategory)
                     L["Reset position"],
                     L["Restore the icon grid to its default screen position."],
                     resetPosition,
+                    160)
+                H.InlineButton(ctxRef,
+                    L["Reset all settings"],
+                    L["Reset every General, Icons, and Cast bar setting to its default. Spells and profiles are left alone."],
+                    function() StaticPopup_Show("KICKCD_RESET_ALL") end,
                     160)
             end,
         })

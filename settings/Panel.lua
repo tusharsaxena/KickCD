@@ -312,11 +312,23 @@ end
 -- the panel's AceGUI ScrollFrame container.
 -- ---------------------------------------------------------------------
 
-local function makeCheckbox(ctx, def)
-    local scroll = ensureScroll(ctx)
+-- Width helper used by every maker. When relativeWidth is given (RenderSchema's
+-- two-column layout passes 0.5), the widget claims half the parent's width and
+-- sits next to its sibling in a Flow-laid SimpleGroup row. Otherwise it spans
+-- the full parent — used by tabs that render directly to ctx.scroll.
+local function applyWidth(widget, relativeWidth)
+    if relativeWidth then
+        widget:SetRelativeWidth(relativeWidth)
+    else
+        widget:SetFullWidth(true)
+    end
+end
+
+local function makeCheckbox(ctx, def, parent, relativeWidth)
+    parent = parent or ensureScroll(ctx)
     local cb = AceGUI:Create("CheckBox")
     cb:SetLabel(def.label or def.path)
-    cb:SetFullWidth(true)
+    applyWidth(cb, relativeWidth)
     cb:SetValue(Helpers.Get(def.path) and true or false)
 
     local function refresh()
@@ -330,7 +342,7 @@ local function makeCheckbox(ctx, def)
     end)
 
     attachTooltip(cb, def.label, def.tooltip)
-    scroll:AddChild(cb)
+    parent:AddChild(cb)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
     return cb
 end
@@ -345,13 +357,13 @@ local function snapToStep(value, mn, step)
     return math.floor((value - mn) / step + 0.5) * step + mn
 end
 
-local function makeSlider(ctx, def)
-    local scroll = ensureScroll(ctx)
+local function makeSlider(ctx, def, parent, relativeWidth)
+    parent = parent or ensureScroll(ctx)
     local s = AceGUI:Create("Slider")
     s:SetLabel(def.label or def.path)
     s:SetSliderValues(def.min or 0, def.max or 1, def.step or 1)
     s:SetIsPercent(false)
-    s:SetFullWidth(true)
+    applyWidth(s, relativeWidth)
 
     local function refresh()
         local v = Helpers.Get(def.path)
@@ -366,17 +378,17 @@ local function makeSlider(ctx, def)
     end)
 
     attachTooltip(s, def.label, def.tooltip)
-    scroll:AddChild(s)
+    parent:AddChild(s)
     refresh()
     ctx.refreshers[#ctx.refreshers + 1] = refresh
     return s
 end
 
-local function makeDropdown(ctx, def)
-    local scroll = ensureScroll(ctx)
+local function makeDropdown(ctx, def, parent, relativeWidth)
+    parent = parent or ensureScroll(ctx)
     local dd = AceGUI:Create("Dropdown")
     dd:SetLabel(def.label or def.path)
-    dd:SetFullWidth(true)
+    applyWidth(dd, relativeWidth)
 
     local function valuesList()
         if type(def.values) == "function" then return def.values() or {} end
@@ -405,17 +417,17 @@ local function makeDropdown(ctx, def)
     end)
 
     attachTooltip(dd, def.label, def.tooltip)
-    scroll:AddChild(dd)
+    parent:AddChild(dd)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
     return dd
 end
 
-local function makeColorPicker(ctx, def)
-    local scroll = ensureScroll(ctx)
+local function makeColorPicker(ctx, def, parent, relativeWidth)
+    parent = parent or ensureScroll(ctx)
     local cp = AceGUI:Create("ColorPicker")
     cp:SetLabel(def.label or def.path)
     cp:SetHasAlpha(true)
-    cp:SetFullWidth(true)
+    applyWidth(cp, relativeWidth)
 
     local function readColor()
         local c = Helpers.Get(def.path)
@@ -452,17 +464,17 @@ local function makeColorPicker(ctx, def)
     cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a) commit(r, g, b, a) end)
 
     attachTooltip(cp, def.label, def.tooltip)
-    scroll:AddChild(cp)
+    parent:AddChild(cp)
     ctx.refreshers[#ctx.refreshers + 1] = refresh
     return cp
 end
 
 -- Generic field renderer — dispatches by def.type.
-function Helpers.RenderField(ctx, def)
-    if def.type == "bool"   then return makeCheckbox(ctx, def)    end
-    if def.type == "number" then return makeSlider(ctx, def)      end
-    if def.type == "string" then return makeDropdown(ctx, def)    end
-    if def.type == "color"  then return makeColorPicker(ctx, def) end
+function Helpers.RenderField(ctx, def, parent, relativeWidth)
+    if def.type == "bool"   then return makeCheckbox(ctx, def, parent, relativeWidth)    end
+    if def.type == "number" then return makeSlider(ctx, def, parent, relativeWidth)      end
+    if def.type == "string" then return makeDropdown(ctx, def, parent, relativeWidth)    end
+    if def.type == "color"  then return makeColorPicker(ctx, def, parent, relativeWidth) end
 end
 
 -- Standalone action button (no label row). Used for actions that read
@@ -528,29 +540,68 @@ end
 -- Schema-driven render
 -- ---------------------------------------------------------------------
 
+-- Pixel gap inserted between each two-column row of schema widgets so
+-- adjacent rows have visual breathing room. AceGUI's "List" layout packs
+-- children flush by default; this spacer is what gives the rendered
+-- panel its airy look.
+local ROW_VSPACER = 8
+
 -- afterGroup is an optional { [groupName] = function(ctx) ... end } map.
 -- The callback runs once, immediately after the last schema row of that
 -- group is rendered (and before the next group's section header). Used
 -- by the General tab to drop the "Reset position" button into the
 -- "Master controls" group instead of giving it its own subsection.
+--
+-- Rendering layout: schema widgets are paired into 50%/50% Flow rows,
+-- each row wrapped in a full-width SimpleGroup so the AceGUI layout pass
+-- gives both children exactly half the panel width and breaks them onto
+-- the same line. Section headings span the full width (one per row),
+-- and every row is followed by a small vertical spacer for breathing
+-- room. afterGroup callbacks (e.g. inline action buttons) fire after
+-- the in-progress row is flushed, so they always start on a fresh line.
 function Helpers.RenderSchema(ctx, panelKey, afterGroup)
     local rows = Helpers.SchemaForPanel(panelKey)
+    local scroll = ensureScroll(ctx)
+    local pendingRow, pendingCount = nil, 0
+
+    local function flushRow()
+        if pendingRow then
+            scroll:AddChild(pendingRow)
+            addSpacer(scroll, ROW_VSPACER)
+            pendingRow, pendingCount = nil, 0
+        end
+    end
+
+    local function startRow()
+        local row = AceGUI:Create("SimpleGroup")
+        row:SetLayout("Flow")
+        row:SetFullWidth(true)
+        return row
+    end
+
     for i, def in ipairs(rows) do
         if def.group and def.group ~= ctx.lastGroup then
+            flushRow()                 -- previous group's tail row
             Helpers.Section(ctx, def.group)
             ctx.lastGroup = def.group
         end
-        Helpers.RenderField(ctx, def)
+
+        if not pendingRow then pendingRow = startRow() end
+        Helpers.RenderField(ctx, def, pendingRow, 0.5)
+        pendingCount = pendingCount + 1
+        if pendingCount >= 2 then flushRow() end
 
         local nextDef = rows[i + 1]
         if afterGroup and def.group
            and (not nextDef or nextDef.group ~= def.group)
            and afterGroup[def.group] then
+            flushRow()                 -- afterGroup buttons start fresh
             afterGroup[def.group](ctx)
             afterGroup[def.group] = nil  -- one-shot
         end
     end
-    if ctx.scroll and ctx.scroll.DoLayout then ctx.scroll:DoLayout() end
+    flushRow()
+    if scroll.DoLayout then scroll:DoLayout() end
 end
 
 -- Refresh every widget on every panel ctx — called after a slash-cmd
@@ -586,6 +637,24 @@ function Helpers.RestoreDefaults(panelKey, ctx)
     if ctx and ctx.refreshers then
         for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
     end
+end
+
+-- Reset every schema-driven panel (general / icons / castbar) to its
+-- per-row default. Spells and Profiles are intentionally skipped — the
+-- spell list has its own per-spec reset action and resetting profiles
+-- would delete user data. After resetting, all open panels' refreshers
+-- run so live widgets reflect the new state.
+function Helpers.RestoreAllDefaults()
+    local ctxByKey = {}
+    for _, ctx in ipairs(KickCD.Settings._panels or {}) do
+        if ctx.panelKey then ctxByKey[ctx.panelKey] = ctx end
+    end
+    for _, panelKey in ipairs(KickCD.Settings.order or {}) do
+        if Helpers.SchemaForPanel(panelKey)[1] then
+            Helpers.RestoreDefaults(panelKey, ctxByKey[panelKey])
+        end
+    end
+    Helpers.RefreshAllPanels()
 end
 
 -- ---------------------------------------------------------------------
