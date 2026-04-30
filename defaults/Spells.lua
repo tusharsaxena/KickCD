@@ -5,7 +5,7 @@
 -- (or, where no class-wide kick exists, the spec's best cast-stopping CC).
 -- Indices 2..N are PvE-biased secondary cast-stoppers in priority order.
 -- Categories are constrained to the closed set:
---   "interrupt" | "stun" | "knockback" | "incapacitate" | "silence" | "root" | "fear" | "racial"
+--   "interrupt" | "stun" | "knockback" | "incapacitate" | "silence" | "root" | "fear" | "displace" | "racial"
 --
 -- Class keys use the localization-independent file token from UnitClass()'s
 -- second return. Spec keys use uppercase tokens of the spec name.
@@ -16,18 +16,21 @@ KickCD.DefaultSpells = {
 
     DEATHKNIGHT = {
         BLOOD = {
-            { spellID = 47528,  category = "interrupt", enabled = true }, -- Mind Freeze
-            { spellID = 221562, category = "stun",      enabled = true }, -- Asphyxiate (Blood)
-            { spellID = 108199, category = "knockback", enabled = true }, -- Gorefiend's Grasp
+            { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
+            { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
+            { spellID = 221562, category = "stun",         enabled = true }, -- Asphyxiate (Blood)
+            { spellID = 108199, category = "knockback",    enabled = true }, -- Gorefiend's Grasp
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet -- TBD: verify in 12.0.5
         },
         FROST = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
+            { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
             { spellID = 108194, category = "stun",         enabled = true }, -- Asphyxiate (Frost/Unholy)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet -- TBD: verify in 12.0.5
         },
         UNHOLY = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
+            { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
             { spellID = 108194, category = "stun",         enabled = true }, -- Asphyxiate (Frost/Unholy)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet -- TBD: verify in 12.0.5
         },

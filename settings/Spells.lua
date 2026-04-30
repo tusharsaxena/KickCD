@@ -25,7 +25,7 @@ KickCD.SettingsSpells = Spells
 -- The closed category set per FR-7.6.
 local CATEGORIES = {
     "interrupt", "stun", "knockback", "incapacitate",
-    "silence", "root", "fear", "racial", "other",
+    "silence", "root", "fear", "displace", "racial", "other",
 }
 
 -- ---------------------------------------------------------------------------
