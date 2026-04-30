@@ -226,7 +226,29 @@ frame.timeText:SetFormattedText(
 
 **`name` and `texture` may themselves be secret in combat for protected casts.** Pass them through to `FontString:SetText` and `Texture:SetTexture` anyway — those C methods accept secret args without erroring (Blizzard's protection is on arithmetic, not on UI render calls). Do **not** call `tostring(name)`, `:format("...", name)`, `if name == "..." then`, or any operation that'd treat the value as data — same secret-value guard the original Castbar tripped on `endTimeMS`.
 
-**`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)` if you ever need to branch on it (e.g., to draw a different bar color for non-interruptable casts). KickCD doesn't currently differentiate but stores the field for future use.
+**`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)`, which is a Blizzard secure function that accepts a (possibly secret) boolean and a pair of plain values, returning whichever matches.
+
+KickCD uses this to render distinct visuals for interruptible vs uninterruptible casts. The cast bar carries **stacked dual widgets** for everything that can't be expressed as a scalar curve evaluation:
+
+- `frame.bgInterruptible` / `frame.bgUninterruptible` — two BACKGROUND textures, alpha-switched.
+- `frame.bar.interruptible` / `frame.bar.uninterruptible` — two `StatusBar`s at identical anchors. OnUpdate calls `SetMinMaxValues` / `SetValue` on **both**, so their inner status textures track together; only one is alpha-visible at a time.
+- `frame.borderInterruptible` / `frame.borderUninterruptible` — two `BackdropTemplate` frames with their own LSM border textures, edge sizes, and colors. Border show toggles fold *into* the curve params (passing `0` for the off side) rather than as a multiplier afterwards — multiplying a secret curve result would error.
+- `frame.nameText` (single `FontString`) — color is per-state but a single FontString suffices because we curve-evaluate each RGBA channel separately and pass all four results directly to `SetTextColor(r, g, b, a)`.
+
+Each curve evaluation looks like:
+
+```lua
+frame.barInterruptible:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(
+    current.notInterruptible, 0, 1))   -- visible when interruptible
+frame.barUninterruptible:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(
+    current.notInterruptible, 1, 0))   -- visible when uninterruptible
+```
+
+The result of `EvaluateColorValueFromBoolean` may itself be secret-tainted; pass it directly to `SetAlpha` / `SetTextColor` and never bind to a Lua local. Same rule as the duration object's methods — Blizzard C methods accept secret args; Lua arithmetic does not.
+
+UCB's `Backend/Core/GeneralCore_Helpers.lua` lines 9–23 (`KickAlpha`) and 61–71 (`SecretTo0_1` / `NotSecretTo0_1` / `SecretToA_B`) are the canonical reference for this idiom; we use the same pattern.
+
+Texture differentiation between states (different statusbar textures, different LSM border edge files) genuinely requires two stacked widgets — the texture *path* is a string, not a number, and there's no way to curve-switch a string. Color / alpha / thickness / show-toggle differentiation only needs the curve evaluator and folds into the same widget.
 
 **Anti-pattern that I tried and burned my hands on:** sourcing `castTime` from `C_Spell.GetSpellInfo(spellID)` to size a fallback timeline. The whole returned table is tainted in combat against an interruptable target — *every* field comes back secret (`name`, `castTime`, `iconID`, `minRange`, `maxRange`, `originalIconID`). Reading `info.castTime` into a Lua local and comparing it to `0` errors the same way `endTimeMS` does. UnitCastingDuration sidesteps the whole problem — there's no reason to fall back when the duration object is available.
 

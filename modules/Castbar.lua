@@ -89,6 +89,15 @@ local function fetchStatusBarTexture(name)
     return "Interface\\TargetingFrame\\UI-StatusBar"
 end
 
+local function fetchBorderTexture(name)
+    if LSM and LSM.Fetch then
+        local t = LSM:Fetch("border", name or "Blizzard Tooltip", true)
+        if t then return t end
+    end
+    -- Fallback: a Blizzard-shipped tooltip-style border texture.
+    return "Interface\\Tooltips\\UI-Tooltip-Border"
+end
+
 local function fetchFont(name)
     if LSM and LSM.Fetch then
         local f = LSM:Fetch("font", name or "Friz Quadrata TT", true)
@@ -163,18 +172,35 @@ function Castbar:EnsureFrame()
     frame:SetScript("OnDragStart", onDragStart)
     frame:SetScript("OnDragStop",  onDragStop)
 
-    -- Background texture (drawn behind the bar).
-    frame.bg = frame:CreateTexture(nil, "BACKGROUND")
-    frame.bg:SetAllPoints(frame)
-    frame.bg:SetColorTexture(0, 0, 0, 0.5)
+    -- ----------------------------------------------------------------
+    -- Two backgrounds (interruptible / uninterruptible), stacked. Each
+    -- has its own color; alphas are curve-switched against the cast's
+    -- secret notInterruptible bool in ApplyState() so only one shows.
+    -- ----------------------------------------------------------------
+    frame.bgInterruptible   = frame:CreateTexture(nil, "BACKGROUND")
+    frame.bgUninterruptible = frame:CreateTexture(nil, "BACKGROUND")
+    frame.bgInterruptible:SetAllPoints(frame)
+    frame.bgUninterruptible:SetAllPoints(frame)
 
-    -- The actual cast bar — a StatusBar; we drive its value through
-    -- :SetValue(0..1) from OnUpdate using only plain (non-secret) numbers.
-    frame.bar = CreateFrame("StatusBar", nil, frame)
-    frame.bar:SetMinMaxValues(0, 1)
-    frame.bar:SetValue(0)
+    -- ----------------------------------------------------------------
+    -- Bar area is a non-StatusBar Frame container; the two state bars
+    -- live inside it side-by-side (same anchors, alpha-switched), and
+    -- the spark / name / time text are children so they sit above both.
+    -- ----------------------------------------------------------------
+    frame.bar = CreateFrame("Frame", nil, frame)
 
-    -- Spark texture (overlay marking the leading edge of the bar fill).
+    frame.bar.interruptible   = CreateFrame("StatusBar", nil, frame.bar)
+    frame.bar.uninterruptible = CreateFrame("StatusBar", nil, frame.bar)
+    for _, sb in ipairs({ frame.bar.interruptible, frame.bar.uninterruptible }) do
+        sb:SetAllPoints(frame.bar)
+        sb:SetMinMaxValues(0, 1)
+        sb:SetValue(0)
+    end
+
+    -- Spark texture (overlay at the right edge of the inner status texture).
+    -- We anchor it to the interruptible bar's status texture: both bars
+    -- share the same SetMinMaxValues / SetValue calls each frame, so their
+    -- inner textures are the same width — anchoring to either is fine.
     frame.spark = frame.bar:CreateTexture(nil, "OVERLAY")
     frame.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
     frame.spark:SetBlendMode("ADD")
@@ -184,7 +210,9 @@ function Castbar:EnsureFrame()
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- crop the Blizzard border
 
-    -- Spell name (anchored relative to bar in ApplyConfig).
+    -- Spell name (anchored relative to bar in ApplyConfig). Color is
+    -- per-state and curve-evaluated on a single FontString — no need
+    -- to stack two FontStrings.
     frame.nameText = frame.bar:CreateFontString(nil, "OVERLAY")
     frame.nameText:SetJustifyH("LEFT")
     frame.nameText:SetWordWrap(false)
@@ -193,14 +221,16 @@ function Castbar:EnsureFrame()
     frame.timeText = frame.bar:CreateFontString(nil, "OVERLAY")
     frame.timeText:SetJustifyH("RIGHT")
 
-    -- Four 1-pixel-thin edge textures form the border (same pattern the
-    -- icon grid uses, no BackdropTemplate).
-    frame.borders = {
-        top    = frame:CreateTexture(nil, "BORDER"),
-        bottom = frame:CreateTexture(nil, "BORDER"),
-        left   = frame:CreateTexture(nil, "BORDER"),
-        right  = frame:CreateTexture(nil, "BORDER"),
-    }
+    -- ----------------------------------------------------------------
+    -- Two LSM-textured border frames (BackdropTemplate). Each owns its
+    -- own edgeFile / edgeSize / color via SetBackdrop+SetBackdropBorderColor;
+    -- alphas are curve-switched in ApplyState. Border show toggles fold
+    -- into the curve directly so disabled-side stays alpha=0.
+    -- ----------------------------------------------------------------
+    frame.borderInterruptible   = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.borderUninterruptible = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.borderInterruptible:SetAllPoints(frame)
+    frame.borderUninterruptible:SetAllPoints(frame)
 
     -- Subtle "drag me" hint, shown only while unlocked.
     frame.dragHint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -216,20 +246,69 @@ end
 -- Configuration application (size / colors / fonts / anchors of children)
 -- ---------------------------------------------------------------------------
 
+-- Default sub-config used when a profile is missing the per-state nested
+-- block (e.g. before migration v6 has run, or for safety against malformed
+-- saved-vars). Mirrors the Database defaults.
+local function stateConfig(c, key, fallback)
+    local sc = c[key]
+    if type(sc) == "table" then return sc end
+    return fallback
+end
+
+local INT_FALLBACK = {
+    statusBarTexture = "Blizzard",
+    barColor         = { 1,    0.85, 0.05, 1   },
+    bgColor          = { 0,    0,    0,    0.5 },
+    nameTextColor    = { 1,    1,    1,    1   },
+    borderShow       = false,
+    borderTexture    = "Blizzard Tooltip",
+    borderColor      = { 0,    0,    0,    1   },
+    borderSize       = 1,
+}
+local UNINT_FALLBACK = {
+    statusBarTexture = "Blizzard",
+    barColor         = { 0.85, 0.10, 0.10, 1   },
+    bgColor          = { 0,    0,    0,    0.5 },
+    nameTextColor    = { 1,    1,    1,    1   },
+    borderShow       = true,
+    borderTexture    = "Blizzard Tooltip",
+    borderColor      = { 1,    0.20, 0.20, 1   },
+    borderSize       = 2,
+}
+
+local function applyBorder(borderFrame, sc)
+    -- BackdropTemplate's SetBackdrop wants the table verbatim each call.
+    -- edgeFile is an LSM border texture; edgeSize is the thickness of that
+    -- texture's edge slices. Color tints the texture via SetBackdropBorderColor.
+    borderFrame:SetBackdrop({
+        edgeFile = fetchBorderTexture(sc.borderTexture),
+        edgeSize = math.max(1, sc.borderSize or 1),
+    })
+    borderFrame:SetBackdropBorderColor(unpackColor(sc.borderColor, 0, 0, 0, 1))
+end
+
 function Castbar:ApplyConfig()
     if not frame then return end
     local c = cfg()
+
+    local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
+    local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
 
     local width  = math.max(40, c.width  or 250)
     local height = math.max(8,  c.height or 24)
     frame:SetSize(width, height)
 
-    -- Background color
-    frame.bg:SetColorTexture(unpackColor(c.bgColor, 0, 0, 0, 0.5))
+    -- Per-state backgrounds (alpha-switched in ApplyState).
+    frame.bgInterruptible:SetColorTexture(unpackColor(intCfg.bgColor, 0, 0, 0, 0.5))
+    frame.bgUninterruptible:SetColorTexture(unpackColor(unintCfg.bgColor, 0, 0, 0, 0.5))
 
-    -- Bar texture + color
-    frame.bar:SetStatusBarTexture(fetchStatusBarTexture(c.statusBarTexture))
-    frame.bar:SetStatusBarColor(unpackColor(c.barColor, 0.7, 0.2, 0.2, 1))
+    -- Per-state bar textures + colors. Both bars share size/anchors so
+    -- the spark anchor (to the interruptible inner status texture) is
+    -- always at the correct fill edge regardless of which one is visible.
+    frame.bar.interruptible:SetStatusBarTexture(fetchStatusBarTexture(intCfg.statusBarTexture))
+    frame.bar.interruptible:SetStatusBarColor(unpackColor(intCfg.barColor, 1, 0.85, 0.05, 1))
+    frame.bar.uninterruptible:SetStatusBarTexture(fetchStatusBarTexture(unintCfg.statusBarTexture))
+    frame.bar.uninterruptible:SetStatusBarColor(unpackColor(unintCfg.barColor, 0.85, 0.1, 0.1, 1))
 
     -- Icon position decides bar inset.
     local iconSize = math.max(0, c.iconSize or height)
@@ -254,17 +333,19 @@ function Castbar:ApplyConfig()
         frame.bar:SetAllPoints(frame)
     end
 
-    -- Spark — anchor to the bar's inner status texture's RIGHT edge.
-    -- Blizzard resizes that texture C-side as the bar value changes, so the
-    -- spark follows the fill edge automatically — for both casts (fill grows
-    -- left → right) and channels (fill shrinks right → left). This sidesteps
-    -- the per-frame `barWidth * (elapsed / total)` arithmetic that would
-    -- error on a CastingDuration secret return.
+    -- Spark — anchor to the interruptible bar's inner status texture's
+    -- RIGHT edge. Both stacked bars receive identical SetMinMaxValues /
+    -- SetValue calls every frame, so their inner textures are the same
+    -- width — anchoring to either gives the same fill-edge position.
+    -- Blizzard resizes the inner texture C-side as the bar value changes,
+    -- so the spark follows the fill edge automatically without any
+    -- Lua-side `barWidth * (elapsed / total)` math (which would error on
+    -- secret CastingDuration returns).
     if c.showSpark ~= false then
         frame.spark:Show()
         frame.spark:SetHeight(height + 6)
         frame.spark:ClearAllPoints()
-        local fill = frame.bar:GetStatusBarTexture()
+        local fill = frame.bar.interruptible:GetStatusBarTexture()
         if fill then
             frame.spark:SetPoint("CENTER", fill, "RIGHT", 0, 0)
         end
@@ -272,7 +353,7 @@ function Castbar:ApplyConfig()
         frame.spark:Hide()
     end
 
-    -- Font for both labels.
+    -- Font for both labels (shared across states).
     local fontPath = fetchFont(c.font)
     local fontSize = c.fontSize or 12
     local fontFlags = c.fontFlags
@@ -280,7 +361,8 @@ function Castbar:ApplyConfig()
 
     frame.nameText:SetFont(fontPath, fontSize, fontFlags)
     frame.timeText:SetFont(fontPath, fontSize, fontFlags)
-    frame.nameText:SetTextColor(1, 1, 1, 1)
+    -- timeText color stays shared (white). nameText color is per-state and
+    -- applied in ApplyState via curve-evaluated channels.
     frame.timeText:SetTextColor(1, 1, 1, 1)
 
     -- Re-anchor labels inside the bar.
@@ -293,36 +375,15 @@ function Castbar:ApplyConfig()
     if c.showName == false then frame.nameText:Hide() else frame.nameText:Show() end
     if c.showTime == false then frame.timeText:Hide() else frame.timeText:Show() end
 
-    -- Border (four edge lines hugging the outside of the frame).
-    local borderShow = c.borderShow == true
-    local borderSize = math.max(1, c.borderSize or 1)
-    local br, bg, bb, ba = unpackColor(c.borderColor, 0, 0, 0, 1)
-    for _, t in pairs(frame.borders) do
-        t:ClearAllPoints()
-        if borderShow then
-            t:SetColorTexture(br, bg, bb, ba)
-            t:Show()
-        else
-            t:Hide()
-        end
-    end
-    if borderShow then
-        frame.borders.top:SetPoint("TOPLEFT",    frame, "TOPLEFT",     -borderSize,  borderSize)
-        frame.borders.top:SetPoint("TOPRIGHT",   frame, "TOPRIGHT",     borderSize,  borderSize)
-        frame.borders.top:SetHeight(borderSize)
+    -- Per-state borders via BackdropTemplate. Visibility is folded into
+    -- alpha switching in ApplyState; here we just configure the backdrop
+    -- and color on each frame so they're ready when the curve unhides them.
+    applyBorder(frame.borderInterruptible,   intCfg)
+    applyBorder(frame.borderUninterruptible, unintCfg)
 
-        frame.borders.bottom:SetPoint("BOTTOMLEFT",  frame, "BOTTOMLEFT",  -borderSize, -borderSize)
-        frame.borders.bottom:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  borderSize, -borderSize)
-        frame.borders.bottom:SetHeight(borderSize)
-
-        frame.borders.left:SetPoint("TOPLEFT",     frame, "TOPLEFT",     -borderSize,  borderSize)
-        frame.borders.left:SetPoint("BOTTOMLEFT",  frame, "BOTTOMLEFT",  -borderSize, -borderSize)
-        frame.borders.left:SetWidth(borderSize)
-
-        frame.borders.right:SetPoint("TOPRIGHT",    frame, "TOPRIGHT",     borderSize,  borderSize)
-        frame.borders.right:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  borderSize, -borderSize)
-        frame.borders.right:SetWidth(borderSize)
-    end
+    -- Apply the secret-bool-driven alpha + name color now so a config
+    -- change that arrives mid-cast picks up the new per-state values.
+    self:ApplyState()
 
     -- Re-paint the icon if a cast is in progress (texture coords were already
     -- set in EnsureFrame; only the texture file itself depends on cast state).
@@ -367,23 +428,91 @@ local function onUpdate(self)
         return
     end
 
-    -- All four return values may be secret in combat for protected casts.
-    -- Hand them DIRECTLY to Blizzard C methods — never bind to a local for
-    -- comparison or arithmetic. SetMinMaxValues / SetValue accept secret
-    -- args without erroring; SetFormattedText handles the format C-side.
-    frame.bar:SetMinMaxValues(0, d:GetTotalDuration())
+    -- Both stacked StatusBars get the same range and value every frame so
+    -- their inner textures stay in sync — only one of them is alpha-visible
+    -- at a time (curve-switched in ApplyState off current.notInterruptible).
+    -- Duration-method returns may be secret in combat for protected casts;
+    -- pass them DIRECTLY as arguments to Blizzard C methods (SetMinMaxValues
+    -- / SetValue / SetFormattedText) and never bind to a Lua local.
+    frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
+    frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
     if current.isChannel then
-        frame.bar:SetValue(d:GetRemainingDuration())
+        frame.bar.interruptible:SetValue(d:GetRemainingDuration())
+        frame.bar.uninterruptible:SetValue(d:GetRemainingDuration())
     else
-        frame.bar:SetValue(d:GetElapsedDuration())
+        frame.bar.interruptible:SetValue(d:GetElapsedDuration())
+        frame.bar.uninterruptible:SetValue(d:GetElapsedDuration())
     end
 
     if cfg().showTime ~= false then
         frame.timeText:SetFormattedText(
             "%.1f / %.1f", d:GetRemainingDuration(), d:GetTotalDuration())
     end
-    -- The spark's position is driven entirely by Blizzard reanchoring the
-    -- bar's inner status texture; nothing to do here.
+    -- The spark's position is driven by Blizzard reanchoring the
+    -- interruptible bar's inner status texture; nothing to do here.
+end
+
+--- Apply the secret-bool-driven visuals: alpha-switch the dual bg / bar /
+--- border widgets and update the spell-name color, all driven off
+--- `current.notInterruptible` via C_CurveUtil.EvaluateColorValueFromBoolean.
+--- Same trick UCB uses (Backend/Core/GeneralCore_Helpers.lua:9-23,61-71):
+--- the curve evaluator accepts a (possibly secret) boolean as its first
+--- arg and returns the second or third value accordingly. The result may
+--- itself be tainted; we pass it directly to a Blizzard C method
+--- (SetAlpha / SetTextColor) without binding to a local.
+function Castbar:ApplyState()
+    if not frame then return end
+    local c        = cfg()
+    local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
+    local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
+
+    local intBorderShow  = intCfg.borderShow   and 1 or 0
+    local unintBorderShow = unintCfg.borderShow and 1 or 0
+
+    if not current then
+        -- Preview / no-cast: show interruptible visuals; uninterruptible
+        -- side is fully alpha=0.
+        frame.bgInterruptible:SetAlpha(1)
+        frame.bgUninterruptible:SetAlpha(0)
+        frame.bar.interruptible:SetAlpha(1)
+        frame.bar.uninterruptible:SetAlpha(0)
+        frame.borderInterruptible:SetAlpha(intBorderShow)
+        frame.borderUninterruptible:SetAlpha(0)
+        local n = intCfg.nameTextColor or { 1, 1, 1, 1 }
+        frame.nameText:SetTextColor(n[1] or 1, n[2] or 1, n[3] or 1, n[4] or 1)
+        return
+    end
+
+    -- Active cast. current.notInterruptible may be plain or secret. Pass
+    -- it (and the per-channel color values) to C_CurveUtil; pipe each
+    -- result straight into a Blizzard C method without binding.
+    local nint = current.notInterruptible
+    local intName  = intCfg.nameTextColor   or { 1, 1, 1, 1 }
+    local unintName = unintCfg.nameTextColor or { 1, 1, 1, 1 }
+
+    frame.bgInterruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
+    frame.bgUninterruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
+
+    frame.bar.interruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
+    frame.bar.uninterruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
+
+    -- Border show toggles fold INTO the curve params, not as a separate
+    -- multiplication afterwards (multiplying a secret curve result would
+    -- error). 0 in the relevant slot disables that side regardless.
+    frame.borderInterruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, intBorderShow))
+    frame.borderUninterruptible:SetAlpha(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintBorderShow, 0))
+
+    frame.nameText:SetTextColor(
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[1] or 1, intName[1] or 1),
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[2] or 1, intName[2] or 1),
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[3] or 1, intName[3] or 1),
+        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[4] or 1, intName[4] or 1))
 end
 
 function Castbar:Start(rec)
@@ -394,8 +523,8 @@ function Castbar:Start(rec)
         return self:Stop()
     end
     self:EnsureFrame()
-    self:ApplyConfig()
     current = rec
+    self:ApplyConfig()    -- runs ApplyState too, picking up notInterruptible
 
     -- name / texture may themselves be secret in combat for protected
     -- casts, but Texture:SetTexture / FontString:SetText accept secret
@@ -410,15 +539,18 @@ function Castbar:Start(rec)
         frame.nameText:SetText("")
     end
 
-    -- Seed the bar from the duration object so we don't flash a 0% bar
-    -- before the first OnUpdate tick. Same secret-safe pattern as OnUpdate
-    -- — pass the method calls straight to the C side, never bind locals.
+    -- Seed both bars from the duration object so we don't flash a 0% bar
+    -- before the first OnUpdate tick. Pass duration methods directly to
+    -- the StatusBar C methods; never bind to locals.
     local d = rec.duration
-    frame.bar:SetMinMaxValues(0, d:GetTotalDuration())
+    frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
+    frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
     if rec.isChannel then
-        frame.bar:SetValue(d:GetRemainingDuration())
+        frame.bar.interruptible:SetValue(d:GetRemainingDuration())
+        frame.bar.uninterruptible:SetValue(d:GetRemainingDuration())
     else
-        frame.bar:SetValue(d:GetElapsedDuration())
+        frame.bar.interruptible:SetValue(d:GetElapsedDuration())
+        frame.bar.uninterruptible:SetValue(d:GetElapsedDuration())
     end
 
     if isVisible() then
@@ -431,7 +563,8 @@ function Castbar:Stop()
     current = nil
     if not frame then return end
     frame:SetScript("OnUpdate", nil)
-    frame.bar:SetValue(0)
+    frame.bar.interruptible:SetValue(0)
+    frame.bar.uninterruptible:SetValue(0)
 
     -- Keep the preview visible while unlocked so the user can still drag
     -- the empty bar around. Otherwise hide it.
@@ -448,7 +581,7 @@ end
 --- currently casting.
 function Castbar:ShowPreview()
     if not frame then return end
-    self:ApplyConfig()
+    self:ApplyConfig()    -- runs ApplyState (no-cast branch → interruptible visuals)
     if cfg().iconSize and cfg().iconSize > 0 then
         frame.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
@@ -462,11 +595,13 @@ function Castbar:ShowPreview()
     else
         frame.timeText:SetText("")
     end
-    -- Reset the bar's range — a previous Start() may have left it at the
-    -- last cast's totalDuration, and we want the preview to show a fixed
-    -- mid-bar regardless of that.
-    frame.bar:SetMinMaxValues(0, 1)
-    frame.bar:SetValue(0.5)
+    -- Reset both bars' ranges — a previous Start() may have left them at
+    -- the last cast's totalDuration, and we want the preview to show a
+    -- fixed mid-bar regardless of that.
+    frame.bar.interruptible:SetMinMaxValues(0, 1)
+    frame.bar.interruptible:SetValue(0.5)
+    frame.bar.uninterruptible:SetMinMaxValues(0, 1)
+    frame.bar.uninterruptible:SetValue(0.5)
     frame:Show()
 end
 
@@ -549,11 +684,15 @@ end
 function Castbar:OnCastDelayed(_evt, unit)
     if unit ~= "target" then return end
     if not current then return end
-    -- Re-query so the timeline reflects the pushback / haste change. The
-    -- shim re-checks issecretvalue() so we may transition between the
-    -- plain and fallback paths between calls — both are safe.
+    -- Re-query so the timeline reflects the pushback / haste change.
+    -- notInterruptible could in principle change too (e.g. an aura that
+    -- toggles interruptibility mid-cast), so re-apply the per-state
+    -- visuals as well.
     local rec = KickCD.Compat.GetCastingInfo("target")
-    if rec then current = rec end
+    if rec then
+        current = rec
+        self:ApplyState()
+    end
 end
 
 -- ---------------------------------------------------------------------------

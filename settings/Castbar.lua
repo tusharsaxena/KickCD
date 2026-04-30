@@ -130,58 +130,149 @@ add{
     onChange = reskin,
 }
 
--- Texture ------------------------------------------------------------
+-- Per-state appearance (interruptible vs uninterruptible casts) -------
+--
+-- Switching between the two states uses
+-- C_CurveUtil.EvaluateColorValueFromBoolean on the cast's secret
+-- notInterruptible bool — see modules/Castbar.lua:ApplyState. Each row
+-- below targets one nested path (castbar.interruptible.* or
+-- castbar.uninterruptible.*); the addon stacks two widgets and
+-- alpha-curve-switches between them so a single cast renders only the
+-- relevant half.
+
+-- Interruptible appearance --------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Texture"],
-    path  = "castbar.statusBarTexture", type = "string",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
-    tooltip = L["LibSharedMedia statusbar texture used for the bar fill."],
+    tooltip = L["LibSharedMedia statusbar texture used for interruptible casts."],
     default = "Blizzard",
     values  = function() return H.LSMValues("statusbar") end,
     onChange = reskin,
 }
-
--- Colors -------------------------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Colors"],
-    path  = "castbar.barColor", type = "color",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.barColor", type = "color",
     label = L["Bar color"],
-    tooltip = L["RGBA color of the bar fill."],
-    default = { 0.7, 0.2, 0.2, 1 },
+    tooltip = L["RGBA bar fill color when the target's cast is interruptible."],
+    default = { 1, 0.85, 0.05, 1 },
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Colors"],
-    path  = "castbar.bgColor", type = "color",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.bgColor", type = "color",
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
     default = { 0, 0, 0, 0.5 },
     onChange = reskin,
 }
-
--- Border -------------------------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Border"],
-    path  = "castbar.borderShow", type = "bool",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.nameTextColor", type = "color",
+    label = L["Spell name color"],
+    tooltip = L["RGBA color of the spell-name text."],
+    default = { 1, 1, 1, 1 },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.borderShow", type = "bool",
     label = L["Show border"],
-    tooltip = L["Draw a thin border around the cast bar."],
+    tooltip = L["Draw a border around the cast bar for interruptible casts."],
     default = false,
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Border"],
-    path  = "castbar.borderColor", type = "color",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.borderTexture", type = "string",
+    label = L["Border style"],
+    tooltip = L["LibSharedMedia border texture (edge style) for interruptible casts."],
+    default = "Blizzard Tooltip",
+    values  = function() return H.LSMValues("border") end,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.borderColor", type = "color",
     label = L["Border color"],
-    tooltip = L["Border color (RGBA)."],
+    tooltip = L["RGBA border color for interruptible casts."],
     default = { 0, 0, 0, 1 },
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Border"],
-    path  = "castbar.borderSize", type = "number",
+    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
+    path  = "castbar.interruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
-    tooltip = L["Border thickness in pixels."],
-    default = 1, min = 1, max = 4, step = 1, fmt = "%d px",
+    tooltip = L["Border edge size in pixels."],
+    default = 1, min = 1, max = 16, step = 1, fmt = "%d px",
+    onChange = reskin,
+}
+
+-- Uninterruptible appearance ------------------------------------------
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.statusBarTexture", type = "string",
+    label = L["Bar texture"],
+    tooltip = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
+    default = "Blizzard",
+    values  = function() return H.LSMValues("statusbar") end,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.barColor", type = "color",
+    label = L["Bar color"],
+    tooltip = L["RGBA bar fill color when the target's cast cannot be interrupted."],
+    default = { 0.85, 0.10, 0.10, 1 },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.bgColor", type = "color",
+    label = L["Background color"],
+    tooltip = L["RGBA color drawn behind the bar."],
+    default = { 0, 0, 0, 0.5 },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.nameTextColor", type = "color",
+    label = L["Spell name color"],
+    tooltip = L["RGBA color of the spell-name text."],
+    default = { 1, 1, 1, 1 },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.borderShow", type = "bool",
+    label = L["Show border"],
+    tooltip = L["Draw a border around the cast bar for non-interruptible casts."],
+    default = true,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.borderTexture", type = "string",
+    label = L["Border style"],
+    tooltip = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
+    default = "Blizzard Tooltip",
+    values  = function() return H.LSMValues("border") end,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.borderColor", type = "color",
+    label = L["Border color"],
+    tooltip = L["RGBA border color for non-interruptible casts."],
+    default = { 1, 0.20, 0.20, 1 },
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
+    path  = "castbar.uninterruptible.borderSize", type = "number",
+    label = L["Border thickness (in px)"],
+    tooltip = L["Border edge size in pixels."],
+    default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
     onChange = reskin,
 }
 

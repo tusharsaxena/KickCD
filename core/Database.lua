@@ -64,23 +64,41 @@ local DEFAULT_PROFILE = {
     },
 
     castbar = {
-        enabled          = true,
-        width            = 250,
-        height           = 24,
-        iconSize         = 24,
-        iconPosition     = "LEFT",      -- "LEFT" or "RIGHT"
-        showSpark        = true,
-        showName         = true,
-        showTime         = true,
-        font             = "Friz Quadrata TT",
-        fontSize         = 12,
-        fontFlags        = "OUTLINE",
-        statusBarTexture = "Blizzard",
-        barColor         = { 0.7, 0.2, 0.2, 1 },
-        bgColor          = { 0,   0,   0,   0.5 },
-        borderShow       = false,
-        borderColor      = { 0,   0,   0,   1 },
-        borderSize       = 1,
+        enabled      = true,
+        width        = 250,
+        height       = 24,
+        iconSize     = 24,
+        iconPosition = "LEFT",      -- "LEFT" or "RIGHT"
+        showSpark    = true,
+        showName     = true,
+        showTime     = true,
+        font         = "Friz Quadrata TT",
+        fontSize     = 12,
+        fontFlags    = "OUTLINE",
+
+        -- Per-state appearance (interruptible vs uninterruptible casts).
+        -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
+        -- on the cast's secret notInterruptible bool — see modules/Castbar.lua.
+        interruptible = {
+            statusBarTexture = "Blizzard",
+            barColor         = { 1,    0.85, 0.05, 1   },  -- yellow
+            bgColor          = { 0,    0,    0,    0.5 },
+            nameTextColor    = { 1,    1,    1,    1   },
+            borderShow       = false,
+            borderTexture    = "Blizzard Tooltip",
+            borderColor      = { 0,    0,    0,    1   },
+            borderSize       = 1,
+        },
+        uninterruptible = {
+            statusBarTexture = "Blizzard",
+            barColor         = { 0.85, 0.10, 0.10, 1   },  -- red
+            bgColor          = { 0,    0,    0,    0.5 },
+            nameTextColor    = { 1,    1,    1,    1   },
+            borderShow       = true,
+            borderTexture    = "Blizzard Tooltip",
+            borderColor      = { 1,    0.20, 0.20, 1   },
+            borderSize       = 2,
+        },
     },
 
     anchors = {
@@ -109,7 +127,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 5
+local LATEST_VERSION = 6
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -235,6 +253,55 @@ local Migrations = {
             if not profile.anchors.castbar then
                 profile.anchors.castbar =
                     { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 }
+            end
+        end
+    end,
+
+    -- v6: nested the cast-bar appearance fields under .interruptible /
+    -- .uninterruptible so each cast state can have its own bar texture,
+    -- color, background, name-text color, and border styling. Pre-v6
+    -- profiles' flat castbar.barColor / .statusBarTexture / .bgColor /
+    -- .borderShow / .borderColor / .borderSize move into .interruptible.*
+    -- (treated as the previously-uniform "all casts" appearance), and a
+    -- red-themed default block seeds .uninterruptible.* — borders default
+    -- to ON for uninterruptible to make non-interruptable casts pop.
+    -- The new fields nameTextColor and borderTexture are added on both
+    -- sides with sensible defaults.
+    [6] = function(db)
+        local function uninterruptibleDefaults()
+            return {
+                statusBarTexture = "Blizzard",
+                barColor         = { 0.85, 0.10, 0.10, 1   },
+                bgColor          = { 0,    0,    0,    0.5 },
+                nameTextColor    = { 1,    1,    1,    1   },
+                borderShow       = true,
+                borderTexture    = "Blizzard Tooltip",
+                borderColor      = { 1,    0.20, 0.20, 1   },
+                borderSize       = 2,
+            }
+        end
+        for _, profile in pairs(db.profiles or {}) do
+            local cb = profile.castbar
+            if type(cb) == "table" then
+                cb.interruptible = cb.interruptible or {
+                    statusBarTexture = cb.statusBarTexture or "Blizzard",
+                    barColor         = cb.barColor         or { 1, 0.85, 0.05, 1   },
+                    bgColor          = cb.bgColor          or { 0, 0,    0,    0.5 },
+                    nameTextColor    = { 1, 1, 1, 1 },
+                    borderShow       = cb.borderShow == true,
+                    borderTexture    = "Blizzard Tooltip",
+                    borderColor      = cb.borderColor      or { 0, 0,    0,    1   },
+                    borderSize       = cb.borderSize       or 1,
+                }
+                cb.uninterruptible = cb.uninterruptible or uninterruptibleDefaults()
+                -- Strip the old flat fields so /kcd list and saved-vars
+                -- reflect the live nested shape.
+                cb.statusBarTexture = nil
+                cb.barColor         = nil
+                cb.bgColor          = nil
+                cb.borderShow       = nil
+                cb.borderColor      = nil
+                cb.borderSize       = nil
             end
         end
     end,

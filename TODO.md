@@ -1,8 +1,6 @@
 # TODO
 
-## Fixes
-
-### General
+## Completed
 
 - ✅ Rename the settings panel and entry name in the TOC file to "KickCD" - but the addon name and all references in the addon should continue to be "Ka0s KickCD"
 - ✅ Gracefully handle /kcd config in combat (show error message - do not open settings panel)
@@ -11,16 +9,12 @@
 - ✅ Add some vertical spacing between the sub-header (e.g. Appearance, Debug) and the actual contents inside that sub-header (add spacing both above and below)
 - ✅ Increase the font size of the sub-header (e.g. Appearance, Debug)
 - ✅ Change the look and feel of buttons and drop downs - ask me for screenshots of what this should look like - refer to https://github.com/tusharsaxena/consumablemaster settings panel where it has the look and feel that i want
-
-### General Tab
-
+- ✅ Do not apply the visual states settings (i.e. reduce alpha, change color of icons) for GCD cooldowns - only when the actual spell is on cooldown
+- ✅ Cooldown text doesnt show up after i use a spell - it should always show (text should obey visual state rules like cooldown alpha)
 - ✅ Enable button doesn't work
 - ✅ Master scale doesn't work
 - ✅ Master alpha doesn't work
 - ✅ Internal-message logging — rename to "Debug"
-
-### Icons Tab
-
 - ✅ Add setting for on-cooldown color
 - ✅ Add border settings
 - ✅ Add settings for font flags (Outline, Thick Outline, etc.)
@@ -30,9 +24,6 @@
 - ✅ Add setting for icon zoom
 - ✅ Add settings for grid layout for secondary icons (num rows, num cols; grow horizontal vs grow vertical) - ask me for more details if you're not sure what needs to be done here
 - ✅ Add a scroll bar in the icons panel
-
-### Spells Tab
-
 - ✅ Replace Up / Dn / X buttons with relevant icons - refer to icons from https://github.com/tusharsaxena/consumablemaster and see attached screenshot
 - ✅ What is the purpose of the Interrupt / Stun / Knockback / etc. dropdown? (kept for future filtering; tooltip added)
 - ✅ Validate that only spells tracked by CDM can be added for tracking — surface an appropriate error message if this isn't happening
@@ -41,16 +32,16 @@
 - ✅ Remove the spell id aftyer the spell name
 - ✅ Some of the spell icons are destaurated - remove this desaturation (desturation should only happen if the checkbox is de-selected)
 - ✅ In the Spells > Spec selector, use both class icons and spec icons - [class icon][spec icon] [Class Name] [Spec Name]
+- ✅ Add a target castbar (do not style the default castbar — create a new one; refer)
 
-## Enhancements
+## Not Yet Started
 
 - ☐ Color code cast bar based on interruptable, non interruptable.
+- ☐ Cast bar icon should be left/right/off
+- ☐ Cast bar text position anchors (inside left, inside right, center, outside left, outside right) - with x/y offset - for both the text elements independently (spell name, spell timer)
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
-- ✅ Do not apply the visual states settings (i.e. reduce alpha, change color of icons) for GCD cooldowns - only when the actual spell is on cooldown
-- ✅ Cooldown text doesnt show up after i use a spell - it should always show (text should obey visual state rules like cooldown alpha)
-- ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
-- ☐ Cooldown swipe shows for GCD actions, but not when the spell is on a longer cooldown
 - ☐ General Tab: add setting to always show vs. show in combat vs. show when target is casting
-- ✅ Add a target castbar (do not style the default castbar — create a new one; refer)
 - ☐ Add the ability to add items along with spells for tracking
 - ☐ Add icon glow when primary interrupt spell is ready (proc, action bar, cdm, pixel, etc)
+- ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
+- ☐ Cooldown swipe shows for GCD actions, but not when the spell is on a longer cooldown
