@@ -34,7 +34,7 @@ External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, Ac
 
 1. **TOC file-load (`KickCD.toc`):** libs → locales → `core/Compat.lua` (creates `_G.KickCD` table and `KickCD.Compat`) → `core/Util.lua` → `core/Database.lua` (defines class, doesn't init) → `core/KickCD.lua` (`AceAddon-3.0:NewAddon` promotes `_G.KickCD` in place to an AceAddon object) → `defaults/Spells.lua` (sets `KickCD.DefaultSpells`) → modules (each calls `KickCD:NewModule`) → settings (each calls `KickCD.Settings.RegisterTab`).
 
-2. **`KickCD:OnInitialize` (Ace lifecycle, fires on `ADDON_LOADED`):** `Database:Init` builds the AceDB instance, runs forward-only migrations (`global.dbVersion`), and seeds spells from `KickCD.DefaultSpells` on first profile creation. Slash commands `/kickcd` and `/kcd` are registered.
+2. **`KickCD:OnInitialize` (Ace lifecycle, fires on `ADDON_LOADED`):** `Database:Init` builds the AceDB instance and seeds spells from `KickCD.DefaultSpells` on first profile creation. Slash commands `/kickcd` and `/kcd` are registered.
 
 3. **`<Module>:OnEnable`:** modules subscribe to messages and game events. `Cooldowns:OnEnable` registers `SPELL_UPDATE_COOLDOWN/USABLE/CHARGES` + `PLAYER_ENTERING_WORLD` + `PLAYER_SPECIALIZATION_CHANGED`; `IconGrid:OnEnable` builds the frame, runs `BuildActiveList`, and shows the grid.
 
@@ -196,11 +196,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         },
     },
 }
-
-global = { dbVersion = N }    -- migration cursor, see Database.RunMigrations
 ```
-
-Forward-only migrations bring older saved-vars up to the current schema (`Database.Migrations[1..11]` in `core/Database.lua`). Notable transitions: `v4` translated the old `layout` (horizontal/vertical) + `primaryAnchor` pair into the unified 12-option `anchor` enum; `v5/v6/v7/v8` introduced and refined the cast-bar shape; `v9` added the addon-wide visibility mode and per-slot ready glow; `v10` split the conflated `glowType ∈ {"none","proc","pixel"}` into orthogonal `glowTrigger` + `glowType` (LibCustomGlow's effect names), mapping old `"none"` → `trigger="never", type="proc"` and old `"proc"` / `"pixel"` → `trigger="always"` with the type preserved; `v11` added `icons.suppressGCDSwipe` (default on) so the cooldown swipe + countdown text follow the icon body's existing GCD-as-ready behavior.
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
 

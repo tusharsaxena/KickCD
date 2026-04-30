@@ -93,8 +93,7 @@ end
 -- This is the API to reach for whenever you need timing info for a watched
 -- spell — it works for both interrupt-style protected spells (whose raw
 -- start/duration come back as 12.0 "secret values" that error on any
--- arithmetic / comparison) and ordinary spells alike. See
--- FloatingInterruptHighlight's Core.lua for the canonical usage pattern.
+-- arithmetic / comparison) and ordinary spells alike.
 function Compat.GetSpellCooldownDuration(spellID)
     if C_Spell and C_Spell.GetSpellCooldownDuration then
         return C_Spell.GetSpellCooldownDuration(spellID)
@@ -188,9 +187,9 @@ end
 -- CastingDuration object whose :GetTotalDuration / :GetElapsedDuration /
 -- :GetRemainingDuration / :GetStartTime / :GetEndTime methods all return
 -- PLAIN numbers — safe to compare, format, and feed straight into
--- StatusBar:SetValue. This is the same trick UltimateCastbars uses and is
--- conceptually identical to the CooldownDuration object KickCD already
--- consumes in modules/Cooldowns.lua, EXCEPT the cast variant's
+-- StatusBar:SetValue. Conceptually identical to the CooldownDuration
+-- object KickCD already consumes in modules/Cooldowns.lua, EXCEPT the
+-- cast variant's
 -- :GetRemainingDuration stays plain in combat (cooldown's goes secret —
 -- they are different objects despite the similar shape).
 --

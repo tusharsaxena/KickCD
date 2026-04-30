@@ -28,8 +28,7 @@
 --     IconGrid; the IconGrid evaluates it against a step-shaped curve
 --     (ready alpha for remaining ≤ ~GCD upper bound, cooldown alpha
 --     beyond), and Blizzard's curve evaluation runs C-side so no Lua
---     comparison ever happens. This is the same pattern FIH uses for its
---     cdReadyCurve.
+--     comparison ever happens.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
 -- false (master disable); a "general" KickCD_CONFIG_CHANGED triggers a

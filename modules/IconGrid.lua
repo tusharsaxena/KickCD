@@ -80,8 +80,7 @@ local GCD_UPPER = 1.6
 -- Why curves: cdObject:EvaluateRemainingDuration(curve) runs C-side, takes
 -- the (possibly secret) remaining time, and returns a value the Cooldown
 -- frame / Frame:SetAlphaFromBoolean / Texture:SetVertexColor accept as
--- arguments without taint errors. This is FIH's cdReadyCurve pattern,
--- generalized to KickCD's per-state visuals.
+-- arguments without taint errors.
 --
 -- gcdSuppressCurve drives the cooldown swipe + countdown text alpha when
 -- cfg.suppressGCDSwipe is true: 0 below GCD_UPPER (hide), 1 above (show).
@@ -114,9 +113,9 @@ local function isTargetCasting()
 end
 
 -- Resolve the addon-wide "General visibility" setting. Defaults to
--- "always" so an unmigrated profile keeps the v0.1 behavior. Both this
--- module and modules/Castbar.lua read the same value so they show /
--- hide together — see Castbar:isVisible for the cast bar's read.
+-- "always" if the field is missing. Both this module and
+-- modules/Castbar.lua read the same value so they show / hide together
+-- — see Castbar:isVisible for the cast bar's read.
 local function visibilityMode()
     local profile = KickCD.db and KickCD.db.profile
     return (profile and profile.visibility) or "always"
@@ -170,8 +169,8 @@ local function BuildCurves()
     local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
 
     -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
-    -- between adjacent points is FIH's trick for a sharp transition under
-    -- linear interpolation (LuaCurveType.Linear is the default).
+    -- between adjacent points yields a sharp transition under linear
+    -- interpolation (LuaCurveType.Linear is the default).
     alphaCurve = C_CurveUtil.CreateCurve()
     if alphaCurve.SetType and Enum and Enum.LuaCurveType then
         alphaCurve:SetType(Enum.LuaCurveType.Linear)
@@ -337,17 +336,16 @@ end
 --
 -- 12.0 secret-value protection means we cannot read :GetRemainingDuration()
 -- into a Lua local in combat (the value is itself secret-tainted, and
--- tostring / string.format / `<` / `-` all error). The trick FIH uses is to
--- pass the secret directly into a Blizzard C method as a function argument
--- — argument passing crosses into C without ever holding the value in a
+-- tostring / string.format / `<` / `-` all error). The trick is to pass
+-- the secret directly into a Blizzard C method as a function argument —
+-- argument passing crosses into C without ever holding the value in a
 -- tainted Lua local. FontString:SetFormattedText(fmt, arg) does the
 -- formatting C-side, so this works:
 --
 --     fontString:SetFormattedText("%.1f", cdObj:GetRemainingDuration())
 --
 -- We can't conditionally choose the format (no comparison on remaining is
--- legal), so we live with a single fixed format. "%.1f" is the same shape
--- FIH uses for its timer.
+-- legal), so we live with a single fixed format ("%.1f").
 --
 -- The OnUpdate calls SetFormattedText every ~0.1s. For full spell-level
 -- cooldowns we additionally re-poll the plain `isActive` bool from
@@ -566,9 +564,9 @@ function Icon:Apply(state)
     if state and state.cdObject and alphaCurve then
         -- Branch 1: full cooldown.
         local alpha = state.cdObject:EvaluateRemainingDuration(alphaCurve)
-        -- SetAlphaFromBoolean accepts secret values for its alpha args
-        -- (FIH uses the same pattern for its cdReadyCurve). Passing `true`
-        -- as the condition selects the second arg unconditionally.
+        -- SetAlphaFromBoolean accepts secret values for its alpha args.
+        -- Passing `true` as the condition selects the second arg
+        -- unconditionally.
         if self.SetAlphaFromBoolean then
             self:SetAlphaFromBoolean(true, alpha, 0)
         else

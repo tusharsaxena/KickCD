@@ -45,11 +45,10 @@
 --   :GetElapsedDuration / :GetRemainingDuration methods all return
 --   PLAIN numbers in combat. The OnUpdate loop drives the bar entirely
 --   off those numbers — no secret arithmetic anywhere in the module.
---   This is the same technique UltimateCastbars uses for the
---   target/focus cast bar. The spell `name` / `texture` may themselves
---   be secret in combat, but FontString:SetText / Texture:SetTexture
---   accept secret args without erroring (Blizzard's protection is on
---   arithmetic, not on UI render calls).
+--   The spell `name` / `texture` may themselves be secret in combat,
+--   but FontString:SetText / Texture:SetTexture accept secret args
+--   without erroring (Blizzard's protection is on arithmetic, not on
+--   UI render calls).
 
 local KickCD  = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local Castbar = KickCD:NewModule("Castbar", "AceEvent-3.0")
@@ -359,8 +358,8 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Default sub-config used when a profile is missing the per-state nested
--- block (e.g. before migration v6 has run, or for safety against malformed
--- saved-vars). Mirrors the Database defaults.
+-- block (safety net against malformed saved-vars). Mirrors the Database
+-- defaults.
 local function stateConfig(c, key, fallback)
     local sc = c[key]
     if type(sc) == "table" then return sc end
@@ -683,8 +682,7 @@ end
 --- Apply the secret-bool-driven visuals: alpha-switch the dual bg / bar /
 --- border widgets and update the spell-name color, all driven off
 --- `current.notInterruptible` via C_CurveUtil.EvaluateColorValueFromBoolean.
---- Same trick UCB uses (Backend/Core/GeneralCore_Helpers.lua:9-23,61-71):
---- the curve evaluator accepts a (possibly secret) boolean as its first
+--- The curve evaluator accepts a (possibly secret) boolean as its first
 --- arg and returns the second or third value accordingly. The result may
 --- itself be tainted; we pass it directly to a Blizzard C method
 --- (SetAlpha / SetTextColor) without binding to a local.

@@ -40,9 +40,9 @@ KickCD.VERSION = "0.1.0"
 -- ---------------------------------------------------------------------------
 
 function KickCD:OnInitialize()
-    -- Database:Init() builds the AceDB instance, runs migrations, and seeds
-    -- spells from defaults/Spells.lua. After this returns, KickCD.db is the
-    -- live AceDB object — a contract relied on by every module.
+    -- Database:Init() builds the AceDB instance and seeds spells from
+    -- defaults/Spells.lua. After this returns, KickCD.db is the live
+    -- AceDB object — a contract relied on by every module.
     if self.Database and self.Database.Init then
         self.Database:Init()
     end

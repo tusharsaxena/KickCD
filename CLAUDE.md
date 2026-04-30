@@ -31,7 +31,7 @@ WoW 12.0 introduced "secret values" on certain protected API returns — notably
 
 **Critical caveat:** `obj:GetRemainingDuration()` returns a *secret-tainted* number in combat (plain out of combat). It is **only** safe as a direct argument to a Blizzard C method. Binding it to a Lua local for a comparison, format, tostring, or arithmetic op will error with "attempt to compare local '...' (a secret number value)" the moment combat opens. The same caveat applies to whatever `EvaluateRemainingDuration` returns — pass it through to a C method, never inspect it.
 
-This is the API `FloatingInterruptHighlight` uses, and we've adopted the same pattern: `modules/Cooldowns.lua` emits the duration object opaquely, `modules/IconGrid.lua` evaluates it against step-shaped alpha/tint curves to derive GCD-vs-real-CD visuals C-side. Reach for `C_Spell.GetSpellCooldown`'s raw `startTime`/`duration` only when you genuinely need them — and even then, gate with `issecretvalue` first because in combat *every* watched spell's timings come back secret.
+KickCD uses this API throughout: `modules/Cooldowns.lua` emits the duration object opaquely, `modules/IconGrid.lua` evaluates it against step-shaped alpha/tint curves to derive GCD-vs-real-CD visuals C-side. Reach for `C_Spell.GetSpellCooldown`'s raw `startTime`/`duration` only when you genuinely need them — and even then, gate with `issecretvalue` first because in combat *every* watched spell's timings come back secret.
 
 Why curves instead of a `UNIT_SPELLCAST_SUCCEEDED` cast tracker for GCD filtering? Blizzard suppresses that event for protected interrupts (Mind Freeze, Pummel, Kick, Spear Hand Strike, …) — the event simply does not fire when the player casts one of those spells in tainted scope. So a cast-event tracker can never flip the primary icon's state. Curve evaluation runs entirely C-side and works for protected and unprotected spells alike.
 
@@ -86,7 +86,7 @@ A separate `gcdSuppressCurve` (also built in `IconGrid.BuildCurves`) drives the 
 
 The whole layout is in three small functions: `parseAnchor`, `parseGrow`, `placeBlock` (computes grid bounding box and the primary/block TOPLEFT corners), and the single `layoutBlock` that anchors every widget to the grid frame's TOPLEFT in pixel-floored screen coordinates.
 
-`secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down). Saved-vars from older builds are forward-migrated by `Migrations[4]` in `core/Database.lua`.
+`secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down).
 
 ## Settings panel — schema-driven canvas layout
 
@@ -200,7 +200,7 @@ use the schema + `Helpers.RenderField` instead.
 
 The original implementation broke in 12.0 because `UnitCastingInfo` positions 4–5 (`startTimeMS` / `endTimeMS`) come back as secret values in tainted scope for casts the player can interrupt with a protected interrupt. Arithmetic / compare / format / `tostring` on a secret raises a Lua error, so an `OnUpdate` doing `(GetTime() - startSec) / (endSec - startSec)` blows up the moment combat opens against an interruptable target.
 
-**The key API: `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)`.** These return a `CastingDuration` object whose `:GetTotalDuration()` / `:GetElapsedDuration()` / `:GetRemainingDuration()` / `:GetStartTime()` / `:GetEndTime()` methods supply the timing primitives. This is structurally similar to the `CooldownDuration` object KickCD already uses in `modules/Cooldowns.lua` — and **subject to the same secret-in-combat protection**. The methods *do* return secret-tainted numbers in combat for protected casts. The trick is identical to the cooldown pattern: never bind the return to a Lua local; pass the method call **directly as an argument** to a Blizzard C method that accepts secret args. The technique is the same UltimateCastbars uses for its target/focus bar.
+**The key API: `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)`.** These return a `CastingDuration` object whose `:GetTotalDuration()` / `:GetElapsedDuration()` / `:GetRemainingDuration()` / `:GetStartTime()` / `:GetEndTime()` methods supply the timing primitives. This is structurally similar to the `CooldownDuration` object KickCD already uses in `modules/Cooldowns.lua` — and **subject to the same secret-in-combat protection**. The methods *do* return secret-tainted numbers in combat for protected casts. The trick is identical to the cooldown pattern: never bind the return to a Lua local; pass the method call **directly as an argument** to a Blizzard C method that accepts secret args.
 
 The Compat shim funnels both UnitCastingInfo (for `name` / `texture` / `notInterruptible` / `spellID`) and UnitCastingDuration (for the timing object) into a single record:
 
@@ -231,7 +231,7 @@ frame.timeText:SetFormattedText(
 
 **`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)`, which is a Blizzard secure function that accepts a (possibly secret) boolean and a pair of plain values, returning whichever matches.
 
-**Friendly-target override.** The raw `notInterruptible` from `UnitCastingInfo` reports whether the spell is *flagged* uninterruptible (whether spell-interrupt mechanics work on it at all). It does **not** consider whether *you* can practically interrupt the cast — you can't interrupt yourself, you can't interrupt friendlies, regardless of the flag. `Compat.effectiveNotInterruptible(unit, raw)` overrides the value to `true` (force "uninterruptible" visuals) when `UnitCanAttack("player", unit)` is false. This is why a mount cast on yourself colors red even though `UnitCastingInfo.notInterruptible` is `false` — the mount's API flag says "interruptible" (because Counterspell would work on you in PvP), but from the user's perspective the cast is non-interruptable. UCB's bar happens to also color these casts red, but for a different reason (UCB defaults to class-color for player targets).
+**Friendly-target override.** The raw `notInterruptible` from `UnitCastingInfo` reports whether the spell is *flagged* uninterruptible (whether spell-interrupt mechanics work on it at all). It does **not** consider whether *you* can practically interrupt the cast — you can't interrupt yourself, you can't interrupt friendlies, regardless of the flag. `Compat.effectiveNotInterruptible(unit, raw)` overrides the value to `true` (force "uninterruptible" visuals) when `UnitCanAttack("player", unit)` is false. This is why a mount cast on yourself colors red even though `UnitCastingInfo.notInterruptible` is `false` — the mount's API flag says "interruptible" (because Counterspell would work on you in PvP), but from the user's perspective the cast is non-interruptable.
 
 KickCD uses this to render distinct visuals for interruptible vs uninterruptible casts. The cast bar carries **stacked dual widgets** for everything that can't be expressed as a scalar curve evaluation:
 
@@ -250,8 +250,6 @@ frame.barUninterruptible:SetAlpha(C_CurveUtil.EvaluateColorValueFromBoolean(
 ```
 
 The result of `EvaluateColorValueFromBoolean` may itself be secret-tainted; pass it directly to `SetAlpha` / `SetTextColor` and never bind to a Lua local. Same rule as the duration object's methods — Blizzard C methods accept secret args; Lua arithmetic does not.
-
-UCB's `Backend/Core/GeneralCore_Helpers.lua` lines 9–23 (`KickAlpha`) and 61–71 (`SecretTo0_1` / `NotSecretTo0_1` / `SecretToA_B`) are the canonical reference for this idiom; we use the same pattern.
 
 Texture differentiation between states (different statusbar textures, different LSM border edge files) genuinely requires two stacked widgets — the texture *path* is a string, not a number, and there's no way to curve-switch a string. Color / alpha / thickness / show-toggle differentiation only needs the curve evaluator and folds into the same widget.
 

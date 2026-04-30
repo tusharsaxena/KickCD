@@ -53,6 +53,7 @@
 - ✅ Cooldown text and swipe doesnt show when a spell with charges is partially off cooldown — added `chargeCdObject` to SPELL_STATE; swipe + text render without changing alpha/tint while the spell is still castable
 - ✅ "When target is casting an interruptible spell" is not working - it still shows the addon when a non interruptible spell is being cast. This applies to both the general visibility, and the glow settings classifiers
 - ✅ On secondary icons, if a glow is meannt to be shown, it appears like the glow initial animation is redrawn every 0.1 seconds - makes it very janky. This does not happen in the alwats trigger case, only if some other option is selected
+- ✅ Remove all DB migration paths — addon is unreleased, so the migration scaffolding (Migrations table, RunMigrations, dbVersion, LATEST_VERSION) was deleted outright
 
 ## Not Yet Started
 
@@ -63,13 +64,12 @@
 
 ## Pre Release
 
-- ☐ Remove all DB migration paths
 - ☐ Documentation MD files have become too large and bloated. Split CLAUDE.md and ARCHITECTURE.md into smaller files with every file being a section have having a naming convention like CLAUDE_<SECTION_NAME>.md. The main file references these sub files. 
-- ☐ Remove all external refs
 - ☐ Do a deep review of the addon code and update CLAUDE_*.md and ARCHITECTURE_*.md
 - ☐ Do a PE review of the codebase
 - ☐ Do a deep review of all settings panels
+- ☐ defaults/Spells.lua has a lot of "to be verified" comments
 - ☐ Update default settings
 - ☐ Change addon icon
 - ☐ Take screenshots and in combat video (convert to GIF)
-- ☐ Update README with critical settings (especially visibility), FAQS, Troubleshooting and Changelog
+- ☐ Update README with critical settings (especially visibility modes, castbar settings, anchoring, autosize), FAQS, Troubleshooting and Changelog
