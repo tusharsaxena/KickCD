@@ -157,11 +157,28 @@ local function StateChanged(prev, next_)
     if prev.ready    ~= next_.ready    then return true end
     if prev.isActive ~= next_.isActive then return true end
     if prev.cdObject ~= next_.cdObject then return true end
-    -- Charges may be secret on guarded spells; only diff when both are plain.
+    -- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted
+    -- numbers for charged spells (Blood Boil, Death Grip, talented Mind
+    -- Freeze...). We can't `~=` two secrets without erroring. Previously
+    -- we skipped the diff entirely when either side was secret — but
+    -- that suppresses real transitions for spells whose only changing
+    -- field is `charges` (e.g. a charge recharging on a spell whose
+    -- spell-level cooldown stays inactive because at-least-one-charge
+    -- is available; cdObject stays nil, ready/active stay unchanged).
+    -- The 1→2 transition for Blood Boil hit exactly this trap.
+    --
+    -- Solution: when either side is secret, conservatively emit. The
+    -- IconGrid render path uses FontString:SetFormattedText("%d", c)
+    -- which accepts secret args C-side, so a redundant emit with the
+    -- (possibly identical) value is harmless and cheap. The cost is a
+    -- per-event re-emit for charged spells in combat — well within
+    -- budget (a SetFormattedText call per SPELL_UPDATE_*).
     local a, b = prev.charges, next_.charges
+    if a == nil and b == nil then return false end
     local aSecret = a ~= nil and issecretvalue and issecretvalue(a)
     local bSecret = b ~= nil and issecretvalue and issecretvalue(b)
-    if not (aSecret or bSecret) and a ~= b then return true end
+    if aSecret or bSecret then return true end
+    if a ~= b then return true end
     return false
 end
 
@@ -316,6 +333,14 @@ function Cooldowns:DebugDump()
     local ids = {}
     for id in pairs(self.watched) do ids[#ids + 1] = id end
     table.sort(ids)
+    -- charges may be secret in combat for charged spells; tostring on a
+    -- secret returns a secret, which then trips string.format and
+    -- table.concat downstream. Substitute a safe placeholder.
+    local function safeStr(v)
+        if v == nil then return "nil" end
+        if issecretvalue and issecretvalue(v) then return "secret" end
+        return tostring(v)
+    end
     for _, id in ipairs(ids) do
         local s = self.watched[id]
         local name = KickCD.Compat.GetSpellInfo(id) or "?"
@@ -326,6 +351,6 @@ function Cooldowns:DebugDump()
             tostring(s.ready),
             tostring(s.isActive),
             s.cdObject and "yes" or "nil",
-            tostring(s.charges)))
+            safeStr(s.charges)))
     end
 end

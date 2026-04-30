@@ -348,23 +348,17 @@ function Icon:Apply(state)
         end
     end
 
-    -- Charges badge (FR-2.7). In combat, charges may come back secret on
-    -- guarded spells: we can't `> 0` a secret in tainted scope without
-    -- erroring, so we conservatively assume "show" when the value is
-    -- secret (matching Cooldowns:PollSpell's hasCharges policy) and let
-    -- SetFormattedText render the value C-side — that C method accepts
-    -- secret args. Out of combat, the value is a plain number and we use
-    -- the standard `> 0` gate.
+    -- Charges badge (FR-2.7). Visibility = "this spell has charges at all",
+    -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
+    -- for spells that don't track charges (regular Mind Freeze etc.) and a
+    -- number (0..max) for spells that do, so the truthy check on `c` is
+    -- the right gate — and it works for plain numbers, secret-tainted
+    -- numbers (in-combat guarded spells), and the nil/no-charges case
+    -- alike. SetFormattedText is the canonical secret-safe render path
+    -- (the format is interpreted C-side, accepts secret args without
+    -- erroring; same pattern as the cooldown text overlay).
     local c = state and state.charges
-    local show = false
     if cfg.showCharges and c then
-        if issecretvalue and issecretvalue(c) then
-            show = true
-        else
-            show = c > 0
-        end
-    end
-    if show then
         self.chargesText:SetFormattedText("%d", c)
         self.chargesText:Show()
     else
