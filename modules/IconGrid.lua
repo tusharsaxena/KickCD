@@ -2,8 +2,23 @@
 --
 -- Owns one parent frame (KickCDIconGrid) and N child icon widgets, each
 -- pooled and reused on rebuild so we never churn frames. Visibility is
--- gated on db.profile.enabled (master enable); when enabled, the grid
--- is persistently visible (no enemy-cast-driven show/hide). Listens to:
+-- gated on db.profile.enabled (master enable) AND db.profile.visibility,
+-- the addon-wide "General visibility" setting also honored by the cast
+-- bar so both panels show / hide together:
+--   * "always"          — show whenever master enable is on (v0.1 default)
+--   * "in_combat"       — show only while in combat (event-driven flag,
+--                          NOT InCombatLockdown() — that lags by a frame)
+--   * "target_casting"  — show only while UnitCastingInfo / UnitChannelInfo
+--                          on "target" returns a non-nil name
+--   * "target_casting_interruptible"
+--                       — like target_casting but additionally requires
+--                          the cast to be interruptible (friendly /
+--                          self / flagged-uninterruptible suppress).
+--                          Compat.IsCastingInterruptible handles the
+--                          secret-value taint on notInterruptible.
+-- While unlocked, the visibility mode is bypassed so the user can drag
+-- the grid into position. Combat / target / cast events drive
+-- RefreshVisibility. Listens to:
 --
 --   KickCD_SPELL_STATE       -> route to the matching active icon's :Apply
 --   KickCD_CONFIG_CHANGED    -> "icons" relayouts (zoom/border/font/grid);
@@ -75,6 +90,59 @@ local function isEnabled()
     local profile = KickCD.db and KickCD.db.profile
     if not profile then return true end
     return profile.enabled ~= false
+end
+
+-- True if the player's target is currently casting or channeling. Reads
+-- UnitCastingInfo / UnitChannelInfo and only inspects whether the FIRST
+-- return (name) is non-nil — the value itself may be secret in combat for
+-- protected casts but a nil-vs-non-nil truthy check does not error
+-- (Lua's `not` is safe on secrets; same guarantee `current.name and ...`
+-- relies on in modules/Castbar.lua).
+local function isTargetCasting()
+    if not (UnitExists and UnitExists("target")) then return false end
+    local castName    = _G.UnitCastingInfo and _G.UnitCastingInfo("target")
+    if castName then return true end
+    local channelName = _G.UnitChannelInfo and _G.UnitChannelInfo("target")
+    if channelName then return true end
+    return false
+end
+
+-- Resolve the addon-wide "General visibility" setting. Defaults to
+-- "always" so an unmigrated profile keeps the v0.1 behavior. Both this
+-- module and modules/Castbar.lua read the same value so they show /
+-- hide together — see Castbar:isVisible for the cast bar's read.
+local function visibilityMode()
+    local profile = KickCD.db and KickCD.db.profile
+    return (profile and profile.visibility) or "always"
+end
+
+-- Combat state tracked via PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED.
+-- We deliberately do NOT consult InCombatLockdown() inside shouldBeVisible
+-- — that function reports protected-frame lockdown state, which can lag
+-- the PLAYER_REGEN_DISABLED event by a frame. Reading it on the event
+-- itself returns false if combat just started, leaving the grid hidden
+-- in "in_combat" mode until the next config change. The event-driven
+-- flag is the source of truth.
+local _inCombat = false
+
+-- Decide whether the grid should be visible right now. Master enable is
+-- the gate; visibility mode then narrows that to a subset of states.
+-- While unlocked the user is repositioning, so we ignore the visibility
+-- mode and always show — otherwise the grid would be invisible exactly
+-- when they need to drag it.
+local function shouldBeVisible()
+    if not isEnabled() then return false end
+    local profile = KickCD.db and KickCD.db.profile
+    if profile and profile.locked == false then return true end
+    local mode = visibilityMode()
+    if mode == "in_combat" then
+        return _inCombat
+    elseif mode == "target_casting" then
+        return isTargetCasting()
+    elseif mode == "target_casting_interruptible" then
+        return KickCD.Compat.IsCastingInterruptible("target")
+    end
+    return true  -- "always"
 end
 
 local function safeUnpackColor(c, fr, fg, fb, fa)
@@ -207,14 +275,46 @@ local function CreateIconWidget(parent)
     charges:Hide()
     btn.chargesText = charges
 
-    -- Ready-pulse highlight stub (deferred per design — created so a future
-    -- patch can animate it without touching this file's layout code).
-    local hl = btn:CreateTexture(nil, "OVERLAY")
-    hl:SetAllPoints(btn)
-    hl:SetBlendMode("ADD")
-    hl:SetColorTexture(1, 1, 1, 0)
-    hl:Hide()
-    btn.highlight = hl
+    -- Ready glow. Owned by a child Frame so its OnUpdate animation doesn't
+    -- collide with the icon's own OnUpdate (used by the cooldown text
+    -- overlay). Frame level is bumped above the cooldown swipe and the
+    -- per-icon border textures so the glow always renders on top.
+    local glow = CreateFrame("Frame", nil, btn)
+    glow:SetAllPoints(btn)
+    glow:SetFrameLevel(btn:GetFrameLevel() + 5)
+    glow:Hide()
+
+    -- Proc style: Blizzard's IconAlert texture (the standard yellow
+    -- spell-activation highlight) drawn centered with a slight overscale
+    -- so the glow bleeds past the icon edge. SetVertexColor recolors it
+    -- so the user can pick a non-yellow shade. Animation pulses scale +
+    -- alpha via OnUpdate.
+    local proc = glow:CreateTexture(nil, "OVERLAY", nil, 7)
+    proc:SetTexture("Interface\\SpellActivationOverlay\\IconAlert")
+    proc:SetTexCoord(0.00781250, 0.50781250, 0.27734375, 0.52734375)
+    proc:SetBlendMode("ADD")
+    proc:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    proc:Hide()
+    glow.proc = proc
+
+    -- Pixel style: 4 colored 2px line textures around the icon edge.
+    -- Anchored to the button so they track size changes for free; corners
+    -- overlap by 2px (top/bottom span the full width; left/right inset
+    -- between them) so we don't leave 1px gaps. Animation pulses alpha.
+    local function makePixel()
+        local t = glow:CreateTexture(nil, "OVERLAY", nil, 7)
+        t:SetColorTexture(1, 1, 1, 1)
+        t:SetBlendMode("ADD")
+        t:Hide()
+        return t
+    end
+    glow.pixelTop    = makePixel()
+    glow.pixelBottom = makePixel()
+    glow.pixelLeft   = makePixel()
+    glow.pixelRight  = makePixel()
+    glow._kind       = "none"
+    glow._elapsed    = 0
+    btn.glow = glow
 
     -- Per-instance state: cfg points at db.profile.icons during Apply so we
     -- can re-color/re-alpha without re-reading the global db every time.
@@ -296,6 +396,153 @@ function Icon:StopCooldownText()
     self.cooldownText:Hide()
 end
 
+-- ---------------------------------------------------------------------------
+-- Ready glow
+-- ---------------------------------------------------------------------------
+--
+-- Two glow kinds are drawn entirely from this module — no external lib:
+--
+--   * "proc"  — Blizzard's IconAlert spell-activation texture, recolored
+--               and pulsed via scale + alpha. Visually similar to the
+--               standard ActionButton overlay glow.
+--   * "pixel" — A simple 4-line colored border around the icon, alpha-
+--               pulsed in unison.
+--
+-- The glow shows when state.ready is true (spell is castable: not on
+-- cooldown, usable, has charges). On every other state it hides. Primary
+-- and secondary icons read independent type+color settings — Layout
+-- stamps `_isPrimary` on each icon so we know which slot we're in.
+
+local TWO_PI = math.pi * 2
+
+local function glowOnUpdate(self, elapsed)
+    self._elapsed = (self._elapsed or 0) + elapsed
+    -- Phase ∈ [0, 2π) over a 1.4s period; sin maps to [-1, 1] which we
+    -- scale to [0.5, 1] for alpha and [1, 1.15] for proc-glow scale.
+    local phase = (self._elapsed * (TWO_PI / 1.4)) % TWO_PI
+    local s     = (math.sin(phase) + 1) * 0.5         -- 0..1
+    if self._kind == "proc" and self.proc:IsShown() then
+        local a = 0.5 + s * 0.5                       -- 0.5..1.0
+        self.proc:SetAlpha(a * (self._alphaScale or 1))
+        local size = self._procBaseSize or 0
+        if size > 0 then
+            local k = 1.0 + s * 0.10                  -- 1.0..1.10
+            self.proc:SetSize(size * k, size * k)
+        end
+    elseif self._kind == "pixel" then
+        local a = 0.4 + s * 0.6                       -- 0.4..1.0
+        a = a * (self._alphaScale or 1)
+        self.pixelTop:SetAlpha(a)
+        self.pixelBottom:SetAlpha(a)
+        self.pixelLeft:SetAlpha(a)
+        self.pixelRight:SetAlpha(a)
+    end
+end
+
+function Icon:StopGlow()
+    if not self.glow then return end
+    self.glow:SetScript("OnUpdate", nil)
+    self.glow.proc:Hide()
+    self.glow.pixelTop:Hide()
+    self.glow.pixelBottom:Hide()
+    self.glow.pixelLeft:Hide()
+    self.glow.pixelRight:Hide()
+    self.glow:Hide()
+    self.glow._kind = "none"
+end
+
+local function unpackGlowColor(c)
+    if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
+    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+end
+
+function Icon:StartGlow(kind, color)
+    local glow = self.glow
+    if not glow then return end
+    local r, g, b, a = unpackGlowColor(color)
+
+    -- Hide any previously-active widgets so a kind change (proc → pixel)
+    -- doesn't leave the old kind painted underneath.
+    glow.proc:Hide()
+    glow.pixelTop:Hide()
+    glow.pixelBottom:Hide()
+    glow.pixelLeft:Hide()
+    glow.pixelRight:Hide()
+
+    glow._kind       = kind
+    glow._elapsed    = 0
+    glow._alphaScale = a   -- color's alpha multiplies the pulse
+
+    if kind == "proc" then
+        local w, h = self:GetSize()
+        local base = math.max(w, h) * 1.4
+        glow._procBaseSize = base
+        glow.proc:SetVertexColor(r, g, b, 1)
+        glow.proc:SetAlpha(a)
+        glow.proc:SetSize(base, base)
+        glow.proc:Show()
+    elseif kind == "pixel" then
+        local TH = 2
+        local function place(t)
+            t:SetColorTexture(r, g, b, 1)
+            t:SetAlpha(a)
+            t:Show()
+        end
+        place(glow.pixelTop)
+        place(glow.pixelBottom)
+        place(glow.pixelLeft)
+        place(glow.pixelRight)
+
+        glow.pixelTop:ClearAllPoints()
+        glow.pixelTop:SetPoint("BOTTOMLEFT",  self, "TOPLEFT",  -TH, 0)
+        glow.pixelTop:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT",  TH, 0)
+        glow.pixelTop:SetHeight(TH)
+
+        glow.pixelBottom:ClearAllPoints()
+        glow.pixelBottom:SetPoint("TOPLEFT",     self, "BOTTOMLEFT",  -TH, 0)
+        glow.pixelBottom:SetPoint("TOPRIGHT",    self, "BOTTOMRIGHT",  TH, 0)
+        glow.pixelBottom:SetHeight(TH)
+
+        glow.pixelLeft:ClearAllPoints()
+        glow.pixelLeft:SetPoint("TOPRIGHT",    self, "TOPLEFT",     0, 0)
+        glow.pixelLeft:SetPoint("BOTTOMRIGHT", self, "BOTTOMLEFT",  0, 0)
+        glow.pixelLeft:SetWidth(TH)
+
+        glow.pixelRight:ClearAllPoints()
+        glow.pixelRight:SetPoint("TOPLEFT",    self, "TOPRIGHT",    0, 0)
+        glow.pixelRight:SetPoint("BOTTOMLEFT", self, "BOTTOMRIGHT", 0, 0)
+        glow.pixelRight:SetWidth(TH)
+    else
+        return self:StopGlow()
+    end
+
+    glow:Show()
+    glow:SetScript("OnUpdate", glowOnUpdate)
+end
+
+-- Decide glow visibility from the current state and config; called from
+-- Apply (state changed) and from ApplyAppearance (icon size or per-slot
+-- config changed). state.ready is the canonical "spell can be cast"
+-- boolean — see modules/Cooldowns.lua.
+function Icon:UpdateGlow(state)
+    local cfg = self.cfg or KickCD.db.profile.icons
+    if not cfg then return self:StopGlow() end
+
+    local kind, color
+    if self._isPrimary then
+        kind, color = cfg.primaryGlowType,   cfg.primaryGlowColor
+    else
+        kind, color = cfg.secondaryGlowType, cfg.secondaryGlowColor
+    end
+
+    local ready = state and state.ready and true or false
+    if not ready or kind == nil or kind == "none" then
+        self:StopGlow()
+        return
+    end
+    self:StartGlow(kind, color)
+end
+
 -- Apply a KickCD_SPELL_STATE payload to this icon. Payload shape:
 --   { spellID, ready, isActive, cdObject, charges }
 -- cdObject is the secret-aware CooldownDuration handle (non-nil whenever
@@ -353,6 +600,12 @@ function Icon:Apply(state)
                 state and state.spellID or -1))
         end
     end
+
+    -- Ready glow (off when on cooldown, on when castable). Driven from
+    -- state.ready so it picks up the same "is castable" decision the
+    -- rest of the UI uses; primary vs secondary chooses which schema
+    -- entry's type/color applies.
+    self:UpdateGlow(state)
 
     -- Charges badge (FR-2.7). Visibility = "this spell has charges at all",
     -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
@@ -482,11 +735,13 @@ function IconGrid:ReleaseAll()
         btn.spellID    = nil
         btn._lastState = nil
         btn._cdObject  = nil
+        btn._isPrimary = nil
         btn:SetScript("OnUpdate", nil)
         -- Reset cooldown so a stale swipe doesn't reappear on re-acquire.
         if btn.cooldown then btn.cooldown:Clear() end
         if btn.chargesText then btn.chargesText:Hide() end
         if btn.cooldownText then btn.cooldownText:Hide() end
+        if btn.StopGlow then btn:StopGlow() end
         table.insert(pool.free, btn)
         pool.active[spellID] = nil
     end
@@ -750,9 +1005,12 @@ function IconGrid:Layout()
     local offY          = cfg.secondaryOffsetY or 0
 
     -- Re-bind cfg + text/appearance config on every layout pass so changes
-    -- to color/alpha/font/zoom/border apply without a full rebuild.
-    for _, btn in ipairs(ordered) do
-        btn.cfg = cfg
+    -- to color/alpha/font/zoom/border apply without a full rebuild. Stamp
+    -- _isPrimary BEFORE ApplyTextConfig because that re-runs Apply which
+    -- in turn calls UpdateGlow — and the glow path reads the slot flag.
+    for i, btn in ipairs(ordered) do
+        btn.cfg        = cfg
+        btn._isPrimary = (i == 1)
         btn:Show()
         btn:ApplyAppearance(cfg)
         btn:ApplyTextConfig(cfg)
@@ -873,13 +1131,16 @@ end
 -- ---------------------------------------------------------------------------
 
 function IconGrid:OnEnable()
+    -- Seed the combat flag from InCombatLockdown — at module-enable time
+    -- it's reliable (no race with PLAYER_REGEN_DISABLED). After this we
+    -- only mutate it via the regen events.
+    _inCombat = (InCombatLockdown and InCombatLockdown()) or false
+
     self:EnsureGrid()
     BuildCurves()
     self:BuildActiveList()
     self:Layout()
-    if grid then
-        if isEnabled() then grid:Show() else grid:Hide() end
-    end
+    self:RefreshVisibility()
 
     -- Internal-message subscriptions. The grid is a strict subscriber and
     -- never sends.
@@ -892,6 +1153,26 @@ function IconGrid:OnEnable()
     -- both sides stay in sync.
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+
+    -- Events that drive the "General visibility" mode. We listen
+    -- unconditionally so toggling the mode at runtime via /kcd set or the
+    -- panel just works without re-registering. RefreshVisibility short-
+    -- circuits to "always show" in "always" mode, so the only cost when
+    -- the user hasn't opted into a gated mode is a few cheap callbacks.
+    self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
+    self:RegisterEvent("PLAYER_REGEN_ENABLED",          "OnRegenEnabled")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "RefreshVisibility")
+    self:RegisterEvent("UNIT_SPELLCAST_START",          "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_FAILED",         "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED",    "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START",  "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP",   "OnTargetCastEvent")
+    -- Interruptibility flips mid-cast (boss casts that toggle immunity
+    -- via an aura, etc.) need to retrigger the visibility check for
+    -- the "target_casting_interruptible" mode.
+    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE",      "OnTargetCastEvent")
+    self:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE",  "OnTargetCastEvent")
 end
 
 function IconGrid:OnDisable()
@@ -931,16 +1212,16 @@ function IconGrid:OnConfigChanged(_evt, payload)
         self:Layout()
     elseif section == "general" then
         -- General-tab edits include the master enable, the lock toggle,
-        -- master scale / alpha, and the Reset position button. Apply
-        -- scale/alpha unconditionally; toggle visibility on the master
-        -- enable.
+        -- master scale / alpha, the visibility mode, and the Reset
+        -- position button. Apply scale/alpha unconditionally; visibility
+        -- decision rolls master enable + the mode together.
         if grid then
             local anchor = KickCD.db and KickCD.db.profile
                 and KickCD.db.profile.anchors and KickCD.db.profile.anchors.icons
             if anchor then KickCD.Util.ApplyAnchor(grid, anchor) end
             self:ApplyGeneral()
-            if isEnabled() then grid:Show() else grid:Hide() end
         end
+        self:RefreshVisibility()
         self:ApplyLock()
     end
 end
@@ -959,9 +1240,39 @@ function IconGrid:OnProfileChanged(_evt, payload)
     self:Layout()
     self:ApplyLock()
     self:ApplyGeneral()
-    if grid then
-        if isEnabled() then grid:Show() else grid:Hide() end
-    end
+    self:RefreshVisibility()
+end
+
+--- Apply the visibility decision (shouldBeVisible) to the grid frame.
+--- Called from OnEnable, every config change that touches general/master,
+--- combat transitions, target changes, and target cast start/stop events.
+function IconGrid:RefreshVisibility()
+    if not grid then return end
+    if shouldBeVisible() then grid:Show() else grid:Hide() end
+end
+
+--- UNIT_SPELLCAST_* events fire for any unit. We only care about the
+--- "target" unit because that's what the "target_casting" visibility
+--- mode keys off of. Filter here so RefreshVisibility doesn't re-run on
+--- every player / nameplate cast.
+function IconGrid:OnTargetCastEvent(_evt, unit)
+    if unit ~= "target" then return end
+    self:RefreshVisibility()
+end
+
+--- Maintain the event-driven combat flag. Reading InCombatLockdown() at
+--- the moment PLAYER_REGEN_DISABLED fires can return false (the lockdown
+--- state lags the event by a frame), which left the grid hidden in
+--- "in_combat" mode until the next config change. The flag is the
+--- source of truth — flip it on the event itself.
+function IconGrid:OnRegenDisabled()
+    _inCombat = true
+    self:RefreshVisibility()
+end
+
+function IconGrid:OnRegenEnabled()
+    _inCombat = false
+    self:RefreshVisibility()
 end
 
 function IconGrid:OnSpecChanged(_evt, unit)

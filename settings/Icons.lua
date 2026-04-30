@@ -223,6 +223,49 @@ add{
     default = false,
 }
 
+-- Ready glow ---------------------------------------------------------
+-- Per-slot glow shown whenever the spell is castable (off cooldown,
+-- usable, has charges). Primary and secondary icons each get their
+-- own type+color so a player can flag the primary in one style and
+-- the supports in another.
+
+local GLOW_VALUES = {
+    { value = "none",  label = L["None"]  },
+    { value = "proc",  label = L["Proc"]  },
+    { value = "pixel", label = L["Pixel"] },
+}
+
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.primaryGlowType", type = "string",
+    label = L["Primary glow"],
+    tooltip = L["Glow style on the primary icon when the spell is ready to cast."],
+    default = "none",
+    values  = GLOW_VALUES,
+}
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.primaryGlowColor", type = "color",
+    label = L["Primary glow color"],
+    tooltip = L["Glow color on the primary icon."],
+    default = { 0.95, 0.95, 0.32, 1 },
+}
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.secondaryGlowType", type = "string",
+    label = L["Secondary glow"],
+    tooltip = L["Glow style on secondary icons when the spell is ready to cast."],
+    default = "none",
+    values  = GLOW_VALUES,
+}
+add{
+    panel = "icons", section = "icons", group = L["Ready glow"],
+    path  = "icons.secondaryGlowColor", type = "color",
+    label = L["Secondary glow color"],
+    tooltip = L["Glow color on secondary icons."],
+    default = { 0.95, 0.95, 0.32, 1 },
+}
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------

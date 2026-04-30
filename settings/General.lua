@@ -34,6 +34,20 @@ add{
 }
 
 add{
+    panel    = "general",   section = "general", group = L["Master controls"],
+    path     = "visibility", type    = "string",
+    label    = L["General visibility"],
+    tooltip  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
+    default  = "always",
+    values   = {
+        { value = "always",                       label = L["Always"]                                   },
+        { value = "in_combat",                    label = L["In combat"]                                },
+        { value = "target_casting",               label = L["When target is casting"]                   },
+        { value = "target_casting_interruptible", label = L["When target is casting an interruptible spell"] },
+    },
+}
+
+add{
     panel    = "general",  section = "general",  group = L["Appearance"],
     path     = "scale",    type    = "number",
     label    = L["Master scale"],

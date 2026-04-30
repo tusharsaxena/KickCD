@@ -61,6 +61,14 @@ L["Restore the icon grid to its default screen position."] =
 L["Internal-message logging"]    = "Internal-message logging"
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
+L["General visibility"]          = "General visibility"
+L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."] =
+    "When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."
+L["Always"]                      = "Always"
+L["In combat"]                   = "In combat"
+L["When target is casting"]      = "When target is casting"
+L["When target is casting an interruptible spell"] =
+    "When target is casting an interruptible spell"
 
 -- Icons tab — section headers
 L["Sizing"]                      = "Sizing"
@@ -110,6 +118,19 @@ L["Cooldown text size in pixels."] =
 L["Show charges"]                = "Show charges"
 L["Render a charges badge for spells with charges."] =
     "Render a charges badge for spells with charges."
+L["Ready glow"]                  = "Ready glow"
+L["Primary glow"]                = "Primary glow"
+L["Glow style on the primary icon when the spell is ready to cast."] =
+    "Glow style on the primary icon when the spell is ready to cast."
+L["Primary glow color"]          = "Primary glow color"
+L["Glow color on the primary icon."] = "Glow color on the primary icon."
+L["Secondary glow"]              = "Secondary glow"
+L["Glow style on secondary icons when the spell is ready to cast."] =
+    "Glow style on secondary icons when the spell is ready to cast."
+L["Secondary glow color"]        = "Secondary glow color"
+L["Glow color on secondary icons."] = "Glow color on secondary icons."
+L["Proc"]                        = "Proc"
+L["Pixel"]                       = "Pixel"
 
 -- Unified panel chrome
 L["Defaults"]                    = "Defaults"

@@ -256,6 +256,41 @@ function Compat.GetCastingInfo(unit)
     return Compat.GetChannelInfo(unit)
 end
 
+--- Whether the named unit is currently casting (or channeling) a spell
+--- the player can practically interrupt. Used by the addon-wide
+--- visibility mode "target_casting_interruptible" — see modules/IconGrid
+--- and modules/Castbar — to gate the UI on actually-interruptible casts.
+---
+--- Secret-value handling: notInterruptible may be secret-tainted in
+--- combat for casts that the player has a protected interrupt against
+--- (Mind Freeze / Pummel / Kick / ...). Per the 12.0 protection rules
+--- this taint only happens for casts the protected interrupt CAN target,
+--- which means the cast IS interruptible from the user's perspective.
+--- So when the value is secret we conservatively return true rather
+--- than risking a Lua compare on a secret. issecretvalue() itself is
+--- a safe query (does not error on secrets).
+---
+--- Friendly targets always return false (you can't interrupt a friendly
+--- cast or a self-cast, regardless of the API flag).
+function Compat.IsCastingInterruptible(unit)
+    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
+    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+
+    local nint, hasCast
+    if _G.UnitCastingInfo then
+        local castName, _, _, _, _, _, _, n = _G.UnitCastingInfo(unit)
+        if castName then hasCast, nint = true, n end
+    end
+    if not hasCast and _G.UnitChannelInfo then
+        local chName, _, _, _, _, _, n = _G.UnitChannelInfo(unit)
+        if chName then hasCast, nint = true, n end
+    end
+    if not hasCast then return false end
+
+    if issecretvalue and issecretvalue(nint) then return true end
+    return not nint
+end
+
 --- Channel info for a unit, secret-value safe. Same record shape as the
 --- cast variant. Channels run total → 0 (full to empty); the consumer
 --- chooses elapsed-vs-remaining for the bar value.

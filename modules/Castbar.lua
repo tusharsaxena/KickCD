@@ -4,8 +4,11 @@
 -- name, and remaining-time text that mirrors the player's current target
 -- cast / channel. Independently movable from the icon grid; visibility is
 -- gated on db.profile.castbar.enabled (sub-module enable) AND
--- db.profile.enabled (master enable). Drag-lock follows db.profile.locked,
--- the same global lock the icon grid honors.
+-- db.profile.enabled (master enable) AND db.profile.visibility (the
+-- addon-wide "General visibility" mode also honored by IconGrid; in
+-- "in_combat" mode the bar additionally requires _inCombat = true).
+-- Drag-lock follows db.profile.locked, the same global lock the icon
+-- grid honors.
 --
 -- Listens to:
 --   PLAYER_TARGET_CHANGED        -> re-evaluate; show or hide
@@ -59,6 +62,13 @@ local L       = KickCD.L
 local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
 local current -- active cast record (nil when nothing is being cast)
 
+-- Combat state tracked via PLAYER_REGEN_* events. Used by isVisible()
+-- when db.profile.visibility == "in_combat" to gate the bar on combat
+-- state. Reading InCombatLockdown() inside the regen-disabled handler
+-- is unreliable (the lockdown state lags the event by a frame), so we
+-- maintain the flag explicitly.
+local _inCombat = false
+
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
 -- ---------------------------------------------------------------------------
@@ -75,8 +85,33 @@ local function master()
     return p.enabled ~= false
 end
 
+-- Honors the addon-wide visibility mode (db.profile.visibility):
+--   * "always"          — usual behavior (bar shows during target casts).
+--   * "in_combat"       — additionally requires _inCombat = true. A cast
+--                         that starts on a target while we're out of
+--                         combat (rare but possible — friendly NPCs) is
+--                         suppressed.
+--   * "target_casting"  — equivalent to "always" for the cast bar; the
+--                         cast bar already only shows during target
+--                         casts so this mode adds no extra restriction.
+--   * "target_casting_interruptible"
+--                       — additionally requires the current cast to be
+--                         interruptible (Compat.IsCastingInterruptible
+--                         handles the secret-value taint on
+--                         notInterruptible and the friendly-cast override).
+-- While unlocked the visibility mode is ignored — the user is moving
+-- the bar and needs to see it regardless.
 local function isVisible()
-    return master() and cfg().enabled ~= false
+    local profile = KickCD.db and KickCD.db.profile
+    if not (master() and cfg().enabled ~= false) then return false end
+    if profile and profile.locked == false then return true end
+    local mode = (profile and profile.visibility) or "always"
+    if mode == "in_combat" then
+        return _inCombat
+    elseif mode == "target_casting_interruptible" then
+        return KickCD.Compat.IsCastingInterruptible("target")
+    end
+    return true
 end
 
 local function unpackColor(c, fr, fg, fb, fa)
@@ -814,10 +849,17 @@ end
 -- ---------------------------------------------------------------------------
 
 function Castbar:OnEnable()
+    -- Seed the combat flag from InCombatLockdown — at module-enable time
+    -- it's reliable (no race with PLAYER_REGEN_DISABLED). After this we
+    -- only mutate it via the regen events.
+    _inCombat = (InCombatLockdown and InCombatLockdown()) or false
+
     self:EnsureFrame()
     self:ApplyConfig()
     self:ApplyLock()
 
+    self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
+    self:RegisterEvent("PLAYER_REGEN_ENABLED",          "OnRegenEnabled")
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("UNIT_SPELLCAST_START",          "OnCastStart")
     self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnCastStop")
@@ -858,6 +900,28 @@ function Castbar:OnTargetChanged()
     self:Reevaluate()
 end
 
+-- Maintain the event-driven combat flag and re-evaluate the bar so it
+-- shows / hides as the visibility mode dictates. In "in_combat" mode
+-- entering combat reveals the bar (if a target cast is ongoing), and
+-- leaving combat tears it down even if the cast continues.
+function Castbar:OnRegenDisabled()
+    _inCombat = true
+    if isVisible() then
+        self:Reevaluate()
+    else
+        self:Stop()
+    end
+end
+
+function Castbar:OnRegenEnabled()
+    _inCombat = false
+    if isVisible() then
+        self:Reevaluate()
+    else
+        self:Stop()
+    end
+end
+
 function Castbar:OnPlayerEnteringWorld()
     self:Reevaluate()
 end
@@ -883,12 +947,22 @@ end
 
 function Castbar:OnInterruptibilityChanged(evt, unit)
     if unit ~= "target" then return end
-    if not current then return end
     -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
     -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
     -- interruptible. Update the record's bool and re-apply visuals.
-    current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
-    self:ApplyState()
+    if current then
+        current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+        self:ApplyState()
+    end
+    -- Visibility may have changed under the "target_casting_interruptible"
+    -- mode. Stop hides the bar (clearing `current`) and Reevaluate picks
+    -- up the cast again if it became interruptible from a previously-
+    -- suppressed state.
+    if isVisible() then
+        if not current then self:Reevaluate() end
+    else
+        self:Stop()
+    end
 end
 
 function Castbar:OnCastDelayed(_evt, unit)

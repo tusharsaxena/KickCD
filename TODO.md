@@ -44,12 +44,14 @@
 - ✅ Add position settings for the cast bar. Give it anchor settings relative to the primary icon (TOP LEFT, TOP CENTER, TOP RIGHT, etc) and anchor position of the cast bar
 - ✅ Add orientation (horizontal and vertical) and growth direction (left/right for horizontal and up/down for vertical)
 - ✅ Add auto sizing option for the cast bar, which intelligently resizes the cast bar basis the orientation, growth direction and width of the icons shown (both primary and secondary)
+- ✅ General Tab: add setting to always show vs. show in combat vs. show when target is casting
+- ✅ Add icon glow when spells are ready (proc, pixel) — separate type+color settings for primary and secondary icons
 
 ## Not Yet Started
 
-- ☐ General Tab: add setting to always show vs. show in combat vs. show when target is casting
-- ☐ Add icon glow when spells are ready (proc, action bar, cdm, pixel, etc). Have separatye glow settings for primary and seconday icons
-- ☐ visual state application is inconsistent - for example when i use a spell like Blinding Sleet on my blood death knight, it marks all my spells as on cooldown for some time
+- ☐ Add a glowing background animated texture behind the cast bars - this will give a strong indication that a cast is happening. Color this animated texture the same color as the castbar color (depending on interuptable/non-interuptable). Add this as a toggleable feature separately for interuptable/non-interuptable. Also add a texture selector and color selector (default color is same as bar color, with a checkbox to select same as bar color)
+- ☐ Add a dropdown for glows to Show always/show when casting/show when casting interruptible/never. If not never, give options of what kind of glow to show.
+- ☐ Do a detailed dive deep into button glows in wow midnight api, and tell me the different types of glows available, and what config options are possible - design a better glow interface for selecting glow options
 
 ## Later
 

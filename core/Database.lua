@@ -18,11 +18,17 @@ KickCD.Database = Database
 -- ---------------------------------------------------------------------------
 
 local DEFAULT_PROFILE = {
-    enabled  = true,
-    locked   = true,
-    scale    = 1.0,
-    alpha    = 1.0,
-    debugLog = false,
+    enabled    = true,
+    locked     = true,
+    scale      = 1.0,
+    alpha      = 1.0,
+    debugLog   = false,
+    -- "always" | "in_combat" | "target_casting"
+    -- Controls when the icon grid is visible. "always" is the v0.1
+    -- behavior; "in_combat" gates on InCombatLockdown(); "target_casting"
+    -- gates on UnitCastingInfo("target") / UnitChannelInfo("target") being
+    -- non-nil. Master enable still wins — disabled = always hidden.
+    visibility = "always",
 
     icons = {
         primarySize      = 48,
@@ -65,6 +71,16 @@ local DEFAULT_PROFILE = {
         secondaryGrow    = "right_down",
         secondaryOffsetX = 0,
         secondaryOffsetY = 0,
+
+        -- Per-icon ready glow. "none" disables; "proc" draws Blizzard's
+        -- spell-activation pulse texture at the icon center; "pixel" draws
+        -- a sin-pulsed colored border. Primary and secondary icons each
+        -- carry their own kind + color so a player can flag the primary
+        -- with one style and the supports with another.
+        primaryGlowType    = "none",
+        primaryGlowColor   = { 0.95, 0.95, 0.32, 1 },
+        secondaryGlowType  = "none",
+        secondaryGlowColor = { 0.95, 0.95, 0.32, 1 },
     },
 
     castbar = {
@@ -177,7 +193,7 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- Migrations
 -- ---------------------------------------------------------------------------
 
-local LATEST_VERSION = 8
+local LATEST_VERSION = 9
 
 -- Migration[N] runs to take the schema from version N-1 → N.
 -- v0.1 ships at version 1 with no actual transformation work — the table
@@ -392,6 +408,22 @@ local Migrations = {
                 if cb.orientation   == nil then cb.orientation   = "HORIZONTAL" end
                 if cb.growDirection == nil then cb.growDirection = "RIGHT"      end
                 if cb.autoSize      == nil then cb.autoSize      = false        end
+            end
+        end
+    end,
+
+    -- v9: added the visibility mode (always / in_combat / target_casting)
+    -- and per-icon ready glow settings (primary + secondary, type + color).
+    -- Pre-v9 profiles default to "always" so existing behavior is preserved.
+    [9] = function(db)
+        for _, profile in pairs(db.profiles or {}) do
+            if profile.visibility == nil then profile.visibility = "always" end
+            local icons = profile.icons
+            if type(icons) == "table" then
+                if icons.primaryGlowType    == nil then icons.primaryGlowType    = "none" end
+                if icons.primaryGlowColor   == nil then icons.primaryGlowColor   = { 0.95, 0.95, 0.32, 1 } end
+                if icons.secondaryGlowType  == nil then icons.secondaryGlowType  = "none" end
+                if icons.secondaryGlowColor == nil then icons.secondaryGlowColor = { 0.95, 0.95, 0.32, 1 } end
             end
         end
     end,
