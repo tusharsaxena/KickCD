@@ -791,6 +791,20 @@ end
 --     which is a secret comparison), so the events are the sole source of
 --     truth for "cast finished".
 
+-- Hot path. Runs every frame while a cast is active. Constraints:
+--   * No table lookups for config — `current.showTime` is cached on cast
+--     start (see Castbar:Start) and re-cached on KickCD_CONFIG_CHANGED.
+--   * No SetMinMaxValues — the duration object's total only changes at
+--     cast start / on UNIT_SPELLCAST_DELAYED / UNIT_SPELLCAST_CHANNEL_UPDATE.
+--     Both transitions go through Castbar:Start (initial) or
+--     Castbar:OnCastDelayed (mid-cast). Setting the same range every frame
+--     is pure waste.
+--   * d:Get*Duration() returns may be secret in combat for protected
+--     casts; pass them DIRECTLY as arguments to Blizzard C methods
+--     (SetValue / SetFormattedText) and never bind to a Lua local.
+-- Per-frame work shrinks from ~6 method calls (2 SetMinMaxValues + 2
+-- SetValue + 1 SetFormattedText + 1 cfg() table lookup) to 2-3
+-- (SetValue × 2 + (conditional) SetFormattedText × 1).
 local function onUpdate(self)
     local d = current and current.duration
     if not d then
@@ -798,14 +812,9 @@ local function onUpdate(self)
         return
     end
 
-    -- Both stacked StatusBars get the same range and value every frame so
-    -- their inner textures stay in sync — only one of them is alpha-visible
+    -- Both stacked StatusBars get the same value every frame so their
+    -- inner textures stay in sync — only one of them is alpha-visible
     -- at a time (curve-switched in ApplyState off current.notInterruptible).
-    -- Duration-method returns may be secret in combat for protected casts;
-    -- pass them DIRECTLY as arguments to Blizzard C methods (SetMinMaxValues
-    -- / SetValue / SetFormattedText) and never bind to a Lua local.
-    frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
-    frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
     if current.isChannel then
         frame.bar.interruptible:SetValue(d:GetRemainingDuration())
         frame.bar.uninterruptible:SetValue(d:GetRemainingDuration())
@@ -814,7 +823,7 @@ local function onUpdate(self)
         frame.bar.uninterruptible:SetValue(d:GetElapsedDuration())
     end
 
-    if cfg().showTime ~= false then
+    if current.showTime then
         frame.timeText:SetFormattedText(
             "%.1f / %.1f", d:GetRemainingDuration(), d:GetTotalDuration())
     end
@@ -893,6 +902,10 @@ function Castbar:Start(rec)
     end
     self:EnsureFrame()
     current = rec
+    -- Cache showTime on the cast record so onUpdate doesn't have to hit
+    -- the cfg() table every frame. Refreshed on KickCD_CONFIG_CHANGED via
+    -- OnConfigChanged when the section is "castbar".
+    current.showTime = (cfg().showTime ~= false)
     self:ApplyConfig()    -- runs ApplyState too, picking up notInterruptible
 
     -- name / texture may themselves be secret in combat for protected
@@ -1134,6 +1147,19 @@ function Castbar:OnCastDelayed(_evt, unit)
     local rec = KickCD.Compat.GetCastingInfo("target")
     if rec then
         current = rec
+        -- Re-cache showTime: the user may have toggled it between the
+        -- cast starting and the delay event. (CR-10: onUpdate reads
+        -- current.showTime, not cfg().showTime.)
+        current.showTime = (cfg().showTime ~= false)
+        -- The duration object's total duration just changed (pushback /
+        -- haste / channel pulse re-time). Re-set both StatusBars' ranges
+        -- here so onUpdate doesn't have to do it every frame. Pass the
+        -- duration method straight to the C method — secret-safe.
+        local d = rec.duration
+        if d and frame then
+            frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
+            frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
+        end
         self:ApplyState()
     end
 end
@@ -1150,6 +1176,9 @@ function Castbar:OnConfigChanged(_evt, payload)
         -- it computes auto-size and child anchors.
         self:ApplyAnchor()
         self:ApplyConfig()
+        -- Refresh the per-cast-record showTime cache so onUpdate's hot
+        -- path picks up a config flip mid-cast (CR-10).
+        if current then current.showTime = (cfg().showTime ~= false) end
         if not isVisible() then
             self:Stop()
         else
