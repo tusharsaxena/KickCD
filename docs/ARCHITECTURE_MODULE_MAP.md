@@ -11,13 +11,15 @@ KickCD (AceAddon)
 │   └── Spells.lua    — per-class+spec default interrupt lists (KickCD.DefaultSpells)
 ├── modules/
 │   ├── Cooldowns.lua — polls Compat.GetSpellCooldown + GetSpellCooldownDuration, emits KickCD_SPELL_STATE
-│   └── IconGrid.lua  — owns KickCDIconGrid frame and pooled icon widgets; runs alpha/tint curves C-side
+│   ├── IconGrid.lua  — owns KickCDIconGrid frame and pooled icon widgets; runs alpha/tint/GCD-suppress curves C-side; emits KickCD_GRID_LAYOUT
+│   └── Castbar.lua   — owns KickCDCastbar frame (stacked dual StatusBars + per-state borders + spark); secret-value-gated UnitCastingDuration / UnitChannelDuration consumer
 └── settings/
     ├── Panel.lua     — top-level category + canvas-panel framework + schema renderer
-    ├── General.lua   — schema rows for enable/lock/scale/alpha/debugLog + Reset position button
-    ├── Icons.lua     — schema rows for icon grid sizing, colors, layout
-    ├── Spells.lua    — unified header + AceGUI per-class+spec spell editor
+    ├── General.lua   — schema rows for enable/lock/visibility/scale/alpha/debugLog + Reset position + Reset all buttons
+    ├── Icons.lua     — schema rows for icon grid sizing, colors, layout, glow
+    ├── Castbar.lua   — schema rows for cast bar enable/anchor/orientation/sizing/text/per-state appearance
+    ├── Spells.lua    — unified header + AceGUI per-class+spec spell editor (with Cooldown Manager validation)
     └── Profiles.lua  — unified header + AceDBOptions UI (AceConfig in a SimpleGroup)
 ```
 
-External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, AceAddon-3.0, AceEvent-3.0, AceDB-3.0, AceDBOptions-3.0, AceConsole-3.0, AceConfig-3.0, AceGUI-3.0, LibSharedMedia-3.0.
+External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, AceAddon-3.0, AceEvent-3.0, AceDB-3.0, AceDBOptions-3.0, AceConsole-3.0, AceConfig-3.0, AceGUI-3.0, LibSharedMedia-3.0, LibCustomGlow-1.0.

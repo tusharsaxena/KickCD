@@ -4,10 +4,19 @@ Two ordered tables in `core/KickCD.lua` (`COMMANDS` for top-level, `DEBUG_COMMAN
 
 - Bare `/kcd` → `printHelp` (iterates `COMMANDS`).
 - `/kcd <known>` → executes that row's `fn`.
-- `/kcd debug` → `printDebugHelp` (iterates `DEBUG_COMMANDS`).
+- `/kcd debug` → `runDebug("")` prints the help index for `DEBUG_COMMANDS`.
 - `/kcd debug <known>` → executes that row's `fn`.
 - `/kcd <unknown>` → "unknown command" + help.
 - `/kcd options` is aliased to `/kcd config` for backward compat.
+
+`/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`)
+opens the **General subcategory directly**, not the parent category — in
+WoW 12.0 a Blizzard parent category with subcategories hides its own
+widgets, so opening the parent would show an empty pane. The fallback
+target is `KickCD.SettingsCategoryID` for the rare case where the
+General subcategory hasn't registered yet. `InCombatLockdown()` is
+checked before opening so the protected category-switch doesn't fail
+mid-fight.
 
 `OnSlashCommand` lowercases only the command name and preserves case in
 the rest of the input, so schema paths like `icons.primarySize` survive

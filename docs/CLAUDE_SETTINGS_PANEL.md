@@ -1,12 +1,13 @@
 # Settings panel — schema-driven canvas layout
 
-All four tabs (General, Icons, Spells, Profiles) are registered as
-**canvas-layout subcategories** so they share one custom header design:
+All five tabs (General, Icons, Cast bar, Spells, Profiles) are
+registered as **canvas-layout subcategories** so they share one custom
+header design:
 
 * `GameFontNormalHuge` title on the left
 * `Defaults` button on the right (AceGUI `Button`, which wraps
-  `UIPanelButtonTemplate`) — present on General/Icons/Spells, omitted on
-  Profiles. Wire its handler with
+  `UIPanelButtonTemplate`) — present on General / Icons / Cast bar /
+  Spells, omitted on Profiles. Wire its handler with
   `ctx.panel.defaultsBtn:SetCallback("OnClick", fn)` (NOT `:SetScript`,
   since the AceGUI widget object isn't a Blizzard Frame).
 * `Options_HorizontalDivider` atlas underneath, full panel width
@@ -22,8 +23,8 @@ trigger the lazy scroll.
 
 ## `KickCD.Settings.Schema` is the single source of truth
 
-`settings/General.lua` and `settings/Icons.lua` declare every option as a
-row in a flat array. Each row:
+`settings/General.lua`, `settings/Icons.lua`, and `settings/Castbar.lua`
+declare every option as a row in a flat array. Each row:
 
 ```lua
 {
@@ -82,19 +83,30 @@ a slash-cmd `/kcd set`.
 
 Schema widgets are AceGUI widgets — `CheckBox`, `Slider`, `Dropdown`,
 `ColorPicker`, `Heading` for sections, `Button` + `Label` inside a
-`SimpleGroup` for inline action rows — added to a single AceGUI
-`ScrollFrame` per tab. This matches the visual style of AceConfig-driven
-addons (e.g. Consumable Master) and keeps every widget on the
-`Helpers.Set` / `Helpers.Get` data path. The slider's value editbox is
-post-formatted via a `HookScript` on the inner Blizzard Slider so
-`def.fmt` (`"%.2fx"`, `"%d px"`) wins over AceGUI's raw-numeric
-`UpdateText`.
+`SimpleGroup` for inline action rows — paired into 50%/50% Flow rows
+inside a single AceGUI `ScrollFrame` per tab (see
+`Helpers.RenderSchema`). This matches the visual style of
+AceConfig-driven addons (e.g. Consumable Master) and keeps every widget
+on the `Helpers.Set` / `Helpers.Get` data path. The slider's editbox is
+left to AceGUI's default formatter (integer step → integer text, float
+step → 2-decimal text); unit hints (`px`, `×`) belong in `def.label`,
+not appended to the value. `def.fmt` is still consulted by `/kcd
+get|list` slash output where text-only context benefits from a
+`"48 px"` / `"1.50x"` rendering.
 
 Schema rendering is **deferred to the panel's `OnShow`** because at
 build time (PLAYER_LOGIN) `ctx.body` has zero width and AceGUI's
 List-layout pass against the AceGUI `ScrollFrame` would size every
 fullwidth child to zero. See the `local rendered = false; OnShow{...}`
-guard in `settings/General.lua` and `settings/Icons.lua`.
+guard in `settings/General.lua`, `settings/Icons.lua`, and
+`settings/Castbar.lua`.
+
+The General tab's "Reset all settings" button (under Master controls)
+funnels through `Helpers.RestoreAllDefaults`, which loops over every
+schema-driven panel (general / icons / castbar) and runs
+`Helpers.RestoreDefaults` for each. Spells and Profiles are
+intentionally skipped — both have their own destructive controls and
+resetting them would delete user data.
 
 ## `Compat.RegisterAddOnSetting` is vestigial
 

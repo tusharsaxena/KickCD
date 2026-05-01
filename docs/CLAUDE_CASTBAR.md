@@ -1,6 +1,12 @@
 # Cast bar module
 
-`modules/Castbar.lua` shows the player's target's cast/channel on a separately-anchored bar (`db.profile.anchors.castbar`). The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves both. While unlocked, the bar shows a placeholder preview when no target is casting so it can be grabbed.
+`modules/Castbar.lua` shows the player's target's cast/channel on a separately-anchored bar. The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves both. While unlocked the bar shows a placeholder preview when no target is casting so it can be grabbed.
+
+Two anchor modes (`db.profile.castbar.anchorMode`):
+- **FREE** — drag to position, persisted to `db.profile.anchors.castbar`.
+- **PRIMARY** — `SetPoint` against the icon grid's primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple. Drag is forced off in this mode regardless of the global lock; the bar follows the grid for free. The Castbar listens to `KickCD_GRID_LAYOUT` so it re-anchors when the primary icon button reference changes (e.g. when the grid rebuilds against a new spec). The same listener re-runs `ApplyConfig` when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks the grid's footprint.
+
+Visibility is gated by **all** of: the master enable, `castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same setting the icon grid honors). In `"in_combat"` mode the bar additionally requires the event-driven combat flag (`PLAYER_REGEN_*`) — `InCombatLockdown()` lags the regen events by a frame and isn't reliable. While unlocked, visibility is bypassed so the user can move the bar.
 
 The original implementation broke in 12.0 because `UnitCastingInfo` positions 4–5 (`startTimeMS` / `endTimeMS`) come back as secret values in tainted scope for casts the player can interrupt with a protected interrupt. Arithmetic / compare / format / `tostring` on a secret raises a Lua error, so an `OnUpdate` doing `(GetTime() - startSec) / (endSec - startSec)` blows up the moment combat opens against an interruptable target.
 

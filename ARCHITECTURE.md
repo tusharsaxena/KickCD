@@ -1,6 +1,6 @@
 # Architecture
 
-Reference document for KickCD's current shape (post-cast-bar-removal, 12.0-aware). This reflects the codebase as of commit `59fb5c0` and supersedes the design discussion in `docs/TECHNICAL_DESIGN.md` where the two diverge.
+Reference document for KickCD's current shape (12.0-aware, with the secret-value-gated cast bar re-added after its initial removal at commit `59fb5c0`). This supersedes the design discussion in `docs/legacy/TECHNICAL_DESIGN.md` where the two diverge.
 
 This file is an index — each section lives in its own file.
 

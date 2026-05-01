@@ -11,16 +11,21 @@ widget renderer.
 top:
 
 * Title FontString (`GameFontNormalHuge`) at top-left
-* `Defaults` button (`UIPanelButtonTemplate`) at top-right when
-  `opts.defaultsButton` is true (General/Icons/Spells); omitted on
-  Profiles
+* `Defaults` button (AceGUI `Button`) at top-right when
+  `opts.defaultsButton` is true (General / Icons / Cast bar / Spells);
+  omitted on Profiles
 * `Options_HorizontalDivider` atlas underneath, full panel width
 * A `body` Frame anchored beneath the header that hosts the panel's
   content
 
-The function returns a `ctx` table with `panel`, `body`, a layout
-`cursor`, and a `refreshers` array; the caller threads this through the
-section/widget helpers.
+The function returns a `ctx` table — `{ panel, body, scroll,
+refreshers, lastGroup, panelKey }` — that the caller threads through
+the section/widget helpers. `scroll` is a lazily-created AceGUI
+`ScrollFrame` (built on first widget add via `ensureScroll`); tabs that
+don't use the schema renderer (Spells / Profiles) parent their own
+AceGUI containers to `ctx.body` directly and never trigger the lazy
+scroll. Every panel ctx is stashed in `KickCD.Settings._panels` so
+`Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
 
 ## Schema (`KickCD.Settings.Schema`)
 
@@ -62,7 +67,18 @@ are wired automatically.
 Canvas widgets bind directly to `db.profile` via `Helpers.Get(path)` /
 `Helpers.Set(path, section, value)`. They do **not** go through
 `Settings.RegisterAddOnSetting` — the Compat shim for that API exists
-but has no live callers. Modern dropdowns use
-`MenuUtil.CreateContextMenu` (12.0+); sliders use `OptionsSliderTemplate`
-with hand-laid label/value FontStrings; color swatches drive
-`ColorPickerFrame` via `OpenColorPicker`.
+but has no live callers. Schema rows are rendered by AceGUI primitives:
+`CheckBox` for `bool`, `Slider` for `number`, `Dropdown` for `string`
+(values supplied as `{ {value=, label=}, ... }` or a function returning
+that shape — `Helpers.LSMValues(mediaType)` is the standard wrapper
+around LibSharedMedia listings), and `ColorPicker` for `color`. The
+ColorPicker's confirmation flow is a quirk of WoW 12.0's
+`SetupColorPickerAndShow` — KickCD listens to **both** `OnValueChanged`
+(treats every drag-step as a commit, giving a live preview) and
+`OnValueConfirmed` (fires only on Cancel, with the original color, so
+the value reverts cleanly). Section headings are AceGUI `Heading`
+widgets bumped to `GameFontNormalLarge`. Two-column rows are produced
+by wrapping a 50%-width pair into a Flow-laid `SimpleGroup`; spacers
+between rows give the airy look. See `Helpers.RenderSchema` and the
+`makeCheckbox` / `makeSlider` / `makeDropdown` / `makeColorPicker`
+factories in `settings/Panel.lua`.
