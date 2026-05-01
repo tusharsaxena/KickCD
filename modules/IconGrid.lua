@@ -65,6 +65,18 @@ local ordered = {}
 -- (e.g., test rigs that load us early).
 local grid
 
+-- Set of icons whose cooldownText FontString needs per-tick refresh.
+-- Keyed by widget reference (the Icon button itself); the shared
+-- ticker iterates pairs(_textIcons) and calls _RenderCooldownText on
+-- each. Prior implementation drove the same per-icon work via N
+-- per-frame OnUpdate scripts; collapsing to a single ticker cuts the
+-- fixed cost to one timer callback regardless of how many cooldowns
+-- are visible. _textTicker is the single C_Timer.NewTicker handle —
+-- nil while the set is empty (the ticker auto-pauses) and live while
+-- at least one icon is registered.
+local _textIcons  = {}
+local _textTicker
+
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
@@ -382,14 +394,18 @@ end
 -- We can't conditionally choose the format (no comparison on remaining is
 -- legal), so we live with a single fixed format ("%.1f").
 --
--- The OnUpdate calls SetFormattedText every ~0.1s. For full spell-level
--- cooldowns we additionally re-poll the plain `isActive` bool from
--- Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN can lag the actual
--- cooldown end by a few hundred ms, leaving the text stuck at "0.0"
--- until Cooldowns:Refresh re-emits SPELL_STATE. Because isActive is
--- plain (taint-safe), reading it here is free; on the flip we kill the
--- text + clear the swipe locally and let Cooldowns catch up via its
--- own event handler shortly after.
+-- A single module-level C_Timer.NewTicker (see _textTicker below) iterates
+-- the registered icons every 0.1s and calls _RenderCooldownText on each.
+-- Per-icon OnUpdate scripts were the previous implementation but ran a
+-- separate frame-driver per visible cooldown — N icons meant N OnUpdate
+-- callbacks per tick. The shared ticker collapses the fixed cost to one.
+-- For full spell-level cooldowns we additionally re-poll the plain
+-- `isActive` bool from Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN
+-- can lag the actual cooldown end by a few hundred ms, leaving the text
+-- stuck at "0.0" until Cooldowns:Refresh re-emits SPELL_STATE. Because
+-- isActive is plain (taint-safe), reading it here is free; on the flip
+-- we kill the text + clear the swipe locally and let Cooldowns catch up
+-- via its own event handler shortly after.
 --
 -- For the charge-recharge path (cdObject = state.chargeCdObject,
 -- isFullCooldown=false), the spell-level isActive stays false the
@@ -402,40 +418,46 @@ function Icon:StartCooldownText(cdObject, isFullCooldown)
         return
     end
     self._cdObject       = cdObject
-    self._cdAcc          = 0
     self._isFullCooldown = isFullCooldown and true or false
     -- Initial paint. SetFormattedText handles the secret value via its
-    -- C-side argument path; the same pattern works inside OnUpdate.
+    -- C-side argument path; the same pattern is used by the shared
+    -- ticker driver.
     self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
     self.cooldownText:Show()
-    self:SetScript("OnUpdate", function(s, elapsed)
-        s._cdAcc = (s._cdAcc or 0) + elapsed
-        if s._cdAcc < 0.1 then return end
-        s._cdAcc = 0
-        local obj = s._cdObject
-        if not obj then
-            s:StopCooldownText()
-            return
-        end
-        if s._isFullCooldown then
-            local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(s.spellID)
-            if not isActive then
-                s:StopCooldownText()
-                if s.cooldown then
-                    s.cooldown:Hide()
-                    s.cooldown:Clear()
-                end
-                return
-            end
-        end
-        s.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
-    end)
+    -- Register with the module-level ticker (see IconGrid:_TextTickerStart).
+    -- Idempotent — re-registering a widget already in the set is a no-op.
+    IconGrid:_RegisterTextIcon(self)
 end
 
 function Icon:StopCooldownText()
-    self:SetScript("OnUpdate", nil)
+    IconGrid:_UnregisterTextIcon(self)
     self._cdObject = nil
     self.cooldownText:Hide()
+end
+
+--- Per-tick render for one icon's cooldown text. Called by the module-
+--- level ticker for every registered widget. Mirrors the per-frame work
+--- the previous OnUpdate did (full-cooldown plain-bool early-exit +
+--- secret-safe SetFormattedText), but the iteration cadence comes from
+--- the shared ticker, not a per-icon script.
+function Icon:_RenderCooldownText()
+    local obj = self._cdObject
+    if not obj then
+        self:StopCooldownText()
+        return
+    end
+    if self._isFullCooldown then
+        local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(self.spellID)
+        if not isActive then
+            self:StopCooldownText()
+            if self.cooldown then
+                self.cooldown:Hide()
+                self.cooldown:Clear()
+            end
+            return
+        end
+    end
+    self.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
 end
 
 -- ---------------------------------------------------------------------------
@@ -800,6 +822,56 @@ function Icon:ApplyTextConfig(cfg)
 end
 
 -- ---------------------------------------------------------------------------
+-- Shared cooldown-text ticker
+-- ---------------------------------------------------------------------------
+--
+-- One C_Timer.NewTicker(0.1) drives every visible cooldown's countdown
+-- text. Icons register on StartCooldownText and deregister on
+-- StopCooldownText (or ReleaseAll); the ticker pauses (Cancel + nil)
+-- the moment the set goes empty so the addon costs nothing while no
+-- cooldowns are active. Re-arms on the next register call.
+
+local function _tickAllTextIcons()
+    -- Snapshot the count and short-circuit if empty — guards against
+    -- a race where the ticker fires after the last icon deregistered
+    -- but before we got around to cancelling the timer.
+    if next(_textIcons) == nil then
+        if _textTicker and _textTicker.Cancel then
+            _textTicker:Cancel()
+        end
+        _textTicker = nil
+        return
+    end
+    for icon in pairs(_textIcons) do
+        if icon and icon._RenderCooldownText then
+            icon:_RenderCooldownText()
+        end
+    end
+end
+
+function IconGrid:_RegisterTextIcon(icon)
+    if not icon then return end
+    -- Idempotent — re-registering an already-active icon is a no-op.
+    if _textIcons[icon] then return end
+    _textIcons[icon] = true
+    -- Lazy-start the ticker on the first registered icon.
+    if not _textTicker and C_Timer and C_Timer.NewTicker then
+        _textTicker = C_Timer.NewTicker(0.1, _tickAllTextIcons)
+    end
+end
+
+function IconGrid:_UnregisterTextIcon(icon)
+    if not icon then return end
+    if not _textIcons[icon] then return end
+    _textIcons[icon] = nil
+    -- The ticker itself notices the empty set on its next fire and
+    -- self-cancels — see _tickAllTextIcons above. We could cancel
+    -- eagerly here too, but lazy cancel keeps the deregister path
+    -- O(1) and avoids double-free races if Cancel is non-idempotent
+    -- on a given Blizzard build.
+end
+
+-- ---------------------------------------------------------------------------
 -- Pool
 -- ---------------------------------------------------------------------------
 
@@ -826,7 +898,9 @@ function IconGrid:ReleaseAll()
         btn._lastState = nil
         btn._cdObject  = nil
         btn._isPrimary = nil
-        btn:SetScript("OnUpdate", nil)
+        -- Pull the icon out of the shared cooldown-text ticker before
+        -- recycling it; the next acquire will re-register if needed.
+        self:_UnregisterTextIcon(btn)
         -- Reset cooldown so a stale swipe doesn't reappear on re-acquire.
         if btn.cooldown then btn.cooldown:Clear() end
         if btn.chargesText then btn.chargesText:Hide() end
