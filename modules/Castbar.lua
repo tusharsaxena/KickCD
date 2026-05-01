@@ -1062,6 +1062,17 @@ function Castbar:OnInterruptibilityChanged(evt, unit)
     -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
     -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
     -- interruptible. Update the record's bool and re-apply per-state visuals.
+    --
+    -- Plain-after-flip invariant: at cast start `current.notInterruptible`
+    -- is whatever UnitCastingInfo.notInterruptible returned (plain on
+    -- non-protected casts, secret-tainted in combat for casts the player
+    -- has a protected interrupt against). This handler OVERWRITES that
+    -- value with a plain Lua boolean derived from the event name; from
+    -- this point on `current.notInterruptible` is plain. ApplyState's
+    -- C_CurveUtil.EvaluateColorValueFromBoolean accepts both forms (plain
+    -- and secret) so this swap is safe in either direction. See
+    -- docs/CLAUDE_CASTBAR.md "Plain-after-flip" and
+    -- docs/CLAUDE_SECRET_VALUES.md for the full rationale.
     if current then
         current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
         self:ApplyState()
