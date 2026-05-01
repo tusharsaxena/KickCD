@@ -63,7 +63,7 @@ local current -- active cast record (nil when nothing is being cast)
 
 -- Cache of the most recent KickCD_GRID_LAYOUT payload from IconGrid.
 -- Populated by Castbar:OnGridLayout when the payload carries
--- `gridFrame` / `primaryIcon`; ApplyAnchor / ApplyConfig prefer these
+-- `gridFrame` / `primaryIcon`; ApplyAnchor / Reskin prefer these
 -- over the public accessors so the bar follows the grid without a
 -- second cross-module reach. The fallback to KickCD.IconGrid:GetGridFrame
 -- / :GetPrimaryIcon stays in place for the FIRST tick after enable when
@@ -541,7 +541,23 @@ local function applyBorder(borderFrame, sc)
     borderFrame:SetBackdropBorderColor(unpackColor(sc.borderColor, 0, 0, 0, 1))
 end
 
-function Castbar:ApplyConfig()
+--- Config-driven re-skin of the cast bar widgets. Recomputes orientation,
+--- size, child anchors, fonts, backdrops, status-bar textures + colors,
+--- spark rotation, and per-state border backdrops. Does NOT touch the
+--- per-cast texture, spell name, or bar fill values — those are
+--- Castbar:RenderCast's job.
+---
+--- Called from:
+---   * OnConfigChanged (section == "castbar") — config flip
+---   * OnGridLayout — auto-size needs to re-track the grid frame
+---   * OnProfileChanged — profile swap
+---   * ShowPreview — the placeholder bar still depends on config
+---
+--- This used to be Castbar:ApplyConfig and was called on every cast
+--- start, recomputing ~40 widget calls per cast. CR-17 split it: cast
+--- start now goes through Castbar:RenderCast (~6 widget calls) and
+--- only re-skins on actual config changes.
+function Castbar:Reskin()
     if not frame then return end
     local c = cfg()
 
@@ -744,22 +760,65 @@ function Castbar:ApplyConfig()
     -- change that arrives mid-cast picks up the new per-state values.
     self:ApplyState()
 
-    -- Re-paint the icon if a cast is in progress (texture coords were already
-    -- set in EnsureFrame; only the texture file itself depends on cast state).
-    if current and current.texture and showIcon then
-        frame.icon:SetTexture(current.texture)
-    end
+    -- Per-cast texture / name re-paint is the responsibility of
+    -- Castbar:RenderCast. OnConfigChanged calls RenderCast(current)
+    -- after Reskin when a cast is active so the texture / name pick
+    -- up any structural change (iconSize toggling on / off,
+    -- nameTruncate change, ...). See CR-17 for the split.
+end
 
-    -- Re-paint the spell name when a cast is active so a config
-    -- change to nameTruncate / showName takes effect immediately
-    -- without waiting for the next cast. Truncate cap is read live
-    -- from cfg() and the secret-value short-circuit in
-    -- truncateName keeps protected-cast names safe.
-    if current and c.showName ~= false then
-        frame.nameText:SetText(truncateName(current.name, c.nameTruncate))
-    elseif c.showName == false then
+--- Per-cast paint of the bar widgets. Sets the spell icon texture, the
+--- truncated spell name, seeds both stacked StatusBars' ranges + values
+--- from the cast's CastingDuration object, and re-applies per-state
+--- visuals via ApplyState.
+---
+--- This is the cast-record-driven half of the CR-17 split: Reskin owns
+--- the structural / config-driven work and runs on every config flip;
+--- RenderCast owns the per-cast work and runs on Castbar:Start (and on
+--- OnConfigChanged when a cast is active so the new structural layout
+--- shows the right texture / name for the current cast).
+---
+--- @param rec table  cast record (current); must carry texture, name,
+---                   isChannel, duration. Methods on duration may return
+---                   secret-tainted numbers in combat — pass them
+---                   directly as args to Blizzard C methods, never bind
+---                   to Lua locals.
+function Castbar:RenderCast(rec)
+    if not (frame and rec) then return end
+    local c = cfg()
+
+    -- name / texture may themselves be secret in combat for protected
+    -- casts, but Texture:SetTexture / FontString:SetText accept secret
+    -- args without erroring. Pass them through.
+    if c.iconSize and c.iconSize > 0 and rec.texture then
+        frame.icon:SetTexture(rec.texture)
+    end
+    if c.showName ~= false then
+        frame.nameText:SetText(truncateName(rec.name, c.nameTruncate))
+    else
         frame.nameText:SetText("")
     end
+
+    -- Seed both bars from the duration object so we don't flash a 0% bar
+    -- before the first OnUpdate tick. SetMinMaxValues runs here once per
+    -- cast (and again from OnCastDelayed if the duration changes mid-cast)
+    -- — onUpdate's hot path no longer touches the range. Pass duration
+    -- methods directly to the StatusBar C methods; never bind to locals.
+    local d = rec.duration
+    if d then
+        frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
+        frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
+        if rec.isChannel then
+            frame.bar.interruptible:SetValue(d:GetRemainingDuration())
+            frame.bar.uninterruptible:SetValue(d:GetRemainingDuration())
+        else
+            frame.bar.interruptible:SetValue(d:GetElapsedDuration())
+            frame.bar.uninterruptible:SetValue(d:GetElapsedDuration())
+        end
+    end
+
+    -- Per-state alpha + name color from the (possibly secret) notInterruptible.
+    self:ApplyState()
 end
 
 -- ---------------------------------------------------------------------------
@@ -906,34 +965,12 @@ function Castbar:Start(rec)
     -- the cfg() table every frame. Refreshed on KickCD_CONFIG_CHANGED via
     -- OnConfigChanged when the section is "castbar".
     current.showTime = (cfg().showTime ~= false)
-    self:ApplyConfig()    -- runs ApplyState too, picking up notInterruptible
 
-    -- name / texture may themselves be secret in combat for protected
-    -- casts, but Texture:SetTexture / FontString:SetText accept secret
-    -- args without erroring (the protection is on arithmetic). Pass them
-    -- through; the bar renders the spell's real icon and name.
-    if cfg().iconSize and cfg().iconSize > 0 and rec.texture then
-        frame.icon:SetTexture(rec.texture)
-    end
-    if cfg().showName ~= false then
-        frame.nameText:SetText(truncateName(rec.name, cfg().nameTruncate))
-    else
-        frame.nameText:SetText("")
-    end
-
-    -- Seed both bars from the duration object so we don't flash a 0% bar
-    -- before the first OnUpdate tick. Pass duration methods directly to
-    -- the StatusBar C methods; never bind to locals.
-    local d = rec.duration
-    frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
-    frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
-    if rec.isChannel then
-        frame.bar.interruptible:SetValue(d:GetRemainingDuration())
-        frame.bar.uninterruptible:SetValue(d:GetRemainingDuration())
-    else
-        frame.bar.interruptible:SetValue(d:GetElapsedDuration())
-        frame.bar.uninterruptible:SetValue(d:GetElapsedDuration())
-    end
+    -- CR-17: cast start no longer re-skins the bar. Reskin runs only on
+    -- config flips / grid layout / profile change — the structural setup
+    -- doesn't depend on the cast record. RenderCast does the cast-specific
+    -- work (texture, name, seed bar values, ApplyState).
+    self:RenderCast(rec)
 
     if isVisible() then
         frame:Show()
@@ -962,9 +999,15 @@ end
 --- Show a placeholder bar so the user has something to grab while
 --- repositioning. Used while the cast bar is unlocked and no target is
 --- currently casting.
+---
+--- CR-17: depends on config (orientation, fonts, sizes, anchors,
+--- per-state colors), so we run a full Reskin and then layer a minimal
+--- preview-state branch on top — placeholder icon, label, fixed-mid-bar
+--- value. RenderCast is NOT used here because there's no real cast
+--- record (no duration object, no texture etc.).
 function Castbar:ShowPreview()
     if not frame then return end
-    self:ApplyConfig()    -- runs ApplyState (no-cast branch → interruptible visuals)
+    self:Reskin()    -- runs ApplyState (no-cast branch → interruptible visuals)
     if cfg().iconSize and cfg().iconSize > 0 then
         frame.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
@@ -1010,7 +1053,7 @@ function Castbar:OnEnable()
     -- Combat flag is owned by core/State.lua's bootstrap listener, so
     -- this module no longer seeds it on enable.
     self:EnsureFrame()
-    self:ApplyConfig()
+    self:Reskin()
     self:ApplyLock()
 
     self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
@@ -1172,13 +1215,19 @@ function Castbar:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
     if section == "castbar" then
         -- Anchor mode + offsets and orientation/grow may have changed; apply
-        -- both before reskin so ApplyConfig sees the right frame size when
+        -- both before reskin so Reskin sees the right frame size when
         -- it computes auto-size and child anchors.
         self:ApplyAnchor()
-        self:ApplyConfig()
-        -- Refresh the per-cast-record showTime cache so onUpdate's hot
-        -- path picks up a config flip mid-cast (CR-10).
-        if current then current.showTime = (cfg().showTime ~= false) end
+        self:Reskin()
+        if current then
+            -- Refresh the per-cast-record showTime cache so onUpdate's hot
+            -- path picks up a config flip mid-cast (CR-10).
+            current.showTime = (cfg().showTime ~= false)
+            -- Re-paint the per-cast texture / name so structural changes
+            -- (iconSize toggle, nameTruncate change, ...) take effect
+            -- immediately without waiting for the next cast (CR-17).
+            self:RenderCast(current)
+        end
         if not isVisible() then
             self:Stop()
         else
@@ -1200,7 +1249,8 @@ end
 
 function Castbar:OnProfileChanged()
     self:ApplyAnchor()
-    self:ApplyConfig()
+    self:Reskin()
+    if current then self:RenderCast(current) end
     self:ApplyLock()
     if isVisible() then self:Reevaluate() else self:Stop() end
 end
@@ -1219,7 +1269,7 @@ end
 --- fired yet.
 function Castbar:OnGridLayout(_evt, payload)
     if not frame then return end
-    -- Cache the payload's references for ApplyAnchor / ApplyConfig.
+    -- Cache the payload's references for ApplyAnchor / Reskin.
     -- Defensive: only cache when the field is actually populated, so an
     -- empty `{}` from the legacy sender doesn't blank the cache.
     if type(payload) == "table" then
@@ -1233,10 +1283,13 @@ function Castbar:OnGridLayout(_evt, payload)
     if c.anchorMode == "PRIMARY" then
         self:ApplyAnchor()
     end
-    -- Auto-size: re-run ApplyConfig so the bar's dimensions track the grid's
-    -- current footprint. Skip the no-op ApplyConfig when neither is active.
+    -- Auto-size: re-run Reskin so the bar's dimensions track the grid's
+    -- current footprint. Skip the no-op Reskin when auto-size is off.
+    -- If a cast is active, RenderCast picks up the new dimensions for the
+    -- texture / bar values that the new structural layout exposes.
     if c.autoSize then
-        self:ApplyConfig()
+        self:Reskin()
+        if current then self:RenderCast(current) end
     end
 end
 
@@ -1294,7 +1347,7 @@ function Castbar:DebugDump()
 
     -- Configured per-state colors as actually read from the live db.profile.
     -- Useful for verifying that color-picker writes are persisting and that
-    -- ApplyConfig sees the updated values.
+    -- Reskin sees the updated values.
     local function fmtColor(c)
         if type(c) ~= "table" then return "(missing)" end
         return ("{%.2f, %.2f, %.2f, %.2f}"):format(
