@@ -69,8 +69,8 @@ end
 --   arithmetic on them in tainted scope; pass them straight to C-side APIs
 --   (Cooldown:SetCooldown) or gate with issecretvalue() first.
 function Compat.GetSpellCooldown(spellID)
-    if C_Spell and C_Spell.GetSpellCooldown then
-        local info = C_Spell.GetSpellCooldown(spellID)
+    if _G.C_Spell and _G.C_Spell.GetSpellCooldown then
+        local info = _G.C_Spell.GetSpellCooldown(spellID)
         if not info then return 0, 0, false, 1, false end
         return info.startTime or 0,
                info.duration  or 0,
@@ -83,7 +83,7 @@ function Compat.GetSpellCooldown(spellID)
     if _G.GetSpellCooldown then
         local s, d, e, m = _G.GetSpellCooldown(spellID)
         local active = false
-        if d and not (issecretvalue and issecretvalue(d)) then
+        if d and not (_G.issecretvalue and _G.issecretvalue(d)) then
             active = d > 0
         end
         return s or 0, d or 0, e ~= false, m or 1, active
@@ -120,8 +120,8 @@ end
 -- start/duration come back as 12.0 "secret values" that error on any
 -- arithmetic / comparison) and ordinary spells alike.
 function Compat.GetSpellCooldownDuration(spellID)
-    if C_Spell and C_Spell.GetSpellCooldownDuration then
-        return C_Spell.GetSpellCooldownDuration(spellID)
+    if _G.C_Spell and _G.C_Spell.GetSpellCooldownDuration then
+        return _G.C_Spell.GetSpellCooldownDuration(spellID)
     end
     return nil
 end
@@ -130,8 +130,8 @@ end
 -- @param spellID number
 -- @return number|nil  fileID suitable for Texture:SetTexture()
 function Compat.GetSpellTexture(spellID)
-    if C_Spell and C_Spell.GetSpellTexture then
-        return C_Spell.GetSpellTexture(spellID)
+    if _G.C_Spell and _G.C_Spell.GetSpellTexture then
+        return _G.C_Spell.GetSpellTexture(spellID)
     end
     if _G.GetSpellTexture then
         return _G.GetSpellTexture(spellID)
@@ -143,8 +143,8 @@ end
 -- @param spellID number
 -- @return name, iconID, castTime, minRange, maxRange, spellID
 function Compat.GetSpellInfo(spellID)
-    if C_Spell and C_Spell.GetSpellInfo then
-        local i = C_Spell.GetSpellInfo(spellID)
+    if _G.C_Spell and _G.C_Spell.GetSpellInfo then
+        local i = _G.C_Spell.GetSpellInfo(spellID)
         if i then
             return i.name, i.iconID, i.castTime, i.minRange, i.maxRange, i.spellID
         end
@@ -161,8 +161,8 @@ end
 -- @return currentCharges, maxCharges, cooldownStartTime, cooldownDuration
 --   Returns nil for spells without charges.
 function Compat.GetSpellCharges(spellID)
-    if C_Spell and C_Spell.GetSpellCharges then
-        local c = C_Spell.GetSpellCharges(spellID)
+    if _G.C_Spell and _G.C_Spell.GetSpellCharges then
+        local c = _G.C_Spell.GetSpellCharges(spellID)
         if c then
             return c.currentCharges, c.maxCharges,
                    c.cooldownStartTime, c.cooldownDuration
@@ -206,8 +206,8 @@ end
 -- @param spellID number
 -- @return usable (bool), noMana (bool)
 function Compat.IsSpellUsable(spellID)
-    if C_Spell and C_Spell.IsSpellUsable then
-        local r1, r2 = C_Spell.IsSpellUsable(spellID)
+    if _G.C_Spell and _G.C_Spell.IsSpellUsable then
+        local r1, r2 = _G.C_Spell.IsSpellUsable(spellID)
         -- Some Midnight builds return a SpellUsabilityInfo table,
         -- others return two booleans directly. Cover both.
         if type(r1) == "table" then

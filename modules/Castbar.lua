@@ -213,7 +213,7 @@ end
 local function truncateName(name, maxChars)
     if not name then return "" end
     if not maxChars or maxChars <= 0 then return name end
-    if issecretvalue and issecretvalue(name) then return name end
+    if _G.issecretvalue and _G.issecretvalue(name) then return name end
     if #name <= maxChars then return name end
     return string.sub(name, 1, maxChars) .. "…"
 end
@@ -938,28 +938,28 @@ function Castbar:ApplyState()
     local unintName = unintCfg.nameTextColor or { 1, 1, 1, 1 }
 
     frame.bgInterruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
     frame.bgUninterruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
 
     frame.bar.interruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
     frame.bar.uninterruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
 
     -- Border show toggles fold INTO the curve params, not as a separate
     -- multiplication afterwards (multiplying a secret curve result would
     -- error). 0 in the relevant slot disables that side regardless.
     frame.borderInterruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, intBorderShow))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, intBorderShow))
     frame.borderUninterruptible:SetAlpha(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintBorderShow, 0))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintBorderShow, 0))
 
     frame.nameText:SetTextColor(
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[1] or 1, intName[1] or 1),
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[2] or 1, intName[2] or 1),
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[3] or 1, intName[3] or 1),
-        C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[4] or 1, intName[4] or 1))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[1] or 1, intName[1] or 1),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[2] or 1, intName[2] or 1),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[3] or 1, intName[3] or 1),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[4] or 1, intName[4] or 1))
 end
 
 function Castbar:Start(rec)

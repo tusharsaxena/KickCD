@@ -135,6 +135,6 @@ boot:SetScript("OnEvent", function(_, event)
     elseif event == "PLAYER_REGEN_ENABLED" then
         State.SetInCombat(false)
     elseif event == "PLAYER_LOGIN" then
-        State.SetInCombat(InCombatLockdown and InCombatLockdown() or false)
+        State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
     end
 end)

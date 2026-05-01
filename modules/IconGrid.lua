@@ -130,7 +130,7 @@ end
 -- not error (Lua's `not` is safe on secrets; same guarantee
 -- `current.name and ...` relies on in modules/Castbar.lua).
 local function isTargetCasting()
-    if not (UnitExists and UnitExists("target")) then return false end
+    if not (_G.UnitExists and _G.UnitExists("target")) then return false end
     if KickCD.Compat._firstReturn(_G.UnitCastingInfo, "target") then return true end
     if KickCD.Compat._firstReturn(_G.UnitChannelInfo, "target") then return true end
     return false
@@ -208,7 +208,7 @@ end
 --- enable and again on any "icons" config change. Cheap — these are tiny
 --- 4-point curves, recreating them per change is fine.
 local function BuildCurves()
-    if not (C_CurveUtil and C_CurveUtil.CreateCurve) then return end
+    if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
 
     local cfg = (KickCD.db and KickCD.db.profile and KickCD.db.profile.icons) or {}
     local readyAlpha    = cfg.readyAlpha    or 1.0
@@ -218,7 +218,7 @@ local function BuildCurves()
     -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
     -- between adjacent points yields a sharp transition under linear
     -- interpolation (LuaCurveType.Linear is the default).
-    alphaCurve = C_CurveUtil.CreateCurve()
+    alphaCurve = _G.C_CurveUtil.CreateCurve()
     if alphaCurve.SetType and Enum and Enum.LuaCurveType then
         alphaCurve:SetType(Enum.LuaCurveType.Linear)
     end
@@ -231,7 +231,7 @@ local function BuildCurves()
     -- shape as alphaCurve but the values are visibility flags rather
     -- than alphas. The output rides through SetAlphaFromBoolean(true,
     -- value, 0) when cfg.suppressGCDSwipe is on.
-    gcdSuppressCurve = C_CurveUtil.CreateCurve()
+    gcdSuppressCurve = _G.C_CurveUtil.CreateCurve()
     if gcdSuppressCurve.SetType and Enum and Enum.LuaCurveType then
         gcdSuppressCurve:SetType(Enum.LuaCurveType.Linear)
     end
@@ -240,8 +240,8 @@ local function BuildCurves()
     gcdSuppressCurve:AddPoint(GCD_UPPER + 0.001, 1)
     gcdSuppressCurve:AddPoint(3600,              1)
 
-    if C_CurveUtil.CreateColorCurve and CreateColor then
-        tintCurve = C_CurveUtil.CreateColorCurve()
+    if _G.C_CurveUtil.CreateColorCurve and CreateColor then
+        tintCurve = _G.C_CurveUtil.CreateColorCurve()
         if tintCurve.SetType and Enum and Enum.LuaCurveType then
             tintCurve:SetType(Enum.LuaCurveType.Linear)
         end
@@ -887,8 +887,8 @@ function IconGrid:_RegisterTextIcon(icon)
     if _textIcons[icon] then return end
     _textIcons[icon] = true
     -- Lazy-start the ticker on the first registered icon.
-    if not _textTicker and C_Timer and C_Timer.NewTicker then
-        _textTicker = C_Timer.NewTicker(0.1, _tickAllTextIcons)
+    if not _textTicker and _G.C_Timer and _G.C_Timer.NewTicker then
+        _textTicker = _G.C_Timer.NewTicker(0.1, _tickAllTextIcons)
     end
 end
 
@@ -1002,7 +1002,7 @@ function IconGrid:BuildActiveList()
                 -- (Mind Freeze etc.); SetTexture rejects them from tainted
                 -- execution, so skip the call and leave the icon blank
                 -- rather than erroring out of BuildActiveList partway.
-                local texSecret = tex ~= nil and issecretvalue and issecretvalue(tex)
+                local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
                 if tex and not texSecret then btn.icon:SetTexture(tex) end
                 btn:ApplyTextConfig(KickCD.db.profile.icons)
                 -- Initial state: assume ready until Cooldowns sends a real
@@ -1662,7 +1662,7 @@ function IconGrid:RefreshAllGlows()
         -- we leave it as-is and skip the equality compare in the gate
         -- (treat any secret reading as "moved" and re-run iteration —
         -- correctness over efficiency for the rare interruptibility flip).
-        if issecretvalue and issecretvalue(notInterruptible) then
+        if _G.issecretvalue and _G.issecretvalue(notInterruptible) then
             interruptible = "secret"
         else
             interruptible = not notInterruptible

@@ -132,7 +132,7 @@ function Cooldowns:PollSpell(spellID)
     local hasCharges
     if cur == nil then
         hasCharges = true
-    elseif issecretvalue and issecretvalue(cur) then
+    elseif _G.issecretvalue and _G.issecretvalue(cur) then
         hasCharges = true
     else
         hasCharges = cur > 0
@@ -213,8 +213,8 @@ local function StateChanged(prev, next_)
     -- budget (a SetFormattedText call per SPELL_UPDATE_*).
     local a, b = prev.charges, next_.charges
     if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and issecretvalue and issecretvalue(a)
-    local bSecret = b ~= nil and issecretvalue and issecretvalue(b)
+    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
+    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
     if aSecret or bSecret then return true end
     if a ~= b then return true end
     return false
@@ -408,7 +408,7 @@ function Cooldowns:DebugDump()
     -- table.concat downstream. Substitute a safe placeholder.
     local function safeStr(v)
         if v == nil then return "nil" end
-        if issecretvalue and issecretvalue(v) then return "secret" end
+        if _G.issecretvalue and _G.issecretvalue(v) then return "secret" end
         return tostring(v)
     end
     for _, id in ipairs(ids) do
