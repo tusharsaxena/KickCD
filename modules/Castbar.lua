@@ -6,7 +6,7 @@
 -- gated on db.profile.castbar.enabled (sub-module enable) AND
 -- db.profile.enabled (master enable) AND db.profile.visibility (the
 -- addon-wide "General visibility" mode also honored by IconGrid; in
--- "in_combat" mode the bar additionally requires _inCombat = true).
+-- "in_combat" mode the bar additionally requires KickCD.State.inCombat = true).
 -- Drag-lock follows db.profile.locked, the same global lock the icon
 -- grid honors.
 --
@@ -61,12 +61,12 @@ local L       = KickCD.L
 local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
 local current -- active cast record (nil when nothing is being cast)
 
--- Combat state tracked via PLAYER_REGEN_* events. Used by isVisible()
--- when db.profile.visibility == "in_combat" to gate the bar on combat
--- state. Reading InCombatLockdown() inside the regen-disabled handler
--- is unreliable (the lockdown state lags the event by a frame), so we
--- maintain the flag explicitly.
-local _inCombat = false
+-- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
+-- shared, single-owner flag driven off the PLAYER_REGEN_* events in
+-- one place. Reading InCombatLockdown() inside the regen-disabled
+-- handler is unreliable (the lockdown state lags the event by a
+-- frame), so we maintain the flag via the events themselves; this
+-- module just reads the shared one.
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
@@ -86,10 +86,10 @@ end
 
 -- Honors the addon-wide visibility mode (db.profile.visibility):
 --   * "always"          — usual behavior (bar shows during target casts).
---   * "in_combat"       — additionally requires _inCombat = true. A cast
---                         that starts on a target while we're out of
---                         combat (rare but possible — friendly NPCs) is
---                         suppressed.
+--   * "in_combat"       — additionally requires KickCD.State.inCombat = true.
+--                         A cast that starts on a target while we're out
+--                         of combat (rare but possible — friendly NPCs)
+--                         is suppressed.
 --   * "target_casting"  — equivalent to "always" for the cast bar; the
 --                         cast bar already only shows during target
 --                         casts so this mode adds no extra restriction.
@@ -110,7 +110,7 @@ local function isVisible()
     if profile and profile.locked == false then return true end
     local mode = (profile and profile.visibility) or "always"
     if mode == "in_combat" then
-        return _inCombat
+        return KickCD.State.inCombat
     elseif mode == "target_casting_interruptible" then
         return KickCD.Compat.IsHostileUnitCasting
            and KickCD.Compat.IsHostileUnitCasting("target")
@@ -964,11 +964,8 @@ end
 -- ---------------------------------------------------------------------------
 
 function Castbar:OnEnable()
-    -- Seed the combat flag from InCombatLockdown — at module-enable time
-    -- it's reliable (no race with PLAYER_REGEN_DISABLED). After this we
-    -- only mutate it via the regen events.
-    _inCombat = (InCombatLockdown and InCombatLockdown()) or false
-
+    -- Combat flag is owned by core/State.lua's bootstrap listener, so
+    -- this module no longer seeds it on enable.
     self:EnsureFrame()
     self:ApplyConfig()
     self:ApplyLock()
@@ -1015,12 +1012,13 @@ function Castbar:OnTargetChanged()
     self:Reevaluate()
 end
 
--- Maintain the event-driven combat flag and re-evaluate the bar so it
--- shows / hides as the visibility mode dictates. In "in_combat" mode
--- entering combat reveals the bar (if a target cast is ongoing), and
--- leaving combat tears it down even if the cast continues.
+-- Re-evaluate the bar on combat-state transitions so it shows / hides
+-- as the visibility mode dictates. In "in_combat" mode entering combat
+-- reveals the bar (if a target cast is ongoing), and leaving combat
+-- tears it down even if the cast continues. The combat flag itself is
+-- owned by core/State.lua's bootstrap listener; these handlers run
+-- only for their side effect (Reevaluate / Stop).
 function Castbar:OnRegenDisabled()
-    _inCombat = true
     if isVisible() then
         self:Reevaluate()
     else
@@ -1029,7 +1027,6 @@ function Castbar:OnRegenDisabled()
 end
 
 function Castbar:OnRegenEnabled()
-    _inCombat = false
     if isVisible() then
         self:Reevaluate()
     else

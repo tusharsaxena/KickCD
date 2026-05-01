@@ -129,14 +129,12 @@ local function visibilityMode()
     return (profile and profile.visibility) or "always"
 end
 
--- Combat state tracked via PLAYER_REGEN_DISABLED / PLAYER_REGEN_ENABLED.
--- We deliberately do NOT consult InCombatLockdown() inside shouldBeVisible
--- — that function reports protected-frame lockdown state, which can lag
--- the PLAYER_REGEN_DISABLED event by a frame. Reading it on the event
--- itself returns false if combat just started, leaving the grid hidden
--- in "in_combat" mode until the next config change. The event-driven
--- flag is the source of truth.
-local _inCombat = false
+-- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
+-- shared, single-owner flag driven off PLAYER_REGEN_DISABLED /
+-- PLAYER_REGEN_ENABLED in one place. We deliberately do NOT consult
+-- InCombatLockdown() inside shouldBeVisible — that function reports
+-- protected-frame lockdown state, which can lag the regen events by
+-- a frame. The event-driven flag is the source of truth.
 
 -- Decide whether the grid should be visible right now. Master enable is
 -- the gate; visibility mode then narrows that to a subset of states.
@@ -149,7 +147,7 @@ local function shouldBeVisible()
     if profile and profile.locked == false then return true end
     local mode = visibilityMode()
     if mode == "in_combat" then
-        return _inCombat
+        return KickCD.State.inCombat
     elseif mode == "target_casting" then
         return isTargetCasting()
     elseif mode == "target_casting_interruptible" then
@@ -1293,11 +1291,8 @@ end
 -- ---------------------------------------------------------------------------
 
 function IconGrid:OnEnable()
-    -- Seed the combat flag from InCombatLockdown — at module-enable time
-    -- it's reliable (no race with PLAYER_REGEN_DISABLED). After this we
-    -- only mutate it via the regen events.
-    _inCombat = (InCombatLockdown and InCombatLockdown()) or false
-
+    -- Combat flag is owned by core/State.lua's bootstrap listener, so
+    -- this module no longer seeds it on enable.
     self:EnsureGrid()
     BuildCurves()
     self:BuildActiveList()
@@ -1461,18 +1456,14 @@ function IconGrid:RefreshAllGlows()
     end
 end
 
---- Maintain the event-driven combat flag. Reading InCombatLockdown() at
---- the moment PLAYER_REGEN_DISABLED fires can return false (the lockdown
---- state lags the event by a frame), which left the grid hidden in
---- "in_combat" mode until the next config change. The flag is the
---- source of truth — flip it on the event itself.
+--- Re-evaluate visibility on combat-state transitions. The flag itself
+--- is owned by core/State.lua's bootstrap listener; this handler runs
+--- only for its side effect (the visibility refresh).
 function IconGrid:OnRegenDisabled()
-    _inCombat = true
     self:RefreshVisibility()
 end
 
 function IconGrid:OnRegenEnabled()
-    _inCombat = false
     self:RefreshVisibility()
 end
 
