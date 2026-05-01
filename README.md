@@ -126,7 +126,7 @@ current behavior.
 There is no automated test harness; verification is manual. See
 [`docs/CLAUDE_TESTING.md`](docs/CLAUDE_TESTING.md) for the slash-command
 coverage and in-game spot checks. The legacy UAT scenarios live in
-[`docs/legacy/UAT.md`](docs/legacy/UAT.md).
+[`docs/legacy/v1/UAT.md`](docs/legacy/v1/UAT.md).
 
 ## License
 

@@ -102,12 +102,12 @@ Each workstream below specifies:
 **Agent prompt:**
 ```
 You are working on the WoW addon KickCD in branch ws-a-foundations.
-Read docs/legacy/PE_REVIEW.md (sections 3.1, 3.4, 3.7, 3.10, 5.6),
-docs/legacy/CHANGES_PE_REVIEW.md (CRs 5, 8, 11, 14, 30), and the
+Read docs/legacy/v2/PE_REVIEW.md (sections 3.1, 3.4, 3.7, 3.10, 5.6),
+docs/legacy/v2/CHANGES_PE_REVIEW.md (CRs 5, 8, 11, 14, 30), and the
 file headers of every file in your scope.
 
 Implement the five CRs in the order listed under WS-A in
-docs/legacy/EXECUTION_PLAN_PE_REVIEW.md §3.1. For each CR, follow
+docs/legacy/v2/EXECUTION_PLAN_PE_REVIEW.md §3.1. For each CR, follow
 the description and acceptance criteria verbatim from
 CHANGES_PE_REVIEW.md.
 
@@ -190,11 +190,11 @@ so KickCD.State, Util.Throttle, Util.Debounce, Util.DeepCopy, and
 the deletion of Compat.RegisterAddOnSetting are all in place — verify
 by reading core/Util.lua and core/Compat.lua before you start.
 
-Read docs/legacy/PE_REVIEW.md (sections 2.1, 2.2, 3.2, 3.3, 3.5,
+Read docs/legacy/v2/PE_REVIEW.md (sections 2.1, 2.2, 3.2, 3.3, 3.5,
 3.8, 4.2, 4.5, 4.8, 4.9, 5.5, 5.8, 5.11, 5.15, 5.17), then
-docs/legacy/CHANGES_PE_REVIEW.md for CRs 1, 2, 6, 7, 9, 12, 16, 19,
+docs/legacy/v2/CHANGES_PE_REVIEW.md for CRs 1, 2, 6, 7, 9, 12, 16, 19,
 22, 23, 29, 32, 34 (IconGrid half), 37, 39. Implement them in the
-order listed under WS-B in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md
+order listed under WS-B in docs/legacy/v2/EXECUTION_PLAN_PE_REVIEW.md
 §3.2.
 
 For CR-1: the bug is that GetSpecializationInfo's localised "Beast
@@ -291,10 +291,10 @@ Util.Throttle / Debounce / DeepCopy exist, Compat.RegisterAddOnSetting
 is gone. WS-B is running in parallel — do NOT depend on its changes
 unless explicitly noted in your CR sequence.
 
-Read docs/legacy/PE_REVIEW.md (sections 3.6, 4.3, 5.3, 5.5, 5.11,
-5.12, 5.13), then docs/legacy/CHANGES_PE_REVIEW.md for CRs 10, 17,
+Read docs/legacy/v2/PE_REVIEW.md (sections 3.6, 4.3, 5.3, 5.5, 5.11,
+5.12, 5.13), then docs/legacy/v2/CHANGES_PE_REVIEW.md for CRs 10, 17,
 27, 29 (receiver), 34 (Castbar half), 35, 36. Implement in the
-order listed under WS-C in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md §3.3.
+order listed under WS-C in docs/legacy/v2/EXECUTION_PLAN_PE_REVIEW.md §3.3.
 
 For CR-27: this is a refactor with semantic-preserving moves only.
 The two functions move from core/Compat.lua to a new home (your
@@ -387,10 +387,10 @@ their files (modules/IconGrid.lua, modules/Cooldowns.lua,
 modules/Castbar.lua, core/Database.lua, settings/Spells.lua sections
 owned by WS-B's CR-1/CR-6/CR-7/CR-22).
 
-Read docs/legacy/PE_REVIEW.md (sections 2.3, 2.4, 3.9, 4.1, 4.4, 4.6,
-4.7, 4.10, 5.9, 5.16), then docs/legacy/CHANGES_PE_REVIEW.md for
+Read docs/legacy/v2/PE_REVIEW.md (sections 2.3, 2.4, 3.9, 4.1, 4.4, 4.6,
+4.7, 4.10, 5.9, 5.16), then docs/legacy/v2/CHANGES_PE_REVIEW.md for
 CRs 3, 4, 13, 15, 18, 20, 21, 24, 33, 38. Implement in the order
-listed under WS-D in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md §3.4.
+listed under WS-D in docs/legacy/v2/EXECUTION_PLAN_PE_REVIEW.md §3.4.
 
 For CR-3: the schema's onChange is duplicating the bus dispatch.
 Remove every `onChange = reskin` line in settings/Castbar.lua AND
@@ -466,8 +466,8 @@ You are working on the WoW addon KickCD in branch
 pe-review/ws-e-sweep. All previous workstreams (WS-A, WS-B, WS-C,
 WS-D) have landed; this is the final sweep.
 
-Read docs/legacy/PE_REVIEW.md sections 5.1, 5.2, 5.4, 5.7, then
-docs/legacy/CHANGES_PE_REVIEW.md for CRs 25, 26, 28, 31.
+Read docs/legacy/v2/PE_REVIEW.md sections 5.1, 5.2, 5.4, 5.7, then
+docs/legacy/v2/CHANGES_PE_REVIEW.md for CRs 25, 26, 28, 31.
 
 Implement in this order:
 1. CR-25 — replace stale doc references. Run:

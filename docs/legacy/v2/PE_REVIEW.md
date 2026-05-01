@@ -472,7 +472,7 @@ the per-section files indexed from `ARCHITECTURE.md` / `CLAUDE.md`.
 ### 5.2 FR/NFR tags scattered through comments
 Comments cite `FR-2.6`, `FR-2.7`, `FR-2.8`, `FR-7.6`, `FR-8.2`,
 `FR-8.4`, `FR-10.2`, `NFR-7`. These map back to
-`docs/legacy/REQUIREMENTS.md` which is no longer the source of
+`docs/legacy/v1/REQUIREMENTS.md` which is no longer the source of
 truth. Replace with prose where the comment is still useful, drop
 where it's not.
 
