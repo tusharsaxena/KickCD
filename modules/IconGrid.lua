@@ -1229,8 +1229,13 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     end
 
     -- Hide overflow secondaries — pool keeps them around for next rebuild.
+    -- Track the truncation count so the caller can warn the user once
+    -- per (class/spec/cap) tuple — silently dropping icons past the
+    -- configured grid size used to be an invisible failure mode.
+    local truncated = 0
     for i = cap + 1, #secondaries do
         secondaries[i]:Hide()
+        truncated = truncated + 1
     end
 
     -- Add abs(offset) to the grid bounding box so dragging stays sane
@@ -1239,7 +1244,7 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     local height = gridH + math.abs(offY)
     if width  <= 0 then width  = primarySize end
     if height <= 0 then height = primarySize end
-    return floor(width), floor(height)
+    return floor(width), floor(height), truncated
 end
 
 function IconGrid:Layout()
@@ -1284,9 +1289,33 @@ function IconGrid:Layout()
     local secondaries = {}
     for i = 2, #ordered do secondaries[i - 1] = ordered[i] end
 
-    local w, h = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
-                             anchor, grow, rows, cols, offX, offY)
+    local w, h, truncated = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
+                                        anchor, grow, rows, cols, offX, offY)
     grid:SetSize(w, h)
+
+    -- Warn once per (class/spec/cap) tuple when the configured grid
+    -- size dropped icons. Without this the user sees a smaller grid
+    -- than they configured with no indication that some spells are
+    -- silently invisible. The dedup key includes cap so changing
+    -- secondaryRows / secondaryCols re-arms the warning.
+    if truncated and truncated > 0 then
+        local cap     = (rows or 0) * (cols or 0)
+        local clsKey  = "?/?"
+        local cls, spc = getActiveSpecKey()
+        if cls and spc then clsKey = cls .. "/" .. spc end
+        local key = clsKey .. "/" .. tostring(cap)
+        if self._truncationWarnedFor ~= key then
+            self._truncationWarnedFor = key
+            if KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print(("dropped %d icon(s) past the %d-slot grid for %s — bump rows*cols or remove spells")
+                    :format(truncated, cap, clsKey))
+            end
+        end
+    elseif self._truncationWarnedFor and (truncated == 0 or not truncated) then
+        -- No truncation this pass (user fixed it or the spell list shrank).
+        -- Clear the dedup key so a future overflow re-warns.
+        self._truncationWarnedFor = nil
+    end
 
     -- Notify dependent modules (Castbar) that grid geometry / primary icon
     -- reference may have changed.
