@@ -209,6 +209,45 @@ function Util.Debounce(ms, fn)
 end
 
 -- ---------------------------------------------------------------------------
+-- Spec / class token normalisation
+-- ---------------------------------------------------------------------------
+--
+-- defaults/Spells.lua keys specs with a no-whitespace upper-case token
+-- ("BEASTMASTERY", "MARKSMANSHIP", "MISTWEAVER", ...). The runtime side
+-- has to derive the same token from GetSpecializationInfo's second
+-- return — which is the LOCALISED display name. In English that
+-- includes "Beast Mastery" (with whitespace); in non-English locales
+-- additional spec names span multiple words. Uppercasing alone is not
+-- enough — the whitespace has to be stripped too, or the runtime
+-- lookup tries `profile.spells.HUNTER["BEAST MASTERY"]` and silently
+-- gets nil.
+--
+-- These two helpers are the single source of truth for the conversion
+-- so a future locale quirk only needs fixing in one place.
+
+--- Normalise a localised spec name to the key used in defaults/Spells.lua
+--- and db.profile.spells[CLASS][SPEC]: upper-cased and with every run of
+--- whitespace stripped. Returns the empty string for nil/missing input
+--- so callers can pass GetSpecializationInfo's second return verbatim.
+-- @param specName string|nil — localised spec display name
+-- @return string  — normalised spec token (e.g. "BEASTMASTERY")
+function Util.NormalizeSpecToken(specName)
+    return (specName or ""):upper():gsub("%s+", "")
+end
+
+--- Normalise a class file token. Today UnitClass() already returns the
+--- locale-independent file token in upper-case ("HUNTER", "DEATHKNIGHT",
+--- ...) so the helper is effectively a no-op — but routing every
+--- class-key build through it gives one place to fix any future locale
+--- quirk and keeps the symmetry with NormalizeSpecToken obvious at the
+--- call site.
+-- @param classFile string|nil — UnitClass() second return
+-- @return string  — normalised class token (e.g. "HUNTER")
+function Util.NormalizeClassToken(classFile)
+    return (classFile or ""):upper()
+end
+
+-- ---------------------------------------------------------------------------
 -- Chat output
 -- ---------------------------------------------------------------------------
 

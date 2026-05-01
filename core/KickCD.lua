@@ -495,10 +495,14 @@ local function tokenize(rest)
 end
 
 -- Normalize a user-supplied class/spec token to the casing used by
--- defaults/Spells.lua (uppercase, no whitespace).
+-- defaults/Spells.lua (uppercase, no whitespace). Routes through
+-- Util.NormalizeSpecToken so all spec-key derivations across the addon
+-- share one source of truth — important for whitespace-bearing
+-- localised names ("Beast Mastery", non-English specs) that would
+-- otherwise miss the no-whitespace defaults keys.
 local function normToken(s)
     if not s or s == "" then return nil end
-    return (s:upper():gsub("%s+", ""))
+    return KickCD.Util.NormalizeSpecToken(s)
 end
 
 -- Resolve [class spec] starting at args[idx]. Empty positions fall

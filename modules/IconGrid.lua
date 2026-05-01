@@ -238,17 +238,21 @@ local function BuildCurves()
     end
 end
 
--- Resolve the active spec key the same way Database/Cooldowns do:
--- classFile is uppercase ("MAGE"); specName uppercased to match the keys
--- A3 used in defaults/Spells.lua ("ARCANE", "FROST"...).
+-- Resolve the active spec key the same way Database/Cooldowns do.
+-- classFile is the locale-independent token from UnitClass(); specName
+-- is the localised display name from GetSpecializationInfo, normalised
+-- through Util.NormalizeSpecToken so multi-word names (English "Beast
+-- Mastery" and several non-English specs) collapse to the keys built
+-- in defaults/Spells.lua.
 local function getActiveSpecKey()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
+    classFile = KickCD.Util.NormalizeClassToken(classFile)
     local specIdx = GetSpecialization and GetSpecialization()
     if not specIdx then return classFile, nil end
     local _, specName = GetSpecializationInfo(specIdx)
     if not specName then return classFile, nil end
-    return classFile, string.upper(specName)
+    return classFile, KickCD.Util.NormalizeSpecToken(specName)
 end
 
 -- ---------------------------------------------------------------------------

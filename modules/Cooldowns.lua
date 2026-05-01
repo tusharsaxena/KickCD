@@ -60,12 +60,15 @@ local Cooldowns = KickCD:NewModule("Cooldowns", "AceEvent-3.0")
 
 --- Look up the (CLASS, SPEC) tokens used to key db.profile.spells.
 -- CLASS is the localization-independent file token from UnitClass(); SPEC
--- is GetSpecializationInfo's name uppercased to match the keys built in
+-- is GetSpecializationInfo's localised name routed through
+-- Util.NormalizeSpecToken so multi-word names (English "Beast Mastery"
+-- and several non-English specs) collapse to the keys built in
 -- defaults/Spells.lua.
 -- @return classToken (string|nil), specToken (string|nil)
 local function ResolveClassSpec()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
+    classFile = KickCD.Util.NormalizeClassToken(classFile)
 
     local idx = GetSpecialization and GetSpecialization()
     if not idx then return classFile, nil end
@@ -73,7 +76,7 @@ local function ResolveClassSpec()
     local _, specName = GetSpecializationInfo(idx)
     if not specName then return classFile, nil end
 
-    return classFile, specName:upper()
+    return classFile, KickCD.Util.NormalizeSpecToken(specName)
 end
 
 -- ---------------------------------------------------------------------------

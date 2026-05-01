@@ -543,7 +543,7 @@ local function buildSpecIconCache()
             for i = 1, nSpecs do
                 local _, specName, _, icon = GetSpecializationInfoForClassID(classID, i)
                 if specName and icon then
-                    local token = specName:upper():gsub("%s+", "")
+                    local token = Util.NormalizeSpecToken(specName)
                     cache[classFile][token] = icon
                 end
             end
