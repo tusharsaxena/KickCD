@@ -293,6 +293,24 @@ end
 --- Populate the active profile's spells from KickCD.DefaultSpells, and
 --- append the racial cast-stopper for the player's race. Idempotent for
 --- already-populated profiles — only runs once per profile.
+---
+--- "No re-seed if non-empty" is a deliberate policy, not an oversight.
+--- A user who has customised any class+spec (even by clearing every row
+--- of an active spec) has signalled intent: subsequent logins must NOT
+--- silently re-seed their work. The empty check is on the WHOLE
+--- `profile.spells` table — if any class entry exists at all, every
+--- spec list is left alone, including ones the user hasn't touched.
+---
+--- Recovery path for users who DO want defaults back:
+---   * `/kcd reset spells`              — wipe all class+spec lists and
+---                                        re-seed from defaults +
+---                                        racial. Fires through
+---                                        Database:ResetAllSpells.
+---   * `/kcd spells reset [CLASS SPEC]` — restore a single spec list to
+---                                        defaults; leaves every other
+---                                        spec untouched.
+--- The settings panel's per-spec "Defaults" button (KICKCD_RESET_SPELLS
+--- popup) maps to the second form.
 function Database:BuildSpells()
     if not (self.db and self.db.profile) then return end
 
