@@ -6,10 +6,7 @@
 -- into which AceConfigDialog renders the AceDBOptions options table
 -- on first show.
 
-local KickCD = LibStub and LibStub("AceAddon-3.0", true)
-                  and LibStub("AceAddon-3.0"):GetAddon("KickCD", true)
-                  or _G.KickCD
-KickCD = KickCD or {}
+local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 
 local L = KickCD.L or setmetatable({}, { __index = function(_, k) return k end })
 

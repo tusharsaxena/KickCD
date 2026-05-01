@@ -10,10 +10,7 @@
 -- Writes go through a 50ms debounced setter that mutates the profile,
 -- re-renders the rows, and fires KickCD_CONFIG_CHANGED { section = "spells" }.
 
-local KickCD = LibStub and LibStub("AceAddon-3.0", true)
-                  and LibStub("AceAddon-3.0"):GetAddon("KickCD", true)
-                  or _G.KickCD
-KickCD = KickCD or {}
+local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 
 local L      = KickCD.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = KickCD.Compat or {}
