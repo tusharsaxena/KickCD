@@ -9,6 +9,12 @@
 --
 -- Class keys use the localization-independent file token from UnitClass()'s
 -- second return. Spec keys use uppercase tokens of the spec name.
+--
+-- Source: per-spec cast-stopper coverage cross-referenced against Baratus's
+-- "Class Info - Wow" sheet (Midnight tab, columns Q/S/T/U/V/X — Interrupt,
+-- Stuns ST/AoE, CC Hard, CC Soft AoE, CC Other; columns R Dispels and W
+-- AoE Slow are intentionally excluded since neither category stops casts):
+-- https://docs.google.com/spreadsheets/d/1lXIRuETd3s3wxLHE8mOwhXtz0xm71ayhrlYxwi6herU/edit?gid=2092737897
 
 KickCD = KickCD or {}
 
@@ -21,12 +27,14 @@ KickCD.DefaultSpells = {
             { spellID = 108199, category = "knockback",    enabled = true }, -- Gorefiend's Grasp
             { spellID = 221562, category = "stun",         enabled = true }, -- Asphyxiate (Blood)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet
+            { spellID = 1263569, category = "displace",     enabled = true }, -- Abomination Limb (Blood class talent)
         },
         FROST = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
             { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
             { spellID = 108194, category = "stun",         enabled = true }, -- Asphyxiate (Frost/Unholy)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet
+            { spellID = 279302, category = "stun",         enabled = true }, -- Frostwyrm's Fury (3s AoE stun w/ Absolute Zero)
         },
         UNHOLY = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
@@ -42,7 +50,6 @@ KickCD.DefaultSpells = {
             { spellID = 179057, category = "stun",         enabled = true }, -- Chaos Nova
             { spellID = 217832, category = "incapacitate", enabled = true }, -- Imprison
             { spellID = 207684, category = "fear",         enabled = true }, -- Sigil of Misery
-            { spellID = 370965, category = "root",         enabled = true }, -- The Hunt
         },
         VENGEANCE = {
             { spellID = 183752, category = "interrupt",    enabled = true }, -- Disrupt
@@ -50,75 +57,83 @@ KickCD.DefaultSpells = {
             { spellID = 217832, category = "incapacitate", enabled = true }, -- Imprison
             { spellID = 207684, category = "fear",         enabled = true }, -- Sigil of Misery
             { spellID = 202138, category = "displace",     enabled = true }, -- Sigil of Chains
+            { spellID = 202137, category = "silence",      enabled = true }, -- Sigil of Silence (Vengeance)
         },
         DEVOURER = {
             { spellID = 183752,  category = "interrupt",    enabled = true }, -- Disrupt
             { spellID = 1234195, category = "stun",         enabled = true }, -- Void Nova (replaces Chaos Nova for Devourer)
             { spellID = 217832,  category = "incapacitate", enabled = true }, -- Imprison
             { spellID = 207684,  category = "fear",         enabled = true }, -- Sigil of Misery
-            { spellID = 370965,  category = "root",         enabled = true }, -- The Hunt
         },
     },
 
     DRUID = {
         BALANCE = {
-            { spellID = 78675,  category = "silence",   enabled = true }, -- Solar Beam
-            { spellID = 132469, category = "knockback", enabled = true }, -- Typhoon
-            { spellID = 5211,   category = "stun",      enabled = true }, -- Mighty Bash
+            { spellID = 78675,  category = "silence",      enabled = true }, -- Solar Beam
+            { spellID = 132469, category = "knockback",    enabled = true }, -- Typhoon
+            { spellID = 5211,   category = "stun",         enabled = true }, -- Mighty Bash
             { spellID = 33786,  category = "incapacitate", enabled = true }, -- Cyclone
-            { spellID = 339,    category = "root",      enabled = true }, -- Entangling Roots
+            { spellID = 99,     category = "incapacitate", enabled = true }, -- Incapacitating Roar (class talent)
         },
         FERAL = {
-            { spellID = 106839, category = "interrupt", enabled = true }, -- Skull Bash
-            { spellID = 5211,   category = "stun",      enabled = true }, -- Mighty Bash
-            { spellID = 22570,  category = "stun",      enabled = true }, -- Maim
+            { spellID = 106839, category = "interrupt",    enabled = true }, -- Skull Bash
+            { spellID = 5211,   category = "stun",         enabled = true }, -- Mighty Bash
+            { spellID = 22570,  category = "stun",         enabled = true }, -- Maim
             { spellID = 33786,  category = "incapacitate", enabled = true }, -- Cyclone
+            { spellID = 99,     category = "incapacitate", enabled = true }, -- Incapacitating Roar (class talent)
+            { spellID = 132469, category = "knockback",    enabled = true }, -- Typhoon (class talent)
         },
         GUARDIAN = {
-            { spellID = 106839, category = "interrupt", enabled = true }, -- Skull Bash
-            { spellID = 5211,   category = "stun",      enabled = true }, -- Mighty Bash
+            { spellID = 106839, category = "interrupt",    enabled = true }, -- Skull Bash
+            { spellID = 5211,   category = "stun",         enabled = true }, -- Mighty Bash
             { spellID = 99,     category = "incapacitate", enabled = true }, -- Incapacitating Roar
             { spellID = 33786,  category = "incapacitate", enabled = true }, -- Cyclone
+            { spellID = 132469, category = "knockback",    enabled = true }, -- Typhoon (class talent)
         },
         RESTORATION = {
             { spellID = 5211,   category = "stun",         enabled = true }, -- Mighty Bash
             { spellID = 132469, category = "knockback",    enabled = true }, -- Typhoon
             { spellID = 33786,  category = "incapacitate", enabled = true }, -- Cyclone
-            { spellID = 339,    category = "root",         enabled = true }, -- Entangling Roots
+            { spellID = 99,     category = "incapacitate", enabled = true }, -- Incapacitating Roar (class talent)
         },
     },
 
     EVOKER = {
         DEVASTATION = {
-            { spellID = 351338, category = "interrupt", enabled = true }, -- Quell
-            { spellID = 357214, category = "knockback", enabled = true }, -- Wing Buffet
+            { spellID = 351338, category = "interrupt",    enabled = true }, -- Quell
+            { spellID = 357214, category = "knockback",    enabled = true }, -- Wing Buffet
+            { spellID = 368970, category = "knockback",    enabled = true }, -- Tail Swipe
             { spellID = 360806, category = "incapacitate", enabled = true }, -- Sleep Walk
         },
         PRESERVATION = {
-            { spellID = 351338, category = "interrupt", enabled = true }, -- Quell
-            { spellID = 357214, category = "knockback", enabled = true }, -- Wing Buffet
+            { spellID = 351338, category = "interrupt",    enabled = true }, -- Quell
+            { spellID = 357214, category = "knockback",    enabled = true }, -- Wing Buffet
+            { spellID = 368970, category = "knockback",    enabled = true }, -- Tail Swipe
             { spellID = 360806, category = "incapacitate", enabled = true }, -- Sleep Walk
         },
         AUGMENTATION = {
-            { spellID = 351338, category = "interrupt", enabled = true }, -- Quell
-            { spellID = 357214, category = "knockback", enabled = true }, -- Wing Buffet
+            { spellID = 351338, category = "interrupt",    enabled = true }, -- Quell
+            { spellID = 357214, category = "knockback",    enabled = true }, -- Wing Buffet
+            { spellID = 368970, category = "knockback",    enabled = true }, -- Tail Swipe
             { spellID = 360806, category = "incapacitate", enabled = true }, -- Sleep Walk
         },
     },
 
     HUNTER = {
         BEASTMASTERY = {
-            { spellID = 147362, category = "interrupt", enabled = true }, -- Counter Shot
-            { spellID = 19577,  category = "stun",      enabled = true }, -- Intimidation
-            { spellID = 109248, category = "stun",      enabled = true }, -- Binding Shot
+            { spellID = 147362, category = "interrupt",    enabled = true }, -- Counter Shot
+            { spellID = 19577,  category = "stun",         enabled = true }, -- Intimidation
+            { spellID = 109248, category = "stun",         enabled = true }, -- Binding Shot
             { spellID = 187650, category = "incapacitate", enabled = true }, -- Freezing Trap
             { spellID = 213691, category = "incapacitate", enabled = true }, -- Scatter Shot
+            { spellID = 392060, category = "silence",      enabled = true }, -- Wailing Arrow (Dark Ranger hero talent)
         },
         MARKSMANSHIP = {
-            { spellID = 147362, category = "interrupt", enabled = true }, -- Counter Shot
-            { spellID = 109248, category = "stun",      enabled = true }, -- Binding Shot
+            { spellID = 147362, category = "interrupt",    enabled = true }, -- Counter Shot
+            { spellID = 109248, category = "stun",         enabled = true }, -- Binding Shot
             { spellID = 187650, category = "incapacitate", enabled = true }, -- Freezing Trap
             { spellID = 213691, category = "incapacitate", enabled = true }, -- Scatter Shot
+            { spellID = 392060, category = "silence",      enabled = true }, -- Wailing Arrow (Dark Ranger hero talent)
         },
         SURVIVAL = {
             { spellID = 187707, category = "interrupt",    enabled = true }, -- Muzzle
@@ -131,24 +146,25 @@ KickCD.DefaultSpells = {
     MAGE = {
         ARCANE = {
             { spellID = 2139,   category = "interrupt",    enabled = true }, -- Counterspell
-            { spellID = 122,    category = "root",         enabled = true }, -- Frost Nova
             { spellID = 31661,  category = "incapacitate", enabled = true }, -- Dragon's Breath
             { spellID = 113724, category = "incapacitate", enabled = true }, -- Ring of Frost
             { spellID = 118,    category = "incapacitate", enabled = true }, -- Polymorph
+            { spellID = 157980, category = "knockback",    enabled = true }, -- Supernova (Arcane talent, knockup)
+            { spellID = 383121, category = "incapacitate", enabled = true }, -- Mass Polymorph (class talent)
         },
         FIRE = {
             { spellID = 2139,   category = "interrupt",    enabled = true }, -- Counterspell
             { spellID = 31661,  category = "incapacitate", enabled = true }, -- Dragon's Breath
-            { spellID = 122,    category = "root",         enabled = true }, -- Frost Nova
             { spellID = 113724, category = "incapacitate", enabled = true }, -- Ring of Frost
             { spellID = 118,    category = "incapacitate", enabled = true }, -- Polymorph
+            { spellID = 383121, category = "incapacitate", enabled = true }, -- Mass Polymorph (class talent)
         },
         FROST = {
             { spellID = 2139,   category = "interrupt",    enabled = true }, -- Counterspell
-            { spellID = 122,    category = "root",         enabled = true }, -- Frost Nova
             { spellID = 113724, category = "incapacitate", enabled = true }, -- Ring of Frost
             { spellID = 31661,  category = "incapacitate", enabled = true }, -- Dragon's Breath
             { spellID = 118,    category = "incapacitate", enabled = true }, -- Polymorph
+            { spellID = 383121, category = "incapacitate", enabled = true }, -- Mass Polymorph (class talent)
         },
     },
 
@@ -157,29 +173,35 @@ KickCD.DefaultSpells = {
             { spellID = 116705, category = "interrupt",    enabled = true }, -- Spear Hand Strike
             { spellID = 119381, category = "stun",         enabled = true }, -- Leg Sweep
             { spellID = 115078, category = "incapacitate", enabled = true }, -- Paralysis
+            { spellID = 198898, category = "fear",         enabled = true }, -- Song of Chi-Ji (class talent)
+            { spellID = 116844, category = "knockback",    enabled = true }, -- Ring of Peace (class talent)
         },
         MISTWEAVER = {
             { spellID = 116705, category = "interrupt",    enabled = true }, -- Spear Hand Strike
             { spellID = 119381, category = "stun",         enabled = true }, -- Leg Sweep
             { spellID = 115078, category = "incapacitate", enabled = true }, -- Paralysis
+            { spellID = 198898, category = "fear",         enabled = true }, -- Song of Chi-Ji (class talent)
+            { spellID = 116844, category = "knockback",    enabled = true }, -- Ring of Peace (class talent)
         },
         WINDWALKER = {
             { spellID = 116705, category = "interrupt",    enabled = true }, -- Spear Hand Strike
             { spellID = 119381, category = "stun",         enabled = true }, -- Leg Sweep
             { spellID = 115078, category = "incapacitate", enabled = true }, -- Paralysis
+            { spellID = 198898, category = "fear",         enabled = true }, -- Song of Chi-Ji (class talent)
+            { spellID = 116844, category = "knockback",    enabled = true }, -- Ring of Peace (class talent)
         },
     },
 
     PALADIN = {
         HOLY = {
-            { spellID = 853,    category = "stun",    enabled = true }, -- Hammer of Justice
+            { spellID = 853,    category = "stun",         enabled = true }, -- Hammer of Justice
             { spellID = 20066,  category = "incapacitate", enabled = true }, -- Repentance
             { spellID = 105421, category = "incapacitate", enabled = true }, -- Blinding Light
         },
         PROTECTION = {
-            { spellID = 96231,  category = "interrupt", enabled = true }, -- Rebuke
-            { spellID = 31935,  category = "silence",   enabled = true }, -- Avenger's Shield
-            { spellID = 853,    category = "stun",      enabled = true }, -- Hammer of Justice
+            { spellID = 96231,  category = "interrupt",    enabled = true }, -- Rebuke
+            { spellID = 31935,  category = "silence",      enabled = true }, -- Avenger's Shield
+            { spellID = 853,    category = "stun",         enabled = true }, -- Hammer of Justice
             { spellID = 105421, category = "incapacitate", enabled = true }, -- Blinding Light
             { spellID = 20066,  category = "incapacitate", enabled = true }, -- Repentance
         },
@@ -258,18 +280,22 @@ KickCD.DefaultSpells = {
             { spellID = 30283,  category = "stun",         enabled = true }, -- Shadowfury
             { spellID = 6789,   category = "fear",         enabled = true }, -- Mortal Coil
             { spellID = 5782,   category = "fear",         enabled = true }, -- Fear
+            { spellID = 5484,   category = "fear",         enabled = true }, -- Howl of Terror (class talent)
         },
         DEMONOLOGY = {
+            { spellID = 19647,  category = "interrupt",    enabled = true }, -- Spell Lock (Felhunter)
+            { spellID = 89766,  category = "stun",         enabled = true }, -- Axe Toss (Felguard, Demo's default pet)
+            { spellID = 30283,  category = "stun",         enabled = true }, -- Shadowfury
+            { spellID = 6789,   category = "fear",         enabled = true }, -- Mortal Coil
+            { spellID = 5782,   category = "fear",         enabled = true }, -- Fear
+            { spellID = 5484,   category = "fear",         enabled = true }, -- Howl of Terror (class talent)
+        },
+        DESTRUCTION = {
             { spellID = 19647,  category = "interrupt",    enabled = true }, -- Spell Lock (Felhunter)
             { spellID = 30283,  category = "stun",         enabled = true }, -- Shadowfury
             { spellID = 6789,   category = "fear",         enabled = true }, -- Mortal Coil
             { spellID = 5782,   category = "fear",         enabled = true }, -- Fear
-        },
-        DESTRUCTION = {
-            { spellID = 19647,  category = "interrupt", enabled = true }, -- Spell Lock (Felhunter)
-            { spellID = 30283,  category = "stun",      enabled = true }, -- Shadowfury
-            { spellID = 6789,   category = "fear",      enabled = true }, -- Mortal Coil
-            { spellID = 5782,   category = "fear",      enabled = true }, -- Fear
+            { spellID = 5484,   category = "fear",         enabled = true }, -- Howl of Terror (class talent)
         },
     },
 
@@ -286,6 +312,7 @@ KickCD.DefaultSpells = {
         },
         PROTECTION = {
             { spellID = 6552,   category = "interrupt", enabled = true }, -- Pummel
+            { spellID = 102060, category = "interrupt", enabled = true }, -- Disrupting Shout (AoE interrupt + taunt)
             { spellID = 46968,  category = "stun",      enabled = true }, -- Shockwave
             { spellID = 107570, category = "stun",      enabled = true }, -- Storm Bolt
             { spellID = 5246,   category = "fear",      enabled = true }, -- Intimidating Shout
