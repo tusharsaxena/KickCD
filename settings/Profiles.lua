@@ -61,12 +61,8 @@ local function Build(mainCategory)
         AceConfigDialog:Open("KickCD-Profiles", container)
     end)
 
-    local sub = Settings.RegisterCanvasLayoutSubcategory(
+    return Settings.RegisterCanvasLayoutSubcategory(
         mainCategory, ctx.panel, L["Profiles"])
-
-    Profiles._registered = true
-    Profiles._panel      = ctx.panel
-    return sub
 end
 
 if KickCD.Settings and KickCD.Settings.RegisterTab then
@@ -76,8 +72,13 @@ end
 -- Back-compat shim: earlier code paths drove Profiles:Register() from
 -- a PLAYER_LOGIN ticker. The unified pattern routes everything through
 -- KickCD.Settings.Register, but a legacy caller can still invoke this.
+-- Returns the sub-category (or nil) so the caller can stash it on
+-- KickCD.Settings.sub themselves if they need to.
 function Profiles:Register()
-    if self._registered then return true end
+    if KickCD.Settings and KickCD.Settings.sub
+       and KickCD.Settings.sub.profiles then
+        return true
+    end
     if KickCD.Settings and KickCD.Settings.main then
         local sub = Build(KickCD.Settings.main)
         if sub then
