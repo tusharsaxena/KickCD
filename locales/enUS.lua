@@ -188,3 +188,199 @@ L["Yes"]                         = "Yes"
 L["No"]                          = "No"
 L["OK"]                          = "OK"
 L["Cancel"]                      = "Cancel"
+
+
+-- General — visibility, master controls, resets
+L["Visibility"]                  = "Visibility"
+L["Reset all settings"]          = "Reset all settings"
+L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."] =
+    "Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."
+L["Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."] =
+    "Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."
+
+-- Icons tab — sizing and layout
+L["Sizing and Layout"]           = "Sizing and Layout"
+L["Primary size (in px)"]        = "Primary size (in px)"
+L["Gap (in px)"]                 = "Gap (in px)"
+L["Columns"]                     = "Columns"
+L["Rows"]                        = "Rows"
+L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."] =
+    "Horizontal extent of the secondary block — number of vertical lines arranged left/right."
+L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."] =
+    "Vertical extent of the secondary block — number of horizontal lines stacked up/down."
+L["Anchor point (of secondary icons relative to primary)"] =
+    "Anchor point (of secondary icons relative to primary)"
+L["Side and alignment of the primary icon the secondary block attaches to."] =
+    "Side and alignment of the primary icon the secondary block attaches to."
+L["Growth direction"]            = "Growth direction"
+L["Growth direction (of secondary icons)"] =
+    "Growth direction (of secondary icons)"
+L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."] =
+    "Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."
+L["First left then down"]        = "First left then down"
+L["First left then up"]          = "First left then up"
+L["First right then down"]       = "First right then down"
+L["First right then up"]         = "First right then up"
+L["First down then left"]        = "First down then left"
+L["First down then right"]       = "First down then right"
+L["First up then left"]          = "First up then left"
+L["First up then right"]         = "First up then right"
+L["Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."] =
+    "Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."
+L["Vertical pixel shift applied to the secondary block (positive = down, negative = up)."] =
+    "Vertical pixel shift applied to the secondary block (positive = down, negative = up)."
+L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."] =
+    "Horizontal pixel shift on top of the anchor (positive = right, negative = left)."
+L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."] =
+    "Vertical pixel shift on top of the anchor (positive = up, negative = down)."
+L["Icon zoom"]                   = "Icon zoom"
+L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."] =
+    "Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."
+L["Show border"]                 = "Show border"
+L["Draw a thin border around each icon."] =
+    "Draw a thin border around each icon."
+L["Border thickness (in px)"]    = "Border thickness (in px)"
+L["Border thickness in pixels."] = "Border thickness in pixels."
+L["Border color"]                = "Border color"
+L["Border color (RGBA)."]        = "Border color (RGBA)."
+L["Show tooltip on hover"]       = "Show tooltip on hover"
+L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."] =
+    "Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."
+L["Truncate after (characters)"] = "Truncate after (characters)"
+L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."] =
+    "Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."
+
+-- 13-anchor labels (used by anchor / icon-position pickers)
+L["Top left"]                    = "Top left"
+L["Top middle"]                  = "Top middle"
+L["Top right"]                   = "Top right"
+L["Left top"]                    = "Left top"
+L["Left middle"]                 = "Left middle"
+L["Left bottom"]                 = "Left bottom"
+L["Right top"]                   = "Right top"
+L["Right middle"]                = "Right middle"
+L["Right bottom"]                = "Right bottom"
+L["Bottom left"]                 = "Bottom left"
+L["Bottom middle"]               = "Bottom middle"
+L["Bottom right"]                = "Bottom right"
+L["Center"]                      = "Center"
+L["Inside left"]                 = "Inside left"
+L["Inside right"]                = "Inside right"
+L["Outside left"]                = "Outside left"
+L["Outside right"]               = "Outside right"
+
+-- Cast bar tab
+L["Cast bar"]                    = "Cast bar"
+L["Enable cast bar"]             = "Enable cast bar"
+L["Show the target cast bar."]   = "Show the target cast bar."
+L["Anchor"]                      = "Anchor"
+L["Anchor mode"]                 = "Anchor mode"
+L["Free (drag to move)"]         = "Free (drag to move)"
+L["Anchored to primary icon"]    = "Anchored to primary icon"
+L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."] =
+    "Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."
+L["Anchor on primary icon"]      = "Anchor on primary icon"
+L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."] =
+    "Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."
+L["Anchor on cast bar"]          = "Anchor on cast bar"
+L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."] =
+    "Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."
+L["X offset (in px)"]            = "X offset (in px)"
+L["Y offset (in px)"]            = "Y offset (in px)"
+L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."] =
+    "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."
+L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."] =
+    "Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."
+L["Orientation"]                 = "Orientation"
+L["Horizontal: bar stretches across width. Vertical: bar runs up/down."] =
+    "Horizontal: bar stretches across width. Vertical: bar runs up/down."
+L["Up"]                          = "Up"
+L["Down"]                        = "Down"
+L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."] =
+    "Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."
+L["Auto-size to icon grid"]      = "Auto-size to icon grid"
+L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
+    "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
+L["Cast bar width (in px)"]      = "Cast bar width (in px)"
+L["Cast bar width in pixels."]   = "Cast bar width in pixels."
+L["Cast bar height (in px)"]     = "Cast bar height (in px)"
+L["Cast bar height in pixels."]  = "Cast bar height in pixels."
+L["Icon position"]               = "Icon position"
+L["Where to place the spell icon, or hide it entirely."] =
+    "Where to place the spell icon, or hide it entirely."
+L["Icon size (in px)"]           = "Icon size (in px)"
+L["Spell icon size in pixels (0 hides the icon)."] =
+    "Spell icon size in pixels (0 hides the icon)."
+L["Show spark"]                  = "Show spark"
+L["Render the leading-edge spark on the bar."] =
+    "Render the leading-edge spark on the bar."
+L["Spell name"]                  = "Spell name"
+L["Show spell name"]             = "Show spell name"
+L["Display the cast spell's name on the bar."] =
+    "Display the cast spell's name on the bar."
+L["Where to anchor the spell name relative to the bar."] =
+    "Where to anchor the spell name relative to the bar."
+L["Cast time"]                   = "Cast time"
+L["Show cast time"]              = "Show cast time"
+L["Display the remaining / total cast time on the bar."] =
+    "Display the remaining / total cast time on the bar."
+L["Where to anchor the remaining-time text relative to the bar."] =
+    "Where to anchor the remaining-time text relative to the bar."
+L["Spell name color"]            = "Spell name color"
+L["RGBA color of the spell-name text."] =
+    "RGBA color of the spell-name text."
+L["Font for the spell name and cast time text."] =
+    "Font for the spell name and cast time text."
+L["Cast-bar text size in pixels."]= "Cast-bar text size in pixels."
+L["Font flags"]                  = "Font flags"
+L["Outline / monochrome flags applied to cast-bar text."] =
+    "Outline / monochrome flags applied to cast-bar text."
+L["Outline / monochrome flags applied to cooldown text."] =
+    "Outline / monochrome flags applied to cooldown text."
+L["None"]                        = "None"
+L["Off"]                         = "Off"
+L["Outline"]                     = "Outline"
+L["Thick outline"]               = "Thick outline"
+L["Monochrome"]                  = "Monochrome"
+L["Interruptible casts"]         = "Interruptible casts"
+L["Non-interruptible casts"]     = "Non-interruptible casts"
+L["Bar texture"]                 = "Bar texture"
+L["LibSharedMedia statusbar texture used for interruptible casts."] =
+    "LibSharedMedia statusbar texture used for interruptible casts."
+L["LibSharedMedia statusbar texture used for non-interruptible casts."] =
+    "LibSharedMedia statusbar texture used for non-interruptible casts."
+L["Bar color"]                   = "Bar color"
+L["RGBA bar fill color when the target's cast is interruptible."] =
+    "RGBA bar fill color when the target's cast is interruptible."
+L["RGBA bar fill color when the target's cast cannot be interrupted."] =
+    "RGBA bar fill color when the target's cast cannot be interrupted."
+L["Background color"]            = "Background color"
+L["RGBA color drawn behind the bar."] =
+    "RGBA color drawn behind the bar."
+L["Border"]                      = "Border"
+L["Border style"]                = "Border style"
+L["LibSharedMedia border texture (edge style) for interruptible casts."] =
+    "LibSharedMedia border texture (edge style) for interruptible casts."
+L["LibSharedMedia border texture (edge style) for non-interruptible casts."] =
+    "LibSharedMedia border texture (edge style) for non-interruptible casts."
+L["Border edge size in pixels."] = "Border edge size in pixels."
+L["Draw a border around the cast bar for interruptible casts."] =
+    "Draw a border around the cast bar for interruptible casts."
+L["Draw a border around the cast bar for non-interruptible casts."] =
+    "Draw a border around the cast bar for non-interruptible casts."
+L["RGBA border color for interruptible casts."] =
+    "RGBA border color for interruptible casts."
+L["RGBA border color for non-interruptible casts."] =
+    "RGBA border color for non-interruptible casts."
+L["Text"]                        = "Text"
+
+-- Cast bar runtime labels
+L["KickCD castbar"]              = "KickCD castbar"
+L["KickCD castbar — drag to move"] =
+    "KickCD castbar — drag to move"
+
+-- Spells editor extras
+L["Spell known"]                 = "Spell known"
+L["Spell not known"]             = "Spell not known"
+L["Category for future filtering. Currently informational only."] =
+    "Category for future filtering. Currently informational only."
