@@ -60,12 +60,15 @@ local Cooldowns = KickCD:NewModule("Cooldowns", "AceEvent-3.0")
 
 --- Look up the (CLASS, SPEC) tokens used to key db.profile.spells.
 -- CLASS is the localization-independent file token from UnitClass(); SPEC
--- is GetSpecializationInfo's name uppercased to match the keys built in
+-- is GetSpecializationInfo's localised name routed through
+-- Util.NormalizeSpecToken so multi-word names (English "Beast Mastery"
+-- and several non-English specs) collapse to the keys built in
 -- defaults/Spells.lua.
 -- @return classToken (string|nil), specToken (string|nil)
 local function ResolveClassSpec()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
+    classFile = KickCD.Util.NormalizeClassToken(classFile)
 
     local idx = GetSpecialization and GetSpecialization()
     if not idx then return classFile, nil end
@@ -73,7 +76,7 @@ local function ResolveClassSpec()
     local _, specName = GetSpecializationInfo(idx)
     if not specName then return classFile, nil end
 
-    return classFile, specName:upper()
+    return classFile, KickCD.Util.NormalizeSpecToken(specName)
 end
 
 -- ---------------------------------------------------------------------------
@@ -234,18 +237,16 @@ function Cooldowns:Rebuild()
 
     if not isEnabled() then return end
 
-    local profile = KickCD.db and KickCD.db.profile
-    if not profile or type(profile.spells) ~= "table" then
-        return
-    end
-
     local class, spec = ResolveClassSpec()
     if not class or not spec then
         return
     end
 
-    local list = profile.spells[class] and profile.spells[class][spec]
-    if type(list) ~= "table" then
+    -- Read-only lookup via Database:GetSpellList — never lazy-creates
+    -- a per-spec table, so a class+spec the user has never customised
+    -- doesn't pollute the saved-vars with an empty entry.
+    local list = KickCD.Database and KickCD.Database:GetSpellList(class, spec)
+    if not list then
         return
     end
 
@@ -275,13 +276,38 @@ function Cooldowns:Rebuild()
 end
 
 --- Re-poll all watched spells, fire KickCD_SPELL_STATE only for those whose
---- state changed since last poll.
+--- state changed since last poll. When a previously-watched spell becomes
+--- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
+--- swapped to the other branch of a choice node, encounter mechanic
+--- suppresses the spell), emit a sentinel "ready / no cooldown" payload
+--- and drop the entry from self.watched. The IconGrid's OnSpellState path
+--- already handles a no-cdObject branch (renders ready visuals); the next
+--- Rebuild on SPELLS_CHANGED / TRAIT_CONFIG_UPDATED removes the now-
+--- orphaned icon from ordered[]. Without this cleanup the icon would
+--- linger with whatever state was current when the spell vanished, until
+--- a manual /reload.
 function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
     for id, prev in pairs(self.watched) do
         local next_ = self:PollSpell(id)
-        if next_ and StateChanged(prev, next_) then
+        if next_ == nil then
+            -- Spell disappeared (pet dismiss, talent untrain, ...). Force
+            -- the icon back to ready visuals and stop polling it; the next
+            -- Rebuild trims it out of the watched list entirely.
+            self.watched[id] = nil
+            KickCD:SendMessage("KickCD_SPELL_STATE", {
+                spellID        = id,
+                ready          = false,
+                isActive       = false,
+                cdObject       = nil,
+                chargeCdObject = nil,
+                charges        = nil,
+            })
+            if KickCD._debugLog then
+                dprint(("drop  [%d] became unavailable; sentinel SPELL_STATE emitted"):format(id))
+            end
+        elseif StateChanged(prev, next_) then
             self.watched[id] = next_
             KickCD:SendMessage("KickCD_SPELL_STATE", {
                 spellID        = next_.spellID,

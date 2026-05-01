@@ -41,7 +41,12 @@
 --                               which can anchor relative to the primary icon
 --                               and/or auto-size to the grid) can sync after
 --                               the grid frame's size and the primary icon
---                               button reference settle. Payload is {}.
+--                               button reference settle. Payload is
+--                               { gridFrame, primaryIcon, width, height };
+--                               primaryIcon is nil when the active list is
+--                               empty. Public accessors GetGridFrame /
+--                               GetPrimaryIcon remain for callers that
+--                               haven't yet adopted the payload form.
 
 local KickCD   = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local IconGrid = KickCD:NewModule("IconGrid", "AceEvent-3.0")
@@ -64,6 +69,18 @@ local ordered = {}
 -- OnEnable can run before UIParent is fully available in some edge cases
 -- (e.g., test rigs that load us early).
 local grid
+
+-- Set of icons whose cooldownText FontString needs per-tick refresh.
+-- Keyed by widget reference (the Icon button itself); the shared
+-- ticker iterates pairs(_textIcons) and calls _RenderCooldownText on
+-- each. Prior implementation drove the same per-icon work via N
+-- per-frame OnUpdate scripts; collapsing to a single ticker cuts the
+-- fixed cost to one timer callback regardless of how many cooldowns
+-- are visible. _textTicker is the single C_Timer.NewTicker handle —
+-- nil while the set is empty (the ticker auto-pauses) and live while
+-- at least one icon is registered.
+local _textIcons  = {}
+local _textTicker
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -238,17 +255,21 @@ local function BuildCurves()
     end
 end
 
--- Resolve the active spec key the same way Database/Cooldowns do:
--- classFile is uppercase ("MAGE"); specName uppercased to match the keys
--- A3 used in defaults/Spells.lua ("ARCANE", "FROST"...).
+-- Resolve the active spec key the same way Database/Cooldowns do.
+-- classFile is the locale-independent token from UnitClass(); specName
+-- is the localised display name from GetSpecializationInfo, normalised
+-- through Util.NormalizeSpecToken so multi-word names (English "Beast
+-- Mastery" and several non-English specs) collapse to the keys built
+-- in defaults/Spells.lua.
 local function getActiveSpecKey()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
+    classFile = KickCD.Util.NormalizeClassToken(classFile)
     local specIdx = GetSpecialization and GetSpecialization()
     if not specIdx then return classFile, nil end
     local _, specName = GetSpecializationInfo(specIdx)
     if not specName then return classFile, nil end
-    return classFile, string.upper(specName)
+    return classFile, KickCD.Util.NormalizeSpecToken(specName)
 end
 
 -- ---------------------------------------------------------------------------
@@ -355,8 +376,14 @@ local function CreateIconWidget(parent)
         end
         GameTooltip:Show()
     end)
-    btn:SetScript("OnLeave", function()
-        if GameTooltip then GameTooltip:Hide() end
+    btn:SetScript("OnLeave", function(self)
+        -- Only dismiss the tooltip if it's the one WE set. If the user
+        -- moved the mouse from this icon onto another addon's frame
+        -- that owns the tooltip, indiscriminately calling :Hide()
+        -- would dismiss someone else's hover.
+        if GameTooltip and GameTooltip:GetOwner() == self then
+            GameTooltip:Hide()
+        end
     end)
 
     -- Mix in the Icon methods. The button itself is the public widget.
@@ -378,14 +405,18 @@ end
 -- We can't conditionally choose the format (no comparison on remaining is
 -- legal), so we live with a single fixed format ("%.1f").
 --
--- The OnUpdate calls SetFormattedText every ~0.1s. For full spell-level
--- cooldowns we additionally re-poll the plain `isActive` bool from
--- Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN can lag the actual
--- cooldown end by a few hundred ms, leaving the text stuck at "0.0"
--- until Cooldowns:Refresh re-emits SPELL_STATE. Because isActive is
--- plain (taint-safe), reading it here is free; on the flip we kill the
--- text + clear the swipe locally and let Cooldowns catch up via its
--- own event handler shortly after.
+-- A single module-level C_Timer.NewTicker (see _textTicker below) iterates
+-- the registered icons every 0.1s and calls _RenderCooldownText on each.
+-- Per-icon OnUpdate scripts were the previous implementation but ran a
+-- separate frame-driver per visible cooldown — N icons meant N OnUpdate
+-- callbacks per tick. The shared ticker collapses the fixed cost to one.
+-- For full spell-level cooldowns we additionally re-poll the plain
+-- `isActive` bool from Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN
+-- can lag the actual cooldown end by a few hundred ms, leaving the text
+-- stuck at "0.0" until Cooldowns:Refresh re-emits SPELL_STATE. Because
+-- isActive is plain (taint-safe), reading it here is free; on the flip
+-- we kill the text + clear the swipe locally and let Cooldowns catch up
+-- via its own event handler shortly after.
 --
 -- For the charge-recharge path (cdObject = state.chargeCdObject,
 -- isFullCooldown=false), the spell-level isActive stays false the
@@ -398,40 +429,46 @@ function Icon:StartCooldownText(cdObject, isFullCooldown)
         return
     end
     self._cdObject       = cdObject
-    self._cdAcc          = 0
     self._isFullCooldown = isFullCooldown and true or false
     -- Initial paint. SetFormattedText handles the secret value via its
-    -- C-side argument path; the same pattern works inside OnUpdate.
+    -- C-side argument path; the same pattern is used by the shared
+    -- ticker driver.
     self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
     self.cooldownText:Show()
-    self:SetScript("OnUpdate", function(s, elapsed)
-        s._cdAcc = (s._cdAcc or 0) + elapsed
-        if s._cdAcc < 0.1 then return end
-        s._cdAcc = 0
-        local obj = s._cdObject
-        if not obj then
-            s:StopCooldownText()
-            return
-        end
-        if s._isFullCooldown then
-            local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(s.spellID)
-            if not isActive then
-                s:StopCooldownText()
-                if s.cooldown then
-                    s.cooldown:Hide()
-                    s.cooldown:Clear()
-                end
-                return
-            end
-        end
-        s.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
-    end)
+    -- Register with the module-level ticker (see IconGrid:_TextTickerStart).
+    -- Idempotent — re-registering a widget already in the set is a no-op.
+    IconGrid:_RegisterTextIcon(self)
 end
 
 function Icon:StopCooldownText()
-    self:SetScript("OnUpdate", nil)
+    IconGrid:_UnregisterTextIcon(self)
     self._cdObject = nil
     self.cooldownText:Hide()
+end
+
+--- Per-tick render for one icon's cooldown text. Called by the module-
+--- level ticker for every registered widget. Mirrors the per-frame work
+--- the previous OnUpdate did (full-cooldown plain-bool early-exit +
+--- secret-safe SetFormattedText), but the iteration cadence comes from
+--- the shared ticker, not a per-icon script.
+function Icon:_RenderCooldownText()
+    local obj = self._cdObject
+    if not obj then
+        self:StopCooldownText()
+        return
+    end
+    if self._isFullCooldown then
+        local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(self.spellID)
+        if not isActive then
+            self:StopCooldownText()
+            if self.cooldown then
+                self.cooldown:Hide()
+                self.cooldown:Clear()
+            end
+            return
+        end
+    end
+    self.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
 end
 
 -- ---------------------------------------------------------------------------
@@ -464,6 +501,28 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 -- ports) can coexist without each other's glow effects. ButtonGlow_Stop
 -- doesn't take a key (only one Blizzard-style glow per frame); the
 -- other three Stop fns do.
+--
+-- Single-key constraint: today every glow trigger / type writes to the
+-- same `"KickCD"` slot, so an icon can host at most one KickCD-managed
+-- glow at a time. That's the right shape for v0.1's mutually-exclusive
+-- triggers (a spell is either ready-and-castable, or it isn't), but a
+-- future "interruptible-target-cast PLUS spell-ready" combined glow
+-- would need TWO concurrent glows on the same icon — and LCG enforces
+-- that two different glow effects targeting the same key cancel each
+-- other.
+--
+-- To extend safely:
+--   1. Promote LCG_KEY to a small enum (LCG_KEY_PRIMARY / LCG_KEY_TARGET
+--      or similar — pick names that describe the role, not the visual).
+--   2. StartGlow / StopGlow take an explicit key argument; the per-slot
+--      decision in UpdateGlow picks which key it's writing to.
+--   3. ButtonGlow_Start still has no key (one Blizzard-style glow per
+--      frame, period) — that constraint is on Blizzard's side, not LCG's,
+--      so a combined-glow scenario will need to pick one of the three
+--      keyed effects (proc / pixel / autocast) for at least one slot.
+-- Until then, leave LCG_KEY single — adding a second key has API churn
+-- across StartGlow / StopGlow / UpdateGlow callers, and a real
+-- combined-glow scenario hasn't materialised yet.
 local LCG_KEY = "KickCD"
 
 local function unpackGlowColor(c)
@@ -796,6 +855,56 @@ function Icon:ApplyTextConfig(cfg)
 end
 
 -- ---------------------------------------------------------------------------
+-- Shared cooldown-text ticker
+-- ---------------------------------------------------------------------------
+--
+-- One C_Timer.NewTicker(0.1) drives every visible cooldown's countdown
+-- text. Icons register on StartCooldownText and deregister on
+-- StopCooldownText (or ReleaseAll); the ticker pauses (Cancel + nil)
+-- the moment the set goes empty so the addon costs nothing while no
+-- cooldowns are active. Re-arms on the next register call.
+
+local function _tickAllTextIcons()
+    -- Snapshot the count and short-circuit if empty — guards against
+    -- a race where the ticker fires after the last icon deregistered
+    -- but before we got around to cancelling the timer.
+    if next(_textIcons) == nil then
+        if _textTicker and _textTicker.Cancel then
+            _textTicker:Cancel()
+        end
+        _textTicker = nil
+        return
+    end
+    for icon in pairs(_textIcons) do
+        if icon and icon._RenderCooldownText then
+            icon:_RenderCooldownText()
+        end
+    end
+end
+
+function IconGrid:_RegisterTextIcon(icon)
+    if not icon then return end
+    -- Idempotent — re-registering an already-active icon is a no-op.
+    if _textIcons[icon] then return end
+    _textIcons[icon] = true
+    -- Lazy-start the ticker on the first registered icon.
+    if not _textTicker and C_Timer and C_Timer.NewTicker then
+        _textTicker = C_Timer.NewTicker(0.1, _tickAllTextIcons)
+    end
+end
+
+function IconGrid:_UnregisterTextIcon(icon)
+    if not icon then return end
+    if not _textIcons[icon] then return end
+    _textIcons[icon] = nil
+    -- The ticker itself notices the empty set on its next fire and
+    -- self-cancels — see _tickAllTextIcons above. We could cancel
+    -- eagerly here too, but lazy cancel keeps the deregister path
+    -- O(1) and avoids double-free races if Cancel is non-idempotent
+    -- on a given Blizzard build.
+end
+
+-- ---------------------------------------------------------------------------
 -- Pool
 -- ---------------------------------------------------------------------------
 
@@ -822,7 +931,9 @@ function IconGrid:ReleaseAll()
         btn._lastState = nil
         btn._cdObject  = nil
         btn._isPrimary = nil
-        btn:SetScript("OnUpdate", nil)
+        -- Pull the icon out of the shared cooldown-text ticker before
+        -- recycling it; the next acquire will re-register if needed.
+        self:_UnregisterTextIcon(btn)
         -- Reset cooldown so a stale swipe doesn't reappear on re-acquire.
         if btn.cooldown then btn.cooldown:Clear() end
         if btn.chargesText then btn.chargesText:Hide() end
@@ -853,14 +964,28 @@ function IconGrid:BuildActiveList()
     local classFile, specName = getActiveSpecKey()
     if not (classFile and specName) then return end
 
-    local profileSpells = KickCD.db.profile.spells
-    local list = profileSpells
-        and profileSpells[classFile]
-        and profileSpells[classFile][specName]
-    if type(list) ~= "table" then return end
+    -- Read-only lookup via Database:GetSpellList — never lazy-creates
+    -- a per-spec table, so a class+spec the user has never customised
+    -- doesn't pollute the saved-vars with an empty entry.
+    local list = KickCD.Database and KickCD.Database:GetSpellList(classFile, specName)
+    if not list then return end
 
+    -- Dedupe by spellID so pool.active stays strictly 1:1 with id.
+    -- A duplicate id (hand-edited saved-vars, profile copy gone wrong,
+    -- or a future bug at the mutation layer) would otherwise have
+    -- AcquireIcon overwrite pool.active[id] with the second widget,
+    -- orphaning the first — which then never receives SPELL_STATE
+    -- updates while still being visible. Skip the duplicate; surface
+    -- it in the debug log when the user has _debugLog on.
+    local _seen = {}
     for _, entry in ipairs(list) do
-        if entry and entry.enabled ~= false and entry.spellID then
+        if entry and entry.enabled ~= false and entry.spellID and _seen[entry.spellID] then
+            if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print(("IconGrid: duplicate spellID %d in %s/%s — skipping"):format(
+                    entry.spellID, classFile, specName))
+            end
+        elseif entry and entry.enabled ~= false and entry.spellID then
+            _seen[entry.spellID] = true
             -- FR-2.8: hide entries the player can't see in their own spellbook.
             -- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
             -- additionally requires the spell to be actually accessible right now,
@@ -1137,8 +1262,13 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     end
 
     -- Hide overflow secondaries — pool keeps them around for next rebuild.
+    -- Track the truncation count so the caller can warn the user once
+    -- per (class/spec/cap) tuple — silently dropping icons past the
+    -- configured grid size used to be an invisible failure mode.
+    local truncated = 0
     for i = cap + 1, #secondaries do
         secondaries[i]:Hide()
+        truncated = truncated + 1
     end
 
     -- Add abs(offset) to the grid bounding box so dragging stays sane
@@ -1147,7 +1277,7 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     local height = gridH + math.abs(offY)
     if width  <= 0 then width  = primarySize end
     if height <= 0 then height = primarySize end
-    return floor(width), floor(height)
+    return floor(width), floor(height), truncated
 end
 
 function IconGrid:Layout()
@@ -1183,7 +1313,14 @@ function IconGrid:Layout()
     if #ordered == 0 then
         grid:SetSize(primarySize, primarySize)
         if KickCD.SendMessage then
-            KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+            -- primaryIcon is nil here (no spells in the active list) —
+            -- subscribers fall back to the public accessor or just skip.
+            KickCD:SendMessage("KickCD_GRID_LAYOUT", {
+                gridFrame   = grid,
+                primaryIcon = nil,
+                width       = primarySize,
+                height      = primarySize,
+            })
         end
         return
     end
@@ -1192,14 +1329,47 @@ function IconGrid:Layout()
     local secondaries = {}
     for i = 2, #ordered do secondaries[i - 1] = ordered[i] end
 
-    local w, h = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
-                             anchor, grow, rows, cols, offX, offY)
+    local w, h, truncated = layoutBlock(primary, secondaries, primarySize, secondarySize, gap,
+                                        anchor, grow, rows, cols, offX, offY)
     grid:SetSize(w, h)
 
+    -- Warn once per (class/spec/cap) tuple when the configured grid
+    -- size dropped icons. Without this the user sees a smaller grid
+    -- than they configured with no indication that some spells are
+    -- silently invisible. The dedup key includes cap so changing
+    -- secondaryRows / secondaryCols re-arms the warning.
+    if truncated and truncated > 0 then
+        local cap     = (rows or 0) * (cols or 0)
+        local clsKey  = "?/?"
+        local cls, spc = getActiveSpecKey()
+        if cls and spc then clsKey = cls .. "/" .. spc end
+        local key = clsKey .. "/" .. tostring(cap)
+        if self._truncationWarnedFor ~= key then
+            self._truncationWarnedFor = key
+            if KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print(("dropped %d icon(s) past the %d-slot grid for %s — bump rows*cols or remove spells")
+                    :format(truncated, cap, clsKey))
+            end
+        end
+    elseif self._truncationWarnedFor and (truncated == 0 or not truncated) then
+        -- No truncation this pass (user fixed it or the spell list shrank).
+        -- Clear the dedup key so a future overflow re-warns.
+        self._truncationWarnedFor = nil
+    end
+
     -- Notify dependent modules (Castbar) that grid geometry / primary icon
-    -- reference may have changed.
+    -- reference may have changed. Payload carries the gridFrame +
+    -- primaryIcon references and the post-layout bounding box so the
+    -- subscriber doesn't need to reach back through the public accessors.
+    -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
+    -- that haven't yet adopted the payload form.
     if KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+        KickCD:SendMessage("KickCD_GRID_LAYOUT", {
+            gridFrame   = grid,
+            primaryIcon = primary,
+            width       = w,
+            height      = h,
+        })
     end
 end
 
@@ -1228,6 +1398,14 @@ local function onDragStop(self)
     if KickCD.db and KickCD.db.profile then
         KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
         KickCD.db.profile.anchors.icons = KickCD.Util.SaveAnchor(self)
+    end
+    -- Fire the closed bus message so any future "anchor-aware"
+    -- subscriber (e.g. a hypothetical Castbar mode that follows the
+    -- grid's free-floating position) gets notified. IconGrid's own
+    -- OnConfigChanged handler is idempotent on `general` — re-anchoring
+    -- to the just-saved value is a no-op — so this doesn't double-work.
+    if KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
     end
 end
 
@@ -1450,7 +1628,60 @@ end
 --- target cast start/stop, interruptibility flip) — the icons' Cooldowns
 --- state hasn't moved but the glow gate has, so we need to push the new
 --- decision through.
+---
+--- Short-circuit on a (hostileCasting, interruptible) gate that hasn't
+--- moved since the previous call. Boss casts that fire many short
+--- abilities used to retrigger N icon evaluations per cast event even
+--- when the gate decision was identical to last time; this caches the
+--- two booleans the trigger predicates branch on and skips the per-icon
+--- iteration when neither moved. Cache is recomputed on every event the
+--- function is called from (see OnTargetCastEvent / OnTargetChanged /
+--- the per-icon Apply / ApplyTextConfig fall-throughs).
 function IconGrid:RefreshAllGlows()
+    -- Compute the gate booleans once. `interruptible` is a tri-state:
+    --   * true  — target is hostile-casting AND the cast is interruptible
+    --   * false — target is hostile-casting AND the cast is NOT interruptible
+    --   * nil   — no hostile cast in progress (both true/false reads as
+    --             irrelevant to the trigger decision)
+    -- Compat.IsHostileUnitCasting handles existence/can-attack gates
+    -- and existing-channel checks; we only need to layer interruptibility
+    -- on top.
+    local hostileCasting = KickCD.Compat
+        and KickCD.Compat.IsHostileUnitCasting
+        and KickCD.Compat.IsHostileUnitCasting("target") or false
+    local interruptible
+    if hostileCasting and _G.UnitCastingInfo then
+        local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo("target")
+        if notInterruptible == nil and _G.UnitChannelInfo then
+            local _, _, _, _, _, _, ni = _G.UnitChannelInfo("target")
+            notInterruptible = ni
+        end
+        -- notInterruptible may be secret-tainted; comparing it directly
+        -- in Lua would error in tainted scope. We only need to detect
+        -- "did the truthy/falsy state change?" — convert through a C-side
+        -- coercion via `not not` IF the value is plain. When it's a secret
+        -- we leave it as-is and skip the equality compare in the gate
+        -- (treat any secret reading as "moved" and re-run iteration —
+        -- correctness over efficiency for the rare interruptibility flip).
+        if issecretvalue and issecretvalue(notInterruptible) then
+            interruptible = "secret"
+        else
+            interruptible = not notInterruptible
+        end
+    else
+        interruptible = nil
+    end
+
+    local prev = self._lastGlowGate
+    if prev
+       and prev.hostileCasting == hostileCasting
+       and prev.interruptible  == interruptible
+       and interruptible ~= "secret"
+    then
+        return
+    end
+    self._lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
+
     for _, btn in ipairs(ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end
     end

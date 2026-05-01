@@ -15,7 +15,20 @@ KickCD.Database = Database
 -- Defaults (DEFAULT_PROFILE shape per TECHNICAL_DESIGN §4)
 -- ---------------------------------------------------------------------------
 
+-- Schema version. Increment whenever a non-additive change is made to
+-- DEFAULT_PROFILE's shape (rename, restructure, type change). Additive
+-- changes (new leaf settings) are absorbed by AceDB's defaults merge
+-- and don't need a version bump. Database:MigrateProfile reads this
+-- field on Init and on every profile swap and walks any required
+-- migrations forward; today the migrator is a no-op for v1.
+local CURRENT_DB_VERSION = 1
+
 local DEFAULT_PROFILE = {
+    -- Schema version stamped onto every newly-created profile so future
+    -- migrations can tell "this profile was last touched at version N"
+    -- and apply the right transforms. Existing profiles missing the
+    -- field are treated as v1 (the original shape) by MigrateProfile.
+    dbVersion  = CURRENT_DB_VERSION,
     enabled    = true,
     locked     = true,
     scale      = 1.0,
@@ -221,6 +234,60 @@ local DEFAULTS = {
 KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 
 -- ---------------------------------------------------------------------------
+-- Spell-list traversal helpers
+-- ---------------------------------------------------------------------------
+--
+-- Every consumer that needs to read or mutate a spec's spell list goes
+-- through these two helpers so the `db.profile.spells[CLASS][SPEC]`
+-- walk lives in exactly one place. The split between read-only and
+-- lazy-create matters: getActiveList in the panel fires on every
+-- dropdown browse, and lazy-creating an empty per-spec table on every
+-- browse pollutes the saved-vars file with 13 classes × 4 specs of
+-- empty tables. The read-only helper returns nil for missing entries
+-- so consumers can short-circuit without touching the profile shape.
+--
+-- Callers:
+--   * GetSpellList:    Cooldowns:Rebuild, IconGrid:BuildActiveList,
+--                      core/KickCD.lua slash-command read paths,
+--                      settings/Spells.lua getActiveList.
+--   * EnsureSpellList: core/KickCD.lua spellsAdd / spellsReset,
+--                      settings/Spells.lua mutating popups.
+
+--- Read-only spell-list lookup. Returns the entry array (or nil if no
+--- list exists for this class+spec). Never mutates the profile shape,
+--- so safe to call from browse paths that flip class/spec dropdowns.
+-- @param class string normalised class file token (e.g. "HUNTER")
+-- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @return table|nil — the list or nil
+function Database:GetSpellList(class, spec)
+    if not (class and spec and self.db and self.db.profile) then return nil end
+    local spells = self.db.profile.spells
+    if type(spells) ~= "table" then return nil end
+    local byClass = spells[class]
+    if type(byClass) ~= "table" then return nil end
+    local list = byClass[spec]
+    if type(list) ~= "table" then return nil end
+    return list
+end
+
+--- Lazy-create spell-list lookup. Creates the per-class and per-spec
+--- tables if missing, then returns the list. Use this only from
+--- mutators (Add / Reset / Reorder) where an empty list IS the right
+--- post-condition for an unseeded spec. Browse-only consumers should
+--- use GetSpellList instead.
+-- @param class string normalised class file token (e.g. "HUNTER")
+-- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @return table|nil — the list, or nil if the profile isn't ready
+function Database:EnsureSpellList(class, spec)
+    if not (class and spec and self.db and self.db.profile) then return nil end
+    local profile = self.db.profile
+    profile.spells = profile.spells or {}
+    profile.spells[class] = profile.spells[class] or {}
+    profile.spells[class][spec] = profile.spells[class][spec] or {}
+    return profile.spells[class][spec]
+end
+
+-- ---------------------------------------------------------------------------
 -- Spells default-merge
 -- ---------------------------------------------------------------------------
 --
@@ -239,6 +306,24 @@ end
 --- Populate the active profile's spells from KickCD.DefaultSpells, and
 --- append the racial cast-stopper for the player's race. Idempotent for
 --- already-populated profiles — only runs once per profile.
+---
+--- "No re-seed if non-empty" is a deliberate policy, not an oversight.
+--- A user who has customised any class+spec (even by clearing every row
+--- of an active spec) has signalled intent: subsequent logins must NOT
+--- silently re-seed their work. The empty check is on the WHOLE
+--- `profile.spells` table — if any class entry exists at all, every
+--- spec list is left alone, including ones the user hasn't touched.
+---
+--- Recovery path for users who DO want defaults back:
+---   * `/kcd reset spells`              — wipe all class+spec lists and
+---                                        re-seed from defaults +
+---                                        racial. Fires through
+---                                        Database:ResetAllSpells.
+---   * `/kcd spells reset [CLASS SPEC]` — restore a single spec list to
+---                                        defaults; leaves every other
+---                                        spec untouched.
+--- The settings panel's per-spec "Defaults" button (KICKCD_RESET_SPELLS
+--- popup) maps to the second form.
 function Database:BuildSpells()
     if not (self.db and self.db.profile) then return end
 
@@ -263,23 +348,26 @@ function Database:BuildSpells()
     -- Deep-copy each {spellID, category} entry into a profile-shaped record
     -- with enabled=true. The defaults file uses positional pairs to stay
     -- compact; the profile uses named fields so user edits in the UI are
-    -- self-describing in the saved-variable file.
+    -- self-describing in the saved-variable file. EnsureSpellList lazy-
+    -- creates the per-class / per-spec containers before we overwrite the
+    -- list with the freshly-built copy.
     for class, specs in pairs(source) do
-        profile.spells[class] = profile.spells[class] or {}
         for spec, list in pairs(specs) do
-            local out = {}
+            local target = self:EnsureSpellList(class, spec)
+            -- Wipe in place rather than replacing the table — keeps any
+            -- references downstream stable across the build.
+            for i = #target, 1, -1 do target[i] = nil end
             for i, entry in ipairs(list) do
                 local id  = entry.spellID  or entry[1]
                 local cat = entry.category or entry[2]
                 if id then
-                    out[i] = {
+                    target[#target + 1] = {
                         spellID  = id,
                         category = cat or "other",
                         enabled  = entry.enabled ~= false,
                     }
                 end
             end
-            profile.spells[class][spec] = out
         end
     end
 
@@ -291,19 +379,22 @@ function Database:BuildSpells()
         local _, classFile = UnitClass("player")
         local racialID = racials[race]
         if racialID and classFile and profile.spells[classFile] then
-            for _, list in pairs(profile.spells[classFile]) do
-                -- Avoid appending if it's already in the list (defensive —
-                -- some default lists may already include it via PvE bias).
-                local already = false
-                for _, e in ipairs(list) do
-                    if e.spellID == racialID then already = true; break end
-                end
-                if not already then
-                    table.insert(list, {
-                        spellID  = racialID,
-                        category = "racial",
-                        enabled  = true,
-                    })
+            for spec in pairs(profile.spells[classFile]) do
+                local list = self:GetSpellList(classFile, spec)
+                if list then
+                    -- Avoid appending if it's already in the list (defensive —
+                    -- some default lists may already include it via PvE bias).
+                    local already = false
+                    for _, e in ipairs(list) do
+                        if e.spellID == racialID then already = true; break end
+                    end
+                    if not already then
+                        table.insert(list, {
+                            spellID  = racialID,
+                            category = "racial",
+                            enabled  = true,
+                        })
+                    end
                 end
             end
         end
@@ -326,6 +417,53 @@ function Database:ResetAllSpells()
 end
 
 -- ---------------------------------------------------------------------------
+-- Profile migration
+-- ---------------------------------------------------------------------------
+--
+-- Schema changes that aren't pure additions need a migration: the
+-- previous shape stays in saved-vars for any user who had the addon
+-- installed at the older version, and a new install writes the latest.
+-- This is the extension point. Each migration is idempotent and walks
+-- profile.dbVersion forward by exactly one step; MigrateProfile loops
+-- until the profile reports the current version. Adding a v2 migration
+-- means: append a `migrations[1] = function(p) ...; p.dbVersion = 2 end`
+-- entry below and bump CURRENT_DB_VERSION at the top of this file. No
+-- bootstrap changes required.
+--
+-- For v1 the migrator is a no-op — every shipped DEFAULT_PROFILE field
+-- is treated as v1's shape. The scaffold exists so the next change
+-- ships next to its migrator and reviewers don't have to wire one up
+-- under deadline pressure.
+
+local migrations = {
+    -- [from-version] = function(profile) ... end
+    -- Each step bumps profile.dbVersion to the from-version+1.
+}
+
+--- Migrate the active profile forward to CURRENT_DB_VERSION. Idempotent
+--- on profiles already at the current version. Profiles missing
+--- dbVersion entirely are treated as v1 (the original shape).
+function Database:MigrateProfile()
+    if not (self.db and self.db.profile) then return end
+    local profile = self.db.profile
+    -- Treat a missing dbVersion as v1 — the field was added in v1, so
+    -- a profile that pre-dates this scaffold is structurally v1.
+    profile.dbVersion = profile.dbVersion or 1
+    while profile.dbVersion < CURRENT_DB_VERSION do
+        local step = migrations[profile.dbVersion]
+        if not step then
+            -- No registered migrator for this jump — bump the field to
+            -- avoid an infinite loop and stop. A real schema change
+            -- would have registered the step before bumping
+            -- CURRENT_DB_VERSION.
+            profile.dbVersion = CURRENT_DB_VERSION
+            break
+        end
+        step(profile)
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Profile callbacks
 -- ---------------------------------------------------------------------------
 
@@ -336,8 +474,11 @@ function Database:OnProfileChanged(_, db, newProfileKey)
 
     -- A reset wipes the profile back to defaults (which leaves spells = {}).
     -- Re-seed spells so the user gets a working list immediately, just like
-    -- a fresh profile would.
+    -- a fresh profile would. Then run any pending migrations on the
+    -- newly-active profile (a copied profile may have been authored at
+    -- an older schema version).
     self:BuildSpells()
+    self:MigrateProfile()
 
     -- Fire the closed internal message — see TECHNICAL_DESIGN §1.
     -- This is the only message Database is allowed to emit.
@@ -370,6 +511,11 @@ function Database:Init()
     -- populated profiles, so it's safe on every login. Profile changes
     -- re-trigger it via OnProfileChanged.
     self:BuildSpells()
+
+    -- Walk any required migrations forward. For v1 this is a no-op,
+    -- but every Init runs through the same code path so a future v2
+    -- ships its migrator in one place.
+    self:MigrateProfile()
 
     -- Wire profile callbacks. AceDB calls these as `obj:method(event, db, key)`
     -- when we register with (self, "OnProfileChanged", "OnProfileChanged").

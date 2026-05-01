@@ -495,10 +495,14 @@ local function tokenize(rest)
 end
 
 -- Normalize a user-supplied class/spec token to the casing used by
--- defaults/Spells.lua (uppercase, no whitespace).
+-- defaults/Spells.lua (uppercase, no whitespace). Routes through
+-- Util.NormalizeSpecToken so all spec-key derivations across the addon
+-- share one source of truth — important for whitespace-bearing
+-- localised names ("Beast Mastery", non-English specs) that would
+-- otherwise miss the no-whitespace defaults keys.
 local function normToken(s)
     if not s or s == "" then return nil end
-    return (s:upper():gsub("%s+", ""))
+    return KickCD.Util.NormalizeSpecToken(s)
 end
 
 -- Resolve [class spec] starting at args[idx]. Empty positions fall
@@ -528,43 +532,31 @@ local function resolveClassSpec(args, idx)
     return class or pClass, spec or pSpec
 end
 
-local function getProfileSpells()
-    if not (KickCD.db and KickCD.db.profile) then return nil end
-    KickCD.db.profile.spells = KickCD.db.profile.spells or {}
-    return KickCD.db.profile.spells
-end
+-- Spell-list traversal funnels through Database:GetSpellList /
+-- :EnsureSpellList so the slash-command layer matches the read/lazy-
+-- create policy used by Cooldowns / IconGrid / settings/Spells.lua.
+-- Read-only callers (list/remove/enable/disable/category) use
+-- GetSpellList; mutators that should create a fresh list when none
+-- exists (add / reset) use EnsureSpellList.
 
 local function getSpellList(class, spec)
-    local all = getProfileSpells()
-    if not all then return nil end
-    local byClass = all[class]
-    if not byClass then return nil end
-    return byClass[spec]
+    if not KickCD.Database then return nil end
+    return KickCD.Database:GetSpellList(class, spec)
 end
 
 local function ensureSpellList(class, spec)
-    local all = getProfileSpells()
-    if not all then return nil end
-    all[class] = all[class] or {}
-    all[class][spec] = all[class][spec] or {}
-    return all[class][spec]
+    if not KickCD.Database then return nil end
+    return KickCD.Database:EnsureSpellList(class, spec)
 end
 
--- Mutation commit: fire the closed message AND nudge the open Spells
--- panel to redraw if the user has it visible. The panel listens for
--- KickCD_PROFILE_CHANGED but not for KickCD_CONFIG_CHANGED { spells }
--- (the latter is for module re-Builds), so we have to call its
--- RefreshRows directly.
+-- Mutation commit: fire the closed message; the Spells panel now
+-- subscribes to KickCD_CONFIG_CHANGED { section = "spells" } in its own
+-- ensurePanel hook so a slash-driven mutation refreshes the open editor
+-- without a direct cross-module call from this layer (closed-bus
+-- contract — see docs/CLAUDE_MESSAGE_BUS.md).
 local function commitSpellsChange()
     if KickCD and KickCD.SendMessage then
         KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
-    end
-    if KickCD.SettingsSpells and KickCD.SettingsSpells.RefreshRows then
-        local ok, err = pcall(KickCD.SettingsSpells.RefreshRows,
-                              KickCD.SettingsSpells)
-        if not ok and KickCD._debugLog and KickCD.Util then
-            KickCD.Util.print("spells refresh failed: " .. tostring(err))
-        end
     end
 end
 
@@ -734,24 +726,22 @@ local function spellsReset(self, rest)
     if not (class and spec) then
         return p(self, "Could not determine class+spec")
     end
-    local all = getProfileSpells()
-    if not all then return p(self, "db not ready") end
+    local list = ensureSpellList(class, spec)
+    if not list then return p(self, "db not ready") end
+    -- Wipe in place rather than reassigning so any reference held by
+    -- BuildSpells / consumers stays valid.
+    for i = #list, 1, -1 do list[i] = nil end
     local source = self.DefaultSpells
                    and self.DefaultSpells[class]
                    and self.DefaultSpells[class][spec]
-    all[class] = all[class] or {}
     if source then
-        local copy = {}
         for i, e in ipairs(source) do
-            copy[i] = {
+            list[i] = {
                 spellID  = e.spellID  or e[1],
                 category = e.category or e[2] or "other",
                 enabled  = e.enabled ~= false,
             }
         end
-        all[class][spec] = copy
-    else
-        all[class][spec] = {}
     end
     commitSpellsChange()
     p(self, ("|cff00ff00KickCD|r: reset %s/%s to defaults"):format(class, spec))

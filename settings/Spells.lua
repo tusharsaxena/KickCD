@@ -62,20 +62,35 @@ local function sortedKeys(t)
     return keys
 end
 
+-- Profile-spells accessor for the few read-only sites that still need
+-- the top-level table (e.g. the legacy KICKCD_RESET_SPELLS popup which
+-- WS-D will rework). Always returns the live table without lazy-creating
+-- per-class / per-spec entries; the panel's getActiveList / ensureSpellList
+-- pair (just below) is the preferred entry point for individual lists.
 local function getProfileSpells()
     if not (KickCD.db and KickCD.db.profile) then return nil end
     KickCD.db.profile.spells = KickCD.db.profile.spells or {}
     return KickCD.db.profile.spells
 end
 
+-- Read-only active-list lookup. Never lazy-creates the per-class /
+-- per-spec table — browsing the dropdown across 13 classes × 4 specs
+-- would otherwise pollute saved-vars with empty tables (CR-22).
+-- Mutator paths (Add spell OnAccept, Reset to defaults OnAccept) call
+-- ensureSpellList(...) below instead, which lazy-creates by design.
 local function getActiveList()
-    local spells = getProfileSpells()
-    if not spells then return nil end
-    if not selectedClass then return nil end
-    spells[selectedClass] = spells[selectedClass] or {}
-    if not selectedSpec then return nil end
-    spells[selectedClass][selectedSpec] = spells[selectedClass][selectedSpec] or {}
-    return spells[selectedClass][selectedSpec]
+    if not (selectedClass and selectedSpec) then return nil end
+    if not KickCD.Database then return nil end
+    return KickCD.Database:GetSpellList(selectedClass, selectedSpec)
+end
+
+-- Lazy-creating active-list lookup for mutators only. Used by the Add
+-- spell and Reset popups so a brand-new spec table comes into being on
+-- the first edit, but stays absent during read-only browsing.
+local function ensureActiveList()
+    if not (selectedClass and selectedSpec) then return nil end
+    if not KickCD.Database then return nil end
+    return KickCD.Database:EnsureSpellList(selectedClass, selectedSpec)
 end
 
 local function getSpellName(id)
@@ -212,7 +227,10 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
         end
 
-        local list = getActiveList()
+        -- Mutator path: lazy-create the per-spec table on first add so a
+        -- spec the user has never customised gains a fresh list rather
+        -- than failing silently because GetSpellList returned nil.
+        local list = ensureActiveList()
         if not list then return end
         for _, e in ipairs(list) do
             if e.spellID == id then
@@ -543,7 +561,7 @@ local function buildSpecIconCache()
             for i = 1, nSpecs do
                 local _, specName, _, icon = GetSpecializationInfoForClassID(classID, i)
                 if specName and icon then
-                    local token = specName:upper():gsub("%s+", "")
+                    local token = Util.NormalizeSpecToken(specName)
                     cache[classFile][token] = icon
                 end
             end
@@ -743,6 +761,17 @@ local function ensurePanel()
     if KickCD.RegisterMessage then
         KickCD:RegisterMessage("KickCD_PROFILE_CHANGED", function()
             if panel and panel:IsShown() then Spells:RefreshRows() end
+        end)
+        -- Slash-command mutations (`/kcd spells add/remove/...`) and the
+        -- panel's own commitSoon both fire KickCD_CONFIG_CHANGED with
+        -- section="spells". Subscribing here is what closes the bus
+        -- contract — the slash layer no longer reaches across to call
+        -- our RefreshRows directly (CR-7).
+        KickCD:RegisterMessage("KickCD_CONFIG_CHANGED", function(_, payload)
+            if payload and payload.section == "spells"
+               and panel and panel:IsShown() then
+                Spells:RefreshRows()
+            end
         end)
     end
 

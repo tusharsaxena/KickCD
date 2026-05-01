@@ -14,3 +14,12 @@ Both the icon grid and the cast bar honor a single addon-wide visibility mode (`
 
 When syncing the defaults to the sheet, only columns **Q, S, T, U, V, X** matter (Interrupt, Stuns ST, Stuns AoE, CC Hard, CC Soft AoE, CC Other). Skip column **R** (Dispels / Soothes — not cast-stoppers) and column **W** (CC AoE Slow — slows don't stop casts in the categories KickCD tracks).
 
+## Spell-list lifecycle and recovery
+
+`Database:BuildSpells` only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customised yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.
+
+If the user later changes their mind and wants defaults back, two slash commands cover the recovery surface:
+
+- `/kcd reset spells` — wipes every class+spec list and re-seeds from defaults plus the player's racial cast-stopper. Use this for a clean slate.
+- `/kcd spells reset [CLASS SPEC]` — restores a single spec list to defaults; leaves every other spec untouched. The settings panel's per-spec "Defaults" button (the `KICKCD_RESET_SPELLS` popup) is the GUI entry point for the same recovery.
+
