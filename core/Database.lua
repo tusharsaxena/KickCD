@@ -34,16 +34,17 @@ local DEFAULT_PROFILE = {
     scale      = 1.0,
     alpha      = 1.0,
     debugLog   = false,
-    -- "always" | "in_combat" | "target_casting"
-    -- Controls when the icon grid is visible. "always" is the v0.1
-    -- behavior; "in_combat" gates on InCombatLockdown(); "target_casting"
-    -- gates on UnitCastingInfo("target") / UnitChannelInfo("target") being
-    -- non-nil. Master enable still wins — disabled = always hidden.
-    visibility = "always",
+    -- "always" | "in_combat" | "target_casting" | "target_casting_interruptible"
+    -- Controls when the icon grid is visible. "in_combat" gates on
+    -- InCombatLockdown(); "target_casting" gates on UnitCastingInfo /
+    -- UnitChannelInfo on the target being non-nil; "target_casting_interruptible"
+    -- additionally hides during uninterruptible casts via the C-side alpha
+    -- mask. Master enable still wins — disabled = always hidden.
+    visibility = "target_casting_interruptible",
 
     icons = {
-        primarySize      = 48,
-        secondarySize    = 0.7,        -- multiplier of primary
+        primarySize      = 64,
+        secondarySize    = 0.5,        -- multiplier of primary
         -- Anchor of the secondary block on the primary. The first word
         -- (TOP/BOTTOM/LEFT/RIGHT) picks the side of the primary the block
         -- attaches to; the second (MIDDLE plus the perpendicular axis
@@ -56,10 +57,10 @@ local DEFAULT_PROFILE = {
         -- parseAnchor accepts MIDDLE and CENTER as synonyms — so saved
         -- profiles built before this rename keep working.
         anchor           = "RIGHT_MIDDLE",
-        gap              = 4,
-        zoom             = 0.08,        -- 0..0.25 — TexCoord inset that crops the Blizzard icon border
+        gap              = 0,
+        zoom             = 0.10,        -- 0..0.25 — TexCoord inset that crops the Blizzard icon border
         readyAlpha       = 1.0,
-        cooldownAlpha    = 0.4,
+        cooldownAlpha    = 0.25,
         cooldownTint     = { 1, 0.4, 0.4, 1 },
         -- When true, the cooldown swipe + countdown text are hidden
         -- during the global cooldown period (≤ ~1.6s remaining); only
@@ -67,10 +68,10 @@ local DEFAULT_PROFILE = {
         -- tint already treat GCD as "ready" via curve evaluation; this
         -- toggle extends the same suppression to the swipe and text.
         suppressGCDSwipe = true,
-        borderShow       = false,
+        borderShow       = true,
         borderColor      = { 0, 0, 0, 1 },
-        borderSize       = 1,
-        showCooldownText = false,
+        borderSize       = 2,
+        showCooldownText = true,
         cooldownTextFont = "Friz Quadrata TT",
         cooldownTextSize = 14,
         cooldownTextFlags = "OUTLINE", -- "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
@@ -89,9 +90,9 @@ local DEFAULT_PROFILE = {
         -- secondaryOffsetX/Y shift the entire block by N pixels from where
         -- it would naturally land. Positive X = right, positive Y = down
         -- (screen convention; converted to WoW's y-up internally).
-        secondaryRows    = 1,
-        secondaryCols    = 6,
-        secondaryGrow    = "right_down",
+        secondaryRows    = 2,
+        secondaryCols    = 3,
+        secondaryGrow    = "down_right",
         secondaryOffsetX = 0,
         secondaryOffsetY = 0,
 
@@ -110,11 +111,11 @@ local DEFAULT_PROFILE = {
         -- color so a player can flag the primary with one style and the
         -- supports with another.
         primaryGlowTrigger   = "never",
-        primaryGlowType      = "proc",
-        primaryGlowColor     = { 0.95, 0.95, 0.32, 1 },
+        primaryGlowType      = "pixel",
+        primaryGlowColor     = { 1, 1, 0, 1 },
         secondaryGlowTrigger = "never",
-        secondaryGlowType    = "proc",
-        secondaryGlowColor   = { 0.95, 0.95, 0.32, 1 },
+        secondaryGlowType    = "pixel",
+        secondaryGlowColor   = { 1, 1, 0, 1 },
     },
 
     castbar = {
@@ -122,12 +123,12 @@ local DEFAULT_PROFILE = {
         width        = 250,
         height       = 24,
         iconSize     = 24,
-        iconPosition = "LEFT",      -- "LEFT", "RIGHT", or "OFF"
+        iconPosition = "OFF",       -- "LEFT", "RIGHT", or "OFF"
         showSpark    = true,
         showName     = true,
         showTime     = true,
         font         = "Friz Quadrata TT",
-        fontSize     = 12,
+        fontSize     = 10,
         fontFlags    = "OUTLINE",
 
         -- Anchoring. "FREE" = a free-floating frame the user drags around
@@ -148,11 +149,11 @@ local DEFAULT_PROFILE = {
         -- Both are translated to SetPoint-compatible 9-point names by
         -- modules/Castbar.lua at runtime; legacy 9-point tokens
         -- (TOP, TOPLEFT, BOTTOM, …) still pass through unchanged.
-        anchorMode    = "FREE",
-        anchorPoint   = "TOP_MIDDLE",
-        castbarPoint  = "BOTTOM_MIDDLE",
+        anchorMode    = "PRIMARY",
+        anchorPoint   = "TOP_LEFT",
+        castbarPoint  = "BOTTOM_LEFT",
         anchorOffsetX = 0,
-        anchorOffsetY = 8,
+        anchorOffsetY = 1,
 
         -- Orientation + growth. Driven via StatusBar:SetOrientation and
         -- SetReverseFill so all the per-frame arithmetic stays C-side.
@@ -170,13 +171,13 @@ local DEFAULT_PROFILE = {
         -- bar is anchored to the primary icon, horizontal bars take the
         -- icon grid's full width and vertical bars take its full height —
         -- the orthogonal dimension stays the user-configured width/height.
-        autoSize     = false,
+        autoSize     = true,
 
         -- Per-text-element anchor + offset. Position is one of
         -- "INSIDE_LEFT", "INSIDE_RIGHT", "CENTER", "OUTSIDE_LEFT",
         -- "OUTSIDE_RIGHT". OffsetX/Y are pixel deltas applied on top
         -- of the anchor.
-        namePosition = "INSIDE_LEFT",
+        namePosition = "CENTER",
         nameOffsetX  = 0,
         nameOffsetY  = 0,
         -- Maximum visible characters in the spell name before
@@ -185,9 +186,9 @@ local DEFAULT_PROFILE = {
         -- counted via `#`; multi-byte localized names may truncate
         -- mid-character at the edge but won't error.
         nameTruncate = 0,
-        timePosition = "INSIDE_RIGHT",
+        timePosition = "CENTER",
         timeOffsetX  = 0,
-        timeOffsetY  = 0,
+        timeOffsetY  = 22,
 
         -- Per-state appearance (interruptible vs uninterruptible casts).
         -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
@@ -197,10 +198,10 @@ local DEFAULT_PROFILE = {
             barColor         = { 1,    0.85, 0.05, 1   },  -- yellow
             bgColor          = { 0,    0,    0,    0.5 },
             nameTextColor    = { 1,    1,    1,    1   },
-            borderShow       = false,
+            borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             borderColor      = { 0,    0,    0,    1   },
-            borderSize       = 1,
+            borderSize       = 2,
         },
         uninterruptible = {
             statusBarTexture = "Blizzard",
@@ -209,7 +210,7 @@ local DEFAULT_PROFILE = {
             nameTextColor    = { 1,    1,    1,    1   },
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
-            borderColor      = { 1,    0.20, 0.20, 1   },
+            borderColor      = { 0,    0,    0,    1   },
             borderSize       = 2,
         },
     },

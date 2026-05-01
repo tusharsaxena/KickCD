@@ -52,7 +52,7 @@ add{
     path  = "castbar.anchorMode", type = "string",
     label = L["Anchor mode"],
     tooltip = L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."],
-    default = "FREE",
+    default = "PRIMARY",
     values  = {
         { value = "FREE",    label = L["Free (drag to move)"]      },
         { value = "PRIMARY", label = L["Anchored to primary icon"] },
@@ -64,7 +64,7 @@ add{
     path  = "castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "TOP_MIDDLE",
+    default = "TOP_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
@@ -72,7 +72,7 @@ add{
     path  = "castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "BOTTOM_MIDDLE",
+    default = "BOTTOM_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
@@ -87,7 +87,7 @@ add{
     path  = "castbar.anchorOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
-    default = 8, min = -200, max = 200, step = 1, fmt = "%d px",
+    default = 1, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 
 -- Orientation --------------------------------------------------------
@@ -176,7 +176,7 @@ add{
     path  = "castbar.autoSize", type = "bool",
     label = L["Auto-size to icon grid"],
     tooltip = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
-    default = false,
+    default = true,
 }
 
 -- Sizing and Layout --------------------------------------------------
@@ -215,7 +215,7 @@ add{
     path  = "castbar.iconPosition", type = "string",
     label = L["Icon position"],
     tooltip = L["Where to place the spell icon, or hide it entirely."],
-    default = "LEFT",
+    default = "OFF",
     values  = {
         { value = "LEFT",  label = L["Left"]  },
         { value = "RIGHT", label = L["Right"] },
@@ -261,7 +261,7 @@ add{
     path  = "castbar.fontSize", type = "number",
     label = L["Font size"],
     tooltip = L["Cast-bar text size in pixels."],
-    default = 12, min = 8, max = 24, step = 1, fmt = "%d",
+    default = 10, min = 8, max = 24, step = 1, fmt = "%d",
 }
 add{
     panel = "castbar", section = "castbar", group = L["Text"],
@@ -295,7 +295,7 @@ add{
     path  = "castbar.namePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the spell name relative to the bar."],
-    default = "INSIDE_LEFT",
+    default = "CENTER",
     values  = TEXT_POSITION_VALUES,
 }
 add{
@@ -338,7 +338,7 @@ add{
     path  = "castbar.timePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
-    default = "INSIDE_RIGHT",
+    default = "CENTER",
     values  = TEXT_POSITION_VALUES,
 }
 add{
@@ -353,7 +353,7 @@ add{
     path  = "castbar.timeOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
-    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
+    default = 22, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 
 -- Per-state appearance (interruptible vs uninterruptible casts) -------
@@ -401,7 +401,7 @@ add{
     path  = "castbar.interruptible.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a border around the cast bar for interruptible casts."],
-    default = false,
+    default = true,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -423,7 +423,7 @@ add{
     path  = "castbar.interruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     tooltip = L["Border edge size in pixels."],
-    default = 1, min = 1, max = 16, step = 1, fmt = "%d px",
+    default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
 }
 
 -- Uninterruptible appearance ------------------------------------------
@@ -476,7 +476,7 @@ add{
     path  = "castbar.uninterruptible.borderColor", type = "color",
     label = L["Border color"],
     tooltip = L["RGBA border color for non-interruptible casts."],
-    default = { 1, 0.20, 0.20, 1 },
+    default = { 0, 0, 0, 1 },
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],

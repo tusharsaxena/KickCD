@@ -46,28 +46,28 @@ add{
     path  = "icons.primarySize", type = "number",
     label = L["Primary size (in px)"],
     tooltip = L["Pixel size of the primary interrupt icon."],
-    default = 48, min = 24, max = 96, step = 2, fmt = "%d px",
+    default = 64, min = 24, max = 96, step = 2, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", group = L["Sizing"],
     path  = "icons.secondarySize", type = "number",
     label = L["Secondary size"],
     tooltip = L["Secondary icon size as a fraction of the primary."],
-    default = 0.7, min = 0.4, max = 1.0, step = 0.05, fmt = "%.2f",
+    default = 0.5, min = 0.4, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
     panel = "icons", section = "icons", group = L["Sizing"],
     path  = "icons.gap", type = "number",
     label = L["Gap (in px)"],
     tooltip = L["Pixel gap between adjacent icons."],
-    default = 4, min = 0, max = 24, step = 1, fmt = "%d px",
+    default = 0, min = 0, max = 24, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", group = L["Sizing"],
     path  = "icons.zoom", type = "number",
     label = L["Icon zoom"],
     tooltip = L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."],
-    default = 0.08, min = 0.0, max = 0.25, step = 0.01, fmt = "%.2f",
+    default = 0.10, min = 0.0, max = 0.25, step = 0.01, fmt = "%.2f",
 }
 
 -- Layout -------------------------------------------------------------
@@ -84,7 +84,7 @@ add{
     path  = "icons.secondaryGrow", type = "string",
     label = L["Growth direction (of secondary icons)"],
     tooltip = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
-    default = "right_down",
+    default = "down_right",
     values  = GROW_VALUES,
 }
 add{
@@ -92,14 +92,14 @@ add{
     path  = "icons.secondaryRows", type = "number",
     label = L["Rows"],
     tooltip = L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."],
-    default = 1, min = 1, max = 6, step = 1, fmt = "%d",
+    default = 2, min = 1, max = 6, step = 1, fmt = "%d",
 }
 add{
     panel = "icons", section = "icons", group = L["Layout"],
     path  = "icons.secondaryCols", type = "number",
     label = L["Columns"],
     tooltip = L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."],
-    default = 6, min = 1, max = 12, step = 1, fmt = "%d",
+    default = 3, min = 1, max = 12, step = 1, fmt = "%d",
 }
 add{
     panel = "icons", section = "icons", group = L["Layout"],
@@ -129,7 +129,7 @@ add{
     path  = "icons.cooldownAlpha", type = "number",
     label = L["Cooldown alpha"],
     tooltip = L["Icon alpha while the spell is on cooldown."],
-    default = 0.4, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
+    default = 0.25, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
     panel = "icons", section = "icons", group = L["Visual states"],
@@ -155,7 +155,7 @@ add{
     path  = "icons.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a thin border around each icon."],
-    default = false,
+    default = true,
     solo    = true,
 }
 add{
@@ -163,7 +163,7 @@ add{
     path  = "icons.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     tooltip = L["Border thickness in pixels."],
-    default = 1, min = 0, max = 4, step = 1, fmt = "%d px",
+    default = 2, min = 0, max = 4, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", group = L["Border"],
@@ -220,7 +220,7 @@ add{
     path  = "icons.showCooldownText", type = "bool",
     label = L["Show cooldown text"],
     tooltip = L["Render numeric seconds remaining on each icon."],
-    default = false,
+    default = true,
 }
 add{
     panel = "icons", section = "icons", group = L["Annotations"],
@@ -298,7 +298,7 @@ add{
     path  = "icons.primaryGlowType", type = "string",
     label = L["Primary glow style"],
     tooltip = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
-    default = "proc",
+    default = "pixel",
     values  = GLOW_TYPE_VALUES,
 }
 add{
@@ -306,7 +306,7 @@ add{
     path  = "icons.secondaryGlowType", type = "string",
     label = L["Secondary glow style"],
     tooltip = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
-    default = "proc",
+    default = "pixel",
     values  = GLOW_TYPE_VALUES,
 }
 
@@ -316,14 +316,14 @@ add{
     path  = "icons.primaryGlowColor", type = "color",
     label = L["Primary glow color"],
     tooltip = L["Glow color on the primary icon."],
-    default = { 0.95, 0.95, 0.32, 1 },
+    default = { 1, 1, 0, 1 },
 }
 add{
     panel = "icons", section = "icons", group = L["Ready glow"],
     path  = "icons.secondaryGlowColor", type = "color",
     label = L["Secondary glow color"],
     tooltip = L["Glow color on secondary icons."],
-    default = { 0.95, 0.95, 0.32, 1 },
+    default = { 1, 1, 0, 1 },
 }
 
 -- ---------------------------------------------------------------------

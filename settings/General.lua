@@ -39,7 +39,7 @@ add{
     path     = "visibility", type    = "string",
     label    = L["General visibility"],
     tooltip  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
-    default  = "always",
+    default  = "target_casting_interruptible",
     values   = {
         { value = "always",                       label = L["Always"]                                   },
         { value = "in_combat",                    label = L["In combat"]                                },
