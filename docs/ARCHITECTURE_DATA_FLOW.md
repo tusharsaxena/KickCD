@@ -32,6 +32,52 @@ writes `db.profile.<path>` and fires
 each section appropriately. AceDB callbacks fire `KickCD_PROFILE_CHANGED`
 on profile change/copy/reset.
 
+Slash commands that mutate schema-backed fields (e.g. `/kcd lock`,
+`/kcd debug log`) route through `Helpers.SetAndRefresh(path, value)`
+so they share the panel widgets' write/notify/refresh code path
+(`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way
+a future `onChange` added to a row doesn't silently diverge between the
+two paths.
+
+Visibility / interruptibility decisions for both the icon grid and the
+cast bar use a two-step gate driven by the addon-wide
+`db.profile.visibility` mode:
+
+```
+shouldBeVisible() / isVisible()
+  ── always                      → true
+  ── in_combat                   → _inCombat (PLAYER_REGEN_* flag, NOT
+                                    InCombatLockdown — that lags by a frame)
+  ── target_casting              → UnitCastingInfo / UnitChannelInfo("target") truthy
+  ── target_casting_interruptible → Compat.IsHostileUnitCasting("target")
+        ▼
+   Show / Hide
+        ▼
+   ApplyInterruptibilityMask / ApplyVisibilityMask
+        ▼
+   Compat.ApplyInterruptibleAlpha(frame, "target", 1)
+        ▼ (C-side, secret-safe)
+   frame:SetAlphaFromBoolean(notInterruptible, 0, 1)
+```
+
+`Compat.IsHostileUnitCasting` is a pure truthy check (safe even when
+`name` / `texture` come back secret-tainted in combat) plus a
+`UnitCanAttack` filter. `Compat.ApplyInterruptibleAlpha` reads the raw
+`notInterruptible` straight off `UnitCastingInfo` / `UnitChannelInfo` and
+hands it to `Frame:SetAlphaFromBoolean` — the **one** C-side method that
+accepts the secret-tainted bool form without erroring. So uninterruptible
+casts run the full UI lifecycle (Show / glow start / cast bar drawn) but
+at `alpha = 0`, with the visual filter applied entirely C-side. The
+`UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events drive a
+re-application of the alpha mask mid-cast.
+
+Per-icon ready glow follows the same pattern: `Icon:UpdateGlow` starts the
+LibCustomGlow effect for any hostile target cast under the
+`target_casting_interruptible` trigger and then drives the glow frame's
+alpha through `ApplyInterruptibleAlpha`. The IconGrid's `RefreshAllGlows`
+re-runs the per-icon decision on `PLAYER_TARGET_CHANGED` and every cast
+event so the glow gate stays in sync.
+
 Cast bar pipeline (independent of the cooldown pipeline above):
 
 ```

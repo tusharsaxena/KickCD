@@ -22,5 +22,7 @@ KickCD (AceAddon)
     └── Profiles.lua  — unified header + AceDBOptions UI (AceConfig in a SimpleGroup)
 ```
 
-External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, AceAddon-3.0, AceEvent-3.0, AceDB-3.0, AceDBOptions-3.0, AceConsole-3.0, AceConfig-3.0, AceGUI-3.0, LibSharedMedia-3.0, LibCustomGlow-1.0.
+External dependencies (vendored under `libs/`): LibStub, CallbackHandler-1.0, AceAddon-3.0, AceEvent-3.0, AceDB-3.0, AceDBOptions-3.0, AceConsole-3.0, AceConfig-3.0, AceGUI-3.0, LibSharedMedia-3.0, LibCustomGlow-1.0. Several additional Ace modules (AceBucket, AceComm, AceHook, AceLocale, AceSerializer, AceTab, AceTimer) are also under `libs/` because they ship as part of the standard Ace3 distribution but are not loaded by the TOC — only the libraries listed in `KickCD.toc` are pulled in at runtime.
+
+Display name in the addon list and the Settings panel: `Ka0s KickCD` (the `## Title` colored field in `KickCD.toc`). The folder, addon ID, saved-variable namespace (`KickCDDB`), slash commands, and global frame names all stay unprefixed `KickCD` for ergonomics.
 

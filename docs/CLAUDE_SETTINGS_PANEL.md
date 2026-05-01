@@ -59,6 +59,24 @@ The same schema feeds:
 **Adding a new setting = one row in the schema.** UI widget, slash
 get/set, and Defaults reset are wired automatically.
 
+A row may declare `solo = true` to be rendered alone in the left half
+of its own row (visual pivot above the controls it governs — Icons →
+Border → "Show border", Cast bar → Position → "Anchor mode").
+
+A row may declare `valueGate = "<sibling.path>"` for dropdowns whose
+option list depends on another setting (the canonical case: cast bar
+`growDirection`'s `RIGHT`/`LEFT` vs `UP`/`DOWN` options gated on
+`orientation`). The `values` function should re-evaluate the option
+list against the gate's current value, and `/kcd set` will surface
+`(depends on <gate> = <current>)` on rejection so a confused user can
+see why their value was refused.
+
+The 13-option `<SIDE>_<ALIGN>` / `CENTER` anchor dropdown shared by
+Icons → Layout → Anchor point and Cast bar → Position → Anchor on
+primary icon / Anchor on cast bar comes from `Helpers.AnchorValues()`.
+Both dropdowns must use it so the option lists stay in lockstep when
+new anchors are added.
+
 ## Custom panel bodies (Spells / Profiles)
 
 Spells and Profiles share the unified header but render custom bodies:
@@ -102,11 +120,19 @@ guard in `settings/General.lua`, `settings/Icons.lua`, and
 `settings/Castbar.lua`.
 
 The General tab's "Reset all settings" button (under Master controls)
-funnels through `Helpers.RestoreAllDefaults`, which loops over every
-schema-driven panel (general / icons / castbar) and runs
-`Helpers.RestoreDefaults` for each. Spells and Profiles are
-intentionally skipped — both have their own destructive controls and
-resetting them would delete user data.
+funnels through `Helpers.ResetAll`, which calls
+`Helpers.RestoreAllDefaults` (loops over every schema-driven panel:
+general / icons / castbar) **and** `Database:ResetAllSpells` (rebuilds
+every spec's spell list from `KickCD.DefaultSpells`). The slash command
+`/kcd resetall` shares this same helper — the popup and the CLI cannot
+diverge. Profiles are intentionally skipped because the AceDBOptions UI
+has its own destructive controls and resetting them would delete user
+data.
+
+`Helpers.ResetIconPosition` is the corresponding helper for the
+"Reset position" button and `/kcd resetposition` — it writes
+`db.profile.anchors.icons` from `KickCD.DEFAULT_PROFILE.anchors.icons`
+so the default coordinates live in one place.
 
 ## `Compat.RegisterAddOnSetting` is vestigial
 

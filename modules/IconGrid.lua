@@ -554,8 +554,7 @@ end
 -- frame's alpha is then driven by SetAlphaFromBoolean(notInterruptible,
 -- 0, 1) — the C-side path that accepts the secret-tainted flag. So
 -- uninterruptible casts run the animation invisibly until the flag
--- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends. This
--- mirrors FloatingInterruptHighlight.lua:129-138 exactly.
+-- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends.
 function Icon:UpdateGlow(state)
     local cfg = self.cfg or KickCD.db.profile.icons
     if not cfg then return self:StopGlow() end

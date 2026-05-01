@@ -23,7 +23,9 @@ also flips per-icon `EnableMouse` based on `(locked AND
 icons.showTooltip)` so the hover-tooltip path lights up only while the
 grid frame isn't claiming the mouse for drag. Touch points:
 
-- Settings → General → "Lock frame" checkbox writes `db.profile.locked` and fires `KickCD_CONFIG_CHANGED { section = "general" }`.
-- Slash commands `/kcd lock | unlock | toggle` do the same write + fire (see `core/KickCD.lua`).
+- Settings → General → "Lock frame" checkbox writes `db.profile.locked` through `Helpers.Set` and fires `KickCD_CONFIG_CHANGED { section = "general" }`.
+- Slash commands `/kcd lock | unlock | toggle` route through `Helpers.SetAndRefresh("locked", ...)` so they share the same write/notify/refresh path as the checkbox (and so an open General panel reflects the lock state immediately). They fall back to a direct write only when the settings layer hasn't loaded yet.
 - `IconGrid:OnConfigChanged` and `Castbar:OnConfigChanged` react to section `"general"` by calling `ApplyLock`.
+- `IconGrid:ApplyLock` additionally toggles per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag.
+- `Castbar:ApplyLock` additionally forces drag off whenever `castbar.anchorMode == "PRIMARY"`, regardless of the global lock — under that mode the bar's position is determined by the icon-grid anchor + offsets, not by dragging.
 

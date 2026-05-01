@@ -71,15 +71,41 @@ but has no live callers. Schema rows are rendered by AceGUI primitives:
 `CheckBox` for `bool`, `Slider` for `number`, `Dropdown` for `string`
 (values supplied as `{ {value=, label=}, ... }` or a function returning
 that shape — `Helpers.LSMValues(mediaType)` is the standard wrapper
-around LibSharedMedia listings), and `ColorPicker` for `color`. The
-ColorPicker's confirmation flow is a quirk of WoW 12.0's
-`SetupColorPickerAndShow` — KickCD listens to **both** `OnValueChanged`
-(treats every drag-step as a commit, giving a live preview) and
-`OnValueConfirmed` (fires only on Cancel, with the original color, so
-the value reverts cleanly). Section headings are AceGUI `Heading`
-widgets bumped to `GameFontNormalLarge`. Two-column rows are produced
-by wrapping a 50%-width pair into a Flow-laid `SimpleGroup`; spacers
-between rows give the airy look. See `Helpers.RenderSchema` and the
-`makeCheckbox` / `makeSlider` / `makeDropdown` / `makeColorPicker`
-factories in `settings/Panel.lua`.
+around LibSharedMedia listings, and `Helpers.AnchorValues()` returns the
+canonical 13-option `<SIDE>_<ALIGN>` / `CENTER` set used by both Icons →
+Layout → Anchor point and Cast bar → Position → Anchor on primary icon /
+Anchor on cast bar), and `ColorPicker` for `color`. The ColorPicker's
+confirmation flow is a quirk of WoW 12.0's `SetupColorPickerAndShow` —
+KickCD listens to **both** `OnValueChanged` (treats every drag-step as a
+commit, giving a live preview) and `OnValueConfirmed` (fires only on
+Cancel, with the original color, so the value reverts cleanly). Section
+headings are AceGUI `Heading` widgets bumped to `GameFontNormalLarge`.
+Two-column rows are produced by wrapping a 50%-width pair into a
+Flow-laid `SimpleGroup`; spacers between rows give the airy look. A
+schema row tagged `solo = true` is forced onto its own row (left half,
+right half empty) so visual pivots like Icons → Border → "Show border"
+or Cast bar → Position → "Anchor mode" stand apart from the controls
+they govern. See `Helpers.RenderSchema` and the `makeCheckbox` /
+`makeSlider` / `makeDropdown` / `makeColorPicker` factories in
+`settings/Panel.lua`.
+
+A schema row may declare `valueGate = "<sibling.path>"`. The slash
+command's invalid-value error appends `(depends on <gate> = <current>)`
+so a user typing `/kcd set castbar.growDirection LEFT` while
+`castbar.orientation` is `VERTICAL` learns *why* their value is rejected
+(the orientation gates the option list). The dropdown's `values`
+function should also re-evaluate the option list against the gate so the
+panel and CLI stay in lockstep — see `castbar.growDirection` in
+`settings/Castbar.lua`.
+
+The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to
+**always** display its scrollbar (`Helpers.PatchAlwaysShowScrollbar`),
+even when the content fits. Without the patch, short panels (General)
+would render edge-to-edge while long ones (Icons / Cast bar) would gain
+a 20 px right-side scrollbar gutter — visually asymmetric. The patch
+parks the thumb at the top and greys the scrollbar out when there's
+nothing to scroll, but leaves the gutter reserved so every panel's body
+content has the same right-edge x-coordinate. The original `FixScroll` /
+`MoveScroll` / `OnRelease` are restored when the AceGUI widget pool
+recycles the frame, since the pool is shared across addons.
 

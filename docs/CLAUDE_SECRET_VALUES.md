@@ -35,7 +35,7 @@ Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — 
 
 **Do not** try to make a Lua-side boolean decision out of it. `KickCD.Compat.IsCastingInterruptible` was the original attempt and silently broke the visibility / glow gates because the secret-taint branch had to conservatively return `true`, which meant uninterruptible casts were treated as interruptible.
 
-**The 12.0-correct pattern**, lifted from FloatingInterruptHighlight (`FloatingInterruptHighlight.lua:123-138`): split the gate in two —
+**The 12.0-correct pattern**: split the gate in two —
 
 1. `Compat.IsHostileUnitCasting(unit)` — a plain truthy check on the API's `name` return (safe, even when secret) plus a `UnitCanAttack` filter. Drives `Show` / `Hide`.
 2. `Compat.ApplyInterruptibleAlpha(frame, unit, alpha)` — pulls the raw `notInterruptible` and pipes it straight into `frame:SetAlphaFromBoolean(notInterruptible, 0, alpha)`. `SetAlphaFromBoolean` is the **one** C-side method that accepts the secret-tainted bool form without erroring.

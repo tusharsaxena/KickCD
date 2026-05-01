@@ -10,13 +10,20 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
     locked     = true,           -- shared drag lock (icon grid + cast bar)
     scale      = 1.0,            -- icon grid master scale
     alpha      = 1.0,            -- icon grid master alpha
-    debugLog   = false,          -- mirrors /kcd debug log; toggles internal-message logging
+    debugLog   = false,          -- mirrors /kcd debug log; toggles internal-message logging.
+                                 -- Lives in section "debug" (no listener) so toggling it
+                                 -- doesn't trigger Cooldowns:Rebuild / IconGrid relayout.
     visibility = "always",       -- "always" | "in_combat" | "target_casting"
                                  --   | "target_casting_interruptible"
                                  -- addon-wide visibility mode honored by both
                                  -- the icon grid AND the cast bar; master enable
                                  -- still wins, and unlocked frames bypass the
-                                 -- mode so users can drag them.
+                                 -- mode so users can drag them. The "_interruptible"
+                                 -- variant uses Compat.IsHostileUnitCasting as the
+                                 -- show gate and Compat.ApplyInterruptibleAlpha
+                                 -- (SetAlphaFromBoolean on the secret notInterruptible
+                                 -- bool) as a C-side filter mask, since the flag
+                                 -- can't be compared in Lua under 12.0.
 
     icons = {
         -- Sizing
@@ -61,6 +68,11 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         -- Per-element text anchor (INSIDE_LEFT / INSIDE_RIGHT / CENTER /
         -- OUTSIDE_LEFT / OUTSIDE_RIGHT) plus pixel offset.
         namePosition, nameOffsetX, nameOffsetY,
+        nameTruncate,                           -- max visible chars in spell name
+                                                -- (0 = unlimited); truncated at byte
+                                                -- length, with "…" tail. Short-circuits
+                                                -- on secret-tainted names (passes through
+                                                -- raw to SetText, which is C-side safe).
         timePosition, timeOffsetX, timeOffsetY,
         -- Per-state appearance (curve-switched on the cast's secret
         -- notInterruptible bool via C_CurveUtil.EvaluateColorValueFromBoolean).
@@ -87,4 +99,6 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 ```
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
+
+`Database:ResetAllSpells` wipes `db.profile.spells` and re-runs `BuildSpells` so every spec — not just the active one — gets the current addon defaults back. It's the helper behind the General → "Reset all settings" popup, `/kcd reset spells`, and `/kcd resetall`. The narrower per-spec reset (Spells panel's Defaults button + `KICKCD_RESET_SPELLS` popup, and `/kcd spells reset [CLASS SPEC]`) instead rebuilds only one `(class, spec)` slot.
 

@@ -292,8 +292,7 @@ end
 ---
 --- Truthiness checks on the API's `name` return are safe even when the
 --- value is secret-tainted in combat — `if x then` does not perform
---- arithmetic. (See FloatingInterruptHighlight for the canonical
---- 12.0-compliant pattern.)
+--- arithmetic.
 function Compat.IsHostileUnitCasting(unit)
     if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
     if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
@@ -314,8 +313,7 @@ end
 --- without erroring. THIS IS THE ONLY 12.0-correct way to gate
 --- visibility on interruptibility from an addon: any Lua-side compare
 --- (`not nint`, `nint == true`, `if nint`) errors when the value is
---- secret-tainted. See FloatingInterruptHighlight.lua:123-138 for the
---- reference pattern.
+--- secret-tainted.
 ---
 --- @param frame Frame  must support :SetAlphaFromBoolean
 --- @param unit  string ("target", ...)
@@ -346,7 +344,7 @@ end
 --- `/kcd debug interrupt` — used to verify whether `notInterruptible`
 --- is in fact coming back secret-tainted in the user's 12.0 client
 --- (the root cause of the "uninterruptible cast still shows" bug
---- before the FIH-style alpha-mask refactor).
+--- before the alpha-mask refactor).
 ---
 --- Every value pulled from a `Unit*` API is funnelled through
 --- `safeRender` first because in combat *any* string field
