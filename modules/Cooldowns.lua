@@ -276,13 +276,38 @@ function Cooldowns:Rebuild()
 end
 
 --- Re-poll all watched spells, fire KickCD_SPELL_STATE only for those whose
---- state changed since last poll.
+--- state changed since last poll. When a previously-watched spell becomes
+--- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
+--- swapped to the other branch of a choice node, encounter mechanic
+--- suppresses the spell), emit a sentinel "ready / no cooldown" payload
+--- and drop the entry from self.watched. The IconGrid's OnSpellState path
+--- already handles a no-cdObject branch (renders ready visuals); the next
+--- Rebuild on SPELLS_CHANGED / TRAIT_CONFIG_UPDATED removes the now-
+--- orphaned icon from ordered[]. Without this cleanup the icon would
+--- linger with whatever state was current when the spell vanished, until
+--- a manual /reload.
 function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
     for id, prev in pairs(self.watched) do
         local next_ = self:PollSpell(id)
-        if next_ and StateChanged(prev, next_) then
+        if next_ == nil then
+            -- Spell disappeared (pet dismiss, talent untrain, ...). Force
+            -- the icon back to ready visuals and stop polling it; the next
+            -- Rebuild trims it out of the watched list entirely.
+            self.watched[id] = nil
+            KickCD:SendMessage("KickCD_SPELL_STATE", {
+                spellID        = id,
+                ready          = false,
+                isActive       = false,
+                cdObject       = nil,
+                chargeCdObject = nil,
+                charges        = nil,
+            })
+            if KickCD._debugLog then
+                dprint(("drop  [%d] became unavailable; sentinel SPELL_STATE emitted"):format(id))
+            end
+        elseif StateChanged(prev, next_) then
             self.watched[id] = next_
             KickCD:SendMessage("KickCD_SPELL_STATE", {
                 spellID        = next_.spellID,
