@@ -1,6 +1,6 @@
 # Ka0s KickCD
 
-![version](https://img.shields.io/badge/version-0.1.0--alpha-blue)
+![version](https://img.shields.io/badge/version-1.0.0-blue)
 ![wow](https://img.shields.io/badge/WoW-Midnight%2012.0.5-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
@@ -152,11 +152,11 @@ Run `/kcd debug interrupt` while the offending unit is casting. The output print
 
 **Cooldown text is stuck at `0.0` for a few seconds after a spell finishes.**
 
-Should not happen since the v0.1.0-alpha fix; if you see it, capture `/kcd debug spells` output during the stuck window and report it. Make sure `Icons → Annotations → Cooldown text` is enabled.
+Should not happen since the 1.0.0 fix; if you see it, capture `/kcd debug spells` output during the stuck window and report it. Make sure `Icons → Annotations → Cooldown text` is enabled.
 
 **Glow on secondary icons looks janky / restarts every ~0.1s.**
 
-Should not happen since the v0.1.0-alpha fix. If you see it, confirm the trigger is set to one of the *target casting* options and capture the cast bar / icon configuration plus a video.
+Should not happen since the 1.0.0 fix. If you see it, confirm the trigger is set to one of the *target casting* options and capture the cast bar / icon configuration plus a video.
 
 **Settings panel won't open mid-pull.**
 
@@ -179,6 +179,6 @@ All bugs, feature requests, and outstanding work are tracked at <https://github.
 
 ## Version History
 
-**0.1.0**
+**1.0.0**
 
-*   Alpha release
+*   Initial release

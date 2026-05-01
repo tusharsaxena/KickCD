@@ -33,7 +33,7 @@ _G.KickCD = addon
 local KickCD = addon
 
 -- Public version stamp.
-KickCD.VERSION = "0.1.0"
+KickCD.VERSION = "1.0.0"
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
