@@ -123,7 +123,7 @@ Blizzard's category-switching is protected, so opening *any* settings subcategor
 
 **Are there profiles? Per-character configs?**
 
-Yes — full AceDB profiles under Settings → Profiles. New installs default to **per-character** scope, so a Mage and a DH on the same account get independent configs out of the box. Switch to "Default" / per-class / per-realm in the Profiles panel if you'd rather share.
+Yes — full AceDB profiles under Settings → Profiles. Every character on the account starts on the shared **Default** profile, so changes made on one character carry over to every other one out of the box. Opt into per-character / per-class / per-realm scope from the Profiles panel if you want a character (or group of characters) to diverge.
 
 **What does "secret value" mean and why does it matter?**
 
@@ -173,16 +173,12 @@ Auto-size honors the grid's *visible* size on each `KickCD_GRID_LAYOUT`. If the 
 - Just the icon grid's screen position: `/kcd resetposition`.
 - A specific spec's spell list: `/kcd spells reset CLASS SPEC` or the Spells panel's per-spec **Defaults** button.
 
-**My settings disappeared after switching characters.**
+## Issues and feature requests
 
-Profiles default to per-character on first install. Open Settings → Profiles to copy / share / set a different default profile.
-
-## Bug Reports
-
-Please report any issues in the [Issues](https://github.com/tusharsaxena/kickcd/issues) tab, not as a comment!
+All bugs, feature requests, and outstanding work are tracked at <https://github.com/tusharsaxena/kickcd/issues>. Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.
 
 ## Version History
 
-**1.0.0**
+**0.1.0**
 
-*   Initial Release … yay!
+*   Alpha release
