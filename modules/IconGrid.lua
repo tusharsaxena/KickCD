@@ -937,8 +937,22 @@ function IconGrid:BuildActiveList()
     local list = KickCD.Database and KickCD.Database:GetSpellList(classFile, specName)
     if not list then return end
 
+    -- Dedupe by spellID so pool.active stays strictly 1:1 with id.
+    -- A duplicate id (hand-edited saved-vars, profile copy gone wrong,
+    -- or a future bug at the mutation layer) would otherwise have
+    -- AcquireIcon overwrite pool.active[id] with the second widget,
+    -- orphaning the first — which then never receives SPELL_STATE
+    -- updates while still being visible. Skip the duplicate; surface
+    -- it in the debug log when the user has _debugLog on.
+    local _seen = {}
     for _, entry in ipairs(list) do
-        if entry and entry.enabled ~= false and entry.spellID then
+        if entry and entry.enabled ~= false and entry.spellID and _seen[entry.spellID] then
+            if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print(("IconGrid: duplicate spellID %d in %s/%s — skipping"):format(
+                    entry.spellID, classFile, specName))
+            end
+        elseif entry and entry.enabled ~= false and entry.spellID then
+            _seen[entry.spellID] = true
             -- FR-2.8: hide entries the player can't see in their own spellbook.
             -- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
             -- additionally requires the spell to be actually accessible right now,
