@@ -22,6 +22,31 @@ local Compat = {}
 KickCD.Compat = Compat
 
 -- ---------------------------------------------------------------------------
+-- Internal helpers
+-- ---------------------------------------------------------------------------
+
+--- Return only the FIRST return of `fn(...)` (or `nil` if `fn` is missing).
+---
+--- Used to collapse the multi-return of WoW APIs like `UnitCastingInfo` /
+--- `UnitChannelInfo` to just their `name` slot for a truthy check. The
+--- previous idiom was `(_G.UnitCastingInfo(unit))` — the extra parens
+--- collapse the multi-return to a single value, but read as defensive
+--- boilerplate that begs explanation. `Compat._firstReturn(fn, ...)`
+--- makes the intent explicit at the call site.
+---
+--- Truthiness on the resulting value is always safe — `if x then` doesn't
+--- perform arithmetic, so a secret-tainted name passes through unchanged.
+--- Callers that want the actual value should still go through the full
+--- API (this helper only exposes position 1).
+---
+--- @param fn function|nil  the API to call (may be nil on older clients)
+--- @return any  fn's first return value, or nil when fn is missing
+function Compat._firstReturn(fn, ...)
+    if not fn then return nil end
+    return (fn(...))
+end
+
+-- ---------------------------------------------------------------------------
 -- Spell APIs
 -- ---------------------------------------------------------------------------
 
@@ -282,63 +307,13 @@ function Compat.GetCastingInfo(unit)
     return Compat.GetChannelInfo(unit)
 end
 
---- Whether `unit` is currently casting (or channeling) AND is a unit
---- the player can attack. Used as the visibility GATE for the
---- "target_casting_interruptible" mode — actual interruptibility is
---- filtered separately via Compat.ApplyInterruptibleAlpha because
---- notInterruptible is secret-tainted in 12.0 and cannot be compared
---- in Lua. (Friendly / self casts are excluded here because you can't
---- interrupt those regardless of the API flag.)
----
---- Truthiness checks on the API's `name` return are safe even when the
---- value is secret-tainted in combat — `if x then` does not perform
---- arithmetic.
-function Compat.IsHostileUnitCasting(unit)
-    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
-    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
-    if _G.UnitCastingInfo and (_G.UnitCastingInfo(unit)) then return true end
-    if _G.UnitChannelInfo and (_G.UnitChannelInfo(unit)) then return true end
-    return false
-end
-
---- Drive `frame`'s alpha from the unit's cast `notInterruptible` flag.
---- When the cast is interruptible (notInterruptible falsy) → frame
---- shows at `alpha`. When uninterruptible (notInterruptible truthy)
---- → frame hides (alpha 0). When the unit has no cast or is friendly
---- the function returns false WITHOUT touching the frame so the caller
---- can fall back to its own alpha policy.
----
---- The flag is fed straight into Frame:SetAlphaFromBoolean — a C-side
---- method that accepts the 12.0 "secret value" form of notInterruptible
---- without erroring. THIS IS THE ONLY 12.0-correct way to gate
---- visibility on interruptibility from an addon: any Lua-side compare
---- (`not nint`, `nint == true`, `if nint`) errors when the value is
---- secret-tainted.
----
---- @param frame Frame  must support :SetAlphaFromBoolean
---- @param unit  string ("target", ...)
---- @param alpha number alpha to use when interruptible (default 1)
---- @return bool whether the mask was applied
-function Compat.ApplyInterruptibleAlpha(frame, unit, alpha)
-    if not (frame and frame.SetAlphaFromBoolean) then return false end
-    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
-    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
-
-    local notInterruptible, hasCast
-    if _G.UnitCastingInfo then
-        local castName, _, _, _, _, _, _, n = _G.UnitCastingInfo(unit)
-        if castName then notInterruptible, hasCast = n, true end
-    end
-    if not hasCast and _G.UnitChannelInfo then
-        local chName, _, _, _, _, _, n = _G.UnitChannelInfo(unit)
-        if chName then notInterruptible, hasCast = n, true end
-    end
-    if not hasCast then return false end
-
-    -- C-side: accepts secret notInterruptible without arithmetic in Lua.
-    frame:SetAlphaFromBoolean(notInterruptible, 0, alpha or 1)
-    return true
-end
+-- The "is this unit's cast one I should react to" feature decision used
+-- to live here as Compat.IsHostileUnitCasting / Compat.ApplyInterruptibleAlpha.
+-- Both are NOT API-shape normalisation — they encode the addon's shared
+-- visibility / glow gating policy and are now owned by core/State.lua
+-- (KickCD.State.IsHostileUnitCasting / KickCD.State.ApplyInterruptibleAlpha).
+-- Compat keeps the raw GetCastingInfo / GetChannelInfo shims above; reach
+-- for State.* when you need the feature decision.
 
 --- Print a verbose diagnostic dump of the unit's cast state. Wired to
 --- `/kcd debug interrupt` — used to verify whether `notInterruptible`
@@ -424,8 +399,8 @@ function Compat.DebugInterrupt(unit)
         end
     end
 
-    out(("Compat.IsHostileUnitCasting(%s) = %s"):format(
-        unit, tostring(Compat.IsHostileUnitCasting(unit))))
+    out(("State.IsHostileUnitCasting(%s) = %s"):format(
+        unit, tostring(KickCD.State.IsHostileUnitCasting(unit))))
 
     -- Report what the addon-wide visibility / glow logic decided. The
     -- visibility mode is the addon-wide setting; per-icon glow triggers
