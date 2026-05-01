@@ -207,7 +207,9 @@ All bugs, feature requests, and outstanding work are tracked at <https://github.
 
 ## Version History
 
+**1.0.1**
+- Version bump to 1.0.1-release to trigger build
+
 **1.0.0**
 
-*   Initial release
-
+- Initial release
