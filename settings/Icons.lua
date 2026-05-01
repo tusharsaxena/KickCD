@@ -155,19 +155,16 @@ add{
 }
 
 -- Border -------------------------------------------------------------
+-- Order produces:
+--     [Show border]                         (solo, left half)
+--     [Border thickness] | [Border color]
 add{
     panel = "icons", section = "icons", group = L["Border"],
     path  = "icons.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a thin border around each icon."],
     default = false,
-}
-add{
-    panel = "icons", section = "icons", group = L["Border"],
-    path  = "icons.borderColor", type = "color",
-    label = L["Border color"],
-    tooltip = L["Border color (RGBA)."],
-    default = { 0, 0, 0, 1 },
+    solo    = true,
 }
 add{
     panel = "icons", section = "icons", group = L["Border"],
@@ -176,15 +173,19 @@ add{
     tooltip = L["Border thickness in pixels."],
     default = 1, min = 0, max = 4, step = 1, fmt = "%d px",
 }
+add{
+    panel = "icons", section = "icons", group = L["Border"],
+    path  = "icons.borderColor", type = "color",
+    label = L["Border color"],
+    tooltip = L["Border color (RGBA)."],
+    default = { 0, 0, 0, 1 },
+}
 
 -- Annotations --------------------------------------------------------
-add{
-    panel = "icons", section = "icons", group = L["Annotations"],
-    path  = "icons.showCooldownText", type = "bool",
-    label = L["Show cooldown text"],
-    tooltip = L["Render numeric seconds remaining on each icon."],
-    default = false,
-}
+-- Order produces:
+--     [Font]               | [Font size]
+--     [Font flags]         | [Show tooltip on hover]
+--     [Show cooldown text] | [Show charges]
 add{
     panel = "icons", section = "icons", group = L["Annotations"],
     path  = "icons.cooldownTextFont", type = "string",
@@ -217,17 +218,24 @@ add{
 }
 add{
     panel = "icons", section = "icons", group = L["Annotations"],
-    path  = "icons.showCharges", type = "bool",
-    label = L["Show charges"],
-    tooltip = L["Render a charges badge for spells with charges."],
-    default = true,
-}
-add{
-    panel = "icons", section = "icons", group = L["Annotations"],
     path  = "icons.showTooltip", type = "bool",
     label = L["Show tooltip on hover"],
     tooltip = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
     default = false,
+}
+add{
+    panel = "icons", section = "icons", group = L["Annotations"],
+    path  = "icons.showCooldownText", type = "bool",
+    label = L["Show cooldown text"],
+    tooltip = L["Render numeric seconds remaining on each icon."],
+    default = false,
+}
+add{
+    panel = "icons", section = "icons", group = L["Annotations"],
+    path  = "icons.showCharges", type = "bool",
+    label = L["Show charges"],
+    tooltip = L["Render a charges badge for spells with charges."],
+    default = true,
 }
 
 -- Ready glow ---------------------------------------------------------

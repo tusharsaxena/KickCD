@@ -17,19 +17,20 @@ local Schema = KickCD.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
+-- Master controls — deliberately ordered so the schema's pair-into-rows
+-- renderer produces:
+--     [Enable KickCD]   | [General visibility]
+--     [Lock frame]      | [Debug]
+-- followed by an InlineButtonPair afterGroup row:
+--     [Reset position]  | [Reset all settings]
+--
+-- debugLog used to live under its own "Debug" subsection; the lone
+-- checkbox didn't justify a header, so it joins Master controls instead.
 add{
     panel    = "general",  section = "general",  group = L["Master controls"],
     path     = "enabled",  type    = "bool",
     label    = L["Enable KickCD"],
     tooltip  = L["Master enable for the addon."],
-    default  = true,
-}
-
-add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
-    path     = "locked",   type    = "bool",
-    label    = L["Lock frame"],
-    tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
     default  = true,
 }
 
@@ -48,6 +49,23 @@ add{
 }
 
 add{
+    panel    = "general",  section = "general",  group = L["Master controls"],
+    path     = "locked",   type    = "bool",
+    label    = L["Lock frame"],
+    tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
+    default  = true,
+}
+
+add{
+    panel    = "general",  section = "general",  group = L["Master controls"],
+    path     = "debugLog", type    = "bool",
+    label    = L["Debug"],
+    tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
+    default  = false,
+    onChange = function(v) KickCD._debugLog = v and true or false end,
+}
+
+add{
     panel    = "general",  section = "general",  group = L["Appearance"],
     path     = "scale",    type    = "number",
     label    = L["Master scale"],
@@ -63,15 +81,6 @@ add{
     tooltip  = L["Global opacity for the icon grid."],
     default  = 1.0,
     min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
-}
-
-add{
-    panel    = "general",  section = "general",  group = L["Debug"],
-    path     = "debugLog", type    = "bool",
-    label    = L["Debug"],
-    tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
-    default  = false,
-    onChange = function(v) KickCD._debugLog = v and true or false end,
 }
 
 -- ---------------------------------------------------------------------
@@ -134,16 +143,17 @@ local function Build(mainCategory)
         rendered = true
         H.RenderSchema(ctx, "general", {
             [L["Master controls"]] = function(ctxRef)
-                H.InlineButton(ctxRef,
-                    L["Reset position"],
-                    L["Restore the icon grid to its default screen position."],
-                    resetPosition,
-                    160)
-                H.InlineButton(ctxRef,
-                    L["Reset all settings"],
-                    L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
-                    function() StaticPopup_Show("KICKCD_RESET_ALL") end,
-                    160)
+                H.InlineButtonPair(ctxRef,
+                    {
+                        text    = L["Reset position"],
+                        tooltip = L["Restore the icon grid to its default screen position."],
+                        onClick = resetPosition,
+                    },
+                    {
+                        text    = L["Reset all settings"],
+                        tooltip = L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
+                        onClick = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
+                    })
             end,
         })
     end)

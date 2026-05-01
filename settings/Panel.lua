@@ -110,7 +110,17 @@ end
 -- ---------------------------------------------------------------------
 
 local PADDING_X     = 16
-local HEADER_HEIGHT = 42
+-- Vertical inset of the title (and the defaults button next to it)
+-- from the top of the panel. Roughly half the height of the
+-- GameFontNormalHuge title glyph so the header doesn't crowd the
+-- panel's top edge. Bumped from 8 → 20 (the +12 px ≈ half the title
+-- font's ascent).
+local HEADER_TOP    = 20
+-- Distance from the top of the panel to the divider underneath the
+-- title. Bumped in lockstep with HEADER_TOP so the title-to-divider
+-- gap (and divider-to-body gap below it) stay unchanged — the entire
+-- header zone just translates 12 px down.
+local HEADER_HEIGHT = 54
 local DEFAULTS_W    = 110
 
 -- ---------------------------------------------------------------------
@@ -153,7 +163,7 @@ Helpers.AttachTooltip = attachTooltip
 
 local function buildHeader(panel, title, opts)
     local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING_X, -8)
+    titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING_X, -HEADER_TOP)
     titleFS:SetText(title)
 
     local divider = panel:CreateTexture(nil, "ARTWORK")
@@ -169,7 +179,7 @@ local function buildHeader(panel, title, opts)
         defaultsBtn.frame:SetParent(panel)
         defaultsBtn.frame:ClearAllPoints()
         defaultsBtn.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT",
-                                   -PADDING_X, -8)
+                                   -PADDING_X, -HEADER_TOP)
         defaultsBtn.frame:Show()
         attachTooltip(defaultsBtn, L["Defaults"], opts.defaultsTooltip)
     end
@@ -214,6 +224,167 @@ function Helpers.CreatePanel(name, title, opts)
 end
 
 -- ---------------------------------------------------------------------
+-- Always-visible scrollbar patch
+-- ---------------------------------------------------------------------
+--
+-- AceGUI's stock ScrollFrame.FixScroll auto-hides the scrollbar when
+-- content fits inside the viewport. Across our settings tabs that
+-- means General (short) shows no scrollbar while Icons / Cast bar
+-- (long) do — visually asymmetric.
+--
+-- This helper rebinds FixScroll on a single ScrollFrame instance to
+-- always keep the scrollbar (and its 20 px right-side gutter) shown,
+-- and parks the thumb at the top when there's nothing to scroll. The
+-- gutter persists either way so the body content's right edge sits at
+-- the same x across every panel.
+--
+-- We restore the stock FixScroll + OnRelease on widget release so the
+-- AceGUI pool returns to a clean state — AceGUI's pool is shared
+-- across addons, and we don't want our patch leaking into another
+-- addon's ScrollFrame after it picks up the same recycled instance.
+function Helpers.PatchAlwaysShowScrollbar(scroll)
+    if not scroll or scroll._kcdAlwaysScrollbar then return end
+    scroll._kcdAlwaysScrollbar = true
+
+    local origFixScroll  = scroll.FixScroll
+    local origMoveScroll = scroll.MoveScroll
+    local origOnRelease  = scroll.OnRelease
+
+    -- Look up the UIPanelScrollBarTemplate's optional up/down arrow
+    -- buttons by name. Newer scrollbar variants strip these; in that
+    -- case we simply skip the button-side toggle. Cached once because
+    -- the names are stable for the widget's lifetime.
+    local scrollbar  = scroll.scrollbar
+    local thumb      = scrollbar and scrollbar.GetThumbTexture and scrollbar:GetThumbTexture() or nil
+    local sbName     = scrollbar and scrollbar.GetName and scrollbar:GetName() or nil
+    local upBtn      = sbName and _G[sbName .. "ScrollUpButton"]   or nil
+    local downBtn    = sbName and _G[sbName .. "ScrollDownButton"] or nil
+
+    -- Tri-state: nil = "not yet applied" (forces the first transition
+    -- to actually run regardless of which way it goes). After that,
+    -- `true` / `false` short-circuit redundant calls every OnUpdate
+    -- tick, since FixScroll runs on every paint.
+    local currentEnabled
+
+    local function setEnabled(want)
+        if currentEnabled == want then return end
+        currentEnabled = want
+        if not scrollbar then return end
+
+        if want then
+            if scrollbar.Enable then scrollbar:Enable() end
+            if thumb and thumb.SetVertexColor then
+                thumb:SetVertexColor(1, 1, 1, 1)
+            end
+            if upBtn   and upBtn.Enable   then upBtn:Enable()   end
+            if downBtn and downBtn.Enable then downBtn:Enable() end
+        else
+            -- Park the value at 0 first so the thumb sits at the top
+            -- before we lock interaction down. Disabling the slider
+            -- first and *then* parking would skip OnValueChanged.
+            scrollbar:SetValue(0)
+            if scrollbar.Disable then scrollbar:Disable() end
+            if thumb and thumb.SetVertexColor then
+                thumb:SetVertexColor(0.5, 0.5, 0.5, 0.6)
+            end
+            if upBtn   and upBtn.Disable   then upBtn:Disable()   end
+            if downBtn and downBtn.Disable then downBtn:Disable() end
+        end
+    end
+
+    -- Initial setup: reserve the gutter and reveal the scrollbar.
+    -- Mirrors the "scrollbar visible" branch of stock FixScroll so we
+    -- don't have to wait for the first OnUpdate tick to take effect.
+    scroll.scrollBarShown = true
+    if scrollbar then scrollbar:Show() end
+    if scroll.scrollframe then
+        scroll.scrollframe:SetPoint("BOTTOMRIGHT", -20, 0)
+    end
+    if scroll.content and scroll.content.original_width then
+        scroll.content.width = scroll.content.original_width - 20
+    end
+
+    -- Rebound FixScroll: the upstream "viewheight < height + 2 →
+    -- hide scrollbar" branch is replaced by "park thumb at top,
+    -- disable interaction, leave scrollbar visible." The overflow
+    -- branch is kept verbatim so actual scrolling still works on long
+    -- panels.
+    scroll.FixScroll = function(self)
+        if self.updateLock then return end
+        self.updateLock = true
+
+        -- Defensive re-show in case Blizzard or AceGUI layout has
+        -- stomped our anchor / content width since the last tick.
+        if not self.scrollBarShown then
+            self.scrollBarShown = true
+            self.scrollbar:Show()
+            self.scrollframe:SetPoint("BOTTOMRIGHT", -20, 0)
+            if self.content.original_width then
+                self.content.width = self.content.original_width - 20
+            end
+        end
+
+        local status = self.status or self.localstatus
+        local height, viewheight =
+            self.scrollframe:GetHeight(), self.content:GetHeight()
+        local offset = status.offset or 0
+
+        if viewheight < height + 2 then
+            -- Content fits: park the thumb at the top and grey the
+            -- scrollbar out so the user reads it as inert.
+            setEnabled(false)
+            self.scrollbar:SetValue(0)
+            self.scrollframe:SetVerticalScroll(0)
+            status.offset = 0
+        else
+            setEnabled(true)
+            local value = (offset / (viewheight - height) * 1000)
+            if value > 1000 then value = 1000 end
+            self.scrollbar:SetValue(value)
+            self:SetScroll(value)
+            if value < 1000 then
+                self.content:ClearAllPoints()
+                self.content:SetPoint("TOPLEFT",  0, offset)
+                self.content:SetPoint("TOPRIGHT", 0, offset)
+                status.offset = offset
+            end
+        end
+
+        self.updateLock = nil
+    end
+
+    -- MoveScroll is the mousewheel entrypoint. Stock implementation
+    -- writes through to scrollbar:SetValue, which would shift the
+    -- thumb visually even though SetScroll's offset guard keeps the
+    -- content stationary. Short-circuit when disabled so a wheel
+    -- input over a content-fits panel is fully inert.
+    scroll.MoveScroll = function(self, value)
+        if currentEnabled == false then return end
+        if origMoveScroll then return origMoveScroll(self, value) end
+    end
+
+    -- Undo the patch on release so the recycled widget pool returns
+    -- to stock behavior for any subsequent acquirer.
+    scroll.OnRelease = function(self)
+        self.FixScroll  = origFixScroll
+        self.MoveScroll = origMoveScroll
+        self.OnRelease  = origOnRelease
+        self._kcdAlwaysScrollbar = nil
+        currentEnabled  = nil
+        -- Restore the thumb's normal vertex color in case OnRelease
+        -- runs while we're in the disabled state — otherwise the
+        -- next acquirer would inherit a greyed thumb.
+        if thumb and thumb.SetVertexColor then
+            thumb:SetVertexColor(1, 1, 1, 1)
+        end
+        if scrollbar and scrollbar.Enable then scrollbar:Enable() end
+        if upBtn   and upBtn.Enable   then upBtn:Enable()   end
+        if downBtn and downBtn.Enable then downBtn:Enable() end
+        if origOnRelease then origOnRelease(self) end
+    end
+end
+
+-- ---------------------------------------------------------------------
 -- Lazy AceGUI scroll container. Tabs that drive ctx.body directly
 -- (Spells, Profiles) never trigger this; they place their own AceGUI
 -- containers on top of ctx.body.
@@ -245,6 +416,11 @@ local function ensureScroll(ctx)
         if scroll.DoLayout    then scroll:DoLayout()     end
         if scroll.FixScroll   then scroll:FixScroll()    end
     end)
+
+    -- Always render the scrollbar, even on short panels — gives every
+    -- settings tab a symmetric right-edge gutter. See
+    -- Helpers.PatchAlwaysShowScrollbar.
+    Helpers.PatchAlwaysShowScrollbar(scroll)
 
     ctx.scroll = scroll
     return scroll
@@ -504,6 +680,40 @@ function Helpers.InlineButton(ctx, buttonText, tooltip, onClick, width)
     return btn
 end
 
+-- Two side-by-side action buttons sharing one Flow row at 50% / 50%
+-- width. Each spec is { text = ..., tooltip = ..., onClick = function }.
+-- Used by the General tab's afterGroup callback so "Reset position" and
+-- "Reset all settings" sit on a single row aligned with the schema's
+-- two-column grid above them.
+function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
+    local scroll = ensureScroll(ctx)
+
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+    row:SetHeight(28)
+
+    local function makeBtn(spec)
+        if not spec then return end
+        local btn = AceGUI:Create("Button")
+        btn:SetText(spec.text or "")
+        btn:SetRelativeWidth(0.5)
+        btn:SetCallback("OnClick", function()
+            if not spec.onClick then return end
+            local ok, err = pcall(spec.onClick)
+            if not ok and KickCD.Util then
+                KickCD.Util.print("button onClick failed: " .. tostring(err))
+            end
+        end)
+        attachTooltip(btn, spec.text, spec.tooltip)
+        row:AddChild(btn)
+    end
+
+    makeBtn(leftSpec)
+    makeBtn(rightSpec)
+    scroll:AddChild(row)
+end
+
 -- Inline action button (label on the left, button on the right).
 -- Used for "Reset position" et al. — not a setting.
 function Helpers.Button(ctx, labelText, buttonText, tooltip, onClick)
@@ -586,10 +796,23 @@ function Helpers.RenderSchema(ctx, panelKey, afterGroup)
             ctx.lastGroup = def.group
         end
 
+        -- def.solo = true means "render this widget alone in the left
+        -- half of its own row, leaving the right half empty." Used for
+        -- visually-grouping pivots (e.g. Icons → Border's "Show border"
+        -- header followed by Border thickness | Border color, or Cast
+        -- bar → Position's "Anchor Mode" pivot above the two attach-
+        -- point dropdowns). Implementation: flush the in-progress row
+        -- first so the solo widget starts fresh, then flush again
+        -- immediately after rendering so the next widget begins on a
+        -- new row.
+        if def.solo and pendingCount > 0 then
+            flushRow()
+        end
+
         if not pendingRow then pendingRow = startRow() end
         Helpers.RenderField(ctx, def, pendingRow, 0.5)
         pendingCount = pendingCount + 1
-        if pendingCount >= 2 then flushRow() end
+        if def.solo or pendingCount >= 2 then flushRow() end
 
         local nextDef = rows[i + 1]
         if afterGroup and def.group

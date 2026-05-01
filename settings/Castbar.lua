@@ -48,6 +48,12 @@ local NINE_POINT_VALUES = {
     { value = "BOTTOMRIGHT", label = L["Bottom right"] },
 }
 
+-- Position layout produces:
+--     [Anchor mode]                                        (solo)
+--     [Anchor on primary icon] | [Anchor on cast bar]
+--     [X offset]               | [Y offset]
+-- anchor mode is a higher-level pivot than the two attach-point
+-- dropdowns it controls, hence the row of its own.
 add{
     panel = "castbar", section = "castbar", group = L["Position"],
     path  = "castbar.anchorMode", type = "string",
@@ -58,6 +64,7 @@ add{
         { value = "FREE",    label = L["Free (drag to move)"]      },
         { value = "PRIMARY", label = L["Anchored to primary icon"] },
     },
+    solo    = true,
     onChange = reskin,
 }
 add{
@@ -131,35 +138,42 @@ add{
     onChange = reskin,
 }
 
--- Sizing -------------------------------------------------------------
+-- Sizing and Layout --------------------------------------------------
+-- Merged from the previous two-subsection split (Sizing + Layout) so
+-- everything that determines the bar's dimensions and icon placement
+-- lives in one section. Order produces:
+--     [Cast bar width] | [Cast bar height]
+--     [Icon size]      | [Icon position]
+--     [Show spark]                                  (alone — last in
+--                                                    section, group
+--                                                    transition flushes
+--                                                    the row).
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing"],
+    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
     path  = "castbar.width", type = "number",
-    label = L["Width (in px)"],
+    label = L["Cast bar width (in px)"],
     tooltip = L["Cast bar width in pixels."],
     default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing"],
+    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
     path  = "castbar.height", type = "number",
-    label = L["Height (in px)"],
+    label = L["Cast bar height (in px)"],
     tooltip = L["Cast bar height in pixels."],
     default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing"],
+    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
     path  = "castbar.iconSize", type = "number",
     label = L["Icon size (in px)"],
     tooltip = L["Spell icon size in pixels (0 hides the icon)."],
     default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
     onChange = reskin,
 }
-
--- Layout -------------------------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Layout"],
+    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
     path  = "castbar.iconPosition", type = "string",
     label = L["Icon position"],
     tooltip = L["Where to place the spell icon, or hide it entirely."],
@@ -172,7 +186,7 @@ add{
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Layout"],
+    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
     path  = "castbar.showSpark", type = "bool",
     label = L["Show spark"],
     tooltip = L["Render the leading-edge spark on the bar."],
@@ -181,6 +195,15 @@ add{
 }
 
 -- Text -----------------------------------------------------------------
+-- Just the typography (font / size / flags). The "Show spell name" and
+-- "Show cast time" toggles each used to live here too, but now sit
+-- alongside their own anchor + offset controls under the Spell name and
+-- Cast time sections below — reads more naturally per-element than as a
+-- pair of show-toggles separated from their position controls. Order:
+--     [Font]       | [Font size]
+--     [Font flags] |                                      (alone — group
+--                                                          break flushes
+--                                                          the row).
 local TEXT_POSITION_VALUES = {
     { value = "INSIDE_LEFT",   label = L["Inside left"]   },
     { value = "INSIDE_RIGHT",  label = L["Inside right"]  },
@@ -189,22 +212,6 @@ local TEXT_POSITION_VALUES = {
     { value = "OUTSIDE_RIGHT", label = L["Outside right"] },
 }
 
-add{
-    panel = "castbar", section = "castbar", group = L["Text"],
-    path  = "castbar.showName", type = "bool",
-    label = L["Show spell name"],
-    tooltip = L["Display the cast spell's name on the bar."],
-    default = true,
-    onChange = reskin,
-}
-add{
-    panel = "castbar", section = "castbar", group = L["Text"],
-    path  = "castbar.showTime", type = "bool",
-    label = L["Show cast time"],
-    tooltip = L["Display the remaining / total cast time on the bar."],
-    default = true,
-    onChange = reskin,
-}
 add{
     panel = "castbar", section = "castbar", group = L["Text"],
     path  = "castbar.font", type = "string",
@@ -237,9 +244,22 @@ add{
     onChange = reskin,
 }
 
--- Spell name position --------------------------------------------------
+-- Spell name -----------------------------------------------------------
+-- Renamed from "Spell name position" — now bundles the show-toggle with
+-- the anchor + offsets so a user looking for "where does the spell name
+-- go?" finds the on/off switch alongside the placement controls. Order:
+--     [Show spell name] | [Anchor]
+--     [X offset]        | [Y offset]
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    panel = "castbar", section = "castbar", group = L["Spell name"],
+    path  = "castbar.showName", type = "bool",
+    label = L["Show spell name"],
+    tooltip = L["Display the cast spell's name on the bar."],
+    default = true,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Spell name"],
     path  = "castbar.namePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the spell name relative to the bar."],
@@ -248,7 +268,7 @@ add{
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    panel = "castbar", section = "castbar", group = L["Spell name"],
     path  = "castbar.nameOffsetX", type = "number",
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
@@ -256,7 +276,7 @@ add{
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name position"],
+    panel = "castbar", section = "castbar", group = L["Spell name"],
     path  = "castbar.nameOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
@@ -264,9 +284,22 @@ add{
     onChange = reskin,
 }
 
--- Cast time position ---------------------------------------------------
+-- Cast time ------------------------------------------------------------
+-- Renamed from "Cast time position". Same shape as Spell name: the show-
+-- toggle joins the placement controls so they're configured together.
+-- Order:
+--     [Show cast time] | [Anchor]
+--     [X offset]       | [Y offset]
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    panel = "castbar", section = "castbar", group = L["Cast time"],
+    path  = "castbar.showTime", type = "bool",
+    label = L["Show cast time"],
+    tooltip = L["Display the remaining / total cast time on the bar."],
+    default = true,
+    onChange = reskin,
+}
+add{
+    panel = "castbar", section = "castbar", group = L["Cast time"],
     path  = "castbar.timePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
@@ -275,7 +308,7 @@ add{
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    panel = "castbar", section = "castbar", group = L["Cast time"],
     path  = "castbar.timeOffsetX", type = "number",
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
@@ -283,7 +316,7 @@ add{
     onChange = reskin,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time position"],
+    panel = "castbar", section = "castbar", group = L["Cast time"],
     path  = "castbar.timeOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],

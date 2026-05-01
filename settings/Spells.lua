@@ -333,10 +333,11 @@ local function buildRow(AceGUI, parent, list, index)
     local label = AceGUI:Create("Label")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
     label:SetText(name)
-    -- Trimmed from 220 → 190 to make room for the new known/unknown
-    -- status glyph between the checkbox and the category dropdown without
-    -- overflowing the row's horizontal budget.
-    label:SetWidth(190)
+    -- Was 190 (trimmed from 220 to make room for the known/unknown
+    -- status glyph). Bumped 25% to 238 to take advantage of the empty
+    -- space on the right of each row — long spell names like
+    -- "Counterspell" or "Shockwave (talented)" no longer truncate.
+    label:SetWidth(238)
     row:AddChild(label)
     if label.frame and label.frame.HookScript then
         label.frame:EnableMouse(true)
@@ -625,7 +626,18 @@ local function buildSpellsHeader(AceGUI, parent)
     end)
     addBtn.frame:SetParent(parent)
     addBtn.frame:ClearAllPoints()
-    addBtn.frame:SetPoint("LEFT", specDD.frame, "RIGHT", 12, 0)
+    -- Anchor LEFT…RIGHT against specDD.dropdown (the inner UIDropDownMenu
+    -- frame) instead of specDD.frame (the outer AceGUI frame that
+    -- includes the "Specialization" label above the dropdown control).
+    -- The outer frame is 40 px tall when labelled (label 18 + dropdown
+    -- 26) so a vertical-center anchor against it landed the button on
+    -- the seam between the two — visually misaligned. Anchoring against
+    -- the inner dropdown puts the button's vertical center on the
+    -- dropdown control itself, ignoring the label. The -5 X offset
+    -- restores the original ~12 px gap from the frame's right edge:
+    -- the inner dropdown extends +17 px past the outer frame's right
+    -- (decorative texture overhang), so -5 nets back to +12.
+    addBtn.frame:SetPoint("LEFT", specDD.dropdown, "RIGHT", -5, 0)
     addBtn.frame:Show()
     headerWidgets[#headerWidgets + 1] = addBtn
 end
@@ -672,6 +684,16 @@ function Spells:RefreshRows()
     container.frame:SetPoint("TOPLEFT",     body, "TOPLEFT",     16, -56)
     container.frame:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -16, 16)
     container.frame:Show()
+
+    -- Always render the scrollbar so this panel's right-edge gutter
+    -- matches the schema-driven panels (General / Icons / Cast bar)
+    -- regardless of how many spell rows the active class+spec has.
+    -- The patch is restored on widget release, so the AceGUI pool
+    -- stays clean for any other addon.
+    local PanelHelpers = KickCD.Settings and KickCD.Settings.Helpers
+    if PanelHelpers and PanelHelpers.PatchAlwaysShowScrollbar then
+        PanelHelpers.PatchAlwaysShowScrollbar(container)
+    end
 
     local list = getActiveList()
     if not list or #list == 0 then
