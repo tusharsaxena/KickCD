@@ -15,7 +15,20 @@ KickCD.Database = Database
 -- Defaults (DEFAULT_PROFILE shape per TECHNICAL_DESIGN §4)
 -- ---------------------------------------------------------------------------
 
+-- Schema version. Increment whenever a non-additive change is made to
+-- DEFAULT_PROFILE's shape (rename, restructure, type change). Additive
+-- changes (new leaf settings) are absorbed by AceDB's defaults merge
+-- and don't need a version bump. Database:MigrateProfile reads this
+-- field on Init and on every profile swap and walks any required
+-- migrations forward; today the migrator is a no-op for v1.
+local CURRENT_DB_VERSION = 1
+
 local DEFAULT_PROFILE = {
+    -- Schema version stamped onto every newly-created profile so future
+    -- migrations can tell "this profile was last touched at version N"
+    -- and apply the right transforms. Existing profiles missing the
+    -- field are treated as v1 (the original shape) by MigrateProfile.
+    dbVersion  = CURRENT_DB_VERSION,
     enabled    = true,
     locked     = true,
     scale      = 1.0,
@@ -404,6 +417,53 @@ function Database:ResetAllSpells()
 end
 
 -- ---------------------------------------------------------------------------
+-- Profile migration
+-- ---------------------------------------------------------------------------
+--
+-- Schema changes that aren't pure additions need a migration: the
+-- previous shape stays in saved-vars for any user who had the addon
+-- installed at the older version, and a new install writes the latest.
+-- This is the extension point. Each migration is idempotent and walks
+-- profile.dbVersion forward by exactly one step; MigrateProfile loops
+-- until the profile reports the current version. Adding a v2 migration
+-- means: append a `migrations[1] = function(p) ...; p.dbVersion = 2 end`
+-- entry below and bump CURRENT_DB_VERSION at the top of this file. No
+-- bootstrap changes required.
+--
+-- For v1 the migrator is a no-op — every shipped DEFAULT_PROFILE field
+-- is treated as v1's shape. The scaffold exists so the next change
+-- ships next to its migrator and reviewers don't have to wire one up
+-- under deadline pressure.
+
+local migrations = {
+    -- [from-version] = function(profile) ... end
+    -- Each step bumps profile.dbVersion to the from-version+1.
+}
+
+--- Migrate the active profile forward to CURRENT_DB_VERSION. Idempotent
+--- on profiles already at the current version. Profiles missing
+--- dbVersion entirely are treated as v1 (the original shape).
+function Database:MigrateProfile()
+    if not (self.db and self.db.profile) then return end
+    local profile = self.db.profile
+    -- Treat a missing dbVersion as v1 — the field was added in v1, so
+    -- a profile that pre-dates this scaffold is structurally v1.
+    profile.dbVersion = profile.dbVersion or 1
+    while profile.dbVersion < CURRENT_DB_VERSION do
+        local step = migrations[profile.dbVersion]
+        if not step then
+            -- No registered migrator for this jump — bump the field to
+            -- avoid an infinite loop and stop. A real schema change
+            -- would have registered the step before bumping
+            -- CURRENT_DB_VERSION.
+            profile.dbVersion = CURRENT_DB_VERSION
+            break
+        end
+        step(profile)
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Profile callbacks
 -- ---------------------------------------------------------------------------
 
@@ -414,8 +474,11 @@ function Database:OnProfileChanged(_, db, newProfileKey)
 
     -- A reset wipes the profile back to defaults (which leaves spells = {}).
     -- Re-seed spells so the user gets a working list immediately, just like
-    -- a fresh profile would.
+    -- a fresh profile would. Then run any pending migrations on the
+    -- newly-active profile (a copied profile may have been authored at
+    -- an older schema version).
     self:BuildSpells()
+    self:MigrateProfile()
 
     -- Fire the closed internal message — see TECHNICAL_DESIGN §1.
     -- This is the only message Database is allowed to emit.
@@ -448,6 +511,11 @@ function Database:Init()
     -- populated profiles, so it's safe on every login. Profile changes
     -- re-trigger it via OnProfileChanged.
     self:BuildSpells()
+
+    -- Walk any required migrations forward. For v1 this is a no-op,
+    -- but every Init runs through the same code path so a future v2
+    -- ships its migrator in one place.
+    self:MigrateProfile()
 
     -- Wire profile callbacks. AceDB calls these as `obj:method(event, db, key)`
     -- when we register with (self, "OnProfileChanged", "OnProfileChanged").
