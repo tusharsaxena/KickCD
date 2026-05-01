@@ -106,17 +106,16 @@ local function isEnabled()
 end
 
 -- True if the player's target is currently casting or channeling. Reads
--- UnitCastingInfo / UnitChannelInfo and only inspects whether the FIRST
--- return (name) is non-nil — the value itself may be secret in combat for
--- protected casts but a nil-vs-non-nil truthy check does not error
--- (Lua's `not` is safe on secrets; same guarantee `current.name and ...`
--- relies on in modules/Castbar.lua).
+-- UnitCastingInfo / UnitChannelInfo via Compat._firstReturn — the helper
+-- collapses the API's multi-return to position 1 (name) only, so the
+-- truthy check below is on a single value. The name itself may be secret
+-- in combat for protected casts but a nil-vs-non-nil truthy check does
+-- not error (Lua's `not` is safe on secrets; same guarantee
+-- `current.name and ...` relies on in modules/Castbar.lua).
 local function isTargetCasting()
     if not (UnitExists and UnitExists("target")) then return false end
-    local castName    = _G.UnitCastingInfo and _G.UnitCastingInfo("target")
-    if castName then return true end
-    local channelName = _G.UnitChannelInfo and _G.UnitChannelInfo("target")
-    if channelName then return true end
+    if KickCD.Compat._firstReturn(_G.UnitCastingInfo, "target") then return true end
+    if KickCD.Compat._firstReturn(_G.UnitChannelInfo, "target") then return true end
     return false
 end
 

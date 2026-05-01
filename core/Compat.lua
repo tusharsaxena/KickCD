@@ -22,6 +22,31 @@ local Compat = {}
 KickCD.Compat = Compat
 
 -- ---------------------------------------------------------------------------
+-- Internal helpers
+-- ---------------------------------------------------------------------------
+
+--- Return only the FIRST return of `fn(...)` (or `nil` if `fn` is missing).
+---
+--- Used to collapse the multi-return of WoW APIs like `UnitCastingInfo` /
+--- `UnitChannelInfo` to just their `name` slot for a truthy check. The
+--- previous idiom was `(_G.UnitCastingInfo(unit))` — the extra parens
+--- collapse the multi-return to a single value, but read as defensive
+--- boilerplate that begs explanation. `Compat._firstReturn(fn, ...)`
+--- makes the intent explicit at the call site.
+---
+--- Truthiness on the resulting value is always safe — `if x then` doesn't
+--- perform arithmetic, so a secret-tainted name passes through unchanged.
+--- Callers that want the actual value should still go through the full
+--- API (this helper only exposes position 1).
+---
+--- @param fn function|nil  the API to call (may be nil on older clients)
+--- @return any  fn's first return value, or nil when fn is missing
+function Compat._firstReturn(fn, ...)
+    if not fn then return nil end
+    return (fn(...))
+end
+
+-- ---------------------------------------------------------------------------
 -- Spell APIs
 -- ---------------------------------------------------------------------------
 
@@ -296,8 +321,8 @@ end
 function Compat.IsHostileUnitCasting(unit)
     if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
     if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
-    if _G.UnitCastingInfo and (_G.UnitCastingInfo(unit)) then return true end
-    if _G.UnitChannelInfo and (_G.UnitChannelInfo(unit)) then return true end
+    if Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
+    if Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
     return false
 end
 
