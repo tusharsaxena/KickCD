@@ -762,6 +762,17 @@ local function ensurePanel()
         KickCD:RegisterMessage("KickCD_PROFILE_CHANGED", function()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end)
+        -- Slash-command mutations (`/kcd spells add/remove/...`) and the
+        -- panel's own commitSoon both fire KickCD_CONFIG_CHANGED with
+        -- section="spells". Subscribing here is what closes the bus
+        -- contract — the slash layer no longer reaches across to call
+        -- our RefreshRows directly (CR-7).
+        KickCD:RegisterMessage("KickCD_CONFIG_CHANGED", function(_, payload)
+            if payload and payload.section == "spells"
+               and panel and panel:IsShown() then
+                Spells:RefreshRows()
+            end
+        end)
     end
 
     -- Talent / spellbook changes flip the per-row known/unknown glyph.

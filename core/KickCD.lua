@@ -549,21 +549,14 @@ local function ensureSpellList(class, spec)
     return KickCD.Database:EnsureSpellList(class, spec)
 end
 
--- Mutation commit: fire the closed message AND nudge the open Spells
--- panel to redraw if the user has it visible. The panel listens for
--- KickCD_PROFILE_CHANGED but not for KickCD_CONFIG_CHANGED { spells }
--- (the latter is for module re-Builds), so we have to call its
--- RefreshRows directly.
+-- Mutation commit: fire the closed message; the Spells panel now
+-- subscribes to KickCD_CONFIG_CHANGED { section = "spells" } in its own
+-- ensurePanel hook so a slash-driven mutation refreshes the open editor
+-- without a direct cross-module call from this layer (closed-bus
+-- contract — see docs/CLAUDE_MESSAGE_BUS.md).
 local function commitSpellsChange()
     if KickCD and KickCD.SendMessage then
         KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
-    end
-    if KickCD.SettingsSpells and KickCD.SettingsSpells.RefreshRows then
-        local ok, err = pcall(KickCD.SettingsSpells.RefreshRows,
-                              KickCD.SettingsSpells)
-        if not ok and KickCD._debugLog and KickCD.Util then
-            KickCD.Util.print("spells refresh failed: " .. tostring(err))
-        end
     end
 end
 
