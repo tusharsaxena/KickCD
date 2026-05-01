@@ -481,12 +481,26 @@ function Icon:StopGlow()
     LCG.PixelGlow_Stop(g, LCG_KEY)
     LCG.AutoCastGlow_Stop(g, LCG_KEY)
     LCG.ProcGlow_Stop(g, LCG_KEY)
+    self._glowKind = nil
+    self._glowColor = nil
 end
 
 function Icon:StartGlow(kind, color)
     local g = self.glow
     if not (g and LCG) then return end
     local r, gr, b, a = unpackGlowColor(color)
+    -- Idempotency gate: UpdateGlow gets called on every SPELL_STATE re-emit
+    -- (Cooldowns:Refresh fires for any non-trivially-equal poll, and charged
+    -- secondaries hit this path multiple times per second because
+    -- C_Spell.GetSpellCooldownDuration returns a fresh handle each call).
+    -- Re-issuing Stop+Start unconditionally replays LCG's animIn — most
+    -- visibly the ButtonGlow pop — so skip when nothing changed.
+    local prev = self._glowColor
+    if self._glowKind == kind and prev
+       and prev[1] == r and prev[2] == gr and prev[3] == b and prev[4] == a
+    then
+        return
+    end
     local c = { r, gr, b, a }
     -- Stop first so a kind change (e.g. button → pixel) doesn't stack.
     self:StopGlow()
@@ -501,6 +515,8 @@ function Icon:StartGlow(kind, color)
         -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
         LCG.AutoCastGlow_Start(g, c, nil, nil, nil, 0, 0, LCG_KEY)
     end
+    self._glowKind = kind
+    self._glowColor = c
 end
 
 -- Resolve the trigger condition for this icon's slot. Reuses the same
