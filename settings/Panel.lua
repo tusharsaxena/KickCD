@@ -991,7 +991,7 @@ local function RegisterPanel()
         return
     end
 
-    local main = Settings.RegisterVerticalLayoutCategory(L["KickCD"])
+    local main = Settings.RegisterVerticalLayoutCategory(L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main
     KickCD.SettingsCategoryID = main:GetID()

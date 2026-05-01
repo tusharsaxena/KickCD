@@ -1,5 +1,5 @@
 ## Interface: 120005
-## Title: |cff00ff00KickCD|r
+## Title: |cff00ff00Ka0s KickCD|r
 ## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
 ## Author: Ka0s
 ## Version: 0.1.0

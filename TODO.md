@@ -77,8 +77,8 @@
 
 - ☐ You are a princicpal engineer, an experienced LUA developer and experienced wow add developer. I want you to do a deep design and code review of this addon, and share findings. Look for core architectural gaps, design inconsistencies, design patterns, anti patterns, logic gaps and bugs. Share your findings in docs/legacy/PE_REVIEW.md. After that, create an a comprehensive set of changes required to address all the feedback in PE_REVIEW.md, and save that in docs/legacy/CHANGES_PE_REVIEW.md. After that, create an execution plan and save that in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md. Ensure that the docs/legacy/EXECUTION_PLAN_PE_REVIEW.md can be parallelized. Then finally, spawn a team of sub agents and execute docs/legacy/EXECUTION_PLAN_PE_REVIEW.md.
 - ☐ Update default settings
-- ☐ Change the name of the addon in the TOC (So addon name shows up as Ka0s KickCD)
-- ☐ Change the name of the addon in the Settings Panel (So addon shows up as Ka0s KickCD in the Settings Panel)
+- ✅ Change the name of the addon in the TOC (So addon name shows up as Ka0s KickCD in the addon selector)
+- ✅ Change the name of the addon in the Settings Panel (So addon shows up as Ka0s KickCD in the Settings Panel)
 - ☐ Change addon icon
 - ☐ Take screenshots and in combat video (convert to GIF)
 - ☐ Update README with critical settings (especially visibility modes, castbar settings, anchoring, autosize), FAQS, Troubleshooting and Changelog
