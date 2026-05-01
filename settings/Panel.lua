@@ -946,8 +946,11 @@ function Helpers.ResetIconPosition()
         and { point = d.point, relativePoint = d.relativePoint,
               x = d.x, y = d.y }
         or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
+    -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
+    -- branch re-anchors the grid. The previous "icons" fire was
+    -- redundant work — no row in the icons section actually changed,
+    -- and the general branch already owns the re-anchor pass.
     Helpers.FireConfigChanged("general")
-    Helpers.FireConfigChanged("icons")
 end
 
 -- Reset every schema-driven panel AND every spec's spell list to addon
