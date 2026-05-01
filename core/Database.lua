@@ -231,13 +231,6 @@ KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 -- merge ourselves. We detect "first creation" by checking for an empty
 -- spells table on the active profile.
 
-local function deepCopy(v)
-    if type(v) ~= "table" then return v end
-    local out = {}
-    for k, vv in pairs(v) do out[k] = deepCopy(vv) end
-    return out
-end
-
 local function isEmpty(t)
     if type(t) ~= "table" then return true end
     return next(t) == nil

@@ -53,13 +53,6 @@ local rebuildScheduled
 -- Helpers
 -- ---------------------------------------------------------------------------
 
-local function deepCopy(v)
-    if type(v) ~= "table" then return v end
-    local out = {}
-    for k, vv in pairs(v) do out[k] = deepCopy(vv) end
-    return out
-end
-
 local function sortedKeys(t)
     local keys = {}
     if type(t) == "table" then
@@ -253,7 +246,7 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
                        and KickCD.DefaultSpells[selectedClass][selectedSpec]
         spells[selectedClass] = spells[selectedClass] or {}
         if source then
-            spells[selectedClass][selectedSpec] = deepCopy(source)
+            spells[selectedClass][selectedSpec] = Util.DeepCopy(source)
             for _, e in ipairs(spells[selectedClass][selectedSpec]) do
                 e.spellID  = e.spellID  or e[1]
                 e.category = e.category or e[2] or "other"

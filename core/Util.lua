@@ -96,6 +96,32 @@ function Util.ApplyAnchor(frame, anchor)
 end
 
 -- ---------------------------------------------------------------------------
+-- Deep copy
+-- ---------------------------------------------------------------------------
+
+--- Recursively copy a value. Tables are cloned key-for-key (including
+--- nested tables); non-table values pass through unchanged. Used by:
+---   * Database:BuildSpells — clones the defaults table per profile
+---     so a user-edited profile doesn't mutate KickCD.DefaultSpells.
+---   * settings/Spells.lua's reset-to-defaults popup.
+---   * settings/Panel.lua's RestoreDefaults — schema rows whose
+---     default is a table (e.g. RGBA arrays) need a fresh copy or
+---     several profiles end up sharing the same array.
+---
+--- Cycle detection is intentionally NOT implemented: every caller
+--- works against shallow profile / defaults shapes that are guaranteed
+--- acyclic. Adding cycle detection would buy nothing and slow the hot
+--- path on profile load.
+-- @param v any value
+-- @return cloned value (same shape)
+function Util.DeepCopy(v)
+    if type(v) ~= "table" then return v end
+    local out = {}
+    for k, vv in pairs(v) do out[k] = Util.DeepCopy(vv) end
+    return out
+end
+
+-- ---------------------------------------------------------------------------
 -- Throttle / Debounce
 -- ---------------------------------------------------------------------------
 --

@@ -869,12 +869,11 @@ function Helpers.RestoreDefaults(panelKey, ctx)
         if def.default ~= nil then
             local parent, key = Resolve(def.path)
             if parent then
-                local v = def.default
-                if type(v) == "table" then
-                    local copy = {}
-                    for i, vv in ipairs(v) do copy[i] = vv end
-                    v = copy
-                end
+                -- DeepCopy so two profiles don't end up sharing the same
+                -- nested-table default (e.g. an RGBA array — today the only
+                -- tabular default — but anything nested would silently leak
+                -- without a real recursive clone).
+                local v = KickCD.Util.DeepCopy(def.default)
                 parent[key] = v
                 fireOnChange(def, v)
                 sections[def.section or panelKey] = true
