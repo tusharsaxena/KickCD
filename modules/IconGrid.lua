@@ -985,21 +985,19 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     primary:ClearAllPoints()
     primary:SetSize(primarySize, primarySize)
 
+    -- Visible-count short-circuit: a primary-only grid has no
+    -- secondary block, so collapse to a primarySize × primarySize
+    -- frame (no gap, no empty block padding). Without this, the
+    -- placeBlock math below would add `gap + 0` to each side
+    -- creating a phantom strip the user can drag but can't see.
+    local visibleCount = #secondaries
+    if visibleCount == 0 then
+        primary:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, 0)
+        return primarySize, primarySize
+    end
+
     local side, align         = parseAnchor(anchor)
     local primaryAxis, secAxis = parseGrow(grow)
-
-    local step = secondarySize + gap
-    -- Block bounding box is the icons' rectangular extent — not cols*step,
-    -- since the trailing gap doesn't belong to the block. (cols-1)*step
-    -- gives the offset of the last icon's left edge; + secondarySize
-    -- closes the right edge.
-    local blockW = (cols - 1) * step + secondarySize
-    local blockH = (rows - 1) * step + secondarySize
-
-    local gridW, gridH, primaryX, primaryY, blockX, blockY =
-        placeBlock(side, align, primarySize, blockW, blockH, gap)
-
-    primary:SetPoint("TOPLEFT", grid, "TOPLEFT", floor(primaryX), floor(-primaryY))
 
     -- Fill order: row-major if grow's primary axis is horizontal,
     -- column-major if vertical.
@@ -1009,8 +1007,42 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
     local invertX = (primaryAxis == "left") or (secAxis == "left")
     local invertY = (primaryAxis == "up")   or (secAxis == "up")
 
+    -- "Used" extent — the actual rectangular area the visible icons
+    -- occupy, regardless of how much capacity (rows * cols) was
+    -- configured. Lets the grid frame's bounding box hug the live
+    -- icons so:
+    --   * The cast bar's "Auto-size to icon grid" tracks the visible
+    --     extent, not the configured capacity.
+    --   * The drag handle doesn't include phantom empty slots beyond
+    --     the rendered icons.
+    -- Wrap math in the per-icon loop below still uses the configured
+    -- `cols` / `rows` so multi-row layouts wrap at the user's chosen
+    -- column count; only the bounding box and the inverted-axis
+    -- mirror collapse onto `usedCols` / `usedRows`.
+    local usedCols, usedRows
+    if rowMajor then
+        usedCols = math.min(visibleCount, cols)
+        usedRows = math.ceil(visibleCount / cols)
+    else
+        usedRows = math.min(visibleCount, rows)
+        usedCols = math.ceil(visibleCount / rows)
+    end
+
+    local step = secondarySize + gap
+    -- Block bounding box is the icons' rectangular extent — not cols*step,
+    -- since the trailing gap doesn't belong to the block. (usedCols-1)*step
+    -- gives the offset of the last icon's left edge; + secondarySize
+    -- closes the right edge.
+    local blockW = (usedCols - 1) * step + secondarySize
+    local blockH = (usedRows - 1) * step + secondarySize
+
+    local gridW, gridH, primaryX, primaryY, blockX, blockY =
+        placeBlock(side, align, primarySize, blockW, blockH, gap)
+
+    primary:SetPoint("TOPLEFT", grid, "TOPLEFT", floor(primaryX), floor(-primaryY))
+
     local cap = rows * cols
-    for i = 1, math.min(#secondaries, cap) do
+    for i = 1, math.min(visibleCount, cap) do
         local r, c
         if rowMajor then
             r = floor((i - 1) / cols)
@@ -1019,8 +1051,13 @@ local function layoutBlock(primary, secondaries, primarySize, secondarySize, gap
             c = floor((i - 1) / rows)
             r = (i - 1) - c * rows
         end
-        local cVis = invertX and (cols - 1 - c) or c
-        local rVis = invertY and (rows - 1 - r) or r
+        -- Visual position uses usedCols / usedRows for inverted axes
+        -- so the mirror lands inside the shrunk block (icons cluster
+        -- against the primary instead of against a phantom far edge).
+        -- Non-inverted axes don't need to mirror — `c` and `r` are
+        -- already 0-based indices that fit naturally.
+        local cVis = invertX and (usedCols - 1 - c) or c
+        local rVis = invertY and (usedRows - 1 - r) or r
 
         local btn = secondaries[i]
         btn:SetSize(secondarySize, secondarySize)

@@ -61,6 +61,7 @@
 - ✅ Do a deep review of all settings panels, make sure all settings are covered, the settings dop what is expected, and the layout of all panels is readable and easy to use.
 - ✅ Cast bar vertical layout is not working as expected. My expectation is to rotate the bar by 90 degrees when in vertical mode, so nothing else breaks
 - ✅ Add an option to truncate Spell Name text after X characters. 0 Means no truncate, add a slider to set truncate character limit. Add this as a setting option in Cast Bars > Spell name - under the X offset setting (occipies half the row width - i.e. one column) 
+- ✅ The Cast bar > Orientation > "Auto-size to icon grid" setting is not working as I expected. Current behavior is that it auto sizes basis the number of columns defined in Icons > Layout > Rows OR Columns (depending on the orientation). My expectation is that it auto sizes basis in the actual visible rows or columns actually shown in the icon grid.
 
 ## Not Yet Started
 
@@ -71,7 +72,6 @@
 
 ## Pre Release
 
-- ☐ The Cast bar > Orientation > "Auto-size to icon grid" setting is not working as I expected. Current behavior is that it auto sizes basis the number of columns defined in Icons > Layout > Rows OR Columns (depending on the orientation). My expectation is that it auto sizes basis in the actual visible rows or columns actually shown in the icon grid.
 - ☐ Do a deep review of the settings panel and slash command handler, and make sure all settings have a correspoding slash command handler
 - ☐ You are a princicpal engineer, an experienced LUA developer and experienced wow add developer. I want you to do a deep design and code review of this addon, and share findings. Look for core architectural gaps, design inconsistencies, design patterns, anti patterns, logic gaps and bugs. Share your findings in docs/legacy/PE_REVIEW.md. After that, create an a comprehensive set of changes required to address all the feedback in PE_REVIEW.md, and save that in docs/legacy/CHANGES_PE_REVIEW.md. After that, create an execution plan and save that in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md. Ensure that the docs/legacy/EXECUTION_PLAN_PE_REVIEW.md can be parallelized. Then finally, spawn a team of sub agents and execute docs/legacy/EXECUTION_PLAN_PE_REVIEW.md.
 - ☐ Update default settings
