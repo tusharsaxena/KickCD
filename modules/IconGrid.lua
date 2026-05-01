@@ -501,6 +501,28 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 -- ports) can coexist without each other's glow effects. ButtonGlow_Stop
 -- doesn't take a key (only one Blizzard-style glow per frame); the
 -- other three Stop fns do.
+--
+-- Single-key constraint: today every glow trigger / type writes to the
+-- same `"KickCD"` slot, so an icon can host at most one KickCD-managed
+-- glow at a time. That's the right shape for v0.1's mutually-exclusive
+-- triggers (a spell is either ready-and-castable, or it isn't), but a
+-- future "interruptible-target-cast PLUS spell-ready" combined glow
+-- would need TWO concurrent glows on the same icon — and LCG enforces
+-- that two different glow effects targeting the same key cancel each
+-- other.
+--
+-- To extend safely:
+--   1. Promote LCG_KEY to a small enum (LCG_KEY_PRIMARY / LCG_KEY_TARGET
+--      or similar — pick names that describe the role, not the visual).
+--   2. StartGlow / StopGlow take an explicit key argument; the per-slot
+--      decision in UpdateGlow picks which key it's writing to.
+--   3. ButtonGlow_Start still has no key (one Blizzard-style glow per
+--      frame, period) — that constraint is on Blizzard's side, not LCG's,
+--      so a combined-glow scenario will need to pick one of the three
+--      keyed effects (proc / pixel / autocast) for at least one slot.
+-- Until then, leave LCG_KEY single — adding a second key has API churn
+-- across StartGlow / StopGlow / UpdateGlow callers, and a real
+-- combined-glow scenario hasn't materialised yet.
 local LCG_KEY = "KickCD"
 
 local function unpackGlowColor(c)
