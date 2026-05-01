@@ -45,7 +45,7 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 
 ### Slash commands
 
-*   `/kickcd` or `/kcd` — print the help index.
+*   `/kcd` (or the long form `/kickcd`) — print the help index. Every chat line the addon emits is prefixed with a cyan `[KCD]` banner; help rows show the slash invocation in yellow and the description in white.
 *   `/kcd config` — open the settings panel (refuses during combat, as Blizzard's category-switch is protected). Also routed by `/kcd options`.
 *   `/kcd lock` / `/kcd unlock` / `/kcd toggle` — share one drag lock with both the icon grid and the cast bar.
 *   `/kcd list` — dump every settings option grouped by panel, with current values.

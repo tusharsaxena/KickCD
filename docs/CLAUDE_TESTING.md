@@ -4,7 +4,10 @@ There is no automated test harness. Verification is manual:
 
 ## Slash command coverage
 
-- `/kcd` — print the slash command help.
+- `/kcd` — print the slash command help. `/kickcd` is a long-form alias
+  that routes to the same handler. Every printed line should carry a
+  cyan `[KCD]` prefix (added by `Util.print`); each help row should
+  show the slash invocation in yellow and the description in white.
 - `/kcd config` — open the settings panel. Refuses during combat (the
   Blizzard category-switch is protected); user gets a one-line print
   instead. `/kcd options` is an alias.

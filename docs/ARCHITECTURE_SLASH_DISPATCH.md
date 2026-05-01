@@ -6,6 +6,8 @@ Three ordered tables in `core/KickCD.lua` drive the entire slash UX:
 - `DEBUG_COMMANDS` — `/kcd debug ...`.
 - `SPELLS_COMMANDS` — `/kcd spells ...`.
 
+`/kickcd` and `/kcd` are both registered via `RegisterChatCommand` and dispatch to the same `OnSlashCommand` handler — `/kickcd` is the long-form alias, all help text and docs use the short form.
+
 Each row is `{ name, description, fn }`. The dispatcher:
 
 - Bare `/kcd` → `printHelp` (iterates `COMMANDS`).
@@ -20,6 +22,10 @@ Each row is `{ name, description, fn }`. The dispatcher:
 `/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`) opens the **General subcategory directly**, not the parent category — in WoW 12.0 a Blizzard parent category with subcategories hides its own widgets, so opening the parent would show an empty pane. If the subcategory hasn't registered yet (a `/kcd config` immediately after login can race the per-tab builders), `OpenSettings` schedules a one-shot retry via `C_Timer.After(0.5, ...)` — capped at 3 attempts — rather than falling through to the empty parent. `InCombatLockdown()` is checked before opening so the protected category-switch doesn't fail mid-fight; the user gets a one-line "cannot open during combat" print instead.
 
 `OnSlashCommand` lowercases only the command name and preserves case in the rest of the input, so schema paths like `icons.primarySize` survive unchanged through `/kcd set ...`. `runDebug` and `runSpells` lowercase their own subcommand for backward compat.
+
+## Chat output
+
+Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`), which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
 
 ## Top-level commands
 
