@@ -89,16 +89,24 @@ end
 
 -- StaticPopup for "Reset all settings" — irreversible, so confirm
 -- before wiping. Helpers.RestoreAllDefaults walks every schema-driven
--- panel and resets each row to def.default; spells and profiles are
--- left alone (they have their own destructive controls).
+-- panel and resets each row to def.default; Database:ResetAllSpells
+-- additionally rebuilds the per-class+spec spell lists from the addon
+-- defaults so the user actually gets a "true" reset across every spec
+-- (not just the one selected in the Spells editor). Profiles are still
+-- left alone — they have their own destructive controls.
 StaticPopupDialogs["KICKCD_RESET_ALL"] = {
-    text         = L["Reset every schema-driven setting (General, Icons, Cast bar) to addon defaults? Spells and profiles are not affected."],
+    text         = L["Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."],
     button1      = L["Yes"],
     button2      = L["No"],
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
-    OnAccept     = function() H.RestoreAllDefaults() end,
+    OnAccept     = function()
+        H.RestoreAllDefaults()
+        if KickCD.Database and KickCD.Database.ResetAllSpells then
+            KickCD.Database:ResetAllSpells()
+        end
+    end,
 }
 
 local function Build(mainCategory)
@@ -133,7 +141,7 @@ local function Build(mainCategory)
                     160)
                 H.InlineButton(ctxRef,
                     L["Reset all settings"],
-                    L["Reset every General, Icons, and Cast bar setting to its default. Spells and profiles are left alone."],
+                    L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
                     function() StaticPopup_Show("KICKCD_RESET_ALL") end,
                     160)
             end,

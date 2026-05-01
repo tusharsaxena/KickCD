@@ -640,9 +640,10 @@ function Helpers.RestoreDefaults(panelKey, ctx)
 end
 
 -- Reset every schema-driven panel (general / icons / castbar) to its
--- per-row default. Spells and Profiles are intentionally skipped — the
--- spell list has its own per-spec reset action and resetting profiles
--- would delete user data. After resetting, all open panels' refreshers
+-- per-row default. Spells and Profiles are skipped here on purpose —
+-- spells have a separate Database:ResetAllSpells() (the General >
+-- "Reset all settings" popup calls both); resetting profiles would
+-- delete user data. After resetting, all open panels' refreshers
 -- run so live widgets reflect the new state.
 function Helpers.RestoreAllDefaults()
     local ctxByKey = {}

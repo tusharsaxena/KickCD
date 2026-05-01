@@ -56,6 +56,8 @@
 - ✅ Remove all DB migration paths — addon is unreleased, so the migration scaffolding (Migrations table, RunMigrations, dbVersion, LATEST_VERSION) was deleted outright
 - ✅ Documentation MD files have become too large and bloated. Split CLAUDE.md and ARCHITECTURE.md into smaller files with every file being a section have having a naming convention like CLAUDE_<SECTION_NAME>.md. The main file references these sub files. 
 - ✅ Do a deep review of the addon code and update CLAUDE_*.md and ARCHITECTURE_*.md
+- ✅ There's a lot of default spells available in defaults/Spells.lua. Please validate that the spells are only shown on the icon grid only if the spell is known (too low level, not learned, other talent chosen, etc)
+- ✅ General > Reset All Settings doesnt seem to properly restore default spells for every spec sometimes
 
 ## Not Yet Started
 
@@ -66,9 +68,8 @@
 
 ## Pre Release
 
-- ☐ Do a PE review of the codebase
 - ☐ Do a deep review of all settings panels
-- ☐ defaults/Spells.lua has a lot of "to be verified" comments
+- ☐ You are a princicpal engineer, an experienced LUA developer and experienced wow add developer. I want you to do a deep design and code review of this addon, and share findings. Look for core architectural gaps, design inconsistencies, design patterns, anti patterns, logic gaps and bugs. Share your findings in docs/legacy/PE_REVIEW.md. After that, create an a comprehensive set of changes required to address all the feedback in PE_REVIEW.md, and save that in docs/legacy/CHANGES_PE_REVIEW.md. After that, create an execution plan and save that in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md. Ensure that the docs/legacy/EXECUTION_PLAN_PE_REVIEW.md can be parallelized. Then finally, spawn a team of sub agents and execute docs/legacy/EXECUTION_PLAN_PE_REVIEW.md.
 - ☐ Update default settings
 - ☐ Change addon icon
 - ☐ Take screenshots and in combat video (convert to GIF)

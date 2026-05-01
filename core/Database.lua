@@ -298,6 +298,21 @@ function Database:BuildSpells()
     end
 end
 
+--- Wipe the active profile's spells and re-seed from KickCD.DefaultSpells +
+--- racial. Used by the General > "Reset all settings" action so the user
+--- gets the current addon defaults across every class and spec, not just
+--- the one currently selected in the Spells editor. BuildSpells() is
+--- idempotent on populated profiles, so we have to clear first.
+function Database:ResetAllSpells()
+    if not (self.db and self.db.profile) then return end
+    self.db.profile.spells = {}
+    self:BuildSpells()
+    if KickCD and KickCD.SendMessage then
+        local key = (self.db.keys and self.db.keys.profile) or "Default"
+        KickCD:SendMessage("KickCD_PROFILE_CHANGED", { newProfileKey = key })
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Profile callbacks
 -- ---------------------------------------------------------------------------
