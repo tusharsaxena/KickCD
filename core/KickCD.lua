@@ -315,11 +315,51 @@ local function applyFromText(self, def, text)
             -- Surfacing it tells a confused user *why* their value is
             -- rejected — e.g. growDirection's UP/DOWN vs RIGHT/LEFT
             -- depends on castbar.orientation.
+            --
+            -- We append:
+            --   * The gate's current value (so the user understands
+            --     which side of the gate they're on right now).
+            --   * For every OTHER value the gate could take, the
+            --     option list this dropdown would expose under that
+            --     gate value. Probing relies on the dropdown's
+            --     `values` function reading the live profile, so we
+            --     swap the gate's profile slot to each candidate
+            --     value, re-query, restore, and tabulate. The swap
+            --     is purely transient (single call between mutate +
+            --     restore; no message bus dispatch).
             if def.valueGate then
                 local H = helpers()
                 local gateVal = H and H.Get and H.Get(def.valueGate)
                 msg = msg .. (" (depends on %s = %s)")
                     :format(def.valueGate, tostring(gateVal))
+                local gateDef = H and H.FindSchema and H.FindSchema(def.valueGate)
+                if gateDef and H and H.Get and H.Set then
+                    local gateValues = type(gateDef.values) == "function"
+                        and gateDef.values() or gateDef.values
+                    if type(gateValues) == "table" then
+                        local hints = {}
+                        for _, item in ipairs(gateValues) do
+                            local candidate = item.value
+                            if candidate ~= nil and candidate ~= gateVal then
+                                local profile = self.db and self.db.profile
+                                local parent, key = H.Resolve(def.valueGate)
+                                if parent and key and profile then
+                                    parent[key] = candidate
+                                    local altList = dropdownAllowed(def)
+                                    parent[key] = gateVal
+                                    if #altList > 0 then
+                                        hints[#hints + 1] = ("flip %s to %s for %s")
+                                            :format(def.valueGate, tostring(candidate),
+                                                    table.concat(altList, "/"))
+                                    end
+                                end
+                            end
+                        end
+                        if #hints > 0 then
+                            msg = msg .. "; " .. table.concat(hints, "; ")
+                        end
+                    end
+                end
             end
             return fail(msg)
         end
@@ -793,24 +833,37 @@ end
 -- error so this is safe to call at any time after PLAYER_LOGIN.
 --
 -- 12.0 hides a parent category's own widgets whenever the category has
--- subcategories. The Ka0s KickCD parent is therefore empty; we open the
--- General subcategory directly so users land on real controls. The parent
--- ID is the fallback when General hasn't registered yet.
+-- subcategories. The Ka0s KickCD parent is therefore empty; falling
+-- through to it would land the user on a blank page, which is worse
+-- than the "settings still loading" message. So when the General
+-- subcategory hasn't registered yet, we schedule a deferred retry
+-- (3 attempts, 0.5s apart) and never fall through to the parent ID.
 -- @param input slash-command tail (ignored for v0.1)
+local OPEN_SETTINGS_MAX_RETRIES = 3
+local OPEN_SETTINGS_RETRY_DELAY = 0.5
 function KickCD:OpenSettings(input)
     local p = self.Util and self.Util.print or print
     if Settings and Settings.OpenToCategory then
-        local target
         local generalSub = self.Settings and self.Settings.sub
                            and self.Settings.sub.general
         if generalSub and generalSub.GetID then
-            target = generalSub:GetID()
-        end
-        target = target or self.SettingsCategoryID
-        if target then
-            Settings.OpenToCategory(target)
+            self._openRetries = nil
+            Settings.OpenToCategory(generalSub:GetID())
             return
         end
+        -- Subcategory not yet registered. Defer rather than falling
+        -- through to KickCD.SettingsCategoryID — that ID names the
+        -- parent, which 12.0 hides when it has children, so the user
+        -- would otherwise land on an empty page.
+        self._openRetries = (self._openRetries or 0) + 1
+        if self._openRetries <= OPEN_SETTINGS_MAX_RETRIES and C_Timer and C_Timer.After then
+            p("Settings still loading, opening shortly…")
+            C_Timer.After(OPEN_SETTINGS_RETRY_DELAY, function()
+                self:OpenSettings(input)
+            end)
+            return
+        end
+        self._openRetries = nil
     end
     p("Settings not yet registered")
 end

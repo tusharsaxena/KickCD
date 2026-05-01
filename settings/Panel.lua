@@ -88,6 +88,75 @@ function Helpers.FindSchema(path)
     end
 end
 
+-- ---------------------------------------------------------------------
+-- Schema-shape validation
+-- ---------------------------------------------------------------------
+--
+-- Run once at panel-registration time after every settings/* file has
+-- finished loading. Catches misspelled `panel` / `section` / `type`
+-- enum values, missing `path`, and other schema-row typos that today
+-- silently fail to render or fail to wire into the slash command.
+--
+-- The validator only PRINTS errors — it never refuses to load. A
+-- broken row is an addon-author bug; the right user-visible behaviour
+-- is "the option you wanted is missing AND a chat error tells you
+-- why," not "the entire settings panel refuses to register."
+
+local _validPanels = {
+    general = true, icons = true, castbar = true,
+    spells  = true, profiles = true,
+}
+local _validSections = {
+    general = true, icons = true, castbar = true,
+    spells  = true, debug = true,
+}
+local _validTypes = {
+    bool = true, number = true, string = true, color = true,
+}
+
+local function _printSchemaError(prefix, msg)
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(
+            "|cffff0000KickCD schema error|r: " .. prefix .. ": " .. msg)
+    end
+end
+
+--- Walk the assembled schema and surface any malformed row. Called from
+--- RegisterPanel after all settings/* files have loaded their rows.
+--- Returns the count of errors found (always called for side effects;
+--- the count is exposed for the test harness / future debug surface).
+function Helpers.ValidateSchema()
+    local errors = 0
+    for i, def in ipairs(KickCD.Settings.Schema or {}) do
+        local where = "row #" .. i .. " (" .. tostring(def.path or "<no path>") .. ")"
+        if type(def) ~= "table" then
+            _printSchemaError(where, "row is not a table")
+            errors = errors + 1
+        else
+            if type(def.path) ~= "string" or def.path == "" then
+                _printSchemaError(where, "missing or empty `path`")
+                errors = errors + 1
+            end
+            if not _validPanels[def.panel] then
+                _printSchemaError(where, "invalid `panel` = " .. tostring(def.panel)
+                    .. " (expected one of: general, icons, castbar, spells, profiles)")
+                errors = errors + 1
+            end
+            if not _validSections[def.section] then
+                _printSchemaError(where, "invalid `section` = " .. tostring(def.section)
+                    .. " (expected one of: general, icons, castbar, spells, debug)")
+                errors = errors + 1
+            end
+            if not _validTypes[def.type] then
+                _printSchemaError(where, "invalid `type` = " .. tostring(def.type)
+                    .. " (expected one of: bool, number, string, color)")
+                errors = errors + 1
+            end
+        end
+    end
+    return errors
+end
+
 --- The canonical 13-option dropdown list shared by every "frame
 --- anchor" dropdown in the addon (Icons → Layout → Anchor point and
 --- Cast bar → Position → Anchor on primary icon / cast bar). Returns
@@ -652,16 +721,24 @@ local function makeColorPicker(ctx, def, parent, relativeWidth)
     -- Listen to both:
     --   * OnValueChanged fires during drag while the picker is visible.
     --     Treat it as the primary write — gives a live preview AND
-    --     persists the value before the user even clicks OK.
+    --     persists the value before the user even clicks OK. Wrapped
+    --     in Util.Throttle(50ms) so a sustained drag fires
+    --     KickCD_CONFIG_CHANGED at most ~20 times/sec (the live
+    --     module re-skins on each fire; the throttle keeps the UI
+    --     responsive on lower-end systems without losing the snap of
+    --     a live preview).
     --   * OnValueConfirmed fires (only) when the user cancels, with
-    --     the ORIGINAL color. We commit it too, which writes the
-    --     original back over any intermediate drag values, effectively
-    --     reverting on cancel — matching user expectation.
+    --     the ORIGINAL color. We commit it IMMEDIATELY — the user
+    --     expects the bar to snap back to the pre-drag color, not
+    --     to wait out a throttle window first.
     local function commit(r, g, b, a)
         Helpers.Set(def.path, def.section, { r, g, b, a or 1 })
         fireOnChange(def, { r, g, b, a or 1 })
     end
-    cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) commit(r, g, b, a) end)
+    local throttledCommit = (KickCD.Util and KickCD.Util.Throttle)
+        and KickCD.Util.Throttle(50, commit)
+        or  commit
+    cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) throttledCommit(r, g, b, a) end)
     cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a) commit(r, g, b, a) end)
 
     attachTooltip(cp, def.label, def.tooltip)
@@ -946,8 +1023,11 @@ function Helpers.ResetIconPosition()
         and { point = d.point, relativePoint = d.relativePoint,
               x = d.x, y = d.y }
         or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
+    -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
+    -- branch re-anchors the grid. The previous "icons" fire was
+    -- redundant work — no row in the icons section actually changed,
+    -- and the general branch already owns the re-anchor pass.
     Helpers.FireConfigChanged("general")
-    Helpers.FireConfigChanged("icons")
 end
 
 -- Reset every schema-driven panel AND every spec's spell list to addon
@@ -983,6 +1063,13 @@ local function RegisterPanel()
             and Settings.RegisterAddOnCategory) then
         return
     end
+
+    -- Validate the assembled schema before we hand any rows to the
+    -- panel renderer / slash command. Errors are printed but
+    -- non-fatal: a broken row should surface a clear chat error,
+    -- not silently fail to render or block the rest of the panel
+    -- from registering.
+    Helpers.ValidateSchema()
 
     local main = Settings.RegisterVerticalLayoutCategory(L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)

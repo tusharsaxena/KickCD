@@ -11,13 +11,14 @@ local Schema = KickCD.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
--- Re-skin shortcut: every row's onChange routes through a single hook so
--- the live frame redraws without waiting on the AceMessage round-trip.
-local function reskin()
-    if KickCD.Castbar and KickCD.Castbar.ApplyConfig then
-        KickCD.Castbar:ApplyConfig()
-    end
-end
+-- Every schema row's write goes through Helpers.Set, which fires
+-- KickCD_CONFIG_CHANGED { section = "castbar" }; the Castbar module
+-- subscribes and re-applies its config from the bus listener. So no
+-- row in this file needs an onChange purely for "redraw the live
+-- frame" — the bus is the single dispatch path. Rows below only set
+-- onChange when there's *additional* work beyond the bus dispatch
+-- (e.g. the orientation row also writes through to growDirection and
+-- refreshes the panel widgets).
 
 -- Visibility ---------------------------------------------------------
 add{
@@ -26,11 +27,6 @@ add{
     label = L["Enable cast bar"],
     tooltip = L["Show the target cast bar."],
     default = true,
-    onChange = function()
-        if KickCD.Castbar and KickCD.Castbar.OnConfigChanged then
-            KickCD.Castbar:OnConfigChanged(nil, { section = "castbar" })
-        end
-    end,
 }
 
 -- Position ------------------------------------------------------------
@@ -62,7 +58,6 @@ add{
         { value = "PRIMARY", label = L["Anchored to primary icon"] },
     },
     solo    = true,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Position"],
@@ -71,7 +66,6 @@ add{
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "TOP_MIDDLE",
     values  = POSITION_ANCHOR_VALUES,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Position"],
@@ -80,7 +74,6 @@ add{
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "BOTTOM_MIDDLE",
     values  = POSITION_ANCHOR_VALUES,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Position"],
@@ -88,7 +81,6 @@ add{
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Position"],
@@ -96,7 +88,6 @@ add{
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = 8, min = -200, max = 200, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 
 -- Orientation --------------------------------------------------------
@@ -131,13 +122,19 @@ add{
     -- renders. RefreshAllPanels then re-evaluates the growDirection
     -- dropdown's `values` function so its option list rebuilds for
     -- the new axis and shows the freshly-reset selection.
+    --
+    -- No manual ApplyConfig / Reskin call here: Helpers.Set has
+    -- already fired KickCD_CONFIG_CHANGED { section = "castbar" } for
+    -- the orientation write, and the secondary H.Set above fires it
+    -- a second time for growDirection. Castbar:OnConfigChanged
+    -- subscribes and reapplies — adding a direct call would just
+    -- triple-dispatch the same work.
     onChange = function(value)
         local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
         if newGrow then
             H.Set("castbar.growDirection", "castbar", newGrow)
         end
         H.RefreshAllPanels()
-        reskin()
     end,
 }
 add{
@@ -173,7 +170,6 @@ add{
             { value = "LEFT",  label = L["Left"]  },
         }
     end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Orientation"],
@@ -181,7 +177,6 @@ add{
     label = L["Auto-size to icon grid"],
     tooltip = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
     default = false,
-    onChange = reskin,
 }
 
 -- Sizing and Layout --------------------------------------------------
@@ -200,7 +195,6 @@ add{
     label = L["Cast bar width (in px)"],
     tooltip = L["Cast bar width in pixels."],
     default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
@@ -208,7 +202,6 @@ add{
     label = L["Cast bar height (in px)"],
     tooltip = L["Cast bar height in pixels."],
     default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
@@ -216,7 +209,6 @@ add{
     label = L["Icon size (in px)"],
     tooltip = L["Spell icon size in pixels (0 hides the icon)."],
     default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
@@ -229,7 +221,6 @@ add{
         { value = "RIGHT", label = L["Right"] },
         { value = "OFF",   label = L["Off"]   },
     },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
@@ -237,7 +228,6 @@ add{
     label = L["Show spark"],
     tooltip = L["Render the leading-edge spark on the bar."],
     default = true,
-    onChange = reskin,
 }
 
 -- Text -----------------------------------------------------------------
@@ -265,7 +255,6 @@ add{
     tooltip = L["Font for the spell name and cast time text."],
     default = "Friz Quadrata TT",
     values  = function() return H.LSMValues("font") end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Text"],
@@ -273,7 +262,6 @@ add{
     label = L["Font size"],
     tooltip = L["Cast-bar text size in pixels."],
     default = 12, min = 8, max = 24, step = 1, fmt = "%d",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Text"],
@@ -287,7 +275,6 @@ add{
         { value = "THICKOUTLINE", label = L["Thick outline"] },
         { value = "MONOCHROME",   label = L["Monochrome"]    },
     },
-    onChange = reskin,
 }
 
 -- Spell name -----------------------------------------------------------
@@ -302,7 +289,6 @@ add{
     label = L["Show spell name"],
     tooltip = L["Display the cast spell's name on the bar."],
     default = true,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Spell name"],
@@ -311,7 +297,6 @@ add{
     tooltip = L["Where to anchor the spell name relative to the bar."],
     default = "INSIDE_LEFT",
     values  = TEXT_POSITION_VALUES,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Spell name"],
@@ -319,7 +304,6 @@ add{
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Spell name"],
@@ -327,7 +311,6 @@ add{
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Spell name"],
@@ -335,7 +318,6 @@ add{
     label = L["Truncate after (characters)"],
     tooltip = L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."],
     default = 0, min = 0, max = 60, step = 1, fmt = "%d",
-    onChange = reskin,
 }
 
 -- Cast time ------------------------------------------------------------
@@ -350,7 +332,6 @@ add{
     label = L["Show cast time"],
     tooltip = L["Display the remaining / total cast time on the bar."],
     default = true,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Cast time"],
@@ -359,7 +340,6 @@ add{
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
     default = "INSIDE_RIGHT",
     values  = TEXT_POSITION_VALUES,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Cast time"],
@@ -367,7 +347,6 @@ add{
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Cast time"],
@@ -375,7 +354,6 @@ add{
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 
 -- Per-state appearance (interruptible vs uninterruptible casts) -------
@@ -396,7 +374,6 @@ add{
     tooltip = L["LibSharedMedia statusbar texture used for interruptible casts."],
     default = "Blizzard",
     values  = function() return H.LSMValues("statusbar") end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -404,7 +381,6 @@ add{
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast is interruptible."],
     default = { 1, 0.85, 0.05, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -412,7 +388,6 @@ add{
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
     default = { 0, 0, 0, 0.5 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -420,7 +395,6 @@ add{
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
     default = { 1, 1, 1, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -428,7 +402,6 @@ add{
     label = L["Show border"],
     tooltip = L["Draw a border around the cast bar for interruptible casts."],
     default = false,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -437,7 +410,6 @@ add{
     tooltip = L["LibSharedMedia border texture (edge style) for interruptible casts."],
     default = "Blizzard Tooltip",
     values  = function() return H.LSMValues("border") end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -445,7 +417,6 @@ add{
     label = L["Border color"],
     tooltip = L["RGBA border color for interruptible casts."],
     default = { 0, 0, 0, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Interruptible casts"],
@@ -453,7 +424,6 @@ add{
     label = L["Border thickness (in px)"],
     tooltip = L["Border edge size in pixels."],
     default = 1, min = 1, max = 16, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 
 -- Uninterruptible appearance ------------------------------------------
@@ -464,7 +434,6 @@ add{
     tooltip = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
     default = "Blizzard",
     values  = function() return H.LSMValues("statusbar") end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -472,7 +441,6 @@ add{
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast cannot be interrupted."],
     default = { 0.85, 0.10, 0.10, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -480,7 +448,6 @@ add{
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
     default = { 0, 0, 0, 0.5 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -488,7 +455,6 @@ add{
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
     default = { 1, 1, 1, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -496,7 +462,6 @@ add{
     label = L["Show border"],
     tooltip = L["Draw a border around the cast bar for non-interruptible casts."],
     default = true,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -505,7 +470,6 @@ add{
     tooltip = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
     default = "Blizzard Tooltip",
     values  = function() return H.LSMValues("border") end,
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -513,7 +477,6 @@ add{
     label = L["Border color"],
     tooltip = L["RGBA border color for non-interruptible casts."],
     default = { 1, 0.20, 0.20, 1 },
-    onChange = reskin,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
@@ -521,7 +484,6 @@ add{
     label = L["Border thickness (in px)"],
     tooltip = L["Border edge size in pixels."],
     default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
-    onChange = reskin,
 }
 
 -- ---------------------------------------------------------------------

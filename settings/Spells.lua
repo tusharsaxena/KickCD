@@ -10,10 +10,7 @@
 -- Writes go through a 50ms debounced setter that mutates the profile,
 -- re-renders the rows, and fires KickCD_CONFIG_CHANGED { section = "spells" }.
 
-local KickCD = LibStub and LibStub("AceAddon-3.0", true)
-                  and LibStub("AceAddon-3.0"):GetAddon("KickCD", true)
-                  or _G.KickCD
-KickCD = KickCD or {}
+local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 
 local L      = KickCD.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = KickCD.Compat or {}
@@ -128,11 +125,29 @@ end
 -- enum value and unions the spellIDs they expose. Returns nil when the API
 -- is unavailable (older clients) so callers can fall back to lenient
 -- validation.
+--
+-- Memoised in `_cmCache` because the walk is non-trivial (every enum value
+-- × every cdID) and the result is stable for the lifetime of a (login ×
+-- spec). Invalidated by the bootstrap below on TRAIT_CONFIG_UPDATED and
+-- PLAYER_SPECIALIZATION_CHANGED. Stored as a marker table even when the
+-- API returned no useful data, so the next call doesn't re-walk for
+-- nothing — a sentinel field distinguishes "computed, set was empty"
+-- from "not computed yet."
+local _cmCache         -- { set | EMPTY_SENTINEL } once populated; nil otherwise
+local _CM_EMPTY = {}   -- sentinel: API returned no data; don't recompute
+
 local function getCooldownManagerSpellSet()
-    if not C_CooldownViewer then return nil end
+    if _cmCache == _CM_EMPTY then return nil end
+    if _cmCache then return _cmCache end
+
+    if not C_CooldownViewer then
+        _cmCache = _CM_EMPTY
+        return nil
+    end
     local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
     local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
     if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
+        _cmCache = _CM_EMPTY
         return nil
     end
 
@@ -151,8 +166,32 @@ local function getCooldownManagerSpellSet()
         end
     end
 
-    if not seenAny then return nil end
+    if not seenAny then
+        _cmCache = _CM_EMPTY
+        return nil
+    end
+    _cmCache = set
     return set
+end
+
+-- Invalidate the cooldown-manager spell-set cache. Triggered on talent
+-- swaps and spec changes — both events flip the C_CooldownViewer
+-- contents, so a cached set from before the event is stale by the time
+-- the panel reopens.
+local function invalidateCmCache()
+    _cmCache = nil
+end
+
+-- Bootstrap: a private frame owns the cache-invalidation events. Kept
+-- at module scope (rather than inside ensurePanel) so the cache stays
+-- correct even when the user never opens the Spells panel — we don't
+-- want a panel-open after a spec change to read stale data because the
+-- listener was lazy-registered.
+do
+    local cacheEvents = CreateFrame("Frame")
+    cacheEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    cacheEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    cacheEvents:SetScript("OnEvent", invalidateCmCache)
 end
 
 -- ---------------------------------------------------------------------------
@@ -214,17 +253,53 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             return
         end
 
-        local cmSet = getCooldownManagerSpellSet()
-        if cmSet then
-            if not cmSet[id] then
-                local name = resolvedName or getSpellName(id) or tostring(id)
-                if KickCD.Util and KickCD.Util.print then
-                    KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+        -- Cooldown-manager gating only applies when the user is editing
+        -- their OWN class+spec list. The C_CooldownViewer API has no
+        -- class/spec parameter — it returns the set for the LOGGED-IN
+        -- player's currently-active spec. So a Mage editing
+        -- HUNTER/BEASTMASTERY would otherwise be blocked from adding any
+        -- Hunter spell. Drop the gate when the editor's selected pair
+        -- doesn't match the player's live pair; fall through to the
+        -- lenient validateSpellInput path (which already confirmed the
+        -- spell exists in the spell DB).
+        --
+        -- TODO(post-WS-B): replace the inline upper-strip with
+        -- KickCD.Util.NormalizeSpecToken once WS-B's CR-1 lands; the
+        -- current inline form is conflict-free with WS-B's helper at
+        -- merge time.
+        local function normaliseSpecToken(s)
+            return (s or ""):upper():gsub("%s+", "")
+        end
+        local _, playerClass = UnitClass and UnitClass("player")
+        local playerSpecToken
+        if GetSpecialization and GetSpecializationInfo then
+            local idx = GetSpecialization()
+            if idx then
+                local _, specName = GetSpecializationInfo(idx)
+                if specName then playerSpecToken = normaliseSpecToken(specName) end
+            end
+        end
+        local editorIsActiveSpec =
+            playerClass and selectedClass and playerClass == selectedClass
+            and playerSpecToken and selectedSpec and playerSpecToken == selectedSpec
+
+        if editorIsActiveSpec then
+            local cmSet = getCooldownManagerSpellSet()
+            if cmSet then
+                if not cmSet[id] then
+                    local name = resolvedName or getSpellName(id) or tostring(id)
+                    if KickCD.Util and KickCD.Util.print then
+                        KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+                    end
+                    return
                 end
-                return
+            elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
             end
         elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
-            KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+            KickCD.Util.print(("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
+                :format(tostring(selectedClass), tostring(selectedSpec),
+                        tostring(playerClass), tostring(playerSpecToken)))
         end
 
         -- Mutator path: lazy-create the per-spec table on first add so a
