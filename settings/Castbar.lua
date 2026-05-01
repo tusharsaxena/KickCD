@@ -146,6 +146,12 @@ add{
     label = L["Growth direction"],
     tooltip = L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."],
     default = "RIGHT",
+    -- valueGate names the OTHER setting whose current value gates the
+    -- options this dropdown returns. The slash command's invalid-value
+    -- error appends `(depends on <gate> = <current>)` so a user who
+    -- types `/kcd set castbar.growDirection LEFT` while orientation is
+    -- VERTICAL gets a hint about why the value list is UP/DOWN.
+    valueGate = "castbar.orientation",
     -- Function so the dropdown re-evaluates its options every time
     -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
     -- inside its refresh closure). Pulled together with the

@@ -912,6 +912,63 @@ function Helpers.RestoreAllDefaults()
     Helpers.RefreshAllPanels()
 end
 
+-- Look up `path` in the schema and write `value` through the same
+-- path the schema widgets use: Helpers.Set (which fires CONFIG_CHANGED
+-- with def.section), then def.onChange, then RefreshAllPanels so any
+-- open settings tab reflects the new value. Returns true on success,
+-- false if no schema row matches `path`.
+--
+-- Lets slash commands that mutate schema-backed fields (e.g. `/kcd
+-- lock`, `/kcd debug log`) share a single write/notify/refresh code
+-- path with `/kcd set <path> <value>` and the panel widgets — so a
+-- future onChange added to a row doesn't silently diverge between
+-- code paths.
+function Helpers.SetAndRefresh(path, value)
+    local def = Helpers.FindSchema(path)
+    if not def then return false end
+    Helpers.Set(def.path, def.section, value)
+    if def.onChange then
+        local ok, err = pcall(def.onChange, value)
+        if not ok and KickCD.Util then
+            KickCD.Util.print("onChange for " .. tostring(def.path)
+                              .. " failed: " .. tostring(err))
+        end
+    end
+    Helpers.RefreshAllPanels()
+    return true
+end
+
+-- Restore the icon grid to its default screen position and notify the
+-- icon module so it re-anchors immediately. Used by the General tab's
+-- "Reset position" button and the `/kcd resetposition` slash command.
+-- The default coords come from KickCD.DEFAULT_PROFILE.anchors.icons so
+-- we don't duplicate magic numbers across UI / CLI / Database layers.
+function Helpers.ResetIconPosition()
+    if not (KickCD.db and KickCD.db.profile) then return end
+    local d = KickCD.DEFAULT_PROFILE
+              and KickCD.DEFAULT_PROFILE.anchors
+              and KickCD.DEFAULT_PROFILE.anchors.icons
+    KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
+    KickCD.db.profile.anchors.icons = d
+        and { point = d.point, relativePoint = d.relativePoint,
+              x = d.x, y = d.y }
+        or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
+    Helpers.FireConfigChanged("general")
+    Helpers.FireConfigChanged("icons")
+end
+
+-- Reset every schema-driven panel AND every spec's spell list to addon
+-- defaults. The active profile is the only one affected. Used by the
+-- General tab's "Reset all settings" popup and the `/kcd resetall`
+-- slash command — both go through this single helper so the two paths
+-- never diverge.
+function Helpers.ResetAll()
+    Helpers.RestoreAllDefaults()
+    if KickCD.Database and KickCD.Database.ResetAllSpells then
+        KickCD.Database:ResetAllSpells()
+    end
+end
+
 -- ---------------------------------------------------------------------
 -- Tab + main-category registration
 -- ---------------------------------------------------------------------

@@ -86,26 +86,34 @@ local function p(self, ...)
     fn(...)
 end
 
--- Set db.profile.locked and notify IconGrid via the closed CONFIG_CHANGED
--- message (section "general"). IconGrid listens for that section and re-runs
--- ApplyLock to flip EnableMouse / RegisterForDrag.
+-- Set db.profile.locked through the schema's write+notify+refresh path
+-- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
+-- true` and the General > "Lock frame" checkbox do, so an open
+-- settings panel re-syncs and any future onChange wired onto the
+-- `locked` schema row fires here too. Falls back to a direct write
+-- only if the settings layer isn't loaded yet (early-boot edge).
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "|cff00ff00KickCD|r: db not initialized yet")
     end
-    self.db.profile.locked = value and true or false
-    self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
-    p(self, "|cff00ff00KickCD|r: icon grid " .. (value and "locked" or "unlocked"))
+    local v = value and true or false
+    local H = self.Settings and self.Settings.Helpers
+    if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
+        self.db.profile.locked = v
+        self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
+    end
+    p(self, "|cff00ff00KickCD|r: icon grid " .. (v and "locked" or "unlocked"))
 end
 
 -- Forward declarations so command tables and dispatchers can reference each
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting
+local runReset, runResetAll, runResetPosition, runSpells
 
 local COMMANDS = {
-    {"help",   "List available commands",
+    {"help",          "List available commands",
         function(self) printHelp(self) end},
-    {"config", "Open the settings panel",
+    {"config",        "Open the settings panel",
         function(self)
             if InCombatLockdown and InCombatLockdown() then
                 p(self, "|cff00ff00KickCD|r: " ..
@@ -115,22 +123,30 @@ local COMMANDS = {
             end
             self:OpenSettings()
         end},
-    {"lock",   "Lock the icon grid in place",
+    {"lock",          "Lock the icon grid in place",
         function(self) setLocked(self, true) end},
-    {"unlock", "Unlock the icon grid for dragging",
+    {"unlock",        "Unlock the icon grid for dragging",
         function(self) setLocked(self, false) end},
-    {"toggle", "Toggle the icon grid lock state",
+    {"toggle",        "Toggle the icon grid lock state",
         function(self)
             local cur = self.db and self.db.profile and self.db.profile.locked
             setLocked(self, not cur)
         end},
-    {"list",   "List every setting and its current value",
+    {"list",          "List every setting and its current value",
         function(self) listSettings(self) end},
-    {"get",    "Print a setting's current value — `/kcd get <path>`",
+    {"get",           "Print a setting's current value — `/kcd get <path>`",
         function(self, rest) getSetting(self, rest) end},
-    {"set",    "Set a setting — `/kcd set <path> <value>` (try /kcd list)",
+    {"set",           "Set a setting — `/kcd set <path> <value>` (try /kcd list)",
         function(self, rest) setSetting(self, rest) end},
-    {"debug",  "Debug subcommands — try `/kcd debug` for the list",
+    {"reset",         "Reset a panel to defaults — `/kcd reset <general|icons|castbar|spells>`",
+        function(self, rest) runReset(self, rest) end},
+    {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
+        function(self) runResetAll(self) end},
+    {"resetposition", "Restore the icon grid to its default screen position",
+        function(self) runResetPosition(self) end},
+    {"spells",        "Spell-list editor — try `/kcd spells` for the list",
+        function(self, rest) runSpells(self, rest) end},
+    {"debug",         "Debug subcommands — try `/kcd debug` for the list",
         function(self, rest) runDebug(self, rest) end},
 }
 
@@ -150,13 +166,19 @@ local DEBUG_COMMANDS = {
     {"log",    "Toggle internal-message logging",
         function(self)
             self._debugLog = not self._debugLog
-            -- Persist + notify the settings checkbox so /kcd debug log and
-            -- the General > Debug toggle stay in sync.
-            if self.db and self.db.profile then
-                self.db.profile.debugLog = self._debugLog
-                self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
+            local v = self._debugLog
+            -- Route through the schema path so the General > Debug
+            -- checkbox refreshes and the schema row's onChange runs.
+            -- The schema row sits in section "debug" (no module
+            -- listens), so this no longer triggers a wasted
+            -- Cooldowns:Rebuild on every toggle.
+            local H = self.Settings and self.Settings.Helpers
+            if not (H and H.SetAndRefresh and H.SetAndRefresh("debugLog", v)) then
+                if self.db and self.db.profile then
+                    self.db.profile.debugLog = v
+                end
             end
-            p(self, "internal-message logging " .. (self._debugLog and "ON" or "OFF"))
+            p(self, "internal-message logging " .. (v and "ON" or "OFF"))
         end},
 }
 
@@ -169,7 +191,7 @@ end
 function printHelp(self)
     p(self, "|cff00ff00KickCD|r v" .. KickCD.VERSION .. " — slash commands:")
     for _, entry in ipairs(COMMANDS) do
-        p(self, ("  /kcd %-7s — %s"):format(entry[1], entry[2]))
+        p(self, ("  /kcd %s — %s"):format(entry[1], entry[2]))
     end
 end
 
@@ -182,7 +204,7 @@ function runDebug(self, rest)
     if sub == "" then
         p(self, "|cff00ff00KickCD|r debug subcommands:")
         for _, entry in ipairs(DEBUG_COMMANDS) do
-            p(self, ("  /kcd debug %-7s — %s"):format(entry[1], entry[2]))
+            p(self, ("  /kcd debug %s — %s"):format(entry[1], entry[2]))
         end
         return
     end
@@ -278,15 +300,32 @@ local function applyFromText(self, def, text)
         local ok = false
         for _, a in ipairs(allowed) do if a == v then ok = true; break end end
         if not ok then
-            return fail((L["Allowed values: %s"] or "Allowed values: %s")
-                :format(table.concat(allowed, ", ")))
+            local msg = (L["Allowed values: %s"] or "Allowed values: %s")
+                :format(table.concat(allowed, ", "))
+            -- def.valueGate (optional) names a sibling setting whose
+            -- current value gates the option list returned by def.values.
+            -- Surfacing it tells a confused user *why* their value is
+            -- rejected — e.g. growDirection's UP/DOWN vs RIGHT/LEFT
+            -- depends on castbar.orientation.
+            if def.valueGate then
+                local H = helpers()
+                local gateVal = H and H.Get and H.Get(def.valueGate)
+                msg = msg .. (" (depends on %s = %s)")
+                    :format(def.valueGate, tostring(gateVal))
+            end
+            return fail(msg)
         end
         newValue = v
     elseif def.type == "color" then
         local r, g, b = tonumber(args[1]), tonumber(args[2]), tonumber(args[3])
         local a = tonumber(args[4]) or 1
         if not (r and g and b) then return fail("expected: r g b [a] (each 0-1)") end
-        newValue = { r, g, b, a }
+        -- Clamp each channel to [0, 1]. Without this, `/kcd set
+        -- icons.cooldownTint 5 5 5 5` writes garbage that the texture
+        -- driver renders as overbright nonsense and the color picker
+        -- can't represent.
+        local function clamp01(n) return math.max(0, math.min(1, n)) end
+        newValue = { clamp01(r), clamp01(g), clamp01(b), clamp01(a) }
     else
         return fail("unknown setting type '" .. tostring(def.type) .. "'")
     end
@@ -356,6 +395,394 @@ function setSetting(self, rest)
             or "Setting not found: %s"):format(path))
     end
     applyFromText(self, def, value or "")
+end
+
+-- ---------------------------------------------------------------------------
+-- /kcd reset, /kcd resetall, /kcd resetposition
+-- ---------------------------------------------------------------------------
+--
+-- CLI parity for the panel's Defaults buttons. `/kcd reset <panel>`
+-- mirrors the per-tab Defaults button; `/kcd resetall` mirrors the
+-- General > "Reset all settings" popup (no confirmation in CLI — the
+-- shell history IS the confirmation); `/kcd resetposition` mirrors
+-- the General > "Reset position" button.
+
+local RESET_PANELS = {
+    general = true, icons = true, castbar = true, spells = true,
+}
+
+function runReset(self, rest)
+    local panelName = (rest or ""):match("^(%S+)")
+    panelName = panelName and panelName:lower() or ""
+    if panelName == "" then
+        return p(self, "Usage: /kcd reset <general|icons|castbar|spells>")
+    end
+    if not RESET_PANELS[panelName] then
+        return p(self, "Unknown panel '" .. panelName .. "'. "
+                 .. "Valid: general, icons, castbar, spells")
+    end
+    if panelName == "spells" then
+        if self.Database and self.Database.ResetAllSpells then
+            self.Database:ResetAllSpells()
+            return p(self, "|cff00ff00KickCD|r: spells reset to defaults")
+        end
+        return p(self, "Database not ready")
+    end
+    local H = helpers()
+    if not (H and H.RestoreDefaults) then
+        return p(self, "Settings layer not ready yet")
+    end
+    -- Pass the live panel ctx so its widget refreshers re-sync if the
+    -- tab is open. RestoreDefaults tolerates a nil ctx (closed panel).
+    local ctx
+    for _, c in ipairs(KickCD.Settings._panels or {}) do
+        if c.panelKey == panelName then ctx = c; break end
+    end
+    H.RestoreDefaults(panelName, ctx)
+    p(self, ("|cff00ff00KickCD|r: %s panel reset to defaults"):format(panelName))
+end
+
+function runResetAll(self)
+    local H = helpers()
+    if not (H and H.ResetAll) then
+        return p(self, "Settings layer not ready yet")
+    end
+    H.ResetAll()
+    p(self, "|cff00ff00KickCD|r: all settings + spells reset to defaults")
+end
+
+function runResetPosition(self)
+    local H = helpers()
+    if not (H and H.ResetIconPosition) then
+        return p(self, "Settings layer not ready yet")
+    end
+    H.ResetIconPosition()
+    p(self, "|cff00ff00KickCD|r: icon grid position reset")
+end
+
+-- ---------------------------------------------------------------------------
+-- /kcd spells — per-class+spec spell-list editor (CLI parity for the
+-- Spells panel)
+-- ---------------------------------------------------------------------------
+--
+-- The on-disk shape is db.profile.spells[CLASS][SPEC] = {
+--   { spellID=..., category=..., enabled=true|false }, ...
+-- } in priority order. CLASS is the upper-case class file token
+-- (WARRIOR, DEATHKNIGHT, …) and SPEC is the upper-case localized spec
+-- name with whitespace stripped (FROST, BEASTMASTERY, …) — see
+-- defaults/Spells.lua for the exact key set.
+--
+-- Every subcommand accepts an optional trailing `[CLASS SPEC]`; when
+-- omitted, both default to the player's current class+spec.
+
+local function lowerFirst(rest)
+    local first, remainder = (rest or ""):match("^(%S*)%s*(.*)$")
+    return (first or ""):lower(), remainder or ""
+end
+
+local function tokenize(rest)
+    local out = {}
+    for w in (rest or ""):gmatch("%S+") do out[#out + 1] = w end
+    return out
+end
+
+-- Normalize a user-supplied class/spec token to the casing used by
+-- defaults/Spells.lua (uppercase, no whitespace).
+local function normToken(s)
+    if not s or s == "" then return nil end
+    return (s:upper():gsub("%s+", ""))
+end
+
+-- Resolve [class spec] starting at args[idx]. Empty positions fall
+-- back to the player's class+spec.
+local function resolvePlayerClassSpec()
+    local classFile
+    if UnitClass then
+        local _, cf = UnitClass("player")
+        classFile = cf
+    end
+    local specToken
+    if GetSpecialization and GetSpecializationInfo then
+        local idx = GetSpecialization()
+        if idx then
+            local _, specName = GetSpecializationInfo(idx)
+            specToken = normToken(specName)
+        end
+    end
+    return classFile, specToken
+end
+
+local function resolveClassSpec(args, idx)
+    local class = normToken(args[idx])
+    local spec  = normToken(args[idx + 1])
+    if class and spec then return class, spec end
+    local pClass, pSpec = resolvePlayerClassSpec()
+    return class or pClass, spec or pSpec
+end
+
+local function getProfileSpells()
+    if not (KickCD.db and KickCD.db.profile) then return nil end
+    KickCD.db.profile.spells = KickCD.db.profile.spells or {}
+    return KickCD.db.profile.spells
+end
+
+local function getSpellList(class, spec)
+    local all = getProfileSpells()
+    if not all then return nil end
+    local byClass = all[class]
+    if not byClass then return nil end
+    return byClass[spec]
+end
+
+local function ensureSpellList(class, spec)
+    local all = getProfileSpells()
+    if not all then return nil end
+    all[class] = all[class] or {}
+    all[class][spec] = all[class][spec] or {}
+    return all[class][spec]
+end
+
+-- Mutation commit: fire the closed message AND nudge the open Spells
+-- panel to redraw if the user has it visible. The panel listens for
+-- KickCD_PROFILE_CHANGED but not for KickCD_CONFIG_CHANGED { spells }
+-- (the latter is for module re-Builds), so we have to call its
+-- RefreshRows directly.
+local function commitSpellsChange()
+    if KickCD and KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
+    end
+    if KickCD.SettingsSpells and KickCD.SettingsSpells.RefreshRows then
+        local ok, err = pcall(KickCD.SettingsSpells.RefreshRows,
+                              KickCD.SettingsSpells)
+        if not ok and KickCD._debugLog and KickCD.Util then
+            KickCD.Util.print("spells refresh failed: " .. tostring(err))
+        end
+    end
+end
+
+local function resolveSpellInput(input)
+    if not input or input == "" then return nil end
+    local Compat = KickCD.Compat or {}
+    local id = tonumber(input)
+    if id then
+        local name = Compat.GetSpellInfo and Compat.GetSpellInfo(id) or nil
+        if name then return id, name end
+        return nil
+    end
+    if Compat.GetSpellInfo then
+        local name, _, _, _, _, resolvedID = Compat.GetSpellInfo(input)
+        if name and resolvedID then return resolvedID, name end
+    end
+    return nil
+end
+
+local function findSpellEntry(list, id)
+    if not list then return nil end
+    for i, e in ipairs(list) do
+        if e.spellID == id then return e, i end
+    end
+end
+
+local CATEGORIES = {
+    interrupt = true, stun = true, knockback = true, incapacitate = true,
+    silence = true, root = true, fear = true, displace = true,
+    racial = true, other = true,
+}
+
+-- Per-subcommand handlers --------------------------------------------------
+
+local function spellsList(self, rest)
+    local args = tokenize(rest)
+    local class, spec = resolveClassSpec(args, 1)
+    if not (class and spec) then
+        return p(self, "Could not determine class+spec; specify them: "
+                 .. "/kcd spells list <CLASS> <SPEC>")
+    end
+    local list = getSpellList(class, spec)
+    if not list or #list == 0 then
+        return p(self, ("|cff00ff00KickCD|r: no spells tracked for %s/%s")
+                  :format(class, spec))
+    end
+    p(self, ("|cff00ff00KickCD|r: spells for %s/%s"):format(class, spec))
+    local Compat = self.Compat or {}
+    for i, e in ipairs(list) do
+        local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(e.spellID))
+                     or "?"
+        local flag = e.enabled == false and " (disabled)" or ""
+        p(self, ("  %2d. #%-7d %s [%s]%s"):format(
+            i, e.spellID, name, e.category or "other", flag))
+    end
+end
+
+local function spellsAdd(self, rest)
+    local args = tokenize(rest)
+    if not args[1] then
+        return p(self, "Usage: /kcd spells add <id|name> [CLASS SPEC]")
+    end
+    local id, name = resolveSpellInput(args[1])
+    if not id then
+        return p(self, "Unknown spell: " .. tostring(args[1]))
+    end
+    local class, spec = resolveClassSpec(args, 2)
+    if not (class and spec) then
+        return p(self, "Could not determine class+spec")
+    end
+    local list = ensureSpellList(class, spec)
+    if not list then return p(self, "db not ready") end
+    local existing = findSpellEntry(list, id)
+    if existing then
+        existing.enabled = true
+        commitSpellsChange()
+        return p(self, ("|cff00ff00KickCD|r: %s (#%d) already in %s/%s, re-enabled")
+                  :format(name or "?", id, class, spec))
+    end
+    list[#list + 1] = { spellID = id, category = "other", enabled = true }
+    commitSpellsChange()
+    p(self, ("|cff00ff00KickCD|r: added %s (#%d) to %s/%s")
+        :format(name or "?", id, class, spec))
+end
+
+local function spellsRemove(self, rest)
+    local args = tokenize(rest)
+    local id = tonumber(args[1])
+    if not id then
+        return p(self, "Usage: /kcd spells remove <id> [CLASS SPEC]")
+    end
+    local class, spec = resolveClassSpec(args, 2)
+    local list = getSpellList(class, spec)
+    if not list then
+        return p(self, ("No spell list for %s/%s"):format(
+                  tostring(class), tostring(spec)))
+    end
+    local _, idx = findSpellEntry(list, id)
+    if not idx then
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+    end
+    table.remove(list, idx)
+    commitSpellsChange()
+    p(self, ("|cff00ff00KickCD|r: removed #%d from %s/%s"):format(id, class, spec))
+end
+
+local function spellsSetEnabled(self, rest, enabled)
+    local args = tokenize(rest)
+    local id = tonumber(args[1])
+    if not id then
+        return p(self, ("Usage: /kcd spells %s <id> [CLASS SPEC]")
+                  :format(enabled and "enable" or "disable"))
+    end
+    local class, spec = resolveClassSpec(args, 2)
+    local list = getSpellList(class, spec)
+    if not list then
+        return p(self, ("No spell list for %s/%s"):format(
+                  tostring(class), tostring(spec)))
+    end
+    local entry = findSpellEntry(list, id)
+    if not entry then
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+    end
+    entry.enabled = enabled and true or false
+    commitSpellsChange()
+    p(self, ("|cff00ff00KickCD|r: #%d %s in %s/%s"):format(
+        id, enabled and "enabled" or "disabled", class, spec))
+end
+
+local function spellsSetCategory(self, rest)
+    local args = tokenize(rest)
+    local id = tonumber(args[1])
+    local cat = args[2] and args[2]:lower() or nil
+    if not (id and cat) then
+        return p(self, "Usage: /kcd spells category <id> <cat> [CLASS SPEC]")
+    end
+    if not CATEGORIES[cat] then
+        local names = {}
+        for k in pairs(CATEGORIES) do names[#names + 1] = k end
+        table.sort(names)
+        return p(self, "Unknown category. Allowed: " .. table.concat(names, ", "))
+    end
+    local class, spec = resolveClassSpec(args, 3)
+    local list = getSpellList(class, spec)
+    if not list then
+        return p(self, ("No spell list for %s/%s"):format(
+                  tostring(class), tostring(spec)))
+    end
+    local entry = findSpellEntry(list, id)
+    if not entry then
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+    end
+    entry.category = cat
+    commitSpellsChange()
+    p(self, ("|cff00ff00KickCD|r: #%d category = %s in %s/%s"):format(
+        id, cat, class, spec))
+end
+
+-- Per-spec reset: rebuild this single (class, spec) list from
+-- KickCD.DefaultSpells. Mirrors the Spells panel's Defaults popup
+-- (KICKCD_RESET_SPELLS) — which is intentionally narrower than
+-- `/kcd reset spells` (the latter calls Database:ResetAllSpells and
+-- wipes every class+spec).
+local function spellsReset(self, rest)
+    local args = tokenize(rest)
+    local class, spec = resolveClassSpec(args, 1)
+    if not (class and spec) then
+        return p(self, "Could not determine class+spec")
+    end
+    local all = getProfileSpells()
+    if not all then return p(self, "db not ready") end
+    local source = self.DefaultSpells
+                   and self.DefaultSpells[class]
+                   and self.DefaultSpells[class][spec]
+    all[class] = all[class] or {}
+    if source then
+        local copy = {}
+        for i, e in ipairs(source) do
+            copy[i] = {
+                spellID  = e.spellID  or e[1],
+                category = e.category or e[2] or "other",
+                enabled  = e.enabled ~= false,
+            }
+        end
+        all[class][spec] = copy
+    else
+        all[class][spec] = {}
+    end
+    commitSpellsChange()
+    p(self, ("|cff00ff00KickCD|r: reset %s/%s to defaults"):format(class, spec))
+end
+
+local SPELLS_COMMANDS = {
+    {"list",     "List spells — `... list [CLASS SPEC]`",
+        function(self, rest) spellsList(self, rest) end},
+    {"add",      "Add a spell — `... add <id|name> [CLASS SPEC]`",
+        function(self, rest) spellsAdd(self, rest) end},
+    {"remove",   "Remove a spell — `... remove <id> [CLASS SPEC]`",
+        function(self, rest) spellsRemove(self, rest) end},
+    {"enable",   "Enable a spell — `... enable <id> [CLASS SPEC]`",
+        function(self, rest) spellsSetEnabled(self, rest, true) end},
+    {"disable",  "Disable a spell — `... disable <id> [CLASS SPEC]`",
+        function(self, rest) spellsSetEnabled(self, rest, false) end},
+    {"category", "Set category — `... category <id> <cat> [CLASS SPEC]`",
+        function(self, rest) spellsSetCategory(self, rest) end},
+    {"reset",    "Reset one spec to defaults — `... reset [CLASS SPEC]`",
+        function(self, rest) spellsReset(self, rest) end},
+}
+
+function runSpells(self, rest)
+    local sub, rem = lowerFirst(rest)
+    if sub == "" then
+        p(self, "|cff00ff00KickCD|r spells subcommands:")
+        for _, entry in ipairs(SPELLS_COMMANDS) do
+            p(self, ("  /kcd spells %s — %s"):format(entry[1], entry[2]))
+        end
+        local cls, spc = resolvePlayerClassSpec()
+        if cls and spc then
+            p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, spc))
+        end
+        return
+    end
+    local entry = findCommand(SPELLS_COMMANDS, sub)
+    if entry then return entry[3](self, rem) end
+    p(self, "|cff00ff00KickCD|r: unknown spells subcommand '" .. sub .. "'")
+    runSpells(self, "")
 end
 
 -- ---------------------------------------------------------------------------

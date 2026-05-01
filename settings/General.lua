@@ -56,8 +56,13 @@ add{
     default  = true,
 }
 
+-- section = "debug" (not "general") on purpose: flipping the debug-log
+-- toggle should NOT cascade into a Cooldowns:Rebuild / IconGrid relayout
+-- / Castbar reevaluate the way a real "general" change does. No module
+-- listens for section "debug", so the only side effects are the
+-- onChange below (live runtime flag) and the panel refresh.
 add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
+    panel    = "general",  section = "debug",    group = L["Master controls"],
     path     = "debugLog", type    = "bool",
     label    = L["Debug"],
     tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
@@ -87,22 +92,11 @@ add{
 -- Builder
 -- ---------------------------------------------------------------------
 
-local function resetPosition()
-    if not (KickCD.db and KickCD.db.profile) then return end
-    KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
-    KickCD.db.profile.anchors.icons =
-        { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
-    H.FireConfigChanged("general")
-    H.FireConfigChanged("icons")
-end
-
 -- StaticPopup for "Reset all settings" — irreversible, so confirm
--- before wiping. Helpers.RestoreAllDefaults walks every schema-driven
--- panel and resets each row to def.default; Database:ResetAllSpells
--- additionally rebuilds the per-class+spec spell lists from the addon
--- defaults so the user actually gets a "true" reset across every spec
--- (not just the one selected in the Spells editor). Profiles are still
--- left alone — they have their own destructive controls.
+-- before wiping. The OnAccept body lives in Helpers.ResetAll so the
+-- popup, the General > "Reset all settings" button, and the
+-- `/kcd resetall` slash command all share a single implementation —
+-- no chance of the popup and the slash diverging.
 StaticPopupDialogs["KICKCD_RESET_ALL"] = {
     text         = L["Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."],
     button1      = L["Yes"],
@@ -110,12 +104,7 @@ StaticPopupDialogs["KICKCD_RESET_ALL"] = {
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
-    OnAccept     = function()
-        H.RestoreAllDefaults()
-        if KickCD.Database and KickCD.Database.ResetAllSpells then
-            KickCD.Database:ResetAllSpells()
-        end
-    end,
+    OnAccept     = function() H.ResetAll() end,
 }
 
 local function Build(mainCategory)
@@ -147,7 +136,7 @@ local function Build(mainCategory)
                     {
                         text    = L["Reset position"],
                         tooltip = L["Restore the icon grid to its default screen position."],
-                        onClick = resetPosition,
+                        onClick = function() H.ResetIconPosition() end,
                     },
                     {
                         text    = L["Reset all settings"],
