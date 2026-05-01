@@ -12,7 +12,7 @@ local Database = {}
 KickCD.Database = Database
 
 -- ---------------------------------------------------------------------------
--- Defaults (DEFAULT_PROFILE shape per TECHNICAL_DESIGN §4)
+-- Defaults (DEFAULT_PROFILE shape — see docs/ARCHITECTURE_SAVED_VARIABLES.md)
 -- ---------------------------------------------------------------------------
 
 -- Schema version. Increment whenever a non-additive change is made to
@@ -480,8 +480,8 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     self:BuildSpells()
     self:MigrateProfile()
 
-    -- Fire the closed internal message — see TECHNICAL_DESIGN §1.
-    -- This is the only message Database is allowed to emit.
+    -- Fire the closed internal message — see docs/ARCHITECTURE_MESSAGE_CONTRACT.md
+    -- and docs/CLAUDE_MESSAGE_BUS.md. This is the only message Database is allowed to emit.
     if KickCD and KickCD.SendMessage then
         KickCD:SendMessage("KickCD_PROFILE_CHANGED", { newProfileKey = key })
     end

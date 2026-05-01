@@ -282,8 +282,8 @@ local Icon = {}
 
 local function CreateIconWidget(parent)
     -- A Button (not a Frame) so a future click-to-cast hook is one
-    -- :SetAttribute() away. SecureActionButton is intentionally avoided per
-    -- TECHNICAL_DESIGN §7.4 (no taint).
+    -- :SetAttribute() away. SecureActionButton is intentionally avoided
+    -- to keep the icon grid free of protected-frame taint.
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(48, 48)
     btn:EnableMouse(false) -- the grid as a whole handles drag, not individual icons

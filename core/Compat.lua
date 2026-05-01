@@ -1,5 +1,5 @@
 -- core/Compat.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §3.3
+-- See docs/ARCHITECTURE_COMPAT_LAYER.md and docs/CLAUDE_SECRET_VALUES.md.
 --
 -- Thin compatibility shims for spell + settings APIs whose signatures
 -- have churned across recent expansions. The runtime layer always goes

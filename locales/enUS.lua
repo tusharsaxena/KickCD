@@ -1,5 +1,6 @@
 -- locales/enUS.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §3.1, REQUIREMENTS NFR-7
+-- Localization table. See docs/CLAUDE_MODULE_LAYOUT.md (load order)
+-- and docs/ARCHITECTURE_BOOT_SEQUENCE.md.
 --
 -- Default (and currently only) localization. The `L` table is wired with
 -- a fall-back metatable: any missing key returns the key itself, so a

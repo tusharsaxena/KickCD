@@ -1,5 +1,5 @@
 -- core/KickCD.lua — KickCD v0.1
--- See docs/TECHNICAL_DESIGN.md §3.1
+-- See docs/CLAUDE_MODULE_LAYOUT.md and docs/ARCHITECTURE_BOOT_SEQUENCE.md.
 --
 -- AceAddon bootstrap: turns the plain `KickCD` table that Compat / Util /
 -- Database have been hanging fields on into the actual AceAddon object,
