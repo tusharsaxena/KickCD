@@ -31,6 +31,88 @@ function State.SetInCombat(v)
 end
 
 -- ---------------------------------------------------------------------------
+-- Visibility helpers (hostile-cast gate + interruptibility alpha mask)
+-- ---------------------------------------------------------------------------
+--
+-- These two helpers used to live in core/Compat.lua, but their job isn't
+-- API normalisation — it's the addon's shared "is this unit's cast one
+-- the player can interrupt" feature decision, used identically by the
+-- icon grid (visibility + glow gating) and the cast bar (visibility +
+-- alpha mask). Compat keeps the raw GetCastingInfo / GetChannelInfo
+-- shims; State owns the feature decision.
+--
+-- The 12.0 secret-value strategy is identical in both helpers:
+--   * Truthiness checks on the API's `name` return are safe (Lua's
+--     `if x then` does not perform arithmetic, so a secret-tainted
+--     name passes through unchanged).
+--   * `notInterruptible` (positions 8 / 7 of UnitCastingInfo /
+--     UnitChannelInfo) is secret-tainted in combat for protected casts;
+--     it MUST go straight into Frame:SetAlphaFromBoolean — the one
+--     C-side method that accepts the secret form without erroring.
+-- See docs/CLAUDE_SECRET_VALUES.md "Cast interruptibility" for the
+-- full background.
+
+--- Whether `unit` is currently casting (or channeling) AND is a unit
+--- the player can attack. Used as the visibility GATE for the
+--- "target_casting_interruptible" mode — actual interruptibility is
+--- filtered separately via State.ApplyInterruptibleAlpha because
+--- notInterruptible is secret-tainted in 12.0 and cannot be compared
+--- in Lua. (Friendly / self casts are excluded here because you can't
+--- interrupt those regardless of the API flag.)
+---
+--- Truthiness checks on the API's `name` return are safe even when the
+--- value is secret-tainted in combat — `if x then` does not perform
+--- arithmetic. Compat._firstReturn collapses the multi-return to
+--- position 1 so the truthy check is on a single value.
+function State.IsHostileUnitCasting(unit)
+    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
+    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+    local Compat = KickCD.Compat
+    if Compat and Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
+    if Compat and Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
+    return false
+end
+
+--- Drive `frame`'s alpha from the unit's cast `notInterruptible` flag.
+--- When the cast is interruptible (notInterruptible falsy) → frame
+--- shows at `alpha`. When uninterruptible (notInterruptible truthy)
+--- → frame hides (alpha 0). When the unit has no cast or is friendly
+--- the function returns false WITHOUT touching the frame so the caller
+--- can fall back to its own alpha policy.
+---
+--- The flag is fed straight into Frame:SetAlphaFromBoolean — a C-side
+--- method that accepts the 12.0 "secret value" form of notInterruptible
+--- without erroring. THIS IS THE ONLY 12.0-correct way to gate
+--- visibility on interruptibility from an addon: any Lua-side compare
+--- (`not nint`, `nint == true`, `if nint`) errors when the value is
+--- secret-tainted.
+---
+--- @param frame Frame  must support :SetAlphaFromBoolean
+--- @param unit  string ("target", ...)
+--- @param alpha number alpha to use when interruptible (default 1)
+--- @return bool whether the mask was applied
+function State.ApplyInterruptibleAlpha(frame, unit, alpha)
+    if not (frame and frame.SetAlphaFromBoolean) then return false end
+    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
+    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+
+    local notInterruptible, hasCast
+    if _G.UnitCastingInfo then
+        local castName, _, _, _, _, _, _, n = _G.UnitCastingInfo(unit)
+        if castName then notInterruptible, hasCast = n, true end
+    end
+    if not hasCast and _G.UnitChannelInfo then
+        local chName, _, _, _, _, _, n = _G.UnitChannelInfo(unit)
+        if chName then notInterruptible, hasCast = n, true end
+    end
+    if not hasCast then return false end
+
+    -- C-side: accepts secret notInterruptible without arithmetic in Lua.
+    frame:SetAlphaFromBoolean(notInterruptible, 0, alpha or 1)
+    return true
+end
+
+-- ---------------------------------------------------------------------------
 -- Bootstrap event listener
 -- ---------------------------------------------------------------------------
 --

@@ -112,8 +112,8 @@ local function isVisible()
     if mode == "in_combat" then
         return KickCD.State.inCombat
     elseif mode == "target_casting_interruptible" then
-        return KickCD.Compat.IsHostileUnitCasting
-           and KickCD.Compat.IsHostileUnitCasting("target")
+        return KickCD.State.IsHostileUnitCasting
+           and KickCD.State.IsHostileUnitCasting("target")
            or false
     end
     return true
@@ -133,8 +133,8 @@ local function ApplyVisibilityMask(barFrame)
     local mode = (profile and profile.visibility) or "always"
     if not unlocked
        and mode == "target_casting_interruptible"
-       and KickCD.Compat.ApplyInterruptibleAlpha
-       and KickCD.Compat.ApplyInterruptibleAlpha(barFrame, "target", 1) then
+       and KickCD.State.ApplyInterruptibleAlpha
+       and KickCD.State.ApplyInterruptibleAlpha(barFrame, "target", 1) then
         return
     end
     barFrame:SetAlpha(1)

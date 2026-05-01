@@ -17,7 +17,7 @@
 --                          compared in Lua, so this mode is implemented
 --                          as a two-step gate: shouldBeVisible() returns
 --                          true whenever the target is a hostile unit
---                          casting (Compat.IsHostileUnitCasting), and
+--                          casting (State.IsHostileUnitCasting), and
 --                          ApplyInterruptibilityMask() then drives the
 --                          grid frame's alpha through SetAlphaFromBoolean
 --                          (C-side, secret-safe) so uninterruptible casts
@@ -153,7 +153,7 @@ local function shouldBeVisible()
         -- Show whenever a hostile target is casting; the actual
         -- interruptibility filter is applied as an alpha mask in
         -- ApplyInterruptibilityMask (called from RefreshVisibility).
-        return KickCD.Compat.IsHostileUnitCasting("target")
+        return KickCD.State.IsHostileUnitCasting("target")
     end
     return true  -- "always"
 end
@@ -173,8 +173,8 @@ local function ApplyInterruptibilityMask()
     local mode = visibilityMode()
     if not unlocked
        and mode == "target_casting_interruptible"
-       and KickCD.Compat.ApplyInterruptibleAlpha
-       and KickCD.Compat.ApplyInterruptibleAlpha(grid, "target", 1) then
+       and KickCD.State.ApplyInterruptibleAlpha
+       and KickCD.State.ApplyInterruptibleAlpha(grid, "target", 1) then
         return
     end
     grid:SetAlpha(1)
@@ -532,9 +532,9 @@ local function triggerSatisfied(trigger)
     elseif trigger == "target_casting" then
         return isTargetCasting()
     elseif trigger == "target_casting_interruptible" then
-        return KickCD.Compat
-           and KickCD.Compat.IsHostileUnitCasting
-           and KickCD.Compat.IsHostileUnitCasting("target")
+        return KickCD.State
+           and KickCD.State.IsHostileUnitCasting
+           and KickCD.State.IsHostileUnitCasting("target")
            or false
     end
     -- "never" or unknown — glow off.
@@ -576,8 +576,8 @@ function Icon:UpdateGlow(state)
     -- Per-cast interruptibility filter (alpha mask on the glow frame).
     if trigger == "target_casting_interruptible"
        and self.glow
-       and KickCD.Compat.ApplyInterruptibleAlpha
-       and KickCD.Compat.ApplyInterruptibleAlpha(self.glow, "target", 1) then
+       and KickCD.State.ApplyInterruptibleAlpha
+       and KickCD.State.ApplyInterruptibleAlpha(self.glow, "target", 1) then
         return
     end
     if self.glow then self.glow:SetAlpha(1) end
