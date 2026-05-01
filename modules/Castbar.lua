@@ -136,6 +136,28 @@ local function fetchBorderTexture(name)
     return "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
+-- Apply the user's spell-name truncate cap, returning a string fit
+-- to hand to FontString:SetText. `0` (or nil) means "no truncation".
+--
+-- Secret-value handling: `rec.name` from Compat.GetCastingInfo can
+-- be secret-tainted in combat for protected casts (per the module
+-- header). `string.sub` / `#` on a secret may error in tainted
+-- scope, so we short-circuit with `issecretvalue` and pass the raw
+-- secret straight through to SetText (which accepts secret args
+-- via its C-side argument path) — losing the truncation for that
+-- one frame is preferable to throwing a Lua error.
+--
+-- Length is byte-counted; multi-byte UTF-8 names may truncate mid-
+-- character at the edge, but won't error. Most spell names are
+-- short enough that the cap rarely fires anyway.
+local function truncateName(name, maxChars)
+    if not name then return "" end
+    if not maxChars or maxChars <= 0 then return name end
+    if issecretvalue and issecretvalue(name) then return name end
+    if #name <= maxChars then return name end
+    return string.sub(name, 1, maxChars) .. "…"
+end
+
 local function fetchFont(name)
     if LSM and LSM.Fetch then
         local f = LSM:Fetch("font", name or "Friz Quadrata TT", true)
@@ -669,6 +691,17 @@ function Castbar:ApplyConfig()
     if current and current.texture and showIcon then
         frame.icon:SetTexture(current.texture)
     end
+
+    -- Re-paint the spell name when a cast is active so a config
+    -- change to nameTruncate / showName takes effect immediately
+    -- without waiting for the next cast. Truncate cap is read live
+    -- from cfg() and the secret-value short-circuit in
+    -- truncateName keeps protected-cast names safe.
+    if current and c.showName ~= false then
+        frame.nameText:SetText(truncateName(current.name, c.nameTruncate))
+    elseif c.showName == false then
+        frame.nameText:SetText("")
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -812,7 +845,7 @@ function Castbar:Start(rec)
         frame.icon:SetTexture(rec.texture)
     end
     if cfg().showName ~= false then
-        frame.nameText:SetText(rec.name or "")
+        frame.nameText:SetText(truncateName(rec.name, cfg().nameTruncate))
     else
         frame.nameText:SetText("")
     end
@@ -864,7 +897,7 @@ function Castbar:ShowPreview()
         frame.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
     if cfg().showName ~= false then
-        frame.nameText:SetText(L["KickCD castbar"])
+        frame.nameText:SetText(truncateName(L["KickCD castbar"], cfg().nameTruncate))
     else
         frame.nameText:SetText("")
     end

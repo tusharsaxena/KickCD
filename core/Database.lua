@@ -166,6 +166,12 @@ local DEFAULT_PROFILE = {
         namePosition = "INSIDE_LEFT",
         nameOffsetX  = 0,
         nameOffsetY  = 0,
+        -- Maximum visible characters in the spell name before
+        -- replacing the tail with an ellipsis. 0 disables
+        -- truncation entirely (full name shown). Length is byte-
+        -- counted via `#`; multi-byte localized names may truncate
+        -- mid-character at the edge but won't error.
+        nameTruncate = 0,
         timePosition = "INSIDE_RIGHT",
         timeOffsetX  = 0,
         timeOffsetY  = 0,

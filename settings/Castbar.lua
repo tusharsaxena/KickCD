@@ -323,6 +323,14 @@ add{
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
     onChange = reskin,
 }
+add{
+    panel = "castbar", section = "castbar", group = L["Spell name"],
+    path  = "castbar.nameTruncate", type = "number",
+    label = L["Truncate after (characters)"],
+    tooltip = L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."],
+    default = 0, min = 0, max = 60, step = 1, fmt = "%d",
+    onChange = reskin,
+}
 
 -- Cast time ------------------------------------------------------------
 -- Renamed from "Cast time position". Same shape as Spell name: the show-
