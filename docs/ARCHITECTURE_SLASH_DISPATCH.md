@@ -17,7 +17,7 @@ Each row is `{ name, description, fn }`. The dispatcher:
 - `/kcd <unknown>` → "unknown command" + help.
 - `/kcd options` is aliased to `/kcd config` for backward compat.
 
-`/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`) opens the **General subcategory directly**, not the parent category — in WoW 12.0 a Blizzard parent category with subcategories hides its own widgets, so opening the parent would show an empty pane. The fallback target is `KickCD.SettingsCategoryID` for the rare case where the General subcategory hasn't registered yet. `InCombatLockdown()` is checked before opening so the protected category-switch doesn't fail mid-fight; the user gets a one-line "cannot open during combat" print instead.
+`/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`) opens the **General subcategory directly**, not the parent category — in WoW 12.0 a Blizzard parent category with subcategories hides its own widgets, so opening the parent would show an empty pane. If the subcategory hasn't registered yet (a `/kcd config` immediately after login can race the per-tab builders), `OpenSettings` schedules a one-shot retry via `C_Timer.After(0.5, ...)` — capped at 3 attempts — rather than falling through to the empty parent. `InCombatLockdown()` is checked before opening so the protected category-switch doesn't fail mid-fight; the user gets a one-line "cannot open during combat" print instead.
 
 `OnSlashCommand` lowercases only the command name and preserves case in the rest of the input, so schema paths like `icons.primarySize` survive unchanged through `/kcd set ...`. `runDebug` and `runSpells` lowercase their own subcommand for backward compat.
 
@@ -52,7 +52,7 @@ Edits the per-class+spec spell list at `db.profile.spells[CLASS][SPEC]`. CLASS i
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
 | `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `KickCD.DefaultSpells`. Mirrors the Spells panel's Defaults popup; intentionally narrower than `/kcd reset spells` (which wipes every spec via `Database:ResetAllSpells`). |
 
-Every mutating subcommand fires `KickCD_CONFIG_CHANGED { section = "spells" }` and nudges the open Spells panel to redraw via `KickCD.SettingsSpells:RefreshRows` (the panel listens for `KickCD_PROFILE_CHANGED` but not for the section-keyed `_CONFIG_CHANGED`, so this direct call is what keeps the open editor in sync after a CLI write).
+Every mutating subcommand fires `KickCD_CONFIG_CHANGED { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
 
 ## `/kcd debug <subcmd>`
 
@@ -60,5 +60,5 @@ Every mutating subcommand fires `KickCD_CONFIG_CHANGED { section = "spells" }` a
 |---|---|
 | `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`). Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
 | `castbar` | Print current target cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
-| `interrupt` | Dump `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `Compat.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
+| `interrupt` | Dump `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `KickCD.State.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
 | `log` | Toggle internal-message logging. Routes through `Helpers.SetAndRefresh("debugLog", ...)` so the General → Debug checkbox refreshes; section is `"debug"` (no module listens) so toggling it doesn't cascade into a wasted Cooldowns:Rebuild. |

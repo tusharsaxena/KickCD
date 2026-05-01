@@ -94,10 +94,13 @@ Spells and Profiles share the unified header but render custom bodies:
 ## Widget primitives (canvas mode)
 
 All widgets bind directly to `db.profile` via `Helpers.Get(path)` and
-`Helpers.Set(path, section, value)` — no `Settings.RegisterAddOnSetting`
-involvement. Each widget creator pushes a refresher closure into
-`ctx.refreshers` so its display can re-sync after a Defaults reset or
-a slash-cmd `/kcd set`.
+`Helpers.Set(path, section, value)`. Blizzard's `Settings.RegisterAddOnSetting`
+shim was deleted in CR-8 — the canvas widgets never went through Blizzard's
+Setting object lifecycle, so the shim was dead code. Don't reach for it
+when adding new UI; use the schema + `Helpers.RenderField` instead.
+
+Each widget creator pushes a refresher closure into `ctx.refreshers` so its
+display can re-sync after a Defaults reset or a slash-cmd `/kcd set`.
 
 Schema widgets are AceGUI widgets — `CheckBox`, `Slider`, `Dropdown`,
 `ColorPicker`, `Heading` for sections, `Button` + `Label` inside a
@@ -132,13 +135,28 @@ data.
 `Helpers.ResetIconPosition` is the corresponding helper for the
 "Reset position" button and `/kcd resetposition` — it writes
 `db.profile.anchors.icons` from `KickCD.DEFAULT_PROFILE.anchors.icons`
-so the default coordinates live in one place.
+so the default coordinates live in one place. It fires
+`KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's
+`general` branch already re-anchors, and firing `icons` would just be
+a wasted relayout.
 
-## `Compat.RegisterAddOnSetting` is vestigial
+## Schema validation
 
-The shim still exists in `core/Compat.lua` and is documented for
-historical context, but **no live code calls it**. The canvas widgets
-bind directly to `db.profile` and don't go through Blizzard's Setting
-object lifecycle at all. Don't reach for the shim when adding new UI;
-use the schema + `Helpers.RenderField` instead.
+`Helpers.ValidateSchema()` runs at panel-register time and asserts every
+schema row has a non-empty `path`, a known `panel` (`general` / `icons` /
+`castbar` / `spells` / `profiles`), a known `section` (`general` / `icons`
+/ `castbar` / `spells` / `debug`), and a known `type` (`bool` / `number`
+/ `string` / `color`). Failures print a `|cffff0000KickCD schema error|r:`
+line per offending row but don't refuse to load — diagnostic guard rail
+for future contributors, not a hard gate.
+
+## ColorPicker writes are throttled
+
+`makeColorPicker`'s `OnValueChanged` commit goes through `Util.Throttle(50,
+...)` so dragging a color slider fires `KickCD_CONFIG_CHANGED` at most ~20
+times/sec instead of every render frame. Without it the live cast bar /
+icon grid would re-skin per-frame during a drag, jankily on slower
+systems. `OnValueConfirmed` (which fires only on Cancel — a 12.0 quirk of
+`SetupColorPickerAndShow`) is left immediate so the snap-back is
+instantaneous.
 

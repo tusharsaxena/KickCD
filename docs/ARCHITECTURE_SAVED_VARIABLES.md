@@ -6,6 +6,10 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
 ```lua
 {
+    dbVersion  = 1,              -- profile schema version. Database:MigrateProfile
+                                 -- runs at Init and on profile change; the v1
+                                 -- migrator is a no-op, but the scaffold lets a
+                                 -- future schema change ship a migrator next to it.
     enabled    = true,
     locked     = true,           -- shared drag lock (icon grid + cast bar)
     scale      = 1.0,            -- icon grid master scale
@@ -19,8 +23,8 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
                                  -- the icon grid AND the cast bar; master enable
                                  -- still wins, and unlocked frames bypass the
                                  -- mode so users can drag them. The "_interruptible"
-                                 -- variant uses Compat.IsHostileUnitCasting as the
-                                 -- show gate and Compat.ApplyInterruptibleAlpha
+                                 -- variant uses KickCD.State.IsHostileUnitCasting
+                                 -- as the show gate and KickCD.State.ApplyInterruptibleAlpha
                                  -- (SetAlphaFromBoolean on the secret notInterruptible
                                  -- bool) as a C-side filter mask, since the flag
                                  -- can't be compared in Lua under 12.0.

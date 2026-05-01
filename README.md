@@ -116,10 +116,16 @@ For agents (or anyone diving into the code), start at:
   data flow, message bus, saved-variable shape, Compat surface, slash
   dispatch. Indexes the per-section `ARCHITECTURE_*.md` files.
 
-The original design docs are preserved under [`docs/legacy/`](docs/legacy/)
-for historical context — they predate the cast-bar removal/re-add and the
-12.0 secret-value handling, so do not treat them as the source of truth for
-current behavior.
+Historical docs are preserved under [`docs/legacy/`](docs/legacy/):
+- [`docs/legacy/v1/`](docs/legacy/v1/) — the original v0.1 design docs
+  (REQUIREMENTS / RESEARCH / TECHNICAL_DESIGN / EXECUTION_PLAN / UAT).
+  These predate the cast-bar removal/re-add and the 12.0 secret-value
+  handling, so don't treat them as the source of truth for current
+  behavior.
+- [`docs/legacy/v2/`](docs/legacy/v2/) — the principal-engineer review
+  that drove the v2 refactor (PE_REVIEW / CHANGES_PE_REVIEW /
+  EXECUTION_PLAN_PE_REVIEW). The findings have all landed; preserved as
+  a record of the review and the parallel-execution plan that delivered it.
 
 ## Testing
 

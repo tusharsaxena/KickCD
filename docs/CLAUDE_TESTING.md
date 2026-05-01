@@ -56,7 +56,7 @@ There is no automated test harness. Verification is manual:
   a secret-tainted record doesn't error the dump.
 - `/kcd debug interrupt` — dump every `UnitCastingInfo` /
   `UnitChannelInfo` position with `type()` and `issecretvalue()` flag,
-  plus what `Compat.IsHostileUnitCasting("target")` and the addon-wide
+  plus what `KickCD.State.IsHostileUnitCasting("target")` and the addon-wide
   visibility / glow-trigger logic decided. The reference for diagnosing
   12.0 secret-value handling drift (especially regressions in the
   `target_casting_interruptible` mode where `notInterruptible` cannot be

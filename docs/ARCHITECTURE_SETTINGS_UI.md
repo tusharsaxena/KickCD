@@ -66,8 +66,9 @@ are wired automatically.
 
 Canvas widgets bind directly to `db.profile` via `Helpers.Get(path)` /
 `Helpers.Set(path, section, value)`. They do **not** go through
-`Settings.RegisterAddOnSetting` — the Compat shim for that API exists
-but has no live callers. Schema rows are rendered by AceGUI primitives:
+`Settings.RegisterAddOnSetting` — that shim was removed in CR-8 (it had
+no live callers; the canvas widgets always wrote `db.profile` directly).
+Schema rows are rendered by AceGUI primitives:
 `CheckBox` for `bool`, `Slider` for `number`, `Dropdown` for `string`
 (values supplied as `{ {value=, label=}, ... }` or a function returning
 that shape — `Helpers.LSMValues(mediaType)` is the standard wrapper
@@ -90,13 +91,26 @@ they govern. See `Helpers.RenderSchema` and the `makeCheckbox` /
 `settings/Panel.lua`.
 
 A schema row may declare `valueGate = "<sibling.path>"`. The slash
-command's invalid-value error appends `(depends on <gate> = <current>)`
-so a user typing `/kcd set castbar.growDirection LEFT` while
-`castbar.orientation` is `VERTICAL` learns *why* their value is rejected
-(the orientation gates the option list). The dropdown's `values`
-function should also re-evaluate the option list against the gate so the
-panel and CLI stay in lockstep — see `castbar.growDirection` in
-`settings/Castbar.lua`.
+command's invalid-value error appends `(depends on <gate> = <current>;
+flip <gate> to <other> for <other-options>)` so a user typing `/kcd set
+castbar.growDirection LEFT` while `castbar.orientation` is `VERTICAL`
+learns *why* their value is rejected AND what to flip to enable it. The
+dropdown's `values` function should also re-evaluate the option list
+against the gate so the panel and CLI stay in lockstep — see
+`castbar.growDirection` in `settings/Castbar.lua`.
+
+`Helpers.ValidateSchema()` runs at the top-level category register
+(after every settings/* file has loaded its rows) and prints
+`|cffff0000KickCD schema error|r:` lines for any row missing a
+`path` / unknown `panel` / unknown `section` / unknown `type`. It
+doesn't refuse to load on a misshapen row — the panel just won't show
+that row — but a diff that adds a typo'd row is now self-flagging
+during a /reload.
+
+The ColorPicker's `OnValueChanged` commit is wrapped in
+`Util.Throttle(50, ...)` so dragging a color slider doesn't thrash the
+bus or the live frames. `OnValueConfirmed` (which only fires on Cancel
+under WoW 12.0's `SetupColorPickerAndShow` flow) stays immediate.
 
 The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to
 **always** display its scrollbar (`Helpers.PatchAlwaysShowScrollbar`),
