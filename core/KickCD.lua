@@ -315,11 +315,51 @@ local function applyFromText(self, def, text)
             -- Surfacing it tells a confused user *why* their value is
             -- rejected — e.g. growDirection's UP/DOWN vs RIGHT/LEFT
             -- depends on castbar.orientation.
+            --
+            -- We append:
+            --   * The gate's current value (so the user understands
+            --     which side of the gate they're on right now).
+            --   * For every OTHER value the gate could take, the
+            --     option list this dropdown would expose under that
+            --     gate value. Probing relies on the dropdown's
+            --     `values` function reading the live profile, so we
+            --     swap the gate's profile slot to each candidate
+            --     value, re-query, restore, and tabulate. The swap
+            --     is purely transient (single call between mutate +
+            --     restore; no message bus dispatch).
             if def.valueGate then
                 local H = helpers()
                 local gateVal = H and H.Get and H.Get(def.valueGate)
                 msg = msg .. (" (depends on %s = %s)")
                     :format(def.valueGate, tostring(gateVal))
+                local gateDef = H and H.FindSchema and H.FindSchema(def.valueGate)
+                if gateDef and H and H.Get and H.Set then
+                    local gateValues = type(gateDef.values) == "function"
+                        and gateDef.values() or gateDef.values
+                    if type(gateValues) == "table" then
+                        local hints = {}
+                        for _, item in ipairs(gateValues) do
+                            local candidate = item.value
+                            if candidate ~= nil and candidate ~= gateVal then
+                                local profile = self.db and self.db.profile
+                                local parent, key = H.Resolve(def.valueGate)
+                                if parent and key and profile then
+                                    parent[key] = candidate
+                                    local altList = dropdownAllowed(def)
+                                    parent[key] = gateVal
+                                    if #altList > 0 then
+                                        hints[#hints + 1] = ("flip %s to %s for %s")
+                                            :format(def.valueGate, tostring(candidate),
+                                                    table.concat(altList, "/"))
+                                    end
+                                end
+                            end
+                        end
+                        if #hints > 0 then
+                            msg = msg .. "; " .. table.concat(hints, "; ")
+                        end
+                    end
+                end
             end
             return fail(msg)
         end
