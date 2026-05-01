@@ -196,17 +196,53 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             return
         end
 
-        local cmSet = getCooldownManagerSpellSet()
-        if cmSet then
-            if not cmSet[id] then
-                local name = resolvedName or getSpellName(id) or tostring(id)
-                if KickCD.Util and KickCD.Util.print then
-                    KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+        -- Cooldown-manager gating only applies when the user is editing
+        -- their OWN class+spec list. The C_CooldownViewer API has no
+        -- class/spec parameter — it returns the set for the LOGGED-IN
+        -- player's currently-active spec. So a Mage editing
+        -- HUNTER/BEASTMASTERY would otherwise be blocked from adding any
+        -- Hunter spell. Drop the gate when the editor's selected pair
+        -- doesn't match the player's live pair; fall through to the
+        -- lenient validateSpellInput path (which already confirmed the
+        -- spell exists in the spell DB).
+        --
+        -- TODO(post-WS-B): replace the inline upper-strip with
+        -- KickCD.Util.NormalizeSpecToken once WS-B's CR-1 lands; the
+        -- current inline form is conflict-free with WS-B's helper at
+        -- merge time.
+        local function normaliseSpecToken(s)
+            return (s or ""):upper():gsub("%s+", "")
+        end
+        local _, playerClass = UnitClass and UnitClass("player")
+        local playerSpecToken
+        if GetSpecialization and GetSpecializationInfo then
+            local idx = GetSpecialization()
+            if idx then
+                local _, specName = GetSpecializationInfo(idx)
+                if specName then playerSpecToken = normaliseSpecToken(specName) end
+            end
+        end
+        local editorIsActiveSpec =
+            playerClass and selectedClass and playerClass == selectedClass
+            and playerSpecToken and selectedSpec and playerSpecToken == selectedSpec
+
+        if editorIsActiveSpec then
+            local cmSet = getCooldownManagerSpellSet()
+            if cmSet then
+                if not cmSet[id] then
+                    local name = resolvedName or getSpellName(id) or tostring(id)
+                    if KickCD.Util and KickCD.Util.print then
+                        KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+                    end
+                    return
                 end
-                return
+            elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
+                KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
             end
         elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
-            KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+            KickCD.Util.print(("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
+                :format(tostring(selectedClass), tostring(selectedSpec),
+                        tostring(playerClass), tostring(playerSpecToken)))
         end
 
         local list = getActiveList()
