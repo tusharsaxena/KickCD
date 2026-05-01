@@ -27,6 +27,7 @@ locales\enUS.lua
 
 # Core
 core\Compat.lua
+core\Constants.lua
 core\Util.lua
 core\Database.lua
 core\KickCD.lua

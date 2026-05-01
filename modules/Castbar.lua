@@ -472,9 +472,10 @@ local UNINT_FALLBACK = {
 
 -- A 4px inset on the inside positions keeps text from touching the bar
 -- border. The user's offsetX is added on top so they can pull the text
--- further out or push it back in.
-local INSIDE_INSET  = 4
-local OUTSIDE_INSET = 4
+-- further out or push it back in. Sourced from KickCD.Const so the
+-- value lives in exactly one place across the addon.
+local INSIDE_INSET  = KickCD.Const.CASTBAR_INSIDE_INSET
+local OUTSIDE_INSET = KickCD.Const.CASTBAR_OUTSIDE_INSET
 
 local function anchorTextElement(fs, bar, position, ox, oy)
     fs:ClearAllPoints()

@@ -76,8 +76,9 @@ local floor = math.floor
 -- small fp epsilon. The alpha/tint curves treat any remaining ≤ this value
 -- as "GCD only — show as ready" and remaining > this value as "real CD —
 -- apply visual states." Sub-second precision isn't critical because the
--- transition is a step, not a gradient.
-local GCD_UPPER = 1.6
+-- transition is a step, not a gradient. Sourced from KickCD.Const so the
+-- value lives in exactly one place across the addon.
+local GCD_UPPER = KickCD.Const.GCD_UPPER
 
 -- Step-shaped curves used to derive per-icon alpha and tint without ever
 -- comparing the spell's secret-tainted remaining time in Lua scope. Built
