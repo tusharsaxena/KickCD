@@ -1399,6 +1399,14 @@ local function onDragStop(self)
         KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
         KickCD.db.profile.anchors.icons = KickCD.Util.SaveAnchor(self)
     end
+    -- Fire the closed bus message so any future "anchor-aware"
+    -- subscriber (e.g. a hypothetical Castbar mode that follows the
+    -- grid's free-floating position) gets notified. IconGrid's own
+    -- OnConfigChanged handler is idempotent on `general` — re-anchoring
+    -- to the just-saved value is a no-op — so this doesn't double-work.
+    if KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
+    end
 end
 
 function IconGrid:ApplyLock()
