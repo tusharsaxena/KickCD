@@ -53,13 +53,6 @@ local rebuildScheduled
 -- Helpers
 -- ---------------------------------------------------------------------------
 
-local function deepCopy(v)
-    if type(v) ~= "table" then return v end
-    local out = {}
-    for k, vv in pairs(v) do out[k] = deepCopy(vv) end
-    return out
-end
-
 local function sortedKeys(t)
     local keys = {}
     if type(t) == "table" then
@@ -148,8 +141,15 @@ local function getCooldownManagerSpellSet()
 end
 
 -- ---------------------------------------------------------------------------
--- Debounced commit pipeline
+-- Throttled commit pipeline
 -- ---------------------------------------------------------------------------
+--
+-- Throttle (not debounce) is the right semantic here: the editor
+-- coalesces a burst of edits (e.g. holding the spinner button,
+-- toggling several rows in quick succession) into a single bus
+-- dispatch per 50 ms window — we want a steady cadence during the
+-- burst, not a quiet-period wait that delays the first commit
+-- indefinitely.
 
 local function FireConfigChanged()
     if KickCD and KickCD.SendMessage then
@@ -164,8 +164,8 @@ local function doCommit()
     FireConfigChanged()
 end
 
-if Util.Debounce then
-    commitSoon = Util.Debounce(50, doCommit)
+if Util.Throttle then
+    commitSoon = Util.Throttle(50, doCommit)
 else
     commitSoon = doCommit
 end
@@ -246,7 +246,7 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
                        and KickCD.DefaultSpells[selectedClass][selectedSpec]
         spells[selectedClass] = spells[selectedClass] or {}
         if source then
-            spells[selectedClass][selectedSpec] = deepCopy(source)
+            spells[selectedClass][selectedSpec] = Util.DeepCopy(source)
             for _, e in ipairs(spells[selectedClass][selectedSpec]) do
                 e.spellID  = e.spellID  or e[1]
                 e.category = e.category or e[2] or "other"

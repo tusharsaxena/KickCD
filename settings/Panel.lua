@@ -139,20 +139,14 @@ end
 -- ---------------------------------------------------------------------
 -- Layout constants
 -- ---------------------------------------------------------------------
+--
+-- Sourced from KickCD.Const so the values live in exactly one place
+-- across the addon — see core/Constants.lua for the rationale on each.
 
-local PADDING_X     = 16
--- Vertical inset of the title (and the defaults button next to it)
--- from the top of the panel. Roughly half the height of the
--- GameFontNormalHuge title glyph so the header doesn't crowd the
--- panel's top edge. Bumped from 8 → 20 (the +12 px ≈ half the title
--- font's ascent).
-local HEADER_TOP    = 20
--- Distance from the top of the panel to the divider underneath the
--- title. Bumped in lockstep with HEADER_TOP so the title-to-divider
--- gap (and divider-to-body gap below it) stay unchanged — the entire
--- header zone just translates 12 px down.
-local HEADER_HEIGHT = 54
-local DEFAULTS_W    = 110
+local PADDING_X     = KickCD.Const.PANEL_PADDING_X
+local HEADER_TOP    = KickCD.Const.PANEL_HEADER_TOP
+local HEADER_HEIGHT = KickCD.Const.PANEL_HEADER_HEIGHT
+local DEFAULTS_W    = KickCD.Const.PANEL_DEFAULTS_W
 
 -- ---------------------------------------------------------------------
 -- Tooltip helper — works on AceGUI widgets (via SetCallback) and plain
@@ -875,12 +869,11 @@ function Helpers.RestoreDefaults(panelKey, ctx)
         if def.default ~= nil then
             local parent, key = Resolve(def.path)
             if parent then
-                local v = def.default
-                if type(v) == "table" then
-                    local copy = {}
-                    for i, vv in ipairs(v) do copy[i] = vv end
-                    v = copy
-                end
+                -- DeepCopy so two profiles don't end up sharing the same
+                -- nested-table default (e.g. an RGBA array — today the only
+                -- tabular default — but anything nested would silently leak
+                -- without a real recursive clone).
+                local v = KickCD.Util.DeepCopy(def.default)
                 parent[key] = v
                 fireOnChange(def, v)
                 sections[def.section or panelKey] = true
