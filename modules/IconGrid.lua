@@ -371,8 +371,14 @@ local function CreateIconWidget(parent)
         end
         GameTooltip:Show()
     end)
-    btn:SetScript("OnLeave", function()
-        if GameTooltip then GameTooltip:Hide() end
+    btn:SetScript("OnLeave", function(self)
+        -- Only dismiss the tooltip if it's the one WE set. If the user
+        -- moved the mouse from this icon onto another addon's frame
+        -- that owns the tooltip, indiscriminately calling :Hide()
+        -- would dismiss someone else's hover.
+        if GameTooltip and GameTooltip:GetOwner() == self then
+            GameTooltip:Hide()
+        end
     end)
 
     -- Mix in the Icon methods. The button itself is the public widget.
