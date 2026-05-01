@@ -1577,7 +1577,60 @@ end
 --- target cast start/stop, interruptibility flip) — the icons' Cooldowns
 --- state hasn't moved but the glow gate has, so we need to push the new
 --- decision through.
+---
+--- Short-circuit on a (hostileCasting, interruptible) gate that hasn't
+--- moved since the previous call. Boss casts that fire many short
+--- abilities used to retrigger N icon evaluations per cast event even
+--- when the gate decision was identical to last time; this caches the
+--- two booleans the trigger predicates branch on and skips the per-icon
+--- iteration when neither moved. Cache is recomputed on every event the
+--- function is called from (see OnTargetCastEvent / OnTargetChanged /
+--- the per-icon Apply / ApplyTextConfig fall-throughs).
 function IconGrid:RefreshAllGlows()
+    -- Compute the gate booleans once. `interruptible` is a tri-state:
+    --   * true  — target is hostile-casting AND the cast is interruptible
+    --   * false — target is hostile-casting AND the cast is NOT interruptible
+    --   * nil   — no hostile cast in progress (both true/false reads as
+    --             irrelevant to the trigger decision)
+    -- Compat.IsHostileUnitCasting handles existence/can-attack gates
+    -- and existing-channel checks; we only need to layer interruptibility
+    -- on top.
+    local hostileCasting = KickCD.Compat
+        and KickCD.Compat.IsHostileUnitCasting
+        and KickCD.Compat.IsHostileUnitCasting("target") or false
+    local interruptible
+    if hostileCasting and _G.UnitCastingInfo then
+        local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo("target")
+        if notInterruptible == nil and _G.UnitChannelInfo then
+            local _, _, _, _, _, _, ni = _G.UnitChannelInfo("target")
+            notInterruptible = ni
+        end
+        -- notInterruptible may be secret-tainted; comparing it directly
+        -- in Lua would error in tainted scope. We only need to detect
+        -- "did the truthy/falsy state change?" — convert through a C-side
+        -- coercion via `not not` IF the value is plain. When it's a secret
+        -- we leave it as-is and skip the equality compare in the gate
+        -- (treat any secret reading as "moved" and re-run iteration —
+        -- correctness over efficiency for the rare interruptibility flip).
+        if issecretvalue and issecretvalue(notInterruptible) then
+            interruptible = "secret"
+        else
+            interruptible = not notInterruptible
+        end
+    else
+        interruptible = nil
+    end
+
+    local prev = self._lastGlowGate
+    if prev
+       and prev.hostileCasting == hostileCasting
+       and prev.interruptible  == interruptible
+       and interruptible ~= "secret"
+    then
+        return
+    end
+    self._lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
+
     for _, btn in ipairs(ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end
     end
