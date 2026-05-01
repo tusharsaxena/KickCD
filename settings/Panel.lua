@@ -88,6 +88,75 @@ function Helpers.FindSchema(path)
     end
 end
 
+-- ---------------------------------------------------------------------
+-- Schema-shape validation
+-- ---------------------------------------------------------------------
+--
+-- Run once at panel-registration time after every settings/* file has
+-- finished loading. Catches misspelled `panel` / `section` / `type`
+-- enum values, missing `path`, and other schema-row typos that today
+-- silently fail to render or fail to wire into the slash command.
+--
+-- The validator only PRINTS errors — it never refuses to load. A
+-- broken row is an addon-author bug; the right user-visible behaviour
+-- is "the option you wanted is missing AND a chat error tells you
+-- why," not "the entire settings panel refuses to register."
+
+local _validPanels = {
+    general = true, icons = true, castbar = true,
+    spells  = true, profiles = true,
+}
+local _validSections = {
+    general = true, icons = true, castbar = true,
+    spells  = true, debug = true,
+}
+local _validTypes = {
+    bool = true, number = true, string = true, color = true,
+}
+
+local function _printSchemaError(prefix, msg)
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(
+            "|cffff0000KickCD schema error|r: " .. prefix .. ": " .. msg)
+    end
+end
+
+--- Walk the assembled schema and surface any malformed row. Called from
+--- RegisterPanel after all settings/* files have loaded their rows.
+--- Returns the count of errors found (always called for side effects;
+--- the count is exposed for the test harness / future debug surface).
+function Helpers.ValidateSchema()
+    local errors = 0
+    for i, def in ipairs(KickCD.Settings.Schema or {}) do
+        local where = "row #" .. i .. " (" .. tostring(def.path or "<no path>") .. ")"
+        if type(def) ~= "table" then
+            _printSchemaError(where, "row is not a table")
+            errors = errors + 1
+        else
+            if type(def.path) ~= "string" or def.path == "" then
+                _printSchemaError(where, "missing or empty `path`")
+                errors = errors + 1
+            end
+            if not _validPanels[def.panel] then
+                _printSchemaError(where, "invalid `panel` = " .. tostring(def.panel)
+                    .. " (expected one of: general, icons, castbar, spells, profiles)")
+                errors = errors + 1
+            end
+            if not _validSections[def.section] then
+                _printSchemaError(where, "invalid `section` = " .. tostring(def.section)
+                    .. " (expected one of: general, icons, castbar, spells, debug)")
+                errors = errors + 1
+            end
+            if not _validTypes[def.type] then
+                _printSchemaError(where, "invalid `type` = " .. tostring(def.type)
+                    .. " (expected one of: bool, number, string, color)")
+                errors = errors + 1
+            end
+        end
+    end
+    return errors
+end
+
 --- The canonical 13-option dropdown list shared by every "frame
 --- anchor" dropdown in the addon (Icons → Layout → Anchor point and
 --- Cast bar → Position → Anchor on primary icon / cast bar). Returns
@@ -986,6 +1055,13 @@ local function RegisterPanel()
             and Settings.RegisterAddOnCategory) then
         return
     end
+
+    -- Validate the assembled schema before we hand any rows to the
+    -- panel renderer / slash command. Errors are printed but
+    -- non-fatal: a broken row should surface a clear chat error,
+    -- not silently fail to render or block the rest of the panel
+    -- from registering.
+    Helpers.ValidateSchema()
 
     local main = Settings.RegisterVerticalLayoutCategory(L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
