@@ -110,11 +110,29 @@ end
 -- enum value and unions the spellIDs they expose. Returns nil when the API
 -- is unavailable (older clients) so callers can fall back to lenient
 -- validation.
+--
+-- Memoised in `_cmCache` because the walk is non-trivial (every enum value
+-- × every cdID) and the result is stable for the lifetime of a (login ×
+-- spec). Invalidated by the bootstrap below on TRAIT_CONFIG_UPDATED and
+-- PLAYER_SPECIALIZATION_CHANGED. Stored as a marker table even when the
+-- API returned no useful data, so the next call doesn't re-walk for
+-- nothing — a sentinel field distinguishes "computed, set was empty"
+-- from "not computed yet."
+local _cmCache         -- { set | EMPTY_SENTINEL } once populated; nil otherwise
+local _CM_EMPTY = {}   -- sentinel: API returned no data; don't recompute
+
 local function getCooldownManagerSpellSet()
-    if not C_CooldownViewer then return nil end
+    if _cmCache == _CM_EMPTY then return nil end
+    if _cmCache then return _cmCache end
+
+    if not C_CooldownViewer then
+        _cmCache = _CM_EMPTY
+        return nil
+    end
     local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
     local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
     if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
+        _cmCache = _CM_EMPTY
         return nil
     end
 
@@ -133,8 +151,32 @@ local function getCooldownManagerSpellSet()
         end
     end
 
-    if not seenAny then return nil end
+    if not seenAny then
+        _cmCache = _CM_EMPTY
+        return nil
+    end
+    _cmCache = set
     return set
+end
+
+-- Invalidate the cooldown-manager spell-set cache. Triggered on talent
+-- swaps and spec changes — both events flip the C_CooldownViewer
+-- contents, so a cached set from before the event is stale by the time
+-- the panel reopens.
+local function invalidateCmCache()
+    _cmCache = nil
+end
+
+-- Bootstrap: a private frame owns the cache-invalidation events. Kept
+-- at module scope (rather than inside ensurePanel) so the cache stays
+-- correct even when the user never opens the Spells panel — we don't
+-- want a panel-open after a spec change to read stale data because the
+-- listener was lazy-registered.
+do
+    local cacheEvents = CreateFrame("Frame")
+    cacheEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    cacheEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    cacheEvents:SetScript("OnEvent", invalidateCmCache)
 end
 
 -- ---------------------------------------------------------------------------
