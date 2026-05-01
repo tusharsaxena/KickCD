@@ -41,7 +41,12 @@
 --                               which can anchor relative to the primary icon
 --                               and/or auto-size to the grid) can sync after
 --                               the grid frame's size and the primary icon
---                               button reference settle. Payload is {}.
+--                               button reference settle. Payload is
+--                               { gridFrame, primaryIcon, width, height };
+--                               primaryIcon is nil when the active list is
+--                               empty. Public accessors GetGridFrame /
+--                               GetPrimaryIcon remain for callers that
+--                               haven't yet adopted the payload form.
 
 local KickCD   = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local IconGrid = KickCD:NewModule("IconGrid", "AceEvent-3.0")
@@ -1286,7 +1291,14 @@ function IconGrid:Layout()
     if #ordered == 0 then
         grid:SetSize(primarySize, primarySize)
         if KickCD.SendMessage then
-            KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+            -- primaryIcon is nil here (no spells in the active list) —
+            -- subscribers fall back to the public accessor or just skip.
+            KickCD:SendMessage("KickCD_GRID_LAYOUT", {
+                gridFrame   = grid,
+                primaryIcon = nil,
+                width       = primarySize,
+                height      = primarySize,
+            })
         end
         return
     end
@@ -1324,9 +1336,18 @@ function IconGrid:Layout()
     end
 
     -- Notify dependent modules (Castbar) that grid geometry / primary icon
-    -- reference may have changed.
+    -- reference may have changed. Payload carries the gridFrame +
+    -- primaryIcon references and the post-layout bounding box so the
+    -- subscriber doesn't need to reach back through the public accessors.
+    -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
+    -- that haven't yet adopted the payload form.
     if KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_GRID_LAYOUT", {})
+        KickCD:SendMessage("KickCD_GRID_LAYOUT", {
+            gridFrame   = grid,
+            primaryIcon = primary,
+            width       = w,
+            height      = h,
+        })
     end
 end
 
