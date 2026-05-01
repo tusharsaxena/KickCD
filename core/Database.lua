@@ -33,10 +33,16 @@ local DEFAULT_PROFILE = {
         secondarySize    = 0.7,        -- multiplier of primary
         -- Anchor of the secondary block on the primary. The first word
         -- (TOP/BOTTOM/LEFT/RIGHT) picks the side of the primary the block
-        -- attaches to; the second (CENTER plus the perpendicular axis
+        -- attaches to; the second (MIDDLE plus the perpendicular axis
         -- alignment, LEFT/RIGHT for TOP/BOTTOM sides, TOP/BOTTOM for
-        -- LEFT/RIGHT sides) picks where on that side. 12 valid values.
-        anchor           = "RIGHT_CENTER",
+        -- LEFT/RIGHT sides) picks where on that side. A 13th value,
+        -- plain CENTER, stacks the block on top of the primary at the
+        -- grid's centerpoint.
+        --
+        -- Legacy "_CENTER" tokens still parse — modules/IconGrid.lua's
+        -- parseAnchor accepts MIDDLE and CENTER as synonyms — so saved
+        -- profiles built before this rename keep working.
+        anchor           = "RIGHT_MIDDLE",
         gap              = 4,
         zoom             = 0.08,        -- 0..0.25 — TexCoord inset that crops the Blizzard icon border
         readyAlpha       = 1.0,
@@ -118,13 +124,20 @@ local DEFAULT_PROFILE = {
         -- free if the user drags the grid; the cast bar itself becomes
         -- non-draggable in this mode.
         --
-        -- anchorPoint  is the standard 9-point anchor (TOPLEFT/TOP/TOPRIGHT/
-        --              LEFT/CENTER/RIGHT/BOTTOMLEFT/BOTTOM/BOTTOMRIGHT) on the
-        --              primary icon's frame.
-        -- castbarPoint is the same 9-point anchor on the cast bar itself.
+        -- anchorPoint  picks one of 13 anchor points on the primary
+        --              icon's frame. Tokens follow `<SIDE>_<ALIGN>`
+        --              (TOP_MIDDLE, BOTTOM_LEFT, …) plus a plain
+        --              `CENTER` whole-frame option. Same set as the
+        --              Icons grid's `icons.anchor` dropdown.
+        -- castbarPoint is the same 13-option anchor on the cast bar
+        --              itself.
+        --
+        -- Both are translated to SetPoint-compatible 9-point names by
+        -- modules/Castbar.lua at runtime; legacy 9-point tokens
+        -- (TOP, TOPLEFT, BOTTOM, …) still pass through unchanged.
         anchorMode    = "FREE",
-        anchorPoint   = "TOP",
-        castbarPoint  = "BOTTOM",
+        anchorPoint   = "TOP_MIDDLE",
+        castbarPoint  = "BOTTOM_MIDDLE",
         anchorOffsetX = 0,
         anchorOffsetY = 8,
 

@@ -88,6 +88,37 @@ function Helpers.FindSchema(path)
     end
 end
 
+--- The canonical 13-option dropdown list shared by every "frame
+--- anchor" dropdown in the addon (Icons → Layout → Anchor point and
+--- Cast bar → Position → Anchor on primary icon / cast bar). Returns
+--- a fresh table on every call so consumers can mutate without
+--- aliasing.
+---
+--- Value tokens follow a `<SIDE>_<ALIGN>` pattern: SIDE is the edge
+--- the anchor lives on (TOP/BOTTOM/LEFT/RIGHT), ALIGN is the
+--- perpendicular-axis position on that edge. The 13th option, plain
+--- `CENTER`, names the whole-frame center.
+---
+--- Labels say "middle" rather than "center" for the perpendicular
+--- alignment, matching the user's preferred naming.
+function Helpers.AnchorValues()
+    return {
+        { value = "TOP_LEFT",      label = L["Top left"]      },
+        { value = "TOP_MIDDLE",    label = L["Top middle"]    },
+        { value = "TOP_RIGHT",     label = L["Top right"]     },
+        { value = "BOTTOM_LEFT",   label = L["Bottom left"]   },
+        { value = "BOTTOM_MIDDLE", label = L["Bottom middle"] },
+        { value = "BOTTOM_RIGHT",  label = L["Bottom right"]  },
+        { value = "LEFT_TOP",      label = L["Left top"]      },
+        { value = "LEFT_MIDDLE",   label = L["Left middle"]   },
+        { value = "LEFT_BOTTOM",   label = L["Left bottom"]   },
+        { value = "RIGHT_TOP",     label = L["Right top"]     },
+        { value = "RIGHT_MIDDLE",  label = L["Right middle"]  },
+        { value = "RIGHT_BOTTOM",  label = L["Right bottom"]  },
+        { value = "CENTER",        label = L["Center"]        },
+    }
+end
+
 --- Build the option list for a LibSharedMedia media type.
 function Helpers.LSMValues(mediaType)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)

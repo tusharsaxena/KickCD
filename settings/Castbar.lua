@@ -34,19 +34,16 @@ add{
 }
 
 -- Position ------------------------------------------------------------
--- 9-point anchor values shared by both the "anchor on primary icon" and
--- "anchor on cast bar" dropdowns.
-local NINE_POINT_VALUES = {
-    { value = "TOPLEFT",     label = L["Top left"]     },
-    { value = "TOP",         label = L["Top"]          },
-    { value = "TOPRIGHT",    label = L["Top right"]    },
-    { value = "LEFT",        label = L["Left"]         },
-    { value = "CENTER",      label = L["Center"]       },
-    { value = "RIGHT",       label = L["Right"]        },
-    { value = "BOTTOMLEFT",  label = L["Bottom left"]  },
-    { value = "BOTTOM",      label = L["Bottom"]       },
-    { value = "BOTTOMRIGHT", label = L["Bottom right"] },
-}
+-- Frame-anchor values for the "anchor on primary icon" and "anchor on
+-- cast bar" dropdowns. Sourced from H.AnchorValues so this list stays
+-- in lockstep with the Icons → Layout → Anchor point dropdown — both
+-- expose the same 13 options (12 side+alignment + CENTER).
+--
+-- Runtime translation to SetPoint-compatible names happens in
+-- modules/Castbar.lua's ApplyAnchor; legacy 9-point tokens (TOPLEFT,
+-- TOP, BOTTOM, etc.) saved by older profiles still work because the
+-- translator passes unrecognized values through unchanged.
+local POSITION_ANCHOR_VALUES = H.AnchorValues()
 
 -- Position layout produces:
 --     [Anchor mode]                                        (solo)
@@ -72,8 +69,8 @@ add{
     path  = "castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "TOP",
-    values  = NINE_POINT_VALUES,
+    default = "TOP_MIDDLE",
+    values  = POSITION_ANCHOR_VALUES,
     onChange = reskin,
 }
 add{
@@ -81,8 +78,8 @@ add{
     path  = "castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "BOTTOM",
-    values  = NINE_POINT_VALUES,
+    default = "BOTTOM_MIDDLE",
+    values  = POSITION_ANCHOR_VALUES,
     onChange = reskin,
 }
 add{
@@ -103,6 +100,18 @@ add{
 }
 
 -- Orientation --------------------------------------------------------
+-- Per-orientation default fill direction. Used by:
+--   * `castbar.orientation`'s onChange to reset growDirection when
+--     the user flips orientation (so a stale "UP" doesn't linger
+--     after switching from Vertical to Horizontal).
+--   * `castbar.growDirection`'s default — when the user resets the
+--     panel to defaults the value falls back to the horizontal one;
+--     a vertical profile picks up "UP" via the orientation reset.
+local GROW_DEFAULT_FOR_ORIENTATION = {
+    HORIZONTAL = "RIGHT",
+    VERTICAL   = "UP",
+}
+
 add{
     panel = "castbar", section = "castbar", group = L["Orientation"],
     path  = "castbar.orientation", type = "string",
@@ -113,20 +122,51 @@ add{
         { value = "HORIZONTAL", label = L["Horizontal"] },
         { value = "VERTICAL",   label = L["Vertical"]   },
     },
-    onChange = reskin,
+    -- Reset growDirection to the new orientation's canonical default
+    -- so we can never end up with an inconsistent pair (e.g. a
+    -- horizontal bar with growDirection="UP"). H.Set fires
+    -- KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
+    -- with both fields consistent — the transient state from the
+    -- orientation write alone is overwritten before any frame
+    -- renders. RefreshAllPanels then re-evaluates the growDirection
+    -- dropdown's `values` function so its option list rebuilds for
+    -- the new axis and shows the freshly-reset selection.
+    onChange = function(value)
+        local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
+        if newGrow then
+            H.Set("castbar.growDirection", "castbar", newGrow)
+        end
+        H.RefreshAllPanels()
+        reskin()
+    end,
 }
 add{
     panel = "castbar", section = "castbar", group = L["Orientation"],
     path  = "castbar.growDirection", type = "string",
-    label = L["Grow direction"],
-    tooltip = L["For Horizontal orientation pick Left or Right; for Vertical orientation pick Up or Down. Decides which side the cast bar fills toward."],
+    label = L["Growth direction"],
+    tooltip = L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."],
     default = "RIGHT",
-    values  = {
-        { value = "RIGHT", label = L["Right (horizontal)"] },
-        { value = "LEFT",  label = L["Left (horizontal)"]  },
-        { value = "UP",    label = L["Up (vertical)"]      },
-        { value = "DOWN",  label = L["Down (vertical)"]    },
-    },
+    -- Function so the dropdown re-evaluates its options every time
+    -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
+    -- inside its refresh closure). Pulled together with the
+    -- orientation onChange above this gives the dropdown a single
+    -- valid pair of options at all times — no "(horizontal)" /
+    -- "(vertical)" disambiguation suffixes needed in the labels.
+    values  = function()
+        local profile = KickCD.db and KickCD.db.profile
+        local orientation = profile and profile.castbar
+                            and profile.castbar.orientation
+        if orientation == "VERTICAL" then
+            return {
+                { value = "UP",   label = L["Up"]   },
+                { value = "DOWN", label = L["Down"] },
+            }
+        end
+        return {
+            { value = "RIGHT", label = L["Right"] },
+            { value = "LEFT",  label = L["Left"]  },
+        }
+    end,
     onChange = reskin,
 }
 add{

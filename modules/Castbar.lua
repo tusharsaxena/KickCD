@@ -176,6 +176,40 @@ local function onDragStop(self)
     end
 end
 
+-- Translate a 13-point anchor token (the new `<SIDE>_<ALIGN>` /
+-- `CENTER` set shared with the Icons grid dropdown) into a name
+-- SetPoint accepts (TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT,
+-- BOTTOMLEFT, BOTTOM, BOTTOMRIGHT). For 2D-point anchors `TOP_LEFT`
+-- and `LEFT_TOP` collapse to the same corner — they're distinct
+-- options in the dropdown for UI consistency with the Icons panel
+-- (where the alignment axis is meaningful) but produce identical
+-- visuals here.
+--
+-- Unrecognized values pass through unchanged so legacy 9-point
+-- tokens saved by older profiles (`TOP`, `BOTTOMLEFT`, …) keep
+-- working without an explicit migration. Falls back to `CENTER`
+-- when nil.
+local SETPOINT_MAP = {
+    TOP_LEFT      = "TOPLEFT",
+    TOP_MIDDLE    = "TOP",
+    TOP_RIGHT     = "TOPRIGHT",
+    BOTTOM_LEFT   = "BOTTOMLEFT",
+    BOTTOM_MIDDLE = "BOTTOM",
+    BOTTOM_RIGHT  = "BOTTOMRIGHT",
+    LEFT_TOP      = "TOPLEFT",
+    LEFT_MIDDLE   = "LEFT",
+    LEFT_BOTTOM   = "BOTTOMLEFT",
+    RIGHT_TOP     = "TOPRIGHT",
+    RIGHT_MIDDLE  = "RIGHT",
+    RIGHT_BOTTOM  = "BOTTOMRIGHT",
+    CENTER        = "CENTER",
+}
+
+local function toSetPoint(value)
+    if not value then return "CENTER" end
+    return SETPOINT_MAP[value] or value
+end
+
 --- (Re)anchor the cast-bar frame based on the active anchor mode.
 --- FREE   -> apply the saved anchor against UIParent.
 --- PRIMARY -> SetPoint(castbarPoint, primaryIcon, anchorPoint, offX, offY).
@@ -196,11 +230,11 @@ function Castbar:ApplyAnchor()
         if target then
             frame:ClearAllPoints()
             frame:SetPoint(
-                c.castbarPoint   or "BOTTOM",
+                toSetPoint(c.castbarPoint  or "BOTTOM_MIDDLE"),
                 target,
-                c.anchorPoint    or "TOP",
-                c.anchorOffsetX  or 0,
-                c.anchorOffsetY  or 0)
+                toSetPoint(c.anchorPoint   or "TOP_MIDDLE"),
+                c.anchorOffsetX or 0,
+                c.anchorOffsetY or 0)
             return
         end
         -- Target not yet built — fall through to the saved free anchor so
@@ -447,28 +481,46 @@ function Castbar:ApplyConfig()
         reverseFill = (c.growDirection == "LEFT")
     end
 
-    local width  = math.max(40, c.width  or 250)
-    local height = math.max(8,  c.height or 24)
+    -- "Cast bar width" / "Cast bar height" in the settings UI are
+    -- semantic, NOT physical: width = the bar's long axis (the
+    -- direction that fills during a cast), height = its thickness
+    -- perpendicular to fill. WoW Frames have no native rotation, so
+    -- we fake the user's "rotate 90° in vertical mode" mental model
+    -- by swapping which physical axis each maps to. With defaults
+    -- (width=250, height=24):
+    --   * Horizontal → frame is 250×24 (wide, short).
+    --   * Vertical   → frame is 24×250 (narrow, tall).
+    -- Everything downstream — bar sub-frame insets, spark rotation,
+    -- the iconPos LEFT→TOP / RIGHT→BOTTOM remap below — already works
+    -- once the physical dimensions reflect the rotated geometry; the
+    -- previous implementation left the frame wide-and-short even in
+    -- vertical mode, which is why the bar visibly only filled across
+    -- 24 px of vertical space.
+    local barLong  = math.max(40, c.width  or 250)
+    local barThick = math.max(8,  c.height or 24)
 
-    -- Auto-size override: when enabled, pull the orientation-relevant
-    -- dimension from the icon grid frame so the bar visually matches the
-    -- grid's footprint. The orthogonal dimension stays user-configured.
-    -- Re-runs after every KickCD_GRID_LAYOUT message so the bar tracks the
-    -- grid as icons are added/removed/resized.
+    -- Auto-size override: match the bar's long axis to the icon
+    -- grid's corresponding screen-axis extent. Thickness stays
+    -- user-configured. Re-runs on every KickCD_GRID_LAYOUT so the
+    -- bar tracks the grid as icons are added / removed / resized.
     if c.autoSize and KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
         local gridFrame = KickCD.IconGrid:GetGridFrame()
         if gridFrame then
             if isVertical then
                 local h = gridFrame:GetHeight()
-                if h and h > 0 then height = math.floor(h) end
+                if h and h > 0 then barLong = math.floor(h) end
             else
                 local w = gridFrame:GetWidth()
-                if w and w > 0 then width = math.floor(w) end
+                if w and w > 0 then barLong = math.floor(w) end
             end
         end
     end
 
-    frame:SetSize(width, height)
+    if isVertical then
+        frame:SetSize(barThick, barLong)
+    else
+        frame:SetSize(barLong, barThick)
+    end
 
     -- Per-state backgrounds (alpha-switched in ApplyState).
     frame.bgInterruptible:SetColorTexture(unpackColor(intCfg.bgColor, 0, 0, 0, 0.5))
@@ -498,11 +550,10 @@ function Castbar:ApplyConfig()
     -- and RIGHT to BOTTOM since literal left/right doesn't make sense for
     -- a tall bar.
     local iconPos  = c.iconPosition or "LEFT"
-    local iconSize = math.max(0, c.iconSize or height)
-    -- Cap iconSize at the perpendicular dimension of the frame so the icon
-    -- never visually overflows the bar.
-    local cap = isVertical and width or height
-    if iconSize > cap then iconSize = cap end
+    local iconSize = math.max(0, c.iconSize or barThick)
+    -- Cap iconSize at the bar's thickness (the perpendicular-to-fill
+    -- dimension) so the icon never overflows the bar's short axis.
+    if iconSize > barThick then iconSize = barThick end
     local showIcon = (iconPos ~= "OFF") and (iconSize > 0)
 
     frame.icon:ClearAllPoints()
@@ -554,12 +605,13 @@ function Castbar:ApplyConfig()
         frame.spark:Show()
         frame.spark:ClearAllPoints()
         if isVertical then
-            -- Spark sized to span the bar's width; rotation 90° makes the
-            -- texture's tall line render as a horizontal one.
-            frame.spark:SetSize(width + 6, 20)
+            -- Spark sized to span the bar's thickness (now the
+            -- horizontal axis); 90° rotation turns the texture's
+            -- tall line into a horizontal slash across the fill edge.
+            frame.spark:SetSize(barThick + 6, 20)
             if frame.spark.SetRotation then frame.spark:SetRotation(math.pi / 2) end
         else
-            frame.spark:SetSize(20, height + 6)
+            frame.spark:SetSize(20, barThick + 6)
             if frame.spark.SetRotation then frame.spark:SetRotation(0) end
         end
         local fill = frame.bar.interruptible:GetStatusBarTexture()

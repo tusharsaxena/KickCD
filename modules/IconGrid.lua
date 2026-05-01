@@ -853,10 +853,27 @@ end
 -- Pixel-floor every offset so we don't end up with sub-pixel positions
 -- on fractional UIScale values (which would blur icons by one pixel).
 
--- Anchor-point parser. Returns (side, align) where side ∈ {TOP,BOTTOM,LEFT,RIGHT}
--- and align is the second word (CENTER, LEFT, RIGHT, TOP, BOTTOM as applicable).
+-- Anchor-point parser. Returns (side, align) where side ∈
+-- {TOP,BOTTOM,LEFT,RIGHT,CENTER} and align is the perpendicular-axis
+-- position on that side (CENTER/LEFT/RIGHT for TOP/BOTTOM,
+-- CENTER/TOP/BOTTOM for LEFT/RIGHT, or CENTER/CENTER for the whole-
+-- frame CENTER anchor).
+--
+-- Token compatibility:
+--   * Plain "CENTER" → ("CENTER", "CENTER"). The 13th anchor option
+--     stacks the secondary block on top of the primary, both centered
+--     on the grid frame.
+--   * "<SIDE>_MIDDLE" (modern naming used by the dropdowns) is
+--     normalized to ("<SIDE>", "CENTER") — the layout math below was
+--     written against the legacy "CENTER" alignment token, and
+--     normalizing here keeps placeBlock's switch unchanged.
+--   * "<SIDE>_CENTER" (legacy saved profiles) is accepted unchanged.
 local function parseAnchor(value)
+    if value == "CENTER" then return "CENTER", "CENTER" end
+
     local side, align = (value or ""):match("^(%a+)_(%a+)$")
+    if align == "MIDDLE" then align = "CENTER" end
+
     if side == "TOP" or side == "BOTTOM" then
         if align == "CENTER" or align == "LEFT" or align == "RIGHT" then
             return side, align
@@ -889,7 +906,20 @@ end
 local function placeBlock(side, align, primarySize, blockW, blockH, gap)
     local gridW, gridH, primaryX, primaryY, blockX, blockY
 
-    if side == "TOP" then
+    if side == "CENTER" then
+        -- Degenerate "stack on top of the primary" anchor: grid
+        -- bounding box is whichever of the two is bigger on each axis,
+        -- and both primary and the secondary block sit centered in
+        -- it. The block visually overlaps the primary — niche, but
+        -- it's the natural read of a 13th "CENTER" anchor option in a
+        -- dropdown otherwise built around side+alignment edges.
+        gridW    = math.max(primarySize, blockW)
+        gridH    = math.max(primarySize, blockH)
+        primaryX = floor((gridW - primarySize) / 2)
+        primaryY = floor((gridH - primarySize) / 2)
+        blockX   = floor((gridW - blockW) / 2)
+        blockY   = floor((gridH - blockH) / 2)
+    elseif side == "TOP" then
         gridW = math.max(primarySize, blockW)
         gridH = blockH + gap + primarySize
         blockY    = 0
@@ -1021,7 +1051,7 @@ function IconGrid:Layout()
     local primarySize   = cfg.primarySize or 48
     local secondarySize = floor(primarySize * (cfg.secondarySize or 0.7))
     local gap           = cfg.gap or 4
-    local anchor        = cfg.anchor or "RIGHT_CENTER"
+    local anchor        = cfg.anchor or "RIGHT_MIDDLE"
     local grow          = cfg.secondaryGrow or "right_down"
     local rows          = cfg.secondaryRows or 1
     local cols          = cfg.secondaryCols or 6

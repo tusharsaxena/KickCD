@@ -22,20 +22,12 @@ local function add(t) Schema[#Schema + 1] = t end
 --   3. Rows × Cols — vertical/horizontal extent of the block.
 -- Anchor and grow are orthogonal: any anchor works with any grow.
 
-local ANCHOR_VALUES = {
-    { value = "TOP_CENTER",    label = L["Top center"]    },
-    { value = "TOP_LEFT",      label = L["Top left"]      },
-    { value = "TOP_RIGHT",     label = L["Top right"]     },
-    { value = "BOTTOM_CENTER", label = L["Bottom center"] },
-    { value = "BOTTOM_LEFT",   label = L["Bottom left"]   },
-    { value = "BOTTOM_RIGHT",  label = L["Bottom right"]  },
-    { value = "LEFT_CENTER",   label = L["Left center"]   },
-    { value = "LEFT_TOP",      label = L["Left top"]      },
-    { value = "LEFT_BOTTOM",   label = L["Left bottom"]   },
-    { value = "RIGHT_CENTER",  label = L["Right center"]  },
-    { value = "RIGHT_TOP",     label = L["Right top"]     },
-    { value = "RIGHT_BOTTOM",  label = L["Right bottom"]  },
-}
+-- Frame-anchor dropdown options. Sourced from H.AnchorValues so the
+-- Icons grid anchor and the Cast bar position anchors share an
+-- identical 13-option list. The IconGrid's parseAnchor / placeBlock
+-- accept both the new `_MIDDLE` value tokens and legacy `_CENTER`
+-- tokens (older saved profiles).
+local ANCHOR_VALUES = H.AnchorValues()
 
 local GROW_VALUES = {
     { value = "right_down", label = L["First right then down"] },
@@ -82,15 +74,15 @@ add{
 add{
     panel = "icons", section = "icons", group = L["Layout"],
     path  = "icons.anchor", type = "string",
-    label = L["Anchor point"],
+    label = L["Anchor point (of secondary icons relative to primary)"],
     tooltip = L["Side and alignment of the primary icon the secondary block attaches to."],
-    default = "RIGHT_CENTER",
+    default = "RIGHT_MIDDLE",
     values  = ANCHOR_VALUES,
 }
 add{
     panel = "icons", section = "icons", group = L["Layout"],
     path  = "icons.secondaryGrow", type = "string",
-    label = L["Grow direction"],
+    label = L["Growth direction (of secondary icons)"],
     tooltip = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
     default = "right_down",
     values  = GROW_VALUES,
