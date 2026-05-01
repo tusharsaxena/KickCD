@@ -94,10 +94,14 @@ end
 --                         cast bar already only shows during target
 --                         casts so this mode adds no extra restriction.
 --   * "target_casting_interruptible"
---                       — additionally requires the current cast to be
---                         interruptible (Compat.IsCastingInterruptible
---                         handles the secret-value taint on
---                         notInterruptible and the friendly-cast override).
+--                       — Show during ANY hostile target cast; an alpha
+--                         mask (ApplyVisibilityMask, fed via SetAlphaFromBoolean)
+--                         then hides the bar when the cast is uninterruptible.
+--                         The two-step gate is required because 12.0
+--                         secret-taints notInterruptible — Lua can't make
+--                         the boolean decision but the C-side
+--                         SetAlphaFromBoolean accepts the secret directly.
+--                         Friendly / self casts are excluded by IsHostileUnitCasting.
 -- While unlocked the visibility mode is ignored — the user is moving
 -- the bar and needs to see it regardless.
 local function isVisible()
@@ -108,9 +112,32 @@ local function isVisible()
     if mode == "in_combat" then
         return _inCombat
     elseif mode == "target_casting_interruptible" then
-        return KickCD.Compat.IsCastingInterruptible("target")
+        return KickCD.Compat.IsHostileUnitCasting
+           and KickCD.Compat.IsHostileUnitCasting("target")
+           or false
     end
     return true
+end
+
+--- Apply the per-cast interruptibility alpha mask to the bar frame.
+--- For "target_casting_interruptible" mode + active hostile cast, the
+--- frame's alpha is driven by SetAlphaFromBoolean(notInterruptible, 0, 1)
+--- — a C-side method that accepts the 12.0-secret notInterruptible flag
+--- without needing Lua-side comparison. Other modes / no-cast / unlocked
+--- (so the user can drag the bar regardless of cast state) → alpha 1.
+--- Called whenever the bar shows OR the interruptibility flag flips.
+local function ApplyVisibilityMask(barFrame)
+    if not barFrame then return end
+    local profile = KickCD.db and KickCD.db.profile
+    local unlocked = profile and profile.locked == false
+    local mode = (profile and profile.visibility) or "always"
+    if not unlocked
+       and mode == "target_casting_interruptible"
+       and KickCD.Compat.ApplyInterruptibleAlpha
+       and KickCD.Compat.ApplyInterruptibleAlpha(barFrame, "target", 1) then
+        return
+    end
+    barFrame:SetAlpha(1)
 end
 
 local function unpackColor(c, fr, fg, fb, fa)
@@ -866,6 +893,7 @@ function Castbar:Start(rec)
 
     if isVisible() then
         frame:Show()
+        ApplyVisibilityMask(frame)
         frame:SetScript("OnUpdate", onUpdate)
     end
 end
@@ -914,6 +942,9 @@ function Castbar:ShowPreview()
     frame.bar.uninterruptible:SetMinMaxValues(0, 1)
     frame.bar.uninterruptible:SetValue(0.5)
     frame:Show()
+    -- Preview is only shown while unlocked (caller's invariant), so the
+    -- visibility mode is ignored — leave alpha at 1.
+    frame:SetAlpha(1)
 end
 
 function Castbar:Reevaluate()
@@ -1032,17 +1063,23 @@ function Castbar:OnInterruptibilityChanged(evt, unit)
     if unit ~= "target" then return end
     -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
     -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
-    -- interruptible. Update the record's bool and re-apply visuals.
+    -- interruptible. Update the record's bool and re-apply per-state visuals.
     if current then
         current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
         self:ApplyState()
     end
-    -- Visibility may have changed under the "target_casting_interruptible"
-    -- mode. Stop hides the bar (clearing `current`) and Reevaluate picks
-    -- up the cast again if it became interruptible from a previously-
-    -- suppressed state.
+    -- For the "target_casting_interruptible" mode the bar STAYS shown for
+    -- any hostile cast (so we can hand the secret-tainted notInterruptible
+    -- flag to SetAlphaFromBoolean) — re-driving the alpha mask is the
+    -- only thing that needs to happen when the flag flips. Falling back
+    -- to Stop/Reevaluate here would race with the cast lifecycle and
+    -- reorder the very Show that the alpha mask depends on.
     if isVisible() then
-        if not current then self:Reevaluate() end
+        if not current then
+            self:Reevaluate()
+        else
+            ApplyVisibilityMask(frame)
+        end
     else
         self:Stop()
     end

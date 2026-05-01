@@ -62,9 +62,12 @@
 - ✅ Cast bar vertical layout is not working as expected. My expectation is to rotate the bar by 90 degrees when in vertical mode, so nothing else breaks
 - ✅ Add an option to truncate Spell Name text after X characters. 0 Means no truncate, add a slider to set truncate character limit. Add this as a setting option in Cast Bars > Spell name - under the X offset setting (occipies half the row width - i.e. one column) 
 - ✅ The Cast bar > Orientation > "Auto-size to icon grid" setting is not working as I expected. Current behavior is that it auto sizes basis the number of columns defined in Icons > Layout > Rows OR Columns (depending on the orientation). My expectation is that it auto sizes basis in the actual visible rows or columns actually shown in the icon grid.
+- ✅ Do a deep review of the settings panel and slash command handler, and make sure all settings have a correspoding slash command handler
+- ✅ Earlier in commit 2108fbf, you had made fixes for visibility, specifically about differentiating between interuptible and non interuptible casts. This applies to "General Visibility" and "Glow triggers". This isnt working anymore though - please figure out whats wrong. Add some debug statements and ask me for logs in case that helps. For example, when i set general visibility to "When target is casting an interuptible spell", it still shows when the target is casting a non interruptible spell. 
 
 ## Not Yet Started
 
+- ☐ Add more customization options for the glow effects
 - ☐ Add a glowing background animated texture behind the cast bars - this will give a strong indication that a cast is happening. Color this animated texture the same color as the castbar color (depending on interuptable/non-interuptable). Add this as a toggleable feature separately for interuptable/non-interuptable. Also add a texture selector and color selector (default color is same as bar color, with a checkbox to select same as bar color)
 - ☐ Bug — partial-charge swipe: New chargeCdObject field on the SPELL_STATE payload. Cooldowns:PollSpell calls GetSpellCooldownDuration whenever the spell has charges and the spell-level cooldown is inactive — Blizzard's API returns nil at full charges, so no Lua compare on possibly-secret cur < maxC is needed. Icon:Apply gains a third branch: when cdObject is nil but chargeCdObject is non-nil, it renders the swipe + countdown text without touching alpha/tint (icon stays at readyAlpha, white tint). state.ready stays true so the glow trigger keeps firing as configured.
 - ☐ Icon zoom is working, but the values seem to be off - see how Weakauras handles icon zoom
@@ -72,8 +75,6 @@
 
 ## Pre Release
 
-- ☐ Do a deep review of the settings panel and slash command handler, and make sure all settings have a correspoding slash command handler
-- ☐ Earlier in commit 2108fbf, you had made fixes for visibility, specifically about differentiating between interuptible and non interuptible casts. This applies to "General Visibility" and "Glow triggers". This isnt working anymore though - please figure out whats wrong. Add some debug statements and ask me for logs in case that helps. For example, when i set general visibility to "When target is casting an interuptible spell", it still shows when the target is casting a non interruptible spell. 
 - ☐ You are a princicpal engineer, an experienced LUA developer and experienced wow add developer. I want you to do a deep design and code review of this addon, and share findings. Look for core architectural gaps, design inconsistencies, design patterns, anti patterns, logic gaps and bugs. Share your findings in docs/legacy/PE_REVIEW.md. After that, create an a comprehensive set of changes required to address all the feedback in PE_REVIEW.md, and save that in docs/legacy/CHANGES_PE_REVIEW.md. After that, create an execution plan and save that in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md. Ensure that the docs/legacy/EXECUTION_PLAN_PE_REVIEW.md can be parallelized. Then finally, spawn a team of sub agents and execute docs/legacy/EXECUTION_PLAN_PE_REVIEW.md.
 - ☐ Update default settings
 - ☐ Change the name of the addon in the TOC (So addon name shows up as Ka0s KickCD)

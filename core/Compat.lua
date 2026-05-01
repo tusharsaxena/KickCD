@@ -282,39 +282,162 @@ function Compat.GetCastingInfo(unit)
     return Compat.GetChannelInfo(unit)
 end
 
---- Whether the named unit is currently casting (or channeling) a spell
---- the player can practically interrupt. Used by the addon-wide
---- visibility mode "target_casting_interruptible" — see modules/IconGrid
---- and modules/Castbar — to gate the UI on actually-interruptible casts.
+--- Whether `unit` is currently casting (or channeling) AND is a unit
+--- the player can attack. Used as the visibility GATE for the
+--- "target_casting_interruptible" mode — actual interruptibility is
+--- filtered separately via Compat.ApplyInterruptibleAlpha because
+--- notInterruptible is secret-tainted in 12.0 and cannot be compared
+--- in Lua. (Friendly / self casts are excluded here because you can't
+--- interrupt those regardless of the API flag.)
 ---
---- Secret-value handling: notInterruptible may be secret-tainted in
---- combat for casts that the player has a protected interrupt against
---- (Mind Freeze / Pummel / Kick / ...). Per the 12.0 protection rules
---- this taint only happens for casts the protected interrupt CAN target,
---- which means the cast IS interruptible from the user's perspective.
---- So when the value is secret we conservatively return true rather
---- than risking a Lua compare on a secret. issecretvalue() itself is
---- a safe query (does not error on secrets).
+--- Truthiness checks on the API's `name` return are safe even when the
+--- value is secret-tainted in combat — `if x then` does not perform
+--- arithmetic. (See FloatingInterruptHighlight for the canonical
+--- 12.0-compliant pattern.)
+function Compat.IsHostileUnitCasting(unit)
+    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
+    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+    if _G.UnitCastingInfo and (_G.UnitCastingInfo(unit)) then return true end
+    if _G.UnitChannelInfo and (_G.UnitChannelInfo(unit)) then return true end
+    return false
+end
+
+--- Drive `frame`'s alpha from the unit's cast `notInterruptible` flag.
+--- When the cast is interruptible (notInterruptible falsy) → frame
+--- shows at `alpha`. When uninterruptible (notInterruptible truthy)
+--- → frame hides (alpha 0). When the unit has no cast or is friendly
+--- the function returns false WITHOUT touching the frame so the caller
+--- can fall back to its own alpha policy.
 ---
---- Friendly targets always return false (you can't interrupt a friendly
---- cast or a self-cast, regardless of the API flag).
-function Compat.IsCastingInterruptible(unit)
+--- The flag is fed straight into Frame:SetAlphaFromBoolean — a C-side
+--- method that accepts the 12.0 "secret value" form of notInterruptible
+--- without erroring. THIS IS THE ONLY 12.0-correct way to gate
+--- visibility on interruptibility from an addon: any Lua-side compare
+--- (`not nint`, `nint == true`, `if nint`) errors when the value is
+--- secret-tainted. See FloatingInterruptHighlight.lua:123-138 for the
+--- reference pattern.
+---
+--- @param frame Frame  must support :SetAlphaFromBoolean
+--- @param unit  string ("target", ...)
+--- @param alpha number alpha to use when interruptible (default 1)
+--- @return bool whether the mask was applied
+function Compat.ApplyInterruptibleAlpha(frame, unit, alpha)
+    if not (frame and frame.SetAlphaFromBoolean) then return false end
     if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
     if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
 
-    local nint, hasCast
+    local notInterruptible, hasCast
     if _G.UnitCastingInfo then
         local castName, _, _, _, _, _, _, n = _G.UnitCastingInfo(unit)
-        if castName then hasCast, nint = true, n end
+        if castName then notInterruptible, hasCast = n, true end
     end
     if not hasCast and _G.UnitChannelInfo then
         local chName, _, _, _, _, _, n = _G.UnitChannelInfo(unit)
-        if chName then hasCast, nint = true, n end
+        if chName then notInterruptible, hasCast = n, true end
     end
     if not hasCast then return false end
 
-    if issecretvalue and issecretvalue(nint) then return true end
-    return not nint
+    -- C-side: accepts secret notInterruptible without arithmetic in Lua.
+    frame:SetAlphaFromBoolean(notInterruptible, 0, alpha or 1)
+    return true
+end
+
+--- Print a verbose diagnostic dump of the unit's cast state. Wired to
+--- `/kcd debug interrupt` — used to verify whether `notInterruptible`
+--- is in fact coming back secret-tainted in the user's 12.0 client
+--- (the root cause of the "uninterruptible cast still shows" bug
+--- before the FIH-style alpha-mask refactor).
+---
+--- Every value pulled from a `Unit*` API is funnelled through
+--- `safeRender` first because in combat *any* string field
+--- (name, displayName, texture, even UnitName) can come back
+--- secret-tainted. tostring/format on a secret propagate the taint
+--- and table.concat on the resulting string then errors out — that's
+--- why a naive "tostring(name)" inside :format() blew up combat.
+function Compat.DebugInterrupt(unit)
+    local out = (KickCD.Util and KickCD.Util.print) or _G.print
+    unit = unit or "target"
+
+    -- Stringify a value safely in tainted scope: secret → "<secret>",
+    -- otherwise the usual tostring (or "%q" for strings to quote them).
+    local function safeRender(value)
+        if _G.issecretvalue and _G.issecretvalue(value) then
+            return "<secret>"
+        end
+        local t = type(value)
+        if t == "string"  then return ("%q"):format(value) end
+        if t == "number"  then return tostring(value) end
+        if t == "boolean" then return tostring(value) end
+        if t == "nil"     then return "nil" end
+        return "<" .. t .. ">"
+    end
+
+    if not (_G.UnitExists and _G.UnitExists(unit)) then
+        out("DebugInterrupt: unit '" .. unit .. "' does not exist")
+        return
+    end
+
+    local rawName  = _G.UnitName and _G.UnitName(unit)
+    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", unit) or false
+    out(("DebugInterrupt: unit=%s name=%s canAttack=%s"):format(
+        unit, safeRender(rawName), tostring(canAttack)))
+
+    local function describe(label, value)
+        local t = type(value)
+        local secret = _G.issecretvalue and _G.issecretvalue(value) or false
+        out(("  %-20s type=%-8s isSecret=%-5s value=%s"):format(
+            label, t, tostring(secret), safeRender(value)))
+    end
+
+    if _G.UnitCastingInfo then
+        local castName, displayName, texture, startMS, endMS, isTradeSkill,
+              castID, notInterruptible, spellID = _G.UnitCastingInfo(unit)
+        if castName then
+            out("UnitCastingInfo positions:")
+            describe("1 name",             castName)
+            describe("2 displayName",      displayName)
+            describe("3 texture",          texture)
+            describe("4 startTimeMS",      startMS)
+            describe("5 endTimeMS",        endMS)
+            describe("6 isTradeSkill",     isTradeSkill)
+            describe("7 castID",           castID)
+            describe("8 notInterruptible", notInterruptible)
+            describe("9 spellID",          spellID)
+        else
+            out("UnitCastingInfo: not casting")
+        end
+    end
+
+    if _G.UnitChannelInfo then
+        local chName, displayName, texture, startMS, endMS, isTradeSkill,
+              notInterruptible, spellID = _G.UnitChannelInfo(unit)
+        if chName then
+            out("UnitChannelInfo positions:")
+            describe("1 name",             chName)
+            describe("2 displayName",      displayName)
+            describe("3 texture",          texture)
+            describe("4 startTimeMS",      startMS)
+            describe("5 endTimeMS",        endMS)
+            describe("6 isTradeSkill",     isTradeSkill)
+            describe("7 notInterruptible", notInterruptible)
+            describe("8 spellID",          spellID)
+        else
+            out("UnitChannelInfo: not channeling")
+        end
+    end
+
+    out(("Compat.IsHostileUnitCasting(%s) = %s"):format(
+        unit, tostring(Compat.IsHostileUnitCasting(unit))))
+
+    -- Report what the addon-wide visibility / glow logic decided. The
+    -- visibility mode is the addon-wide setting; per-icon glow triggers
+    -- live in icons.{primary,secondary}GlowTrigger.
+    local profile = KickCD.db and KickCD.db.profile
+    local mode = (profile and profile.visibility) or "always"
+    out(("addon visibility mode = %s"):format(tostring(mode)))
+    local icons = (profile and profile.icons) or {}
+    out(("primary glow trigger   = %s"):format(tostring(icons.primaryGlowTrigger)))
+    out(("secondary glow trigger = %s"):format(tostring(icons.secondaryGlowTrigger)))
 end
 
 --- Channel info for a unit, secret-value safe. Same record shape as the

@@ -12,10 +12,17 @@
 --                          on "target" returns a non-nil name
 --   * "target_casting_interruptible"
 --                       — like target_casting but additionally requires
---                          the cast to be interruptible (friendly /
---                          self / flagged-uninterruptible suppress).
---                          Compat.IsCastingInterruptible handles the
---                          secret-value taint on notInterruptible.
+--                          the cast to be interruptible. notInterruptible
+--                          is secret-tainted in 12.0 and cannot be
+--                          compared in Lua, so this mode is implemented
+--                          as a two-step gate: shouldBeVisible() returns
+--                          true whenever the target is a hostile unit
+--                          casting (Compat.IsHostileUnitCasting), and
+--                          ApplyInterruptibilityMask() then drives the
+--                          grid frame's alpha through SetAlphaFromBoolean
+--                          (C-side, secret-safe) so uninterruptible casts
+--                          read as alpha=0. Friendly / self casts are
+--                          excluded by the IsHostileUnitCasting gate.
 -- While unlocked, the visibility mode is bypassed so the user can drag
 -- the grid into position. Combat / target / cast events drive
 -- RefreshVisibility. Listens to:
@@ -145,9 +152,34 @@ local function shouldBeVisible()
     elseif mode == "target_casting" then
         return isTargetCasting()
     elseif mode == "target_casting_interruptible" then
-        return KickCD.Compat.IsCastingInterruptible("target")
+        -- Show whenever a hostile target is casting; the actual
+        -- interruptibility filter is applied as an alpha mask in
+        -- ApplyInterruptibilityMask (called from RefreshVisibility).
+        return KickCD.Compat.IsHostileUnitCasting("target")
     end
     return true  -- "always"
+end
+
+-- For the "target_casting_interruptible" mode, drive the grid frame's
+-- alpha through SetAlphaFromBoolean(notInterruptible, 0, 1) so that an
+-- in-progress cast on the target only shows the icons when the cast is
+-- interruptible. The flag is the 12.0 secret-tainted notInterruptible,
+-- handed verbatim to a C-side method that accepts secrets — never read
+-- in Lua. For all other modes (and while unlocked, where the user is
+-- repositioning and needs to see the grid regardless) the grid runs at
+-- alpha=1 (children carry their own alphas).
+local function ApplyInterruptibilityMask()
+    if not grid then return end
+    local profile = KickCD.db and KickCD.db.profile
+    local unlocked = profile and profile.locked == false
+    local mode = visibilityMode()
+    if not unlocked
+       and mode == "target_casting_interruptible"
+       and KickCD.Compat.ApplyInterruptibleAlpha
+       and KickCD.Compat.ApplyInterruptibleAlpha(grid, "target", 1) then
+        return
+    end
+    grid:SetAlpha(1)
 end
 
 local function safeUnpackColor(c, fr, fg, fb, fa)
@@ -474,6 +506,12 @@ end
 -- Resolve the trigger condition for this icon's slot. Reuses the same
 -- helpers the addon-wide visibility mode uses so triggers and visibility
 -- stay in lockstep semantically.
+--
+-- The "target_casting_interruptible" branch fires for ANY hostile cast
+-- — Lua can't decide notInterruptible because it's secret-tainted in
+-- 12.0 — and UpdateGlow applies SetAlphaFromBoolean on the glow frame
+-- to actually filter out uninterruptible casts (alpha 0). Same pattern
+-- as RefreshVisibility / ApplyInterruptibilityMask above.
 local function triggerSatisfied(trigger)
     if trigger == "always" then
         return true
@@ -481,8 +519,8 @@ local function triggerSatisfied(trigger)
         return isTargetCasting()
     elseif trigger == "target_casting_interruptible" then
         return KickCD.Compat
-           and KickCD.Compat.IsCastingInterruptible
-           and KickCD.Compat.IsCastingInterruptible("target")
+           and KickCD.Compat.IsHostileUnitCasting
+           and KickCD.Compat.IsHostileUnitCasting("target")
            or false
     end
     -- "never" or unknown — glow off.
@@ -494,6 +532,14 @@ end
 -- (per-slot config changed via Layout), and IconGrid:RefreshAllGlows
 -- (target / cast events fire the trigger reevaluation). state.ready is
 -- the canonical "spell can be cast" boolean — see modules/Cooldowns.lua.
+--
+-- For the "target_casting_interruptible" trigger the glow STARTS for
+-- any hostile cast (the trigger satisfied branch above) and the glow
+-- frame's alpha is then driven by SetAlphaFromBoolean(notInterruptible,
+-- 0, 1) — the C-side path that accepts the secret-tainted flag. So
+-- uninterruptible casts run the animation invisibly until the flag
+-- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends. This
+-- mirrors FloatingInterruptHighlight.lua:129-138 exactly.
 function Icon:UpdateGlow(state)
     local cfg = self.cfg or KickCD.db.profile.icons
     if not cfg then return self:StopGlow() end
@@ -513,6 +559,15 @@ function Icon:UpdateGlow(state)
         return
     end
     self:StartGlow(kind, color)
+
+    -- Per-cast interruptibility filter (alpha mask on the glow frame).
+    if trigger == "target_casting_interruptible"
+       and self.glow
+       and KickCD.Compat.ApplyInterruptibleAlpha
+       and KickCD.Compat.ApplyInterruptibleAlpha(self.glow, "target", 1) then
+        return
+    end
+    if self.glow then self.glow:SetAlpha(1) end
 end
 
 -- Apply the configured GCD-suppression alpha mask to the cooldown
@@ -1343,9 +1398,21 @@ end
 --- Apply the visibility decision (shouldBeVisible) to the grid frame.
 --- Called from OnEnable, every config change that touches general/master,
 --- combat transitions, target changes, and target cast start/stop events.
+---
+--- For the "target_casting_interruptible" mode the Show gate fires for
+--- ANY hostile cast — the per-cast interruptible filter rides on top of
+--- it via SetAlphaFromBoolean (see ApplyInterruptibilityMask). Calling
+--- it on every refresh is cheap and keeps the alpha in sync as
+--- UNIT_SPELLCAST_INTERRUPTIBLE / NOT_INTERRUPTIBLE events flip the
+--- secret-value flag mid-cast.
 function IconGrid:RefreshVisibility()
     if not grid then return end
-    if shouldBeVisible() then grid:Show() else grid:Hide() end
+    if shouldBeVisible() then
+        grid:Show()
+        ApplyInterruptibilityMask()
+    else
+        grid:Hide()
+    end
 end
 
 --- UNIT_SPELLCAST_* events fire for any unit. We only care about the

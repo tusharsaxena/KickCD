@@ -163,6 +163,14 @@ local DEBUG_COMMANDS = {
             if m and m.DebugDump then m:DebugDump()
             else p(self, "Castbar module not loaded") end
         end},
+    {"interrupt", "Dump the target's UnitCastingInfo / UnitChannelInfo positions (type + secret-tainted flag) plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
+        function(self)
+            if KickCD.Compat and KickCD.Compat.DebugInterrupt then
+                KickCD.Compat.DebugInterrupt("target")
+            else
+                p(self, "Compat.DebugInterrupt unavailable")
+            end
+        end},
     {"log",    "Toggle internal-message logging",
         function(self)
             self._debugLog = not self._debugLog

@@ -29,3 +29,16 @@ The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-ba
 
 Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
 
+## Cast interruptibility (`UnitCastingInfo` / `UnitChannelInfo`)
+
+`notInterruptible` (position 8 of `UnitCastingInfo`, position 7 of `UnitChannelInfo`) is **secret-tainted in 12.0** for any cast the player has a protected interrupt against. It is the same trap as cooldown timings: `not nint`, `nint == true`, `if nint then`, `tostring(nint)` all error in combat.
+
+**Do not** try to make a Lua-side boolean decision out of it. `KickCD.Compat.IsCastingInterruptible` was the original attempt and silently broke the visibility / glow gates because the secret-taint branch had to conservatively return `true`, which meant uninterruptible casts were treated as interruptible.
+
+**The 12.0-correct pattern**, lifted from FloatingInterruptHighlight (`FloatingInterruptHighlight.lua:123-138`): split the gate in two —
+
+1. `Compat.IsHostileUnitCasting(unit)` — a plain truthy check on the API's `name` return (safe, even when secret) plus a `UnitCanAttack` filter. Drives `Show` / `Hide`.
+2. `Compat.ApplyInterruptibleAlpha(frame, unit, alpha)` — pulls the raw `notInterruptible` and pipes it straight into `frame:SetAlphaFromBoolean(notInterruptible, 0, alpha)`. `SetAlphaFromBoolean` is the **one** C-side method that accepts the secret-tainted bool form without erroring.
+
+So uninterruptible casts run the full UI lifecycle (Shown frame, started glow animation, drawn cast bar) but at `alpha = 0` — the visual filter is C-side and the Lua decision is never made. `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast. See `modules/IconGrid.lua` (`ApplyInterruptibilityMask`, `Icon:UpdateGlow`) and `modules/Castbar.lua` (`ApplyVisibilityMask`).
+
