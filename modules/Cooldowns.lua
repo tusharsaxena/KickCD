@@ -100,6 +100,14 @@ function Cooldowns:PollSpell(spellID)
     local name = KickCD.Compat.GetSpellInfo(spellID)
     if not name then return nil end
 
+    -- GetSpellInfo only proves the ID exists in the spell DB, not that the
+    -- player has chosen / learned it. IsSpellAvailable is the
+    -- "can the player actually cast this right now" check — needed to hide
+    -- the unpicked branch of a talent choice node (e.g. Blood DK's
+    -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
+    -- currently summoned.
+    if not KickCD.Compat.IsSpellAvailable(spellID) then return nil end
+
     -- Plain-bool active flag from the legacy API. We deliberately discard
     -- start/duration here — they're secret in combat and the duration
     -- object covers every legitimate downstream use.
@@ -307,6 +315,13 @@ function Cooldowns:OnEnable()
     self:RegisterEvent("SPELL_UPDATE_CHARGES",         "Refresh")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",        "OnPlayerEnteringWorld")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED","OnSpecChanged")
+    -- Talent / spellbook changes within the active spec also flip the
+    -- "available" set (a choice-node swap, learning a new ability, pet
+    -- summon/dismiss for pet spells). Rebuild on either signal so spells
+    -- the player just gained appear and ones they just lost disappear
+    -- without waiting for a spec change.
+    self:RegisterEvent("SPELLS_CHANGED",               "Rebuild")
+    self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
 
     -- Internal messages (closed list).
     self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")

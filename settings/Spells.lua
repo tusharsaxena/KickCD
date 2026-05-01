@@ -28,6 +28,13 @@ local CATEGORIES = {
     "silence", "root", "fear", "displace", "racial", "other",
 }
 
+-- Status-glyph textures for the "known to the player?" indicator on each
+-- row. Matches the In-bags / Not-in-bags glyphs ConsumableMaster uses
+-- (Interface\RaidFrame\ReadyCheck-Ready / -NotReady) so the visual
+-- vocabulary is consistent across the user's addons.
+local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
+local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
+
 -- ---------------------------------------------------------------------------
 -- Module-private state
 -- ---------------------------------------------------------------------------
@@ -326,7 +333,10 @@ local function buildRow(AceGUI, parent, list, index)
     local label = AceGUI:Create("Label")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
     label:SetText(name)
-    label:SetWidth(220)
+    -- Trimmed from 220 → 190 to make room for the new known/unknown
+    -- status glyph between the checkbox and the category dropdown without
+    -- overflowing the row's horizontal budget.
+    label:SetWidth(190)
     row:AddChild(label)
     if label.frame and label.frame.HookScript then
         label.frame:EnableMouse(true)
@@ -346,6 +356,51 @@ local function buildRow(AceGUI, parent, list, index)
         commitSoon()
     end)
     row:AddChild(check)
+
+    -- "Known to the player?" status glyph. Reads Compat.IsSpellAvailable
+    -- (the same predicate IconGrid:BuildActiveList and Cooldowns:PollSpell
+    -- use to decide whether to render the spell), so the green check ↔
+    -- red X toggle is the user-facing reflection of "this row will / will
+    -- not appear on the icon grid right now."
+    --
+    -- The check is global to the logged-in player, not scoped to the
+    -- selected (class, spec) in the dropdown — so when the user is
+    -- browsing another class's spec list, every spell will read as red,
+    -- which is the correct fact ("you can't cast any of these"). The
+    -- glyph is informational only; it doesn't gate enable/disable.
+    local known = Compat.IsSpellAvailable
+        and Compat.IsSpellAvailable(entry.spellID) or false
+    local statusIcon = AceGUI:Create("Icon")
+    statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
+    statusIcon:SetImageSize(20, 20)
+    -- Box width hugs the 20 px image (1 px padding each side instead of 4).
+    -- AceGUI's Icon widget anchors the texture to TOP center, so a narrower
+    -- box pulls the visible glyph closer to the checkbox on its left —
+    -- which is the "reduce spacing before the icon" half of the request.
+    statusIcon:SetWidth(22)
+    statusIcon:SetHeight(24)
+    -- No OnClick — the glyph is purely informational. AceGUI's Icon
+    -- still renders a clickable region without a callback, but the
+    -- click is a no-op which matches what we want.
+    local statusTooltip = known and L["Spell known"] or L["Spell not known"]
+    statusIcon:SetCallback("OnEnter", function(widget)
+        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
+        GameTooltip:SetText(statusTooltip)
+        GameTooltip:Show()
+    end)
+    statusIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
+    row:AddChild(statusIcon)
+
+    -- Empty-text Label as a fixed-width spacer — the "increase spacing after
+    -- the icon" half. AceGUI's Flow layout has no inter-widget gap of its
+    -- own, so the canonical way to inject horizontal whitespace between two
+    -- adjacent widgets is an invisible filler. Width covers the lost
+    -- padding from the narrowed icon box plus the requested extra gap
+    -- before the category dropdown.
+    local statusSpacer = AceGUI:Create("Label")
+    statusSpacer:SetText("")
+    statusSpacer:SetWidth(14)
+    row:AddChild(statusSpacer)
 
     local dd = AceGUI:Create("Dropdown")
     local items, order = {}, {}
@@ -667,6 +722,18 @@ local function ensurePanel()
         KickCD:RegisterMessage("KickCD_PROFILE_CHANGED", function()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end)
+    end
+
+    -- Talent / spellbook changes flip the per-row known/unknown glyph.
+    -- Refresh while the panel is open so the indicators stay in sync
+    -- with what IconGrid is rendering. Only registered once (ensurePanel
+    -- short-circuits on subsequent calls).
+    if KickCD.RegisterEvent then
+        local function refreshIfShown()
+            if panel and panel:IsShown() then Spells:RefreshRows() end
+        end
+        KickCD:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
+        KickCD:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
     end
 
     return panel

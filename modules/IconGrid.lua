@@ -793,9 +793,16 @@ function IconGrid:BuildActiveList()
     for _, entry in ipairs(list) do
         if entry and entry.enabled ~= false and entry.spellID then
             -- FR-2.8: hide entries the player can't see in their own spellbook.
-            -- Compat.GetSpellInfo returns nil for unknown IDs.
-            local name = KickCD.Compat.GetSpellInfo(entry.spellID)
-            if name then
+            -- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
+            -- additionally requires the spell to be actually accessible right now,
+            -- so an unpicked talent choice-node sibling (e.g. Blood DK's
+            -- Gorefiend's Grasp ↔ Abomination Limb — both default-listed because
+            -- either could be picked, but only one is castable) doesn't render.
+            -- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
+            -- their pet is summoned.
+            local name      = KickCD.Compat.GetSpellInfo(entry.spellID)
+            local available = KickCD.Compat.IsSpellAvailable(entry.spellID)
+            if name and available then
                 local btn = self:AcquireIcon(entry.spellID)
                 local tex = KickCD.Compat.GetSpellTexture(entry.spellID)
                 -- Texture may be a 12.0 "secret value" on guarded spells
@@ -1170,6 +1177,12 @@ function IconGrid:OnEnable()
     -- both sides stay in sync.
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+    -- Talent / spellbook changes within the active spec also flip the
+    -- "available" set used by BuildActiveList (choice-node swap, pet
+    -- summon/dismiss for pet spells). Rebuild + relayout so the grid
+    -- always shows only the spells the player can currently cast.
+    self:RegisterEvent("SPELLS_CHANGED",                "OnSpellsChanged")
+    self:RegisterEvent("TRAIT_CONFIG_UPDATED",          "OnSpellsChanged")
 
     -- Events that drive the "General visibility" mode. We listen
     -- unconditionally so toggling the mode at runtime via /kcd set or the
@@ -1322,6 +1335,15 @@ function IconGrid:OnSpecChanged(_evt, unit)
 end
 
 function IconGrid:OnPlayerEnteringWorld()
+    self:BuildActiveList()
+    self:Layout()
+end
+
+-- SPELLS_CHANGED / TRAIT_CONFIG_UPDATED handler. SPELLS_CHANGED in
+-- particular fires several times during login, but BuildActiveList +
+-- Layout are cheap (icon widgets pool, no frame churn) so a handful of
+-- redundant rebuilds is fine.
+function IconGrid:OnSpellsChanged()
     self:BuildActiveList()
     self:Layout()
 end

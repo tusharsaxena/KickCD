@@ -150,6 +150,33 @@ function Compat.GetSpellCharges(spellID)
     return nil
 end
 
+--- Whether the spell is actually accessible to the player right now.
+-- Distinguishes "known to the spell DB" (which `GetSpellInfo` answers) from
+-- "the player can currently cast this" (which is what we want for the icon
+-- grid — choice-node siblings like Gorefiend's Grasp / Abomination Limb
+-- must NOT both render when only one is picked).
+--
+-- IsPlayerSpell covers the vast majority of cases including talent choice
+-- nodes (only the chosen branch returns true). IsSpellKnown(id) is checked
+-- as a fallback for spells that show up in the player's spellbook but not
+-- via IsPlayerSpell (some racials, profession spells). IsSpellKnown(id, true)
+-- catches pet spells used as default cast-stoppers — Counter Shot (147362),
+-- Spell Lock (19647), Optical Blast (119910) — which only appear when the
+-- right pet is summoned. That last branch correctly hides pet spells while
+-- the relevant pet isn't out, which matches "show only what's available
+-- right now."
+-- @param spellID number
+-- @return bool
+function Compat.IsSpellAvailable(spellID)
+    if type(spellID) ~= "number" then return false end
+    if _G.IsPlayerSpell and _G.IsPlayerSpell(spellID) then return true end
+    if _G.IsSpellKnown then
+        if _G.IsSpellKnown(spellID) then return true end
+        if _G.IsSpellKnown(spellID, true) then return true end
+    end
+    return false
+end
+
 --- Whether the spell is currently usable (resources / range / silence).
 -- @param spellID number
 -- @return usable (bool), noMana (bool)
