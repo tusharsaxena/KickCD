@@ -28,3 +28,4 @@ schema-driven and gain new entries automatically as schema rows are
 added — see [ARCHITECTURE_SETTINGS_UI.md](ARCHITECTURE_SETTINGS_UI.md).
 
 Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
+

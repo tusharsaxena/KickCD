@@ -87,3 +87,4 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 ```
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
+

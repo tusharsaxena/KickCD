@@ -60,3 +60,4 @@ The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode
 (the primary icon button reference may have moved) and re-run
 `ApplyConfig` when `castbar.autoSize` is on (the grid frame's footprint
 may have changed).
+

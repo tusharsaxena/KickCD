@@ -9,3 +9,4 @@
 The whole layout is in three small functions: `parseAnchor`, `parseGrow`, `placeBlock` (computes grid bounding box and the primary/block TOPLEFT corners), and the single `layoutBlock` that anchors every widget to the grid frame's TOPLEFT in pixel-floored screen coordinates.
 
 `secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down).
+

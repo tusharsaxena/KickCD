@@ -19,3 +19,4 @@ There is no automated test harness. Verification is manual:
   General → Debug checkbox; both write `db.profile.debugLog`).
 - `/kcd lock` / `/kcd unlock` / `/kcd toggle` — exercise the icon grid lock state.
 - In-game: target a hostile caster, fire your interrupt, confirm the icon desaturates without errors. The Lua error frame (or BugSack/BugGrabber) is the primary regression signal.
+

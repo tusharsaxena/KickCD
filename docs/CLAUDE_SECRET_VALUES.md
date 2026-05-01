@@ -28,3 +28,4 @@ Why curves instead of a `UNIT_SPELLCAST_SUCCEEDED` cast tracker for GCD filterin
 The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-based pattern; see comments in `core/Compat.lua` and `modules/IconGrid.lua` for the rationale recorded in-tree.
 
 Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
+

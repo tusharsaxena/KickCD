@@ -15,3 +15,4 @@ Guidance for Claude (or any AI agent) working on this addon. This file is an ind
 - [Conventions](docs/CLAUDE_CONVENTIONS.md) — code style and module-level rules.
 
 For the current architecture (module map, data flow, saved-variable shape, Compat surface), see [ARCHITECTURE.md](ARCHITECTURE.md) and the `ARCHITECTURE_*.md` files it indexes.
+

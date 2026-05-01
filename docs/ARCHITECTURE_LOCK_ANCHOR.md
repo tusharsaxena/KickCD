@@ -26,3 +26,4 @@ grid frame isn't claiming the mouse for drag. Touch points:
 - Settings → General → "Lock frame" checkbox writes `db.profile.locked` and fires `KickCD_CONFIG_CHANGED { section = "general" }`.
 - Slash commands `/kcd lock | unlock | toggle` do the same write + fire (see `core/KickCD.lua`).
 - `IconGrid:OnConfigChanged` and `Castbar:OnConfigChanged` react to section `"general"` by calling `ApplyLock`.
+

@@ -14,3 +14,4 @@ TOC load order (see `KickCD.toc`):
 10. `modules/Castbar.lua` — owns the `KickCDCastbar` frame; mirrors the player's target's cast/channel via secret-value-gated `UnitCastingInfo` shims (see [CLAUDE_CASTBAR.md](CLAUDE_CASTBAR.md)).
 11. `settings/Panel.lua` — registers the top-level Blizzard Settings category and the per-tab builder mailbox.
 12. `settings/{General,Icons,Castbar,Spells,Profiles}.lua` — register their tabs via `KickCD.Settings.RegisterTab`.
+

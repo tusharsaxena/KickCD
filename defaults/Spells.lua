@@ -329,3 +329,4 @@ KickCD.RaceCastStoppers = {
     KulTiran           = 287712, -- Haymaker
     Nightborne         = 260364, -- Arcane Pulse
 }
+

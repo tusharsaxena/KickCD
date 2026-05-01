@@ -16,3 +16,4 @@ Spell APIs and the Settings registration API have churned across recent expansio
 | `Compat.RegisterAddOnSetting(...)` | `Settings.RegisterAddOnSetting` | Tries the 12.0+ `(category, variable, variableKey, variableTbl, varType, name, default)` shape first; falls back through 11.0 / 10.0 shapes via `pcall`. **Vestigial** — no live caller; canvas-layout panels bind directly to `db.profile`. |
 
 Modules call into `Compat.*` exclusively; direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell. (The IconGrid and Castbar modules read `_G.UnitCastingInfo` / `_G.UnitChannelInfo` directly for the addon-wide visibility gate — they only check whether the first return is non-nil, which is a taint-safe truthy check, and never inspect the secret positions themselves.)
+

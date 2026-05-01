@@ -115,3 +115,4 @@ historical context, but **no live code calls it**. The canvas widgets
 bind directly to `db.profile` and don't go through Blizzard's Setting
 object lifecycle at all. Don't reach for the shim when adding new UI;
 use the schema + `Helpers.RenderField` instead.
+

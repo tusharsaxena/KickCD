@@ -10,3 +10,4 @@ Internal messages travel over AceEvent's per-addon bus (`KickCD:SendMessage` / `
 | `KickCD_GRID_LAYOUT` | `IconGrid:Layout` (every pass, including the empty-list case) | `Castbar` | `{}` | The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved) and to re-run `ApplyConfig` when `castbar.autoSize` is on (the grid frame's footprint may have changed). |
 
 The set is closed by convention — module headers and `CLAUDE.md` reference this list. Adding a message means updating both the source emitter, every consumer, and this table.
+

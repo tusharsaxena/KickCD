@@ -82,3 +82,4 @@ by wrapping a 50%-width pair into a Flow-laid `SimpleGroup`; spacers
 between rows give the airy look. See `Helpers.RenderSchema` and the
 `makeCheckbox` / `makeSlider` / `makeDropdown` / `makeColorPicker`
 factories in `settings/Panel.lua`.
+

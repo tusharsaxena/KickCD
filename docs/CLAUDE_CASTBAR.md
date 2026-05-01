@@ -75,3 +75,4 @@ Texture differentiation between states (different statusbar textures, different 
 - Using `CastingBarFrameTemplate` and pointing it at `"target"`. Its built-in `OnUpdate` does `GetTime() < self.maxValue`, which becomes `GetTime() < <secret>` and errors once the addon sets `maxValue` from a secret `endTime`.
 - Restyling `TargetFrameSpellBar` (the default UI cast bar) instead of building a fresh frame.
 - Gating `name` / `texture` / `notInterruptible` with `issecretvalue` and replacing with placeholders. They may be secret, but `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` accept secret args without erroring — gating just makes the bar look worse for no benefit.
+

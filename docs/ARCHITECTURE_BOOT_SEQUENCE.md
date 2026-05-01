@@ -7,3 +7,4 @@
 3. **`<Module>:OnEnable`:** modules subscribe to messages and game events. `Cooldowns:OnEnable` registers `SPELL_UPDATE_COOLDOWN/USABLE/CHARGES` + `PLAYER_ENTERING_WORLD` + `PLAYER_SPECIALIZATION_CHANGED`; `IconGrid:OnEnable` builds the frame, runs `BuildActiveList`, and shows the grid.
 
 4. **`PLAYER_LOGIN` (deferred from `settings/Panel.lua`):** the Blizzard Settings category is registered and per-tab builders run. Late-loading tabs auto-register if the main category already exists.
+

@@ -17,3 +17,4 @@ This file is an index — each section lives in its own file.
 - [Conventions](docs/ARCHITECTURE_CONVENTIONS.md) — saved-variable boundary, anchor format, secret-value rule of thumb.
 
 For the agent-oriented guide (rules, anti-patterns, testing), see [CLAUDE.md](CLAUDE.md) and the `CLAUDE_*.md` files it indexes.
+
