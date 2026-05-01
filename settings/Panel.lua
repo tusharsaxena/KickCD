@@ -721,16 +721,24 @@ local function makeColorPicker(ctx, def, parent, relativeWidth)
     -- Listen to both:
     --   * OnValueChanged fires during drag while the picker is visible.
     --     Treat it as the primary write — gives a live preview AND
-    --     persists the value before the user even clicks OK.
+    --     persists the value before the user even clicks OK. Wrapped
+    --     in Util.Throttle(50ms) so a sustained drag fires
+    --     KickCD_CONFIG_CHANGED at most ~20 times/sec (the live
+    --     module re-skins on each fire; the throttle keeps the UI
+    --     responsive on lower-end systems without losing the snap of
+    --     a live preview).
     --   * OnValueConfirmed fires (only) when the user cancels, with
-    --     the ORIGINAL color. We commit it too, which writes the
-    --     original back over any intermediate drag values, effectively
-    --     reverting on cancel — matching user expectation.
+    --     the ORIGINAL color. We commit it IMMEDIATELY — the user
+    --     expects the bar to snap back to the pre-drag color, not
+    --     to wait out a throttle window first.
     local function commit(r, g, b, a)
         Helpers.Set(def.path, def.section, { r, g, b, a or 1 })
         fireOnChange(def, { r, g, b, a or 1 })
     end
-    cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) commit(r, g, b, a) end)
+    local throttledCommit = (KickCD.Util and KickCD.Util.Throttle)
+        and KickCD.Util.Throttle(50, commit)
+        or  commit
+    cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) throttledCommit(r, g, b, a) end)
     cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a) commit(r, g, b, a) end)
 
     attachTooltip(cp, def.label, def.tooltip)
