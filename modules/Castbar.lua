@@ -1310,7 +1310,7 @@ end
 --- branching with `not not` to avoid arithmetic on secrets.
 function Castbar:DebugDump()
     local print = KickCD.Util and KickCD.Util.print or _G.print
-    print("|cff00ff00KickCD|r castbar state:")
+    print("castbar state:")
 
     if not UnitExists("target") then
         print("  no target")

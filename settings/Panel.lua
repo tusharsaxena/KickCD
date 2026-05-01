@@ -115,9 +115,12 @@ local _validTypes = {
 }
 
 local function _printSchemaError(prefix, msg)
-    if DEFAULT_CHAT_FRAME then
+    local out = KickCD.Util and KickCD.Util.print
+    if out then
+        out("|cffff0000schema error|r: " .. prefix .. ": " .. msg)
+    elseif DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage(
-            "|cffff0000KickCD schema error|r: " .. prefix .. ": " .. msg)
+            "|cff00ffff[KCD]|r |cffff0000schema error|r: " .. prefix .. ": " .. msg)
     end
 end
 

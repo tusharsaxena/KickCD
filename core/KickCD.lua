@@ -94,7 +94,7 @@ end
 -- only if the settings layer isn't loaded yet (early-boot edge).
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
-        return p(self, "|cff00ff00KickCD|r: db not initialized yet")
+        return p(self, "db not initialized yet")
     end
     local v = value and true or false
     local H = self.Settings and self.Settings.Helpers
@@ -102,7 +102,7 @@ local function setLocked(self, value)
         self.db.profile.locked = v
         self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
     end
-    p(self, "|cff00ff00KickCD|r: icon grid " .. (v and "locked" or "unlocked"))
+    p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
 
 -- Forward declarations so command tables and dispatchers can reference each
@@ -116,8 +116,7 @@ local COMMANDS = {
     {"config",        "Open the settings panel",
         function(self)
             if InCombatLockdown and InCombatLockdown() then
-                p(self, "|cff00ff00KickCD|r: " ..
-                    (self.L and self.L["Cannot open settings during combat."]
+                p(self, (self.L and self.L["Cannot open settings during combat."]
                      or "Cannot open settings during combat."))
                 return
             end
@@ -197,9 +196,9 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    p(self, "|cff00ff00KickCD|r v" .. KickCD.VERSION .. " — slash commands:")
+    p(self, "v" .. KickCD.VERSION .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
     for _, entry in ipairs(COMMANDS) do
-        p(self, ("  /kcd %s — %s"):format(entry[1], entry[2]))
+        p(self, ("  |cffffff00/kcd %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
     end
 end
 
@@ -210,15 +209,15 @@ function runDebug(self, rest)
     local sub = (rest or ""):match("^(%S*)") or ""
     sub = sub:lower()
     if sub == "" then
-        p(self, "|cff00ff00KickCD|r debug subcommands:")
+        p(self, "debug subcommands:")
         for _, entry in ipairs(DEBUG_COMMANDS) do
-            p(self, ("  /kcd debug %s — %s"):format(entry[1], entry[2]))
+            p(self, ("  |cffffff00/kcd debug %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
         end
         return
     end
     local entry = findCommand(DEBUG_COMMANDS, sub)
     if entry then return entry[3](self) end
-    p(self, "|cff00ff00KickCD|r: unknown debug subcommand '" .. sub .. "'")
+    p(self, "unknown debug subcommand '" .. sub .. "'")
     runDebug(self, "")
 end
 
@@ -237,7 +236,7 @@ function KickCD:OnSlashCommand(input)
     local entry = findCommand(COMMANDS, cmd)
     if entry then return entry[3](self, rest) end
 
-    p(self, "|cff00ff00KickCD|r: unknown command '" .. cmd .. "'")
+    p(self, "unknown command '" .. cmd .. "'")
     printHelp(self)
 end
 
@@ -385,7 +384,7 @@ local function applyFromText(self, def, text)
     end
     if H.RefreshAllPanels then H.RefreshAllPanels() end
 
-    p(self, ("|cff00ff00KickCD|r: %s = %s")
+    p(self, ("%s = %s")
         :format(def.path, formatValue(def, H.Get(def.path))))
 end
 
@@ -472,7 +471,7 @@ function runReset(self, rest)
     if panelName == "spells" then
         if self.Database and self.Database.ResetAllSpells then
             self.Database:ResetAllSpells()
-            return p(self, "|cff00ff00KickCD|r: spells reset to defaults")
+            return p(self, "spells reset to defaults")
         end
         return p(self, "Database not ready")
     end
@@ -487,7 +486,7 @@ function runReset(self, rest)
         if c.panelKey == panelName then ctx = c; break end
     end
     H.RestoreDefaults(panelName, ctx)
-    p(self, ("|cff00ff00KickCD|r: %s panel reset to defaults"):format(panelName))
+    p(self, ("%s panel reset to defaults"):format(panelName))
 end
 
 function runResetAll(self)
@@ -496,7 +495,7 @@ function runResetAll(self)
         return p(self, "Settings layer not ready yet")
     end
     H.ResetAll()
-    p(self, "|cff00ff00KickCD|r: all settings + spells reset to defaults")
+    p(self, "all settings + spells reset to defaults")
 end
 
 function runResetPosition(self)
@@ -505,7 +504,7 @@ function runResetPosition(self)
         return p(self, "Settings layer not ready yet")
     end
     H.ResetIconPosition()
-    p(self, "|cff00ff00KickCD|r: icon grid position reset")
+    p(self, "icon grid position reset")
 end
 
 -- ---------------------------------------------------------------------------
@@ -640,10 +639,10 @@ local function spellsList(self, rest)
     end
     local list = getSpellList(class, spec)
     if not list or #list == 0 then
-        return p(self, ("|cff00ff00KickCD|r: no spells tracked for %s/%s")
+        return p(self, ("no spells tracked for %s/%s")
                   :format(class, spec))
     end
-    p(self, ("|cff00ff00KickCD|r: spells for %s/%s"):format(class, spec))
+    p(self, ("spells for %s/%s"):format(class, spec))
     local Compat = self.Compat or {}
     for i, e in ipairs(list) do
         local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(e.spellID))
@@ -673,12 +672,12 @@ local function spellsAdd(self, rest)
     if existing then
         existing.enabled = true
         commitSpellsChange()
-        return p(self, ("|cff00ff00KickCD|r: %s (#%d) already in %s/%s, re-enabled")
+        return p(self, ("%s (#%d) already in %s/%s, re-enabled")
                   :format(name or "?", id, class, spec))
     end
     list[#list + 1] = { spellID = id, category = "other", enabled = true }
     commitSpellsChange()
-    p(self, ("|cff00ff00KickCD|r: added %s (#%d) to %s/%s")
+    p(self, ("added %s (#%d) to %s/%s")
         :format(name or "?", id, class, spec))
 end
 
@@ -700,7 +699,7 @@ local function spellsRemove(self, rest)
     end
     table.remove(list, idx)
     commitSpellsChange()
-    p(self, ("|cff00ff00KickCD|r: removed #%d from %s/%s"):format(id, class, spec))
+    p(self, ("removed #%d from %s/%s"):format(id, class, spec))
 end
 
 local function spellsSetEnabled(self, rest, enabled)
@@ -722,7 +721,7 @@ local function spellsSetEnabled(self, rest, enabled)
     end
     entry.enabled = enabled and true or false
     commitSpellsChange()
-    p(self, ("|cff00ff00KickCD|r: #%d %s in %s/%s"):format(
+    p(self, ("#%d %s in %s/%s"):format(
         id, enabled and "enabled" or "disabled", class, spec))
 end
 
@@ -751,7 +750,7 @@ local function spellsSetCategory(self, rest)
     end
     entry.category = cat
     commitSpellsChange()
-    p(self, ("|cff00ff00KickCD|r: #%d category = %s in %s/%s"):format(
+    p(self, ("#%d category = %s in %s/%s"):format(
         id, cat, class, spec))
 end
 
@@ -784,7 +783,7 @@ local function spellsReset(self, rest)
         end
     end
     commitSpellsChange()
-    p(self, ("|cff00ff00KickCD|r: reset %s/%s to defaults"):format(class, spec))
+    p(self, ("reset %s/%s to defaults"):format(class, spec))
 end
 
 local SPELLS_COMMANDS = {
@@ -807,9 +806,9 @@ local SPELLS_COMMANDS = {
 function runSpells(self, rest)
     local sub, rem = lowerFirst(rest)
     if sub == "" then
-        p(self, "|cff00ff00KickCD|r spells subcommands:")
+        p(self, "spells subcommands:")
         for _, entry in ipairs(SPELLS_COMMANDS) do
-            p(self, ("  /kcd spells %s — %s"):format(entry[1], entry[2]))
+            p(self, ("  |cffffff00/kcd spells %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
         end
         local cls, spc = resolvePlayerClassSpec()
         if cls and spc then
@@ -819,7 +818,7 @@ function runSpells(self, rest)
     end
     local entry = findCommand(SPELLS_COMMANDS, sub)
     if entry then return entry[3](self, rem) end
-    p(self, "|cff00ff00KickCD|r: unknown spells subcommand '" .. sub .. "'")
+    p(self, "unknown spells subcommand '" .. sub .. "'")
     runSpells(self, "")
 end
 

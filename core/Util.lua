@@ -251,7 +251,7 @@ end
 -- Chat output
 -- ---------------------------------------------------------------------------
 
-local PREFIX = "|cff00ff00KickCD|r:"
+local PREFIX = "|cff00ffff[KCD]|r"
 
 --- Print to the default chat frame with the KickCD prefix.
 -- Multiple args are space-separated, mirroring print().
