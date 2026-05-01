@@ -1642,12 +1642,12 @@ function IconGrid:RefreshAllGlows()
     --   * false — target is hostile-casting AND the cast is NOT interruptible
     --   * nil   — no hostile cast in progress (both true/false reads as
     --             irrelevant to the trigger decision)
-    -- Compat.IsHostileUnitCasting handles existence/can-attack gates
+    -- KickCD.State.IsHostileUnitCasting handles existence/can-attack gates
     -- and existing-channel checks; we only need to layer interruptibility
     -- on top.
-    local hostileCasting = KickCD.Compat
-        and KickCD.Compat.IsHostileUnitCasting
-        and KickCD.Compat.IsHostileUnitCasting("target") or false
+    local hostileCasting = KickCD.State
+        and KickCD.State.IsHostileUnitCasting
+        and KickCD.State.IsHostileUnitCasting("target") or false
     local interruptible
     if hostileCasting and _G.UnitCastingInfo then
         local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo("target")

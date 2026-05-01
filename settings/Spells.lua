@@ -262,21 +262,15 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
         -- doesn't match the player's live pair; fall through to the
         -- lenient validateSpellInput path (which already confirmed the
         -- spell exists in the spell DB).
-        --
-        -- TODO(post-WS-B): replace the inline upper-strip with
-        -- KickCD.Util.NormalizeSpecToken once WS-B's CR-1 lands; the
-        -- current inline form is conflict-free with WS-B's helper at
-        -- merge time.
-        local function normaliseSpecToken(s)
-            return (s or ""):upper():gsub("%s+", "")
-        end
         local _, playerClass = UnitClass and UnitClass("player")
         local playerSpecToken
         if GetSpecialization and GetSpecializationInfo then
             local idx = GetSpecialization()
             if idx then
                 local _, specName = GetSpecializationInfo(idx)
-                if specName then playerSpecToken = normaliseSpecToken(specName) end
+                if specName then
+                    playerSpecToken = KickCD.Util.NormalizeSpecToken(specName)
+                end
             end
         end
         local editorIsActiveSpec =
