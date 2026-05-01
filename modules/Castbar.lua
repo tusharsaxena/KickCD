@@ -61,6 +61,16 @@ local L       = KickCD.L
 local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
 local current -- active cast record (nil when nothing is being cast)
 
+-- Cache of the most recent KickCD_GRID_LAYOUT payload from IconGrid.
+-- Populated by Castbar:OnGridLayout when the payload carries
+-- `gridFrame` / `primaryIcon`; ApplyAnchor / ApplyConfig prefer these
+-- over the public accessors so the bar follows the grid without a
+-- second cross-module reach. The fallback to KickCD.IconGrid:GetGridFrame
+-- / :GetPrimaryIcon stays in place for the FIRST tick after enable when
+-- no KickCD_GRID_LAYOUT has fired yet, and for older senders that
+-- broadcast an empty payload.
+local lastGridLayout = { gridFrame = nil, primaryIcon = nil }
+
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
 -- shared, single-owner flag driven off the PLAYER_REGEN_* events in
 -- one place. Reading InCombatLockdown() inside the regen-disabled
@@ -76,6 +86,29 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
 local function cfg()
     return (KickCD.db and KickCD.db.profile and KickCD.db.profile.castbar) or {}
+end
+
+-- Resolve the icon-grid's parent grid frame. Prefers the value carried
+-- by the most recent KickCD_GRID_LAYOUT payload (CR-29 sender-side);
+-- falls back to KickCD.IconGrid:GetGridFrame() for the first tick after
+-- enable (no payload yet) and for older senders that still broadcast
+-- an empty payload.
+local function resolveGridFrame()
+    if lastGridLayout.gridFrame then return lastGridLayout.gridFrame end
+    if KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
+        return KickCD.IconGrid:GetGridFrame()
+    end
+    return nil
+end
+
+-- Resolve the icon-grid's primary (first-laid-out) icon button. Same
+-- payload-preferred / accessor-fallback policy as resolveGridFrame.
+local function resolvePrimaryIcon()
+    if lastGridLayout.primaryIcon then return lastGridLayout.primaryIcon end
+    if KickCD.IconGrid and KickCD.IconGrid.GetPrimaryIcon then
+        return KickCD.IconGrid:GetPrimaryIcon()
+    end
+    return nil
 end
 
 local function master()
@@ -269,13 +302,10 @@ function Castbar:ApplyAnchor()
     local mode = c.anchorMode or "FREE"
 
     if mode == "PRIMARY" then
-        local target
-        if KickCD.IconGrid and KickCD.IconGrid.GetPrimaryIcon then
-            target = KickCD.IconGrid:GetPrimaryIcon()
-        end
-        if not target and KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
-            target = KickCD.IconGrid:GetGridFrame()
-        end
+        -- Prefer the payload-cached references over the public accessors.
+        -- Falls back to the grid frame when no spells are watched (no
+        -- primary icon yet).
+        local target = resolvePrimaryIcon() or resolveGridFrame()
         if target then
             frame:ClearAllPoints()
             frame:SetPoint(
@@ -553,8 +583,8 @@ function Castbar:ApplyConfig()
     -- grid's corresponding screen-axis extent. Thickness stays
     -- user-configured. Re-runs on every KickCD_GRID_LAYOUT so the
     -- bar tracks the grid as icons are added / removed / resized.
-    if c.autoSize and KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
-        local gridFrame = KickCD.IconGrid:GetGridFrame()
+    if c.autoSize then
+        local gridFrame = resolveGridFrame()
         if gridFrame then
             if isVertical then
                 local h = gridFrame:GetHeight()
@@ -1149,8 +1179,25 @@ end
 --- Fired by IconGrid after every Layout()/BuildActiveList() pass. The grid
 --- frame may have resized (auto-size needs to track) and the primary icon
 --- button reference may have changed (PRIMARY anchor mode needs to retarget).
-function Castbar:OnGridLayout()
+---
+--- Payload shape (CR-29):
+---   { gridFrame = <Frame>, primaryIcon = <Button|nil>,
+---     width = <number>, height = <number> }
+--- Older senders broadcast `{}`; we cope by falling back to the public
+--- KickCD.IconGrid:GetGridFrame() / :GetPrimaryIcon() accessors via
+--- resolveGridFrame / resolvePrimaryIcon. The accessor fallback also
+--- handles the FIRST tick after enable when no KickCD_GRID_LAYOUT has
+--- fired yet.
+function Castbar:OnGridLayout(_evt, payload)
     if not frame then return end
+    -- Cache the payload's references for ApplyAnchor / ApplyConfig.
+    -- Defensive: only cache when the field is actually populated, so an
+    -- empty `{}` from the legacy sender doesn't blank the cache.
+    if type(payload) == "table" then
+        if payload.gridFrame   ~= nil then lastGridLayout.gridFrame   = payload.gridFrame   end
+        if payload.primaryIcon ~= nil then lastGridLayout.primaryIcon = payload.primaryIcon end
+    end
+
     local c = cfg()
     -- PRIMARY mode: re-target the primary icon button (which may have been
     -- released to pool and a new one acquired).
