@@ -46,3 +46,4 @@ settings\Icons.lua
 settings\Castbar.lua
 settings\Spells.lua
 settings\Profiles.lua
+

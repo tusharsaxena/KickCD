@@ -554,3 +554,4 @@ end
 if KickCD.Settings and KickCD.Settings.RegisterTab then
     KickCD.Settings.RegisterTab("castbar", Build)
 end
+

@@ -56,8 +56,11 @@
 - ✅ Remove all DB migration paths — addon is unreleased, so the migration scaffolding (Migrations table, RunMigrations, dbVersion, LATEST_VERSION) was deleted outright
 - ✅ Documentation MD files have become too large and bloated. Split CLAUDE.md and ARCHITECTURE.md into smaller files with every file being a section have having a naming convention like CLAUDE_<SECTION_NAME>.md. The main file references these sub files. 
 - ✅ Do a deep review of the addon code and update CLAUDE_*.md and ARCHITECTURE_*.md
-- ✅ There's a lot of default spells available in defaults/Spells.lua. Please validate that the spells are only shown on the icon grid only if the spell is known (too low level, not learned, other talent chosen, etc)
 - ✅ General > Reset All Settings doesnt seem to properly restore default spells for every spec sometimes
+- ✅ There's a lot of default spells available in defaults/Spells.lua. Please validate that the spells are only shown on the icon grid only if the spell is known (too low level, not learned, other talent chosen, etc)
+- ✅ Do a deep review of all settings panels, make sure all settings are covered, the settings dop what is expected, and the layout of all panels is readable and easy to use.
+- ✅ Cast bar vertical layout is not working as expected. My expectation is to rotate the bar by 90 degrees when in vertical mode, so nothing else breaks
+- ✅ Add an option to truncate Spell Name text after X characters. 0 Means no truncate, add a slider to set truncate character limit. Add this as a setting option in Cast Bars > Spell name - under the X offset setting (occipies half the row width - i.e. one column) 
 
 ## Not Yet Started
 
@@ -68,9 +71,12 @@
 
 ## Pre Release
 
-- ☐ Do a deep review of all settings panels
+- ☐ The Cast bar > Orientation > "Auto-size to icon grid" setting is not working as I expected. Current behavior is that it auto sizes basis the number of columns defined in Icons > Layout > Rows OR Columns (depending on the orientation). My expectation is that it auto sizes basis in the actual visible rows or columns actually shown in the icon grid.
+- ☐ Do a deep review of the settings panel and slash command handler, and make sure all settings have a correspoding slash command handler
 - ☐ You are a princicpal engineer, an experienced LUA developer and experienced wow add developer. I want you to do a deep design and code review of this addon, and share findings. Look for core architectural gaps, design inconsistencies, design patterns, anti patterns, logic gaps and bugs. Share your findings in docs/legacy/PE_REVIEW.md. After that, create an a comprehensive set of changes required to address all the feedback in PE_REVIEW.md, and save that in docs/legacy/CHANGES_PE_REVIEW.md. After that, create an execution plan and save that in docs/legacy/EXECUTION_PLAN_PE_REVIEW.md. Ensure that the docs/legacy/EXECUTION_PLAN_PE_REVIEW.md can be parallelized. Then finally, spawn a team of sub agents and execute docs/legacy/EXECUTION_PLAN_PE_REVIEW.md.
 - ☐ Update default settings
+- ☐ Change the name of the addon in the TOC (So addon name shows up as Ka0s KickCD)
+- ☐ Change the name of the addon in the Settings Panel (So addon shows up as Ka0s KickCD in the Settings Panel)
 - ☐ Change addon icon
 - ☐ Take screenshots and in combat video (convert to GIF)
 - ☐ Update README with critical settings (especially visibility modes, castbar settings, anchoring, autosize), FAQS, Troubleshooting and Changelog

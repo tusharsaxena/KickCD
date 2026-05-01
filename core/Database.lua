@@ -384,3 +384,4 @@ function Database:Init()
     db.RegisterCallback(self, "OnProfileCopied",  "OnProfileChanged")
     db.RegisterCallback(self, "OnProfileReset",   "OnProfileChanged")
 end
+
