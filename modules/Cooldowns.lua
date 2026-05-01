@@ -92,8 +92,8 @@ end
 --- Compute the freshly-polled state for a single spellID.
 -- @param spellID number
 -- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
---   Returns nil if the spell isn't actually known by the player (skip it
---   per FR-2.8).
+--   Returns nil if the spell isn't actually known by the player so the
+--   icon grid can hide entries the player can't see in their own spellbook.
 function Cooldowns:PollSpell(spellID)
     -- Reject obviously-bad IDs early.
     if not spellID or type(spellID) ~= "number" then return nil end

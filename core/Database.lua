@@ -500,7 +500,7 @@ function Database:Init()
     end
 
     -- The third positional argument `true` makes per-character the default
-    -- profile scope on first login (FR-10.2): a Mage and a DH on the same
+    -- profile scope on first login: a Mage and a DH on the same
     -- account get their own configs out of the box, then the user can
     -- switch to "Default" / per-class / per-realm via the Profiles panel.
     local db = AceDB:New("KickCDDB", DEFAULTS, true)

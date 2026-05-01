@@ -326,7 +326,7 @@ local function CreateIconWidget(parent)
     end
     btn.cooldown = cd
 
-    -- Cooldown text overlay (FR-2.6). We drive this FontString ourselves
+    -- Cooldown text overlay. We drive this FontString ourselves
     -- (via an OnUpdate started from Apply) instead of relying on
     -- CooldownFrameTemplate's built-in countdown numbers — those only
     -- render while the swipe is animating, which means they never appear
@@ -338,7 +338,7 @@ local function CreateIconWidget(parent)
     cdText:Hide()
     btn.cooldownText = cdText
 
-    -- Charges badge (FR-2.7) — top-right corner, à la action-bar charges.
+    -- Charges badge — top-right corner, à la action-bar charges.
     local charges = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     charges:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
     charges:Hide()
@@ -751,7 +751,7 @@ function Icon:Apply(state)
     -- entry's type/color applies.
     self:UpdateGlow(state)
 
-    -- Charges badge (FR-2.7). Visibility = "this spell has charges at all",
+    -- Charges badge. Visibility = "this spell has charges at all",
     -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
     -- for spells that don't track charges (regular Mind Freeze etc.) and a
     -- number (0..max) for spells that do, so the truthy check on `c` is
@@ -952,7 +952,7 @@ end
 -- Filter the profile spell list down to entries:
 --   * with enabled ~= false
 --   * whose spellID resolves via Compat.GetSpellInfo (so spec-locked
---     spells are hidden — FR-2.8)
+--     spells the player can't see in their own spellbook are hidden)
 -- First survivor → primary; rest → secondaries.
 
 function IconGrid:BuildActiveList()
@@ -985,7 +985,7 @@ function IconGrid:BuildActiveList()
             end
         elseif entry and entry.enabled ~= false and entry.spellID then
             _seen[entry.spellID] = true
-            -- FR-2.8: hide entries the player can't see in their own spellbook.
+            -- Hide entries the player can't see in their own spellbook.
             -- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
             -- additionally requires the spell to be actually accessible right now,
             -- so an unpicked talent choice-node sibling (e.g. Blood DK's
@@ -1384,7 +1384,7 @@ function IconGrid:ApplyGeneral()
 end
 
 -- ---------------------------------------------------------------------------
--- Lock / unlock + drag persistence (FR-8.2, FR-8.4)
+-- Lock / unlock + drag persistence
 -- ---------------------------------------------------------------------------
 
 local function onDragStart(self)

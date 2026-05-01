@@ -19,7 +19,7 @@ local Util   = KickCD.Util   or {}
 local Spells = {}
 KickCD.SettingsSpells = Spells
 
--- The closed category set per FR-7.6.
+-- The closed category set. Mirrors the keys in locales/enUS.lua.
 local CATEGORIES = {
     "interrupt", "stun", "knockback", "incapacitate",
     "silence", "root", "fear", "displace", "racial", "other",

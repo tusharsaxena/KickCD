@@ -170,7 +170,7 @@ L["Reset all spells for this spec to addon defaults?"] =
     "Reset all spells for this spec to addon defaults?"
 L["Category"]                    = "Category"
 
--- Categories (FR-7.6 closed set)
+-- Categories (closed set; matches CATEGORIES in settings/Spells.lua)
 L["interrupt"]                   = "Interrupt"
 L["stun"]                        = "Stun"
 L["knockback"]                   = "Knockback"
