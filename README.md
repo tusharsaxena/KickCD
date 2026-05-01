@@ -4,6 +4,8 @@
 ![wow](https://img.shields.io/badge/WoW-Midnight%2012.0.5-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
+![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
+
 KickCD is a lightweight, single-folder WoW addon that helps the player make informed interrupt decisions in real time. It pairs two pieces of UI:
 
 - A movable, persistently-visible **icon grid** of the player's interrupt + cast-stopping CC abilities, with cooldown swipes and a clear ready / not-ready state. Defaults are sensible per class and spec; the secondary block can be anchored to any of 13 points on the primary icon (the four sides × center / left / right alignments, plus a stack-on-top CENTER anchor) and filled in any of 8 grow directions.
@@ -12,6 +14,32 @@ KickCD is a lightweight, single-folder WoW addon that helps the player make info
 Both panels share a single addon-wide visibility mode (always / in combat / target casting / target casting interruptible) and a single drag lock, and both correctly handle WoW 12.0's "secret value" protection on protected-interrupt cooldowns and `UnitCastingInfo` / `UnitChannelInfo` returns.
 
 Everything is configurable through the standard Blizzard Settings panel and through the `/kcd` slash command (every panel control has a CLI peer via `/kcd get` / `/kcd set`).
+
+## Screenshots
+
+**_Addon in action_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/619/kickcd-video-04-compressed-gif.gif)
+
+**_Zoomed in view of the icon grid and cast bar_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/603/kickcd-image-01-addon-png.png)
+
+**_General settings panel_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/604/kickcd-image-02-general-png.png)
+
+**_Icons setting panel_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/605/kickcd-image-03-icons-png.png)
+
+**_Castbar settings panel_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/606/kickcd-image-04-castbar-png.png)
+
+**_Spells settings panel_**
+
+![alt text](https://media.forgecdn.net/attachments/1659/607/kickcd-image-05-spells-png.png)
 
 ## Usage
 
