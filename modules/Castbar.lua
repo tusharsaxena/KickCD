@@ -256,6 +256,16 @@ local function onDragStop(self)
         KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
         KickCD.db.profile.anchors.castbar = KickCD.Util.SaveAnchor(self)
     end
+    -- CR-34: complete the bus contract by announcing the anchor write.
+    -- No subscriber listens for "castbar" anchor changes today (the bar
+    -- has already moved itself), but firing it makes the bus self-
+    -- consistent and defends against a future "anchor-aware" listener.
+    -- Castbar's own OnConfigChanged handles { section = "castbar" }
+    -- idempotently (Reskin + ApplyLock are no-ops for an already-correct
+    -- frame), so the dispatch is safe to re-enter.
+    if KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "castbar" })
+    end
 end
 
 -- Translate a 13-point anchor token (the new `<SIDE>_<ALIGN>` /
