@@ -96,17 +96,38 @@ function Util.ApplyAnchor(frame, anchor)
 end
 
 -- ---------------------------------------------------------------------------
--- Debounce
+-- Throttle / Debounce
 -- ---------------------------------------------------------------------------
+--
+-- Two coalescers with deliberately different semantics. The choice is:
+--
+--   Throttle — fires AT MOST once per `ms` window starting from the
+--              FIRST call in a burst. Subsequent calls during the
+--              window only update the args; the trailing call wins.
+--              Use when you want a steady cadence during a sustained
+--              burst (e.g. mirror an in-progress edit to the live
+--              module ~20 times/sec while typing continues).
+--
+--   Debounce — fires `ms` after the LAST call in a burst; every new
+--              call during the window resets the timer. Use when you
+--              want the side effect to run only once the burst has
+--              settled (e.g. commit a finished search query, persist
+--              once the user has stopped dragging a slider).
+--
+-- Both wrappers always invoke `fn` with the args from the most recent
+-- call (the trailing call wins). Args are stored in a fresh table per
+-- burst so the captured C_Timer.After callback always sees the right
+-- snapshot when it fires.
 
---- Wrap a function so rapid successive calls collapse into a single
---- delayed execution. The trailing call wins (latest args used).
---- Used by the spells editor to avoid firing KickCD_CONFIG_CHANGED on
---- every keystroke.
--- @param ms number of milliseconds to wait after the last call
--- @param fn function to invoke
--- @return wrapped function
-function Util.Debounce(ms, fn)
+--- Leading-edge throttle: fires AT MOST once per `ms` window starting
+--- from the first call in a burst. The trailing call's args win — i.e.
+--- if the wrapper is called 50 times in 50 ms, `fn` runs once with the
+--- 50th call's args at t=ms (or earlier if the burst stops within the
+--- window).
+--- @param ms number of milliseconds per window
+--- @param fn function to invoke
+--- @return wrapped function
+function Util.Throttle(ms, fn)
     local delay = (ms or 0) / 1000
     -- Closure state: pendingArgs is a fresh table per "burst" so the
     -- captured C_Timer.After callback works on the args from *that* burst,
@@ -120,6 +141,38 @@ function Util.Debounce(ms, fn)
         scheduled = true
         C_Timer.After(delay, function()
             scheduled = false
+            local args = pendingArgs
+            pendingArgs = nil
+            if args then
+                fn(unpack(args, 1, args.n))
+            end
+        end)
+    end
+end
+
+--- Trailing-edge debounce: fires `ms` after the LAST call in a burst.
+--- Every new call resets the timer, so `fn` only runs once the burst
+--- has been quiet for `ms`. The trailing call's args win.
+--- @param ms number of milliseconds of quiet required after the last call
+--- @param fn function to invoke
+--- @return wrapped function
+function Util.Debounce(ms, fn)
+    local delay = (ms or 0) / 1000
+    -- Each call reschedules: bump the generation counter and capture
+    -- it in the closure for the new C_Timer.After. When that timer
+    -- fires, it only invokes `fn` if its generation still matches the
+    -- current one — earlier timers from the same burst short-circuit
+    -- silently. (C_Timer.After exposes no Cancel handle; the generation
+    -- check is the standard workaround.)
+    local generation = 0
+    local pendingArgs
+
+    return function(...)
+        pendingArgs = { n = select("#", ...), ... }
+        generation = generation + 1
+        local thisGen = generation
+        C_Timer.After(delay, function()
+            if thisGen ~= generation then return end
             local args = pendingArgs
             pendingArgs = nil
             if args then
