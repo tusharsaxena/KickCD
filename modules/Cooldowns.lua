@@ -237,18 +237,16 @@ function Cooldowns:Rebuild()
 
     if not isEnabled() then return end
 
-    local profile = KickCD.db and KickCD.db.profile
-    if not profile or type(profile.spells) ~= "table" then
-        return
-    end
-
     local class, spec = ResolveClassSpec()
     if not class or not spec then
         return
     end
 
-    local list = profile.spells[class] and profile.spells[class][spec]
-    if type(list) ~= "table" then
+    -- Read-only lookup via Database:GetSpellList — never lazy-creates
+    -- a per-spec table, so a class+spec the user has never customised
+    -- doesn't pollute the saved-vars with an empty entry.
+    local list = KickCD.Database and KickCD.Database:GetSpellList(class, spec)
+    if not list then
         return
     end
 

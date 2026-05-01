@@ -532,26 +532,21 @@ local function resolveClassSpec(args, idx)
     return class or pClass, spec or pSpec
 end
 
-local function getProfileSpells()
-    if not (KickCD.db and KickCD.db.profile) then return nil end
-    KickCD.db.profile.spells = KickCD.db.profile.spells or {}
-    return KickCD.db.profile.spells
-end
+-- Spell-list traversal funnels through Database:GetSpellList /
+-- :EnsureSpellList so the slash-command layer matches the read/lazy-
+-- create policy used by Cooldowns / IconGrid / settings/Spells.lua.
+-- Read-only callers (list/remove/enable/disable/category) use
+-- GetSpellList; mutators that should create a fresh list when none
+-- exists (add / reset) use EnsureSpellList.
 
 local function getSpellList(class, spec)
-    local all = getProfileSpells()
-    if not all then return nil end
-    local byClass = all[class]
-    if not byClass then return nil end
-    return byClass[spec]
+    if not KickCD.Database then return nil end
+    return KickCD.Database:GetSpellList(class, spec)
 end
 
 local function ensureSpellList(class, spec)
-    local all = getProfileSpells()
-    if not all then return nil end
-    all[class] = all[class] or {}
-    all[class][spec] = all[class][spec] or {}
-    return all[class][spec]
+    if not KickCD.Database then return nil end
+    return KickCD.Database:EnsureSpellList(class, spec)
 end
 
 -- Mutation commit: fire the closed message AND nudge the open Spells
@@ -738,24 +733,22 @@ local function spellsReset(self, rest)
     if not (class and spec) then
         return p(self, "Could not determine class+spec")
     end
-    local all = getProfileSpells()
-    if not all then return p(self, "db not ready") end
+    local list = ensureSpellList(class, spec)
+    if not list then return p(self, "db not ready") end
+    -- Wipe in place rather than reassigning so any reference held by
+    -- BuildSpells / consumers stays valid.
+    for i = #list, 1, -1 do list[i] = nil end
     local source = self.DefaultSpells
                    and self.DefaultSpells[class]
                    and self.DefaultSpells[class][spec]
-    all[class] = all[class] or {}
     if source then
-        local copy = {}
         for i, e in ipairs(source) do
-            copy[i] = {
+            list[i] = {
                 spellID  = e.spellID  or e[1],
                 category = e.category or e[2] or "other",
                 enabled  = e.enabled ~= false,
             }
         end
-        all[class][spec] = copy
-    else
-        all[class][spec] = {}
     end
     commitSpellsChange()
     p(self, ("|cff00ff00KickCD|r: reset %s/%s to defaults"):format(class, spec))

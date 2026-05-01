@@ -221,6 +221,60 @@ local DEFAULTS = {
 KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
 
 -- ---------------------------------------------------------------------------
+-- Spell-list traversal helpers
+-- ---------------------------------------------------------------------------
+--
+-- Every consumer that needs to read or mutate a spec's spell list goes
+-- through these two helpers so the `db.profile.spells[CLASS][SPEC]`
+-- walk lives in exactly one place. The split between read-only and
+-- lazy-create matters: getActiveList in the panel fires on every
+-- dropdown browse, and lazy-creating an empty per-spec table on every
+-- browse pollutes the saved-vars file with 13 classes × 4 specs of
+-- empty tables. The read-only helper returns nil for missing entries
+-- so consumers can short-circuit without touching the profile shape.
+--
+-- Callers:
+--   * GetSpellList:    Cooldowns:Rebuild, IconGrid:BuildActiveList,
+--                      core/KickCD.lua slash-command read paths,
+--                      settings/Spells.lua getActiveList.
+--   * EnsureSpellList: core/KickCD.lua spellsAdd / spellsReset,
+--                      settings/Spells.lua mutating popups.
+
+--- Read-only spell-list lookup. Returns the entry array (or nil if no
+--- list exists for this class+spec). Never mutates the profile shape,
+--- so safe to call from browse paths that flip class/spec dropdowns.
+-- @param class string normalised class file token (e.g. "HUNTER")
+-- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @return table|nil — the list or nil
+function Database:GetSpellList(class, spec)
+    if not (class and spec and self.db and self.db.profile) then return nil end
+    local spells = self.db.profile.spells
+    if type(spells) ~= "table" then return nil end
+    local byClass = spells[class]
+    if type(byClass) ~= "table" then return nil end
+    local list = byClass[spec]
+    if type(list) ~= "table" then return nil end
+    return list
+end
+
+--- Lazy-create spell-list lookup. Creates the per-class and per-spec
+--- tables if missing, then returns the list. Use this only from
+--- mutators (Add / Reset / Reorder) where an empty list IS the right
+--- post-condition for an unseeded spec. Browse-only consumers should
+--- use GetSpellList instead.
+-- @param class string normalised class file token (e.g. "HUNTER")
+-- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @return table|nil — the list, or nil if the profile isn't ready
+function Database:EnsureSpellList(class, spec)
+    if not (class and spec and self.db and self.db.profile) then return nil end
+    local profile = self.db.profile
+    profile.spells = profile.spells or {}
+    profile.spells[class] = profile.spells[class] or {}
+    profile.spells[class][spec] = profile.spells[class][spec] or {}
+    return profile.spells[class][spec]
+end
+
+-- ---------------------------------------------------------------------------
 -- Spells default-merge
 -- ---------------------------------------------------------------------------
 --
@@ -263,23 +317,26 @@ function Database:BuildSpells()
     -- Deep-copy each {spellID, category} entry into a profile-shaped record
     -- with enabled=true. The defaults file uses positional pairs to stay
     -- compact; the profile uses named fields so user edits in the UI are
-    -- self-describing in the saved-variable file.
+    -- self-describing in the saved-variable file. EnsureSpellList lazy-
+    -- creates the per-class / per-spec containers before we overwrite the
+    -- list with the freshly-built copy.
     for class, specs in pairs(source) do
-        profile.spells[class] = profile.spells[class] or {}
         for spec, list in pairs(specs) do
-            local out = {}
+            local target = self:EnsureSpellList(class, spec)
+            -- Wipe in place rather than replacing the table — keeps any
+            -- references downstream stable across the build.
+            for i = #target, 1, -1 do target[i] = nil end
             for i, entry in ipairs(list) do
                 local id  = entry.spellID  or entry[1]
                 local cat = entry.category or entry[2]
                 if id then
-                    out[i] = {
+                    target[#target + 1] = {
                         spellID  = id,
                         category = cat or "other",
                         enabled  = entry.enabled ~= false,
                     }
                 end
             end
-            profile.spells[class][spec] = out
         end
     end
 
@@ -291,19 +348,22 @@ function Database:BuildSpells()
         local _, classFile = UnitClass("player")
         local racialID = racials[race]
         if racialID and classFile and profile.spells[classFile] then
-            for _, list in pairs(profile.spells[classFile]) do
-                -- Avoid appending if it's already in the list (defensive —
-                -- some default lists may already include it via PvE bias).
-                local already = false
-                for _, e in ipairs(list) do
-                    if e.spellID == racialID then already = true; break end
-                end
-                if not already then
-                    table.insert(list, {
-                        spellID  = racialID,
-                        category = "racial",
-                        enabled  = true,
-                    })
+            for spec in pairs(profile.spells[classFile]) do
+                local list = self:GetSpellList(classFile, spec)
+                if list then
+                    -- Avoid appending if it's already in the list (defensive —
+                    -- some default lists may already include it via PvE bias).
+                    local already = false
+                    for _, e in ipairs(list) do
+                        if e.spellID == racialID then already = true; break end
+                    end
+                    if not already then
+                        table.insert(list, {
+                            spellID  = racialID,
+                            category = "racial",
+                            enabled  = true,
+                        })
+                    end
                 end
             end
         end

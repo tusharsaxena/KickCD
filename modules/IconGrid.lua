@@ -857,11 +857,11 @@ function IconGrid:BuildActiveList()
     local classFile, specName = getActiveSpecKey()
     if not (classFile and specName) then return end
 
-    local profileSpells = KickCD.db.profile.spells
-    local list = profileSpells
-        and profileSpells[classFile]
-        and profileSpells[classFile][specName]
-    if type(list) ~= "table" then return end
+    -- Read-only lookup via Database:GetSpellList — never lazy-creates
+    -- a per-spec table, so a class+spec the user has never customised
+    -- doesn't pollute the saved-vars with an empty entry.
+    local list = KickCD.Database and KickCD.Database:GetSpellList(classFile, specName)
+    if not list then return end
 
     for _, entry in ipairs(list) do
         if entry and entry.enabled ~= false and entry.spellID then
