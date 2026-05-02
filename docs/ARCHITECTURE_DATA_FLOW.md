@@ -25,12 +25,25 @@ StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE",
 
 The GCD-vs-real-CD visual decision is made entirely C-side via `cdObject:EvaluateRemainingDuration(curve)`. The IconGrid maintains step-shaped alpha and color curves built from `cfg.readyAlpha` / `cfg.cooldownAlpha` / `cfg.cooldownTint`: remaining ≤ ~1.6s evaluates to ready visuals, anything beyond evaluates to cooldown visuals. Lua never compares the secret remaining time directly. See `modules/IconGrid.lua` `BuildCurves`.
 
-User input (drag, settings panel widget, slash command) flows through
+Most user input (settings panel widget, slash `/kcd set`, slash
+`/kcd lock|unlock|toggle`, slash `/kcd debug log`) flows through
 `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which
 writes `db.profile.<path>` and fires
 `KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle
 each section appropriately. AceDB callbacks fire `KickCD_PROFILE_CHANGED`
-on profile change/copy/reset.
+on profile change / copy / reset.
+
+Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop`
+write `db.profile.anchors.icons` / `.castbar` directly via
+`Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they
+aren't simple key-value rows), then fire `KickCD_CONFIG_CHANGED { section
+= "general" }` and `{ section = "castbar" }` respectively so any future
+anchor-aware subscriber gets notified. The IconGrid / Castbar own
+re-anchor handlers are idempotent on the just-saved value, so the
+re-entrant dispatch is safe. The Reset position button + `/kcd
+resetposition` go through `Helpers.ResetIconPosition`, which writes the
+anchor table directly from `KickCD.DEFAULT_PROFILE` and fires the same
+`general`-section message.
 
 Slash commands that mutate schema-backed fields (e.g. `/kcd lock`,
 `/kcd debug log`) route through `Helpers.SetAndRefresh(path, value)`
@@ -46,7 +59,8 @@ cast bar use a two-step gate driven by the addon-wide
 ```
 shouldBeVisible() / isVisible()
   ── always                      → true
-  ── in_combat                   → _inCombat (PLAYER_REGEN_* flag, NOT
+  ── in_combat                   → KickCD.State.inCombat (PLAYER_REGEN_* flag
+                                    owned by core/State.lua's bootstrap, NOT
                                     InCombatLockdown — that lags by a frame)
   ── target_casting              → UnitCastingInfo / UnitChannelInfo("target") truthy
   ── target_casting_interruptible → KickCD.State.IsHostileUnitCasting("target")

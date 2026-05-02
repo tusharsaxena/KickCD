@@ -17,8 +17,9 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
     debugLog   = false,          -- mirrors /kcd debug log; toggles internal-message logging.
                                  -- Lives in section "debug" (no listener) so toggling it
                                  -- doesn't trigger Cooldowns:Rebuild / IconGrid relayout.
-    visibility = "always",       -- "always" | "in_combat" | "target_casting"
-                                 --   | "target_casting_interruptible"
+    visibility = "target_casting_interruptible",
+                                 --   "always" | "in_combat" | "target_casting"
+                                 -- | "target_casting_interruptible" (default)
                                  -- addon-wide visibility mode honored by both
                                  -- the icon grid AND the cast bar; master enable
                                  -- still wins, and unlocked frames bypass the
@@ -27,15 +28,22 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
                                  -- as the show gate and KickCD.State.ApplyInterruptibleAlpha
                                  -- (SetAlphaFromBoolean on the secret notInterruptible
                                  -- bool) as a C-side filter mask, since the flag
-                                 -- can't be compared in Lua under 12.0.
+                                 -- can't be compared in Lua under 12.0. The
+                                 -- "in_combat" branch reads KickCD.State.inCombat
+                                 -- (event-driven), not InCombatLockdown() (lags
+                                 -- the regen events by a frame).
 
     icons = {
         -- Sizing
         primarySize, secondarySize, gap, zoom,
         -- Tooltip
         showTooltip,                           -- per-icon hover tooltip; only active while locked
-        -- Layout (12 anchor points + 8 grow directions; orthogonal)
-        anchor,                                -- "TOP_LEFT" | "RIGHT_CENTER" | ...
+        -- Layout (13 anchor points + 8 grow directions; orthogonal)
+        anchor,                                -- "TOP_LEFT" | "RIGHT_MIDDLE" | ...
+                                               --   13 tokens: 12 <SIDE>_<ALIGN>
+                                               --   pairs + plain CENTER. Legacy
+                                               --   "_CENTER" alignment tokens
+                                               --   accepted via parseAnchor.
         secondaryGrow,                         -- "right_down" | "up_left" | ...
         secondaryRows, secondaryCols,
         secondaryOffsetX, secondaryOffsetY,
@@ -61,9 +69,17 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         -- Anchor: FREE = drag-positioned (saved to anchors.castbar);
         -- PRIMARY = SetPoint to the icon grid's primary icon button at
         -- (anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY).
-        anchorMode,                             -- "FREE" | "PRIMARY"
-        anchorPoint, castbarPoint,              -- 9-point anchors (TOPLEFT, TOP, …)
-        anchorOffsetX, anchorOffsetY,
+        anchorMode,                             -- "FREE" | "PRIMARY" (default PRIMARY)
+        anchorPoint, castbarPoint,              -- 13-point anchor tokens
+                                                -- (TOP_LEFT, TOP_MIDDLE, TOP_RIGHT,
+                                                --  BOTTOM_LEFT, …, RIGHT_BOTTOM,
+                                                --  CENTER) shared with Icons →
+                                                -- Layout → Anchor point. Defaults
+                                                -- TOP_LEFT / BOTTOM_LEFT. Legacy
+                                                -- 9-point tokens (TOPLEFT, TOP, …)
+                                                -- still pass through unchanged
+                                                -- via Castbar's SETPOINT_MAP.
+        anchorOffsetX, anchorOffsetY,           -- defaults 0 / 1 (1 px above primary)
         -- Orientation + fill direction; both StatusBar:SetOrientation /
         -- SetReverseFill so per-frame math stays C-side.
         orientation,                            -- "HORIZONTAL" | "VERTICAL"

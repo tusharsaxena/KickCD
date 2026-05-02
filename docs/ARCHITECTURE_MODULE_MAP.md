@@ -36,7 +36,7 @@ KickCD (AceAddon)
 │                       Reskin / RenderCast split keeps cast start hot-path light
 └── settings/
     ├── Panel.lua     — top-level category + canvas-panel framework + schema
-                        renderer + ValidateSchema + Helpers.Throttle wrapper
+                        renderer + ValidateSchema + Util.Throttle wrapper
                         on the ColorPicker commit + always-show-scrollbar patch
     ├── General.lua   — schema rows for enable/lock/visibility/scale/alpha/
                         debugLog + Reset position + Reset all buttons

@@ -18,7 +18,6 @@ The addon ships two pieces of UI (icon grid + target cast bar) sharing one drag 
 - [Cast bar module](docs/CLAUDE_CASTBAR.md) — secret-value-gated `UnitCastingInfo` / `UnitCastingDuration` handling; stacked dual widgets; per-state appearance via `C_CurveUtil.EvaluateColorValueFromBoolean`; anti-patterns to avoid.
 - [Visibility + glow gating](docs/CLAUDE_SECRET_VALUES.md#cast-interruptibility-unitcastinginfo--unitchannelinfo) — the two-step gate behind `target_casting_interruptible` (Show on hostile cast, alpha-mask uninterruptible via `SetAlphaFromBoolean`). Same pattern in `IconGrid:ApplyInterruptibilityMask`, `Icon:UpdateGlow`, `Castbar:ApplyVisibilityMask`.
 - [Frame mixin pattern](docs/CLAUDE_FRAME_MIXIN.md) — never `setmetatable` on a Blizzard widget; use `Mixin`.
-- [Stale /docs/](docs/CLAUDE_DOCS_STALE.md) — caveats on `docs/*.md` predating cast-bar removal and 12.0 secret-value handling.
 - [Testing](docs/CLAUDE_TESTING.md) — manual verification steps and slash-command coverage.
 - [Conventions](docs/CLAUDE_CONVENTIONS.md) — code style and module-level rules.
 
