@@ -29,6 +29,7 @@ L["Ka0s KickCD"]                 = "Ka0s KickCD"
 L["KickCD"]                      = "KickCD"
 L["Tracks interrupt and CC cooldowns on a movable icon grid."] =
     "Tracks interrupt and CC cooldowns on a movable icon grid."
+L["Slash Commands"]              = "Slash Commands"
 
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"

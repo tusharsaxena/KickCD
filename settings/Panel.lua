@@ -1077,6 +1077,94 @@ function Helpers.ResetAll()
 end
 
 -- ---------------------------------------------------------------------
+-- Main (parent-category) page content
+-- ---------------------------------------------------------------------
+--
+-- The parent canvas page carries the standard header (title + divider)
+-- plus a static splash: logo, the addon's one-liner, and the slash-
+-- command list. Rendered through ensureScroll(ctx) so the page picks
+-- up the same always-visible vertical scrollbar as every other tab,
+-- and so AceGUI's "List" layout left-aligns every child for free.
+
+local MAIN_LOGO_SIZE      = 300    -- exact native size of media/screenshots/kickcd.logo.tga
+local MAIN_GAP_AFTER_LOGO = 8
+local MAIN_GAP_AFTER_DESC = 12
+local MAIN_GAP_BELOW_HEAD = 6
+
+local function addBlock(scroll, height)
+    local sp = AceGUI:Create("SimpleGroup")
+    sp:SetLayout(nil)
+    sp:SetFullWidth(true)
+    sp:SetHeight(height)
+    scroll:AddChild(sp)
+    return sp
+end
+
+function Helpers.BuildMainContent(ctx)
+    local scroll = ensureScroll(ctx)
+
+    -- 1) Logo. SimpleGroup is a full-width child so AceGUI's List layout
+    -- gives it the scroll's full width to live in; the texture inside
+    -- is anchored TOPLEFT, sized to the source TGA's native dimensions
+    -- (MAIN_LOGO_SIZE × MAIN_LOGO_SIZE), so it renders pixel-exact and
+    -- left-aligned regardless of panel width.
+    local logoGroup = AceGUI:Create("SimpleGroup")
+    logoGroup:SetLayout(nil)
+    logoGroup:SetFullWidth(true)
+    logoGroup:SetHeight(MAIN_LOGO_SIZE)
+
+    local logoTex = logoGroup.frame:CreateTexture(nil, "ARTWORK")
+    logoTex:SetTexture("Interface\\AddOns\\KickCD\\media\\screenshots\\kickcd.logo.tga")
+    logoTex:SetSize(MAIN_LOGO_SIZE, MAIN_LOGO_SIZE)
+    logoTex:SetPoint("TOPLEFT", logoGroup.frame, "TOPLEFT", 0, 0)
+    scroll:AddChild(logoGroup)
+
+    addBlock(scroll, MAIN_GAP_AFTER_LOGO)
+
+    -- 2) One-liner — full-width Label (left-aligned by AceGUI default).
+    local desc = AceGUI:Create("Label")
+    desc:SetFullWidth(true)
+    desc:SetText(L["Tracks interrupt and CC cooldowns on a movable icon grid."])
+    if desc.label and desc.label.SetFontObject and _G.GameFontHighlight then
+        desc.label:SetFontObject(_G.GameFontHighlight)
+    end
+    if desc.label and desc.label.SetJustifyH then
+        desc.label:SetJustifyH("LEFT")
+    end
+    scroll:AddChild(desc)
+
+    addBlock(scroll, MAIN_GAP_AFTER_DESC)
+
+    -- 3) Separator + "Slash Commands" heading: a single AceGUI Heading
+    -- widget renders as a label flanked by side dividers, so this one
+    -- widget delivers both the visual separator and the section title.
+    local heading = AceGUI:Create("Heading")
+    heading:SetFullWidth(true)
+    heading:SetHeight(26)
+    heading:SetText(L["Slash Commands"])
+    if heading.label and heading.label.SetFontObject and _G.GameFontNormalLarge then
+        heading.label:SetFontObject(_G.GameFontNormalLarge)
+    end
+    scroll:AddChild(heading)
+
+    addBlock(scroll, MAIN_GAP_BELOW_HEAD)
+
+    -- 4) Slash-command rows pulled from KickCD.COMMANDS so this list
+    -- stays in lockstep with /kcd help — adding a command in
+    -- core/KickCD.lua surfaces here automatically.
+    for _, entry in ipairs(KickCD.COMMANDS or {}) do
+        local row = AceGUI:Create("Label")
+        row:SetFullWidth(true)
+        row:SetText(("|cffffff00/kcd %s|r  |cffffffff—|r  %s")
+            :format(entry[1], entry[2]))
+        if row.label and row.label.SetJustifyH then
+            row.label:SetJustifyH("LEFT")
+        end
+        scroll:AddChild(row)
+    end
+end
+
+-- ---------------------------------------------------------------------
 -- Tab + main-category registration
 -- ---------------------------------------------------------------------
 
@@ -1111,6 +1199,18 @@ local function RegisterPanel()
     -- Vertical-layout categories auto-render their own header, which
     -- visually clashes with our subcategory styling.
     local mainCtx = Helpers.CreatePanel("KickCDMainPanel", L["Ka0s KickCD"], { isMain = true })
+
+    -- Defer body render until first OnShow: AceGUI's ScrollFrame lays
+    -- out children against the parent's current width, which is zero at
+    -- PLAYER_LOGIN, and there's no point building widgets for a panel
+    -- the user may never open.
+    local mainRendered = false
+    mainCtx.panel:SetScript("OnShow", function()
+        if mainRendered then return end
+        mainRendered = true
+        Helpers.BuildMainContent(mainCtx)
+    end)
+
     local main = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main

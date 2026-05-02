@@ -110,6 +110,10 @@ end
 local printHelp, runDebug, listSettings, getSetting, setSetting
 local runReset, runResetAll, runResetPosition, runSpells
 
+-- Published on KickCD as KickCD.COMMANDS at the bottom of this block so
+-- the settings panel's main page can render the same list /kcd help
+-- prints. Single-source-of-truth: a new entry surfaces in chat output AND
+-- in the Settings UI without further plumbing.
 local COMMANDS = {
     {"help",          "List available commands",
         function(self) printHelp(self) end},
@@ -148,6 +152,7 @@ local COMMANDS = {
     {"debug",         "Debug subcommands — try `/kcd debug` for the list",
         function(self, rest) runDebug(self, rest) end},
 }
+KickCD.COMMANDS = COMMANDS
 
 local DEBUG_COMMANDS = {
     {"spells", "Print the watched spell list with cooldown state",
