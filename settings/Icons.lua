@@ -170,6 +170,7 @@ add{
     label = L["Border style"],
     tooltip = L["LibSharedMedia border texture (edge style) used to draw each icon's border."],
     default = "Blizzard Tooltip",
+    lsm     = "border",
     -- Function so we re-query LSM at click time (more borders may register
     -- after the schema is declared).
     values  = function() return H.LSMValues("border") end,
@@ -193,6 +194,7 @@ add{
     label = L["Font"],
     tooltip = L["Font for the cooldown text overlay."],
     default = "Friz Quadrata TT",
+    lsm     = "font",
     -- Function so we re-query LSM at click time (more fonts may register
     -- after the schema is declared).
     values  = function() return H.LSMValues("font") end,

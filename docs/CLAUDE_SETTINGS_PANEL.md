@@ -106,7 +106,17 @@ Schema widgets are AceGUI widgets — `CheckBox`, `Slider`, `Dropdown`,
 `ColorPicker`, `Heading` for sections, `Button` + `Label` inside a
 `SimpleGroup` for inline action rows — paired into 50%/50% Flow rows
 inside a single AceGUI `ScrollFrame` per tab (see
-`Helpers.RenderSchema`). This matches the visual style of
+`Helpers.RenderSchema`). LSM-backed dropdowns (`borderTexture`,
+`statusBarTexture`, font rows) carry an `lsm = "<media-type>"` field so
+`makeDropdown` swaps the stock `Dropdown` widget for the matching
+`LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` widget from
+`libs/AceGUI-3.0-SharedMediaWidgets/widget.lua` — that gives each row
+an inline preview swatch (texture / edge style / font face). The two
+widget types share the `SetLabel` / `SetList(items, order)` /
+`SetValue` / `OnValueChanged` interface, so the rest of `makeDropdown`
+is unchanged either way.
+
+This matches the visual style of
 AceConfig-driven addons (e.g. Consumable Master) and keeps every widget
 on the `Helpers.Set` / `Helpers.Get` data path. The slider's editbox is
 left to AceGUI's default formatter (integer step → integer text, float

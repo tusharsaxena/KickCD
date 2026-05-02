@@ -267,6 +267,10 @@ local function buildHeader(panel, title, opts)
     divider:SetAtlas("Options_HorizontalDivider", true)
     divider:SetPoint("TOPLEFT",  panel, "TOPLEFT",   PADDING_X, -HEADER_HEIGHT)
     divider:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING_X, -HEADER_HEIGHT)
+    -- Tint to match the title's font color (Blizzard's NORMAL_FONT_COLOR
+    -- yellow on GameFontNormalHuge). Reading from the title rather than
+    -- hardcoding the gold tracks any future theme retune.
+    divider:SetVertexColor(titleFS:GetTextColor())
 
     local defaultsBtn
     if opts.defaultsButton then
@@ -657,9 +661,25 @@ local function makeSlider(ctx, def, parent, relativeWidth)
     return s
 end
 
+-- Map a schema row's `lsm` value (the LibSharedMedia media type) to the
+-- AceGUI widget type registered by libs/AceGUI-3.0-SharedMediaWidgets.
+-- nil for any row that isn't an LSM dropdown — those use the stock
+-- AceGUI Dropdown widget below.
+local LSM_WIDGET = {
+    statusbar = "LSM30_Statusbar",
+    border    = "LSM30_Border",
+    font      = "LSM30_Font",
+}
+
 local function makeDropdown(ctx, def, parent, relativeWidth)
     parent = parent or ensureScroll(ctx)
-    local dd = AceGUI:Create("Dropdown")
+    -- LSM dropdowns get the in-tree LSM30_* widget so each row renders
+    -- with a swatch / font preview. Everything else uses the stock
+    -- AceGUI Dropdown — the two share enough of an interface
+    -- (SetLabel/SetList/SetValue/OnValueChanged) that the rest of this
+    -- function is unchanged either way.
+    local widgetType = def.lsm and LSM_WIDGET[def.lsm] or "Dropdown"
+    local dd = AceGUI:Create(widgetType)
     dd:SetLabel(def.label or def.path)
     applyWidth(dd, relativeWidth)
 
@@ -1062,7 +1082,7 @@ end
 
 local function RegisterPanel()
     if KickCD.Settings.main then return end
-    if not (Settings and Settings.RegisterVerticalLayoutCategory
+    if not (Settings and Settings.RegisterCanvasLayoutCategory
             and Settings.RegisterAddOnCategory) then
         return
     end
@@ -1074,7 +1094,13 @@ local function RegisterPanel()
     -- from registering.
     Helpers.ValidateSchema()
 
-    local main = Settings.RegisterVerticalLayoutCategory(L["Ka0s KickCD"])
+    -- Register the parent as a canvas-layout category (rather than
+    -- vertical-layout) so the parent page renders with the same custom
+    -- header — gold title + gold divider — that every subcategory uses.
+    -- Vertical-layout categories auto-render their own header, which
+    -- visually clashes with our subcategory styling.
+    local mainCtx = Helpers.CreatePanel("KickCDMainPanel", L["Ka0s KickCD"], {})
+    local main = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main
     KickCD.SettingsCategoryID = main:GetID()

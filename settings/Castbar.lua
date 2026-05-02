@@ -254,6 +254,7 @@ add{
     label = L["Font"],
     tooltip = L["Font for the spell name and cast time text."],
     default = "Friz Quadrata TT",
+    lsm     = "font",
     values  = function() return H.LSMValues("font") end,
 }
 add{
@@ -373,6 +374,7 @@ add{
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for interruptible casts."],
     default = "Blizzard",
+    lsm     = "statusbar",
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
@@ -409,6 +411,7 @@ add{
     label = L["Border style"],
     tooltip = L["LibSharedMedia border texture (edge style) for interruptible casts."],
     default = "Blizzard Tooltip",
+    lsm     = "border",
     values  = function() return H.LSMValues("border") end,
 }
 add{
@@ -433,6 +436,7 @@ add{
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
     default = "Blizzard",
+    lsm     = "statusbar",
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
@@ -469,6 +473,7 @@ add{
     label = L["Border style"],
     tooltip = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
     default = "Blizzard Tooltip",
+    lsm     = "border",
     values  = function() return H.LSMValues("border") end,
 }
 add{
