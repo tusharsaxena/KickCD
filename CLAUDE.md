@@ -2,6 +2,11 @@
 
 Guidance for Claude (or any AI agent) working on this addon. This file is an index — each section lives in its own file. Read the relevant section(s) for the task at hand; read all of them before any non-trivial change.
 
+## Workflow rules
+
+- **Never auto-commit or auto-push.** The user controls when changes get committed and pushed. After editing files, leave the changes in the working tree for the user to review. Only run `git commit` / `git push` when the user explicitly asks ("commit this", "commit all changes", "push", etc.). This holds even when working in auto mode.
+- **Never bump the version without explicit instruction.** Don't edit `KickCD.toc`'s `## Version`, `KickCD.VERSION` in `core/KickCD.lua`, the README badge, or the README "Version History" section as part of any other task. Version bumps are a release-time decision the user makes deliberately. If a task seems to imply a bump (new feature, breaking change), call it out in the reply and let the user decide. Synchronising version strings *to a value the user already chose* (e.g. "make all the version strings say 1.0.1") is fine — that's not a bump.
+
 The addon ships two pieces of UI (icon grid + target cast bar) sharing one drag lock and one visibility mode, plus a settings panel with full slash-command parity (`/kcd list|get|set|reset|resetall|resetposition|spells|debug`). Every section below points at where the rules / models for one of those pieces live.
 
 - [Overview](docs/CLAUDE_OVERVIEW.md) — what KickCD is, target version, and the cast-bar removal history.
