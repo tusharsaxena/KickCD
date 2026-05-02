@@ -1,7 +1,7 @@
 # Ka0s KickCD
 
 ![version](https://img.shields.io/badge/version-1.0.1-blue)
-![wow](https://img.shields.io/badge/WoW-Midnight%2012.0.5-orange)
+![wow](https://img.shields.io/badge/WoW-Midnight_12.0.5-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)

@@ -259,9 +259,20 @@ Helpers.AttachTooltip = attachTooltip
 -- ---------------------------------------------------------------------
 
 local function buildHeader(panel, title, opts)
+    -- Sub-pages render with an "Ka0s KickCD | <Page>" prefix so the
+    -- in-page header reads as a breadcrumb. The parent/main page opts
+    -- in to the unprefixed form via opts.isMain (otherwise it would
+    -- read "Ka0s KickCD | Ka0s KickCD"). The Blizzard left-tree label
+    -- is driven by panel.name in CreatePanel and stays unprefixed so
+    -- the tree indents under the parent without visual repetition.
+    local displayTitle = title
+    if not opts.isMain then
+        displayTitle = L["Ka0s KickCD"] .. "  |  " .. title
+    end
+
     local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING_X, -HEADER_TOP)
-    titleFS:SetText(title)
+    titleFS:SetText(displayTitle)
 
     local divider = panel:CreateTexture(nil, "ARTWORK")
     divider:SetAtlas("Options_HorizontalDivider", true)
@@ -1099,7 +1110,7 @@ local function RegisterPanel()
     -- header — gold title + gold divider — that every subcategory uses.
     -- Vertical-layout categories auto-render their own header, which
     -- visually clashes with our subcategory styling.
-    local mainCtx = Helpers.CreatePanel("KickCDMainPanel", L["Ka0s KickCD"], {})
+    local mainCtx = Helpers.CreatePanel("KickCDMainPanel", L["Ka0s KickCD"], { isMain = true })
     local main = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main
