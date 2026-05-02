@@ -1,4 +1,4 @@
-# Icon grid layout model
+# Icon grid layout
 
 `modules/IconGrid.lua` builds the visible grid from three orthogonal pieces, picked in this order:
 
@@ -10,11 +10,14 @@ The whole layout is in three small functions: `parseAnchor`, `parseGrow`, `place
 
 `secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down).
 
-**Visible-count sizing.** The block's bounding box is computed against `usedRows` / `usedCols` — the rectangular extent of the *visible* icons — not the configured `secondaryRows * secondaryCols` capacity. Wrap math inside the per-icon loop still uses the configured `cols` / `rows` so a multi-row layout wraps at the user's chosen column count, but the grid frame's footprint hugs the live icons. This makes:
+## Visible-count sizing
+
+The block's bounding box is computed against `usedRows` / `usedCols` — the rectangular extent of the *visible* icons — not the configured `secondaryRows * secondaryCols` capacity. Wrap math inside the per-icon loop still uses the configured `cols` / `rows` so a multi-row layout wraps at the user's chosen column count, but the grid frame's footprint hugs the live icons. This makes:
 
 - the cast bar's "Auto-size to icon grid" track the actual visible width / height (commit `7f016f7`),
 - the drag handle exclude phantom empty slots beyond the rendered icons,
 - a primary-only grid collapse to `primarySize × primarySize` (no leftover gap or block padding).
 
-A `CENTER` anchor is the 13th option — it stacks the secondary block on top of the primary at the grid's centerpoint. Both `MIDDLE` and `CENTER` are accepted as the perpendicular-axis token (modern profiles save `_MIDDLE`; legacy profiles saved `_CENTER`); `parseAnchor` normalizes them.
+## CENTER / MIDDLE alias
 
+A `CENTER` anchor is the 13th option — it stacks the secondary block on top of the primary at the grid's centerpoint. Both `MIDDLE` and `CENTER` are accepted as the perpendicular-axis token (modern profiles save `_MIDDLE`; legacy profiles saved `_CENTER`); `parseAnchor` normalizes them.

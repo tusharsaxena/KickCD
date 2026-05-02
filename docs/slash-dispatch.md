@@ -43,7 +43,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 
-`list`, `get`, and `set` gain new entries automatically as schema rows are added — see [ARCHITECTURE_SETTINGS_UI.md](ARCHITECTURE_SETTINGS_UI.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
+`list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 
 ## `/kcd spells <subcmd>`
 

@@ -1,4 +1,8 @@
-# Critical: 12.0 secret-value protection
+# Midnight quirks — secret values, frame mixin, and other 12.0 traps
+
+Catalog of WoW Midnight (Interface 12.0.x) behaviors that bite the addon. **Read this before touching cooldown, cast, or visibility code.** When something breaks at patch time, this is where to look first.
+
+## 12.0 secret-value protection
 
 WoW 12.0 introduced "secret values" on certain protected API returns — notably `C_Spell.GetSpellCooldown` for interrupt spells and parts of `UnitCastingInfo` / `UnitChannelInfo`. From tainted (addon) execution, **comparison and arithmetic on a secret value raise a Lua error**, and there is no addon-side strip:
 
@@ -27,7 +31,7 @@ Why curves instead of a `UNIT_SPELLCAST_SUCCEEDED` cast tracker for GCD filterin
 
 The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-based pattern; see comments in `core/Compat.lua` and `modules/IconGrid.lua` for the rationale recorded in-tree.
 
-Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
+**Do not** propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
 
 ## Cast interruptibility (`UnitCastingInfo` / `UnitChannelInfo`)
 
@@ -42,5 +46,25 @@ Do not propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — 
 
 So uninterruptible casts run the full UI lifecycle (Shown frame, started glow animation, drawn cast bar) but at `alpha = 0` — the visual filter is C-side and the Lua decision is never made. `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast. See `modules/IconGrid.lua` (`ApplyInterruptibilityMask`, `Icon:UpdateGlow`) and `modules/Castbar.lua` (`ApplyVisibilityMask`).
 
-**Plain-after-flip invariant for the Castbar's cached `current.notInterruptible`.** The Castbar caches the cast's `notInterruptible` flag on its `current` record so `ApplyState` (the secret-bool curve evaluator that runs every state change) doesn't have to re-query `UnitCastingInfo`. At cast start the cached value is whatever `UnitCastingInfo.notInterruptible` returned — plain on non-protected casts, secret-tainted in combat for casts the player has a protected interrupt against. When `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` fires mid-cast, `Castbar:OnInterruptibilityChanged` writes `current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")` — a plain Lua boolean derived from the event name, which replaces the (possibly secret) original. After that flip the field is plain; `ApplyState`'s `C_CurveUtil.EvaluateColorValueFromBoolean` accepts both plain and secret forms identically, so the curve still works either way. The invariant matters only as a reminder: don't optimise the curve into a Lua-side `if not nint then ... else ... end` that "happens to work because the value's plain post-flip" — the very next `Start(rec)` puts a fresh secret-tainted bool back into the field before the next event arrives.
+### Plain-after-flip invariant
 
+The Castbar caches the cast's `notInterruptible` flag on its `current` record so `ApplyState` (the secret-bool curve evaluator that runs every state change) doesn't have to re-query `UnitCastingInfo`. At cast start the cached value is whatever `UnitCastingInfo.notInterruptible` returned — plain on non-protected casts, secret-tainted in combat for casts the player has a protected interrupt against.
+
+When `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` fires mid-cast, `Castbar:OnInterruptibilityChanged` writes `current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")` — a plain Lua boolean derived from the event name, which replaces the (possibly secret) original. After that flip the field is plain; `ApplyState`'s `C_CurveUtil.EvaluateColorValueFromBoolean` accepts both plain and secret forms identically, so the curve still works either way.
+
+The invariant matters only as a reminder: don't optimise the curve into a Lua-side `if not nint then ... else ... end` that "happens to work because the value's plain post-flip" — the very next `Start(rec)` puts a fresh secret-tainted bool back into the field before the next event arrives.
+
+## Frame mixin pattern
+
+**Never `setmetatable(frame, t)` on a Blizzard widget.** Frame methods (`ClearAllPoints`, `Show`, `SetAlpha`, …) live on the C-side metatable, and replacing it nils them.
+
+Use `Mixin(frame, t)` (Blizzard's global) to copy fields onto the frame without touching the metatable. See `modules/IconGrid.lua` `CreateIconWidget` → `return Mixin(btn, Icon)`.
+
+## Other Midnight fingerprints
+
+These don't have load-bearing rules but are worth knowing about:
+
+- **`UNIT_SPELLCAST_SUCCEEDED` is suppressed for protected interrupts.** Mind Freeze, Pummel, Kick, Spear Hand Strike, etc. — the event simply does not fire when the player casts one of those spells in tainted scope. KickCD's GCD-vs-real-CD filter has to be C-side curves because of this; a Lua-side cast tracker can't see those events.
+- **`C_Spell.GetSpellInfo(spellID).castTime`** is fully secret in combat against an interruptable target — *every* field of the returned table comes back tainted. Don't read it as a fallback timeline; use `UnitCastingDuration` instead.
+- **`AceConfigDialog:AddToBlizOptions`** returns `(frame, categoryID)` on modern clients. `Settings.OpenToCategory` wants the **numeric ID**; passing the frame produces a range error. KickCD uses `Settings.RegisterCanvasLayoutSubcategory` directly and stores the resulting `categoryID` per panel.
+- **Blizzard parent categories with subcategories hide their own widgets in 12.0.** `/kcd config` opens the General subcategory directly via `OpenSettings`, with a one-shot retry (capped at 3) when the subcategory hasn't built yet. Opening the parent would land on an empty pane.

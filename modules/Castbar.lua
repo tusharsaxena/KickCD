@@ -1167,8 +1167,8 @@ function Castbar:OnInterruptibilityChanged(evt, unit)
     -- this point on `current.notInterruptible` is plain. ApplyState's
     -- C_CurveUtil.EvaluateColorValueFromBoolean accepts both forms (plain
     -- and secret) so this swap is safe in either direction. See
-    -- docs/CLAUDE_CASTBAR.md "Plain-after-flip" and
-    -- docs/CLAUDE_SECRET_VALUES.md for the full rationale.
+    -- docs/castbar.md and docs/midnight-quirks.md "Plain-after-flip
+    -- invariant" for the full rationale.
     if current then
         current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
         self:ApplyState()

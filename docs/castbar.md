@@ -2,19 +2,40 @@
 
 `modules/Castbar.lua` shows the player's target's cast/channel on a separately-anchored bar. The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves both. While unlocked the bar shows a placeholder preview when no target is casting so it can be grabbed.
 
-Two anchor modes (`db.profile.castbar.anchorMode`):
-- **FREE** — drag to position, persisted to `db.profile.anchors.castbar`.
-- **PRIMARY** — `SetPoint` against the icon grid's primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = TOP_LEFT`, `castbarPoint = BOTTOM_LEFT`, `(0, 1)` offset → bar sits 1 px above the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows the grid for free. The Castbar listens to `KickCD_GRID_LAYOUT` so it re-anchors when the primary icon button reference changes (e.g. when the grid rebuilds against a new spec). The same listener re-runs `Reskin` (the config-driven half of the CR-17 split) when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks the grid's actual visible footprint — `IconGrid:Layout` sizes the grid frame against `usedRows * usedCols` (the rectangular area occupied by the visible icons), not the configured `secondaryRows * secondaryCols` capacity, so disabling a spell shrinks the bar instead of leaving phantom width.
+## Anchor modes
 
-Orientation: `HORIZONTAL` and `VERTICAL`. The "rotate by 90°" mental model is faked C-side — `Reskin` swaps which physical axis maps to width vs height, then drives `StatusBar:SetOrientation` and `SetReverseFill` so all per-frame texture-growth math stays C-side. Vertical mode also rotates the spark texture 90° so it reads as a horizontal slash across the fill edge. `growDirection`'s option list depends on `orientation` (`RIGHT`/`LEFT` for horizontal, `UP`/`DOWN` for vertical) and is enforced via the schema row's `valueGate = "castbar.orientation"`. Switching orientation runs the schema row's onChange to rewrite `growDirection` to the canonical default for the new axis (`RIGHT` / `UP`) so an inconsistent pair can't linger after a flip.
+Two anchor modes (`db.profile.castbar.anchorMode`):
+
+- **FREE** — drag to position, persisted to `db.profile.anchors.castbar`.
+- **PRIMARY** — `SetPoint` against the icon grid's primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = TOP_LEFT`, `castbarPoint = BOTTOM_LEFT`, `(0, 1)` offset → bar sits 1 px above the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows the grid for free.
+
+The Castbar listens to `KickCD_GRID_LAYOUT` so it re-anchors when the primary icon button reference changes (e.g. when the grid rebuilds against a new spec). The same listener re-runs `Reskin` (the config-driven half of the CR-17 split) when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks the grid's actual visible footprint — `IconGrid:Layout` sizes the grid frame against `usedRows * usedCols` (the rectangular area occupied by the visible icons), not the configured `secondaryRows * secondaryCols` capacity, so disabling a spell shrinks the bar instead of leaving phantom width.
+
+## Orientation
+
+`HORIZONTAL` and `VERTICAL`. The "rotate by 90°" mental model is faked C-side — `Reskin` swaps which physical axis maps to width vs height, then drives `StatusBar:SetOrientation` and `SetReverseFill` so all per-frame texture-growth math stays C-side. Vertical mode also rotates the spark texture 90° so it reads as a horizontal slash across the fill edge.
+
+`growDirection`'s option list depends on `orientation` (`RIGHT`/`LEFT` for horizontal, `UP`/`DOWN` for vertical) and is enforced via the schema row's `valueGate = "castbar.orientation"`. Switching orientation runs the schema row's onChange to rewrite `growDirection` to the canonical default for the new axis (`RIGHT` / `UP`) so an inconsistent pair can't linger after a flip.
+
+## Visibility
 
 Visibility is gated by **all** of: the master enable, `castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same setting the icon grid honors). In `"in_combat"` mode the bar additionally requires the event-driven combat flag, read from `KickCD.State.inCombat` — `InCombatLockdown()` lags the regen events by a frame and isn't reliable, and the State module's bootstrap CreateFrame owns the flag-mutation listener so the bar (and the IconGrid) only have to read. While unlocked, visibility is bypassed so the user can move the bar.
 
-**`Castbar:Reskin` vs `Castbar:RenderCast` split.** Config-driven work — orientation, frame size, child anchors, font lookups, backdrop tables, spark rotation — lives in `Castbar:Reskin`, called from `OnConfigChanged` / `OnGridLayout` (auto-size mode) / `OnProfileChanged`. Cast-record-driven work — set texture, set name, seed bar values, run `ApplyState` — lives in `Castbar:RenderCast(rec)`, called from `Start`. The hot path (cast start) doesn't recompute orientation or fonts. `Castbar:onUpdate` is similarly minimal: `SetMinMaxValues` is hoisted to `Start` / `OnCastDelayed` (the duration's max only changes on those events), and `cfg().showTime` is cached on `current.showTime` at cast start so the per-frame loop is just two `SetValue` calls plus a conditional `SetFormattedText`. Don't push config-driven work back into `Start` or per-frame work — that was the pre-CR-10/CR-17 shape and it was wasteful.
+## `Reskin` vs `RenderCast` split
+
+Config-driven work — orientation, frame size, child anchors, font lookups, backdrop tables, spark rotation — lives in `Castbar:Reskin`, called from `OnConfigChanged` / `OnGridLayout` (auto-size mode) / `OnProfileChanged`. Cast-record-driven work — set texture, set name, seed bar values, run `ApplyState` — lives in `Castbar:RenderCast(rec)`, called from `Start`. The hot path (cast start) doesn't recompute orientation or fonts.
+
+`Castbar:onUpdate` is similarly minimal: `SetMinMaxValues` is hoisted to `Start` / `OnCastDelayed` (the duration's max only changes on those events), and `cfg().showTime` is cached on `current.showTime` at cast start so the per-frame loop is just two `SetValue` calls plus a conditional `SetFormattedText`.
+
+**Don't push config-driven work back into `Start` or per-frame work** — that was the pre-CR-10/CR-17 shape and it was wasteful.
+
+## Why a fresh module instead of restyling Blizzard's
 
 The original implementation broke in 12.0 because `UnitCastingInfo` positions 4–5 (`startTimeMS` / `endTimeMS`) come back as secret values in tainted scope for casts the player can interrupt with a protected interrupt. Arithmetic / compare / format / `tostring` on a secret raises a Lua error, so an `OnUpdate` doing `(GetTime() - startSec) / (endSec - startSec)` blows up the moment combat opens against an interruptable target.
 
-**The key API: `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)`.** These return a `CastingDuration` object whose `:GetTotalDuration()` / `:GetElapsedDuration()` / `:GetRemainingDuration()` / `:GetStartTime()` / `:GetEndTime()` methods supply the timing primitives. This is structurally similar to the `CooldownDuration` object KickCD already uses in `modules/Cooldowns.lua` — and **subject to the same secret-in-combat protection**. The methods *do* return secret-tainted numbers in combat for protected casts. The trick is identical to the cooldown pattern: never bind the return to a Lua local; pass the method call **directly as an argument** to a Blizzard C method that accepts secret args.
+## The key API: `UnitCastingDuration` / `UnitChannelDuration`
+
+These return a `CastingDuration` object whose `:GetTotalDuration()` / `:GetElapsedDuration()` / `:GetRemainingDuration()` / `:GetStartTime()` / `:GetEndTime()` methods supply the timing primitives. This is structurally similar to the `CooldownDuration` object KickCD already uses in `modules/Cooldowns.lua` — and **subject to the same secret-in-combat protection**. The methods *do* return secret-tainted numbers in combat for protected casts. The trick is identical to the cooldown pattern: never bind the return to a Lua local; pass the method call **directly as an argument** to a Blizzard C method that accepts secret args.
 
 The Compat shim funnels both UnitCastingInfo (for `name` / `texture` / `notInterruptible` / `spellID`) and UnitCastingDuration (for the timing object) into a single record:
 
@@ -41,15 +62,17 @@ frame.timeText:SetFormattedText(
 
 **The spark uses a static anchor, not per-frame arithmetic.** Computing `frame.spark:SetPoint("CENTER", frame.bar, "LEFT", barWidth * (elapsed / total), 0)` would error on the `elapsed / total` division. Instead, anchor once in `Reskin` to `frame.bar.interruptible:GetStatusBarTexture()`'s fill edge (RIGHT for HORIZONTAL non-reverse, LEFT for HORIZONTAL reverse, TOP / BOTTOM for the VERTICAL pair) — Blizzard reanchors the inner status texture C-side as the bar value changes, so the spark follows the fill edge automatically for both casts (texture grows toward the fill edge) and channels (texture shrinks away from it).
 
+## Secret-tainted name / texture / notInterruptible
+
 **`name` and `texture` may themselves be secret in combat for protected casts.** Pass them through to `FontString:SetText` and `Texture:SetTexture` anyway — those C methods accept secret args without erroring (Blizzard's protection is on arithmetic, not on UI render calls). Do **not** call `tostring(name)`, `:format("...", name)`, `if name == "..." then`, or any operation that'd treat the value as data — same secret-value guard the original Castbar tripped on `endTimeMS`.
 
-**`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)`, which is a Blizzard secure function that accepts a (possibly secret) boolean and a pair of plain values, returning whichever matches.
-
-**Plain-after-flip invariant for `current.notInterruptible`.** At cast start the flag is whatever `UnitCastingInfo.notInterruptible` returned (plain on non-protected casts, secret-tainted in combat for casts the player has a protected interrupt against). When the boss aura flips interruptibility mid-cast, `Castbar:OnInterruptibilityChanged` runs `current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")` — a plain Lua boolean derived from the event name, which **replaces** the (possibly secret) value that came from `UnitCastingInfo`. From that point on the field is plain. `ApplyState` then runs against a plain bool. This is safe in both directions: `C_CurveUtil.EvaluateColorValueFromBoolean` accepts plain and secret forms identically, so the curve evaluator doesn't care which one it gets — but it does mean a stale "this might be secret" mental model after the flip is wrong. Don't add a `tostring` / `not` / `==` on the field that's "only safe because the value's plain post-flip"; the very next cast puts a secret back in there before the next event flip.
+**`notInterruptible` is a secret boolean.** It stays plain on non-protected casts but is secret in the same scenario `name` / `texture` are. Don't compare or `not` it — only feed it to `C_CurveUtil.EvaluateColorValueFromBoolean(secretBool, valueIfTrue, valueIfFalse)`, which is a Blizzard secure function that accepts a (possibly secret) boolean and a pair of plain values, returning whichever matches. The plain-after-flip invariant is documented in [midnight-quirks.md](midnight-quirks.md#plain-after-flip-invariant).
 
 **Friendly-target override.** The raw `notInterruptible` from `UnitCastingInfo` reports whether the spell is *flagged* uninterruptible (whether spell-interrupt mechanics work on it at all). It does **not** consider whether *you* can practically interrupt the cast — you can't interrupt yourself, you can't interrupt friendlies, regardless of the flag. `Compat.effectiveNotInterruptible(unit, raw)` overrides the value to `true` (force "uninterruptible" visuals) when `UnitCanAttack("player", unit)` is false. This is why a mount cast on yourself colors red even though `UnitCastingInfo.notInterruptible` is `false` — the mount's API flag says "interruptible" (because Counterspell would work on you in PvP), but from the user's perspective the cast is non-interruptable.
 
-KickCD uses this to render distinct visuals for interruptible vs uninterruptible casts. The cast bar carries **stacked dual widgets** for everything that can't be expressed as a scalar curve evaluation:
+## Stacked dual widgets
+
+KickCD renders distinct visuals for interruptible vs uninterruptible casts. The cast bar carries **stacked dual widgets** for everything that can't be expressed as a scalar curve evaluation:
 
 - `frame.bgInterruptible` / `frame.bgUninterruptible` — two BACKGROUND textures, alpha-switched.
 - `frame.bar.interruptible` / `frame.bar.uninterruptible` — two `StatusBar`s at identical anchors. OnUpdate calls `SetMinMaxValues` / `SetValue` on **both**, so their inner status textures track together; only one is alpha-visible at a time.
@@ -69,11 +92,14 @@ The result of `EvaluateColorValueFromBoolean` may itself be secret-tainted; pass
 
 Texture differentiation between states (different statusbar textures, different LSM border edge files) genuinely requires two stacked widgets — the texture *path* is a string, not a number, and there's no way to curve-switch a string. Color / alpha / thickness / show-toggle differentiation only needs the curve evaluator and folds into the same widget.
 
-**Spell-name truncate cap.** `castbar.nameTruncate` (0 = unlimited) trims the spell-name string in `truncateName` before handing it to `FontString:SetText`. The helper is byte-counted via `#` (so multi-byte UTF-8 names may truncate mid-character at the edge but won't error) and short-circuits via `issecretvalue` — secret-tainted names pass through verbatim to `SetText` (which is C-side safe), losing the truncation for that frame rather than throwing. `OnConfigChanged`'s `castbar` branch re-runs `RenderCast(current)` mid-cast so a config change (truncate cap, `showName`, `iconSize` toggle, ...) takes effect immediately without waiting for the next cast.
+## Spell-name truncate cap
 
-**Anti-pattern that I tried and burned my hands on:** sourcing `castTime` from `C_Spell.GetSpellInfo(spellID)` to size a fallback timeline. The whole returned table is tainted in combat against an interruptable target — *every* field comes back secret (`name`, `castTime`, `iconID`, `minRange`, `maxRange`, `originalIconID`). Reading `info.castTime` into a Lua local and comparing it to `0` errors the same way `endTimeMS` does. UnitCastingDuration sidesteps the whole problem — there's no reason to fall back when the duration object is available.
+`castbar.nameTruncate` (0 = unlimited) trims the spell-name string in `truncateName` before handing it to `FontString:SetText`. The helper is byte-counted via `#` (so multi-byte UTF-8 names may truncate mid-character at the edge but won't error) and short-circuits via `issecretvalue` — secret-tainted names pass through verbatim to `SetText` (which is C-side safe), losing the truncation for that frame rather than throwing. `OnConfigChanged`'s `castbar` branch re-runs `RenderCast(current)` mid-cast so a config change (truncate cap, `showName`, `iconSize` toggle, …) takes effect immediately without waiting for the next cast.
 
-**Anti-patterns explicitly avoided** (each one was tried and broke; don't repeat):
+## Anti-patterns explicitly avoided
+
+Each one was tried and broke; don't repeat:
+
 - Reading `startTimeMS` / `endTimeMS` from `UnitCastingInfo` and doing `(now - start) / (end - start)` arithmetic. (The original v0.1 Castbar bug.)
 - Sourcing `castTime` from `C_Spell.GetSpellInfo(spellID)` for a fallback timeline. The whole returned table is tainted.
 - Binding `CastingDuration:Get…Duration()` returns to a Lua local for `if x > 0` / `x / y` / `x <= 0`. Pass the method calls as arguments only.
@@ -83,4 +109,3 @@ Texture differentiation between states (different statusbar textures, different 
 - Using `CastingBarFrameTemplate` and pointing it at `"target"`. Its built-in `OnUpdate` does `GetTime() < self.maxValue`, which becomes `GetTime() < <secret>` and errors once the addon sets `maxValue` from a secret `endTime`.
 - Restyling `TargetFrameSpellBar` (the default UI cast bar) instead of building a fresh frame.
 - Gating `name` / `texture` / `notInterruptible` with `issecretvalue` and replacing with placeholders. They may be secret, but `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` accept secret args without erroring — gating just makes the bar look worse for no benefit.
-

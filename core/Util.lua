@@ -1,5 +1,5 @@
 -- core/Util.lua — KickCD v0.1
--- Small helper surface (color, anchor, debounce, chat). See docs/CLAUDE_MODULE_LAYOUT.md.
+-- Small helper surface (color, anchor, debounce, chat). See docs/module-map.md.
 --
 -- Small, dependency-free helpers shared across modules:
 --   * Color {r,g,b,a} construction / unpacking / blending

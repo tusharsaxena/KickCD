@@ -49,7 +49,7 @@ end
 --     UnitChannelInfo) is secret-tainted in combat for protected casts;
 --     it MUST go straight into Frame:SetAlphaFromBoolean — the one
 --     C-side method that accepts the secret form without erroring.
--- See docs/CLAUDE_SECRET_VALUES.md "Cast interruptibility" for the
+-- See docs/midnight-quirks.md "Cast interruptibility" for the
 -- full background.
 
 --- Whether `unit` is currently casting (or channeling) AND is a unit

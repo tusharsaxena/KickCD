@@ -1,6 +1,10 @@
 # Compat layer
 
-Spell APIs have churned across recent expansions. `core/Compat.lua` provides a stable surface for those — and **only** those: it does API-shape normalisation, not feature decisions. The visibility helpers `IsHostileUnitCasting` / `ApplyInterruptibleAlpha` (the two-step gate behind `target_casting_interruptible` mode) live in `core/State.lua` instead, since they're addon-policy decisions rather than API shims. The Settings registration shim (`Settings.RegisterAddOnSetting`) was removed entirely — the canvas widgets bind directly to `db.profile` via `Helpers.Get` / `Helpers.Set` and never went through Blizzard's Setting object lifecycle.
+Spell APIs have churned across recent expansions. `core/Compat.lua` provides a stable surface for those — and **only** those: it does API-shape normalisation, not feature decisions.
+
+The visibility helpers `IsHostileUnitCasting` / `ApplyInterruptibleAlpha` (the two-step gate behind `target_casting_interruptible` mode) live in `core/State.lua` instead, since they're addon-policy decisions rather than API shims. The Settings registration shim (`Settings.RegisterAddOnSetting`) was removed entirely — the canvas widgets bind directly to `db.profile` via `Helpers.Get` / `Helpers.Set` and never went through Blizzard's Setting object lifecycle.
+
+## `Compat.*` surface
 
 | Compat function | Wraps | 12.0 caveats |
 |---|---|---|
@@ -16,12 +20,17 @@ Spell APIs have churned across recent expansions. `core/Compat.lua` provides a s
 | `Compat._firstReturn(fn, ...)` | n/a — internal helper | Returns the first return of `fn(...)` or `nil` if `fn` is missing. Used to taint-safely truthy-check `_G.UnitCastingInfo(unit)` and `_G.UnitChannelInfo(unit)` (whose first return is `name`, the only position that's reliably truthy) without binding the multi-return to a Lua local that might capture a secret-tainted positional return. |
 | `Compat.DebugInterrupt(unit)` | `_G.UnitCastingInfo` + `_G.UnitChannelInfo` introspection | The body of `/kcd debug interrupt`. Funnels every `Unit*` API return through a `safeRender` helper that maps secret-tainted values to `<secret>` rather than tostring-ing them (which would propagate the taint into `string.format` / `table.concat` and error). Reports type + secret status of every position so you can see at a glance which fields the 12.0 client is protecting for the current target. Also prints what the addon-wide visibility mode and per-icon glow triggers are configured to. |
 
-The visibility helpers (formerly in this layer; relocated in CR-27):
+## State helpers (visibility / policy)
+
+The visibility helpers were formerly in this layer; they were relocated to `core/State.lua` in CR-27 because they're addon-policy decisions, not API normalisation:
 
 | Visibility helper | Lives in | Purpose |
 |---|---|---|
 | `KickCD.State.IsHostileUnitCasting(unit)` | `core/State.lua` | Visibility GATE for `target_casting_interruptible` mode. Returns whether `unit` exists, is hostile (`UnitCanAttack`), and has an active cast/channel. Pure truthy-check — safe even when the API's positional returns are secret-tainted. |
 | `KickCD.State.ApplyInterruptibleAlpha(frame, unit, alpha)` | `core/State.lua` | The 12.0-correct interruptibility filter. Reads `notInterruptible` from `UnitCastingInfo` / `UnitChannelInfo` and passes the (possibly secret) flag straight to `Frame:SetAlphaFromBoolean(notInterruptible, 0, alpha)` — the **one** C-side method that accepts the secret bool form without erroring. Returns `true` if the mask was applied, `false` if the unit isn't hostile-casting (caller falls back to its own alpha policy). |
 
-Modules call into `Compat.*` for spell-API normalisation and `KickCD.State.*` for visibility decisions; direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell. (The IconGrid and Castbar modules read `_G.UnitCastingInfo` / `_G.UnitChannelInfo` directly for the addon-wide visibility gate — they only check whether the first return is non-nil through `Compat._firstReturn`, which is a taint-safe truthy check, and never inspect the secret positions themselves.)
+## Boundary rule
 
+Modules call into `Compat.*` for spell-API normalisation and `KickCD.State.*` for visibility decisions. **Direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell.**
+
+The IconGrid and Castbar modules read `_G.UnitCastingInfo` / `_G.UnitChannelInfo` directly for the addon-wide visibility gate — they only check whether the first return is non-nil through `Compat._firstReturn`, which is a taint-safe truthy check, and never inspect the secret positions themselves. The full secret-value rules live in [midnight-quirks.md](midnight-quirks.md).

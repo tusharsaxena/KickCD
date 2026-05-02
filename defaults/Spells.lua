@@ -1,6 +1,6 @@
 -- defaults/Spells.lua — KickCD v0.1
 -- Seeded by Database:BuildSpells() on first profile creation;
--- see docs/ARCHITECTURE_SAVED_VARIABLES.md for the merge semantics.
+-- see docs/saved-variables.md for the merge semantics.
 --
 -- Per-class+spec default cast-stopper lists. Index 1 is the primary interrupt
 -- (or, where no class-wide kick exists, the spec's best cast-stopping CC).
@@ -322,7 +322,7 @@ KickCD.DefaultSpells = {
 }
 
 -- Race-specific cast-stoppers, appended to the per-spec list at first profile
--- creation by Database:BuildSpells() (see docs/ARCHITECTURE_SAVED_VARIABLES.md).
+-- creation by Database:BuildSpells() (see docs/saved-variables.md).
 KickCD.RaceCastStoppers = {
     Tauren             = 20549,  -- War Stomp
     HighmountainTauren = 255654, -- Bull Rush

@@ -1,5 +1,5 @@
 -- core/KickCD.lua — KickCD v0.1
--- See docs/CLAUDE_MODULE_LAYOUT.md and docs/ARCHITECTURE_BOOT_SEQUENCE.md.
+-- See docs/module-map.md.
 --
 -- AceAddon bootstrap: turns the plain `KickCD` table that Compat / Util /
 -- Database have been hanging fields on into the actual AceAddon object,
@@ -592,7 +592,7 @@ end
 -- subscribes to KickCD_CONFIG_CHANGED { section = "spells" } in its own
 -- ensurePanel hook so a slash-driven mutation refreshes the open editor
 -- without a direct cross-module call from this layer (closed-bus
--- contract — see docs/CLAUDE_MESSAGE_BUS.md).
+-- contract — see docs/message-bus.md).
 local function commitSpellsChange()
     if KickCD and KickCD.SendMessage then
         KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
