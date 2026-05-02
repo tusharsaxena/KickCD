@@ -243,6 +243,8 @@ L["Border thickness (in px)"]    = "Border thickness (in px)"
 L["Border thickness in pixels."] = "Border thickness in pixels."
 L["Border color"]                = "Border color"
 L["Border color (RGBA)."]        = "Border color (RGBA)."
+L["LibSharedMedia border texture (edge style) used to draw each icon's border."] =
+    "LibSharedMedia border texture (edge style) used to draw each icon's border."
 L["Show tooltip on hover"]       = "Show tooltip on hover"
 L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."] =
     "Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."

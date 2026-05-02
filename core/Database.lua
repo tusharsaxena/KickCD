@@ -69,6 +69,11 @@ local DEFAULT_PROFILE = {
         -- toggle extends the same suppression to the swipe and text.
         suppressGCDSwipe = true,
         borderShow       = true,
+        -- LSM "border" key, fed verbatim into LSM:Fetch("border", ...) and
+        -- written onto the per-icon BackdropTemplate's edgeFile. Castbar
+        -- uses the same default for visual consistency between the two
+        -- pieces of UI.
+        borderTexture    = "Blizzard Tooltip",
         borderColor      = { 0, 0, 0, 1 },
         borderSize       = 2,
         showCooldownText = true,

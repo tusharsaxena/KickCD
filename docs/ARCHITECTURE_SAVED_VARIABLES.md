@@ -42,7 +42,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         -- Visual states (drives the alpha/tint/GCD-suppress curves in IconGrid)
         readyAlpha, cooldownAlpha, cooldownTint, suppressGCDSwipe,
         -- Border
-        borderShow, borderColor, borderSize,
+        borderShow, borderTexture, borderColor, borderSize,
         -- Annotations
         showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
         showCharges,

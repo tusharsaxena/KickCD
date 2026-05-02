@@ -204,6 +204,19 @@ local function safeUnpackColor(c, fr, fg, fb, fa)
     return KickCD.Util.Unpack(c)
 end
 
+-- Resolve an LSM border-texture key to a file path, falling back to a
+-- Blizzard-shipped tooltip border when the lib isn't loaded or the key
+-- isn't registered. Mirrors fetchBorderTexture in modules/Castbar.lua so
+-- the two pieces of UI share one fallback rule.
+local function fetchBorderTexture(name)
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM and LSM.Fetch then
+        local t = LSM:Fetch("border", name or "Blizzard Tooltip", true)
+        if t then return t end
+    end
+    return "Interface\\Tooltips\\UI-Tooltip-Border"
+end
+
 --- (Re)build the alpha/tint curves from db.profile.icons. Called once on
 --- enable and again on any "icons" config change. Cheap — these are tiny
 --- 4-point curves, recreating them per change is fine.
@@ -295,21 +308,16 @@ local function CreateIconWidget(parent)
     tex:SetAllPoints(btn)
     btn.icon = tex
 
-    -- Per-icon border. Four edge textures on a high OVERLAY sublayer so
-    -- they paint over the icon texture; the cooldown swipe lives on a
-    -- separate child frame and so isn't affected by this draw layer.
-    -- Using textures rather than a BackdropTemplate avoids cross-version
-    -- backdrop quirks.
-    local function makeEdge()
-        local t = btn:CreateTexture(nil, "OVERLAY", nil, 7)
-        t:SetColorTexture(0, 0, 0, 1)
-        t:Hide()
-        return t
-    end
-    btn.borderTop    = makeEdge()
-    btn.borderBottom = makeEdge()
-    btn.borderLeft   = makeEdge()
-    btn.borderRight  = makeEdge()
+    -- Per-icon border. A BackdropTemplate child sized over the button so
+    -- the edgeFile slices render on top of the icon texture; the cooldown
+    -- swipe lives on a separate child frame and so isn't affected. Same
+    -- approach used by modules/Castbar.lua so the two pieces of UI share
+    -- one LSM "border" texture surface.
+    local border = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+    border:SetAllPoints(btn)
+    border:SetFrameLevel(btn:GetFrameLevel() + 1)
+    border:Hide()
+    btn.border = border
 
     -- Cooldown swipe. CooldownFrameTemplate gives us the radial sweep + the
     -- built-in OmniCC integration "for free" — any OmniCC-like addon will
@@ -347,7 +355,7 @@ local function CreateIconWidget(parent)
     -- Ready glow. A plain child Frame sized to the icon; LibCustomGlow
     -- attaches its own animated children (textures + AnimationGroups)
     -- when StartGlow runs. Frame level is bumped above the cooldown
-    -- swipe and the per-icon border textures so the glow always renders
+    -- swipe and the per-icon border frame so the glow always renders
     -- on top.
     local glow = CreateFrame("Frame", nil, btn)
     glow:SetAllPoints(btn)
@@ -781,39 +789,19 @@ function Icon:ApplyAppearance(cfg)
     if show then
         local size = cfg.borderSize or 1
         if size < 1 then size = 1 end
-        local r, g, b, a = safeUnpackColor(cfg.borderColor, 0, 0, 0, 1)
-
-        for _, t in ipairs({
-            self.borderTop, self.borderBottom,
-            self.borderLeft, self.borderRight,
-        }) do
-            t:SetColorTexture(r, g, b, a)
-            t:ClearAllPoints()
-            t:Show()
-        end
-
-        -- Top / bottom span the full width; left / right inset between them
-        -- so the corners overlap correctly and we don't double-paint pixels.
-        self.borderTop:SetPoint("TOPLEFT",  self, "TOPLEFT",  0, 0)
-        self.borderTop:SetPoint("TOPRIGHT", self, "TOPRIGHT", 0, 0)
-        self.borderTop:SetHeight(size)
-
-        self.borderBottom:SetPoint("BOTTOMLEFT",  self, "BOTTOMLEFT",  0, 0)
-        self.borderBottom:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0, 0)
-        self.borderBottom:SetHeight(size)
-
-        self.borderLeft:SetPoint("TOPLEFT",    self, "TOPLEFT",    0, -size)
-        self.borderLeft:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", 0,  size)
-        self.borderLeft:SetWidth(size)
-
-        self.borderRight:SetPoint("TOPRIGHT",    self, "TOPRIGHT",    0, -size)
-        self.borderRight:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", 0,  size)
-        self.borderRight:SetWidth(size)
+        -- BackdropTemplate's SetBackdrop wants the table verbatim each call.
+        -- edgeFile is an LSM border texture; edgeSize is the thickness of
+        -- that texture's edge slices. Color tints the texture via
+        -- SetBackdropBorderColor.
+        self.border:SetBackdrop({
+            edgeFile = fetchBorderTexture(cfg.borderTexture),
+            edgeSize = size,
+        })
+        self.border:SetBackdropBorderColor(
+            safeUnpackColor(cfg.borderColor, 0, 0, 0, 1))
+        self.border:Show()
     else
-        self.borderTop:Hide()
-        self.borderBottom:Hide()
-        self.borderLeft:Hide()
-        self.borderRight:Hide()
+        self.border:Hide()
     end
 end
 

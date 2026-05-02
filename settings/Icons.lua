@@ -148,22 +148,14 @@ add{
 
 -- Border -------------------------------------------------------------
 -- Order produces:
---     [Show border]                         (solo, left half)
---     [Border thickness] | [Border color]
+--     [Show border] | [Border color]
+--     [Border style] | [Border thickness]
 add{
     panel = "icons", section = "icons", group = L["Border"],
     path  = "icons.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a thin border around each icon."],
     default = true,
-    solo    = true,
-}
-add{
-    panel = "icons", section = "icons", group = L["Border"],
-    path  = "icons.borderSize", type = "number",
-    label = L["Border thickness (in px)"],
-    tooltip = L["Border thickness in pixels."],
-    default = 2, min = 0, max = 4, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", group = L["Border"],
@@ -171,6 +163,23 @@ add{
     label = L["Border color"],
     tooltip = L["Border color (RGBA)."],
     default = { 0, 0, 0, 1 },
+}
+add{
+    panel = "icons", section = "icons", group = L["Border"],
+    path  = "icons.borderTexture", type = "string",
+    label = L["Border style"],
+    tooltip = L["LibSharedMedia border texture (edge style) used to draw each icon's border."],
+    default = "Blizzard Tooltip",
+    -- Function so we re-query LSM at click time (more borders may register
+    -- after the schema is declared).
+    values  = function() return H.LSMValues("border") end,
+}
+add{
+    panel = "icons", section = "icons", group = L["Border"],
+    path  = "icons.borderSize", type = "number",
+    label = L["Border thickness (in px)"],
+    tooltip = L["Border thickness in pixels."],
+    default = 2, min = 0, max = 4, step = 1, fmt = "%d px",
 }
 
 -- Annotations --------------------------------------------------------
