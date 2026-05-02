@@ -143,12 +143,6 @@ If more spells are enabled than the block holds, the extras are dropped — the 
 | Cast bar doesn't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a layout pass. Auto-size only governs the long axis; the orthogonal dimension stays at the configured Width / Height. |
 | I want a clean slate. | One panel: `/kcd reset general` / `icons` / `castbar` / `spells`. Everything except profiles: `/kcd resetall` (or General → Reset all settings). Just the icon grid's screen position: `/kcd resetposition`. A specific spec's spell list: `/kcd spells reset CLASS SPEC` or the Spells panel's per-spec **Defaults** button. |
 
-## Contributing
-
-Architecture reference for contributors: [ARCHITECTURE.md](ARCHITECTURE.md). Covers the module map, boot sequence, the `Cooldowns → SPELL_STATE → IconGrid` data-flow pipeline, the schema-driven settings UI, the closed AceEvent message contract, the saved-variables shape, and the project's lock / anchor / Compat / slash-dispatch conventions.
-
-Agent-facing guidance (rules, anti-patterns, 12.0 secret-value handling, testing surface): [CLAUDE.md](CLAUDE.md).
-
 ## Issues and feature requests
 
 All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/kickcd/issues](https://github.com/tusharsaxena/kickcd/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.

@@ -19,7 +19,7 @@ Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colore
 - **Target cast bar** mirroring the player's target via secret-value-gated `UnitCastingDuration` / `UnitChannelDuration`. Stacked dual widgets render distinct interruptible / uninterruptible appearance via `C_CurveUtil.EvaluateColorValueFromBoolean`.
 - **Per-class+spec spell list** with default seed plus user add / remove / enable / disable / re-categorize. CLI parity for every list operation.
 - **Settings panel** integrated into Blizzard's AddOns settings + matching `/kcd` slash CLI for every panel-shaped operation. Schema is the single source of truth — see [settings-panel.md](settings-panel.md).
-- **AceDB profiles** (default scope per-character; user can switch to default / per-class / per-realm via the Profiles tab).
+- **AceDB profiles** (every character starts on the shared `"Default"` profile; user can opt into per-character / per-class / per-realm scope via the Profiles tab).
 
 ## Out of scope
 

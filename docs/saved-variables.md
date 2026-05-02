@@ -1,6 +1,6 @@
 # Saved variables
 
-Single saved-variable: `KickCDDB`, an AceDB-3.0 store. Default scope is per-character (the `true` arg in `AceDB:New`); the user can switch to default / per-class / per-realm via the Profiles tab.
+Single saved-variable: `KickCDDB`, an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS)` with no third argument, so every character on the account starts on the shared `"Default"` profile. The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See `core/Database.lua:508-512` for the rationale comment.
 
 Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
