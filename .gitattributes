@@ -1,0 +1,15 @@
+# Project-wide line-ending policy.
+#
+# Every text file lives as CRLF in the working tree AND in the stored
+# blob — no `core.autocrlf` flip-flopping per developer, no LF stragglers
+# from tools that bypass git's filters (sed, WSL editors, etc.).
+#
+# `text=auto` lets git auto-detect text vs binary by content, so PNG /
+# JPG / TGA / fonts / sounds in media/ and libs/ are never line-end
+# converted. `eol=crlf` then forces every detected-text file to CRLF on
+# both checkout and add.
+#
+# To bring the index in line with this policy in one shot, run:
+#   git add --renormalize .
+#   git add .gitattributes
+* text=auto eol=crlf
