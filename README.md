@@ -93,7 +93,7 @@ A single visibility selector governs **both** the icon grid and the cast bar. Th
 | `target_casting` | Only while the current target has a cast or channel in progress. |
 | `target_casting_interruptible` | Only while a hostile target is casting **and** the cast is interruptible. Uninterruptible casts hide. (Default.) |
 
-The same 4 values drive the per-icon glow trigger (Icons → Ready glow → Trigger), independently for primary and secondary icons.
+The per-icon glow trigger (Icons → Ready glow → Trigger) reuses three of these values — `always`, `target_casting`, `target_casting_interruptible` — plus a `never` option to disable the glow entirely. (`in_combat` is intentionally absent; the glow is a per-cast cue, not a combat-state indicator.) Primary and secondary icons each carry their own trigger.
 
 ### Cast bar anchoring (Cast bar → Position)
 

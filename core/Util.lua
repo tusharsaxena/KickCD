@@ -1,10 +1,10 @@
 -- core/Util.lua — KickCD v0.1
--- Small helper surface (color, anchor, debounce, chat). See docs/module-map.md.
+-- Small helper surface (color, anchor, throttle, chat). See docs/module-map.md.
 --
 -- Small, dependency-free helpers shared across modules:
---   * Color {r,g,b,a} construction / unpacking / blending
+--   * Color {r,g,b,a} unpacking
 --   * Frame anchor save + restore (point/relativePoint/x/y)
---   * Debounce wrapper using C_Timer.After to coalesce setting writes
+--   * Throttle wrapper using C_Timer.After to coalesce setting writes
 --   * print() with the addon's chat prefix
 
 KickCD = KickCD or {}
@@ -14,16 +14,6 @@ KickCD.Util = Util
 -- ---------------------------------------------------------------------------
 -- Colors
 -- ---------------------------------------------------------------------------
-
---- Construct a color table.
--- Convenience wrapper that always produces a 4-element {r,g,b,a} array
--- so module code never has to worry about a missing alpha.
--- @param r,g,b numbers in [0,1]
--- @param a optional alpha in [0,1]; defaults to 1
--- @return {r, g, b, a}
-function Util.RGB(r, g, b, a)
-    return { r or 0, g or 0, b or 0, a or 1 }
-end
 
 --- Unpack a color into the 4 numbers WoW APIs expect.
 -- Accepts either an array-style {r,g,b,a} or a hash {r=,g=,b=,a=}.
@@ -35,23 +25,6 @@ function Util.Unpack(c)
         return c.r or 1, c.g or 1, c.b or 1, c.a or 1
     end
     return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
-end
-
---- Linearly blend two colors: t=0 returns a, t=1 returns b.
--- Useful for "ready → on-cooldown" tint transitions.
--- @param a,b color tables (array or hash)
--- @param t   number in [0,1]
--- @return    {r,g,b,a}
-function Util.Blend(a, b, t)
-    t = math.max(0, math.min(1, t or 0))
-    local ar, ag, ab, aa = Util.Unpack(a)
-    local br, bg, bb, ba = Util.Unpack(b)
-    return {
-        ar + (br - ar) * t,
-        ag + (bg - ag) * t,
-        ab + (bb - ab) * t,
-        aa + (ba - aa) * t,
-    }
 end
 
 -- ---------------------------------------------------------------------------
@@ -122,34 +95,16 @@ function Util.DeepCopy(v)
 end
 
 -- ---------------------------------------------------------------------------
--- Throttle / Debounce
+-- Throttle
 -- ---------------------------------------------------------------------------
---
--- Two coalescers with deliberately different semantics. The choice is:
---
---   Throttle — fires AT MOST once per `ms` window starting from the
---              FIRST call in a burst. Subsequent calls during the
---              window only update the args; the trailing call wins.
---              Use when you want a steady cadence during a sustained
---              burst (e.g. mirror an in-progress edit to the live
---              module ~20 times/sec while typing continues).
---
---   Debounce — fires `ms` after the LAST call in a burst; every new
---              call during the window resets the timer. Use when you
---              want the side effect to run only once the burst has
---              settled (e.g. commit a finished search query, persist
---              once the user has stopped dragging a slider).
---
--- Both wrappers always invoke `fn` with the args from the most recent
--- call (the trailing call wins). Args are stored in a fresh table per
--- burst so the captured C_Timer.After callback always sees the right
--- snapshot when it fires.
 
 --- Leading-edge throttle: fires AT MOST once per `ms` window starting
 --- from the first call in a burst. The trailing call's args win — i.e.
 --- if the wrapper is called 50 times in 50 ms, `fn` runs once with the
 --- 50th call's args at t=ms (or earlier if the burst stops within the
---- window).
+--- window). Use when you want a steady cadence during a sustained
+--- burst (e.g. mirror an in-progress edit to the live module ~20 times
+--- per sec while typing continues).
 --- @param ms number of milliseconds per window
 --- @param fn function to invoke
 --- @return wrapped function
@@ -167,38 +122,6 @@ function Util.Throttle(ms, fn)
         scheduled = true
         C_Timer.After(delay, function()
             scheduled = false
-            local args = pendingArgs
-            pendingArgs = nil
-            if args then
-                fn(unpack(args, 1, args.n))
-            end
-        end)
-    end
-end
-
---- Trailing-edge debounce: fires `ms` after the LAST call in a burst.
---- Every new call resets the timer, so `fn` only runs once the burst
---- has been quiet for `ms`. The trailing call's args win.
---- @param ms number of milliseconds of quiet required after the last call
---- @param fn function to invoke
---- @return wrapped function
-function Util.Debounce(ms, fn)
-    local delay = (ms or 0) / 1000
-    -- Each call reschedules: bump the generation counter and capture
-    -- it in the closure for the new C_Timer.After. When that timer
-    -- fires, it only invokes `fn` if its generation still matches the
-    -- current one — earlier timers from the same burst short-circuit
-    -- silently. (C_Timer.After exposes no Cancel handle; the generation
-    -- check is the standard workaround.)
-    local generation = 0
-    local pendingArgs
-
-    return function(...)
-        pendingArgs = { n = select("#", ...), ... }
-        generation = generation + 1
-        local thisGen = generation
-        C_Timer.After(delay, function()
-            if thisGen ~= generation then return end
             local args = pendingArgs
             pendingArgs = nil
             if args then

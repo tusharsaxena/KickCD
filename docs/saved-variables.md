@@ -1,6 +1,6 @@
 # Saved variables
 
-Single saved-variable: `KickCDDB`, an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS)` with no third argument, so every character on the account starts on the shared `"Default"` profile. The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See `core/Database.lua:508-512` for the rationale comment.
+Single saved-variable: `KickCDDB`, an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS, true)` — the `true` third argument expands to `"Default"` per AceDB-3.0, so every character on the account starts on the shared `"Default"` profile. (Omitting the third argument falls back to the per-character profile, which contradicts the docs and was the source of "every fresh character lands on its own profile" reports.) The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See the rationale comment on the `AceDB:New` call in `core/Database.lua` for the in-tree note.
 
 Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
