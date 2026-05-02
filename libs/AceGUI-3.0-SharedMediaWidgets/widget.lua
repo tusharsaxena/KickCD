@@ -49,13 +49,15 @@ local function renderStatusbarSwatch(swatch, name)
     swatch.tex:SetTexCoord(0, 1, 0, 1)
 end
 
-local function renderBorderSwatch(swatch, name)
-    swatch.tex:Show()
+local function renderBorderSwatch(swatch, _name)
+    -- No swatch preview for borders — every reasonable LSM border is a
+    -- tile sheet and the corner art either reads as a hollow box (when
+    -- shown at scale) or as a meaningless smudge (when stretched to the
+    -- swatch's aspect ratio), neither of which helps a user pick. The
+    -- dropdown's text label identifies the choice; the live in-game
+    -- border on the icons / cast bar is the real preview.
+    swatch.tex:Hide()
     swatch.text:Hide()
-    swatch.tex:SetTexture(LSM:Fetch("border", name) or "")
-    swatch.tex:SetVertexColor(0.85, 0.85, 0.85, 1)
-    -- Borders are tile sheets — show the top-left corner as the preview.
-    swatch.tex:SetTexCoord(0, 0.25, 0, 0.25)
 end
 
 local function renderFontSwatch(swatch, name)
@@ -73,7 +75,7 @@ end
 -- ---------------------------------------------------------------------
 
 local ITEM_HEIGHT = 22
-local SWATCH_W    = 80
+local SWATCH_W    = 40
 local SWATCH_H    = 14
 
 local function createItemButton(parent, renderSwatch)

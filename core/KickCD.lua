@@ -831,34 +831,53 @@ end
 -- Settings entry point
 -- ---------------------------------------------------------------------------
 
---- Open the Blizzard Settings panel to KickCD's category.
+--- Open the Blizzard Settings panel to KickCD's parent page.
 -- Settings layer is set up by settings/Panel.lua, which assigns
--- KickCD.SettingsCategoryID. If that hasn't run yet we print rather than
--- error so this is safe to call at any time after PLAYER_LOGIN.
---
--- 12.0 hides a parent category's own widgets whenever the category has
--- subcategories. The Ka0s KickCD parent is therefore empty; falling
--- through to it would land the user on a blank page, which is worse
--- than the "settings still loading" message. So when the General
--- subcategory hasn't registered yet, we schedule a deferred retry
--- (3 attempts, 0.5s apart) and never fall through to the parent ID.
+-- KickCD.SettingsCategoryID + KickCD.Settings.main. If that hasn't
+-- run yet we schedule a deferred retry (3 attempts, 0.5s apart) and
+-- ultimately print rather than error so this is safe to call at any
+-- time after PLAYER_LOGIN.
 -- @param input slash-command tail (ignored for v0.1)
 local OPEN_SETTINGS_MAX_RETRIES = 3
 local OPEN_SETTINGS_RETRY_DELAY = 0.5
+
+-- Force-expand the parent category in the Blizzard Settings left tree
+-- so every sub-page is visible after we open the parent (Blizzard's
+-- CategoryList only auto-expands a parent's tree when one of its
+-- *children* is selected, never on parent self-select). The whole
+-- thing is wrapped in pcall: SettingsPanel internals
+-- (CategoryList / GetCategoryList / GetCategoryEntry / SetExpanded)
+-- are private API and could shift between patches; if any call goes
+-- missing we fall through to "parent opened, tree collapsed" rather
+-- than erroring out — the user is then one click away from what they
+-- wanted, same as if we hadn't tried at all.
+local function expandMainCategory(main)
+    if not (main and SettingsPanel) then return end
+    pcall(function()
+        local list = SettingsPanel.GetCategoryList
+            and SettingsPanel:GetCategoryList()
+            or SettingsPanel.CategoryList
+        if not (list and list.GetCategoryEntry) then return end
+        local entry = list:GetCategoryEntry(main)
+        if entry and entry.SetExpanded then
+            entry:SetExpanded(true)
+        end
+    end)
+end
+
 function KickCD:OpenSettings(input)
     local p = self.Util and self.Util.print or print
     if Settings and Settings.OpenToCategory then
-        local generalSub = self.Settings and self.Settings.sub
-                           and self.Settings.sub.general
-        if generalSub and generalSub.GetID then
+        local main = self.Settings and self.Settings.main
+        if main and main.GetID then
             self._openRetries = nil
-            Settings.OpenToCategory(generalSub:GetID())
+            Settings.OpenToCategory(main:GetID())
+            expandMainCategory(main)
             return
         end
-        -- Subcategory not yet registered. Defer rather than falling
-        -- through to KickCD.SettingsCategoryID — that ID names the
-        -- parent, which 12.0 hides when it has children, so the user
-        -- would otherwise land on an empty page.
+        -- Settings layer not registered yet. Defer rather than printing
+        -- "not registered" — a /kcd config the moment after login can
+        -- race the PLAYER_LOGIN-deferred RegisterPanel.
         self._openRetries = (self._openRetries or 0) + 1
         if self._openRetries <= OPEN_SETTINGS_MAX_RETRIES and C_Timer and C_Timer.After then
             p("Settings still loading, opening shortly…")

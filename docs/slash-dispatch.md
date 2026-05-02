@@ -19,7 +19,7 @@ Each row is `{ name, description, fn }`. The dispatcher:
 - `/kcd <unknown>` → "unknown command" + help.
 - `/kcd options` is aliased to `/kcd config` for backward compat.
 
-`/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`) opens the **General subcategory directly**, not the parent category — in WoW 12.0 a Blizzard parent category with subcategories hides its own widgets, so opening the parent would show an empty pane. If the subcategory hasn't registered yet (a `/kcd config` immediately after login can race the per-tab builders), `OpenSettings` schedules a one-shot retry via `C_Timer.After(0.5, ...)` — capped at 3 attempts — rather than falling through to the empty parent. `InCombatLockdown()` is checked before opening so the protected category-switch doesn't fail mid-fight; the user gets a one-line "cannot open during combat" print instead.
+`/kcd config` (and the `OpenSettings()` API behind `KickCD:OpenSettings`) lands the user on the **Ka0s KickCD parent page** (logo + slash-command list) with the subcategory tree expanded in the left nav so all five sibling tabs are visible. Implementation: `Settings.OpenToCategory(main:GetID())` to display the parent page, then a defensive `expandMainCategory()` that reaches into `SettingsPanel:GetCategoryList():GetCategoryEntry(main):SetExpanded(true)` to force the tree open (Blizzard's CategoryList only auto-expands a parent's tree when one of its *children* is selected, never on parent self-select). The expand call is wrapped in `pcall` because `SettingsPanel.CategoryList` / `GetCategoryEntry` / `SetExpanded` are Blizzard private API that could shift between patches — if any link breaks we silently fall through to "parent opened, tree collapsed", one click away from the same end state. If the panel hasn't registered yet (a `/kcd config` immediately after login can race the `PLAYER_LOGIN`-deferred `RegisterPanel`), `OpenSettings` schedules a deferred retry via `C_Timer.After(0.5, ...)` — capped at 3 attempts. `InCombatLockdown()` is checked before opening so the protected category-switch doesn't fail mid-fight; the user gets a one-line "cannot open during combat" print instead.
 
 `OnSlashCommand` lowercases only the command name and preserves case in the rest of the input, so schema paths like `icons.primarySize` survive unchanged through `/kcd set ...`. `runDebug` and `runSpells` lowercase their own subcommand for backward compat.
 
@@ -32,7 +32,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | Command | Purpose | Notes |
 |---|---|---|
 | `help` | Print the help index. | Iterates `COMMANDS`. |
-| `config` | Open the settings panel. | Combat-gated; targets the General subcategory. |
+| `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | Routes through `Helpers.SetAndRefresh("locked", ...)` so the General → "Lock frame" checkbox refreshes and any future onChange wired onto the schema row fires. Falls back to a direct write if the settings layer isn't loaded yet. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; uses `Helpers.FindSchema(path)`. |
