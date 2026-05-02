@@ -72,7 +72,7 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
 - AceGUI-3.0
 - LibSharedMedia-3.0
-- AceGUI-3.0-SharedMediaWidgets (provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Cast bar / Icons panels for inline preview swatches)
+- AceGUI-3.0-SharedMediaWidgets (vendored upstream r65; provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Cast bar / Icons panels). `core/LSMPatch.lua` is an in-tree fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar; lives in addon code so future lib refreshes don't blow it away.
 - LibCustomGlow-1.0
 
 Several additional Ace modules (AceBucket, AceComm, AceHook, AceLocale, AceSerializer, AceTab, AceTimer) ship as part of the standard Ace3 distribution under `libs/` but are not loaded by the TOC.

@@ -20,7 +20,7 @@ libs\AceConsole-3.0\AceConsole-3.0.lua
 libs\AceConfig-3.0\AceConfig-3.0.xml
 libs\AceGUI-3.0\AceGUI-3.0.xml
 libs\LibSharedMedia-3.0\lib.xml
-libs\AceGUI-3.0-SharedMediaWidgets\widget.lua
+libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
 
 # Locales
@@ -32,6 +32,7 @@ core\Constants.lua
 core\State.lua
 core\Util.lua
 core\Database.lua
+core\LSMPatch.lua
 core\KickCD.lua
 
 # Defaults

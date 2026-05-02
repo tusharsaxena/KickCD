@@ -45,6 +45,12 @@ local fallbackLabel    -- shown when AceGUI isn't available
 local selectedClass
 local selectedSpec
 local rebuildScheduled
+-- True until the first OnShow consumes it. Re-armed in OnHide whenever
+-- the entire Settings UI hides (full close), so the next /kcd config
+-- re-seeds selectedClass/Spec to the player's current pair via
+-- seedSelectionToPlayer(). False during tab swaps within an open
+-- Settings session, so the user's dropdown choice survives them.
+local freshOpen = true
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -57,6 +63,54 @@ local function sortedKeys(t)
     end
     table.sort(keys)
     return keys
+end
+
+-- Resolve the player's CURRENT class file token (e.g. "MAGE") and the
+-- normalised token of their currently-active spec (e.g. "FROST"). Both
+-- gated by the corresponding KickCD.DefaultSpells presence so callers
+-- never set a (class, spec) pair the editor can't render. Returns
+-- (class, spec) or (class, nil) for classes whose current spec isn't
+-- in defaults, or (nil, nil) when GetSpecialization is unavailable.
+local function getPlayerClassSpec()
+    local _, classFile = UnitClass and UnitClass("player")
+    if not (classFile and KickCD.DefaultSpells
+            and KickCD.DefaultSpells[classFile]) then
+        return nil, nil
+    end
+    local specToken
+    if GetSpecialization and GetSpecializationInfo then
+        local idx = GetSpecialization()
+        if idx then
+            local _, specName = GetSpecializationInfo(idx)
+            if specName and KickCD.Util and KickCD.Util.NormalizeSpecToken then
+                specToken = KickCD.Util.NormalizeSpecToken(specName)
+            end
+        end
+    end
+    if specToken and not KickCD.DefaultSpells[classFile][specToken] then
+        specToken = nil
+    end
+    return classFile, specToken
+end
+
+-- Reset the editor's selection to the player's current class+spec.
+-- Called whenever the Spells editor should "default to my own spec":
+--   * on initial panel build (so the first /kcd config lands on the
+--     right spec without requiring user interaction)
+--   * when the entire Settings UI closes (so the next /kcd config
+--     resets — within an open Settings session, switching tabs
+--     preserves whatever spec the user picked from the dropdown)
+local function seedSelectionToPlayer()
+    selectedClass, selectedSpec = nil, nil
+    local classFile, specToken = getPlayerClassSpec()
+    if not classFile then return end
+    selectedClass = classFile
+    if specToken then
+        selectedSpec = specToken
+    else
+        local specs = sortedKeys(KickCD.DefaultSpells[classFile])
+        selectedSpec = specs[1]
+    end
 end
 
 -- Profile-spells accessor for the few read-only sites that still need
@@ -821,10 +875,32 @@ local function ensurePanel()
         end)
     end
 
-    panel:SetScript("OnShow", function() Spells:RefreshRows() end)
+    panel:SetScript("OnShow", function()
+        -- "Fresh open" = the user just brought the entire Settings UI
+        -- back up (vs. just switching tabs within an already-open
+        -- session). Re-seed the spec dropdown to the player's CURRENT
+        -- spec on every fresh open so it tracks in-game spec changes
+        -- that happened while Settings was closed. Within an open
+        -- session, tab-swapping preserves whatever spec the user
+        -- selected in the dropdown.
+        if freshOpen then
+            seedSelectionToPlayer()
+            freshOpen = false
+        end
+        Spells:RefreshRows()
+    end)
     panel:SetScript("OnHide", function()
         releaseAceGUITree()
         if fallbackLabel then fallbackLabel:Hide() end
+        -- Distinguish "user closed the entire Settings UI" from "user
+        -- switched to another tab": SettingsPanel:IsShown() is false in
+        -- the first case, true in the second. Arm the fresh-open flag
+        -- only on full close so the next OnShow re-queries the player's
+        -- current spec; tab swaps leave the flag false and the user's
+        -- dropdown choice survives.
+        if not (SettingsPanel and SettingsPanel:IsShown()) then
+            freshOpen = true
+        end
     end)
 
     if KickCD.RegisterMessage then
@@ -865,14 +941,10 @@ local function Build(mainCategory)
     end
     if not ensurePanel() then return nil end
 
-    -- Seed dropdowns from the player's class so the editor opens to the
-    -- user's "current" list by default.
-    local _, classFile = UnitClass("player")
-    if classFile and KickCD.DefaultSpells and KickCD.DefaultSpells[classFile] then
-        selectedClass = selectedClass or classFile
-        local specs = sortedKeys(KickCD.DefaultSpells[classFile])
-        selectedSpec = selectedSpec or specs[1]
-    end
+    -- selectedClass / selectedSpec are seeded by the OnShow handler the
+    -- first time the user enters the Spells tab (freshOpen starts true).
+    -- The OnHide handler re-arms freshOpen on full Settings close so
+    -- subsequent /kcd config re-queries the player's current spec.
 
     return Settings.RegisterCanvasLayoutSubcategory(mainCategory, panel, L["Spells"])
 end

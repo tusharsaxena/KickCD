@@ -220,9 +220,14 @@ local DEFAULT_PROFILE = {
         },
     },
 
+    -- Default position for both the icon grid and the cast bar is
+    -- CENTER + 0,200 (above screen centre). Castbar's default
+    -- anchorMode is "PRIMARY" so it follows the icon grid out of the
+    -- box; the FREE-mode anchor only matters once the user opts into
+    -- Cast bar → Position → Free.
     anchors = {
-        icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 },
-        castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 },
+        icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
+        castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
     },
 
     -- spells[CLASS][SPEC] = { { spellID, category, enabled }, ... } in priority order.
@@ -505,11 +510,15 @@ function Database:Init()
         return
     end
 
-    -- Omit the third argument so AceDB uses the shared "Default" profile
-    -- as the default scope on first login. Every character on the account
-    -- starts on the same "Default" profile; the user can opt into per-
-    -- character / per-class / per-realm via the Profiles panel.
-    local db = AceDB:New("KickCDDB", DEFAULTS)
+    -- Pass `true` as the third argument so AceDB uses the shared
+    -- "Default" profile as the default scope on first login (AceDB-3.0
+    -- expands `true` → "Default"; omitting the argument falls back to
+    -- the per-character profile, which contradicts the docs and was
+    -- the source of "every fresh character lands on its own profile"
+    -- reports). Every character on the account now starts on the same
+    -- "Default" profile; the user can opt into per-character /
+    -- per-class / per-realm via the Profiles panel.
+    local db = AceDB:New("KickCDDB", DEFAULTS, true)
     self.db    = db
     KickCD.db  = db
 

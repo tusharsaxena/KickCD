@@ -718,6 +718,19 @@ local function makeDropdown(ctx, def, parent, relativeWidth)
     dd:SetCallback("OnValueChanged", function(_, _, value)
         Helpers.Set(def.path, def.section, value)
         fireOnChange(def, value)
+        -- Upstream AceGUI-3.0-SharedMediaWidgets fire OnValueChanged
+        -- from their ContentOnClick WITHOUT first calling SetValue —
+        -- they assume the caller is AceConfigDialog and that its
+        -- post-set `AceConfigDialog:Open(...)` will re-render the
+        -- panel with a fresh widget showing the new value. KickCD's
+        -- canvas-layout panel doesn't re-render on value change, so
+        -- without an explicit push the LSM widget's `self.value` and
+        -- displayed text stay stale (the underlying db.profile write
+        -- in Helpers.Set above DID land — only the UI looks like a
+        -- no-op). Standard AceGUI Dropdown already SetValue'd in its
+        -- own click handler before firing, so this assignment is
+        -- idempotent for the non-LSM path.
+        dd:SetValue(value)
     end)
 
     attachTooltip(dd, def.label, def.tooltip)
