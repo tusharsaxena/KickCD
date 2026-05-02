@@ -147,6 +147,10 @@ If more spells are enabled than the block holds, the extras are dropped — the 
 
 All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/kickcd/issues](https://github.com/tusharsaxena/kickcd/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.
 
+## Testing
+
+There is no automated test harness — verification is manual, in-game. The end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run it before tagging a release or after refreshing libs / bumping `## Interface:`.
+
 ## Version History
 
 | Version | Changes |

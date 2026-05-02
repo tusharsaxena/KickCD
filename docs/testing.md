@@ -2,6 +2,8 @@
 
 There is no automated test harness. Verification is manual.
 
+For end-to-end test scenarios — fresh install, visibility modes, lock/drag, cast bar auto-size, spec/talent/pet rebuilds, profile lifecycle, secret-value safety, etc. — see [smoke-tests.md](smoke-tests.md). The matrices below catalogue what each slash and debug command produces; they're the reference the smoke tests lean on.
+
 ## Slash command coverage
 
 - `/kcd` — print the slash command help. `/kickcd` is a long-form alias that routes to the same handler. Every printed line should carry a cyan `[KCD]` prefix (added by `Util.print`); each help row should show the slash invocation in yellow and the description in white.
@@ -23,9 +25,4 @@ There is no automated test harness. Verification is manual.
 
 ## In-game spot checks
 
-- Target a hostile caster, fire your interrupt, confirm the icon desaturates without errors. The Lua error frame (or BugSack / BugGrabber) is the primary regression signal.
-- Set General → Visibility to "When target is casting an interruptible spell". Targeting a friendly unit, your own self, or a hostile mob casting a non-interruptible spell should all leave the addon hidden. Targeting a hostile mob mid-interruptible cast should show it; the bar/icons should stay hidden during the uninterruptible phase of a cast that toggles via `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events.
-- Unlock with `/kcd unlock`, drag the icon grid and (in FREE anchor mode) the cast bar; relock with `/kcd lock`; reload UI; positions should persist.
-- Switch spec; the Cooldowns module should rebuild the watched list and the IconGrid should re-acquire pooled icons against the new spec's default spell list.
-- Talent change in the active spec (e.g. swap a choice node, summon / dismiss a hunter pet): the watched list and grid should rebuild immediately via the `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED` events without waiting for a spec change.
-- Set Cast bar → Anchor mode = "Anchored to primary icon" with auto-size on, then resize the icon grid (e.g. change rows / cols, hide a spell via `/kcd spells disable`); the cast bar's long axis should track the grid's actual visible footprint, not the configured row × col capacity.
+The end-to-end scenarios that used to live here — interrupt-on-hostile, visibility-mode matrix, drag/reload persistence, spec / talent / pet rebuilds, cast bar auto-size — are now part of the comprehensive suite in [smoke-tests.md](smoke-tests.md). Run that file before claiming a non-trivial change works.

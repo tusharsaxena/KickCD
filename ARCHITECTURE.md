@@ -43,7 +43,8 @@ IconGrid:Layout              ─▶                KickCD_GRID_LAYOUT     ─▶
 | Cast bar (stacked dual widgets, Reskin/RenderCast split, anti-patterns) | `modules/Castbar.lua` | [docs/castbar.md](docs/castbar.md) |
 | Schema-driven canvas-layout settings panel; widget primitives; validation | `settings/Panel.lua`, `settings/{General,Icons,Castbar,Spells,Profiles}.lua` | [docs/settings-panel.md](docs/settings-panel.md) |
 | Slash dispatch tables and command catalogue | `core/KickCD.lua` | [docs/slash-dispatch.md](docs/slash-dispatch.md) |
-| Manual verification recipe + slash-command + debug coverage matrix | — | [docs/testing.md](docs/testing.md) |
+| End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [docs/smoke-tests.md](docs/smoke-tests.md) |
+| Slash-command + debug coverage matrices (what each command produces) | — | [docs/testing.md](docs/testing.md) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [docs/conventions.md](docs/conventions.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [docs/scope.md](docs/scope.md) |
 

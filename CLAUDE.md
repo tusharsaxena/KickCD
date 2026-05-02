@@ -45,7 +45,7 @@ local F = KickCD.Foo
 
 - **Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink. Either path works for git and file tools.
 - **`.gitattributes`** enforces `* text=auto eol=crlf` — every text file lives as CRLF in the working tree and the stored blob, no `core.autocrlf` flip-flopping per developer. New files added by an agent should match.
-- **No automated tests.** Validation is manual, in-game. See [docs/testing.md](docs/testing.md) for the slash-coverage matrix and in-game spot-check list.
+- **No automated tests.** Validation is manual, in-game. End-to-end scenarios (cold install, visibility modes, lock/drag, cast bar auto-size, spec/talent/pet rebuilds, secret-value safety, profiles) live in [docs/smoke-tests.md](docs/smoke-tests.md); the slash + debug coverage matrices the smoke tests lean on live in [docs/testing.md](docs/testing.md).
 - **Default-spell coverage source.** `defaults/Spells.lua` is synced from Baratus's "Class Info - Wow" Google Sheet, Midnight tab. Column reference and refresh procedure live in [docs/scope.md](docs/scope.md#default-spell-coverage).
 
 ## Response style for this repo
@@ -74,5 +74,6 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 | Cast bar — secret-value-gated, dual stacked widgets, anti-patterns | [docs/castbar.md](docs/castbar.md) | Touching `modules/Castbar.lua`. |
 | Schema-driven canvas-layout settings panel; widget primitives; validation | [docs/settings-panel.md](docs/settings-panel.md) | Adding an option, a tab, or a custom-body widget. |
 | Slash dispatch tables (`COMMANDS` / `DEBUG_COMMANDS` / `SPELLS_COMMANDS`) | [docs/slash-dispatch.md](docs/slash-dispatch.md) | Adding or modifying a slash subcommand. |
-| Manual verification recipe + slash-command + debug coverage matrix | [docs/testing.md](docs/testing.md) | Before claiming a non-trivial change works. |
+| End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | [docs/smoke-tests.md](docs/smoke-tests.md) | Before claiming a non-trivial change works; before tagging a release. |
+| Slash-command + debug coverage matrices (what each command produces) | [docs/testing.md](docs/testing.md) | Looking up the exact behavior of a `/kcd …` invocation. |
 | Code style, saved-variable boundary, anchor format, `_G.X` vs bare X | [docs/conventions.md](docs/conventions.md) | Style / boundary questions. |
