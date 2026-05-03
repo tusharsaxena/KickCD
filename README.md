@@ -153,8 +153,8 @@ There is no automated test harness — verification is manual, in-game. The end-
 
 ## Version History
 
-| Version | Changes |
-| --- | --- |
-| 1.1.0 | Vendored LSM dropdown widgets with texture/font previews; first-run defaults<br>Added KickCD_COMBAT_STATE bus message; consolidated PLAYER_REGEN_* in core/State.lua<br>Filtered UNIT_SPELLCAST_* events to target unit via private dispatch frames<br>Settings panel breadcrumb separator now an inline atlas chevron (font-agnostic)<br>OpenSettings combat-lockdown gate now applies to every entry point<br>Fixed dropdown selection; clarified `/kcd reset spells` description<br>Removed dead Settings exports/shims, `_maxC` record field, unused Util exports<br>Internals: code-review M1–M5 cleanup; smoke-test suite; doc drift fixes |
-| 1.0.1 | Version bump to 1.0.1-release to trigger build. |
-| 1.0.0 | Initial release … yay! |
+| Version | Date | Notes |
+| --- | --- | --- |
+| 1.1.0 | 2026-05-03 | Vendored LibSharedMedia dropdown widgets with texture/font/border previews and first-run defaults. Added `KickCD_COMBAT_STATE` bus message, consolidating `PLAYER_REGEN_*` in `core/State.lua`. Filtered `UNIT_SPELLCAST_*` events to the target unit via private dispatch frames. Settings panel: parent page now renders logo + slash-command list, sub-pages get breadcrumb headers with an atlas-chevron separator, and `OpenSettings` is combat-lockdown-gated at the function. Unified cyan `[KCD]` chat prefix across all slash output. Docs collapsed into a single root `CLAUDE.md` / `ARCHITECTURE.md` with expanded `docs/` index, comprehensive smoke-test suite, and review artifact conventions. Internal cleanup: dropped dead Settings/Util exports and unused record fields; codified no-auto-commit / no-version-bump workflow; CRLF normalized via `.gitattributes`. |
+| 1.0.1 | 2026-05-02 | Build retrigger; no functional changes. |
+| 1.0.0 | 2026-05-02 | Initial release. Interrupt/CC cooldown icon grid (12-anchor + 8-way grow) and target cast bar with interruptibility coloring and auto-size. Schema-driven five-tab settings panel with full `/kcd` slash parity, two-column layout, and per-tab Defaults. 12.0 secret-value-safe pipeline for cooldowns, cast info, glow, and dimming. Visibility modes (always / in_combat / target_casting / target_casting_interruptible) with per-icon ready glow via LibCustomGlow. Per-spec spell lists seeded from Baratus's Midnight class-info sheet, with hover tooltips and known/unknown glyphs. AceDB profiles defaulting to Shared. Ace3 + LibSharedMedia + LibCustomGlow vendored. |
