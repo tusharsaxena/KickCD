@@ -141,7 +141,7 @@ local COMMANDS = {
         function(self, rest) getSetting(self, rest) end},
     {"set",           "Set a setting — `/kcd set <path> <value>` (try /kcd list)",
         function(self, rest) setSetting(self, rest) end},
-    {"reset",         "Reset a panel to defaults — `/kcd reset <general|icons|castbar|spells>`",
+    {"reset",         "Reset a panel to defaults. `/kcd reset spells` rebuilds EVERY spec's list — for one spec, use `/kcd spells reset`.",
         function(self, rest) runReset(self, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
         function(self) runResetAll(self) end},

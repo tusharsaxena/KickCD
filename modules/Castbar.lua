@@ -73,9 +73,10 @@ local current
 -- Populated by Castbar:OnGridLayout when the payload carries
 -- `gridFrame` / `primaryIcon`; ApplyAnchor / Reskin prefer these
 -- over the public accessors so the bar follows the grid without a
--- second cross-module reach. The fallback to KickCD.IconGrid:GetGridFrame
--- / :GetPrimaryIcon stays in place for the FIRST tick after enable when
--- no KickCD_GRID_LAYOUT has fired yet, and for older senders that
+-- second cross-module reach. The fallback to
+-- `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
+-- `:GetPrimaryIcon()` stays in place for the FIRST tick after enable
+-- when no KickCD_GRID_LAYOUT has fired yet, and for older senders that
 -- broadcast an empty payload.
 local lastGridLayout = { gridFrame = nil, primaryIcon = nil }
 
@@ -99,14 +100,15 @@ end
 
 -- Resolve the icon-grid's parent grid frame. Prefers the value carried
 -- by the most recent KickCD_GRID_LAYOUT payload (CR-29 sender-side);
--- falls back to KickCD.IconGrid:GetGridFrame() for the first tick after
--- enable (no payload yet) and for older senders that still broadcast
--- an empty payload.
+-- falls back to KickCD:GetModule("IconGrid", true):GetGridFrame() for
+-- the first tick after enable (no payload yet) and for older senders
+-- that still broadcast an empty payload. GetModule(name, true) is the
+-- AceAddon idiom for an optional cross-module accessor — silent on
+-- missing, so a disabled IconGrid yields nil here without erroring.
 local function resolveGridFrame()
     if lastGridLayout.gridFrame then return lastGridLayout.gridFrame end
-    if KickCD.IconGrid and KickCD.IconGrid.GetGridFrame then
-        return KickCD.IconGrid:GetGridFrame()
-    end
+    local m = KickCD:GetModule("IconGrid", true)
+    if m and m.GetGridFrame then return m:GetGridFrame() end
     return nil
 end
 
@@ -114,9 +116,8 @@ end
 -- payload-preferred / accessor-fallback policy as resolveGridFrame.
 local function resolvePrimaryIcon()
     if lastGridLayout.primaryIcon then return lastGridLayout.primaryIcon end
-    if KickCD.IconGrid and KickCD.IconGrid.GetPrimaryIcon then
-        return KickCD.IconGrid:GetPrimaryIcon()
-    end
+    local m = KickCD:GetModule("IconGrid", true)
+    if m and m.GetPrimaryIcon then return m:GetPrimaryIcon() end
     return nil
 end
 
@@ -1303,10 +1304,10 @@ end
 ---   { gridFrame = <Frame>, primaryIcon = <Button|nil>,
 ---     width = <number>, height = <number> }
 --- Older senders broadcast `{}`; we cope by falling back to the public
---- KickCD.IconGrid:GetGridFrame() / :GetPrimaryIcon() accessors via
---- resolveGridFrame / resolvePrimaryIcon. The accessor fallback also
---- handles the FIRST tick after enable when no KickCD_GRID_LAYOUT has
---- fired yet.
+--- accessors `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
+--- `:GetPrimaryIcon()` via resolveGridFrame / resolvePrimaryIcon. The
+--- accessor fallback also handles the FIRST tick after enable when no
+--- KickCD_GRID_LAYOUT has fired yet.
 function Castbar:OnGridLayout(_evt, payload)
     if not frame then return end
     -- Cache the payload's references for ApplyAnchor / Reskin.

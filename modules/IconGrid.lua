@@ -1751,6 +1751,3 @@ end
 function IconGrid:GetPrimaryIcon()
     return ordered[1]
 end
-
--- Expose the module so the orchestrator's debug slash commands can poke at it.
-KickCD.IconGrid = IconGrid
