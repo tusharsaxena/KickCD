@@ -2,7 +2,7 @@
 
 All inter-module communication uses `AceEvent`-style messages with a fixed name set. New entries belong here, in module headers, and in [data-flow.md](data-flow.md). **Don't invent new messages without a reason** — the closed list is what keeps cross-module coupling auditable.
 
-## The four messages
+## The five messages
 
 | Message | Sender | Listeners | Payload |
 |---|---|---|---|
@@ -10,6 +10,7 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 | `KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set` (every schema-row write); `core/KickCD.lua` (lock/unlock, debug log toggle); `settings/Panel.lua Helpers.ResetIconPosition`; `settings/Spells.lua` (debounced editor commits); `modules/IconGrid.lua OnDragStop` (anchor save → `general`); `modules/Castbar.lua OnDragStop` (anchor save → `castbar`) | `IconGrid`, `Cooldowns`, `Castbar` | `{ section = "general"\|"icons"\|"castbar"\|"spells" }` |
 | `KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback for `OnProfileChanged` / `Copied` / `Reset`) | `IconGrid`, `Cooldowns`, `Castbar`, `settings/Spells.lua` | `{ newProfileKey }` |
 | `KickCD_GRID_LAYOUT` | `IconGrid:Layout` (every pass, including the empty-list case) | `Castbar` | `{ gridFrame, primaryIcon, width, height }` |
+| `KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame (the only `PLAYER_REGEN_*` registration in the addon) | `IconGrid`, `Castbar` | `{ inCombat }` |
 
 ## `KickCD_SPELL_STATE` payload
 
@@ -40,6 +41,12 @@ Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master e
 `IconGrid:Layout` fires `{ gridFrame, primaryIcon, width, height }` after every layout pass. `gridFrame` is the parent frame (`KickCDIconGrid`); `primaryIcon` is the first laid-out icon button or `nil` when the active spell list is empty; `width` / `height` are the post-layout bounding box of the grid.
 
 Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `KickCD.IconGrid:GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `KickCD.IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available for callers that haven't yet adopted the payload form.
+
+## `KickCD_COMBAT_STATE` payload
+
+`core/State.lua`'s bootstrap frame is the only file in the addon that registers `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`. It writes `KickCD.State.inCombat`, then fires `KickCD_COMBAT_STATE` so `IconGrid` and `Castbar` see an explicit ordered transition signal — the flag write is guaranteed to land before any subscriber's handler runs, instead of relying on TOC-load-order to ensure the bootstrap frame's `RegisterEvent` happened before each module's. The same message also fires on `PLAYER_LOGIN` (after the initial `InCombatLockdown()` seed).
+
+Payload `{ inCombat }` carries the freshly-written flag value, but subscribers typically read `KickCD.State.inCombat` directly (the same source `shouldBeVisible` / `isVisible` use elsewhere) rather than trusting the payload, so the two reads stay in lockstep.
 
 ## Adding or removing a message
 

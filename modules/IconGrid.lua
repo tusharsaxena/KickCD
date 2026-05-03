@@ -33,6 +33,7 @@
 --                                "general" re-applies lock, scale, alpha,
 --                                  master-enable visibility, anchor.
 --   KickCD_PROFILE_CHANGED   -> rebuild + re-anchor + reapply general
+--   KickCD_COMBAT_STATE      -> RefreshVisibility (drives "in_combat" mode)
 --   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild
 --
 -- Emits:
@@ -147,10 +148,12 @@ end
 
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
 -- shared, single-owner flag driven off PLAYER_REGEN_DISABLED /
--- PLAYER_REGEN_ENABLED in one place. We deliberately do NOT consult
--- InCombatLockdown() inside shouldBeVisible — that function reports
--- protected-frame lockdown state, which can lag the regen events by
--- a frame. The event-driven flag is the source of truth.
+-- PLAYER_REGEN_ENABLED in one place, fanned out via the
+-- KickCD_COMBAT_STATE message that this module subscribes to. We
+-- deliberately do NOT consult InCombatLockdown() inside shouldBeVisible
+-- — that function reports protected-frame lockdown state, which can lag
+-- the regen events by a frame. The event-driven flag is the source of
+-- truth.
 
 -- Decide whether the grid should be visible right now. Master enable is
 -- the gate; visibility mode then narrows that to a subset of states.
@@ -1467,11 +1470,15 @@ function IconGrid:OnEnable()
     self:Layout()
     self:RefreshVisibility()
 
-    -- Internal-message subscriptions. The grid is a strict subscriber and
-    -- never sends.
+    -- Internal-message subscriptions. The grid never sends; KickCD_GRID_LAYOUT
+    -- is fired from IconGrid:Layout itself, not via a SendMessage in OnEnable.
     self:RegisterMessage("KickCD_SPELL_STATE",     "OnSpellState")
     self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    -- Combat-state fan-out from core/State.lua. We no longer hook
+    -- PLAYER_REGEN_* directly — State owns the only registration so the
+    -- flag write and the visibility refresh stay ordered by construction.
+    self:RegisterMessage("KickCD_COMBAT_STATE",    "OnCombatStateChanged")
 
     -- Spec / login events: rebuild against the new spec's spell list. The
     -- Cooldowns module hooks the same events to refresh its watched set, so
@@ -1490,8 +1497,8 @@ function IconGrid:OnEnable()
     -- panel just works without re-registering. RefreshVisibility short-
     -- circuits to "always show" in "always" mode, so the only cost when
     -- the user hasn't opted into a gated mode is a few cheap callbacks.
-    self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
-    self:RegisterEvent("PLAYER_REGEN_ENABLED",          "OnRegenEnabled")
+    -- Combat transitions arrive via the KickCD_COMBAT_STATE message
+    -- subscription above, not raw PLAYER_REGEN_* events.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("UNIT_SPELLCAST_START",          "OnTargetCastEvent")
     self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnTargetCastEvent")
@@ -1679,12 +1686,10 @@ end
 
 --- Re-evaluate visibility on combat-state transitions. The flag itself
 --- is owned by core/State.lua's bootstrap listener; this handler runs
---- only for its side effect (the visibility refresh).
-function IconGrid:OnRegenDisabled()
-    self:RefreshVisibility()
-end
-
-function IconGrid:OnRegenEnabled()
+--- only for its side effect (the visibility refresh). Payload carries
+--- `inCombat` but we read State.inCombat for consistency with
+--- shouldBeVisible's other read sites.
+function IconGrid:OnCombatStateChanged()
     self:RefreshVisibility()
 end
 

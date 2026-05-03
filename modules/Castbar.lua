@@ -28,6 +28,7 @@
 --                             icon button reference may have changed) and
 --                             re-apply auto-size (the grid frame may have
 --                             resized).
+--   KickCD_COMBAT_STATE    -> re-evaluate / Stop (drives "in_combat" mode).
 --
 -- This file fires no messages. The bar is a strict subscriber.
 --
@@ -80,10 +81,11 @@ local lastGridLayout = { gridFrame = nil, primaryIcon = nil }
 
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
 -- shared, single-owner flag driven off the PLAYER_REGEN_* events in
--- one place. Reading InCombatLockdown() inside the regen-disabled
--- handler is unreliable (the lockdown state lags the event by a
--- frame), so we maintain the flag via the events themselves; this
--- module just reads the shared one.
+-- one place, fanned out via the KickCD_COMBAT_STATE message that this
+-- module subscribes to. Reading InCombatLockdown() inside the
+-- regen-disabled handler is unreliable (the lockdown state lags the
+-- event by a frame), so we maintain the flag via the events themselves;
+-- this module just reads the shared one.
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
@@ -1075,8 +1077,10 @@ function Castbar:OnEnable()
     self:Reskin()
     self:ApplyLock()
 
-    self:RegisterEvent("PLAYER_REGEN_DISABLED",         "OnRegenDisabled")
-    self:RegisterEvent("PLAYER_REGEN_ENABLED",          "OnRegenEnabled")
+    -- Combat transitions arrive via the KickCD_COMBAT_STATE message
+    -- subscription below, not raw PLAYER_REGEN_* events. State owns
+    -- the only registration so the flag write and the visibility
+    -- refresh stay ordered by construction.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("UNIT_SPELLCAST_START",          "OnCastStart")
     self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnCastStop")
@@ -1097,6 +1101,7 @@ function Castbar:OnEnable()
     self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
     self:RegisterMessage("KickCD_GRID_LAYOUT",     "OnGridLayout")
+    self:RegisterMessage("KickCD_COMBAT_STATE",    "OnCombatStateChanged")
 
     -- Snap to the current target's state on enable in case we logged in
     -- staring at a casting mob.
@@ -1121,17 +1126,11 @@ end
 -- as the visibility mode dictates. In "in_combat" mode entering combat
 -- reveals the bar (if a target cast is ongoing), and leaving combat
 -- tears it down even if the cast continues. The combat flag itself is
--- owned by core/State.lua's bootstrap listener; these handlers run
--- only for their side effect (Reevaluate / Stop).
-function Castbar:OnRegenDisabled()
-    if isVisible() then
-        self:Reevaluate()
-    else
-        self:Stop()
-    end
-end
-
-function Castbar:OnRegenEnabled()
+-- owned by core/State.lua's bootstrap listener; this handler runs
+-- only for its side effect (Reevaluate / Stop). Payload carries
+-- `inCombat` but isVisible() reads State.inCombat directly so we
+-- ignore it here.
+function Castbar:OnCombatStateChanged()
     if isVisible() then
         self:Reevaluate()
     else

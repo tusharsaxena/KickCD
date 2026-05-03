@@ -2,10 +2,10 @@
 --
 -- Tiny shared "live state" namespace. Owns process-global flags that
 -- multiple modules need to read identically (today: combat state).
--- Modules subscribe to PLAYER_REGEN_* themselves for SIDE EFFECTS
--- (e.g. IconGrid:RefreshVisibility, Castbar:Reevaluate / :Stop), but
--- they NEVER mutate the flag — this file's bootstrap listener owns
--- that, so the flag stays in lockstep across modules by construction.
+-- This file's bootstrap listener owns the PLAYER_REGEN_* registration
+-- and the flag write, then fans out KickCD_COMBAT_STATE so subscribers
+-- (IconGrid, Castbar) see an explicit ordered transition signal. They
+-- NEVER mutate the flag — this is the only writer.
 --
 -- Why a separate file (not a slot in core/Util.lua):
 --   * Util.lua is a pile of dependency-free helpers; State.lua owns
@@ -139,5 +139,14 @@ boot:SetScript("OnEvent", function(self, event)
         -- PLAYER_LOGIN fires once per session; release the listener once
         -- we've seeded the flag (mirrors core/LSMPatch.lua's pattern).
         self:UnregisterEvent("PLAYER_LOGIN")
+    end
+    -- Fan out the freshly-written flag so subscribers (IconGrid,
+    -- Castbar) see an explicit ordered transition signal instead of
+    -- relying on TOC-load-order to ensure core/State.lua's RegisterEvent
+    -- fired before any module's. Guard documents the AceAddon-mixin race
+    -- (KickCD has SendMessage by PLAYER_LOGIN time, but the guard makes
+    -- the dependency explicit). See docs/message-bus.md.
+    if KickCD and KickCD.SendMessage then
+        KickCD:SendMessage("KickCD_COMBAT_STATE", { inCombat = State.inCombat })
     end
 end)
