@@ -26,7 +26,6 @@ KickCD.L = L
 
 -- Addon shell
 L["Ka0s KickCD"]                 = "Ka0s KickCD"
-L["KickCD"]                      = "KickCD"
 L["Tracks interrupt and CC cooldowns on a movable icon grid."] =
     "Tracks interrupt and CC cooldowns on a movable icon grid."
 L["Slash Commands"]              = "Slash Commands"
@@ -56,10 +55,8 @@ L["Master alpha"]                = "Master alpha"
 L["Global opacity for the icon grid."] =
     "Global opacity for the icon grid."
 L["Reset position"]              = "Reset position"
-L["Reset"]                       = "Reset"
 L["Restore the icon grid to its default screen position."] =
     "Restore the icon grid to its default screen position."
-L["Internal-message logging"]    = "Internal-message logging"
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
 L["General visibility"]          = "General visibility"
@@ -77,25 +74,16 @@ L["Visual states"]               = "Visual states"
 L["Annotations"]                 = "Annotations"
 
 -- Icons tab — controls
-L["Primary size"]                = "Primary size"
 L["Pixel size of the primary interrupt icon."] =
     "Pixel size of the primary interrupt icon."
 L["Secondary size"]              = "Secondary size"
 L["Secondary icon size as a fraction of the primary."] =
     "Secondary icon size as a fraction of the primary."
 L["Layout"]                      = "Layout"
-L["Arrange icons horizontally or vertically."] =
-    "Arrange icons horizontally or vertically."
 L["Horizontal"]                  = "Horizontal"
 L["Vertical"]                    = "Vertical"
-L["Primary anchor"]              = "Primary anchor"
-L["Where the primary icon sits relative to the secondaries."] =
-    "Where the primary icon sits relative to the secondaries."
 L["Left"]                        = "Left"
 L["Right"]                       = "Right"
-L["Top"]                         = "Top"
-L["Bottom"]                      = "Bottom"
-L["Gap"]                         = "Gap"
 L["Pixel gap between adjacent icons."] =
     "Pixel gap between adjacent icons."
 L["Ready alpha"]                 = "Ready alpha"
@@ -155,20 +143,18 @@ L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
 L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"
 L["Invalid value for %s"]        = "Invalid value for %s"
 L["Allowed values: %s"]          = "Allowed values: %s"
+L["Cannot open settings during combat."] = "Cannot open settings during combat."
 
 -- Spells editor
-L["Class"]                       = "Class"
 L["Specialization"]              = "Specialization"
 L["Add spell..."]                = "Add spell..."
 L["Remove"]                      = "Remove"
-L["Reset to defaults"]           = "Reset to defaults"
 L["Move up"]                     = "Move up"
 L["Move down"]                   = "Move down"
 L["Spell ID or name"]            = "Spell ID or name"
 L["Invalid spell"]               = "Invalid spell"
 L["Reset all spells for this spec to addon defaults?"] =
     "Reset all spells for this spec to addon defaults?"
-L["Category"]                    = "Category"
 
 -- Categories (closed set; matches CATEGORIES in settings/Spells.lua)
 L["interrupt"]                   = "Interrupt"
@@ -183,7 +169,6 @@ L["racial"]                      = "Racial"
 L["other"]                       = "Other"
 
 -- Misc / debug
-L["Settings not yet registered"] = "Settings not yet registered"
 L["Yes"]                         = "Yes"
 L["No"]                          = "No"
 L["OK"]                          = "OK"

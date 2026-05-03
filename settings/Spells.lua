@@ -17,7 +17,6 @@ local Compat = KickCD.Compat or {}
 local Util   = KickCD.Util   or {}
 
 local Spells = {}
-KickCD.SettingsSpells = Spells
 
 -- The closed category set. Mirrors the keys in locales/enUS.lua.
 local CATEGORIES = {
@@ -951,11 +950,4 @@ end
 
 if KickCD.Settings and KickCD.Settings.RegisterTab then
     KickCD.Settings.RegisterTab("spells", Build)
-end
-
--- Back-compat shim: earlier code paths called Spells:Register() directly.
-function Spells:Register()
-    if KickCD.Settings and KickCD.Settings.main then
-        Build(KickCD.Settings.main)
-    end
 end

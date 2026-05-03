@@ -1227,7 +1227,6 @@ local function RegisterPanel()
     local main = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
     KickCD.Settings.main = main
-    KickCD.SettingsCategoryID = main:GetID()
 
     for _, key in ipairs(KickCD.Settings.order) do
         local fn = KickCD.Settings.builders[key]

@@ -11,7 +11,6 @@ local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
 local L = KickCD.L or setmetatable({}, { __index = function(_, k) return k end })
 
 local Profiles = {}
-KickCD.SettingsProfiles = Profiles
 
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
@@ -67,24 +66,4 @@ end
 
 if KickCD.Settings and KickCD.Settings.RegisterTab then
     KickCD.Settings.RegisterTab("profiles", Build)
-end
-
--- Back-compat shim: earlier code paths drove Profiles:Register() from
--- a PLAYER_LOGIN ticker. The unified pattern routes everything through
--- KickCD.Settings.Register, but a legacy caller can still invoke this.
--- Returns the sub-category (or nil) so the caller can stash it on
--- KickCD.Settings.sub themselves if they need to.
-function Profiles:Register()
-    if KickCD.Settings and KickCD.Settings.sub
-       and KickCD.Settings.sub.profiles then
-        return true
-    end
-    if KickCD.Settings and KickCD.Settings.main then
-        local sub = Build(KickCD.Settings.main)
-        if sub then
-            KickCD.Settings.sub.profiles = sub
-            return true
-        end
-    end
-    return false
 end

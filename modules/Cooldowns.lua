@@ -180,7 +180,6 @@ function Cooldowns:PollSpell(spellID)
         cdObject       = cdObject,
         chargeCdObject = chargeCdObject,
         charges        = cur,
-        _maxC          = maxC,
     }
 end
 
