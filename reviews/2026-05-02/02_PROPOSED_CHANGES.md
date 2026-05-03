@@ -1,6 +1,6 @@
 # Ka0s KickCD — Proposed Changes (HLD + LLD)
 
-Companion to `REVIEW_FINDINGS.md`. Findings collapse into five themes; each theme has an HLD section explaining the rationale and an LLD section with concrete change-sets keyed by finding ID.
+Companion to `01_FINDINGS.md`. Findings collapse into five themes; each theme has an HLD section explaining the rationale and an LLD section with concrete change-sets keyed by finding ID.
 
 ---
 

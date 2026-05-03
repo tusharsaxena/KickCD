@@ -47,7 +47,8 @@ Visibility / interruptibility decisions for both the icon grid and the cast bar 
 shouldBeVisible() / isVisible()
   ── always                       → true
   ── in_combat                    → KickCD.State.inCombat (PLAYER_REGEN_* flag
-                                     owned by core/State.lua's bootstrap, NOT
+                                     owned by core/State.lua's bootstrap and
+                                     fanned out via KickCD_COMBAT_STATE; NOT
                                      InCombatLockdown — that lags by a frame)
   ── target_casting               → UnitCastingInfo / UnitChannelInfo("target") truthy
   ── target_casting_interruptible → KickCD.State.IsHostileUnitCasting("target")
@@ -94,7 +95,7 @@ Castbar:Reevaluate ──► Compat.GetCastingInfo("target")
                        the secret notInterruptible bool.
 ```
 
-The IconGrid emits `KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `KickCD.IconGrid:GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
+The IconGrid emits `KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `KickCD:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
 
 ## Lock and anchor
 

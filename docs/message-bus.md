@@ -40,7 +40,7 @@ Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master e
 
 `IconGrid:Layout` fires `{ gridFrame, primaryIcon, width, height }` after every layout pass. `gridFrame` is the parent frame (`KickCDIconGrid`); `primaryIcon` is the first laid-out icon button or `nil` when the active spell list is empty; `width` / `height` are the post-layout bounding box of the grid.
 
-Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `KickCD.IconGrid:GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `KickCD.IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available for callers that haven't yet adopted the payload form.
+Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `KickCD:GetModule("IconGrid", true):GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available via `KickCD:GetModule("IconGrid", true)` for callers that haven't yet adopted the payload form.
 
 ## `KickCD_COMBAT_STATE` payload
 

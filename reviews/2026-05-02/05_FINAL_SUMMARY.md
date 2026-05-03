@@ -142,7 +142,7 @@ settings/Spells.lua      |  10 +---
 
 ### Smoke tests — pending in-game verification
 
-The plan calls out manual smoke tests for M1, M3, M4, M5. The full review-specific checklist lives in [REVIEW_SMOKE_TESTS.md](REVIEW_SMOKE_TESTS.md). Headlines:
+The plan calls out manual smoke tests for M1, M3, M4, M5. The full review-specific checklist lives in [03_SMOKE_TESTS.md](03_SMOKE_TESTS.md). Headlines:
 
 - **M1**: cold install + `/kcd help|config|lock|unlock` + tab swap.
 - **M3**: `visibility=in_combat` enter/leave/`/reload` cycles (the high-risk milestone — verify `KickCD_COMBAT_STATE` wiring across reload boundaries).
@@ -160,13 +160,13 @@ The plan calls out manual smoke tests for M1, M3, M4, M5. The full review-specif
 - 5 commits ahead of `origin/master`.
 - No version bump (per the hard rule, version bumps are an explicit user decision; this review is purely cleanup + refactoring).
 - Tree clean.
-- Recommend running [REVIEW_SMOKE_TESTS.md](REVIEW_SMOKE_TESTS.md) in-game before `git push`.
+- Recommend running [03_SMOKE_TESTS.md](03_SMOKE_TESTS.md) in-game before `git push`.
 
 ---
 
 ## Companion artifacts
 
-- [REVIEW_FINDINGS.md](REVIEW_FINDINGS.md) — original 19-finding catalogue.
-- [REVIEW_PROPOSED_CHANGES.md](REVIEW_PROPOSED_CHANGES.md) — HLD + LLD per finding.
-- [REVIEW_EXECUTION_PLAN.md](REVIEW_EXECUTION_PLAN.md) — milestone / task breakdown that drove this work.
-- [REVIEW_SMOKE_TESTS.md](REVIEW_SMOKE_TESTS.md) — review-specific in-game test checklist.
+- [01_FINDINGS.md](01_FINDINGS.md) — original 19-finding catalogue.
+- [02_PROPOSED_CHANGES.md](02_PROPOSED_CHANGES.md) — HLD + LLD per finding.
+- [04_EXECUTION_PLAN.md](04_EXECUTION_PLAN.md) — milestone / task breakdown that drove this work.
+- [03_SMOKE_TESTS.md](03_SMOKE_TESTS.md) — review-specific in-game test checklist.

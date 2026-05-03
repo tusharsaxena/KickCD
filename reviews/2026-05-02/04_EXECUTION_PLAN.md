@@ -1,6 +1,6 @@
 # Ka0s KickCD — Review Execution Plan
 
-Operationalises `REVIEW_PROPOSED_CHANGES.md` into milestones, tasks, agent roles, and concurrency hints for an agent-team or a single contributor.
+Operationalises `02_PROPOSED_CHANGES.md` into milestones, tasks, agent roles, and concurrency hints for an agent-team or a single contributor.
 
 ---
 

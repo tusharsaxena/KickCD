@@ -66,7 +66,7 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 | Scope, defaults source, spell-list lifecycle | [docs/scope.md](docs/scope.md) | Evaluating a feature request; understanding the seed/recovery flow. |
 | Per-file responsibility map + TOC load order + AceAddon lifecycle | [docs/module-map.md](docs/module-map.md) | "Which file owns X?" / "When does Y run?" |
 | Game event → state → message → render pipeline; visibility gate; lock + anchor | [docs/data-flow.md](docs/data-flow.md) | Touching event handling, settings writes, or drag/anchor logic. |
-| Closed message bus (the four `KickCD_*` messages with sender/listener/payload) | [docs/message-bus.md](docs/message-bus.md) | Adding or modifying anything that sends or listens to a message. |
+| Closed message bus (the five `KickCD_*` messages with sender/listener/payload) | [docs/message-bus.md](docs/message-bus.md) | Adding or modifying anything that sends or listens to a message. |
 | `KickCDDB` shape, `DEFAULT_PROFILE`, profile lifecycle | [docs/saved-variables.md](docs/saved-variables.md) | Adding persistent state. |
 | `Compat.*` API shim catalogue + `State.*` visibility helpers | [docs/compat-layer.md](docs/compat-layer.md) | Adding or wrapping a Blizzard spell/cast API; reasoning about taint. |
 | 12.0 secret values, plain-after-flip invariant, frame mixin, other Midnight gotchas | [docs/midnight-quirks.md](docs/midnight-quirks.md) | **Required reading** before touching cooldown, cast, or visibility code. |
