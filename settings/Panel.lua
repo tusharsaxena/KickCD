@@ -259,15 +259,18 @@ Helpers.AttachTooltip = attachTooltip
 -- ---------------------------------------------------------------------
 
 local function buildHeader(panel, title, opts)
-    -- Sub-pages render with an "Ka0s KickCD | <Page>" prefix so the
-    -- in-page header reads as a breadcrumb. The parent/main page opts
-    -- in to the unprefixed form via opts.isMain (otherwise it would
-    -- read "Ka0s KickCD | Ka0s KickCD"). The Blizzard left-tree label
-    -- is driven by panel.name in CreatePanel and stays unprefixed so
-    -- the tree indents under the parent without visual repetition.
+    -- Sub-pages render with an "Ka0s KickCD ▸ <Page>" breadcrumb. The
+    -- separator is an inline texture (not a glyph) so it renders the
+    -- same regardless of the active FontString font / locale fallback.
+    -- The parent/main page opts in to the unprefixed form via
+    -- opts.isMain (otherwise it would read "Ka0s KickCD ▸ Ka0s KickCD").
+    -- The Blizzard left-tree label is driven by panel.name in
+    -- CreatePanel and stays unprefixed so the tree indents under the
+    -- parent without visual repetition.
     local displayTitle = title
     if not opts.isMain then
-        displayTitle = L["Ka0s KickCD"] .. "  |  " .. title
+        local sep = " |A:common-icon-forwardarrow:16:16|a "
+        displayTitle = L["Ka0s KickCD"] .. sep .. title
     end
 
     local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
