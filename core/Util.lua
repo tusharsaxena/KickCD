@@ -171,6 +171,40 @@ function Util.NormalizeClassToken(classFile)
 end
 
 -- ---------------------------------------------------------------------------
+-- Unit-event filtering
+-- ---------------------------------------------------------------------------
+--
+-- AceEvent's RegisterEvent fans out to every UnitEvent for every unit; in
+-- a 25-player raid the UNIT_SPELLCAST_* family fires thousands of times
+-- per minute and a handler that only cares about "target" pays for every
+-- one before its early-return. Frame:RegisterUnitEvent restricts dispatch
+-- to the unit(s) we name, but AceEvent doesn't expose it.
+-- RegisterTargetEvent wraps a private CreateFrame, registers it for unit
+-- "target" only, and forwards into module:handler so the call site reads
+-- like an Ace registration. Handlers can drop their `if unit ~= "target"`
+-- guard since the dispatch frame already filtered upstream.
+--
+-- The frame is RETURNED, not tracked here. AceAddon's UnregisterAllEvents
+-- on the module will not release these private frames; OnDisable must
+-- iterate the caller-owned table and run f:UnregisterAllEvents() on each.
+
+--- Create a private dispatch frame that fires `module[handlerName](module, ...)`
+--- only when `eventName` fires for unit "target".
+--- @param module table     — AceEvent module (handler methods live on it)
+--- @param eventName string — UNIT_SPELLCAST_START / _STOP / etc.
+--- @param handlerName string — method on `module` to call on dispatch
+--- @return Frame — caller stashes this and runs UnregisterAllEvents in OnDisable
+function Util.RegisterTargetEvent(module, eventName, handlerName)
+    local f = CreateFrame("Frame")
+    f:RegisterUnitEvent(eventName, "target")
+    f:SetScript("OnEvent", function(_, event, unit, ...)
+        local fn = module[handlerName]
+        if fn then fn(module, event, unit, ...) end
+    end)
+    return f
+end
+
+-- ---------------------------------------------------------------------------
 -- Chat output
 -- ---------------------------------------------------------------------------
 

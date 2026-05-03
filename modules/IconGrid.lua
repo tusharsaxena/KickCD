@@ -1500,22 +1500,43 @@ function IconGrid:OnEnable()
     -- Combat transitions arrive via the KickCD_COMBAT_STATE message
     -- subscription above, not raw PLAYER_REGEN_* events.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("UNIT_SPELLCAST_START",          "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_FAILED",         "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED",    "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START",  "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP",   "OnTargetCastEvent")
-    -- Interruptibility flips mid-cast (boss casts that toggle immunity
-    -- via an aura, etc.) need to retrigger the visibility check for
-    -- the "target_casting_interruptible" mode.
-    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE",      "OnTargetCastEvent")
-    self:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE",  "OnTargetCastEvent")
+
+    -- UNIT_SPELLCAST_* registrations go through Util.RegisterTargetEvent
+    -- so the dispatch frame fires only when the unit IS "target". With
+    -- vanilla RegisterEvent the handler runs for every party / raid /
+    -- nameplate cast and early-returns inside; in a 25-player raid that's
+    -- thousands of no-op dispatches per minute. Interruptibility flips
+    -- mid-cast (boss casts that toggle immunity via an aura, etc.) also
+    -- come through this path so the "target_casting_interruptible" mode
+    -- re-evaluates. The returned frames are stashed on the module so
+    -- OnDisable can release them — AceEvent's UnregisterAllEvents only
+    -- knows about its own table, not these private frames.
+    self._targetEventFrames = self._targetEventFrames or {}
+    local Util = KickCD.Util
+    for _, ev in ipairs({
+        "UNIT_SPELLCAST_START",
+        "UNIT_SPELLCAST_STOP",
+        "UNIT_SPELLCAST_FAILED",
+        "UNIT_SPELLCAST_INTERRUPTED",
+        "UNIT_SPELLCAST_CHANNEL_START",
+        "UNIT_SPELLCAST_CHANNEL_STOP",
+        "UNIT_SPELLCAST_INTERRUPTIBLE",
+        "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
+    }) do
+        self._targetEventFrames[#self._targetEventFrames + 1] =
+            Util.RegisterTargetEvent(self, ev, "OnTargetCastEvent")
+    end
 end
 
 function IconGrid:OnDisable()
     self:UnregisterAllMessages()
     self:UnregisterAllEvents()
+    if self._targetEventFrames then
+        for _, f in ipairs(self._targetEventFrames) do
+            f:UnregisterAllEvents()
+        end
+        self._targetEventFrames = {}
+    end
     if grid then grid:Hide() end
 end
 
@@ -1603,10 +1624,10 @@ end
 
 --- UNIT_SPELLCAST_* events fire for any unit. We only care about the
 --- "target" unit because that's what the "target_casting" visibility
---- mode + the glow trigger key off of. Filter here so RefreshVisibility
---- and RefreshAllGlows don't re-run on every player / nameplate cast.
-function IconGrid:OnTargetCastEvent(_evt, unit)
-    if unit ~= "target" then return end
+--- mode + the glow trigger key off of. The unit filter lives in the
+--- registration site (Util.RegisterTargetEvent in OnEnable), so this
+--- handler trusts that `unit` is always "target".
+function IconGrid:OnTargetCastEvent()
     self:RefreshVisibility()
     self:RefreshAllGlows()
 end

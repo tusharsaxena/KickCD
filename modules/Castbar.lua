@@ -1082,21 +1082,37 @@ function Castbar:OnEnable()
     -- the only registration so the flag write and the visibility
     -- refresh stay ordered by construction.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("UNIT_SPELLCAST_START",          "OnCastStart")
-    self:RegisterEvent("UNIT_SPELLCAST_STOP",           "OnCastStop")
-    self:RegisterEvent("UNIT_SPELLCAST_FAILED",         "OnCastStop")
-    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED",    "OnCastStop")
-    self:RegisterEvent("UNIT_SPELLCAST_DELAYED",        "OnCastDelayed")
-    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START",  "OnChannelStart")
-    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP",   "OnCastStop")
-    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE", "OnCastDelayed")
-    -- Catch dynamic interruptibility transitions mid-cast (e.g. boss casts
-    -- that toggle interrupt-immunity via an aura). The events fire on the
-    -- transition, not at cast start, so the initial value still comes from
-    -- UnitCastingInfo.notInterruptible captured in Compat.GetCastingInfo.
-    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE",     "OnInterruptibilityChanged")
-    self:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "OnInterruptibilityChanged")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+
+    -- UNIT_SPELLCAST_* registrations go through Util.RegisterTargetEvent
+    -- so the dispatch frame fires only when the unit IS "target". With
+    -- vanilla RegisterEvent the handlers run for every party / raid /
+    -- nameplate cast and early-return inside; in a 25-player raid that's
+    -- thousands of no-op dispatches per minute. INTERRUPTIBLE /
+    -- NOT_INTERRUPTIBLE are dynamic mid-cast events (e.g. boss casts
+    -- that toggle interrupt-immunity via an aura); the initial value
+    -- still comes from UnitCastingInfo.notInterruptible captured in
+    -- Compat.GetCastingInfo. The returned frames are stashed on the
+    -- module so OnDisable can release them — AceEvent's
+    -- UnregisterAllEvents only knows about its own table.
+    self._targetEventFrames = self._targetEventFrames or {}
+    local Util = KickCD.Util
+    local castEvents = {
+        { "UNIT_SPELLCAST_START",             "OnCastStart"               },
+        { "UNIT_SPELLCAST_STOP",              "OnCastStop"                },
+        { "UNIT_SPELLCAST_FAILED",            "OnCastStop"                },
+        { "UNIT_SPELLCAST_INTERRUPTED",       "OnCastStop"                },
+        { "UNIT_SPELLCAST_DELAYED",           "OnCastDelayed"             },
+        { "UNIT_SPELLCAST_CHANNEL_START",     "OnChannelStart"            },
+        { "UNIT_SPELLCAST_CHANNEL_STOP",      "OnCastStop"                },
+        { "UNIT_SPELLCAST_CHANNEL_UPDATE",    "OnCastDelayed"             },
+        { "UNIT_SPELLCAST_INTERRUPTIBLE",     "OnInterruptibilityChanged" },
+        { "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "OnInterruptibilityChanged" },
+    }
+    for _, e in ipairs(castEvents) do
+        self._targetEventFrames[#self._targetEventFrames + 1] =
+            Util.RegisterTargetEvent(self, e[1], e[2])
+    end
 
     self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
@@ -1111,6 +1127,12 @@ end
 function Castbar:OnDisable()
     self:UnregisterAllEvents()
     self:UnregisterAllMessages()
+    if self._targetEventFrames then
+        for _, f in ipairs(self._targetEventFrames) do
+            f:UnregisterAllEvents()
+        end
+        self._targetEventFrames = {}
+    end
     self:Stop()
 end
 
@@ -1142,27 +1164,28 @@ function Castbar:OnPlayerEnteringWorld()
     self:Reevaluate()
 end
 
-function Castbar:OnCastStart(_evt, unit)
-    if unit ~= "target" then return end
+-- Cast / channel / interruptibility handlers below trust that `unit` is
+-- "target" — the unit filter lives in the registration site
+-- (Util.RegisterTargetEvent in OnEnable), so the explicit early-return
+-- check is no longer needed in each handler.
+
+function Castbar:OnCastStart()
     if not isVisible() then return end
     local rec = KickCD.Compat.GetCastingInfo("target")
     if rec then self:Start(rec) end
 end
 
-function Castbar:OnChannelStart(_evt, unit)
-    if unit ~= "target" then return end
+function Castbar:OnChannelStart()
     if not isVisible() then return end
     local rec = KickCD.Compat.GetChannelInfo("target")
     if rec then self:Start(rec) end
 end
 
-function Castbar:OnCastStop(_evt, unit)
-    if unit ~= "target" then return end
+function Castbar:OnCastStop()
     self:Stop()
 end
 
-function Castbar:OnInterruptibilityChanged(evt, unit)
-    if unit ~= "target" then return end
+function Castbar:OnInterruptibilityChanged(evt)
     -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
     -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
     -- interruptible. Update the record's bool and re-apply per-state visuals.
@@ -1198,8 +1221,7 @@ function Castbar:OnInterruptibilityChanged(evt, unit)
     end
 end
 
-function Castbar:OnCastDelayed(_evt, unit)
-    if unit ~= "target" then return end
+function Castbar:OnCastDelayed()
     if not current then return end
     -- Re-query so the timeline reflects the pushback / haste change.
     -- notInterruptible could in principle change too (e.g. an aura that
