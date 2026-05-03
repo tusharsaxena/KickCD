@@ -118,14 +118,7 @@ local COMMANDS = {
     {"help",          "List available commands",
         function(self) printHelp(self) end},
     {"config",        "Open the settings panel",
-        function(self)
-            if InCombatLockdown and InCombatLockdown() then
-                p(self, (self.L and self.L["Cannot open settings during combat."]
-                     or "Cannot open settings during combat."))
-                return
-            end
-            self:OpenSettings()
-        end},
+        function(self) self:OpenSettings() end},
     {"lock",          "Lock the icon grid in place",
         function(self) setLocked(self, true) end},
     {"unlock",        "Unlock the icon grid for dragging",
@@ -866,6 +859,17 @@ end
 
 function KickCD:OpenSettings(input)
     local p = self.Util and self.Util.print or print
+    -- Settings panel registration touches protected frames; opening it in
+    -- combat would taint the dropdown / category tree. Gate here so every
+    -- entry point (slash, deferred retry, future callers) shares the check.
+    local inCombat = (self.State and self.State.inCombat)
+        or (_G.InCombatLockdown and _G.InCombatLockdown())
+    if inCombat then
+        self._openRetries = nil
+        p(self, (self.L and self.L["Cannot open settings during combat."])
+            or "Cannot open settings during combat.")
+        return
+    end
     if Settings and Settings.OpenToCategory then
         local main = self.Settings and self.Settings.main
         if main and main.GetID then
