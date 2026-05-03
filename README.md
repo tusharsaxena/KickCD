@@ -155,5 +155,6 @@ There is no automated test harness — verification is manual, in-game. The end-
 
 | Version | Changes |
 | --- | --- |
+| 1.1.0 | Vendored LSM dropdown widgets with texture/font previews; first-run defaults<br>Added KickCD_COMBAT_STATE bus message; consolidated PLAYER_REGEN_* in core/State.lua<br>Filtered UNIT_SPELLCAST_* events to target unit via private dispatch frames<br>Settings panel breadcrumb separator now an inline atlas chevron (font-agnostic)<br>OpenSettings combat-lockdown gate now applies to every entry point<br>Fixed dropdown selection; clarified `/kcd reset spells` description<br>Removed dead Settings exports/shims, `_maxC` record field, unused Util exports<br>Internals: code-review M1–M5 cleanup; smoke-test suite; doc drift fixes |
 | 1.0.1 | Version bump to 1.0.1-release to trigger build. |
 | 1.0.0 | Initial release … yay! |
