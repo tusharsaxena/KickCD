@@ -1,4 +1,4 @@
--- core/Constants.lua — KickCD v0.1
+-- core/Constants.lua
 --
 -- Named constants pulled out of individual modules so the value lives
 -- in exactly one place and a reader doesn't have to puzzle out a magic

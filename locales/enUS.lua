@@ -1,4 +1,4 @@
--- locales/enUS.lua — KickCD v0.1
+-- locales/enUS.lua
 -- Localization table. See docs/module-map.md (load order).
 --
 -- Default (and currently only) localization. The `L` table is wired with

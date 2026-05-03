@@ -1,4 +1,4 @@
--- core/Compat.lua — KickCD v0.1
+-- core/Compat.lua
 -- See docs/compat-layer.md and docs/midnight-quirks.md.
 --
 -- Thin compatibility shims for spell + settings APIs whose signatures

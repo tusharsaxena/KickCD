@@ -1,4 +1,4 @@
--- modules/Castbar.lua — KickCD v0.2
+-- modules/Castbar.lua
 --
 -- Owns the KickCDCastbar frame: a custom-drawn StatusBar with icon, spell
 -- name, and remaining-time text that mirrors the player's current target
@@ -59,7 +59,14 @@ local L       = KickCD.L
 -- ---------------------------------------------------------------------------
 
 local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
-local current -- active cast record (nil when nothing is being cast)
+-- Active cast record (nil when nothing is being cast). Built from
+-- Compat.GetCastingInfo / Compat.GetChannelInfo at cast start; the
+-- OnInterruptibilityChanged handler MUTATES current.notInterruptible
+-- in place to a plain Lua bool when *_INTERRUPTIBLE / *_NOT_INTERRUPTIBLE
+-- fires (the original field may be secret-tainted in 12.0). See the
+-- "plain-after-flip invariant" comment near OnInterruptibilityChanged
+-- and docs/midnight-quirks.md for the full background.
+local current
 
 -- Cache of the most recent KickCD_GRID_LAYOUT payload from IconGrid.
 -- Populated by Castbar:OnGridLayout when the payload carries
@@ -567,6 +574,8 @@ end
 --- start, recomputing ~40 widget calls per cast. CR-17 split it: cast
 --- start now goes through Castbar:RenderCast (~6 widget calls) and
 --- only re-skins on actual config changes.
+-- TODO(perf): split into "color-only" vs "structural" so the 50 ms-throttled
+-- color-picker drag doesn't re-run all ~40 widget calls per tick (F-015).
 function Castbar:Reskin()
     if not frame then return end
     local c = cfg()

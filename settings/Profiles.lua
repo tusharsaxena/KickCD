@@ -1,4 +1,4 @@
--- settings/Profiles.lua — KickCD v0.1
+-- settings/Profiles.lua
 --
 -- Profiles canvas panel. Uses the unified header (no Defaults button —
 -- profile management has its own destructive controls inside the

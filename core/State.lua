@@ -1,4 +1,4 @@
--- core/State.lua — KickCD v0.1
+-- core/State.lua
 --
 -- Tiny shared "live state" namespace. Owns process-global flags that
 -- multiple modules need to read identically (today: combat state).
@@ -129,12 +129,15 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:RegisterEvent("PLAYER_REGEN_DISABLED")
 boot:RegisterEvent("PLAYER_REGEN_ENABLED")
-boot:SetScript("OnEvent", function(_, event)
+boot:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
         State.SetInCombat(true)
     elseif event == "PLAYER_REGEN_ENABLED" then
         State.SetInCombat(false)
     elseif event == "PLAYER_LOGIN" then
         State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
+        -- PLAYER_LOGIN fires once per session; release the listener once
+        -- we've seeded the flag (mirrors core/LSMPatch.lua's pattern).
+        self:UnregisterEvent("PLAYER_LOGIN")
     end
 end)

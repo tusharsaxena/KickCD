@@ -1,4 +1,4 @@
--- settings/Icons.lua — KickCD v0.1
+-- settings/Icons.lua
 --
 -- Icons canvas panel. Pure schema: every widget is a row in
 -- KickCD.Settings.Schema; the builder just calls Helpers.RenderSchema.

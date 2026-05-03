@@ -1,4 +1,4 @@
--- core/Util.lua — KickCD v0.1
+-- core/Util.lua
 -- Small helper surface (color, anchor, throttle, chat). See docs/module-map.md.
 --
 -- Small, dependency-free helpers shared across modules:

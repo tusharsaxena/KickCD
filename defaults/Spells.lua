@@ -1,4 +1,4 @@
--- defaults/Spells.lua — KickCD v0.1
+-- defaults/Spells.lua
 -- Seeded by Database:BuildSpells() on first profile creation;
 -- see docs/saved-variables.md for the merge semantics.
 --

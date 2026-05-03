@@ -1,4 +1,4 @@
--- modules/Cooldowns.lua — KickCD v0.1
+-- modules/Cooldowns.lua
 --
 -- Per-spell cooldown observer. Owns a `watched` table keyed by spellID
 -- derived from the active spec's spell list in the current profile, polls
@@ -38,6 +38,11 @@
 -- Message contract (closed):
 --   FIRE:    KickCD_SPELL_STATE
 --              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--            charges is the raw currentCharges from
+--            C_Spell.GetSpellCharges (or nil for uncharged spells). A
+--            value of 0 means "no charges available right now" — the
+--            IconGrid renders it as a "0" badge but state.ready is false
+--            so the icon body still dims.
 --            cdObject is the secret-aware duration object for the
 --            spell-level cooldown — non-nil whenever the legacy isActive
 --            flag is true (real CD or just GCD; the IconGrid

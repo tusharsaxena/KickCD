@@ -1,4 +1,4 @@
--- settings/Spells.lua — KickCD v0.1
+-- settings/Spells.lua
 --
 -- Per-class+spec spell-list editor. Uses the unified canvas panel
 -- header (title + Defaults button + divider) from Panel.lua, then

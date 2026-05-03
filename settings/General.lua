@@ -1,4 +1,4 @@
--- settings/General.lua — KickCD v0.1
+-- settings/General.lua
 --
 -- General canvas panel. Declares its schema entries (master enable,
 -- lock, master scale/alpha, debug log) and registers a builder that

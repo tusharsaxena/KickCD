@@ -1,4 +1,4 @@
--- core/Database.lua — KickCD v0.1
+-- core/Database.lua
 --
 -- Owns the AceDB-3.0 instance, the defaults table, and profile
 -- callbacks. The `spells` sub-table is left empty here on purpose —

@@ -1,11 +1,11 @@
--- modules/IconGrid.lua — KickCD v0.1
+-- modules/IconGrid.lua
 --
 -- Owns one parent frame (KickCDIconGrid) and N child icon widgets, each
 -- pooled and reused on rebuild so we never churn frames. Visibility is
 -- gated on db.profile.enabled (master enable) AND db.profile.visibility,
 -- the addon-wide "General visibility" setting also honored by the cast
 -- bar so both panels show / hide together:
---   * "always"          — show whenever master enable is on (v0.1 default)
+--   * "always"          — show whenever master enable is on (default)
 --   * "in_combat"       — show only while in combat (event-driven flag,
 --                          NOT InCombatLockdown() — that lags by a frame)
 --   * "target_casting"  — show only while UnitCastingInfo / UnitChannelInfo
@@ -220,6 +220,9 @@ end
 --- (Re)build the alpha/tint curves from db.profile.icons. Called once on
 --- enable and again on any "icons" config change. Cheap — these are tiny
 --- 4-point curves, recreating them per change is fine.
+-- TODO(perf): only rebuild when readyAlpha / cooldownAlpha / cooldownTint
+-- actually changed — every "icons" KickCD_CONFIG_CHANGED rebuilds today,
+-- including unrelated touches (border, font, layout, glow) (F-016).
 local function BuildCurves()
     if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
 
@@ -511,7 +514,7 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 --
 -- Single-key constraint: today every glow trigger / type writes to the
 -- same `"KickCD"` slot, so an icon can host at most one KickCD-managed
--- glow at a time. That's the right shape for v0.1's mutually-exclusive
+-- glow at a time. That's the right shape for the current mutually-exclusive
 -- triggers (a spell is either ready-and-castable, or it isn't), but a
 -- future "interruptible-target-cast PLUS spell-ready" combined glow
 -- would need TWO concurrent glows on the same icon — and LCG enforces

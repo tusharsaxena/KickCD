@@ -1,4 +1,4 @@
--- settings/Panel.lua — KickCD v0.2
+-- settings/Panel.lua
 --
 -- Settings UI framework. Every tab — General, Icons, Spells, Profiles —
 -- is registered as a canvas-layout subcategory and shares one header

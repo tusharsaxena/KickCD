@@ -1,4 +1,4 @@
--- core/KickCD.lua — KickCD v0.1
+-- core/KickCD.lua
 -- See docs/module-map.md.
 --
 -- AceAddon bootstrap: turns the plain `KickCD` table that Compat / Util /
@@ -63,7 +63,7 @@ end
 
 function KickCD:OnEnable()
     -- Modules register themselves via NewModule(...) and AceAddon
-    -- auto-enables them. Nothing to do here for v0.1.
+    -- auto-enables them. Nothing to do here.
 end
 
 -- ---------------------------------------------------------------------------
@@ -833,11 +833,10 @@ end
 
 --- Open the Blizzard Settings panel to KickCD's parent page.
 -- Settings layer is set up by settings/Panel.lua, which assigns
--- KickCD.SettingsCategoryID + KickCD.Settings.main. If that hasn't
--- run yet we schedule a deferred retry (3 attempts, 0.5s apart) and
--- ultimately print rather than error so this is safe to call at any
--- time after PLAYER_LOGIN.
--- @param input slash-command tail (ignored for v0.1)
+-- KickCD.Settings.main. If that hasn't run yet we schedule a deferred
+-- retry (3 attempts, 0.5s apart) and ultimately print rather than
+-- error so this is safe to call at any time after PLAYER_LOGIN.
+-- @param input slash-command tail (ignored)
 local OPEN_SETTINGS_MAX_RETRIES = 3
 local OPEN_SETTINGS_RETRY_DELAY = 0.5
 
