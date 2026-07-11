@@ -71,7 +71,14 @@ end
 -- (class, spec) or (class, nil) for classes whose current spec isn't
 -- in defaults, or (nil, nil) when GetSpecialization is unavailable.
 local function getPlayerClassSpec()
-    local _, classFile = UnitClass and UnitClass("player")
+    -- `UnitClass and UnitClass("player")` would truncate to UnitClass's
+    -- FIRST return (the localised name); the file token we need is the
+    -- second. Guard without collapsing the multi-return.
+    local classFile
+    if UnitClass then
+        local _, cf = UnitClass("player")
+        classFile = cf
+    end
     if not (classFile and KickCD.DefaultSpells
             and KickCD.DefaultSpells[classFile]) then
         return nil, nil
@@ -315,7 +322,11 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
         -- doesn't match the player's live pair; fall through to the
         -- lenient validateSpellInput path (which already confirmed the
         -- spell exists in the spell DB).
-        local _, playerClass = UnitClass and UnitClass("player")
+        local playerClass
+        if UnitClass then
+            local _, cf = UnitClass("player")
+            playerClass = cf
+        end
         local playerSpecToken
         if GetSpecialization and GetSpecializationInfo then
             local idx = GetSpecialization()

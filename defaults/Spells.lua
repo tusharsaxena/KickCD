@@ -313,10 +313,11 @@ KickCD.DefaultSpells = {
         },
         PROTECTION = {
             { spellID = 6552,   category = "interrupt", enabled = true }, -- Pummel
-            { spellID = 102060, category = "interrupt", enabled = true }, -- Disrupting Shout (AoE interrupt + taunt)
+            { spellID = 386071, category = "interrupt", enabled = true }, -- Disrupting Shout (AoE interrupt talent)
             { spellID = 46968,  category = "stun",      enabled = true }, -- Shockwave
             { spellID = 107570, category = "stun",      enabled = true }, -- Storm Bolt
             { spellID = 5246,   category = "fear",      enabled = true }, -- Intimidating Shout
+            { spellID = 23920,  category = "other",     enabled = true }, -- Spell Reflection
         },
     },
 }
