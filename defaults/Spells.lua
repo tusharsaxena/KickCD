@@ -6,7 +6,7 @@
 -- (or, where no class-wide kick exists, the spec's best cast-stopping CC).
 -- Indices 2..N are PvE-biased secondary cast-stoppers in priority order.
 -- Categories are constrained to the closed set:
---   "interrupt" | "stun" | "knockback" | "incapacitate" | "silence" | "root" | "fear" | "displace" | "racial"
+--   "interrupt" | "stun" | "knockback" | "incapacitate" | "silence" | "root" | "fear" | "displace" | "racial" | "other"
 --
 -- Class keys use the localization-independent file token from UnitClass()'s
 -- second return. Spec keys use uppercase tokens of the spec name.
