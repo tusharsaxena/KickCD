@@ -1,6 +1,6 @@
 # Architecture
 
-Orient-yourself map for **Ka0s KickCD**. Tracks the player's interrupt and CC cooldowns and surfaces them on a movable icon grid, with a sibling target cast bar driven from the same drag lock and visibility mode. Target client: WoW 12.0.5 (Midnight). 12.0-aware throughout — the cast bar was originally removed at commit `59fb5c0` and re-added with explicit secret-value gating; see [docs/scope.md](docs/scope.md#cast-bar-removal-history).
+Orient-yourself map for **Ka0s KickCD**. Tracks the player's interrupt and CC cooldowns and surfaces them on a movable icon grid, with a sibling target cast bar driven from the same drag lock and visibility mode. Target client: WoW 12.0.7 (Midnight). 12.0-aware throughout — the cast bar was originally removed at commit `59fb5c0` and re-added with explicit secret-value gating; see [docs/scope.md](docs/scope.md#cast-bar-removal-history).
 
 This file is the high-level index; topic detail lives in `docs/`.
 
