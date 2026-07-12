@@ -132,8 +132,8 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Setup.** Open Settings → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
 
 **Steps.**
-- Walk through every value of `icons.primaryAnchor` (13 anchor tokens). For each, set `icons.growDirection` to two distinct values applicable to that axis.
-- Set `icons.rows` and `icons.cols` such that `rows * cols < (number of enabled spells) - 1`.
+- Walk through every value of `icons.anchor` (13 anchor tokens). For each, set `icons.secondaryGrow` to two distinct values applicable to that axis.
+- Set `icons.secondaryRows` and `icons.secondaryCols` such that `rows * cols < (number of enabled spells) - 1`.
 
 **Pass.**
 - For each anchor / grow combination, the secondary block lays out from the primary icon's named anchor in the chosen direction without overlap.
@@ -162,7 +162,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - Disable a few spells with `/kcd spells disable <id>` and re-enable them with `add` so the icon grid's *visible* footprint changes.
-- Resize via `/kcd set icons.cols 4`, then `2`.
+- Resize via `/kcd set icons.secondaryCols 4`, then `2`.
 - Toggle `/kcd set castbar.orientation VERTICAL`. Set `/kcd set castbar.growDirection UP`.
 
 **Pass.**
@@ -190,7 +190,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Steps.**
 - Cast Pummel into a friendly target dummy.
 - During its cooldown, also cast a different spell with a GCD that's shorter than Pummel's CD.
-- Set `icons.glow.primaryTrigger` and `icons.glow.secondaryTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
+- Set `icons.primaryGlowTrigger` and `icons.secondaryGlowTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
 
 **Pass.**
 - Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons → Annotations → Show cooldown text` countdown ticking down.

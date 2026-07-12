@@ -35,7 +35,7 @@ IconGrid:Layout              ─▶                KickCD_GRID_LAYOUT     ─▶
 |-----------|----------|------|
 | Per-module APIs + roles, TOC load order, AceAddon lifecycle | `core/`, `defaults/`, `modules/`, `settings/` | [docs/module-map.md](docs/module-map.md) |
 | Game event → state → message → render pipeline; visibility gate; lock + anchor | `modules/Cooldowns.lua`, `modules/IconGrid.lua`, `modules/Castbar.lua`, `core/State.lua`, `settings/Panel.lua` | [docs/data-flow.md](docs/data-flow.md) |
-| Closed message contract (4 messages, sender/listener/payload) | every module that emits or subscribes | [docs/message-bus.md](docs/message-bus.md) |
+| Closed message contract (5 messages, sender/listener/payload) | every module that emits or subscribes | [docs/message-bus.md](docs/message-bus.md) |
 | `KickCDDB` AceDB schema + `DEFAULT_PROFILE` shape + spell-list lifecycle | `core/Database.lua` | [docs/saved-variables.md](docs/saved-variables.md) |
 | `Compat.*` spell/cast API shims + `State.*` visibility helpers (boundary) | `core/Compat.lua`, `core/State.lua` | [docs/compat-layer.md](docs/compat-layer.md) |
 | 12.0 secret values + cast interruptibility two-step gate + frame mixin | `core/Compat.lua`, `core/State.lua`, `modules/IconGrid.lua`, `modules/Castbar.lua` | [docs/midnight-quirks.md](docs/midnight-quirks.md) |
@@ -50,7 +50,7 @@ IconGrid:Layout              ─▶                KickCD_GRID_LAYOUT     ─▶
 
 ## Invariants worth not breaking
 
-- **Closed message bus.** The five AceEvent messages (`KickCD_SPELL_STATE`, `KickCD_CONFIG_CHANGED`, `KickCD_PROFILE_CHANGED`, `KickCD_GRID_LAYOUT`, `KickCD_COMBAT_STATE`) are the only inter-module communication channel. Each has exactly one sender. Adding a message requires updating the source emitter, every consumer, and [docs/message-bus.md](docs/message-bus.md).
+- **Closed message bus.** The five AceEvent messages (`KickCD_SPELL_STATE`, `KickCD_CONFIG_CHANGED`, `KickCD_PROFILE_CHANGED`, `KickCD_GRID_LAYOUT`, `KickCD_COMBAT_STATE`) are the only inter-module communication channel. `KickCD_CONFIG_CHANGED` is emitted from several modules (any schema-row write, lock/debug toggles, drag-stop anchor saves, debounced spell edits); the other four each have a single owning emitter. Adding a message requires updating the source emitter(s), every consumer, and [docs/message-bus.md](docs/message-bus.md).
 - **`Compat` is API normalisation only.** No feature decisions, no shared mutable state, no visibility helpers. Visibility decisions live in `core/State.lua`; shared mutable state lives in `core/State.lua`; shared magic numbers live in `core/Constants.lua`.
 - **12.0 secret values get C-side handling, not Lua-side detox.** Pass duration-object methods, `notInterruptible`, `name`, `texture` straight into Blizzard C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `SetAlphaFromBoolean`, `EvaluateColorValueFromBoolean`). Never bind to a Lua local for compare / format / tostring / arithmetic. `securecallfunction` / `tonumber` / `+0` "detox" were tried and don't work.
 - **`KickCD.Settings.Schema` is the single source of truth.** UI widget, slash CLI (`get` / `set` / `list`), per-panel `Defaults` button, and the General → "Reset all settings" reset all wire from one row. Don't add parallel mutators for fields with a schema row. The `valueGate` mechanism enforces cross-row dependencies (e.g. `castbar.growDirection` ↔ `castbar.orientation`).
