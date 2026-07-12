@@ -8,13 +8,13 @@
 -- currently selected class+spec.
 --
 -- Writes go through a 50ms debounced setter that mutates the profile,
--- re-renders the rows, and fires KickCD_CONFIG_CHANGED { section = "spells" }.
+-- re-renders the rows, and fires Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
+local addonName, NS = ...
 
-local L      = KickCD.L      or setmetatable({}, { __index = function(_, k) return k end })
-local Compat = KickCD.Compat or {}
-local Util   = KickCD.Util   or {}
+local L      = NS.L      or setmetatable({}, { __index = function(_, k) return k end })
+local Compat = NS.Compat or {}
+local Util   = NS.Util   or {}
 
 local Spells = {}
 
@@ -79,21 +79,19 @@ local function getPlayerClassSpec()
         local _, cf = UnitClass("player")
         classFile = cf
     end
-    if not (classFile and KickCD.DefaultSpells
-            and KickCD.DefaultSpells[classFile]) then
+    if not (classFile and NS.DefaultSpells
+            and NS.DefaultSpells[classFile]) then
         return nil, nil
     end
     local specToken
-    if GetSpecialization and GetSpecializationInfo then
-        local idx = GetSpecialization()
-        if idx then
-            local _, specName = GetSpecializationInfo(idx)
-            if specName and KickCD.Util and KickCD.Util.NormalizeSpecToken then
-                specToken = KickCD.Util.NormalizeSpecToken(specName)
-            end
+    local idx = Compat.GetSpecialization and Compat.GetSpecialization()
+    if idx then
+        local _, specName = Compat.GetSpecializationInfo(idx)
+        if specName and NS.Util and NS.Util.NormalizeSpecToken then
+            specToken = NS.Util.NormalizeSpecToken(specName)
         end
     end
-    if specToken and not KickCD.DefaultSpells[classFile][specToken] then
+    if specToken and not NS.DefaultSpells[classFile][specToken] then
         specToken = nil
     end
     return classFile, specToken
@@ -114,7 +112,7 @@ local function seedSelectionToPlayer()
     if specToken then
         selectedSpec = specToken
     else
-        local specs = sortedKeys(KickCD.DefaultSpells[classFile])
+        local specs = sortedKeys(NS.DefaultSpells[classFile])
         selectedSpec = specs[1]
     end
 end
@@ -125,9 +123,9 @@ end
 -- per-class / per-spec entries; the panel's getActiveList / ensureSpellList
 -- pair (just below) is the preferred entry point for individual lists.
 local function getProfileSpells()
-    if not (KickCD.db and KickCD.db.profile) then return nil end
-    KickCD.db.profile.spells = KickCD.db.profile.spells or {}
-    return KickCD.db.profile.spells
+    if not (NS.db and NS.db.profile) then return nil end
+    NS.db.profile.spells = NS.db.profile.spells or {}
+    return NS.db.profile.spells
 end
 
 -- Read-only active-list lookup. Never lazy-creates the per-class /
@@ -137,8 +135,8 @@ end
 -- ensureSpellList(...) below instead, which lazy-creates by design.
 local function getActiveList()
     if not (selectedClass and selectedSpec) then return nil end
-    if not KickCD.Database then return nil end
-    return KickCD.Database:GetSpellList(selectedClass, selectedSpec)
+    if not NS.Database then return nil end
+    return NS.Database:GetSpellList(selectedClass, selectedSpec)
 end
 
 -- Lazy-creating active-list lookup for mutators only. Used by the Add
@@ -146,8 +144,8 @@ end
 -- the first edit, but stays absent during read-only browsing.
 local function ensureActiveList()
     if not (selectedClass and selectedSpec) then return nil end
-    if not KickCD.Database then return nil end
-    return KickCD.Database:EnsureSpellList(selectedClass, selectedSpec)
+    if not NS.Database then return nil end
+    return NS.Database:EnsureSpellList(selectedClass, selectedSpec)
 end
 
 local function getSpellName(id)
@@ -266,8 +264,8 @@ end
 -- indefinitely.
 
 local function FireConfigChanged()
-    if KickCD and KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "spells" })
     end
 end
 
@@ -307,8 +305,8 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
         local input = edit:GetText()
         local id, resolvedName = validateSpellInput(input)
         if not id then
-            if KickCD.Util and KickCD.Util.print then
-                KickCD.Util.print(L["Invalid spell"] .. ": " .. tostring(input))
+            if NS.Util and NS.Util.print then
+                NS.Util.print(L["Invalid spell"] .. ": " .. tostring(input))
             end
             return
         end
@@ -328,13 +326,11 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             playerClass = cf
         end
         local playerSpecToken
-        if GetSpecialization and GetSpecializationInfo then
-            local idx = GetSpecialization()
-            if idx then
-                local _, specName = GetSpecializationInfo(idx)
-                if specName then
-                    playerSpecToken = KickCD.Util.NormalizeSpecToken(specName)
-                end
+        local idx = Compat.GetSpecialization and Compat.GetSpecialization()
+        if idx then
+            local _, specName = Compat.GetSpecializationInfo(idx)
+            if specName then
+                playerSpecToken = NS.Util.NormalizeSpecToken(specName)
             end
         end
         local editorIsActiveSpec =
@@ -346,16 +342,16 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             if cmSet then
                 if not cmSet[id] then
                     local name = resolvedName or getSpellName(id) or tostring(id)
-                    if KickCD.Util and KickCD.Util.print then
-                        KickCD.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+                    if NS.Util and NS.Util.print then
+                        NS.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
                     end
                     return
                 end
-            elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
-                KickCD.Util.print("C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+            elseif NS.State and NS.State.debug then
+                NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
             end
-        elseif KickCD._debugLog and KickCD.Util and KickCD.Util.print then
-            KickCD.Util.print(("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
+        elseif NS.State and NS.State.debug then
+            NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
                 :format(tostring(selectedClass), tostring(selectedSpec),
                         tostring(playerClass), tostring(playerSpecToken)))
         end
@@ -392,9 +388,9 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
     OnAccept = function()
         local spells = getProfileSpells()
         if not (spells and selectedClass and selectedSpec) then return end
-        local source = KickCD.DefaultSpells
-                       and KickCD.DefaultSpells[selectedClass]
-                       and KickCD.DefaultSpells[selectedClass][selectedSpec]
+        local source = NS.DefaultSpells
+                       and NS.DefaultSpells[selectedClass]
+                       and NS.DefaultSpells[selectedClass][selectedSpec]
         spells[selectedClass] = spells[selectedClass] or {}
         if source then
             spells[selectedClass][selectedSpec] = Util.DeepCopy(source)
@@ -715,11 +711,11 @@ end
 
 local function buildSpecEntries()
     local entries = {}
-    if type(KickCD.DefaultSpells) ~= "table" then return entries end
+    if type(NS.DefaultSpells) ~= "table" then return entries end
 
-    local classOrder = sortedKeys(KickCD.DefaultSpells)
+    local classOrder = sortedKeys(NS.DefaultSpells)
     for _, classFile in ipairs(classOrder) do
-        local specs = sortedKeys(KickCD.DefaultSpells[classFile])
+        local specs = sortedKeys(NS.DefaultSpells[classFile])
         local hex       = classColorHex(classFile)
         local cIcon     = classIconMarkup(classFile)
         local className = classDisplayName(classFile)
@@ -812,17 +808,17 @@ function Spells:RefreshRows()
 
     releaseAceGUITree()
 
-    local classes = sortedKeys(KickCD.DefaultSpells)
-    if not selectedClass or not (KickCD.DefaultSpells and KickCD.DefaultSpells[selectedClass]) then
+    local classes = sortedKeys(NS.DefaultSpells)
+    if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
         local _, classFile = UnitClass("player")
-        if classFile and KickCD.DefaultSpells and KickCD.DefaultSpells[classFile] then
+        if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
             selectedClass = classFile
         else
             selectedClass = classes[1]
         end
     end
     if selectedClass and not selectedSpec then
-        local specs = sortedKeys(KickCD.DefaultSpells and KickCD.DefaultSpells[selectedClass])
+        local specs = sortedKeys(NS.DefaultSpells and NS.DefaultSpells[selectedClass])
         selectedSpec = specs[1]
     end
 
@@ -841,7 +837,7 @@ function Spells:RefreshRows()
     -- regardless of how many spell rows the active class+spec has.
     -- The patch is restored on widget release, so the AceGUI pool
     -- stays clean for any other addon.
-    local PanelHelpers = KickCD.Settings and KickCD.Settings.Helpers
+    local PanelHelpers = NS.Settings and NS.Settings.Helpers
     if PanelHelpers and PanelHelpers.PatchAlwaysShowScrollbar then
         PanelHelpers.PatchAlwaysShowScrollbar(container)
     end
@@ -869,7 +865,7 @@ end
 local function ensurePanel()
     if panel then return panel end
 
-    local H = KickCD.Settings and KickCD.Settings.Helpers
+    local H = NS.Settings and NS.Settings.Helpers
     if not (H and H.CreatePanel) then return nil end
 
     ctx = H.CreatePanel("KickCDSpellsPanel", L["Spells"], {
@@ -913,33 +909,37 @@ local function ensurePanel()
         end
     end)
 
-    if KickCD.RegisterMessage then
-        KickCD:RegisterMessage("KickCD_PROFILE_CHANGED", function()
+    -- The Spells panel is a plain-table module, not an AceAddon submodule, so
+    -- it owns a PRIVATE AceEvent target (§4.4 / KCD-09). Registering these
+    -- receivers on the shared KickCD addon object would risk clobbering a
+    -- future receiver of the same message. ensurePanel short-circuits on
+    -- subsequent calls, so this registers exactly once.
+    Spells.__ev = Spells.__ev or (NS.NewBusTarget and NS.NewBusTarget())
+    local ev = Spells.__ev
+    if ev then
+        ev:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", function()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end)
         -- Slash-command mutations (`/kcd spells add/remove/...`) and the
-        -- panel's own commitSoon both fire KickCD_CONFIG_CHANGED with
+        -- panel's own commitSoon both fire Ka0s_KickCD_CONFIG_CHANGED with
         -- section="spells". Subscribing here is what closes the bus
         -- contract — the slash layer no longer reaches across to call
         -- our RefreshRows directly (CR-7).
-        KickCD:RegisterMessage("KickCD_CONFIG_CHANGED", function(_, payload)
+        ev:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function(_, payload)
             if payload and payload.section == "spells"
                and panel and panel:IsShown() then
                 Spells:RefreshRows()
             end
         end)
-    end
 
-    -- Talent / spellbook changes flip the per-row known/unknown glyph.
-    -- Refresh while the panel is open so the indicators stay in sync
-    -- with what IconGrid is rendering. Only registered once (ensurePanel
-    -- short-circuits on subsequent calls).
-    if KickCD.RegisterEvent then
+        -- Talent / spellbook changes flip the per-row known/unknown glyph.
+        -- Refresh while the panel is open so the indicators stay in sync
+        -- with what IconGrid is rendering.
         local function refreshIfShown()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end
-        KickCD:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
-        KickCD:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
+        ev:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
+        ev:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
     end
 
     return panel
@@ -959,6 +959,6 @@ local function Build(mainCategory)
     return Settings.RegisterCanvasLayoutSubcategory(mainCategory, panel, L["Spells"])
 end
 
-if KickCD.Settings and KickCD.Settings.RegisterTab then
-    KickCD.Settings.RegisterTab("spells", Build)
+if NS.Settings and NS.Settings.RegisterTab then
+    NS.Settings.RegisterTab("spells", Build)
 end

@@ -3,7 +3,7 @@
 -- Tiny shared "live state" namespace. Owns process-global flags that
 -- multiple modules need to read identically (today: combat state).
 -- This file's bootstrap listener owns the PLAYER_REGEN_* registration
--- and the flag write, then fans out KickCD_COMBAT_STATE so subscribers
+-- and the flag write, then fans out Ka0s_KickCD_COMBAT_STATE so subscribers
 -- (IconGrid, Castbar) see an explicit ordered transition signal. They
 -- NEVER mutate the flag — this is the only writer.
 --
@@ -19,10 +19,15 @@
 -- core/Util.lua so any helper / module that loads later can read
 -- KickCD.State.* without an existence check.
 
-KickCD = KickCD or {}
+local addonName, NS = ...
 
-local State = { inCombat = false }
-KickCD.State = State
+-- `debug` is the session-only debug-logging flag (§12.5). It defaults OFF,
+-- is NEVER persisted to SavedVariables, and resets to off on every /reload
+-- and fresh login (a fresh addon load re-runs this file, re-seeding false).
+-- The ONLY write path is KickCD.DebugLog:SetEnabled — modules read
+-- KickCD.State.debug (via the KickCD.Debug sink) but never mutate it.
+local State = { inCombat = false, debug = false }
+NS.State = State
 
 --- Set the live combat flag. Called only from the bootstrap event
 --- listener below; modules read State.inCombat but never mutate it.
@@ -67,7 +72,7 @@ end
 function State.IsHostileUnitCasting(unit)
     if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
     if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
-    local Compat = KickCD.Compat
+    local Compat = NS.Compat
     if Compat and Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
     if Compat and Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
     return false
@@ -146,7 +151,7 @@ boot:SetScript("OnEvent", function(self, event)
     -- fired before any module's. Guard documents the AceAddon-mixin race
     -- (KickCD has SendMessage by PLAYER_LOGIN time, but the guard makes
     -- the dependency explicit). See docs/message-bus.md.
-    if KickCD and KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_COMBAT_STATE", { inCombat = State.inCombat })
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_COMBAT_STATE", { inCombat = State.inCombat })
     end
 end)

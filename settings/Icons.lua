@@ -4,10 +4,10 @@
 -- KickCD.Settings.Schema; the builder just calls Helpers.RenderSchema.
 -- Adding a new icons-section option means adding one schema row here.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local L      = KickCD.L
-local H      = KickCD.Settings.Helpers
-local Schema = KickCD.Settings.Schema
+local addonName, NS = ...
+local L      = NS.L
+local H      = NS.Settings.Helpers
+local Schema = NS.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
@@ -371,6 +371,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Icons"])
 end
 
-if KickCD.Settings and KickCD.Settings.RegisterTab then
-    KickCD.Settings.RegisterTab("icons", Build)
+if NS.Settings and NS.Settings.RegisterTab then
+    NS.Settings.RegisterTab("icons", Build)
 end

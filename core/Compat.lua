@@ -16,10 +16,10 @@
 -- after it can rely on _G.KickCD existing as a plain table to hang
 -- helpers on (the AceAddon object replaces it later in core/KickCD.lua,
 -- but the merge there preserves these fields).
-KickCD = KickCD or {}
+local addonName, NS = ...
 
 local Compat = {}
-KickCD.Compat = Compat
+NS.Compat = Compat
 
 -- ---------------------------------------------------------------------------
 -- Internal helpers
@@ -223,6 +223,36 @@ function Compat.IsSpellUsable(spellID)
 end
 
 -- ---------------------------------------------------------------------------
+-- Specialization APIs
+-- ---------------------------------------------------------------------------
+--
+-- 12.0 (Midnight) moved the specialization query behind the C_SpecializationInfo
+-- namespace; the bare globals GetSpecialization / GetSpecializationInfo are the
+-- deprecated pre-11.x seam. Route every caller through Compat so feature modules
+-- never touch the deprecated globals directly (§11). Signatures are preserved:
+-- GetSpecialization returns the active spec INDEX; GetSpecializationInfo(index)
+-- returns (id, localisedName, description, iconID, role, ...).
+
+--- Active specialization index (or nil if unavailable).
+-- @return number|nil
+function Compat.GetSpecialization()
+    if _G.C_SpecializationInfo and _G.C_SpecializationInfo.GetSpecialization then
+        return _G.C_SpecializationInfo.GetSpecialization()
+    end
+    return _G.GetSpecialization and _G.GetSpecialization()
+end
+
+--- Specialization info for a spec index. Multi-return passthrough of the
+--- underlying API (id, localisedName, description, iconID, role, ...).
+-- @param index number
+function Compat.GetSpecializationInfo(index)
+    if _G.C_SpecializationInfo and _G.C_SpecializationInfo.GetSpecializationInfo then
+        return _G.C_SpecializationInfo.GetSpecializationInfo(index)
+    end
+    if _G.GetSpecializationInfo then return _G.GetSpecializationInfo(index) end
+end
+
+-- ---------------------------------------------------------------------------
 -- Cast / channel info (target cast bar)
 -- ---------------------------------------------------------------------------
 --
@@ -328,7 +358,7 @@ end
 --- and table.concat on the resulting string then errors out — that's
 --- why a naive "tostring(name)" inside :format() blew up combat.
 function Compat.DebugInterrupt(unit)
-    local out = (KickCD.Util and KickCD.Util.print) or _G.print
+    local out = (NS.Util and NS.Util.print) or _G.print
     unit = unit or "target"
 
     -- Stringify a value safely in tainted scope: secret → "<secret>",
@@ -400,12 +430,12 @@ function Compat.DebugInterrupt(unit)
     end
 
     out(("State.IsHostileUnitCasting(%s) = %s"):format(
-        unit, tostring(KickCD.State.IsHostileUnitCasting(unit))))
+        unit, tostring(NS.State.IsHostileUnitCasting(unit))))
 
     -- Report what the addon-wide visibility / glow logic decided. The
     -- visibility mode is the addon-wide setting; per-icon glow triggers
     -- live in icons.{primary,secondary}GlowTrigger.
-    local profile = KickCD.db and KickCD.db.profile
+    local profile = NS.db and NS.db.profile
     local mode = (profile and profile.visibility) or "always"
     out(("addon visibility mode = %s"):format(tostring(mode)))
     local icons = (profile and profile.icons) or {}

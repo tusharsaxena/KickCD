@@ -17,7 +17,7 @@ Every panel ctx is stashed in `KickCD.Settings._panels` so `Helpers.RefreshAllPa
 ```lua
 {
     panel    = "general",                    -- which tab renders it
-    section  = "general",                    -- KickCD_CONFIG_CHANGED section
+    section  = "general",                    -- Ka0s_KickCD_CONFIG_CHANGED section
     group    = L["Master controls"],         -- sub-section header text
     path     = "scale",                      -- dotted db.profile path
     type     = "bool"|"number"|"string"|"color",
@@ -38,7 +38,7 @@ Every panel ctx is stashed in `KickCD.Settings._panels` so `Helpers.RefreshAllPa
 | `/kcd list` | Groups schema by `panel`, prints `path = formattedValue` |
 | `/kcd get <path>` | `Helpers.FindSchema(path)` + `formatValue` |
 | `/kcd set <path> <value>` | Type-aware parse (clamp numbers, validate dropdown values, parse `r g b [a]` for colors) → `Helpers.Set` → `onChange` → `Helpers.RefreshAllPanels` |
-| `Defaults` button | `Helpers.RestoreDefaults(panelKey, ctx)` resets every panel row to `def.default`, runs `onChange`, fires per-section `KickCD_CONFIG_CHANGED`, re-runs the panel's refreshers |
+| `Defaults` button | `Helpers.RestoreDefaults(panelKey, ctx)` resets every panel row to `def.default`, runs `onChange`, fires per-section `Ka0s_KickCD_CONFIG_CHANGED`, re-runs the panel's refreshers |
 
 **Adding an option = one schema row.** UI widget, slash CLI, and Defaults reset are wired automatically.
 
@@ -84,7 +84,7 @@ Schema rendering is **deferred to the panel's `OnShow`** because at build time (
 
 The ColorPicker's confirmation flow is a quirk of WoW 12.0's `SetupColorPickerAndShow` — KickCD listens to **both** `OnValueChanged` (treats every drag-step as a commit, giving a live preview) and `OnValueConfirmed` (fires only on Cancel, with the original color, so the value reverts cleanly).
 
-The `OnValueChanged` commit is wrapped in `Util.Throttle(50, ...)` so dragging a color slider fires `KickCD_CONFIG_CHANGED` at most ~20 times/sec instead of every render frame. Without it the live cast bar / icon grid would re-skin per-frame during a drag, jankily on slower systems. `OnValueConfirmed` (which only fires on Cancel under WoW 12.0's flow) stays immediate so the snap-back is instantaneous.
+The `OnValueChanged` commit is wrapped in `Util.Throttle(50, ...)` so dragging a color slider fires `Ka0s_KickCD_CONFIG_CHANGED` at most ~20 times/sec instead of every render frame. Without it the live cast bar / icon grid would re-skin per-frame during a drag, jankily on slower systems. `OnValueConfirmed` (which only fires on Cancel under WoW 12.0's flow) stays immediate so the snap-back is instantaneous.
 
 ## Always-visible scrollbar
 
@@ -98,4 +98,4 @@ The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to **always**
 
 The General tab's "Reset all settings" button (under Master controls) funnels through `Helpers.ResetAll`, which calls `Helpers.RestoreAllDefaults` (loops over every schema-driven panel: general / icons / castbar) **and** `Database:ResetAllSpells` (rebuilds every spec's spell list from `KickCD.DefaultSpells`). The slash command `/kcd resetall` shares this same helper — the popup and the CLI cannot diverge. Profiles are intentionally skipped because the AceDBOptions UI has its own destructive controls and resetting them would delete user data.
 
-`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.anchors.icons` from `KickCD.DEFAULT_PROFILE.anchors.icons` so the default coordinates live in one place. It fires `KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors, and firing `icons` would just be a wasted relayout.
+`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.anchors.icons` from `KickCD.DEFAULT_PROFILE.anchors.icons` so the default coordinates live in one place. It fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors, and firing `icons` would just be a wasted relayout.

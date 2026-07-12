@@ -6,10 +6,10 @@
 -- and Database:BuildSpells() merges that into the profile only on
 -- first creation so user edits are never stomped.
 
-KickCD = KickCD or {}
+local addonName, NS = ...
 
 local Database = {}
-KickCD.Database = Database
+NS.Database = Database
 
 -- ---------------------------------------------------------------------------
 -- Defaults (DEFAULT_PROFILE shape — see docs/saved-variables.md)
@@ -18,22 +18,19 @@ KickCD.Database = Database
 -- Schema version. Increment whenever a non-additive change is made to
 -- DEFAULT_PROFILE's shape (rename, restructure, type change). Additive
 -- changes (new leaf settings) are absorbed by AceDB's defaults merge
--- and don't need a version bump. Database:MigrateProfile reads this
--- field on Init and on every profile swap and walks any required
--- migrations forward; today the migrator is a no-op for v1.
+-- and don't need a version bump. The version is an addon-wide integer
+-- stored in db.global.schemaVersion (§2.2 / §5.1) — NOT per-profile.
+-- Database:MigrateProfile reads it on Init and on every profile swap and
+-- walks any required migrations forward; today the migrator is a no-op
+-- for v1.
 local CURRENT_DB_VERSION = 1
 
 local DEFAULT_PROFILE = {
-    -- Schema version stamped onto every newly-created profile so future
-    -- migrations can tell "this profile was last touched at version N"
-    -- and apply the right transforms. Existing profiles missing the
-    -- field are treated as v1 (the original shape) by MigrateProfile.
-    dbVersion  = CURRENT_DB_VERSION,
     enabled    = true,
     locked     = true,
     scale      = 1.0,
     alpha      = 1.0,
-    debugLog   = false,
+    -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — §12.5)
     -- "always" | "in_combat" | "target_casting" | "target_casting_interruptible"
     -- Controls when the icon grid is visible. "in_combat" gates on
     -- InCombatLockdown(); "target_casting" gates on UnitCastingInfo /
@@ -238,11 +235,18 @@ local DEFAULT_PROFILE = {
 
 local DEFAULTS = {
     profile = DEFAULT_PROFILE,
+    -- Addon-wide (account) scope. The schema version lives here, not on the
+    -- profile, so a migration runs once per account rather than once per
+    -- profile (§5.1). See Database:MigrateProfile for the one-shot adoption
+    -- of a legacy per-profile dbVersion.
+    global = {
+        schemaVersion = CURRENT_DB_VERSION,
+    },
 }
 
 -- Expose for any caller that needs to deep-copy-on-demand (e.g. the Spells
 -- editor's "Reset to defaults" button).
-KickCD.DEFAULT_PROFILE = DEFAULT_PROFILE
+NS.DEFAULT_PROFILE = DEFAULT_PROFILE
 
 -- ---------------------------------------------------------------------------
 -- Spell-list traversal helpers
@@ -349,7 +353,7 @@ function Database:BuildSpells()
         return
     end
 
-    local source = KickCD.DefaultSpells
+    local source = NS.DefaultSpells
     if type(source) ~= "table" then
         -- defaults/Spells.lua hasn't loaded yet, or failed to load.
         -- Leave spells empty; the spells module will treat that as "track nothing".
@@ -384,7 +388,7 @@ function Database:BuildSpells()
 
     -- Append the racial cast-stopper into every spec list of the player's
     -- own class. Only on first creation — see method docstring.
-    local racials = KickCD.RaceCastStoppers
+    local racials = NS.RaceCastStoppers
     if type(racials) == "table" then
         local _, race = UnitRace("player")
         local _, classFile = UnitClass("player")
@@ -421,9 +425,9 @@ function Database:ResetAllSpells()
     if not (self.db and self.db.profile) then return end
     self.db.profile.spells = {}
     self:BuildSpells()
-    if KickCD and KickCD.SendMessage then
+    if NS and NS.SendMessage then
         local key = (self.db.keys and self.db.keys.profile) or "Default"
-        KickCD:SendMessage("KickCD_PROFILE_CHANGED", { newProfileKey = key })
+        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
     end
 end
 
@@ -447,30 +451,50 @@ end
 -- under deadline pressure.
 
 local migrations = {
-    -- [from-version] = function(profile) ... end
-    -- Each step bumps profile.dbVersion to the from-version+1.
+    -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
+    -- Each step bumps db.global.schemaVersion to the from-version+1 and may
+    -- read/write db.profile as needed.
 }
 
---- Migrate the active profile forward to CURRENT_DB_VERSION. Idempotent
---- on profiles already at the current version. Profiles missing
---- dbVersion entirely are treated as v1 (the original shape).
+--- Migrate the account forward to CURRENT_DB_VERSION. The schema version is
+--- addon-wide (db.global.schemaVersion), so this runs once per account and
+--- is idempotent once at the current version. Called on Init and on every
+--- profile swap.
+---
+--- One-shot legacy adoption: installs that pre-date this change stamped the
+--- version per-profile (profile.dbVersion). The first time global.schemaVersion
+--- is unset we adopt the active profile's dbVersion (defaulting to v1) so live
+--- profiles aren't re-migrated from scratch, then drop the orphaned per-profile
+--- field so it doesn't linger in SavedVariables.
 function Database:MigrateProfile()
-    if not (self.db and self.db.profile) then return end
+    if not (self.db and self.db.global) then return end
+    local g = self.db.global
     local profile = self.db.profile
-    -- Treat a missing dbVersion as v1 — the field was added in v1, so
-    -- a profile that pre-dates this scaffold is structurally v1.
-    profile.dbVersion = profile.dbVersion or 1
-    while profile.dbVersion < CURRENT_DB_VERSION do
-        local step = migrations[profile.dbVersion]
+
+    -- Legacy accounts (pre-KCD-20) stamped the version PER-PROFILE. We CANNOT
+    -- detect them by `g.schemaVersion == nil`: AceDB's defaults merge backfills
+    -- db.global.schemaVersion to CURRENT_DB_VERSION the moment db.global is first
+    -- accessed (copyDefaults rawsets the scalar default), which would mask a
+    -- legacy account as already-current and skip its migrations. So key legacy
+    -- detection on the presence of the old per-profile field instead. A fresh
+    -- install has no dbVersion and is correctly born at CURRENT_DB_VERSION (via
+    -- the global default) with nothing to migrate.
+    if profile and profile.dbVersion ~= nil then
+        g.schemaVersion = profile.dbVersion   -- adopt the legacy version...
+        profile.dbVersion = nil               -- ...and drop the orphaned field.
+    end
+    g.schemaVersion = g.schemaVersion or 1
+
+    while g.schemaVersion < CURRENT_DB_VERSION do
+        local step = migrations[g.schemaVersion]
         if not step then
-            -- No registered migrator for this jump — bump the field to
-            -- avoid an infinite loop and stop. A real schema change
-            -- would have registered the step before bumping
-            -- CURRENT_DB_VERSION.
-            profile.dbVersion = CURRENT_DB_VERSION
+            -- No registered migrator for this jump — bump to avoid an
+            -- infinite loop and stop. A real schema change would have
+            -- registered the step before bumping CURRENT_DB_VERSION.
+            g.schemaVersion = CURRENT_DB_VERSION
             break
         end
-        step(profile)
+        step(self.db)
     end
 end
 
@@ -493,8 +517,8 @@ function Database:OnProfileChanged(_, db, newProfileKey)
 
     -- Fire the closed internal message — see docs/message-bus.md.
     -- This is the only message Database is allowed to emit.
-    if KickCD and KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_PROFILE_CHANGED", { newProfileKey = key })
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
     end
 end
 
@@ -506,7 +530,7 @@ end
 function Database:Init()
     local AceDB = LibStub and LibStub("AceDB-3.0", true)
     if not AceDB then
-        if KickCD.Util then KickCD.Util.print("AceDB-3.0 missing — bailing") end
+        if NS.Util then NS.Util.print("AceDB-3.0 missing — bailing") end
         return
     end
 
@@ -520,7 +544,7 @@ function Database:Init()
     -- per-class / per-realm via the Profiles panel.
     local db = AceDB:New("KickCDDB", DEFAULTS, true)
     self.db    = db
-    KickCD.db  = db
+    NS.db  = db
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

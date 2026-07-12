@@ -7,9 +7,9 @@
 --   * Throttle wrapper using C_Timer.After to coalesce setting writes
 --   * print() with the addon's chat prefix
 
-KickCD = KickCD or {}
+local addonName, NS = ...
 local Util = {}
-KickCD.Util = Util
+NS.Util = Util
 
 -- ---------------------------------------------------------------------------
 -- Colors
@@ -208,7 +208,10 @@ end
 -- Chat output
 -- ---------------------------------------------------------------------------
 
-local PREFIX = "|cff00ffff[KCD]|r"
+-- Single source of truth for the chat tag lives on the namespace
+-- (KickCD.PREFIX, set in core/Constants.lua which loads before this file).
+-- The local fallback covers the theoretical case of Util loading first.
+local PREFIX = NS.PREFIX or "|cff00ffff[KCD]|r"
 
 --- Print to the default chat frame with the KickCD prefix.
 -- Multiple args are space-separated, mirroring print().

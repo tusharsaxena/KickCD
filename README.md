@@ -3,6 +3,7 @@
 ![wow](https://img.shields.io/badge/WoW-Midnight_12.0.7-orange)
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![license](https://img.shields.io/badge/license-MIT-green)
+[![Ka0s Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-blueviolet)](https://github.com/tusharsaxena/WowAddonStandards)
 
 ![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
@@ -78,11 +79,20 @@ Five subcategories under **Ka0s KickCD**:
 
 Use `/kcd unlock` to drag the icon grid (and the cast bar, if it's in FREE anchor mode) into position, then `/kcd lock` to fix them.
 
-## Critical settings
+## How interrupt tracking works
+
+The addon reaches its on-screen result through a short, deliberate pipeline. Understanding it explains why the UI shows (or hides) when it does.
+
+1.  **Visibility gate.** Three things decide whether *anything* renders. The **master enable** wins outright — off means nothing shows. Then the addon-wide **visibility mode** (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`) decides *when* the icon grid and cast bar appear, and both panels share one mode and one **drag lock**, so they move and lock together.
+2.  **Two-step interruptibility gate.** In `target_casting_interruptible` mode the decision is split in two. First the grid and bar **show** whenever the current target is a hostile unit that is casting or channeling. Then an alpha mask **fades the display to invisible during uninterruptible casts**. This is deliberately two steps because WoW 12.0's "secret value" protection makes the target's `notInterruptible` flag impossible to compare in Lua — so the interruptible-or-not decision is pushed down to Blizzard's own C-side (`SetAlphaFromBoolean`) rather than branched on in the addon.
+3.  **Your cooldowns.** Independently, the addon watches *your* interrupt and cast-stopping CC cooldowns for the current class + spec. It drives the cooldown swipe and the ready / not-ready state on each icon in the grid — again handing the protected remaining-time value straight to Blizzard's C-side curve evaluation so it never inspects that secret value in Lua.
+4.  **Target cast bar.** The cast bar mirrors the current target's cast or channel — spell icon, name, and remaining time — colored per interruptibility state (interruptible vs. uninterruptible), so a glance tells you whether the cast in front of you is worth a kick.
+
+### Critical settings
 
 A few options change the addon's behavior more than any others.
 
-### Visibility modes (General → Master controls → General visibility)
+#### Visibility modes (General → Master controls → General visibility)
 
 A single visibility selector governs **both** the icon grid and the cast bar. The master enable toggle still wins — disabled hides everything regardless of mode.
 
@@ -95,7 +105,7 @@ A single visibility selector governs **both** the icon grid and the cast bar. Th
 
 The per-icon glow trigger (Icons → Ready glow → Trigger) reuses three of these values — `always`, `target_casting`, `target_casting_interruptible` — plus a `never` option to disable the glow entirely. (`in_combat` is intentionally absent; the glow is a per-cast cue, not a combat-state indicator.) Primary and secondary icons each carry their own trigger.
 
-### Cast bar anchoring (Cast bar → Position)
+#### Cast bar anchoring (Cast bar → Position)
 
 Two modes:
 
@@ -104,13 +114,13 @@ Two modes:
 
 Defaults: `Anchor mode = PRIMARY`, attach point `TOP_LEFT` ↔ `BOTTOM_LEFT`, offset `(0, 1)` — bar sits 1 px above the primary icon, left-aligned.
 
-### Cast bar orientation, growth, and auto-size (Cast bar → Orientation)
+#### Cast bar orientation, growth, and auto-size (Cast bar → Orientation)
 
 *   **Orientation** — `HORIZONTAL` (default) or `VERTICAL`. Vertical rotates the whole frame 90°; spark, fill, name, time, and icon layouts all follow.
 *   **Growth direction** — pairs with orientation. Horizontal accepts `RIGHT` / `LEFT`; vertical accepts `UP` / `DOWN`. Switching orientation auto-resets growth to the canonical default for the new axis.
 *   **Auto-size to icon grid** — when on, the bar's _long_ axis matches the icon grid's actual rendered size in that direction (horizontal → bar width, vertical → bar height). Tracks the grid's _visible_ footprint, so adding/removing/disabling icons resizes the bar in place. The orthogonal dimension stays as configured.
 
-### Icon grid anchoring (Icons → Layout)
+#### Icon grid anchoring (Icons → Layout)
 
 `Primary anchor` places the secondary block on the primary icon (12 `<SIDE>_<ALIGN>` tokens + a 13th `CENTER` that stacks the block on the primary). `Grow direction` picks the fill order inside the block (8 combinations of `right` / `left` / `down` / `up`). `Rows × Cols` is the block's capacity. Anchor and grow are independent — any anchor pairs with any grow direction.
 

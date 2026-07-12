@@ -196,7 +196,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons → Annotations → Show cooldown text` countdown ticking down.
 - The unrelated GCD does NOT visually trigger Pummel's swipe — the C-side curve gates GCD vs real CD without comparing the secret remaining time in Lua.
 - Glow on the primary icon triggers only on hostile interruptible casts; glow on the secondary icons triggers on any hostile cast, per the per-trigger config. The two are independent.
-- After Pummel comes off CD, `Cooldowns:Refresh` re-emits `KickCD_SPELL_STATE { ready = true }`, the icon re-saturates, and the cooldown swipe vanishes — no `0.0` stuck-text bug (regression check from 1.0.0).
+- After Pummel comes off CD, `Cooldowns:Refresh` re-emits `Ka0s_KickCD_SPELL_STATE { ready = true }`, the icon re-saturates, and the cooldown swipe vanishes — no `0.0` stuck-text bug (regression check from 1.0.0).
 
 ### 9. Spec, talent, pet rebuilds
 
@@ -232,7 +232,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - The active-spec write paths validate against the Cooldown Manager spell-set — adding a spell that isn't tracked there prints an error and is rejected.
 - Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
-- After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `KickCD_CONFIG_CHANGED { section = "spells" }`) — no need to close and reopen the panel.
+- After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`) — no need to close and reopen the panel.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `KickCD.DefaultSpells`; the other specs are untouched.
 - `/kcd reset spells` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd reset spells`).
@@ -251,7 +251,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel.lua`).
 
 **Pass.**
-- Every panel write fires `KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.
+- Every panel write fires `Ka0s_KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
 - Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
@@ -290,7 +290,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/reload` after each step.
 
 **Pass.**
-- Switching profiles fires `KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
+- Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
 - `Database:MigrateProfile` runs on profile change (a `dbVersion = 1` no-op today, but it should not error).
 - Spell-list edits on one profile do not bleed into another.

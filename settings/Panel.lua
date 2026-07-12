@@ -1,5 +1,9 @@
 -- settings/Panel.lua
 --
+-- NOTE (KCD-19, §1.2): this file is in the 1000–1500 LOC "on notice" band.
+-- It is under the 1500 hard cap; a future peel would split the canvas/layout
+-- framework from the widget-primitive helpers (RenderSchema and friends).
+--
 -- Settings UI framework. Every tab — General, Icons, Spells, Profiles —
 -- is registered as a canvas-layout subcategory and shares one header
 -- design: title (left) + Defaults button (right) + divider, all built
@@ -16,33 +20,33 @@
 -- The same schema feeds /kcd list|get|set (see core/KickCD.lua), so
 -- adding a new option = one row that auto-wires UI and CLI.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local L      = KickCD.L
+local addonName, NS = ...
+local L      = NS.L
 local AceGUI = LibStub("AceGUI-3.0")
 
-KickCD.Settings = KickCD.Settings or {}
-KickCD.Settings.main      = nil
-KickCD.Settings.sub       = {}
-KickCD.Settings.builders  = {}
-KickCD.Settings.order     = { "general", "icons", "castbar", "spells", "profiles" }
-KickCD.Settings.Schema    = KickCD.Settings.Schema or {}
-KickCD.Settings._panels   = KickCD.Settings._panels or {}
+NS.Settings = NS.Settings or {}
+NS.Settings.main      = nil
+NS.Settings.sub       = {}
+NS.Settings.builders  = {}
+NS.Settings.order     = { "general", "icons", "castbar", "spells", "profiles" }
+NS.Settings.Schema    = NS.Settings.Schema or {}
+NS.Settings._panels   = NS.Settings._panels or {}
 
 local Helpers = {}
-KickCD.Settings.Helpers = Helpers
+NS.Settings.Helpers = Helpers
 
 -- ---------------------------------------------------------------------
 -- db.profile path helpers
 -- ---------------------------------------------------------------------
 
 local function Resolve(path)
-    if not (KickCD.db and KickCD.db.profile) then return nil, nil end
+    if not (NS.db and NS.db.profile) then return nil, nil end
     local segments = {}
     for part in string.gmatch(path, "[^.]+") do
         segments[#segments + 1] = part
     end
     if #segments == 0 then return nil, nil end
-    local parent = KickCD.db.profile
+    local parent = NS.db.profile
     for i = 1, #segments - 1 do
         parent = parent[segments[i]]
         if type(parent) ~= "table" then return nil, nil end
@@ -58,8 +62,8 @@ function Helpers.Get(path)
 end
 
 function Helpers.FireConfigChanged(section)
-    if KickCD and KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = section })
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = section })
     end
 end
 
@@ -76,14 +80,14 @@ end
 
 function Helpers.SchemaForPanel(panelKey)
     local out = {}
-    for _, def in ipairs(KickCD.Settings.Schema) do
+    for _, def in ipairs(NS.Settings.Schema) do
         if def.panel == panelKey then out[#out + 1] = def end
     end
     return out
 end
 
 function Helpers.FindSchema(path)
-    for _, def in ipairs(KickCD.Settings.Schema) do
+    for _, def in ipairs(NS.Settings.Schema) do
         if def.path == path then return def end
     end
 end
@@ -115,12 +119,12 @@ local _validTypes = {
 }
 
 local function _printSchemaError(prefix, msg)
-    local out = KickCD.Util and KickCD.Util.print
+    local out = NS.Util and NS.Util.print
     if out then
         out("|cffff0000schema error|r: " .. prefix .. ": " .. msg)
     elseif DEFAULT_CHAT_FRAME then
         DEFAULT_CHAT_FRAME:AddMessage(
-            "|cff00ffff[KCD]|r |cffff0000schema error|r: " .. prefix .. ": " .. msg)
+            (NS.PREFIX or "|cff00ffff[KCD]|r") .. " |cffff0000schema error|r: " .. prefix .. ": " .. msg)
     end
 end
 
@@ -130,7 +134,7 @@ end
 --- the count is exposed for the test harness / future debug surface).
 function Helpers.ValidateSchema()
     local errors = 0
-    for i, def in ipairs(KickCD.Settings.Schema or {}) do
+    for i, def in ipairs(NS.Settings.Schema or {}) do
         local where = "row #" .. i .. " (" .. tostring(def.path or "<no path>") .. ")"
         if type(def) ~= "table" then
             _printSchemaError(where, "row is not a table")
@@ -215,10 +219,10 @@ end
 -- Sourced from KickCD.Const so the values live in exactly one place
 -- across the addon — see core/Constants.lua for the rationale on each.
 
-local PADDING_X     = KickCD.Const.PANEL_PADDING_X
-local HEADER_TOP    = KickCD.Const.PANEL_HEADER_TOP
-local HEADER_HEIGHT = KickCD.Const.PANEL_HEADER_HEIGHT
-local DEFAULTS_W    = KickCD.Const.PANEL_DEFAULTS_W
+local PADDING_X     = NS.Const.PANEL_PADDING_X
+local HEADER_TOP    = NS.Const.PANEL_HEADER_TOP
+local HEADER_HEIGHT = NS.Const.PANEL_HEADER_HEIGHT
+local DEFAULTS_W    = NS.Const.PANEL_DEFAULTS_W
 
 -- Each button in an InlineButtonPair reserves a hair under half the row so
 -- AceGUI Flow's ~2px right-cell spill can't push the right button past the
@@ -342,7 +346,7 @@ function Helpers.CreatePanel(name, title, opts)
         lastGroup   = nil,
         panelKey    = opts.panelKey,
     }
-    KickCD.Settings._panels[#KickCD.Settings._panels + 1] = ctx
+    NS.Settings._panels[#NS.Settings._panels + 1] = ctx
     return ctx
 end
 
@@ -552,8 +556,8 @@ end
 local function fireOnChange(def, value)
     if def.onChange then
         local ok, err = pcall(def.onChange, value)
-        if not ok and KickCD.Util then
-            KickCD.Util.print("onChange for " .. tostring(def.path) .. " failed: " .. tostring(err))
+        if not ok and NS.Util then
+            NS.Util.print("onChange for " .. tostring(def.path) .. " failed: " .. tostring(err))
         end
     end
 end
@@ -781,7 +785,7 @@ local function makeColorPicker(ctx, def, parent, relativeWidth)
     --     Treat it as the primary write — gives a live preview AND
     --     persists the value before the user even clicks OK. Wrapped
     --     in Util.Throttle(50ms) so a sustained drag fires
-    --     KickCD_CONFIG_CHANGED at most ~20 times/sec (the live
+    --     Ka0s_KickCD_CONFIG_CHANGED at most ~20 times/sec (the live
     --     module re-skins on each fire; the throttle keeps the UI
     --     responsive on lower-end systems without losing the snap of
     --     a live preview).
@@ -793,8 +797,8 @@ local function makeColorPicker(ctx, def, parent, relativeWidth)
         Helpers.Set(def.path, def.section, { r, g, b, a or 1 })
         fireOnChange(def, { r, g, b, a or 1 })
     end
-    local throttledCommit = (KickCD.Util and KickCD.Util.Throttle)
-        and KickCD.Util.Throttle(50, commit)
+    local throttledCommit = (NS.Util and NS.Util.Throttle)
+        and NS.Util.Throttle(50, commit)
         or  commit
     cp:SetCallback("OnValueChanged",   function(_, _, r, g, b, a) throttledCommit(r, g, b, a) end)
     cp:SetCallback("OnValueConfirmed", function(_, _, r, g, b, a) commit(r, g, b, a) end)
@@ -829,8 +833,8 @@ function Helpers.InlineButton(ctx, buttonText, tooltip, onClick, width)
     btn:SetCallback("OnClick", function()
         if not onClick then return end
         local ok, err = pcall(onClick)
-        if not ok and KickCD.Util then
-            KickCD.Util.print("button onClick failed: " .. tostring(err))
+        if not ok and NS.Util then
+            NS.Util.print("button onClick failed: " .. tostring(err))
         end
     end)
     row:AddChild(btn)
@@ -861,8 +865,8 @@ function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
         btn:SetCallback("OnClick", function()
             if not spec.onClick then return end
             local ok, err = pcall(spec.onClick)
-            if not ok and KickCD.Util then
-                KickCD.Util.print("button onClick failed: " .. tostring(err))
+            if not ok and NS.Util then
+                NS.Util.print("button onClick failed: " .. tostring(err))
             end
         end)
         attachTooltip(btn, spec.text, spec.tooltip)
@@ -895,8 +899,8 @@ function Helpers.Button(ctx, labelText, buttonText, tooltip, onClick)
     btn:SetCallback("OnClick", function()
         if not onClick then return end
         local ok, err = pcall(onClick)
-        if not ok and KickCD.Util then
-            KickCD.Util.print("button onClick failed: " .. tostring(err))
+        if not ok and NS.Util then
+            NS.Util.print("button onClick failed: " .. tostring(err))
         end
     end)
     row:AddChild(btn)
@@ -990,7 +994,7 @@ end
 -- Refresh every widget on every panel ctx — called after a slash-cmd
 -- /kcd set so an open panel reflects the new value immediately.
 function Helpers.RefreshAllPanels()
-    for _, ctx in ipairs(KickCD.Settings._panels) do
+    for _, ctx in ipairs(NS.Settings._panels) do
         for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
     end
 end
@@ -1008,7 +1012,7 @@ function Helpers.RestoreDefaults(panelKey, ctx)
                 -- nested-table default (e.g. an RGBA array — today the only
                 -- tabular default — but anything nested would silently leak
                 -- without a real recursive clone).
-                local v = KickCD.Util.DeepCopy(def.default)
+                local v = NS.Util.DeepCopy(def.default)
                 parent[key] = v
                 fireOnChange(def, v)
                 sections[def.section or panelKey] = true
@@ -1029,10 +1033,10 @@ end
 -- run so live widgets reflect the new state.
 function Helpers.RestoreAllDefaults()
     local ctxByKey = {}
-    for _, ctx in ipairs(KickCD.Settings._panels or {}) do
+    for _, ctx in ipairs(NS.Settings._panels or {}) do
         if ctx.panelKey then ctxByKey[ctx.panelKey] = ctx end
     end
-    for _, panelKey in ipairs(KickCD.Settings.order or {}) do
+    for _, panelKey in ipairs(NS.Settings.order or {}) do
         if Helpers.SchemaForPanel(panelKey)[1] then
             Helpers.RestoreDefaults(panelKey, ctxByKey[panelKey])
         end
@@ -1057,8 +1061,8 @@ function Helpers.SetAndRefresh(path, value)
     Helpers.Set(def.path, def.section, value)
     if def.onChange then
         local ok, err = pcall(def.onChange, value)
-        if not ok and KickCD.Util then
-            KickCD.Util.print("onChange for " .. tostring(def.path)
+        if not ok and NS.Util then
+            NS.Util.print("onChange for " .. tostring(def.path)
                               .. " failed: " .. tostring(err))
         end
     end
@@ -1072,12 +1076,12 @@ end
 -- The default coords come from KickCD.DEFAULT_PROFILE.anchors.icons so
 -- we don't duplicate magic numbers across UI / CLI / Database layers.
 function Helpers.ResetIconPosition()
-    if not (KickCD.db and KickCD.db.profile) then return end
-    local d = KickCD.DEFAULT_PROFILE
-              and KickCD.DEFAULT_PROFILE.anchors
-              and KickCD.DEFAULT_PROFILE.anchors.icons
-    KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
-    KickCD.db.profile.anchors.icons = d
+    if not (NS.db and NS.db.profile) then return end
+    local d = NS.DEFAULT_PROFILE
+              and NS.DEFAULT_PROFILE.anchors
+              and NS.DEFAULT_PROFILE.anchors.icons
+    NS.db.profile.anchors = NS.db.profile.anchors or {}
+    NS.db.profile.anchors.icons = d
         and { point = d.point, relativePoint = d.relativePoint,
               x = d.x, y = d.y }
         or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
@@ -1095,8 +1099,8 @@ end
 -- never diverge.
 function Helpers.ResetAll()
     Helpers.RestoreAllDefaults()
-    if KickCD.Database and KickCD.Database.ResetAllSpells then
-        KickCD.Database:ResetAllSpells()
+    if NS.Database and NS.Database.ResetAllSpells then
+        NS.Database:ResetAllSpells()
     end
 end
 
@@ -1110,7 +1114,7 @@ end
 -- up the same always-visible vertical scrollbar as every other tab,
 -- and so AceGUI's "List" layout left-aligns every child for free.
 
-local MAIN_LOGO_SIZE      = 300    -- exact native size of media/screenshots/kickcd.logo.tga
+local MAIN_LOGO_SIZE      = 300    -- exact native size of media/logos/kickcd.logo.tga
 local MAIN_GAP_AFTER_LOGO = 8
 local MAIN_GAP_AFTER_DESC = 12
 local MAIN_GAP_BELOW_HEAD = 6
@@ -1138,7 +1142,7 @@ function Helpers.BuildMainContent(ctx)
     logoGroup:SetHeight(MAIN_LOGO_SIZE)
 
     local logoTex = logoGroup.frame:CreateTexture(nil, "ARTWORK")
-    logoTex:SetTexture("Interface\\AddOns\\KickCD\\media\\screenshots\\kickcd.logo.tga")
+    logoTex:SetTexture("Interface\\AddOns\\KickCD\\media\\logos\\kickcd.logo.tga")
     logoTex:SetSize(MAIN_LOGO_SIZE, MAIN_LOGO_SIZE)
     logoTex:SetPoint("TOPLEFT", logoGroup.frame, "TOPLEFT", 0, 0)
     scroll:AddChild(logoGroup)
@@ -1176,7 +1180,7 @@ function Helpers.BuildMainContent(ctx)
     -- 4) Slash-command rows pulled from KickCD.COMMANDS so this list
     -- stays in lockstep with /kcd help — adding a command in
     -- core/KickCD.lua surfaces here automatically.
-    for _, entry in ipairs(KickCD.COMMANDS or {}) do
+    for _, entry in ipairs(NS.COMMANDS or {}) do
         local row = AceGUI:Create("Label")
         row:SetFullWidth(true)
         row:SetText(("|cffffff00/kcd %s|r  |cffffffff—|r  %s")
@@ -1192,19 +1196,19 @@ end
 -- Tab + main-category registration
 -- ---------------------------------------------------------------------
 
-function KickCD.Settings.RegisterTab(key, builder)
+function NS.Settings.RegisterTab(key, builder)
     if type(key) ~= "string" or type(builder) ~= "function" then return end
-    KickCD.Settings.builders[key] = builder
-    if KickCD.Settings.main and not KickCD.Settings.sub[key] then
-        local ok, sub = pcall(builder, KickCD.Settings.main)
+    NS.Settings.builders[key] = builder
+    if NS.Settings.main and not NS.Settings.sub[key] then
+        local ok, sub = pcall(builder, NS.Settings.main)
         if ok and sub then
-            KickCD.Settings.sub[key] = sub
+            NS.Settings.sub[key] = sub
         end
     end
 end
 
 local function RegisterPanel()
-    if KickCD.Settings.main then return end
+    if NS.Settings.main then return end
     if not (Settings and Settings.RegisterCanvasLayoutCategory
             and Settings.RegisterAddOnCategory) then
         return
@@ -1237,21 +1241,21 @@ local function RegisterPanel()
 
     local main = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, L["Ka0s KickCD"])
     Settings.RegisterAddOnCategory(main)
-    KickCD.Settings.main = main
+    NS.Settings.main = main
 
-    for _, key in ipairs(KickCD.Settings.order) do
-        local fn = KickCD.Settings.builders[key]
-        if type(fn) == "function" and not KickCD.Settings.sub[key] then
+    for _, key in ipairs(NS.Settings.order) do
+        local fn = NS.Settings.builders[key]
+        if type(fn) == "function" and not NS.Settings.sub[key] then
             local ok, sub = pcall(fn, main)
             if ok and sub then
-                KickCD.Settings.sub[key] = sub
-            elseif not ok and KickCD.Util then
-                KickCD.Util.print("settings tab '" .. key .. "' failed: " .. tostring(sub))
+                NS.Settings.sub[key] = sub
+            elseif not ok and NS.Util then
+                NS.Util.print("settings tab '" .. key .. "' failed: " .. tostring(sub))
             end
         end
     end
 end
-KickCD.Settings.Register = RegisterPanel
+NS.Settings.Register = RegisterPanel
 
 -- bootstrap: defer until Blizzard_Settings is ready
 local bootstrap = CreateFrame("Frame")
@@ -1260,7 +1264,7 @@ bootstrap:RegisterEvent("ADDON_LOADED")
 bootstrap:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 ~= "Blizzard_Settings" then return end
     RegisterPanel()
-    if KickCD.Settings.main then
+    if NS.Settings.main then
         self:UnregisterAllEvents()
     end
 end)

@@ -9,12 +9,12 @@
 
 -- locales/enUS.lua loads BEFORE core/Compat.lua per the TOC, so we have
 -- to bootstrap the global namespace ourselves here.
-KickCD = KickCD or {}
+local addonName, NS = ...
 
 local L = setmetatable({}, {
     __index = function(_, k) return k end,
 })
-KickCD.L = L
+NS.L = L
 
 -- ---------------------------------------------------------------------------
 -- Strings

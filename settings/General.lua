@@ -10,22 +10,19 @@
 -- Every schema entry here is automatically wired into /kcd get|set,
 -- so adding a new General option = one row in this file.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local L      = KickCD.L
-local H      = KickCD.Settings.Helpers
-local Schema = KickCD.Settings.Schema
+local addonName, NS = ...
+local L      = NS.L
+local H      = NS.Settings.Helpers
+local Schema = NS.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
 -- Master controls — deliberately ordered so the schema's pair-into-rows
 -- renderer produces:
 --     [Enable KickCD]   | [General visibility]
---     [Lock frame]      | [Debug]
+--     [Lock frame]      |
 -- followed by an InlineButtonPair afterGroup row:
 --     [Reset position]  | [Reset all settings]
---
--- debugLog used to live under its own "Debug" subsection; the lone
--- checkbox didn't justify a header, so it joins Master controls instead.
 add{
     panel    = "general",  section = "general",  group = L["Master controls"],
     path     = "enabled",  type    = "bool",
@@ -56,19 +53,9 @@ add{
     default  = true,
 }
 
--- section = "debug" (not "general") on purpose: flipping the debug-log
--- toggle should NOT cascade into a Cooldowns:Rebuild / IconGrid relayout
--- / Castbar reevaluate the way a real "general" change does. No module
--- listens for section "debug", so the only side effects are the
--- onChange below (live runtime flag) and the panel refresh.
-add{
-    panel    = "general",  section = "debug",    group = L["Master controls"],
-    path     = "debugLog", type    = "bool",
-    label    = L["Debug"],
-    tooltip  = L["Print every internal message to chat. Useful for diagnosing module wiring."],
-    default  = false,
-    onChange = function(v) KickCD._debugLog = v and true or false end,
-}
+-- Debug logging is a SESSION-ONLY flag (KickCD.State.debug), never persisted
+-- to SavedVariables (§12.5), so it is deliberately NOT a schema row here.
+-- Toggle it via the debug console's header button or `/kcd debug on|off|toggle`.
 
 add{
     panel    = "general",  section = "general",  group = L["Appearance"],
@@ -151,6 +138,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["General"])
 end
 
-if KickCD.Settings and KickCD.Settings.RegisterTab then
-    KickCD.Settings.RegisterTab("general", Build)
+if NS.Settings and NS.Settings.RegisterTab then
+    NS.Settings.RegisterTab("general", Build)
 end

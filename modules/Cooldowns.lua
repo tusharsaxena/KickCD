@@ -3,7 +3,7 @@
 -- Per-spell cooldown observer. Owns a `watched` table keyed by spellID
 -- derived from the active spec's spell list in the current profile, polls
 -- state via KickCD.Compat.* on every relevant event, and emits
--- KickCD_SPELL_STATE only for those spells whose state actually changed
+-- Ka0s_KickCD_SPELL_STATE only for those spells whose state actually changed
 -- since the last emission. This avoids spamming the IconGrid on every
 -- SPELL_UPDATE_COOLDOWN tick.
 --
@@ -31,12 +31,12 @@
 --     comparison ever happens.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
--- false (master disable); a "general" KickCD_CONFIG_CHANGED triggers a
+-- false (master disable); a "general" Ka0s_KickCD_CONFIG_CHANGED triggers a
 -- full Rebuild so the watched-list comes back online when the user
 -- re-enables.
 --
 -- Message contract (closed):
---   FIRE:    KickCD_SPELL_STATE
+--   FIRE:    Ka0s_KickCD_SPELL_STATE
 --              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --            charges is the raw currentCharges from
 --            C_Spell.GetSpellCharges (or nil for uncharged spells). A
@@ -53,11 +53,11 @@
 --            countdown text but does NOT apply the cooldown alpha/tint —
 --            the spell IS castable (state.ready stays true), it just
 --            has fewer charges available than max.
---   LISTEN:  KickCD_PROFILE_CHANGED,
---            KickCD_CONFIG_CHANGED (section=="spells" or "general")
+--   LISTEN:  Ka0s_KickCD_PROFILE_CHANGED,
+--            Ka0s_KickCD_CONFIG_CHANGED (section=="spells" or "general")
 
-local KickCD    = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local Cooldowns = KickCD:NewModule("Cooldowns", "AceEvent-3.0")
+local addonName, NS = ...
+local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
 
 -- ---------------------------------------------------------------------------
 -- Spec resolution
@@ -73,15 +73,16 @@ local Cooldowns = KickCD:NewModule("Cooldowns", "AceEvent-3.0")
 local function ResolveClassSpec()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
-    classFile = KickCD.Util.NormalizeClassToken(classFile)
+    classFile = NS.Util.NormalizeClassToken(classFile)
 
-    local idx = GetSpecialization and GetSpecialization()
+    local Compat = NS.Compat
+    local idx = Compat and Compat.GetSpecialization()
     if not idx then return classFile, nil end
 
-    local _, specName = GetSpecializationInfo(idx)
+    local _, specName = Compat.GetSpecializationInfo(idx)
     if not specName then return classFile, nil end
 
-    return classFile, KickCD.Util.NormalizeSpecToken(specName)
+    return classFile, NS.Util.NormalizeSpecToken(specName)
 end
 
 -- ---------------------------------------------------------------------------
@@ -89,9 +90,10 @@ end
 -- ---------------------------------------------------------------------------
 
 local function dprint(...)
-    if KickCD._debugLog and KickCD.Util and KickCD.Util.print then
-        KickCD.Util.print("Cooldowns:", ...)
-    end
+    if not (NS.State and NS.State.debug and NS.Debug) then return end
+    local parts = {}
+    for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
+    NS.Debug("Cooldowns", table.concat(parts, " "))
 end
 
 --- Compute the freshly-polled state for a single spellID.
@@ -105,7 +107,7 @@ function Cooldowns:PollSpell(spellID)
 
     -- A spell that doesn't return GetSpellInfo at all is definitely not in
     -- the player's spellbook (or the ID is wrong).
-    local name = KickCD.Compat.GetSpellInfo(spellID)
+    local name = NS.Compat.GetSpellInfo(spellID)
     if not name then return nil end
 
     -- GetSpellInfo only proves the ID exists in the spell DB, not that the
@@ -114,14 +116,14 @@ function Cooldowns:PollSpell(spellID)
     -- the unpicked branch of a talent choice node (e.g. Blood DK's
     -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
     -- currently summoned.
-    if not KickCD.Compat.IsSpellAvailable(spellID) then return nil end
+    if not NS.Compat.IsSpellAvailable(spellID) then return nil end
 
     -- Plain-bool active flag from the legacy API. We deliberately discard
     -- start/duration here — they're secret in combat and the duration
     -- object covers every legitimate downstream use.
-    local _, _, _, _, isActive = KickCD.Compat.GetSpellCooldown(spellID)
-    local usable    = KickCD.Compat.IsSpellUsable(spellID)
-    local cur, maxC = KickCD.Compat.GetSpellCharges(spellID)
+    local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
+    local usable    = NS.Compat.IsSpellUsable(spellID)
+    local cur, maxC = NS.Compat.GetSpellCharges(spellID)
 
     -- Secret-aware cooldown handle. We never call :GetRemainingDuration()
     -- on it from Lua; the IconGrid passes it through to
@@ -129,7 +131,7 @@ function Cooldowns:PollSpell(spellID)
     -- FontString:SetFormattedText (text), and
     -- cdObj:EvaluateRemainingDuration(curve) (GCD-vs-real-CD visual filter)
     -- — all of which accept secret values via C-side argument paths.
-    local cdObject = isActive and KickCD.Compat.GetSpellCooldownDuration(spellID) or nil
+    local cdObject = isActive and NS.Compat.GetSpellCooldownDuration(spellID) or nil
 
     -- Charges may come back secret on guarded spells. If so, conservatively
     -- assume the spell has charges available — better to flag a spell as
@@ -157,7 +159,7 @@ function Cooldowns:PollSpell(spellID)
     -- there's no cooldown, there isn't one.
     local chargeCdObject
     if cur ~= nil and not isActive then
-        chargeCdObject = KickCD.Compat.GetSpellCooldownDuration(spellID)
+        chargeCdObject = NS.Compat.GetSpellCooldownDuration(spellID)
     end
 
     -- `ready` is the canonical "this spell can be cast right now" boolean.
@@ -168,7 +170,7 @@ function Cooldowns:PollSpell(spellID)
     -- being uncastable.
     local ready = (not isActive) and usable and hasCharges
 
-    if KickCD._debugLog then
+    if NS.State and NS.State.debug then
         dprint(("poll [%d] %s isActive=%s usable=%s ready=%s cdObj=%s chargeCdObj=%s"):format(
             spellID, tostring(name),
             tostring(isActive),
@@ -189,7 +191,7 @@ function Cooldowns:PollSpell(spellID)
 end
 
 --- Determine whether two state snapshots differ enough to merit emitting
---- KickCD_SPELL_STATE. The IconGrid drives its swipe and countdown text
+--- Ka0s_KickCD_SPELL_STATE. The IconGrid drives its swipe and countdown text
 --- via the cdObject reference once it's handed over, so per-tick re-
 --- emission isn't needed — only state transitions matter (ready ↔ on-CD,
 --- charges available ↔ none).
@@ -227,13 +229,13 @@ end
 --- True when the master enable flag is set. Defaults to true on a fresh
 --- profile, so a missing field reads as enabled.
 local function isEnabled()
-    local profile = KickCD.db and KickCD.db.profile
+    local profile = NS.db and NS.db.profile
     if not profile then return true end
     return profile.enabled ~= false
 end
 
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
---- one initial KickCD_SPELL_STATE per surviving spell. Skips spells the
+--- one initial Ka0s_KickCD_SPELL_STATE per surviving spell. Skips spells the
 --- player doesn't know. Short-circuits to an empty watched-list when the
 --- master enable is off.
 function Cooldowns:Rebuild()
@@ -249,7 +251,7 @@ function Cooldowns:Rebuild()
     -- Read-only lookup via Database:GetSpellList — never lazy-creates
     -- a per-spec table, so a class+spec the user has never customised
     -- doesn't pollute the saved-vars with an empty entry.
-    local list = KickCD.Database and KickCD.Database:GetSpellList(class, spec)
+    local list = NS.Database and NS.Database:GetSpellList(class, spec)
     if not list then
         return
     end
@@ -263,7 +265,7 @@ function Cooldowns:Rebuild()
             local state = self:PollSpell(id)
             if state then
                 self.watched[id] = state
-                KickCD:SendMessage("KickCD_SPELL_STATE", {
+                NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                     spellID        = state.spellID,
                     ready          = state.ready,
                     isActive       = state.isActive,
@@ -271,15 +273,14 @@ function Cooldowns:Rebuild()
                     chargeCdObject = state.chargeCdObject,
                     charges        = state.charges,
                 })
-            elseif KickCD._debugLog then
-                local p = KickCD.Util and KickCD.Util.print or print
-                p(("Cooldowns: skipping unknown/unlearned spellID %s"):format(tostring(id)))
+            elseif NS.State and NS.State.debug then
+                dprint(("skipping unknown/unlearned spellID %s"):format(tostring(id)))
             end
         end
     end
 end
 
---- Re-poll all watched spells, fire KickCD_SPELL_STATE only for those whose
+--- Re-poll all watched spells, fire Ka0s_KickCD_SPELL_STATE only for those whose
 --- state changed since last poll. When a previously-watched spell becomes
 --- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
 --- swapped to the other branch of a choice node, encounter mechanic
@@ -300,7 +301,7 @@ function Cooldowns:Refresh()
             -- the icon back to ready visuals and stop polling it; the next
             -- Rebuild trims it out of the watched list entirely.
             self.watched[id] = nil
-            KickCD:SendMessage("KickCD_SPELL_STATE", {
+            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID        = id,
                 ready          = false,
                 isActive       = false,
@@ -308,12 +309,12 @@ function Cooldowns:Refresh()
                 chargeCdObject = nil,
                 charges        = nil,
             })
-            if KickCD._debugLog then
+            if NS.State and NS.State.debug then
                 dprint(("drop  [%d] became unavailable; sentinel SPELL_STATE emitted"):format(id))
             end
         elseif StateChanged(prev, next_) then
             self.watched[id] = next_
-            KickCD:SendMessage("KickCD_SPELL_STATE", {
+            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID        = next_.spellID,
                 ready          = next_.ready,
                 isActive       = next_.isActive,
@@ -321,7 +322,7 @@ function Cooldowns:Refresh()
                 chargeCdObject = next_.chargeCdObject,
                 charges        = next_.charges,
             })
-            if KickCD._debugLog then
+            if NS.State and NS.State.debug then
                 dprint(("emit  [%d] ready=%s isActive=%s cdObj=%s"):format(
                     next_.spellID,
                     tostring(next_.ready),
@@ -354,8 +355,8 @@ function Cooldowns:OnEnable()
     self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
 
     -- Internal messages (closed list).
-    self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
 
     -- Initial build deferred to PLAYER_ENTERING_WORLD when the spec / spellbook
     -- are guaranteed to be populated. If the addon enables late, also try a
@@ -396,7 +397,7 @@ end
 
 --- /kickcd debug spells — print the watched-list with current state.
 function Cooldowns:DebugDump()
-    local p = KickCD.Util and KickCD.Util.print or print
+    local p = NS.Util and NS.Util.print or print
     local class, spec = ResolveClassSpec()
     p(("Cooldowns: class=%s spec=%s"):format(tostring(class), tostring(spec)))
     if not self.watched or next(self.watched) == nil then
@@ -417,7 +418,7 @@ function Cooldowns:DebugDump()
     end
     for _, id in ipairs(ids) do
         local s = self.watched[id]
-        local name = KickCD.Compat.GetSpellInfo(id) or "?"
+        local name = NS.Compat.GetSpellInfo(id) or "?"
         -- We deliberately don't print remaining time — :GetRemainingDuration()
         -- is secret in combat and even tostring would error in tainted scope.
         p(("  [%d] %s ready=%s active=%s cdObj=%s chargeCdObj=%s charges=%s"):format(

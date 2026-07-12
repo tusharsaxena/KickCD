@@ -18,28 +18,42 @@
 -- ... (set by the mixins). The global rebinding makes downstream code that
 -- looks up `KickCD` from _G see the mixed-in version.
 
-local existing = _G.KickCD or {}
+local addonName, NS = ...
 
+-- AceAddon stamps its mixin methods onto NS in place. NS is the private
+-- namespace table WoW passes as the second vararg to every file, and the
+-- core/* files loaded earlier have already hung Compat / Util / Database /
+-- Const / State onto this same NS. After this call NS IS the addon object —
+-- there is NO _G.KickCD rebind; the namespace stays private (§4.1).
 local addon = LibStub("AceAddon-3.0"):NewAddon(
-    existing,
+    NS,
     "KickCD",
     "AceConsole-3.0",
     "AceEvent-3.0")
-
--- AceAddon returns the same table we passed in, with mixin methods stamped
--- on it. Re-bind the global so anyone reading _G.KickCD sees the addon
--- object, not whatever copy they had cached.
-_G.KickCD = addon
-local KickCD = addon
+NS.addon = addon
 
 -- Public version stamp.
-KickCD.VERSION = "1.1.0"
+NS.VERSION = "1.1.0"
+
+-- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (§4.4).
+-- Any consumer that is NOT itself an AceAddon module (which already gets its
+-- own AceEvent embed) MUST own a private target from this factory rather than
+-- registering on the shared addon object: CallbackHandler keys callbacks by
+-- (message, target), so two receivers of one message on the SAME object would
+-- silently clobber — only the last registrant would fire (AP-32 / KCD-09).
+function NS.NewBusTarget()
+    local AceEvent = LibStub("AceEvent-3.0", true)
+    if not AceEvent then return nil end
+    local t = {}
+    AceEvent:Embed(t)
+    return t
+end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
-function KickCD:OnInitialize()
+function NS:OnInitialize()
     -- Database:Init() builds the AceDB instance and seeds spells from
     -- defaults/Spells.lua. After this returns, KickCD.db is the live
     -- AceDB object — a contract relied on by every module.
@@ -47,12 +61,9 @@ function KickCD:OnInitialize()
         self.Database:Init()
     end
 
-    -- Restore the persisted debug-log preference. Both the slash command and
-    -- the Settings checkbox keep db.profile.debugLog in sync; this seeds the
-    -- runtime flag from whatever the profile was last saved with.
-    if self.db and self.db.profile then
-        self._debugLog = self.db.profile.debugLog and true or false
-    end
+    -- Debug logging is a session-only flag (KickCD.State.debug) seeded off on
+    -- every load — it is NEVER read back from SavedVariables (§12.5). No
+    -- seeding here on purpose.
 
     -- Slash commands. Both /kickcd and /kcd dispatch to OnSlashCommand,
     -- which prints the help index when called bare and routes to the
@@ -61,7 +72,7 @@ function KickCD:OnInitialize()
     self:RegisterChatCommand("kcd",    "OnSlashCommand")
 end
 
-function KickCD:OnEnable()
+function NS:OnEnable()
     -- Modules register themselves via NewModule(...) and AceAddon
     -- auto-enables them. Nothing to do here.
 end
@@ -100,7 +111,7 @@ local function setLocked(self, value)
     local H = self.Settings and self.Settings.Helpers
     if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
         self.db.profile.locked = v
-        self:SendMessage("KickCD_CONFIG_CHANGED", { section = "general" })
+        self:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
@@ -145,7 +156,7 @@ local COMMANDS = {
     {"debug",         "Debug subcommands — try `/kcd debug` for the list",
         function(self, rest) runDebug(self, rest) end},
 }
-KickCD.COMMANDS = COMMANDS
+NS.COMMANDS = COMMANDS
 
 local DEBUG_COMMANDS = {
     {"spells", "Print the watched spell list with cooldown state",
@@ -162,28 +173,32 @@ local DEBUG_COMMANDS = {
         end},
     {"interrupt", "Dump the target's UnitCastingInfo / UnitChannelInfo positions (type + secret-tainted flag) plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
         function(self)
-            if KickCD.Compat and KickCD.Compat.DebugInterrupt then
-                KickCD.Compat.DebugInterrupt("target")
+            if NS.Compat and NS.Compat.DebugInterrupt then
+                NS.Compat.DebugInterrupt("target")
             else
                 p(self, "Compat.DebugInterrupt unavailable")
             end
         end},
-    {"log",    "Toggle internal-message logging",
+    {"window", "Toggle the debug console window",
         function(self)
-            self._debugLog = not self._debugLog
-            local v = self._debugLog
-            -- Route through the schema path so the General > Debug
-            -- checkbox refreshes and the schema row's onChange runs.
-            -- The schema row sits in section "debug" (no module
-            -- listens), so this no longer triggers a wasted
-            -- Cooldowns:Rebuild on every toggle.
-            local H = self.Settings and self.Settings.Helpers
-            if not (H and H.SetAndRefresh and H.SetAndRefresh("debugLog", v)) then
-                if self.db and self.db.profile then
-                    self.db.profile.debugLog = v
-                end
-            end
-            p(self, "internal-message logging " .. (v and "ON" or "OFF"))
+            if self.DebugLog then self.DebugLog:Toggle()
+            else p(self, "DebugLog module not loaded") end
+        end},
+    {"on",     "Enable debug logging (session only)",
+        function(self)
+            if self.DebugLog then self.DebugLog:SetEnabled(true)
+            else p(self, "DebugLog module not loaded") end
+        end},
+    {"off",    "Disable debug logging",
+        function(self)
+            if self.DebugLog then self.DebugLog:SetEnabled(false)
+            else p(self, "DebugLog module not loaded") end
+        end},
+    {"toggle", "Toggle debug logging (session only)",
+        function(self)
+            if self.DebugLog then
+                self.DebugLog:SetEnabled(not (self.State and self.State.debug))
+            else p(self, "DebugLog module not loaded") end
         end},
 }
 
@@ -194,7 +209,7 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    p(self, "v" .. KickCD.VERSION .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
+    p(self, "v" .. NS.VERSION .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
     for _, entry in ipairs(COMMANDS) do
         p(self, ("  |cffffff00/kcd %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
     end
@@ -207,6 +222,9 @@ function runDebug(self, rest)
     local sub = (rest or ""):match("^(%S*)") or ""
     sub = sub:lower()
     if sub == "" then
+        -- Bare `/kcd debug` toggles the console window (§12.5); the flag is
+        -- untouched. Print the verb list alongside so it stays discoverable.
+        if self.DebugLog then self.DebugLog:Toggle() end
         p(self, "debug subcommands:")
         for _, entry in ipairs(DEBUG_COMMANDS) do
             p(self, ("  |cffffff00/kcd debug %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
@@ -219,7 +237,7 @@ function runDebug(self, rest)
     runDebug(self, "")
 end
 
-function KickCD:OnSlashCommand(input)
+function NS:OnSlashCommand(input)
     local raw = trim(input)
     if raw == "" then return printHelp(self) end
 
@@ -249,7 +267,7 @@ end
 -- slash UI and the panel widgets are wired from the same source.
 
 local function helpers()
-    return KickCD.Settings and KickCD.Settings.Helpers
+    return NS.Settings and NS.Settings.Helpers
 end
 
 local function formatValue(def, v)
@@ -388,13 +406,13 @@ end
 
 function listSettings(self)
     local H = helpers()
-    if not (H and KickCD.Settings and KickCD.Settings.Schema) then
+    if not (H and NS.Settings and NS.Settings.Schema) then
         return p(self, "Settings layer not ready yet")
     end
     p(self, self.L and self.L["Available settings:"] or "Available settings:")
     -- Group by panel for readable output.
     local byPanel = {}
-    for _, def in ipairs(KickCD.Settings.Schema) do
+    for _, def in ipairs(NS.Settings.Schema) do
         local key = def.panel or "?"
         byPanel[key] = byPanel[key] or {}
         table.insert(byPanel[key], def)
@@ -480,7 +498,7 @@ function runReset(self, rest)
     -- Pass the live panel ctx so its widget refreshers re-sync if the
     -- tab is open. RestoreDefaults tolerates a nil ctx (closed panel).
     local ctx
-    for _, c in ipairs(KickCD.Settings._panels or {}) do
+    for _, c in ipairs(NS.Settings._panels or {}) do
         if c.panelKey == panelName then ctx = c; break end
     end
     H.RestoreDefaults(panelName, ctx)
@@ -539,7 +557,7 @@ end
 -- otherwise miss the no-whitespace defaults keys.
 local function normToken(s)
     if not s or s == "" then return nil end
-    return KickCD.Util.NormalizeSpecToken(s)
+    return NS.Util.NormalizeSpecToken(s)
 end
 
 -- Resolve [class spec] starting at args[idx]. Empty positions fall
@@ -551,12 +569,11 @@ local function resolvePlayerClassSpec()
         classFile = cf
     end
     local specToken
-    if GetSpecialization and GetSpecializationInfo then
-        local idx = GetSpecialization()
-        if idx then
-            local _, specName = GetSpecializationInfo(idx)
-            specToken = normToken(specName)
-        end
+    local Compat = NS.Compat
+    local idx = Compat and Compat.GetSpecialization()
+    if idx then
+        local _, specName = Compat.GetSpecializationInfo(idx)
+        specToken = normToken(specName)
     end
     return classFile, specToken
 end
@@ -577,29 +594,29 @@ end
 -- exists (add / reset) use EnsureSpellList.
 
 local function getSpellList(class, spec)
-    if not KickCD.Database then return nil end
-    return KickCD.Database:GetSpellList(class, spec)
+    if not NS.Database then return nil end
+    return NS.Database:GetSpellList(class, spec)
 end
 
 local function ensureSpellList(class, spec)
-    if not KickCD.Database then return nil end
-    return KickCD.Database:EnsureSpellList(class, spec)
+    if not NS.Database then return nil end
+    return NS.Database:EnsureSpellList(class, spec)
 end
 
 -- Mutation commit: fire the closed message; the Spells panel now
--- subscribes to KickCD_CONFIG_CHANGED { section = "spells" } in its own
+-- subscribes to Ka0s_KickCD_CONFIG_CHANGED { section = "spells" } in its own
 -- ensurePanel hook so a slash-driven mutation refreshes the open editor
 -- without a direct cross-module call from this layer (closed-bus
 -- contract — see docs/message-bus.md).
 local function commitSpellsChange()
-    if KickCD and KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "spells" })
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "spells" })
     end
 end
 
 local function resolveSpellInput(input)
     if not input or input == "" then return nil end
-    local Compat = KickCD.Compat or {}
+    local Compat = NS.Compat or {}
     local id = tonumber(input)
     if id then
         local name = Compat.GetSpellInfo and Compat.GetSpellInfo(id) or nil
@@ -857,7 +874,7 @@ local function expandMainCategory(main)
     end)
 end
 
-function KickCD:OpenSettings(input)
+function NS:OpenSettings(input)
     local p = self.Util and self.Util.print or print
     -- Settings panel registration touches protected frames; opening it in
     -- combat would taint the dropdown / category tree. Gate here so every

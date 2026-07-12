@@ -11,9 +11,15 @@
 -- early has no side effects. Add a constant here only if it is used
 -- across modules or a comment at the use site has to explain it.
 
-KickCD = KickCD or {}
+local addonName, NS = ...
 local Const = {}
-KickCD.Const = Const
+NS.Const = Const
+
+-- Chat tag prepended to every user-facing chat line (§7.4). Single source of
+-- truth: core/Util.lua's print() and any other chat-writing site reference
+-- KickCD.PREFIX rather than hand-duplicating the escape sequence. Becomes
+-- NS.PREFIX after the private-namespace migration.
+NS.PREFIX = "|cff00ffff[KCD]|r"
 
 -- ---------------------------------------------------------------------------
 -- IconGrid: cooldown curve threshold
@@ -68,3 +74,13 @@ Const.PANEL_HEADER_HEIGHT = 54
 -- Width of the per-panel "Defaults" button in the header. Wide enough
 -- to comfortably fit "Restore Defaults" in en-US without truncation.
 Const.PANEL_DEFAULTS_W    = 110
+
+-- ---------------------------------------------------------------------------
+-- Debug console: shipped monospace font
+-- ---------------------------------------------------------------------------
+
+-- Monospace TTF shipped under media/fonts/ (JetBrains Mono, OFL — license in
+-- media/fonts/JetBrainsMono-OFL.txt) so the debug console's timestamps and
+-- [tags] line up regardless of the user's installed fonts (§12.2). Registered
+-- with LibSharedMedia at load in modules/DebugLog.lua and applied at 10pt.
+Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]

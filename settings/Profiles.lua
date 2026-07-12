@@ -6,9 +6,9 @@
 -- into which AceConfigDialog renders the AceDBOptions options table
 -- on first show.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
+local addonName, NS = ...
 
-local L = KickCD.L or setmetatable({}, { __index = function(_, k) return k end })
+local L = NS.L or setmetatable({}, { __index = function(_, k) return k end })
 
 local Profiles = {}
 
@@ -25,16 +25,16 @@ local function Build(mainCategory)
     if not (AceDBOptions and AceConfig and AceConfigDialog and AceGUI) then
         return nil
     end
-    if not (KickCD.db and KickCD.db.profile) then return nil end
+    if not (NS.db and NS.db.profile) then return nil end
 
-    local H = KickCD.Settings and KickCD.Settings.Helpers
+    local H = NS.Settings and NS.Settings.Helpers
     if not (H and H.CreatePanel) then return nil end
 
     -- Register the AceConfig options once. AceDBOptions returns a fully
     -- formed options table covering create / switch / copy / reset /
     -- delete plus per-character / per-class / per-realm / per-faction /
     -- default scope dropdowns.
-    local opts = AceDBOptions:GetOptionsTable(KickCD.db)
+    local opts = AceDBOptions:GetOptionsTable(NS.db)
     AceConfig:RegisterOptionsTable("KickCD-Profiles", opts)
 
     local ctx = H.CreatePanel("KickCDProfilesPanel", L["Profiles"], {
@@ -64,6 +64,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Profiles"])
 end
 
-if KickCD.Settings and KickCD.Settings.RegisterTab then
-    KickCD.Settings.RegisterTab("profiles", Build)
+if NS.Settings and NS.Settings.RegisterTab then
+    NS.Settings.RegisterTab("profiles", Build)
 end

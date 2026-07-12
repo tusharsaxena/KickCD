@@ -1,0 +1,14 @@
+package-as: KickCD
+
+# Libraries are vendored in libs/ and committed to git — NOT fetched as externals.
+
+ignore:
+  - .luacheckrc
+  - .gitignore
+  - .gitattributes
+  - audit
+  - reviews
+  - docs
+  - tests
+  - _dev
+  - "*.bak"

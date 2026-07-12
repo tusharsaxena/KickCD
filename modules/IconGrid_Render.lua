@@ -1,0 +1,705 @@
+-- modules/IconGrid_Render.lua — per-icon widget rendering (peeled from IconGrid.lua, KCD-05)
+--
+-- The icon-widget prototype (Icon), its factory (CreateIconWidget), the cooldown-
+-- swipe / countdown-text / ready-glow rendering, the step-shaped alpha/tint curves,
+-- and the shared cooldown-text ticker — everything that draws a single icon. Core
+-- (IconGrid.lua) owns the pool, layout orchestration, visibility, and message
+-- handlers; it calls IconGrid.CreateIconWidget / IconGrid.BuildCurves (exposed at the
+-- bottom). The one reverse dependency (the glow trigger needs "is the target casting")
+-- goes through IconGrid._isTargetCasting, published by core.
+
+local addonName, NS = ...
+local IconGrid = NS:GetModule("IconGrid")
+
+local GCD_UPPER = NS.Const.GCD_UPPER
+
+-- Step-shaped curves (assigned by BuildCurves) shared across Icon:Apply /
+-- applyGcdSuppressionAlpha. Render-local state, formerly file-locals in IconGrid.lua.
+local alphaCurve, tintCurve, gcdSuppressCurve
+
+-- Cooldown-text ticker: the set of icons needing a per-tick FontString refresh and
+-- the single shared C_Timer.NewTicker handle.
+local _textIcons  = {}
+local _textTicker
+
+local function safeUnpackColor(c, fr, fg, fb, fa)
+    -- Util.Unpack handles nil with sane defaults but we want module-specific
+    -- fallbacks for the cooldown tint, so wrap it.
+    if not c then return fr or 1, fg or 1, fb or 1, fa or 1 end
+    return NS.Util.Unpack(c)
+end
+
+-- Resolve an LSM border-texture key to a file path, falling back to a
+-- Blizzard-shipped tooltip border when the lib isn't loaded or the key
+-- isn't registered. Mirrors fetchBorderTexture in modules/Castbar.lua so
+-- the two pieces of UI share one fallback rule.
+local function fetchBorderTexture(name)
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM and LSM.Fetch then
+        local t = LSM:Fetch("border", name or "Blizzard Tooltip", true)
+        if t then return t end
+    end
+    return "Interface\\Tooltips\\UI-Tooltip-Border"
+end
+
+--- (Re)build the alpha/tint curves from db.profile.icons. Called once on
+--- enable and again on any "icons" config change. Cheap — these are tiny
+--- 4-point curves, recreating them per change is fine.
+-- TODO(perf): only rebuild when readyAlpha / cooldownAlpha / cooldownTint
+-- actually changed — every "icons" Ka0s_KickCD_CONFIG_CHANGED rebuilds today,
+-- including unrelated touches (border, font, layout, glow) (F-016).
+local function BuildCurves()
+    if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
+
+    local cfg = (NS.db and NS.db.profile and NS.db.profile.icons) or {}
+    local readyAlpha    = cfg.readyAlpha    or 1.0
+    local cooldownAlpha = cfg.cooldownAlpha or 0.4
+    local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+
+    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
+    -- between adjacent points yields a sharp transition under linear
+    -- interpolation (LuaCurveType.Linear is the default).
+    alphaCurve = _G.C_CurveUtil.CreateCurve()
+    if alphaCurve.SetType and Enum and Enum.LuaCurveType then
+        alphaCurve:SetType(Enum.LuaCurveType.Linear)
+    end
+    alphaCurve:AddPoint(0,             readyAlpha)
+    alphaCurve:AddPoint(GCD_UPPER,     readyAlpha)
+    alphaCurve:AddPoint(GCD_UPPER + 0.001, cooldownAlpha)
+    alphaCurve:AddPoint(3600,          cooldownAlpha)
+
+    -- Step from 0 (hide swipe + text) to 1 (show) at GCD_UPPER. Same
+    -- shape as alphaCurve but the values are visibility flags rather
+    -- than alphas. The output rides through SetAlphaFromBoolean(true,
+    -- value, 0) when cfg.suppressGCDSwipe is on.
+    gcdSuppressCurve = _G.C_CurveUtil.CreateCurve()
+    if gcdSuppressCurve.SetType and Enum and Enum.LuaCurveType then
+        gcdSuppressCurve:SetType(Enum.LuaCurveType.Linear)
+    end
+    gcdSuppressCurve:AddPoint(0,                 0)
+    gcdSuppressCurve:AddPoint(GCD_UPPER,         0)
+    gcdSuppressCurve:AddPoint(GCD_UPPER + 0.001, 1)
+    gcdSuppressCurve:AddPoint(3600,              1)
+
+    if _G.C_CurveUtil.CreateColorCurve and CreateColor then
+        tintCurve = _G.C_CurveUtil.CreateColorCurve()
+        if tintCurve.SetType and Enum and Enum.LuaCurveType then
+            tintCurve:SetType(Enum.LuaCurveType.Linear)
+        end
+        tintCurve:AddPoint(0,             CreateColor(1, 1, 1, 1))
+        tintCurve:AddPoint(GCD_UPPER,     CreateColor(1, 1, 1, 1))
+        tintCurve:AddPoint(GCD_UPPER + 0.001, CreateColor(r, g, b, 1))
+        tintCurve:AddPoint(3600,          CreateColor(r, g, b, 1))
+    else
+        tintCurve = nil
+    end
+end
+-- ---------------------------------------------------------------------------
+-- Per-icon widget construction
+-- ---------------------------------------------------------------------------
+
+-- Methods copied onto each button via Mixin() in CreateIconWidget. We can't
+-- setmetatable() a Frame widget — that would clobber the C-side metatable
+-- where ClearAllPoints/Show/SetAlpha/etc. live, and they'd become nil calls.
+local Icon = {}
+
+local function CreateIconWidget(parent)
+    -- A Button (not a Frame) so a future click-to-cast hook is one
+    -- :SetAttribute() away. SecureActionButton is intentionally avoided
+    -- to keep the icon grid free of protected-frame taint.
+    local btn = CreateFrame("Button", nil, parent)
+    btn:SetSize(48, 48)
+    btn:EnableMouse(false) -- the grid as a whole handles drag, not individual icons
+
+    -- Spell icon texture. The TexCoord crop is applied by ApplyAppearance
+    -- from cfg.zoom; we leave it untouched here so the user-configurable
+    -- value is the single source of truth.
+    local tex = btn:CreateTexture(nil, "ARTWORK")
+    tex:SetAllPoints(btn)
+    btn.icon = tex
+
+    -- Per-icon border. A BackdropTemplate child sized over the button so
+    -- the edgeFile slices render on top of the icon texture; the cooldown
+    -- swipe lives on a separate child frame and so isn't affected. Same
+    -- approach used by modules/Castbar.lua so the two pieces of UI share
+    -- one LSM "border" texture surface.
+    local border = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+    border:SetAllPoints(btn)
+    border:SetFrameLevel(btn:GetFrameLevel() + 1)
+    border:Hide()
+    btn.border = border
+
+    -- Cooldown swipe. CooldownFrameTemplate gives us the radial sweep + the
+    -- built-in OmniCC integration "for free" — any OmniCC-like addon will
+    -- attach its own text overlay to this frame.
+    local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
+    cd:SetAllPoints(btn)
+    cd:SetDrawBling(false)
+    cd:SetDrawEdge(false)
+    -- Hide the built-in CooldownFrameTemplate text so it doesn't fight with
+    -- our optional cooldown FontString. Users running OmniCC will have the
+    -- module re-show this if needed in a future release.
+    if cd.SetHideCountdownNumbers then
+        cd:SetHideCountdownNumbers(true)
+    end
+    btn.cooldown = cd
+
+    -- Cooldown text overlay. We drive this FontString ourselves
+    -- (via an OnUpdate started from Apply) instead of relying on
+    -- CooldownFrameTemplate's built-in countdown numbers — those only
+    -- render while the swipe is animating, which means they never appear
+    -- for secret-protected interrupts where SetCooldown is skipped.
+    -- Owning the text also lets us honor cooldownTextFont/Size/Flags and
+    -- inherit the parent button's alpha (so the text dims with cooldownAlpha).
+    local cdText = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    cdText:SetPoint("CENTER", btn, "CENTER", 0, 0)
+    cdText:Hide()
+    btn.cooldownText = cdText
+
+    -- Charges badge — top-right corner, à la action-bar charges.
+    local charges = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    charges:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
+    charges:Hide()
+    btn.chargesText = charges
+
+    -- Ready glow. A plain child Frame sized to the icon; LibCustomGlow
+    -- attaches its own animated children (textures + AnimationGroups)
+    -- when StartGlow runs. Frame level is bumped above the cooldown
+    -- swipe and the per-icon border frame so the glow always renders
+    -- on top.
+    local glow = CreateFrame("Frame", nil, btn)
+    glow:SetAllPoints(btn)
+    glow:SetFrameLevel(btn:GetFrameLevel() + 5)
+    btn.glow = glow
+
+    -- Per-instance state: cfg points at db.profile.icons during Apply so we
+    -- can re-color/re-alpha without re-reading the global db every time.
+    -- spellID is set when the icon is acquired and used for fast lookup.
+    btn.spellID = nil
+    btn.cfg     = nil
+
+    -- Hover tooltip. Only fires when EnableMouse(true) on the icon, which
+    -- IconGrid:ApplyLock toggles based on (locked AND icons.showTooltip).
+    -- While unlocked, EnableMouse(false) so the grid frame retains the
+    -- mouse for dragging.
+    btn:SetScript("OnEnter", function(self)
+        local profile = NS.db and NS.db.profile
+        local cfg = profile and profile.icons
+        if not (cfg and cfg.showTooltip and self.spellID) then return end
+        if not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetSpellByID then
+            GameTooltip:SetSpellByID(self.spellID)
+        end
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function(self)
+        -- Only dismiss the tooltip if it's the one WE set. If the user
+        -- moved the mouse from this icon onto another addon's frame
+        -- that owns the tooltip, indiscriminately calling :Hide()
+        -- would dismiss someone else's hover.
+        if GameTooltip and GameTooltip:GetOwner() == self then
+            GameTooltip:Hide()
+        end
+    end)
+
+    -- Mix in the Icon methods. The button itself is the public widget.
+    return Mixin(btn, Icon)
+end
+
+-- Drive the cooldownText FontString from a CooldownDuration object.
+--
+-- 12.0 secret-value protection means we cannot read :GetRemainingDuration()
+-- into a Lua local in combat (the value is itself secret-tainted, and
+-- tostring / string.format / `<` / `-` all error). The trick is to pass
+-- the secret directly into a Blizzard C method as a function argument —
+-- argument passing crosses into C without ever holding the value in a
+-- tainted Lua local. FontString:SetFormattedText(fmt, arg) does the
+-- formatting C-side, so this works:
+--
+--     fontString:SetFormattedText("%.1f", cdObj:GetRemainingDuration())
+--
+-- We can't conditionally choose the format (no comparison on remaining is
+-- legal), so we live with a single fixed format ("%.1f").
+--
+-- A single module-level C_Timer.NewTicker (see _textTicker below) iterates
+-- the registered icons every 0.1s and calls _RenderCooldownText on each.
+-- Per-icon OnUpdate scripts were the previous implementation but ran a
+-- separate frame-driver per visible cooldown — N icons meant N OnUpdate
+-- callbacks per tick. The shared ticker collapses the fixed cost to one.
+-- For full spell-level cooldowns we additionally re-poll the plain
+-- `isActive` bool from Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN
+-- can lag the actual cooldown end by a few hundred ms, leaving the text
+-- stuck at "0.0" until Cooldowns:Refresh re-emits SPELL_STATE. Because
+-- isActive is plain (taint-safe), reading it here is free; on the flip
+-- we kill the text + clear the swipe locally and let Cooldowns catch up
+-- via its own event handler shortly after.
+--
+-- For the charge-recharge path (cdObject = state.chargeCdObject,
+-- isFullCooldown=false), the spell-level isActive stays false the
+-- whole time so we skip that early-exit branch — SPELL_UPDATE_CHARGES
+-- handles the recharge-end transition with adequate latency.
+function Icon:StartCooldownText(cdObject, isFullCooldown)
+    local cfg = self.cfg or NS.db.profile.icons
+    if not cfg.showCooldownText or not cdObject then
+        self:StopCooldownText()
+        return
+    end
+    self._cdObject       = cdObject
+    self._isFullCooldown = isFullCooldown and true or false
+    -- Initial paint. SetFormattedText handles the secret value via its
+    -- C-side argument path; the same pattern is used by the shared
+    -- ticker driver.
+    self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
+    self.cooldownText:Show()
+    -- Register with the module-level ticker (see IconGrid:_TextTickerStart).
+    -- Idempotent — re-registering a widget already in the set is a no-op.
+    IconGrid:_RegisterTextIcon(self)
+end
+
+function Icon:StopCooldownText()
+    IconGrid:_UnregisterTextIcon(self)
+    self._cdObject = nil
+    self.cooldownText:Hide()
+end
+
+--- Per-tick render for one icon's cooldown text. Called by the module-
+--- level ticker for every registered widget. Mirrors the per-frame work
+--- the previous OnUpdate did (full-cooldown plain-bool early-exit +
+--- secret-safe SetFormattedText), but the iteration cadence comes from
+--- the shared ticker, not a per-icon script.
+function Icon:_RenderCooldownText()
+    local obj = self._cdObject
+    if not obj then
+        self:StopCooldownText()
+        return
+    end
+    if self._isFullCooldown then
+        local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(self.spellID)
+        if not isActive then
+            self:StopCooldownText()
+            if self.cooldown then
+                self.cooldown:Hide()
+                self.cooldown:Clear()
+            end
+            return
+        end
+    end
+    self.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
+end
+
+-- ---------------------------------------------------------------------------
+-- Ready glow
+-- ---------------------------------------------------------------------------
+--
+-- Glow rendering is delegated to LibCustomGlow-1.0 (vendored under
+-- libs/LibCustomGlow-1.0). The library handles the textures, animations,
+-- and frame-level management for each effect; we only own the trigger
+-- decision and the per-slot config plumbing.
+--
+-- Trigger values (db.profile.icons.{primary,secondary}GlowTrigger):
+--   * "never"                       — glow off
+--   * "always"                      — glow whenever the spell is ready
+--   * "target_casting"              — only while target is casting (any spell)
+--   * "target_casting_interruptible" — only for interruptible target casts
+--
+-- Type values map 1:1 to LibCustomGlow's four glow effects:
+--   * "button"   — LCG.ButtonGlow_Start   (Blizzard rotating rays + spark)
+--   * "proc"     — LCG.ProcGlow_Start     (modern Blizzard proc flipbook)
+--   * "pixel"    — LCG.PixelGlow_Start    (animated pixel border)
+--   * "autocast" — LCG.AutoCastGlow_Start (pet auto-cast sparkles)
+--
+-- Primary and secondary icons read independent trigger / type / color
+-- settings — Layout stamps `_isPrimary` on each icon so UpdateGlow knows
+-- which slot it's in.
+
+local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
+-- Per-frame key passed to LCG so addons sharing a button (e.g. Masque
+-- ports) can coexist without each other's glow effects. ButtonGlow_Stop
+-- doesn't take a key (only one Blizzard-style glow per frame); the
+-- other three Stop fns do.
+--
+-- Single-key constraint: today every glow trigger / type writes to the
+-- same `"KickCD"` slot, so an icon can host at most one KickCD-managed
+-- glow at a time. That's the right shape for the current mutually-exclusive
+-- triggers (a spell is either ready-and-castable, or it isn't), but a
+-- future "interruptible-target-cast PLUS spell-ready" combined glow
+-- would need TWO concurrent glows on the same icon — and LCG enforces
+-- that two different glow effects targeting the same key cancel each
+-- other.
+--
+-- To extend safely:
+--   1. Promote LCG_KEY to a small enum (LCG_KEY_PRIMARY / LCG_KEY_TARGET
+--      or similar — pick names that describe the role, not the visual).
+--   2. StartGlow / StopGlow take an explicit key argument; the per-slot
+--      decision in UpdateGlow picks which key it's writing to.
+--   3. ButtonGlow_Start still has no key (one Blizzard-style glow per
+--      frame, period) — that constraint is on Blizzard's side, not LCG's,
+--      so a combined-glow scenario will need to pick one of the three
+--      keyed effects (proc / pixel / autocast) for at least one slot.
+-- Until then, leave LCG_KEY single — adding a second key has API churn
+-- across StartGlow / StopGlow / UpdateGlow callers, and a real
+-- combined-glow scenario hasn't materialised yet.
+local LCG_KEY = "KickCD"
+
+local function unpackGlowColor(c)
+    if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
+    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+end
+
+function Icon:StopGlow()
+    local g = self.glow
+    if not (g and LCG) then return end
+    -- Stop every effect kind unconditionally so a stale glow from a
+    -- previous type doesn't linger when the user switches types.
+    LCG.ButtonGlow_Stop(g)
+    LCG.PixelGlow_Stop(g, LCG_KEY)
+    LCG.AutoCastGlow_Stop(g, LCG_KEY)
+    LCG.ProcGlow_Stop(g, LCG_KEY)
+    self._glowKind = nil
+    self._glowColor = nil
+end
+
+function Icon:StartGlow(kind, color)
+    local g = self.glow
+    if not (g and LCG) then return end
+    local r, gr, b, a = unpackGlowColor(color)
+    -- Idempotency gate: UpdateGlow gets called on every SPELL_STATE re-emit
+    -- (Cooldowns:Refresh fires for any non-trivially-equal poll, and charged
+    -- secondaries hit this path multiple times per second because
+    -- C_Spell.GetSpellCooldownDuration returns a fresh handle each call).
+    -- Re-issuing Stop+Start unconditionally replays LCG's animIn — most
+    -- visibly the ButtonGlow pop — so skip when nothing changed.
+    local prev = self._glowColor
+    if self._glowKind == kind and prev
+       and prev[1] == r and prev[2] == gr and prev[3] == b and prev[4] == a
+    then
+        return
+    end
+    local c = { r, gr, b, a }
+    -- Stop first so a kind change (e.g. button → pixel) doesn't stack.
+    self:StopGlow()
+    if kind == "button" then
+        LCG.ButtonGlow_Start(g, c)
+    elseif kind == "proc" then
+        LCG.ProcGlow_Start(g, { color = c, key = LCG_KEY })
+    elseif kind == "pixel" then
+        -- (frame, color, N, frequency, length, th, xOffset, yOffset, border, key, frameLevel)
+        LCG.PixelGlow_Start(g, c, nil, nil, nil, nil, nil, nil, nil, LCG_KEY)
+    elseif kind == "autocast" then
+        -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
+        LCG.AutoCastGlow_Start(g, c, nil, nil, nil, 0, 0, LCG_KEY)
+    end
+    self._glowKind = kind
+    self._glowColor = c
+end
+
+-- Resolve the trigger condition for this icon's slot. Reuses the same
+-- helpers the addon-wide visibility mode uses so triggers and visibility
+-- stay in lockstep semantically.
+--
+-- The "target_casting_interruptible" branch fires for ANY hostile cast
+-- — Lua can't decide notInterruptible because it's secret-tainted in
+-- 12.0 — and UpdateGlow applies SetAlphaFromBoolean on the glow frame
+-- to actually filter out uninterruptible casts (alpha 0). Same pattern
+-- as RefreshVisibility / ApplyInterruptibilityMask above.
+local function triggerSatisfied(trigger)
+    if trigger == "always" then
+        return true
+    elseif trigger == "target_casting" then
+        return IconGrid._isTargetCasting()
+    elseif trigger == "target_casting_interruptible" then
+        return NS.State
+           and NS.State.IsHostileUnitCasting
+           and NS.State.IsHostileUnitCasting("target")
+           or false
+    end
+    -- "never" or unknown — glow off.
+    return false
+end
+
+-- Decide glow visibility from the current state, config, and trigger
+-- condition. Called from Apply (state changed), ApplyTextConfig
+-- (per-slot config changed via Layout), and IconGrid:RefreshAllGlows
+-- (target / cast events fire the trigger reevaluation). state.ready is
+-- the canonical "spell can be cast" boolean — see modules/Cooldowns.lua.
+--
+-- For the "target_casting_interruptible" trigger the glow STARTS for
+-- any hostile cast (the trigger satisfied branch above) and the glow
+-- frame's alpha is then driven by SetAlphaFromBoolean(notInterruptible,
+-- 0, 1) — the C-side path that accepts the secret-tainted flag. So
+-- uninterruptible casts run the animation invisibly until the flag
+-- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends.
+function Icon:UpdateGlow(state)
+    local cfg = self.cfg or NS.db.profile.icons
+    if not cfg then return self:StopGlow() end
+
+    local trigger, kind, color
+    if self._isPrimary then
+        trigger, kind, color =
+            cfg.primaryGlowTrigger,   cfg.primaryGlowType,   cfg.primaryGlowColor
+    else
+        trigger, kind, color =
+            cfg.secondaryGlowTrigger, cfg.secondaryGlowType, cfg.secondaryGlowColor
+    end
+
+    local ready = state and state.ready and true or false
+    if not ready or not triggerSatisfied(trigger) then
+        self:StopGlow()
+        return
+    end
+    self:StartGlow(kind, color)
+
+    -- Per-cast interruptibility filter (alpha mask on the glow frame).
+    if trigger == "target_casting_interruptible"
+       and self.glow
+       and NS.State.ApplyInterruptibleAlpha
+       and NS.State.ApplyInterruptibleAlpha(self.glow, "target", 1) then
+        return
+    end
+    if self.glow then self.glow:SetAlpha(1) end
+end
+
+-- Apply the configured GCD-suppression alpha mask to the cooldown
+-- swipe + countdown text using a duration object. When
+-- cfg.suppressGCDSwipe is on, the gcdSuppressCurve evaluates to 0 below
+-- GCD_UPPER (hide) and 1 above (show). The result is fed through
+-- SetAlphaFromBoolean(true, value, 0) — both args may be secret-tainted
+-- in combat but the C method handles it.
+local function applyGcdSuppressionAlpha(icon, cdObject)
+    local cfg = icon.cfg or NS.db.profile.icons
+    if cfg and cfg.suppressGCDSwipe and gcdSuppressCurve and cdObject
+        and icon.cooldown.SetAlphaFromBoolean and icon.cooldownText.SetAlphaFromBoolean
+    then
+        local visAlpha = cdObject:EvaluateRemainingDuration(gcdSuppressCurve)
+        icon.cooldown:SetAlphaFromBoolean(true, visAlpha, 0)
+        icon.cooldownText:SetAlphaFromBoolean(true, visAlpha, 0)
+    else
+        icon.cooldown:SetAlpha(1)
+        icon.cooldownText:SetAlpha(1)
+    end
+end
+
+-- Apply a Ka0s_KickCD_SPELL_STATE payload to this icon. Payload shape:
+--   { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--
+-- Three branches:
+--   1. cdObject non-nil — full spell-level cooldown (real CD or
+--      just-GCD). Curves drive the icon-body alpha / tint so a GCD-only
+--      window still reads as "ready"; a real CD past the GCD threshold
+--      dims and tints the icon. Swipe + text render unconditionally,
+--      gated on cfg.suppressGCDSwipe via gcdSuppressCurve.
+--   2. chargeCdObject non-nil — partial-charge recharge timer ticking
+--      while at least one charge is still available. Render swipe + text
+--      WITHOUT mutating alpha / tint — the spell IS castable
+--      (state.ready stays true), it just has fewer charges than max.
+--   3. otherwise — no cooldown at all. Plain ready
+--      visuals; no swipe / text.
+--
+-- The GCD-vs-real-CD and ready-vs-charging distinctions all happen
+-- C-side via curve evaluation; Lua never compares the spell's
+-- secret-tainted remaining time directly.
+function Icon:Apply(state)
+    local cfg = self.cfg or NS.db.profile.icons
+    -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
+    -- toggles showCooldownText (or any other visual state) mid-cooldown
+    -- without waiting for the next SPELL_STATE message.
+    self._lastState = state
+
+    if state and state.cdObject and alphaCurve then
+        -- Branch 1: full cooldown.
+        local alpha = state.cdObject:EvaluateRemainingDuration(alphaCurve)
+        -- SetAlphaFromBoolean accepts secret values for its alpha args.
+        -- Passing `true` as the condition selects the second arg
+        -- unconditionally.
+        if self.SetAlphaFromBoolean then
+            self:SetAlphaFromBoolean(true, alpha, 0)
+        else
+            self:SetAlpha(alpha)
+        end
+
+        if tintCurve then
+            local color = state.cdObject:EvaluateRemainingDuration(tintCurve)
+            if color and color.GetRGB then
+                self.icon:SetVertexColor(color:GetRGB())
+            end
+        end
+
+        self.cooldown:SetCooldownFromDurationObject(state.cdObject)
+        self.cooldown:Show()
+        self:StartCooldownText(state.cdObject, true)
+        applyGcdSuppressionAlpha(self, state.cdObject)
+
+        if NS.State and NS.State.debug then
+            NS.Debug("IconGrid", ("apply [%d] active (curve)"):format(state.spellID or -1))
+        end
+    elseif state and state.chargeCdObject then
+        -- Branch 2: charge recharge ticking; spell is still castable.
+        -- Show swipe + countdown text but keep the icon body at ready
+        -- visuals (no alpha dim, no tint shift). state.ready stays true
+        -- so the glow trigger keeps firing as configured.
+        self:SetAlpha(cfg.readyAlpha or 1.0)
+        self.icon:SetVertexColor(1, 1, 1)
+        self.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
+        self.cooldown:Show()
+        self:StartCooldownText(state.chargeCdObject, false)
+        applyGcdSuppressionAlpha(self, state.chargeCdObject)
+
+        if NS.State and NS.State.debug then
+            NS.Debug("IconGrid", ("apply [%d] charging (curve)"):format(state.spellID or -1))
+        end
+    else
+        -- Branch 3: no active cooldown of any kind. Plain ready visuals.
+        self:SetAlpha(cfg.readyAlpha or 1.0)
+        self.icon:SetVertexColor(1, 1, 1)
+        self.cooldown:Hide()
+        self.cooldown:Clear()
+        self:StopCooldownText()
+        if NS.State and NS.State.debug then
+            NS.Debug("IconGrid", ("apply [%d] ready"):format(state and state.spellID or -1))
+        end
+    end
+
+    -- Ready glow (off when on cooldown, on when castable). Driven from
+    -- state.ready so it picks up the same "is castable" decision the
+    -- rest of the UI uses; primary vs secondary chooses which schema
+    -- entry's type/color applies.
+    self:UpdateGlow(state)
+
+    -- Charges badge. Visibility = "this spell has charges at all",
+    -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
+    -- for spells that don't track charges (regular Mind Freeze etc.) and a
+    -- number (0..max) for spells that do, so the truthy check on `c` is
+    -- the right gate — and it works for plain numbers, secret-tainted
+    -- numbers (in-combat guarded spells), and the nil/no-charges case
+    -- alike. SetFormattedText is the canonical secret-safe render path
+    -- (the format is interpreted C-side, accepts secret args without
+    -- erroring; same pattern as the cooldown text overlay).
+    local c = state and state.charges
+    if cfg.showCharges and c then
+        self.chargesText:SetFormattedText("%d", c)
+        self.chargesText:Show()
+    else
+        self.chargesText:Hide()
+    end
+end
+
+-- Apply zoom (icon TexCoord crop) and border (visibility / color /
+-- thickness). Called from Layout() so any /kcd set or panel change
+-- takes effect on the next layout pass without a full rebuild.
+function Icon:ApplyAppearance(cfg)
+    cfg = cfg or NS.db.profile.icons
+    local z = cfg.zoom or 0.08
+    self.icon:SetTexCoord(z, 1 - z, z, 1 - z)
+
+    local show = cfg.borderShow and true or false
+    if show then
+        local size = cfg.borderSize or 1
+        if size < 1 then size = 1 end
+        -- BackdropTemplate's SetBackdrop wants the table verbatim each call.
+        -- edgeFile is an LSM border texture; edgeSize is the thickness of
+        -- that texture's edge slices. Color tints the texture via
+        -- SetBackdropBorderColor.
+        self.border:SetBackdrop({
+            edgeFile = fetchBorderTexture(cfg.borderTexture),
+            edgeSize = size,
+        })
+        self.border:SetBackdropBorderColor(
+            safeUnpackColor(cfg.borderColor, 0, 0, 0, 1))
+        self.border:Show()
+    else
+        self.border:Hide()
+    end
+end
+
+-- Wire the cooldown text font / size / flags on this icon in response to a
+-- config change. The built-in CooldownFrameTemplate countdown numbers are
+-- always suppressed — we render our own FontString via StartCooldownText
+-- so the text displays even when the swipe is hidden (interrupts) and
+-- inherits parent alpha for free.
+function Icon:ApplyTextConfig(cfg)
+    cfg = cfg or NS.db.profile.icons
+    if self.cooldown.SetHideCountdownNumbers then
+        self.cooldown:SetHideCountdownNumbers(true)
+    end
+
+    local mediaFont = nil
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        mediaFont = LSM:Fetch("font", cfg.cooldownTextFont or "")
+    end
+    local fontPath = mediaFont
+    if not fontPath then
+        fontPath = self.cooldownText:GetFont()
+    end
+    if fontPath then
+        local flags = cfg.cooldownTextFlags or "OUTLINE"
+        if flags == "NONE" then flags = "" end
+        self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
+    end
+
+    -- Re-render so a showCooldownText toggle (or any other visual state
+    -- change) flowing through Layout takes effect immediately on a
+    -- currently-active cooldown, without waiting for the next SPELL_STATE.
+    if self._lastState then
+        self:Apply(self._lastState)
+    else
+        self.cooldownText:Hide()
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Shared cooldown-text ticker
+-- ---------------------------------------------------------------------------
+--
+-- One C_Timer.NewTicker(0.1) drives every visible cooldown's countdown
+-- text. Icons register on StartCooldownText and deregister on
+-- StopCooldownText (or ReleaseAll); the ticker pauses (Cancel + nil)
+-- the moment the set goes empty so the addon costs nothing while no
+-- cooldowns are active. Re-arms on the next register call.
+
+local function _tickAllTextIcons()
+    -- Snapshot the count and short-circuit if empty — guards against
+    -- a race where the ticker fires after the last icon deregistered
+    -- but before we got around to cancelling the timer.
+    if next(_textIcons) == nil then
+        if _textTicker and _textTicker.Cancel then
+            _textTicker:Cancel()
+        end
+        _textTicker = nil
+        return
+    end
+    for icon in pairs(_textIcons) do
+        if icon and icon._RenderCooldownText then
+            icon:_RenderCooldownText()
+        end
+    end
+end
+
+function IconGrid:_RegisterTextIcon(icon)
+    if not icon then return end
+    -- Idempotent — re-registering an already-active icon is a no-op.
+    if _textIcons[icon] then return end
+    _textIcons[icon] = true
+    -- Lazy-start the ticker on the first registered icon.
+    if not _textTicker and _G.C_Timer and _G.C_Timer.NewTicker then
+        _textTicker = _G.C_Timer.NewTicker(0.1, _tickAllTextIcons)
+    end
+end
+
+function IconGrid:_UnregisterTextIcon(icon)
+    if not icon then return end
+    if not _textIcons[icon] then return end
+    _textIcons[icon] = nil
+    -- The ticker itself notices the empty set on its next fire and
+    -- self-cancels — see _tickAllTextIcons above. We could cancel
+    -- eagerly here too, but lazy cancel keeps the deregister path
+    -- O(1) and avoids double-free races if Cancel is non-idempotent
+    -- on a given Blizzard build.
+end
+
+-- ---------------------------------------------------------------------------
+-- Exposed to core/IconGrid.lua
+-- ---------------------------------------------------------------------------
+IconGrid.CreateIconWidget = CreateIconWidget
+IconGrid.BuildCurves      = BuildCurves

@@ -58,7 +58,7 @@ Edits the per-class+spec spell list at `db.profile.spells[CLASS][SPEC]`. CLASS i
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
 | `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `KickCD.DefaultSpells`. Mirrors the Spells panel's Defaults popup; intentionally narrower than `/kcd reset spells` (which wipes every spec via `Database:ResetAllSpells`). |
 
-Every mutating subcommand fires `KickCD_CONFIG_CHANGED { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
+Every mutating subcommand fires `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
 
 ## `/kcd debug <subcmd>`
 

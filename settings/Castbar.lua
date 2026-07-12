@@ -4,15 +4,15 @@
 -- KickCD.Settings.Schema; the builder just calls Helpers.RenderSchema.
 -- Adding a new castbar option means adding one schema row here.
 
-local KickCD = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local L      = KickCD.L
-local H      = KickCD.Settings.Helpers
-local Schema = KickCD.Settings.Schema
+local addonName, NS = ...
+local L      = NS.L
+local H      = NS.Settings.Helpers
+local Schema = NS.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
 -- Every schema row's write goes through Helpers.Set, which fires
--- KickCD_CONFIG_CHANGED { section = "castbar" }; the Castbar module
+-- Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" }; the Castbar module
 -- subscribes and re-applies its config from the bus listener. So no
 -- row in this file needs an onChange purely for "redraw the live
 -- frame" — the bus is the single dispatch path. Rows below only set
@@ -116,7 +116,7 @@ add{
     -- Reset growDirection to the new orientation's canonical default
     -- so we can never end up with an inconsistent pair (e.g. a
     -- horizontal bar with growDirection="UP"). H.Set fires
-    -- KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
+    -- Ka0s_KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
     -- with both fields consistent — the transient state from the
     -- orientation write alone is overwritten before any frame
     -- renders. RefreshAllPanels then re-evaluates the growDirection
@@ -124,7 +124,7 @@ add{
     -- the new axis and shows the freshly-reset selection.
     --
     -- No manual ApplyConfig / Reskin call here: Helpers.Set has
-    -- already fired KickCD_CONFIG_CHANGED { section = "castbar" } for
+    -- already fired Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" } for
     -- the orientation write, and the secondary H.Set above fires it
     -- a second time for growDirection. Castbar:OnConfigChanged
     -- subscribes and reapplies — adding a direct call would just
@@ -156,7 +156,7 @@ add{
     -- valid pair of options at all times — no "(horizontal)" /
     -- "(vertical)" disambiguation suffixes needed in the labels.
     values  = function()
-        local profile = KickCD.db and KickCD.db.profile
+        local profile = NS.db and NS.db.profile
         local orientation = profile and profile.castbar
                             and profile.castbar.orientation
         if orientation == "VERTICAL" then
@@ -524,7 +524,7 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Cast bar"])
 end
 
-if KickCD.Settings and KickCD.Settings.RegisterTab then
-    KickCD.Settings.RegisterTab("castbar", Build)
+if NS.Settings and NS.Settings.RegisterTab then
+    NS.Settings.RegisterTab("castbar", Build)
 end
 

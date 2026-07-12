@@ -17,9 +17,9 @@
 -- AoE Slow are intentionally excluded since neither category stops casts):
 -- https://docs.google.com/spreadsheets/d/1lXIRuETd3s3wxLHE8mOwhXtz0xm71ayhrlYxwi6herU/edit?gid=2092737897
 
-KickCD = KickCD or {}
+local addonName, NS = ...
 
-KickCD.DefaultSpells = {
+NS.DefaultSpells = {
 
     DEATHKNIGHT = {
         BLOOD = {
@@ -324,7 +324,7 @@ KickCD.DefaultSpells = {
 
 -- Race-specific cast-stoppers, appended to the per-spec list at first profile
 -- creation by Database:BuildSpells() (see docs/saved-variables.md).
-KickCD.RaceCastStoppers = {
+NS.RaceCastStoppers = {
     Tauren             = 20549,  -- War Stomp
     HighmountainTauren = 255654, -- Bull Rush
     Pandaren           = 107079, -- Quaking Palm

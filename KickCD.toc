@@ -1,13 +1,17 @@
 ## Interface: 120007
 ## Title: Ka0s KickCD
 ## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
-## Author: Ka0s
+## Author: add1kted2ka0s
 ## Version: 1.1.0
 ## IconTexture: Interface\Icons\ability_kick
 ## SavedVariables: KickCDDB
+## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0
 ## DefaultState: enabled
 ## Category-enUS: Combat
 ## X-License: MIT
+## X-Standard: https://github.com/tusharsaxena/WowAddonStandards
+## X-Curse-Project-ID: 1530802
+# ## X-Wago-ID: <id>   -- TODO(KCD-18): add once published on Wago
 
 # Libraries (must load first)
 libs\LibStub\LibStub.lua
@@ -39,8 +43,11 @@ core\KickCD.lua
 defaults\Spells.lua
 
 # Modules
+modules\DebugLog.lua
 modules\Cooldowns.lua
 modules\IconGrid.lua
+modules\IconGrid_Layout.lua
+modules\IconGrid_Render.lua
 modules\Castbar.lua
 
 # Settings (last — depend on everything else being initialized)
@@ -50,4 +57,3 @@ settings\Icons.lua
 settings\Castbar.lua
 settings\Spells.lua
 settings\Profiles.lua
-

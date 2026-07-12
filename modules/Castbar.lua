@@ -1,5 +1,9 @@
 -- modules/Castbar.lua
 --
+-- NOTE (KCD-19, §1.2): this file is in the 1000–1500 LOC "on notice" band.
+-- It is under the 1500 hard cap; a future peel would split the config-driven
+-- build (Reskin / sizing / anchors) from the per-cast update path (RenderCast).
+--
 -- Owns the KickCDCastbar frame: a custom-drawn StatusBar with icon, spell
 -- name, and remaining-time text that mirrors the player's current target
 -- cast / channel. Independently movable from the icon grid; visibility is
@@ -21,14 +25,14 @@
 --   UNIT_SPELLCAST_CHANNEL_STOP  -> on unit=="target", hide
 --   UNIT_SPELLCAST_CHANNEL_UPDATE-> on unit=="target", re-evaluate
 --
---   KickCD_CONFIG_CHANGED  -> "castbar" reskins/relays the bar; "general"
+--   Ka0s_KickCD_CONFIG_CHANGED  -> "castbar" reskins/relays the bar; "general"
 --                             re-applies lock + anchor; other sections ignored.
---   KickCD_PROFILE_CHANGED -> re-anchor + reskin + re-evaluate.
---   KickCD_GRID_LAYOUT     -> re-anchor (in PRIMARY anchor mode the primary
+--   Ka0s_KickCD_PROFILE_CHANGED -> re-anchor + reskin + re-evaluate.
+--   Ka0s_KickCD_GRID_LAYOUT     -> re-anchor (in PRIMARY anchor mode the primary
 --                             icon button reference may have changed) and
 --                             re-apply auto-size (the grid frame may have
 --                             resized).
---   KickCD_COMBAT_STATE    -> re-evaluate / Stop (drives "in_combat" mode).
+--   Ka0s_KickCD_COMBAT_STATE    -> re-evaluate / Stop (drives "in_combat" mode).
 --
 -- This file fires no messages. The bar is a strict subscriber.
 --
@@ -51,9 +55,9 @@
 --   without erroring (Blizzard's protection is on arithmetic, not on
 --   UI render calls).
 
-local KickCD  = LibStub("AceAddon-3.0"):GetAddon("KickCD")
-local Castbar = KickCD:NewModule("Castbar", "AceEvent-3.0")
-local L       = KickCD.L
+local addonName, NS = ...
+local Castbar = NS:NewModule("Castbar", "AceEvent-3.0")
+local L       = NS.L
 
 -- ---------------------------------------------------------------------------
 -- Module-local state
@@ -69,20 +73,20 @@ local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
 -- and docs/midnight-quirks.md for the full background.
 local current
 
--- Cache of the most recent KickCD_GRID_LAYOUT payload from IconGrid.
+-- Cache of the most recent Ka0s_KickCD_GRID_LAYOUT payload from IconGrid.
 -- Populated by Castbar:OnGridLayout when the payload carries
 -- `gridFrame` / `primaryIcon`; ApplyAnchor / Reskin prefer these
 -- over the public accessors so the bar follows the grid without a
 -- second cross-module reach. The fallback to
 -- `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
 -- `:GetPrimaryIcon()` stays in place for the FIRST tick after enable
--- when no KickCD_GRID_LAYOUT has fired yet, and for older senders that
+-- when no Ka0s_KickCD_GRID_LAYOUT has fired yet, and for older senders that
 -- broadcast an empty payload.
 local lastGridLayout = { gridFrame = nil, primaryIcon = nil }
 
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
 -- shared, single-owner flag driven off the PLAYER_REGEN_* events in
--- one place, fanned out via the KickCD_COMBAT_STATE message that this
+-- one place, fanned out via the Ka0s_KickCD_COMBAT_STATE message that this
 -- module subscribes to. Reading InCombatLockdown() inside the
 -- regen-disabled handler is unreliable (the lockdown state lags the
 -- event by a frame), so we maintain the flag via the events themselves;
@@ -95,11 +99,11 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 -- ---------------------------------------------------------------------------
 
 local function cfg()
-    return (KickCD.db and KickCD.db.profile and KickCD.db.profile.castbar) or {}
+    return (NS.db and NS.db.profile and NS.db.profile.castbar) or {}
 end
 
 -- Resolve the icon-grid's parent grid frame. Prefers the value carried
--- by the most recent KickCD_GRID_LAYOUT payload (CR-29 sender-side);
+-- by the most recent Ka0s_KickCD_GRID_LAYOUT payload (CR-29 sender-side);
 -- falls back to KickCD:GetModule("IconGrid", true):GetGridFrame() for
 -- the first tick after enable (no payload yet) and for older senders
 -- that still broadcast an empty payload. GetModule(name, true) is the
@@ -107,7 +111,7 @@ end
 -- missing, so a disabled IconGrid yields nil here without erroring.
 local function resolveGridFrame()
     if lastGridLayout.gridFrame then return lastGridLayout.gridFrame end
-    local m = KickCD:GetModule("IconGrid", true)
+    local m = NS:GetModule("IconGrid", true)
     if m and m.GetGridFrame then return m:GetGridFrame() end
     return nil
 end
@@ -116,13 +120,13 @@ end
 -- payload-preferred / accessor-fallback policy as resolveGridFrame.
 local function resolvePrimaryIcon()
     if lastGridLayout.primaryIcon then return lastGridLayout.primaryIcon end
-    local m = KickCD:GetModule("IconGrid", true)
+    local m = NS:GetModule("IconGrid", true)
     if m and m.GetPrimaryIcon then return m:GetPrimaryIcon() end
     return nil
 end
 
 local function master()
-    local p = KickCD.db and KickCD.db.profile
+    local p = NS.db and NS.db.profile
     if not p then return true end
     return p.enabled ~= false
 end
@@ -148,15 +152,15 @@ end
 -- While unlocked the visibility mode is ignored — the user is moving
 -- the bar and needs to see it regardless.
 local function isVisible()
-    local profile = KickCD.db and KickCD.db.profile
+    local profile = NS.db and NS.db.profile
     if not (master() and cfg().enabled ~= false) then return false end
     if profile and profile.locked == false then return true end
     local mode = (profile and profile.visibility) or "always"
     if mode == "in_combat" then
-        return KickCD.State.inCombat
+        return NS.State.inCombat
     elseif mode == "target_casting_interruptible" then
-        return KickCD.State.IsHostileUnitCasting
-           and KickCD.State.IsHostileUnitCasting("target")
+        return NS.State.IsHostileUnitCasting
+           and NS.State.IsHostileUnitCasting("target")
            or false
     end
     return true
@@ -171,13 +175,13 @@ end
 --- Called whenever the bar shows OR the interruptibility flag flips.
 local function ApplyVisibilityMask(barFrame)
     if not barFrame then return end
-    local profile = KickCD.db and KickCD.db.profile
+    local profile = NS.db and NS.db.profile
     local unlocked = profile and profile.locked == false
     local mode = (profile and profile.visibility) or "always"
     if not unlocked
        and mode == "target_casting_interruptible"
-       and KickCD.State.ApplyInterruptibleAlpha
-       and KickCD.State.ApplyInterruptibleAlpha(barFrame, "target", 1) then
+       and NS.State.ApplyInterruptibleAlpha
+       and NS.State.ApplyInterruptibleAlpha(barFrame, "target", 1) then
         return
     end
     barFrame:SetAlpha(1)
@@ -185,7 +189,7 @@ end
 
 local function unpackColor(c, fr, fg, fb, fa)
     if not c then return fr or 1, fg or 1, fb or 1, fa or 1 end
-    return KickCD.Util.Unpack(c)
+    return NS.Util.Unpack(c)
 end
 
 local function fetchStatusBarTexture(name)
@@ -256,15 +260,15 @@ end
 --               configured (anchorPoint, castbarPoint, offset) tuple.
 
 local function onDragStart(self)
-    if KickCD.db and KickCD.db.profile and KickCD.db.profile.locked then return end
+    if NS.db and NS.db.profile and NS.db.profile.locked then return end
     self:StartMoving()
 end
 
 local function onDragStop(self)
     self:StopMovingOrSizing()
-    if KickCD.db and KickCD.db.profile then
-        KickCD.db.profile.anchors = KickCD.db.profile.anchors or {}
-        KickCD.db.profile.anchors.castbar = KickCD.Util.SaveAnchor(self)
+    if NS.db and NS.db.profile then
+        NS.db.profile.anchors = NS.db.profile.anchors or {}
+        NS.db.profile.anchors.castbar = NS.Util.SaveAnchor(self)
     end
     -- CR-34: complete the bus contract by announcing the anchor write.
     -- No subscriber listens for "castbar" anchor changes today (the bar
@@ -273,8 +277,8 @@ local function onDragStop(self)
     -- Castbar's own OnConfigChanged handles { section = "castbar" }
     -- idempotently (Reskin + ApplyLock are no-ops for an already-correct
     -- frame), so the dispatch is safe to re-enter.
-    if KickCD.SendMessage then
-        KickCD:SendMessage("KickCD_CONFIG_CHANGED", { section = "castbar" })
+    if NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "castbar" })
     end
 end
 
@@ -340,9 +344,9 @@ function Castbar:ApplyAnchor()
         -- the bar at least has a position to render at while we wait.
     end
 
-    local saved = KickCD.db and KickCD.db.profile
-        and KickCD.db.profile.anchors and KickCD.db.profile.anchors.castbar
-    KickCD.Util.ApplyAnchor(frame, saved or
+    local saved = NS.db and NS.db.profile
+        and NS.db.profile.anchors and NS.db.profile.anchors.castbar
+    NS.Util.ApplyAnchor(frame, saved or
         { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 })
 end
 
@@ -350,7 +354,7 @@ function Castbar:ApplyLock()
     if not frame then return end
     local c              = cfg()
     local primaryAnchor  = (c.anchorMode == "PRIMARY")
-    local profileLocked  = KickCD.db and KickCD.db.profile and KickCD.db.profile.locked
+    local profileLocked  = NS.db and NS.db.profile and NS.db.profile.locked
     -- PRIMARY anchor mode forces drag-disabled — the bar's position is
     -- determined by the icon-grid anchor + offsets, not by dragging.
     local dragAllowed    = (not profileLocked) and (not primaryAnchor)
@@ -524,8 +528,8 @@ local UNINT_FALLBACK = {
 -- border. The user's offsetX is added on top so they can pull the text
 -- further out or push it back in. Sourced from KickCD.Const so the
 -- value lives in exactly one place across the addon.
-local INSIDE_INSET  = KickCD.Const.CASTBAR_INSIDE_INSET
-local OUTSIDE_INSET = KickCD.Const.CASTBAR_OUTSIDE_INSET
+local INSIDE_INSET  = NS.Const.CASTBAR_INSIDE_INSET
+local OUTSIDE_INSET = NS.Const.CASTBAR_OUTSIDE_INSET
 
 local function anchorTextElement(fs, bar, position, ox, oy)
     fs:ClearAllPoints()
@@ -619,7 +623,7 @@ function Castbar:Reskin()
 
     -- Auto-size override: match the bar's long axis to the icon
     -- grid's corresponding screen-axis extent. Thickness stays
-    -- user-configured. Re-runs on every KickCD_GRID_LAYOUT so the
+    -- user-configured. Re-runs on every Ka0s_KickCD_GRID_LAYOUT so the
     -- bar tracks the grid as icons are added / removed / resized.
     if c.autoSize then
         local gridFrame = resolveGridFrame()
@@ -874,7 +878,7 @@ end
 
 -- Hot path. Runs every frame while a cast is active. Constraints:
 --   * No table lookups for config — `current.showTime` is cached on cast
---     start (see Castbar:Start) and re-cached on KickCD_CONFIG_CHANGED.
+--     start (see Castbar:Start) and re-cached on Ka0s_KickCD_CONFIG_CHANGED.
 --   * No SetMinMaxValues — the duration object's total only changes at
 --     cast start / on UNIT_SPELLCAST_DELAYED / UNIT_SPELLCAST_CHANNEL_UPDATE.
 --     Both transitions go through Castbar:Start (initial) or
@@ -984,7 +988,7 @@ function Castbar:Start(rec)
     self:EnsureFrame()
     current = rec
     -- Cache showTime on the cast record so onUpdate doesn't have to hit
-    -- the cfg() table every frame. Refreshed on KickCD_CONFIG_CHANGED via
+    -- the cfg() table every frame. Refreshed on Ka0s_KickCD_CONFIG_CHANGED via
     -- OnConfigChanged when the section is "castbar".
     current.showTime = (cfg().showTime ~= false)
 
@@ -1010,7 +1014,7 @@ function Castbar:Stop()
 
     -- Keep the preview visible while unlocked so the user can still drag
     -- the empty bar around. Otherwise hide it.
-    local locked = KickCD.db and KickCD.db.profile and KickCD.db.profile.locked
+    local locked = NS.db and NS.db.profile and NS.db.profile.locked
     if (not locked) and isVisible() then
         self:ShowPreview()
     else
@@ -1059,7 +1063,7 @@ end
 function Castbar:Reevaluate()
     if not UnitExists("target") then return self:Stop() end
     if UnitIsDead and UnitIsDead("target") then return self:Stop() end
-    local rec = KickCD.Compat.GetCastingInfo("target")
+    local rec = NS.Compat.GetCastingInfo("target")
     if rec then
         self:Start(rec)
     else
@@ -1078,7 +1082,7 @@ function Castbar:OnEnable()
     self:Reskin()
     self:ApplyLock()
 
-    -- Combat transitions arrive via the KickCD_COMBAT_STATE message
+    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message
     -- subscription below, not raw PLAYER_REGEN_* events. State owns
     -- the only registration so the flag write and the visibility
     -- refresh stay ordered by construction.
@@ -1097,7 +1101,7 @@ function Castbar:OnEnable()
     -- module so OnDisable can release them — AceEvent's
     -- UnregisterAllEvents only knows about its own table.
     self._targetEventFrames = self._targetEventFrames or {}
-    local Util = KickCD.Util
+    local Util = NS.Util
     local castEvents = {
         { "UNIT_SPELLCAST_START",             "OnCastStart"               },
         { "UNIT_SPELLCAST_STOP",              "OnCastStop"                },
@@ -1115,10 +1119,10 @@ function Castbar:OnEnable()
             Util.RegisterTargetEvent(self, e[1], e[2])
     end
 
-    self:RegisterMessage("KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("KickCD_GRID_LAYOUT",     "OnGridLayout")
-    self:RegisterMessage("KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
+    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
 
     -- Snap to the current target's state on enable in case we logged in
     -- staring at a casting mob.
@@ -1172,13 +1176,13 @@ end
 
 function Castbar:OnCastStart()
     if not isVisible() then return end
-    local rec = KickCD.Compat.GetCastingInfo("target")
+    local rec = NS.Compat.GetCastingInfo("target")
     if rec then self:Start(rec) end
 end
 
 function Castbar:OnChannelStart()
     if not isVisible() then return end
-    local rec = KickCD.Compat.GetChannelInfo("target")
+    local rec = NS.Compat.GetChannelInfo("target")
     if rec then self:Start(rec) end
 end
 
@@ -1228,7 +1232,7 @@ function Castbar:OnCastDelayed()
     -- notInterruptible could in principle change too (e.g. an aura that
     -- toggles interruptibility mid-cast), so re-apply the per-state
     -- visuals as well.
-    local rec = KickCD.Compat.GetCastingInfo("target")
+    local rec = NS.Compat.GetCastingInfo("target")
     if rec then
         current = rec
         -- Re-cache showTime: the user may have toggled it between the
@@ -1307,7 +1311,7 @@ end
 --- accessors `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
 --- `:GetPrimaryIcon()` via resolveGridFrame / resolvePrimaryIcon. The
 --- accessor fallback also handles the FIRST tick after enable when no
---- KickCD_GRID_LAYOUT has fired yet.
+--- Ka0s_KickCD_GRID_LAYOUT has fired yet.
 function Castbar:OnGridLayout(_evt, payload)
     if not frame then return end
     -- Cache the payload's references for ApplyAnchor / Reskin.
@@ -1340,7 +1344,7 @@ end
 --- those may be secret in combat. Uses tostring(type(...)) / boolean
 --- branching with `not not` to avoid arithmetic on secrets.
 function Castbar:DebugDump()
-    local print = KickCD.Util and KickCD.Util.print or _G.print
+    local print = NS.Util and NS.Util.print or _G.print
     print("castbar state:")
 
     if not UnitExists("target") then
@@ -1354,7 +1358,7 @@ function Castbar:DebugDump()
 
     if not current then
         print("  no active cast tracked (current = nil)")
-        local rec = KickCD.Compat.GetCastingInfo("target")
+        local rec = NS.Compat.GetCastingInfo("target")
         if rec then
             print("  but Compat.GetCastingInfo returned a record — debug a missed event?")
         end
@@ -1394,7 +1398,7 @@ function Castbar:DebugDump()
         return ("{%.2f, %.2f, %.2f, %.2f}"):format(
             c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
     end
-    local cfg = KickCD.db and KickCD.db.profile and KickCD.db.profile.castbar or {}
+    local cfg = NS.db and NS.db.profile and NS.db.profile.castbar or {}
     local intCfg = cfg.interruptible   or {}
     local nintCfg = cfg.uninterruptible or {}
     print("  configured colors:")
@@ -1417,6 +1421,6 @@ function Castbar:DebugDump()
 end
 
 -- Expose for /kcd debug + future tooling.
-KickCD.Castbar = Castbar
+NS.Castbar = Castbar
 
 

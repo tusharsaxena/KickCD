@@ -16,7 +16,7 @@ Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown
         │                                  { ready, isActive, cdObject, chargeCdObject, charges }
         │                                  (Get…Duration on either object is secret in combat)
         ▼
-StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE", payload)
+StateChanged(prev, next) ── true ──► SendMessage("Ka0s_KickCD_SPELL_STATE", payload)
                                                           │
                                                           ▼
                                           IconGrid:OnSpellState ──► btn:Apply(state)
@@ -29,15 +29,15 @@ StateChanged(prev, next) ── true ──► SendMessage("KickCD_SPELL_STATE",
 
 The GCD-vs-real-CD visual decision is made entirely C-side via `cdObject:EvaluateRemainingDuration(curve)`. The IconGrid maintains step-shaped alpha and color curves built from `cfg.readyAlpha` / `cfg.cooldownAlpha` / `cfg.cooldownTint`: remaining ≤ ~1.6s evaluates to ready visuals, anything beyond evaluates to cooldown visuals. Lua never compares the secret remaining time directly. See `modules/IconGrid.lua` `BuildCurves`.
 
-A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watched id (pet dismissed, talent untrained, encounter mechanic suppresses the spell) emits a final sentinel `KickCD_SPELL_STATE { spellID, ready=false, isActive=false, cdObject=nil, chargeCdObject=nil, charges=nil }` and unwatches the id. Without it the icon would render the last-known state until the next `Rebuild` — which `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED` typically cover, but not all paths fire those events.
+A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watched id (pet dismissed, talent untrained, encounter mechanic suppresses the spell) emits a final sentinel `Ka0s_KickCD_SPELL_STATE { spellID, ready=false, isActive=false, cdObject=nil, chargeCdObject=nil, charges=nil }` and unwatches the id. Without it the icon would render the last-known state until the next `Rebuild` — which `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED` typically cover, but not all paths fire those events.
 
 ## Settings input → bus
 
-Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`, slash `/kcd debug log`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `KickCD_PROFILE_CHANGED` on profile change / copy / reset.
+Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`, slash `/kcd debug log`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
 
 Slash commands that mutate schema-backed fields (e.g. `/kcd lock`, `/kcd debug log`) route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write/notify/refresh code path (`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way a future `onChange` added to a row doesn't silently diverge between the two paths.
 
-Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows), then fire `KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes the anchor table directly from `KickCD.DEFAULT_PROFILE` and fires the same `general`-section message.
+Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows), then fire `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes the anchor table directly from `KickCD.DEFAULT_PROFILE` and fires the same `general`-section message.
 
 ## Visibility two-step gate
 
@@ -48,7 +48,7 @@ shouldBeVisible() / isVisible()
   ── always                       → true
   ── in_combat                    → KickCD.State.inCombat (PLAYER_REGEN_* flag
                                      owned by core/State.lua's bootstrap and
-                                     fanned out via KickCD_COMBAT_STATE; NOT
+                                     fanned out via Ka0s_KickCD_COMBAT_STATE; NOT
                                      InCombatLockdown — that lags by a frame)
   ── target_casting               → UnitCastingInfo / UnitChannelInfo("target") truthy
   ── target_casting_interruptible → KickCD.State.IsHostileUnitCasting("target")
@@ -95,18 +95,18 @@ Castbar:Reevaluate ──► Compat.GetCastingInfo("target")
                        the secret notInterruptible bool.
 ```
 
-The IconGrid emits `KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `KickCD:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
+The IconGrid emits `Ka0s_KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `KickCD:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
 
 ## Lock and anchor
 
 The icon grid and the cast bar each have a single anchor in `db.profile.anchors`, always relative to UIParent. `Util.SaveAnchor(frame)` snapshots `{ point, relativePoint, x, y }`; `Util.ApplyAnchor(frame, anchor)` restores it.
 
-* `db.profile.anchors.icons` — the icon grid's saved position. Persisted by `IconGrid` `OnDragStop` and re-applied by `IconGrid:OnProfileChanged` / the General → "Reset position" button. `OnDragStop` also fires `KickCD_CONFIG_CHANGED { section = "general" }` so any future anchor-aware subscriber gets notified — today the IconGrid is the only consumer of its own anchor, but the message closes the contract.
-* `db.profile.anchors.castbar` — the cast bar's saved position. Only consulted when `db.profile.castbar.anchorMode == "FREE"`. Under `"PRIMARY"` the bar is `SetPoint`'d to the icon grid's primary icon button via the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, the bar is locked from dragging regardless of `db.profile.locked`, and `KickCD_GRID_LAYOUT` triggers re-anchoring whenever the primary icon button reference changes (the listener reads the payload's `gridFrame` / `primaryIcon` directly). The Castbar's `OnDragStop` symmetrically fires `KickCD_CONFIG_CHANGED { section = "castbar" }`.
+* `db.profile.anchors.icons` — the icon grid's saved position. Persisted by `IconGrid` `OnDragStop` and re-applied by `IconGrid:OnProfileChanged` / the General → "Reset position" button. `OnDragStop` also fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` so any future anchor-aware subscriber gets notified — today the IconGrid is the only consumer of its own anchor, but the message closes the contract.
+* `db.profile.anchors.castbar` — the cast bar's saved position. Only consulted when `db.profile.castbar.anchorMode == "FREE"`. Under `"PRIMARY"` the bar is `SetPoint`'d to the icon grid's primary icon button via the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, the bar is locked from dragging regardless of `db.profile.locked`, and `Ka0s_KickCD_GRID_LAYOUT` triggers re-anchoring whenever the primary icon button reference changes (the listener reads the payload's `gridFrame` / `primaryIcon` directly). The Castbar's `OnDragStop` symmetrically fires `Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" }`.
 
 Lock state lives in `db.profile.locked` and is shared by both widgets. `IconGrid:ApplyLock` and `Castbar:ApplyLock` flip `EnableMouse(true/false)` + `RegisterForDrag("LeftButton" or nothing)` accordingly. The icon grid also flips per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag. Touch points:
 
-- Settings → General → "Lock frame" checkbox writes `db.profile.locked` through `Helpers.Set` and fires `KickCD_CONFIG_CHANGED { section = "general" }`.
+- Settings → General → "Lock frame" checkbox writes `db.profile.locked` through `Helpers.Set` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }`.
 - Slash commands `/kcd lock | unlock | toggle` route through `Helpers.SetAndRefresh("locked", ...)` so they share the same write/notify/refresh path as the checkbox (and so an open General panel reflects the lock state immediately). They fall back to a direct write only when the settings layer hasn't loaded yet.
 - `IconGrid:OnConfigChanged` and `Castbar:OnConfigChanged` react to section `"general"` by calling `ApplyLock`.
 - `IconGrid:ApplyLock` additionally toggles per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag.

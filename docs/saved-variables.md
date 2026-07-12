@@ -84,7 +84,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
         -- SetReverseFill so per-frame math stays C-side.
         orientation,                            -- "HORIZONTAL" | "VERTICAL"
         growDirection,                          -- "RIGHT" | "LEFT" | "UP" | "DOWN"
-        autoSize,                               -- pull dim from icon grid each KickCD_GRID_LAYOUT
+        autoSize,                               -- pull dim from icon grid each Ka0s_KickCD_GRID_LAYOUT
         -- Per-element text anchor (INSIDE_LEFT / INSIDE_RIGHT / CENTER /
         -- OUTSIDE_LEFT / OUTSIDE_RIGHT) plus pixel offset.
         namePosition, nameOffsetX, nameOffsetY,

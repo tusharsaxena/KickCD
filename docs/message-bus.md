@@ -6,13 +6,13 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 
 | Message | Sender | Listeners | Payload |
 |---|---|---|---|
-| `KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
-| `KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set` (every schema-row write); `core/KickCD.lua` (lock/unlock, debug log toggle); `settings/Panel.lua Helpers.ResetIconPosition`; `settings/Spells.lua` (debounced editor commits); `modules/IconGrid.lua OnDragStop` (anchor save → `general`); `modules/Castbar.lua OnDragStop` (anchor save → `castbar`) | `IconGrid`, `Cooldowns`, `Castbar` | `{ section = "general"\|"icons"\|"castbar"\|"spells" }` |
-| `KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback for `OnProfileChanged` / `Copied` / `Reset`) | `IconGrid`, `Cooldowns`, `Castbar`, `settings/Spells.lua` | `{ newProfileKey }` |
-| `KickCD_GRID_LAYOUT` | `IconGrid:Layout` (every pass, including the empty-list case) | `Castbar` | `{ gridFrame, primaryIcon, width, height }` |
-| `KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame (the only `PLAYER_REGEN_*` registration in the addon) | `IconGrid`, `Castbar` | `{ inCombat }` |
+| `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
+| `Ka0s_KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set` (every schema-row write); `core/KickCD.lua` (lock/unlock, debug log toggle); `settings/Panel.lua Helpers.ResetIconPosition`; `settings/Spells.lua` (debounced editor commits); `modules/IconGrid.lua OnDragStop` (anchor save → `general`); `modules/Castbar.lua OnDragStop` (anchor save → `castbar`) | `IconGrid`, `Cooldowns`, `Castbar` | `{ section = "general"\|"icons"\|"castbar"\|"spells" }` |
+| `Ka0s_KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback for `OnProfileChanged` / `Copied` / `Reset`) | `IconGrid`, `Cooldowns`, `Castbar`, `settings/Spells.lua` | `{ newProfileKey }` |
+| `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout` (every pass, including the empty-list case) | `Castbar` | `{ gridFrame, primaryIcon, width, height }` |
+| `Ka0s_KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame (the only `PLAYER_REGEN_*` registration in the addon) | `IconGrid`, `Castbar` | `{ inCombat }` |
 
-## `KickCD_SPELL_STATE` payload
+## `Ka0s_KickCD_SPELL_STATE` payload
 
 `cdObject` is the secret-aware `CooldownDuration` handle from `C_Spell.GetSpellCooldownDuration`, non-nil whenever the legacy `isActive` flag is true (real CD or just-GCD; the IconGrid disambiguates downstream). `chargeCdObject` is a separate handle on the same API, set when the spell has charges and at least one is missing while `isActive=false` — i.e. a recharge timer is ticking but the spell is still castable. The IconGrid renders the recharge swipe + countdown text from `chargeCdObject` without applying the cooldown alpha/tint (the spell IS castable; `state.ready` stays true).
 
@@ -30,21 +30,21 @@ A separate `gcdSuppressCurve` (also built in `IconGrid.BuildCurves`) drives the 
 
 ### Spell-disappeared sentinel
 
-When `Cooldowns:Refresh` finds a previously-watched `spellID` no longer available (pet dismissed, talent untrained, encounter mechanic suppresses the spell), it emits one final `KickCD_SPELL_STATE` with `ready = false, isActive = false, cdObject = nil, chargeCdObject = nil, charges = nil` and drops the id from its `watched` table. The IconGrid's `OnSpellState` no-cdObject branch already renders ready visuals correctly for this payload; the next `Rebuild` (fired by `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED`, both of which fire on the same triggers) trims the now-orphaned icon out of `ordered[]`. Without the sentinel the icon would linger with the last-known state until a `/reload`.
+When `Cooldowns:Refresh` finds a previously-watched `spellID` no longer available (pet dismissed, talent untrained, encounter mechanic suppresses the spell), it emits one final `Ka0s_KickCD_SPELL_STATE` with `ready = false, isActive = false, cdObject = nil, chargeCdObject = nil, charges = nil` and drops the id from its `watched` table. The IconGrid's `OnSpellState` no-cdObject branch already renders ready visuals correctly for this payload; the next `Rebuild` (fired by `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED`, both of which fire on the same triggers) trims the now-orphaned icon out of `ordered[]`. Without the sentinel the icon would linger with the last-known state until a `/reload`.
 
-## `KickCD_CONFIG_CHANGED` payload
+## `Ka0s_KickCD_CONFIG_CHANGED` payload
 
 Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master enable) and `"spells"` (rebuild watched list); `IconGrid` acts on all four; `Castbar` acts on `"general"` and `"castbar"`. The `"debug"` section (set by the `debugLog` schema row) is intentionally **not** in the listener union — flipping the debug toggle should not cascade into a `Cooldowns:Rebuild` / `IconGrid` relayout.
 
-## `KickCD_GRID_LAYOUT` payload
+## `Ka0s_KickCD_GRID_LAYOUT` payload
 
 `IconGrid:Layout` fires `{ gridFrame, primaryIcon, width, height }` after every layout pass. `gridFrame` is the parent frame (`KickCDIconGrid`); `primaryIcon` is the first laid-out icon button or `nil` when the active spell list is empty; `width` / `height` are the post-layout bounding box of the grid.
 
 Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `KickCD:GetModule("IconGrid", true):GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available via `KickCD:GetModule("IconGrid", true)` for callers that haven't yet adopted the payload form.
 
-## `KickCD_COMBAT_STATE` payload
+## `Ka0s_KickCD_COMBAT_STATE` payload
 
-`core/State.lua`'s bootstrap frame is the only file in the addon that registers `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`. It writes `KickCD.State.inCombat`, then fires `KickCD_COMBAT_STATE` so `IconGrid` and `Castbar` see an explicit ordered transition signal — the flag write is guaranteed to land before any subscriber's handler runs, instead of relying on TOC-load-order to ensure the bootstrap frame's `RegisterEvent` happened before each module's. The same message also fires on `PLAYER_LOGIN` (after the initial `InCombatLockdown()` seed).
+`core/State.lua`'s bootstrap frame is the only file in the addon that registers `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`. It writes `KickCD.State.inCombat`, then fires `Ka0s_KickCD_COMBAT_STATE` so `IconGrid` and `Castbar` see an explicit ordered transition signal — the flag write is guaranteed to land before any subscriber's handler runs, instead of relying on TOC-load-order to ensure the bootstrap frame's `RegisterEvent` happened before each module's. The same message also fires on `PLAYER_LOGIN` (after the initial `InCombatLockdown()` seed).
 
 Payload `{ inCombat }` carries the freshly-written flag value, but subscribers typically read `KickCD.State.inCombat` directly (the same source `shouldBeVisible` / `isVisible` use elsewhere) rather than trusting the payload, so the two reads stay in lockstep.
 
