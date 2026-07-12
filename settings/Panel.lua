@@ -220,6 +220,14 @@ local HEADER_TOP    = KickCD.Const.PANEL_HEADER_TOP
 local HEADER_HEIGHT = KickCD.Const.PANEL_HEADER_HEIGHT
 local DEFAULTS_W    = KickCD.Const.PANEL_DEFAULTS_W
 
+-- Each button in an InlineButtonPair reserves a hair under half the row so
+-- AceGUI Flow's ~2px right-cell spill can't push the right button past the
+-- ScrollFrame clip rect (which would shave its right border). The dropdowns
+-- above escape this naturally because their control sits inset from the
+-- cell edge; a cell-filling Button does not, so we inset it here. Tuned so
+-- the right button clears the clip by a few px without wasting column width.
+local BUTTON_PAIR_REL = 0.492
+
 -- ---------------------------------------------------------------------
 -- Tooltip helper — works on AceGUI widgets (via SetCallback) and plain
 -- Blizzard frames (via HookScript). Anchors on widget.frame when the
@@ -849,7 +857,7 @@ function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
         if not spec then return end
         local btn = AceGUI:Create("Button")
         btn:SetText(spec.text or "")
-        btn:SetRelativeWidth(0.5)
+        btn:SetRelativeWidth(BUTTON_PAIR_REL)
         btn:SetCallback("OnClick", function()
             if not spec.onClick then return end
             local ok, err = pcall(spec.onClick)
