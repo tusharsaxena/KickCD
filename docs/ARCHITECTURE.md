@@ -13,7 +13,7 @@ Two UI widgets sharing one configuration model:
 
 Both widgets honor the master enable, the shared lock (`db.profile.locked`), and the addon-wide visibility mode (`db.profile.visibility`: `always` / `in_combat` / `target_casting` / `target_casting_interruptible`). The `_interruptible` mode uses a two-step gate (Show on hostile cast, alpha-mask uninterruptible via `SetAlphaFromBoolean`) because the underlying flag can't be compared in Lua under 12.0.
 
-An on-screen debug console (`modules/DebugLog.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `KickCD.State.debug` flag — it is never persisted and resets on every `/reload`.
+An on-screen debug console (`modules/DebugLog.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`.
 
 ## Subsystems at a glance
 
@@ -52,13 +52,13 @@ IconGrid:Layout              ─▶                Ka0s_KickCD_GRID_LAYOUT     �
 
 ## Invariants worth not breaking
 
-- **Closed message bus.** The five AceEvent messages (`Ka0s_KickCD_SPELL_STATE`, `Ka0s_KickCD_CONFIG_CHANGED`, `Ka0s_KickCD_PROFILE_CHANGED`, `Ka0s_KickCD_GRID_LAYOUT`, `Ka0s_KickCD_COMBAT_STATE`) are the only inter-module communication channel. `Ka0s_KickCD_CONFIG_CHANGED` is emitted from several modules (any schema-row write, lock/debug toggles, drag-stop anchor saves, debounced spell edits); the other four each have a single owning emitter. Adding a message requires updating the source emitter(s), every consumer, and [message-bus.md](message-bus.md).
+- **Closed message bus.** The five AceEvent messages (`Ka0s_KickCD_SPELL_STATE`, `Ka0s_KickCD_CONFIG_CHANGED`, `Ka0s_KickCD_PROFILE_CHANGED`, `Ka0s_KickCD_GRID_LAYOUT`, `Ka0s_KickCD_COMBAT_STATE`) are the only inter-module communication channel. `Ka0s_KickCD_CONFIG_CHANGED` is emitted from several modules (any schema-row write, the lock/unlock toggle, drag-stop anchor saves, debounced spell edits — the session-only debug toggle is off-bus); the other four each have a single owning emitter. Adding a message requires updating the source emitter(s), every consumer, and [message-bus.md](message-bus.md).
 - **`Compat` is API normalisation only.** No feature decisions, no shared mutable state, no visibility helpers. Visibility decisions live in `core/State.lua`; shared mutable state lives in `core/State.lua`; shared magic numbers live in `core/Constants.lua`.
 - **12.0 secret values get C-side handling, not Lua-side detox.** Pass duration-object methods, `notInterruptible`, `name`, `texture` straight into Blizzard C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `SetAlphaFromBoolean`, `EvaluateColorValueFromBoolean`). Never bind to a Lua local for compare / format / tostring / arithmetic. `securecallfunction` / `tonumber` / `+0` "detox" were tried and don't work.
-- **`KickCD.Settings.Schema` is the single source of truth.** UI widget, slash CLI (`get` / `set` / `list`), per-panel `Defaults` button, and the General → "Reset all settings" reset all wire from one row. Don't add parallel mutators for fields with a schema row. The `valueGate` mechanism enforces cross-row dependencies (e.g. `castbar.growDirection` ↔ `castbar.orientation`).
+- **`NS.Settings.Schema` is the single source of truth.** UI widget, slash CLI (`get` / `set` / `list`), per-panel `Defaults` button, and the General → "Reset all settings" reset all wire from one row. Don't add parallel mutators for fields with a schema row. The `valueGate` mechanism enforces cross-row dependencies (e.g. `castbar.growDirection` ↔ `castbar.orientation`).
 - **One drag lock + one visibility mode shared across both UI pieces.** The icon grid and the cast bar both read `db.profile.locked` and `db.profile.visibility`; one unlock/lock cycle moves both. Don't introduce per-widget lock or visibility state.
-- **`KickCD.State.inCombat` is the combat flag, not `InCombatLockdown()`.** A bootstrap CreateFrame in `core/State.lua` is the only file that registers `PLAYER_REGEN_DISABLED/_ENABLED/PLAYER_LOGIN`; it maintains the flag and fans the transition out via `Ka0s_KickCD_COMBAT_STATE` so subscribers (IconGrid, Castbar) see an explicit ordered signal. `InCombatLockdown()` lags the regen events by a frame and is unreliable.
-- **Module publishing pattern:** every file does `KickCD.Foo = KickCD.Foo or {}; local F = KickCD.Foo`. Never shadow the local over the global (`local KickCD = {}` would break everything downstream).
+- **`NS.State.inCombat` is the combat flag, not `InCombatLockdown()`.** A bootstrap CreateFrame in `core/State.lua` is the only file that registers `PLAYER_REGEN_DISABLED/_ENABLED/PLAYER_LOGIN`; it maintains the flag and fans the transition out via `Ka0s_KickCD_COMBAT_STATE` so subscribers (IconGrid, Castbar) see an explicit ordered signal. `InCombatLockdown()` lags the regen events by a frame and is unreliable.
+- **Module publishing pattern:** every file does `NS.Foo = NS.Foo or {}; local F = NS.Foo`. Never shadow the local over the global (`local KickCD = {}` would break everything downstream).
 - **Frame mixin, not setmetatable.** Use `Mixin(frame, t)` to copy fields onto a Blizzard widget. `setmetatable` nils the C-side frame methods.
 
 ## External dependencies
@@ -94,7 +94,7 @@ Five `AceEvent` messages are the only inter-module communication channel — mod
 | `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout` | `Castbar` | `{ gridFrame, primaryIcon, width, height }` |
 | `Ka0s_KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame | `IconGrid`, `Castbar` | `{ inCombat }` |
 
-Receivers each register on their **own** AceEvent target: AceAddon modules use their module `self`; the Spells settings panel uses a private target from `KickCD.NewBusTarget()`. None register on the shared addon object.
+Receivers each register on their **own** AceEvent target: AceAddon modules use their module `self`; the Spells settings panel uses a private target from `NS.NewBusTarget()`. None register on the shared addon object.
 
 ## Slash commands
 
@@ -120,13 +120,13 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 
 ## Settings schema
 
-`KickCD.Settings.Schema` is the single source of truth for every option. Each row wires automatically into its UI widget, `/kcd get|set|list` coverage, and the per-panel `Defaults` reset (plus the General → "Reset all settings" reset) — so adding a setting is one schema row, never a parallel mutator. Detail in [settings-panel.md](settings-panel.md). `Helpers.ValidateSchema` returns the count of malformed rows (0 when healthy), runs at panel-register time, and is unit-tested.
+`NS.Settings.Schema` is the single source of truth for every option. Each row wires automatically into its UI widget, `/kcd get|set|list` coverage, and the per-panel `Defaults` reset (plus the General → "Reset all settings" reset) — so adding a setting is one schema row, never a parallel mutator. Detail in [settings-panel.md](settings-panel.md). `Helpers.ValidateSchema` returns the count of malformed rows (0 when healthy), runs at panel-register time, and is unit-tested.
 
 ## Event subscriptions
 
 Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):
 
-- **`core/State.lua` bootstrap frame** — the only registration of `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED` / `PLAYER_LOGIN`; owns the `KickCD.State.inCombat` flag and fans transitions out via `Ka0s_KickCD_COMBAT_STATE`.
+- **`core/State.lua` bootstrap frame** — the only registration of `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED` / `PLAYER_LOGIN`; owns the `NS.State.inCombat` flag and fans transitions out via `Ka0s_KickCD_COMBAT_STATE`.
 - **`Cooldowns`** — `SPELL_UPDATE_COOLDOWN` / `_USABLE` / `_CHARGES`, `PLAYER_ENTERING_WORLD`, `PLAYER_SPECIALIZATION_CHANGED`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`.
 - **`IconGrid`** — `PLAYER_SPECIALIZATION_CHANGED`, `PLAYER_ENTERING_WORLD`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`, `PLAYER_TARGET_CHANGED`, and the cast-event family (`UNIT_SPELLCAST_START` / `_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_START` / `_CHANNEL_STOP` / `_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE`), plus the four inbound `Ka0s_KickCD_*` messages.
 - **`Castbar`** — the `UNIT_SPELLCAST_*` family registered through `Util.RegisterTargetEvent` (target-only dispatch), plus its inbound messages.
@@ -140,7 +140,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 - English (`enUS`) only.
 - Retail / Midnight only — a single `## Interface` line, no Classic support.
 - No automated in-client tests — headless unit tests plus manual in-game smoke tests only (see [smoke-tests.md](smoke-tests.md)).
-- Debug logging is session-only (`KickCD.State.debug`) and resets on every `/reload`.
+- Debug logging is session-only (`NS.State.debug`) and resets on every `/reload`.
 
 ## Load order
 
@@ -148,14 +148,14 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 
 1. `libs/` — vendored Ace3 + LibSharedMedia + LibCustomGlow
 2. `locales/enUS.lua`
-3. `core/Compat.lua` (creates `_G.KickCD` and `KickCD.Compat`)
-4. `core/Constants.lua` (`KickCD.Const`)
-5. `core/State.lua` (`KickCD.State`; bootstrap CreateFrame for `PLAYER_REGEN_*` / `PLAYER_LOGIN`)
+3. `core/Compat.lua` (hangs `NS.Compat` on the shared private `NS` table — WoW's addon vararg; `NS` is not `_G.KickCD`)
+4. `core/Constants.lua` (`NS.Const`)
+5. `core/State.lua` (`NS.State`; bootstrap CreateFrame for `PLAYER_REGEN_*` / `PLAYER_LOGIN`)
 6. `core/Util.lua`
 7. `core/Database.lua` (defines class; doesn't init the DB at file-load time)
-8. `core/KickCD.lua` (`AceAddon-3.0:NewAddon` promotes `_G.KickCD` in place)
-9. `defaults/Spells.lua` (sets `KickCD.DefaultSpells`)
+8. `core/KickCD.lua` (`AceAddon-3.0:NewAddon(NS, "KickCD", ...)` promotes the private `NS` table in place — no `_G.KickCD` rebind)
+9. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
 10. `modules/DebugLog.lua` (on-screen debug console) → `modules/Cooldowns.lua` → `modules/IconGrid.lua` → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua`. `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`) to stay under the 1500-LOC cap.
 11. `settings/Panel.lua` → `settings/{General, Icons, Castbar, Spells, Profiles}.lua`
 
-`KickCD:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the migration scaffold, and seeds spells on first profile creation. `<Module>:OnEnable` registers messages and game events. `PLAYER_LOGIN` defers the Settings category registration so per-tab builders can run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).
+`NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the migration scaffold, and seeds spells on first profile creation. `<Module>:OnEnable` registers messages and game events. `PLAYER_LOGIN` defers the Settings category registration so per-tab builders can run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

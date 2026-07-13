@@ -10,7 +10,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 ## Saved variables
 
 - Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `core/Database.lua`. New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
-- Modules read/write `KickCD.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralised there.
+- Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralised there.
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
 
 ## Settings layer
@@ -22,19 +22,19 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 
 ## Chat output
 
-- Chat output goes through `Util.print` (or `KickCD.Util.print`) — never call the global `print` directly and never write your own `|cff…KickCD|r:` prefix. `Util.print` prepends a single cyan `[KCD]` banner; passing your own prefix produces a double banner. The help printers in `core/KickCD.lua` are the only callers that color anything else (yellow `|cffffff00…|r` for the slash invocation, white `|cffffffff…|r` for the description).
+- Chat output goes through `Util.print` (or `NS.Util.print`) — never call the global `print` directly and never write your own `|cff…KickCD|r:` prefix. `Util.print` prepends the single shared `NS.PREFIX` chat tag (a cyan `[KCD]` banner, defined once in `core/Constants.lua`); passing your own prefix produces a double banner. Any other chat site that needs the tag references `NS.PREFIX` rather than re-spelling the color code. The help printers in `core/KickCD.lua` are the only callers that color anything else (yellow `|cffffff00…|r` for the slash invocation, white `|cffffffff…|r` for the description).
 
 ## 12.0 secret-value rule of thumb
 
 - **Secret numbers.** Operate on `isActive` / `isEnabled` (plain bools) for decisions; pass the `cdObject` from `Compat.GetSpellCooldownDuration` opaquely to C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `EvaluateRemainingDuration`); never bind `:GetRemainingDuration()` to a Lua local in combat. Visual decisions that depend on remaining time (e.g. GCD-vs-real-CD filter) live in C-side curves built by `IconGrid.BuildCurves` and applied via `SetAlphaFromBoolean` / `SetVertexColor`.
-- **Secret bools and strings.** Never compare `UnitCastingInfo.notInterruptible` / `name` / `texture` / `spellID` in Lua; either pass straight to a Blizzard C method that accepts secrets (`Texture:SetTexture`, `FontString:SetText`, `Frame:SetAlphaFromBoolean`, `C_CurveUtil.EvaluateColorValueFromBoolean`) or use `KickCD.State.IsHostileUnitCasting` for the truthy "is something casting" check.
-- **Visibility / glow / interruptibility decisions** that depend on `notInterruptible` MUST go through the two-step gate (`KickCD.State.IsHostileUnitCasting` for show + `KickCD.State.ApplyInterruptibleAlpha` for filter; both live in `core/State.lua`, not `core/Compat.lua` — these are addon visibility decisions, not API normalisation). The full pattern catalogue is in [midnight-quirks.md](midnight-quirks.md).
+- **Secret bools and strings.** Never compare `UnitCastingInfo.notInterruptible` / `name` / `texture` / `spellID` in Lua; either pass straight to a Blizzard C method that accepts secrets (`Texture:SetTexture`, `FontString:SetText`, `Frame:SetAlphaFromBoolean`, `C_CurveUtil.EvaluateColorValueFromBoolean`) or use `NS.State.IsHostileUnitCasting` for the truthy "is something casting" check.
+- **Visibility / glow / interruptibility decisions** that depend on `notInterruptible` MUST go through the two-step gate (`NS.State.IsHostileUnitCasting` for show + `NS.State.ApplyInterruptibleAlpha` for filter; both live in `core/State.lua`, not `core/Compat.lua` — these are addon visibility decisions, not API normalisation). The full pattern catalogue is in [midnight-quirks.md](midnight-quirks.md).
 
 ## Compat / State / Constants split
 
 - `core/Compat.lua` is API normalisation only (spell-info shims, cast-info record building).
 - `core/State.lua` owns shared mutable state (the event-driven combat flag) and visibility helpers (`IsHostileUnitCasting`, `ApplyInterruptibleAlpha`).
-- `core/Constants.lua` owns shared magic numbers under `KickCD.Const` (`GCD_UPPER`, panel paddings, castbar text insets).
+- `core/Constants.lua` owns shared magic numbers under `NS.Const` (`GCD_UPPER`, panel paddings, castbar text insets).
 - New constants and shared state belong in those namespaces, not as module-local locals duplicated across files. **Don't add visibility decisions or shared state to Compat.**
 
 ## Lua / runtime
@@ -46,7 +46,8 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 When a Blizzard / WoW global is read, the form depends on whether the symbol is GUARDED anywhere in the module:
 
 - **Guarded somewhere → `_G.X` everywhere.** If the module ever guards the symbol (`if X then`, `X and X(...)`, `... or X`, `X = X and ... or default`), write `_G.X` for EVERY reference to that symbol in the module — including reads inside the guard's protected block. The `_G.` form makes the "this might not exist" intent obvious and matches the style in `core/Compat.lua`. Symbols that fall in this bucket today: `C_Spell`, `C_Timer`, `C_CurveUtil`, `issecretvalue`, `InCombatLockdown`, `UnitCastingInfo`, `UnitChannelInfo`, `UnitCastingDuration`, `UnitChannelDuration`, `UnitExists`, `UnitCanAttack`, `UnitName`, `GameFontNormal`, every legacy `GetSpell*` / `IsSpell*` / `IsPlayerSpell` / `IsUsableSpell`, `print` (used as a fallback), and the cast-event API surface.
-- **Never guarded → bare `X`.** If the symbol is never guarded anywhere — i.e. it's a trusted baseline global the surrounding code does not short-circuit on — write bare `X`. Examples: `UnitClass`, `UnitRace`, `GetSpecialization`, `GetSpecializationInfo`, `UnitIsDead`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`, `CreateColor`.
+- **Never guarded → bare `X`.** If the symbol is never guarded anywhere — i.e. it's a trusted baseline global the surrounding code does not short-circuit on — write bare `X`. Examples: `UnitClass`, `UnitRace`, `UnitIsDead`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`, `CreateColor`.
+- **Spec APIs are wrapped, not read raw.** The deprecated `GetSpecialization` / `GetSpecializationInfo` globals route through `NS.Compat.GetSpecialization()` / `NS.Compat.GetSpecializationInfo(i)` — no direct calls to the globals remain outside `core/Compat.lua`. Callers use the `NS.Compat.*` shims; the bare-vs-`_G.` rule above only governs the single guarded read inside Compat.
 - **Same symbol, same form across all reads within a module.** Do not mix `_G.X` and bare `X` for the same global. If a future change adds a guard for a symbol that today is bare, sweep the module to switch every reference to `_G.X`.
 
 ## Line endings

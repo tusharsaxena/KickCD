@@ -13,7 +13,7 @@ Companion docs:
 - **BugSack / BugGrabber** (or the stock Lua error frame) is the primary regression signal — a clean run is "no errors thrown at any point".
 - **Chat banner** — every line the addon prints starts with a cyan `[KCD]`. A double `[KCD][KCD]` banner or any line missing the banner is a bug; the only sanctioned colored sub-tokens are the yellow command names + white descriptions in the help printers and the red `schema error:` token in `settings/Panel.lua`.
 - **"Hostile caster"** below means a target dummy / world mob that channels or casts an interruptible spell on demand. Stockades casters, Stormwind training dummies tagged with a friend's spell, and Plaguefall trash are common picks.
-- **"In combat"** smoke checks rely on `KickCD.State.inCombat`, which flips on `PLAYER_REGEN_DISABLED` / `_ENABLED`. Auto-attack on a dummy is enough.
+- **"In combat"** smoke checks rely on `NS.State.inCombat`, which flips on `PLAYER_REGEN_DISABLED` / `_ENABLED`. Auto-attack on a dummy is enough.
 - **"Pass"** lines describe what success looks like; if a step says "should X" and X does not happen, the smoke test failed.
 
 ## Suite
@@ -233,7 +233,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - The active-spec write paths validate against the Cooldown Manager spell-set — adding a spell that isn't tracked there prints an error and is rejected.
 - Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
 - After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`) — no need to close and reopen the panel.
-- `/kcd spells reset CLASS SPEC` rebuilds one spec from `KickCD.DefaultSpells`; the other specs are untouched.
+- `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd reset spells` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd reset spells`).
 
@@ -263,7 +263,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd reset general` | All General rows return to their `default` values; spell list and other panels untouched. |
 | `/kcd reset icons` | All Icons rows return to defaults; icon grid re-lays out. |
 | `/kcd reset castbar` | All Cast bar rows return to defaults; bar re-skins. |
-| `/kcd reset spells` | Every spec's spell list is rebuilt from `KickCD.DefaultSpells` (NOT just the active spec). |
+| `/kcd reset spells` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset. Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Icon grid snaps to its default screen position; everything else untouched. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
@@ -292,12 +292,12 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (a `dbVersion = 1` no-op today, but it should not error).
+- `Database:MigrateProfile` runs on profile change (a `db.global.schemaVersion = 1` no-op today, but it should not error). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
 
-**Setup.** Pull a target dummy so `KickCD.State.inCombat = true`.
+**Setup.** Pull a target dummy so `NS.State.inCombat = true`.
 
 **Steps.**
 - Run `/kcd config` mid-combat.
@@ -318,14 +318,16 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 |---|---|
 | `/kcd debug spells` | Per-spell line: `ready=…  active=…  cdObj=yes/no  chargeCdObj=yes/no  charges=…`. Charges may render as `<secret>` for charged spells in combat. **No remaining-time field** — `:GetRemainingDuration()` is secret in combat and printing it would error. |
 | `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
-| `/kcd debug interrupt` | Every `UnitCastingInfo` / `UnitChannelInfo` field with its type + secret flag, plus `KickCD.State.IsHostileUnitCasting("target")` and the visibility-mode / glow-trigger gate decisions. Secret-tainted fields render as `<secret>`. |
-| `/kcd debug log` | Toggles `db.profile.debugLog`; subsequent message bus traffic is mirrored to chat. The General → "Debug" checkbox refreshes to match. Section is `"debug"` (no module listens), so toggling does NOT trigger `Cooldowns:Rebuild`. |
-| `/kcd debug` | Help index for debug subcommands. |
+| `/kcd debug interrupt` | Every `UnitCastingInfo` / `UnitChannelInfo` field with its type + secret flag, plus `NS.State.IsHostileUnitCasting("target")` and the visibility-mode / glow-trigger gate decisions. Secret-tainted fields render as `<secret>`. |
+| `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
+| `/kcd debug window` | Toggles the on-screen debug console window (`modules/DebugLog.lua`); logging keeps running whether the window is open or closed. |
+| `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
 
 **Pass.**
-- All four subcommands run mid-combat without Lua errors.
+- Every subcommand runs mid-combat without Lua errors.
 - `interrupt` shows `<secret>` for `notInterruptible` (and any other secret-tainted field) when targeting a hostile caster mid-cast for a protected interrupt — never a Lua-coerced value.
-- `log` mirrors `KickCD_*` traffic to chat after toggle; toggling off cleanly stops the mirror.
+- `/kcd debug on` starts streaming `Ka0s_KickCD_*` traffic to the on-screen console window (not chat); `off` cleanly stops it. After a `/reload` the flag is back off — `NS.State.debug` is session-only and never persisted.
+- `/kcd debug window` opens / closes the console window without touching the logging flag.
 
 ### 16. Secret-value safety (12.0)
 
@@ -343,7 +345,7 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 - Zero Lua errors at any point. The most common regression signature is a `cannot perform arithmetic on a secret value` or `attempt to format a secret value` error at the moment the protected interrupt fires while in combat.
 - Cooldown swipe + cooldown text on the interrupt icon work correctly (text is rendered via `:SetFormattedText` on a duration object — never `tostring`).
 - Cast bar's interruptible / uninterruptible appearance switches without a Lua-side `if notInterruptible then …` ever running. `/kcd debug interrupt` reports `<secret>` for `notInterruptible`.
-- The two-step gate (`KickCD.State.IsHostileUnitCasting` for show + `KickCD.State.ApplyInterruptibleAlpha` for filter) is invoked; the interruptible-only visibility mode hides the cast bar via *alpha curve to 0*, not via `:Hide()`.
+- The two-step gate (`NS.State.IsHostileUnitCasting` for show + `NS.State.ApplyInterruptibleAlpha` for filter) is invoked; the interruptible-only visibility mode hides the cast bar via *alpha curve to 0*, not via `:Hide()`.
 
 ### 17. Schema validator boot output
 
@@ -372,7 +374,7 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 
 ## When to run which subset
 
-- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
+- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13.
 - **Pre-release / TOC bump:** the entire suite. The 18 surfaces above are designed to span every system the addon owns; running them in order takes ~20–30 minutes and gives release-grade confidence.

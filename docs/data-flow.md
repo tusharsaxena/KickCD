@@ -33,11 +33,13 @@ A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watch
 
 ## Settings input → bus
 
-Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`, slash `/kcd debug log`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
+Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
 
-Slash commands that mutate schema-backed fields (e.g. `/kcd lock`, `/kcd debug log`) route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write/notify/refresh code path (`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way a future `onChange` added to a row doesn't silently diverge between the two paths.
+The debug enabled-flag is outside this path: `/kcd debug on|off|toggle` sets the session-only `NS.State.debug` through `DebugLog:SetEnabled(on)` (default off, never in SavedVariables, resets each `/reload`). Continuous `NS.Debug(tag, fmt, ...)` output routes to the on-screen debug console (`modules/DebugLog.lua`), not the chat frame.
 
-Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows), then fire `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes the anchor table directly from `KickCD.DEFAULT_PROFILE` and fires the same `general`-section message.
+Slash commands that mutate schema-backed fields (e.g. `/kcd lock`) route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write/notify/refresh code path (`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way a future `onChange` added to a row doesn't silently diverge between the two paths.
+
+Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows), then fire `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes the anchor table directly from `NS.DEFAULT_PROFILE` and fires the same `general`-section message.
 
 ## Visibility two-step gate
 
@@ -46,23 +48,23 @@ Visibility / interruptibility decisions for both the icon grid and the cast bar 
 ```
 shouldBeVisible() / isVisible()
   ── always                       → true
-  ── in_combat                    → KickCD.State.inCombat (PLAYER_REGEN_* flag
+  ── in_combat                    → NS.State.inCombat (PLAYER_REGEN_* flag
                                      owned by core/State.lua's bootstrap and
                                      fanned out via Ka0s_KickCD_COMBAT_STATE; NOT
                                      InCombatLockdown — that lags by a frame)
   ── target_casting               → UnitCastingInfo / UnitChannelInfo("target") truthy
-  ── target_casting_interruptible → KickCD.State.IsHostileUnitCasting("target")
+  ── target_casting_interruptible → NS.State.IsHostileUnitCasting("target")
         ▼
    Show / Hide
         ▼
    ApplyInterruptibilityMask / ApplyVisibilityMask
         ▼
-   KickCD.State.ApplyInterruptibleAlpha(frame, "target", 1)
+   NS.State.ApplyInterruptibleAlpha(frame, "target", 1)
         ▼ (C-side, secret-safe)
    frame:SetAlphaFromBoolean(notInterruptible, 0, 1)
 ```
 
-`KickCD.State.IsHostileUnitCasting` is a pure truthy check (safe even when `name` / `texture` come back secret-tainted in combat) plus a `UnitCanAttack` filter. `KickCD.State.ApplyInterruptibleAlpha` reads the raw `notInterruptible` straight off `UnitCastingInfo` / `UnitChannelInfo` and hands it to `Frame:SetAlphaFromBoolean` — the **one** C-side method that accepts the secret-tainted bool form without erroring. Both helpers live in `core/State.lua` (not `core/Compat.lua`) because they're feature decisions about visibility, not API shape normalisation.
+`NS.State.IsHostileUnitCasting` is a pure truthy check (safe even when `name` / `texture` come back secret-tainted in combat) plus a `UnitCanAttack` filter. `NS.State.ApplyInterruptibleAlpha` reads the raw `notInterruptible` straight off `UnitCastingInfo` / `UnitChannelInfo` and hands it to `Frame:SetAlphaFromBoolean` — the **one** C-side method that accepts the secret-tainted bool form without erroring. Both helpers live in `core/State.lua` (not `core/Compat.lua`) because they're feature decisions about visibility, not API shape normalisation.
 
 So uninterruptible casts run the full UI lifecycle (Show / glow start / cast bar drawn) but at `alpha = 0`, with the visual filter applied entirely C-side. The `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast.
 
@@ -95,7 +97,7 @@ Castbar:Reevaluate ──► Compat.GetCastingInfo("target")
                        the secret notInterruptible bool.
 ```
 
-The IconGrid emits `Ka0s_KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `KickCD:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
+The IconGrid emits `Ka0s_KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `NS:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
 
 ## Lock and anchor
 

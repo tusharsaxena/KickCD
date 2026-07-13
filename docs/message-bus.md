@@ -7,7 +7,7 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 | Message | Sender | Listeners | Payload |
 |---|---|---|---|
 | `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
-| `Ka0s_KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set` (every schema-row write); `core/KickCD.lua` (lock/unlock, debug log toggle); `settings/Panel.lua Helpers.ResetIconPosition`; `settings/Spells.lua` (debounced editor commits); `modules/IconGrid.lua OnDragStop` (anchor save → `general`); `modules/Castbar.lua OnDragStop` (anchor save → `castbar`) | `IconGrid`, `Cooldowns`, `Castbar` | `{ section = "general"\|"icons"\|"castbar"\|"spells" }` |
+| `Ka0s_KickCD_CONFIG_CHANGED` | `settings/Panel.lua Helpers.Set` (every schema-row write); `core/KickCD.lua` (lock/unlock); `settings/Panel.lua Helpers.ResetIconPosition`; `settings/Spells.lua` (debounced editor commits); `modules/IconGrid.lua OnDragStop` (anchor save → `general`); `modules/Castbar.lua OnDragStop` (anchor save → `castbar`) | `IconGrid`, `Cooldowns`, `Castbar` | `{ section = "general"\|"icons"\|"castbar"\|"spells" }` |
 | `Ka0s_KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` (AceDB callback for `OnProfileChanged` / `Copied` / `Reset`) | `IconGrid`, `Cooldowns`, `Castbar`, `settings/Spells.lua` | `{ newProfileKey }` |
 | `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout` (every pass, including the empty-list case) | `Castbar` | `{ gridFrame, primaryIcon, width, height }` |
 | `Ka0s_KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame (the only `PLAYER_REGEN_*` registration in the addon) | `IconGrid`, `Castbar` | `{ inCombat }` |
@@ -34,19 +34,19 @@ When `Cooldowns:Refresh` finds a previously-watched `spellID` no longer availabl
 
 ## `Ka0s_KickCD_CONFIG_CHANGED` payload
 
-Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master enable) and `"spells"` (rebuild watched list); `IconGrid` acts on all four; `Castbar` acts on `"general"` and `"castbar"`. The `"debug"` section (set by the `debugLog` schema row) is intentionally **not** in the listener union — flipping the debug toggle should not cascade into a `Cooldowns:Rebuild` / `IconGrid` relayout.
+Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master enable) and `"spells"` (rebuild watched list); `IconGrid` acts on all four; `Castbar` acts on `"general"` and `"castbar"`. There is no `"debug"` section — the debug enabled-flag is the session-only `NS.State.debug` (never in SavedVariables), toggled via `DebugLog:SetEnabled` / `/kcd debug on|off|toggle`, and it does **not** broadcast on the bus at all, so flipping it never cascades into a `Cooldowns:Rebuild` / `IconGrid` relayout.
 
 ## `Ka0s_KickCD_GRID_LAYOUT` payload
 
 `IconGrid:Layout` fires `{ gridFrame, primaryIcon, width, height }` after every layout pass. `gridFrame` is the parent frame (`KickCDIconGrid`); `primaryIcon` is the first laid-out icon button or `nil` when the active spell list is empty; `width` / `height` are the post-layout bounding box of the grid.
 
-Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `KickCD:GetModule("IconGrid", true):GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available via `KickCD:GetModule("IconGrid", true)` for callers that haven't yet adopted the payload form.
+Subscribers (today: `Castbar:OnGridLayout`) prefer the payload over reaching back through `NS:GetModule("IconGrid", true):GetGridFrame` / `:GetPrimaryIcon`. The Castbar uses this to re-anchor under `castbar.anchorMode = "PRIMARY"` (the primary icon button reference may have moved when the grid rebuilds against a new spec) and to re-run `Castbar:Reskin` (and `RenderCast` when a cast is active) when `castbar.autoSize` is on (the grid frame's footprint may have changed). Public accessors `IconGrid:GetGridFrame` / `:GetPrimaryIcon` remain available via `NS:GetModule("IconGrid", true)` for callers that haven't yet adopted the payload form.
 
 ## `Ka0s_KickCD_COMBAT_STATE` payload
 
-`core/State.lua`'s bootstrap frame is the only file in the addon that registers `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`. It writes `KickCD.State.inCombat`, then fires `Ka0s_KickCD_COMBAT_STATE` so `IconGrid` and `Castbar` see an explicit ordered transition signal — the flag write is guaranteed to land before any subscriber's handler runs, instead of relying on TOC-load-order to ensure the bootstrap frame's `RegisterEvent` happened before each module's. The same message also fires on `PLAYER_LOGIN` (after the initial `InCombatLockdown()` seed).
+`core/State.lua`'s bootstrap frame is the only file in the addon that registers `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`. It writes `NS.State.inCombat`, then fires `Ka0s_KickCD_COMBAT_STATE` so `IconGrid` and `Castbar` see an explicit ordered transition signal — the flag write is guaranteed to land before any subscriber's handler runs, instead of relying on TOC-load-order to ensure the bootstrap frame's `RegisterEvent` happened before each module's. The same message also fires on `PLAYER_LOGIN` (after the initial `InCombatLockdown()` seed).
 
-Payload `{ inCombat }` carries the freshly-written flag value, but subscribers typically read `KickCD.State.inCombat` directly (the same source `shouldBeVisible` / `isVisible` use elsewhere) rather than trusting the payload, so the two reads stay in lockstep.
+Payload `{ inCombat }` carries the freshly-written flag value, but subscribers typically read `NS.State.inCombat` directly (the same source `shouldBeVisible` / `isVisible` use elsewhere) rather than trusting the payload, so the two reads stay in lockstep.
 
 ## Adding or removing a message
 

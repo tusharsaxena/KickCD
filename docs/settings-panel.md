@@ -8,9 +8,9 @@ All five tabs (General, Icons, Cast bar, Spells, Profiles) are registered as **c
 
 The header is built by `Helpers.CreatePanel(name, title, opts)` in `settings/Panel.lua`. It returns a `ctx` table (`{ panel, body, scroll, refreshers, lastGroup, panelKey }`) that the per-tab builder threads through the rest of the layout helpers. `ctx.scroll` is the AceGUI `ScrollFrame` (created lazily on first widget add) that hosts schema widgets; tabs that don't use the schema renderer (Spells / Profiles) parent their own AceGUI containers to `ctx.body` directly and never trigger the lazy scroll.
 
-Every panel ctx is stashed in `KickCD.Settings._panels` so `Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
+Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
 
-## `KickCD.Settings.Schema` is the single source of truth
+## `NS.Settings.Schema` is the single source of truth
 
 `settings/General.lua`, `settings/Icons.lua`, and `settings/Castbar.lua` declare every option as a row in a flat array. Each row:
 
@@ -92,10 +92,10 @@ The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to **always**
 
 ## Schema validation
 
-`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `spells` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). Failures print a `|cffff0000KickCD schema error|r:` line per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
+`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `spells` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). `debug` remains a valid `section` enum, but no shipped row uses it — debug is session-only (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`), never persisted and never a schema row. Failures print a schema-error line (the printer prefixes with the shared `NS.PREFIX`) per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
 
 ## Reset helpers
 
-The General tab's "Reset all settings" button (under Master controls) funnels through `Helpers.ResetAll`, which calls `Helpers.RestoreAllDefaults` (loops over every schema-driven panel: general / icons / castbar) **and** `Database:ResetAllSpells` (rebuilds every spec's spell list from `KickCD.DefaultSpells`). The slash command `/kcd resetall` shares this same helper — the popup and the CLI cannot diverge. Profiles are intentionally skipped because the AceDBOptions UI has its own destructive controls and resetting them would delete user data.
+The General tab's "Reset all settings" button (under Master controls) funnels through `Helpers.ResetAll`, which calls `Helpers.RestoreAllDefaults` (loops over every schema-driven panel: general / icons / castbar) **and** `Database:ResetAllSpells` (rebuilds every spec's spell list from `NS.DefaultSpells`). The slash command `/kcd resetall` shares this same helper — the popup and the CLI cannot diverge. Profiles are intentionally skipped because the AceDBOptions UI has its own destructive controls and resetting them would delete user data.
 
-`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.anchors.icons` from `KickCD.DEFAULT_PROFILE.anchors.icons` so the default coordinates live in one place. It fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors, and firing `icons` would just be a wasted relayout.
+`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.anchors.icons` from `NS.DEFAULT_PROFILE.anchors.icons` so the default coordinates live in one place. It fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors, and firing `icons` would just be a wasted relayout.

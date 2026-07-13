@@ -33,7 +33,7 @@ local addon = LibStub("AceAddon-3.0"):NewAddon(
 NS.addon = addon
 
 -- Public version stamp.
-NS.VERSION = "1.1.0"
+NS.VERSION = "1.2.0"
 
 -- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (§4.4).
 -- Any consumer that is NOT itself an AceAddon module (which already gets its

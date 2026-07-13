@@ -2,21 +2,32 @@
 
 Single saved-variable: `KickCDDB`, an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS, true)` — the `true` third argument expands to `"Default"` per AceDB-3.0, so every character on the account starts on the shared `"Default"` profile. (Omitting the third argument falls back to the per-character profile, which contradicts the docs and was the source of "every fresh character lands on its own profile" reports.) The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See the rationale comment on the `AceDB:New` call in `core/Database.lua` for the in-tree note.
 
+## `db.global` — account-wide scope
+
+Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shared by every character on the account regardless of active profile):
+
+```lua
+db.global = {
+    schemaVersion = <int>,       -- addon-wide schema version. Database:MigrateProfile
+                                 -- reads and writes db.global.schemaVersion; the
+                                 -- current migrator is a no-op, but the scaffold lets
+                                 -- a future schema change ship a migrator next to it.
+                                 -- A legacy account that still carries a per-profile
+                                 -- dbVersion field is adopted once — detection keys on
+                                 -- the presence of that old per-profile field, because
+                                 -- AceDB's defaults merge backfills db.global.schemaVersion
+                                 -- on first access.
+}
+```
+
 Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
 ```lua
 {
-    dbVersion  = 1,              -- profile schema version. Database:MigrateProfile
-                                 -- runs at Init and on profile change; the v1
-                                 -- migrator is a no-op, but the scaffold lets a
-                                 -- future schema change ship a migrator next to it.
     enabled    = true,
     locked     = true,           -- shared drag lock (icon grid + cast bar)
     scale      = 1.0,            -- icon grid master scale
     alpha      = 1.0,            -- icon grid master alpha
-    debugLog   = false,          -- mirrors /kcd debug log; toggles internal-message logging.
-                                 -- Lives in section "debug" (no listener) so toggling it
-                                 -- doesn't trigger Cooldowns:Rebuild / IconGrid relayout.
     visibility = "target_casting_interruptible",
                                  --   "always" | "in_combat" | "target_casting"
                                  -- | "target_casting_interruptible" (default)
@@ -24,12 +35,12 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
                                  -- the icon grid AND the cast bar; master enable
                                  -- still wins, and unlocked frames bypass the
                                  -- mode so users can drag them. The "_interruptible"
-                                 -- variant uses KickCD.State.IsHostileUnitCasting
-                                 -- as the show gate and KickCD.State.ApplyInterruptibleAlpha
+                                 -- variant uses NS.State.IsHostileUnitCasting
+                                 -- as the show gate and NS.State.ApplyInterruptibleAlpha
                                  -- (SetAlphaFromBoolean on the secret notInterruptible
                                  -- bool) as a C-side filter mask, since the flag
                                  -- can't be compared in Lua under 12.0. The
-                                 -- "in_combat" branch reads KickCD.State.inCombat
+                                 -- "in_combat" branch reads NS.State.inCombat
                                  -- (event-driven), not InCombatLockdown() (lags
                                  -- the regen events by a frame).
 
@@ -120,7 +131,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
 ## Spell list lifecycle
 
-`spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `KickCD.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
+`spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `NS.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
 
 `Database:ResetAllSpells` wipes `db.profile.spells` and re-runs `BuildSpells` so every spec — not just the active one — gets the current addon defaults back. It's the helper behind the General → "Reset all settings" popup, `/kcd reset spells`, and `/kcd resetall`. The narrower per-spec reset (Spells panel's Defaults button + `KICKCD_RESET_SPELLS` popup, and `/kcd spells reset [CLASS SPEC]`) instead rebuilds only one `(class, spec)` slot.
 
