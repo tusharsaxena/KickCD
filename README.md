@@ -63,7 +63,8 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 | `/kcd debug spells` | Dump the watched cooldown list. |
 | `/kcd debug castbar` | Print current target cast state plus configured / live per-state colors. |
 | `/kcd debug interrupt` | Dump `UnitCastingInfo` / `UnitChannelInfo` positions plus what the visibility logic decided. Use to diagnose 12.0 secret-value handling. |
-| `/kcd debug log` | Toggle internal-message logging (mirrors General → Debug). |
+| `/kcd debug on\|off\|toggle` | Enable / disable / toggle session-only debug logging (streams to the on-screen console, never persisted). |
+| `/kcd debug window` | Toggle the on-screen debug console window. |
 
 ### Settings panel
 
@@ -71,7 +72,7 @@ Five subcategories under **Ka0s KickCD**:
 
 | Tab | Covers |
 | --- | --- |
-| **General** | Master enable, addon-wide visibility mode, lock, master scale / alpha, debug log. "Reset position" and "Reset all settings" buttons sit under Master controls. |
+| **General** | Master enable, addon-wide visibility mode, lock, master scale / alpha. "Reset position" and "Reset all settings" buttons sit under Master controls. |
 | **Icons** | Sizing, layout (anchor + grow + rows × cols), visual states (alpha / tint / GCD swipe suppression), border, annotations (cooldown text font / size / flags, charges, hover tooltip), per-slot ready glow (independent trigger and style for primary vs. secondary icons). |
 | **Cast bar** | Enable, position (free-float or anchored to the primary icon), orientation / growth direction, auto-size to icon grid, sizing, font, per-element text anchors and offsets, per-state appearance for interruptible vs. uninterruptible casts. |
 | **Spells** | Per-class+spec spell-list editor. Class/spec dropdown shows class+spec icons and class-colored entries; rows show known/unknown glyph + spell icon + name + category + enable/move/remove. Header "Defaults" button resets the currently-selected spec only. The grid only renders entries the player can actually cast (talent choice nodes, pet spells while the pet is summoned, etc.). |

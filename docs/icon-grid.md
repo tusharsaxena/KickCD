@@ -6,7 +6,7 @@
 2. **`icons.secondaryGrow`** — fill order inside the block as a compound `<primary>_<secondary>` direction. 8 valid values: `right_down`, `right_up`, `left_down`, `left_up`, `down_right`, `down_left`, `up_right`, `up_left`. Primary axis decides row-major (`right`/`left`) vs column-major (`down`/`up`) fill; secondary axis decides which way the next row/column wraps. Anchor and grow are independent — any of the 104 combinations (13 anchors × 8 grows) renders sensibly.
 3. **`icons.secondaryRows` × `icons.secondaryCols`** — block dimensions. Always geometric: `rows` is the vertical extent (icons stacked up/down), `cols` is the horizontal extent. Same values produce the same shape regardless of anchor.
 
-The geometry lives in `modules/IconGrid_Layout.lua` (published as `IconGrid.Layout` so `modules/IconGrid.lua`'s `IconGrid:Layout()` method can call into it): the three pure functions `IconGrid.Layout.parseAnchor`, `IconGrid.Layout.parseGrow`, `IconGrid.Layout.placeBlock` (computes grid bounding box and the primary/block TOPLEFT corners), and the single `IconGrid.Layout.layoutBlock` that anchors every widget to the grid frame's TOPLEFT in pixel-floored screen coordinates. The per-icon rendering — the `Icon` widget, cooldown/glow render, curves, and the countdown-text ticker — lives in the sibling `modules/IconGrid_Render.lua`.
+The geometry lives in `modules/IconGrid_Layout.lua` (published as `IconGrid.LayoutMath` — a distinct key from `modules/IconGrid.lua`'s `IconGrid:Layout()` orchestrator method, which calls into it): the three pure functions `IconGrid.LayoutMath.parseAnchor`, `IconGrid.LayoutMath.parseGrow`, `IconGrid.LayoutMath.placeBlock` (computes grid bounding box and the primary/block TOPLEFT corners), and the single `IconGrid.LayoutMath.layoutBlock` that anchors every widget to the grid frame's TOPLEFT in pixel-floored screen coordinates. The per-icon rendering — the `Icon` widget, cooldown/glow render, curves, and the countdown-text ticker — lives in the sibling `modules/IconGrid_Render.lua`.
 
 `secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down).
 
@@ -20,4 +20,4 @@ The block's bounding box is computed against `usedRows` / `usedCols` — the rec
 
 ## CENTER / MIDDLE alias
 
-A `CENTER` anchor is the 13th option — it stacks the secondary block on top of the primary at the grid's centerpoint. Both `MIDDLE` and `CENTER` are accepted as the perpendicular-axis token (modern profiles save `_MIDDLE`; legacy profiles saved `_CENTER`); `IconGrid.Layout.parseAnchor` normalizes them.
+A `CENTER` anchor is the 13th option — it stacks the secondary block on top of the primary at the grid's centerpoint. Both `MIDDLE` and `CENTER` are accepted as the perpendicular-axis token (modern profiles save `_MIDDLE`; legacy profiles saved `_CENTER`); `IconGrid.LayoutMath.parseAnchor` normalizes them.

@@ -384,7 +384,7 @@ function IconGrid:Layout()
     local secondaries = {}
     for i = 2, #ordered do secondaries[i - 1] = ordered[i] end
 
-    local w, h, truncated = IconGrid.Layout.layoutBlock(grid, primary, secondaries, primarySize, secondarySize, gap,
+    local w, h, truncated = IconGrid.LayoutMath.layoutBlock(grid, primary, secondaries, primarySize, secondarySize, gap,
                                         anchor, grow, rows, cols, offX, offY)
     grid:SetSize(w, h)
 

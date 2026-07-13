@@ -3,14 +3,25 @@ local T = _G.KICKCD_TEST
 local NS = T.NS
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
 
-local Layout = NS:GetModule("IconGrid").Layout
+local IconGrid = NS:GetModule("IconGrid")
+local Layout = IconGrid.LayoutMath
 
 test("Layout math is published on the IconGrid module", function()
-    assertTrue(Layout ~= nil, "IconGrid.Layout must exist")
+    assertTrue(Layout ~= nil, "IconGrid.LayoutMath must exist")
     assertTrue(type(Layout.parseAnchor) == "function")
     assertTrue(type(Layout.parseGrow) == "function")
     assertTrue(type(Layout.placeBlock) == "function")
     assertTrue(type(Layout.layoutBlock) == "function")
+end)
+
+-- Regression (KCD-05 peel): the geometry table must NOT be published under the
+-- same key as the IconGrid:Layout() method, or the sibling file clobbers the
+-- method and every self:Layout() call (OnEnable, config/profile handlers) dies
+-- with "attempt to call a nil value". Keep the method callable AND the math
+-- reachable — they live on distinct keys.
+test("IconGrid:Layout method survives alongside the geometry table", function()
+    assertTrue(type(IconGrid.Layout) == "function", "IconGrid:Layout must stay a callable method")
+    assertTrue(IconGrid.LayoutMath ~= IconGrid.Layout, "method and geometry table must be distinct keys")
 end)
 
 test("parseAnchor normalises modern, legacy, and CENTER tokens", function()

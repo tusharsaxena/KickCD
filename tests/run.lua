@@ -59,14 +59,22 @@ end
 -- ---------------------------------------------------------------------------
 --- Load a fresh isolated addon instance under its own mock.
 --- @param initDB boolean  call the AceAddon OnInitialize (builds db) when true
+--- @param enable boolean  run the OnEnable lifecycle cascade (needs initDB) when true
 --- @return table inst  { NS, env, mocks }
-local function loadInstance(initDB)
+local function loadInstance(initDB, enable)
     local mocks = mockmod.build()
     local env, ns = loader.loadAll(root, mocks)
     -- Pre-migration sources publish onto the global namespace (env.KickCD);
     -- post-KCD-01 sources populate the private `ns`. Prefer whichever exists.
     local NS = env.KickCD or ns
     if initDB and NS and NS.OnInitialize then pcall(NS.OnInitialize, NS) end
+    -- Enable is NOT pcall-wrapped on purpose: a lifecycle throw (e.g. the
+    -- IconGrid.Layout clobber) must surface to the calling test() so it's
+    -- reported as a failure, not silently swallowed like OnInitialize.
+    if enable and NS and NS.__enableAll then
+        NS:__enableAll()
+        if mocks.__flushTimers then mocks.__flushTimers() end
+    end
     return { NS = NS, env = env, mocks = mocks }
 end
 
@@ -101,6 +109,7 @@ local SUITES = {
     "test_compat.lua",
     "test_debuglog.lua",
     "test_icongrid_layout.lua",
+    "test_lifecycle.lua",
 }
 
 io.write("\nKickCD test harness\n===================\n")

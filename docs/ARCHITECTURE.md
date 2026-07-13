@@ -30,7 +30,7 @@ Settings widget / slash CLI ─▶ Helpers.Set ─▶ Ka0s_KickCD_CONFIG_CHANGED
 AceDB profile change         ─▶                Ka0s_KickCD_PROFILE_CHANGED ─▶ same
 IconGrid:Layout              ─▶                Ka0s_KickCD_GRID_LAYOUT     ─▶ Castbar (re-anchor / auto-size)
 
-  AceDB (per-character default; user-switchable)  ──  5-tab settings panel + /kcd CLI
+  AceDB (all chars share the "Default" profile; user-switchable)  ──  5-tab settings panel + /kcd CLI
 ```
 
 | Subsystem | Lives in | Read |

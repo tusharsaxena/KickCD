@@ -15,12 +15,38 @@ local function deepcopy(v)
     return out
 end
 
+-- Numeric frame getters must return numbers, not the frame — otherwise code
+-- like `border:SetFrameLevel(btn:GetFrameLevel() + 1)` does arithmetic on a
+-- table and throws. Values are inert defaults chosen not to divide-by-zero.
+local NUMERIC_GETTERS = {
+    GetFrameLevel = 0, GetWidth = 0, GetHeight = 0,
+    GetScale = 1, GetEffectiveScale = 1, GetAlpha = 1,
+    GetLeft = 0, GetRight = 0, GetTop = 0, GetBottom = 0,
+    GetNumPoints = 0, GetStringWidth = 0, GetStringHeight = 0,
+    GetTextWidth = 0, GetTextHeight = 0,
+}
+
 -- Universal self-returning no-op frame (§14A.1): every method call returns a
 -- function that returns the frame, so any `:SetX():SetY()` chain is inert.
+-- Numeric getters (NUMERIC_GETTERS) instead return a number so the lifecycle
+-- paths (OnEnable → layout/reskin) that do arithmetic on them run headlessly.
 local function makeFrame()
     local f = {}
     return setmetatable(f, {
-        __index = function() return function() return f end end,
+        __index = function(_, k)
+            local n = NUMERIC_GETTERS[k]
+            if n ~= nil then return function() return n end end
+            -- WoW frame API methods are PascalCase (SetPoint, CreateTexture);
+            -- addon-stored data fields are camelCase/underscore (icon, cfg,
+            -- _lastState). Return a no-op method for the former, nil for an
+            -- unset data field — a real frame returns nil there, not a
+            -- callable. Returning a function masked/created bugs: an unset
+            -- self._lastState read back as a function and blew up Icon:Apply.
+            if type(k) == "string" and k:match("^%u") then
+                return function() return f end
+            end
+            return nil
+        end,
     })
 end
 
@@ -110,7 +136,9 @@ local function build()
             if mixin == "AceConsole-3.0" then embedAceConsole(m) end
         end
         addon.__modules = addon.__modules or {}
+        addon.__moduleOrder = addon.__moduleOrder or {}
         addon.__modules[name] = m
+        addon.__moduleOrder[#addon.__moduleOrder + 1] = name
         return m
     end
 
@@ -133,6 +161,21 @@ local function build()
                 return self.__modules and self.__modules[modName]
             end
             function obj.EnableModule() end
+            -- Faithful stand-in for AceAddon's PLAYER_LOGIN EnableAddon cascade:
+            -- enable the addon, then every module in registration order, calling
+            -- OnEnable where defined. A load-only harness never reaches OnEnable,
+            -- so this is what lets headless tests exercise the module lifecycle
+            -- (the path where the IconGrid.Layout method/table clobber hid — KCD-05).
+            -- Errors propagate so the calling test's pcall reports the failure.
+            function obj.__enableAll(self)
+                self.enabledState = true
+                if self.OnEnable then self:OnEnable() end
+                for _, modName in ipairs(self.__moduleOrder or {}) do
+                    local m = self.__modules[modName]
+                    m.enabledState = true
+                    if m.OnEnable then m:OnEnable() end
+                end
+            end
             addons[name] = obj
             return obj
         end,
