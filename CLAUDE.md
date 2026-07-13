@@ -2,7 +2,17 @@
 
 **Tier 2** (modular) WoW addon. Tracks the player's interrupt + CC cooldowns on a movable icon grid, with a sibling target cast bar sharing one drag-lock and visibility mode. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
 
-This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tusharsaxena/WowAddonStandards>.
+This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tusharsaxena/WowAddonStandards>. The TOC declares this via `## X-Standard:`, and the README carries the standard badge.
+
+## The standard is the source of truth
+
+All development in this repo is measured against the Ka0s WoW Addon Standard (URL above) — structure, naming, conventions, packaging, testing. When doing any work here:
+
+- **Flag every deviation from the standard.** If a change you're about to make — or existing code you notice — departs from the standard, **call it out explicitly**. Do not silently conform, and do not silently diverge. Then **let the user decide** whether it should be:
+  1. an **intentional deviation** (recorded with a justifying comment, per the standard's SHOULD rule), or
+  2. a signal that the **standard definition itself should change** to accommodate it.
+- The user owns that decision — never resolve a standard conflict unilaterally.
+- The current compliance baseline is the frozen audit bundle in `audit/<date>/`. Re-run `/wow-addon:standards-audit` when in doubt; it fetches the living standard and writes a fresh dated bundle.
 
 ## Full agent context lives in `docs/`
 
