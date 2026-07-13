@@ -1,6 +1,6 @@
 # Ka0s KickCD — Review Smoke Tests (2026-05-02)
 
-Manual in-game checks to run before pushing the M1–M5 commits. Targeted at the **behavioural deltas** introduced by this review — for the standing regression suite (cold install, profiles, schema validator, etc.) see [docs/smoke-tests.md](../../docs/smoke-tests.md).
+Manual in-game checks to run before pushing the M1–M5 commits. Targeted at the **behavioural deltas** introduced by this review — for the standing regression suite (cold install, profiles, schema validator, etc.) see [docs/smoke-tests.md](../../smoke-tests.md).
 
 The five commits under test, oldest-to-newest:
 
@@ -209,7 +209,7 @@ These are quick existing-feature checks that touch the surfaces this review modi
 ### R-5. `/kcd debug` subcommands
 - [ ] `/kcd debug` (lists subcommands)
 - [ ] `/kcd debug log on/off` (already tested in M4-5)
-- [ ] `/kcd debug spells` / `/kcd debug grid` / `/kcd debug castbar` (whichever your build exposes — see [docs/testing.md](../../docs/testing.md))
+- [ ] `/kcd debug spells` / `/kcd debug grid` / `/kcd debug castbar` (whichever your build exposes — see [docs/testing.md](../../testing.md))
 - **Pass:** Each subcommand prints its diagnostic without Lua errors.
 
 ### R-6. Spec / talent / pet rebuild

@@ -5,7 +5,7 @@
 **Repo commit:** `554de43`
 **Standard audited against:** Ka0s WoW Addon Standard **v1.0.0 (2026-07-12)** — `standards/01_STANDARD.md` @ `tusharsaxena/WowAddonStandards`.
 **Playbook:** `AUDIT.md` (same repo).
-**Deviation-ID prefix:** `KCD-` (first standards-audit run for this addon; the `reviews/2026-05-02/` bundle is a `wow-addon:review`, not a standards audit, so it defines no reusable deviation IDs).
+**Deviation-ID prefix:** `KCD-` (first standards-audit run for this addon; the `docs/reviews/2026-05-02/` bundle is a `wow-addon:review`, not a standards audit, so it defines no reusable deviation IDs).
 
 This is a read-only snapshot of what the addon does today, walked section-by-section against the standard. Gaps are catalogued in `02_DEVIATIONS.md`; evidence is in `03_EVIDENCE.md`.
 

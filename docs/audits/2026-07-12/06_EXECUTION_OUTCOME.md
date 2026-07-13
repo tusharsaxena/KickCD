@@ -75,7 +75,7 @@ Local toolchain: `sudo apt-get install -y lua5.1 luarocks && sudo luarocks insta
 
 ## Manual smoke tests (run in-game)
 
-Do these after copying the folder into `Interface/AddOns/KickCD/`. They target the remediation specifically; the full end-to-end matrix is in [`docs/smoke-tests.md`](../../docs/smoke-tests.md). Expect **zero Lua errors** throughout (enable `/console scriptErrors 1` or BugSack).
+Do these after copying the folder into `Interface/AddOns/KickCD/`. They target the remediation specifically; the full end-to-end matrix is in [`docs/smoke-tests.md`](../../smoke-tests.md). Expect **zero Lua errors** throughout (enable `/console scriptErrors 1` or BugSack).
 
 ### S1 — Cold load & namespace privacy (KCD-01, KCD-11/12/18)
 1. `/reload` on a fresh install. Addon loads; no errors; `Ka0s KickCD` shows in the addon list and Settings.

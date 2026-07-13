@@ -1,7 +1,7 @@
 std = "lua51"
 max_line_length = false
 codes = true
-exclude_files = { "libs/", "audit/", "_dev/", "tests/", "reviews/" }
+exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/", "docs/reviews/" }
 ignore = {
   "212/self",       -- unused argument self
   "212/event",      -- unused argument event

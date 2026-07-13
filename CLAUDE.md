@@ -12,7 +12,7 @@ All development in this repo is measured against the Ka0s WoW Addon Standard (UR
   1. an **intentional deviation** (recorded with a justifying comment, per the standard's SHOULD rule), or
   2. a signal that the **standard definition itself should change** to accommodate it.
 - The user owns that decision — never resolve a standard conflict unilaterally.
-- The current compliance baseline is the frozen audit bundle in `audit/<date>/`. Re-run `/wow-addon:standards-audit` when in doubt; it fetches the living standard and writes a fresh dated bundle.
+- The current compliance baseline is the frozen audit bundle in `docs/audits/<date>/`. Re-run `/wow-addon:standards-audit` when in doubt; it fetches the living standard and writes a fresh dated bundle.
 
 ## Full agent context lives in `docs/`
 
