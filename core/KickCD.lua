@@ -270,6 +270,10 @@ local function helpers()
     return NS.Settings and NS.Settings.Helpers
 end
 
+-- Single shared value formatter for /kcd list|get|set (slash-commands §5):
+-- type-aware, unit-annotated (via the schema row's `fmt`), never hand-formatted
+-- per call site. list and get/set both route through this so their value
+-- strings can never diverge.
 local function formatValue(def, v)
     if v == nil then return "nil" end
     if def.type == "color" and type(v) == "table" then
@@ -280,7 +284,21 @@ local function formatValue(def, v)
         if def.fmt then return def.fmt:format(v) end
         return tostring(v)
     end
+    if def.type == "bool" then
+        return v and "true" or "false"
+    end
+    if def.type == "string" and (v == nil or v == "") then
+        return "(none)"
+    end
     return tostring(v)
+end
+
+-- Shared `path = value` formatter for schema output (slash-commands §5): key
+-- gold (ffff00), value white (ffffff), ` = ` separator uncoloured. Reused by
+-- the /kcd list rows and the /kcd get | set single-line echo so the colouring
+-- can never drift between them. No trailing colon (house style).
+local function FormatKV(path, valueStr)
+    return ("|cffffff00%s|r = |cffffffff%s|r"):format(path, valueStr)
 end
 
 local function dropdownAllowed(def)
@@ -400,8 +418,9 @@ local function applyFromText(self, def, text)
     end
     if H.RefreshAllPanels then H.RefreshAllPanels() end
 
-    p(self, ("%s = %s")
-        :format(def.path, formatValue(def, H.Get(def.path))))
+    -- Echo the STORED value (post-clamp/coerce) via the shared key=value
+    -- formatter, so /kcd set reads identically to /kcd get and /kcd list.
+    p(self, FormatKV(def.path, formatValue(def, H.Get(def.path))))
 end
 
 function listSettings(self)
@@ -409,7 +428,9 @@ function listSettings(self)
     if not (H and NS.Settings and NS.Settings.Schema) then
         return p(self, "Settings layer not ready yet")
     end
-    p(self, self.L and self.L["Available settings:"] or "Available settings:")
+    -- Colour scheme (slash-commands §5): header green (33ff99), [page] group
+    -- headers azure (3399ff), key/value via FormatKV. No trailing colons.
+    p(self, "|cff33ff99" .. (self.L and self.L["Available settings"] or "Available settings") .. "|r")
     -- Group by panel for readable output.
     local byPanel = {}
     for _, def in ipairs(NS.Settings.Schema) do
@@ -420,9 +441,9 @@ function listSettings(self)
     for _, key in ipairs({ "general", "icons", "castbar", "spells", "profiles" }) do
         local list = byPanel[key]
         if list then
-            p(self, "  [" .. key .. "]")
+            p(self, "  |cff3399ff[" .. key .. "]|r")
             for _, def in ipairs(list) do
-                p(self, ("    %s = %s"):format(def.path, formatValue(def, H.Get(def.path))))
+                p(self, "    " .. FormatKV(def.path, formatValue(def, H.Get(def.path))))
             end
         end
     end
@@ -441,7 +462,7 @@ function getSetting(self, rest)
         return p(self, (self.L and self.L["Setting not found: %s"]
             or "Setting not found: %s"):format(path))
     end
-    p(self, ("%s = %s"):format(def.path, formatValue(def, H.Get(def.path))))
+    p(self, FormatKV(def.path, formatValue(def, H.Get(def.path))))
 end
 
 function setSetting(self, rest)

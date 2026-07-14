@@ -137,7 +137,7 @@ L["Auto cast sparkles"]          = "Auto cast sparkles"
 L["Defaults"]                    = "Defaults"
 
 -- Slash commands (/kcd list|get|set)
-L["Available settings:"]         = "Available settings:"
+L["Available settings"]          = "Available settings"
 L["Setting not found: %s"]       = "Setting not found: %s"
 L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
 L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"

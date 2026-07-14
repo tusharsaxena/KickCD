@@ -44,6 +44,17 @@ test("SetEnabled is the single write seam and toggles State.debug", function()
     assertEqual(ns.State.debug, false)
 end)
 
+test("SetEnabled brackets each session with a console line at both ends (§12.5)", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    ns.DebugLog:SetEnabled(true)
+    assertTrue(ns.DebugLog:LastLine():find("[Debug] logging enabled", 1, true) ~= nil,
+        "enable must append a bracket console line")
+    ns.DebugLog:SetEnabled(false)
+    assertTrue(ns.DebugLog:LastLine():find("[Debug] logging disabled", 1, true) ~= nil,
+        "disable line must land even though the flag just flipped off")
+end)
+
 test("NS.Debug is a no-op when disabled (zero capture) and appends when enabled", function()
     local inst = T.load(true)
     local ns = inst.NS
@@ -53,6 +64,8 @@ test("NS.Debug is a no-op when disabled (zero capture) and appends when enabled"
     assertEqual(ns.DebugLog:BufferSize(), before, "disabled sink must not capture")
 
     ns.DebugLog:SetEnabled(true)
+    -- SetEnabled(true) itself logs a bracket line (above), so recapture here.
+    before = ns.DebugLog:BufferSize()
     ns.Debug("Cast", "kick on %s", "target")
     assertEqual(ns.DebugLog:BufferSize(), before + 1, "enabled sink must capture one line")
     assertTrue(ns.DebugLog:LastLine():find("[Cast] kick on target", 1, true) ~= nil,
