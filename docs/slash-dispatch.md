@@ -64,7 +64,7 @@ Every mutating subcommand fires `Ka0s_KickCD_CONFIG_CHANGED { section = "spells"
 
 | Subcommand | Purpose |
 |---|---|
-| `window` | Toggle the on-screen debug console window — the DIALOG-strata "KickCD — Debug" panel (`modules/DebugLog.lua`) with a ScrollingMessageFrame, Copy/Clear buttons, a header Debug:ON/OFF toggle, and the shipped JetBrains Mono font. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
+| `window` | Toggle the on-screen debug console window — the DIALOG-strata "Ka0s KickCD — Debug" panel (`modules/DebugLog.lua`) with a ScrollingMessageFrame, Copy/Clear buttons, a header Debug:ON/OFF toggle, and the shipped JetBrains Mono font. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
 | `on` / `off` / `toggle` | Set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Default off; never persisted to SavedVariables; resets each `/reload`. |
 | `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat. Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
 | `castbar` | Print (to chat) current target cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
