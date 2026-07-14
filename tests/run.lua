@@ -110,6 +110,7 @@ local SUITES = {
     "test_debuglog.lua",
     "test_icongrid_layout.lua",
     "test_lifecycle.lua",
+    "test_cooldowns.lua",
 }
 
 io.write("\nKickCD test harness\n===================\n")

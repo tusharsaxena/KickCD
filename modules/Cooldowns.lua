@@ -341,9 +341,16 @@ function Cooldowns:OnEnable()
     self.watched = {}
 
     -- Game events that signal cooldown / usability / charge changes.
-    self:RegisterEvent("SPELL_UPDATE_COOLDOWN",        "Refresh")
-    self:RegisterEvent("SPELL_UPDATE_USABLE",          "Refresh")
-    self:RegisterEvent("SPELL_UPDATE_CHARGES",         "Refresh")
+    -- SPELL_UPDATE_COOLDOWN / _USABLE are global (they don't name the changed
+    -- spell) and chatty — they fire many times per frame in combat, and each
+    -- fire would re-poll EVERY watched spell. Coalesce a same-frame burst into
+    -- one Refresh on the next frame via a zero-delay throttle. Refresh ignores
+    -- its args (it re-polls the watched table fresh), so the throttle's
+    -- trailing-args semantics are irrelevant here.
+    self._refreshCoalesced = NS.Util.Throttle(0, function() self:Refresh() end)
+    self:RegisterEvent("SPELL_UPDATE_COOLDOWN",        "OnCooldownEvent")
+    self:RegisterEvent("SPELL_UPDATE_USABLE",          "OnCooldownEvent")
+    self:RegisterEvent("SPELL_UPDATE_CHARGES",         "OnCooldownEvent")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",        "OnPlayerEnteringWorld")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED","OnSpecChanged")
     -- Talent / spellbook changes within the active spec also flip the
@@ -364,6 +371,13 @@ function Cooldowns:OnEnable()
     if IsLoggedIn and IsLoggedIn() then
         self:Rebuild()
     end
+end
+
+--- AceEvent handler for the chatty SPELL_UPDATE_* family. Forwards into the
+--- per-frame coalescer built in OnEnable so a burst of these events triggers
+--- a single Refresh() on the next frame rather than one full re-poll each.
+function Cooldowns:OnCooldownEvent()
+    if self._refreshCoalesced then self._refreshCoalesced() end
 end
 
 function Cooldowns:OnPlayerEnteringWorld()

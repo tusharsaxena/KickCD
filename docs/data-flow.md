@@ -5,7 +5,10 @@ How a game event propagates through the addon, how user input flows back, and ho
 ## Cooldown pipeline (game event → icon grid)
 
 ```
-Game event (SPELL_UPDATE_COOLDOWN, ...)
+Game event (SPELL_UPDATE_COOLDOWN / _USABLE / _CHARGES)
+        │
+        ▼
+Cooldowns:OnCooldownEvent ──► Util.Throttle(0)   (coalesce a same-frame burst → one Refresh next frame)
         │
         ▼
 Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown          (isActive, plain bool)
@@ -26,6 +29,8 @@ StateChanged(prev, next) ── true ──► SendMessage("Ka0s_KickCD_SPELL_ST
                                           cdObject → SetCooldownFromDurationObject (swipe)
                                           cdObject:GetRemainingDuration → SetFormattedText (countdown)
 ```
+
+`SPELL_UPDATE_COOLDOWN` / `_USABLE` are **global and chatty** — they don't name the changed spell and fire many times per frame in combat, and each fire would otherwise re-poll every watched spell. The three events register to `Cooldowns:OnCooldownEvent`, which forwards into a `Util.Throttle(0)` coalescer built in `OnEnable`: a same-frame burst schedules a single `C_Timer.After(0, …)` that runs one `Refresh` on the next frame. `Refresh` re-polls the whole watched table fresh, so the throttle's trailing-args behaviour is irrelevant. `Rebuild` and its triggers (`PLAYER_ENTERING_WORLD`, `SPELLS_CHANGED`, …) stay synchronous — only the `SPELL_UPDATE_*` path is coalesced.
 
 The GCD-vs-real-CD visual decision is made entirely C-side via `cdObject:EvaluateRemainingDuration(curve)`. The IconGrid maintains step-shaped alpha and color curves built from `cfg.readyAlpha` / `cfg.cooldownAlpha` / `cfg.cooldownTint`: remaining ≤ ~1.6s evaluates to ready visuals, anything beyond evaluates to cooldown visuals. Lua never compares the secret remaining time directly. See `modules/IconGrid.lua` `BuildCurves`.
 
