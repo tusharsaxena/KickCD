@@ -105,7 +105,7 @@ Each one was tried and broke; don't repeat:
 - Binding `CastingDuration:Get…Duration()` returns to a Lua local for `if x > 0` / `x / y` / `x <= 0`. Pass the method calls as arguments only.
 - Computing the spark position from `barWidth * (elapsed / total)`. Anchor to `bar:GetStatusBarTexture():RIGHT` and let Blizzard reposition C-side.
 - Detecting end-of-cast in OnUpdate via `if remaining <= 0`. Use `UNIT_SPELLCAST_STOP` and friends.
-- `tonumber` / `tostring` / `+0` / `securecallfunction` "detox" of secret values — see `core/Compat.lua` line 28.
+- `tonumber` / `tostring` / `+0` / `securecallfunction` "detox" of secret values — see `core/Compat.lua` line 265.
 - Using `CastingBarFrameTemplate` and pointing it at `"target"`. Its built-in `OnUpdate` does `GetTime() < self.maxValue`, which becomes `GetTime() < <secret>` and errors once the addon sets `maxValue` from a secret `endTime`.
 - Restyling `TargetFrameSpellBar` (the default UI cast bar) instead of building a fresh frame.
 - Gating `name` / `texture` / `notInterruptible` with `issecretvalue` and replacing with placeholders. They may be secret, but `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` accept secret args without erroring — gating just makes the bar look worse for no benefit.

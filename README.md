@@ -160,7 +160,7 @@ All bugs, feature requests, and outstanding work are tracked at [https://github.
 
 ## Testing
 
-There is no automated test harness — verification is manual, in-game. The end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run it before tagging a release or after refreshing libs / bumping `## Interface:`.
+Automated checks run headless: a Lua unit harness (`lua tests/run.lua`, exits non-zero on any failure) plus `luacheck .` (0 errors). The harness can't render frames or model taint, so the end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run both before tagging a release or after refreshing libs / bumping `## Interface:`.
 
 ## Version History
 

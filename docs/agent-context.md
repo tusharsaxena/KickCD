@@ -46,7 +46,7 @@ There is no `_G.KickCD` and no `KickCD = KickCD or {}` bootstrap. `core/KickCD.l
 
 - **Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink. Either path works for git and file tools.
 - **`.gitattributes`** enforces `* text=auto eol=crlf` — every text file lives as CRLF in the working tree and the stored blob, no `core.autocrlf` flip-flopping per developer. New files added by an agent should match.
-- **No automated tests.** Validation is manual, in-game. End-to-end scenarios (cold install, visibility modes, lock/drag, cast bar auto-size, spec/talent/pet rebuilds, secret-value safety, profiles) live in [docs/smoke-tests.md](smoke-tests.md); the slash + debug coverage matrices the smoke tests lean on live in [docs/testing.md](testing.md).
+- **Tests.** A headless Lua unit harness (`lua tests/run.lua`, exits non-zero on failure) plus `luacheck .` cover pure logic, the message bus, and the `OnInitialize → OnEnable` lifecycle — see [docs/testing.md](testing.md). The harness can't render frames or model taint, so end-to-end scenarios (cold install, visibility modes, lock/drag, cast bar auto-size, spec/talent/pet rebuilds, secret-value safety, profiles) stay manual and in-game in [docs/smoke-tests.md](smoke-tests.md).
 - **Default-spell coverage source.** `defaults/Spells.lua` is synced from Baratus's "Class Info - Wow" Google Sheet, Midnight tab. Column reference and refresh procedure live in [docs/scope.md](scope.md#default-spell-coverage).
 
 ## Response style for this repo
