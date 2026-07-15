@@ -20,12 +20,29 @@ local loader  = dofile(root .. "/tests/loader.lua")
 local passed, failed = 0, 0
 local failures = {}
 
+-- --list mode (§5): enumerate every registered case grouped by suite without
+-- running it. Set once from argv; `currentSuite` is stamped around each dofile
+-- below so test() can attribute each case to its originating file.
+local listMode = false
+if arg then
+    for _, a in ipairs(arg) do
+        if a == "--list" then listMode = true end
+    end
+end
+local registry = {}       -- ordered { name = ..., suite = ... } records
+local currentSuite = nil  -- base filename (no .lua) of the suite being loaded
+
 local function fmt(v)
     if type(v) == "table" then return "<table>" end
     return tostring(v)
 end
 
 local function test(name, fn)
+    if listMode then
+        -- List mode: record attribution only, never execute the body.
+        registry[#registry + 1] = { name = name, suite = currentSuite }
+        return
+    end
     local ok, err = pcall(fn)
     if ok then
         passed = passed + 1
@@ -113,12 +130,63 @@ local SUITES = {
     "test_cooldowns.lua",
     "test_settings_log.lua",
     "test_flow_traces.lua",
+    "test_list_mode.lua",
 }
 
-io.write("\nKickCD test harness\n===================\n")
+--- Render docs/test-cases.md's body from the recorded registry (§5).
+-- Suites keep their load order (first-seen); cases keep registration order.
+local function renderInventory()
+    local order, bySuite = {}, {}
+    for _, rec in ipairs(registry) do
+        local g = bySuite[rec.suite]
+        if not g then
+            g = {}
+            bySuite[rec.suite] = g
+            order[#order + 1] = rec.suite
+        end
+        g[#g + 1] = rec.name
+    end
+
+    local out, total = {}, 0
+    out[#out + 1] = "# Test Cases"
+    out[#out + 1] = ""
+    out[#out + 1] = "_Generated — do not hand-edit. Regenerate with "
+        .. "`lua tests/run.lua --list > docs/test-cases.md`._"
+    out[#out + 1] = ""
+    for _, suite in ipairs(order) do
+        local g = bySuite[suite]
+        out[#out + 1] = ("### %s.lua (%d)"):format(suite, #g)
+        out[#out + 1] = ""
+        for _, name in ipairs(g) do
+            out[#out + 1] = "- " .. name
+        end
+        out[#out + 1] = ""
+        total = total + #g
+    end
+    out[#out + 1] = "## Totals"
+    out[#out + 1] = ""
+    out[#out + 1] = "| Suite | Cases |"
+    out[#out + 1] = "| --- | --- |"
+    for _, suite in ipairs(order) do
+        out[#out + 1] = ("| %s.lua | %d |"):format(suite, #bySuite[suite])
+    end
+    out[#out + 1] = ("| **Total** | **%d** |"):format(total)
+    out[#out + 1] = ""
+    return table.concat(out, "\n")
+end
+
+if not listMode then
+    io.write("\nKickCD test harness\n===================\n")
+end
 for _, suite in ipairs(SUITES) do
-    io.write("\n" .. suite .. "\n")
+    currentSuite = suite:gsub("%.lua$", "")
+    if not listMode then io.write("\n" .. suite .. "\n") end
     dofile(root .. "/tests/" .. suite)
+end
+
+if listMode then
+    io.write(renderInventory())
+    os.exit(0)
 end
 
 io.write(("\n-------------------\n%d passed, %d failed\n"):format(passed, failed))
