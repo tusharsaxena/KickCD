@@ -80,6 +80,7 @@ local function newInstance(unit)
     return {
         unit        = unit,
         grid        = nil,
+        label       = nil,
         pool        = { active = {}, free = {} },
         ordered     = {},
         eventFrames = {},
@@ -397,6 +398,12 @@ function IconGrid:Layout(inst)
 
     local ordered = inst.ordered
 
+    -- Per-unit identity label ("Target"/"Focus"). Cheap to re-apply on
+    -- every layout pass — text/shown only change when the user edits
+    -- units.<unit>.label, but there's no per-icon cost to re-stamping it
+    -- here alongside the rest of the layout refresh.
+    self:ApplyLabel(inst)
+
     -- Re-bind cfg + text/appearance config on every layout pass so changes
     -- to color/alpha/font/zoom/border apply without a full rebuild. Stamp
     -- _isPrimary BEFORE ApplyTextConfig because that re-runs Apply which
@@ -492,6 +499,19 @@ function IconGrid:ApplyGeneral(inst)
     grid:SetAlpha(profile.alpha or 1.0)
 end
 
+-- Apply the per-unit identity label ("Target"/"Focus") to inst.label.
+-- NS.Units.Label(unit) is a plain addon string table, never cast/spell
+-- data — no 12.0 secret-value concern here (unlike UnitCastingInfo /
+-- cooldown timings elsewhere in this module). Label text is deliberately
+-- NOT link-resolved (see core/Units.lua), so a linked Focus still reads
+-- "Focus".
+function IconGrid:ApplyLabel(inst)
+    if not inst.label then return end
+    local lbl = NS.Units.Label(inst.unit)
+    inst.label:SetText(lbl.text or "")
+    inst.label:SetShown(lbl.show == true)
+end
+
 -- ---------------------------------------------------------------------------
 -- Lock / unlock + drag persistence
 -- ---------------------------------------------------------------------------
@@ -556,6 +576,13 @@ function IconGrid:EnsureGrid(inst)
     grid:SetFrameStrata("MEDIUM")
     grid:SetClampedToScreen(true)
     grid:SetMovable(true)
+
+    -- Per-unit identity label ("Target"/"Focus"), driven by
+    -- NS.Units.Label(unit) — see ApplyLabel. Hidden by default
+    -- (label.show defaults false), so existing target-only users see no
+    -- visual change until they opt in.
+    inst.label = grid:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    inst.label:SetPoint("BOTTOM", grid, "TOP", 0, 2)
 
     -- Anchor from the saved profile. Util.ApplyAnchor unconditionally
     -- targets UIParent so we don't have to serialize a relativeTo.
@@ -776,6 +803,10 @@ function IconGrid:OnConfigChanged(_evt, payload)
             self:RefreshVisibility(inst)
             self:RefreshAllGlows(inst)
             self:ApplyLock(inst)
+            -- Re-apply the identity label unconditionally: "units" edits
+            -- include units.<unit>.label.show/text (Task 9), and this is
+            -- cheap enough to run on a plain "general" pass too.
+            self:ApplyLabel(inst)
         end)
     end
 end
@@ -799,6 +830,7 @@ function IconGrid:OnProfileChanged(_evt, payload)
         self:Layout(inst)
         self:ApplyLock(inst)
         self:ApplyGeneral(inst)
+        self:ApplyLabel(inst)
         self:RefreshVisibility(inst)
     end)
 end
