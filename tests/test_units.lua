@@ -2,17 +2,17 @@
 
 local T = _G.KICKCD_TEST
 
-local NS = T.NS
-
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
 
 
 
 test("Units.LIST is target then focus", function()
 
-    assertEqual(NS.Units.LIST[1], "target")
+    local ns = T.load(true).NS
 
-    assertEqual(NS.Units.LIST[2], "focus")
+    assertEqual(ns.Units.LIST[1], "target")
+
+    assertEqual(ns.Units.LIST[2], "focus")
 
 end)
 
@@ -20,15 +20,17 @@ end)
 
 test("target is never linked; focus honors its link flag", function()
 
-    assertEqual(NS.Units.IsLinked("target"), false)
+    local ns = T.load(true).NS
 
-    NS.db.profile.units.focus.link = true
+    assertEqual(ns.Units.IsLinked("target"), false)
 
-    assertEqual(NS.Units.IsLinked("focus"), true)
+    ns.db.profile.units.focus.link = true
 
-    NS.db.profile.units.focus.link = false
+    assertEqual(ns.Units.IsLinked("focus"), true)
 
-    assertEqual(NS.Units.IsLinked("focus"), false)
+    ns.db.profile.units.focus.link = false
+
+    assertEqual(ns.Units.IsLinked("focus"), false)
 
 end)
 
@@ -36,17 +38,19 @@ end)
 
 test("Icons(focus) resolves to target's icons when linked", function()
 
-    NS.db.profile.units.target.icons.primarySize = 70
+    local ns = T.load(true).NS
 
-    NS.db.profile.units.focus.icons.primarySize  = 30
+    ns.db.profile.units.target.icons.primarySize = 70
 
-    NS.db.profile.units.focus.link = true
+    ns.db.profile.units.focus.icons.primarySize  = 30
 
-    assertEqual(NS.Units.Icons("focus").primarySize, 70, "linked focus reads target icons")
+    ns.db.profile.units.focus.link = true
 
-    NS.db.profile.units.focus.link = false
+    assertEqual(ns.Units.Icons("focus").primarySize, 70, "linked focus reads target icons")
 
-    assertEqual(NS.Units.Icons("focus").primarySize, 30, "unlinked focus reads its own icons")
+    ns.db.profile.units.focus.link = false
+
+    assertEqual(ns.Units.Icons("focus").primarySize, 30, "unlinked focus reads its own icons")
 
 end)
 
@@ -54,21 +58,23 @@ end)
 
 test("IsEnabled combines master and per-unit enable", function()
 
-    NS.db.profile.enabled = true
+    local ns = T.load(true).NS
 
-    NS.db.profile.units.target.enabled = true
+    ns.db.profile.enabled = true
 
-    NS.db.profile.units.focus.enabled  = false
+    ns.db.profile.units.target.enabled = true
 
-    assertEqual(NS.Units.IsEnabled("target"), true)
+    ns.db.profile.units.focus.enabled  = false
 
-    assertEqual(NS.Units.IsEnabled("focus"), false)
+    assertEqual(ns.Units.IsEnabled("target"), true)
 
-    NS.db.profile.enabled = false
+    assertEqual(ns.Units.IsEnabled("focus"), false)
 
-    assertEqual(NS.Units.IsEnabled("target"), false, "master off disables all units")
+    ns.db.profile.enabled = false
 
-    NS.db.profile.enabled = true
+    assertEqual(ns.Units.IsEnabled("target"), false, "master off disables all units")
+
+    ns.db.profile.enabled = true
 
 end)
 
@@ -76,21 +82,23 @@ end)
 
 test("CopyStyling snapshots target appearance into focus and unlinks", function()
 
-    NS.db.profile.units.target.icons.primarySize = 55
+    local ns = T.load(true).NS
 
-    NS.db.profile.units.focus.link = true
+    ns.db.profile.units.target.icons.primarySize = 55
 
-    NS.Units.CopyStyling("target", "focus")
+    ns.db.profile.units.focus.link = true
 
-    assertEqual(NS.db.profile.units.focus.link, false, "copy unlinks")
+    ns.Units.CopyStyling("target", "focus")
 
-    assertEqual(NS.db.profile.units.focus.icons.primarySize, 55, "focus gets a copy of target size")
+    assertEqual(ns.db.profile.units.focus.link, false, "copy unlinks")
+
+    assertEqual(ns.db.profile.units.focus.icons.primarySize, 55, "focus gets a copy of target size")
 
     -- mutating the copy must not affect the source (deep copy, not alias)
 
-    NS.db.profile.units.focus.icons.primarySize = 999
+    ns.db.profile.units.focus.icons.primarySize = 999
 
-    assertEqual(NS.db.profile.units.target.icons.primarySize, 55, "copy is deep, not aliased")
+    assertEqual(ns.db.profile.units.target.icons.primarySize, 55, "copy is deep, not aliased")
 
 end)
 
@@ -98,11 +106,13 @@ end)
 
 test("Label.text is per-unit and not link-resolved", function()
 
-    NS.db.profile.units.focus.link = true
+    local ns = T.load(true).NS
 
-    assertEqual(NS.Units.Label("focus").text, "Focus")
+    ns.db.profile.units.focus.link = true
 
-    assertEqual(NS.Units.Label("target").text, "Target")
+    assertEqual(ns.Units.Label("focus").text, "Focus")
+
+    assertEqual(ns.Units.Label("target").text, "Target")
 
 end)
 
