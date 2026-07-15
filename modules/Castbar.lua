@@ -4,26 +4,29 @@
 -- It is under the 1500 hard cap; a future peel would split the config-driven
 -- build (Reskin / sizing / anchors) from the per-cast update path (RenderCast).
 --
--- Owns the KickCDCastbar frame: a custom-drawn StatusBar with icon, spell
--- name, and remaining-time text that mirrors the player's current target
--- cast / channel. Independently movable from the icon grid; visibility is
--- gated on db.profile.castbar.enabled (sub-module enable) AND
--- db.profile.enabled (master enable) AND db.profile.visibility (the
+-- Per-unit instance manager. Owns one cast-bar frame PER TRACKED UNIT
+-- (target / focus); each instance mirrors ITS unit's cast / channel. Target's
+-- frame keeps the exact legacy global name KickCDCastbar; Focus is
+-- KickCDCastbarFocus. In Phase 2 only the target unit enables (Focus defaults
+-- disabled), so behavior is identical to the former singleton. Each bar is a
+-- custom-drawn StatusBar with icon, spell name, and remaining-time text.
+-- Independently movable from the icon grid; visibility is gated on the unit's
+-- resolved castbar.enabled (sub-module enable) AND NS.Units.IsEnabled(unit)
+-- (master enable + the unit's own enable) AND db.profile.visibility (the
 -- addon-wide "General visibility" mode also honored by IconGrid; in
 -- "in_combat" mode the bar additionally requires KickCD.State.inCombat = true).
 -- Drag-lock follows db.profile.locked, the same global lock the icon
 -- grid honors.
 --
--- Listens to:
---   PLAYER_TARGET_CHANGED        -> re-evaluate; show or hide
---   UNIT_SPELLCAST_START         -> on unit=="target", begin cast
---   UNIT_SPELLCAST_STOP          -> on unit=="target", hide
---   UNIT_SPELLCAST_FAILED        -> on unit=="target", hide
---   UNIT_SPELLCAST_INTERRUPTED   -> on unit=="target", hide
---   UNIT_SPELLCAST_DELAYED       -> on unit=="target", re-evaluate
---   UNIT_SPELLCAST_CHANNEL_START -> on unit=="target", begin channel
---   UNIT_SPELLCAST_CHANNEL_STOP  -> on unit=="target", hide
---   UNIT_SPELLCAST_CHANNEL_UPDATE-> on unit=="target", re-evaluate
+-- Listens to the UNIT_SPELLCAST_* family per-instance via
+-- Util.RegisterUnitCastEvent (dispatch frame fires only for the instance's
+-- unit; the handler resolves instances[unit]): START/CHANNEL_START begin a
+-- cast/channel, STOP/FAILED/INTERRUPTED/CHANNEL_STOP hide, DELAYED/CHANNEL_UPDATE
+-- re-evaluate, INTERRUPTIBLE/_NOT_INTERRUPTIBLE re-apply per-state visuals.
+-- The global unit-change events register at module level (plain RegisterEvent),
+-- each refreshing only its own unit's instance if live:
+--   PLAYER_TARGET_CHANGED        -> re-evaluate the target bar
+--   PLAYER_FOCUS_CHANGED         -> re-evaluate the focus bar
 --
 --   Ka0s_KickCD_CONFIG_CHANGED  -> "castbar" reskins/relays the bar; "general"
 --                             re-applies lock + anchor; other sections ignored.
@@ -60,37 +63,52 @@ local Castbar = NS:NewModule("Castbar", "AceEvent-3.0")
 local L       = NS.L
 
 -- ---------------------------------------------------------------------------
--- Module-local state
+-- Per-unit instances
 -- ---------------------------------------------------------------------------
+--
+-- Each tracked unit (target/focus) owns its own instance. Formerly these were
+-- file-local singletons (`frame`, `current`, `lastGridLayout`); the instance
+-- model lets a second unit coexist without any shared mutable state. Fields:
+--   inst.frame          — the cast-bar Frame; created lazily in EnsureFrame.
+--   inst.current        — active cast record (nil when idle). Built from
+--                         Compat.GetCastingInfo / GetChannelInfo at cast start;
+--                         OnInterruptibilityChanged MUTATES
+--                         inst.current.notInterruptible in place to a plain Lua
+--                         bool when *_INTERRUPTIBLE / *_NOT_INTERRUPTIBLE fires
+--                         (the field may be secret-tainted in 12.0). See the
+--                         "plain-after-flip invariant" comment near
+--                         OnInterruptibilityChanged and docs/midnight-quirks.md.
+--   inst.lastGridLayout — cached Ka0s_KickCD_GRID_LAYOUT refs for THIS unit's
+--                         grid (gridFrame/primaryIcon); ApplyAnchor / Reskin
+--                         prefer these over the public accessors. Fallback to
+--                         IconGrid:GetGridFrame(unit) / :GetPrimaryIcon(unit)
+--                         covers the first tick after enable / empty payloads.
+--   inst.eventFrames    — private UNIT_SPELLCAST_* dispatch frames (teardown).
+local instances = {}   -- [unit] = instance
 
-local frame   -- the cast-bar Frame; created lazily in EnsureFrame()
--- Active cast record (nil when nothing is being cast). Built from
--- Compat.GetCastingInfo / Compat.GetChannelInfo at cast start; the
--- OnInterruptibilityChanged handler MUTATES current.notInterruptible
--- in place to a plain Lua bool when *_INTERRUPTIBLE / *_NOT_INTERRUPTIBLE
--- fires (the original field may be secret-tainted in 12.0). See the
--- "plain-after-flip invariant" comment near OnInterruptibilityChanged
--- and docs/midnight-quirks.md for the full background.
-local current
+local function newInstance(unit)
+    return {
+        unit           = unit,
+        frame          = nil,
+        current        = nil,
+        lastGridLayout = { gridFrame = nil, primaryIcon = nil },
+        eventFrames    = {},
+        enabled        = false,
+    }
+end
 
--- Cache of the most recent Ka0s_KickCD_GRID_LAYOUT payload from IconGrid.
--- Populated by Castbar:OnGridLayout when the payload carries
--- `gridFrame` / `primaryIcon`; ApplyAnchor / Reskin prefer these
--- over the public accessors so the bar follows the grid without a
--- second cross-module reach. The fallback to
--- `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
--- `:GetPrimaryIcon()` stays in place for the FIRST tick after enable
--- when no Ka0s_KickCD_GRID_LAYOUT has fired yet, and for older senders that
--- broadcast an empty payload.
-local lastGridLayout = { gridFrame = nil, primaryIcon = nil }
+function Castbar:GetInstance(unit)
+    unit = unit or "target"
+    local inst = instances[unit]
+    if not inst then inst = newInstance(unit); instances[unit] = inst end
+    return inst
+end
 
--- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
--- shared, single-owner flag driven off the PLAYER_REGEN_* events in
--- one place, fanned out via the Ka0s_KickCD_COMBAT_STATE message that this
--- module subscribes to. Reading InCombatLockdown() inside the
--- regen-disabled handler is unreliable (the lockdown state lags the
--- event by a frame), so we maintain the flag via the events themselves;
--- this module just reads the shared one.
+-- Combat state lives in KickCD.State.inCombat (core/State.lua) — a shared,
+-- single-owner flag driven off PLAYER_REGEN_* in one place, fanned out via the
+-- Ka0s_KickCD_COMBAT_STATE message this module subscribes to. (InCombatLockdown()
+-- lags the regen events by a frame, so the event-driven flag is the source of
+-- truth.) This module just reads the shared one.
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
@@ -98,69 +116,66 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 -- Helpers
 -- ---------------------------------------------------------------------------
 
-local function cfg()
-    return (NS.db and NS.db.profile and NS.db.profile.castbar) or {}
+local function cfg(inst)
+    return NS.Units.Castbar(inst.unit)
 end
 
--- Resolve the icon-grid's parent grid frame. Prefers the value carried
--- by the most recent Ka0s_KickCD_GRID_LAYOUT payload (CR-29 sender-side);
--- falls back to KickCD:GetModule("IconGrid", true):GetGridFrame() for
--- the first tick after enable (no payload yet) and for older senders
--- that still broadcast an empty payload. GetModule(name, true) is the
--- AceAddon idiom for an optional cross-module accessor — silent on
--- missing, so a disabled IconGrid yields nil here without erroring.
-local function resolveGridFrame()
-    if lastGridLayout.gridFrame then return lastGridLayout.gridFrame end
+-- Iterate every currently-enabled instance in LIST order. Handlers that fan out
+-- to "all live bars" (config / profile / combat / world changes) route through
+-- here so the enable-gating lives in one place. Mirrors IconGrid's forEachEnabled.
+local function forEachEnabled(fn)
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.enabled then fn(inst) end
+    end
+end
+
+-- Resolve `inst`'s icon-grid parent grid frame. Prefers the ref cached from
+-- this unit's most recent Ka0s_KickCD_GRID_LAYOUT (CR-29); falls back to
+-- IconGrid:GetGridFrame(inst.unit) for the first tick after enable / empty
+-- payloads. Passing inst.unit means a focus bar resolves the focus grid.
+-- GetModule(name, true) is the AceAddon optional-accessor idiom — silent on
+-- missing, so a disabled IconGrid yields nil.
+local function resolveGridFrame(inst)
+    if inst.lastGridLayout.gridFrame then return inst.lastGridLayout.gridFrame end
     local m = NS:GetModule("IconGrid", true)
-    if m and m.GetGridFrame then return m:GetGridFrame() end
+    if m and m.GetGridFrame then return m:GetGridFrame(inst.unit) end
     return nil
 end
 
--- Resolve the icon-grid's primary (first-laid-out) icon button. Same
+-- Resolve `inst`'s icon-grid primary (first-laid-out) icon button. Same
 -- payload-preferred / accessor-fallback policy as resolveGridFrame.
-local function resolvePrimaryIcon()
-    if lastGridLayout.primaryIcon then return lastGridLayout.primaryIcon end
+local function resolvePrimaryIcon(inst)
+    if inst.lastGridLayout.primaryIcon then return inst.lastGridLayout.primaryIcon end
     local m = NS:GetModule("IconGrid", true)
-    if m and m.GetPrimaryIcon then return m:GetPrimaryIcon() end
+    if m and m.GetPrimaryIcon then return m:GetPrimaryIcon(inst.unit) end
     return nil
 end
 
-local function master()
-    local p = NS.db and NS.db.profile
-    if not p then return true end
-    return p.enabled ~= false
-end
-
--- Honors the addon-wide visibility mode (db.profile.visibility):
---   * "always"          — usual behavior (bar shows during target casts).
---   * "in_combat"       — additionally requires KickCD.State.inCombat = true.
---                         A cast that starts on a target while we're out
---                         of combat (rare but possible — friendly NPCs)
---                         is suppressed.
---   * "target_casting"  — equivalent to "always" for the cast bar; the
---                         cast bar already only shows during target
---                         casts so this mode adds no extra restriction.
---   * "target_casting_interruptible"
---                       — Show during ANY hostile target cast; an alpha
---                         mask (ApplyVisibilityMask, fed via SetAlphaFromBoolean)
---                         then hides the bar when the cast is uninterruptible.
---                         The two-step gate is required because 12.0
---                         secret-taints notInterruptible — Lua can't make
---                         the boolean decision but the C-side
---                         SetAlphaFromBoolean accepts the secret directly.
---                         Friendly / self casts are excluded by IsHostileUnitCasting.
--- While unlocked the visibility mode is ignored — the user is moving
--- the bar and needs to see it regardless.
-local function isVisible()
+-- Honors the addon-wide visibility mode (db.profile.visibility) for inst.unit:
+--   * "always"      — usual behavior (bar shows during the unit's casts).
+--   * "in_combat"   — additionally requires KickCD.State.inCombat = true (a cast
+--                     that starts while out of combat is suppressed).
+--   * "target_casting" — equivalent to "always" here (the bar already only shows
+--                     during the unit's casts), so it adds no extra restriction.
+--   * "target_casting_interruptible" — show during ANY hostile cast on the unit;
+--                     an alpha mask (ApplyVisibilityMask, via SetAlphaFromBoolean)
+--                     then hides the bar for uninterruptible casts. The two-step
+--                     gate is required because 12.0 secret-taints notInterruptible
+--                     — Lua can't make the boolean call but the C-side
+--                     SetAlphaFromBoolean accepts the secret directly. Friendly /
+--                     self casts are excluded by IsHostileUnitCasting.
+-- While unlocked the visibility mode is ignored — the user is moving the bar.
+local function isVisible(inst)
     local profile = NS.db and NS.db.profile
-    if not (master() and cfg().enabled ~= false) then return false end
+    if not (NS.Units.IsEnabled(inst.unit) and cfg(inst).enabled ~= false) then return false end
     if profile and profile.locked == false then return true end
     local mode = (profile and profile.visibility) or "always"
     if mode == "in_combat" then
         return NS.State.inCombat
     elseif mode == "target_casting_interruptible" then
         return NS.State.IsHostileUnitCasting
-           and NS.State.IsHostileUnitCasting("target")
+           and NS.State.IsHostileUnitCasting(inst.unit)
            or false
     end
     return true
@@ -173,7 +188,7 @@ end
 --- without needing Lua-side comparison. Other modes / no-cast / unlocked
 --- (so the user can drag the bar regardless of cast state) → alpha 1.
 --- Called whenever the bar shows OR the interruptibility flag flips.
-local function ApplyVisibilityMask(barFrame)
+local function ApplyVisibilityMask(barFrame, unit)
     if not barFrame then return end
     local profile = NS.db and NS.db.profile
     local unlocked = profile and profile.locked == false
@@ -181,7 +196,7 @@ local function ApplyVisibilityMask(barFrame)
     if not unlocked
        and mode == "target_casting_interruptible"
        and NS.State.ApplyInterruptibleAlpha
-       and NS.State.ApplyInterruptibleAlpha(barFrame, "target", 1) then
+       and NS.State.ApplyInterruptibleAlpha(barFrame, unit, 1) then
         return
     end
     barFrame:SetAlpha(1)
@@ -259,16 +274,15 @@ end
 --               position is determined by the icon position and the user-
 --               configured (anchorPoint, castbarPoint, offset) tuple.
 
-local function onDragStart(self)
+local function onDragStart(_inst, self)
     if NS.db and NS.db.profile and NS.db.profile.locked then return end
     self:StartMoving()
 end
 
-local function onDragStop(self)
+local function onDragStop(inst, self)
     self:StopMovingOrSizing()
     if NS.db and NS.db.profile then
-        NS.db.profile.anchors = NS.db.profile.anchors or {}
-        NS.db.profile.anchors.castbar = NS.Util.SaveAnchor(self)
+        NS.Units.SetAnchor(inst.unit, "castbar", NS.Util.SaveAnchor(self))
     end
     -- CR-34: complete the bus contract by announcing the anchor write.
     -- No subscriber listens for "castbar" anchor changes today (the bar
@@ -320,16 +334,17 @@ end
 --- FREE   -> apply the saved anchor against UIParent.
 --- PRIMARY -> SetPoint(castbarPoint, primaryIcon, anchorPoint, offX, offY).
 ---           Falls back to the grid frame, then to the saved free anchor.
-function Castbar:ApplyAnchor()
+function Castbar:ApplyAnchor(inst)
+    local frame = inst.frame
     if not frame then return end
-    local c = cfg()
+    local c = cfg(inst)
     local mode = c.anchorMode or "FREE"
 
     if mode == "PRIMARY" then
         -- Prefer the payload-cached references over the public accessors.
         -- Falls back to the grid frame when no spells are watched (no
         -- primary icon yet).
-        local target = resolvePrimaryIcon() or resolveGridFrame()
+        local target = resolvePrimaryIcon(inst) or resolveGridFrame(inst)
         if target then
             frame:ClearAllPoints()
             frame:SetPoint(
@@ -344,15 +359,15 @@ function Castbar:ApplyAnchor()
         -- the bar at least has a position to render at while we wait.
     end
 
-    local saved = NS.db and NS.db.profile
-        and NS.db.profile.anchors and NS.db.profile.anchors.castbar
+    local saved = NS.Units.Anchor(inst.unit, "castbar")
     NS.Util.ApplyAnchor(frame, saved or
         { point = "CENTER", relativePoint = "CENTER", x = 0, y = -260 })
 end
 
-function Castbar:ApplyLock()
+function Castbar:ApplyLock(inst)
+    local frame = inst.frame
     if not frame then return end
-    local c              = cfg()
+    local c              = cfg(inst)
     local primaryAnchor  = (c.anchorMode == "PRIMARY")
     local profileLocked  = NS.db and NS.db.profile and NS.db.profile.locked
     -- PRIMARY anchor mode forces drag-disabled — the bar's position is
@@ -373,9 +388,9 @@ function Castbar:ApplyLock()
     --   * UI unlocked + sub-module visible → show preview (so the user can
     --     see where the bar will appear, even in PRIMARY anchor mode).
     --   * UI locked → hide the empty bar; only show during real casts.
-    if not current then
-        if (not profileLocked) and isVisible() then
-            self:ShowPreview()
+    if not inst.current then
+        if (not profileLocked) and isVisible(inst) then
+            self:ShowPreview(inst)
         else
             frame:Hide()
         end
@@ -386,20 +401,24 @@ end
 -- Frame construction
 -- ---------------------------------------------------------------------------
 
-function Castbar:EnsureFrame()
-    if frame then return frame end
+function Castbar:EnsureFrame(inst)
+    if inst.frame then return inst.frame end
 
-    frame = CreateFrame("Frame", "KickCDCastbar", UIParent)
+    -- Target keeps the exact legacy global name KickCDCastbar (macros / other
+    -- addons may reference it); Focus is KickCDCastbarFocus.
+    local frame = CreateFrame("Frame",
+        inst.unit == "target" and "KickCDCastbar" or "KickCDCastbarFocus", UIParent)
+    inst.frame = frame
     frame:SetFrameStrata("MEDIUM")
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
 
     -- Initial anchor — ApplyAnchor() handles both FREE and PRIMARY modes.
     -- Called again at OnEnable / OnConfigChanged / OnGridLayout time.
-    self:ApplyAnchor()
+    self:ApplyAnchor(inst)
 
-    frame:SetScript("OnDragStart", onDragStart)
-    frame:SetScript("OnDragStop",  onDragStop)
+    frame:SetScript("OnDragStart", function(f) onDragStart(inst, f) end)
+    frame:SetScript("OnDragStop",  function(f) onDragStop(inst, f) end)
 
     -- ----------------------------------------------------------------
     -- Two backgrounds (interruptible / uninterruptible), stacked. Each
@@ -583,9 +602,10 @@ end
 --- only re-skins on actual config changes.
 -- TODO(perf): split into "color-only" vs "structural" so the 50 ms-throttled
 -- color-picker drag doesn't re-run all ~40 widget calls per tick (F-015).
-function Castbar:Reskin()
+function Castbar:Reskin(inst)
+    local frame = inst.frame
     if not frame then return end
-    local c = cfg()
+    local c = cfg(inst)
 
     local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
     local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
@@ -626,7 +646,7 @@ function Castbar:Reskin()
     -- user-configured. Re-runs on every Ka0s_KickCD_GRID_LAYOUT so the
     -- bar tracks the grid as icons are added / removed / resized.
     if c.autoSize then
-        local gridFrame = resolveGridFrame()
+        local gridFrame = resolveGridFrame(inst)
         if gridFrame then
             if isVertical then
                 local h = gridFrame:GetHeight()
@@ -784,7 +804,7 @@ function Castbar:Reskin()
 
     -- Apply the secret-bool-driven alpha + name color now so a config
     -- change that arrives mid-cast picks up the new per-state values.
-    self:ApplyState()
+    self:ApplyState(inst)
 
     -- Per-cast texture / name re-paint is the responsibility of
     -- Castbar:RenderCast. OnConfigChanged calls RenderCast(current)
@@ -809,9 +829,10 @@ end
 ---                   secret-tainted numbers in combat — pass them
 ---                   directly as args to Blizzard C methods, never bind
 ---                   to Lua locals.
-function Castbar:RenderCast(rec)
+function Castbar:RenderCast(inst, rec)
+    local frame = inst.frame
     if not (frame and rec) then return end
-    local c = cfg()
+    local c = cfg(inst)
 
     -- name / texture may themselves be secret in combat for protected
     -- casts, but Texture:SetTexture / FontString:SetText accept secret
@@ -844,7 +865,7 @@ function Castbar:RenderCast(rec)
     end
 
     -- Per-state alpha + name color from the (possibly secret) notInterruptible.
-    self:ApplyState()
+    self:ApplyState(inst)
 end
 
 -- ---------------------------------------------------------------------------
@@ -890,10 +911,12 @@ end
 -- Per-frame work shrinks from ~6 method calls (2 SetMinMaxValues + 2
 -- SetValue + 1 SetFormattedText + 1 cfg() table lookup) to 2-3
 -- (SetValue × 2 + (conditional) SetFormattedText × 1).
-local function onUpdate(self)
+local function onUpdate(inst)
+    local frame   = inst.frame
+    local current = inst.current
     local d = current and current.duration
     if not d then
-        self:SetScript("OnUpdate", nil)
+        frame:SetScript("OnUpdate", nil)
         return
     end
 
@@ -923,16 +946,17 @@ end
 --- arg and returns the second or third value accordingly. The result may
 --- itself be tainted; we pass it directly to a Blizzard C method
 --- (SetAlpha / SetTextColor) without binding to a local.
-function Castbar:ApplyState()
+function Castbar:ApplyState(inst)
+    local frame = inst.frame
     if not frame then return end
-    local c        = cfg()
+    local c        = cfg(inst)
     local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
     local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
 
     local intBorderShow  = intCfg.borderShow   and 1 or 0
     local unintBorderShow = unintCfg.borderShow and 1 or 0
 
-    if not current then
+    if not inst.current then
         -- Preview / no-cast: show interruptible visuals; uninterruptible
         -- side is fully alpha=0.
         frame.bgInterruptible:SetAlpha(1)
@@ -949,7 +973,7 @@ function Castbar:ApplyState()
     -- Active cast. current.notInterruptible may be plain or secret. Pass
     -- it (and the per-channel color values) to C_CurveUtil; pipe each
     -- result straight into a Blizzard C method without binding.
-    local nint = current.notInterruptible
+    local nint = inst.current.notInterruptible
     local intName  = intCfg.nameTextColor   or { 1, 1, 1, 1 }
     local unintName = unintCfg.nameTextColor or { 1, 1, 1, 1 }
 
@@ -978,35 +1002,36 @@ function Castbar:ApplyState()
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[4] or 1, intName[4] or 1))
 end
 
-function Castbar:Start(rec)
-    if not rec then return self:Stop() end
+function Castbar:Start(inst, rec)
+    if not rec then return self:Stop(inst) end
     if not rec.duration then
         -- No CastingDuration object available — pre-12.0 client, or the API
         -- failed for some reason. We don't try to fake it; just skip.
-        return self:Stop()
+        return self:Stop(inst)
     end
-    self:EnsureFrame()
-    current = rec
+    self:EnsureFrame(inst)
+    inst.current = rec
     -- Cache showTime on the cast record so onUpdate doesn't have to hit
     -- the cfg() table every frame. Refreshed on Ka0s_KickCD_CONFIG_CHANGED via
     -- OnConfigChanged when the section is "castbar".
-    current.showTime = (cfg().showTime ~= false)
+    inst.current.showTime = (cfg(inst).showTime ~= false)
 
     -- CR-17: cast start no longer re-skins the bar. Reskin runs only on
     -- config flips / grid layout / profile change — the structural setup
     -- doesn't depend on the cast record. RenderCast does the cast-specific
     -- work (texture, name, seed bar values, ApplyState).
-    self:RenderCast(rec)
+    self:RenderCast(inst, rec)
 
-    if isVisible() then
-        frame:Show()
-        ApplyVisibilityMask(frame)
-        frame:SetScript("OnUpdate", onUpdate)
+    if isVisible(inst) then
+        inst.frame:Show()
+        ApplyVisibilityMask(inst.frame, inst.unit)
+        inst.frame:SetScript("OnUpdate", function() onUpdate(inst) end)
     end
 end
 
-function Castbar:Stop()
-    current = nil
+function Castbar:Stop(inst)
+    inst.current = nil
+    local frame = inst.frame
     if not frame then return end
     frame:SetScript("OnUpdate", nil)
     frame.bar.interruptible:SetValue(0)
@@ -1015,8 +1040,8 @@ function Castbar:Stop()
     -- Keep the preview visible while unlocked so the user can still drag
     -- the empty bar around. Otherwise hide it.
     local locked = NS.db and NS.db.profile and NS.db.profile.locked
-    if (not locked) and isVisible() then
-        self:ShowPreview()
+    if (not locked) and isVisible(inst) then
+        self:ShowPreview(inst)
     else
         frame:Hide()
     end
@@ -1031,18 +1056,20 @@ end
 --- preview-state branch on top — placeholder icon, label, fixed-mid-bar
 --- value. RenderCast is NOT used here because there's no real cast
 --- record (no duration object, no texture etc.).
-function Castbar:ShowPreview()
+function Castbar:ShowPreview(inst)
+    local frame = inst.frame
     if not frame then return end
-    self:Reskin()    -- runs ApplyState (no-cast branch → interruptible visuals)
-    if cfg().iconSize and cfg().iconSize > 0 then
+    self:Reskin(inst)    -- runs ApplyState (no-cast branch → interruptible visuals)
+    local c = cfg(inst)
+    if c.iconSize and c.iconSize > 0 then
         frame.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
-    if cfg().showName ~= false then
-        frame.nameText:SetText(truncateName(L["KickCD castbar"], cfg().nameTruncate))
+    if c.showName ~= false then
+        frame.nameText:SetText(truncateName(L["KickCD castbar"], c.nameTruncate))
     else
         frame.nameText:SetText("")
     end
-    if cfg().showTime ~= false then
+    if c.showTime ~= false then
         frame.timeText:SetText("0.0 / 0.0")
     else
         frame.timeText:SetText("")
@@ -1060,14 +1087,14 @@ function Castbar:ShowPreview()
     frame:SetAlpha(1)
 end
 
-function Castbar:Reevaluate()
-    if not UnitExists("target") then return self:Stop() end
-    if UnitIsDead and UnitIsDead("target") then return self:Stop() end
-    local rec = NS.Compat.GetCastingInfo("target")
+function Castbar:Reevaluate(inst)
+    if not UnitExists(inst.unit) then return self:Stop(inst) end
+    if UnitIsDead and UnitIsDead(inst.unit) then return self:Stop(inst) end
+    local rec = NS.Compat.GetCastingInfo(inst.unit)
     if rec then
-        self:Start(rec)
+        self:Start(inst, rec)
     else
-        self:Stop()
+        self:Stop(inst)
     end
 end
 
@@ -1075,32 +1102,23 @@ end
 -- Module lifecycle
 -- ---------------------------------------------------------------------------
 
-function Castbar:OnEnable()
-    -- Combat flag is owned by core/State.lua's bootstrap listener, so
-    -- this module no longer seeds it on enable.
-    self:EnsureFrame()
-    self:Reskin()
-    self:ApplyLock()
+-- Bring a unit's instance online: build + skin its frame, apply the lock,
+-- register the per-instance UNIT_SPELLCAST_* frames, and snap to any live cast.
+function Castbar:EnableUnit(unit)
+    local inst = self:GetInstance(unit)
+    self:EnsureFrame(inst)
+    self:Reskin(inst)
+    self:ApplyLock(inst)
 
-    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message
-    -- subscription below, not raw PLAYER_REGEN_* events. State owns
-    -- the only registration so the flag write and the visibility
-    -- refresh stay ordered by construction.
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
-
-    -- UNIT_SPELLCAST_* registrations go through Util.RegisterTargetEvent
-    -- so the dispatch frame fires only when the unit IS "target". With
-    -- vanilla RegisterEvent the handlers run for every party / raid /
-    -- nameplate cast and early-return inside; in a 25-player raid that's
-    -- thousands of no-op dispatches per minute. INTERRUPTIBLE /
-    -- NOT_INTERRUPTIBLE are dynamic mid-cast events (e.g. boss casts
-    -- that toggle interrupt-immunity via an aura); the initial value
-    -- still comes from UnitCastingInfo.notInterruptible captured in
-    -- Compat.GetCastingInfo. The returned frames are stashed on the
-    -- module so OnDisable can release them — AceEvent's
-    -- UnregisterAllEvents only knows about its own table.
-    self._targetEventFrames = self._targetEventFrames or {}
+    -- UNIT_SPELLCAST_* registrations go through Util.RegisterUnitCastEvent so
+    -- the dispatch frame fires only when the event unit IS this instance's unit
+    -- (vanilla RegisterEvent would run the handler for every party/raid/nameplate
+    -- cast and early-return — thousands of no-op dispatches per minute in a raid).
+    -- INTERRUPTIBLE / NOT_INTERRUPTIBLE are dynamic mid-cast events; the initial
+    -- value still comes from UnitCastingInfo.notInterruptible captured in
+    -- Compat.GetCastingInfo. The returned frames are stashed on the instance so
+    -- DisableUnit / OnDisable can release them — AceEvent's UnregisterAllEvents
+    -- only knows about its own table, not these frames.
     local Util = NS.Util
     local castEvents = {
         { "UNIT_SPELLCAST_START",             "OnCastStart"               },
@@ -1115,82 +1133,130 @@ function Castbar:OnEnable()
         { "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "OnInterruptibilityChanged" },
     }
     for _, e in ipairs(castEvents) do
-        self._targetEventFrames[#self._targetEventFrames + 1] =
-            Util.RegisterTargetEvent(self, e[1], e[2])
+        inst.eventFrames[#inst.eventFrames + 1] =
+            Util.RegisterUnitCastEvent(self, unit, e[1], e[2])
     end
+    inst.enabled = true
 
+    -- Snap to the unit's current state on enable in case we logged in staring
+    -- at a casting mob.
+    self:Reevaluate(inst)
+end
+
+-- Tear a unit's instance down: release its dispatch frames, stop any active
+-- cast, hide its bar. Used by OnDisable and (Phase 3) runtime enable-gating.
+function Castbar:DisableUnit(unit)
+    local inst = instances[unit]
+    if not inst then return end
+    for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
+    inst.eventFrames = {}
+    self:Stop(inst)
+    if inst.frame then inst.frame:Hide() end
+    inst.enabled = false
+end
+
+function Castbar:OnEnable()
+    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
+    -- owns the only PLAYER_REGEN_* registration, so the flag write and the
+    -- visibility refresh stay ordered by construction), not raw events here.
     self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
     self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
     self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
 
-    -- Snap to the current target's state on enable in case we logged in
-    -- staring at a casting mob.
-    self:Reevaluate()
+    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+
+    -- The two GLOBAL unit-change events register at MODULE level via plain
+    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
+    -- Each handler re-evaluates only its own unit's instance if live.
+    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
+    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+
+    -- Bring every enabled unit online. Focus defaults disabled, so only the
+    -- target instance enables here and behavior matches the former singleton.
+    for _, u in ipairs(NS.Units.LIST) do
+        if NS.Units.IsEnabled(u) then self:EnableUnit(u) end
+    end
 end
 
 function Castbar:OnDisable()
-    self:UnregisterAllEvents()
     self:UnregisterAllMessages()
-    if self._targetEventFrames then
-        for _, f in ipairs(self._targetEventFrames) do
-            f:UnregisterAllEvents()
-        end
-        self._targetEventFrames = {}
+    self:UnregisterAllEvents()
+    for _, u in ipairs(NS.Units.LIST) do
+        self:DisableUnit(u)
     end
-    self:Stop()
 end
 
 -- ---------------------------------------------------------------------------
 -- Event handlers
 -- ---------------------------------------------------------------------------
 
+--- PLAYER_TARGET_CHANGED handler. A target swap requires re-evaluating the
+--- target bar's cast state. A disabled / absent target instance is a no-op.
 function Castbar:OnTargetChanged()
-    self:Reevaluate()
+    local inst = instances["target"]
+    if inst and inst.enabled then self:Reevaluate(inst) end
 end
 
--- Re-evaluate the bar on combat-state transitions so it shows / hides
--- as the visibility mode dictates. In "in_combat" mode entering combat
--- reveals the bar (if a target cast is ongoing), and leaving combat
--- tears it down even if the cast continues. The combat flag itself is
--- owned by core/State.lua's bootstrap listener; this handler runs
--- only for its side effect (Reevaluate / Stop). Payload carries
--- `inCombat` but isVisible() reads State.inCombat directly so we
+--- PLAYER_FOCUS_CHANGED handler — the focus-unit equivalent of
+--- OnTargetChanged. Focus defaults disabled, so this is a no-op until the
+--- focus instance is enabled (Phase 3).
+function Castbar:OnFocusChanged()
+    local inst = instances["focus"]
+    if inst and inst.enabled then self:Reevaluate(inst) end
+end
+
+-- Re-evaluate every live bar on combat-state transitions so each shows / hides
+-- as the visibility mode dictates. In "in_combat" mode entering combat reveals
+-- the bar (if a cast is ongoing), and leaving combat tears it down even if the
+-- cast continues. The combat flag itself is owned by core/State.lua's bootstrap
+-- listener; this handler runs only for its side effect (Reevaluate / Stop).
+-- Payload carries `inCombat` but isVisible() reads State.inCombat directly so we
 -- ignore it here.
 function Castbar:OnCombatStateChanged()
-    if isVisible() then
-        self:Reevaluate()
-    else
-        self:Stop()
-    end
+    forEachEnabled(function(inst)
+        if isVisible(inst) then
+            self:Reevaluate(inst)
+        else
+            self:Stop(inst)
+        end
+    end)
 end
 
 function Castbar:OnPlayerEnteringWorld()
-    self:Reevaluate()
+    forEachEnabled(function(inst)
+        self:Reevaluate(inst)
+    end)
 end
 
--- Cast / channel / interruptibility handlers below trust that `unit` is
--- "target" — the unit filter lives in the registration site
--- (Util.RegisterTargetEvent in OnEnable), so the explicit early-return
--- check is no longer needed in each handler.
+-- Cast / channel / interruptibility handlers receive (self, event, unit) from
+-- the per-instance dispatch frame (already filtered to the instance's unit).
+-- Each resolves instances[unit]; a dispatch for a dead instance is a no-op.
 
-function Castbar:OnCastStart()
-    if not isVisible() then return end
-    local rec = NS.Compat.GetCastingInfo("target")
-    if rec then self:Start(rec) end
+function Castbar:OnCastStart(_event, unit)
+    local inst = instances[unit]
+    if inst and isVisible(inst) then
+        local rec = NS.Compat.GetCastingInfo(inst.unit)
+        if rec then self:Start(inst, rec) end
+    end
 end
 
-function Castbar:OnChannelStart()
-    if not isVisible() then return end
-    local rec = NS.Compat.GetChannelInfo("target")
-    if rec then self:Start(rec) end
+function Castbar:OnChannelStart(_event, unit)
+    local inst = instances[unit]
+    if inst and isVisible(inst) then
+        local rec = NS.Compat.GetChannelInfo(inst.unit)
+        if rec then self:Start(inst, rec) end
+    end
 end
 
-function Castbar:OnCastStop()
-    self:Stop()
+function Castbar:OnCastStop(_event, unit)
+    local inst = instances[unit]
+    if inst then self:Stop(inst) end
 end
 
-function Castbar:OnInterruptibilityChanged(evt)
+function Castbar:OnInterruptibilityChanged(evt, unit)
+    local inst = instances[unit]
+    if not inst then return end
     -- evt is "UNIT_SPELLCAST_NOT_INTERRUPTIBLE" when the cast just became
     -- uninterruptible, "UNIT_SPELLCAST_INTERRUPTIBLE" when it just became
     -- interruptible. Update the record's bool and re-apply per-state visuals.
@@ -1205,9 +1271,9 @@ function Castbar:OnInterruptibilityChanged(evt)
     -- and secret) so this swap is safe in either direction. See
     -- docs/castbar.md and docs/midnight-quirks.md "Plain-after-flip
     -- invariant" for the full rationale.
-    if current then
-        current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
-        self:ApplyState()
+    if inst.current then
+        inst.current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+        self:ApplyState(inst)
     end
     -- For the "target_casting_interruptible" mode the bar STAYS shown for
     -- any hostile cast (so we can hand the secret-tainted notInterruptible
@@ -1215,40 +1281,41 @@ function Castbar:OnInterruptibilityChanged(evt)
     -- only thing that needs to happen when the flag flips. Falling back
     -- to Stop/Reevaluate here would race with the cast lifecycle and
     -- reorder the very Show that the alpha mask depends on.
-    if isVisible() then
-        if not current then
-            self:Reevaluate()
+    if isVisible(inst) then
+        if not inst.current then
+            self:Reevaluate(inst)
         else
-            ApplyVisibilityMask(frame)
+            ApplyVisibilityMask(inst.frame, inst.unit)
         end
     else
-        self:Stop()
+        self:Stop(inst)
     end
 end
 
-function Castbar:OnCastDelayed()
-    if not current then return end
+function Castbar:OnCastDelayed(_event, unit)
+    local inst = instances[unit]
+    if not (inst and inst.current) then return end
     -- Re-query so the timeline reflects the pushback / haste change.
     -- notInterruptible could in principle change too (e.g. an aura that
     -- toggles interruptibility mid-cast), so re-apply the per-state
     -- visuals as well.
-    local rec = NS.Compat.GetCastingInfo("target")
+    local rec = NS.Compat.GetCastingInfo(inst.unit)
     if rec then
-        current = rec
+        inst.current = rec
         -- Re-cache showTime: the user may have toggled it between the
         -- cast starting and the delay event. (CR-10: onUpdate reads
         -- current.showTime, not cfg().showTime.)
-        current.showTime = (cfg().showTime ~= false)
+        inst.current.showTime = (cfg(inst).showTime ~= false)
         -- The duration object's total duration just changed (pushback /
         -- haste / channel pulse re-time). Re-set both StatusBars' ranges
         -- here so onUpdate doesn't have to do it every frame. Pass the
         -- duration method straight to the C method — secret-safe.
         local d = rec.duration
-        if d and frame then
-            frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
-            frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
+        if d and inst.frame then
+            inst.frame.bar.interruptible:SetMinMaxValues(0, d:GetTotalDuration())
+            inst.frame.bar.uninterruptible:SetMinMaxValues(0, d:GetTotalDuration())
         end
-        self:ApplyState()
+        self:ApplyState(inst)
     end
 end
 
@@ -1259,121 +1326,124 @@ end
 function Castbar:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
     if section == "castbar" then
-        -- Anchor mode + offsets and orientation/grow may have changed; apply
-        -- both before reskin so Reskin sees the right frame size when
-        -- it computes auto-size and child anchors.
-        self:ApplyAnchor()
-        self:Reskin()
-        if current then
-            -- Refresh the per-cast-record showTime cache so onUpdate's hot
-            -- path picks up a config flip mid-cast (CR-10).
-            current.showTime = (cfg().showTime ~= false)
-            -- Re-paint the per-cast texture / name so structural changes
-            -- (iconSize toggle, nameTruncate change, ...) take effect
-            -- immediately without waiting for the next cast (CR-17).
-            self:RenderCast(current)
-        end
-        if not isVisible() then
-            self:Stop()
-        else
-            -- castbar.enabled may have just flipped from false → true; pick
-            -- up an in-progress cast so the bar appears immediately.
-            if not current then self:Reevaluate() end
-            self:ApplyLock()
-        end
+        forEachEnabled(function(inst)
+            -- Anchor mode + offsets and orientation/grow may have changed;
+            -- apply both before reskin so Reskin sees the right frame size
+            -- when it computes auto-size and child anchors.
+            self:ApplyAnchor(inst)
+            self:Reskin(inst)
+            if inst.current then
+                -- Refresh the per-cast-record showTime cache so onUpdate's hot
+                -- path picks up a config flip mid-cast (CR-10).
+                inst.current.showTime = (cfg(inst).showTime ~= false)
+                -- Re-paint the per-cast texture / name so structural changes
+                -- (iconSize toggle, nameTruncate change, ...) take effect
+                -- immediately without waiting for the next cast (CR-17).
+                self:RenderCast(inst, inst.current)
+            end
+            if not isVisible(inst) then
+                self:Stop(inst)
+            else
+                -- castbar.enabled may have just flipped from false → true; pick
+                -- up an in-progress cast so the bar appears immediately.
+                if not inst.current then self:Reevaluate(inst) end
+                self:ApplyLock(inst)
+            end
+        end)
     elseif section == "general" then
         -- Master enable / lock flag may have flipped.
-        self:ApplyLock()
-        if not isVisible() then
-            self:Stop()
-        else
-            self:Reevaluate()
-        end
+        forEachEnabled(function(inst)
+            self:ApplyLock(inst)
+            if not isVisible(inst) then
+                self:Stop(inst)
+            else
+                self:Reevaluate(inst)
+            end
+        end)
     end
 end
 
 function Castbar:OnProfileChanged()
-    self:ApplyAnchor()
-    self:Reskin()
-    if current then self:RenderCast(current) end
-    self:ApplyLock()
-    if isVisible() then self:Reevaluate() else self:Stop() end
+    forEachEnabled(function(inst)
+        self:ApplyAnchor(inst)
+        self:Reskin(inst)
+        if inst.current then self:RenderCast(inst, inst.current) end
+        self:ApplyLock(inst)
+        if isVisible(inst) then self:Reevaluate(inst) else self:Stop(inst) end
+    end)
 end
 
---- Fired by IconGrid after every Layout()/BuildActiveList() pass. The grid
---- frame may have resized (auto-size needs to track) and the primary icon
---- button reference may have changed (PRIMARY anchor mode needs to retarget).
----
---- Payload shape (CR-29):
----   { gridFrame = <Frame>, primaryIcon = <Button|nil>,
----     width = <number>, height = <number> }
---- Older senders broadcast `{}`; we cope by falling back to the public
---- accessors `KickCD:GetModule("IconGrid", true):GetGridFrame()` /
---- `:GetPrimaryIcon()` via resolveGridFrame / resolvePrimaryIcon. The
---- accessor fallback also handles the FIRST tick after enable when no
---- Ka0s_KickCD_GRID_LAYOUT has fired yet.
+--- Fired by IconGrid after every Layout()/BuildActiveList() pass. Payload shape
+--- (CR-29): { unit, gridFrame, primaryIcon (Button|nil), width, height }. The
+--- grid frame may have resized (auto-size tracks it) and the primary icon ref
+--- may have changed (PRIMARY anchor retargets). The resolveGridFrame /
+--- resolvePrimaryIcon accessor fallback covers the first tick / empty payloads.
 function Castbar:OnGridLayout(_evt, payload)
-    if not frame then return end
+    -- Filter by unit: the payload names which grid re-laid out. A focus grid's
+    -- layout must NOT overwrite the target bar's cached grid refs.
+    if type(payload) ~= "table" or not payload.unit then return end
+    local inst = instances[payload.unit]
+    if not (inst and inst.frame) then return end
+
     -- Cache the payload's references for ApplyAnchor / Reskin.
     -- Defensive: only cache when the field is actually populated, so an
-    -- empty `{}` from the legacy sender doesn't blank the cache.
-    if type(payload) == "table" then
-        if payload.gridFrame   ~= nil then lastGridLayout.gridFrame   = payload.gridFrame   end
-        if payload.primaryIcon ~= nil then lastGridLayout.primaryIcon = payload.primaryIcon end
-    end
+    -- empty payload doesn't blank the cache.
+    if payload.gridFrame   ~= nil then inst.lastGridLayout.gridFrame   = payload.gridFrame   end
+    if payload.primaryIcon ~= nil then inst.lastGridLayout.primaryIcon = payload.primaryIcon end
 
-    local c = cfg()
+    local c = cfg(inst)
     -- PRIMARY mode: re-target the primary icon button (which may have been
     -- released to pool and a new one acquired).
     if c.anchorMode == "PRIMARY" then
-        self:ApplyAnchor()
+        self:ApplyAnchor(inst)
     end
     -- Auto-size: re-run Reskin so the bar's dimensions track the grid's
     -- current footprint. Skip the no-op Reskin when auto-size is off.
     -- If a cast is active, RenderCast picks up the new dimensions for the
     -- texture / bar values that the new structural layout exposes.
     if c.autoSize then
-        self:Reskin()
-        if current then self:RenderCast(current) end
+        self:Reskin(inst)
+        if inst.current then self:RenderCast(inst, inst.current) end
     end
 end
 
---- Print diagnostic info about the current target's cast and what the
+--- Print diagnostic info about `unit`'s cast (default "target") and what the
 --- bar's logic decided about interruptibility. Wired to /kcd debug castbar.
 --- Does NOT call tostring or format on notInterruptible / spellID / name —
 --- those may be secret in combat. Uses tostring(type(...)) / boolean
 --- branching with `not not` to avoid arithmetic on secrets.
-function Castbar:DebugDump()
+function Castbar:DebugDump(unit)
+    local inst = self:GetInstance(unit or "target")
     local print = NS.Util and NS.Util.print or _G.print
-    print("castbar state:")
+    print("castbar state (" .. inst.unit .. "):")
 
-    if not UnitExists("target") then
-        print("  no target")
+    if not UnitExists(inst.unit) then
+        print("  no " .. inst.unit)
         return
     end
-    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", "target")
-    print("  target = " .. (UnitName("target") or "?")
-        .. ", isUnit="    .. (UnitIsUnit("target", "player") and "self" or "other")
+    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", inst.unit)
+    print("  " .. inst.unit .. " = " .. (UnitName(inst.unit) or "?")
+        .. ", isUnit="    .. (UnitIsUnit(inst.unit, "player") and "self" or "other")
         .. ", canAttack=" .. tostring(canAttack and true or false))
 
-    if not current then
+    if not inst.current then
         print("  no active cast tracked (current = nil)")
-        local rec = NS.Compat.GetCastingInfo("target")
+        local rec = NS.Compat.GetCastingInfo(inst.unit)
         if rec then
             print("  but Compat.GetCastingInfo returned a record — debug a missed event?")
         end
         return
     end
 
-    print("  current.isChannel = " .. tostring(current.isChannel))
+    print("  current.isChannel = " .. tostring(inst.current.isChannel))
     -- Don't tostring/format secret values. Use type() and a curve eval to
     -- safely report the boolean state without arithmetic on a secret.
-    local nintType = type(current.notInterruptible)
+    local nintType = type(inst.current.notInterruptible)
     print("  current.notInterruptible: type=" .. nintType
-        .. ", isSecret=" .. tostring(_G.issecretvalue and _G.issecretvalue(current.notInterruptible) or false))
+        .. ", isSecret=" .. tostring(_G.issecretvalue and _G.issecretvalue(inst.current.notInterruptible) or false))
     if nintType == "boolean" then
         -- Plain boolean — safe to tostring.
-        print("    plain value = " .. tostring(current.notInterruptible))
+        print("    plain value = " .. tostring(inst.current.notInterruptible))
     elseif nintType == "nil" then
         print("    plain nil (treated as interruptible)")
     else
@@ -1385,22 +1455,22 @@ function Castbar:DebugDump()
                 .. "C_CurveUtil.EvaluateColorValueFromBoolean")
         end
     end
-    print("  duration: " .. (current.duration and "present" or "nil"))
-    print("  texture:  type=" .. type(current.texture))
-    print("  spellID:  type=" .. type(current.spellID))
-    print("  name:     type=" .. type(current.name))
+    print("  duration: " .. (inst.current.duration and "present" or "nil"))
+    print("  texture:  type=" .. type(inst.current.texture))
+    print("  spellID:  type=" .. type(inst.current.spellID))
+    print("  name:     type=" .. type(inst.current.name))
 
-    -- Configured per-state colors as actually read from the live db.profile.
-    -- Useful for verifying that color-picker writes are persisting and that
-    -- Reskin sees the updated values.
+    -- Configured per-state colors as actually read from the live profile
+    -- (link-resolved via NS.Units.Castbar). Useful for verifying that
+    -- color-picker writes are persisting and that Reskin sees the updates.
     local function fmtColor(c)
         if type(c) ~= "table" then return "(missing)" end
         return ("{%.2f, %.2f, %.2f, %.2f}"):format(
             c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
     end
-    local cfg = NS.db and NS.db.profile and NS.db.profile.castbar or {}
-    local intCfg = cfg.interruptible   or {}
-    local nintCfg = cfg.uninterruptible or {}
+    local castCfg = cfg(inst)
+    local intCfg = castCfg.interruptible   or {}
+    local nintCfg = castCfg.uninterruptible or {}
     print("  configured colors:")
     print("    interruptible   bar="    .. fmtColor(intCfg.barColor)
         .. " border=" .. fmtColor(intCfg.borderColor)
@@ -1416,8 +1486,9 @@ function Castbar:DebugDump()
         return ("{%.2f, %.2f, %.2f, %.2f}"):format(r or 0, g or 0, b or 0, a or 1)
     end
     print("  live SetStatusBarColor:")
-    print("    interruptible   = " .. fmtStatusColor(frame and frame.bar and frame.bar.interruptible))
-    print("    uninterruptible = " .. fmtStatusColor(frame and frame.bar and frame.bar.uninterruptible))
+    local f = inst.frame
+    print("    interruptible   = " .. fmtStatusColor(f and f.bar and f.bar.interruptible))
+    print("    uninterruptible = " .. fmtStatusColor(f and f.bar and f.bar.uninterruptible))
 end
 
 -- Expose for /kcd debug + future tooling.
