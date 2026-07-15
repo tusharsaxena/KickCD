@@ -2,6 +2,7 @@
 
 ![wow](https://img.shields.io/badge/WoW-Midnight_12.0.7-orange)
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
+![tests](https://img.shields.io/badge/tests-62%2F62_passing-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![Ka0s Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-blueviolet)](https://github.com/tusharsaxena/WowAddonStandards)
 
@@ -160,7 +161,7 @@ All bugs, feature requests, and outstanding work are tracked at [https://github.
 
 ## Testing
 
-Automated checks run headless: a Lua unit harness (`lua tests/run.lua`, exits non-zero on any failure) plus `luacheck .` (0 errors). The harness can't render frames or model taint, so the end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run both before tagging a release or after refreshing libs / bumping `## Interface:`.
+Automated checks run headless: a Lua unit harness (`lua tests/run.lua`, exits non-zero on any failure) plus `luacheck .` (0 errors). The full per-suite test-case inventory — and the authoritative pass/total count behind the `tests` badge above — is generated at [docs/test-cases.md](docs/test-cases.md) (`lua tests/run.lua --list`). The harness can't render frames or model taint, so the end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run both before tagging a release or after refreshing libs / bumping `## Interface:`.
 
 ## Version History
 

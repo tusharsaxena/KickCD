@@ -25,6 +25,7 @@ User-facing reference: [README.md](../README.md). Design overview + invariants: 
 - **Never `setmetatable(frame, t)` on a Blizzard widget.** Frame methods live on the C-side metatable; replacing it nils them. Use `Mixin(frame, t)` instead. See [docs/midnight-quirks.md](midnight-quirks.md#frame-mixin-pattern).
 - **Chat output goes through `Util.print`.** Never call the global `print` directly and never write your own `|cff…KickCD|r:` prefix. `Util.print` prepends the single shared `NS.PREFIX` chat tag (a cyan `[KCD]` banner, defined once in `core/Constants.lua`); passing your own prefix produces a double banner. The help printers in `core/KickCD.lua` are the only callers that color anything else.
 - **Debug logging is not chat.** Debug is a session-only flag `NS.State.debug` (never persisted); the `NS.Debug(tag, …)` sink routes to the on-screen console in `modules/DebugLog.lua`, not to chat via `Util.print`.
+- **Keep the test inventory & badge in lockstep with the suite.** When the suite changes — a case added, removed, or renamed, or the pass count moves (i.e. whenever a failing test is resolved) — regenerate `docs/test-cases.md` via `lua tests/run.lua --list > docs/test-cases.md` **and** update the README `tests-X/Y_passing` badge count in the **same change**, never as a follow-up (Ka0s WoW Addon Standard, testing-§5). Verify with `diff <(lua tests/run.lua --list) docs/test-cases.md`. See [docs/testing.md](testing.md#keeping-the-inventory--badge-in-sync).
 
 ## Module publishing pattern
 
