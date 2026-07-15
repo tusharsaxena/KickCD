@@ -388,11 +388,13 @@ function Helpers.CreatePanel(name, title, opts)
         refreshers  = {},
         lastGroup   = nil,
         panelKey    = opts.panelKey,
-        -- Selected unit for per-unit schema panels (Icons / Castbar). Panels
-        -- that don't render a unit selector (General, Spells, Profiles)
-        -- never read this — SchemaForPanel(panelKey) with no unit arg
-        -- returns rows for every unit regardless.
-        unit        = "target",
+        -- Selected unit for per-unit schema panels (Icons / Castbar). Left
+        -- nil here on purpose: panels without a unit selector (General,
+        -- Spells, Profiles) must render rows for every unit, and
+        -- RenderSchema passes ctx.unit straight into SchemaForPanel, where
+        -- unit == nil is what makes that "all units" match happen. Only
+        -- Helpers.RenderUnitPanel (Icons / Castbar) defaults ctx.unit to
+        -- "target", right before it draws the selector.
     }
     NS.Settings._panels[#NS.Settings._panels + 1] = ctx
     return ctx
@@ -1025,7 +1027,7 @@ local ROW_VSPACER = 8
 -- room. afterGroup callbacks (e.g. inline action buttons) fire after
 -- the in-progress row is flushed, so they always start on a fresh line.
 function Helpers.RenderSchema(ctx, panelKey, afterGroup)
-    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit or "target")
+    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
     local scroll = ensureScroll(ctx)
     local pendingRow, pendingCount = nil, 0
 
@@ -1126,6 +1128,7 @@ end
 -- a persistent widget, and far simpler to reason about than partially
 -- clearing around a surviving header row.
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+    ctx.unit = ctx.unit or "target"
     Helpers.ClearScroll(ctx)
     local scroll = ensureScroll(ctx)
 
