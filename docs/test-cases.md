@@ -92,10 +92,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 - OnProfileChanged logs a [Profile] line
 
-### test_list_mode.lua (4)
+### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
 - --list stdout is inventory-only, no run output
+- --list emits CRLF line endings (matches the repo eol=crlf policy)
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
@@ -114,5 +115,5 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_cooldowns.lua | 5 |
 | test_settings_log.lua | 2 |
 | test_flow_traces.lua | 1 |
-| test_list_mode.lua | 4 |
-| **Total** | **61** |
+| test_list_mode.lua | 5 |
+| **Total** | **62** |

@@ -33,6 +33,15 @@ test("--list stdout is inventory-only, no run output", function()
         "list mode must not print the run tail")
 end)
 
+test("--list emits CRLF line endings (matches the repo eol=crlf policy)", function()
+    local out = listOutput()
+    -- The inventory is redirected straight into docs/test-cases.md, which the
+    -- repo stores/checks-out as CRLF; the generator must emit CRLF so the
+    -- standard's `diff <(--list) docs/test-cases.md` stays clean on checkout.
+    assertTrue(out:find("\r\n", 1, true), "inventory must use CRLF line endings")
+    assertTrue(not out:find("[^\r]\n"), "every newline must be preceded by a CR")
+end)
+
 test("--list per-suite header counts match their bullet counts", function()
     local out = listOutput()
     local seen = 0

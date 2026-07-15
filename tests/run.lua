@@ -172,7 +172,10 @@ local function renderInventory()
     end
     out[#out + 1] = ("| **Total** | **%d** |"):format(total)
     out[#out + 1] = ""
-    return table.concat(out, "\n")
+    -- CRLF to match the repo-wide `eol=crlf` policy (.gitattributes): the body
+    -- is redirected straight into docs/test-cases.md, which is stored/checked
+    -- out as CRLF, so `diff <(--list) docs/test-cases.md` stays clean.
+    return table.concat(out, "\r\n")
 end
 
 if not listMode then
