@@ -39,3 +39,21 @@ test("Helpers.Set formats an RGBA table compactly", function()
     inst.mocks.__flushTimers()
     assertTrue(NS.DebugLog:FindLine("{1,0.5,0,1}"), "RGBA renders as {r,g,b,a}")
 end)
+
+test("ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)", function()
+    local inst = T.load(true)
+    local NS = inst.NS
+    local Helpers = NS.Settings.Helpers
+
+    -- Simulate the user having dragged the target grid away from default.
+    NS.db.profile.units.target.anchors.icons = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 400, y = -300 }
+
+    Helpers.ResetIconPosition()
+
+    local d = NS.DEFAULT_PROFILE.units.target.anchors.icons
+    local a = NS.db.profile.units.target.anchors.icons
+    assertEqual(a.point, d.point, "point restored to default")
+    assertEqual(a.relativePoint, d.relativePoint, "relativePoint restored to default")
+    assertEqual(a.x, d.x, "x restored to default")
+    assertEqual(a.y, d.y, "y restored to default")
+end)

@@ -388,6 +388,11 @@ function Helpers.CreatePanel(name, title, opts)
         refreshers  = {},
         lastGroup   = nil,
         panelKey    = opts.panelKey,
+        -- Selected unit for per-unit schema panels (Icons / Castbar). Panels
+        -- that don't render a unit selector (General, Spells, Profiles)
+        -- never read this — SchemaForPanel(panelKey) with no unit arg
+        -- returns rows for every unit regardless.
+        unit        = "target",
     }
     NS.Settings._panels[#NS.Settings._panels + 1] = ctx
     return ctx
@@ -596,6 +601,12 @@ local function ensureScroll(ctx)
     return scroll
 end
 
+-- Exposed so per-unit panel builders (Icons / Castbar) can add a
+-- persistent header (unit selector, focus link/copy row) directly to the
+-- panel's AceGUI scroll container ahead of the schema-driven body — see
+-- Helpers.ClearScroll / Helpers.RerenderUnitPanel below.
+Helpers.EnsureScroll = ensureScroll
+
 local function fireOnChange(def, value)
     if def.onChange then
         local ok, err = pcall(def.onChange, value)
@@ -630,6 +641,11 @@ local function addSpacer(scroll, height)
     sp:SetHeight(height)
     scroll:AddChild(sp)
 end
+
+-- Exposed alongside Helpers.EnsureScroll for the same reason — per-unit
+-- panel headers (unit selector, focus link/copy row) want the same
+-- breathing-room spacer the schema renderer uses between rows.
+Helpers.AddSpacer = addSpacer
 
 function Helpers.Section(ctx, label)
     local scroll = ensureScroll(ctx)
@@ -797,6 +813,33 @@ local function makeDropdown(ctx, def, parent, relativeWidth)
     return dd
 end
 
+-- Free-text string widget — used by schema rows with type="string" and no
+-- `values` list (e.g. a unit's label.text). Unlike the sliders/checkboxes
+-- above, which commit on every drag/click, this commits on Enter/focus-
+-- loss (AceGUI EditBox's OnEnterPressed) so a half-typed label never
+-- writes a partial string to db.profile.
+local function makeEditBox(ctx, def, parent, relativeWidth)
+    parent = parent or ensureScroll(ctx)
+    local eb = AceGUI:Create("EditBox")
+    eb:SetLabel(def.label or def.path)
+    applyWidth(eb, relativeWidth)
+    eb:SetText(Helpers.Get(def.path) or "")
+
+    local function refresh()
+        eb:SetText(Helpers.Get(def.path) or "")
+    end
+
+    eb:SetCallback("OnEnterPressed", function(_, _, text)
+        Helpers.Set(def.path, def.section, text)
+        fireOnChange(def, text)
+    end)
+
+    attachTooltip(eb, def.label, def.tooltip)
+    parent:AddChild(eb)
+    ctx.refreshers[#ctx.refreshers + 1] = refresh
+    return eb
+end
+
 local function makeColorPicker(ctx, def, parent, relativeWidth)
     parent = parent or ensureScroll(ctx)
     local cp = AceGUI:Create("ColorPicker")
@@ -856,7 +899,12 @@ end
 function Helpers.RenderField(ctx, def, parent, relativeWidth)
     if def.type == "bool"   then return makeCheckbox(ctx, def, parent, relativeWidth)    end
     if def.type == "number" then return makeSlider(ctx, def, parent, relativeWidth)      end
-    if def.type == "string" then return makeDropdown(ctx, def, parent, relativeWidth)    end
+    if def.type == "string" then
+        -- Free-text rows (no `values` list, e.g. a unit's label.text) get
+        -- an EditBox; every other string row is a fixed-choice Dropdown.
+        if def.values then return makeDropdown(ctx, def, parent, relativeWidth) end
+        return makeEditBox(ctx, def, parent, relativeWidth)
+    end
     if def.type == "color"  then return makeColorPicker(ctx, def, parent, relativeWidth) end
 end
 
@@ -1034,6 +1082,123 @@ function Helpers.RenderSchema(ctx, panelKey, afterGroup)
     if scroll.DoLayout then scroll:DoLayout() end
 end
 
+-- Release every AceGUI child out of ctx.scroll (if it's been created yet)
+-- and reset the section-heading tracker, so the next Helpers.Section call
+-- starts a fresh group instead of treating the first re-rendered row as a
+-- continuation of whatever group was last drawn. Reuses the SAME
+-- ScrollFrame instance rather than releasing/recreating it — AceGUI's
+-- ReleaseChildren only tears down the children, not the container.
+--
+-- Building block for Helpers.RerenderUnitPanel below, and for the Icons /
+-- Castbar builders, which need this same clear step ahead of a persistent
+-- header (unit selector, focus link/copy row) they redraw on every unit
+-- switch — see settings/Icons.lua / settings/Castbar.lua.
+function Helpers.ClearScroll(ctx)
+    if ctx.scroll and ctx.scroll.ReleaseChildren then
+        ctx.scroll:ReleaseChildren()
+    end
+    ctx.lastGroup = nil
+end
+
+-- Re-render a per-unit schema panel (Icons / Castbar) after the unit
+-- selector switches ctx.unit: clears the panel's scroll frame (via
+-- Helpers.ClearScroll) and re-runs RenderSchema, which re-filters
+-- SchemaForPanel(panelKey, ctx.unit) for the newly-selected unit.
+function Helpers.RerenderUnitPanel(ctx, panelKey, afterGroup)
+    Helpers.ClearScroll(ctx)
+    Helpers.RenderSchema(ctx, panelKey, afterGroup)
+end
+
+-- ---------------------------------------------------------------------
+-- Per-unit panel header — unit selector + focus link/copy row (Task 8).
+-- Shared by the Icons and Castbar builders, which are otherwise
+-- pure-schema panels; this is the one bit of hand-built AceGUI markup
+-- both need, so it lives here once rather than being duplicated.
+-- ---------------------------------------------------------------------
+--
+-- Full rebuild on every call rather than a "persistent, never-released"
+-- header widget: ensureScroll's ScrollFrame anchors flush to ctx.body, so
+-- there's no free real estate above it to park a truly persistent
+-- dropdown without further surgery on that anchor. AceGUI's widget pool
+-- exists exactly to make release-and-recreate cheap and safe, so each
+-- call here clears ctx.scroll and rebuilds the selector (and, for Focus,
+-- the link checkbox + copy button) from scratch — visually identical to
+-- a persistent widget, and far simpler to reason about than partially
+-- clearing around a surviving header row.
+function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+    Helpers.ClearScroll(ctx)
+    local scroll = ensureScroll(ctx)
+
+    -- Unit selector -----------------------------------------------------
+    local dd = AceGUI:Create("Dropdown")
+    dd:SetLabel(L["Unit"])
+    dd:SetFullWidth(true)
+    local items, order = {}, {}
+    for i, u in ipairs(NS.Units.LIST) do
+        items[u] = (u == "target") and L["Target"] or L["Focus"]
+        order[i] = u
+    end
+    dd:SetList(items, order)
+    dd:SetValue(ctx.unit)
+    dd:SetCallback("OnValueChanged", function(_, _, value)
+        ctx.unit = value
+        Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+    end)
+    scroll:AddChild(dd)
+    addSpacer(scroll, ROW_VSPACER)
+
+    -- Focus link + copy header ------------------------------------------
+    if ctx.unit == "focus" then
+        local cfg = NS.Units.Config("focus")
+        local linked = cfg ~= nil and cfg.link == true
+
+        local row = AceGUI:Create("SimpleGroup")
+        row:SetLayout("Flow")
+        row:SetFullWidth(true)
+
+        local cb = AceGUI:Create("CheckBox")
+        cb:SetLabel(L["Use same styling as Target"])
+        cb:SetRelativeWidth(0.5)
+        cb:SetValue(linked)
+        cb:SetCallback("OnValueChanged", function(_, _, value)
+            local c = NS.Units.Config("focus")
+            if c then c.link = value and true or false end
+            Helpers.FireConfigChanged("units")
+            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+        end)
+        row:AddChild(cb)
+
+        local btn = AceGUI:Create("Button")
+        btn:SetText(L["Copy styling from Target"])
+        btn:SetRelativeWidth(0.5)
+        btn:SetCallback("OnClick", function()
+            NS.Units.CopyStyling("target", "focus")
+            Helpers.FireConfigChanged("units")
+            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+        end)
+        row:AddChild(btn)
+
+        scroll:AddChild(row)
+        addSpacer(scroll, ROW_VSPACER)
+
+        if linked then
+            -- Editable-but-ignored widgets are worse than no widgets: while
+            -- linked, Focus renders with Target's icons/castbar tables
+            -- verbatim (NS.Units.Icons/Castbar), so any schema row we'd
+            -- draw here would silently write to a table nothing reads.
+            -- Skip the body and say so instead.
+            local note = AceGUI:Create("Label")
+            note:SetFullWidth(true)
+            note:SetText(L["Linked to Target — uncheck to customize."])
+            scroll:AddChild(note)
+            if scroll.DoLayout then scroll:DoLayout() end
+            return
+        end
+    end
+
+    Helpers.RenderSchema(ctx, panelKey, afterGroup)
+end
+
 -- Refresh every widget on every panel ctx — called after a slash-cmd
 -- /kcd set so an open panel reflects the new value immediately.
 function Helpers.RefreshAllPanels()
@@ -1113,23 +1278,36 @@ function Helpers.SetAndRefresh(path, value)
     return true
 end
 
--- Restore the icon grid to its default screen position and notify the
--- icon module so it re-anchors immediately. Used by the General tab's
--- "Reset position" button and the `/kcd resetposition` slash command.
--- The default coords come from KickCD.DEFAULT_PROFILE.anchors.icons so
--- we don't duplicate magic numbers across UI / CLI / Database layers.
+-- Restore the TARGET icon grid to its default screen position and notify
+-- the icon module so it re-anchors immediately. Used by the General tab's
+-- "Reset position" button and the `/kcd resetposition` slash command —
+-- both are legacy "reset the grid" affordances that predate Focus (Task
+-- 8), so they deliberately only touch Target; a Focus position reset is
+-- out of scope here (Focus already gets its own screen offset from
+-- DEFAULT_PROFILE so the two grids don't overlap on first enable).
+--
+-- The default coords come from KickCD.DEFAULT_PROFILE.units.target.
+-- anchors.icons so we don't duplicate magic numbers across UI / CLI /
+-- Database layers. (Task 1 moved anchors from the profile's top level to
+-- units.target/.focus — this helper previously read/wrote the stale
+-- top-level path and was a silent no-op ever since.)
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
     local d = NS.DEFAULT_PROFILE
-              and NS.DEFAULT_PROFILE.anchors
-              and NS.DEFAULT_PROFILE.anchors.icons
-    NS.db.profile.anchors = NS.db.profile.anchors or {}
-    NS.db.profile.anchors.icons = d
+              and NS.DEFAULT_PROFILE.units
+              and NS.DEFAULT_PROFILE.units.target
+              and NS.DEFAULT_PROFILE.units.target.anchors
+              and NS.DEFAULT_PROFILE.units.target.anchors.icons
+    NS.db.profile.units = NS.db.profile.units or {}
+    NS.db.profile.units.target = NS.db.profile.units.target or {}
+    NS.db.profile.units.target.anchors = NS.db.profile.units.target.anchors or {}
+    NS.db.profile.units.target.anchors.icons = d
         and { point = d.point, relativePoint = d.relativePoint,
               x = d.x, y = d.y }
         or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
     -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
-    -- branch re-anchors the grid. The previous "icons" fire was
+    -- branch re-anchors every enabled unit's grid from its own
+    -- units.<unit>.anchors.icons. The previous "icons" fire was
     -- redundant work — no row in the icons section actually changed,
     -- and the general branch already owns the re-anchor pass.
     Helpers.FireConfigChanged("general")

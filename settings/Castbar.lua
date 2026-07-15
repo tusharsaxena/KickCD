@@ -528,11 +528,15 @@ local function Build(mainCategory)
 
     -- Defer the AceGUI render until the panel becomes visible — same
     -- zero-width caveat as the General / Icons tabs.
+    --
+    -- H.RenderUnitPanel (not RenderSchema directly) draws the unit
+    -- selector + Focus link/copy header above the schema body and
+    -- re-renders the whole thing on every unit switch (Task 8).
     local rendered = false
     ctx.panel:SetScript("OnShow", function()
         if rendered then return end
         rendered = true
-        H.RenderSchema(ctx, "castbar")
+        H.RenderUnitPanel(ctx, "castbar")
     end)
 
     return Settings.RegisterCanvasLayoutSubcategory(

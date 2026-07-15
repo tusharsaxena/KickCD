@@ -57,6 +57,19 @@ L["Global opacity for the icon grid."] =
     "Global opacity for the icon grid."
 L["Enable Target grid"]          = "Enable Target grid"
 L["Enable Focus grid"]           = "Enable Focus grid"
+L["Show Target label"]           = "Show Target label"
+L["Show Focus label"]            = "Show Focus label"
+L["Target label text"]           = "Target label text"
+L["Focus label text"]            = "Focus label text"
+
+-- Icons / Cast bar tabs — unit selector + Focus link/copy header (Task 8)
+L["Unit"]                        = "Unit"
+L["Target"]                      = "Target"
+L["Focus"]                       = "Focus"
+L["Use same styling as Target"]  = "Use same styling as Target"
+L["Copy styling from Target"]    = "Copy styling from Target"
+L["Linked to Target — uncheck to customize."] =
+    "Linked to Target — uncheck to customize."
 L["Reset position"]              = "Reset position"
 L["Restore the icon grid to its default screen position."] =
     "Restore the icon grid to its default screen position."

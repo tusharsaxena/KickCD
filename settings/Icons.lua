@@ -373,11 +373,15 @@ local function Build(mainCategory)
     -- Defer the AceGUI render until the panel becomes visible: build-time
     -- happens at PLAYER_LOGIN when ctx.body has 0 width, and AceGUI lays
     -- children out against the container's current width.
+    --
+    -- H.RenderUnitPanel (not RenderSchema directly) draws the unit
+    -- selector + Focus link/copy header above the schema body and
+    -- re-renders the whole thing on every unit switch (Task 8).
     local rendered = false
     ctx.panel:SetScript("OnShow", function()
         if rendered then return end
         rendered = true
-        H.RenderSchema(ctx, "icons")
+        H.RenderUnitPanel(ctx, "icons")
     end)
 
     return Settings.RegisterCanvasLayoutSubcategory(

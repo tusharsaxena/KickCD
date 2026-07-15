@@ -90,6 +90,28 @@ for _, u in ipairs(NS.Units.LIST) do
     }
 end
 
+-- Per-unit LABEL controls (Task 8): a show/hide toggle and a free-text
+-- caption, driving `/kcd set units.<unit>.label.show|text`. Grouped with
+-- the enable rows above under "Units" — General has no unit selector, so
+-- SchemaForPanel("general") (called with no unit filter) renders every
+-- unit's rows unconditionally; the `unit` tag exists purely so
+-- RestoreDefaults/RestoreAllDefaults reset both units' labels together.
+for _, u in ipairs(NS.Units.LIST) do
+    local Title = u:sub(1, 1):upper() .. u:sub(2)
+    add{
+        panel   = "general", section = "units", group = L["Units"],
+        path    = "units." .. u .. ".label.show", unit = u, type = "bool",
+        label   = L["Show " .. Title .. " label"],
+        default = false,
+    }
+    add{
+        panel   = "general", section = "units", group = L["Units"],
+        path    = "units." .. u .. ".label.text", unit = u, type = "string",
+        label   = L[Title .. " label text"],
+        default = Title,
+    }
+end
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------
