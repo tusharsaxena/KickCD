@@ -35,7 +35,7 @@ test("Helpers.Set formats an RGBA table compactly", function()
     inst.mocks.__flushTimers()
     NS.State.debug = true
     NS.DebugLog:Clear()
-    Helpers.Set("castbar.interruptible.barColor", "castbar", { 1, 0.5, 0, 1 })
+    Helpers.Set("units.target.castbar.interruptible.barColor", "castbar", { 1, 0.5, 0, 1 })
     inst.mocks.__flushTimers()
     assertTrue(NS.DebugLog:FindLine("{1,0.5,0,1}"), "RGBA renders as {r,g,b,a}")
 end)

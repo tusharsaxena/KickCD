@@ -30,8 +30,22 @@ test("Helpers.Resolve walks a dotted path into db.profile", function()
     local parent, key = H.Resolve("scale")
     assertTrue(parent ~= nil, "scale must resolve")
     assertEqual(key, "scale")
-    local nested = H.Get("icons.primarySize")
+    local nested = H.Get("units.target.icons.primarySize")
     assertEqual(nested, 64, "nested path must read the default value")
+end)
+
+test("icons/castbar schema rows are unit-scoped and valid", function()
+    local NS = T.NS
+    local seen = { target = false, focus = false }
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.panel == "icons" or def.panel == "castbar" then
+            assertTrue(def.unit ~= nil, "row " .. tostring(def.path) .. " must carry a unit")
+            assertTrue(def.path:match("^units%." .. def.unit .. "%."), "path must be unit-scoped: " .. def.path)
+            seen[def.unit] = true
+        end
+    end
+    assertTrue(seen.target and seen.focus, "both target and focus rows must exist")
+    assertEqual(NS.Settings.Helpers.ValidateSchema(), 0, "schema must be valid")
 end)
 
 test("Helpers.FindSchema locates a row by path", function()

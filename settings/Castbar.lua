@@ -20,10 +20,20 @@ local function add(t) Schema[#Schema + 1] = t end
 -- (e.g. the orientation row also writes through to growDirection and
 -- refreshes the panel widgets).
 
+-- Per-unit row generation ---------------------------------------------
+-- Every row below is built once per unit in NS.Units.LIST (target,
+-- focus): the row's `path` is prefixed with "units.<unit>." and tagged
+-- `unit = unit` so Helpers.SchemaForPanel/RenderSchema can filter to
+-- only the currently-selected unit's rows (Panel.lua). `section` stays
+-- "castbar" for every row — both bars react to a `castbar`
+-- CONFIG_CHANGED and resolve their own unit's data via
+-- NS.Units.Castbar(unit).
+local function addUnitRows(unit)
+
 -- Visibility ---------------------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Visibility"],
-    path  = "castbar.enabled", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Visibility"],
+    path  = "units."..unit..".castbar.enabled", type = "bool",
     label = L["Enable cast bar"],
     tooltip = L["Show the target cast bar."],
     default = true,
@@ -48,8 +58,8 @@ local POSITION_ANCHOR_VALUES = H.AnchorValues()
 -- anchor mode is a higher-level pivot than the two attach-point
 -- dropdowns it controls, hence the row of its own.
 add{
-    panel = "castbar", section = "castbar", group = L["Position"],
-    path  = "castbar.anchorMode", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    path  = "units."..unit..".castbar.anchorMode", type = "string",
     label = L["Anchor mode"],
     tooltip = L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."],
     default = "PRIMARY",
@@ -60,31 +70,31 @@ add{
     solo    = true,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Position"],
-    path  = "castbar.anchorPoint", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    path  = "units."..unit..".castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "TOP_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Position"],
-    path  = "castbar.castbarPoint", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    path  = "units."..unit..".castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "BOTTOM_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Position"],
-    path  = "castbar.anchorOffsetX", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    path  = "units."..unit..".castbar.anchorOffsetX", type = "number",
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Position"],
-    path  = "castbar.anchorOffsetY", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    path  = "units."..unit..".castbar.anchorOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = 1, min = -200, max = 200, step = 1, fmt = "%d px",
@@ -104,8 +114,8 @@ local GROW_DEFAULT_FOR_ORIENTATION = {
 }
 
 add{
-    panel = "castbar", section = "castbar", group = L["Orientation"],
-    path  = "castbar.orientation", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
+    path  = "units."..unit..".castbar.orientation", type = "string",
     label = L["Orientation"],
     tooltip = L["Horizontal: bar stretches across width. Vertical: bar runs up/down."],
     default = "HORIZONTAL",
@@ -132,14 +142,14 @@ add{
     onChange = function(value)
         local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
         if newGrow then
-            H.Set("castbar.growDirection", "castbar", newGrow)
+            H.Set("units."..unit..".castbar.growDirection", "castbar", newGrow)
         end
         H.RefreshAllPanels()
     end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Orientation"],
-    path  = "castbar.growDirection", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
+    path  = "units."..unit..".castbar.growDirection", type = "string",
     label = L["Growth direction"],
     tooltip = L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."],
     default = "RIGHT",
@@ -148,7 +158,7 @@ add{
     -- error appends `(depends on <gate> = <current>)` so a user who
     -- types `/kcd set castbar.growDirection LEFT` while orientation is
     -- VERTICAL gets a hint about why the value list is UP/DOWN.
-    valueGate = "castbar.orientation",
+    valueGate = "units."..unit..".castbar.orientation",
     -- Function so the dropdown re-evaluates its options every time
     -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
     -- inside its refresh closure). Pulled together with the
@@ -157,8 +167,9 @@ add{
     -- "(vertical)" disambiguation suffixes needed in the labels.
     values  = function()
         local profile = NS.db and NS.db.profile
-        local orientation = profile and profile.castbar
-                            and profile.castbar.orientation
+        local unitProfile = profile and profile.units and profile.units[unit]
+        local orientation = unitProfile and unitProfile.castbar
+                            and unitProfile.castbar.orientation
         if orientation == "VERTICAL" then
             return {
                 { value = "UP",   label = L["Up"]   },
@@ -172,8 +183,8 @@ add{
     end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Orientation"],
-    path  = "castbar.autoSize", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
+    path  = "units."..unit..".castbar.autoSize", type = "bool",
     label = L["Auto-size to icon grid"],
     tooltip = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
     default = true,
@@ -190,29 +201,29 @@ add{
 --                                                    transition flushes
 --                                                    the row).
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
-    path  = "castbar.width", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
+    path  = "units."..unit..".castbar.width", type = "number",
     label = L["Cast bar width (in px)"],
     tooltip = L["Cast bar width in pixels."],
     default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
-    path  = "castbar.height", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
+    path  = "units."..unit..".castbar.height", type = "number",
     label = L["Cast bar height (in px)"],
     tooltip = L["Cast bar height in pixels."],
     default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
-    path  = "castbar.iconSize", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
+    path  = "units."..unit..".castbar.iconSize", type = "number",
     label = L["Icon size (in px)"],
     tooltip = L["Spell icon size in pixels (0 hides the icon)."],
     default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
-    path  = "castbar.iconPosition", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
+    path  = "units."..unit..".castbar.iconPosition", type = "string",
     label = L["Icon position"],
     tooltip = L["Where to place the spell icon, or hide it entirely."],
     default = "OFF",
@@ -223,8 +234,8 @@ add{
     },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Sizing and Layout"],
-    path  = "castbar.showSpark", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
+    path  = "units."..unit..".castbar.showSpark", type = "bool",
     label = L["Show spark"],
     tooltip = L["Render the leading-edge spark on the bar."],
     default = true,
@@ -249,8 +260,8 @@ local TEXT_POSITION_VALUES = {
 }
 
 add{
-    panel = "castbar", section = "castbar", group = L["Text"],
-    path  = "castbar.font", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    path  = "units."..unit..".castbar.font", type = "string",
     label = L["Font"],
     tooltip = L["Font for the spell name and cast time text."],
     default = "Friz Quadrata TT",
@@ -258,15 +269,15 @@ add{
     values  = function() return H.LSMValues("font") end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Text"],
-    path  = "castbar.fontSize", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    path  = "units."..unit..".castbar.fontSize", type = "number",
     label = L["Font size"],
     tooltip = L["Cast-bar text size in pixels."],
     default = 10, min = 8, max = 24, step = 1, fmt = "%d",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Text"],
-    path  = "castbar.fontFlags", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    path  = "units."..unit..".castbar.fontFlags", type = "string",
     label = L["Font flags"],
     tooltip = L["Outline / monochrome flags applied to cast-bar text."],
     default = "OUTLINE",
@@ -285,37 +296,37 @@ add{
 --     [Show spell name] | [Anchor]
 --     [X offset]        | [Y offset]
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name"],
-    path  = "castbar.showName", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
+    path  = "units."..unit..".castbar.showName", type = "bool",
     label = L["Show spell name"],
     tooltip = L["Display the cast spell's name on the bar."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name"],
-    path  = "castbar.namePosition", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
+    path  = "units."..unit..".castbar.namePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the spell name relative to the bar."],
     default = "CENTER",
     values  = TEXT_POSITION_VALUES,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name"],
-    path  = "castbar.nameOffsetX", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
+    path  = "units."..unit..".castbar.nameOffsetX", type = "number",
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name"],
-    path  = "castbar.nameOffsetY", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
+    path  = "units."..unit..".castbar.nameOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Spell name"],
-    path  = "castbar.nameTruncate", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
+    path  = "units."..unit..".castbar.nameTruncate", type = "number",
     label = L["Truncate after (characters)"],
     tooltip = L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."],
     default = 0, min = 0, max = 60, step = 1, fmt = "%d",
@@ -328,30 +339,30 @@ add{
 --     [Show cast time] | [Anchor]
 --     [X offset]       | [Y offset]
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time"],
-    path  = "castbar.showTime", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
+    path  = "units."..unit..".castbar.showTime", type = "bool",
     label = L["Show cast time"],
     tooltip = L["Display the remaining / total cast time on the bar."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time"],
-    path  = "castbar.timePosition", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
+    path  = "units."..unit..".castbar.timePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
     default = "CENTER",
     values  = TEXT_POSITION_VALUES,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time"],
-    path  = "castbar.timeOffsetX", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
+    path  = "units."..unit..".castbar.timeOffsetX", type = "number",
     label = L["X offset (in px)"],
     tooltip = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Cast time"],
-    path  = "castbar.timeOffsetY", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
+    path  = "units."..unit..".castbar.timeOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
     default = 22, min = -100, max = 100, step = 1, fmt = "%d px",
@@ -369,8 +380,8 @@ add{
 
 -- Interruptible appearance --------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.statusBarTexture", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for interruptible casts."],
     default = "Blizzard",
@@ -378,36 +389,36 @@ add{
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.barColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.barColor", type = "color",
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast is interruptible."],
     default = { 1, 0.85, 0.05, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.bgColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.bgColor", type = "color",
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
     default = { 0, 0, 0, 0.5 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.nameTextColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.nameTextColor", type = "color",
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
     default = { 1, 1, 1, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.borderShow", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a border around the cast bar for interruptible casts."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.borderTexture", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.borderTexture", type = "string",
     label = L["Border style"],
     tooltip = L["LibSharedMedia border texture (edge style) for interruptible casts."],
     default = "Blizzard Tooltip",
@@ -415,15 +426,15 @@ add{
     values  = function() return H.LSMValues("border") end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.borderColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.borderColor", type = "color",
     label = L["Border color"],
     tooltip = L["RGBA border color for interruptible casts."],
     default = { 0, 0, 0, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Interruptible casts"],
-    path  = "castbar.interruptible.borderSize", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    path  = "units."..unit..".castbar.interruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     tooltip = L["Border edge size in pixels."],
     default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
@@ -431,8 +442,8 @@ add{
 
 -- Uninterruptible appearance ------------------------------------------
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.statusBarTexture", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
     default = "Blizzard",
@@ -440,36 +451,36 @@ add{
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.barColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.barColor", type = "color",
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast cannot be interrupted."],
     default = { 0.85, 0.10, 0.10, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.bgColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.bgColor", type = "color",
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
     default = { 0, 0, 0, 0.5 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.nameTextColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.nameTextColor", type = "color",
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
     default = { 1, 1, 1, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.borderShow", type = "bool",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.borderShow", type = "bool",
     label = L["Show border"],
     tooltip = L["Draw a border around the cast bar for non-interruptible casts."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.borderTexture", type = "string",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.borderTexture", type = "string",
     label = L["Border style"],
     tooltip = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
     default = "Blizzard Tooltip",
@@ -477,19 +488,23 @@ add{
     values  = function() return H.LSMValues("border") end,
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.borderColor", type = "color",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.borderColor", type = "color",
     label = L["Border color"],
     tooltip = L["RGBA border color for non-interruptible casts."],
     default = { 0, 0, 0, 1 },
 }
 add{
-    panel = "castbar", section = "castbar", group = L["Non-interruptible casts"],
-    path  = "castbar.uninterruptible.borderSize", type = "number",
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    path  = "units."..unit..".castbar.uninterruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     tooltip = L["Border edge size in pixels."],
     default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
 }
+
+end
+
+for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
 -- ---------------------------------------------------------------------
 -- Builder

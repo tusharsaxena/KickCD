@@ -114,10 +114,17 @@ end
 -- Schema query helpers
 -- ---------------------------------------------------------------------
 
-function Helpers.SchemaForPanel(panelKey)
+-- `unit` (optional) filters to rows for that unit plus unit-agnostic
+-- rows (e.g. General, which has no `unit` field and always matches).
+-- Omitting `unit` returns every row for the panel across all units —
+-- used by RestoreDefaults/RestoreAllDefaults, which reset every unit's
+-- values together.
+function Helpers.SchemaForPanel(panelKey, unit)
     local out = {}
     for _, def in ipairs(NS.Settings.Schema) do
-        if def.panel == panelKey then out[#out + 1] = def end
+        if def.panel == panelKey and (unit == nil or not def.unit or def.unit == unit) then
+            out[#out + 1] = def
+        end
     end
     return out
 end
@@ -970,7 +977,7 @@ local ROW_VSPACER = 8
 -- room. afterGroup callbacks (e.g. inline action buttons) fire after
 -- the in-progress row is flushed, so they always start on a fresh line.
 function Helpers.RenderSchema(ctx, panelKey, afterGroup)
-    local rows = Helpers.SchemaForPanel(panelKey)
+    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit or "target")
     local scroll = ensureScroll(ctx)
     local pendingRow, pendingCount = nil, 0
 
