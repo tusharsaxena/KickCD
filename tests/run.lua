@@ -120,6 +120,7 @@ _G.KICKCD_TEST = T
 -- ---------------------------------------------------------------------------
 local SUITES = {
     "test_util.lua",
+    "test_units.lua",
     "test_schema.lua",
     "test_database.lua",
     "test_bus.lua",
