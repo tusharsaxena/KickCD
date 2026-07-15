@@ -67,10 +67,46 @@ function Helpers.FireConfigChanged(section)
     end
 end
 
+-- Settings-change logging (standard §10): one [Set] line per settled change,
+-- at the single write seam. Color/slider commits call Helpers.Set on every
+-- throttled drag tick (~20/sec), so a per-path TRAILING debounce collapses a
+-- whole drag/gesture to a single line carrying the final value, emitted
+-- SET_LOG_DEBOUNCE after the last write. Each write bumps a per-path
+-- generation token and schedules a fresh timer; only the timer whose token is
+-- still current fires, so earlier writes in the gesture are superseded rather
+-- than each producing their own line. String-building stays behind the debug
+-- gate (§4 zero-alloc); the extra per-tick timers only exist while debug is on.
+local SET_LOG_DEBOUNCE = 0.3
+local pendingSet, setGen = {}, {}
+
+local function fmtSetValue(v)
+    if type(v) ~= "table" then return tostring(v) end
+    local parts = {}
+    for i = 1, #v do parts[i] = tostring(v[i]) end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
+local function logSet(path, value)
+    if not (NS.State and NS.State.debug) then return end   -- gate first
+    pendingSet[path] = value
+    local gen = (setGen[path] or 0) + 1
+    setGen[path] = gen
+    C_Timer.After(SET_LOG_DEBOUNCE, function()
+        if setGen[path] ~= gen then return end   -- superseded by a later write
+        local v = pendingSet[path]
+        pendingSet[path] = nil
+        setGen[path] = nil
+        if NS.State and NS.State.debug then
+            NS.Debug("Set", "%s = %s", tostring(path), fmtSetValue(v))
+        end
+    end)
+end
+
 function Helpers.Set(path, section, value)
     local parent, key = Resolve(path)
     if not parent then return end
     parent[key] = value
+    logSet(path, value)
     Helpers.FireConfigChanged(section)
 end
 

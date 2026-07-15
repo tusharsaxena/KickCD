@@ -345,6 +345,17 @@ function DebugLog:SetEnabled(on)
     -- flag-gated NS.Debug sink) so the "logging disabled" line still lands after
     -- NS.State.debug has flipped off (§12.5).
     DebugLog:Add("Debug", on and "logging enabled" or "logging disabled")
+    -- On enable, snapshot the session's load-time facts (standard §8 boot
+    -- summary) so a log captured mid-session still records what it's running
+    -- against. Emitted through the raw Add (state just flipped on; NS.Debug
+    -- would also work, but Add keeps this ordered right after the bracket).
+    if on and NS.db then
+        local ver     = NS.VERSION or "?"
+        local schema  = NS.db.global and NS.db.global.schemaVersion or "?"
+        local profile = NS.db.GetCurrentProfile and NS.db:GetCurrentProfile() or "?"
+        DebugLog:Add("Init", ("KickCD v%s, schema v%s, profile '%s'")
+            :format(tostring(ver), tostring(schema), tostring(profile)))
+    end
 end
 
 function DebugLog:IsEnabled()
@@ -355,17 +366,46 @@ end
 function DebugLog:BufferSize() return #plainLines end
 function DebugLog:LastLine() return plainLines[#plainLines] end
 
+--- True if any buffered line contains `substr` (plain find, no patterns).
+--- Buffer introspection for tests (and a future dump verb) — needed because a
+--- session-start line is no longer guaranteed to be LastLine now that enable
+--- appends both the bracket and the [Init] snapshot.
+function DebugLog:FindLine(substr)
+    for i = 1, #plainLines do
+        if plainLines[i]:find(substr, 1, true) then return true end
+    end
+    return false
+end
+
 -- ---------------------------------------------------------------------------
 -- The sink (§12.4) — the addon-wide debug entry point.
 -- ---------------------------------------------------------------------------
 
+--- Substitute a placeholder for a combat-protected "secret" value so the sink
+--- (§4) can never raise inside string.format when a call site passes one (e.g.
+--- charges in combat). Identity pass-through when issecretvalue is unavailable
+--- (headless harness) or the value is plain.
+local function secretSafe(v)
+    if _G.issecretvalue and _G.issecretvalue(v) then return "secret" end
+    return v
+end
+DebugLog.secretSafe = secretSafe
+
 --- NS.Debug(tag, fmt, ...) — zero-allocation when off (the gate is the first
---- line; no string.format or concat runs before it). The tag is the first arg
---- so every call site self-documents its category. Routes to the console, not
---- chat.
+--- line; no format/concat/table build before it). Each ... arg is routed
+--- through secretSafe so a secret value renders as "secret" rather than
+--- erroring the console. Routes to the console, not chat.
 function NS.Debug(tag, fmt, ...)
     if not (NS.State and NS.State.debug) then return end
-    local msg = (select("#", ...) > 0) and string.format(fmt, ...) or fmt
+    local n = select("#", ...)
+    local msg
+    if n > 0 then
+        local args = { ... }
+        for i = 1, n do args[i] = secretSafe(args[i]) end
+        msg = string.format(fmt, unpack(args, 1, n))
+    else
+        msg = fmt
+    end
     if NS.DebugLog and NS.DebugLog.Add then
         NS.DebugLog:Add(tag, msg)
     end

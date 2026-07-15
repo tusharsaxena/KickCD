@@ -48,7 +48,9 @@ test("SetEnabled brackets each session with a console line at both ends (§12.5)
     local inst = T.load(true)
     local ns = inst.NS
     ns.DebugLog:SetEnabled(true)
-    assertTrue(ns.DebugLog:LastLine():find("[Debug] logging enabled", 1, true) ~= nil,
+    -- The [Init] snapshot now lands after the bracket line on enable, so the
+    -- bracket is no longer LastLine — assert its presence in the buffer.
+    assertTrue(ns.DebugLog:FindLine("[Debug] logging enabled"),
         "enable must append a bracket console line")
     ns.DebugLog:SetEnabled(false)
     assertTrue(ns.DebugLog:LastLine():find("[Debug] logging disabled", 1, true) ~= nil,
@@ -70,4 +72,32 @@ test("NS.Debug is a no-op when disabled (zero capture) and appends when enabled"
     assertEqual(ns.DebugLog:BufferSize(), before + 1, "enabled sink must capture one line")
     assertTrue(ns.DebugLog:LastLine():find("[Cast] kick on target", 1, true) ~= nil,
         "captured line must be format-expanded and tagged")
+end)
+
+test("NS.Debug sanitizes secret args and never errors", function()
+    -- Stub a secret sentinel on the MOCK the addon actually reads: the sandbox
+    -- env resolves _G.issecretvalue through T.mocks (wow_mock defines it), which
+    -- shadows any stub on the real _G.
+    local SECRET = setmetatable({}, {})
+    local realIsSecret = T.mocks.issecretvalue
+    T.mocks.issecretvalue = function(v) return v == SECRET end
+    NS.State.debug = true
+    NS.DebugLog:Clear()
+    local ok = pcall(function() NS.Debug("T", "charges=%s", SECRET) end)
+    T.mocks.issecretvalue = realIsSecret
+    assertTrue(ok, "sink must not error on a secret arg")
+    local line = NS.DebugLog:LastLine()
+    assertTrue(line and line:find("charges=secret", 1, true) ~= nil,
+        "secret arg must render as 'secret'; got: " .. tostring(line))
+    NS.State.debug = false   -- leave the shared instance clean for later suites
+end)
+
+test("NS.Debug passes plain args through unchanged", function()
+    NS.State.debug = true
+    NS.DebugLog:Clear()
+    NS.Debug("T", "n=%d s=%s", 7, "hi")
+    local line = NS.DebugLog:LastLine()
+    assertTrue(line and line:find("n=7 s=hi", 1, true) ~= nil,
+        "plain args must be unchanged; got: " .. tostring(line))
+    NS.State.debug = false   -- leave the shared instance clean for later suites
 end)

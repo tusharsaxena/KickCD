@@ -676,7 +676,13 @@ end
 --- secret-value flag mid-cast.
 function IconGrid:RefreshVisibility()
     if not grid then return end
-    if shouldBeVisible() then
+    local show = shouldBeVisible()
+    if NS.State and NS.State.debug and show ~= self._lastVisible then
+        NS.Debug("IconGrid", "visibility %s: %s", tostring(visibilityMode()),
+            show and "shown" or "hidden")
+    end
+    self._lastVisible = show
+    if show then
         grid:Show()
         ApplyInterruptibilityMask()
     else
@@ -761,6 +767,24 @@ function IconGrid:RefreshAllGlows()
         return
     end
     self._lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
+
+    if NS.State and NS.State.debug then
+        -- interruptible is a resolved tri-state (true/false/nil/"secret"), never
+        -- a raw secret here — so these == compares are plain. Label each state
+        -- precisely rather than collapsing "secret"/nil into a misleading "on".
+        local gate = interruptible == true and "on"
+            or interruptible == false and "off"
+            or interruptible == "secret" and "secret (combat-tainted)"
+            or "none (no hostile cast)"
+        -- Dedup: while interruptibility is secret-tainted the gate short-circuit
+        -- above is deliberately bypassed, so every target-cast event reaches
+        -- here — a boss firing many casts would log an identical line each time.
+        -- Emit only when the printed label actually changes (§9).
+        if gate ~= self._lastCastLabel then
+            self._lastCastLabel = gate
+            NS.Debug("Cast", "target cast gate: interruptible %s", gate)
+        end
+    end
 
     for _, btn in ipairs(ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end

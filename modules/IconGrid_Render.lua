@@ -529,10 +529,6 @@ function Icon:Apply(state)
         self.cooldown:Show()
         self:StartCooldownText(state.cdObject, true)
         applyGcdSuppressionAlpha(self, state.cdObject)
-
-        if NS.State and NS.State.debug then
-            NS.Debug("IconGrid", ("apply [%d] active (curve)"):format(state.spellID or -1))
-        end
     elseif state and state.chargeCdObject then
         -- Branch 2: charge recharge ticking; spell is still castable.
         -- Show swipe + countdown text but keep the icon body at ready
@@ -544,10 +540,6 @@ function Icon:Apply(state)
         self.cooldown:Show()
         self:StartCooldownText(state.chargeCdObject, false)
         applyGcdSuppressionAlpha(self, state.chargeCdObject)
-
-        if NS.State and NS.State.debug then
-            NS.Debug("IconGrid", ("apply [%d] charging (curve)"):format(state.spellID or -1))
-        end
     else
         -- Branch 3: no active cooldown of any kind. Plain ready visuals.
         self:SetAlpha(cfg.readyAlpha or 1.0)
@@ -555,9 +547,6 @@ function Icon:Apply(state)
         self.cooldown:Hide()
         self.cooldown:Clear()
         self:StopCooldownText()
-        if NS.State and NS.State.debug then
-            NS.Debug("IconGrid", ("apply [%d] ready"):format(state and state.spellID or -1))
-        end
     end
 
     -- Ready glow (off when on cooldown, on when castable). Driven from

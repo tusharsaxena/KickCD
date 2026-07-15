@@ -89,13 +89,6 @@ end
 -- Watched-list management
 -- ---------------------------------------------------------------------------
 
-local function dprint(...)
-    if not (NS.State and NS.State.debug and NS.Debug) then return end
-    local parts = {}
-    for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
-    NS.Debug("Cooldowns", table.concat(parts, " "))
-end
-
 --- Compute the freshly-polled state for a single spellID.
 -- @param spellID number
 -- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
@@ -169,16 +162,6 @@ function Cooldowns:PollSpell(spellID)
     -- that a GCD-only "active" period reads as ready visually while still
     -- being uncastable.
     local ready = (not isActive) and usable and hasCharges
-
-    if NS.State and NS.State.debug then
-        dprint(("poll [%d] %s isActive=%s usable=%s ready=%s cdObj=%s chargeCdObj=%s"):format(
-            spellID, tostring(name),
-            tostring(isActive),
-            tostring(usable),
-            tostring(ready),
-            cdObject and "yes" or "nil",
-            chargeCdObject and "yes" or "nil"))
-    end
 
     return {
         spellID        = spellID,
@@ -259,12 +242,14 @@ function Cooldowns:Rebuild()
     -- Walk the spec list in order and build the watched dict. We deliberately
     -- ignore order here — the IconGrid module is responsible for layout
     -- ordering, and Cooldowns just needs O(1) state lookup by spellID.
+    local builtCount, skippedCount = 0, 0
     for _, entry in ipairs(list) do
         if entry.enabled ~= false then
             local id = entry.spellID
             local state = self:PollSpell(id)
             if state then
                 self.watched[id] = state
+                builtCount = builtCount + 1
                 NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                     spellID        = state.spellID,
                     ready          = state.ready,
@@ -273,11 +258,34 @@ function Cooldowns:Rebuild()
                     chargeCdObject = state.chargeCdObject,
                     charges        = state.charges,
                 })
-            elseif NS.State and NS.State.debug then
-                dprint(("skipping unknown/unlearned spellID %s"):format(tostring(id)))
+            else
+                skippedCount = skippedCount + 1
             end
         end
     end
+
+    self:_logRebuild(class, spec, builtCount, skippedCount)
+end
+
+--- Log a rebuild summary, but only when the watched set MATERIALLY changed
+--- since the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
+--- the Master scale / alpha sliders are `general`-section, so dragging one
+--- fires Helpers.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
+--- changes the watched spell list. Without this gate that produced ~20
+--- identical `[Cooldowns] rebuild …` lines/sec — exactly the per-gesture spam
+--- §9 forbids. Signature = class/spec + sorted watched spellIDs + skipped
+--- count; built only when debug is on (§4 zero-alloc).
+function Cooldowns:_logRebuild(class, spec, builtCount, skippedCount)
+    if not (NS.State and NS.State.debug) then return end
+    local ids = {}
+    for id in pairs(self.watched) do ids[#ids + 1] = id end
+    table.sort(ids)
+    local sig = tostring(class) .. "/" .. tostring(spec)
+        .. "|" .. table.concat(ids, ",") .. "|" .. tostring(skippedCount)
+    if sig == self._lastRebuildSig then return end
+    self._lastRebuildSig = sig
+    NS.Debug("Cooldowns", "rebuild %s/%s: %d watched (%d skipped)",
+        tostring(class), tostring(spec), builtCount, skippedCount)
 end
 
 --- Re-poll all watched spells, fire Ka0s_KickCD_SPELL_STATE only for those whose
@@ -294,42 +302,47 @@ end
 function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
+
+    local dbg = NS.State and NS.State.debug
+    local readyIds, activeIds, dropIds  -- built only when debug-on (§9 zero-alloc)
+    if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
+    local watched, changed = 0, 0
+
     for id, prev in pairs(self.watched) do
+        watched = watched + 1
         local next_ = self:PollSpell(id)
         if next_ == nil then
             -- Spell disappeared (pet dismiss, talent untrain, ...). Force
             -- the icon back to ready visuals and stop polling it; the next
             -- Rebuild trims it out of the watched list entirely.
             self.watched[id] = nil
+            changed = changed + 1
+            if dbg then dropIds[#dropIds + 1] = id end
             NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
-                spellID        = id,
-                ready          = false,
-                isActive       = false,
-                cdObject       = nil,
-                chargeCdObject = nil,
-                charges        = nil,
+                spellID = id, ready = false, isActive = false,
+                cdObject = nil, chargeCdObject = nil, charges = nil,
             })
-            if NS.State and NS.State.debug then
-                dprint(("drop  [%d] became unavailable; sentinel SPELL_STATE emitted"):format(id))
-            end
         elseif StateChanged(prev, next_) then
             self.watched[id] = next_
-            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
-                spellID        = next_.spellID,
-                ready          = next_.ready,
-                isActive       = next_.isActive,
-                cdObject       = next_.cdObject,
-                chargeCdObject = next_.chargeCdObject,
-                charges        = next_.charges,
-            })
-            if NS.State and NS.State.debug then
-                dprint(("emit  [%d] ready=%s isActive=%s cdObj=%s"):format(
-                    next_.spellID,
-                    tostring(next_.ready),
-                    tostring(next_.isActive),
-                    next_.cdObject and "yes" or "nil"))
+            changed = changed + 1
+            if dbg then
+                if next_.ready then readyIds[#readyIds + 1] = id
+                elseif next_.isActive then activeIds[#activeIds + 1] = id end
             end
+            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+                spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
+                cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
+                charges = next_.charges,
+            })
         end
+    end
+
+    if dbg and changed > 0 then
+        local parts = {}
+        if #readyIds  > 0 then parts[#parts+1] = "ready=["  .. table.concat(readyIds, ",")  .. "]" end
+        if #activeIds > 0 then parts[#parts+1] = "active=[" .. table.concat(activeIds, ",") .. "]" end
+        if #dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(dropIds, ",")   .. "]" end
+        NS.Debug("Cooldowns", "%d/%d changed: %s", changed, watched, table.concat(parts, " "))
     end
 end
 

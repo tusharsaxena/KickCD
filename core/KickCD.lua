@@ -912,6 +912,7 @@ function NS:OpenSettings(input)
         local main = self.Settings and self.Settings.main
         if main and main.GetID then
             self._openRetries = nil
+            if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
             Settings.OpenToCategory(main:GetID())
             expandMainCategory(main)
             return

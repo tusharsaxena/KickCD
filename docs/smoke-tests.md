@@ -38,6 +38,7 @@ Companion docs:
 | 16 | 12.0 secret values | Cooldown / cast secret-tainted paths | [Secret-value safety](#16-secret-value-safety-120) |
 | 17 | Schema validator | PLAYER_LOGIN validator output | [Schema validator boot output](#17-schema-validator-boot-output) |
 | 18 | LSM dropdowns | Statusbar / Border / Font dropdowns | [LSM dropdown rendering](#18-lsm-dropdown-rendering) |
+| 19 | Debug traces | §8 key functional-flow lines in the debug console | [Debug traces](#19-debug-traces) |
 
 ---
 
@@ -369,6 +370,21 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 - Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
 - The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; `LSMPatch.lua` hides it).
 - Switching to Settings → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
+
+### 19. Debug traces
+
+`docs/agent-context.md` §8 requires one gated, secret-safe line per key functional-flow transition, routed through `NS.Debug` to the on-screen console (never chat).
+
+**Setup.** `/kcd debug on`, then `/kcd debug window` to keep the console visible while driving each transition below.
+
+**Steps + pass.**
+- **Combat.** Enter combat (auto-attack a dummy), then leave combat. One `[Combat] entered` line appears when combat starts, one `[Combat] left` line when it ends — nothing at `PLAYER_LOGIN`, nothing per-tick during sustained combat.
+- **Profile.** Settings → Profiles → switch to a different profile (or create one). One `[Profile] switched to '<name>'` line appears naming the new profile key.
+- **Cast / IconGrid.** Set Visibility to `target_casting_interruptible`, then have a hostile target start and stop an interruptible cast. One `[Cast] target cast gate: interruptible on/off` line appears when the gate flips, and one `[IconGrid] visibility …: shown/hidden` line appears when the grid's shown state actually changes — no line on refreshes where neither moved.
+- **Open.** `/kcd config` (or the minimap/options button) while out of combat. One `[Open] settings panel` line appears per successful open.
+- **Spells.** In the Spells editor: toggle a row's enabled checkbox (`[Spells] enable/disable <spellID>`), remove a row (`[Spells] remove <spellID>`), and click "Reset to defaults" for a spec (`[Spells] reset <CLASS>/<SPEC>: N spells`).
+- **Set.** Change any setting on any panel (e.g. Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
+- **No spam.** Across all of the above, stay in combat for 30+ seconds with no target-cast activity: no additional `[Combat]`/`[Cast]`/`[IconGrid]` lines appear beyond the transition(s) already logged.
 
 ---
 

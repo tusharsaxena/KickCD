@@ -137,8 +137,10 @@ boot:RegisterEvent("PLAYER_REGEN_ENABLED")
 boot:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
         State.SetInCombat(true)
+        if State.debug and NS and NS.Debug then NS.Debug("Combat", "entered") end
     elseif event == "PLAYER_REGEN_ENABLED" then
         State.SetInCombat(false)
+        if State.debug and NS and NS.Debug then NS.Debug("Combat", "left") end
     elseif event == "PLAYER_LOGIN" then
         State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
         -- PLAYER_LOGIN fires once per session; release the listener once

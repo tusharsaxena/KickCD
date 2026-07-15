@@ -494,7 +494,11 @@ function Database:MigrateProfile()
             g.schemaVersion = CURRENT_DB_VERSION
             break
         end
+        local from = g.schemaVersion
         step(self.db)
+        if NS.State and NS.State.debug then
+            NS.Debug("Migrate", "v%d -> v%d", from, from + 1)
+        end
     end
 end
 
@@ -506,6 +510,10 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     -- AceDB hands us (event, db, newProfileKey) for OnProfileChanged/Copied.
     -- For OnProfileReset the third arg is nil; substitute the active key.
     local key = newProfileKey or (db and db.keys and db.keys.profile) or "Default"
+
+    if NS.State and NS.State.debug then
+        NS.Debug("Profile", "switched to '%s'", tostring(key))
+    end
 
     -- A reset wipes the profile back to defaults (which leaves spells = {}).
     -- Re-seed spells so the user gets a working list immediately, just like

@@ -402,6 +402,11 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
         else
             spells[selectedClass][selectedSpec] = {}
         end
+        if NS.State and NS.State.debug then
+            NS.Debug("Spells", "reset %s/%s: %d spells",
+                tostring(selectedClass), tostring(selectedSpec),
+                #spells[selectedClass][selectedSpec])
+        end
         commitSoon()
     end,
 }
@@ -498,6 +503,9 @@ local function buildRow(AceGUI, parent, list, index)
     check:SetWidth(40)
     check:SetCallback("OnValueChanged", function(_, _, value)
         entry.enabled = value and true or false
+        if NS.State and NS.State.debug then
+            NS.Debug("Spells", "%s %s", value and "enable" or "disable", tostring(entry.spellID))
+        end
         if icon.image and icon.image.SetDesaturated then
             icon.image:SetDesaturated(not value)
         end
@@ -601,7 +609,11 @@ local function buildRow(AceGUI, parent, list, index)
         atlas   = "transmog-icon-remove",
         tooltip = L["Remove"],
         onClick = function()
+            local removedId = list[index] and list[index].spellID
             table.remove(list, index)
+            if NS.State and NS.State.debug then
+                NS.Debug("Spells", "remove %s", tostring(removedId))
+            end
             commitSoon()
         end,
     })
