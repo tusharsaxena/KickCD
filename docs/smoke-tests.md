@@ -393,6 +393,6 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13.
-- **Pre-release / TOC bump:** the entire suite. The 18 surfaces above are designed to span every system the addon owns; running them in order takes ~20–30 minutes and gives release-grade confidence.
+- **Pre-release / TOC bump:** the entire suite. The 19 surfaces above are designed to span every system the addon owns; running them in order takes ~20–30 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).
