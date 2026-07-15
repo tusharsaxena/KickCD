@@ -57,6 +57,17 @@ function Units.Anchor(unit, which)
     return c and c.anchors and c.anchors[which]
 end
 
+-- Persist a saved anchor for `unit`'s `which` frame ("icons" / "castbar").
+-- Position stays per-unit even while linked (only appearance is mirrored),
+-- so the write always targets the unit's own config table.
+function Units.SetAnchor(unit, which, a)
+    local c = Units.Config(unit)
+    if c then
+        c.anchors = c.anchors or {}
+        c.anchors[which] = a
+    end
+end
+
 function Units.Label(unit)
     local c = Units.Config(unit)
     return (c and c.label) or { show = false, text = unit }

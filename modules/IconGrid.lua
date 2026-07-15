@@ -1,22 +1,26 @@
 -- modules/IconGrid.lua
 --
--- Owns one parent frame (KickCDIconGrid) and N child icon widgets, each
--- pooled and reused on rebuild so we never churn frames. Visibility is
--- gated on db.profile.enabled (master enable) AND db.profile.visibility,
--- the addon-wide "General visibility" setting also honored by the cast
--- bar so both panels show / hide together:
+-- Per-unit instance manager. Owns one parent frame + N pooled child icon
+-- widgets PER TRACKED UNIT (target / focus). Each unit's instance carries its
+-- own frame, icon pool, ordered list, private cast-event dispatch frames, and
+-- cached appearance config. In Phase 1 only the target unit enables (Focus
+-- defaults disabled), so behavior is identical to the former singleton.
+--
+-- Visibility is gated on db.profile.enabled (master enable) AND
+-- db.profile.visibility, the addon-wide "General visibility" setting also
+-- honored by the cast bar so both panels show / hide together:
 --   * "always"          — show whenever master enable is on (default)
 --   * "in_combat"       — show only while in combat (event-driven flag,
 --                          NOT InCombatLockdown() — that lags by a frame)
 --   * "target_casting"  — show only while UnitCastingInfo / UnitChannelInfo
---                          on "target" returns a non-nil name
+--                          on the instance's unit returns a non-nil name
 --   * "target_casting_interruptible"
 --                       — like target_casting but additionally requires
 --                          the cast to be interruptible. notInterruptible
 --                          is secret-tainted in 12.0 and cannot be
 --                          compared in Lua, so this mode is implemented
 --                          as a two-step gate: shouldBeVisible() returns
---                          true whenever the target is a hostile unit
+--                          true whenever the unit is a hostile unit
 --                          casting (State.IsHostileUnitCasting), and
 --                          ApplyInterruptibilityMask() then drives the
 --                          grid frame's alpha through SetAlphaFromBoolean
@@ -43,7 +47,7 @@
 --                               and/or auto-size to the grid) can sync after
 --                               the grid frame's size and the primary icon
 --                               button reference settle. Payload is
---                               { gridFrame, primaryIcon, width, height };
+--                               { unit, gridFrame, primaryIcon, width, height };
 --                               primaryIcon is nil when the active list is
 --                               empty. Public accessors GetGridFrame /
 --                               GetPrimaryIcon remain for callers that
@@ -53,23 +57,48 @@ local addonName, NS = ...
 local IconGrid = NS:NewModule("IconGrid", "AceEvent-3.0")
 
 -- ---------------------------------------------------------------------------
--- Module-local state
+-- Per-unit instances
 -- ---------------------------------------------------------------------------
+--
+-- Each tracked unit (target/focus) owns its own frame, icon pool, ordered
+-- list, private cast-event dispatch frames, and cached config. Formerly these
+-- were file-local singletons (`pool`, `ordered`, `grid`); the instance model
+-- lets a second unit coexist without any shared mutable state.
+--
+--   inst.pool.active   — keyed by spellID so Ka0s_KickCD_SPELL_STATE can look
+--                        up its icon in O(1).
+--   inst.pool.free     — a stack of released widgets ready to re-acquire.
+--   inst.ordered       — ordered list of laid-out icons (primary at [1]).
+--   inst.eventFrames   — private UNIT_SPELLCAST_* dispatch frames (teardown).
+--   inst.cfg           — resolved icons appearance (NS.Units.Icons(unit)),
+--                        refreshed at the top of Layout / config handlers.
+--   inst.isCasting     — per-instance resolver published to the render file's
+--                        glow trigger (replaces the module-level hook).
+local instances = {}   -- [unit] = instance
 
--- Pool of icon widgets. `active` is keyed by spellID so Ka0s_KickCD_SPELL_STATE
--- can look up its icon in O(1); `free` is a stack of released widgets ready
--- to be re-acquired on the next rebuild.
-local pool = { active = {}, free = {} }
+local function newInstance(unit)
+    return {
+        unit        = unit,
+        grid        = nil,
+        pool        = { active = {}, free = {} },
+        ordered     = {},
+        eventFrames = {},
+        cfg         = nil,
+        enabled     = false,
+        -- migrated from the former self._* module fields:
+        truncationWarnedFor = nil,
+        lastVisible   = nil,
+        lastGlowGate  = nil,
+        lastCastLabel = nil,
+    }
+end
 
--- Ordered list of currently-laid-out icons (primary at [1], secondaries at
--- [2..N]). We keep a separate ordered list so the layout pass doesn't have
--- to walk pool.active in an unspecified hash order.
-local ordered = {}
-
--- The parent frame. Created lazily in IconGrid:EnsureGrid() so the module's
--- OnEnable can run before UIParent is fully available in some edge cases
--- (e.g., test rigs that load us early).
-local grid
+function IconGrid:GetInstance(unit)
+    unit = unit or "target"
+    local inst = instances[unit]
+    if not inst then inst = newInstance(unit); instances[unit] = inst end
+    return inst
+end
 
 -- The per-icon widget system — the Icon prototype, its factory, cooldown /
 -- glow rendering, the step-shaped alpha/tint curves, and the shared cooldown-
@@ -84,6 +113,16 @@ local grid
 
 local floor = math.floor
 
+-- Iterate every currently-enabled instance in LIST order. Handlers that fan
+-- out to "all live grids" (config / profile / combat / spec changes) route
+-- through here so the enable-gating lives in one place.
+local function forEachEnabled(fn)
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.enabled then fn(inst) end
+    end
+end
+
 -- True when the master enable flag is set. Defaults to true on a fresh
 -- profile, so a missing field reads as enabled.
 local function isEnabled()
@@ -92,22 +131,20 @@ local function isEnabled()
     return profile.enabled ~= false
 end
 
--- True if the player's target is currently casting or channeling. Reads
+-- True if `inst`'s unit is currently casting or channeling. Reads
 -- UnitCastingInfo / UnitChannelInfo via Compat._firstReturn — the helper
 -- collapses the API's multi-return to position 1 (name) only, so the
 -- truthy check below is on a single value. The name itself may be secret
 -- in combat for protected casts but a nil-vs-non-nil truthy check does
 -- not error (Lua's `not` is safe on secrets; same guarantee
 -- `current.name and ...` relies on in modules/Castbar.lua).
-local function isTargetCasting()
-    if not (_G.UnitExists and _G.UnitExists("target")) then return false end
-    if NS.Compat._firstReturn(_G.UnitCastingInfo, "target") then return true end
-    if NS.Compat._firstReturn(_G.UnitChannelInfo, "target") then return true end
+local function instanceCasting(inst)
+    local unit = inst.unit
+    if not (_G.UnitExists and _G.UnitExists(unit)) then return false end
+    if NS.Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
+    if NS.Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
     return false
 end
--- Published for modules/IconGrid_Render.lua's glow trigger (the one reverse
--- dependency from the peeled render file back into core visibility logic).
-IconGrid._isTargetCasting = isTargetCasting
 
 -- Resolve the addon-wide "General visibility" setting. Defaults to
 -- "always" if the field is missing. Both this module and
@@ -127,12 +164,12 @@ end
 -- the regen events by a frame. The event-driven flag is the source of
 -- truth.
 
--- Decide whether the grid should be visible right now. Master enable is
+-- Decide whether `inst`'s grid should be visible right now. Master enable is
 -- the gate; visibility mode then narrows that to a subset of states.
 -- While unlocked the user is repositioning, so we ignore the visibility
 -- mode and always show — otherwise the grid would be invisible exactly
 -- when they need to drag it.
-local function shouldBeVisible()
+local function shouldBeVisible(inst)
     if not isEnabled() then return false end
     local profile = NS.db and NS.db.profile
     if profile and profile.locked == false then return true end
@@ -140,25 +177,26 @@ local function shouldBeVisible()
     if mode == "in_combat" then
         return NS.State.inCombat
     elseif mode == "target_casting" then
-        return isTargetCasting()
+        return instanceCasting(inst)
     elseif mode == "target_casting_interruptible" then
-        -- Show whenever a hostile target is casting; the actual
+        -- Show whenever a hostile unit is casting; the actual
         -- interruptibility filter is applied as an alpha mask in
         -- ApplyInterruptibilityMask (called from RefreshVisibility).
-        return NS.State.IsHostileUnitCasting("target")
+        return NS.State.IsHostileUnitCasting(inst.unit)
     end
     return true  -- "always"
 end
 
 -- For the "target_casting_interruptible" mode, drive the grid frame's
 -- alpha through SetAlphaFromBoolean(notInterruptible, 0, 1) so that an
--- in-progress cast on the target only shows the icons when the cast is
+-- in-progress cast on the unit only shows the icons when the cast is
 -- interruptible. The flag is the 12.0 secret-tainted notInterruptible,
 -- handed verbatim to a C-side method that accepts secrets — never read
 -- in Lua. For all other modes (and while unlocked, where the user is
 -- repositioning and needs to see the grid regardless) the grid runs at
 -- alpha=1 (children carry their own alphas).
-local function ApplyInterruptibilityMask()
+local function ApplyInterruptibilityMask(inst)
+    local grid = inst.grid
     if not grid then return end
     local profile = NS.db and NS.db.profile
     local unlocked = profile and profile.locked == false
@@ -166,7 +204,7 @@ local function ApplyInterruptibilityMask()
     if not unlocked
        and mode == "target_casting_interruptible"
        and NS.State.ApplyInterruptibleAlpha
-       and NS.State.ApplyInterruptibleAlpha(grid, "target", 1) then
+       and NS.State.ApplyInterruptibleAlpha(grid, inst.unit, 1) then
         return
     end
     grid:SetAlpha(1)
@@ -196,22 +234,25 @@ end
 -- Pool
 -- ---------------------------------------------------------------------------
 
-function IconGrid:AcquireIcon(spellID)
-    local btn = table.remove(pool.free)
+function IconGrid:AcquireIcon(inst, spellID)
+    local btn = table.remove(inst.pool.free)
     if not btn then
-        btn = IconGrid.CreateIconWidget(grid)
+        btn = IconGrid.CreateIconWidget(inst.grid)
     end
     btn.spellID    = spellID
-    btn.cfg        = NS.db.profile.icons
+    btn.cfg        = inst.cfg
+    btn.unit       = inst.unit
+    btn.instance   = inst
     btn._lastState = nil
     btn._cdObject  = nil
     btn:ClearAllPoints()
     btn:Show()
-    pool.active[spellID] = btn
+    inst.pool.active[spellID] = btn
     return btn
 end
 
-function IconGrid:ReleaseAll()
+function IconGrid:ReleaseAll(inst)
+    local pool = inst.pool
     for spellID, btn in pairs(pool.active) do
         btn:Hide()
         btn:ClearAllPoints()
@@ -231,6 +272,7 @@ function IconGrid:ReleaseAll()
         pool.active[spellID] = nil
     end
     -- Clear the ordered list — next BuildActiveList rebuilds it.
+    local ordered = inst.ordered
     for i = #ordered, 1, -1 do ordered[i] = nil end
 end
 
@@ -244,10 +286,12 @@ end
 --     spells the player can't see in their own spellbook are hidden)
 -- First survivor → primary; rest → secondaries.
 
-function IconGrid:BuildActiveList()
-    self:ReleaseAll()
+function IconGrid:BuildActiveList(inst)
+    self:ReleaseAll(inst)
 
     if not (NS.db and NS.db.profile) then return end
+
+    inst.cfg = NS.Units.Icons(inst.unit)
 
     local classFile, specName = getActiveSpecKey()
     if not (classFile and specName) then return end
@@ -285,7 +329,7 @@ function IconGrid:BuildActiveList()
             local name      = NS.Compat.GetSpellInfo(entry.spellID)
             local available = NS.Compat.IsSpellAvailable(entry.spellID)
             if name and available then
-                local btn = self:AcquireIcon(entry.spellID)
+                local btn = self:AcquireIcon(inst, entry.spellID)
                 local tex = NS.Compat.GetSpellTexture(entry.spellID)
                 -- Texture may be a 12.0 "secret value" on guarded spells
                 -- (Mind Freeze etc.); SetTexture rejects them from tainted
@@ -293,14 +337,14 @@ function IconGrid:BuildActiveList()
                 -- rather than erroring out of BuildActiveList partway.
                 local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
                 if tex and not texSecret then btn.icon:SetTexture(tex) end
-                btn:ApplyTextConfig(NS.db.profile.icons)
+                btn:ApplyTextConfig(inst.cfg)
                 -- Initial state: assume ready until Cooldowns sends a real
                 -- Ka0s_KickCD_SPELL_STATE. Apply{} (no payload) treats the icon
                 -- as "not ready" because state.ready is nil-falsy, so pass
                 -- a synthetic ready frame to render correctly until the
                 -- first real state arrives.
                 btn:Apply({ ready = true, start = 0, duration = 0 })
-                table.insert(ordered, btn)
+                table.insert(inst.ordered, btn)
             end
         end
     end
@@ -335,9 +379,11 @@ end
 -- Pixel-floor every offset so we don't end up with sub-pixel positions
 -- on fractional UIScale values (which would blur icons by one pixel).
 
-function IconGrid:Layout()
+function IconGrid:Layout(inst)
+    local grid = inst.grid
     if not grid then return end
-    local cfg = NS.db.profile.icons or {}
+    inst.cfg = NS.Units.Icons(inst.unit)
+    local cfg = inst.cfg or {}
 
     local primarySize   = cfg.primarySize or 48
     local secondarySize = floor(primarySize * (cfg.secondarySize or 0.7))
@@ -349,12 +395,16 @@ function IconGrid:Layout()
     local offX          = cfg.secondaryOffsetX or 0
     local offY          = cfg.secondaryOffsetY or 0
 
+    local ordered = inst.ordered
+
     -- Re-bind cfg + text/appearance config on every layout pass so changes
     -- to color/alpha/font/zoom/border apply without a full rebuild. Stamp
     -- _isPrimary BEFORE ApplyTextConfig because that re-runs Apply which
     -- in turn calls UpdateGlow — and the glow path reads the slot flag.
     for i, btn in ipairs(ordered) do
         btn.cfg        = cfg
+        btn.unit       = inst.unit
+        btn.instance   = inst
         btn._isPrimary = (i == 1)
         btn:Show()
         btn:ApplyAppearance(cfg)
@@ -371,6 +421,7 @@ function IconGrid:Layout()
             -- primaryIcon is nil here (no spells in the active list) —
             -- subscribers fall back to the public accessor or just skip.
             NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+                unit        = inst.unit,
                 gridFrame   = grid,
                 primaryIcon = nil,
                 width       = primarySize,
@@ -399,27 +450,28 @@ function IconGrid:Layout()
         local cls, spc = getActiveSpecKey()
         if cls and spc then clsKey = cls .. "/" .. spc end
         local key = clsKey .. "/" .. tostring(cap)
-        if self._truncationWarnedFor ~= key then
-            self._truncationWarnedFor = key
+        if inst.truncationWarnedFor ~= key then
+            inst.truncationWarnedFor = key
             if NS.Util and NS.Util.print then
                 NS.Util.print(("dropped %d icon(s) past the %d-slot grid for %s — bump rows*cols or remove spells")
                     :format(truncated, cap, clsKey))
             end
         end
-    elseif self._truncationWarnedFor and (truncated == 0 or not truncated) then
+    elseif inst.truncationWarnedFor and (truncated == 0 or not truncated) then
         -- No truncation this pass (user fixed it or the spell list shrank).
         -- Clear the dedup key so a future overflow re-warns.
-        self._truncationWarnedFor = nil
+        inst.truncationWarnedFor = nil
     end
 
     -- Notify dependent modules (Castbar) that grid geometry / primary icon
-    -- reference may have changed. Payload carries the gridFrame +
+    -- reference may have changed. Payload carries the unit + gridFrame +
     -- primaryIcon references and the post-layout bounding box so the
     -- subscriber doesn't need to reach back through the public accessors.
     -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
     -- that haven't yet adopted the payload form.
     if NS.SendMessage then
         NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+            unit        = inst.unit,
             gridFrame   = grid,
             primaryIcon = primary,
             width       = w,
@@ -431,7 +483,8 @@ end
 -- Apply general-tab visual settings (scale, alpha) to the parent frame.
 -- Per-icon alpha continues to be set by Icon:Apply (cfg.readyAlpha /
 -- cfg.cooldownAlpha) and multiplies naturally with the parent's alpha.
-function IconGrid:ApplyGeneral()
+function IconGrid:ApplyGeneral(inst)
+    local grid = inst.grid
     if not grid then return end
     local profile = NS.db and NS.db.profile
     if not profile then return end
@@ -443,16 +496,15 @@ end
 -- Lock / unlock + drag persistence
 -- ---------------------------------------------------------------------------
 
-local function onDragStart(self)
+local function onDragStart(_inst, frame)
     if NS.db and NS.db.profile and NS.db.profile.locked then return end
-    self:StartMoving()
+    frame:StartMoving()
 end
 
-local function onDragStop(self)
-    self:StopMovingOrSizing()
+local function onDragStop(inst, frame)
+    frame:StopMovingOrSizing()
     if NS.db and NS.db.profile then
-        NS.db.profile.anchors = NS.db.profile.anchors or {}
-        NS.db.profile.anchors.icons = NS.Util.SaveAnchor(self)
+        NS.Units.SetAnchor(inst.unit, "icons", NS.Util.SaveAnchor(frame))
     end
     -- Fire the closed bus message so any future "anchor-aware"
     -- subscriber (e.g. a hypothetical Castbar mode that follows the
@@ -464,11 +516,13 @@ local function onDragStop(self)
     end
 end
 
-function IconGrid:ApplyLock()
+function IconGrid:ApplyLock(inst)
+    local grid = inst.grid
     if not grid then return end
     local profile  = NS.db and NS.db.profile
     local locked   = profile and profile.locked
-    local showTip  = profile and profile.icons and profile.icons.showTooltip
+    inst.cfg = NS.Units.Icons(inst.unit)
+    local showTip  = inst.cfg and inst.cfg.showTooltip
     if locked then
         grid:RegisterForDrag()        -- clear all drag buttons
         grid:EnableMouse(false)
@@ -481,7 +535,7 @@ function IconGrid:ApplyLock()
     -- it for hover tooltips. When unlocked, the grid wants mouse for
     -- drag and icons must pass through.
     local enableIconMouse = (locked and showTip) and true or false
-    for _, btn in ipairs(ordered) do
+    for _, btn in ipairs(inst.ordered) do
         btn:EnableMouse(enableIconMouse)
     end
 end
@@ -490,10 +544,14 @@ end
 -- Frame setup
 -- ---------------------------------------------------------------------------
 
-function IconGrid:EnsureGrid()
-    if grid then return grid end
+function IconGrid:EnsureGrid(inst)
+    if inst.grid then return inst.grid end
 
-    grid = CreateFrame("Frame", "KickCDIconGrid", UIParent)
+    -- Target keeps the exact legacy global name KickCDIconGrid (macros /
+    -- other addons may reference it); Focus is KickCDIconGridFocus.
+    local frameName = "KickCDIconGrid" .. (inst.unit == "target" and "" or "Focus")
+    local grid = CreateFrame("Frame", frameName, UIParent)
+    inst.grid = grid
     grid:SetSize(48, 48)
     grid:SetFrameStrata("MEDIUM")
     grid:SetClampedToScreen(true)
@@ -501,20 +559,19 @@ function IconGrid:EnsureGrid()
 
     -- Anchor from the saved profile. Util.ApplyAnchor unconditionally
     -- targets UIParent so we don't have to serialize a relativeTo.
-    local anchor = NS.db and NS.db.profile
-        and NS.db.profile.anchors and NS.db.profile.anchors.icons
+    local anchor = NS.Units.Anchor(inst.unit, "icons")
     NS.Util.ApplyAnchor(grid, anchor or
         { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 })
 
-    grid:SetScript("OnDragStart", onDragStart)
-    grid:SetScript("OnDragStop",  onDragStop)
+    grid:SetScript("OnDragStart", function(f) onDragStart(inst, f) end)
+    grid:SetScript("OnDragStop",  function(f) onDragStop(inst, f) end)
 
     -- Apply the current locked state. ApplyLock toggles EnableMouse +
     -- RegisterForDrag, which is the only correct way to "release" the mouse
     -- without permanently breaking drag — calling SetMovable(false) on a
     -- locked frame would prevent unlock without a reload.
-    self:ApplyLock()
-    self:ApplyGeneral()
+    self:ApplyLock(inst)
+    self:ApplyGeneral(inst)
 
     return grid
 end
@@ -523,14 +580,62 @@ end
 -- Module lifecycle
 -- ---------------------------------------------------------------------------
 
+-- Bring a unit's instance fully online: build its frame, active list, layout,
+-- visibility, and register the per-instance UNIT_SPELLCAST_* dispatch frames.
+function IconGrid:EnableUnit(unit)
+    local inst = self:GetInstance(unit)
+    inst.cfg = NS.Units.Icons(unit)
+    -- Per-instance cast resolver, published to the render file's glow trigger
+    -- via the icon's btn.instance (replaces the former module-level
+    -- IconGrid._isTargetCasting hook). Idempotent across re-enables.
+    inst.isCasting = inst.isCasting or function() return instanceCasting(inst) end
+    self:EnsureGrid(inst)
+    self:BuildActiveList(inst)
+    self:Layout(inst)
+    self:RefreshVisibility(inst)
+    self:RefreshAllGlows(inst)   -- reflect any in-progress cast (reevaluate-on-enable)
+
+    -- UNIT_SPELLCAST_* registrations go through Util.RegisterUnitCastEvent
+    -- so the dispatch frame fires only when the unit IS this instance's unit.
+    -- With vanilla RegisterEvent the handler runs for every party / raid /
+    -- nameplate cast and early-returns inside; in a 25-player raid that's
+    -- thousands of no-op dispatches per minute. Interruptibility flips
+    -- mid-cast (boss casts that toggle immunity via an aura, etc.) also
+    -- come through this path so the "target_casting_interruptible" mode
+    -- re-evaluates. The returned frames are stashed on the instance so
+    -- DisableUnit / OnDisable can release them — AceEvent's
+    -- UnregisterAllEvents only knows about its own table, not these frames.
+    for _, ev in ipairs({
+        "UNIT_SPELLCAST_START",
+        "UNIT_SPELLCAST_STOP",
+        "UNIT_SPELLCAST_FAILED",
+        "UNIT_SPELLCAST_INTERRUPTED",
+        "UNIT_SPELLCAST_CHANNEL_START",
+        "UNIT_SPELLCAST_CHANNEL_STOP",
+        "UNIT_SPELLCAST_INTERRUPTIBLE",
+        "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
+    }) do
+        inst.eventFrames[#inst.eventFrames + 1] =
+            NS.Util.RegisterUnitCastEvent(self, unit, ev, "OnUnitCastEvent")
+    end
+    inst.enabled = true
+end
+
+-- Tear a unit's instance down: release its private dispatch frames and hide
+-- its grid. Used by OnDisable and (Phase 3) runtime enable-gating.
+function IconGrid:DisableUnit(unit)
+    local inst = instances[unit]
+    if not inst then return end
+    for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
+    inst.eventFrames = {}
+    if inst.grid then inst.grid:Hide() end
+    inst.enabled = false
+end
+
 function IconGrid:OnEnable()
     -- Combat flag is owned by core/State.lua's bootstrap listener, so
     -- this module no longer seeds it on enable.
-    self:EnsureGrid()
     IconGrid.BuildCurves()
-    self:BuildActiveList()
-    self:Layout()
-    self:RefreshVisibility()
 
     -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
     -- is fired from IconGrid:Layout itself, not via a SendMessage in OnEnable.
@@ -554,52 +659,26 @@ function IconGrid:OnEnable()
     self:RegisterEvent("SPELLS_CHANGED",                "OnSpellsChanged")
     self:RegisterEvent("TRAIT_CONFIG_UPDATED",          "OnSpellsChanged")
 
-    -- Events that drive the "General visibility" mode. We listen
-    -- unconditionally so toggling the mode at runtime via /kcd set or the
-    -- panel just works without re-registering. RefreshVisibility short-
-    -- circuits to "always show" in "always" mode, so the only cost when
-    -- the user hasn't opted into a gated mode is a few cheap callbacks.
-    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message
-    -- subscription above, not raw PLAYER_REGEN_* events.
+    -- The two global unit-change events. These are GLOBAL (no unit filter),
+    -- so they register at MODULE level via plain RegisterEvent — NOT through
+    -- RegisterUnitCastEvent (which is for the UNIT_SPELLCAST_* family). Each
+    -- handler refreshes only its own unit's instance if that instance is live.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
+    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
 
-    -- UNIT_SPELLCAST_* registrations go through Util.RegisterTargetEvent
-    -- so the dispatch frame fires only when the unit IS "target". With
-    -- vanilla RegisterEvent the handler runs for every party / raid /
-    -- nameplate cast and early-returns inside; in a 25-player raid that's
-    -- thousands of no-op dispatches per minute. Interruptibility flips
-    -- mid-cast (boss casts that toggle immunity via an aura, etc.) also
-    -- come through this path so the "target_casting_interruptible" mode
-    -- re-evaluates. The returned frames are stashed on the module so
-    -- OnDisable can release them — AceEvent's UnregisterAllEvents only
-    -- knows about its own table, not these private frames.
-    self._targetEventFrames = self._targetEventFrames or {}
-    local Util = NS.Util
-    for _, ev in ipairs({
-        "UNIT_SPELLCAST_START",
-        "UNIT_SPELLCAST_STOP",
-        "UNIT_SPELLCAST_FAILED",
-        "UNIT_SPELLCAST_INTERRUPTED",
-        "UNIT_SPELLCAST_CHANNEL_START",
-        "UNIT_SPELLCAST_CHANNEL_STOP",
-        "UNIT_SPELLCAST_INTERRUPTIBLE",
-        "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
-    }) do
-        self._targetEventFrames[#self._targetEventFrames + 1] =
-            Util.RegisterTargetEvent(self, ev, "OnTargetCastEvent")
+    -- Bring every enabled unit online. Focus defaults disabled, so only the
+    -- target instance enables here and behavior matches the former singleton.
+    for _, u in ipairs(NS.Units.LIST) do
+        if NS.Units.IsEnabled(u) then self:EnableUnit(u) end
     end
 end
 
 function IconGrid:OnDisable()
     self:UnregisterAllMessages()
     self:UnregisterAllEvents()
-    if self._targetEventFrames then
-        for _, f in ipairs(self._targetEventFrames) do
-            f:UnregisterAllEvents()
-        end
-        self._targetEventFrames = {}
+    for _, u in ipairs(NS.Units.LIST) do
+        self:DisableUnit(u)
     end
-    if grid then grid:Hide() end
 end
 
 -- ---------------------------------------------------------------------------
@@ -609,11 +688,20 @@ end
 function IconGrid:OnSpellState(_evt, payload)
     -- Payload contract per CLAUDE.md:
     --   { spellID, ready, isActive, cdObject, charges }
-    -- We only update icons currently in the active pool — Cooldowns may
-    -- watch a slightly larger or stale set during config transitions.
+    -- The player's cooldown state applies to every live unit's icon for
+    -- that spell, so fan out to each enabled instance's active pool. We
+    -- only update icons currently in the active pool — Cooldowns may watch
+    -- a slightly larger or stale set during config transitions.
     if not (payload and payload.spellID) then return end
-    local btn = pool.active[payload.spellID]
-    if btn then btn:Apply(payload) end
+    -- Inlined (not forEachEnabled) so this hot path allocates no per-message
+    -- closure. SPELL_STATE fires on every cooldown-state change.
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.enabled then
+            local btn = inst.pool.active[payload.spellID]
+            if btn then btn:Apply(payload) end
+        end
+    end
 end
 
 function IconGrid:OnConfigChanged(_evt, payload)
@@ -624,49 +712,55 @@ function IconGrid:OnConfigChanged(_evt, payload)
         -- ApplyAppearance/ApplyTextConfig per-icon so zoom/border/font
         -- changes flow through the same path.
         IconGrid.BuildCurves()  -- readyAlpha/cooldownAlpha/cooldownTint may have moved
-        self:Layout()
-        self:ApplyLock()
+        forEachEnabled(function(inst)
+            self:Layout(inst)
+            self:ApplyLock(inst)
+        end)
     elseif section == "spells" then
         -- Spell list changed under us — rebuild from the profile and stay
         -- visible. Lock state is unaffected.
-        self:BuildActiveList()
-        self:Layout()
+        forEachEnabled(function(inst)
+            self:BuildActiveList(inst)
+            self:Layout(inst)
+        end)
     elseif section == "general" then
         -- General-tab edits include the master enable, the lock toggle,
         -- master scale / alpha, the visibility mode, and the Reset
         -- position button. Apply scale/alpha unconditionally; visibility
         -- decision rolls master enable + the mode together.
-        if grid then
-            local anchor = NS.db and NS.db.profile
-                and NS.db.profile.anchors and NS.db.profile.anchors.icons
-            if anchor then NS.Util.ApplyAnchor(grid, anchor) end
-            self:ApplyGeneral()
-        end
-        self:RefreshVisibility()
-        self:ApplyLock()
+        forEachEnabled(function(inst)
+            if inst.grid then
+                local anchor = NS.Units.Anchor(inst.unit, "icons")
+                if anchor then NS.Util.ApplyAnchor(inst.grid, anchor) end
+                self:ApplyGeneral(inst)
+            end
+            self:RefreshVisibility(inst)
+            self:ApplyLock(inst)
+        end)
     end
 end
 
 function IconGrid:OnProfileChanged(_evt, payload)
     -- Full reset: re-anchor, rebuild the active list against the new
     -- profile's spell defaults, and re-apply the lock + general state.
-    if grid then
-        local anchor = NS.db and NS.db.profile
-            and NS.db.profile.anchors and NS.db.profile.anchors.icons
-        NS.Util.ApplyAnchor(grid, anchor or
-            { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 })
-    end
     IconGrid.BuildCurves()
-    self:BuildActiveList()
-    self:Layout()
-    self:ApplyLock()
-    self:ApplyGeneral()
-    self:RefreshVisibility()
+    forEachEnabled(function(inst)
+        if inst.grid then
+            local anchor = NS.Units.Anchor(inst.unit, "icons")
+            NS.Util.ApplyAnchor(inst.grid, anchor or
+                { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 })
+        end
+        self:BuildActiveList(inst)
+        self:Layout(inst)
+        self:ApplyLock(inst)
+        self:ApplyGeneral(inst)
+        self:RefreshVisibility(inst)
+    end)
 end
 
 --- Apply the visibility decision (shouldBeVisible) to the grid frame.
---- Called from OnEnable, every config change that touches general/master,
---- combat transitions, target changes, and target cast start/stop events.
+--- Called from EnableUnit, every config change that touches general/master,
+--- combat transitions, unit changes, and cast start/stop events.
 ---
 --- For the "target_casting_interruptible" mode the Show gate fires for
 --- ANY hostile cast — the per-cast interruptible filter rides on top of
@@ -674,44 +768,61 @@ end
 --- it on every refresh is cheap and keeps the alpha in sync as
 --- UNIT_SPELLCAST_INTERRUPTIBLE / NOT_INTERRUPTIBLE events flip the
 --- secret-value flag mid-cast.
-function IconGrid:RefreshVisibility()
+function IconGrid:RefreshVisibility(inst)
+    local grid = inst.grid
     if not grid then return end
-    local show = shouldBeVisible()
-    if NS.State and NS.State.debug and show ~= self._lastVisible then
-        NS.Debug("IconGrid", "visibility %s: %s", tostring(visibilityMode()),
-            show and "shown" or "hidden")
+    local show = shouldBeVisible(inst)
+    if NS.State and NS.State.debug and show ~= inst.lastVisible then
+        NS.Debug("IconGrid", "[%s] visibility %s: %s", inst.unit,
+            tostring(visibilityMode()), show and "shown" or "hidden")
     end
-    self._lastVisible = show
+    inst.lastVisible = show
     if show then
         grid:Show()
-        ApplyInterruptibilityMask()
+        ApplyInterruptibilityMask(inst)
     else
         grid:Hide()
     end
 end
 
---- UNIT_SPELLCAST_* events fire for any unit. We only care about the
---- "target" unit because that's what the "target_casting" visibility
---- mode + the glow trigger key off of. The unit filter lives in the
---- registration site (Util.RegisterTargetEvent in OnEnable), so this
---- handler trusts that `unit` is always "target".
-function IconGrid:OnTargetCastEvent()
-    self:RefreshVisibility()
-    self:RefreshAllGlows()
+--- UNIT_SPELLCAST_* events. The dispatch frame (Util.RegisterUnitCastEvent
+--- in EnableUnit) already filters to this instance's unit, so `unit` names
+--- the instance to refresh. Both the "*_casting" visibility modes and the
+--- same-named glow triggers key off the unit's cast state.
+function IconGrid:OnUnitCastEvent(_event, unit)
+    local inst = instances[unit]
+    if inst and inst.enabled then
+        self:RefreshVisibility(inst)
+        self:RefreshAllGlows(inst)
+    end
 end
 
 --- PLAYER_TARGET_CHANGED handler. Both the "target_casting" /
 --- "target_casting_interruptible" visibility modes AND the same-named
 --- glow triggers depend on the target's cast state, so a target swap
---- requires re-evaluating both.
+--- requires re-evaluating both. A disabled target is a cheap no-op.
 function IconGrid:OnTargetChanged()
-    self:RefreshVisibility()
-    self:RefreshAllGlows()
+    local inst = instances["target"]
+    if inst and inst.enabled then
+        self:RefreshVisibility(inst)
+        self:RefreshAllGlows(inst)
+    end
+end
+
+--- PLAYER_FOCUS_CHANGED handler — the focus-unit equivalent of
+--- OnTargetChanged. Focus defaults disabled, so this is a no-op until the
+--- focus instance is enabled (Phase 3).
+function IconGrid:OnFocusChanged()
+    local inst = instances["focus"]
+    if inst and inst.enabled then
+        self:RefreshVisibility(inst)
+        self:RefreshAllGlows(inst)
+    end
 end
 
 --- Re-run UpdateGlow for every active icon against its last-known state.
---- Called when the trigger condition could have changed (target swap,
---- target cast start/stop, interruptibility flip) — the icons' Cooldowns
+--- Called when the trigger condition could have changed (unit swap,
+--- unit cast start/stop, interruptibility flip) — the icons' Cooldowns
 --- state hasn't moved but the glow gate has, so we need to push the new
 --- decision through.
 ---
@@ -720,13 +831,13 @@ end
 --- abilities used to retrigger N icon evaluations per cast event even
 --- when the gate decision was identical to last time; this caches the
 --- two booleans the trigger predicates branch on and skips the per-icon
---- iteration when neither moved. Cache is recomputed on every event the
---- function is called from (see OnTargetCastEvent / OnTargetChanged /
---- the per-icon Apply / ApplyTextConfig fall-throughs).
-function IconGrid:RefreshAllGlows()
+--- iteration when neither moved. Cache is per-instance so target and
+--- focus don't share (or clobber) each other's gate.
+function IconGrid:RefreshAllGlows(inst)
+    local unit = inst.unit
     -- Compute the gate booleans once. `interruptible` is a tri-state:
-    --   * true  — target is hostile-casting AND the cast is interruptible
-    --   * false — target is hostile-casting AND the cast is NOT interruptible
+    --   * true  — unit is hostile-casting AND the cast is interruptible
+    --   * false — unit is hostile-casting AND the cast is NOT interruptible
     --   * nil   — no hostile cast in progress (both true/false reads as
     --             irrelevant to the trigger decision)
     -- KickCD.State.IsHostileUnitCasting handles existence/can-attack gates
@@ -734,12 +845,12 @@ function IconGrid:RefreshAllGlows()
     -- on top.
     local hostileCasting = NS.State
         and NS.State.IsHostileUnitCasting
-        and NS.State.IsHostileUnitCasting("target") or false
+        and NS.State.IsHostileUnitCasting(unit) or false
     local interruptible
     if hostileCasting and _G.UnitCastingInfo then
-        local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo("target")
+        local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo(unit)
         if notInterruptible == nil and _G.UnitChannelInfo then
-            local _, _, _, _, _, _, ni = _G.UnitChannelInfo("target")
+            local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
             notInterruptible = ni
         end
         -- notInterruptible may be secret-tainted; comparing it directly
@@ -758,7 +869,7 @@ function IconGrid:RefreshAllGlows()
         interruptible = nil
     end
 
-    local prev = self._lastGlowGate
+    local prev = inst.lastGlowGate
     if prev
        and prev.hostileCasting == hostileCasting
        and prev.interruptible  == interruptible
@@ -766,7 +877,7 @@ function IconGrid:RefreshAllGlows()
     then
         return
     end
-    self._lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
+    inst.lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
 
     if NS.State and NS.State.debug then
         -- interruptible is a resolved tri-state (true/false/nil/"secret"), never
@@ -777,16 +888,16 @@ function IconGrid:RefreshAllGlows()
             or interruptible == "secret" and "secret (combat-tainted)"
             or "none (no hostile cast)"
         -- Dedup: while interruptibility is secret-tainted the gate short-circuit
-        -- above is deliberately bypassed, so every target-cast event reaches
-        -- here — a boss firing many casts would log an identical line each time.
-        -- Emit only when the printed label actually changes (§9).
-        if gate ~= self._lastCastLabel then
-            self._lastCastLabel = gate
-            NS.Debug("Cast", "target cast gate: interruptible %s", gate)
+        -- above is deliberately bypassed, so every cast event reaches here — a
+        -- boss firing many casts would log an identical line each time. Emit
+        -- only when the printed label actually changes (§9).
+        if gate ~= inst.lastCastLabel then
+            inst.lastCastLabel = gate
+            NS.Debug("Cast", "[%s] cast gate: interruptible %s", unit, gate)
         end
     end
 
-    for _, btn in ipairs(ordered) do
+    for _, btn in ipairs(inst.ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end
     end
 end
@@ -797,20 +908,26 @@ end
 --- `inCombat` but we read State.inCombat for consistency with
 --- shouldBeVisible's other read sites.
 function IconGrid:OnCombatStateChanged()
-    self:RefreshVisibility()
+    forEachEnabled(function(inst)
+        self:RefreshVisibility(inst)
+    end)
 end
 
 function IconGrid:OnSpecChanged(_evt, unit)
     -- PLAYER_SPECIALIZATION_CHANGED fires for any unit; only react for the
     -- player.
     if unit and unit ~= "player" then return end
-    self:BuildActiveList()
-    self:Layout()
+    forEachEnabled(function(inst)
+        self:BuildActiveList(inst)
+        self:Layout(inst)
+    end)
 end
 
 function IconGrid:OnPlayerEnteringWorld()
-    self:BuildActiveList()
-    self:Layout()
+    forEachEnabled(function(inst)
+        self:BuildActiveList(inst)
+        self:Layout(inst)
+    end)
 end
 
 -- SPELLS_CHANGED / TRAIT_CONFIG_UPDATED handler. SPELLS_CHANGED in
@@ -818,22 +935,28 @@ end
 -- Layout are cheap (icon widgets pool, no frame churn) so a handful of
 -- redundant rebuilds is fine.
 function IconGrid:OnSpellsChanged()
-    self:BuildActiveList()
-    self:Layout()
+    forEachEnabled(function(inst)
+        self:BuildActiveList(inst)
+        self:Layout(inst)
+    end)
 end
 
 -- ---------------------------------------------------------------------------
 -- Public accessors
 -- ---------------------------------------------------------------------------
 
---- Return the parent grid frame (KickCDIconGrid) or nil if not yet built.
+--- Return the parent grid frame for `unit` (default "target") or nil if not
+--- yet built. Target's frame keeps the legacy global name KickCDIconGrid.
 --- Used by the cast bar module so it can anchor itself relative to the grid.
-function IconGrid:GetGridFrame()
-    return grid
+function IconGrid:GetGridFrame(unit)
+    local inst = instances[unit or "target"]
+    return inst and inst.grid
 end
 
---- Return the primary icon button (first laid-out icon) or nil if no spells
---- are currently watched. Used by the cast bar module's PRIMARY anchor mode.
-function IconGrid:GetPrimaryIcon()
-    return ordered[1]
+--- Return the primary icon button (first laid-out icon) for `unit` (default
+--- "target") or nil if no spells are currently watched. Used by the cast bar
+--- module's PRIMARY anchor mode.
+function IconGrid:GetPrimaryIcon(unit)
+    local inst = instances[unit or "target"]
+    return inst and inst.ordered[1]
 end

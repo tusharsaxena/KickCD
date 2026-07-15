@@ -3,10 +3,12 @@
 -- The icon-widget prototype (Icon), its factory (CreateIconWidget), the cooldown-
 -- swipe / countdown-text / ready-glow rendering, the step-shaped alpha/tint curves,
 -- and the shared cooldown-text ticker — everything that draws a single icon. Core
--- (IconGrid.lua) owns the pool, layout orchestration, visibility, and message
--- handlers; it calls IconGrid.CreateIconWidget / IconGrid.BuildCurves (exposed at the
--- bottom). The one reverse dependency (the glow trigger needs "is the target casting")
--- goes through IconGrid._isTargetCasting, published by core.
+-- (IconGrid.lua) owns the per-unit instances, pool, layout orchestration,
+-- visibility, and message handlers; it calls IconGrid.CreateIconWidget /
+-- IconGrid.BuildCurves (exposed at the bottom). The one reverse dependency
+-- (the glow trigger needs "is this unit casting") goes through the instance
+-- stamped on each icon (btn.instance / btn.unit) — inst.isCasting() is the
+-- per-instance resolver published by core.
 
 local addonName, NS = ...
 local IconGrid = NS:GetModule("IconGrid")
@@ -51,7 +53,11 @@ end
 local function BuildCurves()
     if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
 
-    local cfg = (NS.db and NS.db.profile and NS.db.profile.icons) or {}
+    -- Curves are module-level (shared across instances). They read the
+    -- target unit's resolved appearance so target's configured alphas/tint
+    -- are honored; a future task can promote these to per-unit curves when
+    -- an unlinked focus needs its own alpha/tint values.
+    local cfg = NS.Units.Icons("target")
     local readyAlpha    = cfg.readyAlpha    or 1.0
     local cooldownAlpha = cfg.cooldownAlpha or 0.4
     local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
@@ -172,19 +178,22 @@ local function CreateIconWidget(parent)
     glow:SetFrameLevel(btn:GetFrameLevel() + 5)
     btn.glow = glow
 
-    -- Per-instance state: cfg points at db.profile.icons during Apply so we
-    -- can re-color/re-alpha without re-reading the global db every time.
-    -- spellID is set when the icon is acquired and used for fast lookup.
-    btn.spellID = nil
-    btn.cfg     = nil
+    -- Per-widget state: cfg points at the owning unit's resolved appearance
+    -- (NS.Units.Icons) during Apply so we can re-color/re-alpha without
+    -- re-reading the db every time. spellID is set when the icon is acquired
+    -- and used for fast lookup. unit / instance are stamped in AcquireIcon so
+    -- a de-pooled icon still resolves the right unit's config + cast state.
+    btn.spellID   = nil
+    btn.cfg       = nil
+    btn.unit      = nil
+    btn.instance  = nil
 
     -- Hover tooltip. Only fires when EnableMouse(true) on the icon, which
     -- IconGrid:ApplyLock toggles based on (locked AND icons.showTooltip).
     -- While unlocked, EnableMouse(false) so the grid frame retains the
     -- mouse for dragging.
     btn:SetScript("OnEnter", function(self)
-        local profile = NS.db and NS.db.profile
-        local cfg = profile and profile.icons
+        local cfg = NS.Units.Icons(self.unit or "target")
         if not (cfg and cfg.showTooltip and self.spellID) then return end
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -240,7 +249,7 @@ end
 -- whole time so we skip that early-exit branch — SPELL_UPDATE_CHARGES
 -- handles the recharge-end transition with adequate latency.
 function Icon:StartCooldownText(cdObject, isFullCooldown)
-    local cfg = self.cfg or NS.db.profile.icons
+    local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     if not cfg.showCooldownText or not cdObject then
         self:StopCooldownText()
         return
@@ -403,15 +412,16 @@ end
 -- 12.0 — and UpdateGlow applies SetAlphaFromBoolean on the glow frame
 -- to actually filter out uninterruptible casts (alpha 0). Same pattern
 -- as RefreshVisibility / ApplyInterruptibilityMask above.
-local function triggerSatisfied(trigger)
+local function triggerSatisfied(trigger, inst)
     if trigger == "always" then
         return true
     elseif trigger == "target_casting" then
-        return IconGrid._isTargetCasting()
+        return inst and inst.isCasting and inst.isCasting() or false
     elseif trigger == "target_casting_interruptible" then
+        local unit = (inst and inst.unit) or "target"
         return NS.State
            and NS.State.IsHostileUnitCasting
-           and NS.State.IsHostileUnitCasting("target")
+           and NS.State.IsHostileUnitCasting(unit)
            or false
     end
     -- "never" or unknown — glow off.
@@ -431,7 +441,7 @@ end
 -- uninterruptible casts run the animation invisibly until the flag
 -- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends.
 function Icon:UpdateGlow(state)
-    local cfg = self.cfg or NS.db.profile.icons
+    local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     if not cfg then return self:StopGlow() end
 
     local trigger, kind, color
@@ -444,7 +454,7 @@ function Icon:UpdateGlow(state)
     end
 
     local ready = state and state.ready and true or false
-    if not ready or not triggerSatisfied(trigger) then
+    if not ready or not triggerSatisfied(trigger, self.instance) then
         self:StopGlow()
         return
     end
@@ -454,7 +464,7 @@ function Icon:UpdateGlow(state)
     if trigger == "target_casting_interruptible"
        and self.glow
        and NS.State.ApplyInterruptibleAlpha
-       and NS.State.ApplyInterruptibleAlpha(self.glow, "target", 1) then
+       and NS.State.ApplyInterruptibleAlpha(self.glow, self.unit or "target", 1) then
         return
     end
     if self.glow then self.glow:SetAlpha(1) end
@@ -467,7 +477,7 @@ end
 -- SetAlphaFromBoolean(true, value, 0) — both args may be secret-tainted
 -- in combat but the C method handles it.
 local function applyGcdSuppressionAlpha(icon, cdObject)
-    local cfg = icon.cfg or NS.db.profile.icons
+    local cfg = icon.cfg or NS.Units.Icons(icon.unit or "target")
     if cfg and cfg.suppressGCDSwipe and gcdSuppressCurve and cdObject
         and icon.cooldown.SetAlphaFromBoolean and icon.cooldownText.SetAlphaFromBoolean
     then
@@ -500,7 +510,7 @@ end
 -- C-side via curve evaluation; Lua never compares the spell's
 -- secret-tainted remaining time directly.
 function Icon:Apply(state)
-    local cfg = self.cfg or NS.db.profile.icons
+    local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
     -- toggles showCooldownText (or any other visual state) mid-cooldown
     -- without waiting for the next SPELL_STATE message.
@@ -577,7 +587,7 @@ end
 -- thickness). Called from Layout() so any /kcd set or panel change
 -- takes effect on the next layout pass without a full rebuild.
 function Icon:ApplyAppearance(cfg)
-    cfg = cfg or NS.db.profile.icons
+    cfg = cfg or NS.Units.Icons(self.unit or "target")
     local z = cfg.zoom or 0.08
     self.icon:SetTexCoord(z, 1 - z, z, 1 - z)
 
@@ -607,7 +617,7 @@ end
 -- so the text displays even when the swipe is hidden (interrupts) and
 -- inherits parent alpha for free.
 function Icon:ApplyTextConfig(cfg)
-    cfg = cfg or NS.db.profile.icons
+    cfg = cfg or NS.Units.Icons(self.unit or "target")
     if self.cooldown.SetHideCountdownNumbers then
         self.cooldown:SetHideCountdownNumbers(true)
     end
