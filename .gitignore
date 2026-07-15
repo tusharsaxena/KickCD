@@ -26,3 +26,4 @@ WTF/
 
 # Claude Code (per-user local settings)
 .claude/settings.local.json
+.superpowers/
