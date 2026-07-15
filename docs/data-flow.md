@@ -36,6 +36,8 @@ The GCD-vs-real-CD visual decision is made entirely C-side via `cdObject:Evaluat
 
 A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watched id (pet dismissed, talent untrained, encounter mechanic suppresses the spell) emits a final sentinel `Ka0s_KickCD_SPELL_STATE { spellID, ready=false, isActive=false, cdObject=nil, chargeCdObject=nil, charges=nil }` and unwatches the id. Without it the icon would render the last-known state until the next `Rebuild` — which `SPELLS_CHANGED` / `TRAIT_CONFIG_UPDATED` typically cover, but not all paths fire those events.
 
+`Cooldowns` is unit-agnostic — it polls the player's OWN spellbook, not a per-unit state — so a single `Ka0s_KickCD_SPELL_STATE` broadcast feeds every enabled unit's `IconGrid` instance identically (`instances[unit]:OnSpellState`, unit by unit).
+
 ## Settings input → bus
 
 Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
@@ -44,48 +46,50 @@ The debug enabled-flag is outside this path: `/kcd debug on|off|toggle` sets the
 
 Slash commands that mutate schema-backed fields (e.g. `/kcd lock`) route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write/notify/refresh code path (`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way a future `onChange` added to a row doesn't silently diverge between the two paths.
 
-Drag is the one exception: `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows), then fire `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes the anchor table directly from `NS.DEFAULT_PROFILE` and fires the same `general`-section message.
+Drag is the one exception: each instance's `IconGrid:onDragStop` and `Castbar:onDragStop` write `db.profile.units.<unit>.anchors.icons` / `.castbar` directly via `Util.SaveAnchor(frame)` (the schema doesn't cover anchor tables — they aren't simple key-value rows; position is also never link-resolved, so the write always targets the dragged instance's own unit), then fire `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` and `{ section = "castbar" }` respectively so any future anchor-aware subscriber gets notified. The IconGrid / Castbar own re-anchor handlers are idempotent on the just-saved value, so the re-entrant dispatch is safe. The Reset position button + `/kcd resetposition` go through `Helpers.ResetIconPosition`, which writes `units.target.anchors.icons` directly from `NS.DEFAULT_PROFILE` and fires the same `general`-section message — TARGET only (a legacy affordance that predates focus tracking; see [settings-panel.md](settings-panel.md#reset-helpers)).
 
 ## Visibility two-step gate
 
-Visibility / interruptibility decisions for both the icon grid and the cast bar use a two-step gate driven by the addon-wide `db.profile.visibility` mode:
+Visibility / interruptibility decisions for every enabled unit's icon grid and cast bar instance use a two-step gate driven by the addon-wide `db.profile.visibility` mode, evaluated per-instance against that instance's own unit:
 
 ```
-shouldBeVisible() / isVisible()
+shouldBeVisible(unit) / isVisible(unit)
   ── always                       → true
   ── in_combat                    → NS.State.inCombat (PLAYER_REGEN_* flag
                                      owned by core/State.lua's bootstrap and
                                      fanned out via Ka0s_KickCD_COMBAT_STATE; NOT
                                      InCombatLockdown — that lags by a frame)
-  ── target_casting               → UnitCastingInfo / UnitChannelInfo("target") truthy
-  ── target_casting_interruptible → NS.State.IsHostileUnitCasting("target")
+  ── target_casting               → UnitCastingInfo / UnitChannelInfo(unit) truthy
+  ── target_casting_interruptible → NS.State.IsHostileUnitCasting(unit)
         ▼
    Show / Hide
         ▼
    ApplyInterruptibilityMask / ApplyVisibilityMask
         ▼
-   NS.State.ApplyInterruptibleAlpha(frame, "target", 1)
+   NS.State.ApplyInterruptibleAlpha(frame, unit, 1)
         ▼ (C-side, secret-safe)
    frame:SetAlphaFromBoolean(notInterruptible, 0, 1)
 ```
 
+`unit` is `"target"` or `"focus"` — each unit instance's gate reads that unit's OWN cast state (`UnitCastingInfo(unit)` etc.) and is otherwise identical logic; a focus instance's visibility never depends on target's cast state or vice versa. Only the *mode itself* (`db.profile.visibility`) is shared.
+
 `NS.State.IsHostileUnitCasting` is a pure truthy check (safe even when `name` / `texture` come back secret-tainted in combat) plus a `UnitCanAttack` filter. `NS.State.ApplyInterruptibleAlpha` reads the raw `notInterruptible` straight off `UnitCastingInfo` / `UnitChannelInfo` and hands it to `Frame:SetAlphaFromBoolean` — the **one** C-side method that accepts the secret-tainted bool form without erroring. Both helpers live in `core/State.lua` (not `core/Compat.lua`) because they're feature decisions about visibility, not API shape normalisation.
 
-So uninterruptible casts run the full UI lifecycle (Show / glow start / cast bar drawn) but at `alpha = 0`, with the visual filter applied entirely C-side. The `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast.
+So uninterruptible casts run the full UI lifecycle (Show / glow start / cast bar drawn) but at `alpha = 0`, with the visual filter applied entirely C-side. The `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events (unit-filtered per instance via `Util.RegisterUnitCastEvent`) drive a re-application of the alpha mask mid-cast.
 
-Per-icon ready glow follows the same pattern: `Icon:UpdateGlow` starts the LibCustomGlow effect for any hostile target cast under the `target_casting_interruptible` trigger and then drives the glow frame's alpha through `ApplyInterruptibleAlpha`. The IconGrid's `RefreshAllGlows` re-runs the per-icon decision on `PLAYER_TARGET_CHANGED` and every cast event so the glow gate stays in sync.
+Per-icon ready glow follows the same pattern per instance: `Icon:UpdateGlow` starts the LibCustomGlow effect for any hostile cast on that instance's unit under the `target_casting_interruptible` trigger and then drives the glow frame's alpha through `ApplyInterruptibleAlpha`. Each `IconGrid` instance's `RefreshAllGlows` re-runs the per-icon decision on `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` and every cast event so the glow gate stays in sync.
 
 The full secret-value rationale lives in [midnight-quirks.md](midnight-quirks.md).
 
 ## Cast bar pipeline
 
-Independent of the cooldown pipeline above:
+Independent of the cooldown pipeline above. Each `Castbar` instance runs this per its own unit:
 
 ```
-PLAYER_TARGET_CHANGED / UNIT_SPELLCAST_*  (filtered to unit == "target")
+PLAYER_TARGET_CHANGED / PLAYER_FOCUS_CHANGED / UNIT_SPELLCAST_*  (filtered to this instance's unit)
         │
         ▼
-Castbar:Reevaluate ──► Compat.GetCastingInfo("target")
+Castbar instances[unit]:Reevaluate ──► Compat.GetCastingInfo(unit)
                              │  (UnitCastingInfo for name/texture/notInterruptible/spellID
                              │   + UnitCastingDuration for the timing object)
                              ▼
@@ -102,16 +106,16 @@ Castbar:Reevaluate ──► Compat.GetCastingInfo("target")
                        the secret notInterruptible bool.
 ```
 
-The IconGrid emits `Ka0s_KickCD_GRID_LAYOUT { gridFrame, primaryIcon, width, height }` after every `Layout()` pass. The Castbar listens so it can re-anchor under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `NS:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-run `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`).
+Each `IconGrid` instance emits its own `Ka0s_KickCD_GRID_LAYOUT { unit, gridFrame, primaryIcon, width, height }` after every `Layout()` pass. Each `Castbar` instance listens, filters on `payload.unit`, and — only for its own unit's payload — re-anchors under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `NS:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-runs `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`). A focus instance ignores a target `GRID_LAYOUT` payload and vice versa.
 
 ## Lock and anchor
 
-The icon grid and the cast bar each have a single anchor in `db.profile.anchors`, always relative to UIParent. `Util.SaveAnchor(frame)` snapshots `{ point, relativePoint, x, y }`; `Util.ApplyAnchor(frame, anchor)` restores it.
+Each enabled unit's icon grid and cast bar instance has its own single anchor in `db.profile.units.<unit>.anchors`, always relative to UIParent — anchors are never link-resolved, so a linked focus still tracks its own independent position. `Util.SaveAnchor(frame)` snapshots `{ point, relativePoint, x, y }`; `Util.ApplyAnchor(frame, anchor)` restores it. `NS.Units.Anchor(unit, which)` / `.SetAnchor(unit, which, a)` are the read/write helpers (`core/Units.lua`).
 
-* `db.profile.anchors.icons` — the icon grid's saved position. Persisted by `IconGrid` `OnDragStop` and re-applied by `IconGrid:OnProfileChanged` / the General → "Reset position" button. `OnDragStop` also fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` so any future anchor-aware subscriber gets notified — today the IconGrid is the only consumer of its own anchor, but the message closes the contract.
-* `db.profile.anchors.castbar` — the cast bar's saved position. Only consulted when `db.profile.castbar.anchorMode == "FREE"`. Under `"PRIMARY"` the bar is `SetPoint`'d to the icon grid's primary icon button via the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, the bar is locked from dragging regardless of `db.profile.locked`, and `Ka0s_KickCD_GRID_LAYOUT` triggers re-anchoring whenever the primary icon button reference changes (the listener reads the payload's `gridFrame` / `primaryIcon` directly). The Castbar's `OnDragStop` symmetrically fires `Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" }`.
+* `units.<unit>.anchors.icons` — that unit's icon grid saved position. Persisted by that instance's `IconGrid` `OnDragStop` and re-applied by `IconGrid:OnProfileChanged` / (target only) the General → "Reset position" button. `OnDragStop` also fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` so any future anchor-aware subscriber gets notified — today each IconGrid instance is the only consumer of its own anchor, but the message closes the contract.
+* `units.<unit>.anchors.castbar` — that unit's cast bar saved position. Only consulted when `units.<unit>.castbar.anchorMode == "FREE"`. Under `"PRIMARY"` the bar is `SetPoint`'d to its OWN unit's icon grid primary icon button via the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, the bar is locked from dragging regardless of `db.profile.locked`, and `Ka0s_KickCD_GRID_LAYOUT` triggers re-anchoring whenever that unit's primary icon button reference changes (the listener filters on `payload.unit` before reading the payload's `gridFrame` / `primaryIcon` directly). The Castbar instance's `OnDragStop` symmetrically fires `Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" }`.
 
-Lock state lives in `db.profile.locked` and is shared by both widgets. `IconGrid:ApplyLock` and `Castbar:ApplyLock` flip `EnableMouse(true/false)` + `RegisterForDrag("LeftButton" or nothing)` accordingly. The icon grid also flips per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag. Touch points:
+Lock state lives in `db.profile.locked` and is shared addon-wide — one unlock/lock cycle moves every enabled unit's frames (see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking)). `IconGrid:ApplyLock` and `Castbar:ApplyLock` flip `EnableMouse(true/false)` + `RegisterForDrag("LeftButton" or nothing)` per instance accordingly. The icon grid also flips per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag. Touch points:
 
 - Settings → General → "Lock frame" checkbox writes `db.profile.locked` through `Helpers.Set` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }`.
 - Slash commands `/kcd lock | unlock | toggle` route through `Helpers.SetAndRefresh("locked", ...)` so they share the same write/notify/refresh path as the checkbox (and so an open General panel reflects the lock state immediately). They fall back to a direct write only when the settings layer hasn't loaded yet.

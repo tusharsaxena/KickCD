@@ -1,15 +1,15 @@
 # Cast bar module
 
-`modules/Castbar.lua` shows the player's target's cast/channel on a separately-anchored bar. The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves both. While unlocked the bar shows a placeholder preview when no target is casting so it can be grabbed.
+`modules/Castbar.lua` is a **per-unit instance manager**: `instances[unit]` (`NS.Units.LIST` — `target`, `focus`) each own their own bar frame — `KickCDCastbar` for target, `KickCDCastbarFocus` for focus — showing that unit's cast/channel on a separately-anchored bar. `EnableUnit(unit)` / `DisableUnit(unit)` / `ReconcileUnits()` mirror `IconGrid`'s structure; `UNIT_SPELLCAST_*` registration is per-instance and unit-filtered via `Util.RegisterUnitCastEvent` (a focus instance's dispatch frame only fires for focus casts), so a disabled unit's instance doesn't listen to anything. A linked focus instance (`units.focus.link`, default on) renders with target's `castbar` styling table (`NS.Units.Castbar("focus")` resolves it) while keeping its own anchor position and optional identity label. The lock state is shared with the icon grid (`db.profile.locked`) — one unlock/lock cycle moves every enabled unit's bar. While unlocked, each bar shows a placeholder preview when its unit isn't casting so it can be grabbed.
 
 ## Anchor modes
 
-Two anchor modes (`db.profile.castbar.anchorMode`):
+Two anchor modes (`units.<unit>.castbar.anchorMode`, resolved through `NS.Units.Castbar(unit)`):
 
-- **FREE** — drag to position, persisted to `db.profile.anchors.castbar`.
-- **PRIMARY** — `SetPoint` against the icon grid's primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = TOP_LEFT`, `castbarPoint = BOTTOM_LEFT`, `(0, 1)` offset → bar sits 1 px above the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows the grid for free.
+- **FREE** — drag to position, persisted to `units.<unit>.anchors.castbar` (never link-resolved — position stays per-unit even for a linked focus).
+- **PRIMARY** — `SetPoint` against the SAME unit's icon grid primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = TOP_LEFT`, `castbarPoint = BOTTOM_LEFT`, `(0, 1)` offset → bar sits 1 px above the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows its unit's grid for free.
 
-The Castbar listens to `Ka0s_KickCD_GRID_LAYOUT` so it re-anchors when the primary icon button reference changes (e.g. when the grid rebuilds against a new spec). The same listener re-runs `Reskin` (the config-driven half of the CR-17 split) when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks the grid's actual visible footprint — `IconGrid:Layout` sizes the grid frame against `usedRows * usedCols` (the rectangular area occupied by the visible icons), not the configured `secondaryRows * secondaryCols` capacity, so disabling a spell shrinks the bar instead of leaving phantom width.
+Each Castbar instance listens to `Ka0s_KickCD_GRID_LAYOUT`, filters on `payload.unit`, and re-anchors when its own unit's primary icon button reference changes (e.g. when that unit's grid rebuilds against a new spec) — a focus instance ignores a target `GRID_LAYOUT` payload and vice versa. The same listener re-runs `Reskin` (the config-driven half of the CR-17 split) when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks its own unit's grid's actual visible footprint — `IconGrid:Layout` sizes the grid frame against `usedRows * usedCols` (the rectangular area occupied by the visible icons), not the configured `secondaryRows * secondaryCols` capacity, so disabling a spell shrinks the bar instead of leaving phantom width.
 
 ## Orientation
 
@@ -19,7 +19,7 @@ The Castbar listens to `Ka0s_KickCD_GRID_LAYOUT` so it re-anchors when the prima
 
 ## Visibility
 
-Visibility is gated by **all** of: the master enable, `castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same setting the icon grid honors). In `"in_combat"` mode the bar additionally requires the event-driven combat flag, read from `NS.State.inCombat` — `InCombatLockdown()` lags the regen events by a frame and isn't reliable, and the State module's bootstrap CreateFrame owns the flag-mutation listener so the bar (and the IconGrid) only have to read. While unlocked, visibility is bypassed so the user can move the bar.
+Visibility is gated by **all** of: the master enable, the unit's own `units.<unit>.enabled` toggle, `units.<unit>.castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same single setting shared across both units and the icon grid — see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking)). In `"in_combat"` mode the bar additionally requires the event-driven combat flag, read from `NS.State.inCombat` — `InCombatLockdown()` lags the regen events by a frame and isn't reliable, and the State module's bootstrap CreateFrame owns the flag-mutation listener so the bar (and the IconGrid) only have to read. While unlocked, visibility is bypassed so the user can move the bar.
 
 ## `Reskin` vs `RenderCast` split
 

@@ -39,6 +39,8 @@ Companion docs:
 | 17 | Schema validator | PLAYER_LOGIN validator output | [Schema validator boot output](#17-schema-validator-boot-output) |
 | 18 | LSM dropdowns | Statusbar / Border / Font dropdowns | [LSM dropdown rendering](#18-lsm-dropdown-rendering) |
 | 19 | Debug traces | §8 key functional-flow lines in the debug console | [Debug traces](#19-debug-traces) |
+| 20 | Focus tracking | Enable focus, independent gating, link/copy styling | [Focus tracking](#20-focus-tracking) |
+| 21 | Legacy migration | `FoldLegacyUnits` on a pre-`units` profile | [Legacy migration](#21-legacy-migration) |
 
 ---
 
@@ -64,8 +66,8 @@ Companion docs:
 
 ```
 /kcd unlock
-/kcd set icons.primarySize 50
-/kcd set castbar.interruptible.barColor 0.2 0.8 0.2 1
+/kcd set units.target.icons.primarySize 50
+/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1
 ```
 
 Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
@@ -77,8 +79,8 @@ Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
 - No Lua errors during reload.
 - Icon grid sits at the dragged position.
 - Lock state is `locked = true` (`/kcd get locked` → `true`).
-- `/kcd get icons.primarySize` → `50`.
-- `/kcd get castbar.interruptible.barColor` → `0.2 0.8 0.2 1`.
+- `/kcd get units.target.icons.primarySize` → `50`.
+- `/kcd get units.target.castbar.interruptible.barColor` → `0.2 0.8 0.2 1`.
 - All five settings tabs still appear under **Ka0s KickCD**.
 
 ### 3. Master enable toggle
@@ -111,7 +113,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 ### 5. Lock / unlock / drag
 
-**Setup.** `/kcd set castbar.anchorMode FREE` so the cast bar is independently draggable. Pick `visibility = always` so both pieces are visible without a casting target.
+**Setup.** `/kcd set units.target.castbar.anchorMode FREE` so the cast bar is independently draggable. Pick `visibility = always` so both pieces are visible without a casting target.
 
 **Steps.**
 - `/kcd unlock`.
@@ -125,7 +127,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - After `unlock`, both pieces are draggable.
 - After `lock`, neither piece is draggable.
 - After `/reload`, both retain their dragged positions.
-- Switch `castbar.anchorMode` back to `PRIMARY`: the cast bar is no longer draggable (it's parented to the primary icon) even when unlocked, and it follows the icon grid when the grid is dragged.
+- Switch `units.target.castbar.anchorMode` back to `PRIMARY`: the cast bar is no longer draggable (it's parented to the primary icon) even when unlocked, and it follows the icon grid when the grid is dragged.
 - `/kcd toggle` flips the lock state; the General → "Lock frame" checkbox updates to match in real time when the panel is open.
 
 ### 6. Icon grid layout
@@ -133,20 +135,20 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Setup.** Open Settings → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
 
 **Steps.**
-- Walk through every value of `icons.anchor` (13 anchor tokens). For each, set `icons.secondaryGrow` to two distinct values applicable to that axis.
-- Set `icons.secondaryRows` and `icons.secondaryCols` such that `rows * cols < (number of enabled spells) - 1`.
+- Walk through every value of `units.target.icons.anchor` (13 anchor tokens). For each, set `units.target.icons.secondaryGrow` to two distinct values applicable to that axis.
+- Set `units.target.icons.secondaryRows` and `units.target.icons.secondaryCols` such that `rows * cols < (number of enabled spells) - 1`.
 
 **Pass.**
 - For each anchor / grow combination, the secondary block lays out from the primary icon's named anchor in the chosen direction without overlap.
 - When `visibleCount > rows * cols`, a one-time chat warning prints with a `[KCD]` banner naming the (class, spec, capacity) tuple.
 - Bumping `rows × cols` to fit the visible count, then dropping back below it on a *different* (class, spec, capacity) tuple, re-fires the warning for the new tuple but does not re-fire for the previous one in the same session.
-- Setting `icons.primarySize` from 16 → 80 (within the slider range) live-updates without reloading.
+- Setting `units.target.icons.primarySize` from 16 → 80 (within the slider range) live-updates without reloading.
 
 ### 7. Cast bar
 
 #### 7a. Free anchor mode
 
-**Setup.** `/kcd set castbar.anchorMode FREE`. `/kcd unlock`. Pick a hostile caster in `target_casting_interruptible` mode.
+**Setup.** `/kcd set units.target.castbar.anchorMode FREE`. `/kcd unlock`. Pick a hostile caster in `target_casting_interruptible` mode.
 
 **Steps.**
 - Drag the cast bar to a new position; lock; `/reload`.
@@ -159,21 +161,21 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 #### 7b. Anchored mode + auto-size
 
-**Setup.** `/kcd set castbar.anchorMode PRIMARY`. `/kcd set castbar.autoSize true`. `/kcd set castbar.orientation HORIZONTAL`.
+**Setup.** `/kcd set units.target.castbar.anchorMode PRIMARY`. `/kcd set units.target.castbar.autoSize true`. `/kcd set units.target.castbar.orientation HORIZONTAL`.
 
 **Steps.**
 - Disable a few spells with `/kcd spells disable <id>` and re-enable them with `add` so the icon grid's *visible* footprint changes.
-- Resize via `/kcd set icons.secondaryCols 4`, then `2`.
-- Toggle `/kcd set castbar.orientation VERTICAL`. Set `/kcd set castbar.growDirection UP`.
+- Resize via `/kcd set units.target.icons.secondaryCols 4`, then `2`.
+- Toggle `/kcd set units.target.castbar.orientation VERTICAL`. Set `/kcd set units.target.castbar.growDirection UP`.
 
 **Pass.**
 - The bar's long axis tracks the grid's *visible* width (HORIZONTAL) or height (VERTICAL), not the configured `rows × cols` capacity. Removing a visible spell shortens the bar in place; adding one extends it.
-- The orthogonal dimension stays at the configured `castbar.width` / `castbar.height`.
-- Switching `orientation` resets `growDirection` to the canonical default for the new axis (`HORIZONTAL` → `RIGHT`, `VERTICAL` → `UP`); `/kcd set castbar.growDirection UP` while in HORIZONTAL is rejected and the error message names the gating sibling (`castbar.orientation`) and its current value (the `valueGate` mechanism).
+- The orthogonal dimension stays at the configured `units.target.castbar.width` / `units.target.castbar.height`.
+- Switching `orientation` resets `growDirection` to the canonical default for the new axis (`HORIZONTAL` → `RIGHT`, `VERTICAL` → `UP`); `/kcd set units.target.castbar.growDirection UP` while in HORIZONTAL is rejected and the error message names the gating sibling (`units.target.castbar.orientation`) and its current value (the `valueGate` mechanism).
 
 #### 7c. Per-state appearance
 
-**Setup.** `/kcd set castbar.interruptible.barColor 0.2 0.8 0.2 1`. `/kcd set castbar.uninterruptible.barColor 0.8 0.2 0.2 1`.
+**Setup.** `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. `/kcd set units.target.castbar.uninterruptible.barColor 0.8 0.2 0.2 1`.
 
 **Steps.**
 - Target a hostile caster mid-interruptible cast.
@@ -191,7 +193,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Steps.**
 - Cast Pummel into a friendly target dummy.
 - During its cooldown, also cast a different spell with a GCD that's shorter than Pummel's CD.
-- Set `icons.primaryGlowTrigger` and `icons.secondaryGlowTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
+- Set `units.target.icons.primaryGlowTrigger` and `units.target.icons.secondaryGlowTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
 
 **Pass.**
 - Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons → Annotations → Show cooldown text` countdown ticking down.
@@ -245,10 +247,10 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Steps.**
 - Toggle the General → "Enable KickCD" checkbox; observe `/kcd get enabled` reports the new value.
 - Run `/kcd set scale 1.25`; observe the General → "Master scale" slider snap to 1.25x while the panel is open.
-- Run `/kcd set castbar.growDirection LEFT` while `castbar.orientation = VERTICAL`. The error message should list the valid options for VERTICAL plus a `(depends on castbar.orientation = VERTICAL)` line.
+- Run `/kcd set units.target.castbar.growDirection LEFT` while `units.target.castbar.orientation = VERTICAL`. The error message should list the valid options for VERTICAL plus a `(depends on units.target.castbar.orientation = VERTICAL)` line.
 - Run `/kcd list`. Spot-check that every General / Icons / Castbar row from the panel is present with its current value.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
-- For a color-type row, run `/kcd set castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
+- For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel.lua`).
 
 **Pass.**
@@ -283,7 +285,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - Create a new profile `SmokeTest`. Switch to it.
-- Make a change (`/kcd set icons.primarySize 60`).
+- Make a change (`/kcd set units.target.icons.primarySize 60`).
 - Switch back to `Default`.
 - Switch to per-character: choose **Choose** → character-specific.
 - Use **Copy from** to copy `SmokeTest` into the active profile.
@@ -293,7 +295,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (a `db.global.schemaVersion = 1` no-op today, but it should not error). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 2` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -302,7 +304,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - Run `/kcd config` mid-combat.
-- Run `/kcd set icons.primarySize 50` mid-combat.
+- Run `/kcd set units.target.icons.primarySize 50` mid-combat.
 - Drop combat. Run `/kcd config` again.
 
 **Pass.**
@@ -386,13 +388,83 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 - **Set.** Change any setting on any panel (e.g. Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
 - **No spam.** Across all of the above, stay in combat for 30+ seconds with no target-cast activity: no additional `[Combat]`/`[Cast]`/`[IconGrid]` lines appear beyond the transition(s) already logged.
 
+### 20. Focus tracking
+
+Focus tracking adds a second, independent (icon grid + cast bar) instance for the player's focus unit, rendering the same player cooldowns. Focus is off by default and defaults to linking Target's appearance.
+
+#### 20a. Enable focus + independent target/focus gating
+
+**Setup.** `visibility = target_casting_interruptible`. Set a focus target (`/focus` while targeting a hostile caster) distinct from the current hard target.
+
+**Steps.**
+- `/kcd set units.focus.enabled true`.
+- Target a hostile mid-interruptible cast (different mob than the focus) while the focus mob is NOT casting.
+- Have the focus mob start an interruptible cast while the hard target is NOT casting.
+- Have both cast simultaneously.
+- `/kcd set units.focus.enabled false`.
+
+**Pass.**
+- Enabling focus immediately builds a second icon grid (`KickCDIconGridFocus`) and cast bar (`KickCDCastbarFocus`) — no `/reload` needed — showing the SAME tracked spells as target's grid (player-centric spell list).
+- Each grid/bar's visibility is gated independently against its OWN unit's cast state: target casting alone shows only the target pair; focus casting alone shows only the focus pair; both casting shows both. Neither unit's gate is affected by the other's cast state.
+- `/kcd set units.focus.enabled false` immediately tears down the focus instance (grid + bar disappear); target's instance is unaffected.
+- Zero Lua errors at any step.
+
+#### 20b. Link / unlink / copy styling
+
+**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Icons.
+
+**Steps.**
+- Select **Focus** in the Icons panel's Unit dropdown. Confirm the panel shows only "Use same styling as Target" (checked) + "Copy styling from Target" — no appearance rows, plus a "Linked to Target — uncheck to customize." note.
+- Change Target's `units.target.icons.primarySize` (switch the dropdown to Target first). Switch back to Focus — the linked Focus grid should visually match Target's new size live (no manual sync needed).
+- Uncheck "Use same styling as Target". The appearance schema rows appear, seeded with target's last-copied values (or defaults if never copied).
+- Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
+- Re-check "Use same styling as Target" — Focus reverts to mirroring Target live; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
+- Uncheck again, then click **"Copy styling from Target"** — Focus's `icons`/`castbar` tables are deep-copied from Target's current values and `link` flips to `false` (button also unlinks if still linked).
+
+**Pass.**
+- While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
+- Position (`units.focus.anchors.icons`/`castbar`) and the Focus identity label (`units.focus.label.text`, if shown) stay independent of Target's position/label at every step, linked or not — dragging the Focus grid never moves Target's.
+- "Copy styling from Target" is a one-time deep copy (not a live link) — a subsequent Target-only appearance change does NOT propagate to the now-unlinked Focus.
+- No Lua errors at any toggle.
+
+#### 20c. Mid-cast enable + master-enable revive
+
+**Setup.** Set a focus target that is a hostile caster. `visibility = target_casting_interruptible`, `units.focus.enabled = false`.
+
+**Steps.**
+- While the focus unit IS mid-cast, run `/kcd set units.focus.enabled true`.
+- `/kcd set units.focus.enabled false`, then re-target/re-cast, then `/kcd set units.focus.enabled true` again.
+- With both target and focus enabled and visible, `/kcd set enabled false` (master enable), then `/kcd set enabled true`.
+
+**Pass.**
+- Enabling focus mid-cast shows the focus cast bar immediately, mid-cast, at the correct progress — the newly-built instance re-evaluates current cast state on enable rather than waiting for the next `UNIT_SPELLCAST_*` event.
+- Re-enabling focus after a fresh cast start behaves identically (no stale state from the previous enable/disable cycle).
+- `/kcd set enabled false` hides BOTH units' grids and bars regardless of per-unit `enabled`; `/kcd set enabled true` immediately revives every unit whose `units.<unit>.enabled` is still `true`, re-evaluating current cast/cooldown state for each without requiring a `/reload`.
+
+### 21. Legacy migration
+
+**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy from before this feature) so the active profile has top-level `icons`, `castbar`, and `anchors` tables with a few customised values (e.g. a non-default `icons.primarySize`, a moved `anchors.icons`) and NO `units` table. Set `db.global.schemaVersion` to `1` or remove it entirely (either should trigger the fold).
+
+**Steps.**
+- Log in.
+- `/kcd get units.target.icons.primarySize` — compare to the customised value from the edited file.
+- `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customised anchor.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `2`.
+
+**Pass.**
+- No Lua errors during the migration login.
+- The icon grid renders at the SAME position and with the SAME customised appearance as before the migration — visually, nothing changes for the user.
+- `Database:FoldLegacyUnits` output is idempotent: a second `/reload` doesn't move anything or error (the top-level tables are already gone, so the shape check short-circuits).
+- Focus (`units.focus`) is present with its own fresh defaults (`enabled = false`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
+
 ---
 
 ## When to run which subset
 
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
-- **Spell-list / Database edits:** 9, 10, 13.
-- **Pre-release / TOC bump:** the entire suite. The 19 surfaces above are designed to span every system the addon owns; running them in order takes ~20–30 minutes and gives release-grade confidence.
+- **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21.
+- **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers).
+- **Pre-release / TOC bump:** the entire suite. The 21 surfaces above are designed to span every system the addon owns; running them in order takes ~25–35 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).

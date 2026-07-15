@@ -10,8 +10,13 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 ## Saved variables
 
 - Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `core/Database.lua`. New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
-- Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralised there.
+- Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralised there. The exception is per-unit appearance (`icons`/`castbar`): those go through `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)` so link resolution (a linked focus reading target's tables) stays in one place — see `core/Units.lua`.
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
+
+## Frame names
+
+- Global frame names stay literally `KickCD` (see [scope.md](scope.md)): `KickCDIconGrid`, `KickCDCastbar`, `KickCDDebugWindow`, etc. — no addon-name prefixing games.
+- **Deviation recorded as intentional** (per CLAUDE.md's flag-deviations rule): the target/focus dual-tracking feature extends this with a `Focus`-suffixed sibling per per-unit frame — `KickCDIconGridFocus`, `KickCDCastbarFocus` — rather than breaking the convention. Target keeps the exact legacy unsuffixed name (macros / other addons may already reference `KickCDIconGrid` / `KickCDCastbar`); focus is unambiguously suffixed rather than using a numeric or generic index, since "target" and "focus" are the addon's actual unit vocabulary. A third unit (if ever added) would follow the same `KickCD<Widget><UnitTitleCase>` pattern.
 
 ## Settings layer
 

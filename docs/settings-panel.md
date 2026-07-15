@@ -10,6 +10,14 @@ The header is built by `Helpers.CreatePanel(name, title, opts)` in `settings/Pan
 
 Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
 
+## Per-unit panels (Icons / Cast bar)
+
+Icons and Cast bar render their schema per-unit via `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel.lua`): a full-width `Unit` dropdown (Target / Focus, from `NS.Units.LIST`) sits above the schema body and re-renders the whole panel (`Helpers.ClearScroll` + re-run) on selection — `ctx.unit` is stashed on the panel ctx so `Helpers.SchemaForPanel(panelKey, ctx.unit)` can filter rows to the selected unit's `units.<unit>.icons.*` / `units.<unit>.castbar.*` paths.
+
+When `ctx.unit == "focus"`, a header row adds a **"Use same styling as Target"** checkbox (`units.focus.link`) and a **"Copy styling from Target"** button (`NS.Units.CopyStyling("target", "focus")`, a one-time deep-copy that also flips `link = false`) — both fire `Ka0s_KickCD_CONFIG_CHANGED{section="units"}` and re-render the panel. While linked, the appearance schema body is hidden entirely (replaced with a "Linked to Target — uncheck to customize." label) rather than shown-but-inert, since any edit there would silently write to a table nothing reads (`NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.*` while linked).
+
+General has no unit selector — its per-unit rows (enable toggle, `label.show`, `label.text` for both target and focus) render together, tagged with `unit = "target"|"focus"` purely so `RestoreDefaults`/`RestoreAllDefaults` reset both units together.
+
 ## `NS.Settings.Schema` is the single source of truth
 
 `settings/General.lua`, `settings/Icons.lua`, and `settings/Castbar.lua` declare every option as a row in a flat array. Each row:
@@ -19,7 +27,12 @@ Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels
     panel    = "general",                    -- which tab renders it
     section  = "general",                    -- Ka0s_KickCD_CONFIG_CHANGED section
     group    = L["Master controls"],         -- sub-section header text
-    path     = "scale",                      -- dotted db.profile path
+    path     = "scale",                      -- dotted db.profile path (per-unit rows use
+                                             --   "units.<unit>.icons.<field>" etc.)
+    unit     = "target"|"focus",             -- optional; tags a row as belonging to one
+                                             --   unit for RestoreDefaults grouping.
+                                             --   SchemaForPanel(panelKey, ctx.unit) filters
+                                             --   Icons/Castbar rows on this
     type     = "bool"|"number"|"string"|"color",
     label    = L["Master scale"],
     tooltip  = L["..."],
@@ -65,7 +78,8 @@ Schema widgets are AceGUI primitives:
 
 - `CheckBox` for `bool`
 - `Slider` for `number`
-- `Dropdown` for `string` (values supplied as `{ {value=, label=}, ... }` or a function returning that shape — `Helpers.LSMValues(mediaType)` is the standard wrapper around LibSharedMedia listings, and `Helpers.AnchorValues()` returns the canonical 13-option `<SIDE>_<ALIGN>` / `CENTER` set)
+- `Dropdown` for `string` rows that declare a `values` list (fixed-choice; supplied as `{ {value=, label=}, ... }` or a function returning that shape — `Helpers.LSMValues(mediaType)` is the standard wrapper around LibSharedMedia listings, and `Helpers.AnchorValues()` returns the canonical 13-option `<SIDE>_<ALIGN>` / `CENTER` set)
+- `EditBox` (`makeEditBox`) for `string` rows with NO `values` list — free text, e.g. the per-unit `label.text` caption rows. Commits on `OnEnterPressed` (Enter / focus-loss), unlike the drag/click-commit widgets above, so a half-typed label never writes a partial string to `db.profile`. `Helpers.RenderField` dispatches `type == "string"` to `makeDropdown` when `def.values` is set, `makeEditBox` otherwise.
 - `ColorPicker` for `color`
 - `Heading` (bumped to `GameFontNormalLarge`) for sections
 - `Button` + `Label` inside a `SimpleGroup` for inline action rows
@@ -92,10 +106,10 @@ The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to **always**
 
 ## Schema validation
 
-`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `spells` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). `debug` remains a valid `section` enum, but no shipped row uses it — debug is session-only (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`), never persisted and never a schema row. Failures print a schema-error line (the printer prefixes with the shared `NS.PREFIX`) per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
+`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `spells` / `units` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). `debug` remains a valid `section` enum, but no shipped row uses it — debug is session-only (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`), never persisted and never a schema row. Failures print a schema-error line (the printer prefixes with the shared `NS.PREFIX`) per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
 
 ## Reset helpers
 
 The General tab's "Reset all settings" button (under Master controls) funnels through `Helpers.ResetAll`, which calls `Helpers.RestoreAllDefaults` (loops over every schema-driven panel: general / icons / castbar) **and** `Database:ResetAllSpells` (rebuilds every spec's spell list from `NS.DefaultSpells`). The slash command `/kcd resetall` shares this same helper — the popup and the CLI cannot diverge. Profiles are intentionally skipped because the AceDBOptions UI has its own destructive controls and resetting them would delete user data.
 
-`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.anchors.icons` from `NS.DEFAULT_PROFILE.anchors.icons` so the default coordinates live in one place. It fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors, and firing `icons` would just be a wasted relayout.
+`Helpers.ResetIconPosition` is the corresponding helper for the "Reset position" button and `/kcd resetposition` — it writes `db.profile.units.target.anchors.icons` from `NS.DEFAULT_PROFILE.units.target.anchors.icons` so the default coordinates live in one place. It is TARGET-only by design — both are legacy "reset the grid" affordances that predate focus tracking, so a focus position reset is intentionally out of scope for them (focus already gets its own distinct default screen offset, and unlike target it can also be re-derived via "Copy styling from Target"). It fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` only — IconGrid's `general` branch already re-anchors every enabled unit's grid from its own anchor, and firing `icons` would just be a wasted relayout.

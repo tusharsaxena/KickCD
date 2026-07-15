@@ -4,19 +4,20 @@ What KickCD is, what's in scope, and what's not. The user-facing contract lives 
 
 ## What KickCD is
 
-KickCD is a WoW addon that tracks the player's interrupt and CC cooldowns and surfaces them on a movable, persistently-visible icon grid, with a sibling target cast bar driven from the same drag lock and visibility settings. Designed as an interrupt rotation helper — not a generic raid-frame replacement.
+KickCD is a WoW addon that tracks the player's interrupt and CC cooldowns and surfaces them on a movable, persistently-visible icon grid, with a sibling cast bar — for **both the player's target and focus unit**, each independently — driven from the same drag lock and visibility settings. Designed as an interrupt rotation helper — not a generic raid-frame replacement.
 
-Both UI pieces are gated by the addon-wide `db.profile.visibility` mode (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`); both honor the master enable and the shared lock. The full message contract between the cooldown poller, the icon grid, the cast bar, and the settings layer is documented in [message-bus.md](message-bus.md).
+Both UI pieces are gated by the addon-wide `db.profile.visibility` mode (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`); both honor the master enable, the shared lock, and (per-unit, on top of those) each unit's own `units.<unit>.enabled` toggle. The tracked spell list itself stays player-centric (not unit-specific) — target and focus each render the *same* cooldowns against their own cast state. The full message contract between the cooldown poller, the icon grid, the cast bar, and the settings layer is documented in [message-bus.md](message-bus.md); per-unit config resolution (including "focus links to target's styling") lives in `core/Units.lua` (`NS.Units`) — see [saved-variables.md](saved-variables.md#unitsunit-shape).
 
 Target client: WoW 12.0.7 (Midnight). Mainline branch: `master`. English-only.
 
-Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colored `## Title` field in `KickCD.toc`). The folder, addon ID, slash commands (`/kcd`, `/kickcd`), saved-variable namespace (`KickCDDB`), and global frame names all stay unprefixed `KickCD` for ergonomics.
+Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colored `## Title` field in `KickCD.toc`). The folder, addon ID, slash commands (`/kcd`, `/kickcd`), saved-variable namespace (`KickCDDB`), and global frame names all stay unprefixed `KickCD` for ergonomics — extended for target/focus dual tracking with a `Focus`-suffixed sibling per per-unit frame (`KickCDIconGridFocus`, `KickCDCastbarFocus`); target keeps the exact legacy unsuffixed names. See [conventions.md](conventions.md#frame-names).
 
 ## In scope
 
 - **Cooldown tracking** for the player's interrupt + CC spells, with dynamic add/remove via talent / pet / racial events.
-- **Movable icon grid** with anchor + grow model (13 anchor points × 8 grow directions × free row/col dims). Per-icon ready glow via LibCustomGlow.
-- **Target cast bar** mirroring the player's target via secret-value-gated `UnitCastingDuration` / `UnitChannelDuration`. Stacked dual widgets render distinct interruptible / uninterruptible appearance via `C_CurveUtil.EvaluateColorValueFromBoolean`.
+- **Movable icon grid** with anchor + grow model (13 anchor points × 8 grow directions × free row/col dims). Per-icon ready glow via LibCustomGlow. Tracked independently for target and focus (each unit's own enable, position, and — unless linked — appearance).
+- **Cast bar** mirroring the tracked unit's (target and/or focus) cast via secret-value-gated `UnitCastingDuration` / `UnitChannelDuration`. Stacked dual widgets render distinct interruptible / uninterruptible appearance via `C_CurveUtil.EvaluateColorValueFromBoolean`.
+- **Target + focus dual tracking.** Focus is off by default; when enabled it can either link to target's icon grid + cast bar appearance (`units.focus.link`, default on when focus is first enabled) or be styled independently via "Copy styling from Target" + manual edits. Position and the optional per-unit identity label stay independent regardless of link state. One shared drag lock and one shared visibility mode still cover both units — see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking).
 - **Per-class+spec spell list** with default seed plus user add / remove / enable / disable / re-categorize. CLI parity for every list operation.
 - **Settings panel** integrated into Blizzard's AddOns settings + matching `/kcd` slash CLI for every panel-shaped operation. Schema is the single source of truth — see [settings-panel.md](settings-panel.md).
 - **AceDB profiles** (every character starts on the shared `"Default"` profile; user can opt into per-character / per-class / per-realm scope via the Profiles tab).

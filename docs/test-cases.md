@@ -2,7 +2,7 @@
 
 _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > docs/test-cases.md`._
 
-### test_util.lua (7)
+### test_util.lua (8)
 
 - Util.Unpack array-style color
 - Util.Unpack hash-style color
@@ -11,24 +11,42 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
+- RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_schema.lua (5)
+### test_units.lua (9)
+
+- Units.LIST is target then focus
+- target is never linked; focus honors its link flag
+- Icons(focus) resolves to target's icons when linked
+- IsEnabled combines master and per-unit enable
+- CopyStyling snapshots target appearance into focus and unlinks
+- Label.text is per-unit and not link-resolved
+- IconGrid:ReconcileUnits enables focus once units.focus.enabled is true
+- Castbar:ReconcileUnits mirrors IconGrid's enable/disable transitions
+- master-enable off then on disables then revives both units without a reload
+
+### test_schema.lua (7)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
 - Every schema row has a string path and a known type
 - Helpers.Resolve walks a dotted path into db.profile
+- icons/castbar schema rows are unit-scoped and valid
 - Helpers.FindSchema locates a row by path
+- General exposes focus rows; unit-selector panels still filter them out
 
-### test_database.lua (7)
+### test_database.lua (10)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
 - Schema version lives in db.global, not the profile (KCD-20)
 - MigrateProfile is a no-op at the current schema version
-- MigrateProfile treats a missing version as v1 and stamps global
+- MigrateProfile treats a missing version as v1 and walks forward to current
 - MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
 - GetSpellList returns nil for an unseeded class/spec
+- DEFAULT_PROFILE nests appearance under units.target / units.focus
+- FoldLegacyUnits moves a legacy top-level config under units.target
+- FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched
 
 ### test_bus.lua (4)
 
@@ -83,10 +101,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
-### test_settings_log.lua (2)
+### test_settings_log.lua (3)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
+- ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 
 ### test_flow_traces.lua (1)
 
@@ -110,17 +129,18 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 | Suite | Cases |
 | --- | --- |
-| test_util.lua | 7 |
-| test_schema.lua | 5 |
-| test_database.lua | 7 |
+| test_util.lua | 8 |
+| test_units.lua | 9 |
+| test_schema.lua | 7 |
+| test_database.lua | 10 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_debuglog.lua | 9 |
 | test_icongrid_layout.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_cooldowns.lua | 5 |
-| test_settings_log.lua | 2 |
+| test_settings_log.lua | 3 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **65** |
+| **Total** | **81** |
