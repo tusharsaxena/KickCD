@@ -8,14 +8,14 @@
 
 ![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
-KickCD is a lightweight, single-folder WoW addon that helps the player make informed interrupt decisions in real time. It pairs two pieces of UI:
+KickCD helps you decide when to interrupt. It shows two things on screen:
 
-*   A movable, persistently-visible **icon grid** of the player's interrupt + cast-stopping CC abilities, with cooldown swipes and a clear ready / not-ready state. Sensible defaults per class and spec; the secondary block can be anchored to any of 13 points on the primary icon and filled in any of 8 grow directions.
-*   An independently-anchored **target cast bar** that mirrors the current target's cast or channel — spell icon, name, and remaining time. Bar fill color, background, border style, and font are configurable per interruptibility state (interruptible vs. uninterruptible). The bar can free-float, anchor to the icon grid's primary icon, and auto-size to the grid's actual visible footprint.
+*   An **icon grid** of your interrupts and cast-stopping crowd control, each with a cooldown timer and a clear ready / not-ready look. It comes set up for your class and spec out of the box.
+*   A **target cast bar** that shows what your current target is casting — the spell's icon, its name, and how much time is left — and colors itself by whether that cast can be interrupted.
 
-Both panels share a single addon-wide visibility mode and a single drag lock. The addon is fully compatible with WoW 12.0's "secret value" protection on protected-interrupt cooldowns and casting info.
+You can move both, resize them, and lock them in place. They appear and disappear together based on a single visibility setting you choose.
 
-Everything is configurable through the standard Blizzard Settings panel and through the `/kcd` slash command (every panel control has a CLI peer via `/kcd get` / `/kcd set`).
+Set everything up in the Blizzard settings panel (under **Ka0s KickCD**) or with the `/kcd` chat command.
 
 ## Screenshots
 
@@ -47,128 +47,127 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 
 ### Slash commands
 
-`/kcd` is the short form; `/kickcd` is a long-form alias for the same handler. Every chat line is prefixed with a cyan `[KCD]` banner.
+Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies are tagged with a cyan `[KCD]` label.
 
-| Command | Purpose |
+| Command | What it does |
 | --- | --- |
-| `/kcd` | Print the help index. |
-| `/kcd version` | Print the addon version (`v<X.Y.Z>`), read from the TOC manifest with the in-code stamp as fallback. |
-| `/kcd config` | Open the settings panel. Refuses during combat (Blizzard's category-switch is protected). Aliased as `/kcd options`. |
-| `/kcd lock` / `unlock` / `toggle` | Set / clear / flip the shared drag lock for the icon grid and the cast bar. |
-| `/kcd list` | Dump every settings option grouped by panel, with current values. |
-| `/kcd get <path>` | Print one setting's current value (e.g. `/kcd get icons.primarySize`). |
-| `/kcd set <path> <value>` | Type-aware write. Numbers clamp to range, dropdowns validate against the option list, colors take `r g b [a]` (e.g. `/kcd set castbar.interruptible.barColor 0.2 0.8 0.2 1`). |
-| `/kcd reset <general\|icons\|castbar\|spells>` | Reset one panel to defaults. `spells` rebuilds every spec's list. |
-| `/kcd resetall` | Reset every schema-driven panel **and** every spec's spell list. Mirrors the General → "Reset all settings" popup; no CLI confirmation. |
-| `/kcd resetposition` | Restore the icon grid to its default screen position. |
-| `/kcd spells <subcmd>` | Per-class+spec spell-list editor: `list / add / remove / enable / disable / category / reset`. CLASS+SPEC default to the player's current spec when omitted. |
-| `/kcd debug spells` | Dump the watched cooldown list. |
-| `/kcd debug castbar` | Print current target cast state plus configured / live per-state colors. |
-| `/kcd debug interrupt` | Dump `UnitCastingInfo` / `UnitChannelInfo` positions plus what the visibility logic decided. Use to diagnose 12.0 secret-value handling. |
-| `/kcd debug on\|off\|toggle` | Enable / disable / toggle session-only debug logging (streams to the on-screen console, never persisted). |
-| `/kcd debug window` | Toggle the on-screen debug console window. |
+| `/kcd` | Show the list of commands. |
+| `/kcd version` | Show which version you're running. |
+| `/kcd config` | Open the settings panel. Won't open during combat. Also `/kcd options`. |
+| `/kcd lock` / `unlock` / `toggle` | Lock, unlock, or flip the lock on the icon grid and cast bar so you can drag them. |
+| `/kcd list` | List every setting and its current value. |
+| `/kcd get <setting>` | Show one setting's value (for example `/kcd get icons.primarySize`). |
+| `/kcd set <setting> <value>` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
+| `/kcd reset <general\|icons\|castbar\|spells>` | Reset one settings tab to its defaults. |
+| `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults. |
+| `/kcd resetposition` | Put the icon grid back in its default spot on screen. |
+| `/kcd spells <subcommand>` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`. Defaults to your current spec. |
+| `/kcd debug spells` | List the cooldowns the addon is watching. |
+| `/kcd debug castbar` | Show your target's current cast and the colors in use. |
+| `/kcd debug interrupt` | Show what the addon decided about your target's cast. Handy for bug reports. |
+| `/kcd debug on\|off\|toggle` | Turn the debug log on or off. It resets when you reload. |
+| `/kcd debug window` | Show or hide the on-screen debug window. |
 
 ### Settings panel
 
-Five subcategories under **Ka0s KickCD**:
+Five tabs under **Ka0s KickCD**:
 
 | Tab | Covers |
 | --- | --- |
-| **General** | Master enable, addon-wide visibility mode, lock, master scale / alpha. "Reset position" and "Reset all settings" buttons sit under Master controls. |
-| **Icons** | Sizing, layout (anchor + grow + rows × cols), visual states (alpha / tint / GCD swipe suppression), border, annotations (cooldown text font / size / flags, charges, hover tooltip), per-slot ready glow (independent trigger and style for primary vs. secondary icons). |
-| **Cast bar** | Enable, position (free-float or anchored to the primary icon), orientation / growth direction, auto-size to icon grid, sizing, font, per-element text anchors and offsets, per-state appearance for interruptible vs. uninterruptible casts. |
-| **Spells** | Per-class+spec spell-list editor. Class/spec dropdown shows class+spec icons and class-colored entries; rows show known/unknown glyph + spell icon + name + category + enable/move/remove. Header "Defaults" button resets the currently-selected spec only. The grid only renders entries the player can actually cast (talent choice nodes, pet spells while the pet is summoned, etc.). |
-| **Profiles** | Standard AceDB profile management (default / per-character / per-class / per-realm). |
+| **General** | The master on/off switch, when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too. |
+| **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. |
+| **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt. |
+| **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
+| **Profiles** | Save separate settings per character, class, or realm. |
 
-Use `/kcd unlock` to drag the icon grid (and the cast bar, if it's in FREE anchor mode) into position, then `/kcd lock` to fix them.
+Use `/kcd unlock` to drag the icon grid (and the cast bar, if it's set to move freely) into position, then `/kcd lock` to fix them.
 
 ## How interrupt tracking works
 
-The addon reaches its on-screen result through a short, deliberate pipeline. Understanding it explains why the UI shows (or hides) when it does.
+Here's what decides when the UI shows, hides, and lights up.
 
-1.  **Visibility gate.** Three things decide whether *anything* renders. The **master enable** wins outright — off means nothing shows. Then the addon-wide **visibility mode** (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`) decides *when* the icon grid and cast bar appear, and both panels share one mode and one **drag lock**, so they move and lock together.
-2.  **Two-step interruptibility gate.** In `target_casting_interruptible` mode the decision is split in two. First the grid and bar **show** whenever the current target is a hostile unit that is casting or channeling. Then an alpha mask **fades the display to invisible during uninterruptible casts**. This is deliberately two steps because WoW 12.0's "secret value" protection makes the target's `notInterruptible` flag impossible to compare in Lua — so the interruptible-or-not decision is pushed down to Blizzard's own C-side (`SetAlphaFromBoolean`) rather than branched on in the addon.
-3.  **Your cooldowns.** Independently, the addon watches *your* interrupt and cast-stopping CC cooldowns for the current class + spec. It drives the cooldown swipe and the ready / not-ready state on each icon in the grid — again handing the protected remaining-time value straight to Blizzard's C-side curve evaluation so it never inspects that secret value in Lua.
-4.  **Target cast bar.** The cast bar mirrors the current target's cast or channel — spell icon, name, and remaining time — colored per interruptibility state (interruptible vs. uninterruptible), so a glance tells you whether the cast in front of you is worth a kick.
+1.  **The master switch comes first.** If the addon is turned off, nothing shows.
+2.  **A single visibility setting decides when the UI appears** — always, only in combat, only while your target is casting, or only while your target is casting something you can interrupt. The icon grid and the cast bar both follow this one setting, so they show, hide, move, and lock together.
+3.  **The icon grid tracks your cooldowns.** For your current class and spec, it watches your interrupts and cast-stopping crowd control, runs each icon's cooldown timer, and shows whether the ability is ready.
+4.  **The cast bar tracks your target.** It shows the spell your target is casting or channeling and colors itself by whether you can interrupt it, so a glance tells you if the cast is worth a kick.
 
-### Critical settings
+In the "interruptible only" mode the UI stays hidden while your target casts something you can't interrupt, and appears the moment they cast something you can.
 
-A few options change the addon's behavior more than any others.
+### Key settings
 
-#### Visibility modes (General → Master controls → General visibility)
+A few settings shape the addon's behavior more than the rest.
 
-A single visibility selector governs **both** the icon grid and the cast bar. The master enable toggle still wins — disabled hides everything regardless of mode.
+#### Visibility (General → Master controls → General visibility)
 
-| Value (`/kcd set visibility …`) | When the UI shows |
+One setting controls when both the icon grid and the cast bar appear. The master switch always wins: if the addon is off, nothing shows.
+
+| Value | When the UI shows |
 | --- | --- |
 | `always` | Always. |
-| `in_combat` | Only while combat is active. |
-| `target_casting` | Only while the current target has a cast or channel in progress. |
-| `target_casting_interruptible` | Only while a hostile target is casting **and** the cast is interruptible. Uninterruptible casts hide. (Default.) |
+| `in_combat` | Only while you're in combat. |
+| `target_casting` | Only while your target is casting or channeling. |
+| `target_casting_interruptible` | Only while a hostile target is casting something you can interrupt. Casts you can't interrupt stay hidden. (Default.) |
 
-The per-icon glow trigger (Icons → Ready glow → Trigger) reuses three of these values — `always`, `target_casting`, `target_casting_interruptible` — plus a `never` option to disable the glow entirely. (`in_combat` is intentionally absent; the glow is a per-cast cue, not a combat-state indicator.) Primary and secondary icons each carry their own trigger.
+The ready glow has its own copy of this setting (Icons → Ready glow), with the same choices plus a `never` option to turn the glow off. Your primary and secondary icons can use different triggers.
 
-#### Cast bar anchoring (Cast bar → Position)
+#### Cast bar placement (Cast bar → Position)
 
 Two modes:
 
-*   **Free (drag to move)** — the cast bar is a free-floating frame. Unlock with `/kcd unlock`, drag, lock again with `/kcd lock`. Position is saved per-profile.
-*   **Anchored to primary icon** — the cast bar attaches to the icon grid's primary icon via three settings: an attach point on the primary icon (one of 13), the matching point on the cast bar (same 13-option set), and an X / Y offset. The cast bar follows the grid for free; the bar itself is not draggable.
+*   **Free (drag to move)** — the cast bar floats on its own. Unlock it, drag it where you want, and lock it again. Its position is saved.
+*   **Anchored to the primary icon** — the cast bar sticks to the main icon in the grid and moves with it. Pick which points connect and a small offset. In this mode you don't drag the bar itself.
 
-Defaults: `Anchor mode = PRIMARY`, attach point `TOP_LEFT` ↔ `BOTTOM_LEFT`, offset `(0, 1)` — bar sits 1 px above the primary icon, left-aligned.
+By default the bar sits just above the primary icon, lined up with its left edge.
 
-#### Cast bar orientation, growth, and auto-size (Cast bar → Orientation)
+#### Cast bar direction and auto-size (Cast bar → Orientation)
 
-*   **Orientation** — `HORIZONTAL` (default) or `VERTICAL`. Vertical rotates the whole frame 90°; spark, fill, name, time, and icon layouts all follow.
-*   **Growth direction** — pairs with orientation. Horizontal accepts `RIGHT` / `LEFT`; vertical accepts `UP` / `DOWN`. Switching orientation auto-resets growth to the canonical default for the new axis.
-*   **Auto-size to icon grid** — when on, the bar's _long_ axis matches the icon grid's actual rendered size in that direction (horizontal → bar width, vertical → bar height). Tracks the grid's _visible_ footprint, so adding/removing/disabling icons resizes the bar in place. The orthogonal dimension stays as configured.
+*   **Orientation** — horizontal (default) or vertical.
+*   **Fill direction** — which way the bar fills. Horizontal fills to the right or left; vertical fills up or down.
+*   **Auto-size to icon grid** — when on, the bar's length matches the icon grid and follows it, so adding, removing, or disabling icons resizes the bar in place. Its other dimension stays where you set it.
 
-#### Icon grid anchoring (Icons → Layout)
+#### Icon grid layout (Icons → Layout)
 
-`Primary anchor` places the secondary block on the primary icon (12 `<SIDE>_<ALIGN>` tokens + a 13th `CENTER` that stacks the block on the primary). `Grow direction` picks the fill order inside the block (8 combinations of `right` / `left` / `down` / `up`). `Rows × Cols` is the block's capacity. Anchor and grow are independent — any anchor pairs with any grow direction.
+The **primary anchor** sets where the block of secondary icons sits relative to the main icon. The **grow direction** sets the order they fill in. **Rows × Cols** sets how many fit. Any anchor pairs with any grow direction.
 
-If more spells are enabled than the block holds, the extras are dropped — the addon prints a one-time chat warning per (class, spec, capacity) tuple so you know to bump rows × cols or remove spells.
+If you enable more spells than the grid can hold, the extras are left off and the addon warns you once in chat so you can make room or trim the list.
 
 ## FAQ
 
 | Question | Answer |
 | --- | --- |
-| Does this replace Blizzard's default cast bars? | No. The cast bar is a brand-new frame; Blizzard's player and target cast bars are untouched. Disable Blizzard's target cast bar in _Edit Mode_ if you don't want both visible. |
-| How do I move the icon grid / cast bar? | `/kcd unlock`, drag, `/kcd lock`. The icon grid is always draggable when unlocked. The cast bar is draggable only in Free anchor mode — in Anchored mode it follows the primary icon. `/kcd resetposition` snaps the grid back to its default screen position. |
-| Where do my spell defaults come from? Why doesn't every class spell I expect show up? | Defaults are per-class+spec and only seeded _once_, on first profile creation, from `defaults/Spells.lua`. The grid then renders only the spells the player can actually cast — wrong-talent choice-node spells, unlearned spells, and pet abilities while no pet is summoned are filtered out at render time. To restore defaults later, `/kcd reset spells` (every spec) or `/kcd spells reset [CLASS SPEC]` (one spec). |
-| Can I add my own spells? | Yes — Settings → Spells, or `/kcd spells add SPELL_ID category`. When editing your own active spec, only spells already tracked by the Cooldown Manager validate; the editor shows an error if not. |
-| Does the addon track items / trinkets? | Not yet. Spells only. |
-| Why does the settings panel refuse to open during a pull? | Blizzard's category-switching is protected in combat, so opening _any_ settings subcategory mid-fight would taint the panel. `/kcd config` errors out cleanly until combat ends. |
-| Are there profiles? Per-character configs? | Yes — full AceDB profiles under Settings → Profiles. Every character on the account starts on the shared **Default** profile; opt into per-character / per-class / per-realm scope from the Profiles panel if you want a character (or group of characters) to diverge. |
-| What does "secret value" mean and why does it matter? | WoW 12.0 marks certain protected-interrupt cooldown timings and `notInterruptible` flags as opaque tokens that error if an addon tries to compare them in Lua. KickCD never compares them; the visibility / glow / interruptibility decisions are routed through C-side Blizzard methods that accept the protected values directly. Run `/kcd debug interrupt` to see what the gate decided for the current target. |
-| Does the bar fill direction affect channels? | Channels drain in the same direction the equivalent cast would fill — a HORIZONTAL + RIGHT bar drains right-to-left during a channel. |
+| Does this replace Blizzard's cast bars? | No. It adds its own cast bar and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target cast bar in Edit Mode. |
+| How do I move the icon grid or cast bar? | `/kcd unlock`, drag, then `/kcd lock`. The icon grid always drags when unlocked. The cast bar drags only when it's set to move freely — when it's anchored, it follows the main icon. `/kcd resetposition` puts the grid back in its default spot. |
+| Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd reset spells` (all specs) or `/kcd spells reset` (one spec). |
+| Can I add my own spells? | Yes — in Settings → Spells, or with `/kcd spells add`. For the spec you're currently playing, only spells the game already tracks as cooldowns can be added. |
+| Does it track items or trinkets? | Not yet — spells only. |
+| Why won't the settings panel open in combat? | The game blocks opening settings mid-fight, so `/kcd config` waits until combat ends. |
+| Are there per-character settings? | Yes — see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, or per-realm profile whenever you like. |
+| Does the fill direction change for channels? | Yes. A channel drains the same way the matching cast would fill — a bar that fills to the right during a cast drains to the left during a channel. |
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
-| The icon grid never appears. | (1) Master enable: `/kcd get enabled` must be `true`. (2) Visibility mode: `/kcd get visibility` — `in_combat` requires combat, `target_casting*` requires an actively-casting target. (3) The active spec has at least one **enabled** spell **the player knows**. `/kcd debug spells` lists the watched cooldowns. |
-| The icon grid won't drag. | It's locked. `/kcd unlock`, drag, `/kcd lock`. If `/kcd unlock` doesn't visibly flip the lock state, run `/kcd toggle`. |
-| The cast bar shows on uninterruptible casts even though I picked "interruptible only". | A bar that _visually fades_ to alpha 0 during an uninterruptible cast is the gate working as intended (the frame still exists; only its alpha changes). For other cases, run `/kcd debug interrupt` while the offending unit is casting and report the output. |
-| Cooldown text is stuck at `0.0` for a few seconds after a spell finishes. | Should not happen since the 1.0.0 fix. If you see it, capture `/kcd debug spells` output during the stuck window and report it. Make sure `Icons → Annotations → Show cooldown text` is enabled. |
-| Glow on secondary icons looks janky / restarts every ~0.1s. | Should not happen since the 1.0.0 fix. If you see it, confirm the trigger is set to one of the _target casting_ options and capture the cast bar / icon configuration plus a video. |
-| Settings panel won't open mid-pull. | Intentional — Blizzard's settings category-switch is protected in combat; KickCD refuses rather than silently tainting the panel. `/kcd config` works the moment combat ends. |
-| Cast bar doesn't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a layout pass. Auto-size only governs the long axis; the orthogonal dimension stays at the configured Width / Height. |
-| I want a clean slate. | One panel: `/kcd reset general` / `icons` / `castbar` / `spells`. Everything except profiles: `/kcd resetall` (or General → Reset all settings). Just the icon grid's screen position: `/kcd resetposition`. A specific spec's spell list: `/kcd spells reset CLASS SPEC` or the Spells panel's per-spec **Defaults** button. |
+| The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility` — some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd debug spells` lists what it's watching. |
+| The icon grid won't drag. | It's locked. `/kcd unlock`, drag, `/kcd lock`. If unlocking doesn't seem to take, run `/kcd toggle`. |
+| The cast bar still shows on casts I can't interrupt, even in "interruptible only" mode. | If the bar fades out on those casts, that's it working as intended — the frame is still there, just invisible. For anything else, run `/kcd debug interrupt` while the target is casting and include the output in a bug report. |
+| Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | This shouldn't happen anymore. If it does, capture `/kcd debug spells` during the stuck moment and report it, and make sure cooldown text is on (Icons → Annotations). |
+| The glow on secondary icons flickers or restarts constantly. | This shouldn't happen anymore. If it does, make sure the glow trigger is set to one of the "target casting" options, and send a short video with your settings. |
+| The settings panel won't open mid-fight. | On purpose — the game blocks it in combat. It opens the moment combat ends. |
+| The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a refresh. Auto-size only controls the bar's length; its other dimension stays where you set it. |
+| I want a clean slate. | One tab: `/kcd reset general` / `icons` / `castbar` / `spells`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button. |
 
 ## Issues and feature requests
 
-All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/kickcd/issues](https://github.com/tusharsaxena/kickcd/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.
-
-## Testing
-
-Automated checks run headless: a Lua unit harness (`lua tests/run.lua`, exits non-zero on any failure) plus `luacheck .` (0 errors). The full per-suite test-case inventory — and the authoritative pass/total count behind the `tests` badge above — is generated at [docs/test-cases.md](docs/test-cases.md) (`lua tests/run.lua --list`). The harness can't render frames or model taint, so the end-to-end smoke-test suite covering install, visibility modes, lock/drag, cast bar, spec/talent/pet rebuilds, profiles, and 12.0 secret-value safety lives at [docs/smoke-tests.md](docs/smoke-tests.md). Run both before tagging a release or after refreshing libs / bumping `## Interface:`.
+Found a bug or want a feature? File it at [https://github.com/tusharsaxena/kickcd/issues](https://github.com/tusharsaxena/kickcd/issues). The issue tracker is where all reports and planned work live, so please post there rather than in comments.
 
 ## Version History
 
-| Version | Date | Notes |
+| Version | Date | Highlights |
 | --- | --- | --- |
-| 1.2.0 | 2026-07-13 | Added: On-screen debug console with Copy/Clear and `/kcd debug on\|off\|toggle\|window`<br>Added: Headless test harness (`lua tests/run.lua`) plus a `.luacheckrc` lint config<br>Changed: Debug logging is now session-only and streams to the console instead of chat<br>Changed: Aligned the addon to the Ka0s WoW Addon Standard (TOC field order, tiered layout); moved the saved schema version to account scope so existing profiles migrate automatically<br>Removed: `/kcd debug log` (use `/kcd debug on\|off\|toggle`), the persisted debug setting, and six unused bundled libraries<br>Docs: Moved ARCHITECTURE and the agent brief under `docs/`, added a standard badge and a How interrupt tracking works section, and synced every topic doc to current behavior<br>Internals: Migrated to a private addon namespace, renamed internal bus messages to the `Ka0s_KickCD_` prefix, and split the icon-grid module into three files |
-| 1.1.0 | 2026-05-03 | Vendored LibSharedMedia dropdown widgets with texture/font/border previews and first-run defaults. Added `KickCD_COMBAT_STATE` bus message, consolidating `PLAYER_REGEN_*` in `core/State.lua`. Filtered `UNIT_SPELLCAST_*` events to the target unit via private dispatch frames. Settings panel: parent page now renders logo + slash-command list, sub-pages get breadcrumb headers with an atlas-chevron separator, and `OpenSettings` is combat-lockdown-gated at the function. Unified cyan `[KCD]` chat prefix across all slash output. Docs collapsed into a single root `CLAUDE.md` / `ARCHITECTURE.md` with expanded `docs/` index, comprehensive smoke-test suite, and review artifact conventions. Internal cleanup: dropped dead Settings/Util exports and unused record fields; codified no-auto-commit / no-version-bump workflow; CRLF normalized via `.gitattributes`. |
-| 1.0.1 | 2026-05-02 | Build retrigger; no functional changes. |
-| 1.0.0 | 2026-05-02 | Initial release. Interrupt/CC cooldown icon grid (12-anchor + 8-way grow) and target cast bar with interruptibility coloring and auto-size. Schema-driven five-tab settings panel with full `/kcd` slash parity, two-column layout, and per-tab Defaults. 12.0 secret-value-safe pipeline for cooldowns, cast info, glow, and dimming. Visibility modes (always / in_combat / target_casting / target_casting_interruptible) with per-icon ready glow via LibCustomGlow. Per-spec spell lists seeded from Baratus's Midnight class-info sheet, with hover tooltips and known/unknown glyphs. AceDB profiles defaulting to Shared. Ace3 + LibSharedMedia + LibCustomGlow vendored. |
+| 1.2.0 | 2026-07-13 | Added an on-screen debug window with Copy/Clear buttons, controlled by `/kcd debug on\|off\|toggle\|window`. Debug messages now go to that window instead of chat and reset each reload. Replaced `/kcd debug log` with `/kcd debug on\|off\|toggle`. |
+| 1.1.0 | 2026-05-03 | Added texture, font, and border dropdowns with live previews. The settings panel's main page now shows the logo and command list, with breadcrumb headers on subpages. All chat output now uses a single cyan `[KCD]` label. |
+| 1.0.1 | 2026-05-02 | Rebuild only; nothing changed for players. |
+| 1.0.0 | 2026-05-02 | Initial release. Interrupt and CC cooldown icon grid with flexible layout, plus a target cast bar that colors itself by interruptibility and can auto-size to the grid. Five-tab settings panel with full `/kcd` command coverage and per-tab Defaults. Visibility modes (always / in combat / target casting / interruptible only) with a per-icon ready glow. Per-spec spell lists with hover tooltips and known/unknown markers. Saved profiles. |
+</content>
+</invoke>
