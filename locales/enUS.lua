@@ -41,6 +41,7 @@ L["Master controls"]             = "Master controls"
 L["Appearance"]                  = "Appearance"
 L["Position"]                    = "Position"
 L["Debug"]                       = "Debug"
+L["Units"]                       = "Units"
 
 -- General tab — controls
 L["Enable KickCD"]               = "Enable KickCD"
@@ -54,6 +55,8 @@ L["Scale multiplier applied to the entire icon grid."] =
 L["Master alpha"]                = "Master alpha"
 L["Global opacity for the icon grid."] =
     "Global opacity for the icon grid."
+L["Enable Target grid"]          = "Enable Target grid"
+L["Enable Focus grid"]           = "Enable Focus grid"
 L["Reset position"]              = "Reset position"
 L["Restore the icon grid to its default screen position."] =
     "Restore the icon grid to its default screen position."

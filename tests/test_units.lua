@@ -116,3 +116,91 @@ test("Label.text is per-unit and not link-resolved", function()
 
 end)
 
+
+
+test("IconGrid:ReconcileUnits enables focus once units.focus.enabled is true", function()
+
+    local inst = T.load(true, true)
+
+    local ns = inst.NS
+
+    local ig = ns:GetModule("IconGrid")
+
+    assertEqual(ns.Units.IsEnabled("focus"), false, "focus starts disabled by default")
+
+    assertEqual(ig:GetInstance("focus").enabled, false, "focus instance starts not live")
+
+    ns.db.profile.units.focus.enabled = true
+
+    ig:ReconcileUnits()
+
+    assertEqual(ns.Units.IsEnabled("focus"), true, "focus reports enabled once its flag flips")
+
+    assertEqual(ig:GetInstance("focus").enabled, true, "focus instance is live after reconcile")
+
+    assertEqual(ig:GetInstance("target").enabled, true, "target stays live and untouched")
+
+end)
+
+
+
+test("Castbar:ReconcileUnits mirrors IconGrid's enable/disable transitions", function()
+
+    local inst = T.load(true, true)
+
+    local ns = inst.NS
+
+    local cb = ns:GetModule("Castbar")
+
+    ns.db.profile.units.focus.enabled = true
+
+    cb:ReconcileUnits()
+
+    assertEqual(cb:GetInstance("focus").enabled, true, "focus bar instance goes live")
+
+    ns.db.profile.units.focus.enabled = false
+
+    cb:ReconcileUnits()
+
+    assertEqual(cb:GetInstance("focus").enabled, false, "focus bar instance goes down again")
+
+end)
+
+
+
+test("master-enable off then on disables then revives both units without a reload", function()
+
+    local inst = T.load(true, true)
+
+    local ns = inst.NS
+
+    local ig = ns:GetModule("IconGrid")
+
+    local cb = ns:GetModule("Castbar")
+
+    assertEqual(ig:GetInstance("target").enabled, true, "target grid starts live")
+
+    assertEqual(cb:GetInstance("target").enabled, true, "target bar starts live")
+
+    ns.db.profile.enabled = false
+
+    ns:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+
+    assertEqual(ns.Units.IsEnabled("target"), false, "master off disables the unit")
+
+    assertEqual(ig:GetInstance("target").enabled, false, "master off tears down the live grid instance")
+
+    assertEqual(cb:GetInstance("target").enabled, false, "master off tears down the live bar instance")
+
+    ns.db.profile.enabled = true
+
+    ns:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+
+    assertEqual(ns.Units.IsEnabled("target"), true, "master back on re-enables the unit")
+
+    assertEqual(ig:GetInstance("target").enabled, true, "master back on revives the grid instance without /reload")
+
+    assertEqual(cb:GetInstance("target").enabled, true, "master back on revives the bar instance without /reload")
+
+end)
+

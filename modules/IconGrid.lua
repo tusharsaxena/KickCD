@@ -632,6 +632,27 @@ function IconGrid:DisableUnit(unit)
     inst.enabled = false
 end
 
+--- Reconcile every tracked unit's live enable-state against its desired
+--- state (NS.Units.IsEnabled). Called from OnEnable and from
+--- OnConfigChanged for the "general"/"units" sections so toggling the
+--- master enable OR a per-unit enable brings the grid into the right
+--- state without a /reload — including reviving a unit that was disabled
+--- by master-enable being off (KCD regression: master off -> on used to
+--- require /reload because OnConfigChanged "general" never re-ran the
+--- enable loop). Idempotent: EnableUnit/DisableUnit are only invoked on
+--- an actual want-vs-live mismatch.
+function IconGrid:ReconcileUnits()
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        local want = NS.Units.IsEnabled(u)
+        if want and not (inst and inst.enabled) then
+            self:EnableUnit(u)
+        elseif not want and inst and inst.enabled then
+            self:DisableUnit(u)
+        end
+    end
+end
+
 function IconGrid:OnEnable()
     -- Combat flag is owned by core/State.lua's bootstrap listener, so
     -- this module no longer seeds it on enable.
@@ -668,9 +689,7 @@ function IconGrid:OnEnable()
 
     -- Bring every enabled unit online. Focus defaults disabled, so only the
     -- target instance enables here and behavior matches the former singleton.
-    for _, u in ipairs(NS.Units.LIST) do
-        if NS.Units.IsEnabled(u) then self:EnableUnit(u) end
-    end
+    self:ReconcileUnits()
 end
 
 function IconGrid:OnDisable()
@@ -713,6 +732,10 @@ function IconGrid:OnConfigChanged(_evt, payload)
         -- changes flow through the same path.
         IconGrid.BuildCurves()  -- readyAlpha/cooldownAlpha/cooldownTint may have moved
         forEachEnabled(function(inst)
+            -- Re-resolve the link-aware appearance table first: a Target
+            -- appearance edit must propagate to a linked Focus even though
+            -- the edit only touched units.target.icons.
+            inst.cfg = NS.Units.Icons(inst.unit)
             self:Layout(inst)
             self:ApplyLock(inst)
         end)
@@ -723,18 +746,35 @@ function IconGrid:OnConfigChanged(_evt, payload)
             self:BuildActiveList(inst)
             self:Layout(inst)
         end)
-    elseif section == "general" then
+    elseif section == "general" or section == "units" then
         -- General-tab edits include the master enable, the lock toggle,
         -- master scale / alpha, the visibility mode, and the Reset
-        -- position button. Apply scale/alpha unconditionally; visibility
-        -- decision rolls master enable + the mode together.
+        -- position button. "units" covers the per-unit enable toggles
+        -- (Task 6) and (Task 8) the link flag. Either can flip a unit's
+        -- live-vs-desired enable state, so reconcile FIRST — a unit that
+        -- just got enabled needs its grid built (ReconcileUnits ->
+        -- EnableUnit already does that: sets inst.cfg, builds the active
+        -- list, lays out, refreshes visibility/glows) before the
+        -- already-live instances below are re-applied. This is also the
+        -- fix for the regression where flipping master enable back on
+        -- didn't revive the grid without /reload: ReconcileUnits sees
+        -- want=true again and calls EnableUnit.
+        self:ReconcileUnits()
         forEachEnabled(function(inst)
             if inst.grid then
                 local anchor = NS.Units.Anchor(inst.unit, "icons")
                 if anchor then NS.Util.ApplyAnchor(inst.grid, anchor) end
                 self:ApplyGeneral(inst)
             end
+            if section == "units" then
+                -- Re-resolve the link-aware appearance table: a link flag
+                -- flip (Task 8) or an already-live focus's own enable
+                -- toggle both need this instance's cfg/render current.
+                inst.cfg = NS.Units.Icons(inst.unit)
+                self:Layout(inst)
+            end
             self:RefreshVisibility(inst)
+            self:RefreshAllGlows(inst)
             self:ApplyLock(inst)
         end)
     end
@@ -743,6 +783,11 @@ end
 function IconGrid:OnProfileChanged(_evt, payload)
     -- Full reset: re-anchor, rebuild the active list against the new
     -- profile's spell defaults, and re-apply the lock + general state.
+    -- A profile swap can carry different units.<unit>.enabled values than
+    -- the outgoing profile, so reconcile live-vs-desired FIRST — otherwise
+    -- a focus that was live under the old profile but disabled in the new
+    -- one would keep running (or vice versa) until the next config event.
+    self:ReconcileUnits()
     IconGrid.BuildCurves()
     forEachEnabled(function(inst)
         if inst.grid then

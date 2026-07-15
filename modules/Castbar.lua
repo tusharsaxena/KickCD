@@ -1155,6 +1155,27 @@ function Castbar:DisableUnit(unit)
     inst.enabled = false
 end
 
+--- Reconcile every tracked unit's live enable-state against its desired
+--- state (NS.Units.IsEnabled). Mirrors IconGrid:ReconcileUnits. Called from
+--- OnEnable and from OnConfigChanged for the "general"/"units" sections so
+--- toggling the master enable OR a per-unit enable brings the bar into the
+--- right state without a /reload — including reviving a unit that was
+--- disabled by master-enable being off. EnableUnit already snaps to any
+--- live cast via Reevaluate, so a mid-cast focus enable shows immediately.
+--- Idempotent: Enable/DisableUnit only run on an actual want-vs-live
+--- mismatch.
+function Castbar:ReconcileUnits()
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        local want = NS.Units.IsEnabled(u)
+        if want and not (inst and inst.enabled) then
+            self:EnableUnit(u)
+        elseif not want and inst and inst.enabled then
+            self:DisableUnit(u)
+        end
+    end
+end
+
 function Castbar:OnEnable()
     -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
     -- owns the only PLAYER_REGEN_* registration, so the flag write and the
@@ -1174,9 +1195,7 @@ function Castbar:OnEnable()
 
     -- Bring every enabled unit online. Focus defaults disabled, so only the
     -- target instance enables here and behavior matches the former singleton.
-    for _, u in ipairs(NS.Units.LIST) do
-        if NS.Units.IsEnabled(u) then self:EnableUnit(u) end
-    end
+    self:ReconcileUnits()
 end
 
 function Castbar:OnDisable()
@@ -1325,7 +1344,13 @@ end
 
 function Castbar:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
-    if section == "castbar" then
+    if section == "castbar" or section == "units" then
+        -- "units" (Task 6: per-unit enable; Task 8: link flag) can change
+        -- which appearance table cfg(inst) resolves to (NS.Units.Castbar
+        -- link-resolves through units.<unit>.link), so re-skin exactly like
+        -- a "castbar" section edit. Reconcile enable-state first so a
+        -- just-enabled unit's frame exists before Reskin/ApplyAnchor touch it.
+        if section == "units" then self:ReconcileUnits() end
         forEachEnabled(function(inst)
             -- Anchor mode + offsets and orientation/grow may have changed;
             -- apply both before reskin so Reskin sees the right frame size
@@ -1351,7 +1376,12 @@ function Castbar:OnConfigChanged(_evt, payload)
             end
         end)
     elseif section == "general" then
-        -- Master enable / lock flag may have flipped.
+        -- Master enable / lock flag may have flipped. Reconcile FIRST: this
+        -- is the fix for the regression where flipping master enable back
+        -- on didn't revive the bar without /reload — ReconcileUnits sees
+        -- want=true again and calls EnableUnit, which snaps to any
+        -- in-progress cast via Reevaluate.
+        self:ReconcileUnits()
         forEachEnabled(function(inst)
             self:ApplyLock(inst)
             if not isVisible(inst) then
@@ -1364,6 +1394,10 @@ function Castbar:OnConfigChanged(_evt, payload)
 end
 
 function Castbar:OnProfileChanged()
+    -- A profile swap can carry different units.<unit>.enabled values than
+    -- the outgoing profile, so reconcile live-vs-desired FIRST — mirrors
+    -- IconGrid:OnProfileChanged.
+    self:ReconcileUnits()
     forEachEnabled(function(inst)
         self:ApplyAnchor(inst)
         self:Reskin(inst)

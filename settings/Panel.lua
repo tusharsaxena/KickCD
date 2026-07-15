@@ -148,7 +148,7 @@ local _validPanels = {
 }
 local _validSections = {
     general = true, icons = true, castbar = true,
-    spells  = true, debug = true,
+    spells  = true, debug = true, units = true,
 }
 local _validTypes = {
     bool = true, number = true, string = true, color = true,
@@ -187,7 +187,7 @@ function Helpers.ValidateSchema()
             end
             if not _validSections[def.section] then
                 _printSchemaError(where, "invalid `section` = " .. tostring(def.section)
-                    .. " (expected one of: general, icons, castbar, spells, debug)")
+                    .. " (expected one of: general, icons, castbar, spells, debug, units)")
                 errors = errors + 1
             end
             if not _validTypes[def.type] then

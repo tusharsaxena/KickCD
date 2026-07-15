@@ -75,6 +75,21 @@ add{
     min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 
+-- Per-unit ENABLE toggles (§Task 6). One row per NS.Units.LIST entry, driving
+-- `/kcd set units.<unit>.enabled` and (via Helpers.Set firing
+-- Ka0s_KickCD_CONFIG_CHANGED{section="units"}) IconGrid/Castbar's
+-- ReconcileUnits. The label/selector/link/copy UI (Task 8) lives in its own
+-- panel; this is deliberately just the enable bool so both rows render
+-- under SchemaForPanel("general") regardless of which unit is "selected".
+for _, u in ipairs(NS.Units.LIST) do
+    add{
+        panel   = "general", section = "units", group = L["Units"],
+        path    = "units." .. u .. ".enabled", unit = u, type = "bool",
+        label   = (u == "target" and L["Enable Target grid"] or L["Enable Focus grid"]),
+        default = (u == "target"),
+    }
+end
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------
