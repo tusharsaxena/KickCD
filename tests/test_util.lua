@@ -50,3 +50,14 @@ test("Util.Throttle coalesces a burst to one trailing-args call", function()
     assertEqual(calls, 1, "burst must coalesce to a single call")
     assertEqual(lastArg, 3, "trailing call's args win")
 end)
+
+test("RegisterUnitCastEvent registers the dispatch frame for the named unit", function()
+    local calls = {}
+    local module = { OnX = function(self, event, unit) calls[#calls+1] = { event, unit } end }
+    local f = NS.Util.RegisterUnitCastEvent(module, "focus", "UNIT_SPELLCAST_START", "OnX")
+    assertTrue(f ~= nil, "returns a frame for teardown")
+    assertEqual(f._unitEvents["UNIT_SPELLCAST_START"], "focus", "registered for focus, not target")
+    -- simulate the event firing for focus
+    f:_fire("UNIT_SPELLCAST_START", "focus")
+    assertEqual(calls[1][2], "focus", "handler receives the unit")
+end)

@@ -32,6 +32,21 @@ local NUMERIC_GETTERS = {
 -- paths (OnEnable → layout/reskin) that do arithmetic on them run headlessly.
 local function makeFrame()
     local f = {}
+    -- Explicit fields (take precedence over the __index fallback below) so
+    -- Util.RegisterUnitCastEvent's dispatch frame is testable headlessly:
+    -- record RegisterUnitEvent(event, unit) and let tests fire the stored
+    -- OnEvent handler via f:_fire(event, ...). Test-scoped only.
+    function f.RegisterUnitEvent(self, ev, unit)
+        self._unitEvents = self._unitEvents or {}
+        self._unitEvents[ev] = unit
+    end
+    function f.SetScript(self, which, fn)
+        if which == "OnEvent" then self._onevent = fn end
+        return self   -- other scripts (OnDragStart/OnUpdate/…) are harmless no-ops
+    end
+    function f._fire(self, ev, ...)
+        if self._onevent then self._onevent(self, ev, ...) end
+    end
     return setmetatable(f, {
         __index = function(_, k)
             local n = NUMERIC_GETTERS[k]

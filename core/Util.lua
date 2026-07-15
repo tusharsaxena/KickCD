@@ -189,19 +189,30 @@ end
 -- iterate the caller-owned table and run f:UnregisterAllEvents() on each.
 
 --- Create a private dispatch frame that fires `module[handlerName](module, ...)`
---- only when `eventName` fires for unit "target".
+--- only when `eventName` fires for `unit`. Caller stashes the returned frame and
+--- runs UnregisterAllEvents in OnDisable (or on per-unit enable-toggle teardown).
+--- @param module table     — AceEvent module (handler methods live on it)
+--- @param unit string      — "target" / "focus"
+--- @param eventName string — UNIT_SPELLCAST_START / _STOP / etc.
+--- @param handlerName string — method on `module` to call on dispatch
+--- @return Frame
+function Util.RegisterUnitCastEvent(module, unit, eventName, handlerName)
+    local f = CreateFrame("Frame")
+    f:RegisterUnitEvent(eventName, unit)
+    f:SetScript("OnEvent", function(_, event, evUnit, ...)
+        local fn = module[handlerName]
+        if fn then fn(module, event, evUnit, ...) end
+    end)
+    return f
+end
+
+--- Back-compat: target-only registration (unchanged call sites).
 --- @param module table     — AceEvent module (handler methods live on it)
 --- @param eventName string — UNIT_SPELLCAST_START / _STOP / etc.
 --- @param handlerName string — method on `module` to call on dispatch
 --- @return Frame — caller stashes this and runs UnregisterAllEvents in OnDisable
 function Util.RegisterTargetEvent(module, eventName, handlerName)
-    local f = CreateFrame("Frame")
-    f:RegisterUnitEvent(eventName, "target")
-    f:SetScript("OnEvent", function(_, event, unit, ...)
-        local fn = module[handlerName]
-        if fn then fn(module, event, unit, ...) end
-    end)
-    return f
+    return Util.RegisterUnitCastEvent(module, "target", eventName, handlerName)
 end
 
 -- ---------------------------------------------------------------------------
