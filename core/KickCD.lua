@@ -97,6 +97,19 @@ local function p(self, ...)
     fn(...)
 end
 
+-- Addon version for the `version` verb and the help header (slash-commands-§3).
+-- Prefer the TOC manifest so the reported version can't drift from the packaged
+-- build; fall back to the in-code NS.VERSION stamp when the metadata API is
+-- unavailable (older clients, or the headless test harness). 12.0 exposes the
+-- reader under C_AddOns; the bare _G.GetAddOnMetadata is deprecated, so we don't
+-- touch it (§4.1 no-deprecated-globals).
+local function addonVersion()
+    local get = C_AddOns and C_AddOns.GetAddOnMetadata
+    local v = get and get(addonName, "Version")
+    if type(v) == "string" and v ~= "" then return v end
+    return NS.VERSION
+end
+
 -- Set db.profile.locked through the schema's write+notify+refresh path
 -- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
 -- true` and the General > "Lock frame" checkbox do, so an open
@@ -128,6 +141,8 @@ local runReset, runResetAll, runResetPosition, runSpells
 local COMMANDS = {
     {"help",          "List available commands",
         function(self) printHelp(self) end},
+    {"version",       "Print the addon version",
+        function(self) p(self, "v" .. addonVersion()) end},
     {"config",        "Open the settings panel",
         function(self) self:OpenSettings() end},
     {"lock",          "Lock the icon grid in place",
@@ -209,7 +224,7 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    p(self, "v" .. NS.VERSION .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
+    p(self, "v" .. addonVersion() .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
     for _, entry in ipairs(COMMANDS) do
         p(self, ("  |cffffff00/kcd %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
     end

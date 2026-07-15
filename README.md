@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 [![Standard](https://img.shields.io/badge/Ka0s-WoW%20Addon%20Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
-![Tests](https://img.shields.io/badge/Tests-62%2F62_passing-green)
+![Tests](https://img.shields.io/badge/Tests-65%2F65_passing-green)
 
 ![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
@@ -52,6 +52,7 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 | Command | Purpose |
 | --- | --- |
 | `/kcd` | Print the help index. |
+| `/kcd version` | Print the addon version (`v<X.Y.Z>`), read from the TOC manifest with the in-code stamp as fallback. |
 | `/kcd config` | Open the settings panel. Refuses during combat (Blizzard's category-switch is protected). Aliased as `/kcd options`. |
 | `/kcd lock` / `unlock` / `toggle` | Set / clear / flip the shared drag lock for the icon grid and the cast bar. |
 | `/kcd list` | Dump every settings option grouped by panel, with current values. |

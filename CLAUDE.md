@@ -1,6 +1,6 @@
 # CLAUDE.md — Ka0s KickCD
 
-**Tier 2** (modular) WoW addon. Tracks the player's interrupt + CC cooldowns on a movable icon grid, with a sibling target cast bar sharing one drag-lock and visibility mode. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
+**Ka0s WoW addon.** Tracks the player's interrupt + CC cooldowns on a movable icon grid, with a sibling target cast bar sharing one drag-lock and visibility mode. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
 
 This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tusharsaxena/WowAddonStandards>. The TOC declares this via `## X-Standard:`, and the README carries the standard badge.
 
@@ -16,7 +16,7 @@ All development in this repo is measured against the Ka0s WoW Addon Standard (UR
 
 ## Full agent context lives in `docs/`
 
-This root file is a stub (per standard §15.2). Read these before touching code:
+This root file is a stub (per standard documentation-§2). Read these before touching code:
 
 - **[docs/agent-context.md](docs/agent-context.md)** — the full working-notes brief: hard rules, module publishing pattern, doc index, working environment. **Start here.**
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — design overview, module map, message bus, slash commands, taint notes, invariants.
@@ -33,7 +33,7 @@ This root file is a stub (per standard §15.2). Read these before touching code:
 - **Debug logging is session-only** (`KickCD.State.debug`, never in SavedVariables); it routes to the on-screen console (`modules/DebugLog.lua`), not chat. Toggle via the console header or `/kcd debug on|off|toggle`.
 - **Keep the static README badges in lockstep with their sources** (standard documentation-§1 / testing-§5): the `[WoW]` and `[Tests]` badges are static and go stale silently, so each moves in the *same change* as its source of truth. `[WoW]` ↔ TOC `## Interface:` on every patch bump (both MUST show the same number). `[Tests]` ↔ the regenerated `docs/test-cases.md`: whenever the suite changes (a case added/removed/renamed or the pass count moves), regenerate via `lua tests/run.lua --list` **and** update the README `[Tests]` X/Y count together — never as a follow-up.
 
-## Local verification (standard §14A)
+## Local verification (standard testing)
 
 - Unit tests: `lua tests/run.lua` (headless, exits non-zero on failure).
 - Lint: `luacheck .` (0 errors).

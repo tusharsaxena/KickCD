@@ -103,6 +103,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | Command | What it does |
 |---|---|
 | `help` | List available commands |
+| `version` | Print the addon version |
 | `config` | Open the settings panel |
 | `lock` | Lock the icon grid in place |
 | `unlock` | Unlock the icon grid for dragging |
@@ -153,9 +154,10 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 5. `core/State.lua` (`NS.State`; bootstrap CreateFrame for `PLAYER_REGEN_*` / `PLAYER_LOGIN`)
 6. `core/Util.lua`
 7. `core/Database.lua` (defines class; doesn't init the DB at file-load time)
-8. `core/KickCD.lua` (`AceAddon-3.0:NewAddon(NS, "KickCD", ...)` promotes the private `NS` table in place — no `_G.KickCD` rebind)
-9. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
-10. `modules/DebugLog.lua` (on-screen debug console) → `modules/Cooldowns.lua` → `modules/IconGrid.lua` → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua`. `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`) to stay under the 1500-LOC cap.
-11. `settings/Panel.lua` → `settings/{General, Icons, Castbar, Spells, Profiles}.lua`
+8. `core/LSMPatch.lua` (one-shot `PLAYER_LOGIN` fixup wrapping the vendored `LSM30_Border` widget — hides its misaligned 42×42 `displayButton` preview tile and re-anchors the dropdown bar; kept in addon code so a lib refresh can't blow it away)
+9. `core/KickCD.lua` (`AceAddon-3.0:NewAddon(NS, "KickCD", ...)` promotes the private `NS` table in place — no `_G.KickCD` rebind)
+10. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
+11. `modules/DebugLog.lua` (on-screen debug console) → `modules/Cooldowns.lua` → `modules/IconGrid.lua` → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua`. `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`) to stay under the 1500-LOC cap.
+12. `settings/Panel.lua` → `settings/{General, Icons, Castbar, Spells, Profiles}.lua`
 
 `NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the migration scaffold, and seeds spells on first profile creation. `<Module>:OnEnable` registers messages and game events. `PLAYER_LOGIN` defers the Settings category registration so per-tab builders can run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

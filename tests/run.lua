@@ -130,6 +130,7 @@ local SUITES = {
     "test_cooldowns.lua",
     "test_settings_log.lua",
     "test_flow_traces.lua",
+    "test_version.lua",
     "test_list_mode.lua",
 }
 

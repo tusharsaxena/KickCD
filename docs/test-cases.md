@@ -92,6 +92,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 - OnProfileChanged logs a [Profile] line
 
+### test_version.lua (3)
+
+- `version` is a registered COMMANDS verb (slash-commands-§3)
+- `/kcd version` prints v<version> on exactly one line
+- `version` falls back to the NS.VERSION stamp when TOC metadata is absent
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -115,5 +121,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_cooldowns.lua | 5 |
 | test_settings_log.lua | 2 |
 | test_flow_traces.lua | 1 |
+| test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **62** |
+| **Total** | **65** |

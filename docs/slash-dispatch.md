@@ -32,6 +32,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | Command | Purpose | Notes |
 |---|---|---|
 | `help` | Print the help index. | Iterates `COMMANDS`. |
+| `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | Routes through `Helpers.SetAndRefresh("locked", ...)` so the General → "Lock frame" checkbox refreshes and any future onChange wired onto the schema row fires. Falls back to a direct write if the settings layer isn't loaded yet. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
