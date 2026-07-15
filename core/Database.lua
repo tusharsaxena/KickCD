@@ -21,25 +21,24 @@ NS.Database = Database
 -- and don't need a version bump. The version is an addon-wide integer
 -- stored in db.global.schemaVersion (§2.2 / §5.1) — NOT per-profile.
 -- Database:MigrateProfile reads it on Init and on every profile swap and
--- walks any required migrations forward; today the migrator is a no-op
--- for v1.
-local CURRENT_DB_VERSION = 1
+-- walks any required migrations forward. v2 folds the legacy top-level
+-- icons/castbar/anchors tables into units.target (see migrations[1] /
+-- Database:FoldLegacyUnits below).
+local CURRENT_DB_VERSION = 2
 
-local DEFAULT_PROFILE = {
-    enabled    = true,
-    locked     = true,
-    scale      = 1.0,
-    alpha      = 1.0,
-    -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — §12.5)
-    -- "always" | "in_combat" | "target_casting" | "target_casting_interruptible"
-    -- Controls when the icon grid is visible. "in_combat" gates on
-    -- InCombatLockdown(); "target_casting" gates on UnitCastingInfo /
-    -- UnitChannelInfo on the target being non-nil; "target_casting_interruptible"
-    -- additionally hides during uninterruptible casts via the C-side alpha
-    -- mask. Master enable still wins — disabled = always hidden.
-    visibility = "target_casting_interruptible",
+-- File-local recursive deep-copy. Deliberately independent of NS.Util —
+-- Database.lua is one of the first files to load and must stay
+-- self-contained rather than depend on load order.
+local function copy(v)
+    if type(v) ~= "table" then return v end
+    local o = {}
+    for k, x in pairs(v) do o[k] = copy(x) end
+    return o
+end
 
-    icons = {
+-- Per-unit appearance defaults, defined once and deep-copied per unit
+-- (target / focus) so profiles never alias the same sub-table.
+local ICONS_DEFAULT = {
         primarySize      = 64,
         secondarySize    = 0.5,        -- multiplier of primary
         -- Anchor of the secondary block on the primary. The first word
@@ -118,9 +117,9 @@ local DEFAULT_PROFILE = {
         secondaryGlowTrigger = "never",
         secondaryGlowType    = "pixel",
         secondaryGlowColor   = { 1, 1, 0, 1 },
-    },
+}
 
-    castbar = {
+local CASTBAR_DEFAULT = {
         enabled      = true,
         width        = 250,
         height       = 24,
@@ -215,16 +214,50 @@ local DEFAULT_PROFILE = {
             borderColor      = { 0,    0,    0,    1   },
             borderSize       = 2,
         },
-    },
+}
 
-    -- Default position for both the icon grid and the cast bar is
-    -- CENTER + 0,200 (above screen centre). Castbar's default
-    -- anchorMode is "PRIMARY" so it follows the icon grid out of the
-    -- box; the FREE-mode anchor only matters once the user opts into
-    -- Cast bar → Position → Free.
-    anchors = {
-        icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
-        castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
+local DEFAULT_PROFILE = {
+    enabled    = true,
+    locked     = true,
+    scale      = 1.0,
+    alpha      = 1.0,
+    -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — §12.5)
+    -- "always" | "in_combat" | "target_casting" | "target_casting_interruptible"
+    -- Controls when the icon grid is visible. "in_combat" gates on
+    -- InCombatLockdown(); "target_casting" gates on UnitCastingInfo /
+    -- UnitChannelInfo on the target being non-nil; "target_casting_interruptible"
+    -- additionally hides during uninterruptible casts via the C-side alpha
+    -- mask. Master enable still wins — disabled = always hidden.
+    visibility = "target_casting_interruptible",
+
+    -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
+    -- Focus defaults to link=true so it mirrors Target's appearance live
+    -- (NS.Units resolves the link). enabled/anchors/label.text stay per-unit
+    -- even while linked. See docs/saved-variables.md.
+    units = {
+        target = {
+            enabled = true,
+            link    = false,             -- target is never linked
+            label   = { show = false, text = "Target" },
+            anchors = {
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
+            },
+            icons   = copy(ICONS_DEFAULT),
+            castbar = copy(CASTBAR_DEFAULT),
+        },
+        focus = {
+            enabled = false,
+            link    = true,              -- mirror target appearance by default
+            label   = { show = false, text = "Focus" },
+            anchors = {
+                -- offset from target so the two grids don't overlap on first enable
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
+            },
+            icons   = copy(ICONS_DEFAULT),
+            castbar = copy(CASTBAR_DEFAULT),
+        },
     },
 
     -- spells[CLASS][SPEC] = { { spellID, category, enabled }, ... } in priority order.
@@ -450,10 +483,38 @@ end
 -- ships next to its migrator and reviewers don't have to wire one up
 -- under deadline pressure.
 
+--- Fold a legacy pre-units profile (top-level icons/castbar/anchors) into
+--- units.target. Idempotent and SHAPE-DRIVEN, not version-gated: a v1 account
+--- that stored schemaVersion as the default never persisted it, so AceDB's
+--- defaults merge backfills it to the new CURRENT value and masks the account
+--- as already-current (the same KCD-20 backfill trap documented in
+--- MigrateProfile). Keying on the presence of the old top-level tables detects
+--- exactly the accounts that carry customised legacy data; a fresh v2 install
+--- has no top-level icons/castbar/anchors and is a no-op.
+function Database:FoldLegacyUnits(db)
+    db = db or self.db
+    if not (db and db.profile) then return end
+    local p = db.profile
+    if p.icons == nil and p.castbar == nil and p.anchors == nil then return end
+    p.units = p.units or {}
+    p.units.target = p.units.target or {}
+    local t = p.units.target
+    if p.icons   ~= nil then t.icons   = p.icons;   p.icons   = nil end
+    if p.castbar ~= nil then t.castbar = p.castbar; p.castbar = nil end
+    if p.anchors ~= nil then
+        t.anchors = t.anchors or {}
+        if p.anchors.icons   ~= nil then t.anchors.icons   = p.anchors.icons   end
+        if p.anchors.castbar ~= nil then t.anchors.castbar = p.anchors.castbar end
+        p.anchors = nil
+    end
+    if t.enabled == nil then t.enabled = true end
+end
+
 local migrations = {
     -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
     -- Each step bumps db.global.schemaVersion to the from-version+1 and may
     -- read/write db.profile as needed.
+    [1] = function(db) NS.Database:FoldLegacyUnits(db); db.global.schemaVersion = 2 end,
 }
 
 --- Migrate the account forward to CURRENT_DB_VERSION. The schema version is
@@ -519,7 +580,11 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     -- Re-seed spells so the user gets a working list immediately, just like
     -- a fresh profile would. Then run any pending migrations on the
     -- newly-active profile (a copied profile may have been authored at
-    -- an older schema version).
+    -- an older schema version). FoldLegacyUnits runs unconditionally first —
+    -- shape-driven, not version-gated (see FoldLegacyUnits docstring) — since
+    -- a copied/reset profile can carry legacy top-level tables regardless of
+    -- what global.schemaVersion reports.
+    self:FoldLegacyUnits(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -553,6 +618,13 @@ function Database:Init()
     local db = AceDB:New("KickCDDB", DEFAULTS, true)
     self.db    = db
     NS.db  = db
+
+    -- Fold any legacy pre-units top-level icons/castbar/anchors into
+    -- units.target before anything else touches the profile shape.
+    -- Shape-driven and unconditional (not version-gated) — see the
+    -- FoldLegacyUnits docstring for why version-gating would miss the
+    -- KCD-20 backfill trap.
+    self:FoldLegacyUnits(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

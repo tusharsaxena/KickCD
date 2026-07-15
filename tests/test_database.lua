@@ -10,14 +10,15 @@ test("DEFAULT_PROFILE carries the expected top-level shape", function()
     assertEqual(d.locked, true)
     assertEqual(d.scale, 1.0)
     assertEqual(d.visibility, "target_casting_interruptible")
-    assertTrue(type(d.icons) == "table", "icons sub-table must exist")
-    assertTrue(type(d.anchors) == "table", "anchors sub-table must exist")
+    assertTrue(type(d.units) == "table", "units sub-table must exist")
+    assertTrue(type(d.units.target.icons) == "table", "units.target.icons sub-table must exist")
+    assertTrue(type(d.units.target.anchors) == "table", "units.target.anchors sub-table must exist")
 end)
 
 test("OnInitialize built a live db with a merged profile", function()
     assertTrue(NS.db and NS.db.profile, "NS.db.profile must exist after init")
     assertEqual(NS.db.profile.scale, 1.0, "profile must carry merged defaults")
-    assertEqual(NS.db.profile.icons.primarySize, 64)
+    assertEqual(NS.db.profile.units.target.icons.primarySize, 64)
 end)
 
 test("Schema version lives in db.global, not the profile (KCD-20)", function()
@@ -32,13 +33,15 @@ test("MigrateProfile is a no-op at the current schema version", function()
     assertEqual(NS.db.global.schemaVersion, before, "migration must not change an already-current account")
 end)
 
-test("MigrateProfile treats a missing version as v1 and stamps global", function()
+test("MigrateProfile treats a missing version as v1 and walks forward to current", function()
     local inst = T.load(true)
     local ns = inst.NS
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    assertEqual(ns.db.global.schemaVersion, 1, "migration must stamp v1 when unversioned")
+    -- CURRENT_DB_VERSION is 2 (units migration registered) — an unversioned
+    -- account is treated as v1 and walked forward through migrations[1].
+    assertEqual(ns.db.global.schemaVersion, 2, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -53,10 +56,57 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     ns.db.profile.dbVersion = 1
     ns.Database:MigrateProfile()
     assertTrue(ns.db.global.schemaVersion ~= 99, "legacy dbVersion must override the backfilled global value")
-    assertEqual(ns.db.global.schemaVersion, 1, "adopted version migrates forward to the current version")
+    -- CURRENT_DB_VERSION is 2 — the adopted v1 account walks forward through
+    -- migrations[1] (FoldLegacyUnits) to the current version.
+    assertEqual(ns.db.global.schemaVersion, 2, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
 test("GetSpellList returns nil for an unseeded class/spec", function()
     assertEqual(NS.Database:GetSpellList("NOSUCHCLASS", "NOSUCHSPEC"), nil)
+end)
+
+test("DEFAULT_PROFILE nests appearance under units.target / units.focus", function()
+    local d = NS.DEFAULT_PROFILE
+    assertEqual(d.icons, nil, "top-level icons must be removed from defaults")
+    assertEqual(d.castbar, nil, "top-level castbar must be removed from defaults")
+    assertEqual(d.anchors, nil, "top-level anchors must be removed from defaults")
+    assertTrue(type(d.units) == "table", "units sub-table must exist")
+    assertTrue(type(d.units.target.icons) == "table", "units.target.icons must exist")
+    assertEqual(d.units.target.icons.primarySize, 64)
+    assertEqual(d.units.target.enabled, true)
+    assertEqual(d.units.focus.enabled, false, "focus defaults off")
+    assertEqual(d.units.focus.link, true, "focus defaults linked to target")
+    assertTrue(type(d.units.target.anchors.icons) == "table")
+end)
+
+test("FoldLegacyUnits moves a legacy top-level config under units.target", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    local p = ns.db.profile
+    -- Simulate a legacy v1 profile: customised top-level icons/castbar/anchors.
+    p.icons   = { primarySize = 48, borderColor = { 1, 0, 0, 1 } }
+    p.castbar = { width = 300 }
+    p.anchors = { icons = { point = "TOP", relativePoint = "TOP", x = 5, y = -5 },
+                  castbar = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 10 } }
+    ns.db.profile.units = nil
+    ns.Database:FoldLegacyUnits(ns.db)
+    assertEqual(p.icons, nil, "top-level icons cleared after fold")
+    assertEqual(p.castbar, nil, "top-level castbar cleared after fold")
+    assertEqual(p.anchors, nil, "top-level anchors cleared after fold")
+    assertEqual(p.units.target.icons.primarySize, 48, "user icons preserved under units.target")
+    assertEqual(p.units.target.castbar.width, 300, "user castbar preserved")
+    assertEqual(p.units.target.anchors.icons.x, 5, "user grid anchor preserved")
+    assertEqual(p.units.target.anchors.castbar.y, 10, "user castbar anchor preserved")
+end)
+
+test("FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    local p = ns.db.profile
+    local sizeBefore = p.units.target.icons.primarySize
+    ns.Database:FoldLegacyUnits(ns.db)   -- no top-level keys → no-op
+    ns.Database:FoldLegacyUnits(ns.db)   -- run twice
+    assertEqual(p.icons, nil)
+    assertEqual(p.units.target.icons.primarySize, sizeBefore, "fresh profile unchanged")
 end)
