@@ -90,7 +90,6 @@ local function newInstance(unit)
     return {
         unit           = unit,
         frame          = nil,
-        label          = nil,
         current        = nil,
         lastGridLayout = { gridFrame = nil, primaryIcon = nil },
         eventFrames    = {},
@@ -103,6 +102,14 @@ function Castbar:GetInstance(unit)
     local inst = instances[unit]
     if not inst then inst = newInstance(unit); instances[unit] = inst end
     return inst
+end
+
+--- Read-only accessor for a unit's cast bar frame (or nil if that unit has
+--- no live instance). Unlike GetInstance it never creates one — UnitLabel
+--- anchors to whatever exists and hides otherwise.
+function Castbar:GetCastbarFrame(unit)
+    local inst = instances[unit or "target"]
+    return inst and inst.frame
 end
 
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a shared,
@@ -506,14 +513,6 @@ function Castbar:EnsureFrame(inst)
     frame.dragHint:SetPoint("BOTTOM", frame, "TOP", 0, 2)
     frame.dragHint:Hide()
 
-    -- Per-unit identity label ("Target"/"Focus"), driven by
-    -- NS.Units.Label(unit) — see ApplyLabel. Anchored further above the
-    -- frame than dragHint (y=16 vs dragHint's y=2) so the two don't
-    -- overlap when both happen to be visible at once (unlocked +
-    -- label.show). Hidden by default (label.show defaults false).
-    inst.label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    inst.label:SetPoint("BOTTOM", frame, "TOP", 0, 16)
-
     frame:Hide()
     return frame
 end
@@ -558,19 +557,6 @@ local UNINT_FALLBACK = {
 -- value lives in exactly one place across the addon.
 local INSIDE_INSET  = NS.Const.CASTBAR_INSIDE_INSET
 local OUTSIDE_INSET = NS.Const.CASTBAR_OUTSIDE_INSET
-
--- Apply the per-unit identity label ("Target"/"Focus") to inst.label.
--- NS.Units.Label(unit) is a plain addon string table, never cast/spell
--- data — no 12.0 secret-value concern here (unlike the notInterruptible /
--- CastingDuration handling elsewhere in this module). Label text is
--- deliberately NOT link-resolved (see core/Units.lua), so a linked Focus
--- still reads "Focus".
-function Castbar:ApplyLabel(inst)
-    if not inst.label then return end
-    local lbl = NS.Units.Label(inst.unit)
-    inst.label:SetText(lbl.text or "")
-    inst.label:SetShown(lbl.show == true)
-end
 
 local function anchorTextElement(fs, bar, position, ox, oy)
     fs:ClearAllPoints()
@@ -823,12 +809,6 @@ function Castbar:Reskin(inst)
     -- and color on each frame so they're ready when the curve unhides them.
     applyBorder(frame.borderInterruptible,   intCfg)
     applyBorder(frame.borderUninterruptible, unintCfg)
-
-    -- Per-unit identity label ("Target"/"Focus"). Reskin runs on every
-    -- config flip / grid layout / profile change, so re-stamping the
-    -- label here (rather than adding separate call sites) keeps it in
-    -- sync with units.<unit>.label at negligible extra cost.
-    self:ApplyLabel(inst)
 
     -- Apply the secret-bool-driven alpha + name color now so a config
     -- change that arrives mid-cast picks up the new per-state values.
@@ -1412,10 +1392,6 @@ function Castbar:OnConfigChanged(_evt, payload)
         self:ReconcileUnits()
         forEachEnabled(function(inst)
             self:ApplyLock(inst)
-            -- "general" edits don't touch units.<unit>.label, but this is
-            -- cheap enough to re-stamp unconditionally rather than adding
-            -- a label-specific branch.
-            self:ApplyLabel(inst)
             if not isVisible(inst) then
                 self:Stop(inst)
             else

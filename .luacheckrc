@@ -11,6 +11,7 @@ read_globals = {
   -- core Lua/WoW globals
   "_G", "LibStub", "CreateFrame", "GetTime", "GetTimePreciseSec",
   "UIParent", "GameTooltip", "GameFontNormal", "GameFontHighlight", "GameFontDisable",
+  "STANDARD_TEXT_FONT",
   "hooksecurefunc", "securecallfunction", "issecretvalue",
   "C_Timer", "C_Spell", "C_SpecializationInfo", "C_AddOns",
   "GetLocale", "GetSpellInfo", "GetSpecialization", "GetSpecializationInfo",

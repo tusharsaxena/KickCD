@@ -13,7 +13,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_units.lua (9)
+### test_units.lua (11)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -24,8 +24,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - IconGrid:ReconcileUnits enables focus once units.focus.enabled is true
 - Castbar:ReconcileUnits mirrors IconGrid's enable/disable transitions
 - master-enable off then on disables then revives both units without a reload
+- LabelStyle resolves to target's style when focus is linked
+- CopyStyling snapshots target label.style but keeps focus text/show
 
-### test_schema.lua (7)
+### test_schema.lua (9)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -34,8 +36,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - icons/castbar schema rows are unit-scoped and valid
 - Helpers.FindSchema locates a row by path
 - General exposes focus rows; unit-selector panels still filter them out
+- RenderRows survives a row whose render throws (no blank panel)
+- PartitionUnitRows splits alwaysPerUnit rows from styled rows
 
-### test_database.lua (10)
+### test_database.lua (13)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -47,6 +51,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - DEFAULT_PROFILE nests appearance under units.target / units.focus
 - FoldLegacyUnits moves a legacy top-level config under units.target
 - FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched
+- DEFAULT_PROFILE ships an identical label.style for target and focus
+- BackfillLabelStyle adds a missing label.style and preserves show/text
+- BackfillLabelStyle is idempotent and leaves an existing style untouched
 
 ### test_bus.lua (4)
 
@@ -93,6 +100,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
 - post-enable CONFIG_CHANGED re-layout runs end-to-end without error
 
+### test_unitlabel.lua (3)
+
+- UnitLabel module is registered
+- UnitLabel.ApplyAll runs without error for both units
+- Castbar:GetCastbarFrame does not create an instance for an unknown unit
+
 ### test_cooldowns.lua (5)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
@@ -130,17 +143,18 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 8 |
-| test_units.lua | 9 |
-| test_schema.lua | 7 |
-| test_database.lua | 10 |
+| test_units.lua | 11 |
+| test_schema.lua | 9 |
+| test_database.lua | 13 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_debuglog.lua | 9 |
 | test_icongrid_layout.lua | 8 |
 | test_lifecycle.lua | 4 |
+| test_unitlabel.lua | 3 |
 | test_cooldowns.lua | 5 |
 | test_settings_log.lua | 3 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **81** |
+| **Total** | **91** |
