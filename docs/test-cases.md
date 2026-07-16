@@ -27,7 +27,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - LabelStyle resolves to target's style when focus is linked
 - CopyStyling snapshots target label.style but keeps focus text/show
 
-### test_schema.lua (10)
+### test_schema.lua (11)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -38,6 +38,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - General exposes focus rows; unit-selector panels still filter them out
 - label panel carries per-unit label rows; General no longer does
 - RenderRows survives a row whose render throws (no blank panel)
+- every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 
 ### test_database.lua (13)
@@ -145,7 +146,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | --- | --- |
 | test_util.lua | 8 |
 | test_units.lua | 11 |
-| test_schema.lua | 10 |
+| test_schema.lua | 11 |
 | test_database.lua | 13 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
@@ -158,4 +159,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **92** |
+| **Total** | **93** |

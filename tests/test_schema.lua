@@ -142,6 +142,17 @@ test("RenderRows survives a row whose render throws (no blank panel)", function(
     assertTrue(ok, "RenderRows must not propagate a single row's render error")
 end)
 
+test("every label-panel row's default is a member of its static values list", function()
+    local NS = T.NS
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.panel == "label" and type(def.values) == "table" and def.default ~= nil then
+            local found = false
+            for _, opt in ipairs(def.values) do if opt.value == def.default then found = true break end end
+            assertTrue(found, "label row " .. tostring(def.path) .. " default '" .. tostring(def.default) .. "' not in its values list")
+        end
+    end
+end)
+
 test("PartitionUnitRows splits alwaysPerUnit rows from styled rows", function()
     local H = T.NS.Settings.Helpers
     local rows = {

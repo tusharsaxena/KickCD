@@ -14,7 +14,17 @@ local Schema = NS.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
-local ANCHOR_VALUES = H.AnchorValues()
+local POINT_VALUES = {
+    { value = "TOPLEFT",     label = L["Top left"]     },
+    { value = "TOP",         label = L["Top"]          },
+    { value = "TOPRIGHT",    label = L["Top right"]    },
+    { value = "LEFT",        label = L["Left"]         },
+    { value = "CENTER",      label = L["Center"]       },
+    { value = "RIGHT",       label = L["Right"]        },
+    { value = "BOTTOMLEFT",  label = L["Bottom left"]  },
+    { value = "BOTTOM",      label = L["Bottom"]       },
+    { value = "BOTTOMRIGHT", label = L["Bottom right"] },
+}
 
 local JUSTIFY_H_VALUES = {
     { value = "LEFT",   label = L["Left"]   },
@@ -62,12 +72,12 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.point", type = "string",
          label = L["Label anchor point"],
          tooltip = L["Which point of the label attaches."],
-         default = "BOTTOM", values = ANCHOR_VALUES }
+         default = "BOTTOM", values = POINT_VALUES }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.relPoint", type = "string",
          label = L["Attach point"],
          tooltip = L["Which point of the target widget the label attaches to."],
-         default = "TOP", values = ANCHOR_VALUES }
+         default = "TOP", values = POINT_VALUES }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.offsetX", type = "number",
          label = L["X offset (in px)"],
