@@ -3,7 +3,7 @@
 All six tabs (General, Icons, Cast bar, Text Label, Spells, Profiles) are registered as **canvas-layout subcategories** so they share one custom header design:
 
 * `GameFontNormalHuge` title on the left
-* `Defaults` button on the right (AceGUI `Button`, which wraps `UIPanelButtonTemplate`) — present on General / Icons / Cast bar / Spells, omitted on Profiles. Wire its handler with `ctx.panel.defaultsBtn:SetCallback("OnClick", fn)` (NOT `:SetScript`, since the AceGUI widget object isn't a Blizzard Frame).
+* `Defaults` button on the right (AceGUI `Button`, which wraps `UIPanelButtonTemplate`) — present on General / Icons / Cast bar / Text Label / Spells, omitted on Profiles. Wire its handler with `ctx.panel.defaultsBtn:SetCallback("OnClick", fn)` (NOT `:SetScript`, since the AceGUI widget object isn't a Blizzard Frame).
 * `Options_HorizontalDivider` atlas underneath, full panel width.
 
 The header is built by `Helpers.CreatePanel(name, title, opts)` in `settings/Panel.lua`. It returns a `ctx` table (`{ panel, body, scroll, refreshers, lastGroup, panelKey }`) that the per-tab builder threads through the rest of the layout helpers. `ctx.scroll` is the AceGUI `ScrollFrame` (created lazily on first widget add) that hosts schema widgets; tabs that don't use the schema renderer (Spells / Profiles) parent their own AceGUI containers to `ctx.body` directly and never trigger the lazy scroll.
