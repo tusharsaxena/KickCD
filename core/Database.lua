@@ -236,7 +236,7 @@ local LABELSTYLE_DEFAULT = {
 
 local DEFAULT_PROFILE = {
     enabled    = true,
-    locked     = true,
+    locked     = false,
     scale      = 1.0,
     alpha      = 1.0,
     -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — §12.5)
@@ -265,13 +265,13 @@ local DEFAULT_PROFILE = {
             castbar = copy(CASTBAR_DEFAULT),
         },
         focus = {
-            enabled = false,
+            enabled = true,
             link    = true,              -- mirror target appearance by default
             label   = { show = true, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 -- offset from target so the two grids don't overlap on first enable
-                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 210 },
-                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 210 },
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 165 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 165 },
             },
             icons   = copy(ICONS_DEFAULT),
             castbar = copy(CASTBAR_DEFAULT),

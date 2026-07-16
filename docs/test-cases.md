@@ -119,11 +119,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
-### test_settings_log.lua (3)
+### test_settings_log.lua (4)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
+- ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
 
 ### test_flow_traces.lua (1)
 
@@ -158,8 +159,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
 | test_cooldowns.lua | 5 |
-| test_settings_log.lua | 3 |
+| test_settings_log.lua | 4 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **96** |
+| **Total** | **97** |

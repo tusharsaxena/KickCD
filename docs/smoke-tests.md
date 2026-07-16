@@ -115,7 +115,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 ### 5. Lock / unlock / drag
 
-**Setup.** `/kcd set units.target.castbar.anchorMode FREE` so the cast bar is independently draggable. Pick `visibility = always` so both pieces are visible without a casting target.
+**Setup.** On a fresh profile, `locked` defaults to `false` (`/kcd get locked` → `false`) — the frame is draggable out of the box, no `/kcd unlock` needed. `/kcd set units.target.castbar.anchorMode FREE` so the cast bar is independently draggable. Pick `visibility = always` so both pieces are visible without a casting target.
 
 **Steps.**
 - `/kcd unlock`.
@@ -270,7 +270,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd reset icons` | All Icons rows return to defaults; icon grid re-lays out. |
 | `/kcd reset castbar` | All Cast bar rows return to defaults; bar re-skins. |
 | `/kcd reset spells` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
-| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset. Profiles untouched. No CLI confirmation prompt. |
+| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows, so this is a dedicated `Helpers.ResetAllPositions()` pass — previously `resetall` silently left dragged grids in place). Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Icon grid snaps to its default screen position; everything else untouched. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
@@ -282,6 +282,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Open panels reflect reset values without manual refresh.
 - After `/kcd resetall`, `/kcd get enabled` returns `true` and `/kcd get visibility` returns `target_casting_interruptible` (the schema defaults from `settings/General.lua`).
 - After `/kcd resetall`, the label + cast-bar defaults shipped on this branch hold (schema `default` ↔ `DEFAULT_PROFILE` are single-sourced/in-sync): `/kcd get units.target.label.show` → `true`, `units.target.label.style.offsetY` → `12`, `units.target.label.style.color` → `1 0.82 0 1`, `units.target.label.style.attach` → `icons`; `units.target.castbar.anchorPoint` → `BOTTOM_LEFT`, `castbarPoint` → `TOP_LEFT`, `anchorOffsetY` → `-1`, `timePosition` → `CENTER`, `timeOffsetY` → `-20`; both `units.target.castbar.interruptible.statusBarTexture` and `.uninterruptible.statusBarTexture` → `Blizzard Raid Bar`. `units.focus.label.style.*` reset to the identical values (single-sourced `LABELSTYLE_DEFAULT`).
+- Drag either grid (or its cast bar) away from its default position, then `/kcd resetall`: the grid snaps back to its `DEFAULT_PROFILE` position (Target y=120, Focus y=165) rather than staying where it was dragged.
 
 ### 13. Profiles
 
@@ -394,7 +395,7 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 
 ### 20. Focus tracking
 
-Focus tracking adds a second, independent (icon grid + cast bar) instance for the player's focus unit, rendering the same player cooldowns. Focus is off by default and defaults to linking Target's appearance.
+Focus tracking adds a second, independent (icon grid + cast bar) instance for the player's focus unit, rendering the same player cooldowns. Focus is ON by default (`units.focus.enabled` defaults to `true`, same as Target) and defaults to linking Target's appearance, offset 45px above Target's grid (Target y=120, Focus y=165).
 
 #### 20a. Enable focus + independent target/focus gating
 
@@ -459,7 +460,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - No Lua errors during the migration login.
 - The icon grid renders at the SAME position and with the SAME customised appearance as before the migration — visually, nothing changes for the user.
 - `Database:FoldLegacyUnits` output is idempotent: a second `/reload` doesn't move anything or error (the top-level tables are already gone, so the shape check short-circuits).
-- Focus (`units.focus`) is present with its own fresh defaults (`enabled = false`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
+- Focus (`units.focus`) is present with its own fresh defaults (`enabled = true`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
 
 ### 22. Text label
 

@@ -1351,6 +1351,32 @@ function Helpers.ResetIconPosition()
     Helpers.FireConfigChanged("general")
 end
 
+-- Reset every unit's icon-grid AND cast-bar anchor to its DEFAULT_PROFILE
+-- screen position. Anchors aren't schema rows, so RestoreAllDefaults skips
+-- them — this is why /kcd resetall (and the "Reset all settings" popup)
+-- historically left the grids where the user dragged them. ResetAll calls
+-- this so a full reset restores positions too. Fires "general" so
+-- IconGrid/Castbar re-anchor every enabled unit (same signal ResetIconPosition uses).
+function Helpers.ResetAllPositions()
+    if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units) then return end
+    NS.db.profile.units = NS.db.profile.units or {}
+    for _, unit in ipairs({ "target", "focus" }) do
+        local du = NS.DEFAULT_PROFILE.units[unit]
+        if du and du.anchors then
+            local pu = NS.db.profile.units[unit] or {}
+            NS.db.profile.units[unit] = pu
+            pu.anchors = pu.anchors or {}
+            for _, which in ipairs({ "icons", "castbar" }) do
+                local a = du.anchors[which]
+                if a then
+                    pu.anchors[which] = { point = a.point, relativePoint = a.relativePoint, x = a.x, y = a.y }
+                end
+            end
+        end
+    end
+    Helpers.FireConfigChanged("general")
+end
+
 -- Reset every schema-driven panel AND every spec's spell list to addon
 -- defaults. The active profile is the only one affected. Used by the
 -- General tab's "Reset all settings" popup and the `/kcd resetall`
@@ -1358,6 +1384,7 @@ end
 -- never diverge.
 function Helpers.ResetAll()
     Helpers.RestoreAllDefaults()
+    Helpers.ResetAllPositions()
     if NS.Database and NS.Database.ResetAllSpells then
         NS.Database:ResetAllSpells()
     end

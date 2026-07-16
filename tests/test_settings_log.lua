@@ -57,3 +57,32 @@ test("ResetIconPosition restores units.target.anchors.icons to the default (Task
     assertEqual(a.x, d.x, "x restored to default")
     assertEqual(a.y, d.y, "y restored to default")
 end)
+
+test("ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)", function()
+    local inst = T.load(true)
+    local NS = inst.NS
+    local Helpers = NS.Settings.Helpers
+
+    -- Simulate the user having dragged every grid away from default, for
+    -- both units and both anchor kinds.
+    local garbage = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 999, y = -999 }
+    NS.db.profile.units.target.anchors.icons   = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
+    NS.db.profile.units.target.anchors.castbar = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
+    NS.db.profile.units.focus.anchors.icons    = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
+    NS.db.profile.units.focus.anchors.castbar  = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
+
+    -- Unit under test: ResetAllPositions directly (ResetAll also resets
+    -- spells, which is heavier than this test needs).
+    Helpers.ResetAllPositions()
+
+    for _, unit in ipairs({ "target", "focus" }) do
+        for _, which in ipairs({ "icons", "castbar" }) do
+            local d = NS.DEFAULT_PROFILE.units[unit].anchors[which]
+            local a = NS.db.profile.units[unit].anchors[which]
+            assertEqual(a.point, d.point, unit .. "." .. which .. " point restored to default")
+            assertEqual(a.relativePoint, d.relativePoint, unit .. "." .. which .. " relativePoint restored to default")
+            assertEqual(a.x, d.x, unit .. "." .. which .. " x restored to default")
+            assertEqual(a.y, d.y, unit .. "." .. which .. " y restored to default")
+        end
+    end
+end)

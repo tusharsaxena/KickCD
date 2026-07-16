@@ -126,7 +126,13 @@ test("IconGrid:ReconcileUnits enables focus once units.focus.enabled is true", f
 
     local ig = ns:GetModule("IconGrid")
 
-    assertEqual(ns.Units.IsEnabled("focus"), false, "focus starts disabled by default")
+    -- Focus defaults to enabled now; explicitly start it disabled so the
+    -- disabled->enabled transition below is still exercised.
+    ns.db.profile.units.focus.enabled = false
+
+    ig:ReconcileUnits()
+
+    assertEqual(ns.Units.IsEnabled("focus"), false, "focus starts disabled (test setup)")
 
     assertEqual(ig:GetInstance("focus").enabled, false, "focus instance starts not live")
 

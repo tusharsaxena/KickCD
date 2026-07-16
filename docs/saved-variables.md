@@ -28,7 +28,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 ```lua
 {
     enabled    = true,
-    locked     = true,           -- shared drag lock (icon grid + cast bar)
+    locked     = false,          -- shared drag lock (icon grid + cast bar)
     scale      = 1.0,            -- icon grid master scale
     alpha      = 1.0,            -- icon grid master alpha
     visibility = "target_casting_interruptible",
@@ -173,7 +173,7 @@ units[unit] = {
 }
 ```
 
-`icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `core/Database.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (focus defaults `false`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (target seeds `y = 120`, focus seeds `y = 210` — Focus sits 90px above Target so the two grids don't overlap on first enable).
+`icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `core/Database.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (both default `true`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (target seeds `y = 120`, focus seeds `y = 165` — Focus sits 45px above Target so the two grids don't overlap on first enable).
 
 **Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.show`/`label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing its own "Focus" identity text if its label is on. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar`, and now also `label.style`, one-time and flips `link = false`, backing the settings panel's "Copy styling from Target" button.
 

@@ -50,7 +50,7 @@ add{
     path     = "locked",   type    = "bool",
     label    = L["Lock frame"],
     tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
-    default  = true,
+    default  = false,
 }
 
 -- Debug logging is a SESSION-ONLY flag (KickCD.State.debug), never persisted
@@ -86,7 +86,7 @@ for _, u in ipairs(NS.Units.LIST) do
         panel   = "general", section = "units", group = L["Units"],
         path    = "units." .. u .. ".enabled", unit = u, type = "bool",
         label   = (u == "target" and L["Enable Target grid"] or L["Enable Focus grid"]),
-        default = (u == "target"),
+        default = true,
     }
 end
 
