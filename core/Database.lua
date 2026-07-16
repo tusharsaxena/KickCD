@@ -231,6 +231,7 @@ local LABELSTYLE_DEFAULT = {
         font     = "Friz Quadrata TT",
         size     = 14,
         flags    = "OUTLINE",     -- NONE | OUTLINE | THICKOUTLINE | MONOCHROME
+        color    = { 1, 0.82, 0, 1 }, -- Blizzard gold, matches GameFontNormal
 }
 
 local DEFAULT_PROFILE = {
@@ -528,11 +529,15 @@ function Database:FoldLegacyUnits(db)
 end
 
 --- Backfill units.<unit>.label.style on a profile saved before the single
---- text-label feature. Idempotent and SHAPE-DRIVEN (keyed on style == nil),
---- not version-gated — same rationale as FoldLegacyUnits (AceDB defaults
---- merge would mask the account as already-current). show/text are left
---- exactly as saved; only the missing style sub-table is filled from
---- LABELSTYLE_DEFAULT. A fresh install already has style and is a no-op.
+--- text-label feature, AND key-fill any individual style fields added since
+--- (e.g. `color`). Idempotent and SHAPE-DRIVEN (keyed on style == nil, or on
+--- individual keys missing from an existing style), not version-gated —
+--- same rationale as FoldLegacyUnits (AceDB defaults merge would mask the
+--- account as already-current). show/text are left exactly as saved; the
+--- whole style is filled from LABELSTYLE_DEFAULT when missing, and — for a
+--- profile that already has a style table — only keys ABSENT from it are
+--- copied in, so a user's customised values are never overwritten. A fresh
+--- install already has every key and is a no-op.
 function Database:BackfillLabelStyle(db)
     db = db or self.db
     if not (db and db.profile and db.profile.units) then return end
@@ -542,6 +547,12 @@ function Database:BackfillLabelStyle(db)
             u.label = u.label or {}
             if u.label.style == nil then
                 u.label.style = copy(LABELSTYLE_DEFAULT)
+            else
+                for k, v in pairs(LABELSTYLE_DEFAULT) do
+                    if u.label.style[k] == nil then
+                        u.label.style[k] = copy(v)
+                    end
+                end
             end
         end
     end

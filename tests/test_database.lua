@@ -117,9 +117,18 @@ test("DEFAULT_PROFILE ships an identical label.style for target and focus", func
     assertTrue(type(d.units.focus.label.style)  == "table", "focus label.style must exist")
     assertEqual(d.units.target.label.style.attach,   "castbar")
     assertEqual(d.units.target.label.style.relPoint, "TOP")
-    -- style ships identical (only text differs)
+    -- style ships identical (only text differs). Table-valued fields (e.g.
+    -- color) are deep-copied per unit, so compare element-wise rather than
+    -- by identity.
     for k, v in pairs(d.units.target.label.style) do
-        assertEqual(d.units.focus.label.style[k], v, "focus style differs at key " .. tostring(k))
+        local fv = d.units.focus.label.style[k]
+        if type(v) == "table" then
+            for i, x in ipairs(v) do
+                assertEqual(fv[i], x, "focus style differs at key " .. tostring(k) .. "[" .. i .. "]")
+            end
+        else
+            assertEqual(fv, v, "focus style differs at key " .. tostring(k))
+        end
     end
     assertEqual(d.units.target.label.text, "Target")
     assertEqual(d.units.focus.label.text,  "Focus")
@@ -147,4 +156,39 @@ test("BackfillLabelStyle is idempotent and leaves an existing style untouched", 
     ns.Database:BackfillLabelStyle(ns.db)
     ns.Database:BackfillLabelStyle(ns.db)
     assertEqual(p.units.target.label.style.size, 22, "existing style not overwritten")
+end)
+
+test("BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    local p = ns.db.profile
+    p.units.target.label.style.size = 22   -- user customised, existing key
+    p.units.target.label.style.color = nil -- simulate a profile saved before `color` existed
+    ns.Database:BackfillLabelStyle(ns.db)
+    assertTrue(type(p.units.target.label.style.color) == "table", "missing color key backfilled")
+    assertEqual(p.units.target.label.style.color[1], 1,    "backfilled color matches LABELSTYLE_DEFAULT")
+    assertEqual(p.units.target.label.style.color[2], 0.82, "backfilled color matches LABELSTYLE_DEFAULT")
+    assertEqual(p.units.target.label.style.size, 22, "existing key untouched by key-fill")
+
+    -- Idempotent + non-destructive: a second pass with a user-edited color stays put.
+    p.units.target.label.style.color = { 0, 1, 0, 1 }
+    ns.Database:BackfillLabelStyle(ns.db)
+    assertEqual(p.units.target.label.style.color[2], 1, "user color value not overwritten")
+end)
+
+test("DB label.style.color default matches the settings schema color row default (DB<->schema sync)", function()
+    local schemaColor
+    for _, row in ipairs(NS.Settings.Schema) do
+        if row.path == "units.target.label.style.color" then schemaColor = row.default end
+    end
+    assertTrue(type(schemaColor) == "table", "schema color row found")
+    local dbColor = NS.DEFAULT_PROFILE.units.target.label.style.color
+    for i = 1, 4 do
+        assertEqual(dbColor[i], schemaColor[i], "DB/schema color mismatch at index " .. i)
+    end
+    -- Single-sourced: both units ship the identical color.
+    local focusColor = NS.DEFAULT_PROFILE.units.focus.label.style.color
+    for i = 1, 4 do
+        assertEqual(dbColor[i], focusColor[i], "target/focus color mismatch at index " .. i)
+    end
 end)

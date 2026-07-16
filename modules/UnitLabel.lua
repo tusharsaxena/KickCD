@@ -1,13 +1,14 @@
 -- modules/UnitLabel.lua
 --
--- One identity label per unit (target/focus). A holder frame parented to
--- UIParent (so the label's show state + alpha are INDEPENDENT of the attach
--- target's visibility) is SetPoint-anchored to the chosen attach frame —
--- the unit's cast bar or icon grid — so it tracks that frame's position
--- live with no per-frame bookkeeping. Appearance is link-resolved for a
--- linked Focus via NS.Units.LabelStyle; show/text stay per-unit via
--- NS.Units.Label. Replaces the two labels the dual-tracking work put on the
--- grid and cast bar directly.
+-- One identity label per unit (target/focus). A holder frame is created on
+-- UIParent, then on Apply is REPARENTED to the chosen attach frame — the
+-- unit's cast bar or icon grid — so it inherits that frame's shown state
+-- and effective alpha for free (i.e. it follows the addon's General
+-- visibility exactly like the grid/cast bar do), while still tracking the
+-- attach frame's position live via SetPoint with no per-frame bookkeeping.
+-- Appearance is link-resolved for a linked Focus via NS.Units.LabelStyle;
+-- show/text stay per-unit via NS.Units.Label. Replaces the two labels the
+-- dual-tracking work put on the grid and cast bar directly.
 --
 -- The label text is a plain addon string (NS.Units.Label(unit).text), never
 -- a 12.0 secret value, so SetText/SetFont on it are safe.
@@ -43,6 +44,10 @@ local function attachFrame(unit, attach)
     return m and m:GetCastbarFrame(unit) or nil
 end
 
+-- Created on UIParent as a placeholder parent; Apply() reparents it to the
+-- resolved attach frame once one exists, so its live parent (and therefore
+-- its General-visibility show/hide + alpha) tracks whichever widget it's
+-- anchored to.
 function UnitLabel:EnsureFrame(inst)
     if inst.frame then return end
     local f = CreateFrame("Frame", "KickCDUnitLabel" .. titleCase(inst.unit), UIParent)
@@ -55,7 +60,10 @@ end
 --- Resolve + apply this unit's label: text (per-unit), appearance (link-
 --- resolved), and position (anchored to the chosen attach frame). Shown
 --- only when the unit is enabled, label.show is on, AND an attach frame
---- exists — independent of whether that frame is currently drawn.
+--- exists. The holder frame is reparented to that attach frame, so it
+--- ALSO inherits the attach frame's own shown state + alpha — i.e. the
+--- label follows the addon's General visibility exactly like the grid/
+--- cast bar it's anchored to.
 function UnitLabel:Apply(inst)
     self:EnsureFrame(inst)
     local lbl   = NS.Units.Label(inst.unit)
@@ -69,6 +77,8 @@ function UnitLabel:Apply(inst)
         fontPath = LSM:Fetch("font", style.font or "Friz Quadrata TT", true)
     end
     fs:SetFont(fontPath or STANDARD_TEXT_FONT, style.size or 14, FLAG_MAP[style.flags] or "OUTLINE")
+    local c = style.color
+    if c then fs:SetTextColor(c[1] or 1, c[2] or 0.82, c[3] or 0, c[4] or 1) end
     fs:SetJustifyH(style.justifyH or "CENTER")
     fs:SetJustifyV(style.justifyV or "MIDDLE")
     if fs.SetRotation then
@@ -78,6 +88,10 @@ function UnitLabel:Apply(inst)
     local target = attachFrame(inst.unit, style.attach or "castbar")
     f:ClearAllPoints()
     if target then
+        -- Reparent onto the attach frame itself (never nil) so the label
+        -- inherits its shown state + effective alpha — this is what makes
+        -- the label follow General visibility with no extra event wiring.
+        f:SetParent(target)
         f:SetPoint(style.point or "BOTTOM", target, style.relPoint or "TOP",
                    style.offsetX or 0, style.offsetY or 0)
     end

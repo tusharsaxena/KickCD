@@ -124,6 +124,11 @@ local function addUnitRows(unit)
          label = L["Font flags"],
          tooltip = L["Outline / monochrome flags."],
          default = "OUTLINE", values = FLAG_VALUES }
+    add{ panel = "label", section = "label", unit = unit, group = L["Font"],
+         path = "units." .. unit .. ".label.style.color", type = "color",
+         label = L["Label color"],
+         tooltip = L["Color of the label text."],
+         default = { 1, 0.82, 0, 1 } }
 end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end

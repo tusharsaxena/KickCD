@@ -419,6 +419,8 @@ L["Bottom"]                      = "Bottom"
 L["LSM font for the label."]     = "LSM font for the label."
 L["Label font size in pixels."]  = "Label font size in pixels."
 L["Outline / monochrome flags."] = "Outline / monochrome flags."
+L["Label color"]                 = "Label color"
+L["Color of the label text."]    = "Color of the label text."
 
 -- Spells editor extras
 L["Spell known"]                 = "Spell known"

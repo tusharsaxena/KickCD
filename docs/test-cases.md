@@ -41,7 +41,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 
-### test_database.lua (13)
+### test_database.lua (15)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -56,6 +56,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - DEFAULT_PROFILE ships an identical label.style for target and focus
 - BackfillLabelStyle adds a missing label.style and preserves show/text
 - BackfillLabelStyle is idempotent and leaves an existing style untouched
+- BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
+- DB label.style.color default matches the settings schema color row default (DB<->schema sync)
 
 ### test_bus.lua (4)
 
@@ -147,7 +149,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_util.lua | 8 |
 | test_units.lua | 11 |
 | test_schema.lua | 11 |
-| test_database.lua | 13 |
+| test_database.lua | 15 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_debuglog.lua | 9 |
@@ -159,4 +161,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **93** |
+| **Total** | **95** |
