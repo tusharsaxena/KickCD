@@ -204,3 +204,53 @@ test("master-enable off then on disables then revives both units without a reloa
 
 end)
 
+
+
+test("LabelStyle resolves to target's style when focus is linked", function()
+
+    local NS = T.NS
+
+    NS.db.profile.units.target.label.style.size = 20
+
+    NS.db.profile.units.focus.label.style.size  = 8
+
+    NS.db.profile.units.focus.link = true
+
+    assertEqual(NS.Units.LabelStyle("focus").size, 20, "linked focus reads target style")
+
+    NS.db.profile.units.focus.link = false
+
+    assertEqual(NS.Units.LabelStyle("focus").size, 8, "unlinked focus reads its own style")
+
+end)
+
+
+
+test("CopyStyling snapshots target label.style but keeps focus text/show", function()
+
+    local NS = T.NS
+
+    NS.db.profile.units.target.label.style.size = 17
+
+    NS.db.profile.units.focus.label.show = true
+
+    NS.db.profile.units.focus.label.text = "MINE"
+
+    NS.db.profile.units.focus.link = true
+
+    NS.Units.CopyStyling("target", "focus")
+
+    assertEqual(NS.db.profile.units.focus.link, false, "copy unlinks")
+
+    assertEqual(NS.db.profile.units.focus.label.style.size, 17, "focus got a copy of target style")
+
+    assertEqual(NS.db.profile.units.focus.label.text, "MINE", "per-unit text preserved")
+
+    assertEqual(NS.db.profile.units.focus.label.show, true,  "per-unit show preserved")
+
+    NS.db.profile.units.focus.label.style.size = 99
+
+    assertEqual(NS.db.profile.units.target.label.style.size, 17, "copy is deep, not aliased")
+
+end)
+

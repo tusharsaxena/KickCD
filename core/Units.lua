@@ -73,11 +73,22 @@ function Units.Label(unit)
     return (c and c.label) or { show = false, text = unit }
 end
 
+--- Link-resolved label APPEARANCE (units.<unit>.label.style). Follows the
+--- Focus link exactly like Icons/Castbar: a linked focus reads target's
+--- style. label.show/label.text are NOT resolved here — they stay per-unit
+--- (see Units.Label).
+function Units.LabelStyle(unit)
+    local c = Units.Config(sourceUnit(unit))
+    return (c and c.label and c.label.style) or {}
+end
+
 function Units.CopyStyling(fromUnit, toUnit)
     local src = Units.Config(fromUnit)
     local dst = Units.Config(toUnit)
     if not (src and dst) then return end
     dst.icons   = NS.Util.DeepCopy(src.icons)
     dst.castbar = NS.Util.DeepCopy(src.castbar)
+    dst.label = dst.label or {}
+    dst.label.style = NS.Util.DeepCopy(src.label and src.label.style)
     dst.link    = false
 end
