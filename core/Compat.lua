@@ -434,11 +434,11 @@ function Compat.DebugInterrupt(unit)
 
     -- Report what the addon-wide visibility / glow logic decided. The
     -- visibility mode is the addon-wide setting; per-icon glow triggers
-    -- live in icons.{primary,secondary}GlowTrigger.
+    -- live in units.<unit>.icons.{primary,secondary}GlowTrigger.
     local profile = NS.db and NS.db.profile
     local mode = (profile and profile.visibility) or "always"
     out(("addon visibility mode = %s"):format(tostring(mode)))
-    local icons = (profile and profile.icons) or {}
+    local icons = (NS.Units and NS.Units.Icons and NS.Units.Icons(unit)) or {}
     out(("primary glow trigger   = %s"):format(tostring(icons.primaryGlowTrigger)))
     out(("secondary glow trigger = %s"):format(tostring(icons.secondaryGlowTrigger)))
 end

@@ -44,8 +44,9 @@ local function fetchBorderTexture(name)
     return "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
---- (Re)build the alpha/tint curves from db.profile.icons. Called once on
---- enable and again on any "icons" config change. Cheap — these are tiny
+--- (Re)build the alpha/tint curves from the resolved per-unit icons config
+--- (NS.Units.Icons). Called once on enable and again on any "icons" config
+--- change. Cheap — these are tiny
 --- 4-point curves, recreating them per change is fine.
 -- TODO(perf): only rebuild when readyAlpha / cooldownAlpha / cooldownTint
 -- actually changed — every "icons" Ka0s_KickCD_CONFIG_CHANGED rebuilds today,
@@ -306,7 +307,7 @@ end
 -- and frame-level management for each effect; we only own the trigger
 -- decision and the per-slot config plumbing.
 --
--- Trigger values (db.profile.icons.{primary,secondary}GlowTrigger):
+-- Trigger values (units.<unit>.icons.{primary,secondary}GlowTrigger):
 --   * "never"                       — glow off
 --   * "always"                      — glow whenever the spell is ready
 --   * "target_casting"              — only while target is casting (any spell)

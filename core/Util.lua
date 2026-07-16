@@ -176,13 +176,16 @@ end
 --
 -- AceEvent's RegisterEvent fans out to every UnitEvent for every unit; in
 -- a 25-player raid the UNIT_SPELLCAST_* family fires thousands of times
--- per minute and a handler that only cares about "target" pays for every
+-- per minute and a handler that only cares about one unit pays for every
 -- one before its early-return. Frame:RegisterUnitEvent restricts dispatch
 -- to the unit(s) we name, but AceEvent doesn't expose it.
--- RegisterTargetEvent wraps a private CreateFrame, registers it for unit
--- "target" only, and forwards into module:handler so the call site reads
--- like an Ace registration. Handlers can drop their `if unit ~= "target"`
--- guard since the dispatch frame already filtered upstream.
+-- RegisterUnitCastEvent wraps a private CreateFrame, registers it for the
+-- named unit ("target" / "focus" / ...) only, and forwards into
+-- module:handler so the call site reads like an Ace registration.
+-- RegisterTargetEvent is a target-only back-compat wrapper around it for
+-- call sites that predate per-unit tracking. Handlers can drop their
+-- `if unit ~= <expected unit>` guard since the dispatch frame already
+-- filtered upstream.
 --
 -- The frame is RETURNED, not tracked here. AceAddon's UnregisterAllEvents
 -- on the module will not release these private frames; OnDisable must
