@@ -187,15 +187,15 @@ local CASTBAR_DEFAULT = {
         -- counted via `#`; multi-byte localized names may truncate
         -- mid-character at the edge but won't error.
         nameTruncate = 0,
-        timePosition = "CENTER",
+        timePosition = "OUTSIDE_RIGHT",
         timeOffsetX  = 0,
-        timeOffsetY  = 22,
+        timeOffsetY  = 0,
 
         -- Per-state appearance (interruptible vs uninterruptible casts).
         -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
         -- on the cast's secret notInterruptible bool — see modules/Castbar.lua.
         interruptible = {
-            statusBarTexture = "Blizzard",
+            statusBarTexture = "Blizzard Raid Bar",
             barColor         = { 1,    0.85, 0.05, 1   },  -- yellow
             bgColor          = { 0,    0,    0,    0.5 },
             nameTextColor    = { 1,    1,    1,    1   },
@@ -205,7 +205,7 @@ local CASTBAR_DEFAULT = {
             borderSize       = 2,
         },
         uninterruptible = {
-            statusBarTexture = "Blizzard",
+            statusBarTexture = "Blizzard Raid Bar",
             barColor         = { 0.85, 0.10, 0.10, 1   },  -- red
             bgColor          = { 0,    0,    0,    0.5 },
             nameTextColor    = { 1,    1,    1,    1   },
@@ -224,7 +224,7 @@ local LABELSTYLE_DEFAULT = {
         point    = "BOTTOM",      -- the label's own anchor point
         relPoint = "TOP",         -- point on the attach frame
         offsetX  = 0,
-        offsetY  = 0,
+        offsetY  = 12,
         justifyH = "CENTER",      -- LEFT | CENTER | RIGHT
         justifyV = "MIDDLE",      -- TOP  | MIDDLE | BOTTOM
         rotation = 0,             -- degrees
@@ -255,7 +255,7 @@ local DEFAULT_PROFILE = {
         target = {
             enabled = true,
             link    = false,             -- target is never linked
-            label   = { show = false, text = "Target", style = copy(LABELSTYLE_DEFAULT) },
+            label   = { show = true, text = "Target", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
                 castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
@@ -266,7 +266,7 @@ local DEFAULT_PROFILE = {
         focus = {
             enabled = false,
             link    = true,              -- mirror target appearance by default
-            label   = { show = false, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
+            label   = { show = true, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 -- offset from target so the two grids don't overlap on first enable
                 icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },

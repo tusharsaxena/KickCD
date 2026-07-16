@@ -114,12 +114,6 @@ test("label panel carries per-unit label rows; General no longer does", function
     assertTrue(hasPath(labelFocus, "units.focus.label.show"), "label panel has focus label.show")
     assertTrue(hasPath(labelFocus, "units.focus.label.text"), "label panel has focus label.text")
 
-    -- show/text are alwaysPerUnit so they survive a Focus link
-    for _, d in ipairs(labelFocus) do
-        if d.path == "units.focus.label.show" or d.path == "units.focus.label.text" then
-            assertTrue(d.alwaysPerUnit == true, d.path .. " must be alwaysPerUnit")
-        end
-    end
     assertEqual(H.ValidateSchema(), 0, "schema still valid with the label panel")
 end)
 

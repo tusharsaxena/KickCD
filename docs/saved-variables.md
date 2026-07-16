@@ -88,7 +88,7 @@ units[unit] = {
     enabled = true|false,    -- per-unit sub-enable; master `enabled` still wins (NS.Units.IsEnabled)
     link    = false|true,    -- target is always false (never linked); focus defaults true
                               -- (mirror target's icons/castbar live — see core/Units.lua)
-    label = { show = false, text = "Target"|"Focus",    -- identity FontString rendered by
+    label = { show = true, text = "Target"|"Focus",    -- identity FontString rendered by
                               -- modules/UnitLabel.lua; show/text stay per-unit even
                               -- while linked (NS.Units.Label(unit))
               style = { attach, point, relPoint, offsetX, offsetY,
@@ -184,7 +184,7 @@ units[unit].label.style = {
     attach   = "castbar"|"icons",    -- which widget frame the label anchors to
     point    = "BOTTOM",             -- the label's own SetPoint anchor point
     relPoint = "TOP",                -- the attach frame's point it anchors to
-    offsetX  = 0, offsetY  = 0,      -- pixel offset from that point
+    offsetX  = 0, offsetY  = 12,     -- pixel offset from that point
     justifyH = "CENTER", justifyV = "MIDDLE",
     rotation = 0,                     -- degrees; FontString:SetRotation (radians internally)
     font     = "Friz Quadrata TT",   -- LSM font name

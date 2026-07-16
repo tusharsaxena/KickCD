@@ -3,8 +3,11 @@
 -- "Text Label" canvas panel. One identity label per unit (target/focus),
 -- rendered by modules/UnitLabel.lua. Pure schema: every widget is a row in
 -- KickCD.Settings.Schema, generated once per NS.Units.LIST entry with a
--- unit-scoped path (units.<unit>.label.*). show/text are alwaysPerUnit
--- (per-unit even when Focus is linked); the appearance rows follow the link.
+-- unit-scoped path (units.<unit>.label.*). show/text stay per-unit in the
+-- DB, but no row here sets alwaysPerUnit, so a linked Focus page collapses
+-- to just the "Linked to Target" note like Icons/Cast bar — unlink to edit
+-- show/text (the label still renders per-unit while linked, just not
+-- editable on this page).
 -- Uses the shared unit-selector header via Helpers.RenderUnitPanel.
 
 local addonName, NS = ...
@@ -50,13 +53,11 @@ local ATTACH_VALUES = {
 local function addUnitRows(unit)
     -- Identity (per-unit even when linked) --------------------------------
     add{ panel = "label", section = "label", unit = unit, group = L["Label"],
-         alwaysPerUnit = true,
          path = "units." .. unit .. ".label.show", type = "bool",
          label = L["Show label"],
          tooltip = L["Show this unit's identity label."],
-         default = false }
+         default = true }
     add{ panel = "label", section = "label", unit = unit, group = L["Label"],
-         alwaysPerUnit = true,
          path = "units." .. unit .. ".label.text", type = "string",
          label = L["Label text"],
          tooltip = L["Text shown on this unit's label."],
@@ -87,7 +88,7 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.offsetY", type = "number",
          label = L["Y offset (in px)"],
          tooltip = L["Vertical pixel shift (positive = up)."],
-         default = 0, min = -200, max = 200, step = 1, fmt = "%d px" }
+         default = 12, min = -200, max = 200, step = 1, fmt = "%d px" }
 
     -- Orientation ---------------------------------------------------------
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],

@@ -350,7 +350,7 @@ add{
     path  = "units."..unit..".castbar.timePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
-    default = "CENTER",
+    default = "OUTSIDE_RIGHT",
     values  = TEXT_POSITION_VALUES,
 }
 add{
@@ -365,7 +365,7 @@ add{
     path  = "units."..unit..".castbar.timeOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
-    default = 22, min = -100, max = 100, step = 1, fmt = "%d px",
+    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 
 -- Per-state appearance (interruptible vs uninterruptible casts) -------
@@ -384,7 +384,7 @@ add{
     path  = "units."..unit..".castbar.interruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for interruptible casts."],
-    default = "Blizzard",
+    default = "Blizzard Raid Bar",
     lsm     = "statusbar",
     values  = function() return H.LSMValues("statusbar") end,
 }
@@ -446,7 +446,7 @@ add{
     path  = "units."..unit..".castbar.uninterruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     tooltip = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
-    default = "Blizzard",
+    default = "Blizzard Raid Bar",
     lsm     = "statusbar",
     values  = function() return H.LSMValues("statusbar") end,
 }
