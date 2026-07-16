@@ -102,6 +102,8 @@ Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
 
 A single visibility selector governs **both** the icon grid and the cast bar.
 
+> **Run this section LOCKED.** While the frame is unlocked — now the default on a fresh profile (`locked = false`) — both pieces deliberately bypass the visibility mode (and the interruptibility alpha-mask) and always show at full alpha so you can reposition them. `/kcd lock` before exercising the modes below, or every row will read as "always visible". (Known follow-up, tracked separately: even while locked, a non-interruptible cast can intermittently leak through `target_casting_interruptible` because WoW's `notInterruptible` is unreliable at cast-start — see the repo issue tracker.)
+
 | `visibility` | Setup | Expected |
 |---|---|---|
 | `always` | No target, no combat | Both UI pieces visible. |
