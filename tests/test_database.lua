@@ -110,3 +110,41 @@ test("FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched", fu
     assertEqual(p.icons, nil)
     assertEqual(p.units.target.icons.primarySize, sizeBefore, "fresh profile unchanged")
 end)
+
+test("DEFAULT_PROFILE ships an identical label.style for target and focus", function()
+    local d = NS.DEFAULT_PROFILE
+    assertTrue(type(d.units.target.label.style) == "table", "target label.style must exist")
+    assertTrue(type(d.units.focus.label.style)  == "table", "focus label.style must exist")
+    assertEqual(d.units.target.label.style.attach,   "castbar")
+    assertEqual(d.units.target.label.style.relPoint, "TOP")
+    -- style ships identical (only text differs)
+    for k, v in pairs(d.units.target.label.style) do
+        assertEqual(d.units.focus.label.style[k], v, "focus style differs at key " .. tostring(k))
+    end
+    assertEqual(d.units.target.label.text, "Target")
+    assertEqual(d.units.focus.label.text,  "Focus")
+end)
+
+test("BackfillLabelStyle adds a missing label.style and preserves show/text", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    local p = ns.db.profile
+    p.units.target.label = { show = true, text = "TANK" }   -- legacy: no style
+    p.units.focus.label  = { show = false, text = "Focus" }
+    p.units.focus.label.style = nil
+    ns.Database:BackfillLabelStyle(ns.db)
+    assertTrue(type(p.units.target.label.style) == "table", "style backfilled")
+    assertEqual(p.units.target.label.show, true,  "show preserved")
+    assertEqual(p.units.target.label.text, "TANK", "text preserved")
+    assertEqual(p.units.target.label.style.attach, "castbar", "style is the default")
+end)
+
+test("BackfillLabelStyle is idempotent and leaves an existing style untouched", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    local p = ns.db.profile
+    p.units.target.label.style.size = 22   -- user customised
+    ns.Database:BackfillLabelStyle(ns.db)
+    ns.Database:BackfillLabelStyle(ns.db)
+    assertEqual(p.units.target.label.style.size, 22, "existing style not overwritten")
+end)

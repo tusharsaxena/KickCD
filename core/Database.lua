@@ -216,6 +216,23 @@ local CASTBAR_DEFAULT = {
         },
 }
 
+-- Single-sourced so Target and Focus ship an IDENTICAL label appearance
+-- (copy()'d into each unit below). label.show/label.text stay per-unit;
+-- only `style` is duplicated + link-resolved (NS.Units.LabelStyle).
+local LABELSTYLE_DEFAULT = {
+        attach   = "castbar",     -- "castbar" | "icons"
+        point    = "BOTTOM",      -- the label's own anchor point
+        relPoint = "TOP",         -- point on the attach frame
+        offsetX  = 0,
+        offsetY  = 0,
+        justifyH = "CENTER",      -- LEFT | CENTER | RIGHT
+        justifyV = "MIDDLE",      -- TOP  | MIDDLE | BOTTOM
+        rotation = 0,             -- degrees
+        font     = "Friz Quadrata TT",
+        size     = 14,
+        flags    = "OUTLINE",     -- NONE | OUTLINE | THICKOUTLINE | MONOCHROME
+}
+
 local DEFAULT_PROFILE = {
     enabled    = true,
     locked     = true,
@@ -238,7 +255,7 @@ local DEFAULT_PROFILE = {
         target = {
             enabled = true,
             link    = false,             -- target is never linked
-            label   = { show = false, text = "Target" },
+            label   = { show = false, text = "Target", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
                 castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
@@ -249,7 +266,7 @@ local DEFAULT_PROFILE = {
         focus = {
             enabled = false,
             link    = true,              -- mirror target appearance by default
-            label   = { show = false, text = "Focus" },
+            label   = { show = false, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 -- offset from target so the two grids don't overlap on first enable
                 icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
@@ -510,6 +527,26 @@ function Database:FoldLegacyUnits(db)
     if t.enabled == nil then t.enabled = true end
 end
 
+--- Backfill units.<unit>.label.style on a profile saved before the single
+--- text-label feature. Idempotent and SHAPE-DRIVEN (keyed on style == nil),
+--- not version-gated — same rationale as FoldLegacyUnits (AceDB defaults
+--- merge would mask the account as already-current). show/text are left
+--- exactly as saved; only the missing style sub-table is filled from
+--- LABELSTYLE_DEFAULT. A fresh install already has style and is a no-op.
+function Database:BackfillLabelStyle(db)
+    db = db or self.db
+    if not (db and db.profile and db.profile.units) then return end
+    for _, unit in ipairs({ "target", "focus" }) do
+        local u = db.profile.units[unit]
+        if u then
+            u.label = u.label or {}
+            if u.label.style == nil then
+                u.label.style = copy(LABELSTYLE_DEFAULT)
+            end
+        end
+    end
+end
+
 local migrations = {
     -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
     -- Each step bumps db.global.schemaVersion to the from-version+1 and may
@@ -585,6 +622,7 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     -- a copied/reset profile can carry legacy top-level tables regardless of
     -- what global.schemaVersion reports.
     self:FoldLegacyUnits(self.db)
+    self:BackfillLabelStyle(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -625,6 +663,11 @@ function Database:Init()
     -- FoldLegacyUnits docstring for why version-gating would miss the
     -- KCD-20 backfill trap.
     self:FoldLegacyUnits(db)
+
+    -- Backfill units.<unit>.label.style on profiles saved before the
+    -- single text-label feature. Shape-driven and idempotent like
+    -- FoldLegacyUnits — keyed on style == nil to detect legacy profiles.
+    self:BackfillLabelStyle(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes
