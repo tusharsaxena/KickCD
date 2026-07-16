@@ -36,7 +36,7 @@ When `Cooldowns:Refresh` finds a previously-watched `spellID` no longer availabl
 
 Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master enable) and `"spells"` (rebuild watched list); `IconGrid` acts on `"general"` / `"icons"` / `"spells"` / `"units"`; `Castbar` acts on `"general"` / `"castbar"` / `"units"`. There is no `"debug"` section — the debug enabled-flag is the session-only `NS.State.debug` (never in SavedVariables), toggled via `DebugLog:SetEnabled` / `/kcd debug on|off|toggle`, and it does **not** broadcast on the bus at all, so flipping it never cascades into a `Cooldowns:Rebuild` / `IconGrid` relayout.
 
-The `"units"` section (target/focus dual tracking) covers per-unit `enabled` toggles, `label.show`/`label.text`, and the focus `link` flag / "Copy styling from Target" action. `IconGrid`/`Castbar` react by calling their `ReconcileUnits()` (enabling/disabling the affected unit's instance) and re-applying the identity label; it is a section value on the existing payload shape, not a new message.
+The `"units"` section (target/focus dual tracking) covers per-unit `enabled` toggles, `label.show`/`label.text`, and the focus `link` flag / "Copy styling from Target" action. `IconGrid`/`Castbar` react by calling their `ReconcileUnits()` (enabling/disabling the affected unit's instance), and `UnitLabel` re-applies the identity label; it is a section value on the existing payload shape, not a new message.
 
 ## `Ka0s_KickCD_GRID_LAYOUT` payload
 

@@ -4,7 +4,7 @@ Guidance for Claude Code (and other LLM-assisted editors) working on **Ka0s Kick
 
 ## What this addon is
 
-A WoW addon that tracks the player's interrupt and CC cooldowns and surfaces them on a movable, persistently-visible icon grid, with a sibling cast bar — tracked independently for **both the player's target and focus unit** — driven from the same drag lock and the same addon-wide visibility mode (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`). Focus is off by default and can link to target's appearance. Designed as an interrupt rotation helper, not a generic raid-frame replacement. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
+A WoW addon that tracks the player's interrupt and CC cooldowns and surfaces them on a movable, persistently-visible icon grid, with a sibling cast bar — tracked independently for **both the player's target and focus unit** — driven from the same drag lock and the same addon-wide visibility mode (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`). Focus is on by default and links to target's appearance by default. Designed as an interrupt rotation helper, not a generic raid-frame replacement. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
 
 The settings panel is a six-tab Blizzard subcategory (General / Icons / Cast bar / Text Label / Spells / Profiles) with full slash-command parity (`/kcd list|get|set|reset|resetall|resetposition|spells|debug`). Every schema-driven option is automatically wired into UI widget, slash CLI, and Defaults reset — see [docs/settings-panel.md](settings-panel.md).
 
