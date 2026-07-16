@@ -260,6 +260,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
 - Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
+- **Renderer robustness (per-row `pcall` in `Helpers.RenderRows`):** a single malformed saved value degrades to one missing widget plus a red `schema error:` line — it does NOT blank the rest of the panel body (regression: a stale saved value once left a whole panel showing only its header). This is exercised by the headless suite (`tests/test_schema.lua`); it is not readily inducible in-game, so there is nothing to click here — it is listed for completeness of branch coverage.
 
 ### 12. Resets
 
@@ -280,6 +281,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - No Lua errors at any reset path.
 - Open panels reflect reset values without manual refresh.
 - After `/kcd resetall`, `/kcd get enabled` returns `true` and `/kcd get visibility` returns `target_casting_interruptible` (the schema defaults from `settings/General.lua`).
+- After `/kcd resetall`, the label + cast-bar defaults shipped on this branch hold (schema `default` ↔ `DEFAULT_PROFILE` are single-sourced/in-sync): `/kcd get units.target.label.show` → `true`, `units.target.label.style.offsetY` → `12`, `units.target.label.style.color` → `1 0.82 0 1`; `units.target.castbar.timePosition` → `OUTSIDE_RIGHT`, `units.target.castbar.timeOffsetY` → `0`; both `units.target.castbar.interruptible.statusBarTexture` and `.uninterruptible.statusBarTexture` → `Blizzard Raid Bar`. `units.focus.label.style.*` reset to the identical values (single-sourced `LABELSTYLE_DEFAULT`).
 
 ### 13. Profiles
 
@@ -463,13 +465,13 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 Each unit (target/focus) can show one configurable identity label, rendered by `modules/UnitLabel.lua` and configured on its own **Text Label** settings tab (`settings/Label.lua`, panel/section `label`, after Cast bar).
 
-**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Settings → Text Label.
+**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Settings → Text Label. (On the way, confirm Settings → **General** no longer carries any label show/text controls — those moved to this Text Label tab; General keeps only the per-unit **Enable** rows.)
 
 **Steps.**
 - Select **Target** in the Text Label panel's unit dropdown. **Show label** is checked by default; confirm a label reading "Target" already appears just above the target cast bar (the default `attach = "castbar"`, `point = "BOTTOM"`, `relPoint = "TOP"`, `offsetY = 12`). Toggle **Show label** off/on; confirm the label disappears/reappears.
 - Edit **Label text** to something custom (e.g. "MainTank"); confirm it updates live, no `/reload` needed.
 - Switch **Attach to** from `castbar` to `icons`; confirm the label re-anchors to the icon grid frame instead, still tracking live as the grid moves/resizes (drag the grid; the label follows via the next `Ka0s_KickCD_GRID_LAYOUT`).
-- Walk the anchor/attach point pair (`Label anchor point` / `Attach point`) through a few combinations (e.g. `TOP`/`BOTTOM`, `LEFT`/`RIGHT`) and vary **X offset (in px)** / **Y offset (in px)**; confirm the label's position updates live and matches the chosen points + offsets.
+- Walk the anchor/attach point pair (`Label anchor point` / `Attach point`) through a few combinations (e.g. `TOP`/`BOTTOM`, `LEFT`/`RIGHT`) and vary **X offset (in px)** / **Y offset (in px)**; confirm the label's position updates live and matches the chosen points + offsets. Every option in both dropdowns is a native `SetPoint` anchor (`TOPLEFT` … `BOTTOMRIGHT` / `CENTER`), so selecting *any* combination repositions the label with no Lua error — regression guard: an earlier build fed the icon grid's `<SIDE>_<ALIGN>` tokens (e.g. `TOP_MIDDLE`) straight into `SetPoint`, which errored on the first non-`CENTER` pick and left the default unselectable in the dropdown.
 - Set **Horizontal justify** / **Vertical justify** through their values; confirm text alignment changes visibly (most apparent with multi-word text).
 - Set **Rotation (degrees)** to a nonzero value (e.g. 45, -90); confirm the label visibly rotates and returns to upright at 0.
 - Change **Font** / **Font size** / **Font flags**; confirm the label's rendered font updates live (LSM dropdown, same widget family as Cast bar → Font).
