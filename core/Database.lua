@@ -151,10 +151,10 @@ local CASTBAR_DEFAULT = {
         -- modules/Castbar.lua at runtime; legacy 9-point tokens
         -- (TOP, TOPLEFT, BOTTOM, …) still pass through unchanged.
         anchorMode    = "PRIMARY",
-        anchorPoint   = "TOP_LEFT",
-        castbarPoint  = "BOTTOM_LEFT",
+        anchorPoint   = "BOTTOM_LEFT",
+        castbarPoint  = "TOP_LEFT",
         anchorOffsetX = 0,
-        anchorOffsetY = 1,
+        anchorOffsetY = -1,
 
         -- Orientation + growth. Driven via StatusBar:SetOrientation and
         -- SetReverseFill so all the per-frame arithmetic stays C-side.
@@ -187,9 +187,9 @@ local CASTBAR_DEFAULT = {
         -- counted via `#`; multi-byte localized names may truncate
         -- mid-character at the edge but won't error.
         nameTruncate = 0,
-        timePosition = "OUTSIDE_RIGHT",
+        timePosition = "CENTER",
         timeOffsetX  = 0,
-        timeOffsetY  = 0,
+        timeOffsetY  = -20,
 
         -- Per-state appearance (interruptible vs uninterruptible casts).
         -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
@@ -220,7 +220,7 @@ local CASTBAR_DEFAULT = {
 -- (copy()'d into each unit below). label.show/label.text stay per-unit;
 -- only `style` is duplicated + link-resolved (NS.Units.LabelStyle).
 local LABELSTYLE_DEFAULT = {
-        attach   = "castbar",     -- "castbar" | "icons"
+        attach   = "icons",       -- "castbar" | "icons"
         point    = "BOTTOM",      -- the label's own anchor point
         relPoint = "TOP",         -- point on the attach frame
         offsetX  = 0,
@@ -258,8 +258,8 @@ local DEFAULT_PROFILE = {
             link    = false,             -- target is never linked
             label   = { show = true, text = "Target", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
-                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
-                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 200 },
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
             },
             icons   = copy(ICONS_DEFAULT),
             castbar = copy(CASTBAR_DEFAULT),
@@ -270,8 +270,8 @@ local DEFAULT_PROFILE = {
             label   = { show = true, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 -- offset from target so the two grids don't overlap on first enable
-                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
-                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 120 },
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 210 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 210 },
             },
             icons   = copy(ICONS_DEFAULT),
             castbar = copy(CASTBAR_DEFAULT),

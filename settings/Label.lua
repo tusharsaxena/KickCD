@@ -68,7 +68,7 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.attach", type = "string",
          label = L["Attach to"],
          tooltip = L["Which widget the label anchors to."],
-         default = "castbar", values = ATTACH_VALUES }
+         default = "icons", values = ATTACH_VALUES }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.point", type = "string",
          label = L["Label anchor point"],

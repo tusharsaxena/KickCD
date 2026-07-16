@@ -115,7 +115,7 @@ test("DEFAULT_PROFILE ships an identical label.style for target and focus", func
     local d = NS.DEFAULT_PROFILE
     assertTrue(type(d.units.target.label.style) == "table", "target label.style must exist")
     assertTrue(type(d.units.focus.label.style)  == "table", "focus label.style must exist")
-    assertEqual(d.units.target.label.style.attach,   "castbar")
+    assertEqual(d.units.target.label.style.attach,   "icons")
     assertEqual(d.units.target.label.style.relPoint, "TOP")
     -- style ships identical (only text differs). Table-valued fields (e.g.
     -- color) are deep-copied per unit, so compare element-wise rather than
@@ -145,7 +145,7 @@ test("BackfillLabelStyle adds a missing label.style and preserves show/text", fu
     assertTrue(type(p.units.target.label.style) == "table", "style backfilled")
     assertEqual(p.units.target.label.show, true,  "show preserved")
     assertEqual(p.units.target.label.text, "TANK", "text preserved")
-    assertEqual(p.units.target.label.style.attach, "castbar", "style is the default")
+    assertEqual(p.units.target.label.style.attach, "icons", "style is the default")
 end)
 
 test("BackfillLabelStyle is idempotent and leaves an existing style untouched", function()

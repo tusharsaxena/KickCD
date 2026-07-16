@@ -74,7 +74,7 @@ add{
     path  = "units."..unit..".castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "TOP_LEFT",
+    default = "BOTTOM_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
@@ -82,7 +82,7 @@ add{
     path  = "units."..unit..".castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
-    default = "BOTTOM_LEFT",
+    default = "TOP_LEFT",
     values  = POSITION_ANCHOR_VALUES,
 }
 add{
@@ -97,7 +97,7 @@ add{
     path  = "units."..unit..".castbar.anchorOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
-    default = 1, min = -200, max = 200, step = 1, fmt = "%d px",
+    default = -1, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 
 -- Orientation --------------------------------------------------------
@@ -350,7 +350,7 @@ add{
     path  = "units."..unit..".castbar.timePosition", type = "string",
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
-    default = "OUTSIDE_RIGHT",
+    default = "CENTER",
     values  = TEXT_POSITION_VALUES,
 }
 add{
@@ -365,7 +365,7 @@ add{
     path  = "units."..unit..".castbar.timeOffsetY", type = "number",
     label = L["Y offset (in px)"],
     tooltip = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
-    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
+    default = -20, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 
 -- Per-state appearance (interruptible vs uninterruptible casts) -------
