@@ -100,3 +100,22 @@ test("General exposes focus rows; unit-selector panels still filter them out", f
         "CreatePanel must leave ctx.unit nil for selector-less panels (got " ..
             tostring(panelCtx.unit) .. ")")
 end)
+
+test("RenderRows survives a row whose render throws (no blank panel)", function()
+    local NS = T.NS
+    local H  = NS.Settings.Helpers
+    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDHardenTest", "Harden", { panelKey = "general" })
+    -- Pre-seed ctx.scroll so RenderRows' internal ensureScroll(ctx) returns it
+    -- immediately (settings/Panel.lua:571 `if ctx.scroll then return ctx.scroll end`)
+    -- instead of anchoring scroll.frame, which the AceGUI mock doesn't model.
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    local good1 = { panel = "general", section = "general", path = "scale",
+                    type = "number", label = "A", default = 1 }
+    local boom  = { panel = "general", section = "general", path = "boom",
+                    type = "string", label = "B", values = function() error("kaboom") end }
+    local good2 = { panel = "general", section = "general", path = "alpha",
+                    type = "number", label = "C", default = 1 }
+    local ok = pcall(function() H.RenderRows(ctx, { good1, boom, good2 }, nil) end)
+    assertTrue(ok, "RenderRows must not propagate a single row's render error")
+end)

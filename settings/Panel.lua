@@ -1026,8 +1026,16 @@ local ROW_VSPACER = 8
 -- and every row is followed by a small vertical spacer for breathing
 -- room. afterGroup callbacks (e.g. inline action buttons) fire after
 -- the in-progress row is flushed, so they always start on a fresh line.
-function Helpers.RenderSchema(ctx, panelKey, afterGroup)
-    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
+-- Render an explicit list of schema rows into ctx's scroll. Two-column
+-- Flow layout, group headings, `solo` rows, and afterGroup hooks behave
+-- exactly as before — this is the former RenderSchema body, lifted so
+-- RenderUnitPanel can render a filtered subset (alwaysPerUnit rows).
+--
+-- Each row's RenderField is wrapped in pcall: a single bad saved value
+-- (bad enum, wrong-typed value) then degrades to one missing widget plus
+-- a logged schema error, instead of aborting the whole panel body. This
+-- is defensive coverage for legacy / hand-edited SavedVariables.
+function Helpers.RenderRows(ctx, rows, afterGroup)
     local scroll = ensureScroll(ctx)
     local pendingRow, pendingCount = nil, 0
 
@@ -1067,7 +1075,11 @@ function Helpers.RenderSchema(ctx, panelKey, afterGroup)
         end
 
         if not pendingRow then pendingRow = startRow() end
-        Helpers.RenderField(ctx, def, pendingRow, 0.5)
+        local ok, err = pcall(Helpers.RenderField, ctx, def, pendingRow, 0.5)
+        if not ok then
+            _printSchemaError("row (" .. tostring(def.path) .. ")",
+                "render failed, widget skipped: " .. tostring(err))
+        end
         pendingCount = pendingCount + 1
         if def.solo or pendingCount >= 2 then flushRow() end
 
@@ -1082,6 +1094,10 @@ function Helpers.RenderSchema(ctx, panelKey, afterGroup)
     end
     flushRow()
     if scroll.DoLayout then scroll:DoLayout() end
+end
+
+function Helpers.RenderSchema(ctx, panelKey, afterGroup)
+    Helpers.RenderRows(ctx, Helpers.SchemaForPanel(panelKey, ctx.unit), afterGroup)
 end
 
 -- Release every AceGUI child out of ctx.scroll (if it's been created yet)
