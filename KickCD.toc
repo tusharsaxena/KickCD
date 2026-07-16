@@ -57,5 +57,6 @@ settings\Panel.lua
 settings\General.lua
 settings\Icons.lua
 settings\Castbar.lua
+settings\Label.lua
 settings\Spells.lua
 settings\Profiles.lua

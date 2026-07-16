@@ -27,15 +27,16 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - LabelStyle resolves to target's style when focus is linked
 - CopyStyling snapshots target label.style but keeps focus text/show
 
-### test_schema.lua (9)
+### test_schema.lua (10)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
 - Every schema row has a string path and a known type
 - Helpers.Resolve walks a dotted path into db.profile
-- icons/castbar schema rows are unit-scoped and valid
+- icons/castbar/label schema rows are unit-scoped and valid
 - Helpers.FindSchema locates a row by path
 - General exposes focus rows; unit-selector panels still filter them out
+- label panel carries per-unit label rows; General no longer does
 - RenderRows survives a row whose render throws (no blank panel)
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 
@@ -144,7 +145,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | --- | --- |
 | test_util.lua | 8 |
 | test_units.lua | 11 |
-| test_schema.lua | 9 |
+| test_schema.lua | 10 |
 | test_database.lua | 13 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
@@ -157,4 +158,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **91** |
+| **Total** | **92** |

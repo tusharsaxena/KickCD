@@ -34,11 +34,11 @@ test("Helpers.Resolve walks a dotted path into db.profile", function()
     assertEqual(nested, 64, "nested path must read the default value")
 end)
 
-test("icons/castbar schema rows are unit-scoped and valid", function()
+test("icons/castbar/label schema rows are unit-scoped and valid", function()
     local NS = T.NS
     local seen = { target = false, focus = false }
     for _, def in ipairs(NS.Settings.Schema) do
-        if def.panel == "icons" or def.panel == "castbar" then
+        if def.panel == "icons" or def.panel == "castbar" or def.panel == "label" then
             assertTrue(def.unit ~= nil, "row " .. tostring(def.path) .. " must carry a unit")
             assertTrue(def.path:match("^units%." .. def.unit .. "%."), "path must be unit-scoped: " .. def.path)
             seen[def.unit] = true
@@ -80,10 +80,6 @@ test("General exposes focus rows; unit-selector panels still filter them out", f
     local generalRows = H.SchemaForPanel("general", nil)
     assertTrue(hasPath(generalRows, "units.focus.enabled"),
         "General (unit=nil) must include units.focus.enabled")
-    assertTrue(hasPath(generalRows, "units.focus.label.show"),
-        "General (unit=nil) must include units.focus.label.show")
-    assertTrue(hasPath(generalRows, "units.focus.label.text"),
-        "General (unit=nil) must include units.focus.label.text")
 
     local iconsTargetRows = H.SchemaForPanel("icons", "target")
     for _, def in ipairs(iconsTargetRows) do
@@ -99,6 +95,32 @@ test("General exposes focus rows; unit-selector panels still filter them out", f
     assertTrue(panelCtx.unit == nil,
         "CreatePanel must leave ctx.unit nil for selector-less panels (got " ..
             tostring(panelCtx.unit) .. ")")
+end)
+
+test("label panel carries per-unit label rows; General no longer does", function()
+    local NS = T.NS
+    local H  = NS.Settings.Helpers
+    local function hasPath(rows, path)
+        for _, d in ipairs(rows) do if d.path == path then return true end end
+        return false
+    end
+    local generalRows = H.SchemaForPanel("general", nil)
+    assertTrue(not hasPath(generalRows, "units.focus.label.show"),
+        "General must NOT carry label.show anymore")
+    assertTrue(hasPath(generalRows, "units.focus.enabled"),
+        "General still carries the per-unit enable")
+
+    local labelFocus = H.SchemaForPanel("label", "focus")
+    assertTrue(hasPath(labelFocus, "units.focus.label.show"), "label panel has focus label.show")
+    assertTrue(hasPath(labelFocus, "units.focus.label.text"), "label panel has focus label.text")
+
+    -- show/text are alwaysPerUnit so they survive a Focus link
+    for _, d in ipairs(labelFocus) do
+        if d.path == "units.focus.label.show" or d.path == "units.focus.label.text" then
+            assertTrue(d.alwaysPerUnit == true, d.path .. " must be alwaysPerUnit")
+        end
+    end
+    assertEqual(H.ValidateSchema(), 0, "schema still valid with the label panel")
 end)
 
 test("RenderRows survives a row whose render throws (no blank panel)", function()

@@ -382,6 +382,44 @@ L["KickCD castbar"]              = "KickCD castbar"
 L["KickCD castbar — drag to move"] =
     "KickCD castbar — drag to move"
 
+-- Text Label tab
+L["Text Label"]                  = "Text Label"
+L["Label"]                       = "Label"
+L["Show label"]                  = "Show label"
+L["Show this unit's identity label."] =
+    "Show this unit's identity label."
+L["Label text"]                  = "Label text"
+L["Text shown on this unit's label."] =
+    "Text shown on this unit's label."
+L["Placement"]                   = "Placement"
+L["Attach to"]                   = "Attach to"
+L["Which widget the label anchors to."] =
+    "Which widget the label anchors to."
+L["Icon grid"]                   = "Icon grid"
+L["Label anchor point"]          = "Label anchor point"
+L["Which point of the label attaches."] =
+    "Which point of the label attaches."
+L["Attach point"]                = "Attach point"
+L["Which point of the target widget the label attaches to."] =
+    "Which point of the target widget the label attaches to."
+L["Horizontal pixel shift (positive = right)."] =
+    "Horizontal pixel shift (positive = right)."
+L["Vertical pixel shift (positive = up)."] =
+    "Vertical pixel shift (positive = up)."
+L["Horizontal justify"]          = "Horizontal justify"
+L["Horizontal text alignment."]  = "Horizontal text alignment."
+L["Vertical justify"]            = "Vertical justify"
+L["Vertical text alignment."]    = "Vertical text alignment."
+L["Rotation (degrees)"]          = "Rotation (degrees)"
+L["Rotate the label. 0 = upright."] =
+    "Rotate the label. 0 = upright."
+L["Top"]                         = "Top"
+L["Middle"]                      = "Middle"
+L["Bottom"]                      = "Bottom"
+L["LSM font for the label."]     = "LSM font for the label."
+L["Label font size in pixels."]  = "Label font size in pixels."
+L["Outline / monochrome flags."] = "Outline / monochrome flags."
+
 -- Spells editor extras
 L["Spell known"]                 = "Spell known"
 L["Spell not known"]             = "Spell not known"

@@ -28,7 +28,7 @@ NS.Settings = NS.Settings or {}
 NS.Settings.main      = nil
 NS.Settings.sub       = {}
 NS.Settings.builders  = {}
-NS.Settings.order     = { "general", "icons", "castbar", "spells", "profiles" }
+NS.Settings.order     = { "general", "icons", "castbar", "label", "spells", "profiles" }
 NS.Settings.Schema    = NS.Settings.Schema or {}
 NS.Settings._panels   = NS.Settings._panels or {}
 
@@ -150,11 +150,11 @@ end
 -- why," not "the entire settings panel refuses to register."
 
 local _validPanels = {
-    general = true, icons = true, castbar = true,
+    general = true, icons = true, castbar = true, label = true,
     spells  = true, profiles = true,
 }
 local _validSections = {
-    general = true, icons = true, castbar = true,
+    general = true, icons = true, castbar = true, label = true,
     spells  = true, debug = true, units = true,
 }
 local _validTypes = {
@@ -189,12 +189,12 @@ function Helpers.ValidateSchema()
             end
             if not _validPanels[def.panel] then
                 _printSchemaError(where, "invalid `panel` = " .. tostring(def.panel)
-                    .. " (expected one of: general, icons, castbar, spells, profiles)")
+                    .. " (expected one of: general, icons, castbar, label, spells, profiles)")
                 errors = errors + 1
             end
             if not _validSections[def.section] then
                 _printSchemaError(where, "invalid `section` = " .. tostring(def.section)
-                    .. " (expected one of: general, icons, castbar, spells, debug, units)")
+                    .. " (expected one of: general, icons, castbar, label, spells, debug, units)")
                 errors = errors + 1
             end
             if not _validTypes[def.type] then
