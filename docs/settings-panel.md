@@ -1,6 +1,6 @@
 # Settings panel — schema-driven canvas layout
 
-All five tabs (General, Icons, Cast bar, Spells, Profiles) are registered as **canvas-layout subcategories** so they share one custom header design:
+All six tabs (General, Icons, Cast bar, Text Label, Spells, Profiles) are registered as **canvas-layout subcategories** so they share one custom header design:
 
 * `GameFontNormalHuge` title on the left
 * `Defaults` button on the right (AceGUI `Button`, which wraps `UIPanelButtonTemplate`) — present on General / Icons / Cast bar / Spells, omitted on Profiles. Wire its handler with `ctx.panel.defaultsBtn:SetCallback("OnClick", fn)` (NOT `:SetScript`, since the AceGUI widget object isn't a Blizzard Frame).

@@ -58,7 +58,7 @@ Companion docs:
 - Login completes with no Lua errors.
 - The icon grid renders with the current spec's default spells (filtered to spells the player can actually cast).
 - `/kcd` prints the help index — every row carries the cyan `[KCD]` banner, command names are yellow, descriptions are white, no `schema error:` line appears.
-- Settings → AddOns shows a **Ka0s KickCD** parent category with the five subcategories **General / Icons / Cast bar / Spells / Profiles**.
+- Settings → AddOns shows a **Ka0s KickCD** parent category with the six subcategories **General / Icons / Cast bar / Text Label / Spells / Profiles**.
 - `KickCDDB` is now present on disk after `/reload` with `profileKeys`, `profiles.Default`, and the seeded `spells[CLASS][SPEC]` block for the current spec.
 - Switch to a different class+spec character (alt) and log in: their spec's spells are seeded on first profile creation without errors.
 
@@ -83,7 +83,7 @@ Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
 - Lock state is `locked = true` (`/kcd get locked` → `true`).
 - `/kcd get units.target.icons.primarySize` → `50`.
 - `/kcd get units.target.castbar.interruptible.barColor` → `0.2 0.8 0.2 1`.
-- All five settings tabs still appear under **Ka0s KickCD**.
+- All six settings tabs still appear under **Ka0s KickCD**.
 
 ### 3. Master enable toggle
 
