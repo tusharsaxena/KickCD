@@ -104,11 +104,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
 - post-enable CONFIG_CHANGED re-layout runs end-to-end without error
 
-### test_unitlabel.lua (3)
+### test_unitlabel.lua (4)
 
 - UnitLabel module is registered
 - UnitLabel.ApplyAll runs without error for both units
 - Castbar:GetCastbarFrame does not create an instance for an unknown unit
+- UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)
 
 ### test_cooldowns.lua (5)
 
@@ -155,10 +156,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_debuglog.lua | 9 |
 | test_icongrid_layout.lua | 8 |
 | test_lifecycle.lua | 4 |
-| test_unitlabel.lua | 3 |
+| test_unitlabel.lua | 4 |
 | test_cooldowns.lua | 5 |
 | test_settings_log.lua | 3 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **95** |
+| **Total** | **96** |

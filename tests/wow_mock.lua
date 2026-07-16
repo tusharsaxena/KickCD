@@ -47,6 +47,12 @@ local function makeFrame()
     function f._fire(self, ev, ...)
         if self._onevent then self._onevent(self, ev, ...) end
     end
+    -- Explicit SetParent/GetParent (test-scoped, mirrors RegisterUnitEvent/
+    -- SetScript above): records the parent so tests can assert which frame a
+    -- module reparented onto, without modelling real WoW parent/visibility
+    -- inheritance.
+    function f.SetParent(self, p) self._parent = p end
+    function f.GetParent(self) return self._parent end
     return setmetatable(f, {
         __index = function(_, k)
             local n = NUMERIC_GETTERS[k]

@@ -22,3 +22,22 @@ test("Castbar:GetCastbarFrame does not create an instance for an unknown unit", 
     local cb = NS:GetModule("Castbar", true)
     assertEqual(cb:GetCastbarFrame("nonexistent"), nil)
 end)
+
+test("UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)", function()
+    local ns = T.load(true).NS
+    local grid, castbar, label = ns:GetModule("IconGrid", true), ns:GetModule("Castbar", true), ns:GetModule("UnitLabel", true)
+    local gridF, castF = {}, {}
+    local origGetGridFrame, origGetCastbarFrame = grid.GetGridFrame, castbar.GetCastbarFrame
+    grid.GetGridFrame = function(_, unit) return unit == "target" and gridF or nil end
+    castbar.GetCastbarFrame = function(_, unit) return unit == "target" and castF or nil end
+
+    ns.db.profile.units.target.label.style.attach = "castbar"
+    ns.db.profile.units.target.label.show = true
+    local inst = label:GetInstance("target")
+    label:Apply(inst)
+
+    assertEqual(inst.frame:GetParent(), gridF, "label must parent to the grid so it follows General visibility")
+    assertTrue(inst.frame:GetParent() ~= castF, "label must NOT parent to the cast bar (would be cast-gated)")
+
+    grid.GetGridFrame, castbar.GetCastbarFrame = origGetGridFrame, origGetCastbarFrame
+end)

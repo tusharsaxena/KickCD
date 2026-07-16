@@ -1,11 +1,13 @@
 -- modules/UnitLabel.lua
 --
 -- One identity label per unit (target/focus). A holder frame is created on
--- UIParent, then on Apply is REPARENTED to the chosen attach frame — the
--- unit's cast bar or icon grid — so it inherits that frame's shown state
--- and effective alpha for free (i.e. it follows the addon's General
--- visibility exactly like the grid/cast bar do), while still tracking the
--- attach frame's position live via SetPoint with no per-frame bookkeeping.
+-- UIParent, then on Apply is REPARENTED to the unit's ICON GRID — the frame
+-- that honors General visibility on the visibility mode alone — so it
+-- inherits the grid's shown state and effective alpha for free (i.e. it
+-- follows the addon's General visibility, without being cast-gated by a
+-- cast bar that hides itself between casts). Its POSITION still tracks the
+-- chosen attach frame (cast bar or grid) live via SetPoint, independent of
+-- the visibility parent, with no per-frame bookkeeping.
 -- Appearance is link-resolved for a linked Focus via NS.Units.LabelStyle;
 -- show/text stay per-unit via NS.Units.Label. Replaces the two labels the
 -- dual-tracking work put on the grid and cast bar directly.
@@ -45,9 +47,9 @@ local function attachFrame(unit, attach)
 end
 
 -- Created on UIParent as a placeholder parent; Apply() reparents it to the
--- resolved attach frame once one exists, so its live parent (and therefore
--- its General-visibility show/hide + alpha) tracks whichever widget it's
--- anchored to.
+-- unit's icon grid once one exists, so its live parent (and therefore its
+-- General-visibility show/hide + alpha) tracks the grid, not whichever
+-- widget it's positionally anchored to.
 function UnitLabel:EnsureFrame(inst)
     if inst.frame then return end
     local f = CreateFrame("Frame", "KickCDUnitLabel" .. titleCase(inst.unit), UIParent)
@@ -60,10 +62,10 @@ end
 --- Resolve + apply this unit's label: text (per-unit), appearance (link-
 --- resolved), and position (anchored to the chosen attach frame). Shown
 --- only when the unit is enabled, label.show is on, AND an attach frame
---- exists. The holder frame is reparented to that attach frame, so it
---- ALSO inherits the attach frame's own shown state + alpha — i.e. the
---- label follows the addon's General visibility exactly like the grid/
---- cast bar it's anchored to.
+--- exists. The holder frame is reparented to the unit's ICON GRID (not the
+--- attach frame), so it inherits the grid's own shown state + alpha — i.e.
+--- the label follows the addon's General visibility, while its position
+--- still tracks the chosen attach frame.
 function UnitLabel:Apply(inst)
     self:EnsureFrame(inst)
     local lbl   = NS.Units.Label(inst.unit)
@@ -85,19 +87,28 @@ function UnitLabel:Apply(inst)
         fs:SetRotation(((style.rotation or 0) * math.pi) / 180)
     end
 
-    local target = attachFrame(inst.unit, style.attach or "castbar")
+    -- Position comes from the chosen attach frame; VISIBILITY comes from the
+    -- icon grid. The grid is the frame that honors General visibility
+    -- (IconGrid:RefreshVisibility Show/Hides it on the visibility mode alone),
+    -- whereas the cast bar additionally hides itself whenever there is no
+    -- active cast — so parenting to the cast bar would make the label
+    -- cast-gated instead of visibility-gated. Reparenting the label onto the
+    -- grid makes it inherit exactly the grid's shown state + effective alpha,
+    -- i.e. follow General visibility, with no extra event wiring; SetPoint to
+    -- the attach frame keeps position independent of the parent.
+    local anchorFrame = attachFrame(inst.unit, style.attach or "castbar")
+    local gridModule  = NS:GetModule("IconGrid", true)
+    local visFrame    = gridModule and gridModule:GetGridFrame(inst.unit) or nil
+
     f:ClearAllPoints()
-    if target then
-        -- Reparent onto the attach frame itself (never nil) so the label
-        -- inherits its shown state + effective alpha — this is what makes
-        -- the label follow General visibility with no extra event wiring.
-        f:SetParent(target)
-        f:SetPoint(style.point or "BOTTOM", target, style.relPoint or "TOP",
+    if anchorFrame then
+        f:SetParent(visFrame or anchorFrame)  -- grid drives visibility; fall back to the anchor only if the grid isn't up yet
+        f:SetPoint(style.point or "BOTTOM", anchorFrame, style.relPoint or "TOP",
                    style.offsetX or 0, style.offsetY or 0)
     end
 
     inst.enabled = NS.Units.IsEnabled(inst.unit)
-    f:SetShown(inst.enabled and lbl.show == true and target ~= nil)
+    f:SetShown(inst.enabled and lbl.show == true and anchorFrame ~= nil)
 end
 
 function UnitLabel:ApplyAll()
