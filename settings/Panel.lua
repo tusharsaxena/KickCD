@@ -1127,6 +1127,21 @@ function Helpers.RerenderUnitPanel(ctx, panelKey, afterGroup)
     Helpers.RenderSchema(ctx, panelKey, afterGroup)
 end
 
+-- Split a unit panel's rows into those that stay editable even when Focus
+-- is linked (alwaysPerUnit — e.g. label show/text, which are per-unit by
+-- design) and the appearance rows the link hides. Pure; unit-tested.
+function Helpers.PartitionUnitRows(rows)
+    local perUnit, styled = {}, {}
+    for _, def in ipairs(rows) do
+        if def.alwaysPerUnit then
+            perUnit[#perUnit + 1] = def
+        else
+            styled[#styled + 1] = def
+        end
+    end
+    return perUnit, styled
+end
+
 -- ---------------------------------------------------------------------
 -- Per-unit panel header — unit selector + focus link/copy row (Task 8).
 -- Shared by the Icons and Castbar builders, which are otherwise
@@ -1201,11 +1216,15 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
         addSpacer(scroll, ROW_VSPACER)
 
         if linked then
-            -- Editable-but-ignored widgets are worse than no widgets: while
-            -- linked, Focus renders with Target's icons/castbar tables
-            -- verbatim (NS.Units.Icons/Castbar), so any schema row we'd
-            -- draw here would silently write to a table nothing reads.
-            -- Skip the body and say so instead.
+            -- Editable-but-ignored appearance widgets are worse than none:
+            -- a linked Focus renders with Target's tables, so any styled row
+            -- here would write to a table nothing reads. But alwaysPerUnit
+            -- rows (label show/text) ARE per-unit even while linked, so they
+            -- stay editable; only the appearance rows are replaced by a note.
+            local perUnit = Helpers.PartitionUnitRows(
+                Helpers.SchemaForPanel(panelKey, ctx.unit))
+            Helpers.RenderRows(ctx, perUnit, afterGroup)
+
             local note = AceGUI:Create("Label")
             note:SetFullWidth(true)
             note:SetText(L["Linked to Target — uncheck to customize."])

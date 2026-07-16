@@ -119,3 +119,17 @@ test("RenderRows survives a row whose render throws (no blank panel)", function(
     local ok = pcall(function() H.RenderRows(ctx, { good1, boom, good2 }, nil) end)
     assertTrue(ok, "RenderRows must not propagate a single row's render error")
 end)
+
+test("PartitionUnitRows splits alwaysPerUnit rows from styled rows", function()
+    local H = T.NS.Settings.Helpers
+    local rows = {
+        { path = "a", alwaysPerUnit = true },
+        { path = "b" },
+        { path = "c", alwaysPerUnit = true },
+    }
+    local perUnit, styled = H.PartitionUnitRows(rows)
+    assertEqual(#perUnit, 2, "two alwaysPerUnit rows")
+    assertEqual(#styled, 1, "one styled row")
+    assertEqual(perUnit[1].path, "a")
+    assertEqual(styled[1].path, "b")
+end)
