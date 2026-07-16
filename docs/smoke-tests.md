@@ -41,6 +41,8 @@ Companion docs:
 | 19 | Debug traces | §8 key functional-flow lines in the debug console | [Debug traces](#19-debug-traces) |
 | 20 | Focus tracking | Enable focus, independent gating, link/copy styling | [Focus tracking](#20-focus-tracking) |
 | 21 | Legacy migration | `FoldLegacyUnits` on a pre-`units` profile | [Legacy migration](#21-legacy-migration) |
+| 22 | Text label | `modules/UnitLabel.lua`, Text Label settings panel | [Text label](#22-text-label) |
+| 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
 
 ---
 
@@ -457,14 +459,54 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - `Database:FoldLegacyUnits` output is idempotent: a second `/reload` doesn't move anything or error (the top-level tables are already gone, so the shape check short-circuits).
 - Focus (`units.focus`) is present with its own fresh defaults (`enabled = false`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
 
+### 22. Text label
+
+Each unit (target/focus) can show one configurable identity label, rendered by `modules/UnitLabel.lua` and configured on its own **Text Label** settings tab (`settings/Label.lua`, panel/section `label`, after Cast bar).
+
+**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Settings → Text Label.
+
+**Steps.**
+- Select **Target** in the Text Label panel's unit dropdown. Turn on **Show label**; confirm a label reading "Target" appears just above the target cast bar (the default `attach = "castbar"`, `point = "BOTTOM"`, `relPoint = "TOP"`).
+- Edit **Label text** to something custom (e.g. "MainTank"); confirm it updates live, no `/reload` needed.
+- Switch **Attach to** from `castbar` to `icons`; confirm the label re-anchors to the icon grid frame instead, still tracking live as the grid moves/resizes (drag the grid; the label follows via the next `Ka0s_KickCD_GRID_LAYOUT`).
+- Walk the anchor/attach point pair (`Label anchor point` / `Attach point`) through a few combinations (e.g. `TOP`/`BOTTOM`, `LEFT`/`RIGHT`) and vary **X offset (in px)** / **Y offset (in px)**; confirm the label's position updates live and matches the chosen points + offsets.
+- Set **Horizontal justify** / **Vertical justify** through their values; confirm text alignment changes visibly (most apparent with multi-word text).
+- Set **Rotation (degrees)** to a nonzero value (e.g. 45, -90); confirm the label visibly rotates and returns to upright at 0.
+- Change **Font** / **Font size** / **Font flags**; confirm the label's rendered font updates live (LSM dropdown, same widget family as Cast bar → Font).
+- Switch to **Focus** in the unit dropdown with `units.focus.link = true` (the default): confirm **Show label** and **Label text** are still visible and independently editable (not grayed out / hidden) even though the appearance rows below them (Placement/Orientation/Font) show the linked "Use same styling as Target" note and mirror Target's style live. Set Focus's label text to something distinct from Target's (e.g. "Kick this"); confirm both units can show different text simultaneously while sharing identical style (font/position/rotation).
+- Uncheck "Use same styling as Target" for Focus's label style and change one style value (e.g. rotation); confirm Target's label is unaffected. Re-check the link; confirm Focus's label style reverts to mirroring Target's live.
+- With both labels shown, toggle `units.focus.enabled` off; confirm the Focus label disappears immediately (independent of Target's, which stays visible) and reappears when Focus is re-enabled.
+- Toggle **Show label** off for Target while Target's icon grid/cast bar remain visible; confirm only the label disappears, not the grid/bar.
+
+**Pass.**
+- Every field change is live — no `/reload` required for any of the above.
+- Target and Focus labels are visually and positionally independent (dragging the grid/cast bar of one never moves the other's label), while sharing identical default style values out of the box.
+- No Lua errors at any step, including rapid attach-mode switching and rapid slider drags on offset/rotation.
+
+### 23. Label style migration
+
+**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy predating this feature) so the active profile's `units.target.label` and `units.focus.label` exist as `{ show, text }` only — **no** `style` sub-table. Leave `db.global.schemaVersion` as-is (this migration is shape-driven, not version-gated, so it runs regardless).
+
+**Steps.**
+- Log in.
+- `/kcd get units.target.label.style.font` (or open Settings → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `core/Database.lua`.
+
+**Pass.**
+- No Lua errors during the migration login or on the Text Label panel.
+- If a label was already shown pre-migration (`label.show = true` in the edited file), it renders identically before and after — **no visual change**, since the backfilled `style` values equal the shipped defaults the label was implicitly using anyway.
+- `label.show` / `label.text` values from the edited file are preserved exactly (the migration only fills in the missing `style` sub-table).
+- A second `/reload` doesn't error or re-write anything (`Database:BackfillLabelStyle` is idempotent — it only acts when `style == nil`).
+
 ---
 
 ## When to run which subset
 
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
-- **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21.
+- **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers).
-- **Pre-release / TOC bump:** the entire suite. The 21 surfaces above are designed to span every system the addon owns; running them in order takes ~25–35 minutes and gives release-grade confidence.
+- **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
+- **Pre-release / TOC bump:** the entire suite. The 23 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).

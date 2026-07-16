@@ -70,13 +70,14 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 
 ### Settings panel
 
-Five tabs under **Ka0s KickCD**:
+Six tabs under **Ka0s KickCD**:
 
 | Tab | Covers |
 | --- | --- |
 | **General** | The master on/off switch, when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too. |
 | **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. |
 | **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt. |
+| **Text Label** | Show a custom identity label on the icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. |
 | **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, or realm. |
 

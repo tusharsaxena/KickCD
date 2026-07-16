@@ -15,6 +15,8 @@ Both widget types render **the same player cooldowns** (the tracked spell list i
 
 Both widgets honor the master enable, **plus their own unit's per-unit `enabled` toggle**, the shared lock (`db.profile.locked`), and the addon-wide visibility mode (`db.profile.visibility`: `always` / `in_combat` / `target_casting` / `target_casting_interruptible`) — **one lock and one visibility mode still cover both units**, evaluated per-unit against that unit's own cast state. The `_interruptible` mode uses a two-step gate (Show on hostile cast, alpha-mask uninterruptible via `SetAlphaFromBoolean`) because the underlying flag can't be compared in Lua under 12.0.
 
+Each unit can also show a single configurable identity label (`units.<unit>.label`), rendered by `modules/UnitLabel.lua` — a per-unit instance manager, mirroring `IconGrid`/`Castbar`'s pattern, that owns one `FontString` per unit in a holder frame parented to `UIParent` (`KickCDUnitLabelTarget` / `KickCDUnitLabelFocus`) and `SetPoint`-anchors it to that unit's chosen widget (`label.style.attach`: cast bar or icon grid). `show`/`text` stay per-unit even while linked; `label.style` (position, font, justify, rotation) follows the Focus link like `icons`/`castbar` do. See [saved-variables.md](saved-variables.md#unitsunitlabelstyle-shape).
+
 An on-screen debug console (`modules/DebugLog.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`.
 
 ## Subsystems at a glance
@@ -34,7 +36,7 @@ Settings widget / slash CLI ─▶ Helpers.Set ─▶ Ka0s_KickCD_CONFIG_CHANGED
 AceDB profile change         ─▶                Ka0s_KickCD_PROFILE_CHANGED ─▶ same
 IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { unit, ... } ─▶ Castbar instances[unit] (re-anchor / auto-size)
 
-  AceDB (all chars share the "Default" profile; user-switchable)  ──  5-tab settings panel + /kcd CLI
+  AceDB (all chars share the "Default" profile; user-switchable)  ──  6-tab settings panel + /kcd CLI
 ```
 
 | Subsystem | Lives in | Read |
@@ -48,7 +50,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 | 12.0 secret values + cast interruptibility two-step gate + frame mixin | `core/Compat.lua`, `core/State.lua`, `modules/IconGrid.lua`, `modules/Castbar.lua` | [midnight-quirks.md](midnight-quirks.md) |
 | Icon grid layout (anchor + grow + dimensions) | `modules/IconGrid.lua` | [icon-grid.md](icon-grid.md) |
 | Cast bar (stacked dual widgets, Reskin/RenderCast split, anti-patterns) | `modules/Castbar.lua` | [castbar.md](castbar.md) |
-| Schema-driven canvas-layout settings panel; widget primitives; validation | `settings/Panel.lua`, `settings/{General,Icons,Castbar,Spells,Profiles}.lua` | [settings-panel.md](settings-panel.md) |
+| Schema-driven canvas-layout settings panel; widget primitives; validation | `settings/Panel.lua`, `settings/{General,Icons,Castbar,Label,Spells,Profiles}.lua` | [settings-panel.md](settings-panel.md) |
 | Slash dispatch tables and command catalogue | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [smoke-tests.md](smoke-tests.md) |
 | Slash-command + debug coverage matrices (what each command produces) | — | [testing.md](testing.md) |
@@ -94,9 +96,9 @@ Five `AceEvent` messages are the only inter-module communication channel — mod
 | Message | Sender(s) | Consumers | Payload |
 |---|---|---|---|
 | `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `:Refresh` | `IconGrid` (every enabled unit instance) | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
-| `Ka0s_KickCD_CONFIG_CHANGED` | Panel `Helpers.Set`, `core/KickCD.lua`, Spells editor, IconGrid / Castbar `OnDragStop`, `Helpers.RenderUnitPanel` (focus link/copy) | `IconGrid`, `Cooldowns`, `Castbar`, Spells panel | `{ section }` — section ∈ `general`\|`icons`\|`castbar`\|`spells`\|`units` |
-| `Ka0s_KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` | `IconGrid`, `Cooldowns`, `Castbar`, Spells panel | `{ newProfileKey }` |
-| `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout`, once per unit instance | `Castbar` (filters on `payload.unit`) | `{ unit, gridFrame, primaryIcon, width, height }` |
+| `Ka0s_KickCD_CONFIG_CHANGED` | Panel `Helpers.Set`, `core/KickCD.lua`, Spells editor, IconGrid / Castbar `OnDragStop`, `Helpers.RenderUnitPanel` (focus link/copy) | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ section }` — section ∈ `general`\|`icons`\|`castbar`\|`label`\|`spells`\|`units` |
+| `Ka0s_KickCD_PROFILE_CHANGED` | `Database:OnProfileChanged` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ newProfileKey }` |
+| `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout`, once per unit instance | `Castbar` (filters on `payload.unit`), `UnitLabel` (re-applies every unit; cheap `ApplyAll`, no per-unit filter) | `{ unit, gridFrame, primaryIcon, width, height }` |
 | `Ka0s_KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame | `IconGrid`, `Castbar` | `{ inCombat }` |
 
 Receivers each register on their **own** AceEvent target: AceAddon modules use their module `self`; the Spells settings panel uses a private target from `NS.NewBusTarget()`. None register on the shared addon object.
@@ -136,6 +138,7 @@ Game-event registration is deliberately partitioned by module (specifics in [mod
 - **`Cooldowns`** — `SPELL_UPDATE_COOLDOWN` / `_USABLE` / `_CHARGES` (coalesced through a `Util.Throttle(0)` so a same-frame burst yields one `Refresh`/frame), `PLAYER_ENTERING_WORLD`, `PLAYER_SPECIALIZATION_CHANGED`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`.
 - **`IconGrid`** — `PLAYER_SPECIALIZATION_CHANGED`, `PLAYER_ENTERING_WORLD`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`, `PLAYER_TARGET_CHANGED`, `PLAYER_FOCUS_CHANGED`, and the cast-event family (`UNIT_SPELLCAST_START` / `_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_START` / `_CHANNEL_STOP` / `_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE`) registered through `Util.RegisterUnitCastEvent` (dispatches only when the event's unit matches the instance's unit), plus the four inbound `Ka0s_KickCD_*` messages. Registration is enable-gated per instance: a disabled unit's instance is not built and does not register anything.
 - **`Castbar`** — the `UNIT_SPELLCAST_*` family registered per instance through `Util.RegisterUnitCastEvent` (unit-filtered dispatch: a focus instance only reacts to focus casts), plus `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` and its inbound messages.
+- **`UnitLabel`** — `PLAYER_ENTERING_WORLD` plus its three inbound `Ka0s_KickCD_*` messages (`CONFIG_CHANGED` / `PROFILE_CHANGED` / `GRID_LAYOUT`). No cast-event or combat registration — the label has no state of its own beyond what those messages already trigger a re-`Apply` for.
 
 ## Taint notes
 
@@ -163,7 +166,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 9. `core/LSMPatch.lua` (one-shot `PLAYER_LOGIN` fixup wrapping the vendored `LSM30_Border` widget — hides its misaligned 42×42 `displayButton` preview tile and re-anchors the dropdown bar; kept in addon code so a lib refresh can't blow it away)
 10. `core/KickCD.lua` (`AceAddon-3.0:NewAddon(NS, "KickCD", ...)` promotes the private `NS` table in place — no `_G.KickCD` rebind)
 11. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
-12. `modules/DebugLog.lua` (on-screen debug console) → `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua` (per-unit instance manager). `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`) to stay under the 1500-LOC cap.
-13. `settings/Panel.lua` → `settings/{General, Icons, Castbar, Spells, Profiles}.lua`
+12. `modules/DebugLog.lua` (on-screen debug console) → `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua` (per-unit instance manager) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame). `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`) to stay under the 1500-LOC cap.
+13. `settings/Panel.lua` → `settings/{General, Icons, Castbar, Label, Spells, Profiles}.lua`
 
 `NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs `Database:FoldLegacyUnits` then the schema-version migration scaffold (`CURRENT_DB_VERSION = 2`), and seeds spells on first profile creation. `<Module>:OnEnable` calls `ReconcileUnits()`, which registers messages and game events **per currently-enabled unit** (target by default; focus only if `units.focus.enabled`). `PLAYER_LOGIN` defers the Settings category registration so per-tab builders can run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

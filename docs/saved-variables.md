@@ -88,8 +88,14 @@ units[unit] = {
     enabled = true|false,    -- per-unit sub-enable; master `enabled` still wins (NS.Units.IsEnabled)
     link    = false|true,    -- target is always false (never linked); focus defaults true
                               -- (mirror target's icons/castbar live — see core/Units.lua)
-    label = { show = false, text = "Target"|"Focus" },  -- identity FontString above the
-                              -- grid + cast bar; per-unit even while linked
+    label = { show = false, text = "Target"|"Focus",    -- identity FontString rendered by
+                              -- modules/UnitLabel.lua; show/text stay per-unit even
+                              -- while linked (NS.Units.Label(unit))
+              style = { attach, point, relPoint, offsetX, offsetY,
+                        justifyH, justifyV, rotation, font, size, flags } },
+                              -- style is link-resolved (NS.Units.LabelStyle(unit) —
+                              -- a linked focus reads target's style); see the
+                              -- "units.<unit>.label.style" section below
     anchors = {
         icons   = { point, relativePoint, x, y },  -- vs UIParent
         castbar = { point, relativePoint, x, y },  -- cast bar in FREE anchor mode
@@ -169,7 +175,29 @@ units[unit] = {
 
 `icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `core/Database.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (focus defaults `false`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (focus is seeded 80px below target so the two grids don't overlap on first enable).
 
-**Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing "Focus" if its label is on. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar` one-time and flips `link = false`, backing the settings panel's "Copy styling from Target" button.
+**Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.show`/`label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing its own "Focus" identity text if its label is on. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar`, and now also `label.style`, one-time and flips `link = false`, backing the settings panel's "Copy styling from Target" button.
+
+### `units.<unit>.label.style` shape
+
+```lua
+units[unit].label.style = {
+    attach   = "castbar"|"icons",    -- which widget frame the label anchors to
+    point    = "BOTTOM",             -- the label's own SetPoint anchor point
+    relPoint = "TOP",                -- the attach frame's point it anchors to
+    offsetX  = 0, offsetY  = 0,      -- pixel offset from that point
+    justifyH = "CENTER", justifyV = "MIDDLE",
+    rotation = 0,                     -- degrees; FontString:SetRotation (radians internally)
+    font     = "Friz Quadrata TT",   -- LSM font name
+    size     = 14,
+    flags    = "OUTLINE",             -- "NONE" | "OUTLINE" | "THICKOUTLINE" | "MONOCHROME"
+}
+```
+
+`label.style` is **single-sourced** from one `LABELSTYLE_DEFAULT` table in `core/Database.lua`, deep-copied into both `units.target.label.style` and `units.focus.label.style` — Target and Focus ship with an IDENTICAL label appearance out of the box (unlike `icons`/`castbar`, which are also structurally identical but seeded from their own `ICONS_DEFAULT`/`CASTBAR_DEFAULT`, this is the same pattern applied to label styling). `label.style` **is** link-resolved (`NS.Units.LabelStyle(unit)`, resolving to `units.target.label.style` for a linked focus) — only `show`/`text` stay per-unit (`NS.Units.Label(unit)`, never link-resolved), so a linked Focus can mirror Target's font/position/rotation while still showing its own "Focus" text if enabled.
+
+**Migration:** `Database:BackfillLabelStyle(db)` fills in `units.<unit>.label.style` on a profile saved before this feature shipped. Like `FoldLegacyUnits`, it is **shape-driven, not version-gated** — for each of `target`/`focus`, if that unit's config exists it sets `u.label = u.label or {}`, and if `u.label.style == nil` it fills `u.label.style = copy(LABELSTYLE_DEFAULT)`; `show`/`text` are left exactly as saved. A fresh install (or an already-migrated profile) already has `style` populated by `DEFAULT_PROFILE`, so the check is a no-op. It runs against the currently-active profile at both `Database:Init` and `Database:OnProfileChanged` (right after `FoldLegacyUnits` in both call sites), so any profile — including one switched to or copied in later — picks up the new sub-shape the moment it becomes active, with no visual change since the backfilled values equal the shipped defaults.
+
+**Deviation recorded as intentional** (per CLAUDE.md's flag-deviations rule): adding a new `label.style` sub-table under an existing `units.<unit>.label` field (previously just `{ show, text }`) is a shape addition under a field that predates it, backfilled by a dedicated shape-driven migrator rather than folded into `FoldLegacyUnits` or gated on `db.global.schemaVersion` — necessary because a bare `schemaVersion` bump can't be trusted to distinguish "pre-label-style" from "current" (the same AceDB `copyDefaults`-masking trap `FoldLegacyUnits` already works around), and the field is narrow enough (one sub-table on one existing field) that a second general-purpose migrator was clearer than overloading `FoldLegacyUnits`'s unrelated top-level-table check.
 
 ## Migration: folding legacy `icons`/`castbar`/`anchors` into `units.target`
 
