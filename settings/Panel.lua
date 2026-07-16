@@ -1355,8 +1355,9 @@ end
 -- screen position. Anchors aren't schema rows, so RestoreAllDefaults skips
 -- them — this is why /kcd resetall (and the "Reset all settings" popup)
 -- historically left the grids where the user dragged them. ResetAll calls
--- this so a full reset restores positions too. Fires "general" so
--- IconGrid/Castbar re-anchor every enabled unit (same signal ResetIconPosition uses).
+-- this so a full reset restores positions too. Fires "general" (for icon grids
+-- and PRIMARY-mode cast bars) then "castbar" (for FREE-mode cast bars) so
+-- every unit's anchor re-applies and every frame snaps to its default position.
 function Helpers.ResetAllPositions()
     if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units) then return end
     NS.db.profile.units = NS.db.profile.units or {}
@@ -1375,6 +1376,7 @@ function Helpers.ResetAllPositions()
         end
     end
     Helpers.FireConfigChanged("general")
+    Helpers.FireConfigChanged("castbar")
 end
 
 -- Reset every schema-driven panel AND every spec's spell list to addon

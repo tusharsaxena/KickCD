@@ -282,7 +282,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Open panels reflect reset values without manual refresh.
 - After `/kcd resetall`, `/kcd get enabled` returns `true` and `/kcd get visibility` returns `target_casting_interruptible` (the schema defaults from `settings/General.lua`).
 - After `/kcd resetall`, the label + cast-bar defaults shipped on this branch hold (schema `default` ↔ `DEFAULT_PROFILE` are single-sourced/in-sync): `/kcd get units.target.label.show` → `true`, `units.target.label.style.offsetY` → `12`, `units.target.label.style.color` → `1 0.82 0 1`, `units.target.label.style.attach` → `icons`; `units.target.castbar.anchorPoint` → `BOTTOM_LEFT`, `castbarPoint` → `TOP_LEFT`, `anchorOffsetY` → `-1`, `timePosition` → `CENTER`, `timeOffsetY` → `-20`; both `units.target.castbar.interruptible.statusBarTexture` and `.uninterruptible.statusBarTexture` → `Blizzard Raid Bar`. `units.focus.label.style.*` reset to the identical values (single-sourced `LABELSTYLE_DEFAULT`).
-- Drag either grid (or its cast bar) away from its default position, then `/kcd resetall`: the grid snaps back to its `DEFAULT_PROFILE` position (Target y=120, Focus y=165) rather than staying where it was dragged.
+- Drag either grid (or its cast bar) away from its default position, then `/kcd resetall`: the grid snaps back to its `DEFAULT_PROFILE` position (Target y=120, Focus y=165) rather than staying where it was dragged. (The cast bar is only independently draggable when `anchorMode = FREE`; in the default `PRIMARY` mode it follows the grid — the caveat in §5 `anchorMode FREE` setup applies here.)
 
 ### 13. Profiles
 

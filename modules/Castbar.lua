@@ -1201,8 +1201,8 @@ function Castbar:OnEnable()
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
 
-    -- Bring every enabled unit online. Focus defaults disabled, so only the
-    -- target instance enables here and behavior matches the former singleton.
+    -- Bring every enabled unit online. Focus is enabled by default; a disabled/absent
+    -- focus instance is a cheap no-op here.
     self:ReconcileUnits()
 end
 
@@ -1226,8 +1226,8 @@ function Castbar:OnTargetChanged()
 end
 
 --- PLAYER_FOCUS_CHANGED handler — the focus-unit equivalent of
---- OnTargetChanged. Focus defaults disabled, so this is a no-op until the
---- focus instance is enabled (Phase 3).
+--- OnTargetChanged. Focus is enabled by default; a disabled/absent focus
+--- instance is a cheap no-op here.
 function Castbar:OnFocusChanged()
     local inst = instances["focus"]
     if inst and inst.enabled then self:Reevaluate(inst) end
