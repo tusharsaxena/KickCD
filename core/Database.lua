@@ -270,8 +270,10 @@ local DEFAULT_PROFILE = {
             label   = { show = true, text = "Focus", style = copy(LABELSTYLE_DEFAULT) },
             anchors = {
                 -- offset from target so the two grids don't overlap on first enable
-                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 165 },
-                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 165 },
+                -- (~140px gap: ~10px clearance between the Focus timer bottom
+                -- and the Target label top, given each unit's ~130px footprint)
+                icons   = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 260 },
+                castbar = { point = "CENTER", relativePoint = "CENTER", x = 0, y = 260 },
             },
             icons   = copy(ICONS_DEFAULT),
             castbar = copy(CASTBAR_DEFAULT),
