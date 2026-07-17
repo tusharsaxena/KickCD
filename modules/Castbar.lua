@@ -217,6 +217,21 @@ local function unpackColor(c, fr, fg, fb, fa)
     return NS.Util.Unpack(c)
 end
 
+-- Auto-size math: convert the icon grid's on-screen long-axis extent into
+-- the cast bar's OWN coordinate space. The grid frame carries the master
+-- scale (IconGrid:ApplyGeneral SetScale); the cast bar frame does not, so a
+-- raw GetWidth()/GetHeight() copy (frame-local, scale-independent) overshoots
+-- at any master scale != 1 — that's why "Auto-size to icon grid" only matched
+-- the grid width at scale 1. Multiplying by the effective-scale ratio makes
+-- the bar's on-screen extent equal the grid's at every scale. Pure/exposed
+-- (Castbar.AutoSizeLong) for unit testing; the mock's frames are no-ops.
+local function autoSizeLong(gridLong, gridEffScale, barEffScale, fallback)
+    if not (gridLong and gridLong > 0) then return fallback end
+    local gs = (gridEffScale and gridEffScale > 0) and gridEffScale or 1
+    local bs = (barEffScale  and barEffScale  > 0) and barEffScale  or 1
+    return math.floor(gridLong * gs / bs)
+end
+
 local function fetchStatusBarTexture(name)
     if LSM and LSM.Fetch then
         local t = LSM:Fetch("statusbar", name or "Blizzard", true)
@@ -658,12 +673,12 @@ function Castbar:Reskin(inst)
     if c.autoSize then
         local gridFrame = resolveGridFrame(inst)
         if gridFrame then
+            local gs = gridFrame:GetEffectiveScale()
+            local bs = frame:GetEffectiveScale()
             if isVertical then
-                local h = gridFrame:GetHeight()
-                if h and h > 0 then barLong = math.floor(h) end
+                barLong = autoSizeLong(gridFrame:GetHeight(), gs, bs, barLong)
             else
-                local w = gridFrame:GetWidth()
-                if w and w > 0 then barLong = math.floor(w) end
+                barLong = autoSizeLong(gridFrame:GetWidth(), gs, bs, barLong)
             end
         end
     end
@@ -1452,6 +1467,7 @@ function Castbar:OnGridLayout(_evt, payload)
 end
 
 -- Expose for /kcd debug + future tooling.
+Castbar.AutoSizeLong = autoSizeLong
 NS.Castbar = Castbar
 
 

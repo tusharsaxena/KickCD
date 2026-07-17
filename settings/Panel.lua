@@ -942,6 +942,35 @@ end
 -- Used by the General tab's afterGroup callback so "Reset position" and
 -- "Reset all settings" sit on a single row aligned with the schema's
 -- two-column grid above them.
+-- Standalone SESSION-ONLY checkbox — deliberately NOT a schema row, so it
+-- writes nothing to db.profile / SavedVariables. For controls that must never
+-- persist across sessions, e.g. the debug console toggle (§12.5). `spec.get`
+-- seeds the initial checked state; `spec.set(bool)` runs on toggle. Rendered at
+-- half width so it lines up with the schema's paired bool rows above it.
+function Helpers.SessionToggle(ctx, spec)
+    local scroll = ensureScroll(ctx)
+
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+
+    local cb = AceGUI:Create("CheckBox")
+    cb:SetLabel(spec.label or "")
+    cb:SetRelativeWidth(0.5)
+    cb:SetValue(spec.get and spec.get() and true or false)
+    cb:SetCallback("OnValueChanged", function(_, _, value)
+        if not spec.set then return end
+        local ok, err = pcall(spec.set, value and true or false)
+        if not ok and NS.Util then
+            NS.Util.print("session toggle '" .. tostring(spec.label) .. "' failed: " .. tostring(err))
+        end
+    end)
+    attachTooltip(cb, spec.label, spec.tooltip)
+    row:AddChild(cb)
+    scroll:AddChild(row)
+    return cb
+end
+
 function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
     local scroll = ensureScroll(ctx)
 

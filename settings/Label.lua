@@ -3,12 +3,12 @@
 -- "Text Label" canvas panel. One identity label per unit (target/focus),
 -- rendered by modules/UnitLabel.lua. Pure schema: every widget is a row in
 -- KickCD.Settings.Schema, generated once per NS.Units.LIST entry with a
--- unit-scoped path (units.<unit>.label.*). show/text stay per-unit in the
--- DB, but no row here sets alwaysPerUnit, so a linked Focus page collapses
--- to just the "Linked to Target" note like Icons/Cast bar — unlink to edit
--- show/text (the label still renders per-unit while linked, just not
--- editable on this page).
--- Uses the shared unit-selector header via Helpers.RenderUnitPanel.
+-- unit-scoped path (units.<unit>.label.*). label.show FOLLOWS the styling link
+-- (spec 2b, resolved via NS.Units.LabelShow) — a linked Focus mirrors Target's
+-- show, so the show row is a normal styled row and correctly collapses into the
+-- "Linked to Target" note when linked. label.text stays per-unit (spec 2a);
+-- while linked its row also collapses (unlink to edit the text — the stored
+-- per-unit text still renders). Uses the shared header via RenderUnitPanel.
 
 local addonName, NS = ...
 local L      = NS.L

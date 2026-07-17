@@ -68,15 +68,28 @@ function Units.SetAnchor(unit, which, a)
     end
 end
 
+--- Per-unit label table (units.<unit>.label). Read `.text` from here — the
+--- label TEXT is per-unit even while linked (spec 2a: a focus label reading
+--- "Target" defeats its purpose). Label VISIBILITY (`.show`) is NOT per-unit;
+--- resolve it through Units.LabelShow, which follows the styling link.
 function Units.Label(unit)
     local c = Units.Config(unit)
     return (c and c.label) or { show = false, text = unit }
 end
 
+--- Link-resolved label VISIBILITY (units.<unit>.label.show). Per spec 2b,
+--- label.show follows the Focus link exactly like Icons/Castbar/label.style —
+--- a linked focus mirrors target's show, so turning the target label off also
+--- hides a linked focus. Only label.text stays per-unit (see Units.Label).
+function Units.LabelShow(unit)
+    local c = Units.Config(sourceUnit(unit))
+    return c ~= nil and c.label ~= nil and c.label.show == true
+end
+
 --- Link-resolved label APPEARANCE (units.<unit>.label.style). Follows the
 --- Focus link exactly like Icons/Castbar: a linked focus reads target's
---- style. label.show/label.text are NOT resolved here — they stay per-unit
---- (see Units.Label).
+--- style. label.text is NOT resolved here — it stays per-unit (see
+--- Units.Label); label.show follows the link via Units.LabelShow.
 function Units.LabelStyle(unit)
     local c = Units.Config(sourceUnit(unit))
     return (c and c.label and c.label.style) or {}
@@ -90,5 +103,9 @@ function Units.CopyStyling(fromUnit, toUnit)
     dst.castbar = NS.Util.DeepCopy(src.castbar)
     dst.label = dst.label or {}
     dst.label.style = NS.Util.DeepCopy(src.label and src.label.style)
+    -- show follows the link (spec 2b), so a one-shot snapshot must capture it
+    -- too — otherwise unlinking would revive focus's stale independent show.
+    -- Text stays per-unit (spec 2a) and is deliberately NOT copied.
+    dst.label.show  = (src.label and src.label.show) and true or false
     dst.link    = false
 end

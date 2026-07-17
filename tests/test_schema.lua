@@ -160,3 +160,17 @@ test("PartitionUnitRows splits alwaysPerUnit rows from styled rows", function()
     assertEqual(perUnit[1].path, "a")
     assertEqual(styled[1].path, "b")
 end)
+
+test("debug console stays session-only: no schema row targets it (§12.5)", function()
+    local NS = T.NS
+    -- The General "Debug console" checkbox is a bespoke SessionToggle, never a
+    -- schema row — a schema row would persist to SavedVariables. Guard that no
+    -- one converts it into one, and that Helpers.SessionToggle exists to back it.
+    for _, def in ipairs(NS.Settings.Schema) do
+        local p = tostring(def.path)
+        assertTrue(p ~= "debug" and p ~= "debugLog" and not p:find("debug", 1, true),
+            "no schema row may target debug state (found path '" .. p .. "')")
+    end
+    assertTrue(type(NS.Settings.Helpers.SessionToggle) == "function",
+        "Helpers.SessionToggle must back the session-only debug checkbox")
+end)

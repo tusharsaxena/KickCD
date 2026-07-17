@@ -8,9 +8,10 @@
 -- cast bar that hides itself between casts). Its POSITION still tracks the
 -- chosen attach frame (cast bar or grid) live via SetPoint, independent of
 -- the visibility parent, with no per-frame bookkeeping.
--- Appearance is link-resolved for a linked Focus via NS.Units.LabelStyle;
--- show/text stay per-unit via NS.Units.Label. Replaces the two labels the
--- dual-tracking work put on the grid and cast bar directly.
+-- Appearance is link-resolved for a linked Focus via NS.Units.LabelStyle, and
+-- visibility (show) via NS.Units.LabelShow; only the text stays per-unit
+-- (NS.Units.Label). Replaces the two labels the dual-tracking work put on the
+-- grid and cast bar directly.
 --
 -- The label text is a plain addon string (NS.Units.Label(unit).text), never
 -- a 12.0 secret value, so SetText/SetFont on it are safe.
@@ -59,10 +60,10 @@ function UnitLabel:EnsureFrame(inst)
     inst.frame, inst.text = f, fs
 end
 
---- Resolve + apply this unit's label: text (per-unit), appearance (link-
---- resolved), and position (anchored to the chosen attach frame). Shown
---- only when the unit is enabled, label.show is on, AND an attach frame
---- exists. The holder frame is reparented to the unit's ICON GRID (not the
+--- Resolve + apply this unit's label: text (per-unit), appearance + show
+--- (both link-resolved), and position (anchored to the chosen attach frame).
+--- Shown only when the unit is enabled, the link-resolved show is on, AND an
+--- attach frame exists. The holder frame is reparented to the unit's ICON GRID (not the
 --- attach frame), so it inherits the grid's own shown state + alpha — i.e.
 --- the label follows the addon's General visibility, while its position
 --- still tracks the chosen attach frame.
@@ -107,8 +108,11 @@ function UnitLabel:Apply(inst)
                    style.offsetX or 0, style.offsetY or 0)
     end
 
+    -- Visibility follows the styling link (spec 2b): a linked focus mirrors
+    -- target's label.show, so hiding the target label hides a linked focus too.
+    -- (Text above stays per-unit.) IsEnabled + an attach frame still gate it.
     inst.enabled = NS.Units.IsEnabled(inst.unit)
-    f:SetShown(inst.enabled and lbl.show == true and anchorFrame ~= nil)
+    f:SetShown(inst.enabled and NS.Units.LabelShow(inst.unit) and anchorFrame ~= nil)
 end
 
 function UnitLabel:ApplyAll()

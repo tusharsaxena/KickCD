@@ -129,6 +129,7 @@ local SUITES = {
     "test_icongrid_layout.lua",
     "test_lifecycle.lua",
     "test_unitlabel.lua",
+    "test_castbar.lua",
     "test_cooldowns.lua",
     "test_settings_log.lua",
     "test_flow_traces.lua",

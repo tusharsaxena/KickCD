@@ -134,6 +134,16 @@ local function Build(mainCategory)
         rendered = true
         H.RenderSchema(ctx, "general", {
             [L["Master controls"]] = function(ctxRef)
+                -- Debug console toggle — SESSION-ONLY (§12.5), so it is a
+                -- bespoke checkbox driving DebugLog:SetEnabled rather than a
+                -- schema row (a schema row would persist to SavedVariables).
+                -- Mirrors the console header button and `/kcd debug toggle`.
+                H.SessionToggle(ctxRef, {
+                    label   = L["Debug console"],
+                    tooltip = L["Show the on-screen debug console for this session. Not saved — resets off on reload."],
+                    get     = function() return NS.State and NS.State.debug end,
+                    set     = function(on) if NS.DebugLog then NS.DebugLog:SetEnabled(on) end end,
+                })
                 H.InlineButtonPair(ctxRef,
                     {
                         text    = L["Reset position"],

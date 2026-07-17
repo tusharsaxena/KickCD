@@ -224,9 +224,21 @@ end)
 
 
 
-test("CopyStyling snapshots target label.style but keeps focus text/show", function()
+test("LabelShow follows the link: a linked focus mirrors target's show (spec 2b)", function()
+    local NS = T.load(true).NS
+    NS.db.profile.units.target.label.show = false
+    NS.db.profile.units.focus.label.show  = true
+    NS.db.profile.units.focus.link = true
+    assertEqual(NS.Units.LabelShow("focus"), false, "linked focus reads target's show (off)")
+    assertEqual(NS.Units.LabelShow("target"), false, "target reads its own show")
+    NS.db.profile.units.focus.link = false
+    assertEqual(NS.Units.LabelShow("focus"), true, "unlinked focus reads its own show")
+end)
+
+test("CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)", function()
     local NS = T.load(true).NS
     NS.db.profile.units.target.label.style.size = 17
+    NS.db.profile.units.target.label.show = false  -- target's show is what a snapshot must capture
     NS.db.profile.units.focus.label.show = true
     NS.db.profile.units.focus.label.text = "MINE"
     NS.db.profile.units.focus.link = true
@@ -234,7 +246,7 @@ test("CopyStyling snapshots target label.style but keeps focus text/show", funct
     assertEqual(NS.db.profile.units.focus.link, false, "copy unlinks")
     assertEqual(NS.db.profile.units.focus.label.style.size, 17, "focus got a copy of target style")
     assertEqual(NS.db.profile.units.focus.label.text, "MINE", "per-unit text preserved")
-    assertEqual(NS.db.profile.units.focus.label.show, true,  "per-unit show preserved")
+    assertEqual(NS.db.profile.units.focus.label.show, false, "show snapshotted from target (follows link)")
     NS.db.profile.units.focus.label.style.size = 99
     assertEqual(NS.db.profile.units.target.label.style.size, 17, "copy is deep, not aliased")
 end)

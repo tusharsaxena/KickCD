@@ -13,7 +13,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_units.lua (11)
+### test_units.lua (12)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -25,9 +25,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Castbar:ReconcileUnits mirrors IconGrid's enable/disable transitions
 - master-enable off then on disables then revives both units without a reload
 - LabelStyle resolves to target's style when focus is linked
-- CopyStyling snapshots target label.style but keeps focus text/show
+- LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
+- CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (11)
+### test_schema.lua (12)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -40,6 +41,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - RenderRows survives a row whose render throws (no blank panel)
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
+- debug console stays session-only: no schema row targets it (§12.5)
 
 ### test_database.lua (15)
 
@@ -111,6 +113,16 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Castbar:GetCastbarFrame does not create an instance for an unknown unit
 - UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)
 
+### test_castbar.lua (7)
+
+- Castbar exposes the pure AutoSizeLong helper
+- AutoSizeLong copies the grid extent verbatim when scales match
+- AutoSizeLong shrinks the bar when the grid is scaled down (master scale < 1)
+- AutoSizeLong grows the bar when the grid is scaled up (master scale > 1)
+- AutoSizeLong honors the bar's own effective scale
+- AutoSizeLong returns the fallback for a zero/nil grid extent
+- AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
+
 ### test_cooldowns.lua (5)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
@@ -150,8 +162,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 8 |
-| test_units.lua | 11 |
-| test_schema.lua | 11 |
+| test_units.lua | 12 |
+| test_schema.lua | 12 |
 | test_database.lua | 15 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
@@ -159,9 +171,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_icongrid_layout.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
+| test_castbar.lua | 7 |
 | test_cooldowns.lua | 5 |
 | test_settings_log.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **98** |
+| **Total** | **107** |
