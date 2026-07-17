@@ -38,7 +38,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; uses `Helpers.FindSchema(path)`. |
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors. On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
-| `reset <general\|icons\|castbar\|spells>` | Reset one panel to defaults. | `general` / `icons` / `castbar` route through `Helpers.RestoreDefaults`; `spells` calls `Database:ResetAllSpells` (wipes every spec, not just the active one). |
+| `reset <general\|icons\|castbar\|label\|spells>` | Reset one panel to defaults. | `general` / `icons` / `castbar` / `label` route through `Helpers.RestoreDefaults`; `spells` calls `Database:ResetAllSpells` (wipes every spec, not just the active one). |
 | `resetall` | Reset every schema-driven panel **and** every spec's spell list. | Calls `Helpers.ResetAll`, the same helper behind General → "Reset all settings" popup. No CLI confirmation. |
 | `resetposition` | Restore the icon grid to its default screen position. | Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |

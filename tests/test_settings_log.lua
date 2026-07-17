@@ -86,3 +86,22 @@ test("ResetAll (via ResetAllPositions) restores both units' icons+castbar anchor
         end
     end
 end)
+
+test("ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)", function()
+    local inst = T.load(true)
+    local NS = inst.NS
+    local Helpers = NS.Settings.Helpers
+
+    -- `link` is not a schema row, so RestoreAllDefaults can't reach it: an
+    -- unlinked Focus would otherwise survive a full reset and silently lose
+    -- the mirror-Target relationship. Simulate the user having unlinked Focus.
+    NS.db.profile.units.focus.link  = false
+    NS.db.profile.units.target.link = true   -- garbage: target is never linked
+
+    Helpers.RestoreUnitLinks()
+
+    assertEqual(NS.db.profile.units.focus.link,
+        NS.DEFAULT_PROFILE.units.focus.link, "focus link restored to default (true)")
+    assertEqual(NS.db.profile.units.target.link,
+        NS.DEFAULT_PROFILE.units.target.link, "target link restored to default (false)")
+end)

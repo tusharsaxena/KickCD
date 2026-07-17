@@ -1379,6 +1379,30 @@ function Helpers.ResetAllPositions()
     Helpers.FireConfigChanged("castbar")
 end
 
+-- Restore every unit's `link` flag to its DEFAULT_PROFILE value (target=false,
+-- focus=true). `link` is NOT a schema row — it's driven by the bespoke checkbox
+-- in RenderUnitPanel — so RestoreAllDefaults can't reach it. Without this, an
+-- unlinked Focus (link=false) survives a full reset: its appearance tables get
+-- reset to defaults so it LOOKS default, but it silently loses the mirror-Target
+-- relationship, diverging from AceDB's Reset Profile (which restores the whole
+-- DEFAULT_PROFILE, link included). Fires "units" so IconGrid/Castbar reconcile.
+function Helpers.RestoreUnitLinks()
+    if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE
+            and NS.DEFAULT_PROFILE.units and NS.Units) then
+        return
+    end
+    local p = NS.db.profile
+    p.units = p.units or {}
+    for _, unit in ipairs(NS.Units.LIST) do
+        local du = NS.DEFAULT_PROFILE.units[unit]
+        if du then
+            p.units[unit] = p.units[unit] or {}
+            p.units[unit].link = du.link and true or false
+        end
+    end
+    Helpers.FireConfigChanged("units")
+end
+
 -- Reset every schema-driven panel AND every spec's spell list to addon
 -- defaults. The active profile is the only one affected. Used by the
 -- General tab's "Reset all settings" popup and the `/kcd resetall`
@@ -1387,6 +1411,7 @@ end
 function Helpers.ResetAll()
     Helpers.RestoreAllDefaults()
     Helpers.ResetAllPositions()
+    Helpers.RestoreUnitLinks()
     if NS.Database and NS.Database.ResetAllSpells then
         NS.Database:ResetAllSpells()
     end

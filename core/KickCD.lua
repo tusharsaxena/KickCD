@@ -507,18 +507,18 @@ end
 -- the General > "Reset position" button.
 
 local RESET_PANELS = {
-    general = true, icons = true, castbar = true, spells = true,
+    general = true, icons = true, castbar = true, label = true, spells = true,
 }
 
 function runReset(self, rest)
     local panelName = (rest or ""):match("^(%S+)")
     panelName = panelName and panelName:lower() or ""
     if panelName == "" then
-        return p(self, "Usage: /kcd reset <general|icons|castbar|spells>")
+        return p(self, "Usage: /kcd reset <general|icons|castbar|label|spells>")
     end
     if not RESET_PANELS[panelName] then
         return p(self, "Unknown panel '" .. panelName .. "'. "
-                 .. "Valid: general, icons, castbar, spells")
+                 .. "Valid: general, icons, castbar, label, spells")
     end
     if panelName == "spells" then
         if self.Database and self.Database.ResetAllSpells then
