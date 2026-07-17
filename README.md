@@ -8,12 +8,12 @@
 
 ![alt text](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
-KickCD helps you decide when to interrupt. It shows two things on screen:
+KickCD helps you decide when to interrupt. It tracks two enemy units — your **target** and your **focus** — and puts two things on screen for each one:
 
 *   An **icon grid** of your interrupts and cast-stopping crowd control, each with a cooldown timer and a clear ready / not-ready look. It comes set up for your class and spec out of the box.
-*   A **target cast bar** that shows what your current target is casting — the spell's icon, its name, and how much time is left — and colors itself by whether that cast can be interrupted.
+*   A **cast bar** that shows what that unit is casting — the spell's icon, its name, and how much time is left — and colors itself by whether the cast can be interrupted.
 
-You can move both, resize them, and lock them in place. They appear and disappear together based on a single visibility setting you choose.
+Focus tracking is on out of the box and mirrors your target's look, so you get a matching second set. You can move each grid and cast bar, resize them, and lock everything with a single lock; it all appears and disappears together based on one visibility setting you choose. Don't want the focus set? Turn it off. Want it to look different from your target's? Unlink it and style it on its own.
 
 Set everything up in the Blizzard settings panel (under **Ka0s KickCD**) or with the `/kcd` chat command.
 
@@ -54,13 +54,13 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 | `/kcd` | Show the list of commands. |
 | `/kcd version` | Show which version you're running. |
 | `/kcd config` | Open the settings panel. Won't open during combat. Also `/kcd options`. |
-| `/kcd lock` / `unlock` / `toggle` | Lock, unlock, or flip the lock on the icon grid and cast bar so you can drag them. |
+| `/kcd lock` / `unlock` / `toggle` | Lock, unlock, or flip the one lock that covers every grid and cast bar so you can drag them. |
 | `/kcd list` | List every setting and its current value. |
-| `/kcd get <setting>` | Show one setting's value (for example `/kcd get icons.primarySize`). |
-| `/kcd set <setting> <value>` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
+| `/kcd get <setting>` | Show one setting's value (for example `/kcd get units.target.icons.primarySize`). |
+| `/kcd set <setting> <value>` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
 | `/kcd reset <general\|icons\|castbar\|spells>` | Reset one settings tab to its defaults. |
-| `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults. |
-| `/kcd resetposition` | Put the icon grid back in its default spot on screen. |
+| `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults — and put every grid and cast bar back in its starting position. |
+| `/kcd resetposition` | Put the target icon grid back in its default spot on screen. |
 | `/kcd spells <subcommand>` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`. Defaults to your current spec. |
 | `/kcd debug spells` | List the cooldowns the addon is watching. |
 | `/kcd debug castbar` | Show your target's current cast and the colors in use. |
@@ -74,40 +74,51 @@ Six tabs under **Ka0s KickCD**:
 
 | Tab | Covers |
 | --- | --- |
-| **General** | The master on/off switch, when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too. |
-| **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. |
-| **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt. |
-| **Text Label** | Show a custom identity label on the icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. |
+| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too. |
+| **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
+| **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt — per unit, via the same Target / Focus switch. |
+| **Text Label** | Show a custom identity label on a unit's icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. Each unit has its own label. |
 | **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, or realm. |
 
-Use `/kcd unlock` to drag the icon grid (and the cast bar, if it's set to move freely) into position, then `/kcd lock` to fix them.
+On the Icons, Cast bar, and Text Label tabs, switch between **Target** and **Focus** at the top. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. Untick "Link to target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and label.
+
+Use `/kcd unlock` to drag each grid (and its cast bar, if it's set to move freely) into position, then `/kcd lock` to fix them.
 
 ## How interrupt tracking works
 
 Here's what decides when the UI shows, hides, and lights up.
 
 1.  **The master switch comes first.** If the addon is turned off, nothing shows.
-2.  **A single visibility setting decides when the UI appears** — always, only in combat, only while your target is casting, or only while your target is casting something you can interrupt. The icon grid and the cast bar both follow this one setting, so they show, hide, move, and lock together.
-3.  **The icon grid tracks your cooldowns.** For your current class and spec, it watches your interrupts and cast-stopping crowd control, runs each icon's cooldown timer, and shows whether the ability is ready.
-4.  **The cast bar tracks your target.** It shows the spell your target is casting or channeling and colors itself by whether you can interrupt it, so a glance tells you if the cast is worth a kick.
+2.  **A single visibility setting decides when the UI appears** — always, only in combat, only while a tracked unit is casting, or only while a tracked unit is casting something you can interrupt. Every grid and cast bar follows this one setting, so they show, hide, move, and lock together — but each unit is judged against its *own* cast, so your focus set can light up for the focus's cast while the target set stays hidden.
+3.  **The icon grids track your cooldowns.** For your current class and spec, they watch your interrupts and cast-stopping crowd control, run each icon's cooldown timer, and show whether the ability is ready. Both units show the same cooldowns — they're yours, not the enemy's.
+4.  **The cast bars track their units.** Each shows the spell its unit (target or focus) is casting or channeling and colors itself by whether you can interrupt it, so a glance tells you if the cast is worth a kick.
 
-In the "interruptible only" mode the UI stays hidden while your target casts something you can't interrupt, and appears the moment they cast something you can.
+In the "interruptible only" mode a unit's set stays hidden while that unit casts something you can't interrupt, and appears the moment it casts something you can.
 
 ### Key settings
 
 A few settings shape the addon's behavior more than the rest.
 
+#### Target and focus
+
+KickCD tracks two enemy units, and each gets its own icon grid, cast bar, and identity label:
+
+*   **Target** — always tracked while the addon is on.
+*   **Focus** — tracked by default, and **linked** to target so it copies target's icon and cast-bar styling. Turn it off in General → Units, or unlink it to style it on its own.
+
+Position and the identity label are always per-unit, linked or not — the two sets start well apart so they don't overlap, and each can say "Target" / "Focus". The drag lock, the visibility mode, and overall size/transparency stay shared across both.
+
 #### Visibility (General → Master controls → General visibility)
 
-One setting controls when both the icon grid and the cast bar appear. The master switch always wins: if the addon is off, nothing shows.
+One setting controls when the grids and cast bars appear. The master switch always wins: if the addon is off, nothing shows. Each tracked unit is judged separately against its own cast, so the focus set can be visible while the target set isn't.
 
-| Value | When the UI shows |
+| Value | When a unit's set shows |
 | --- | --- |
 | `always` | Always. |
 | `in_combat` | Only while you're in combat. |
-| `target_casting` | Only while your target is casting or channeling. |
-| `target_casting_interruptible` | Only while a hostile target is casting something you can interrupt. Casts you can't interrupt stay hidden. (Default.) |
+| `target_casting` | Only while that unit is casting or channeling. |
+| `target_casting_interruptible` | Only while that unit is hostile and casting something you can interrupt. Casts you can't interrupt stay hidden. (Default.) |
 
 The ready glow has its own copy of this setting (Icons → Ready glow), with the same choices plus a `never` option to turn the glow off. Your primary and secondary icons can use different triggers.
 
@@ -118,7 +129,7 @@ Two modes:
 *   **Free (drag to move)** — the cast bar floats on its own. Unlock it, drag it where you want, and lock it again. Its position is saved.
 *   **Anchored to the primary icon** — the cast bar sticks to the main icon in the grid and moves with it. Pick which points connect and a small offset. In this mode you don't drag the bar itself.
 
-By default the bar sits just above the primary icon, lined up with its left edge.
+By default the bar sits just below the icon grid, lined up with its left edge.
 
 #### Cast bar direction and auto-size (Cast bar → Orientation)
 
@@ -136,8 +147,10 @@ If you enable more spells than the grid can hold, the extras are left off and th
 
 | Question | Answer |
 | --- | --- |
-| Does this replace Blizzard's cast bars? | No. It adds its own cast bar and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target cast bar in Edit Mode. |
-| How do I move the icon grid or cast bar? | `/kcd unlock`, drag, then `/kcd lock`. The icon grid always drags when unlocked. The cast bar drags only when it's set to move freely — when it's anchored, it follows the main icon. `/kcd resetposition` puts the grid back in its default spot. |
+| Does this replace Blizzard's cast bars? | No. It adds its own cast bars and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target/focus cast bars in Edit Mode. |
+| Does it track my focus too? | Yes — target and focus are both tracked out of the box, each with its own grid and cast bar. The focus set copies target's look by default. Turn focus off in General → Units if you only want your target. |
+| How do I make focus look different from target? | On the Icons, Cast bar, or Text Label tab, switch to **Focus** and untick "Link to target" (or press "Copy styling from Target" first, then edit). Position and the label are always independent. |
+| How do I move the grids or cast bars? | `/kcd unlock`, drag, then `/kcd lock` — one lock covers every unit. Each icon grid always drags when unlocked. A cast bar drags only when it's set to move freely; when it's anchored, it follows its grid. `/kcd resetposition` puts the target grid back in its default spot, and `/kcd resetall` resets every unit's positions. |
 | Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd reset spells` (all specs) or `/kcd spells reset` (one spec). |
 | Can I add my own spells? | Yes — in Settings → Spells, or with `/kcd spells add`. For the spec you're currently playing, only spells the game already tracks as cooldowns can be added. |
 | Does it track items or trinkets? | Not yet — spells only. |
@@ -151,6 +164,8 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | --- | --- |
 | The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility` — some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd debug spells` lists what it's watching. |
 | The icon grid won't drag. | It's locked. `/kcd unlock`, drag, `/kcd lock`. If unlocking doesn't seem to take, run `/kcd toggle`. |
+| The focus set sits on top of my target set. | They start apart, but if you've moved things they can overlap. `/kcd unlock`, drag one out of the way, `/kcd lock`. `/kcd resetall` puts every unit back to its starting position. |
+| I only want my target, not focus. | Turn focus off in General → Units (or `/kcd set units.focus.enabled false`). Everything focus-related disappears. |
 | The cast bar still shows on casts I can't interrupt, even in "interruptible only" mode. | If the bar fades out on those casts, that's it working as intended — the frame is still there, just invisible. For anything else, run `/kcd debug interrupt` while the target is casting and include the output in a bug report. |
 | Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | This shouldn't happen anymore. If it does, capture `/kcd debug spells` during the stuck moment and report it, and make sure cooldown text is on (Icons → Annotations). |
 | The glow on secondary icons flickers or restarts constantly. | This shouldn't happen anymore. If it does, make sure the glow trigger is set to one of the "target casting" options, and send a short video with your settings. |

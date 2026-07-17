@@ -1,6 +1,6 @@
 # CLAUDE.md — Ka0s KickCD
 
-**Ka0s WoW addon.** Tracks the player's interrupt + CC cooldowns on a movable icon grid, with a sibling target cast bar sharing one drag-lock and visibility mode. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
+**Ka0s WoW addon.** Tracks the player's interrupt + CC cooldowns on a movable icon grid, with a sibling cast bar — for both the player's target and focus — sharing one drag-lock and visibility mode. Focus is on by default and links to target's appearance. Target client: WoW 12.0.7 (Midnight). English only. Ace3 throughout.
 
 This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tusharsaxena/WowAddonStandards>. The TOC declares this via `## X-Standard:`, and the README carries the standard badge.
 
