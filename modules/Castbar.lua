@@ -533,7 +533,7 @@ local function stateConfig(c, key, fallback)
 end
 
 local INT_FALLBACK = {
-    statusBarTexture = "Blizzard",
+    statusBarTexture = "Blizzard Raid Bar",
     barColor         = { 1,    0.85, 0.05, 1   },
     bgColor          = { 0,    0,    0,    0.5 },
     nameTextColor    = { 1,    1,    1,    1   },
@@ -543,7 +543,7 @@ local INT_FALLBACK = {
     borderSize       = 1,
 }
 local UNINT_FALLBACK = {
-    statusBarTexture = "Blizzard",
+    statusBarTexture = "Blizzard Raid Bar",
     barColor         = { 0.85, 0.10, 0.10, 1   },
     bgColor          = { 0,    0,    0,    0.5 },
     nameTextColor    = { 1,    1,    1,    1   },

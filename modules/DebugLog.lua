@@ -24,6 +24,15 @@ local FONT      = NS.Const and NS.Const.FONT_MONO
 local FONT_SIZE = 10
 local MAX_LINES = 500
 
+-- ACCEPTED DEVIATION (standard "Blizzard-default media" SHOULD rule): the
+-- console body/copy boxes use a bundled non-Blizzard monospace font
+-- (JetBrainsMono-Regular.ttf) rather than a Blizzard-shipped face. This is an
+-- intentional design choice — the debug console is a session-only developer
+-- tool (never in SavedVariables, not a user-facing styled surface), and a
+-- fixed-width font is required so the aligned log/copy columns don't drift.
+-- It is deliberately NOT wired to a user LSM setting. Every user-facing font/
+-- texture/border in the addon does default to Blizzard media and is LSM-backed.
+--
 -- Ship the monospace font to LibSharedMedia at load (§12.2). Registration is a
 -- no-op if LSM is missing; the console falls back to FONT directly either way.
 do
