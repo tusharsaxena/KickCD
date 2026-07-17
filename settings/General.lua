@@ -51,6 +51,10 @@ add{
     label    = L["Lock frame"],
     tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
     default  = false,
+    -- Rendered manually by the Master-controls afterGroup so it can pair on
+    -- one row with the bespoke session-only Debug console toggle (InlinePair).
+    -- Still a normal schema row for /kcd get|set and Defaults.
+    skipRender = true,
 }
 
 -- Debug logging is a SESSION-ONLY flag (KickCD.State.debug), never persisted
@@ -134,16 +138,26 @@ local function Build(mainCategory)
         rendered = true
         H.RenderSchema(ctx, "general", {
             [L["Master controls"]] = function(ctxRef)
-                -- Debug console toggle — SESSION-ONLY (§12.5), so it is a
-                -- bespoke checkbox driving DebugLog:SetEnabled rather than a
-                -- schema row (a schema row would persist to SavedVariables).
-                -- Mirrors the console header button and `/kcd debug toggle`.
-                H.SessionToggle(ctxRef, {
-                    label   = L["Debug console"],
-                    tooltip = L["Show the on-screen debug console for this session. Not saved — resets off on reload."],
-                    get     = function() return NS.State and NS.State.debug end,
-                    set     = function(on) if NS.DebugLog then NS.DebugLog:SetEnabled(on) end end,
-                })
+                -- Lock frame (schema bool, skipRender) pairs on one row with a
+                -- bespoke, SESSION-ONLY Debug console toggle. The Debug checkbox
+                -- shows/hides the console WINDOW (DebugLog:Show/Hide) — it does
+                -- NOT touch the debug capture flag (§12.5); that stays on the
+                -- in-window "Debug: ON/OFF" button and `/kcd debug on|off`. It's
+                -- bespoke (not a schema row) so it never persists to SV and
+                -- never appears in /kcd get|set|list.
+                H.InlinePair(ctxRef,
+                    function(c, row) H.RenderField(c, H.FindSchema("locked"), row, 0.5) end,
+                    function(c, row)
+                        H.SessionToggle(c, {
+                            label   = L["Debug console"],
+                            tooltip = L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."],
+                            get     = function() return NS.DebugLog and NS.DebugLog:IsShown() end,
+                            set     = function(on)
+                                if not NS.DebugLog then return end
+                                if on then NS.DebugLog:Show() else NS.DebugLog:Hide() end
+                            end,
+                        }, row, 0.5)
+                    end)
                 H.InlineButtonPair(ctxRef,
                     {
                         text    = L["Reset position"],

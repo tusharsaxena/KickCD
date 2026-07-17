@@ -307,6 +307,13 @@ function DebugLog:Toggle()
     if window and window:IsShown() then self:Hide() else self:Show() end
 end
 
+--- Is the console WINDOW currently on screen? Distinct from IsEnabled (the
+--- capture flag): the window can be shown while capture is off, and vice
+--- versa. Backs the General panel's "Debug console" checkbox.
+function DebugLog:IsShown()
+    return window ~= nil and window:IsShown() and true or false
+end
+
 --- Append a line. The RAW append seam — NOT gated on the debug flag, so
 --- SetEnabled can bracket a disabled session (the gate lives in NS.Debug, the
 --- sink, which is the only other caller and is already flag-checked).

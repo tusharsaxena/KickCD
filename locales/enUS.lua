@@ -50,8 +50,8 @@ L["Lock frame"]                  = "Lock frame"
 L["When unlocked, you can drag the icon grid to reposition it."] =
     "When unlocked, you can drag the icon grid to reposition it."
 L["Debug console"]               = "Debug console"
-L["Show the on-screen debug console for this session. Not saved — resets off on reload."] =
-    "Show the on-screen debug console for this session. Not saved — resets off on reload."
+L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."] =
+    "Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."
 L["Master scale"]                = "Master scale"
 L["Scale multiplier applied to the entire icon grid."] =
     "Scale multiplier applied to the entire icon grid."

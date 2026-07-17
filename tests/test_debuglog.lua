@@ -101,3 +101,16 @@ test("NS.Debug passes plain args through unchanged", function()
         "plain args must be unchanged; got: " .. tostring(line))
     NS.State.debug = false   -- leave the shared instance clean for later suites
 end)
+
+test("console WINDOW visibility is decoupled from the capture flag (§12.5)", function()
+    -- The General "Debug console" checkbox drives IsShown/Show/Hide (window),
+    -- NOT SetEnabled (capture). Enabling capture must not open the window.
+    local ns = T.load(true).NS
+    local dl = ns.DebugLog
+    assertTrue(type(dl.IsShown) == "function", "DebugLog:IsShown must exist")
+    assertEqual(dl:IsShown(), false, "window starts hidden")
+    dl:SetEnabled(true)
+    assertEqual(dl:IsShown(), false, "enabling capture must not show the window")
+    assertEqual(ns.State.debug, true, "capture flag is independently on")
+    dl:SetEnabled(false)
+end)

@@ -634,6 +634,10 @@ end
 
 local SECTION_TOP_SPACER    = 10
 local SECTION_BOTTOM_SPACER = 6
+-- Pixel gap inserted between each two-column row of schema widgets so adjacent
+-- rows have visual breathing room. AceGUI's "List" layout packs children flush
+-- by default; this spacer is what gives the rendered panel its airy look.
+local ROW_VSPACER = 8
 local SECTION_HEADING_H     = 26
 
 local function addSpacer(scroll, height)
@@ -947,17 +951,22 @@ end
 -- persist across sessions, e.g. the debug console toggle (§12.5). `spec.get`
 -- seeds the initial checked state; `spec.set(bool)` runs on toggle. Rendered at
 -- half width so it lines up with the schema's paired bool rows above it.
-function Helpers.SessionToggle(ctx, spec)
-    local scroll = ensureScroll(ctx)
-
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
+function Helpers.SessionToggle(ctx, spec, parent, relativeWidth)
+    -- `parent` given (e.g. an InlinePair row) → render inline in that row;
+    -- otherwise render in a half-width slot of a fresh full-width row.
+    local ownRow = not parent
+    local target = parent
+    if ownRow then
+        target = AceGUI:Create("SimpleGroup")
+        target:SetLayout("Flow")
+        target:SetFullWidth(true)
+    end
 
     local cb = AceGUI:Create("CheckBox")
     cb:SetLabel(spec.label or "")
-    cb:SetRelativeWidth(0.5)
-    cb:SetValue(spec.get and spec.get() and true or false)
+    applyWidth(cb, relativeWidth or 0.5)
+    local function readVal() return spec.get and spec.get() and true or false end
+    cb:SetValue(readVal())
     cb:SetCallback("OnValueChanged", function(_, _, value)
         if not spec.set then return end
         local ok, err = pcall(spec.set, value and true or false)
@@ -966,9 +975,29 @@ function Helpers.SessionToggle(ctx, spec)
         end
     end)
     attachTooltip(cb, spec.label, spec.tooltip)
-    row:AddChild(cb)
-    scroll:AddChild(row)
+    target:AddChild(cb)
+    if ownRow then ensureScroll(ctx):AddChild(target) end
+    -- Re-read on panel refresh (e.g. Defaults) so the checkbox tracks state
+    -- changed via other paths (the window's own close button, `/kcd debug`).
+    ctx.refreshers[#ctx.refreshers + 1] = function() cb:SetValue(readVal()) end
     return cb
+end
+
+-- Render two half-width widgets side by side in one Flow row. Each render fn
+-- receives (ctx, row) and must add exactly one 0.5-width widget to `row`.
+-- Generalises the schema's auto-pairing for rows where one half is a bespoke
+-- (non-schema) widget — e.g. Lock frame (a schema bool) beside the
+-- session-only Debug console toggle.
+function Helpers.InlinePair(ctx, leftRender, rightRender)
+    local scroll = ensureScroll(ctx)
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+    if leftRender  then leftRender(ctx, row)  end
+    if rightRender then rightRender(ctx, row) end
+    scroll:AddChild(row)
+    addSpacer(scroll, ROW_VSPACER)
+    return row
 end
 
 function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
@@ -1036,12 +1065,6 @@ end
 -- Schema-driven render
 -- ---------------------------------------------------------------------
 
--- Pixel gap inserted between each two-column row of schema widgets so
--- adjacent rows have visual breathing room. AceGUI's "List" layout packs
--- children flush by default; this spacer is what gives the rendered
--- panel its airy look.
-local ROW_VSPACER = 8
-
 -- afterGroup is an optional { [groupName] = function(ctx) ... end } map.
 -- The callback runs once, immediately after the last schema row of that
 -- group is rendered (and before the next group's section header). Used
@@ -1099,18 +1122,24 @@ function Helpers.RenderRows(ctx, rows, afterGroup)
         -- first so the solo widget starts fresh, then flush again
         -- immediately after rendering so the next widget begins on a
         -- new row.
-        if def.solo and pendingCount > 0 then
-            flushRow()
-        end
+        -- def.skipRender = true means "this row stays in the schema (so /kcd
+        -- get|set and Defaults still see it) but is NOT auto-rendered here" —
+        -- the panel renders it manually elsewhere, e.g. Lock frame, which an
+        -- afterGroup pairs with the bespoke Debug console toggle via InlinePair.
+        if not def.skipRender then
+            if def.solo and pendingCount > 0 then
+                flushRow()
+            end
 
-        if not pendingRow then pendingRow = startRow() end
-        local ok, err = pcall(Helpers.RenderField, ctx, def, pendingRow, 0.5)
-        if not ok then
-            _printSchemaError("row (" .. tostring(def.path) .. ")",
-                "render failed, widget skipped: " .. tostring(err))
+            if not pendingRow then pendingRow = startRow() end
+            local ok, err = pcall(Helpers.RenderField, ctx, def, pendingRow, 0.5)
+            if not ok then
+                _printSchemaError("row (" .. tostring(def.path) .. ")",
+                    "render failed, widget skipped: " .. tostring(err))
+            end
+            pendingCount = pendingCount + 1
+            if def.solo or pendingCount >= 2 then flushRow() end
         end
-        pendingCount = pendingCount + 1
-        if def.solo or pendingCount >= 2 then flushRow() end
 
         local nextDef = rows[i + 1]
         if afterGroup and def.group
