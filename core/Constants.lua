@@ -21,6 +21,12 @@ NS.Const = Const
 -- NS.PREFIX after the private-namespace migration.
 NS.PREFIX = "|cff00ffff[KCD]|r"
 
+-- Grey colour opener for de-emphasised "notice" chat lines — an action the
+-- user should see but not be alarmed by (e.g. a refused settings-open in
+-- combat). Wrap the message BODY only (`GREY .. text .. "|r"`); the cyan
+-- [KCD] tag stays full-colour. Canonical Ka0s notice styling (options-ui-§2).
+NS.GREY = "|cff9d9d9d"
+
 -- ---------------------------------------------------------------------------
 -- IconGrid: cooldown curve threshold
 -- ---------------------------------------------------------------------------

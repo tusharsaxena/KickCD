@@ -162,7 +162,7 @@ L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
 L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"
 L["Invalid value for %s"]        = "Invalid value for %s"
 L["Allowed values: %s"]          = "Allowed values: %s"
-L["Cannot open settings during combat."] = "Cannot open settings during combat."
+L["Cannot open settings during combat."] = "cannot open settings during combat — Blizzard's category-switch is protected"
 
 -- Spells editor
 L["Specialization"]              = "Specialization"

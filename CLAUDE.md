@@ -4,7 +4,7 @@
 
 This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tusharsaxena/WowAddonStandards>. The TOC declares this via `## X-Standard:`, and the README carries the standard badge.
 
-## The standard is the source of truth
+## Standards compliance (read first)
 
 All development in this repo is measured against the Ka0s WoW Addon Standard (URL above) — structure, naming, conventions, packaging, testing. When doing any work here:
 
@@ -13,6 +13,8 @@ All development in this repo is measured against the Ka0s WoW Addon Standard (UR
   2. a signal that the **standard definition itself should change** to accommodate it.
 - The user owns that decision — never resolve a standard conflict unilaterally.
 - The current compliance baseline is the frozen audit bundle in `docs/audits/<date>/`. Re-run `/wow-addon:standards-audit` when in doubt; it fetches the living standard and writes a fresh dated bundle.
+
+When in doubt, treat conformance as a hard requirement and ask.
 
 ## Full agent context lives in `docs/`
 

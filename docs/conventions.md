@@ -21,10 +21,10 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 
 ## Settings layer
 
-- Settings reads / writes that come from outside `settings/Panel.lua` (slash commands, keybinds, …) should route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write-notify-refresh code path. Direct `db.profile` writes are reserved for places where no schema row exists (drag-stop anchor save, profile bootstrap).
+- Settings reads / writes that come from outside the settings panel files (`settings/Panel*.lua`) — slash commands, keybinds, … — should route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write-notify-refresh code path. Direct `db.profile` writes are reserved for places where no schema row exists (drag-stop anchor save, profile bootstrap).
 - New schema rows automatically gain `/kcd get|set|list` coverage, the per-panel Defaults reset, and the General → "Reset all settings" reset. Don't add a parallel mutator for a field that already has a schema row.
 - Slash and panel paths share a single helper (`Helpers.SetAndRefresh`) for any setting that exists as a schema row, so a future `onChange` doesn't silently diverge between the two surfaces.
-- `Helpers.SetAndRefresh` is defined in `settings/Panel.lua`, which loads after `core/KickCD.lua`. Slash commands that fire before `settings/` has loaded (between `OnInitialize` and `PLAYER_LOGIN`) hit a fallback path that writes directly to `db.profile` and emits `Ka0s_KickCD_CONFIG_CHANGED`. The fallback is intentional; don't reorder the TOC to "fix" it without also revisiting that path.
+- `Helpers.SetAndRefresh` is defined in `settings/Panel_Render.lua` (peeled from `Panel.lua`), which loads after `core/KickCD.lua`. Slash commands that fire before `settings/` has loaded (between `OnInitialize` and `PLAYER_LOGIN`) hit a fallback path that writes directly to `db.profile` and emits `Ka0s_KickCD_CONFIG_CHANGED`. The fallback is intentional; don't reorder the TOC to "fix" it without also revisiting that path.
 
 ## Chat output
 

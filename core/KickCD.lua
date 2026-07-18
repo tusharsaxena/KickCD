@@ -224,7 +224,7 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    p(self, "v" .. addonVersion() .. " — slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r):")
+    p(self, "v" .. addonVersion() .. " slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r)")
     for _, entry in ipairs(COMMANDS) do
         p(self, ("  |cffffff00/kcd %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
     end
@@ -240,7 +240,7 @@ function runDebug(self, rest)
         -- Bare `/kcd debug` toggles the console window (§12.5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.
         if self.DebugLog then self.DebugLog:Toggle() end
-        p(self, "debug subcommands:")
+        p(self, "debug subcommands")
         for _, entry in ipairs(DEBUG_COMMANDS) do
             p(self, ("  |cffffff00/kcd debug %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
         end
@@ -857,7 +857,7 @@ local SPELLS_COMMANDS = {
 function runSpells(self, rest)
     local sub, rem = lowerFirst(rest)
     if sub == "" then
-        p(self, "spells subcommands:")
+        p(self, "spells subcommands")
         for _, entry in ipairs(SPELLS_COMMANDS) do
             p(self, ("  |cffffff00/kcd spells %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
         end
@@ -919,8 +919,11 @@ function NS:OpenSettings(input)
         or (_G.InCombatLockdown and _G.InCombatLockdown())
     if inCombat then
         self._openRetries = nil
-        p(self, (self.L and self.L["Cannot open settings during combat."])
-            or "Cannot open settings during combat.")
+        -- Grey "notice" styling: the body is de-emphasised (this is expected,
+        -- not an error) while Util.print keeps the [KCD] tag full-colour.
+        local msg = (self.L and self.L["Cannot open settings during combat."])
+            or "cannot open settings during combat — Blizzard's category-switch is protected"
+        p(self, (NS.GREY or "") .. msg .. "|r")
         return
     end
     if Settings and Settings.OpenToCategory then

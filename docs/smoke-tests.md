@@ -255,7 +255,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Run `/kcd list`. Spot-check that every General / Icons / Castbar row from the panel is present with its current value.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
 - For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
-- Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel.lua`).
+- Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
 
 **Pass.**
 - Every panel write fires `Ka0s_KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.

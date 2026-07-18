@@ -55,6 +55,8 @@ modules\UnitLabel.lua
 
 # Settings (last — depend on everything else being initialized)
 settings\Panel.lua
+settings\Panel_Widgets.lua
+settings\Panel_Render.lua
 settings\General.lua
 settings\Icons.lua
 settings\Castbar.lua

@@ -1,4 +1,4 @@
-# CLAUDE.md — working notes for future sessions
+# agent-context — Ka0s KickCD
 
 Guidance for Claude Code (and other LLM-assisted editors) working on **Ka0s KickCD**. Read this first before touching code.
 
@@ -14,6 +14,7 @@ User-facing reference: [README.md](../README.md). Design overview + invariants: 
 
 ## Hard rules
 
+- **Conform to the Ka0s WoW Addon Standard.** All work here is measured against the standard (<https://github.com/tusharsaxena/WowAddonStandards>); see the root [CLAUDE.md](../CLAUDE.md) "Standards compliance (read first)" section. Flag every deviation explicitly and let the user classify it (accepted deviation vs. change the standard) — never resolve a conflict unilaterally, and never silently conform or diverge. When in doubt, treat conformance as a hard requirement and ask.
 - **Never auto-stage, auto-commit, or auto-push.** The user controls when changes get staged, committed, and pushed. After editing files, leave the changes in the working tree — don't run `git add` / `git stage` / `git restore --staged` / `git checkout -- <file>` to manipulate the index or discard working-tree edits. Only run `git add` / `git commit` / `git push` when the user explicitly asks ("stage this", "commit this", "commit all changes", "push", etc.). This holds even when working in auto mode. If you need to inspect what would change, use read-only commands (`git status`, `git diff`, `git diff --stat`) instead of staging as a probe.
   - **`/wow-addon:commit` is an explicit ask.** A user-issued `/wow-addon:commit` invocation is a manual assertion to stage and commit; the skill's own y/n/edit confirmation continues that authorization. No additional out-of-band "yes please commit" instruction is required for that flow. The carve-out is scoped to `/wow-addon:commit` only — every other skill (including `/wow-addon:diff`, `/wow-addon:sync-docs`, `/wow-addon:new-addon`) is read-only or edits the working tree, never the index, so the no-auto-commit rule still applies inside them. Slash commands the user types unprompted (or commit-adjacent skills they invoke) count; commit-adjacent reasoning Claude does on its own does not.
 - **Never bump the version without explicit instruction.** Don't edit `KickCD.toc`'s `## Version`, `NS.VERSION` in `core/KickCD.lua`, the README badge, or the README "Version History" section as part of any other task. Version bumps are a release-time decision the user makes deliberately. If a task seems to imply a bump (new feature, breaking change), call it out in the reply and let the user decide. Synchronising version strings *to a value the user already chose* (e.g. "make all the version strings say 1.0.1") is fine — that's not a bump.

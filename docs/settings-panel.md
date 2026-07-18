@@ -12,7 +12,7 @@ Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels
 
 ## Per-unit panels (Icons / Cast bar)
 
-Icons and Cast bar render their schema per-unit via `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel.lua`): a full-width `Unit` dropdown (Target / Focus, from `NS.Units.LIST`) sits above the schema body and re-renders the whole panel (`Helpers.ClearScroll` + re-run) on selection — `ctx.unit` is stashed on the panel ctx so `Helpers.SchemaForPanel(panelKey, ctx.unit)` can filter rows to the selected unit's `units.<unit>.icons.*` / `units.<unit>.castbar.*` paths.
+Icons and Cast bar render their schema per-unit via `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel_Render.lua`): a full-width `Unit` dropdown (Target / Focus, from `NS.Units.LIST`) sits above the schema body and re-renders the whole panel (`Helpers.ClearScroll` + re-run) on selection — `ctx.unit` is stashed on the panel ctx so `Helpers.SchemaForPanel(panelKey, ctx.unit)` can filter rows to the selected unit's `units.<unit>.icons.*` / `units.<unit>.castbar.*` paths.
 
 When `ctx.unit == "focus"`, a header row adds a **"Use same styling as Target"** checkbox (`units.focus.link`) and a **"Copy styling from Target"** button (`NS.Units.CopyStyling("target", "focus")`, a one-time deep-copy that also flips `link = false`) — both fire `Ka0s_KickCD_CONFIG_CHANGED{section="units"}` and re-render the panel. While linked, the appearance schema body is hidden entirely (replaced with a "Linked to Target — uncheck to customize." label) rather than shown-but-inert, since any edit there would silently write to a table nothing reads (`NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.*` while linked).
 
