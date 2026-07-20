@@ -194,5 +194,3 @@ Found a bug or want a feature? File it at [https://github.com/tusharsaxena/kickc
 | 1.1.0 | 2026-05-03 | Added texture, font, and border dropdowns with live previews. The settings panel's main page now shows the logo and command list, with breadcrumb headers on subpages. All chat output now uses a single cyan `[KCD]` label. |
 | 1.0.1 | 2026-05-02 | Rebuild only; nothing changed for players. |
 | 1.0.0 | 2026-05-02 | Initial release. Interrupt and CC cooldown icon grid with flexible layout, plus a target cast bar that colors itself by interruptibility and can auto-size to the grid. Five-tab settings panel with full `/kcd` command coverage and per-tab Defaults. Visibility modes (always / in combat / target casting / interruptible only) with a per-icon ready glow. Per-spec spell lists with hover tooltips and known/unknown markers. Saved profiles. |
-</content>
-</invoke>
