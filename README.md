@@ -29,27 +29,26 @@ Set everything up in the Blizzard settings panel (under **Ka0s KickCD**) or with
 
 **_Addon in action_**
 
-![alt text](https://media.forgecdn.net/attachments/1659/619/kickcd-video-04-compressed-gif.gif)
+![alt text](https://i.ibb.co/8LSRBj0n/kickcd-video-07-compressed.gif)
+
+_[Watch on YouTube](https://youtu.be/-rUhkVdmZfo)_
+
 
 **_Zoomed in view of the icon grid and cast bar_**
 
-![alt text](https://media.forgecdn.net/attachments/1659/603/kickcd-image-01-addon-png.png)
+![alt text](https://media.forgecdn.net/attachments/1806/482/kickcd-image-01-addon-png.png)
 
-**_General settings panel_**
+**_Settings panel_**
 
-![alt text](https://media.forgecdn.net/attachments/1659/604/kickcd-image-02-general-png.png)
+![alt text](https://media.forgecdn.net/attachments/1806/483/kickcd-image-02-general-png.png)
 
-**_Icons setting panel_**
+![alt text](https://media.forgecdn.net/attachments/1806/484/kickcd-image-03-icons-png.png)
 
-![alt text](https://media.forgecdn.net/attachments/1659/605/kickcd-image-03-icons-png.png)
+![alt text](https://media.forgecdn.net/attachments/1806/485/kickcd-image-04-castbar-png.png)
 
-**_Castbar settings panel_**
+![alt text](https://media.forgecdn.net/attachments/1806/486/kickcd-image-05-textlabel-png.png)
 
-![alt text](https://media.forgecdn.net/attachments/1659/606/kickcd-image-04-castbar-png.png)
-
-**_Spells settings panel_**
-
-![alt text](https://media.forgecdn.net/attachments/1659/607/kickcd-image-05-spells-png.png)
+![alt text](https://media.forgecdn.net/attachments/1806/487/kickcd-image-06-spells-png.png)
 
 ## Usage
 
