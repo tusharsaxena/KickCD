@@ -102,6 +102,40 @@ test("NS.Debug passes plain args through unchanged", function()
     NS.State.debug = false   -- leave the shared instance clean for later suites
 end)
 
+test("scrollbar + line-counter sync methods exist (§11)", function()
+    assertTrue(type(DebugLog.UpdateScrollBar) == "function",
+        "DebugLog:UpdateScrollBar must exist")
+    assertTrue(type(DebugLog.UpdateStatus) == "function",
+        "DebugLog:UpdateStatus must exist")
+end)
+
+test("sync methods are a clean no-op before the window is built (§11)", function()
+    -- Fresh instance whose console window has never been shown: both syncs must
+    -- return without error (window == nil) rather than touching a nil frame.
+    local dl = T.load(true).NS.DebugLog
+    assertEqual(dl:IsShown(), false, "window must start unbuilt")
+    local ok = pcall(function() dl:UpdateScrollBar(); dl:UpdateStatus() end)
+    assertTrue(ok, "syncs must be safe with no window built")
+end)
+
+test("building the console + Add/Clear run the guarded sync headlessly (§11)", function()
+    -- Show() builds the window (scrollbar Slider + counter) and runs the initial
+    -- sync. Under the headless mock the frame's GetMaxScrollRange returns a
+    -- non-number, so the type guard makes UpdateScrollBar a clean no-op — this
+    -- is exactly the "MUST stay a no-op under the test mock" rule of §11. The
+    -- whole flow must complete without raising (and never call the nil C getters
+    -- GetNumLinesDisplayed / GetCurrentScroll).
+    local dl = T.load(true).NS.DebugLog
+    local ok, err = pcall(function()
+        dl:Show()
+        dl:Add("Test", "line one")
+        dl:Add("Test", "line two")
+        dl:Clear()
+        dl:Hide()
+    end)
+    assertTrue(ok, "console build + Add/Clear must not error: " .. tostring(err))
+end)
+
 test("console WINDOW visibility is decoupled from the capture flag (§12.5)", function()
     -- The General "Debug console" checkbox drives IsShown/Show/Hide (window),
     -- NOT SetEnabled (capture). Enabling capture must not open the window.

@@ -276,6 +276,11 @@ local function build()
     mocks.CreateFrame = function() return makeFrame() end
     mocks.UIParent = makeFrame()
     mocks.UISpecialFrames = {}
+    -- WoW aliases the table.insert/remove/wipe globals; the addon uses `tinsert`
+    -- (e.g. registering windows into UISpecialFrames), so the debug console can
+    -- only build headlessly if the sandbox provides it.
+    mocks.tinsert = table.insert
+    mocks.tremove = table.remove
     mocks.DEFAULT_CHAT_FRAME = makeFrame()
     mocks.GameTooltip = makeFrame()
     mocks.Mixin = function(t, ...)

@@ -23,6 +23,8 @@ local DebugLog = NS.DebugLog
 local FONT      = NS.Const and NS.Const.FONT_MONO
 local FONT_SIZE = 10
 local MAX_LINES = 500
+local STATUS_H  = 16   -- reserved height for the bottom line-counter status bar (§11)
+local BAR_W     = 8    -- scrollbar track width; also the reserved right-edge gutter (§11)
 
 -- ACCEPTED DEVIATION (standard "Blizzard-default media" SHOULD rule): the
 -- console body/copy boxes use a bundled non-Blizzard monospace font
@@ -202,10 +204,11 @@ local function buildWindow()
     toggle:SetScript("OnClick", function() DebugLog:SetEnabled(not isEnabled()) end)
     f.toggle = toggle
 
-    -- Log surface.
+    -- Log surface. The right inset clears the scrollbar gutter; the bottom inset
+    -- clears the status bar (§11).
     local log = CreateFrame("ScrollingMessageFrame", nil, f)
     log:SetPoint("TOPLEFT", 8, -(26 + 6))
-    log:SetPoint("BOTTOMRIGHT", -8, 14)
+    log:SetPoint("BOTTOMRIGHT", -(BAR_W + 8), STATUS_H + 4)
     if FONT then log:SetFont(FONT, FONT_SIZE, "") end
     log:SetJustifyH("LEFT")
     log:SetFading(false)
@@ -214,8 +217,57 @@ local function buildWindow()
     log:EnableMouseWheel(true)
     log:SetScript("OnMouseWheel", function(self, delta)
         if delta > 0 then self:ScrollUp() else self:ScrollDown() end
+        DebugLog:UpdateScrollBar()   -- keep the thumb in step with wheel scrolling
     end)
     f.log = log
+
+    -- Scrollbar (§11 / options-ui-§10). A ScrollingMessageFrame has NO native
+    -- scrollbar (wheel-only), so a thin vertical Slider drives its scroll offset,
+    -- synced both ways in UpdateScrollBar. Always shown; goes inert (mouse off)
+    -- when the whole log fits, so the gutter stays a constant width. Vertical
+    -- Slider convention: value 0 = thumb top = oldest; the message-frame offset is
+    -- inverted (0 = newest/bottom), hence offset = maxOffset - value.
+    local bar = CreateFrame("Slider", nil, f)
+    bar:SetOrientation("VERTICAL")
+    bar:SetWidth(BAR_W)
+    bar:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -(26 + 6))
+    bar:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, STATUS_H + 4)
+    bar:SetMinMaxValues(0, 0)
+    bar:SetValueStep(1)
+    bar:SetObeyStepOnDrag(true)
+    bar:SetValue(0)
+    local track = bar:CreateTexture(nil, "BACKGROUND")
+    track:SetAllPoints()
+    track:SetColorTexture(0.5, 0.5, 0.55, 0.20)
+    local thumb = bar:CreateTexture(nil, "ARTWORK")
+    thumb:SetColorTexture(0.5, 0.5, 0.55, 0.85)
+    thumb:SetSize(BAR_W, 36)
+    bar:SetThumbTexture(thumb)
+    bar:SetScript("OnValueChanged", function(_, value)
+        -- Guard the value→offset write against the UpdateScrollBar feedback loop.
+        if window and window._syncing then return end
+        local l = window and window.log
+        if not (l and l.GetMaxScrollRange and l.SetScrollOffset) then return end
+        local maxOffset = l:GetMaxScrollRange()
+        if type(maxOffset) ~= "number" then return end
+        l:SetScrollOffset(maxOffset - math.floor(value + 0.5))
+    end)
+    f.scrollBar = bar
+
+    -- Line counter (§11): a 1px divider + a right-aligned "N / MAX lines" label in
+    -- the SAME monospace font as the log.
+    local statusDivider = f:CreateTexture(nil, "ARTWORK")
+    statusDivider:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, STATUS_H)
+    statusDivider:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, STATUS_H)
+    statusDivider:SetHeight(1)
+    statusDivider:SetColorTexture(SKIN.divider[1], SKIN.divider[2], SKIN.divider[3], SKIN.divider[4])
+
+    local lineCount = f:CreateFontString(nil, "OVERLAY")
+    lineCount:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 3)
+    if FONT then lineCount:SetFont(FONT, FONT_SIZE, "") end
+    lineCount:SetJustifyH("RIGHT")
+    lineCount:SetTextColor(0.6, 0.6, 0.62)
+    f.lineCount = lineCount
 
     f:HookScript("OnShow", function() refreshHeader() end)
     f:Hide()
@@ -290,6 +342,14 @@ function DebugLog:EnsureWindow()
     if not window then
         window = buildWindow()
         refreshHeader()
+        -- Initial scrollbar/counter sync LAST (§11 build-order rule) — after the
+        -- header, refreshHeader, and the UISpecialFrames registration done inside
+        -- buildWindow. Our build is split (buildWindow returns the frame, this
+        -- assigns it), so the sync runs here rather than inside buildWindow, but
+        -- the guarantee is the same: a frame-API surprise in the sync can never
+        -- abort the header/ESC-to-close wiring, which has already completed.
+        self:UpdateScrollBar()
+        self:UpdateStatus()
     end
     return window
 end
@@ -324,6 +384,8 @@ function DebugLog:Add(tag, msg)
     if window and window.log then
         window.log:AddMessage(DebugLog.FormatColored(ts, tag, msg))
     end
+    self:UpdateScrollBar()
+    self:UpdateStatus()
 end
 
 --- Clear wipes both the visible log AND the Copy buffer (§12.6).
@@ -331,6 +393,42 @@ function DebugLog:Clear()
     for i = #plainLines, 1, -1 do plainLines[i] = nil end
     if window and window.log then window.log:Clear() end
     if copyWindow and copyWindow.edit then copyWindow.edit:SetText("") end
+    self:UpdateScrollBar()
+    self:UpdateStatus()   -- resets the counter to "0 / MAX lines" (§11)
+end
+
+-- ---------------------------------------------------------------------------
+-- Scrollbar + line counter sync (§11)
+-- ---------------------------------------------------------------------------
+
+--- Sync the scrollbar thumb/range to the log's current scroll offset. Uses the
+--- Lua ScrollingMessageFrameMixin API (GetMaxScrollRange / GetScrollOffset),
+--- where offset 0 = bottom (newest) and offset == maxRange = top (oldest). The
+--- vertical Slider is inverted (value 0 = thumb top = oldest), so value =
+--- maxRange - offset. No-op until the window exists; also a clean no-op under
+--- the headless mock, whose stub frame methods return non-numbers (the type
+--- guard catches that — never call the C getters GetNumLinesDisplayed /
+--- GetCurrentScroll, which are nil on this mixin and raise).
+function DebugLog:UpdateScrollBar()
+    if not (window and window.log and window.scrollBar) then return end
+    local log, bar = window.log, window.scrollBar
+    if not (log.GetMaxScrollRange and log.GetScrollOffset) then return end
+    local maxOffset, off = log:GetMaxScrollRange(), log:GetScrollOffset()
+    if type(maxOffset) ~= "number" or type(off) ~= "number" then return end
+    window._syncing = true   -- suppress the OnValueChanged → SetScrollOffset loop
+    bar:SetMinMaxValues(0, maxOffset)
+    bar:SetValue(maxOffset - off)
+    window._syncing = false
+    bar:EnableMouse(maxOffset > 0)   -- inert (but still shown) when everything fits
+end
+
+--- Update the bottom status bar's "N / MAX lines" counter. N is the live
+--- buffered line count (#plainLines, capped at MAX_LINES in lock-step with the
+--- log's SetMaxLines). No-op until the window exists.
+function DebugLog:UpdateStatus()
+    if window and window.lineCount then
+        window.lineCount:SetText(("%d / %d lines"):format(#plainLines, MAX_LINES))
+    end
 end
 
 function DebugLog:ShowCopy()

@@ -76,7 +76,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
 
-### test_debuglog.lua (10)
+### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
 - FormatPlain is clean, un-coloured, and well-shaped (§12.3)
@@ -87,6 +87,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - NS.Debug is a no-op when disabled (zero capture) and appends when enabled
 - NS.Debug sanitizes secret args and never errors
 - NS.Debug passes plain args through unchanged
+- scrollbar + line-counter sync methods exist (§11)
+- sync methods are a clean no-op before the window is built (§11)
+- building the console + Add/Clear run the guarded sync headlessly (§11)
 - console WINDOW visibility is decoupled from the capture flag (§12.5)
 
 ### test_icongrid_layout.lua (8)
@@ -168,7 +171,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_database.lua | 15 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
-| test_debuglog.lua | 10 |
+| test_debuglog.lua | 13 |
 | test_icongrid_layout.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
@@ -178,4 +181,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **108** |
+| **Total** | **111** |

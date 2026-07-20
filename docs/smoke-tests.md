@@ -43,6 +43,7 @@ Companion docs:
 | 21 | Legacy migration | `FoldLegacyUnits` on a pre-`units` profile | [Legacy migration](#21-legacy-migration) |
 | 22 | Text label | `modules/UnitLabel.lua`, Text Label settings panel | [Text label](#22-text-label) |
 | 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
+| 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
 
 ---
 
@@ -509,6 +510,24 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 ---
 
+### 24. Debug console scrollbar + line counter
+
+**Setup.** `/reload`, then open the console with `/kcd debug window`. Turn capture on (`/kcd debug on`, or the header "Debug: OFF/ON" button) so lines stream in; targeting a hostile caster in combat fills it fastest.
+
+**Checks.**
+- **Header renders.** The title-bar "Debug: ON/OFF" label is present and coloured (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
+- **Line counter.** The bottom-right label reads `N / 500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 500 lines` and the log empties.
+- **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
+- **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `modules/DebugLog.lua` has the wrong sign.
+- **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
+
+**Pass.**
+- Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).
+- Counter increments on every append and resets to `0 / 500 lines` on Clear.
+- Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
+
+---
+
 ## When to run which subset
 
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua`, or the secret-value gates needs the secret-value pass.
@@ -516,6 +535,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers).
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
-- **Pre-release / TOC bump:** the entire suite. The 23 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
+- **Debug console edits:** 15, 24 (the console window, its subcommands, and the scrollbar + line counter).
+- **Pre-release / TOC bump:** the entire suite. The 24 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).
