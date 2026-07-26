@@ -17,7 +17,14 @@ Focus tracking is on out of the box and mirrors your target's look, so you get a
 
 Set everything up in the Blizzard settings panel (under **Ka0s KickCD**) or with the `/kcd` chat command.
 
-## What's new in 1.2.0
+## What's new in 1.2.1
+
+*   **Fixed: no spells tracked on non-English clients.** On a French, German, Spanish or any other localised client, KickCD silently tracked nothing for most specs — the grid just stayed empty. Your spell lists now carry over automatically the first time each profile loads, with your own edits intact. Huge thanks to [@fttf7](https://github.com/fttf7), who reported this in [issue #8](https://github.com/tusharsaxena/kickcd/issues/8) with the debug output that pinpointed the cause.
+*   **The Spells tab follows your spec.** Change spec with the settings window open and the spec dropdown now switches with you, instead of staying stuck on the old one until you closed and reopened settings.
+*   **A quieter, more useful debug log.** A spell sitting on cooldown used to write about ten identical lines a second and bury everything else. The log now records real changes only, and the rebuild line names every spell being watched or skipped — so a pasted log is far easier to act on in a bug report.
+*   **Lighter icon drawing.** Icons now skip repainting the parts that haven't changed while a cooldown ticks down — about a third less work per update, with no change to how anything looks.
+
+### Also in 1.2.0
 
 *   **Focus tracking.** KickCD now watches your focus as well as your target, each with its own icon grid and cast bar. Focus is on out of the box and copies your target's look — unlink it any time to style it on its own.
 *   **Custom identity labels.** A new **Text Label** tab lets you put a label — "Target", "Focus", or your own text — on a unit's icon grid or cast bar, and place it however you like.
@@ -190,6 +197,7 @@ Found a bug or want a feature? File it at [https://github.com/tusharsaxena/kickc
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.2.1 | 2026-07-26 | Fixed spell lists being empty on non-English clients — spec lists are now keyed on Blizzard's spec ID rather than the translated spec name, and existing profiles migrate automatically on load.<br>The Spells tab's spec dropdown now follows an in-game spec change while settings are open.<br>Debug log no longer floods with repeated lines while a spell is on cooldown; the rebuild line now names every watched and skipped spell.<br>Icons skip redundant repainting as a cooldown ticks down — about a third less work per update, with no visual change. |
 | 1.2.0 | 2026-07-13 | Added target **and** focus tracking — each unit gets its own icon grid and cast bar, with focus on by default and linked to target's look. New **Text Label** tab for custom identity labels on any grid or cast bar. Added an on-screen debug window with Copy/Clear buttons, controlled by `/kcd debug on\|off\|toggle\|window` (replacing `/kcd debug log`); debug messages now go there instead of chat and reset each reload. Refreshed default layout: cast bar under the grid, cast time below it, and the two sets spaced apart. `/kcd resetall` now restores positions; added `/kcd version`. |
 | 1.1.0 | 2026-05-03 | Added texture, font, and border dropdowns with live previews. The settings panel's main page now shows the logo and command list, with breadcrumb headers on subpages. All chat output now uses a single cyan `[KCD]` label. |
 | 1.0.1 | 2026-05-02 | Rebuild only; nothing changed for players. |

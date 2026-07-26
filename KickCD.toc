@@ -2,7 +2,7 @@
 ## Title: Ka0s KickCD
 ## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
 ## Author: add1kted2ka0s
-## Version: 1.2.0
+## Version: 1.2.1
 ## IconTexture: Interface\Icons\ability_kick
 ## SavedVariables: KickCDDB
 ## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0
