@@ -352,15 +352,6 @@ function Util.SpecOrderForClass(classFile)
     return nil
 end
 
---- Test/reload hook: drop the cached locale maps so a later call rebuilds
---- them. Nothing in-game changes spec names mid-session, but the headless
---- harness loads several simulated clients into one process.
-function Util.ResetSpecNameCache()
-    specNameMap, specNameMapByClass = nil, nil
-    specDisplayName, specOrderByClass = nil, nil
-    specMapsReady = nil
-end
-
 --- Normalise a class file token. Today UnitClass() already returns the
 --- locale-independent file token in upper-case ("HUNTER", "DEATHKNIGHT",
 --- ...) so the helper is effectively a no-op — but routing every
@@ -385,10 +376,8 @@ end
 -- RegisterUnitCastEvent wraps a private CreateFrame, registers it for the
 -- named unit ("target" / "focus" / ...) only, and forwards into
 -- module:handler so the call site reads like an Ace registration.
--- RegisterTargetEvent is a target-only back-compat wrapper around it for
--- call sites that predate per-unit tracking. Handlers can drop their
--- `if unit ~= <expected unit>` guard since the dispatch frame already
--- filtered upstream.
+-- Handlers can drop their `if unit ~= <expected unit>` guard since the
+-- dispatch frame already filtered upstream.
 --
 -- The frame is RETURNED, not tracked here. AceAddon's UnregisterAllEvents
 -- on the module will not release these private frames; OnDisable must
@@ -410,15 +399,6 @@ function Util.RegisterUnitCastEvent(module, unit, eventName, handlerName)
         if fn then fn(module, event, evUnit, ...) end
     end)
     return f
-end
-
---- Back-compat: target-only registration (unchanged call sites).
---- @param module table     — AceEvent module (handler methods live on it)
---- @param eventName string — UNIT_SPELLCAST_START / _STOP / etc.
---- @param handlerName string — method on `module` to call on dispatch
---- @return Frame — caller stashes this and runs UnregisterAllEvents in OnDisable
-function Util.RegisterTargetEvent(module, eventName, handlerName)
-    return Util.RegisterUnitCastEvent(module, "target", eventName, handlerName)
 end
 
 -- ---------------------------------------------------------------------------

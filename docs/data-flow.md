@@ -38,6 +38,15 @@ A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watch
 
 `Cooldowns` is unit-agnostic — it polls the player's OWN spellbook, not a per-unit state — so a single `Ka0s_KickCD_SPELL_STATE` broadcast feeds every enabled unit's `IconGrid` instance identically (`instances[unit]:OnSpellState`, unit by unit).
 
+### Emit rate: why SPELL_STATE fires ~10x/sec per spell on cooldown
+
+`StateChanged` compares the cooldown handle, and `C_Spell.GetSpellCooldownDuration` mints a **fresh object on every call** — so any spell sitting on an unchanged cooldown compares unequal on every poll. This is not a defect to tidy up: in combat every getter on the duration object is secret-tainted (including the booleans, which therefore cannot be branched on), so the identity compare is the *only* change signal an addon has. It over-fires but never under-fires. See [midnight-quirks.md](midnight-quirks.md).
+
+Two consequences shaped the downstream code:
+
+- **Logging** is gated on `MaterialChange` (plain fields + handle presence, ignoring identity), so the debug console shows one line per real transition rather than ten per second.
+- **Rendering** is split in `Icon:Apply`: the alpha/tint/GCD curve evaluations, the swipe re-arm and the countdown text are time-varying and must run on every payload; glow, the charges badge and the Show/Hide calls are gated behind `plainStateMoved`. Anything added to `Icon:Apply` has to land on the correct side of that split — the time-varying half runs at ~10 Hz.
+
 ## Settings input → bus
 
 Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.

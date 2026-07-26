@@ -52,7 +52,7 @@ Downstream consumers of the emit must be idempotent for the same reason — `Ico
 
 ### Probe results: in combat, EVERY DurationObject getter is secret
 
-Measured on a live 12.0.7 client with `/kcd debug duration` (`Compat.DebugDuration`), Capacitor Totem on cooldown:
+Measured on a live 12.0.7 client with a one-off capability probe (since removed — it had served its purpose), Capacitor Totem on cooldown:
 
 | Method | Out of combat | In combat |
 |---|---|---|
@@ -75,7 +75,7 @@ The way out is not a better comparison — it is to stop needing one, by letting
 
 **`GetSpellCooldownDuration` returns a ZEROED object, not nil, when nothing is on cooldown.** The out-of-combat probe above sampled a spell whose cooldown had lapsed and got a live object reporting `GetTotalDuration()==0`, `IsActive()==false`, `HasExpired()==true`. Do not treat a non-nil handle as "this spell is on cooldown" — gate on the plain `isActive` from `C_Spell.GetSpellCooldown` instead, which is what `Cooldowns:PollSpell` already does.
 
-Re-run `/kcd debug duration` after any patch that touches cooldown APIs; this table is a snapshot of 12.0.7 behaviour, not a contract.
+This table is a snapshot of 12.0.7 behaviour, not a contract. After any patch that touches cooldown APIs, re-measure before trusting it: call each getter inside a `pcall` and classify the result with `issecretvalue` — never branch on a value before you know it is plain.
 
 ### The wider `DurationObject` surface (largely unused here)
 

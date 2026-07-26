@@ -90,18 +90,13 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Addon SendMessage reaches a registered module target
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
 
-### test_compat.lua (10)
+### test_compat.lua (5)
 
 - Compat exposes the spec shims
 - GetSpecialization prefers C_SpecializationInfo
 - GetSpecializationInfo passes the multi-return through
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
-- `/kcd debug duration` reports the API is unavailable on a pre-12.0 client
-- `/kcd debug duration` renders a secret return as <secret> instead of erroring
-- `/kcd debug duration` reports a plain return with its value
-- `/kcd debug duration` flags a method the client does not implement
-- `/kcd debug duration` confirms the API mints a fresh object per call
 
 ### test_debuglog.lua (13)
 
@@ -220,7 +215,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_schema.lua | 12 |
 | test_database.lua | 20 |
 | test_bus.lua | 4 |
-| test_compat.lua | 10 |
+| test_compat.lua | 5 |
 | test_debuglog.lua | 13 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
@@ -233,4 +228,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **151** |
+| **Total** | **146** |
