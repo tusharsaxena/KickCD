@@ -110,6 +110,12 @@ end
 -- where ClearAllPoints/Show/SetAlpha/etc. live, and they'd become nil calls.
 local Icon = {}
 
+-- Published so the headless suites can mix these methods onto a stand-in
+-- frame and drive Icon:Apply directly. Not part of the inter-module
+-- contract — nothing in the addon reads it; icons get the methods via
+-- Mixin() in CreateIconWidget below.
+IconGrid.Icon = Icon
+
 local function CreateIconWidget(parent)
     -- A Button (not a Frame) so a future click-to-cast hook is one
     -- :SetAttribute() away. SecureActionButton is intentionally avoided
@@ -510,8 +516,41 @@ end
 -- The GCD-vs-real-CD and ready-vs-charging distinctions all happen
 -- C-side via curve evaluation; Lua never compares the spell's
 -- secret-tainted remaining time directly.
-function Icon:Apply(state)
+--- Did any PLAIN state field move between two payloads?
+---
+--- Splits Icon:Apply's work in two. The alpha/tint/GCD curves, the swipe
+--- handle and the countdown text are TIME-varying and must be re-applied on
+--- every payload. Glow, the charges badge and the Show/Hide calls depend only
+--- on the fields below — so when none of them moved, redoing that half is
+--- pure waste, repeated ~10x/sec for the whole of every cooldown (the emit
+--- rate is forced: see docs/midnight-quirks.md, nothing on the duration
+--- object is comparable from Lua in combat).
+---
+--- Charges are deliberately NOT part of this gate. They can be secret, and a
+--- secret cannot be compared — while the badge renders one fine via
+--- SetFormattedText's C-side path. Gating on an uncomparable value would
+--- strand a stale count on screen for a whole fight, so the badge is simply
+--- always refreshed; it is two calls.
+local function plainStateMoved(prev, next_)
+    if not prev then return true end
+    if prev.ready    ~= next_.ready    then return true end
+    if prev.isActive ~= next_.isActive then return true end
+    -- Handle PRESENCE picks the render branch (full cooldown / charge
+    -- recharge / idle); handle IDENTITY changes constantly and means nothing.
+    if (prev.cdObject       == nil) ~= (next_.cdObject       == nil) then return true end
+    if (prev.chargeCdObject == nil) ~= (next_.chargeCdObject == nil) then return true end
+    return false
+end
+
+--- Apply a Ka0s_KickCD_SPELL_STATE payload.
+-- @param state table   the payload (see the block comment above)
+-- @param force boolean pass true when re-applying after a CONFIG change
+--        rather than a fresh poll. Config re-applies hand back the SAME
+--        state table, so the gate would correctly conclude "nothing moved"
+--        and skip the very work the config change was meant to refresh.
+function Icon:Apply(state, force)
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
+    local stateWork = force or plainStateMoved(self._lastState, state)
     -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
     -- toggles showCooldownText (or any other visual state) mid-cooldown
     -- without waiting for the next SPELL_STATE message.
@@ -537,7 +576,7 @@ function Icon:Apply(state)
         end
 
         self.cooldown:SetCooldownFromDurationObject(state.cdObject)
-        self.cooldown:Show()
+        if stateWork then self.cooldown:Show() end
         self:StartCooldownText(state.cdObject, true)
         applyGcdSuppressionAlpha(self, state.cdObject)
     elseif state and state.chargeCdObject then
@@ -545,26 +584,35 @@ function Icon:Apply(state)
         -- Show swipe + countdown text but keep the icon body at ready
         -- visuals (no alpha dim, no tint shift). state.ready stays true
         -- so the glow trigger keeps firing as configured.
-        self:SetAlpha(cfg.readyAlpha or 1.0)
-        self.icon:SetVertexColor(1, 1, 1)
+        if stateWork then
+            self:SetAlpha(cfg.readyAlpha or 1.0)
+            self.icon:SetVertexColor(1, 1, 1)
+        end
         self.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
-        self.cooldown:Show()
+        if stateWork then self.cooldown:Show() end
         self:StartCooldownText(state.chargeCdObject, false)
         applyGcdSuppressionAlpha(self, state.chargeCdObject)
     else
         -- Branch 3: no active cooldown of any kind. Plain ready visuals.
-        self:SetAlpha(cfg.readyAlpha or 1.0)
-        self.icon:SetVertexColor(1, 1, 1)
-        self.cooldown:Hide()
-        self.cooldown:Clear()
-        self:StopCooldownText()
+        if stateWork then
+            self:SetAlpha(cfg.readyAlpha or 1.0)
+            self.icon:SetVertexColor(1, 1, 1)
+            self.cooldown:Hide()
+            self.cooldown:Clear()
+            self:StopCooldownText()
+        end
     end
 
     -- Ready glow (off when on cooldown, on when castable). Driven from
     -- state.ready so it picks up the same "is castable" decision the
     -- rest of the UI uses; primary vs secondary chooses which schema
     -- entry's type/color applies.
-    self:UpdateGlow(state)
+    -- Gated: this costs four LibCustomGlow stop calls per apply while the
+    -- spell is on cooldown. The trigger also depends on the UNIT's cast
+    -- state, which changes independently of the spell — but
+    -- IconGrid:OnUnitCastEvent already re-runs UpdateGlow across every icon
+    -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
+    if stateWork then self:UpdateGlow(state) end
 
     -- Charges badge. Visibility = "this spell has charges at all",
     -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
@@ -642,7 +690,10 @@ function Icon:ApplyTextConfig(cfg)
     -- change) flowing through Layout takes effect immediately on a
     -- currently-active cooldown, without waiting for the next SPELL_STATE.
     if self._lastState then
-        self:Apply(self._lastState)
+        -- force=true: this hands back the SAME table, so the plain-state gate
+        -- would see "nothing moved" and skip exactly the work this config
+        -- change needs redone.
+        self:Apply(self._lastState, true)
     else
         self.cooldownText:Hide()
     end

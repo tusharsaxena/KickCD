@@ -90,13 +90,18 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Addon SendMessage reaches a registered module target
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
 
-### test_compat.lua (5)
+### test_compat.lua (10)
 
 - Compat exposes the spec shims
 - GetSpecialization prefers C_SpecializationInfo
 - GetSpecializationInfo passes the multi-return through
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
+- `/kcd debug duration` reports the API is unavailable on a pre-12.0 client
+- `/kcd debug duration` renders a secret return as <secret> instead of erroring
+- `/kcd debug duration` reports a plain return with its value
+- `/kcd debug duration` flags a method the client does not implement
+- `/kcd debug duration` confirms the API mints a fresh object per call
 
 ### test_debuglog.lua (13)
 
@@ -124,6 +129,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - placeBlock RIGHT/CENTER geometry (primary left, block right, centred)
 - placeBlock TOP/CENTER geometry (block above primary)
 - placeBlock CENTER stacks both on the grid centre
+
+### test_icongrid_apply.lua (6)
+
+- Icon:Apply skips glow work when no plain state field moved
+- Icon:Apply STILL re-arms the swipe when only the handle changed
+- Icon:Apply redoes glow work when `ready` actually flips
+- Icon:Apply redoes glow work when the cooldown ends
+- Icon:Apply forced re-apply redoes state work even when nothing moved
+- Icon:Apply keeps the charges badge live when charges are secret
 
 ### test_lifecycle.lua (4)
 
@@ -206,9 +220,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_schema.lua | 12 |
 | test_database.lua | 20 |
 | test_bus.lua | 4 |
-| test_compat.lua | 5 |
+| test_compat.lua | 10 |
 | test_debuglog.lua | 13 |
 | test_icongrid_layout.lua | 8 |
+| test_icongrid_apply.lua | 6 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
 | test_castbar.lua | 7 |
@@ -218,4 +233,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **140** |
+| **Total** | **151** |

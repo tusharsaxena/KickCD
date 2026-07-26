@@ -134,6 +134,7 @@ local SUITES = {
     "test_compat.lua",
     "test_debuglog.lua",
     "test_icongrid_layout.lua",
+    "test_icongrid_apply.lua",
     "test_lifecycle.lua",
     "test_unitlabel.lua",
     "test_castbar.lua",

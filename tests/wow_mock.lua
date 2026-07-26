@@ -427,6 +427,43 @@ local function build()
         }
     end
     mocks.CreateColor = function(r, g, b, a) return makeColor(r, g, b, a) end
+
+    -- -------------------------------------------------------------------
+    -- Curves (12.0 C_CurveUtil)
+    -- -------------------------------------------------------------------
+    --
+    -- Without these, IconGrid_Render's BuildCurves bails and alphaCurve stays
+    -- nil, so Icon:Apply's branch 1 (the full-cooldown render — the main path)
+    -- is unreachable and silently untested. Curves are tagged with their kind
+    -- so a mock DurationObject can return a number or a color to match, the
+    -- way the real EvaluateRemainingDuration does.
+    local function makeCurve(kind)
+        local c = { __kind = kind, points = {} }
+        function c.SetType() return c end
+        function c.AddPoint(self, at, value)
+            self.points[#self.points + 1] = { at = at, value = value }
+            return self
+        end
+        return c
+    end
+    mocks.C_CurveUtil = {
+        CreateCurve      = function() return makeCurve("number") end,
+        CreateColorCurve = function() return makeCurve("color") end,
+    }
+
+    --- Build a stand-in DurationObject. Mirrors the live API's two defining
+    --- traits: a FRESH object per call, and getters that may be secret.
+    -- @param remaining number  value EvaluateRemainingDuration resolves to
+    function mocks.__makeDurationObject(remaining)
+        local o = {}
+        function o.EvaluateRemainingDuration(_, curve)
+            if curve and curve.__kind == "color" then return makeColor(1, 0.4, 0.4) end
+            return remaining or 0.4
+        end
+        function o.GetRemainingDuration() return remaining or 0.4 end
+        function o.HasSecretValues() return false end
+        return o
+    end
     mocks.CreateColorFromHexString = function() return makeColor(1, 1, 1, 1) end
     mocks.WrapTextInColorCode = function(text) return text end
     mocks.NORMAL_FONT_COLOR = makeColor(1, 0.82, 0)

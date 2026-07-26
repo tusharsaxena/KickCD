@@ -48,6 +48,35 @@ The fix that IS correct is to separate the two decisions: emit on `StateChanged`
 
 Downstream consumers of the emit must be idempotent for the same reason — `Icon:StartGlow` carries an explicit gate because re-issuing `Stop`+`Start` replayed LibCustomGlow's animIn and produced a visible ButtonGlow pop at ~10 Hz.
 
+`Icon:Apply` therefore splits its work in two. The alpha/tint/GCD curve evaluations, the swipe re-arm and the countdown text are TIME-varying and run on every payload. Glow, the charges badge and the `Show`/`Hide` calls depend only on plain state fields, so they are gated behind `plainStateMoved` — measured at 35% fewer widget calls per repeat apply. Two rules keep that safe: a config-driven re-apply must pass `force=true` (it hands back the SAME state table, so the gate would otherwise skip exactly the work the config change needed), and the glow's other input — the unit's cast state — is covered independently by `IconGrid:OnUnitCastEvent`, which re-runs `UpdateGlow` across every icon on each `UNIT_SPELLCAST_*` transition. Charges are deliberately outside the gate: they can be secret, a secret cannot be compared, and `SetFormattedText` renders one fine, so the badge is simply always refreshed.
+
+### Probe results: in combat, EVERY DurationObject getter is secret
+
+Measured on a live 12.0.7 client with `/kcd debug duration` (`Compat.DebugDuration`), Capacitor Totem on cooldown:
+
+| Method | Out of combat | In combat |
+|---|---|---|
+| `HasSecretValues()` | plain `false` | **plain `true`** |
+| `GetRemainingDuration()` | plain | secret |
+| `GetTotalDuration()` | plain | secret |
+| `GetStartTime()` / `GetEndTime()` | plain | secret |
+| `GetElapsedDuration()` / `GetRemainingPercent()` | plain | secret |
+| `HasExpired()` / `HasStarted()` / `IsActive()` / `IsZero()` | plain | **secret** |
+| `GetModRate()` | plain | secret |
+| `Copy()` / `Assign()` | ok (userdata) | ok (userdata) |
+
+Two consequences worth internalising:
+
+**Secret BOOLEANS are unusable, not merely unprintable.** `HasExpired`, `HasStarted`, `IsActive` and `IsZero` all come back secret-tainted in combat. You cannot branch on one — `if hasExpired then` would reveal the entire value, so it errors in tainted scope exactly like `if notInterruptible then` does. Only `HasSecretValues()` stays plain, which makes it the one method you can safely gate on.
+
+**There is therefore NO Lua-side way to detect "this spell's cooldown changed" in combat.** Every candidate comparator on the object is secret. That reframes `Cooldowns:StateChanged`'s `prev.cdObject ~= next_.cdObject` check: it is not a shortcut, it is the *only available signal*. It over-fires (a fresh object per call means it fires on every poll) but it never under-fires, and nothing on the object can replace it.
+
+The way out is not a better comparison — it is to stop needing one, by letting the 0.1s ticker re-fetch the handle and re-render the time-varying visuals, so the emit is only needed when the *plain* state (`ready` / `isActive` / charge count / handle presence) changes. `C_Spell.GetSpellCooldown(...).isActive` stays plain in combat and is the correct "has it ended?" signal for the ticker.
+
+**`GetSpellCooldownDuration` returns a ZEROED object, not nil, when nothing is on cooldown.** The out-of-combat probe above sampled a spell whose cooldown had lapsed and got a live object reporting `GetTotalDuration()==0`, `IsActive()==false`, `HasExpired()==true`. Do not treat a non-nil handle as "this spell is on cooldown" — gate on the plain `isActive` from `C_Spell.GetSpellCooldown` instead, which is what `Cooldowns:PollSpell` already does.
+
+Re-run `/kcd debug duration` after any patch that touches cooldown APIs; this table is a snapshot of 12.0.7 behaviour, not a contract.
+
 ### The wider `DurationObject` surface (largely unused here)
 
 The object is far richer than this addon currently uses, and several methods are worth reaching for before hand-rolling equivalents:

@@ -335,7 +335,9 @@ function IconGrid:BuildActiveList(inst)
                 -- as "not ready" because state.ready is nil-falsy, so pass
                 -- a synthetic ready frame to render correctly until the
                 -- first real state arrives.
-                btn:Apply({ ready = true, start = 0, duration = 0 })
+                -- force=true: a rebuilt list may hand a pooled button whose
+                -- _lastState still matches, and this pass has to repaint it.
+                btn:Apply({ ready = true, start = 0, duration = 0 }, true)
                 table.insert(inst.ordered, btn)
             end
         end

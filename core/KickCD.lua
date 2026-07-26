@@ -194,6 +194,13 @@ local DEBUG_COMMANDS = {
                 p(self, "Compat.DebugInterrupt unavailable")
             end
         end},
+    {"duration", "Probe this client's DurationObject API — `... duration [spellID]`",
+        function(self, rest)
+            if not (NS.Compat and NS.Compat.DebugDuration) then
+                return p(self, "Compat.DebugDuration unavailable")
+            end
+            NS.Compat.DebugDuration(tonumber((rest or ""):match("%S+")))
+        end},
     {"window", "Toggle the debug console window",
         function(self)
             if self.DebugLog then self.DebugLog:Toggle()
@@ -234,8 +241,8 @@ function runDebug(self, rest)
     -- Debug subcommands are all-lowercase identifiers; lowercase the
     -- first token so callers don't have to (now that OnSlashCommand
     -- preserves case in `rest` for schema paths).
-    local sub = (rest or ""):match("^(%S*)") or ""
-    sub = sub:lower()
+    local sub, args = (rest or ""):match("^(%S*)%s*(.*)$")
+    sub = (sub or ""):lower()
     if sub == "" then
         -- Bare `/kcd debug` toggles the console window (§12.5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.
@@ -247,7 +254,7 @@ function runDebug(self, rest)
         return
     end
     local entry = findCommand(DEBUG_COMMANDS, sub)
-    if entry then return entry[3](self) end
+    if entry then return entry[3](self, args) end
     p(self, "unknown debug subcommand '" .. sub .. "'")
     runDebug(self, "")
 end

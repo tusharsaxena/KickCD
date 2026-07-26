@@ -30,6 +30,7 @@ Companion docs:
 | 8 | Cooldowns + glow | Interrupt fire, GCD suppression, ready glow | [Cooldown + glow](#8-cooldown--glow) |
 | 9 | Spec / talent / pet | Watched-list rebuild | [Spec, talent, pet rebuilds](#9-spec-talent-pet-rebuilds) |
 | 9b | Locale | Non-English client seeds + resolves specs | [Non-English client](#9b-non-english-client-issue-8) |
+| 9c | Icons | Render gating repaints correctly | [Icon render gating](#9c-icon-render-gating) |
 | 10 | Spells | Spells panel + slash parity | [Spell-list editor](#10-spell-list-editor) |
 | 11 | Settings panel | Schema, valueGate, panel ↔ slash sync | [Settings panel parity](#11-settings-panel-parity) |
 | 12 | Resets | Per-panel, resetall, resetposition, per-spec | [Resets](#12-resets) |
@@ -242,6 +243,24 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Settings → Spells shows spec names in the client's own language (`Élémentaire`) while storing `[262]`.
 - After the upgrade, `KickCDDB` has numeric spec keys and the user's customised entries are intact under them. **Repeat with a second profile** — the rekey is per-profile and must catch each one as it is activated, not just the profile that was active at upgrade.
 
+### 9c. Icon render gating
+
+**Setup.** `visibility = always`, cooldown text on, charges shown, a glow trigger configured on both the primary and a secondary icon. `Icon:Apply` skips glow / badge / Show work when no plain state field moved, so these steps confirm nothing that *should* repaint stopped repainting.
+
+**Steps.**
+- Put a spell on a long (30s+) cooldown and watch the icon through the whole cooldown.
+- With that cooldown still running, change the glow type and glow colour in Settings > Icons.
+- With it still running, toggle cooldown text and the charges badge.
+- Target a hostile caster and let it start and stop casting while a spell is on cooldown (glow trigger `target_casting` / `target_casting_interruptible`).
+- Use a charged spell (e.g. a talented Mind Freeze) in combat and watch the badge as charges are spent and recharge.
+
+**Expect.**
+- The swipe animates smoothly with no stutter or restart, and the countdown text ticks continuously.
+- The icon brightens from the cooldown alpha/tint to ready visuals in the final ~1.6s (the `GCD_UPPER` curve step) — this is the transition most at risk from over-gating.
+- Glow type / colour changes take effect immediately, without waiting for the cooldown to end.
+- Glow follows the target's cast start/stop while the spell stays on cooldown throughout.
+- The charges badge keeps updating in combat, where the count is secret-tainted.
+
 ### 10. Spell-list editor
 
 **Setup.** Note the player's current class+spec for the slash invocations below.
@@ -350,6 +369,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 |---|---|
 | `/kcd debug spells` | Per-spell line: `ready=…  active=…  cdObj=yes/no  chargeCdObj=yes/no  charges=…`. Charges may render as `<secret>` for charged spells in combat. **No remaining-time field** — `:GetRemainingDuration()` is secret in combat and printing it would error. |
 | `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
+| `/kcd debug duration [spellID]` | Per-method `type=… isSecret=… value=…` for every `DurationObject` getter, plus `Copy` / `Assign` availability and an `identity` line. Defaults to the first watched spell currently on cooldown. **Run in and out of combat and compare** — the secrecy of `GetEndTime` / `HasExpired` in combat is what decides whether the cooldown-change detection in `Cooldowns:StateChanged` can stop relying on object identity. |
 | `/kcd debug interrupt` | Every `UnitCastingInfo` / `UnitChannelInfo` field with its type + secret flag, plus `NS.State.IsHostileUnitCasting("target")` and the visibility-mode / glow-trigger gate decisions. Secret-tainted fields render as `<secret>`. |
 | `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
 | `/kcd debug window` | Toggles the on-screen debug console window (`modules/DebugLog.lua`); logging keeps running whether the window is open or closed. |
