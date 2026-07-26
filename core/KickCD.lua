@@ -564,12 +564,17 @@ end
 -- Spells panel)
 -- ---------------------------------------------------------------------------
 --
--- The on-disk shape is db.profile.spells[CLASS][SPEC] = {
+-- The on-disk shape is db.profile.spells[CLASS][specID] = {
 --   { spellID=..., category=..., enabled=true|false }, ...
 -- } in priority order. CLASS is the upper-case class file token
--- (WARRIOR, DEATHKNIGHT, …) and SPEC is the upper-case localized spec
--- name with whitespace stripped (FROST, BEASTMASTERY, …) — see
--- defaults/Spells.lua for the exact key set.
+-- (WARRIOR, DEATHKNIGHT, …) and the spec key is Blizzard's NUMERIC
+-- specialization ID — see core/Constants.lua (Const.SPEC) for the set.
+--
+-- At the COMMAND LINE the user still types a name, not a number: SPEC
+-- accepts the English token (ELEMENTAL), the spec name in the client's
+-- own language (Élémentaire), or the raw ID. Util.ResolveSpecID does the
+-- conversion; output always echoes back the English token so a pasted
+-- bug report reads the same in every locale (issue #8).
 --
 -- Every subcommand accepts an optional trailing `[CLASS SPEC]`; when
 -- omitted, both default to the player's current class+spec.
@@ -585,15 +590,18 @@ local function tokenize(rest)
     return out
 end
 
--- Normalize a user-supplied class/spec token to the casing used by
--- defaults/Spells.lua (uppercase, no whitespace). Routes through
--- Util.NormalizeSpecToken so all spec-key derivations across the addon
--- share one source of truth — important for whitespace-bearing
--- localised names ("Beast Mastery", non-English specs) that would
--- otherwise miss the no-whitespace defaults keys.
-local function normToken(s)
+-- Normalize a user-supplied CLASS token to the casing used by
+-- defaults/Spells.lua. UnitClass()'s file token is already
+-- locale-independent, so this is just casing.
+local function normClass(s)
     if not s or s == "" then return nil end
-    return NS.Util.NormalizeSpecToken(s)
+    return NS.Util.NormalizeClassToken(s)
+end
+
+-- Human-readable spec label for command output — English token where known
+-- (see Util.SpecDisplay), never the localised name.
+local function sd(spec)
+    return NS.Util.SpecDisplay(spec)
 end
 
 -- Resolve [class spec] starting at args[idx]. Empty positions fall
@@ -604,22 +612,24 @@ local function resolvePlayerClassSpec()
         local _, cf = UnitClass("player")
         classFile = cf
     end
-    local specToken
-    local Compat = NS.Compat
-    local idx = Compat and Compat.GetSpecialization()
-    if idx then
-        local _, specName = Compat.GetSpecializationInfo(idx)
-        specToken = normToken(specName)
-    end
-    return classFile, specToken
+    return classFile, NS.Util.PlayerSpecID()
 end
 
 local function resolveClassSpec(args, idx)
-    local class = normToken(args[idx])
-    local spec  = normToken(args[idx + 1])
-    if class and spec then return class, spec end
+    local class = normClass(args[idx])
     local pClass, pSpec = resolvePlayerClassSpec()
-    return class or pClass, spec or pSpec
+    -- Resolve the spec AGAINST the class the user gave (or their own), so a
+    -- name shared by several classes ("Frost", "Holy") is unambiguous. An
+    -- omitted spec falls back to the player's; a spec that was SUPPLIED but
+    -- didn't resolve stays nil so the caller reports it rather than silently
+    -- editing the wrong list.
+    local spec
+    if args[idx + 1] == nil then
+        spec = pSpec
+    else
+        spec = NS.Util.ResolveSpecID(args[idx + 1], class or pClass)
+    end
+    return class or pClass, spec
 end
 
 -- Spell-list traversal funnels through Database:GetSpellList /
@@ -691,9 +701,9 @@ local function spellsList(self, rest)
     local list = getSpellList(class, spec)
     if not list or #list == 0 then
         return p(self, ("no spells tracked for %s/%s")
-                  :format(class, spec))
+                  :format(class, sd(spec)))
     end
-    p(self, ("spells for %s/%s"):format(class, spec))
+    p(self, ("spells for %s/%s"):format(class, sd(spec)))
     local Compat = self.Compat or {}
     for i, e in ipairs(list) do
         local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(e.spellID))
@@ -724,12 +734,12 @@ local function spellsAdd(self, rest)
         existing.enabled = true
         commitSpellsChange()
         return p(self, ("%s (#%d) already in %s/%s, re-enabled")
-                  :format(name or "?", id, class, spec))
+                  :format(name or "?", id, class, sd(spec)))
     end
     list[#list + 1] = { spellID = id, category = "other", enabled = true }
     commitSpellsChange()
     p(self, ("added %s (#%d) to %s/%s")
-        :format(name or "?", id, class, spec))
+        :format(name or "?", id, class, sd(spec)))
 end
 
 local function spellsRemove(self, rest)
@@ -742,15 +752,15 @@ local function spellsRemove(self, rest)
     local list = getSpellList(class, spec)
     if not list then
         return p(self, ("No spell list for %s/%s"):format(
-                  tostring(class), tostring(spec)))
+                  tostring(class), sd(spec)))
     end
     local _, idx = findSpellEntry(list, id)
     if not idx then
-        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
     table.remove(list, idx)
     commitSpellsChange()
-    p(self, ("removed #%d from %s/%s"):format(id, class, spec))
+    p(self, ("removed #%d from %s/%s"):format(id, class, sd(spec)))
 end
 
 local function spellsSetEnabled(self, rest, enabled)
@@ -764,16 +774,16 @@ local function spellsSetEnabled(self, rest, enabled)
     local list = getSpellList(class, spec)
     if not list then
         return p(self, ("No spell list for %s/%s"):format(
-                  tostring(class), tostring(spec)))
+                  tostring(class), sd(spec)))
     end
     local entry = findSpellEntry(list, id)
     if not entry then
-        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
     entry.enabled = enabled and true or false
     commitSpellsChange()
     p(self, ("#%d %s in %s/%s"):format(
-        id, enabled and "enabled" or "disabled", class, spec))
+        id, enabled and "enabled" or "disabled", class, sd(spec)))
 end
 
 local function spellsSetCategory(self, rest)
@@ -793,16 +803,16 @@ local function spellsSetCategory(self, rest)
     local list = getSpellList(class, spec)
     if not list then
         return p(self, ("No spell list for %s/%s"):format(
-                  tostring(class), tostring(spec)))
+                  tostring(class), sd(spec)))
     end
     local entry = findSpellEntry(list, id)
     if not entry then
-        return p(self, ("Spell #%d not in %s/%s"):format(id, class, spec))
+        return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
     entry.category = cat
     commitSpellsChange()
     p(self, ("#%d category = %s in %s/%s"):format(
-        id, cat, class, spec))
+        id, cat, class, sd(spec)))
 end
 
 -- Per-spec reset: rebuild this single (class, spec) list from
@@ -834,7 +844,7 @@ local function spellsReset(self, rest)
         end
     end
     commitSpellsChange()
-    p(self, ("reset %s/%s to defaults"):format(class, spec))
+    p(self, ("reset %s/%s to defaults"):format(class, sd(spec)))
 end
 
 local SPELLS_COMMANDS = {

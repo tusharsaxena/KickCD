@@ -63,26 +63,18 @@ local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
 -- Spec resolution
 -- ---------------------------------------------------------------------------
 
---- Look up the (CLASS, SPEC) tokens used to key db.profile.spells.
--- CLASS is the localization-independent file token from UnitClass(); SPEC
--- is GetSpecializationInfo's localised name routed through
--- Util.NormalizeSpecToken so multi-word names (English "Beast Mastery"
--- and several non-English specs) collapse to the keys built in
--- defaults/Spells.lua.
--- @return classToken (string|nil), specToken (string|nil)
+--- Look up the (CLASS, specID) pair used to key db.profile.spells.
+-- Both are locale-invariant: CLASS is the file token from UnitClass()'s
+-- second return, and the spec is the NUMERIC specID from
+-- GetSpecializationInfo's first return. Deriving the spec key from the
+-- localised spec NAME instead is issue #8 — it left every non-English
+-- client tracking nothing.
+-- @return classToken (string|nil), specID (number|nil), classID (number|nil)
 local function ResolveClassSpec()
-    local _, classFile = UnitClass("player")
-    if not classFile then return nil, nil end
+    local _, classFile, classID = UnitClass("player")
+    if not classFile then return nil, nil, nil end
     classFile = NS.Util.NormalizeClassToken(classFile)
-
-    local Compat = NS.Compat
-    local idx = Compat and Compat.GetSpecialization()
-    if not idx then return classFile, nil end
-
-    local _, specName = Compat.GetSpecializationInfo(idx)
-    if not specName then return classFile, nil end
-
-    return classFile, NS.Util.NormalizeSpecToken(specName)
+    return classFile, NS.Util.PlayerSpecID(), classID
 end
 
 -- ---------------------------------------------------------------------------
@@ -178,6 +170,46 @@ end
 --- via the cdObject reference once it's handed over, so per-tick re-
 --- emission isn't needed — only state transitions matter (ready ↔ on-CD,
 --- charges available ↔ none).
+--- Does a transition warrant a DEBUG LINE? Deliberately narrower than
+--- StateChanged.
+---
+--- StateChanged returns true whenever the cooldown handle differs, and
+--- C_Spell.GetSpellCooldownDuration hands back a FRESH object on every call
+--- — so a spell parked on an unchanged 60s cooldown compares unequal on
+--- every poll. That re-emit is load-bearing (Icon:Apply re-evaluates the
+--- alpha / tint / GCD-suppression curves off the emitted object, and nothing
+--- else re-runs them), but logging it produced ~10 identical
+--- `[Cooldowns] N/M changed: active=[...]` lines per second for the whole
+--- cooldown, drowning the console — the same per-gesture spam §9 forbids
+--- and the same reason _logRebuild has its own material-change gate.
+---
+--- So: key on what actually changed about the spell's STATE, treating the
+--- handles as present/absent rather than comparing identity.
+local function MaterialChange(prev, next_)
+    if not prev then return true end
+    if prev.ready    ~= next_.ready    then return true end
+    if prev.isActive ~= next_.isActive then return true end
+    -- Presence, not identity: "a cooldown started / ended" is material,
+    -- "the API minted a new wrapper for the same cooldown" is not.
+    if (prev.cdObject       == nil) ~= (next_.cdObject       == nil) then return true end
+    if (prev.chargeCdObject == nil) ~= (next_.chargeCdObject == nil) then return true end
+
+    local a, b = prev.charges, next_.charges
+    if a == nil and b == nil then return false end
+    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
+    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
+    -- Secret charges CANNOT be compared (§ secret values), so we genuinely
+    -- cannot tell whether they moved. StateChanged resolves that ambiguity by
+    -- emitting conservatively — correct there, since a redundant render is
+    -- harmless. Here the conservative answer is the opposite: logging every
+    -- poll for every charged spell in combat is exactly the flood this gate
+    -- exists to stop, and it would make the console useless in the one
+    -- situation you most need it. A charge change that matters almost always
+    -- moves `ready` or `isActive` too, which is caught above.
+    if aSecret or bSecret then return false end
+    return a ~= b
+end
+
 local function StateChanged(prev, next_)
     if not prev then return true end
     if prev.ready          ~= next_.ready          then return true end
@@ -226,7 +258,7 @@ function Cooldowns:Rebuild()
 
     if not isEnabled() then return end
 
-    local class, spec = ResolveClassSpec()
+    local class, spec, classID = ResolveClassSpec()
     if not class or not spec then
         return
     end
@@ -242,14 +274,16 @@ function Cooldowns:Rebuild()
     -- Walk the spec list in order and build the watched dict. We deliberately
     -- ignore order here — the IconGrid module is responsible for layout
     -- ordering, and Cooldowns just needs O(1) state lookup by spellID.
-    local builtCount, skippedCount = 0, 0
+    -- Collected (not just counted) so the debug summary can name them: a
+    -- pasted log then shows WHICH spells were dropped, not merely how many.
+    local watchedIDs, skippedIDs = {}, {}
     for _, entry in ipairs(list) do
         if entry.enabled ~= false then
             local id = entry.spellID
             local state = self:PollSpell(id)
             if state then
                 self.watched[id] = state
-                builtCount = builtCount + 1
+                watchedIDs[#watchedIDs + 1] = id
                 NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                     spellID        = state.spellID,
                     ready          = state.ready,
@@ -259,33 +293,52 @@ function Cooldowns:Rebuild()
                     charges        = state.charges,
                 })
             else
-                skippedCount = skippedCount + 1
+                skippedIDs[#skippedIDs + 1] = id
             end
         end
     end
 
-    self:_logRebuild(class, spec, builtCount, skippedCount)
+    self:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
 end
 
---- Log a rebuild summary, but only when the watched set MATERIALLY changed
---- since the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
+--- Log a rebuild summary, but only when the result MATERIALLY changed since
+--- the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
 --- the Master scale / alpha sliders are `general`-section, so dragging one
 --- fires Helpers.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
 --- changes the watched spell list. Without this gate that produced ~20
 --- identical `[Cooldowns] rebuild …` lines/sec — exactly the per-gesture spam
---- §9 forbids. Signature = class/spec + sorted watched spellIDs + skipped
---- count; built only when debug is on (§4 zero-alloc).
-function Cooldowns:_logRebuild(class, spec, builtCount, skippedCount)
+--- §9 forbids. Signature = class/spec + both spellID lists; built only when
+--- debug is on (§4 zero-alloc).
+---
+--- The line names every watched and skipped spellID, plus the numeric class
+--- and spec IDs alongside their English tokens. That combination is what
+--- makes a pasted debug log diagnosable on its own: issue #8 needed exactly
+--- this — the ID proves which spec the addon actually resolved, and the
+--- skipped list distinguishes "the spec list is empty" from "the spells are
+--- there but the player can't cast them".
+---
+-- @param class        string  class file token, e.g. "SHAMAN"
+-- @param classID      number|nil  UnitClass()'s third return
+-- @param spec         number|nil  numeric specID
+-- @param watchedIDs   table  array of spellIDs now being watched, in list order
+-- @param skippedIDs   table  array of spellIDs skipped as unknown/unavailable
+function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
     if not (NS.State and NS.State.debug) then return end
-    local ids = {}
-    for id in pairs(self.watched) do ids[#ids + 1] = id end
-    table.sort(ids)
+    watchedIDs = watchedIDs or {}
+    skippedIDs = skippedIDs or {}
+    local watchedList = table.concat(watchedIDs, ",")
+    local skippedList = table.concat(skippedIDs, ",")
+
     local sig = tostring(class) .. "/" .. tostring(spec)
-        .. "|" .. table.concat(ids, ",") .. "|" .. tostring(skippedCount)
+        .. "|" .. watchedList .. "|" .. skippedList
     if sig == self._lastRebuildSig then return end
     self._lastRebuildSig = sig
-    NS.Debug("Cooldowns", "rebuild %s/%s: %d watched (%d skipped)",
-        tostring(class), tostring(spec), builtCount, skippedCount)
+
+    NS.Debug("Cooldowns", "rebuild %s(%s) %s(%s): %d watched (%s); %d skipped (%s)",
+        tostring(class), tostring(classID),
+        NS.Util.SpecDisplay(spec), tostring(spec),
+        #watchedIDs, watchedList,
+        #skippedIDs, skippedList)
 end
 
 --- Re-poll all watched spells, fire Ka0s_KickCD_SPELL_STATE only for those whose
@@ -306,7 +359,11 @@ function Cooldowns:Refresh()
     local dbg = NS.State and NS.State.debug
     local readyIds, activeIds, dropIds  -- built only when debug-on (§9 zero-alloc)
     if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
-    local watched, changed = 0, 0
+    -- `logged` counts MATERIAL changes (see MaterialChange), which is a subset
+    -- of the emits: a fresh cooldown handle for an unchanged cooldown re-emits
+    -- to the renderer but must not reach the log. The printed count has to
+    -- match the ids actually listed, so the line reports `logged`.
+    local watched, logged = 0, 0
 
     for id, prev in pairs(self.watched) do
         watched = watched + 1
@@ -316,19 +373,24 @@ function Cooldowns:Refresh()
             -- the icon back to ready visuals and stop polling it; the next
             -- Rebuild trims it out of the watched list entirely.
             self.watched[id] = nil
-            changed = changed + 1
+            -- A vanished spell is always material.
+            logged = logged + 1
             if dbg then dropIds[#dropIds + 1] = id end
             NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID = id, ready = false, isActive = false,
                 cdObject = nil, chargeCdObject = nil, charges = nil,
             })
         elseif StateChanged(prev, next_) then
-            self.watched[id] = next_
-            changed = changed + 1
-            if dbg then
-                if next_.ready then readyIds[#readyIds + 1] = id
-                elseif next_.isActive then activeIds[#activeIds + 1] = id end
+            -- Emit unconditionally — the renderer needs the fresh handle to
+            -- re-evaluate its curves. Log only a material change.
+            if MaterialChange(prev, next_) then
+                logged = logged + 1
+                if dbg then
+                    if next_.ready then readyIds[#readyIds + 1] = id
+                    elseif next_.isActive then activeIds[#activeIds + 1] = id end
+                end
             end
+            self.watched[id] = next_
             NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
                 cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
@@ -337,12 +399,12 @@ function Cooldowns:Refresh()
         end
     end
 
-    if dbg and changed > 0 then
+    if dbg and logged > 0 then
         local parts = {}
         if #readyIds  > 0 then parts[#parts+1] = "ready=["  .. table.concat(readyIds, ",")  .. "]" end
         if #activeIds > 0 then parts[#parts+1] = "active=[" .. table.concat(activeIds, ",") .. "]" end
         if #dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(dropIds, ",")   .. "]" end
-        NS.Debug("Cooldowns", "%d/%d changed: %s", changed, watched, table.concat(parts, " "))
+        NS.Debug("Cooldowns", "%d/%d changed: %s", logged, watched, table.concat(parts, " "))
     end
 end
 
@@ -426,7 +488,10 @@ end
 function Cooldowns:DebugDump()
     local p = NS.Util and NS.Util.print or print
     local class, spec = ResolveClassSpec()
-    p(("Cooldowns: class=%s spec=%s"):format(tostring(class), tostring(spec)))
+    -- English token, not the localised name: this line is what users paste
+    -- into bug reports (issue #8).
+    p(("Cooldowns: class=%s spec=%s (%s)"):format(
+        tostring(class), NS.Util.SpecDisplay(spec), tostring(spec)))
     if not self.watched or next(self.watched) == nil then
         p("  (no watched spells)")
         return

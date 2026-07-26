@@ -29,6 +29,7 @@ Companion docs:
 | 7 | Cast bar | Free / anchored, auto-size, orientation, per-state | [Cast bar](#7-cast-bar) |
 | 8 | Cooldowns + glow | Interrupt fire, GCD suppression, ready glow | [Cooldown + glow](#8-cooldown--glow) |
 | 9 | Spec / talent / pet | Watched-list rebuild | [Spec, talent, pet rebuilds](#9-spec-talent-pet-rebuilds) |
+| 9b | Locale | Non-English client seeds + resolves specs | [Non-English client](#9b-non-english-client-issue-8) |
 | 10 | Spells | Spells panel + slash parity | [Spell-list editor](#10-spell-list-editor) |
 | 11 | Settings panel | Schema, valueGate, panel ↔ slash sync | [Settings panel parity](#11-settings-panel-parity) |
 | 12 | Resets | Per-panel, resetall, resetposition, per-spec | [Resets](#12-resets) |
@@ -60,7 +61,7 @@ Companion docs:
 - The icon grid renders with the current spec's default spells (filtered to spells the player can actually cast).
 - `/kcd` prints the help index — every row carries the cyan `[KCD]` banner, command names are yellow, descriptions are white, no `schema error:` line appears.
 - Settings → AddOns shows a **Ka0s KickCD** parent category with the six subcategories **General / Icons / Cast bar / Text Label / Spells / Profiles**.
-- `KickCDDB` is now present on disk after `/reload` with `profileKeys`, `profiles.Default`, and the seeded `spells[CLASS][SPEC]` block for the current spec.
+- `KickCDDB` is now present on disk after `/reload` with `profileKeys`, `profiles.Default`, and the seeded `spells[CLASS][specID]` block for the current spec — the spec key is a **number** (e.g. `[262]`), never a spec name.
 - Switch to a different class+spec character (alt) and log in: their spec's spells are seeded on first profile creation without errors.
 
 ### 2. `/reload` integrity
@@ -218,8 +219,28 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Spec swap rebuilds the watched cooldown list against the new spec's seeded spells; the icon grid re-pools and re-lays out without errors. `Cooldowns:OnEnable` listens for `PLAYER_SPECIALIZATION_CHANGED`.
 - Talent choice swap fires `TRAIT_CONFIG_UPDATED` / `SPELLS_CHANGED` and rebuilds the watched list immediately — no need to swap spec.
+- With **Settings → Spells already open**, swapping spec moves the spec dropdown to the new spec and re-renders its rows (regression: it used to stay pinned to the old spec until Settings was fully closed and reopened).
 - Pet summon adds the pet's tracked interrupt to the visible grid; pet dismiss removes it. The dismissed pet's icon does not linger with stale state — `Cooldowns` emits a sentinel `SPELL_STATE { ready=false, isActive=false, cdObject=nil }` on poll-nil for the now-vanished spell.
 - After dismiss, `/kcd debug spells` no longer lists the pet spell.
+
+### 9b. Non-English client (issue #8)
+
+**Setup.** A client set to a non-English locale — frFR is the reported case. Any class works; an Elemental Shaman reproduces the original report exactly.
+
+**Steps.**
+- Log in on a fresh profile and watch the grid populate.
+- `/kcd debug spells`.
+- `/kcd spells list`.
+- `/kcd spells add 51490 ELEMENTAL` and `/kcd spells add 51490 Élémentaire` (the localized name).
+- Upgrade path: log in with a `KickCDDB` saved by v1.2.0 or earlier that has customised spell lists, then inspect it after `/reload`.
+
+**Expect.**
+- The grid populates with the spec's default spells — the original bug was an entirely empty grid with no error.
+- `/kcd debug spells` prints the English spec token alongside the numeric ID, e.g. `class=SHAMAN spec=ELEMENTAL (262)`, on every locale.
+- The `[Cooldowns] rebuild` debug line reads `SHAMAN(7) ELEMENTAL(262): N watched (...); M skipped (...)` — English tokens and numeric IDs, not localized names.
+- Both `/kcd spells add` forms resolve to the same list; output echoes the English token.
+- Settings → Spells shows spec names in the client's own language (`Élémentaire`) while storing `[262]`.
+- After the upgrade, `KickCDDB` has numeric spec keys and the user's customised entries are intact under them. **Repeat with a second profile** — the rekey is per-profile and must catch each one as it is activated, not just the profile that was active at upgrade.
 
 ### 10. Spell-list editor
 

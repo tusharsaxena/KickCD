@@ -8,7 +8,7 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 
 ```lua
 db.global = {
-    schemaVersion = <int>,       -- addon-wide schema version (CURRENT_DB_VERSION = 2).
+    schemaVersion = <int>,       -- addon-wide schema version (CURRENT_DB_VERSION = 3).
                                  -- Database:MigrateProfile reads and writes
                                  -- db.global.schemaVersion, looping migrations[v]
                                  -- forward one step at a time until it reaches
@@ -63,7 +63,7 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
 
     spells = {
         [CLASS] = {
-            [SPEC] = {
+            [specID] = {
                 { spellID, category, enabled }, ...
             },
         },
@@ -211,3 +211,34 @@ It is **shape-driven, not version-gated**: it checks `p.icons == nil and p.castb
 The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. `CURRENT_DB_VERSION = 2` in `core/Database.lua` marks the `units.*` restructure as the addon's second schema generation (v1 was the pre-migration baseline; the v1→v2 migrator was a no-op).
 
 **Deviation recorded as intentional** (per CLAUDE.md's flag-deviations rule): restructuring `DEFAULT_PROFILE` (a rename/nest, not a pure addition) departs from a "profile shape never changes shape, only grows" expectation some Ace3-based addons hold — it was necessary because target/focus each need independently-customisable `icons`/`castbar`, and the alternative (flat `icons`, `focusIcons`, `castbar`, `focusCastbar`, …) doesn't scale to a third unit later and duplicates the anchor/label bookkeeping. The shape-driven (not version-gated) migration is the mitigation that makes the restructure safe for existing installs.
+
+## Migration: localised spec names → numeric spec IDs
+
+Up to schema **v2** the per-spec spell-list key was the player's spec name, uppercased with whitespace stripped (`ELEMENTAL`, `BEASTMASTERY`). That name comes from `GetSpecializationInfo`'s **second** return, which is the *localized display name* — so the key the addon derived at runtime depended on the client's language, while `defaults/Spells.lua` shipped English keys.
+
+On any non-English client the two never met. A frFR Elemental Shaman derived `ELEMENTAIRE`, looked up `spells.SHAMAN.ELEMENTAIRE`, got `nil`, and tracked nothing at all — with no error, because an absent spec list is indistinguishable from a deliberately emptied one. Reported as [issue #8](https://github.com/tusharsaxena/kickcd/issues/8). Only specs whose localized name happens to be spelled exactly like the English one (frFR Warlock `Affliction` / `Destruction`) worked by accident, which is why the bug looked class-specific.
+
+Schema **v3** keys on Blizzard's **numeric specialization ID** instead — `GetSpecializationInfo`'s *first* return, invariant across every locale:
+
+```lua
+spells = {
+    SHAMAN = {
+        [262] = { ... },   — Elemental
+    },
+}
+```
+
+`Const.SPEC` in `core/Constants.lua` holds the ID table (verified against the live `ChrSpecialization` DB2 export) and `defaults/Spells.lua` writes its keys as `[SPEC.ELEMENTAL]` so the file stays greppable. Localized names remain in use for **display only**: `Util.SpecDisplayName` labels the Spells dropdown in the player's own language, and `Util.ResolveSpecID` accepts a localized name typed at the slash command.
+
+### The migrator
+
+`Database:MigrateSpecKeys` walks `profile.spells[CLASS]` and rewrites every **string** key to its numeric specID, resolving through `Util.ResolveSpecID`. That resolver tries, in order: the class-scoped localized name map built from `GetSpecializationInfoForClassID` (which is what recovers a French user's own `/kcd spells add` data), the English token from `Const.SPEC`, then an accent-folded ASCII alias — the last tier existing because WoW's locale-aware `strupper` uppercases accented letters (`Elementaire` → `ELEMENTAIRE`) while stock Lua's does not, so a saved key and a freshly-derived one can differ in case on the accented bytes alone.
+
+It is **shape-driven, not version-gated** — keyed on `type(specKey) == "string"`, so it is a no-op once the profile is numeric. Beyond the AceDB `copyDefaults`-masking trap that `FoldLegacyUnits` documents above, spells have a second, independent reason to avoid version-gating: `db.global.schemaVersion` is **per-account** but `profile.spells` is **per-profile**. A version-gated step would migrate only whichever profile happened to be active at upgrade time, bump the account to v3, and leave every other profile stranded on string keys forever. Running unconditionally from both `Database:Init` and `OnProfileChanged` catches each profile as it loads.
+
+Two data-safety rules, both covered by tests:
+
+- A key that resolves to nothing (hand-edited SavedVariables, a spec removed by a patch) is **left in place**, not deleted. A stale key is inert; losing a customised list is not.
+- A string key never overwrites an existing numeric one. On collision the already-migrated numeric list wins and the string key is left alone.
+
+`migrations[2]` calls the same method and bumps `db.global.schemaVersion` to 3, so the rekey also happens once from the version-gated path — safe rather than redundant, given the idempotency above.

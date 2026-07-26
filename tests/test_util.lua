@@ -25,6 +25,41 @@ test("Util.NormalizeSpecToken strips whitespace and upper-cases", function()
     assertEqual(Util.NormalizeSpecToken(nil), "")
 end)
 
+test("Util.PlayerSpecID returns the numeric spec ID, not the localised name", function()
+    -- The shared mock is an enUS Beast Mastery Hunter (specID 253).
+    assertEqual(Util.PlayerSpecID(), 253)
+end)
+
+test("Util.SpecTokenForID maps a spec ID to its English token", function()
+    assertEqual(Util.SpecTokenForID(253), "BEASTMASTERY")
+    assertEqual(Util.SpecTokenForID(262), "ELEMENTAL")
+    assertEqual(Util.SpecTokenForID(1480), "DEVOURER")
+    assertEqual(Util.SpecTokenForID(nil), nil)
+    assertEqual(Util.SpecTokenForID(999999), nil, "an unknown ID must not invent a token")
+end)
+
+test("Util.SpecDisplay prefers the English token and falls back to the raw ID", function()
+    -- Log lines and /kcd output are what bug reports quote, so they must stay
+    -- English and human-readable even on a localised client (issue #8).
+    assertEqual(Util.SpecDisplay(262), "ELEMENTAL")
+    assertEqual(Util.SpecDisplay(999999), "999999", "an unknown ID must still print something")
+    assertEqual(Util.SpecDisplay(nil), "nil")
+end)
+
+test("Util.ResolveSpecID accepts a number, a numeric string and an English token", function()
+    assertEqual(Util.ResolveSpecID(262), 262)
+    assertEqual(Util.ResolveSpecID("262"), 262)
+    assertEqual(Util.ResolveSpecID("ELEMENTAL"), 262)
+    assertEqual(Util.ResolveSpecID("elemental"), 262)
+    assertEqual(Util.ResolveSpecID("Beast Mastery"), 253, "whitespace must still be stripped")
+end)
+
+test("Util.ResolveSpecID rejects unknown input rather than guessing", function()
+    assertEqual(Util.ResolveSpecID("NOTASPEC"), nil)
+    assertEqual(Util.ResolveSpecID(""), nil)
+    assertEqual(Util.ResolveSpecID(nil), nil)
+end)
+
 test("Util.NormalizeClassToken upper-cases", function()
     assertEqual(Util.NormalizeClassToken("Hunter"), "HUNTER")
     assertEqual(Util.NormalizeClassToken(nil), "")

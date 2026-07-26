@@ -26,7 +26,9 @@ Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colore
 
 These have been considered and explicitly declined.
 
-- **Localization.** English only. The Spells editor compares localized spec names case-insensitively but the `defaults/Spells.lua` keys, slash CLI tokens, and chat output strings are English. Localization plumbing is a deliberate non-goal.
+- **Localization.** English only for the addon's own strings: chat output, log lines and the slash CLI's canonical tokens are English on every client. Localization plumbing is a deliberate non-goal.
+
+  This is **not** a licence to be locale-*dependent*, which is a different thing and was a real bug (issue #8): persisted keys and lookups must never be derived from a localized string. Spell-list keys are the numeric specID (`Const.SPEC`), class keys are `UnitClass()`'s file token. Localized spec names are accepted as slash-command *input* and shown as dropdown *labels*, but never stored or compared as identity.
 - **TestMode preview for the cast bar.** The original test-mode preview was removed at commit `59fb5c0` and has not been re-added. While the bar is unlocked it shows a static placeholder instead so the user can grab and reposition it.
 - **Generic raid-frame / unit-frame replacement.** KickCD is scoped to the player's own interrupt rotation; mirroring party / arena cooldowns is out.
 - **Drag-and-drop reordering** of Spells panel rows. The list order is intentional (defaults first, then user-added in append order).

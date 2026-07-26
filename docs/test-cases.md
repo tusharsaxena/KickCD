@@ -2,16 +2,33 @@
 
 _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > docs/test-cases.md`._
 
-### test_util.lua (8)
+### test_util.lua (13)
 
 - Util.Unpack array-style color
 - Util.Unpack hash-style color
 - Util.Unpack nil defaults to opaque white
 - Util.NormalizeSpecToken strips whitespace and upper-cases
+- Util.PlayerSpecID returns the numeric spec ID, not the localised name
+- Util.SpecTokenForID maps a spec ID to its English token
+- Util.SpecDisplay prefers the English token and falls back to the raw ID
+- Util.ResolveSpecID accepts a number, a numeric string and an English token
+- Util.ResolveSpecID rejects unknown input rather than guessing
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
+
+### test_locale.lua (9)
+
+- frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
+- frFR and enUS Elemental Shaman seed byte-identical spell lists
+- frFR player spec resolves to the locale-invariant numeric spec ID
+- frFR client resolves a localised spec name typed at the slash command
+- frFR Elemental Shaman actually watches its cooldowns end-to-end (issue #8)
+- the Spells editor labels specs in the client's own language
+- SpecDisplayName falls back to the English token for an unknown spec
+- a spec-name lookup that ran before the client was ready retries later
+- every default spell list is reachable on a French client
 
 ### test_units.lua (12)
 
@@ -43,7 +60,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: no schema row targets it (§12.5)
 
-### test_database.lua (15)
+### test_database.lua (20)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -52,6 +69,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - MigrateProfile treats a missing version as v1 and walks forward to current
 - MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
 - GetSpellList returns nil for an unseeded class/spec
+- MigrateSpecKeys rewrites an English spec-name key to its numeric spec ID
+- MigrateSpecKeys rewrites a LOCALISED spec-name key to its numeric spec ID (issue #8)
+- MigrateSpecKeys is idempotent on an already-numeric profile
+- MigrateSpecKeys leaves an unmappable key in place rather than dropping data
+- MigrateSpecKeys does not clobber an existing numeric key on collision
 - DEFAULT_PROFILE nests appearance under units.target / units.focus
 - FoldLegacyUnits moves a legacy top-level config under units.target
 - FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched
@@ -127,11 +149,17 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
 
-### test_cooldowns.lua (5)
+### test_cooldowns.lua (11)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
 - Refresh logs one coalesced line only when a spell changed
 - Refresh coalesces multiple simultaneous changes into ONE line
+- Refresh does not log when only the cooldown handle identity changed
+- Refresh STILL emits SPELL_STATE when the cooldown handle changed
+- Refresh logs a genuine on-cooldown -> ready transition
+- Rebuild summary names the class/spec IDs and every watched + skipped spell
+- Rebuild summary distinguishes an empty watched set from an empty skipped set
+- Rebuild summary re-logs when only the SKIPPED set changes
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
@@ -142,6 +170,13 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
 - ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)
+
+### test_settings_spells.lua (4)
+
+- Spells editor seeds its selection to the player's own class and spec
+- Spells editor selection follows an in-game spec change (dropdown regression)
+- Spells editor spec change also tracks a class it can render
+- Spells editor exposes specs in Blizzard's order, not numeric order
 
 ### test_flow_traces.lua (1)
 
@@ -165,10 +200,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 | Suite | Cases |
 | --- | --- |
-| test_util.lua | 8 |
+| test_util.lua | 13 |
+| test_locale.lua | 9 |
 | test_units.lua | 12 |
 | test_schema.lua | 12 |
-| test_database.lua | 15 |
+| test_database.lua | 20 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_debuglog.lua | 13 |
@@ -176,9 +212,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
 | test_castbar.lua | 7 |
-| test_cooldowns.lua | 5 |
+| test_cooldowns.lua | 11 |
 | test_settings_log.lua | 5 |
+| test_settings_spells.lua | 4 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **111** |
+| **Total** | **140** |

@@ -77,9 +77,15 @@ end
 --- Load a fresh isolated addon instance under its own mock.
 --- @param initDB boolean  call the AceAddon OnInitialize (builds db) when true
 --- @param enable boolean  run the OnEnable lifecycle cascade (needs initDB) when true
+--- @param mutate function|nil  optional (mocks) -> () hook applied to the freshly
+---        built mock table BEFORE any source loads. Needed by suites that have to
+---        change the simulated client *before* init-time reads happen — e.g. the
+---        frFR locale suite, where BuildSpells() resolves the player's spec during
+---        OnInitialize and a post-load mock swap would be too late.
 --- @return table inst  { NS, env, mocks }
-local function loadInstance(initDB, enable)
+local function loadInstance(initDB, enable, mutate)
     local mocks = mockmod.build()
+    if mutate then mutate(mocks) end
     local env, ns = loader.loadAll(root, mocks)
     -- Pre-migration sources publish onto the global namespace (env.KickCD);
     -- post-KCD-01 sources populate the private `ns`. Prefer whichever exists.
@@ -120,6 +126,7 @@ _G.KICKCD_TEST = T
 -- ---------------------------------------------------------------------------
 local SUITES = {
     "test_util.lua",
+    "test_locale.lua",
     "test_units.lua",
     "test_schema.lua",
     "test_database.lua",
@@ -132,6 +139,7 @@ local SUITES = {
     "test_castbar.lua",
     "test_cooldowns.lua",
     "test_settings_log.lua",
+    "test_settings_spells.lua",
     "test_flow_traces.lua",
     "test_version.lua",
     "test_list_mode.lua",

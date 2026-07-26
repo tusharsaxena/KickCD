@@ -39,9 +39,9 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    -- CURRENT_DB_VERSION is 2 (units migration registered) — an unversioned
-    -- account is treated as v1 and walked forward through migrations[1].
-    assertEqual(ns.db.global.schemaVersion, 2, "migration must stamp v1 then walk to current")
+    -- CURRENT_DB_VERSION is 3 (units fold + spec-key rekey registered) — an
+    -- unversioned account is treated as v1 and walked forward through every step.
+    assertEqual(ns.db.global.schemaVersion, 3, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -56,14 +56,72 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     ns.db.profile.dbVersion = 1
     ns.Database:MigrateProfile()
     assertTrue(ns.db.global.schemaVersion ~= 99, "legacy dbVersion must override the backfilled global value")
-    -- CURRENT_DB_VERSION is 2 — the adopted v1 account walks forward through
-    -- migrations[1] (FoldLegacyUnits) to the current version.
-    assertEqual(ns.db.global.schemaVersion, 2, "adopted version migrates forward to the current version")
+    -- CURRENT_DB_VERSION is 3 — the adopted v1 account walks forward through
+    -- migrations[1] (FoldLegacyUnits) and [2] (MigrateSpecKeys) to the current version.
+    assertEqual(ns.db.global.schemaVersion, 3, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
 test("GetSpellList returns nil for an unseeded class/spec", function()
-    assertEqual(NS.Database:GetSpellList("NOSUCHCLASS", "NOSUCHSPEC"), nil)
+    assertEqual(NS.Database:GetSpellList("NOSUCHCLASS", -1), nil)
+end)
+
+-- ---------------------------------------------------------------------------
+-- MigrateSpecKeys — v2 string spec keys -> numeric spec IDs (issue #8)
+-- ---------------------------------------------------------------------------
+
+test("MigrateSpecKeys rewrites an English spec-name key to its numeric spec ID", function()
+    local ns = T.load(true).NS
+    ns.db.profile.spells = { SHAMAN = { ELEMENTAL = { { spellID = 51490, enabled = true } } } }
+    ns.Database:MigrateSpecKeys(ns.db)
+    assertEqual(ns.db.profile.spells.SHAMAN.ELEMENTAL, nil, "the string key must be gone")
+    local list = ns.db.profile.spells.SHAMAN[262]
+    assertTrue(type(list) == "table", "the list must live under specID 262")
+    assertEqual(list[1].spellID, 51490, "entries must survive the rekey untouched")
+end)
+
+test("MigrateSpecKeys rewrites a LOCALISED spec-name key to its numeric spec ID (issue #8)", function()
+    -- The French reporter's own saved data: /kcd spells add wrote under the
+    -- localised token, so the migration has to recognise it too.
+    local inst = T.load(true, false, function(mocks)
+        mocks.__setPlayerSpec(7, 1, { [262] = "Élémentaire" })
+        mocks.GetLocale = function() return "frFR" end
+    end)
+    local ns = inst.NS
+    ns.db.profile.spells = { SHAMAN = { ["ÉLÉMENTAIRE"] = { { spellID = 51490, enabled = true } } } }
+    ns.Database:MigrateSpecKeys(ns.db)
+    assertEqual(ns.db.profile.spells.SHAMAN["ÉLÉMENTAIRE"], nil, "the localised key must be gone")
+    assertTrue(type(ns.db.profile.spells.SHAMAN[262]) == "table",
+        "a localised key must map to the same specID as the English one")
+end)
+
+test("MigrateSpecKeys is idempotent on an already-numeric profile", function()
+    local ns = T.load(true).NS
+    ns.db.profile.spells = { SHAMAN = { [262] = { { spellID = 51490, enabled = true } } } }
+    ns.Database:MigrateSpecKeys(ns.db)
+    ns.Database:MigrateSpecKeys(ns.db)
+    assertEqual(#ns.db.profile.spells.SHAMAN[262], 1, "a second pass must not duplicate or drop entries")
+end)
+
+test("MigrateSpecKeys leaves an unmappable key in place rather than dropping data", function()
+    local ns = T.load(true).NS
+    ns.db.profile.spells = { SHAMAN = { GIBBERISH = { { spellID = 51490 } } } }
+    ns.Database:MigrateSpecKeys(ns.db)
+    assertTrue(type(ns.db.profile.spells.SHAMAN.GIBBERISH) == "table",
+        "an unrecognised key must be preserved, not silently deleted")
+end)
+
+test("MigrateSpecKeys does not clobber an existing numeric key on collision", function()
+    local ns = T.load(true).NS
+    ns.db.profile.spells = {
+        SHAMAN = {
+            [262]      = { { spellID = 111 } },
+            ELEMENTAL  = { { spellID = 222 } },
+        },
+    }
+    ns.Database:MigrateSpecKeys(ns.db)
+    assertEqual(ns.db.profile.spells.SHAMAN[262][1].spellID, 111,
+        "the already-migrated numeric list must win")
 end)
 
 test("DEFAULT_PROFILE nests appearance under units.target / units.focus", function()

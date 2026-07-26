@@ -23,8 +23,10 @@ NS.Database = Database
 -- Database:MigrateProfile reads it on Init and on every profile swap and
 -- walks any required migrations forward. v2 folds the legacy top-level
 -- icons/castbar/anchors tables into units.target (see migrations[1] /
--- Database:FoldLegacyUnits below).
-local CURRENT_DB_VERSION = 2
+-- Database:FoldLegacyUnits below). v3 rekeys profile.spells from localised
+-- spec NAMES to numeric spec IDs (see migrations[2] /
+-- Database:MigrateSpecKeys below).
+local CURRENT_DB_VERSION = 3
 
 -- File-local recursive deep-copy. Deliberately independent of NS.Util —
 -- Database.lua is one of the first files to load and must stay
@@ -560,11 +562,74 @@ function Database:BackfillLabelStyle(db)
     end
 end
 
+--- Rekey `profile.spells[CLASS]` from spec NAME tokens to numeric spec IDs.
+---
+--- Up to v2 the spec key was the player's localised spec name, uppercased
+--- and whitespace-stripped. That silently broke every non-English client:
+--- a frFR Elemental Shaman derived "ELEMENTAIRE" and never matched the
+--- "ELEMENTAL" key the defaults shipped, so the addon tracked nothing
+--- (issue #8). v3 keys on the numeric specID instead, which is invariant.
+---
+--- Idempotent and SHAPE-DRIVEN (keyed on the key TYPE, not the schema
+--- version) for the same reason as FoldLegacyUnits / BackfillLabelStyle:
+--- the version is per-ACCOUNT but spells are per-PROFILE, so a
+--- version-gated step would migrate only whichever profile happened to be
+--- active at upgrade time and leave every other profile broken. Running it
+--- unconditionally on each profile swap catches them all as they load.
+---
+--- Data safety: a key that can't be resolved is LEFT IN PLACE rather than
+--- dropped, and an incoming key never overwrites an existing numeric one.
+--- Losing a user's customised list is worse than leaving a stale key.
+function Database:MigrateSpecKeys(db)
+    db = db or self.db
+    if not (db and db.profile) then return end
+    local spells = db.profile.spells
+    if type(spells) ~= "table" then return end
+
+    local Util = NS.Util
+    if not (Util and Util.ResolveSpecID) then return end
+
+    for classFile, bySpec in pairs(spells) do
+        if type(bySpec) == "table" then
+            -- Collect first: mutating a table while pairs() walks it is
+            -- undefined behaviour in Lua.
+            local rekey = {}
+            for specKey, list in pairs(bySpec) do
+                if type(specKey) == "string" then
+                    rekey[#rekey + 1] = { key = specKey, list = list }
+                end
+            end
+            for _, entry in ipairs(rekey) do
+                local specID = Util.ResolveSpecID(entry.key, classFile)
+                if not specID then
+                    if NS.State and NS.State.debug then
+                        NS.Debug("Migrate", "spells: %s/%s unresolved, left as-is",
+                            tostring(classFile), tostring(entry.key))
+                    end
+                elseif bySpec[specID] ~= nil then
+                    if NS.State and NS.State.debug then
+                        NS.Debug("Migrate", "spells: %s/%s collides with %d, left as-is",
+                            tostring(classFile), tostring(entry.key), specID)
+                    end
+                else
+                    bySpec[specID] = entry.list
+                    bySpec[entry.key] = nil
+                    if NS.State and NS.State.debug then
+                        NS.Debug("Migrate", "spells: %s/%s -> %d",
+                            tostring(classFile), tostring(entry.key), specID)
+                    end
+                end
+            end
+        end
+    end
+end
+
 local migrations = {
     -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
     -- Each step bumps db.global.schemaVersion to the from-version+1 and may
     -- read/write db.profile as needed.
     [1] = function(db) NS.Database:FoldLegacyUnits(db); db.global.schemaVersion = 2 end,
+    [2] = function(db) NS.Database:MigrateSpecKeys(db); db.global.schemaVersion = 3 end,
 }
 
 --- Migrate the account forward to CURRENT_DB_VERSION. The schema version is
@@ -636,6 +701,8 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     -- what global.schemaVersion reports.
     self:FoldLegacyUnits(self.db)
     self:BackfillLabelStyle(self.db)
+    -- Per-profile, so it has to run on every swap — see MigrateSpecKeys.
+    self:MigrateSpecKeys(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -681,6 +748,13 @@ function Database:Init()
     -- single text-label feature. Shape-driven and idempotent like
     -- FoldLegacyUnits — keyed on style == nil to detect legacy profiles.
     self:BackfillLabelStyle(db)
+
+    -- Rekey any localised spec-name spell keys to numeric spec IDs before
+    -- anything reads profile.spells. Shape-driven and unconditional for the
+    -- same reason as the two above, plus one specific to spells: the schema
+    -- version is per-ACCOUNT but spells are per-PROFILE, so version-gating
+    -- would migrate only the profile active at upgrade time (issue #8).
+    self:MigrateSpecKeys(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

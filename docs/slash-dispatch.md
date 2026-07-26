@@ -48,7 +48,9 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 
 ## `/kcd spells <subcmd>`
 
-Edits the per-class+spec spell list at `db.profile.spells[CLASS][SPEC]`. CLASS is the upper-case class file token (`WARRIOR`, `DEATHKNIGHT`, …) and SPEC is the upper-case localized spec name with whitespace stripped (`FROST`, `BEASTMASTERY`, …) — matches the keys in `defaults/Spells.lua`. Every subcommand accepts an optional trailing `[CLASS SPEC]`; when omitted, both default to the player's current class+spec.
+Edits the per-class+spec spell list at `db.profile.spells[CLASS][specID]`. CLASS is the upper-case class file token (`WARRIOR`, `DEATHKNIGHT`, …); the stored spec key is Blizzard's **numeric** specialization ID (see `Const.SPEC` in `core/Constants.lua`), matching the keys in `defaults/Spells.lua`.
+
+At the command line SPEC is still typed as a name: `Util.ResolveSpecID` accepts the English token (`ELEMENTAL`), the spec name in the client's own language (`Élémentaire`), or the raw ID, resolving against the given class so names shared by several classes (`FROST`, `HOLY`, `PROTECTION`, `RESTORATION`) are unambiguous. Output always echoes the English token so a pasted bug report reads identically in every locale. Every subcommand accepts an optional trailing `[CLASS SPEC]`; when omitted, both default to the player's current class+spec.
 
 | Subcommand | Purpose |
 |---|---|

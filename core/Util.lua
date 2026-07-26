@@ -135,27 +135,230 @@ end
 -- Spec / class token normalisation
 -- ---------------------------------------------------------------------------
 --
--- defaults/Spells.lua keys specs with a no-whitespace upper-case token
--- ("BEASTMASTERY", "MARKSMANSHIP", "MISTWEAVER", ...). The runtime side
--- has to derive the same token from GetSpecializationInfo's second
--- return — which is the LOCALISED display name. In English that
--- includes "Beast Mastery" (with whitespace); in non-English locales
--- additional spec names span multiple words. Uppercasing alone is not
--- enough — the whitespace has to be stripped too, or the runtime
--- lookup tries `profile.spells.HUNTER["BEAST MASTERY"]` and silently
--- gets nil.
+-- Canonicalises a spec NAME to a comparable token: upper-cased with every
+-- run of whitespace stripped, so "Beast Mastery" and "beastmastery" meet at
+-- "BEASTMASTERY".
 --
--- These two helpers are the single source of truth for the conversion
--- so a future locale quirk only needs fixing in one place.
+-- This is NOT how spec keys are derived any more. Spell lists key on the
+-- numeric specID (see "Spec identity" below); deriving a storage key from a
+-- localised name is issue #8. What remains here is name MATCHING, which has
+-- two legitimate callers:
+--   * parsing a spec the user typed at the slash command, and
+--   * matching a legacy string key during the v2 → v3 migration.
+-- Both compare a name against other names, never against a stored key.
 
---- Normalise a localised spec name to the key used in defaults/Spells.lua
---- and db.profile.spells[CLASS][SPEC]: upper-cased and with every run of
---- whitespace stripped. Returns the empty string for nil/missing input
---- so callers can pass GetSpecializationInfo's second return verbatim.
--- @param specName string|nil — localised spec display name
--- @return string  — normalised spec token (e.g. "BEASTMASTERY")
+--- Normalise a spec name to a comparable token — upper-cased, whitespace
+--- stripped. Returns the empty string for nil/missing input so callers can
+--- pass a possibly-absent name straight through.
+-- @param specName string|nil — spec display name, any locale
+-- @return string  — normalised token (e.g. "BEASTMASTERY")
 function Util.NormalizeSpecToken(specName)
     return (specName or ""):upper():gsub("%s+", "")
+end
+
+-- ---------------------------------------------------------------------------
+-- Spec identity (locale-invariant)
+-- ---------------------------------------------------------------------------
+--
+-- The numeric specID is the ONLY locale-invariant identity a spec has, and
+-- it is what defaults/Spells.lua and db.profile.spells[CLASS][specID] key
+-- on. NormalizeSpecToken above still exists, but only to parse names the
+-- USER typed and to match legacy saved keys during the v2 -> v3 migration.
+-- Never derive a storage key from a localised name again (issue #8).
+
+--- The player's current specID, or nil when the API isn't available yet
+--- (e.g. very early login, or a character below the spec-unlock level).
+-- @return number|nil specID
+function Util.PlayerSpecID()
+    local Compat = NS.Compat
+    if not (Compat and Compat.GetSpecialization) then return nil end
+    local idx = Compat.GetSpecialization()
+    if not idx then return nil end
+    -- FIRST return is the numeric ID; the second is the LOCALISED name and
+    -- must never be used as a key.
+    local specID = Compat.GetSpecializationInfo(idx)
+    if type(specID) ~= "number" then return nil end
+    return specID
+end
+
+--- English display token for a specID ("ELEMENTAL"), or nil if unknown.
+--- Display / logging / slash-command output only — never a storage key.
+-- @param specID number|nil
+-- @return string|nil
+function Util.SpecTokenForID(specID)
+    if type(specID) ~= "number" then return nil end
+    return NS.Const and NS.Const.SPEC_TOKEN and NS.Const.SPEC_TOKEN[specID] or nil
+end
+
+--- Human-readable spec label for log lines and chat output. Prefers the
+--- English token so a bug report from a localised client quotes the same
+--- string the maintainer's English client would; falls back to the raw ID
+--- for a spec Const.SPEC doesn't know yet (e.g. a spec added by a patch
+--- newer than this build).
+-- @param specID number|nil
+-- @return string
+function Util.SpecDisplay(specID)
+    return Util.SpecTokenForID(specID) or tostring(specID)
+end
+
+-- Fold a spec name to an accent-insensitive ASCII key. WoW's strupper is
+-- locale-aware and upper-cases accented letters ("Élémentaire" ->
+-- "ÉLÉMENTAIRE"); stock Lua's string.upper (and therefore the headless test
+-- harness) leaves the multi-byte sequences alone. Dropping every non-ASCII
+-- byte makes the two agree, so a saved key written by any client build still
+-- matches the name the running client reports. Used only as a last-resort
+-- alias after the exact matches below have missed.
+local function asciiFold(name)
+    return (tostring(name or ""):upper():gsub("[^A-Z0-9]", ""))
+end
+
+-- Lazily-built { [normalisedName] = specID } map for the CURRENT client
+-- locale, plus a per-class variant so shared names (Frost, Holy,
+-- Protection, Restoration) can be disambiguated. Rebuilt on demand; the
+-- data is static for a session, so one build is enough.
+local specNameMap, specNameMapByClass
+-- { [specID] = localisedName } and { [classFile] = { specID, ... } } in
+-- Blizzard's own spec order — both DISPLAY concerns (the Spells editor's
+-- dropdown), never keys.
+local specDisplayName, specOrderByClass
+-- True only once a build actually saw spec data — see ensureSpecNameMaps.
+local specMapsReady
+
+-- Returns true once the client actually answered with at least one spec.
+-- A build that came up empty is NOT cached: Database:Init resolves spec keys
+-- at ADDON_LOADED, and caching an empty map there would strand a localised
+-- profile for the whole session — the migration would quietly stop
+-- recognising localised keys with no way to recover short of a /reload.
+local function buildSpecNameMaps()
+    specNameMap, specNameMapByClass = {}, {}
+    specDisplayName, specOrderByClass = {}, {}
+    if not (GetNumClasses and GetClassInfo and GetNumSpecializationsForClassID
+            and GetSpecializationInfoForClassID) then
+        return false
+    end
+    for classID = 1, GetNumClasses() do
+        local _, classFile = GetClassInfo(classID)
+        if classFile then
+            local byClass, order = {}, {}
+            specNameMapByClass[classFile] = byClass
+            specOrderByClass[classFile] = order
+            for i = 1, (GetNumSpecializationsForClassID(classID) or 0) do
+                local specID, specName = GetSpecializationInfoForClassID(classID, i)
+                if specID and specName then
+                    specDisplayName[specID] = specName
+                    order[#order + 1] = specID
+                    for _, alias in ipairs({ Util.NormalizeSpecToken(specName),
+                                             specName, asciiFold(specName) }) do
+                        if alias ~= "" then
+                            byClass[alias] = specID
+                            -- Ambiguous names stay out of the global map so a
+                            -- bare "FROST" never silently resolves to whichever
+                            -- class happened to be enumerated last.
+                            if specNameMap[alias] == nil then
+                                specNameMap[alias] = specID
+                            elseif specNameMap[alias] ~= specID then
+                                specNameMap[alias] = false
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return next(specDisplayName) ~= nil
+end
+
+-- Populate the maps, caching them only once the client has actually answered.
+-- The tables are always left non-nil so callers can index them without a
+-- guard; `specMapsReady` is what decides whether the next call rebuilds.
+local function ensureSpecNameMaps()
+    if specMapsReady then return end
+    specMapsReady = buildSpecNameMaps()
+end
+
+--- Resolve user- or profile-supplied spec input to a numeric specID.
+--- Accepts, in order of preference: a number, a numeric string, a localised
+--- spec name in the client's own language, and the English token used by
+--- Const.SPEC. Returns nil rather than guessing when nothing matches.
+---
+--- `classFile` is optional but disambiguates the four names shared across
+--- classes (Frost, Holy, Protection, Restoration); without it those resolve
+--- only via the English token.
+-- @param input string|number|nil
+-- @param classFile string|nil  e.g. "SHAMAN"
+-- @return number|nil specID
+function Util.ResolveSpecID(input, classFile)
+    if type(input) == "number" then return input end
+    if type(input) ~= "string" or input == "" then return nil end
+
+    local asNumber = tonumber(input)
+    if asNumber then return asNumber end
+
+    ensureSpecNameMaps()
+
+    local token = Util.NormalizeSpecToken(input)
+    local folded = asciiFold(input)
+
+    -- Class-scoped first: it is the only tier that can resolve a shared name.
+    local byClass = classFile and specNameMapByClass[NS.Util.NormalizeClassToken(classFile)]
+    if byClass then
+        local hit = byClass[token] or byClass[input] or byClass[folded]
+        if hit then return hit end
+    end
+
+    -- Then the English token from Const.SPEC. Ahead of the global localised
+    -- map so an English-speaking user's input keeps resolving identically no
+    -- matter what locale the client is running.
+    local Const = NS.Const
+    if Const and Const.SPEC then
+        local hit = Const.SPEC[token]
+        if hit then return hit end
+    end
+
+    local hit = specNameMap[token] or specNameMap[input] or specNameMap[folded]
+    -- `false` marks an ambiguous name with no class hint — refuse it.
+    if hit then return hit end
+    return nil
+end
+
+--- Localised spec name for UI display ("Élémentaire" on a frFR client).
+--- The inverse of the storage rule: keys must be locale-free, but anything
+--- the user READS should be in their own language. Falls back to a
+--- title-cased English token when the client can't be queried (or for a
+--- spec Const.SPEC knows but the client doesn't enumerate).
+-- @param specID number|nil
+-- @return string
+function Util.SpecDisplayName(specID)
+    if type(specID) ~= "number" then return "" end
+    ensureSpecNameMaps()
+    local name = specDisplayName and specDisplayName[specID]
+    if name then return name end
+    local token = Util.SpecTokenForID(specID)
+    if not token then return tostring(specID) end
+    return (token:lower():gsub("^%l", string.upper))
+end
+
+--- Spec IDs for a class in Blizzard's own spec order (the order the
+--- character sheet shows them), for building the Spells editor's dropdown.
+--- Returns nil when the client can't be queried, so callers fall back to
+--- their own ordering.
+-- @param classFile string
+-- @return table|nil  array of specIDs
+function Util.SpecOrderForClass(classFile)
+    if not classFile then return nil end
+    ensureSpecNameMaps()
+    local order = specOrderByClass and specOrderByClass[Util.NormalizeClassToken(classFile)]
+    if order and #order > 0 then return order end
+    return nil
+end
+
+--- Test/reload hook: drop the cached locale maps so a later call rebuilds
+--- them. Nothing in-game changes spec names mid-session, but the headless
+--- harness loads several simulated clients into one process.
+function Util.ResetSpecNameCache()
+    specNameMap, specNameMapByClass = nil, nil
+    specDisplayName, specOrderByClass = nil, nil
+    specMapsReady = nil
 end
 
 --- Normalise a class file token. Today UnitClass() already returns the

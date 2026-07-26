@@ -313,18 +313,73 @@ local function build()
         GetSpellTexture = function() return 12345 end,
         IsSpellUsable = function() return true end,
     }
-    mocks.C_SpecializationInfo = {
-        GetSpecialization = function() return 1 end,
-        GetSpecializationInfo = function() return 253, "Beast Mastery", nil, 12345, "DAMAGER" end,
+    -- ---------------------------------------------------------------------
+    -- Specialization API
+    -- ---------------------------------------------------------------------
+    --
+    -- The simulated client is a table so a suite can reshape it via the
+    -- loadInstance `mutate` hook BEFORE sources load — mocks.__setPlayerSpec
+    -- swaps class/spec/locale wholesale. Default is an enUS Beast Mastery
+    -- Hunter, matching the historical mock.
+    --
+    -- specName is deliberately the LOCALISED display name (as Blizzard
+    -- returns it) while specID is locale-invariant: that asymmetry is the
+    -- whole point of the frFR regression coverage (issue #8).
+    local classSpecs = {
+        -- [classID] = { classFile, { {specID, localisedName}, ... } }
+        [3]  = { "HUNTER",  { { 253, "Beast Mastery" }, { 254, "Marksmanship" }, { 255, "Survival" } } },
+        [7]  = { "SHAMAN",  { { 262, "Elemental" }, { 263, "Enhancement" }, { 264, "Restoration" } } },
+        [9]  = { "WARLOCK", { { 265, "Affliction" }, { 266, "Demonology" }, { 267, "Destruction" } } },
     }
-    mocks.GetSpecialization = function() return 1 end
-    mocks.GetSpecializationInfo = function() return 253, "Beast Mastery", nil, 12345, "DAMAGER" end
+    local player = { classID = 3, specIndex = 1 }
+
+    --- Reshape the simulated client. Call from a loadInstance mutate hook.
+    -- @param classID number        key into classSpecs above
+    -- @param specIndex number      1-based index within that class's spec list
+    -- @param localisedNames table|nil  optional { [specID] = "localised name" }
+    --        overrides, simulating a non-English client.
+    function mocks.__setPlayerSpec(classID, specIndex, localisedNames)
+        player.classID, player.specIndex = classID, specIndex
+        if localisedNames then
+            for _, entry in pairs(classSpecs) do
+                for _, spec in ipairs(entry[2]) do
+                    if localisedNames[spec[1]] then spec[2] = localisedNames[spec[1]] end
+                end
+            end
+        end
+    end
+
+    local function specInfoFor(classID, index)
+        local entry = classSpecs[classID]
+        local spec = entry and entry[2][index]
+        if not spec then return nil end
+        return spec[1], spec[2], nil, 12345, "DAMAGER"
+    end
+
+    mocks.C_SpecializationInfo = {
+        GetSpecialization = function() return player.specIndex end,
+        GetSpecializationInfo = function(index)
+            return specInfoFor(player.classID, index or player.specIndex)
+        end,
+    }
+    mocks.GetSpecialization = function() return player.specIndex end
+    mocks.GetSpecializationInfo = function(index)
+        return specInfoFor(player.classID, index or player.specIndex)
+    end
+    mocks.GetNumSpecializationsForClassID = function(classID)
+        local entry = classSpecs[classID]
+        return entry and #entry[2] or 0
+    end
+    mocks.GetSpecializationInfoForClassID = function(classID, index)
+        return specInfoFor(classID, index)
+    end
     mocks.GetSpellInfo = function(id) return "Spell" .. tostring(id), nil, 12345 end
     mocks.UnitCastingInfo = function() return nil end
     mocks.UnitChannelInfo = function() return nil end
     mocks.UnitExists = function() return false end
     mocks.UnitCanAttack = function() return true end
-    mocks.UnitClass = function() return "Hunter", "HUNTER" end
+    -- Three returns like the live API: localised name, file token, classID.
+    mocks.UnitClass = function() return "Hunter", "HUNTER", 3 end
     mocks.UnitRace = function() return "Orc", "Orc" end
     mocks.UnitIsUnit = function() return false end
     mocks.UnitIsDead = function() return false end
@@ -341,9 +396,18 @@ local function build()
     mocks.PlaySound = function() end
     mocks.GetLocale = function() return "enUS" end
 
-    -- Class / atlas / popup helpers used by settings/Spells.lua
-    mocks.GetNumClasses = function() return 0 end
-    mocks.GetClassInfo = function() return nil end
+    -- Class / atlas / popup helpers used by settings/Spells.lua.
+    -- GetNumClasses spans the real 1..13 range so callers that iterate it see
+    -- the same sparse shape as the live client (classSpecs above only fills
+    -- the three classes the suites exercise; the rest return nil, which is
+    -- exactly what a class the caller doesn't care about looks like).
+    local CLASS_FILES = { [3] = "HUNTER", [7] = "SHAMAN", [9] = "WARLOCK" }
+    mocks.GetNumClasses = function() return 13 end
+    mocks.GetClassInfo = function(classID)
+        local file = CLASS_FILES[classID]
+        if not file then return nil end
+        return file:sub(1, 1) .. file:sub(2):lower(), file, classID
+    end
     mocks.LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, k) return k end })
     mocks.RAID_CLASS_COLORS = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1, colorStr = "ffffffff" } end })
     mocks.CreateAtlasMarkup = function() return "" end

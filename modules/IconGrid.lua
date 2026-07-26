@@ -211,22 +211,14 @@ local function ApplyInterruptibilityMask(inst)
 end
 
 
--- Resolve the active spec key the same way Database/Cooldowns do.
--- classFile is the locale-independent token from UnitClass(); specName
--- is the localised display name from GetSpecializationInfo, normalised
--- through Util.NormalizeSpecToken so multi-word names (English "Beast
--- Mastery" and several non-English specs) collapse to the keys built
--- in defaults/Spells.lua.
+-- Resolve the active spec key the same way Database/Cooldowns do: the
+-- locale-independent class file token from UnitClass(), plus the NUMERIC
+-- specID. Never the localised spec name — see issue #8.
 local function getActiveSpecKey()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
     classFile = NS.Util.NormalizeClassToken(classFile)
-    local Compat = NS.Compat
-    local specIdx = Compat and Compat.GetSpecialization()
-    if not specIdx then return classFile, nil end
-    local _, specName = Compat.GetSpecializationInfo(specIdx)
-    if not specName then return classFile, nil end
-    return classFile, NS.Util.NormalizeSpecToken(specName)
+    return classFile, NS.Util.PlayerSpecID()
 end
 
 

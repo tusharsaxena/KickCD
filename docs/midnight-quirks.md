@@ -33,6 +33,35 @@ The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-ba
 
 **Do not** propose `securecallfunction` / `tonumber` / `+0` "detox" workarounds — they were tried and don't work. Comments document this so we don't re-try.
 
+## `CooldownDuration` objects are minted fresh on every call
+
+`C_Spell.GetSpellCooldownDuration(spellID)` returns a **brand-new object every single call**. Two calls describing the identical, unchanged cooldown are never `==`. There is no interning, and identity carries no meaning.
+
+This bites any "did the state change?" diff that includes the handle. `modules/Cooldowns.lua`'s `StateChanged` compares `prev.cdObject ~= next_.cdObject`, so a spell parked on an unchanged 60s cooldown compares unequal on *every* poll — with `SPELL_UPDATE_COOLDOWN` firing ~10x/sec in combat that is ~10 redundant `Ka0s_KickCD_SPELL_STATE` emits per second per spell on cooldown. The tell in a debug log is the same line repeating at a fixed cadence while only the spells with a **non-nil** handle are named; ready spells (handle `nil`, and `nil == nil`) stay silent. Reported from the field on an Elemental Shaman with Capacitor Totem on cooldown.
+
+**Do not "fix" this by comparing handle presence instead of identity in `StateChanged`.** The re-emit is load-bearing twice over:
+
+1. `Icon:Apply` evaluates the alpha, tint and GCD-suppression curves **at emit time** and sets static values from them. Nothing else re-runs them — the shared 0.1s ticker (`_tickAllTextIcons`) only refreshes the countdown *text*. The re-emit is what re-crosses the step-shaped curves' `GCD_UPPER` threshold as a cooldown winds down, so cutting it freezes those visuals mid-cooldown.
+2. The GCD → real-cooldown transition changes the handle without changing `isActive` (both are "on cooldown"). Presence-only comparison would miss it and leave the icon rendering the expired GCD handle.
+
+The fix that IS correct is to separate the two decisions: emit on `StateChanged` (identity included), but gate the debug line on `MaterialChange`, which keys on `ready` / `isActive` / handle **presence** / charges. Same pattern as `Cooldowns:_logRebuild`'s material-change signature.
+
+Downstream consumers of the emit must be idempotent for the same reason — `Icon:StartGlow` carries an explicit gate because re-issuing `Stop`+`Start` replayed LibCustomGlow's animIn and produced a visible ButtonGlow pop at ~10 Hz.
+
+### The wider `DurationObject` surface (largely unused here)
+
+The object is far richer than this addon currently uses, and several methods are worth reaching for before hand-rolling equivalents:
+
+| Method | Why it matters |
+|---|---|
+| `HasSecretValues()` | First-class test for secret-tainted contents — a native replacement for the hand-rolled `issecretvalue` gating in `core/Compat.lua` / `modules/IconGrid_Render.lua`. |
+| `Assign(other)` / `Copy()` | Update a held object **in place** without replacing the reference — removes the identity churn at source (though it does not remove the per-poll fetch). |
+| `GetStartTime()` / `GetEndTime()` / `GetTotalDuration()` | The comparison primitives whose absence is the only reason the identity check exists. |
+| `HasExpired()` / `IsActive()` / `HasStarted()` / `IsZero()` | State predicates computed natively. |
+| `FormatRemainingDuration(formatter)` | Native formatting, no secret round-trip through Lua. |
+
+**Unverified caveat:** the wiki describes these as methods that "perform calculations natively on potentially secret data and return secrets back to Lua", so assume every getter above can be secret-tainted in combat until proven otherwise in-game — the pages do not say. `HasSecretValues()` is the safe gate for finding out. Reference: [ScriptObject DurationObject](https://warcraft.wiki.gg/wiki/ScriptObject_DurationObject).
+
 ## Cast interruptibility (`UnitCastingInfo` / `UnitChannelInfo`)
 
 `notInterruptible` (position 8 of `UnitCastingInfo`, position 7 of `UnitChannelInfo`) is **secret-tainted in 12.0** for any cast the player has a protected interrupt against. It is the same trap as cooldown timings: `not nint`, `nint == true`, `if nint then`, `tostring(nint)` all error in combat.

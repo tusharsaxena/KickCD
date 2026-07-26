@@ -90,3 +90,65 @@ Const.PANEL_DEFAULTS_W    = 110
 -- [tags] line up regardless of the user's installed fonts (§12.2). Registered
 -- with LibSharedMedia at load in modules/DebugLog.lua and applied at 10pt.
 Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]
+
+-- ---------------------------------------------------------------------------
+-- Specialization IDs
+-- ---------------------------------------------------------------------------
+--
+-- Blizzard's numeric specialization IDs -- the FIRST return of
+-- GetSpecializationInfo / GetSpecializationInfoForClassID, and the only
+-- locale-invariant identity a spec has.
+--
+-- These are the keys used by defaults/Spells.lua and by
+-- db.profile.spells[CLASS][specID]. Do NOT reintroduce the localised spec
+-- NAME (GetSpecializationInfo's second return) as a lookup key: that was
+-- issue #8, where a frFR Elemental Shaman derived "ELEMENTAIRE" and missed
+-- defaults keyed "ELEMENTAL", silently tracking nothing. Names are for
+-- DISPLAY only.
+--
+-- Values verified against the live ChrSpecialization DB2 export
+-- (https://wago.tools/db2/ChrSpecialization). Pet specs, the per-class
+-- "Initial" specs and Adventurer are deliberately absent -- the player can
+-- never be in one while KickCD is tracking cooldowns.
+Const.SPEC = {
+    -- Death Knight
+    BLOOD = 250, FROST_DK = 251, UNHOLY = 252,
+    -- Demon Hunter (Devourer is new in 12.0 / Midnight)
+    HAVOC = 577, VENGEANCE = 581, DEVOURER = 1480,
+    -- Druid
+    BALANCE = 102, FERAL = 103, GUARDIAN = 104, RESTORATION_DRUID = 105,
+    -- Evoker
+    DEVASTATION = 1467, PRESERVATION = 1468, AUGMENTATION = 1473,
+    -- Hunter
+    BEASTMASTERY = 253, MARKSMANSHIP = 254, SURVIVAL = 255,
+    -- Mage
+    ARCANE = 62, FIRE = 63, FROST_MAGE = 64,
+    -- Monk
+    BREWMASTER = 268, WINDWALKER = 269, MISTWEAVER = 270,
+    -- Paladin
+    HOLY_PALADIN = 65, PROTECTION_PALADIN = 66, RETRIBUTION = 70,
+    -- Priest
+    DISCIPLINE = 256, HOLY_PRIEST = 257, SHADOW = 258,
+    -- Rogue
+    ASSASSINATION = 259, OUTLAW = 260, SUBTLETY = 261,
+    -- Shaman
+    ELEMENTAL = 262, ENHANCEMENT = 263, RESTORATION_SHAMAN = 264,
+    -- Warlock
+    AFFLICTION = 265, DEMONOLOGY = 266, DESTRUCTION = 267,
+    -- Warrior
+    ARMS = 71, FURY = 72, PROTECTION_WARRIOR = 73,
+}
+
+-- specID -> English display token, for log lines, `/kcd spells list` output
+-- and the v2 -> v3 spell-key migration. Deliberately the ENGLISH token even
+-- on a localised client: it is what bug reports quote and what the slash
+-- commands accept, so it must not drift with the user's locale.
+--
+-- Four spec names are shared across classes (Frost, Holy, Protection,
+-- Restoration), so Const.SPEC has to disambiguate them with a class suffix.
+-- The reverse map strips that suffix back off -- the specID already carries
+-- the class, so "FROST" is unambiguous once you have the number.
+Const.SPEC_TOKEN = {}
+for token, specID in pairs(Const.SPEC) do
+    Const.SPEC_TOKEN[specID] = (token:gsub("_[A-Z]+$", ""))
+end

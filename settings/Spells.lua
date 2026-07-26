@@ -18,6 +18,13 @@ local Util   = NS.Util   or {}
 
 local Spells = {}
 
+-- Published so the headless suites can drive the editor's selection state
+-- (which is otherwise file-local). Not part of the inter-module contract —
+-- nothing in the addon reads this; the message bus stays the only channel
+-- between modules (§4.4).
+NS.Settings = NS.Settings or {}
+NS.Settings.SpellsPanel = Spells
+
 -- The closed category set. Mirrors the keys in locales/enUS.lua.
 local CATEGORIES = {
     "interrupt", "stun", "knockback", "incapacitate",
@@ -64,12 +71,41 @@ local function sortedKeys(t)
     return keys
 end
 
+-- Spec IDs for a class, in the order the dropdown should list them.
+--
+-- Prefers Blizzard's own spec order (matching the character sheet, so
+-- Elemental/Enhancement/Restoration rather than 262/263/264 happening to
+-- sort that way by luck), intersected with what defaults/Spells.lua
+-- actually ships so the editor never offers a spec it can't render.
+-- Falls back to sorted numeric keys when the client can't be queried.
+local function specOrder(classFile)
+    local specs = NS.DefaultSpells and NS.DefaultSpells[classFile]
+    if type(specs) ~= "table" then return {} end
+    local blizzOrder = NS.Util and NS.Util.SpecOrderForClass
+        and NS.Util.SpecOrderForClass(classFile)
+    if not blizzOrder then return sortedKeys(specs) end
+    local out = {}
+    for _, specID in ipairs(blizzOrder) do
+        if specs[specID] then out[#out + 1] = specID end
+    end
+    -- Anything defaults ships that Blizzard didn't enumerate (a spec added
+    -- to defaults ahead of a client patch) still has to appear.
+    if #out < #sortedKeys(specs) then
+        local seen = {}
+        for _, id in ipairs(out) do seen[id] = true end
+        for _, id in ipairs(sortedKeys(specs)) do
+            if not seen[id] then out[#out + 1] = id end
+        end
+    end
+    return out
+end
+
 -- Resolve the player's CURRENT class file token (e.g. "MAGE") and the
--- normalised token of their currently-active spec (e.g. "FROST"). Both
--- gated by the corresponding KickCD.DefaultSpells presence so callers
--- never set a (class, spec) pair the editor can't render. Returns
--- (class, spec) or (class, nil) for classes whose current spec isn't
--- in defaults, or (nil, nil) when GetSpecialization is unavailable.
+-- NUMERIC specID of their active spec (e.g. 64). Both gated by the
+-- corresponding KickCD.DefaultSpells presence so callers never set a
+-- (class, spec) pair the editor can't render. Returns (class, specID) or
+-- (class, nil) for classes whose current spec isn't in defaults, or
+-- (nil, nil) when the spec API is unavailable.
 local function getPlayerClassSpec()
     -- `UnitClass and UnitClass("player")` would truncate to UnitClass's
     -- FIRST return (the localised name); the file token we need is the
@@ -83,18 +119,11 @@ local function getPlayerClassSpec()
             and NS.DefaultSpells[classFile]) then
         return nil, nil
     end
-    local specToken
-    local idx = Compat.GetSpecialization and Compat.GetSpecialization()
-    if idx then
-        local _, specName = Compat.GetSpecializationInfo(idx)
-        if specName and NS.Util and NS.Util.NormalizeSpecToken then
-            specToken = NS.Util.NormalizeSpecToken(specName)
-        end
+    local specID = NS.Util and NS.Util.PlayerSpecID and NS.Util.PlayerSpecID()
+    if specID and not NS.DefaultSpells[classFile][specID] then
+        specID = nil
     end
-    if specToken and not NS.DefaultSpells[classFile][specToken] then
-        specToken = nil
-    end
-    return classFile, specToken
+    return classFile, specID
 end
 
 -- Reset the editor's selection to the player's current class+spec.
@@ -106,14 +135,42 @@ end
 --     preserves whatever spec the user picked from the dropdown)
 local function seedSelectionToPlayer()
     selectedClass, selectedSpec = nil, nil
-    local classFile, specToken = getPlayerClassSpec()
+    local classFile, specID = getPlayerClassSpec()
     if not classFile then return end
     selectedClass = classFile
-    if specToken then
-        selectedSpec = specToken
-    else
-        local specs = sortedKeys(NS.DefaultSpells[classFile])
-        selectedSpec = specs[1]
+    selectedSpec = specID or specOrder(classFile)[1]
+end
+
+--- Current editor selection, as (classFile, specID).
+-- @return string|nil, number|nil
+function Spells:GetSelection()
+    return selectedClass, selectedSpec
+end
+
+--- Re-seed the selection to the player's live class+spec. Exposed for the
+--- headless suites; in-game this is reached via OnPlayerSpecChanged and the
+--- fresh-open path in the panel's OnShow.
+function Spells:SeedSelectionToPlayer()
+    seedSelectionToPlayer()
+end
+
+--- PLAYER_SPECIALIZATION_CHANGED handler.
+---
+--- Regression fix: swapping spec with Settings > Spells already open used to
+--- leave the dropdown pinned to the old spec. Selection was only re-seeded on
+--- a FRESH open (freshOpen, re-armed solely on a full Settings close), and the
+--- panel's SPELLS_CHANGED / TRAIT_CONFIG_UPDATED handlers only re-rendered the
+--- existing rows — nothing re-read the player's spec.
+---
+--- Following the live spec deliberately overrides a spec the user picked from
+--- the dropdown by hand: they just changed spec in-game, which is the stronger
+--- signal of what they want to look at. When the panel is closed we still
+--- re-seed, so the next open is correct without waiting for the fresh-open
+--- path.
+function Spells:OnPlayerSpecChanged()
+    seedSelectionToPlayer()
+    if panel and panel:IsShown() then
+        self:RefreshRows()
     end
 end
 
@@ -325,17 +382,10 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             local _, cf = UnitClass("player")
             playerClass = cf
         end
-        local playerSpecToken
-        local idx = Compat.GetSpecialization and Compat.GetSpecialization()
-        if idx then
-            local _, specName = Compat.GetSpecializationInfo(idx)
-            if specName then
-                playerSpecToken = NS.Util.NormalizeSpecToken(specName)
-            end
-        end
+        local playerSpecID = NS.Util.PlayerSpecID()
         local editorIsActiveSpec =
             playerClass and selectedClass and playerClass == selectedClass
-            and playerSpecToken and selectedSpec and playerSpecToken == selectedSpec
+            and playerSpecID and selectedSpec and playerSpecID == selectedSpec
 
         if editorIsActiveSpec then
             local cmSet = getCooldownManagerSpellSet()
@@ -352,8 +402,8 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
             end
         elseif NS.State and NS.State.debug then
             NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
-                :format(tostring(selectedClass), tostring(selectedSpec),
-                        tostring(playerClass), tostring(playerSpecToken)))
+                :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
+                        tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
         end
 
         -- Mutator path: lazy-create the per-spec table on first add so a
@@ -682,10 +732,9 @@ local function classIconMarkup(classFile)
     return ("|TInterface\\Icons\\ClassIcon_%s:16:16:0:0|t"):format(classFile:lower())
 end
 
--- [classFile] = { [specToken] = iconFileID }. Built lazily from
--- GetSpecializationInfoForClassID; spec tokens are normalized to match the
--- keys used in defaults/Spells.lua (uppercased, spaces stripped, so "Beast
--- Mastery" -> "BEASTMASTERY").
+-- [classFile] = { [specID] = iconFileID }. Built lazily from
+-- GetSpecializationInfoForClassID, which hands back the specID directly --
+-- no name round-trip, so nothing here depends on the client's locale.
 local specIconCache
 
 local function buildSpecIconCache()
@@ -700,10 +749,9 @@ local function buildSpecIconCache()
             cache[classFile] = {}
             local nSpecs = GetNumSpecializationsForClassID(classID) or 0
             for i = 1, nSpecs do
-                local _, specName, _, icon = GetSpecializationInfoForClassID(classID, i)
-                if specName and icon then
-                    local token = Util.NormalizeSpecToken(specName)
-                    cache[classFile][token] = icon
+                local specID, _, _, icon = GetSpecializationInfoForClassID(classID, i)
+                if specID and icon then
+                    cache[classFile][specID] = icon
                 end
             end
         end
@@ -711,10 +759,10 @@ local function buildSpecIconCache()
     return cache
 end
 
-local function specIconMarkup(classFile, specToken)
+local function specIconMarkup(classFile, specID)
     if not specIconCache then specIconCache = buildSpecIconCache() end
     local byClass = specIconCache[classFile]
-    local icon = byClass and byClass[specToken]
+    local icon = byClass and byClass[specID]
     if icon then
         return ("|T%s:16:16:0:0|t"):format(tostring(icon))
     end
@@ -727,19 +775,21 @@ local function buildSpecEntries()
 
     local classOrder = sortedKeys(NS.DefaultSpells)
     for _, classFile in ipairs(classOrder) do
-        local specs = sortedKeys(NS.DefaultSpells[classFile])
         local hex       = classColorHex(classFile)
         local cIcon     = classIconMarkup(classFile)
         local className = classDisplayName(classFile)
-        for _, specToken in ipairs(specs) do
-            local specName = titleCaseToken(specToken)
-            local sIcon    = specIconMarkup(classFile, specToken)
+        for _, specID in ipairs(specOrder(classFile)) do
+            -- The dropdown VALUE carries the numeric specID (locale-free);
+            -- the LABEL is the spec's name in the player's own language, so
+            -- a French user reads "Élémentaire" while the key stays 262.
+            local specName = NS.Util.SpecDisplayName(specID)
+            local sIcon    = specIconMarkup(classFile, specID)
             local label    = ("%s %s |c%s%s %s|r"):format(cIcon, sIcon, hex, className, specName)
             entries[#entries + 1] = {
-                value     = classFile .. "/" .. specToken,
+                value     = classFile .. "/" .. specID,
                 label     = label,
                 classFile = classFile,
-                specToken = specToken,
+                specID    = specID,
             }
         end
     end
@@ -764,10 +814,10 @@ local function buildSpellsHeader(AceGUI, parent)
     end
     specDD:SetWidth(280)
     specDD:SetCallback("OnValueChanged", function(_, _, value)
-        local classFile, specToken = value:match("^([^/]+)/(.+)$")
-        if classFile and specToken then
+        local classFile, specID = value:match("^([^/]+)/(%d+)$")
+        if classFile and specID then
             selectedClass = classFile
-            selectedSpec  = specToken
+            selectedSpec  = tonumber(specID)
             Spells:RefreshRows()
         end
     end)
@@ -830,8 +880,7 @@ function Spells:RefreshRows()
         end
     end
     if selectedClass and not selectedSpec then
-        local specs = sortedKeys(NS.DefaultSpells and NS.DefaultSpells[selectedClass])
-        selectedSpec = specs[1]
+        selectedSpec = specOrder(selectedClass)[1]
     end
 
     buildSpellsHeader(AceGUI, body)
@@ -952,6 +1001,14 @@ local function ensurePanel()
         end
         ev:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
         ev:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
+
+        -- Spec swaps move the SELECTION, not just the rows — see
+        -- Spells:OnPlayerSpecChanged. The event fires for any unit, so filter
+        -- to the player before re-seeding.
+        ev:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function(_, unit)
+            if unit and unit ~= "player" then return end
+            Spells:OnPlayerSpecChanged()
+        end)
     end
 
     return panel
