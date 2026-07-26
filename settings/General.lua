@@ -123,10 +123,10 @@ local function Build(mainCategory)
         panelKey       = "general",
         defaultsButton = true,
     })
-    if ctx.panel.defaultsBtn then
-        ctx.panel.defaultsBtn:SetCallback("OnClick", function()
-            H.RestoreDefaults("general", ctx)
-        end)
+    -- Parked, not wired: the Defaults button doesn't exist until the
+    -- panel's first OnShow (H.EnsureDefaultsButton).
+    ctx.panel.defaultsOnClick = function()
+        H.RestoreDefaults("general", ctx)
     end
 
     -- Defer the AceGUI render until the panel becomes visible: build-time
@@ -134,6 +134,7 @@ local function Build(mainCategory)
     -- children out against the container's current width.
     local rendered = false
     ctx.panel:SetScript("OnShow", function()
+        H.EnsureDefaultsButton(ctx.panel)
         if rendered then return end
         rendered = true
         H.RenderSchema(ctx, "general", {

@@ -520,10 +520,10 @@ local function Build(mainCategory)
         panelKey       = "castbar",
         defaultsButton = true,
     })
-    if ctx.panel.defaultsBtn then
-        ctx.panel.defaultsBtn:SetCallback("OnClick", function()
-            H.RestoreDefaults("castbar", ctx)
-        end)
+    -- Parked, not wired: the Defaults button doesn't exist until the
+    -- panel's first OnShow (H.EnsureDefaultsButton).
+    ctx.panel.defaultsOnClick = function()
+        H.RestoreDefaults("castbar", ctx)
     end
 
     -- Defer the AceGUI render until the panel becomes visible — same
@@ -534,6 +534,7 @@ local function Build(mainCategory)
     -- re-renders the whole thing on every unit switch (Task 8).
     local rendered = false
     ctx.panel:SetScript("OnShow", function()
+        H.EnsureDefaultsButton(ctx.panel)
         if rendered then return end
         rendered = true
         H.RenderUnitPanel(ctx, "castbar")

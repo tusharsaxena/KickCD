@@ -9,9 +9,11 @@
 --
 -- Settings UI framework. Every tab — General, Icons, Spells, Profiles —
 -- is registered as a canvas-layout subcategory and shares one header
--- design: title (left) + Defaults button (right) + divider, all built
--- by Helpers.CreatePanel. Below the header each tab lays out its own
--- body.
+-- design: title (left) + Defaults button (right) + divider. The title and
+-- divider are stamped on by Helpers.CreatePanel; the Defaults button is
+-- created lazily on the panel's first OnShow by
+-- Helpers.EnsureDefaultsButton (skinning load-order race — see there).
+-- Below the header each tab lays out its own body.
 --
 -- General and Icons are driven entirely from a declarative schema
 -- (KickCD.Settings.Schema). Schema rows render as AceGUI widgets
@@ -339,20 +341,56 @@ local function buildHeader(panel, title, opts)
     -- hardcoding the gold tracks any future theme retune.
     divider:SetVertexColor(titleFS:GetTextColor())
 
-    local defaultsBtn
-    if opts.defaultsButton then
-        defaultsBtn = AceGUI:Create("Button")
-        defaultsBtn:SetText(L["Defaults"])
-        defaultsBtn:SetWidth(DEFAULTS_W)
-        defaultsBtn.frame:SetParent(panel)
-        defaultsBtn.frame:ClearAllPoints()
-        defaultsBtn.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT",
-                                   -PADDING_X, -HEADER_TOP)
-        defaultsBtn.frame:Show()
-        attachTooltip(defaultsBtn, L["Defaults"], opts.defaultsTooltip)
-    end
+    -- Record the INTENT only; the widget itself is built on first OnShow
+    -- by Helpers.EnsureDefaultsButton (see the note on that function for
+    -- why it can't be created here).
+    panel.wantsDefaultsButton = opts.defaultsButton and true or false
+    panel.defaultsTooltip     = opts.defaultsTooltip
 
-    return titleFS, divider, defaultsBtn
+    return titleFS, divider
+end
+
+-- Build the header's Defaults button once, on the panel's FIRST OnShow.
+--
+-- It stays an AceGUI Button (options-ui-§5), but *when* it's created
+-- matters as much as *what* creates it. AceGUI is a shared library:
+-- UI-skinning addons restyle its widgets by hooking `RegisterAsWidget`,
+-- so any widget created BEFORE that hook is installed keeps Blizzard's
+-- stock `UI-Panel-Button-Up` art — the red stone button — for the rest
+-- of the session, while everything created after it comes out skinned.
+--
+-- Settings-category registration runs during load (ADDON_LOADED /
+-- PLAYER_LOGIN), so building the button there is a race against every
+-- other addon's load order: this addon wins it only while it happens to
+-- load after the skinner. Rename the folder, or add a skin, and the same
+-- code renders red. Deferring to first OnShow removes the race outright —
+-- by then every addon has loaded. Do NOT "simplify" this back into
+-- buildHeader / CreatePanel.
+--
+-- Idempotent: safe to call as the first statement of every OnShow.
+function Helpers.EnsureDefaultsButton(panel)
+    if not panel or panel.defaultsBtn or not panel.wantsDefaultsButton then
+        return
+    end
+    if not AceGUI then return end
+
+    local btn = AceGUI:Create("Button")
+    if not (btn and btn.frame) then return end
+    btn:SetText(L["Defaults"])
+    btn:SetWidth(DEFAULTS_W)
+    btn.frame:SetParent(panel)
+    btn.frame:ClearAllPoints()
+    btn.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT",
+                       -PADDING_X, -HEADER_TOP)
+    btn.frame:Show()
+    attachTooltip(btn, L["Defaults"], panel.defaultsTooltip)
+    panel.defaultsBtn = btn
+
+    -- The click handler is registered at Build() time, before the button
+    -- exists, so it's parked on the panel and wired here.
+    if panel.defaultsOnClick then
+        btn:SetCallback("OnClick", panel.defaultsOnClick)
+    end
 end
 
 -- ---------------------------------------------------------------------
@@ -369,10 +407,9 @@ function Helpers.CreatePanel(name, title, opts)
     panel.name = title
     panel:Hide()
 
-    local titleFS, divider, defaultsBtn = buildHeader(panel, title, opts)
-    panel.title       = titleFS
-    panel.divider     = divider
-    panel.defaultsBtn = defaultsBtn
+    local titleFS, divider = buildHeader(panel, title, opts)
+    panel.title   = titleFS
+    panel.divider = divider
 
     local body = CreateFrame("Frame", nil, panel)
     body:SetPoint("TOPLEFT",     panel, "TOPLEFT",     0, -(HEADER_HEIGHT + 8))

@@ -142,13 +142,14 @@ local function Build(mainCategory)
         panelKey       = "label",
         defaultsButton = true,
     })
-    if ctx.panel.defaultsBtn then
-        ctx.panel.defaultsBtn:SetCallback("OnClick", function()
-            H.RestoreDefaults("label", ctx)
-        end)
+    -- Parked, not wired: the Defaults button doesn't exist until the
+    -- panel's first OnShow (H.EnsureDefaultsButton).
+    ctx.panel.defaultsOnClick = function()
+        H.RestoreDefaults("label", ctx)
     end
     local rendered = false
     ctx.panel:SetScript("OnShow", function()
+        H.EnsureDefaultsButton(ctx.panel)
         if rendered then return end
         rendered = true
         H.RenderUnitPanel(ctx, "label")

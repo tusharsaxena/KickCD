@@ -936,13 +936,14 @@ local function ensurePanel()
     panel = ctx.panel
     body  = ctx.body
 
-    if panel.defaultsBtn then
-        panel.defaultsBtn:SetCallback("OnClick", function()
-            StaticPopup_Show("KICKCD_RESET_SPELLS")
-        end)
+    -- Parked, not wired: the Defaults button doesn't exist until the
+    -- panel's first OnShow (H.EnsureDefaultsButton).
+    panel.defaultsOnClick = function()
+        StaticPopup_Show("KICKCD_RESET_SPELLS")
     end
 
     panel:SetScript("OnShow", function()
+        H.EnsureDefaultsButton(panel)
         -- "Fresh open" = the user just brought the entire Settings UI
         -- back up (vs. just switching tabs within an already-open
         -- session). Re-seed the spec dropdown to the player's CURRENT
