@@ -343,7 +343,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 2` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 3` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -496,7 +496,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - Log in.
 - `/kcd get units.target.icons.primarySize` — compare to the customised value from the edited file.
 - `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customised anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `2`.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `3` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold and then the v2→v3 spec-key rekey in the same login.
 
 **Pass.**
 - No Lua errors during the migration login.

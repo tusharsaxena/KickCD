@@ -441,10 +441,6 @@ function DebugLog:ShowCopy()
     f.edit:HighlightText()
 end
 
-function DebugLog:HideCopy()
-    if copyWindow then copyWindow:Hide() end
-end
-
 --- The single write seam for the session-only debug flag (§12.5): set flag →
 --- refresh header → print a NS.PREFIX-tagged chat ack → bracket the session
 --- with a console line at both transitions. Never persisted.

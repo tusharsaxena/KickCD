@@ -16,7 +16,7 @@ Icons and Cast bar render their schema per-unit via `Helpers.RenderUnitPanel(ctx
 
 When `ctx.unit == "focus"`, a header row adds a **"Use same styling as Target"** checkbox (`units.focus.link`) and a **"Copy styling from Target"** button (`NS.Units.CopyStyling("target", "focus")`, a one-time deep-copy that also flips `link = false`) — both fire `Ka0s_KickCD_CONFIG_CHANGED{section="units"}` and re-render the panel. While linked, the appearance schema body is hidden entirely (replaced with a "Linked to Target — uncheck to customize." label) rather than shown-but-inert, since any edit there would silently write to a table nothing reads (`NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.*` while linked).
 
-General has no unit selector — its per-unit rows (enable toggle, `label.show`, `label.text` for both target and focus) render together, tagged with `unit = "target"|"focus"` purely so `RestoreDefaults`/`RestoreAllDefaults` reset both units together.
+General has no unit selector — its only per-unit rows are the two `units.<unit>.enabled` toggles, which render together, tagged with `unit = "target"|"focus"` purely so `RestoreDefaults`/`RestoreAllDefaults` reset both units together. (`label.show` / `label.text` used to live here; they moved to the Text Label panel, which does use the unit selector.)
 
 ## `NS.Settings.Schema` is the single source of truth
 
@@ -57,6 +57,8 @@ General has no unit selector — its per-unit rows (enable toggle, `label.show`,
 
 A row may declare `solo = true` to be rendered alone in the left half of its own row (visual pivot above the controls it governs — Icons → Border → "Show border", Cast bar → Position → "Anchor mode").
 
+A row may declare `skipRender = true` to stay a full schema row — `/kcd get|set|list`, Defaults reset, validation — while being left out of the automatic `RenderSchema` pass, because the panel builder renders it by hand somewhere specific. The one user today is General's `locked`, which an `afterGroup` callback renders via `Helpers.RenderField(c, H.FindSchema("locked"), row, 0.5)` so it can share a row with the bespoke session-only "Debug console" toggle.
+
 A row may declare `valueGate = "<sibling.path>"` for dropdowns whose option list depends on another setting (the canonical case: cast bar `growDirection`'s `RIGHT`/`LEFT` vs `UP`/`DOWN` options gated on `orientation`). The `values` function should re-evaluate the option list against the gate's current value, and `/kcd set` will surface `(depends on <gate> = <current>; flip <gate> to <other> for <other-options>)` on rejection so a confused user can see why their value was refused AND what to flip to enable it.
 
 The 13-option `<SIDE>_<ALIGN>` / `CENTER` anchor dropdown shared by Icons → Layout → Anchor point and Cast bar → Position → Anchor on primary icon / Anchor on cast bar comes from `Helpers.AnchorValues()`. Both dropdowns must use it so the option lists stay in lockstep when new anchors are added.
@@ -82,7 +84,8 @@ Schema widgets are AceGUI primitives:
 - `EditBox` (`makeEditBox`) for `string` rows with NO `values` list — free text, e.g. the per-unit `label.text` caption rows. Commits on `OnEnterPressed` (Enter / focus-loss), unlike the drag/click-commit widgets above, so a half-typed label never writes a partial string to `db.profile`. `Helpers.RenderField` dispatches `type == "string"` to `makeDropdown` when `def.values` is set, `makeEditBox` otherwise.
 - `ColorPicker` for `color`
 - `Heading` (bumped to `GameFontNormalLarge`) for sections
-- `Button` + `Label` inside a `SimpleGroup` for inline action rows
+
+Non-schema action rows are built by `Helpers.InlinePair` (two half-width widgets sharing one Flow row — General's "Lock frame" checkbox beside the session-only "Debug console" toggle) and `Helpers.InlineButtonPair` (two 50/50 `Button`s — "Reset position" beside "Reset all settings").
 
 Paired into 50%/50% Flow rows inside a single AceGUI `ScrollFrame` per tab (see `Helpers.RenderSchema`). Spacers between rows give the airy look. Two-column rows are produced by wrapping a 50%-width pair into a Flow-laid `SimpleGroup`. A schema row tagged `solo = true` is forced onto its own row (left half, right half empty).
 
@@ -106,7 +109,7 @@ The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to **always**
 
 ## Schema validation
 
-`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `spells` / `units` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). `debug` remains a valid `section` enum, but no shipped row uses it — debug is session-only (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`), never persisted and never a schema row. Failures print a schema-error line (the printer prefixes with the shared `NS.PREFIX`) per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
+`Helpers.ValidateSchema()` runs at panel-register time and asserts every schema row has a non-empty `path`, a known `panel` (`general` / `icons` / `castbar` / `label` / `spells` / `profiles`), a known `section` (`general` / `icons` / `castbar` / `label` / `spells` / `units` / `debug`), and a known `type` (`bool` / `number` / `string` / `color`). `debug` remains a valid `section` enum, but no shipped row uses it — debug is session-only (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`), never persisted and never a schema row. Failures print a schema-error line (the printer prefixes with the shared `NS.PREFIX`) per offending row but don't refuse to load — diagnostic guard rail for future contributors, not a hard gate. A diff that adds a typo'd row is now self-flagging during a /reload.
 
 ## Reset helpers
 

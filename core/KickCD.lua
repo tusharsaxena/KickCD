@@ -453,7 +453,11 @@ function listSettings(self)
         byPanel[key] = byPanel[key] or {}
         table.insert(byPanel[key], def)
     end
-    for _, key in ipairs({ "general", "icons", "castbar", "spells", "profiles" }) do
+    -- Panel order for the grouped output. MUST cover every value in
+    -- settings/Panel.lua's `_validPanels` — a panel missing here is silently
+    -- dropped from /kcd list even though `get`/`set` still reach its rows
+    -- (that's how the "label" tab went unlisted for a release).
+    for _, key in ipairs({ "general", "icons", "castbar", "label", "spells", "profiles" }) do
         local list = byPanel[key]
         if list then
             p(self, "  |cff3399ff[" .. key .. "]|r")

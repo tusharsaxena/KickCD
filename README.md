@@ -88,14 +88,14 @@ Six tabs under **Ka0s KickCD**:
 
 | Tab | Covers |
 | --- | --- |
-| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too. |
+| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
 | **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
 | **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt — per unit, via the same Target / Focus switch. |
 | **Text Label** | Show a custom identity label on a unit's icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. Each unit has its own label. |
 | **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, realm, or faction. |
 
-On the Icons, Cast bar, and Text Label tabs, switch between **Target** and **Focus** at the top. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. Untick "Use same styling as Target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and label.
+On the Icons, Cast bar, and Text Label tabs, switch between **Target** and **Focus** at the top. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. Untick "Use same styling as Target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and its own label text.
 
 Use `/kcd unlock` to drag each grid (and its cast bar, if it's set to move freely) into position, then `/kcd lock` to fix them.
 
@@ -121,7 +121,7 @@ KickCD tracks two enemy units, and each gets its own icon grid, cast bar, and id
 *   **Target** — always tracked while the addon is on.
 *   **Focus** — tracked by default, and **linked** to target so it copies target's icon and cast-bar styling. Turn it off in General → Units, or unlink it to style it on its own.
 
-Position and the identity label are always per-unit, linked or not — the two sets start well apart so they don't overlap, and each can say "Target" / "Focus". The drag lock, the visibility mode, and overall size/transparency stay shared across both.
+Position and the label's text are always per-unit, linked or not — the two sets start well apart so they don't overlap, and each can say "Target" / "Focus". While focus is linked it also mirrors target's label styling and whether the label shows at all; unlink it to set those separately. The drag lock, the visibility mode, and overall size/transparency stay shared across both.
 
 #### Visibility (General → Master controls → General visibility)
 
@@ -163,8 +163,8 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | --- | --- |
 | Does this replace Blizzard's cast bars? | No. It adds its own cast bars and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target/focus cast bars in Edit Mode. |
 | Does it track my focus too? | Yes — target and focus are both tracked out of the box, each with its own grid and cast bar. The focus set copies target's look by default. Turn focus off in General → Units if you only want your target. |
-| How do I make focus look different from target? | On the Icons, Cast bar, or Text Label tab, switch to **Focus** and untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit). Position and the label are always independent. |
-| I see a "Target" (or "Focus") label on my grid — what is it, and can I change or hide it? | That's the unit's identity label. Set its text, turn it off, or restyle and reposition it on the **Text Label** tab — you can attach it to the icon grid or the cast bar, and each unit has its own. While focus is linked it mirrors target's label styling; its text stays independent. |
+| How do I make focus look different from target? | On the Icons, Cast bar, or Text Label tab, switch to **Focus** and untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit). Position and the label's text are always independent; the label's styling and whether it shows follow the link. |
+| I see a "Target" (or "Focus") label on my grid — what is it, and can I change or hide it? | That's the unit's identity label. Set its text, turn it off, or restyle and reposition it on the **Text Label** tab — you can attach it to the icon grid or the cast bar, and each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows at all; its text stays independent. |
 | How do I move the grids or cast bars? | `/kcd unlock`, drag, then `/kcd lock` — one lock covers every unit. Each icon grid always drags when unlocked. A cast bar drags only when it's set to move freely; when it's anchored, it follows its grid. `/kcd resetposition` puts the target grid back in its default spot, and `/kcd resetall` resets every unit's positions. |
 | Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd reset spells` (all specs) or `/kcd spells reset` (one spec). |
 | Can I add my own spells? | Yes — in Settings → Spells, or with `/kcd spells add`. For the spec you're currently playing, only spells the game already tracks as cooldowns can be added. |

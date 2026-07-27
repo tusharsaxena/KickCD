@@ -19,7 +19,9 @@ db.global = {
                                  -- backfills db.global.schemaVersion on first access.
                                  -- v1 -> v2 (migrations[1]) runs Database:FoldLegacyUnits
                                  -- then bumps schemaVersion to 2 (see "units.* migration"
-                                 -- below).
+                                 -- below). v2 -> v3 (migrations[2]) runs
+                                 -- Database:MigrateSpecKeys then bumps to 3 (see the
+                                 -- localised-spec-name migration below).
 }
 ```
 
@@ -51,7 +53,8 @@ Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
     -- castbar) is duplicated per unit; NS.Units is the single place that
     -- resolves "focus.link" into "read target's appearance instead" — see
     -- core/Units.lua and the "units.*" section below. enabled/anchors/
-    -- label.text stay per-unit even while linked.
+    -- label.text are read per-unit even while linked; label.show and
+    -- label.style follow the link like icons/castbar do.
     units = {
         target = { enabled, link = false, label = { show, text },
                    anchors = { icons = {...}, castbar = {...} },
@@ -89,8 +92,9 @@ units[unit] = {
     link    = false|true,    -- target is always false (never linked); focus defaults true
                               -- (mirror target's icons/castbar live — see core/Units.lua)
     label = { show = true, text = "Target"|"Focus",    -- identity FontString rendered by
-                              -- modules/UnitLabel.lua; show/text stay per-unit even
-                              -- while linked (NS.Units.Label(unit))
+                              -- modules/UnitLabel.lua. Both are stored per-unit, but
+                              -- only `text` is READ per-unit (NS.Units.Label(unit));
+                              -- `show` follows the link (NS.Units.LabelShow(unit))
               style = { attach, point, relPoint, offsetX, offsetY,
                         justifyH, justifyV, rotation, font, size, flags } },
                               -- style is link-resolved (NS.Units.LabelStyle(unit) —
@@ -175,7 +179,7 @@ units[unit] = {
 
 `icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `core/Database.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (both default `true`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (target seeds `y = 120`, focus seeds `y = 260` — Focus sits 140px above Target so the two grids don't overlap on first enable; this leaves roughly 10px of clearance between the Focus cast-timer bottom and the Target label top, a computed estimate from default element sizes that may need a small nudge once rendered).
 
-**Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.show`/`label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing its own "Focus" identity text if its label is on. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar`, and now also `label.style`, one-time and flips `link = false`, backing the settings panel's "Copy styling from Target" button.
+**Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing its own "Focus" identity text. `label.show` is the exception among the label fields: it resolves through `NS.Units.LabelShow`, so turning target's label off also hides a linked focus's. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar`/`label.style` and snapshots `label.show` (it has to — otherwise unlinking would revive focus's stale independent `show`), then flips `link = false`; `label.text` is deliberately not copied. It backs the settings panel's "Copy styling from Target" button.
 
 ### `units.<unit>.label.style` shape
 
@@ -194,9 +198,9 @@ units[unit].label.style = {
 }
 ```
 
-`label.style` is **single-sourced** from one `LABELSTYLE_DEFAULT` table in `core/Database.lua`, deep-copied into both `units.target.label.style` and `units.focus.label.style` — Target and Focus ship with an IDENTICAL label appearance out of the box (unlike `icons`/`castbar`, which are also structurally identical but seeded from their own `ICONS_DEFAULT`/`CASTBAR_DEFAULT`, this is the same pattern applied to label styling). `label.style` **is** link-resolved (`NS.Units.LabelStyle(unit)`, resolving to `units.target.label.style` for a linked focus) — only `show`/`text` stay per-unit (`NS.Units.Label(unit)`, never link-resolved), so a linked Focus can mirror Target's font/position/rotation/color while still showing its own "Focus" text if enabled.
+`label.style` is **single-sourced** from one `LABELSTYLE_DEFAULT` table in `core/Database.lua`, deep-copied into both `units.target.label.style` and `units.focus.label.style` — Target and Focus ship with an IDENTICAL label appearance out of the box (unlike `icons`/`castbar`, which are also structurally identical but seeded from their own `ICONS_DEFAULT`/`CASTBAR_DEFAULT`, this is the same pattern applied to label styling). `label.style` **is** link-resolved (`NS.Units.LabelStyle(unit)`, resolving to `units.target.label.style` for a linked focus), and so is `label.show` (`NS.Units.LabelShow(unit)`) — only `text` stays per-unit (`NS.Units.Label(unit)`, never link-resolved), so a linked Focus mirrors Target's font/position/rotation/color *and* its on/off state while still showing its own "Focus" text.
 
-**Visibility:** the label's holder frame is created on `UIParent` but `SetParent`'d onto its resolved attach frame (the unit's cast bar or icon grid) on every `Apply`, so it inherits that frame's own shown state + effective alpha — the label now follows the addon's General visibility (`db.profile.visibility`) exactly like the widget it's anchored to, instead of floating on screen independently.
+**Visibility:** the label's holder frame is created on `UIParent` but `SetParent`'d onto the unit's **icon grid** (`IconGrid:GetGridFrame(unit)`, falling back to the attach frame only if the grid isn't up yet) on every `Apply`, while `SetPoint`-anchoring to the resolved attach frame for position alone. Parenting to the grid — not the attach frame — means the label inherits the grid's shown state + effective alpha, so it follows the addon's General visibility (`db.profile.visibility`) without being cast-gated by a cast bar that hides itself between casts. See [conventions.md](conventions.md#frame-names).
 
 **Migration:** `Database:BackfillLabelStyle(db)` fills in `units.<unit>.label.style` on a profile saved before this feature shipped, AND key-fills any individual fields added to `LABELSTYLE_DEFAULT` since (e.g. `color`) that are missing from an existing style table. Like `FoldLegacyUnits`, it is **shape-driven, not version-gated** — for each of `target`/`focus`, if that unit's config exists it sets `u.label = u.label or {}`; if `u.label.style == nil` it fills the whole `u.label.style = copy(LABELSTYLE_DEFAULT)`, otherwise it walks `LABELSTYLE_DEFAULT` and copies in only the keys ABSENT from the existing style (never overwriting a key the user already has, even a customised one) — `show`/`text` are left exactly as saved. A fresh install (or an already-migrated profile with every current key) already has `style` fully populated by `DEFAULT_PROFILE`, so the check is a no-op. It runs against the currently-active profile at both `Database:Init` and `Database:OnProfileChanged` (right after `FoldLegacyUnits` in both call sites), so any profile — including one switched to or copied in later — picks up any new sub-fields the moment it becomes active, with no visual change since the backfilled values equal the shipped defaults.
 
@@ -208,7 +212,7 @@ Pre-dual-tracking profiles stored `db.profile.icons`, `db.profile.castbar`, and 
 
 It is **shape-driven, not version-gated**: it checks `p.icons == nil and p.castbar == nil and p.anchors == nil` and returns immediately (no-op) when all three are already absent — which is true for both a fresh v2 install and an already-migrated account. Version-gating on `db.global.schemaVersion` was considered and rejected for the same reason the account-adoption code above avoids trusting a bare `schemaVersion == nil` check: AceDB's `copyDefaults` rawsets `db.global.schemaVersion` to `CURRENT_DB_VERSION` the moment `db.global` is first touched, which would make a legacy account that never had a chance to run the migrator look "already current" and silently strand its customised icons/castbar/anchors data under the old top-level keys forever. Keying on the presence of the old tables instead detects exactly (and only) the accounts that carry legacy data, regardless of what `schemaVersion` claims.
 
-The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. `CURRENT_DB_VERSION = 2` in `core/Database.lua` marks the `units.*` restructure as the addon's second schema generation (v1 was the pre-migration baseline; the v1→v2 migrator was a no-op).
+The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `CURRENT_DB_VERSION = 3` — see the spec-key rekey below.
 
 **Deviation recorded as intentional** (per CLAUDE.md's flag-deviations rule): restructuring `DEFAULT_PROFILE` (a rename/nest, not a pure addition) departs from a "profile shape never changes shape, only grows" expectation some Ace3-based addons hold — it was necessary because target/focus each need independently-customisable `icons`/`castbar`, and the alternative (flat `icons`, `focusIcons`, `castbar`, `focusCastbar`, …) doesn't scale to a third unit later and duplicates the anchor/label bookkeeping. The shape-driven (not version-gated) migration is the mitigation that makes the restructure safe for existing installs.
 

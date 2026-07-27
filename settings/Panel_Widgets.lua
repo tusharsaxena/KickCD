@@ -270,38 +270,6 @@ function Helpers.RenderField(ctx, def, parent, relativeWidth)
     if def.type == "color"  then return makeColorPicker(ctx, def, parent, relativeWidth) end
 end
 
--- Standalone action button (no label row). Used for actions that read
--- naturally from the button text alone, e.g. "Reset position".
-function Helpers.InlineButton(ctx, buttonText, tooltip, onClick, width)
-    local scroll = ensureScroll(ctx)
-
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
-    row:SetHeight(28)
-
-    local btn = AceGUI:Create("Button")
-    btn:SetText(buttonText or "")
-    btn:SetWidth(width or 160)
-    btn:SetCallback("OnClick", function()
-        if not onClick then return end
-        local ok, err = pcall(onClick)
-        if not ok and NS.Util then
-            NS.Util.print("button onClick failed: " .. tostring(err))
-        end
-    end)
-    row:AddChild(btn)
-
-    attachTooltip(btn, buttonText, tooltip)
-    scroll:AddChild(row)
-    return btn
-end
-
--- Two side-by-side action buttons sharing one Flow row at 50% / 50%
--- width. Each spec is { text = ..., tooltip = ..., onClick = function }.
--- Used by the General tab's afterGroup callback so "Reset position" and
--- "Reset all settings" sit on a single row aligned with the schema's
--- two-column grid above them.
 -- Standalone SESSION-ONLY checkbox — deliberately NOT a schema row, so it
 -- writes nothing to db.profile / SavedVariables. For controls that must never
 -- persist across sessions, e.g. the debug console toggle (§12.5). `spec.get`
@@ -356,6 +324,11 @@ function Helpers.InlinePair(ctx, leftRender, rightRender)
     return row
 end
 
+-- Two side-by-side action buttons sharing one Flow row at 50% / 50%
+-- width. Each spec is { text = ..., tooltip = ..., onClick = function }.
+-- Used by the General tab's afterGroup callback so "Reset position" and
+-- "Reset all settings" sit on a single row aligned with the schema's
+-- two-column grid above them.
 function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
     local scroll = ensureScroll(ctx)
 
@@ -383,36 +356,4 @@ function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
     makeBtn(leftSpec)
     makeBtn(rightSpec)
     scroll:AddChild(row)
-end
-
--- Inline action button (label on the left, button on the right).
--- Used for "Reset position" et al. — not a setting.
-function Helpers.Button(ctx, labelText, buttonText, tooltip, onClick)
-    local scroll = ensureScroll(ctx)
-
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
-    row:SetHeight(28)
-
-    local lbl = AceGUI:Create("Label")
-    lbl:SetText(labelText or "")
-    lbl:SetWidth(280)
-    row:AddChild(lbl)
-
-    local btn = AceGUI:Create("Button")
-    btn:SetText(buttonText or "")
-    btn:SetWidth(140)
-    btn:SetCallback("OnClick", function()
-        if not onClick then return end
-        local ok, err = pcall(onClick)
-        if not ok and NS.Util then
-            NS.Util.print("button onClick failed: " .. tostring(err))
-        end
-    end)
-    row:AddChild(btn)
-
-    attachTooltip(btn, labelText, tooltip)
-    scroll:AddChild(row)
-    return btn
 end
