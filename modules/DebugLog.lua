@@ -86,8 +86,6 @@ local function ApplySkin(frame)
         frame:SetBackdropBorderColor(0, 0, 0, 1)
     end
 end
-DebugLog.SKIN = SKIN
-DebugLog.ApplySkin = ApplySkin
 
 -- ---------------------------------------------------------------------------
 -- State + buffers
@@ -146,7 +144,6 @@ local function refreshHeader()
     window.toggle.text:SetText(on and "Debug: ON" or "Debug: OFF")
     window.toggle.text:SetTextColor(c[1], c[2], c[3])
 end
-DebugLog.refreshHeader = refreshHeader
 
 -- ---------------------------------------------------------------------------
 -- Console window (lazy)
@@ -499,7 +496,6 @@ local function secretSafe(v)
     if _G.issecretvalue and _G.issecretvalue(v) then return "secret" end
     return v
 end
-DebugLog.secretSafe = secretSafe
 
 --- NS.Debug(tag, fmt, ...) — zero-allocation when off (the gate is the first
 --- line; no format/concat/table build before it). Each ... arg is routed

@@ -1032,3 +1032,16 @@ end
 if NS.Settings and NS.Settings.RegisterTab then
     NS.Settings.RegisterTab("spells", Build)
 end
+
+-- ---------------------------------------------------------------------------
+-- Exposed for unit testing
+-- ---------------------------------------------------------------------------
+--
+-- Pure helpers behind the editor's input handling and spec ordering,
+-- published so the harness can reach them without building an AceGUI tree
+-- (same idiom as Castbar.AutoSizeLong).
+Spells.ValidateSpellInput = validateSpellInput
+Spells.SpecOrder          = specOrder
+Spells.SortedKeys         = sortedKeys
+Spells.TitleCaseToken     = titleCaseToken
+Spells.ClassDisplayName   = classDisplayName

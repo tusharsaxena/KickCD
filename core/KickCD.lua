@@ -25,12 +25,14 @@ local addonName, NS = ...
 -- core/* files loaded earlier have already hung Compat / Util / Database /
 -- Const / State onto this same NS. After this call NS IS the addon object —
 -- there is NO _G.KickCD rebind; the namespace stays private (§4.1).
-local addon = LibStub("AceAddon-3.0"):NewAddon(
+-- The return value is deliberately discarded: NewAddon promotes the table it
+-- is handed, so it hands back the very NS we passed in. Capturing it (as the
+-- former NS.addon field did) only created a self-reference with no callers.
+LibStub("AceAddon-3.0"):NewAddon(
     NS,
     "KickCD",
     "AceConsole-3.0",
     "AceEvent-3.0")
-NS.addon = addon
 
 -- Public version stamp.
 NS.VERSION = "1.2.1"

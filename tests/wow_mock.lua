@@ -15,46 +15,311 @@ local function deepcopy(v)
     return out
 end
 
--- Numeric frame getters must return numbers, not the frame — otherwise code
--- like `border:SetFrameLevel(btn:GetFrameLevel() + 1)` does arithmetic on a
--- table and throws. Values are inert defaults chosen not to divide-by-zero.
+-- Numeric frame getters that are NOT modelled as real state. Code like
+-- `border:SetFrameLevel(btn:GetFrameLevel() + 1)` does arithmetic on the
+-- result, so these must return numbers rather than the frame. Values are
+-- inert defaults chosen not to divide-by-zero. Everything load-bearing —
+-- visibility, geometry, scale, alpha, text, colour, bar values — is real
+-- state on the frame instead (see FRAME_METHODS below).
 local NUMERIC_GETTERS = {
-    GetFrameLevel = 0, GetWidth = 0, GetHeight = 0,
-    GetScale = 1, GetEffectiveScale = 1, GetAlpha = 1,
     GetLeft = 0, GetRight = 0, GetTop = 0, GetBottom = 0,
-    GetNumPoints = 0, GetStringWidth = 0, GetStringHeight = 0,
+    GetStringWidth = 0, GetStringHeight = 0,
     GetTextWidth = 0, GetTextHeight = 0,
+    GetNumRegions = 0, GetNumChildren = 0,
 }
 
--- Universal self-returning no-op frame (§14A.1): every method call returns a
--- function that returns the frame, so any `:SetX():SetY()` chain is inert.
--- Numeric getters (NUMERIC_GETTERS) instead return a number so the lifecycle
--- paths (OnEnable → layout/reskin) that do arithmetic on them run headlessly.
-local function makeFrame()
-    local f = {}
-    -- Explicit fields (take precedence over the __index fallback below) so
-    -- Util.RegisterUnitCastEvent's dispatch frame is testable headlessly:
-    -- record RegisterUnitEvent(event, unit) and let tests fire the stored
-    -- OnEvent handler via f:_fire(event, ...). Test-scoped only.
-    function f.RegisterUnitEvent(self, ev, unit)
-        self._unitEvents = self._unitEvents or {}
-        self._unitEvents[ev] = unit
+-- Frame stub with REAL STATE for the properties the addon's correctness
+-- actually depends on. A blanket no-op stub (what this used to be) makes
+-- whole subsystems untestable, because "the module did the right thing" and
+-- "the module did nothing" produce identical observations:
+--
+--   * VISIBILITY — IsShown() on a no-op stub returns the frame, i.e. is
+--     permanently truthy, so every visibility mode looks alike and a grid
+--     that never hides is indistinguishable from one that does. Real frames
+--     start shown and Show/Hide/SetShown flip that, so the stub does too.
+--   * GEOMETRY — position is persisted to SavedVariables and restored on the
+--     next login; without a SetPoint/GetPoint round trip, "we saved the
+--     anchor" and "we saved garbage" are the same observation. Size and
+--     SCALE matter for the cast bar's auto-size math, which divides by
+--     GetEffectiveScale.
+--   * TEXT and COLOUR — the cooldown countdown, the unit label and the cast
+--     bar's per-state colours are the visible output of large code paths;
+--     recording them is what turns those paths into assertable behaviour.
+--   * STATUS BAR values — the cast bar's fill is min/max/value, so pinning
+--     them is how a progress regression gets caught headlessly.
+--
+-- Anything NOT in this list keeps the old self-returning no-op, so unmodelled
+-- chains (`:SetClampedToScreen():SetToplevel()`) stay inert.
+
+--- Normalise SetPoint's two overloads into one record. Addon code uses both
+--- the (point, x, y) and (point, relativeTo, relativePoint, x, y) forms.
+local function recordPoint(point, a, b, c, d)
+    if type(a) == "number" or a == nil then
+        return { point = point, relativeTo = nil, relativePoint = point, x = a or 0, y = b or 0 }
     end
-    function f.SetScript(self, which, fn)
-        if which == "OnEvent" then self._onevent = fn end
-        return self   -- other scripts (OnDragStart/OnUpdate/…) are harmless no-ops
+    return { point = point, relativeTo = a, relativePoint = b or point, x = c or 0, y = d or 0 }
+end
+
+local makeFrame   -- forward declaration (regions are frames too)
+
+-- Shared method table: state lives on each frame, behaviour is defined once.
+local FRAME_METHODS = {}
+
+-- ── Visibility ──────────────────────────────────────────────────────────────
+function FRAME_METHODS.Show(self)
+    local was = self.__shown
+    self.__shown = true
+    if not was then self:_run("OnShow") end
+    return self
+end
+function FRAME_METHODS.Hide(self)
+    local was = self.__shown
+    self.__shown = false
+    -- Real frames run OnHide only on a genuine shown → hidden transition.
+    if was then self:_run("OnHide") end
+    return self
+end
+function FRAME_METHODS.SetShown(self, v)
+    if v then self:Show() else self:Hide() end
+    return self
+end
+function FRAME_METHODS.IsShown(self) return self.__shown end
+--- IsVisible() is IsShown() AND every ancestor shown — the distinction the
+--- addon relies on when it parents a cast bar onto a hidden grid.
+function FRAME_METHODS.IsVisible(self)
+    local f = self
+    while f do
+        if not f.__shown then return false end
+        f = f.__parent
     end
-    function f._fire(self, ev, ...)
-        if self._onevent then self._onevent(self, ev, ...) end
+    return true
+end
+
+-- ── Geometry ────────────────────────────────────────────────────────────────
+function FRAME_METHODS.SetPoint(self, point, a, b, c, d)
+    self.__points[#self.__points + 1] = recordPoint(point, a, b, c, d)
+    return self
+end
+function FRAME_METHODS.ClearAllPoints(self) self.__points = {}; return self end
+function FRAME_METHODS.GetNumPoints(self) return #self.__points end
+function FRAME_METHODS.GetPoint(self, i)
+    local p = self.__points[i or 1]
+    if not p then return nil end
+    return p.point, p.relativeTo, p.relativePoint, p.x, p.y
+end
+function FRAME_METHODS.SetAllPoints(self, rel)
+    self.__allPoints = rel or self.__parent or true
+    return self
+end
+function FRAME_METHODS.SetSize(self, w, h) self.__w, self.__h = w or 0, h or 0; return self end
+function FRAME_METHODS.SetWidth(self, w) self.__w = w or 0; return self end
+function FRAME_METHODS.SetHeight(self, h) self.__h = h or 0; return self end
+function FRAME_METHODS.GetWidth(self) return self.__w end
+function FRAME_METHODS.GetHeight(self) return self.__h end
+function FRAME_METHODS.GetSize(self) return self.__w, self.__h end
+
+function FRAME_METHODS.SetScale(self, s) self.__scale = s or 1; return self end
+function FRAME_METHODS.GetScale(self) return self.__scale end
+--- Effective scale is the product down the parent chain, exactly as in the
+--- client. The cast bar's auto-size divides by this, so a flat 1 would let a
+--- master-scale regression through unnoticed.
+function FRAME_METHODS.GetEffectiveScale(self)
+    local s, f = 1, self
+    while f do
+        s = s * (f.__scale or 1)
+        f = f.__parent
     end
-    -- Explicit SetParent/GetParent (test-scoped, mirrors RegisterUnitEvent/
-    -- SetScript above): records the parent so tests can assert which frame a
-    -- module reparented onto, without modelling real WoW parent/visibility
-    -- inheritance.
-    function f.SetParent(self, p) self._parent = p end
-    function f.GetParent(self) return self._parent end
+    return s
+end
+function FRAME_METHODS.SetAlpha(self, a) self.__alpha = a or 1; return self end
+function FRAME_METHODS.GetAlpha(self) return self.__alpha end
+--- The C-side alpha setter that accepts a SECRET boolean. It is the only
+--- 12.0-correct way to gate visibility on `notInterruptible`, so the stub
+--- both applies the alpha AND records the raw flag: a test has to be able to
+--- prove the secret was passed through rather than read in Lua.
+function FRAME_METHODS.SetAlphaFromBoolean(self, flag, whenTrue, whenFalse)
+    self.__alphaFromBoolean = { flag = flag, whenTrue = whenTrue, whenFalse = whenFalse }
+    -- Branching on `flag` here is safe: the stub is the C side, which is
+    -- exactly the layer allowed to look at a secret.
+    if flag then self.__alpha = whenTrue else self.__alpha = whenFalse end
+    return self
+end
+function FRAME_METHODS.SetFrameLevel(self, l) self.__level = l or 0; return self end
+function FRAME_METHODS.GetFrameLevel(self) return self.__level end
+function FRAME_METHODS.SetFrameStrata(self, s) self.__strata = s; return self end
+function FRAME_METHODS.GetFrameStrata(self) return self.__strata end
+function FRAME_METHODS.GetObjectType(self) return self.__objectType end
+
+-- ── Parenting ───────────────────────────────────────────────────────────────
+function FRAME_METHODS.SetParent(self, p) self.__parent = p; self._parent = p; return self end
+function FRAME_METHODS.GetParent(self) return self.__parent end
+
+-- ── Text ────────────────────────────────────────────────────────────────────
+function FRAME_METHODS.SetText(self, t) self.__text = t; return self end
+function FRAME_METHODS.GetText(self) return self.__text end
+function FRAME_METHODS.SetFormattedText(self, fmt, ...)
+    self.__text = fmt and string.format(fmt, ...) or nil
+    return self
+end
+function FRAME_METHODS.SetTextColor(self, r, g, b, a)
+    self.__textColor = { r, g, b, a or 1 }
+    return self
+end
+function FRAME_METHODS.GetTextColor(self)
+    local c = self.__textColor
+    if not c then return 1, 1, 1, 1 end
+    return c[1], c[2], c[3], c[4]
+end
+function FRAME_METHODS.SetFont(self, path, size, flags)
+    self.__font = { path = path, size = size, flags = flags }
+    return self
+end
+function FRAME_METHODS.GetFont(self)
+    local f = self.__font
+    if not f then return nil end
+    return f.path, f.size, f.flags
+end
+function FRAME_METHODS.SetJustifyH(self, v) self.__justifyH = v; return self end
+function FRAME_METHODS.GetJustifyH(self) return self.__justifyH end
+
+-- ── Textures / colour ───────────────────────────────────────────────────────
+function FRAME_METHODS.SetTexture(self, t) self.__texture = t; return self end
+function FRAME_METHODS.GetTexture(self) return self.__texture end
+function FRAME_METHODS.SetAtlas(self, a) self.__atlas = a; return self end
+function FRAME_METHODS.GetAtlas(self) return self.__atlas end
+function FRAME_METHODS.SetColorTexture(self, r, g, b, a)
+    self.__colorTexture = { r, g, b, a or 1 }
+    return self
+end
+function FRAME_METHODS.SetVertexColor(self, r, g, b, a)
+    self.__vertexColor = { r, g, b, a or 1 }
+    return self
+end
+function FRAME_METHODS.GetVertexColor(self)
+    local c = self.__vertexColor
+    if not c then return 1, 1, 1, 1 end
+    return c[1], c[2], c[3], c[4]
+end
+function FRAME_METHODS.SetBackdropColor(self, r, g, b, a)
+    self.__backdropColor = { r, g, b, a or 1 }
+    return self
+end
+function FRAME_METHODS.SetBackdropBorderColor(self, r, g, b, a)
+    self.__backdropBorderColor = { r, g, b, a or 1 }
+    return self
+end
+
+-- ── Status bar ──────────────────────────────────────────────────────────────
+function FRAME_METHODS.SetMinMaxValues(self, mn, mx) self.__min, self.__max = mn, mx; return self end
+function FRAME_METHODS.GetMinMaxValues(self) return self.__min, self.__max end
+function FRAME_METHODS.SetValue(self, v) self.__value = v; return self end
+function FRAME_METHODS.GetValue(self) return self.__value end
+function FRAME_METHODS.SetStatusBarColor(self, r, g, b, a)
+    self.__barColor = { r, g, b, a or 1 }
+    return self
+end
+function FRAME_METHODS.GetStatusBarColor(self)
+    local c = self.__barColor
+    if not c then return 1, 1, 1, 1 end
+    return c[1], c[2], c[3], c[4]
+end
+function FRAME_METHODS.SetStatusBarTexture(self, t)
+    self.__barTexture = t
+    -- The live API accepts a path OR a texture object and GetStatusBarTexture
+    -- always hands back an object, so keep a region either way.
+    if type(t) == "table" then
+        self.__barTextureObj = t
+    else
+        self.__barTextureObj = self.__barTextureObj or makeFrame("Texture", self)
+        self.__barTextureObj.__texture = t
+    end
+    return self
+end
+function FRAME_METHODS.GetStatusBarTexture(self)
+    self.__barTextureObj = self.__barTextureObj or makeFrame("Texture", self)
+    return self.__barTextureObj
+end
+
+-- ── Child regions ───────────────────────────────────────────────────────────
+--- Real CreateTexture/CreateFontString return NEW objects; the old stub
+--- returned the parent itself, which silently aliased every region onto one
+--- table and made "which widget got the text" unanswerable. Creation order
+--- and the requested template are recorded so a suite can assert them.
+local function createRegion(self, objectType, template)
+    local r = makeFrame(objectType, self)
+    r.__template = template
+    self.__regions[#self.__regions + 1] = r
+    return r
+end
+function FRAME_METHODS.CreateTexture(self, _name, _layer, template)
+    return createRegion(self, "Texture", template)
+end
+function FRAME_METHODS.CreateFontString(self, _name, _layer, template)
+    return createRegion(self, "FontString", template)
+end
+function FRAME_METHODS.CreateLine(self) return createRegion(self, "Line", nil) end
+function FRAME_METHODS.CreateMaskTexture(self) return createRegion(self, "MaskTexture", nil) end
+
+-- ── Scripts / events ────────────────────────────────────────────────────────
+function FRAME_METHODS.SetScript(self, which, fn)
+    self.__scripts[which] = fn and { fn } or nil
+    if which == "OnEvent" then self._onevent = fn end
+    return self
+end
+function FRAME_METHODS.HookScript(self, which, fn)
+    local list = self.__scripts[which]
+    if not list then list = {}; self.__scripts[which] = list end
+    list[#list + 1] = fn
+    return self
+end
+function FRAME_METHODS.GetScript(self, which)
+    local list = self.__scripts[which]
+    return list and list[1]
+end
+--- Run every handler bound to a script, in registration order. Test-scoped.
+function FRAME_METHODS._run(self, which, ...)
+    local list = self.__scripts[which]
+    if not list then return end
+    for _, fn in ipairs(list) do fn(self, ...) end
+end
+--- Fire the OnEvent handler. Kept as the historical name because
+--- Util.RegisterUnitCastEvent's suite drives its dispatch frame through it.
+function FRAME_METHODS._fire(self, ev, ...)
+    if self._onevent then self._onevent(self, ev, ...) end
+end
+function FRAME_METHODS.RegisterEvent(self, ev)
+    self.__events[ev] = true
+    return self
+end
+function FRAME_METHODS.RegisterUnitEvent(self, ev, unit)
+    self._unitEvents = self._unitEvents or {}
+    self._unitEvents[ev] = unit
+    self.__events[ev] = unit or true
+    return self
+end
+function FRAME_METHODS.UnregisterEvent(self, ev) self.__events[ev] = nil; return self end
+function FRAME_METHODS.UnregisterAllEvents(self) self.__events = {}; return self end
+function FRAME_METHODS.IsEventRegistered(self, ev) return self.__events[ev] ~= nil end
+
+--- Build a frame stub. `objectType` mirrors CreateFrame's first argument
+--- (or "Texture"/"FontString" for regions); `parent` wires the chain that
+--- IsVisible and GetEffectiveScale walk.
+function makeFrame(objectType, parent)
+    local f = {
+        __objectType = objectType or "Frame",
+        __parent     = parent,
+        _parent      = parent,   -- historical alias asserted by existing suites
+        __shown      = true,     -- CreateFrame'd frames start shown
+        __points     = {},
+        __regions    = {},
+        __scripts    = {},
+        __events     = {},
+        __w = 0, __h = 0, __scale = 1, __alpha = 1, __level = 0,
+    }
     return setmetatable(f, {
         __index = function(_, k)
+            local m = FRAME_METHODS[k]
+            if m ~= nil then return m end
             local n = NUMERIC_GETTERS[k]
             if n ~= nil then return function() return n end end
             -- WoW frame API methods are PascalCase (SetPoint, CreateTexture);
@@ -273,8 +538,31 @@ local function build()
     -- -------------------------------------------------------------------
     -- Frames / UI
     -- -------------------------------------------------------------------
-    mocks.CreateFrame = function() return makeFrame() end
-    mocks.UIParent = makeFrame()
+    -- CreateFrame(frameType, name, parent, template): the parent is wired so
+    -- IsVisible / GetEffectiveScale can walk the real chain. Frames created
+    -- without an explicit parent fall back to UIParent, as in the client.
+    local UIParent = makeFrame("Frame", nil)
+    mocks.UIParent = UIParent
+    -- Every CreateFrame'd frame is also recorded, in creation order. Some
+    -- bootstrap frames are file-locals with no published handle at all (the
+    -- PLAYER_REGEN_* listener in core/State.lua is the case that forced this),
+    -- so the registry plus __findFrame is how a suite reaches one to fire its
+    -- OnEvent — without having to widen the addon's public surface just for
+    -- the tests.
+    local created = {}
+    mocks.__frames = created
+    mocks.CreateFrame = function(frameType, _name, parent, template)
+        local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent)
+        f.__template = template
+        created[#created + 1] = f
+        return f
+    end
+    --- First created frame registered for `event`, or nil.
+    mocks.__findFrame = function(event)
+        for _, f in ipairs(created) do
+            if f.__events[event] then return f end
+        end
+    end
     mocks.UISpecialFrames = {}
     -- WoW aliases the table.insert/remove/wipe globals; the addon uses `tinsert`
     -- (e.g. registering windows into UISpecialFrames), so the debug console can
@@ -449,6 +737,17 @@ local function build()
     mocks.C_CurveUtil = {
         CreateCurve      = function() return makeCurve("number") end,
         CreateColorCurve = function() return makeCurve("color") end,
+        -- The C-side boolean selector: returns `whenTrue` or `whenFalse`
+        -- depending on the flag, and accepts a SECRET flag. Castbar:ApplyState
+        -- routes every per-state alpha and the name colour through it rather
+        -- than branching in Lua, so without this the whole cast-render path is
+        -- unreachable headlessly. Written as an explicit if — the `and/or`
+        -- idiom would collapse a legitimate `whenTrue` of 0 to `whenFalse`,
+        -- and 0 is exactly what the module passes to hide a bar.
+        EvaluateColorValueFromBoolean = function(flag, whenTrue, whenFalse)
+            if flag then return whenTrue end
+            return whenFalse
+        end,
     }
 
     --- Build a stand-in DurationObject. Mirrors the live API's two defining

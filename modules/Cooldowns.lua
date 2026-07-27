@@ -522,3 +522,19 @@ function Cooldowns:DebugDump()
             safeStr(s.charges)))
     end
 end
+
+-- ---------------------------------------------------------------------------
+-- Exposed for unit testing
+-- ---------------------------------------------------------------------------
+--
+-- The two change-detection gates are pure and carry the module's trickiest
+-- rule — that a secret `charges` is treated OPPOSITELY by each (StateChanged
+-- emits conservatively, MaterialChange stays quiet). Published so the harness
+-- can pin that asymmetry; internal call sites still use the locals.
+-- NB: named MasterEnabled, NOT IsEnabled — AceAddon embeds its own
+-- IsEnabled(self) (returns self.enabledState) directly onto every module
+-- object, so publishing under that name would silently shadow the library
+-- method with one that answers a different question.
+Cooldowns.MaterialChange = MaterialChange
+Cooldowns.StateChanged   = StateChanged
+Cooldowns.MasterEnabled  = isEnabled

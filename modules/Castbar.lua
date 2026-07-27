@@ -1466,8 +1466,24 @@ function Castbar:OnGridLayout(_evt, payload)
     end
 end
 
--- Expose for /kcd debug + future tooling.
-Castbar.AutoSizeLong = autoSizeLong
+-- ---------------------------------------------------------------------------
+-- Exposed for /kcd debug + unit testing
+-- ---------------------------------------------------------------------------
+--
+-- These are pure file-locals with no frame dependency. Publishing them on the
+-- module is the established idiom for making that logic reachable from the
+-- headless harness (AutoSizeLong set the precedent); nothing inside the addon
+-- calls them through these fields.
+Castbar.AutoSizeLong  = autoSizeLong
+Castbar.UnpackColor   = unpackColor
+Castbar.TruncateName  = truncateName
+Castbar.StateConfig   = stateConfig
+Castbar.ToSetPoint    = toSetPoint
+Castbar.FetchStatusBarTexture = fetchStatusBarTexture
+Castbar.FetchBorderTexture    = fetchBorderTexture
+Castbar.FetchFont     = fetchFont
+Castbar.INT_FALLBACK   = INT_FALLBACK
+Castbar.UNINT_FALLBACK = UNINT_FALLBACK
 NS.Castbar = Castbar
 
 

@@ -754,3 +754,16 @@ end
 -- ---------------------------------------------------------------------------
 IconGrid.CreateIconWidget = CreateIconWidget
 IconGrid.BuildCurves      = BuildCurves
+
+-- ---------------------------------------------------------------------------
+-- Exposed for unit testing
+-- ---------------------------------------------------------------------------
+--
+-- Pure file-locals with no frame dependency, published so the headless
+-- harness can reach them (same idiom as Castbar.AutoSizeLong). The addon
+-- itself keeps calling the locals directly.
+IconGrid.SafeUnpackColor = safeUnpackColor
+IconGrid.UnpackGlowColor = unpackGlowColor
+IconGrid.TriggerSatisfied = triggerSatisfied
+IconGrid.PlainStateMoved  = plainStateMoved
+IconGrid.FetchBorderTexture = fetchBorderTexture

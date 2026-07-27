@@ -18,6 +18,89 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
+### test_util_anchor.lua (29)
+
+- SaveAnchor snapshots a frame's first anchor point
+- SaveAnchor stores no frame reference, only serialisable fields
+- SaveAnchor falls back to a centred anchor for a nil frame
+- SaveAnchor falls back to centred for a frame with no points set
+- SaveAnchor reads point ONE, ignoring later anchors
+- ApplyAnchor positions the frame against UIParent
+- ApplyAnchor clears stale points instead of stacking them
+- ApplyAnchor fills in centred defaults for a partial saved anchor
+- ApplyAnchor is a no-op for a nil frame or nil anchor
+- SaveAnchor and ApplyAnchor round-trip a dragged position exactly
+- Throttle passes the LAST call's arguments, not the first
+- Throttle re-arms after firing, so a later burst is not swallowed
+- Throttle preserves embedded nils in the argument list
+- Throttle survives a nil delay by treating it as immediate
+- SpecDisplayName returns the client's LOCALISED name for display
+- SpecDisplayName returns the empty string for a non-number
+- SpecDisplayName title-cases the English token for a spec the client can't name
+- SpecDisplayName falls back to the raw ID for a spec nothing knows
+- SpecTokenForID rejects a non-number rather than indexing with it
+- SpecOrderForClass returns Blizzard's order, not numeric order
+- SpecOrderForClass normalises a lower-case class token
+- SpecOrderForClass is nil for a class the client can't enumerate
+- NormalizeClassToken upper-cases and tolerates nil
+- Util.print tags every line with the cyan [KCD] prefix
+- Util.print space-separates multiple arguments, mirroring print()
+- Util.print with no arguments emits the bare tag
+- RegisterUnitCastEvent forwards the event into the module's handler
+- RegisterUnitCastEvent tolerates a handler that isn't defined yet
+- RegisterUnitCastEvent returns a frame the caller can unregister
+
+### test_constants.lua (22)
+
+- Constants: the chat prefix is the cyan [KCD] tag and closes its colour code
+- Constants: the notice grey is an opener with no closer (callers add |r)
+- Constants: the GCD upper bound covers an unhasted 1.5s global
+- Constants: the cast bar's inside and outside insets are symmetric
+- Constants: the panel header reserves more height than its top inset
+- Constants: every panel metric is a positive number
+- Constants: FONT_MONO points at a font that is actually shipped
+- Constants: the shipped mono font ships its OFL license alongside it
+- Constants: every spec ID is a positive integer
+- Constants: every spec token is UPPER_SNAKE_CASE
+- Constants: no two spec tokens share a spec ID
+- Constants: the three Midnight-era spec IDs are present and correct
+- Constants: SPEC covers all thirteen player classes at three specs each
+- Constants: every spec ID has a reverse token
+- Constants: the reverse map is exactly as large as the forward map
+- Constants: the reverse map strips the disambiguating class suffix
+- Constants: a non-shared token survives the suffix strip unchanged
+- Constants: exactly the four reused spec names carry a class suffix
+- Constants: every shared spec name is suffixed on every class that has it
+- Constants: every spec key in defaults/Spells.lua is a known spec ID
+- Constants: every spec ID in Const.SPEC has a shipped default list
+- Constants: defaults ship one class table per class, all UPPER-case tokens
+
+### test_state.lua (23)
+
+- State: the combat flag starts false and holds `debug` session-only
+- State.SetInCombat coerces any truthy value to a real boolean
+- State: the bootstrap frame owns all three combat/login events
+- State: PLAYER_REGEN_DISABLED / _ENABLED drive the flag both ways
+- State: PLAYER_LOGIN seeds the flag from InCombatLockdown
+- State: PLAYER_LOGIN releases its own registration after seeding
+- State: every combat transition fans out COMBAT_STATE with the new flag
+- IsHostileUnitCasting is false for a nil unit or one that doesn't exist
+- IsHostileUnitCasting is false for a friendly caster
+- IsHostileUnitCasting is true for a hostile CAST
+- IsHostileUnitCasting is true for a hostile CHANNEL
+- IsHostileUnitCasting is false for a hostile unit doing nothing
+- IsHostileUnitCasting only truth-tests the cast name, never reads it
+- IsHostileUnitCasting collapses the API multi-return to position 1
+- ApplyInterruptibleAlpha refuses a frame that can't take the secret
+- ApplyInterruptibleAlpha declines when the unit is absent or friendly
+- ApplyInterruptibleAlpha declines when the unit has no cast at all
+- ApplyInterruptibleAlpha maps interruptible -> alpha, uninterruptible -> 0
+- ApplyInterruptibleAlpha defaults the visible alpha to 1
+- ApplyInterruptibleAlpha passes a SECRET notInterruptible through verbatim
+- ApplyInterruptibleAlpha reads the CHANNEL flag from position 7, not 8
+- ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
+- ApplyInterruptibleAlpha never inspects the cast name it gates on
+
 ### test_locale.lua (9)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
@@ -98,6 +181,55 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
 
+### test_compat_api.lua (46)
+
+- Compat._firstReturn tolerates a nil API (pre-12.0 client)
+- Compat._firstReturn collapses a multi-return to position 1
+- Compat._firstReturn forwards its arguments to the API
+- Compat._firstReturn returns a nil first value even when later ones are set
+- GetSpellCooldown reads the modern C_Spell info table
+- GetSpellCooldown returns the inert tuple when the API yields no info
+- GetSpellCooldown treats a missing isEnabled as enabled, missing isActive as inactive
+- GetSpellCooldown coerces a non-boolean isActive to false
+- GetSpellCooldown passes SECRET timings through without touching them
+- GetSpellCooldown falls back to the deprecated global on a pre-12.0 client
+- GetSpellCooldown's legacy path reports a zero duration as off cooldown
+- GetSpellCooldown's legacy path refuses to compare a secret duration
+- GetSpellCooldown returns the inert tuple when NO cooldown API exists
+- GetSpellCooldownDuration hands back the opaque handle unchanged
+- GetSpellCooldownDuration is nil on a client without the 12.0 API
+- GetSpellTexture prefers C_Spell and falls back to the global
+- GetSpellTexture is nil when neither API exists
+- GetSpellInfo flattens the modern info table into the legacy tuple order
+- GetSpellInfo is nil for an unknown spell, without falling through
+- GetSpellInfo falls back to the deprecated global's multi-return
+- GetSpellCharges flattens the modern charge table
+- GetSpellCharges is nil for a spell without charges
+- GetSpellCharges passes a SECRET charge count through untouched
+- GetSpellCharges falls back to the deprecated global
+- IsSpellAvailable rejects a non-number spell ID outright
+- IsSpellAvailable is true when IsPlayerSpell says so
+- IsSpellAvailable falls back to the spellbook for racials and professions
+- IsSpellAvailable catches PET spells via the IsSpellKnown pet flag
+- IsSpellAvailable is false for an unpicked talent choice-node sibling
+- IsSpellUsable reads the SpellUsabilityInfo table form
+- IsSpellUsable reads the two-boolean form some Midnight builds return
+- IsSpellUsable normalises the legacy API's 1/nil into real booleans
+- IsSpellUsable defaults to usable when no API is available
+- GetCastingInfo builds a record from the CAST API's positions
+- GetCastingInfo falls through to the channel shim when not casting
+- GetCastingInfo is nil when the unit is neither casting nor channeling
+- GetChannelInfo reads notInterruptible from position 7, spellID from 8
+- GetChannelInfo is nil when the API itself is missing
+- a FRIENDLY unit's cast is forced to uninterruptible regardless of the API
+- a HOSTILE unit's raw notInterruptible flag is returned unchanged
+- the friendly override applies to CHANNELS too, not just casts
+- the cast record carries SECRET name/texture/flag/id without inspecting them
+- the cast record attaches the plain-number CastingDuration object
+- a channel record sources its duration from UnitChannelDuration
+- a record survives a client with no duration API at all
+- isChannel is a real boolean on both record paths
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -134,6 +266,78 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Icon:Apply forced re-apply redoes state work even when nothing moved
 - Icon:Apply keeps the charges badge live when charges are secret
 
+### test_icongrid_visibility.lua (22)
+
+- the visibility deciders are published for testing
+- visibilityMode reads the addon-wide setting
+- visibilityMode defaults to 'always' when the field is missing
+- the cast bar reads the SAME visibility setting as the grid
+- master enable off hides the grid in every mode
+- a fresh profile with no enable field reads as enabled
+- unlocked shows the grid even in a mode that would hide it
+- locked restores the mode's own decision
+- 'always' shows regardless of combat or casting
+- an unrecognised mode falls back to always-visible
+- 'in_combat' follows State.inCombat in both directions
+- 'in_combat' ignores InCombatLockdown, which lags the regen events
+- 'target_casting' shows while the unit casts and hides when it stops
+- 'target_casting' counts a CHANNEL as casting
+- 'target_casting' hides when the unit doesn't exist
+- 'target_casting' does NOT filter on hostility, unlike the interruptible mode
+- 'target_casting_interruptible' shows for any HOSTILE cast
+- 'target_casting_interruptible' hides for a FRIENDLY cast
+- 'target_casting_interruptible' hides when nothing is being cast
+- each unit's decision is made against its OWN unit token
+- instanceCasting truth-tests the cast name without ever reading it
+- instanceCasting is false for a unit that doesn't exist
+
+### test_icongrid_render.lua (21)
+
+- the render helpers are published for testing
+- SafeUnpackColor reads both the array and hash colour shapes
+- SafeUnpackColor honours the caller's cooldown-tint fallback
+- SafeUnpackColor falls back to opaque white with no fallback given
+- UnpackGlowColor reads a configured array colour
+- UnpackGlowColor falls back to the shipped yellow glow for a non-table
+- UnpackGlowColor fills missing channels rather than returning nils
+- the 'always' trigger glows unconditionally
+- the 'never' trigger and any unknown token keep the glow off
+- 'target_casting' asks the INSTANCE whether its unit is casting
+- 'target_casting' is false for an instance with no predicate yet
+- 'target_casting_interruptible' glows for ANY hostile cast
+- 'target_casting_interruptible' does NOT glow for a friendly cast
+- 'target_casting_interruptible' resolves per-unit, defaulting to target
+- PlainStateMoved treats a first render as a change
+- PlainStateMoved is false when nothing plain moved
+- PlainStateMoved fires on a ready or isActive flip
+- PlainStateMoved watches handle PRESENCE, not handle identity
+- PlainStateMoved watches the charge timer's presence independently
+- PlainStateMoved deliberately IGNORES charges, unlike the cooldown gates
+- PlainStateMoved never compares a secret charge value
+
+### test_icongrid_buildlist.lua (20)
+
+- BuildActiveList renders one icon per enabled entry
+- BuildActiveList preserves the saved list's ORDER
+- the first entry becomes the primary icon the cast bar anchors to
+- BuildActiveList replaces the previous list rather than appending to it
+- an empty list produces an empty grid, not an error
+- a disabled entry is skipped
+- an entry with no enabled field is treated as enabled
+- an entry with no spellID is skipped rather than acquiring a nil-keyed icon
+- a spell the player cannot currently cast is not rendered
+- a spell missing from the client's spell DB is not rendered
+- a pet spell appears only while its pet is out
+- a duplicate spellID is skipped, keeping the pool 1:1 with the ID
+- the FIRST occurrence of a duplicated spellID is the one kept
+- a duplicate that is DISABLED doesn't suppress the enabled original
+- a duplicate is reported to the debug console when logging is on
+- a SECRET icon texture is skipped instead of erroring the whole build
+- a plain texture IS applied to the icon widget
+- a class+spec with no saved list renders nothing and creates no entry
+- BuildActiveList caches the unit's resolved icon config on the instance
+- each unit builds from its own resolved config
+
 ### test_lifecycle.lua (4)
 
 - addon + all modules enable cleanly on the Ace3 login path
@@ -148,6 +352,30 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Castbar:GetCastbarFrame does not create an instance for an unknown unit
 - UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)
 
+### test_unitlabel_apply.lua (21)
+
+- Apply writes the unit's own label text
+- Apply writes an empty string rather than nil for a cleared label
+- label TEXT stays per-unit even when the units are linked
+- Apply pushes the configured size and colour onto the FontString
+- Apply always resolves a non-nil font path
+- Apply falls back to a 14pt outline for a style with no size or flags
+- Apply applies the configured horizontal justification
+- Apply defaults justification to CENTER
+- a LINKED focus renders target's styling but its own text
+- Apply positions the label against its chosen ATTACH frame
+- Apply parents the label to the ICON GRID even when attached to the cast bar
+- Apply anchors POSITION to the cast bar while parenting to the grid
+- re-applying never stacks anchors on the holder frame
+- the label shows when the unit is enabled and show is on
+- turning the label's show off hides it
+- disabling the unit hides its label regardless of the show flag
+- the master enable gates the label too
+- a LINKED focus mirrors target's show flag (spec 2b)
+- EnsureFrame builds the holder once and reuses it
+- target and focus each get their own label widgets
+- ApplyAll renders every unit in one pass
+
 ### test_castbar.lua (7)
 
 - Castbar exposes the pure AutoSizeLong helper
@@ -157,6 +385,75 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - AutoSizeLong honors the bar's own effective scale
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
+
+### test_castbar_helpers.lua (27)
+
+- the Castbar pure helpers are published for testing
+- UnpackColor reads an array-style colour
+- UnpackColor reads a hash-style colour
+- UnpackColor uses the CALLER's fallback for a nil colour
+- UnpackColor falls back to opaque white when the caller gives no fallback
+- UnpackColor defaults a missing alpha to fully opaque
+- TruncateName leaves a name shorter than the cap alone
+- TruncateName leaves a name EXACTLY at the cap alone
+- TruncateName clips and appends an ellipsis past the cap
+- TruncateName treats 0 and nil as 'no truncation'
+- TruncateName treats a negative cap as 'no truncation'
+- TruncateName returns an empty string for a nil name
+- TruncateName passes a SECRET name through without measuring it
+- StateConfig returns the configured per-state table when present
+- StateConfig falls back when the state key is missing
+- StateConfig rejects a non-table value stored under the state key
+- the interruptible fallback is gold with no border, the uninterruptible red with one
+- both state fallbacks carry every field the reskin path reads
+- ToSetPoint maps every schema anchor token to a real SetPoint token
+- ToSetPoint defaults a nil anchor to CENTER
+- ToSetPoint passes an already-valid SetPoint token straight through
+- FetchStatusBarTexture returns the LSM path when the key resolves
+- FetchStatusBarTexture degrades to a client-shipped path for an unknown key
+- FetchBorderTexture degrades to a client-shipped border
+- FetchFont always yields a usable font path
+- AutoSizeLong matches on-screen extents for frames at different scales
+- AutoSizeLong accounts for scale INHERITED from a parent frame
+
+### test_castbar_frame.lua (36)
+
+- EnsureFrame builds the full widget stack once and reuses it
+- EnsureFrame creates BOTH state bars and both backgrounds
+- EnsureFrame parents the state bars inside the bar container
+- EnsureFrame seeds both bars to an empty 0..1 range
+- target and focus get separate frames, not one shared bar
+- GetCastbarFrame never creates an instance for an unknown unit
+- Start renders the cast name into the bar's FontString
+- Start applies the user's name truncation
+- Start blanks the name entirely when showName is off
+- Start pushes the cast's icon texture onto the icon widget
+- a CAST fills the bar 0 -> total
+- a CHANNEL drains the bar total -> 0
+- both stacked bars carry identical values so the alpha switch is seamless
+- Start shows the frame and arms the per-frame OnUpdate
+- Start refuses a record with no duration object rather than faking one
+- the OnUpdate tick advances the bar as the cast progresses
+- the OnUpdate tick writes the remaining/total countdown when showTime is on
+- the OnUpdate tick leaves the countdown alone when showTime is off
+- the OnUpdate script disarms itself once the cast record is gone
+- an INTERRUPTIBLE cast shows the interruptible widgets and hides the others
+- an UNINTERRUPTIBLE cast flips the whole stack the other way
+- the alpha switch never branches on notInterruptible in Lua
+- the no-cast state falls back to interruptible visuals
+- the uninterruptible warning border is on and the interruptible one off
+- Stop clears the cast, empties both bars and disarms the animation
+- Stop HIDES the bar while locked
+- Stop leaves a PREVIEW on screen while unlocked, so it stays draggable
+- the preview resets the bar range so it doesn't inherit the last cast's total
+- Stop is safe before the frame has ever been built
+- a cast starting out of combat is suppressed in the in_combat mode
+- the same cast shows once combat is flagged
+- disabling the cast bar for a unit keeps its frame hidden through a cast
+- the interruptible mode masks the bar's alpha from the SECRET flag
+- an interruptible cast in that mode stays fully visible
+- ApplyAnchor in FREE mode restores the saved anchor against UIParent
+- re-anchoring never stacks a second point on the frame
 
 ### test_cooldowns.lua (11)
 
@@ -172,6 +469,31 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
+### test_cooldowns_gates.lua (22)
+
+- both gates are published for testing
+- both gates treat a missing previous state as a change (first poll)
+- both gates are silent when nothing at all moved
+- both gates fire on a ready flip — the transition that matters most
+- both gates fire on an isActive flip
+- both gates fire when a cooldown handle APPEARS
+- both gates fire when a cooldown handle DISAPPEARS
+- both gates fire when a charge-recharge timer appears
+- StateChanged fires on a NEW handle for the same cooldown
+- MaterialChange ignores a new handle for the same cooldown
+- MaterialChange ignores a new CHARGE handle too
+- both gates ignore charges that stayed nil
+- both gates fire on a plain charge count that moved
+- both gates ignore a plain charge count that held still
+- both gates fire when charges appear from nothing
+- StateChanged EMITS conservatively when either charge count is secret
+- MaterialChange stays QUIET when either charge count is secret
+- one secret side is enough to trigger each gate's secret rule
+- a secret charge count never blocks a real ready/isActive transition
+- neither gate ever reads a secret charge value itself
+- Cooldowns.MasterEnabled defaults to true when the field is absent
+- Cooldowns.MasterEnabled is false only for an explicit false
+
 ### test_settings_log.lua (5)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
@@ -186,6 +508,35 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Spells editor selection follows an in-game spec change (dropdown regression)
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
+
+### test_settings_widgets.lua (26)
+
+- the settings helpers are published for testing
+- SnapToStep lands a drag on the nearest step
+- SnapToStep rounds a value exactly halfway UP
+- SnapToStep measures steps from the slider's MINIMUM, not from zero
+- SnapToStep handles a negative minimum (offset sliders)
+- SnapToStep leaves the value alone when there is no step
+- SnapToStep supports a fractional step
+- SortedKeys returns a deterministic ordering
+- SortedKeys returns an empty list for a nil or non-table input
+- SpecOrder lists specs in Blizzard's order, not numeric order
+- SpecOrder falls back to sorted numeric keys when the client can't be queried
+- SpecOrder only offers specs the addon ships defaults for
+- SpecOrder lists EVERY spec the defaults ship for that class
+- SpecOrder is empty for a class with no shipped defaults
+- Druid's four specs all survive the ordering
+- ValidateSpellInput accepts a numeric spell ID and resolves its name
+- ValidateSpellInput accepts an ID typed as a string
+- ValidateSpellInput rejects empty and nil input
+- ValidateSpellInput rejects an ID the client doesn't know
+- ValidateSpellInput resolves a spell NAME to its numeric ID
+- ValidateSpellInput rejects a name that resolves to no spell
+- ValidateSpellInput refuses a name whose lookup yields no ID
+- ClassDisplayName spaces the two-word class tokens
+- TitleCaseToken lower-cases everything after the first letter
+- TitleCaseToken returns an empty string for nil rather than erroring
+- every shipped class token produces a non-empty display name
 
 ### test_flow_traces.lua (1)
 
@@ -210,22 +561,34 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 13 |
+| test_util_anchor.lua | 29 |
+| test_constants.lua | 22 |
+| test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
 | test_schema.lua | 12 |
 | test_database.lua | 20 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
+| test_compat_api.lua | 46 |
 | test_debuglog.lua | 13 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
+| test_icongrid_visibility.lua | 22 |
+| test_icongrid_render.lua | 21 |
+| test_icongrid_buildlist.lua | 20 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
+| test_unitlabel_apply.lua | 21 |
 | test_castbar.lua | 7 |
+| test_castbar_helpers.lua | 27 |
+| test_castbar_frame.lua | 36 |
 | test_cooldowns.lua | 11 |
+| test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
+| test_settings_widgets.lua | 26 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_list_mode.lua | 5 |
-| **Total** | **146** |
+| **Total** | **461** |

@@ -357,3 +357,12 @@ function Helpers.InlineButtonPair(ctx, leftSpec, rightSpec)
     makeBtn(rightSpec)
     scroll:AddChild(row)
 end
+
+-- ---------------------------------------------------------------------------
+-- Exposed for unit testing
+-- ---------------------------------------------------------------------------
+--
+-- Slider step snapping is pure arithmetic that decides what value the user's
+-- drag actually writes to the DB, so it is worth pinning headlessly (same
+-- idiom as Castbar.AutoSizeLong).
+Helpers.SnapToStep = snapToStep

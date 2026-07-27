@@ -999,3 +999,20 @@ function IconGrid:GetPrimaryIcon(unit)
     local inst = instances[unit or "target"]
     return inst and inst.ordered[1]
 end
+
+-- ---------------------------------------------------------------------------
+-- Exposed for unit testing
+-- ---------------------------------------------------------------------------
+--
+-- The visibility decision is the single most branch-heavy piece of logic in
+-- the module and is otherwise only reachable through a frame, so publish the
+-- deciders (same idiom as Castbar.AutoSizeLong). Internal call sites still
+-- use the locals.
+-- NB: named MasterEnabled, NOT IsEnabled — AceAddon embeds its own
+-- IsEnabled(self) (returns self.enabledState) directly onto every module
+-- object, so publishing under that name would silently shadow the library
+-- method with one that answers a different question.
+IconGrid.VisibilityMode   = visibilityMode
+IconGrid.ShouldBeVisible  = shouldBeVisible
+IconGrid.InstanceCasting  = instanceCasting
+IconGrid.MasterEnabled    = isEnabled
