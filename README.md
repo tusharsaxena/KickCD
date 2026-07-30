@@ -70,12 +70,12 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 | `/kcd config` | Open the settings panel. Won't open during combat. Also `/kcd options`. |
 | `/kcd lock` / `unlock` / `toggle` | Lock, unlock, or flip the one lock that covers every grid and cast bar so you can drag them. |
 | `/kcd list` | List every setting and its current value. |
-| `/kcd get <setting>` | Show one setting's value (for example `/kcd get units.target.icons.primarySize`). |
-| `/kcd set <setting> <value>` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
+| `/kcd get setting` | Show one setting's value (for example `/kcd get units.target.icons.primarySize`). |
+| `/kcd set setting value` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
 | `/kcd reset <general\|icons\|castbar\|label\|spells>` | Reset one settings tab to its defaults. |
 | `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults — and put every grid and cast bar back in its starting position. |
 | `/kcd resetposition` | Put the target icon grid back in its default spot on screen. |
-| `/kcd spells <subcommand>` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`. Defaults to your current spec. |
+| `/kcd spells subcommand` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`. Defaults to your current spec. |
 | `/kcd debug spells` | List the cooldowns the addon is watching. |
 | `/kcd debug castbar` | Show your target's current cast and the colors in use. |
 | `/kcd debug interrupt` | Show what the addon decided about your target's cast. Handy for bug reports. |
