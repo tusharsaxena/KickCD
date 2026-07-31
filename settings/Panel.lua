@@ -228,38 +228,59 @@ end
 ---
 --- Labels say "middle" rather than "center" for the perpendicular
 --- alignment, matching the user's preferred naming.
+--- The 13 frame-anchor options, as the keyed { key = label } hash the widget
+--- makers and the value parser both read.
+---
+--- Keyed rather than an ordered array of records: that is LibKa0s-Options-1.0's
+--- and LibKa0s-Slash-1.0's vocabulary, and an array is silently invisible to
+--- both — the parser would offer "1, 2, 3 ..." as the allowed values and the
+--- dropdown would list indices instead of anchors.
 function Helpers.AnchorValues()
     return {
-        { value = "TOP_LEFT",      label = L["Top left"]      },
-        { value = "TOP_MIDDLE",    label = L["Top middle"]    },
-        { value = "TOP_RIGHT",     label = L["Top right"]     },
-        { value = "BOTTOM_LEFT",   label = L["Bottom left"]   },
-        { value = "BOTTOM_MIDDLE", label = L["Bottom middle"] },
-        { value = "BOTTOM_RIGHT",  label = L["Bottom right"]  },
-        { value = "LEFT_TOP",      label = L["Left top"]      },
-        { value = "LEFT_MIDDLE",   label = L["Left middle"]   },
-        { value = "LEFT_BOTTOM",   label = L["Left bottom"]   },
-        { value = "RIGHT_TOP",     label = L["Right top"]     },
-        { value = "RIGHT_MIDDLE",  label = L["Right middle"]  },
-        { value = "RIGHT_BOTTOM",  label = L["Right bottom"]  },
-        { value = "CENTER",        label = L["Center"]        },
+        ["TOP_LEFT"]      = L["Top left"],
+        ["TOP_MIDDLE"]    = L["Top middle"],
+        ["TOP_RIGHT"]     = L["Top right"],
+        ["BOTTOM_LEFT"]   = L["Bottom left"],
+        ["BOTTOM_MIDDLE"] = L["Bottom middle"],
+        ["BOTTOM_RIGHT"]  = L["Bottom right"],
+        ["LEFT_TOP"]      = L["Left top"],
+        ["LEFT_MIDDLE"]   = L["Left middle"],
+        ["LEFT_BOTTOM"]   = L["Left bottom"],
+        ["RIGHT_TOP"]     = L["Right top"],
+        ["RIGHT_MIDDLE"]  = L["Right middle"],
+        ["RIGHT_BOTTOM"]  = L["Right bottom"],
+        ["CENTER"]        = L["Center"],
+    }
+end
+
+--- The declared render order for AnchorValues, handed to a row as `sorting`.
+--- A SIBLING because a hash has none: without it the dropdown alphabetises,
+--- scrambling a list whose reading order (top row, bottom row, the two sides,
+--- then centre) is the whole point.
+function Helpers.AnchorOrder()
+    return {
+        "TOP_LEFT", "TOP_MIDDLE", "TOP_RIGHT",
+        "BOTTOM_LEFT", "BOTTOM_MIDDLE", "BOTTOM_RIGHT",
+        "LEFT_TOP", "LEFT_MIDDLE", "LEFT_BOTTOM",
+        "RIGHT_TOP", "RIGHT_MIDDLE", "RIGHT_BOTTOM",
+        "CENTER",
     }
 end
 
 --- Build the option list for a LibSharedMedia media type.
+--- The option list for a LibSharedMedia media type, as a keyed { key = key }
+--- hash. No `sorting` sibling: a media list has no meaningful declared order and
+--- the widget makers alphabetise when none is given, which is what a font or
+--- texture picker wants.
 function Helpers.LSMValues(mediaType)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    if not LSM or not LSM.List then
-        return { { value = "Default", label = "Default" } }
-    end
-    local list = LSM:List(mediaType) or {}
     local out = {}
-    for i, key in ipairs(list) do
-        out[i] = { value = key, label = key }
+    if LSM and LSM.List then
+        for _, key in ipairs(LSM:List(mediaType) or {}) do out[key] = key end
     end
-    if #out == 0 then
-        out[1] = { value = "Default", label = "Default" }
-    end
+    -- Never empty: a dropdown with no options renders as a dead control, and an
+    -- absent optional media library should cost the swatch, not the setting.
+    if next(out) == nil then out["Default"] = "Default" end
     return out
 end
 

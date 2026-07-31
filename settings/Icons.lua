@@ -37,16 +37,27 @@ local function addUnitRows(unit)
 -- accept both the new `_MIDDLE` value tokens and legacy `_CENTER`
 -- tokens (older saved profiles).
 local ANCHOR_VALUES = H.AnchorValues()
+local ANCHOR_VALUES_ORDER = H.AnchorOrder()
 
 local GROW_VALUES = {
-    { value = "right_down", label = L["First right then down"] },
-    { value = "right_up",   label = L["First right then up"]   },
-    { value = "left_down",  label = L["First left then down"]  },
-    { value = "left_up",    label = L["First left then up"]    },
-    { value = "down_right", label = L["First down then right"] },
-    { value = "down_left",  label = L["First down then left"]  },
-    { value = "up_right",   label = L["First up then right"]   },
-    { value = "up_left",    label = L["First up then left"]    },
+    ["right_down"] = L["First right then down"],
+    ["right_up"] = L["First right then up"],
+    ["left_down"] = L["First left then down"],
+    ["left_up"] = L["First left then up"],
+    ["down_right"] = L["First down then right"],
+    ["down_left"] = L["First down then left"],
+    ["up_right"] = L["First up then right"],
+    ["up_left"] = L["First up then left"],
+}
+local GROW_VALUES_ORDER = {
+    "right_down",
+    "right_up",
+    "left_down",
+    "left_up",
+    "down_right",
+    "down_left",
+    "up_right",
+    "up_left",
 }
 
 -- Sizing -------------------------------------------------------------
@@ -86,7 +97,7 @@ add{
     label = L["Anchor point (of secondary icons relative to primary)"],
     tooltip = L["Side and alignment of the primary icon the secondary block attaches to."],
     default = "RIGHT_MIDDLE",
-    values  = ANCHOR_VALUES,
+    values  = ANCHOR_VALUES, sorting = ANCHOR_VALUES_ORDER,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
@@ -94,7 +105,7 @@ add{
     label = L["Growth direction (of secondary icons)"],
     tooltip = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
     default = "down_right",
-    values  = GROW_VALUES,
+    values  = GROW_VALUES, sorting = GROW_VALUES_ORDER,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
@@ -142,10 +153,10 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
-    path  = "units."..unit..".icons.cooldownTint", type = "color",
+    path  = "units."..unit..".icons.cooldownTint", type = "color", hasAlpha = true,
     label = L["Cooldown tint"],
     tooltip = L["RGB tint applied to icons during cooldown."],
-    default = { 1, 0.4, 0.4, 1 },
+    default = { r = 1, g = 0.4, b = 0.4, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
@@ -168,10 +179,10 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderColor", type = "color",
+    path  = "units."..unit..".icons.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
     tooltip = L["Border color (RGBA)."],
-    default = { 0, 0, 0, 1 },
+    default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
@@ -222,11 +233,12 @@ add{
     tooltip = L["Outline / monochrome flags applied to cooldown text."],
     default = "OUTLINE",
     values  = {
-        { value = "NONE",         label = L["None"]          },
-        { value = "OUTLINE",      label = L["Outline"]       },
-        { value = "THICKOUTLINE", label = L["Thick outline"] },
-        { value = "MONOCHROME",   label = L["Monochrome"]    },
+        ["NONE"] = L["None"],
+        ["OUTLINE"] = L["Outline"],
+        ["THICKOUTLINE"] = L["Thick outline"],
+        ["MONOCHROME"] = L["Monochrome"],
     },
+    sorting = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROME" },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
@@ -271,17 +283,29 @@ add{
 -- get their own trigger + type + color.
 
 local GLOW_TRIGGER_VALUES = {
-    { value = "never",                       label = L["Never"]                                       },
-    { value = "always",                      label = L["Always"]                                      },
-    { value = "target_casting",              label = L["When target is casting"]                      },
-    { value = "target_casting_interruptible", label = L["When target is casting an interruptible spell"] },
+    ["never"] = L["Never"],
+    ["always"] = L["Always"],
+    ["target_casting"] = L["When target is casting"],
+    ["target_casting_interruptible"] = L["When target is casting an interruptible spell"],
+}
+local GLOW_TRIGGER_VALUES_ORDER = {
+    "never",
+    "always",
+    "target_casting",
+    "target_casting_interruptible",
 }
 
 local GLOW_TYPE_VALUES = {
-    { value = "button",   label = L["Button (rotating rays)"] },
-    { value = "proc",     label = L["Proc (flipbook)"]        },
-    { value = "pixel",    label = L["Pixel border"]           },
-    { value = "autocast", label = L["Auto cast sparkles"]     },
+    ["button"] = L["Button (rotating rays)"],
+    ["proc"] = L["Proc (flipbook)"],
+    ["pixel"] = L["Pixel border"],
+    ["autocast"] = L["Auto cast sparkles"],
+}
+local GLOW_TYPE_VALUES_ORDER = {
+    "button",
+    "proc",
+    "pixel",
+    "autocast",
 }
 
 -- Schema rows are interleaved primary/secondary so the two-column
@@ -301,7 +325,7 @@ add{
     label = L["Primary glow trigger"],
     tooltip = L["When to show the glow on the primary icon."],
     default = "never",
-    values  = GLOW_TRIGGER_VALUES,
+    values  = GLOW_TRIGGER_VALUES, sorting = GLOW_TRIGGER_VALUES_ORDER,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
@@ -309,7 +333,7 @@ add{
     label = L["Secondary glow trigger"],
     tooltip = L["When to show the glow on secondary icons."],
     default = "never",
-    values  = GLOW_TRIGGER_VALUES,
+    values  = GLOW_TRIGGER_VALUES, sorting = GLOW_TRIGGER_VALUES_ORDER,
 }
 
 -- Style row -------------------------------------------------------
@@ -319,7 +343,7 @@ add{
     label = L["Primary glow style"],
     tooltip = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
-    values  = GLOW_TYPE_VALUES,
+    values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
@@ -327,23 +351,23 @@ add{
     label = L["Secondary glow style"],
     tooltip = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
-    values  = GLOW_TYPE_VALUES,
+    values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
 }
 
 -- Color row -------------------------------------------------------
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
-    path  = "units."..unit..".icons.primaryGlowColor", type = "color",
+    path  = "units."..unit..".icons.primaryGlowColor", type = "color", hasAlpha = true,
     label = L["Primary glow color"],
     tooltip = L["Glow color on the primary icon."],
-    default = { 1, 1, 0, 1 },
+    default = { r = 1, g = 1, b = 0, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
-    path  = "units."..unit..".icons.secondaryGlowColor", type = "color",
+    path  = "units."..unit..".icons.secondaryGlowColor", type = "color", hasAlpha = true,
     label = L["Secondary glow color"],
     tooltip = L["Glow color on secondary icons."],
-    default = { 1, 1, 0, 1 },
+    default = { r = 1, g = 1, b = 0, a = 1 },
 }
 
 end

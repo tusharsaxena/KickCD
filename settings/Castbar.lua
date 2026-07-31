@@ -50,6 +50,7 @@ add{
 -- TOP, BOTTOM, etc.) saved by older profiles still work because the
 -- translator passes unrecognized values through unchanged.
 local POSITION_ANCHOR_VALUES = H.AnchorValues()
+local POSITION_ANCHOR_VALUES_ORDER = H.AnchorOrder()
 
 -- Position layout produces:
 --     [Anchor mode]                                        (solo)
@@ -64,9 +65,10 @@ add{
     tooltip = L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."],
     default = "PRIMARY",
     values  = {
-        { value = "FREE",    label = L["Free (drag to move)"]      },
-        { value = "PRIMARY", label = L["Anchored to primary icon"] },
+        ["FREE"] = L["Free (drag to move)"],
+        ["PRIMARY"] = L["Anchored to primary icon"],
     },
+    sorting = { "FREE", "PRIMARY" },
     solo    = true,
 }
 add{
@@ -75,7 +77,7 @@ add{
     label = L["Anchor on primary icon"],
     tooltip = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "BOTTOM_LEFT",
-    values  = POSITION_ANCHOR_VALUES,
+    values  = POSITION_ANCHOR_VALUES, sorting = POSITION_ANCHOR_VALUES_ORDER,
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
@@ -83,7 +85,7 @@ add{
     label = L["Anchor on cast bar"],
     tooltip = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
     default = "TOP_LEFT",
-    values  = POSITION_ANCHOR_VALUES,
+    values  = POSITION_ANCHOR_VALUES, sorting = POSITION_ANCHOR_VALUES_ORDER,
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
@@ -120,9 +122,10 @@ add{
     tooltip = L["Horizontal: bar stretches across width. Vertical: bar runs up/down."],
     default = "HORIZONTAL",
     values  = {
-        { value = "HORIZONTAL", label = L["Horizontal"] },
-        { value = "VERTICAL",   label = L["Vertical"]   },
+        ["HORIZONTAL"] = L["Horizontal"],
+        ["VERTICAL"] = L["Vertical"],
     },
+    sorting = { "HORIZONTAL", "VERTICAL" },
     -- Reset growDirection to the new orientation's canonical default
     -- so we can never end up with an inconsistent pair (e.g. a
     -- horizontal bar with growDirection="UP"). H.Set fires
@@ -228,10 +231,11 @@ add{
     tooltip = L["Where to place the spell icon, or hide it entirely."],
     default = "OFF",
     values  = {
-        { value = "LEFT",  label = L["Left"]  },
-        { value = "RIGHT", label = L["Right"] },
-        { value = "OFF",   label = L["Off"]   },
+        ["LEFT"] = L["Left"],
+        ["RIGHT"] = L["Right"],
+        ["OFF"] = L["Off"],
     },
+    sorting = { "LEFT", "RIGHT", "OFF" },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
@@ -252,11 +256,18 @@ add{
 --                                                          break flushes
 --                                                          the row).
 local TEXT_POSITION_VALUES = {
-    { value = "INSIDE_LEFT",   label = L["Inside left"]   },
-    { value = "INSIDE_RIGHT",  label = L["Inside right"]  },
-    { value = "CENTER",        label = L["Center"]        },
-    { value = "OUTSIDE_LEFT",  label = L["Outside left"]  },
-    { value = "OUTSIDE_RIGHT", label = L["Outside right"] },
+    ["INSIDE_LEFT"] = L["Inside left"],
+    ["INSIDE_RIGHT"] = L["Inside right"],
+    ["CENTER"] = L["Center"],
+    ["OUTSIDE_LEFT"] = L["Outside left"],
+    ["OUTSIDE_RIGHT"] = L["Outside right"],
+}
+local TEXT_POSITION_VALUES_ORDER = {
+    "INSIDE_LEFT",
+    "INSIDE_RIGHT",
+    "CENTER",
+    "OUTSIDE_LEFT",
+    "OUTSIDE_RIGHT",
 }
 
 add{
@@ -282,11 +293,12 @@ add{
     tooltip = L["Outline / monochrome flags applied to cast-bar text."],
     default = "OUTLINE",
     values  = {
-        { value = "NONE",         label = L["None"]          },
-        { value = "OUTLINE",      label = L["Outline"]       },
-        { value = "THICKOUTLINE", label = L["Thick outline"] },
-        { value = "MONOCHROME",   label = L["Monochrome"]    },
+        ["NONE"] = L["None"],
+        ["OUTLINE"] = L["Outline"],
+        ["THICKOUTLINE"] = L["Thick outline"],
+        ["MONOCHROME"] = L["Monochrome"],
     },
+    sorting = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROME" },
 }
 
 -- Spell name -----------------------------------------------------------
@@ -308,7 +320,7 @@ add{
     label = L["Anchor"],
     tooltip = L["Where to anchor the spell name relative to the bar."],
     default = "CENTER",
-    values  = TEXT_POSITION_VALUES,
+    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
@@ -351,7 +363,7 @@ add{
     label = L["Anchor"],
     tooltip = L["Where to anchor the remaining-time text relative to the bar."],
     default = "CENTER",
-    values  = TEXT_POSITION_VALUES,
+    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
@@ -390,24 +402,24 @@ add{
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
-    path  = "units."..unit..".castbar.interruptible.barColor", type = "color",
+    path  = "units."..unit..".castbar.interruptible.barColor", type = "color", hasAlpha = true,
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast is interruptible."],
-    default = { 1, 0.85, 0.05, 1 },
+    default = { r = 1, g = 0.85, b = 0.05, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
-    path  = "units."..unit..".castbar.interruptible.bgColor", type = "color",
+    path  = "units."..unit..".castbar.interruptible.bgColor", type = "color", hasAlpha = true,
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
-    default = { 0, 0, 0, 0.5 },
+    default = { r = 0, g = 0, b = 0, a = 0.5 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
-    path  = "units."..unit..".castbar.interruptible.nameTextColor", type = "color",
+    path  = "units."..unit..".castbar.interruptible.nameTextColor", type = "color", hasAlpha = true,
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
-    default = { 1, 1, 1, 1 },
+    default = { r = 1, g = 1, b = 1, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
@@ -427,10 +439,10 @@ add{
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
-    path  = "units."..unit..".castbar.interruptible.borderColor", type = "color",
+    path  = "units."..unit..".castbar.interruptible.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
     tooltip = L["RGBA border color for interruptible casts."],
-    default = { 0, 0, 0, 1 },
+    default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
@@ -452,24 +464,24 @@ add{
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
-    path  = "units."..unit..".castbar.uninterruptible.barColor", type = "color",
+    path  = "units."..unit..".castbar.uninterruptible.barColor", type = "color", hasAlpha = true,
     label = L["Bar color"],
     tooltip = L["RGBA bar fill color when the target's cast cannot be interrupted."],
-    default = { 0.85, 0.10, 0.10, 1 },
+    default = { r = 0.85, g = 0.10, b = 0.10, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
-    path  = "units."..unit..".castbar.uninterruptible.bgColor", type = "color",
+    path  = "units."..unit..".castbar.uninterruptible.bgColor", type = "color", hasAlpha = true,
     label = L["Background color"],
     tooltip = L["RGBA color drawn behind the bar."],
-    default = { 0, 0, 0, 0.5 },
+    default = { r = 0, g = 0, b = 0, a = 0.5 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
-    path  = "units."..unit..".castbar.uninterruptible.nameTextColor", type = "color",
+    path  = "units."..unit..".castbar.uninterruptible.nameTextColor", type = "color", hasAlpha = true,
     label = L["Spell name color"],
     tooltip = L["RGBA color of the spell-name text."],
-    default = { 1, 1, 1, 1 },
+    default = { r = 1, g = 1, b = 1, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
@@ -489,10 +501,10 @@ add{
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
-    path  = "units."..unit..".castbar.uninterruptible.borderColor", type = "color",
+    path  = "units."..unit..".castbar.uninterruptible.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
     tooltip = L["RGBA border color for non-interruptible casts."],
-    default = { 0, 0, 0, 1 },
+    default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],

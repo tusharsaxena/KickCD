@@ -26,7 +26,7 @@ NS.Database = Database
 -- Database:FoldLegacyUnits below). v3 rekeys profile.spells from localised
 -- spec NAMES to numeric spec IDs (see migrations[2] /
 -- Database:MigrateSpecKeys below).
-local CURRENT_DB_VERSION = 3
+local CURRENT_DB_VERSION = 4
 
 -- File-local recursive deep-copy. Deliberately independent of NS.Util —
 -- Database.lua is one of the first files to load and must stay
@@ -59,7 +59,7 @@ local ICONS_DEFAULT = {
         zoom             = 0.10,        -- 0..0.25 — TexCoord inset that crops the Blizzard icon border
         readyAlpha       = 1.0,
         cooldownAlpha    = 0.25,
-        cooldownTint     = { 1, 0.4, 0.4, 1 },
+        cooldownTint     = { r = 1, g = 0.4, b = 0.4, a = 1 },
         -- When true, the cooldown swipe + countdown text are hidden
         -- during the global cooldown period (≤ ~1.6s remaining); only
         -- real cooldowns render the swipe/text. The icon-body alpha and
@@ -72,7 +72,7 @@ local ICONS_DEFAULT = {
         -- uses the same default for visual consistency between the two
         -- pieces of UI.
         borderTexture    = "Blizzard Tooltip",
-        borderColor      = { 0, 0, 0, 1 },
+        borderColor      = { r = 0, g = 0, b = 0, a = 1 },
         borderSize       = 2,
         showCooldownText = true,
         cooldownTextFont = "Friz Quadrata TT",
@@ -115,10 +115,10 @@ local ICONS_DEFAULT = {
         -- supports with another.
         primaryGlowTrigger   = "never",
         primaryGlowType      = "pixel",
-        primaryGlowColor     = { 1, 1, 0, 1 },
+        primaryGlowColor     = { r = 1, g = 1, b = 0, a = 1 },
         secondaryGlowTrigger = "never",
         secondaryGlowType    = "pixel",
-        secondaryGlowColor   = { 1, 1, 0, 1 },
+        secondaryGlowColor   = { r = 1, g = 1, b = 0, a = 1 },
 }
 
 local CASTBAR_DEFAULT = {
@@ -198,22 +198,22 @@ local CASTBAR_DEFAULT = {
         -- on the cast's secret notInterruptible bool — see modules/Castbar.lua.
         interruptible = {
             statusBarTexture = "Blizzard Raid Bar",
-            barColor         = { 1,    0.85, 0.05, 1   },  -- yellow
-            bgColor          = { 0,    0,    0,    0.5 },
-            nameTextColor    = { 1,    1,    1,    1   },
+            barColor         = { r = 1, g = 0.85, b = 0.05, a = 1 },  -- yellow
+            bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
-            borderColor      = { 0,    0,    0,    1   },
+            borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             borderSize       = 2,
         },
         uninterruptible = {
             statusBarTexture = "Blizzard Raid Bar",
-            barColor         = { 0.85, 0.10, 0.10, 1   },  -- red
-            bgColor          = { 0,    0,    0,    0.5 },
-            nameTextColor    = { 1,    1,    1,    1   },
+            barColor         = { r = 0.85, g = 0.10, b = 0.10, a = 1 },  -- red
+            bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
-            borderColor      = { 0,    0,    0,    1   },
+            borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             borderSize       = 2,
         },
 }
@@ -233,7 +233,7 @@ local LABELSTYLE_DEFAULT = {
         font     = "Friz Quadrata TT",
         size     = 14,
         flags    = "OUTLINE",     -- NONE | OUTLINE | THICKOUTLINE | MONOCHROME
-        color    = { 1, 0.82, 0, 1 }, -- Blizzard gold, matches GameFontNormal
+        color    = { r = 1, g = 0.82, b = 0, a = 1 }, -- Blizzard gold, matches GameFontNormal
 }
 
 local DEFAULT_PROFILE = {
@@ -624,12 +624,71 @@ function Database:MigrateSpecKeys(db)
     end
 end
 
+--- v3 -> v4: colours move from a positional { r, g, b, a } array to the keyed
+--- { r =, g =, b =, a = } table.
+---
+--- The shape is the collection's: LibKa0s-Slash-1.0 parses into it and renders
+--- from it, and LibKa0s-Options-1.0's colour picker decodes and encodes it. The
+--- alternative was translating at every seam, in both libraries, forever.
+---
+--- Walks the whole profile rather than a hardcoded path list. A path list would
+--- have to be kept in step with every colour row added to the schema, and a row
+--- missed there is a colour that silently reads nil on every channel and renders
+--- as the fallback — the exact failure this migration exists to prevent, moved
+--- one release later. The shape test is deliberately narrow: a table with a
+--- numeric [1] AND no .r, of length 3 or 4, whose entries are all numbers in
+--- 0..1. That cannot match an anchor table ({ point =, x =, y = }), a spell list
+--- (array of tables), or a curve (values outside 0..1 and longer).
+--- CRITICAL: by the time this runs, AceDB has ALREADY merged the new keyed
+--- defaults into the saved table. `copyDefaults` fills any key the saved table
+--- lacks, and a saved positional array lacks r/g/b/a — so a pre-migration colour
+--- arrives here as a HYBRID: `{ 0.25, 0.5, 0.75, 0.5, r = 1, g = 0.4, ... }`,
+--- carrying the user's values in the array part and the DEFAULTS in the keys.
+---
+--- Detecting "already keyed" by the mere presence of `.r` would therefore skip
+--- every row it was written to convert, and every one would silently read back
+--- as its default. The array part is the tell: if `[1]` is a number, the user's
+--- real colour is there and the keys are contamination.
+function NS.Database:MigrateColorShape(db)
+    local function looksLikeColor(v)
+        if type(v) ~= "table" then return false end
+        local n = #v
+        if n < 3 or n > 4 then return false end
+        for i = 1, n do
+            local c = v[i]
+            if type(c) ~= "number" or c < 0 or c > 1 then return false end
+        end
+        return true
+    end
+
+    local converted = 0
+    local function walk(t, depth)
+        -- Bounded: the profile is a shallow settings tree, and an unbounded
+        -- recursion over user data is a hang rather than an error.
+        if type(t) ~= "table" or depth > 12 then return end
+        for k, v in pairs(t) do
+            if looksLikeColor(v) then
+                t[k] = { r = v[1], g = v[2], b = v[3], a = v[4] or 1 }
+                converted = converted + 1
+            elseif type(v) == "table" then
+                walk(v, depth + 1)
+            end
+        end
+    end
+
+    walk(db.profile, 0)
+    if converted > 0 and NS.Debug then
+        NS.Debug("Init", "migrated %s colour(s) to the keyed shape", converted)
+    end
+end
+
 local migrations = {
     -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
     -- Each step bumps db.global.schemaVersion to the from-version+1 and may
     -- read/write db.profile as needed.
     [1] = function(db) NS.Database:FoldLegacyUnits(db); db.global.schemaVersion = 2 end,
     [2] = function(db) NS.Database:MigrateSpecKeys(db); db.global.schemaVersion = 3 end,
+    [3] = function(db) NS.Database:MigrateColorShape(db); db.global.schemaVersion = 4 end,
 }
 
 --- Migrate the account forward to CURRENT_DB_VERSION. The schema version is

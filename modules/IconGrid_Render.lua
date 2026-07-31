@@ -433,9 +433,12 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 -- combined-glow scenario hasn't materialised yet.
 local LCG_KEY = "KickCD"
 
+-- The out-of-table fallback stays local (the glow's default is not white), but
+-- the unpack itself goes through Util.Unpack: colours are stored keyed, and an
+-- index read would have made every glow render the same yellow.
 local function unpackGlowColor(c)
     if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
-    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    return NS.Util.Unpack(c)
 end
 
 function Icon:StopGlow()

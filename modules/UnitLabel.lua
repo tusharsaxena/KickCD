@@ -80,8 +80,15 @@ function UnitLabel:Apply(inst)
         fontPath = LSM:Fetch("font", style.font or "Friz Quadrata TT", true)
     end
     fs:SetFont(fontPath or STANDARD_TEXT_FONT, style.size or 14, FLAG_MAP[style.flags] or "OUTLINE")
+    -- Through Util.Unpack, not by index. Colours are stored keyed now
+    -- ({ r =, g =, b =, a = }); a positional read would have found nil on
+    -- every channel and rendered the fallback gold no matter what the user
+    -- picked — silently, and only in game.
     local c = style.color
-    if c then fs:SetTextColor(c[1] or 1, c[2] or 0.82, c[3] or 0, c[4] or 1) end
+    if c then
+        local r, g, b, a = NS.Util.Unpack(c)
+        fs:SetTextColor(r, g, b, a)
+    end
     fs:SetJustifyH(style.justifyH or "CENTER")
     fs:SetJustifyV(style.justifyV or "MIDDLE")
     if fs.SetRotation then

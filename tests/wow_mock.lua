@@ -471,13 +471,41 @@ local function build()
     -- -------------------------------------------------------------------
     -- Fake AceDB: static default merge is enough for headless assertions
     -- -------------------------------------------------------------------
+    --- Merge `src` into `dst` IN PLACE, leaving every key `dst` already has
+    --- alone. This is AceDB's real `copyDefaults` behaviour and the awkward half
+    --- of it is what matters: a saved value always wins over the default, and
+    --- the saved table is mutated rather than replaced. A mock that returned a
+    --- fresh copy of the defaults instead would make every migration untestable
+    --- — the code under test would never see the saved shape it exists to
+    --- convert.
+    local function copyDefaults(dst, src)
+        if type(src) ~= "table" then return dst end
+        if type(dst) ~= "table" then dst = {} end
+        for k, v in pairs(src) do
+            if type(v) == "table" then
+                dst[k] = copyDefaults(dst[k], v)
+            elseif dst[k] == nil then
+                dst[k] = v
+            end
+        end
+        return dst
+    end
+
     local AceDB = {
-        New = function(_, _name, defaults, _defaultProfile)
+        --- Reads the named SavedVariables global when the sandbox has one, so a
+        --- suite can stage a pre-migration account exactly as the client would
+        --- hand it over, then merges defaults into it in place.
+        New = function(_, name, defaults, _defaultProfile)
+            local saved = name and mocks[name] or nil
+            if type(saved) ~= "table" then saved = nil end
             local db = {
                 keys = { profile = "Default" },
-                profile = deepcopy(defaults and defaults.profile or {}),
-                global  = deepcopy(defaults and defaults.global or {}),
-                char    = deepcopy(defaults and defaults.char or {}),
+                profile = copyDefaults(saved and saved.profile or {},
+                                       defaults and defaults.profile or {}),
+                global  = copyDefaults(saved and saved.global or {},
+                                       defaults and defaults.global or {}),
+                char    = copyDefaults(saved and saved.char or {},
+                                       defaults and defaults.char or {}),
             }
             function db.RegisterCallback() end
             function db.GetCurrentProfile() return "Default" end

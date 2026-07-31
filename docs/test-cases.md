@@ -182,6 +182,29 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
 - DB label.style.color default matches the settings schema color row default (DB<->schema sync)
 
+### test_color_shape.lua (20)
+
+- the schema declares at least one colour row per colour-bearing panel
+- every schema colour default is keyed, never positional
+- every schema colour default carries all four channels
+- every colour row declares hasAlpha, so the picker keeps its alpha channel
+- the built profile stores colours keyed
+- DEFAULT_PROFILE and the schema agree on every colour
+- Util.Unpack reads the keyed shape
+- Util.Unpack still reads a positional array, so a stray one renders rather than blanks
+- no module reads a colour by positional index any more
+- a pre-migration profile's array colours convert to the keyed shape
+- the migration bumps the stored schema version so it runs once
+- an already-keyed colour passes through the migration untouched
+- the slash layer needs no colour codec now the shapes agree
+- set and get round-trip a colour through the library with no translation
+- every dropdown row's values is a keyed hash, never an array of records
+- every static dropdown declares its order, so nothing silently alphabetises
+- the anchor dropdown still reads top row, bottom row, sides, centre
+- an LSM-backed row resolves its values at call time, never at declaration
+- the valueGate hint explains WHY a gated dropdown value was rejected
+- a rejected gated value carries the hint through the slash layer
+
 ### test_bus.lua (4)
 
 - AceEvent mock fans one message out to two distinct targets
@@ -669,7 +692,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - get echoes the shared key = value pair
 - set clamps out of range and echoes what was actually STORED
 - set routes through the host's single write seam
-- a colour round-trips through the addon's positional {r,g,b,a} storage
+- a colour round-trips through the library with no host translation
 - a colour given in 0-255 rescales jointly
 - an unknown path says so rather than writing anything
 - reset takes a PATH and resets exactly that one row
@@ -701,6 +724,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_units.lua | 12 |
 | test_schema.lua | 12 |
 | test_database.lua | 20 |
+| test_color_shape.lua | 20 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
@@ -731,4 +755,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_slash_style.lua | 10 |
 | test_slash.lua | 24 |
 | test_list_mode.lua | 5 |
-| **Total** | **569** |
+| **Total** | **589** |

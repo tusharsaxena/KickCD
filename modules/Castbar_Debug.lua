@@ -65,10 +65,11 @@ function Castbar:DebugDump(unit)
     -- Configured per-state colors as actually read from the live profile
     -- (link-resolved via NS.Units.Castbar). Useful for verifying that
     -- color-picker writes are persisting and that Reskin sees the updates.
+    -- Renders through Util.Unpack so the dump reports what the addon actually
+    -- reads, in the keyed storage shape, rather than four zeroes.
     local function fmtColor(c)
         if type(c) ~= "table" then return "(missing)" end
-        return ("{%.2f, %.2f, %.2f, %.2f}"):format(
-            c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 1)
+        return ("{%.2f, %.2f, %.2f, %.2f}"):format(NS.Util.Unpack(c))
     end
     local castCfg = NS.Units.Castbar(inst.unit)
     local intCfg = castCfg.interruptible   or {}

@@ -140,8 +140,9 @@ test("every label-panel row's default is a member of its static values list", fu
     local NS = T.NS
     for _, def in ipairs(NS.Settings.Schema) do
         if def.panel == "label" and type(def.values) == "table" and def.default ~= nil then
-            local found = false
-            for _, opt in ipairs(def.values) do if opt.value == def.default then found = true break end end
+            -- `values` is a keyed { key = label } hash now, so membership is a
+            -- direct lookup rather than a scan for a record whose .value matches.
+            local found = def.values[def.default] ~= nil
             assertTrue(found, "label row " .. tostring(def.path) .. " default '" .. tostring(def.default) .. "' not in its values list")
         end
     end

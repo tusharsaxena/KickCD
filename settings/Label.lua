@@ -18,36 +18,67 @@ local Schema = NS.Settings.Schema
 local function add(t) Schema[#Schema + 1] = t end
 
 local POINT_VALUES = {
-    { value = "TOPLEFT",     label = L["Top left"]     },
-    { value = "TOP",         label = L["Top"]          },
-    { value = "TOPRIGHT",    label = L["Top right"]    },
-    { value = "LEFT",        label = L["Left"]         },
-    { value = "CENTER",      label = L["Center"]       },
-    { value = "RIGHT",       label = L["Right"]        },
-    { value = "BOTTOMLEFT",  label = L["Bottom left"]  },
-    { value = "BOTTOM",      label = L["Bottom"]       },
-    { value = "BOTTOMRIGHT", label = L["Bottom right"] },
+    ["TOPLEFT"] = L["Top left"],
+    ["TOP"] = L["Top"],
+    ["TOPRIGHT"] = L["Top right"],
+    ["LEFT"] = L["Left"],
+    ["CENTER"] = L["Center"],
+    ["RIGHT"] = L["Right"],
+    ["BOTTOMLEFT"] = L["Bottom left"],
+    ["BOTTOM"] = L["Bottom"],
+    ["BOTTOMRIGHT"] = L["Bottom right"],
+}
+local POINT_VALUES_ORDER = {
+    "TOPLEFT",
+    "TOP",
+    "TOPRIGHT",
+    "LEFT",
+    "CENTER",
+    "RIGHT",
+    "BOTTOMLEFT",
+    "BOTTOM",
+    "BOTTOMRIGHT",
 }
 
 local JUSTIFY_H_VALUES = {
-    { value = "LEFT",   label = L["Left"]   },
-    { value = "CENTER", label = L["Center"] },
-    { value = "RIGHT",  label = L["Right"]  },
+    ["LEFT"] = L["Left"],
+    ["CENTER"] = L["Center"],
+    ["RIGHT"] = L["Right"],
+}
+local JUSTIFY_H_VALUES_ORDER = {
+    "LEFT",
+    "CENTER",
+    "RIGHT",
 }
 local JUSTIFY_V_VALUES = {
-    { value = "TOP",    label = L["Top"]    },
-    { value = "MIDDLE", label = L["Middle"] },
-    { value = "BOTTOM", label = L["Bottom"] },
+    ["TOP"] = L["Top"],
+    ["MIDDLE"] = L["Middle"],
+    ["BOTTOM"] = L["Bottom"],
+}
+local JUSTIFY_V_VALUES_ORDER = {
+    "TOP",
+    "MIDDLE",
+    "BOTTOM",
 }
 local FLAG_VALUES = {
-    { value = "NONE",         label = L["None"]          },
-    { value = "OUTLINE",      label = L["Outline"]       },
-    { value = "THICKOUTLINE", label = L["Thick outline"] },
-    { value = "MONOCHROME",   label = L["Monochrome"]    },
+    ["NONE"] = L["None"],
+    ["OUTLINE"] = L["Outline"],
+    ["THICKOUTLINE"] = L["Thick outline"],
+    ["MONOCHROME"] = L["Monochrome"],
+}
+local FLAG_VALUES_ORDER = {
+    "NONE",
+    "OUTLINE",
+    "THICKOUTLINE",
+    "MONOCHROME",
 }
 local ATTACH_VALUES = {
-    { value = "castbar", label = L["Cast bar"]  },
-    { value = "icons",   label = L["Icon grid"] },
+    ["castbar"] = L["Cast bar"],
+    ["icons"] = L["Icon grid"],
+}
+local ATTACH_VALUES_ORDER = {
+    "castbar",
+    "icons",
 }
 
 local function addUnitRows(unit)
@@ -68,17 +99,17 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.attach", type = "string",
          label = L["Attach to"],
          tooltip = L["Which widget the label anchors to."],
-         default = "icons", values = ATTACH_VALUES }
+         default = "icons", values = ATTACH_VALUES, sorting = ATTACH_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.point", type = "string",
          label = L["Label anchor point"],
          tooltip = L["Which point of the label attaches."],
-         default = "BOTTOM", values = POINT_VALUES }
+         default = "BOTTOM", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.relPoint", type = "string",
          label = L["Attach point"],
          tooltip = L["Which point of the target widget the label attaches to."],
-         default = "TOP", values = POINT_VALUES }
+         default = "TOP", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.offsetX", type = "number",
          label = L["X offset (in px)"],
@@ -95,12 +126,12 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.justifyH", type = "string",
          label = L["Horizontal justify"],
          tooltip = L["Horizontal text alignment."],
-         default = "CENTER", values = JUSTIFY_H_VALUES }
+         default = "CENTER", values = JUSTIFY_H_VALUES, sorting = JUSTIFY_H_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],
          path = "units." .. unit .. ".label.style.justifyV", type = "string",
          label = L["Vertical justify"],
          tooltip = L["Vertical text alignment."],
-         default = "MIDDLE", values = JUSTIFY_V_VALUES }
+         default = "MIDDLE", values = JUSTIFY_V_VALUES, sorting = JUSTIFY_V_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],
          path = "units." .. unit .. ".label.style.rotation", type = "number",
          label = L["Rotation (degrees)"],
@@ -123,12 +154,12 @@ local function addUnitRows(unit)
          path = "units." .. unit .. ".label.style.flags", type = "string",
          label = L["Font flags"],
          tooltip = L["Outline / monochrome flags."],
-         default = "OUTLINE", values = FLAG_VALUES }
+         default = "OUTLINE", values = FLAG_VALUES, sorting = FLAG_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Font"],
-         path = "units." .. unit .. ".label.style.color", type = "color",
+         path = "units." .. unit .. ".label.style.color", type = "color", hasAlpha = true,
          label = L["Label color"],
          tooltip = L["Color of the label text."],
-         default = { 1, 0.82, 0, 1 } }
+         default = { r = 1, g = 0.82, b = 0, a = 1 } }
 end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end

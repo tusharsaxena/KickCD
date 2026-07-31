@@ -38,11 +38,12 @@ add{
     tooltip  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
     default  = "target_casting_interruptible",
     values   = {
-        { value = "always",                       label = L["Always"]                                   },
-        { value = "in_combat",                    label = L["In combat"]                                },
-        { value = "target_casting",               label = L["When target is casting"]                   },
-        { value = "target_casting_interruptible", label = L["When target is casting an interruptible spell"] },
+        ["always"] = L["Always"],
+        ["in_combat"] = L["In combat"],
+        ["target_casting"] = L["When target is casting"],
+        ["target_casting_interruptible"] = L["When target is casting an interruptible spell"],
     },
+    sorting = { "always", "in_combat", "target_casting", "target_casting_interruptible" },
 }
 
 add{

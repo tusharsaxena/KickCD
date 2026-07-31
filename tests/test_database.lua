@@ -39,9 +39,9 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    -- CURRENT_DB_VERSION is 3 (units fold + spec-key rekey registered) — an
+    -- CURRENT_DB_VERSION is 4 (units fold, spec-key rekey, colour reshape) — an
     -- unversioned account is treated as v1 and walked forward through every step.
-    assertEqual(ns.db.global.schemaVersion, 3, "migration must stamp v1 then walk to current")
+    assertEqual(ns.db.global.schemaVersion, 4, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -56,9 +56,10 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     ns.db.profile.dbVersion = 1
     ns.Database:MigrateProfile()
     assertTrue(ns.db.global.schemaVersion ~= 99, "legacy dbVersion must override the backfilled global value")
-    -- CURRENT_DB_VERSION is 3 — the adopted v1 account walks forward through
-    -- migrations[1] (FoldLegacyUnits) and [2] (MigrateSpecKeys) to the current version.
-    assertEqual(ns.db.global.schemaVersion, 3, "adopted version migrates forward to the current version")
+    -- CURRENT_DB_VERSION is 4 — the adopted v1 account walks forward through
+    -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys) and [3]
+    -- (MigrateColorShape) to the current version.
+    assertEqual(ns.db.global.schemaVersion, 4, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
@@ -224,14 +225,14 @@ test("BackfillLabelStyle key-fills a missing field onto an existing style, leavi
     p.units.target.label.style.color = nil -- simulate a profile saved before `color` existed
     ns.Database:BackfillLabelStyle(ns.db)
     assertTrue(type(p.units.target.label.style.color) == "table", "missing color key backfilled")
-    assertEqual(p.units.target.label.style.color[1], 1,    "backfilled color matches LABELSTYLE_DEFAULT")
-    assertEqual(p.units.target.label.style.color[2], 0.82, "backfilled color matches LABELSTYLE_DEFAULT")
+    assertEqual(p.units.target.label.style.color.r, 1,    "backfilled color matches LABELSTYLE_DEFAULT")
+    assertEqual(p.units.target.label.style.color.g, 0.82, "backfilled color matches LABELSTYLE_DEFAULT")
     assertEqual(p.units.target.label.style.size, 22, "existing key untouched by key-fill")
 
     -- Idempotent + non-destructive: a second pass with a user-edited color stays put.
-    p.units.target.label.style.color = { 0, 1, 0, 1 }
+    p.units.target.label.style.color = { r = 0, g = 1, b = 0, a = 1 }
     ns.Database:BackfillLabelStyle(ns.db)
-    assertEqual(p.units.target.label.style.color[2], 1, "user color value not overwritten")
+    assertEqual(p.units.target.label.style.color.g, 1, "user color value not overwritten")
 end)
 
 test("DB label.style.color default matches the settings schema color row default (DB<->schema sync)", function()

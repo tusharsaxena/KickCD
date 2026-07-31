@@ -64,39 +64,83 @@ end
 NS.Slash.Version = addonVersion
 
 -- ---------------------------------------------------------------------
--- Adapter 2 — the colour codec
+-- The parser override
 -- ---------------------------------------------------------------------
+--
+-- Only the `valueGate` hint survives here. There used to be a colour codec
+-- beside it, folding the library's keyed { r =, g =, b =, a = } back into a
+-- positional array on write and back again on read, because this addon stored
+-- colours positionally. The stored shape migrated instead (core/Database.lua's
+-- v3 -> v4 step), so the two agree and the translation is gone.
 
-local function isColorRow(path)
-    local H = helpers()
-    local def = H and H.FindSchema and H.FindSchema(path)
-    return def and def.type == "color" or false
+--- The keys a dropdown row currently offers, resolved at call time because a
+--- media list is populated by another addon and is not knowable when the row is
+--- declared. Same resolution the library's own parser does.
+local function allowedKeys(row)
+    local v = type(row.values) == "function" and row.values() or row.values or {}
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+    table.sort(keys)
+    return keys
 end
 
---- Stored (positional) -> the keyed shape lib.FormatValue reads.
---- Only colour rows are translated; everything else passes through untouched,
---- so a number stays a number and a bool stays a bool.
-local function readForLib(path)
+--- Why a dropdown value was rejected, when a sibling setting is what rejected it.
+---
+--- `valueGate` names the setting whose current value gates this row's option
+--- list — the cast bar's growDirection offers UP/DOWN or RIGHT/LEFT depending on
+--- castbar.orientation. Without this, a user who types a perfectly sensible
+--- value gets "Allowed values: LEFT, RIGHT" and no clue why UP vanished.
+---
+--- The probe is real rather than modelled: swap the gate's stored value to each
+--- other candidate, re-ask the row's own `values` function, and restore. That is
+--- the only way to answer it without duplicating the gating rule here, and the
+--- swap is transient — one call between mutate and restore, with no message-bus
+--- dispatch in between.
+function NS.Slash.GateHint(row)
     local H = helpers()
-    if not (H and H.Get) then return nil end
-    local v = H.Get(path)
-    if isColorRow(path) and type(v) == "table" then
-        return { r = v[1] or 0, g = v[2] or 0, b = v[3] or 0, a = v[4] or 1 }
+    if not (H and H.Get and H.FindSchema and H.Resolve) then return "" end
+
+    local gateVal = H.Get(row.valueGate)
+    local msg = (" (depends on %s = %s)"):format(row.valueGate, tostring(gateVal))
+
+    local gateDef = H.FindSchema(row.valueGate)
+    if not gateDef then return msg end
+    local gateValues = type(gateDef.values) == "function" and gateDef.values() or gateDef.values
+    if type(gateValues) ~= "table" then return msg end
+
+    local parent, key = H.Resolve(row.valueGate)
+    if not (parent and key) then return msg end
+
+    local hints = {}
+    for candidate in pairs(gateValues) do
+        if candidate ~= gateVal then
+            parent[key] = candidate
+            local alt = allowedKeys(row)
+            parent[key] = gateVal
+            if #alt > 0 then
+                hints[#hints + 1] = ("flip %s to %s for %s")
+                    :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
+            end
+        end
     end
-    return v
+    table.sort(hints)
+    if #hints > 0 then msg = msg .. "; " .. table.concat(hints, "; ") end
+    return msg
 end
 
---- The library's parser, then the keyed colour it returns folded back into this
---- addon's positional storage shape. The failure signal — a nil first return
---- plus a reason — is preserved exactly; folding it into an `and`/`or` chain
---- would turn a legitimately stored `false` into a parse failure.
+--- The library's parser, unchanged, plus this addon's own explanation of WHY a
+--- dropdown value was rejected. The library has no hook for that and should not:
+--- it is a fact about this addon's schema, not about parsing.
+---
+--- The nil-plus-reason failure signal is preserved exactly. Folding it into an
+--- `and`/`or` chain would turn a legitimately parsed `false` into a failure.
 local function parseForHost(row, text)
     local v, err = SlashLib.ParseValue(row, text)
-    if v == nil then return nil, err end
-    if row.type == "color" and type(v) == "table" then
-        return { v.r, v.g, v.b, v.a }
+    if v ~= nil then return v end
+    if row.type == "string" and row.valueGate then
+        return nil, (err or "") .. NS.Slash.GateHint(row)
     end
-    return v
+    return nil, err
 end
 
 -- ---------------------------------------------------------------------
@@ -240,9 +284,12 @@ NS.Slash.cli = SlashLib:New({
     print   = function(line) out(line) end,
     version = addonVersion,
 
-    -- Adapter 2 on the read side: colours come back keyed so lib.FormatValue can
-    -- render them; everything else passes through.
-    get = readForLib,
+    -- The plain host reader. No translation: colours are stored in the keyed
+    -- shape the library already parses into and renders from.
+    get = function(path)
+        local H = helpers()
+        return H and H.Get and H.Get(path) or nil
+    end,
 
     -- The single write seam. SetAndRefresh — not the 3-arg Helpers.Set — because
     -- it is the one path that fires CONFIG_CHANGED with the row's section, runs

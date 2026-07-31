@@ -70,6 +70,17 @@ local function assertError(fn, msg)
     local ok = pcall(fn)
     if ok then error(msg or "expected function to error, but it returned", 2) end
 end
+--- Float comparison with an explicit tolerance — never compare computed
+--- geometry or a rescaled colour channel with `==`. Same name, signature and
+--- semantics as tests/_kit/framework.lua's, so adopting the kit replaces this
+--- with an identical function rather than changing any call site.
+local function assertNear(got, want, tolerance, msg)
+    tolerance = tolerance or 1e-6
+    if type(got) ~= "number" or math.abs(got - want) > tolerance then
+        error((msg or "assertNear") ..
+            (" (expected %s +/- %s, got %s)"):format(fmt(want), fmt(tolerance), fmt(got)), 2)
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- Instance factory: a fully-loaded, isolated addon environment
@@ -116,6 +127,7 @@ local T = {
     assertNil = assertNil,
     assertEqual = assertEqual,
     assertError = assertError,
+    assertNear = assertNear,
     -- shared instance
     NS = shared.NS,
     env = shared.env,
@@ -138,6 +150,7 @@ local SUITES = {
     "test_units.lua",
     "test_schema.lua",
     "test_database.lua",
+    "test_color_shape.lua",
     "test_bus.lua",
     "test_compat.lua",
     "test_compat_api.lua",

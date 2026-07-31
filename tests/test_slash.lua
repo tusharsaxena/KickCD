@@ -170,11 +170,11 @@ test("set routes through the host's single write seam", function()
     NS.Settings.Helpers.SetAndRefresh("locked", before)
 end)
 
-test("a colour round-trips through the addon's positional {r,g,b,a} storage", function()
-    -- THE adapter that would fail silently. KickCD stores colours as a
-    -- positional array; the library's parser returns {r=,g=,b=,a=} and its
-    -- FormatValue reads the same keys. Without the codec every saved colour
-    -- reads back white and every `set` writes a shape the addon cannot unpack.
+test("a colour round-trips through the library with no host translation", function()
+    -- This used to need a codec: the addon stored colours positionally while the
+    -- library parsed and rendered the keyed shape. The STORAGE migrated instead
+    -- (core/Database.lua v3 -> v4), so the two agree and settings/Slash.lua
+    -- carries no colour conversion at all.
     local row
     for _, def in ipairs(NS.Settings.Schema) do
         if def.type == "color" then row = def break end
@@ -186,10 +186,10 @@ test("a colour round-trips through the addon's positional {r,g,b,a} storage", fu
     local stored = NS.Settings.Helpers.Get(row.path)
 
     assertEqual(type(stored), "table")
-    assertEqual(stored[1], 1, "red must land in the POSITIONAL slot 1")
-    assertEqual(stored[2], 0.5)
-    assertEqual(stored[3], 0)
-    assertNil(stored.r, "the addon's stored shape must stay positional")
+    assertEqual(stored.r, 1, "red must land in the keyed slot")
+    assertEqual(stored.g, 0.5)
+    assertEqual(stored.b, 0)
+    assertNil(stored[1], "the stored shape must be keyed, not positional")
     -- And the echo must render the real numbers, not four zeroes.
     assertTrue(joined(lines):find("{1.00, 0.50, 0.00, 1.00}", 1, true) ~= nil,
         "colour echoed wrong; got: " .. joined(lines))
@@ -205,9 +205,9 @@ test("a colour given in 0-255 rescales jointly", function()
     local before = NS.Settings.Helpers.Get(row.path)
     runVerb("set " .. row.path .. " 255 128 0")
     local stored = NS.Settings.Helpers.Get(row.path)
-    assertEqual(stored[1], 1)
-    assertTrue(math.abs(stored[2] - 128 / 255) < 1e-9, "green must rescale with the others")
-    assertEqual(stored[3], 0)
+    assertEqual(stored.r, 1)
+    assertTrue(math.abs(stored.g - 128 / 255) < 1e-9, "green must rescale with the others")
+    assertEqual(stored.b, 0)
     NS.Settings.Helpers.SetAndRefresh(row.path, before)
 end)
 
