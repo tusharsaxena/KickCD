@@ -404,25 +404,9 @@ end
 -- ---------------------------------------------------------------------------
 -- Chat output
 -- ---------------------------------------------------------------------------
-
--- Single source of truth for the chat tag lives on the namespace
--- (KickCD.PREFIX, set in core/Constants.lua which loads before this file).
--- The local fallback covers the theoretical case of Util loading first.
-local PREFIX = NS.PREFIX or "|cff00ffff[KCD]|r"
-
---- Print to the default chat frame with the KickCD prefix.
--- Multiple args are space-separated, mirroring print().
-function Util.print(...)
-    local n = select("#", ...)
-    if n == 0 then
-        if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage(PREFIX) end
-        return
-    end
-    local parts = { PREFIX }
-    for i = 1, n do
-        parts[i + 1] = tostring((select(i, ...)))
-    end
-    if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage(table.concat(parts, " "))
-    end
-end
+--
+-- NS.Util.print now comes from LibKa0s-Core-1.0 and is published by
+-- core/CoreSetup.lua, which loads immediately after this file. The version that
+-- lived here had no secret guard, so a combat-protected value raised inside the
+-- table.concat every line ends in. Call sites are unchanged: it is still a plain
+-- dot-callable NS.Util.print(...).

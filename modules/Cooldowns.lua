@@ -503,11 +503,18 @@ function Cooldowns:DebugDump()
     -- charges may be secret in combat for charged spells; tostring on a
     -- secret returns a secret, which then trips string.format and
     -- table.concat downstream. Substitute a safe placeholder.
-    local function safeStr(v)
-        if v == nil then return "nil" end
-        if _G.issecretvalue and _G.issecretvalue(v) then return "secret" end
-        return tostring(v)
-    end
+    --
+    -- The shared stringifier (LibKa0s-Core-1.0, via core/CoreSetup.lua), not a
+    -- local copy. Two things change and both are improvements: the sentinel is
+    -- now "<secret>" — the same one core/Compat.lua already used, so a pasted
+    -- log spells the condition one way — and the probe is `table.concat` rather
+    -- than `issecretvalue`, which tests the operation that actually rejects a
+    -- secret instead of asking the API whether it thinks it has one.
+    --
+    -- NB: only the STRINGIFIER moves. The issecretvalue calls in StateChanged
+    -- and MaterialChange above are control flow over an incomparable value, not
+    -- rendering, and must stay exactly as they are.
+    local safeStr = NS.SafeToString
     for _, id in ipairs(ids) do
         local s = self.watched[id]
         local name = NS.Compat.GetSpellInfo(id) or "?"

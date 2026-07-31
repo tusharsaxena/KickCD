@@ -492,8 +492,16 @@ end
 --- (§4) can never raise inside string.format when a call site passes one (e.g.
 --- charges in combat). Identity pass-through when issecretvalue is unavailable
 --- (headless harness) or the value is plain.
+---
+--- The sentinel is "<secret>" — LibKa0s-Core-1.0's lib.SECRET, which
+--- core/Compat.lua already used — so a pasted log spells the condition one way
+--- rather than two. NOT switched to NS.SafeToString wholesale: that stringifies
+--- every argument, and this one is deliberately an IDENTITY pass-through so a
+--- `%d` call site still hands string.format a number. The library's own sink
+--- does stringify, which is a behaviour change this file's replacement has to
+--- carry a case for.
 local function secretSafe(v)
-    if _G.issecretvalue and _G.issecretvalue(v) then return "secret" end
+    if _G.issecretvalue and _G.issecretvalue(v) then return "<secret>" end
     return v
 end
 

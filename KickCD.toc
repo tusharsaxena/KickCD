@@ -36,6 +36,7 @@ core\Compat.lua
 core\Constants.lua
 core\State.lua
 core\Util.lua
+core\CoreSetup.lua
 core\Units.lua
 core\Database.lua
 core\LSMPatch.lua

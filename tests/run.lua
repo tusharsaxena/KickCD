@@ -82,11 +82,15 @@ end
 ---        change the simulated client *before* init-time reads happen — e.g. the
 ---        frFR locale suite, where BuildSpells() resolves the player's spec during
 ---        OnInitialize and a post-load mock swap would be too late.
+--- @param opts function|nil  optional loader options, forwarded verbatim. The
+---        one that matters is `{ libFiles = {} }`, which loads the addon with
+---        LibKa0s absent so the degradation stubs are exercised by a real load
+---        rather than by hand-stubbing the member under test (testing-§8).
 --- @return table inst  { NS, env, mocks }
-local function loadInstance(initDB, enable, mutate)
+local function loadInstance(initDB, enable, mutate, opts)
     local mocks = mockmod.build()
     if mutate then mutate(mocks) end
-    local env, ns = loader.loadAll(root, mocks)
+    local env, ns = loader.loadAll(root, mocks, opts)
     -- Pre-migration sources publish onto the global namespace (env.KickCD);
     -- post-KCD-01 sources populate the private `ns`. Prefer whichever exists.
     local NS = env.KickCD or ns
@@ -126,6 +130,7 @@ _G.KICKCD_TEST = T
 -- ---------------------------------------------------------------------------
 local SUITES = {
     "test_util.lua",
+    "test_coresetup.lua",
     "test_util_anchor.lua",
     "test_constants.lua",
     "test_state.lua",

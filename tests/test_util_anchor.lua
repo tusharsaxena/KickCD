@@ -235,37 +235,18 @@ test("NormalizeClassToken upper-cases and tolerates nil", function()
 end)
 
 -- ── print ───────────────────────────────────────────────────────────────────
-
-test("Util.print tags every line with the cyan [KCD] prefix", function()
-    local lines = {}
-    local prev = mocks.DEFAULT_CHAT_FRAME
-    mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) lines[#lines + 1] = m end }
-    Util.print("hello")
-    mocks.DEFAULT_CHAT_FRAME = prev
-    assertEqual(#lines, 1)
-    assertTrue(lines[1]:find(NS.PREFIX, 1, true) == 1,
-        "the tag must lead the line, got: " .. tostring(lines[1]))
-    assertTrue(lines[1]:find("hello", 1, true) ~= nil)
-end)
-
-test("Util.print space-separates multiple arguments, mirroring print()", function()
-    local lines = {}
-    local prev = mocks.DEFAULT_CHAT_FRAME
-    mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) lines[#lines + 1] = m end }
-    Util.print("a", "b", "c")
-    mocks.DEFAULT_CHAT_FRAME = prev
-    assertTrue(lines[1]:find("a b c", 1, true) ~= nil,
-        "expected space-separated args, got: " .. tostring(lines[1]))
-end)
-
-test("Util.print with no arguments emits the bare tag", function()
-    local lines = {}
-    local prev = mocks.DEFAULT_CHAT_FRAME
-    mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) lines[#lines + 1] = m end }
-    Util.print()
-    mocks.DEFAULT_CHAT_FRAME = prev
-    assertEqual(lines[1], NS.PREFIX)
-end)
+--
+-- The printer is no longer core/Util.lua's. It comes from LibKa0s-Core-1.0 via
+-- core/CoreSetup.lua, and its cases moved wholesale to tests/test_coresetup.lua
+-- — where they also cover the secret guard and the library-absent load, neither
+-- of which the old implementation had. Keeping a second copy here would be the
+-- duplicate testing-§8 forbids.
+--
+-- One case did NOT survive the move: `Util.print()` with no arguments used to
+-- emit the bare tag, and now emits the tag plus the separator, because the
+-- library's Print mirrors print()'s shape and joins an empty argument list to an
+-- empty body. No call site in the addon prints with no arguments; the change is
+-- one trailing space on a line nothing emits.
 
 -- ── RegisterUnitCastEvent ───────────────────────────────────────────────────
 

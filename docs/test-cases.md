@@ -18,7 +18,26 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_util_anchor.lua (29)
+### test_coresetup.lua (16)
+
+- the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
+- the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for file
+- every file the runner loads for LibKa0s exists on disk
+- NS.SafeToString renders ordinary values through tostring
+- NS.SafeToString answers nil and booleans up front, never masking them
+- NS.SafeToString renders an unconcatable value as the shared <secret> sentinel
+- NS.IsConcatSafe probes table.concat, not the .. operator
+- NS.Util.print renders prefix, one space, then the body — byte for byte
+- NS.Util.print space-joins its arguments, mirroring print()
+- NS.Util.print is secret-safe: an unconcatable argument cannot raise
+- NS.Util.print resolves the prefix at call time, not at load time
+- NS.Util.print is the library printer, not a host reimplementation
+- core/Util.lua no longer defines a printer of its own
+- no addon file emits a bare "secret" sentinel of its own
+- with LibKa0s absent the addon still loads and still prints tagged lines
+- the degraded printer is still secret-safe and still says <secret>
+
+### test_util_anchor.lua (26)
 
 - SaveAnchor snapshots a frame's first anchor point
 - SaveAnchor stores no frame reference, only serialisable fields
@@ -43,9 +62,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - SpecOrderForClass normalises a lower-case class token
 - SpecOrderForClass is nil for a class the client can't enumerate
 - NormalizeClassToken upper-cases and tolerates nil
-- Util.print tags every line with the cyan [KCD] prefix
-- Util.print space-separates multiple arguments, mirroring print()
-- Util.print with no arguments emits the bare tag
 - RegisterUnitCastEvent forwards the event into the module's handler
 - RegisterUnitCastEvent tolerates a handler that isn't defined yet
 - RegisterUnitCastEvent returns a frame the caller can unregister
@@ -629,7 +645,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 13 |
-| test_util_anchor.lua | 29 |
+| test_coresetup.lua | 16 |
+| test_util_anchor.lua | 26 |
 | test_constants.lua | 22 |
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
@@ -664,4 +681,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_list_mode.lua | 5 |
-| **Total** | **514** |
+| **Total** | **527** |

@@ -87,8 +87,11 @@ test("NS.Debug sanitizes secret args and never errors", function()
     T.mocks.issecretvalue = realIsSecret
     assertTrue(ok, "sink must not error on a secret arg")
     local line = NS.DebugLog:LastLine()
-    assertTrue(line and line:find("charges=secret", 1, true) ~= nil,
-        "secret arg must render as 'secret'; got: " .. tostring(line))
+    -- "<secret>" and not a bare "secret": the sentinel is LibKa0s-Core-1.0's
+    -- lib.SECRET now, shared with core/Compat.lua's guard, so a pasted log
+    -- spells the condition one way across every module that writes to it.
+    assertTrue(line and line:find("charges=<secret>", 1, true) ~= nil,
+        "secret arg must render as '<secret>'; got: " .. tostring(line))
     NS.State.debug = false   -- leave the shared instance clean for later suites
 end)
 

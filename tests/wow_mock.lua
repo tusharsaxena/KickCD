@@ -525,15 +525,49 @@ local function build()
         ["CallbackHandler-1.0"]   = noopLib(),
     }
 
+    -- Registered minors, for NewLibrary below. Ace fakes above are handed to us
+    -- pre-built and carry no minor, so they simply never participate.
+    local minors = {}
+
+    --- The real LibStub:NewLibrary contract, reproduced because the vendored
+    --- LibKa0s files are loaded as REAL SOURCE by tests/loader.lua rather than
+    --- faked (testing-§9: a suite that measures the degradation stub instead of
+    --- the library is green and tests nothing).
+    ---
+    --- Minor comparison is the whole mechanism: LibStub keeps the highest minor
+    --- it is offered and discards the rest, so a file re-registering at an equal
+    --- or lower minor must get nil back and `return` — which is exactly what the
+    --- paired-minor guards in OptionsWidgets/OptionsScroll/PerfPanel rely on.
+    local function newLibrary(_, major, minor)
+        minor = tonumber(minor)
+        if not minor then error("mock LibStub: NewLibrary needs a numeric minor", 2) end
+        local old = minors[major]
+        if old and old >= minor then return nil end
+        minors[major] = minor
+        libs[major] = libs[major] or {}
+        return libs[major], old
+    end
+
     mocks.LibStub = setmetatable({}, {
         __call = function(_, name, silent)
             local lib = libs[name]
             if not lib and not silent then error("mock LibStub: missing lib " .. tostring(name)) end
             return lib
         end,
-        __index = { GetLibrary = function(_, name) return libs[name] end },
+        __index = {
+            GetLibrary = function(_, name, silent)
+                local lib = libs[name]
+                if not lib and not silent then
+                    error("mock LibStub: missing lib " .. tostring(name))
+                end
+                return lib
+            end,
+            NewLibrary = newLibrary,
+            minors = minors,
+        },
     })
     mocks.__libs = libs
+    mocks.__libMinors = minors
 
     -- -------------------------------------------------------------------
     -- Frames / UI
