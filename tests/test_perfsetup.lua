@@ -341,3 +341,79 @@ test("with LibKa0s absent the bracketed paths still run", function()
     end)
     assertTrue(ok, "a bracketed path must not raise when the probe is a stub")
 end)
+
+-- ── the locale seam ─────────────────────────────────────────────────────────
+
+test("the perf panel resolves real English, never a raw STRINGS key", function()
+    -- THE bug this case exists for, and it was visible only in game.
+    --
+    -- NS.L carries the metatable fallback the standard MANDATES (anti-patterns
+    -- #2): a miss returns the KEY, not nil. Handing that table to a LibKa0s
+    -- descriptor's `L` therefore satisfies the library's "is it a string?" check
+    -- for EVERY key, so its own STRINGS are never reached and the panel renders
+    -- STEP_START, STEP_MEASURE_A, PANEL_TITLE_SUFFIX ... verbatim.
+    --
+    -- red under: restoring `L = NS.L` to core/PerfSetup.lua
+    local inst = T.load(true, true)
+    local P = inst.NS.Perf
+
+    for _, step in ipairs(P.STEPS or {}) do
+        assertTrue(step.label ~= nil and step.label ~= "",
+            "step " .. tostring(step.key) .. " has no label")
+        -- A resolved label is prose. An unresolved one is the STRINGS key
+        -- itself: SCREAMING_SNAKE_CASE, which no English label ever is.
+        assertNil(step.label:match("^[A-Z][A-Z0-9_]+$"),
+            "step '" .. tostring(step.key) .. "' rendered its raw key: " .. step.label)
+        assertNil(step.label:match("^STEP_"),
+            "step '" .. tostring(step.key) .. "' rendered a STEP_ key: " .. step.label)
+    end
+end)
+
+test("no LibKa0s descriptor is handed the key-returning locale table", function()
+    -- The general form, so the next setup file cannot reintroduce it. A locale
+    -- table whose __index returns the key can never be a valid `L` override:
+    -- it answers every key, so the library's own STRINGS become unreachable.
+    -- Pass nothing, or pass a plain table holding only the real overrides.
+    -- red under: adding `L = NS.L,` to any setup file's descriptor
+    local offenders = {}
+    for _, rel in ipairs({
+        "core/CoreSetup.lua", "core/DebugLogSetup.lua", "core/PerfSetup.lua",
+        "settings/Slash.lua", "settings/OptionsSetup.lua",
+    }) do
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local n = 0
+        for line in fh:lines() do
+            n = n + 1
+            -- `L = NS.L` as a descriptor field, not `local L = NS.L`.
+            if line:match("^%s*L%s*=%s*NS%.L%s*,%s*$") then
+                offenders[#offenders + 1] = rel .. ":" .. n
+            end
+        end
+        fh:close()
+    end
+    assertEqual(#offenders, 0,
+        "descriptor handed the fallback locale table at: " .. table.concat(offenders, ", "))
+end)
+
+test("the panel title is the host's brand plus the library's resolved suffix", function()
+    -- The title in the screenshot read "Ka0s KickCDPANEL_TITLE_SUFFIX": the brand
+    -- concatenated with an UNRESOLVED key. Asserted through the panel frame the
+    -- library actually builds, not through a Text() helper the instance does not
+    -- expose — an earlier version of this case guarded on `if title then` and so
+    -- passed vacuously, which is worse than no case at all.
+    -- red under: restoring `L = NS.L` to core/PerfSetup.lua
+    local inst = T.load(true, true)
+    local P = inst.NS.Perf
+    P.ShowPanel()
+    local frame = P.__panel and P.__panel()
+    assertTrue(frame ~= nil, "the library did not build a panel frame")
+
+    local title = frame.__titleText or (frame.title and frame.title.__text)
+    assertTrue(title ~= nil and title ~= "", "the panel has no title text")
+    assertNil(title:match("PANEL_TITLE"), "the title rendered a raw key: " .. tostring(title))
+    assertTrue(title:find("Ka0s KickCD", 1, true) == 1,
+        "the title must lead with the host's brand; got: " .. tostring(title))
+    assertTrue(title:find("Perf Run", 1, true) ~= nil,
+        "and carry the library's resolved suffix; got: " .. tostring(title))
+    P.HidePanel()
+end)

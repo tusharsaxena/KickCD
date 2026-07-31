@@ -721,7 +721,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - with LibKa0s absent /kcd still answers and host verbs still work
 - the degraded stub carries no copy of the row formatter or the parser
 
-### test_perfsetup.lua (16)
+### test_perfsetup.lua (19)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -739,6 +739,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - a bare /kcd perf answers through the addon's tagged printer
 - with LibKa0s absent the probe stub answers every member the addon calls
 - with LibKa0s absent the bracketed paths still run
+- the perf panel resolves real English, never a raw STRINGS key
+- no LibKa0s descriptor is handed the key-returning locale table
+- the panel title is the host's brand plus the library's resolved suffix
 
 ### test_list_mode.lua (5)
 
@@ -792,6 +795,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 24 |
-| test_perfsetup.lua | 16 |
+| test_perfsetup.lua | 19 |
 | test_list_mode.lua | 5 |
-| **Total** | **620** |
+| **Total** | **623** |

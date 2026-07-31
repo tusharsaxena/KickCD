@@ -150,7 +150,21 @@ NS.Perf = lib:New({
         end
     end,
 
-    L = NS.L,
+    -- NO `L`, deliberately, and this is a trap rather than an omission.
+    --
+    -- NS.L carries the metatable fallback the standard mandates (anti-patterns
+    -- #2): a miss returns the KEY rather than nil, so `NS.L["STEP_START"]` is
+    -- the string "STEP_START". The library resolves a descriptor's `L` first and
+    -- only falls through to its own STRINGS when the override is not a string —
+    -- so handing it NS.L satisfies that check for EVERY key, its own strings
+    -- become unreachable, and the panel renders STEP_START / STEP_MEASURE_A /
+    -- PANEL_TITLE_SUFFIX verbatim. Which is exactly what shipped, and it was
+    -- visible only in game.
+    --
+    -- KickCD has no perf translations, so the right answer is to pass nothing
+    -- and let the library's English through. A host that DOES want to override
+    -- must pass a PLAIN table holding only the keys it actually translates —
+    -- never the addon-wide locale table. settings/Slash.lua does exactly that.
 
     -- Built by the console's own close-button factory rather than a lookalike,
     -- so the two windows cannot drift apart. Resolved HERE and not into a
