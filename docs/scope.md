@@ -49,7 +49,7 @@ When syncing the defaults to the sheet, only columns **Q, S, T, U, V, X** matter
 
 If the user later changes their mind and wants defaults back, two slash commands cover the recovery surface:
 
-- `/kcd reset spells` — wipes every class+spec list and re-seeds from defaults plus the player's racial cast-stopper. Use this for a clean slate.
+- `/kcd spells resetall` — wipes every class+spec list and re-seeds from defaults plus the player's racial cast-stopper. Use this for a clean slate.
 - `/kcd spells reset [CLASS SPEC]` — restores a single spec list to defaults; leaves every other spec untouched. The settings panel's per-spec "Defaults" button (the `KICKCD_RESET_SPELLS` popup) is the GUI entry point for the same recovery.
 
 ## Cast-bar removal history

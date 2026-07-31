@@ -38,7 +38,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; uses `Helpers.FindSchema(path)`. |
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors. On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
-| `reset <general\|icons\|castbar\|label\|spells>` | Reset one panel to defaults. | `general` / `icons` / `castbar` / `label` route through `Helpers.RestoreDefaults`; `spells` calls `Database:ResetAllSpells` (wipes every spec, not just the active one). |
+| `reset <path>` | Reset **one setting** to its default. | `LibKa0s-Slash-1.0`'s `CliReset`, through the host's `SetAndRefresh` write seam. **Breaking change:** this used to take a page (`general`/`icons`/`castbar`/`label`/`spells`). A page is a property of a settings panel, not of the data, so page-scoped reset now lives only on each panel's **Defaults** button, and the every-spec spell rebuild moved to `/kcd spells resetall`. Each retired page name is answered with a line naming its replacement rather than a bare "Setting not found". |
 | `resetall` | Reset every schema-driven panel **and** every spec's spell list. | Calls `Helpers.ResetAll`, the same helper behind General → "Reset all settings" popup. No CLI confirmation. |
 | `resetposition` | Restore the icon grid to its default screen position. | Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
@@ -59,7 +59,7 @@ At the command line SPEC is still typed as a name: `Util.ResolveSpecID` accepts 
 | `remove <id> [CLASS SPEC]` | Drop a spell from the list. |
 | `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. |
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
-| `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`. Mirrors the Spells panel's Defaults popup; intentionally narrower than `/kcd reset spells` (which wipes every spec via `Database:ResetAllSpells`). |
+| `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`. Mirrors the Spells panel's Defaults popup; intentionally narrower than `/kcd spells resetall` (which wipes every spec via `Database:ResetAllSpells`). |
 
 Every mutating subcommand fires `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
 

@@ -275,14 +275,14 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Open Settings → Spells. Edit a different spec via the class+spec dropdown.
 - Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> interrupt CLASS SPEC`.
 - `/kcd spells reset CLASS SPEC` for one spec; verify it rebuilds *only* that spec.
-- `/kcd reset spells` — verify it wipes *every* spec.
+- `/kcd spells resetall` — verify it wipes *every* spec.
 
 **Pass.**
 - The active-spec write paths validate against the Cooldown Manager spell-set — adding a spell that isn't tracked there prints an error and is rejected.
 - Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
 - After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`) — no need to close and reopen the panel.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
-- `/kcd reset spells` calls `Database:ResetAllSpells` and wipes every spec.
+- `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd reset spells`).
 
 ### 11. Settings panel parity

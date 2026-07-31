@@ -32,7 +32,7 @@ This root file is a stub (per standard documentation-§2). Read these before tou
 - **Closed message bus**: the five `Ka0s_KickCD_*` AceEvent messages are the only inter-module channel. Each receiver registers on its OWN AceEvent target (never the shared addon object).
 - **Compat / State / Constants split**: `core/Compat.lua` = API normalisation only; `core/State.lua` = shared state + visibility helpers; `core/Constants.lua` = magic numbers.
 - **`NS.Settings.Schema` is the single source of truth** for every option (one row → UI widget + `/kcd get|set|list` + Defaults reset). `NS` is the private addon namespace (`local addonName, NS = ...`) — there is no `_G.KickCD`.
-- **Debug logging is session-only** (`NS.State.debug`, never in SavedVariables); it routes to the on-screen console (`modules/DebugLog.lua`), not chat. Toggle via the console header or `/kcd debug on|off|toggle`.
+- **Debug logging is session-only** (`NS.State.debug`, never in SavedVariables); it routes to the on-screen console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`), not chat. Toggle via the console header or `/kcd debug on|off|toggle`.
 - **Keep the static README badges in lockstep with their sources** (standard documentation-§1 / testing-§5): the `[WoW]` and `[Tests]` badges are static and go stale silently, so each moves in the *same change* as its source of truth. `[WoW]` ↔ TOC `## Interface:` on every patch bump (both MUST show the same number). `[Tests]` ↔ the regenerated `docs/test-cases.md`: whenever the suite changes (a case added/removed/renamed or the pass count moves), regenerate via `lua tests/run.lua --list` **and** update the README `[Tests]` X/Y count together — never as a follow-up.
 
 ## Local verification (standard testing)
