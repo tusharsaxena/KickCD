@@ -6,10 +6,15 @@ local addonName, NS = ...
 -- are the library's. This file supplies the part only this addon can know: which
 -- paths are worth measuring, and what "inert" means here.
 --
--- TOC POSITION: after core/CoreSetup.lua (the printer) and core/State.lua, and
--- BEFORE every module that takes `local Perf = NS.Perf` as a load-time upvalue.
--- Today no module does — the brackets read NS.Perf at file scope in modules/
--- which all load later — but the constraint is real and cheap to honour.
+-- TOC POSITION: LAST in the core block, immediately after core/KickCD.lua, and
+-- before every module that takes `local Perf = NS.Perf` as a load-time upvalue
+-- (all of modules/, which loads after core/). Three things pin it there:
+--   * core/CoreSetup.lua has run, so NS.Util.print exists;
+--   * core/DebugLogSetup.lua has run, so the log sink and MakeCloseButton exist;
+--   * core/KickCD.lua has run, so NS.VERSION exists — it did NOT when this file
+--     sat higher in the block, so the descriptor's `version` captured nil and
+--     every capture record stamped "v?".
+-- The move is the belt; the TOC-manifest read below is the braces.
 --
 -- WHY THE SIGNAL IS WHERE IT IS. This addon has almost no hot path, and saying
 -- so plainly is more useful than a bucket list that reads 0.000 forever. There
@@ -61,7 +66,19 @@ NS.Perf = lib:New({
     name    = addonName,
     title   = "Ka0s KickCD",
     slash   = "/kcd",
-    version = NS.VERSION,
+    -- NOT `NS.VERSION`: this file loads BEFORE core/KickCD.lua, which is where
+    -- that constant is set, so the descriptor captured nil and every record
+    -- stamped "v?" — unattributable the moment it leaves the session
+    -- (performance-§8). The library takes `version` as a plain STRING resolved
+    -- once at :New, so unlike Slash's function form it cannot be deferred; the
+    -- value has to be resolvable HERE.
+    --
+    -- The TOC manifest is, and is the better source anyway: it cannot drift from
+    -- the packaged build (slash-commands-§3). NS.VERSION remains the fallback for
+    -- a client without the metadata API, and settings/Slash.lua resolves the same
+    -- pair the same way so `/kcd version` and a capture record cannot disagree.
+    version = (C_AddOns and C_AddOns.GetAddOnMetadata
+               and C_AddOns.GetAddOnMetadata(addonName, "Version")) or NS.VERSION,
     sv      = "KickCDPerfDB",
 
     -- Ordered for the report, with nesting DECLARED rather than left as prose:
@@ -71,21 +88,34 @@ NS.Perf = lib:New({
     -- which totals overlap, and a parent must never be summed with its children.
     buckets = {
         { key = "spellPoll" },                          -- Cooldowns:Refresh, the coalesced pass
+        { key = "pollSpell",  within = "spellPoll"  },  -- Cooldowns:PollSpell, per watched spell
         { key = "spellState", within = "spellPoll"  },  -- IconGrid:OnSpellState, synchronous
         { key = "iconApply",  within = "spellState" },  -- Icon:Apply, per icon per unit
         { key = "cdText" },                             -- the 0.1s cooldown-text ticker pass
         { key = "castEvent" },                          -- IconGrid:OnUnitCastEvent
-        { key = "visibility", within = "castEvent"  },  -- IconGrid:RefreshVisibility
+        { key = "visibility" },                         -- IconGrid:RefreshVisibility
         { key = "castTick" },                           -- Castbar OnUpdate, per frame while casting
     },
 
-    -- DELIBERATELY NOT DECLARED: `pollSpell` (Cooldowns:PollSpell) and
-    -- `glowGate` (IconGrid:RefreshAllGlows). Both have inline early-return
-    -- guards, so a single fall-through bracket would under-count their calls and
-    -- report a total that quietly excluded the rejected paths. A bucket that no
-    -- bracket fully reaches is a lie in every report (performance-§3), so they
-    -- are left out rather than declared and half-measured. `Note()` still records
-    -- an undeclared key, so either can be added ad hoc if a capture points there.
+    -- `pollSpell` WAS left out at first, on the grounds that its inline
+    -- early-return guards would make a single fall-through bracket under-count.
+    -- The first live capture overturned that: spellPoll totalled 125.02 ms of
+    -- which its only declared child accounted for 51.14, leaving 73.9 ms — the
+    -- largest single cost in the addon — attributed to nothing at all. All four
+    -- of PollSpell's exits are instrumented now, so the objection is answered
+    -- rather than avoided.
+    --
+    -- `visibility` no longer declares `within = "castEvent"`. That reading came
+    -- from the dominant IN-COMBAT caller, but the same capture recorded six
+    -- `visibility` calls against ZERO for `castEvent` — every one arrived from
+    -- one of its six other call sites (a config change, a target swap, a
+    -- layout). The report was indenting it under a parent that never ran, which
+    -- is worse than not declaring the relationship: nesting exists to tell a
+    -- reader which totals overlap, and that one did not.
+    --
+    -- STILL NOT DECLARED: `glowGate` (IconGrid:RefreshAllGlows), same
+    -- multi-exit shape and no capture has yet pointed at it. `Note()` records an
+    -- undeclared key anyway, so it can be added ad hoc the moment one does.
 
     --- Make the addon inert without a /reload.
     ---

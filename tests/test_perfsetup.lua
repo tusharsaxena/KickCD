@@ -149,10 +149,15 @@ test("nesting is declared for every bucket that runs inside another", function()
     local fh = assert(io.open(T.root .. "/core/PerfSetup.lua", "r"))
     local setup = fh:read("*a")
     fh:close()
+    -- `visibility` is deliberately NOT here. It reads as a child of castEvent
+    -- from the in-combat call path, but the first live capture recorded six
+    -- visibility calls against ZERO castEvent calls — they all came from its
+    -- other call sites. Declaring the nesting made the report indent it under a
+    -- parent that never ran, which tells the reader the opposite of the truth.
     for _, pair in ipairs({
         { "spellState", "spellPoll" },
+        { "pollSpell",  "spellPoll" },
         { "iconApply",  "spellState" },
-        { "visibility", "castEvent" },
     }) do
         local pat = '{ key = "' .. pair[1] .. '",%s*within = "' .. pair[2] .. '"'
         assertTrue(setup:find(pat) ~= nil,
@@ -447,4 +452,98 @@ test("the VENDORED library ignores a fallback-synthesised locale entry", functio
         assertEqual(step.label, lib.STRINGS[step.string],
             "it must fall through to the library's own string")
     end
+end)
+
+-- ── the capture record identifies itself ────────────────────────────────────
+
+test("the record stamps a real addon version, never \"?\"", function()
+    -- The first live capture recorded `"version":"?"` and a header reading
+    -- "(KickCD, schema 2, v?)". core/PerfSetup.lua passed `version = NS.VERSION`,
+    -- but NS.VERSION is set in core/KickCD.lua which loads AFTER it — so the
+    -- descriptor captured nil and the library defaulted.
+    --
+    -- The library takes `version` as a plain STRING, resolved once at :New, so a
+    -- host cannot defer it with a function the way Slash's `version` allows. The
+    -- value therefore has to be resolvable at this file's own load time.
+    --
+    -- performance-§8: a record must identify itself outside the file it came
+    -- from. "v?" makes every archived capture unattributable.
+    -- red under: restoring `version = NS.VERSION` to core/PerfSetup.lua
+    local inst = T.load(true, true)
+    local rec = inst.NS.Perf.BuildRecord and inst.NS.Perf.BuildRecord("t")
+    assertTrue(rec ~= nil, "BuildRecord returned nothing")
+    assertTrue(rec.version ~= nil and rec.version ~= "" and rec.version ~= "?",
+        "the record must carry a real version; got: " .. tostring(rec.version))
+    assertTrue(rec.version:match("^%d+%.%d+"),
+        "and it must look like a version; got: " .. tostring(rec.version))
+end)
+
+test("the perf version agrees with the one /kcd version prints", function()
+    -- Two readers of one fact drift. Both resolve through the TOC manifest with
+    -- the in-code stamp as fallback (slash-commands-§3).
+    local inst = T.load(true, true)
+    local rec = inst.NS.Perf.BuildRecord("t")
+    assertEqual(rec.version, inst.NS.Slash.Version(),
+        "the capture record and the slash layer must report the same version")
+end)
+
+test("the version fallback is reachable, not dead", function()
+    -- Belt and braces, and the belt was broken. The descriptor prefers the TOC
+    -- manifest and falls back to NS.VERSION — but while core/PerfSetup.lua
+    -- loaded before core/KickCD.lua that fallback was ALWAYS nil, so a client
+    -- without the metadata API would still have stamped "v?". The TOC position
+    -- is what makes it real.
+    -- red under: moving core\PerfSetup.lua back above core\KickCD.lua
+    local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local order, seen = {}, {}
+    for line in fh:lines() do
+        local f = line:match("^(core\\[%w_]+%.lua)")
+        if f then order[#order + 1] = f; seen[f] = #order end
+    end
+    fh:close()
+    assertTrue(seen["core\\KickCD.lua"] ~= nil and seen["core\\PerfSetup.lua"] ~= nil,
+        "both files must be in the TOC")
+    assertTrue(seen["core\\PerfSetup.lua"] > seen["core\\KickCD.lua"],
+        "core/PerfSetup.lua must load AFTER core/KickCD.lua, or NS.VERSION is nil at :New")
+end)
+
+test("every PollSpell exit is measured, including the rejections", function()
+    -- The objection that kept `pollSpell` undeclared in the first place: a
+    -- function with four exits and a bracket on one under-counts `calls` and
+    -- reports a total that quietly excludes the rejected paths. All four are
+    -- instrumented now, and this is what says so — a source-level bracket count
+    -- would pass just as happily with the Note attached to the wrong branch.
+    --
+    -- red under: removing the Perf.Note from any one of PollSpell's early returns
+    local inst = T.load(true, true)
+    local P = inst.NS.Perf
+    local Cooldowns = inst.NS:GetModule("Cooldowns", true)
+    assertTrue(Cooldowns ~= nil)
+
+    P.Reset()
+    P.on = true
+    -- Exit 1: a non-numeric id, rejected before any API call.
+    Cooldowns:PollSpell(nil)
+    Cooldowns:PollSpell("not a number")
+    -- Exit 2: a numeric id the spell DB does not know.
+    Cooldowns:PollSpell(99999999)
+    -- Exit 3: a REAL spell the player cannot currently cast (the unpicked branch
+    -- of a talent choice node, or a pet spell with no pet out). Reached by
+    -- making the availability check say no, since every watched spell is by
+    -- definition available.
+    local known
+    for id in pairs(Cooldowns.watched or {}) do known = id break end
+    assertTrue(known ~= nil, "the fixture has no watched spell to reject")
+    local realAvail = inst.NS.Compat.IsSpellAvailable
+    inst.NS.Compat.IsSpellAvailable = function() return false end
+    Cooldowns:PollSpell(known)
+    inst.NS.Compat.IsSpellAvailable = realAvail
+    -- Exit 4: the success path.
+    Cooldowns:PollSpell(known)
+    P.on = false
+
+    local b = (P.__buckets and P.__buckets() or {}).pollSpell
+    assertTrue(b ~= nil, "no pollSpell measurement recorded at all")
+    assertEqual(b.calls, 5,
+        "every exit must be counted; got " .. tostring(b.calls) .. " of 5")
 end)

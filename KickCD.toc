@@ -38,11 +38,11 @@ core\State.lua
 core\Util.lua
 core\CoreSetup.lua
 core\DebugLogSetup.lua
-core\PerfSetup.lua
 core\Units.lua
 core\Database.lua
 core\LSMPatch.lua
 core\KickCD.lua
+core\PerfSetup.lua
 
 # Defaults
 defaults\Spells.lua

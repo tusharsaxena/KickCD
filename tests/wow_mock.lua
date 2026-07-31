@@ -760,6 +760,30 @@ local function build()
     -- -------------------------------------------------------------------
     mocks.GetTime = function() return 0 end
 
+    -- C_AddOns.GetAddOnMetadata, reading the REAL TOC so a version the addon
+    -- reports cannot drift from the packaged manifest in a test either. The
+    -- addon reads Version through this in two places (the `version` verb and the
+    -- perf capture record), and a mock answering nil made both fall back — which
+    -- is exactly how a record stamped "v?" passed the suite while failing in game.
+    local tocMeta
+    local function readTOCMeta()
+        if tocMeta then return tocMeta end
+        tocMeta = {}
+        local fh = io.open("KickCD.toc", "r")
+        if fh then
+            for line in fh:lines() do
+                local k, v = line:match("^##%s*([%w%-]+)%s*:%s*(.-)%s*\r?$")
+                if k then tocMeta[k] = v end
+            end
+            fh:close()
+        end
+        return tocMeta
+    end
+    mocks.C_AddOns = {
+        GetAddOnMetadata = function(_, field) return readTOCMeta()[field] end,
+        IsAddOnLoaded    = function() return true end,
+    }
+
     -- WoW's millisecond profile clock, used by every Perf bracket
     -- (performance-§2). MONOTONICALLY INCREASING rather than fixed: a constant
     -- would make every measured span exactly 0, and a bucket asserting it

@@ -91,13 +91,32 @@ end
 --   Returns nil if the spell isn't actually known by the player so the
 --   icon grid can hide entries the player can't see in their own spellbook.
 function Cooldowns:PollSpell(spellID)
+    -- FOUR exits, and all four are instrumented on purpose.
+    --
+    -- This bucket was left undeclared at first precisely because of them: a
+    -- single fall-through bracket would have under-counted `calls` and reported
+    -- a total that quietly excluded the rejected paths. The first live capture
+    -- then made the omission expensive — spellPoll totalled 125.02 ms of which
+    -- its declared child spellState accounted for only 51.14, leaving 73.9 ms
+    -- (the largest single cost in the addon) attributed to nothing. So the
+    -- bracket opens ABOVE the guards, because GetSpellInfo and IsSpellAvailable
+    -- are themselves API calls and part of the poll's real cost, and every exit
+    -- closes it. tests/test_perfsetup.lua pins that no exit is left unclosed.
+    local __t0 = Perf.on and debugprofilestop()
+
     -- Reject obviously-bad IDs early.
-    if not spellID or type(spellID) ~= "number" then return nil end
+    if not spellID or type(spellID) ~= "number" then
+        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+        return nil
+    end
 
     -- A spell that doesn't return GetSpellInfo at all is definitely not in
     -- the player's spellbook (or the ID is wrong).
     local name = NS.Compat.GetSpellInfo(spellID)
-    if not name then return nil end
+    if not name then
+        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+        return nil
+    end
 
     -- GetSpellInfo only proves the ID exists in the spell DB, not that the
     -- player has chosen / learned it. IsSpellAvailable is the
@@ -105,7 +124,10 @@ function Cooldowns:PollSpell(spellID)
     -- the unpicked branch of a talent choice node (e.g. Blood DK's
     -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
     -- currently summoned.
-    if not NS.Compat.IsSpellAvailable(spellID) then return nil end
+    if not NS.Compat.IsSpellAvailable(spellID) then
+        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+        return nil
+    end
 
     -- Plain-bool active flag from the legacy API. We deliberately discard
     -- start/duration here — they're secret in combat and the duration
@@ -159,7 +181,10 @@ function Cooldowns:PollSpell(spellID)
     -- being uncastable.
     local ready = (not isActive) and usable and hasCharges
 
-    return {
+    -- Built into a local rather than returned inline, so the bracket can close
+    -- on this path too. Lua forbids a statement after `return`, and a bracket
+    -- that skipped the SUCCESS path would measure only the rejections.
+    local state = {
         spellID        = spellID,
         ready          = ready,
         isActive       = isActive == true,
@@ -167,6 +192,8 @@ function Cooldowns:PollSpell(spellID)
         chargeCdObject = chargeCdObject,
         charges        = cur,
     }
+    if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+    return state
 end
 
 --- Determine whether two state snapshots differ enough to merit emitting
