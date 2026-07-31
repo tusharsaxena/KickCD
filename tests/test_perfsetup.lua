@@ -353,7 +353,12 @@ test("the perf panel resolves real English, never a raw STRINGS key", function()
     -- for EVERY key, so its own STRINGS are never reached and the panel renders
     -- STEP_START, STEP_MEASURE_A, PANEL_TITLE_SUFFIX ... verbatim.
     --
-    -- red under: restoring `L = NS.L` to core/PerfSetup.lua
+    -- Defence in depth, and honest about which half is falsifiable:
+    -- restoring `L = NS.L` no longer reddens this, because the vendored library
+    -- now resolves an override with rawget (DebugLog 3 / Slash 3 / Perf 4). The
+    -- guard that DOES redden on the descriptor mistake is the source check
+    -- below; the guard that reddens on a LIBRARY regression is the
+    -- fallback-locale case after it. This one pins the rendered result.
     local inst = T.load(true, true)
     local P = inst.NS.Perf
 
@@ -401,7 +406,6 @@ test("the panel title is the host's brand plus the library's resolved suffix", f
     -- library actually builds, not through a Text() helper the instance does not
     -- expose — an earlier version of this case guarded on `if title then` and so
     -- passed vacuously, which is worse than no case at all.
-    -- red under: restoring `L = NS.L` to core/PerfSetup.lua
     local inst = T.load(true, true)
     local P = inst.NS.Perf
     P.ShowPanel()
@@ -416,4 +420,31 @@ test("the panel title is the host's brand plus the library's resolved suffix", f
     assertTrue(title:find("Perf Run", 1, true) ~= nil,
         "and carry the library's resolved suffix; got: " .. tostring(title))
     P.HidePanel()
+end)
+
+test("the VENDORED library ignores a fallback-synthesised locale entry", function()
+    -- The case that actually reddens on a library regression, and the reason it
+    -- builds its own instance: KickCD passes no `L`, so nothing in the addon
+    -- exercises the resolver's override path at all. Reverting the rawget in
+    -- libs/LibKa0s/Perf.lua therefore changes nothing the addon can observe —
+    -- which is precisely the drift a re-vendor introduces with both repos green.
+    --
+    -- red under: `local v = rawget(L, key)` -> `local v = L[key]` in
+    -- libs/LibKa0s/Perf.lua
+    local lib = T.mocks.LibStub("LibKa0s-Perf-1.0", true)
+    assertTrue(lib ~= nil, "the vendored Perf major must be registered")
+
+    local P = lib:New({
+        name = "TrapProbe", sv = "TrapProbeDB",
+        suspend = function() end, resume = function() end,
+        -- The exact shape every Ka0s host's locale table has.
+        L = setmetatable({}, { __index = function(_, k) return k end }),
+    })
+
+    for _, step in ipairs(P.STEPS or {}) do
+        assertNil(step.label:match("^[A-Z][A-Z0-9_]+$"),
+            "the vendored library let a synthesised key through as '" .. step.label .. "'")
+        assertEqual(step.label, lib.STRINGS[step.string],
+            "it must fall through to the library's own string")
+    end
 end)

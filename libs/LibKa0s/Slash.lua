@@ -18,7 +18,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Slash-1.0", 2
+local MAJOR, MINOR = "LibKa0s-Slash-1.0", 3
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -218,8 +218,19 @@ function lib:New(d)
   local Sl = {}
   local annotator
 
+  --- Resolve one user-visible string, host override first.
+  ---
+  --- rawget, NOT a plain index, and this is load-bearing rather than pedantic. Every Ka0s host's
+  --- locale table carries a metatable fallback that answers an unknown key WITH THE KEY (the
+  --- standard mandates it — anti-patterns #2). A plain index therefore accepts that synthesised
+  --- string for every key, these STRINGS become unreachable, and the host renders raw keys like
+  --- LIST_HEADER in place of English. It shipped exactly that way in a consumer's perf panel, for
+  --- every string at once, and no headless case caught it because a synthesised value IS a string.
+  ---
+  --- rawget asks the only question that matters — did the host actually put a value here? — so a
+  --- genuine entry still wins and a fallback-only table correctly falls through.
   function Sl:Text(key)
-    local v = strings and strings[key]
+    local v = strings and rawget(strings, key)
     if type(v) == "string" then return v end
     return lib.STRINGS[key]
   end

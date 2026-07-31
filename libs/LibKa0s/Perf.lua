@@ -22,7 +22,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Perf-1.0", 3
+local MAJOR, MINOR = "LibKa0s-Perf-1.0", 4
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -195,7 +195,17 @@ function lib:New(descriptor)
   local showLog  = type(d.showLog) == "function" and d.showLog or noop
   local onChange = type(d.onChange)== "function" and d.onChange or noop
   local L        = d.L or {}
-  local function tr(key) return L[key] or lib.STRINGS[key] or key end
+  -- rawget, NOT a plain index. Every Ka0s host's locale table carries a metatable fallback that
+  -- answers an unknown key WITH THE KEY (the standard mandates it — anti-patterns #2), so a plain
+  -- index accepts that synthesised string for every key, these STRINGS become unreachable, and the
+  -- panel renders STEP_START / PANEL_TITLE_SUFFIX verbatim. That is not hypothetical: it shipped in
+  -- KickCD's perf panel. rawget asks the only question that matters — did the host actually put a
+  -- value here? PerfPanel.lua takes `tr` as a parameter, so fixing it here fixes the panel too.
+  local function tr(key)
+    local v = rawget(L, key)
+    if type(v) == "string" then return v end
+    return lib.STRINGS[key] or key
+  end
 
   -- Everything below reads `lib`, never `self`. A LibStub minor upgrade mutates the shared library
   -- table in place, so `lib` is the one source of truth inside this closure — every internal read
