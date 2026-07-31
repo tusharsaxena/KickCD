@@ -17,7 +17,7 @@ local Castbar = NS:GetModule("Castbar")   -- registered by modules/Castbar.lua, 
 function Castbar:DebugDump(unit)
     local inst = self:GetInstance(unit or "target")
     local print = NS.Util and NS.Util.print or _G.print
-    print("castbar state (" .. inst.unit .. "):")
+    print("castbar state (" .. inst.unit .. ")")
 
     if not UnitExists(inst.unit) then
         print("  no " .. inst.unit)
@@ -73,7 +73,7 @@ function Castbar:DebugDump(unit)
     local castCfg = NS.Units.Castbar(inst.unit)
     local intCfg = castCfg.interruptible   or {}
     local nintCfg = castCfg.uninterruptible or {}
-    print("  configured colors:")
+    print("  configured colors")
     print("    interruptible   bar="    .. fmtColor(intCfg.barColor)
         .. " border=" .. fmtColor(intCfg.borderColor)
         .. " bg="     .. fmtColor(intCfg.bgColor))
@@ -87,7 +87,7 @@ function Castbar:DebugDump(unit)
         local r, g, b, a = sb:GetStatusBarColor()
         return ("{%.2f, %.2f, %.2f, %.2f}"):format(r or 0, g or 0, b or 0, a or 1)
     end
-    print("  live SetStatusBarColor:")
+    print("  live SetStatusBarColor values")
     local f = inst.frame
     print("    interruptible   = " .. fmtStatusColor(f and f.bar and f.bar.interruptible))
     print("    uninterruptible = " .. fmtStatusColor(f and f.bar and f.bar.uninterruptible))

@@ -29,6 +29,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 ## Chat output
 
 - Chat output goes through `Util.print` (or `NS.Util.print`) — never call the global `print` directly and never write your own `|cff…KickCD|r:` prefix. `Util.print` prepends the single shared `NS.PREFIX` chat tag (a cyan `[KCD]` banner, defined once in `core/Constants.lua`); passing your own prefix produces a double banner. Any other chat site that needs the tag references `NS.PREFIX` rather than re-spelling the color code. The help printers in `core/KickCD.lua` are the only callers that color anything else (yellow `|cffffff00…|r` for the slash invocation, white `|cffffffff…|r` for the description).
+- **No chat line ends in a trailing `:`** (slash-commands-§4). A list is introduced by its header text alone — write `configured colors`, not `configured colors:`. The rule covers **every** chat line, not just `/kcd help`: diagnostic dump headers in `modules/Castbar_Debug.lua` and `core/Compat.lua`'s `DebugInterrupt` are chat lines too, and both files carried violations that two separate sweeps missed. A colon *mid*-line (`"name: " .. value`) is fine; the rule is about the last character a player reads. Guarded by `tests/test_slash_style.lua` — see [testing.md](testing.md#the-source-scan-guard).
 
 ## 12.0 secret-value rule of thumb
 

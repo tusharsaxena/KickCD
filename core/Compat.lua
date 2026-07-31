@@ -407,7 +407,7 @@ function Compat.DebugInterrupt(unit)
         local castName, displayName, texture, startMS, endMS, isTradeSkill,
               castID, notInterruptible, spellID = _G.UnitCastingInfo(unit)
         if castName then
-            out("UnitCastingInfo positions:")
+            out("UnitCastingInfo positions")
             describe("1 name",             castName)
             describe("2 displayName",      displayName)
             describe("3 texture",          texture)
@@ -426,7 +426,7 @@ function Compat.DebugInterrupt(unit)
         local chName, displayName, texture, startMS, endMS, isTradeSkill,
               notInterruptible, spellID = _G.UnitChannelInfo(unit)
         if chName then
-            out("UnitChannelInfo positions:")
+            out("UnitChannelInfo positions")
             describe("1 name",             chName)
             describe("2 displayName",      displayName)
             describe("3 texture",          texture)

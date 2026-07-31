@@ -8,9 +8,26 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` fro
 
 This fidelity is load-bearing, not convenience. Against a blanket no-op stub, `IsShown()` returns the frame — permanently truthy — so "the grid hid itself" and "the grid did nothing" are the same observation, and every visibility mode looks alike; `SetText`/`SetValue` go nowhere, so the cast bar's whole render path is unobservable. Anything **not** in that list keeps a self-returning no-op, so unmodelled chains stay inert. `CreateFrame` also records every frame it builds; `mocks.__findFrame(event)` reaches a bootstrap frame that has no published handle (the `PLAYER_REGEN_*` listener in `core/State.lua`), so a suite can fire its `OnEvent` without widening the addon's public surface.
 
-Where a module's decision logic is a file-local, it is published on the module purely so the harness can reach it — the idiom `Castbar.AutoSizeLong` established. Current examples: `Castbar.{UnpackColor,TruncateName,StateConfig,ToSetPoint,Fetch*}`, `IconGrid.{VisibilityMode,ShouldBeVisible,InstanceCasting,MasterEnabled,SafeUnpackColor,UnpackGlowColor,TriggerSatisfied,PlainStateMoved}`, `Cooldowns.{MaterialChange,StateChanged,MasterEnabled}`, `Spells.{ValidateSpellInput,SpecOrder,SortedKeys,TitleCaseToken,ClassDisplayName}` and `Helpers.SnapToStep`. Internal call sites keep using the locals; nothing in the addon calls through these fields.
+Where a module's decision logic is a file-local, it is published on the module purely so the harness can reach it — the idiom `Castbar.AutoSizeLong` established. Current examples: `Castbar.{UnpackColor,TruncateName,StateConfig,ToSetPoint,Fetch*,StructureSignature,ResolveBarSize}`, `IconGrid.{VisibilityMode,ShouldBeVisible,InstanceCasting,MasterEnabled,SafeUnpackColor,UnpackGlowColor,TriggerSatisfied,PlainStateMoved,CurvesFor,CurveSignature}`, `Cooldowns.{MaterialChange,StateChanged,MasterEnabled}`, `Spells.{ValidateSpellInput,SpecOrder,SortedKeys,TitleCaseToken,ClassDisplayName}` and `Helpers.SnapToStep`. Internal call sites keep using the locals; nothing in the addon calls through these fields.
+
+`Castbar.ResolveGridFrame` looks like it belongs in that list but does **not**: `modules/Castbar_Skin.lua` genuinely calls it to resolve the auto-size reference frame, so it is a real cross-file dependency rather than a harness hook. Its comment says so, to keep a future dead-export sweep from mistaking it for one.
 
 The **authoritative test count and per-suite breakdown** live in the generated inventory at [test-cases.md](test-cases.md) — never a hand-typed number here. Regenerate it (and see the current total) with `lua tests/run.lua --list > docs/test-cases.md`. `lua tests/run.lua --list` is a non-executing listing mode: it loads every suite, prints the full inventory to stdout, and exits without running a single test.
+
+## The source-scan guard
+
+Most suites here assert on *behaviour* — drive the real code, inspect what it produced. `tests/test_slash_style.lua` also does something different, and it's worth knowing why before writing another guard like it.
+
+It enforces the no-trailing-colon chat rule (slash-commands-§4, see [conventions.md](conventions.md#chat-output)) two ways:
+
+1. **Behaviourally** — drive `/kcd help`, `debug`, `spells`, and the three diagnostic dumps, then inspect every line that reached `DEFAULT_CHAT_FRAME`. New sub-headers under those paths are covered without anyone adding a case.
+2. **By reading the sources** — scan every `.lua` under `core/`, `modules/`, `settings/`, `defaults/`, `locales/` for a string literal ending in `:` that closes a call.
+
+The second exists because the first has a hole that is not fixable by adding more cases: **the mock's `UnitExists` returns false**, so both `Castbar:DebugDump` and `Compat.DebugInterrupt` take their early-return branch and their deep section headers are unreachable headlessly. Five real violations lived in exactly those branches. A behaviour-only guard would have passed on all five, and the 2026-07-18 audit's grep missed them too because it only inspected the help printers.
+
+The scan needs no exemption list. The one legitimate `:`-terminated literal closing a call is a **separator** argument (`table.concat(parts, ":")`), and it is distinguishable structurally: a separator is *exactly* `":"` with nothing before the colon, while a chat header always carries text. Flag a non-empty prefix and `curveSignature`'s concat stays legal on its own merits — no filename or function-name whitelist to rot.
+
+Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant. It is not a substitute for behavioural coverage; it is what you add when you can prove coverage is structurally impossible.
 
 ## Keeping the inventory & badge in sync
 
@@ -38,7 +55,7 @@ Continuous debug output does **not** go to the chat frame. It routes through the
 - `/kcd debug window` — toggle the on-screen debug console window (ScrollingMessageFrame, Copy/Clear buttons, header Debug:ON/OFF toggle, shipped JetBrains Mono font). This is where `NS.Debug` output lands.
 - `/kcd debug on` / `/kcd debug off` / `/kcd debug toggle` — set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Off by default; not persisted; resets each `/reload`.
 - `/kcd debug spells` — dump (to chat) the watched cooldown list with `ready / active / cdObj / chargeCdObj / charges` per spell. `cdObj=yes` means a full-cooldown duration object is held; `chargeCdObj=yes` means a charge-recharge timer is ticking while the spell is still castable. We deliberately do NOT print remaining time — `:GetRemainingDuration()` is secret in combat and `tostring` would error in tainted scope; charges are also secret-safed via a `safeStr` placeholder.
-- `/kcd debug castbar` — print (to chat) the current target's cast state plus the configured/live per-state colors and `notInterruptible`'s type/secret-status. Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump.
+- `/kcd debug castbar` — print (to chat) one unit's cast state plus the configured/live per-state colors and `notInterruptible`'s type/secret-status (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump.
 - `/kcd debug interrupt` — dump (to chat) every `UnitCastingInfo` / `UnitChannelInfo` position with `type()` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting("target")` and the addon-wide visibility / glow-trigger logic decided. The reference for diagnosing 12.0 secret-value handling drift (especially regressions in the `target_casting_interruptible` mode where `notInterruptible` cannot be inspected from Lua). Reads safely via the `safeRender` helper that short-circuits secret values to `<secret>`.
 
 ## In-game spot checks

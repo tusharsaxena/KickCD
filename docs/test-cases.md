@@ -586,7 +586,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
-### test_slash_style.lua (6)
+### test_slash_style.lua (10)
 
 - /kcd help emits no line ending in ':' (slash-commands-§4)
 - bare /kcd emits no line ending in ':'
@@ -594,6 +594,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - /kcd spells sub-header emits no line ending in ':'
 - every COMMANDS verb description is free of a trailing ':'
 - an unknown verb's error line does not end in ':'
+- /kcd debug spells emits no line ending in ':'
+- /kcd debug castbar emits no line ending in ':'
+- /kcd debug interrupt emits no line ending in ':'
+- no addon source passes a ':'-terminated literal to a printer
 
 ### test_list_mode.lua (5)
 
@@ -639,6 +643,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_widgets.lua | 26 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
-| test_slash_style.lua | 6 |
+| test_slash_style.lua | 10 |
 | test_list_mode.lua | 5 |
-| **Total** | **499** |
+| **Total** | **503** |
