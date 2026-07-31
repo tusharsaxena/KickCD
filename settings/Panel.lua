@@ -37,8 +37,14 @@ NS.Settings.order     = { "general", "icons", "castbar", "label", "spells", "pro
 NS.Settings.Schema    = NS.Settings.Schema or {}
 NS.Settings._panels   = NS.Settings._panels or {}
 
-local Helpers = {}
-NS.Settings.Helpers = Helpers
+-- NS.Settings.Helpers IS the LibKa0s-Options-1.0 instance, built in
+-- settings/OptionsSetup.lua which loads immediately before this file. This file
+-- DECORATES it in place with the pieces that did not generalise, rather than
+-- creating a fresh table (options-ui-§1): a host page helper added later has to
+-- be able to call Helpers.RenderRows like any other page does, and a suite that
+-- swaps a member out to spy on it must be swapping the one the library's own
+-- callers see.
+local Helpers = NS.Settings.Helpers
 
 -- ---------------------------------------------------------------------
 -- db.profile path helpers
@@ -291,10 +297,14 @@ end
 -- Sourced from KickCD.Const so the values live in exactly one place
 -- across the addon — see core/Constants.lua for the rationale on each.
 
-local PADDING_X     = NS.Const.PANEL_PADDING_X
-local HEADER_TOP    = NS.Const.PANEL_HEADER_TOP
-local HEADER_HEIGHT = NS.Const.PANEL_HEADER_HEIGHT
-local DEFAULTS_W    = NS.Const.PANEL_DEFAULTS_W
+-- Only PADDING_X survives, and only because this addon's own landing-page body
+-- still uses it. HEADER_TOP and HEADER_HEIGHT went with the header: those are
+-- LibKa0s-Options-1.0's LAYOUT table now, and options-ui-§8 is explicit that a
+-- host MUST NOT keep its own copies — a host copy is the copy that goes stale,
+-- and the whole point is that the panels cannot drift apart. Where host code
+-- needs one, it reads it off the instance (Helpers.ROW_VSPACER,
+-- Helpers.SECTION_HEADING_H, Helpers.BUTTON_PAIR_REL) rather than restating it.
+local PADDING_X = NS.Const.PANEL_PADDING_X
 
 -- ---------------------------------------------------------------------
 -- Tooltip helper — works on AceGUI widgets (via SetCallback) and plain
@@ -334,288 +344,6 @@ Helpers.AttachTooltip = attachTooltip
 -- Header (title + Defaults button + divider)
 -- ---------------------------------------------------------------------
 
-local function buildHeader(panel, title, opts)
-    -- Sub-pages render with an "Ka0s KickCD ▸ <Page>" breadcrumb. The
-    -- separator is an inline texture (not a glyph) so it renders the
-    -- same regardless of the active FontString font / locale fallback.
-    -- The parent/main page opts in to the unprefixed form via
-    -- opts.isMain (otherwise it would read "Ka0s KickCD ▸ Ka0s KickCD").
-    -- The Blizzard left-tree label is driven by panel.name in
-    -- CreatePanel and stays unprefixed so the tree indents under the
-    -- parent without visual repetition.
-    local displayTitle = title
-    if not opts.isMain then
-        local sep = " |A:common-icon-forwardarrow:16:16|a "
-        displayTitle = L["Ka0s KickCD"] .. sep .. title
-    end
-
-    local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT", PADDING_X, -HEADER_TOP)
-    titleFS:SetText(displayTitle)
-
-    local divider = panel:CreateTexture(nil, "ARTWORK")
-    divider:SetAtlas("Options_HorizontalDivider", true)
-    divider:SetPoint("TOPLEFT",  panel, "TOPLEFT",   PADDING_X, -HEADER_HEIGHT)
-    divider:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PADDING_X, -HEADER_HEIGHT)
-    -- Tint to match the title's font color (Blizzard's NORMAL_FONT_COLOR
-    -- yellow on GameFontNormalHuge). Reading from the title rather than
-    -- hardcoding the gold tracks any future theme retune.
-    divider:SetVertexColor(titleFS:GetTextColor())
-
-    -- Record the INTENT only; the widget itself is built on first OnShow
-    -- by Helpers.EnsureDefaultsButton (see the note on that function for
-    -- why it can't be created here).
-    panel.wantsDefaultsButton = opts.defaultsButton and true or false
-    panel.defaultsTooltip     = opts.defaultsTooltip
-
-    return titleFS, divider
-end
-
--- Build the header's Defaults button once, on the panel's FIRST OnShow.
---
--- It stays an AceGUI Button (options-ui-§5), but *when* it's created
--- matters as much as *what* creates it. AceGUI is a shared library:
--- UI-skinning addons restyle its widgets by hooking `RegisterAsWidget`,
--- so any widget created BEFORE that hook is installed keeps Blizzard's
--- stock `UI-Panel-Button-Up` art — the red stone button — for the rest
--- of the session, while everything created after it comes out skinned.
---
--- Settings-category registration runs during load (ADDON_LOADED /
--- PLAYER_LOGIN), so building the button there is a race against every
--- other addon's load order: this addon wins it only while it happens to
--- load after the skinner. Rename the folder, or add a skin, and the same
--- code renders red. Deferring to first OnShow removes the race outright —
--- by then every addon has loaded. Do NOT "simplify" this back into
--- buildHeader / CreatePanel.
---
--- Idempotent: safe to call as the first statement of every OnShow.
-function Helpers.EnsureDefaultsButton(panel)
-    if not panel or panel.defaultsBtn or not panel.wantsDefaultsButton then
-        return
-    end
-    if not AceGUI then return end
-
-    local btn = AceGUI:Create("Button")
-    if not (btn and btn.frame) then return end
-    btn:SetText(L["Defaults"])
-    btn:SetWidth(DEFAULTS_W)
-    btn.frame:SetParent(panel)
-    btn.frame:ClearAllPoints()
-    btn.frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT",
-                       -PADDING_X, -HEADER_TOP)
-    btn.frame:Show()
-    attachTooltip(btn, L["Defaults"], panel.defaultsTooltip)
-    panel.defaultsBtn = btn
-
-    -- The click handler is registered at Build() time, before the button
-    -- exists, so it's parked on the panel and wired here.
-    if panel.defaultsOnClick then
-        btn:SetCallback("OnClick", panel.defaultsOnClick)
-    end
-end
-
--- ---------------------------------------------------------------------
--- CreatePanel — Frame compatible with RegisterCanvasLayoutSubcategory
--- with the unified header stamped on top. Returns a `ctx` table the
--- caller threads through Section / RenderField / RenderSchema /
--- Button / RestoreDefaults.
--- ---------------------------------------------------------------------
-
-function Helpers.CreatePanel(name, title, opts)
-    opts = opts or {}
-
-    local panel = CreateFrame("Frame", name)
-    panel.name = title
-    panel:Hide()
-
-    local titleFS, divider = buildHeader(panel, title, opts)
-    panel.title   = titleFS
-    panel.divider = divider
-
-    local body = CreateFrame("Frame", nil, panel)
-    body:SetPoint("TOPLEFT",     panel, "TOPLEFT",     0, -(HEADER_HEIGHT + 8))
-    body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0)
-    panel.body = body
-
-    local ctx = {
-        panel       = panel,
-        body        = body,
-        scroll      = nil,           -- lazy AceGUI ScrollFrame
-        refreshers  = {},
-        lastGroup   = nil,
-        panelKey    = opts.panelKey,
-        -- Selected unit for per-unit schema panels (Icons / Castbar). Left
-        -- nil here on purpose: panels without a unit selector (General,
-        -- Spells, Profiles) must render rows for every unit, and
-        -- RenderSchema passes ctx.unit straight into SchemaForPanel, where
-        -- unit == nil is what makes that "all units" match happen. Only
-        -- Helpers.RenderUnitPanel (Icons / Castbar) defaults ctx.unit to
-        -- "target", right before it draws the selector.
-    }
-    NS.Settings._panels[#NS.Settings._panels + 1] = ctx
-    return ctx
-end
-
--- ---------------------------------------------------------------------
--- Always-visible scrollbar patch
--- ---------------------------------------------------------------------
---
--- AceGUI's stock ScrollFrame.FixScroll auto-hides the scrollbar when
--- content fits inside the viewport. Across our settings tabs that
--- means General (short) shows no scrollbar while Icons / Cast bar
--- (long) do — visually asymmetric.
---
--- This helper rebinds FixScroll on a single ScrollFrame instance to
--- always keep the scrollbar (and its 20 px right-side gutter) shown,
--- and parks the thumb at the top when there's nothing to scroll. The
--- gutter persists either way so the body content's right edge sits at
--- the same x across every panel.
---
--- We restore the stock FixScroll + OnRelease on widget release so the
--- AceGUI pool returns to a clean state — AceGUI's pool is shared
--- across addons, and we don't want our patch leaking into another
--- addon's ScrollFrame after it picks up the same recycled instance.
-function Helpers.PatchAlwaysShowScrollbar(scroll)
-    if not scroll or scroll._kcdAlwaysScrollbar then return end
-    scroll._kcdAlwaysScrollbar = true
-
-    local origFixScroll  = scroll.FixScroll
-    local origMoveScroll = scroll.MoveScroll
-    local origOnRelease  = scroll.OnRelease
-
-    -- Look up the UIPanelScrollBarTemplate's optional up/down arrow
-    -- buttons by name. Newer scrollbar variants strip these; in that
-    -- case we simply skip the button-side toggle. Cached once because
-    -- the names are stable for the widget's lifetime.
-    local scrollbar  = scroll.scrollbar
-    local thumb      = scrollbar and scrollbar.GetThumbTexture and scrollbar:GetThumbTexture() or nil
-    local sbName     = scrollbar and scrollbar.GetName and scrollbar:GetName() or nil
-    local upBtn      = sbName and _G[sbName .. "ScrollUpButton"]   or nil
-    local downBtn    = sbName and _G[sbName .. "ScrollDownButton"] or nil
-
-    -- Tri-state: nil = "not yet applied" (forces the first transition
-    -- to actually run regardless of which way it goes). After that,
-    -- `true` / `false` short-circuit redundant calls every OnUpdate
-    -- tick, since FixScroll runs on every paint.
-    local currentEnabled
-
-    local function setEnabled(want)
-        if currentEnabled == want then return end
-        currentEnabled = want
-        if not scrollbar then return end
-
-        if want then
-            if scrollbar.Enable then scrollbar:Enable() end
-            if thumb and thumb.SetVertexColor then
-                thumb:SetVertexColor(1, 1, 1, 1)
-            end
-            if upBtn   and upBtn.Enable   then upBtn:Enable()   end
-            if downBtn and downBtn.Enable then downBtn:Enable() end
-        else
-            -- Park the value at 0 first so the thumb sits at the top
-            -- before we lock interaction down. Disabling the slider
-            -- first and *then* parking would skip OnValueChanged.
-            scrollbar:SetValue(0)
-            if scrollbar.Disable then scrollbar:Disable() end
-            if thumb and thumb.SetVertexColor then
-                thumb:SetVertexColor(0.5, 0.5, 0.5, 0.6)
-            end
-            if upBtn   and upBtn.Disable   then upBtn:Disable()   end
-            if downBtn and downBtn.Disable then downBtn:Disable() end
-        end
-    end
-
-    -- Initial setup: reserve the gutter and reveal the scrollbar.
-    -- Mirrors the "scrollbar visible" branch of stock FixScroll so we
-    -- don't have to wait for the first OnUpdate tick to take effect.
-    scroll.scrollBarShown = true
-    if scrollbar then scrollbar:Show() end
-    if scroll.scrollframe then
-        scroll.scrollframe:SetPoint("BOTTOMRIGHT", -20, 0)
-    end
-    if scroll.content and scroll.content.original_width then
-        scroll.content.width = scroll.content.original_width - 20
-    end
-
-    -- Rebound FixScroll: the upstream "viewheight < height + 2 →
-    -- hide scrollbar" branch is replaced by "park thumb at top,
-    -- disable interaction, leave scrollbar visible." The overflow
-    -- branch is kept verbatim so actual scrolling still works on long
-    -- panels.
-    scroll.FixScroll = function(self)
-        if self.updateLock then return end
-        self.updateLock = true
-
-        -- Defensive re-show in case Blizzard or AceGUI layout has
-        -- stomped our anchor / content width since the last tick.
-        if not self.scrollBarShown then
-            self.scrollBarShown = true
-            self.scrollbar:Show()
-            self.scrollframe:SetPoint("BOTTOMRIGHT", -20, 0)
-            if self.content.original_width then
-                self.content.width = self.content.original_width - 20
-            end
-        end
-
-        local status = self.status or self.localstatus
-        local height, viewheight =
-            self.scrollframe:GetHeight(), self.content:GetHeight()
-        local offset = status.offset or 0
-
-        if viewheight < height + 2 then
-            -- Content fits: park the thumb at the top and grey the
-            -- scrollbar out so the user reads it as inert.
-            setEnabled(false)
-            self.scrollbar:SetValue(0)
-            self.scrollframe:SetVerticalScroll(0)
-            status.offset = 0
-        else
-            setEnabled(true)
-            local value = (offset / (viewheight - height) * 1000)
-            if value > 1000 then value = 1000 end
-            self.scrollbar:SetValue(value)
-            self:SetScroll(value)
-            if value < 1000 then
-                self.content:ClearAllPoints()
-                self.content:SetPoint("TOPLEFT",  0, offset)
-                self.content:SetPoint("TOPRIGHT", 0, offset)
-                status.offset = offset
-            end
-        end
-
-        self.updateLock = nil
-    end
-
-    -- MoveScroll is the mousewheel entrypoint. Stock implementation
-    -- writes through to scrollbar:SetValue, which would shift the
-    -- thumb visually even though SetScroll's offset guard keeps the
-    -- content stationary. Short-circuit when disabled so a wheel
-    -- input over a content-fits panel is fully inert.
-    scroll.MoveScroll = function(self, value)
-        if currentEnabled == false then return end
-        if origMoveScroll then return origMoveScroll(self, value) end
-    end
-
-    -- Undo the patch on release so the recycled widget pool returns
-    -- to stock behavior for any subsequent acquirer.
-    scroll.OnRelease = function(self)
-        self.FixScroll  = origFixScroll
-        self.MoveScroll = origMoveScroll
-        self.OnRelease  = origOnRelease
-        self._kcdAlwaysScrollbar = nil
-        currentEnabled  = nil
-        -- Restore the thumb's normal vertex color in case OnRelease
-        -- runs while we're in the disabled state — otherwise the
-        -- next acquirer would inherit a greyed thumb.
-        if thumb and thumb.SetVertexColor then
-            thumb:SetVertexColor(1, 1, 1, 1)
-        end
-        if scrollbar and scrollbar.Enable then scrollbar:Enable() end
-        if upBtn   and upBtn.Enable   then upBtn:Enable()   end
-        if downBtn and downBtn.Enable then downBtn:Enable() end
-        if origOnRelease then origOnRelease(self) end
-    end
-end
 
 -- ---------------------------------------------------------------------
 -- Lazy AceGUI scroll container. Tabs that drive ctx.body directly
@@ -692,13 +420,10 @@ Helpers.FireOnChange = fireOnChange
 --     widget of the section away from the heading.
 -- ---------------------------------------------------------------------
 
-local SECTION_TOP_SPACER    = 10
-local SECTION_BOTTOM_SPACER = 6
 -- Pixel gap inserted between each two-column row of schema widgets so adjacent
 -- rows have visual breathing room. AceGUI's "List" layout packs children flush
 -- by default; this spacer is what gives the rendered panel its airy look.
 local ROW_VSPACER = 8
-local SECTION_HEADING_H     = 26
 -- Published so settings/Panel_Widgets.lua (InlinePair) and
 -- settings/Panel_Render.lua (RenderRows / RenderUnitPanel) insert the
 -- same inter-row gap as the in-file renderers.
@@ -716,26 +441,6 @@ end
 -- panel headers (unit selector, focus link/copy row) want the same
 -- breathing-room spacer the schema renderer uses between rows.
 Helpers.AddSpacer = addSpacer
-
-function Helpers.Section(ctx, label)
-    local scroll = ensureScroll(ctx)
-
-    if ctx.lastGroup ~= nil then
-        addSpacer(scroll, SECTION_TOP_SPACER)
-    end
-
-    local h = AceGUI:Create("Heading")
-    h:SetText(label)
-    h:SetFullWidth(true)
-    h:SetHeight(SECTION_HEADING_H)
-    if h.label and h.label.SetFontObject and _G.GameFontNormalLarge then
-        h.label:SetFontObject(_G.GameFontNormalLarge)
-    end
-    scroll:AddChild(h)
-
-    addSpacer(scroll, SECTION_BOTTOM_SPACER)
-    return h
-end
 
 -- ---------------------------------------------------------------------
 -- Main (parent-category) page content
@@ -910,3 +615,9 @@ bootstrap:SetScript("OnEvent", function(self, event, arg1)
         self:UnregisterAllEvents()
     end
 end)
+
+
+-- (CreatePanel, EnsureDefaultsButton, PatchAlwaysShowScrollbar and Section are
+-- LibKa0s-Options-1.0's now — the canvas shell, the header and breadcrumb, the
+-- lazily-created Defaults button and the always-shown scrollbar patch. They
+-- were ~230 lines here and identical in intent across the collection.)

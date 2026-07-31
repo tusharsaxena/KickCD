@@ -175,6 +175,7 @@ local SUITES = {
     "test_settings_log.lua",
     "test_settings_spells.lua",
     "test_settings_widgets.lua",
+    "test_options_panel.lua",
     "test_settings_refreshers.lua",
     "test_flow_traces.lua",
     "test_version.lua",

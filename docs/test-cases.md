@@ -144,7 +144,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (12)
+### test_schema.lua (11)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -154,7 +154,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Helpers.FindSchema locates a row by path
 - General exposes focus rows; unit-selector panels still filter them out
 - label panel carries per-unit label rows; General no longer does
-- RenderRows survives a row whose render throws (no blank panel)
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: no schema row targets it (§12.5)
@@ -616,15 +615,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_widgets.lua (26)
+### test_settings_widgets.lua (20)
 
 - the settings helpers are published for testing
-- SnapToStep lands a drag on the nearest step
-- SnapToStep rounds a value exactly halfway UP
-- SnapToStep measures steps from the slider's MINIMUM, not from zero
-- SnapToStep handles a negative minimum (offset sliders)
-- SnapToStep leaves the value alone when there is no step
-- SnapToStep supports a fractional step
 - SortedKeys returns a deterministic ordering
 - SortedKeys returns an empty list for a nil or non-table input
 - SpecOrder lists specs in Blizzard's order, not numeric order
@@ -644,6 +637,31 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken lower-cases everything after the first letter
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
+
+### test_options_panel.lua (22)
+
+- NS.Settings.Helpers IS the library instance, decorated in place
+- the host ships no widget maker, flow engine or layout constant of its own
+- a bool row renders a checkbox labelled from the row
+- a number row renders a slider carrying the row's range
+- a string row renders a dropdown listing the KEYED options in declared order
+- a colour row renders a picker with alpha and the decoded colour
+- ticking a checkbox writes through the addon's single write seam
+- a checkbox write fires CONFIG_CHANGED with the row's section
+- dragging a slider commits on mouse-up
+- choosing a dropdown option stores the option KEY, never its index
+- confirming a colour stores the keyed shape the modules read
+- an external write re-syncs an open widget through its refresher
+- releasing a page's widgets drops that page's refreshers
+- InlinePair puts both caller-supplied widgets in ONE row
+- SessionToggle adapts this addon's argument order onto the library's
+- a session toggle never becomes a saved setting
+- the Profiles page is vetoed from a global reset
+- a global reset also clears the state no schema row owns
+- with LibKa0s absent the schema still loads COMPLETE
+- the degraded stub keeps the global reset real
+- the degraded stub opens no panel and says so once
+- the degraded stub carries no widget maker or layout constant
 
 ### test_settings_refreshers.lua (5)
 
@@ -741,7 +759,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
-| test_schema.lua | 12 |
+| test_schema.lua | 11 |
 | test_database.lua | 20 |
 | test_color_shape.lua | 20 |
 | test_bus.lua | 4 |
@@ -767,7 +785,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
-| test_settings_widgets.lua | 26 |
+| test_settings_widgets.lua | 20 |
+| test_options_panel.lua | 22 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -775,4 +794,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_slash.lua | 24 |
 | test_perfsetup.lua | 16 |
 | test_list_mode.lua | 5 |
-| **Total** | **605** |
+| **Total** | **620** |

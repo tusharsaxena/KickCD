@@ -27,7 +27,7 @@ add{
     panel    = "general",  section = "general",  group = L["Master controls"],
     path     = "enabled",  type    = "bool",
     label    = L["Enable KickCD"],
-    tooltip  = L["Master enable for the addon."],
+    desc  = L["Master enable for the addon."],
     default  = true,
 }
 
@@ -35,7 +35,7 @@ add{
     panel    = "general",   section = "general", group = L["Master controls"],
     path     = "visibility", type    = "string",
     label    = L["General visibility"],
-    tooltip  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
+    desc  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
     default  = "target_casting_interruptible",
     values   = {
         ["always"] = L["Always"],
@@ -50,7 +50,7 @@ add{
     panel    = "general",  section = "general",  group = L["Master controls"],
     path     = "locked",   type    = "bool",
     label    = L["Lock frame"],
-    tooltip  = L["When unlocked, you can drag the icon grid to reposition it."],
+    desc  = L["When unlocked, you can drag the icon grid to reposition it."],
     default  = false,
     -- Rendered manually by the Master-controls afterGroup so it can pair on
     -- one row with the bespoke session-only Debug console toggle (InlinePair).
@@ -66,7 +66,7 @@ add{
     panel    = "general",  section = "general",  group = L["Appearance"],
     path     = "scale",    type    = "number",
     label    = L["Master scale"],
-    tooltip  = L["Scale multiplier applied to the entire icon grid."],
+    desc  = L["Scale multiplier applied to the entire icon grid."],
     default  = 1.0,
     min = 0.5, max = 2.0, step = 0.05, fmt = "%.2fx",
 }
@@ -75,7 +75,7 @@ add{
     panel    = "general",  section = "general",  group = L["Appearance"],
     path     = "alpha",    type    = "number",
     label    = L["Master alpha"],
-    tooltip  = L["Global opacity for the icon grid."],
+    desc  = L["Global opacity for the icon grid."],
     default  = 1.0,
     min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
@@ -152,7 +152,7 @@ local function Build(mainCategory)
                     function(c, row)
                         H.SessionToggle(c, {
                             label   = L["Debug console"],
-                            tooltip = L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."],
+                            desc = L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."],
                             get     = function() return NS.DebugLog and NS.DebugLog:IsShown() end,
                             set     = function(on)
                                 if not NS.DebugLog then return end
@@ -163,12 +163,12 @@ local function Build(mainCategory)
                 H.InlineButtonPair(ctxRef,
                     {
                         text    = L["Reset position"],
-                        tooltip = L["Restore the icon grid to its default screen position."],
+                        desc = L["Restore the icon grid to its default screen position."],
                         onClick = function() H.ResetIconPosition() end,
                     },
                     {
                         text    = L["Reset all settings"],
-                        tooltip = L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
+                        desc = L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
                         onClick = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
                     })
             end,

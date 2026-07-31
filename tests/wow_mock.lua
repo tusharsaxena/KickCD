@@ -149,6 +149,12 @@ function FRAME_METHODS.GetFrameLevel(self) return self.__level end
 function FRAME_METHODS.SetFrameStrata(self, s) self.__strata = s; return self end
 function FRAME_METHODS.GetFrameStrata(self) return self.__strata end
 function FRAME_METHODS.GetObjectType(self) return self.__objectType end
+--- A real STRING, not the frame. Kit fidelity rule 2: getters used in
+--- concatenation must return real strings — the always-shown-scrollbar patch
+--- builds a global name out of this one, and a table there raises inside the
+--- library on the first panel render.
+function FRAME_METHODS.GetName(self) return self.__name end
+function FRAME_METHODS.SetName(self, n) self.__name = n; return self end
 
 -- ── Parenting ───────────────────────────────────────────────────────────────
 function FRAME_METHODS.SetParent(self, p) self.__parent = p; self._parent = p; return self end
@@ -304,9 +310,15 @@ function FRAME_METHODS.IsEventRegistered(self, ev) return self.__events[ev] ~= n
 --- Build a frame stub. `objectType` mirrors CreateFrame's first argument
 --- (or "Texture"/"FontString" for regions); `parent` wires the chain that
 --- IsVisible and GetEffectiveScale walk.
-function makeFrame(objectType, parent)
+local frameSeq = 0
+function makeFrame(objectType, parent, name)
+    frameSeq = frameSeq + 1
     local f = {
         __objectType = objectType or "Frame",
+        -- Always a STRING. An anonymous frame gets a synthetic unique name
+        -- rather than nil, because the scrollbar patch concatenates GetName()
+        -- and a nil there is the same crash as a table.
+        __name       = name or ("KickCDMockFrame" .. frameSeq),
         __parent     = parent,
         _parent      = parent,   -- historical alias asserted by existing suites
         __shown      = true,     -- CreateFrame'd frames start shown
@@ -532,18 +544,102 @@ local function build()
     function LSM.HashTable() return {} end
     function LSM.IsValid() return true end
 
+    -- AceGUI-3.0. The previous stub handed back a bare frame, so SetCallback was
+    -- a no-op and NOT ONE widget callback in the addon was reachable — the whole
+    -- schema -> widget -> write path was untestable, which is exactly why the
+    -- adoption prompt gates the Options milestone on this.
+    --
+    -- Widgets are inert data recorders rather than frames: they remember what
+    -- was set on them and expose __fire so a test can drive OnValueChanged /
+    -- OnMouseUp / OnValueConfirmed the way a real click would.
+    --
+    -- Deliberately a VERBATIM port of tests/_kit/mock_base.lua's builder, so
+    -- adopting the shared kit deletes this block rather than reconciling two
+    -- divergent widget fakes.
+    local function makeWidget(wtype)
+        local w = {
+            type      = wtype,
+            children  = {},
+            callbacks = {},
+            frame     = makeFrame(),
+        }
+        function w:SetLabel(v) self.labelText = v; return self end
+        function w:SetText(v) self.text = v; return self end
+        function w:SetValue(v) self.value = v; return self end
+        function w:GetValue() return self.value end
+        function w:SetList(items, order) self.list, self.order = items, order; return self end
+        function w:SetColor(r, g, b, a) self.color = { r = r, g = g, b = b, a = a }; return self end
+        function w:SetHasAlpha(v) self.hasAlpha = v; return self end
+        function w:SetDisabled(v) self.disabled = v and true or false; return self end
+        function w:SetSliderValues(mn, mx, st) self.min, self.max, self.step = mn, mx, st; return self end
+        function w:SetIsPercent(v) self.isPercent = v; return self end
+        function w:SetWidth(v) self.width = v; return self end
+        function w:SetHeight(v) self.height = v; return self end
+        function w:SetRelativeWidth(v) self.relativeWidth = v; return self end
+        function w:SetFullWidth(v) self.fullWidth = v and true or false; return self end
+        function w:SetLayout(v) self.layout = v; return self end
+        function w:SetAutoAdjustHeight(v) self.autoAdjustHeight = v; return self end
+        function w:SetImage(...) self.image = { ... }; return self end
+        function w:SetImageSize(...) self.imageSize = { ... }; return self end
+        function w:SetMaxLetters(v) self.maxLetters = v; return self end
+        function w:SetCallback(name, fn) self.callbacks[name] = fn; return self end
+        function w:AddChild(child) self.children[#self.children + 1] = child; return self end
+        function w:ReleaseChildren() self.children = {}; return self end
+        function w:DoLayout() self.layoutCount = (self.layoutCount or 0) + 1; return self end
+        -- AceGUI invokes a callback as fn(widget, eventName, ...); mirrored
+        -- exactly, because the makers destructure it as function(_, _, value).
+        function w:__fire(name, ...)
+            local fn = self.callbacks[name]
+            if fn then return fn(self, name, ...) end
+        end
+
+        if wtype == "ScrollFrame" then
+            -- The always-shown-scrollbar patch reaches into these three by name
+            -- and does real arithmetic with them.
+            w.scrollbar   = makeFrame()
+            w.scrollframe = makeFrame()
+            w.content     = makeFrame()
+            w.content.original_width = 400
+            w.localstatus = { offset = 0 }
+            function w:FixScroll() self.fixScrollCount = (self.fixScrollCount or 0) + 1 end
+            function w:MoveScroll(v) self.movedTo = v end
+            function w:SetScroll(v) self.scrolledTo = v end
+        end
+        return w
+    end
+
+    local function makeAceGUI()
+        local g = {
+            -- Empty by default, which models AceGUI-3.0-SharedMediaWidgets being
+            -- absent: a dropdown maker asks GetWidgetVersion about LSM30_* and
+            -- falls back to a plain Dropdown when it comes back nil.
+            WidgetRegistry   = {},
+            __widgetVersions = {},
+            -- Every widget handed out, in creation order. The only way a test can
+            -- reach a widget on a page whose ctx the toolkit keeps private.
+            __created        = {},
+        }
+        function g:Create(wtype)
+            local ctor = self.WidgetRegistry[wtype]
+            local w = ctor and ctor() or makeWidget(wtype)
+            self.__created[#self.__created + 1] = w
+            return w
+        end
+        function g:GetWidgetVersion(wtype) return self.__widgetVersions[wtype] end
+        function g:RegisterWidgetType(wtype, ctor, version)
+            self.WidgetRegistry[wtype]   = ctor
+            self.__widgetVersions[wtype] = version
+        end
+        return g
+    end
+
     local libs = {
         ["AceAddon-3.0"]        = AceAddon,
         ["AceDB-3.0"]           = AceDB,
         ["AceEvent-3.0"]        = { Embed = function(_, t) return embedAceEvent(t) end },
         ["AceTimer-3.0"]        = { Embed = function(_, t) return embedAceTimer(t) end },
         ["AceConsole-3.0"]      = { Embed = function(_, t) return embedAceConsole(t) end },
-        ["AceGUI-3.0"]          = (function()
-            local g = noopLib()
-            function g.Create() return makeFrame() end
-            function g.RegisterWidgetType() end
-            return g
-        end)(),
+        ["AceGUI-3.0"]          = makeAceGUI(),
         ["AceConfig-3.0"]         = noopLib(),
         ["AceConfigDialog-3.0"]   = noopLib(),
         ["AceConfigRegistry-3.0"] = noopLib(),
@@ -594,6 +690,7 @@ local function build()
             minors = minors,
         },
     })
+    mocks.__aceGUI = libs["AceGUI-3.0"]
     mocks.__libs = libs
     mocks.__libMinors = minors
 
@@ -613,8 +710,11 @@ local function build()
     -- the tests.
     local created = {}
     mocks.__frames = created
-    mocks.CreateFrame = function(frameType, _name, parent, template)
-        local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent)
+    mocks.CreateFrame = function(frameType, name, parent, template)
+        -- The NAME is honoured rather than discarded: the library derives frame
+        -- globals from a descriptor and the scrollbar patch builds a name from
+        -- GetName(), so a test that cannot see the name cannot assert either.
+        local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent, name)
         f.__template = template
         created[#created + 1] = f
         return f

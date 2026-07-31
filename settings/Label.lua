@@ -86,79 +86,79 @@ local function addUnitRows(unit)
     add{ panel = "label", section = "label", unit = unit, group = L["Label"],
          path = "units." .. unit .. ".label.show", type = "bool",
          label = L["Show label"],
-         tooltip = L["Show this unit's identity label."],
+         desc = L["Show this unit's identity label."],
          default = true }
     add{ panel = "label", section = "label", unit = unit, group = L["Label"],
          path = "units." .. unit .. ".label.text", type = "string",
          label = L["Label text"],
-         tooltip = L["Text shown on this unit's label."],
+         desc = L["Text shown on this unit's label."],
          default = (unit == "target" and "Target" or "Focus") }
 
     -- Placement -----------------------------------------------------------
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.attach", type = "string",
          label = L["Attach to"],
-         tooltip = L["Which widget the label anchors to."],
+         desc = L["Which widget the label anchors to."],
          default = "icons", values = ATTACH_VALUES, sorting = ATTACH_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.point", type = "string",
          label = L["Label anchor point"],
-         tooltip = L["Which point of the label attaches."],
+         desc = L["Which point of the label attaches."],
          default = "BOTTOM", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.relPoint", type = "string",
          label = L["Attach point"],
-         tooltip = L["Which point of the target widget the label attaches to."],
+         desc = L["Which point of the target widget the label attaches to."],
          default = "TOP", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.offsetX", type = "number",
          label = L["X offset (in px)"],
-         tooltip = L["Horizontal pixel shift (positive = right)."],
+         desc = L["Horizontal pixel shift (positive = right)."],
          default = 0, min = -200, max = 200, step = 1, fmt = "%d px" }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
          path = "units." .. unit .. ".label.style.offsetY", type = "number",
          label = L["Y offset (in px)"],
-         tooltip = L["Vertical pixel shift (positive = up)."],
+         desc = L["Vertical pixel shift (positive = up)."],
          default = 12, min = -200, max = 200, step = 1, fmt = "%d px" }
 
     -- Orientation ---------------------------------------------------------
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],
          path = "units." .. unit .. ".label.style.justifyH", type = "string",
          label = L["Horizontal justify"],
-         tooltip = L["Horizontal text alignment."],
+         desc = L["Horizontal text alignment."],
          default = "CENTER", values = JUSTIFY_H_VALUES, sorting = JUSTIFY_H_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],
          path = "units." .. unit .. ".label.style.justifyV", type = "string",
          label = L["Vertical justify"],
-         tooltip = L["Vertical text alignment."],
+         desc = L["Vertical text alignment."],
          default = "MIDDLE", values = JUSTIFY_V_VALUES, sorting = JUSTIFY_V_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Orientation"],
          path = "units." .. unit .. ".label.style.rotation", type = "number",
          label = L["Rotation (degrees)"],
-         tooltip = L["Rotate the label. 0 = upright."],
+         desc = L["Rotate the label. 0 = upright."],
          default = 0, min = -180, max = 180, step = 5, fmt = "%d°" }
 
     -- Font ----------------------------------------------------------------
     add{ panel = "label", section = "label", unit = unit, group = L["Font"],
          path = "units." .. unit .. ".label.style.font", type = "string",
          label = L["Font"],
-         tooltip = L["LSM font for the label."],
+         desc = L["LSM font for the label."],
          default = "Friz Quadrata TT", lsm = "font",
          values = function() return H.LSMValues("font") end }
     add{ panel = "label", section = "label", unit = unit, group = L["Font"],
          path = "units." .. unit .. ".label.style.size", type = "number",
          label = L["Font size"],
-         tooltip = L["Label font size in pixels."],
+         desc = L["Label font size in pixels."],
          default = 14, min = 6, max = 48, step = 1, fmt = "%d" }
     add{ panel = "label", section = "label", unit = unit, group = L["Font"],
          path = "units." .. unit .. ".label.style.flags", type = "string",
          label = L["Font flags"],
-         tooltip = L["Outline / monochrome flags."],
+         desc = L["Outline / monochrome flags."],
          default = "OUTLINE", values = FLAG_VALUES, sorting = FLAG_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Font"],
          path = "units." .. unit .. ".label.style.color", type = "color", hasAlpha = true,
          label = L["Label color"],
-         tooltip = L["Color of the label text."],
+         desc = L["Color of the label text."],
          default = { r = 1, g = 0.82, b = 0, a = 1 } }
 end
 

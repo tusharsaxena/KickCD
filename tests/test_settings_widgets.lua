@@ -5,7 +5,7 @@
 -- pieces pinned here are the ones where a bug reaches the SavedVariables file
 -- rather than just the screen:
 --
---   * snapToStep decides what value a slider drag actually writes;
+--   * validateSpellInput decides whether a spell the user typed is accepted
 --   * validateSpellInput decides whether a spell the user typed is accepted
 --     into their list at all, and is the one place a raw ID and a spell name
 --     converge;
@@ -21,52 +21,16 @@ local Helpers = NS.Settings.Helpers
 local Spells  = NS.Settings.SpellsPanel
 
 test("the settings helpers are published for testing", function()
-    assertTrue(type(Helpers.SnapToStep) == "function")
     assertTrue(type(Spells.ValidateSpellInput) == "function")
     assertTrue(type(Spells.SpecOrder) == "function")
     assertTrue(type(Spells.SortedKeys) == "function")
 end)
 
--- ── snapToStep ──────────────────────────────────────────────────────────────
-
-test("SnapToStep lands a drag on the nearest step", function()
-    -- Without snapping, a size slider writes 17.3194 into SavedVariables and
-    -- the panel then displays that back to the user.
-    assertEqual(Helpers.SnapToStep(17, 0, 5), 15)
-    assertEqual(Helpers.SnapToStep(18, 0, 5), 20)
-end)
-
-test("SnapToStep rounds a value exactly halfway UP", function()
-    -- Deterministic tie-breaking; otherwise the same drag can land either way
-    -- depending on float noise.
-    assertEqual(Helpers.SnapToStep(12.5, 0, 5), 15)
-end)
-
-test("SnapToStep measures steps from the slider's MINIMUM, not from zero", function()
-    -- A range starting at 8 with step 5 must offer 8/13/18, not 10/15/20 —
-    -- otherwise the minimum itself isn't reachable.
-    assertEqual(Helpers.SnapToStep(8, 8, 5), 8)
-    assertEqual(Helpers.SnapToStep(10, 8, 5), 8)
-    assertEqual(Helpers.SnapToStep(11, 8, 5), 13)
-end)
-
-test("SnapToStep handles a negative minimum (offset sliders)", function()
-    assertEqual(Helpers.SnapToStep(-7, -20, 5), -5)
-    assertEqual(Helpers.SnapToStep(-20, -20, 5), -20)
-end)
-
-test("SnapToStep leaves the value alone when there is no step", function()
-    -- A continuous slider must not be quantised to whatever step happened to
-    -- be nil-defaulted.
-    assertEqual(Helpers.SnapToStep(17.3, 0, nil), 17.3)
-    assertEqual(Helpers.SnapToStep(17.3, 0, 0), 17.3)
-end)
-
-test("SnapToStep supports a fractional step", function()
-    -- Alpha and scale rows step by 0.05 / 0.1.
-    assertEqual(Helpers.SnapToStep(0.72, 0, 0.1), 0.7000000000000001)
-    assertEqual(Helpers.SnapToStep(1, 0, 0.25), 1)
-end)
+-- (The snapToStep cases that lived here are gone: slider-step snapping is
+-- LibKa0s-Options-1.0's now, and testing-§8 moves a behaviour's coverage with
+-- the behaviour. tests/test_options_panel.lua covers what this addon still
+-- owns, and drives the schema -> widget -> write loop the old AceGUI mock
+-- could not reach at all.)
 
 -- ── sortedKeys ──────────────────────────────────────────────────────────────
 

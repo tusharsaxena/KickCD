@@ -65,28 +65,28 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
     path  = "units."..unit..".icons.primarySize", type = "number",
     label = L["Primary size (in px)"],
-    tooltip = L["Pixel size of the primary interrupt icon."],
+    desc = L["Pixel size of the primary interrupt icon."],
     default = 64, min = 24, max = 96, step = 2, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
     path  = "units."..unit..".icons.secondarySize", type = "number",
     label = L["Secondary size"],
-    tooltip = L["Secondary icon size as a fraction of the primary."],
+    desc = L["Secondary icon size as a fraction of the primary."],
     default = 0.5, min = 0.4, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
     path  = "units."..unit..".icons.gap", type = "number",
     label = L["Gap (in px)"],
-    tooltip = L["Pixel gap between adjacent icons."],
+    desc = L["Pixel gap between adjacent icons."],
     default = 0, min = 0, max = 24, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
     path  = "units."..unit..".icons.zoom", type = "number",
     label = L["Icon zoom"],
-    tooltip = L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."],
+    desc = L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."],
     default = 0.10, min = 0.0, max = 0.25, step = 0.01, fmt = "%.2f",
 }
 
@@ -95,7 +95,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.anchor", type = "string",
     label = L["Anchor point (of secondary icons relative to primary)"],
-    tooltip = L["Side and alignment of the primary icon the secondary block attaches to."],
+    desc = L["Side and alignment of the primary icon the secondary block attaches to."],
     default = "RIGHT_MIDDLE",
     values  = ANCHOR_VALUES, sorting = ANCHOR_VALUES_ORDER,
 }
@@ -103,7 +103,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.secondaryGrow", type = "string",
     label = L["Growth direction (of secondary icons)"],
-    tooltip = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
+    desc = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
     default = "down_right",
     values  = GROW_VALUES, sorting = GROW_VALUES_ORDER,
 }
@@ -111,28 +111,28 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.secondaryRows", type = "number",
     label = L["Rows"],
-    tooltip = L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."],
+    desc = L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."],
     default = 2, min = 1, max = 6, step = 1, fmt = "%d",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.secondaryCols", type = "number",
     label = L["Columns"],
-    tooltip = L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."],
+    desc = L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."],
     default = 3, min = 1, max = 12, step = 1, fmt = "%d",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.secondaryOffsetX", type = "number",
     label = L["X offset (in px)"],
-    tooltip = L["Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."],
+    desc = L["Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Layout"],
     path  = "units."..unit..".icons.secondaryOffsetY", type = "number",
     label = L["Y offset (in px)"],
-    tooltip = L["Vertical pixel shift applied to the secondary block (positive = down, negative = up)."],
+    desc = L["Vertical pixel shift applied to the secondary block (positive = down, negative = up)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 
@@ -141,28 +141,28 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.readyAlpha", type = "number",
     label = L["Ready alpha"],
-    tooltip = L["Icon alpha when the spell is off cooldown."],
+    desc = L["Icon alpha when the spell is off cooldown."],
     default = 1.0, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.cooldownAlpha", type = "number",
     label = L["Cooldown alpha"],
-    tooltip = L["Icon alpha while the spell is on cooldown."],
+    desc = L["Icon alpha while the spell is on cooldown."],
     default = 0.25, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.cooldownTint", type = "color", hasAlpha = true,
     label = L["Cooldown tint"],
-    tooltip = L["RGB tint applied to icons during cooldown."],
+    desc = L["RGB tint applied to icons during cooldown."],
     default = { r = 1, g = 0.4, b = 0.4, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.suppressGCDSwipe", type = "bool",
     label = L["Suppress GCD swipe + text"],
-    tooltip = L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."],
+    desc = L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."],
     default = true,
 }
 
@@ -174,21 +174,21 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderShow", type = "bool",
     label = L["Show border"],
-    tooltip = L["Draw a thin border around each icon."],
+    desc = L["Draw a thin border around each icon."],
     default = true,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
-    tooltip = L["Border color (RGBA)."],
+    desc = L["Border color (RGBA)."],
     default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderTexture", type = "string",
     label = L["Border style"],
-    tooltip = L["LibSharedMedia border texture (edge style) used to draw each icon's border."],
+    desc = L["LibSharedMedia border texture (edge style) used to draw each icon's border."],
     default = "Blizzard Tooltip",
     lsm     = "border",
     -- Function so we re-query LSM at click time (more borders may register
@@ -199,7 +199,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderSize", type = "number",
     label = L["Border thickness (in px)"],
-    tooltip = L["Border thickness in pixels."],
+    desc = L["Border thickness in pixels."],
     default = 2, min = 0, max = 4, step = 1, fmt = "%d px",
 }
 
@@ -212,7 +212,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.cooldownTextFont", type = "string",
     label = L["Font"],
-    tooltip = L["Font for the cooldown text overlay."],
+    desc = L["Font for the cooldown text overlay."],
     default = "Friz Quadrata TT",
     lsm     = "font",
     -- Function so we re-query LSM at click time (more fonts may register
@@ -223,14 +223,14 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.cooldownTextSize", type = "number",
     label = L["Font size"],
-    tooltip = L["Cooldown text size in pixels."],
+    desc = L["Cooldown text size in pixels."],
     default = 14, min = 8, max = 24, step = 1, fmt = "%d",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.cooldownTextFlags", type = "string",
     label = L["Font flags"],
-    tooltip = L["Outline / monochrome flags applied to cooldown text."],
+    desc = L["Outline / monochrome flags applied to cooldown text."],
     default = "OUTLINE",
     values  = {
         ["NONE"] = L["None"],
@@ -244,21 +244,21 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.showTooltip", type = "bool",
     label = L["Show tooltip on hover"],
-    tooltip = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
+    desc = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
     default = false,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.showCooldownText", type = "bool",
     label = L["Show cooldown text"],
-    tooltip = L["Render numeric seconds remaining on each icon."],
+    desc = L["Render numeric seconds remaining on each icon."],
     default = true,
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.showCharges", type = "bool",
     label = L["Show charges"],
-    tooltip = L["Render a charges badge for spells with charges."],
+    desc = L["Render a charges badge for spells with charges."],
     default = true,
 }
 
@@ -323,7 +323,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.primaryGlowTrigger", type = "string",
     label = L["Primary glow trigger"],
-    tooltip = L["When to show the glow on the primary icon."],
+    desc = L["When to show the glow on the primary icon."],
     default = "never",
     values  = GLOW_TRIGGER_VALUES, sorting = GLOW_TRIGGER_VALUES_ORDER,
 }
@@ -331,7 +331,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.secondaryGlowTrigger", type = "string",
     label = L["Secondary glow trigger"],
-    tooltip = L["When to show the glow on secondary icons."],
+    desc = L["When to show the glow on secondary icons."],
     default = "never",
     values  = GLOW_TRIGGER_VALUES, sorting = GLOW_TRIGGER_VALUES_ORDER,
 }
@@ -341,7 +341,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.primaryGlowType", type = "string",
     label = L["Primary glow style"],
-    tooltip = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
+    desc = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
     values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
 }
@@ -349,7 +349,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.secondaryGlowType", type = "string",
     label = L["Secondary glow style"],
-    tooltip = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
+    desc = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
     values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
 }
@@ -359,14 +359,14 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.primaryGlowColor", type = "color", hasAlpha = true,
     label = L["Primary glow color"],
-    tooltip = L["Glow color on the primary icon."],
+    desc = L["Glow color on the primary icon."],
     default = { r = 1, g = 1, b = 0, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
     path  = "units."..unit..".icons.secondaryGlowColor", type = "color", hasAlpha = true,
     label = L["Secondary glow color"],
-    tooltip = L["Glow color on secondary icons."],
+    desc = L["Glow color on secondary icons."],
     default = { r = 1, g = 1, b = 0, a = 1 },
 }
 
