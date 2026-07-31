@@ -13,6 +13,9 @@ read_globals = {
   "UIParent", "GameTooltip", "GameFontNormal", "GameFontHighlight", "GameFontDisable",
   "STANDARD_TEXT_FONT",
   "hooksecurefunc", "securecallfunction", "issecretvalue",
+  -- Perf bracket timer (performance-§2). The bracket CALL SITES are addon
+  -- code and are linted, even though the lib under libs/ is not.
+  "debugprofilestop",
   "C_Timer", "C_Spell", "C_SpecializationInfo", "C_AddOns",
   "GetLocale", "GetSpellInfo", "GetSpecialization", "GetSpecializationInfo",
   "InCombatLockdown", "PlaySound",
@@ -41,4 +44,7 @@ read_globals = {
 globals = {
   "KickCDDB",           -- SavedVariables write target
   "StaticPopupDialogs", -- addon registers named popups by adding fields to this table
+  "KickCDPerfDB",       -- LibKa0s-Perf capture ring; a SECOND top-level SV global,
+                        -- deliberately outside the AceDB tree so "copy profile" does
+                        -- not clone it and "reset profile" does not wipe it
 }

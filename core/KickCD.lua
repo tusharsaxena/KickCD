@@ -177,6 +177,13 @@ local COMMANDS = {
         function(rest) runSpells(NS, rest) end},
     {"debug",         "Debug subcommands — try `/kcd debug` for the list",
         function(rest) runDebug(NS, rest) end},
+    -- `perf` is a RESERVED verb across the collection (slash-commands-§2) and
+    -- must be registered by the addon, never by the library: the lib returns
+    -- lines and we print them through the tagged printer.
+    {"perf",          "Measure performance — try `/kcd perf` for the workflow",
+        function(rest)
+            for _, line in ipairs(NS.Perf.OnCommand(rest or "")) do p(NS, line) end
+        end},
 }
 NS.COMMANDS = COMMANDS
 

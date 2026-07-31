@@ -703,6 +703,25 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - with LibKa0s absent /kcd still answers and host verbs still work
 - the degraded stub carries no copy of the row formatter or the parser
 
+### test_perfsetup.lua (16)
+
+- NS.Perf is the library instance, with the hot-path gate as a plain field
+- the capture ring is declared in the TOC as a second SavedVariables global
+- every bracket call site reads the gate through a load-time upvalue
+- every declared bucket is reached by a real bracket
+- the declared bucket list and the bracketed call sites agree exactly
+- nesting is declared for every bucket that runs inside another
+- instrumentation is inert when capture is off
+- the show decisions consult Perf.suspended as step 0, at the source
+- suspend releases the per-unit dispatch frames AceEvent cannot reach
+- enabling a unit while suspended does not re-register its frames mid-capture
+- resume restores from CURRENT state, not from a snapshot
+- the suspended flag is session-only and never persisted
+- `perf` is a host verb in NS.COMMANDS, not registered by the library
+- a bare /kcd perf answers through the addon's tagged printer
+- with LibKa0s absent the probe stub answers every member the addon calls
+- with LibKa0s absent the bracketed paths still run
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -754,5 +773,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 24 |
+| test_perfsetup.lua | 16 |
 | test_list_mode.lua | 5 |
-| **Total** | **589** |
+| **Total** | **605** |

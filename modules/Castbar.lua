@@ -66,6 +66,10 @@
 
 local addonName, NS = ...
 local Castbar = NS:NewModule("Castbar", "AceEvent-3.0")
+-- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
+-- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
+-- loads before modules/, so this is always the real instance or its stub.
+local Perf = NS.Perf
 local L       = NS.L
 
 -- ---------------------------------------------------------------------------
@@ -181,6 +185,11 @@ end
 --                     self casts are excluded by IsHostileUnitCasting.
 -- While unlocked the visibility mode is ignored — the user is moving the bar.
 local function isVisible(inst)
+    -- Step 0: a suspended addon shows nothing. At the SOURCE rather than by
+    -- hiding frames from Perf's suspend, because a hidden frame comes back on
+    -- the next combat transition or target swap and the suspended arm then
+    -- measures the addon still working (performance-§6).
+    if NS.Perf and NS.Perf.suspended then return false end
     local profile = NS.db and NS.db.profile
     if not (NS.Units.IsEnabled(inst.unit) and cfg(inst).enabled ~= false) then return false end
     if profile and profile.locked == false then return true end
@@ -678,6 +687,7 @@ end
 -- SetValue + 1 SetFormattedText + 1 cfg() table lookup) to 2-3
 -- (SetValue × 2 + (conditional) SetFormattedText × 1).
 local function onUpdate(inst)
+    local __t0 = Perf.on and debugprofilestop()
     local frame   = inst.frame
     local current = inst.current
     local d = current and current.duration
@@ -703,6 +713,7 @@ local function onUpdate(inst)
     end
     -- The spark's position is driven by Blizzard reanchoring the
     -- interruptible bar's inner status texture; nothing to do here.
+    if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
 end
 
 --- Apply the secret-bool-driven visuals: alpha-switch the dual bg / bar /
@@ -934,6 +945,9 @@ end
 --- Idempotent: Enable/DisableUnit only run on an actual want-vs-live
 --- mismatch.
 function Castbar:ReconcileUnits()
+    -- While suspended the desired state is "nothing runs"; without this the next
+    -- CONFIG_CHANGED would re-create all 10 dispatch frames per unit mid-capture.
+    if NS.Perf and NS.Perf.suspended then return end
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         local want = NS.Units.IsEnabled(u)
@@ -945,6 +959,55 @@ function Castbar:ReconcileUnits()
     end
 end
 
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm the same set without re-running the rest of the enable
+--- path. Idempotent: AceEvent keys on (event, target).
+function Castbar:RegisterLifecycleEvents()
+    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+
+    -- The two GLOBAL unit-change events register at MODULE level via plain
+    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
+    -- Each handler re-evaluates only its own unit's instance if live.
+    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
+    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+end
+
+--- Make this module inert for a performance capture, without a /reload and
+--- without touching `inst.enabled` (the user's setting). Drops the module's game
+--- events and the private per-unit dispatch frames, and stops any in-flight cast
+--- animation — Stop() nils the per-frame OnUpdate, which is this addon's only
+--- true 60 Hz handler and therefore the thing most worth silencing.
+---
+--- Messages stay registered: Resume republishes on the bus and a module that had
+--- dropped its subscriptions would never hear it.
+function Castbar:Suspend()
+    self:UnregisterAllEvents()
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst then
+            for _, f in ipairs(inst.eventFrames or {}) do f:UnregisterAllEvents() end
+            inst.eventFrames = {}
+            self:Stop(inst)
+            if inst.frame then inst.frame:Hide() end
+        end
+    end
+end
+
+--- Restore from CURRENT state, not from a snapshot taken at suspend time, so a
+--- unit toggled while suspended comes back correctly.
+function Castbar:Resume()
+    self:RegisterLifecycleEvents()
+    -- Suspend left `enabled` true while releasing the frames, so ReconcileUnits
+    -- would consider each instance already reconciled and never rebuild them.
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.enabled and #(inst.eventFrames or {}) == 0 then
+            inst.enabled = false
+        end
+    end
+    self:ReconcileUnits()
+end
+
 function Castbar:OnEnable()
     -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
     -- owns the only PLAYER_REGEN_* registration, so the flag write and the
@@ -954,13 +1017,7 @@ function Castbar:OnEnable()
     self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
     self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
 
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
-
-    -- The two GLOBAL unit-change events register at MODULE level via plain
-    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
-    -- Each handler re-evaluates only its own unit's instance if live.
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+    self:RegisterLifecycleEvents()
 
     -- Bring every enabled unit online. Focus is enabled by default; a disabled/absent
     -- focus instance is a cheap no-op here.

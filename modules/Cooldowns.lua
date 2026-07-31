@@ -58,6 +58,10 @@
 
 local addonName, NS = ...
 local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
+-- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
+-- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
+-- loads before modules/, so this is always the real instance or its stub.
+local Perf = NS.Perf
 
 -- ---------------------------------------------------------------------------
 -- Spec resolution
@@ -355,6 +359,7 @@ end
 function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
+    local __t0 = Perf.on and debugprofilestop()
 
     local dbg = NS.State and NS.State.debug
     local readyIds, activeIds, dropIds  -- built only when debug-on (§9 zero-alloc)
@@ -406,23 +411,18 @@ function Cooldowns:Refresh()
         if #dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(dropIds, ",")   .. "]" end
         NS.Debug("Cooldowns", "%d/%d changed: %s", logged, watched, table.concat(parts, " "))
     end
+    if __t0 then Perf.Note("spellPoll", debugprofilestop() - __t0) end
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
-function Cooldowns:OnEnable()
-    self.watched = {}
-
-    -- Game events that signal cooldown / usability / charge changes.
-    -- SPELL_UPDATE_COOLDOWN / _USABLE are global (they don't name the changed
-    -- spell) and chatty — they fire many times per frame in combat, and each
-    -- fire would re-poll EVERY watched spell. Coalesce a same-frame burst into
-    -- one Refresh on the next frame via a zero-delay throttle. Refresh ignores
-    -- its args (it re-polls the watched table fresh), so the throttle's
-    -- trailing-args semantics are irrelevant here.
-    self._refreshCoalesced = NS.Util.Throttle(0, function() self:Refresh() end)
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm the same set without re-running the rest of the enable path
+--- (rebuilding the watched table, re-subscribing to messages it never dropped).
+--- Idempotent: AceEvent keys on (event, target).
+function Cooldowns:RegisterLifecycleEvents()
     self:RegisterEvent("SPELL_UPDATE_COOLDOWN",        "OnCooldownEvent")
     self:RegisterEvent("SPELL_UPDATE_USABLE",          "OnCooldownEvent")
     self:RegisterEvent("SPELL_UPDATE_CHARGES",         "OnCooldownEvent")
@@ -435,6 +435,20 @@ function Cooldowns:OnEnable()
     -- without waiting for a spec change.
     self:RegisterEvent("SPELLS_CHANGED",               "Rebuild")
     self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
+end
+
+function Cooldowns:OnEnable()
+    self.watched = {}
+
+    -- Game events that signal cooldown / usability / charge changes.
+    -- SPELL_UPDATE_COOLDOWN / _USABLE are global (they don't name the changed
+    -- spell) and chatty — they fire many times per frame in combat, and each
+    -- fire would re-poll EVERY watched spell. Coalesce a same-frame burst into
+    -- one Refresh on the next frame via a zero-delay throttle. Refresh ignores
+    -- its args (it re-polls the watched table fresh), so the throttle's
+    -- trailing-args semantics are irrelevant here.
+    self._refreshCoalesced = NS.Util.Throttle(0, function() self:Refresh() end)
+    self:RegisterLifecycleEvents()
 
     -- Internal messages (closed list).
     self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")

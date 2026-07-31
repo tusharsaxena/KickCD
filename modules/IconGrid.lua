@@ -55,6 +55,10 @@
 
 local addonName, NS = ...
 local IconGrid = NS:NewModule("IconGrid", "AceEvent-3.0")
+-- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
+-- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
+-- loads before modules/, so this is always the real instance or its stub.
+local Perf = NS.Perf
 
 -- ---------------------------------------------------------------------------
 -- Per-unit instances
@@ -170,6 +174,15 @@ end
 -- mode and always show — otherwise the grid would be invisible exactly
 -- when they need to drag it.
 local function shouldBeVisible(inst)
+    -- Step 0, above everything: a suspended addon shows nothing.
+    --
+    -- Enforced HERE rather than by having Perf's suspend reach in and hide the
+    -- grids, because imperative hiding is a snapshot — the next combat
+    -- transition, target swap or settings change re-shows the grid behind
+    -- suspend's back, and the suspended arm then measures the addon still
+    -- working (performance-§6). A check at the source holds for the whole
+    -- suspended window.
+    if NS.Perf and NS.Perf.suspended then return false end
     if not isEnabled() then return false end
     local profile = NS.db and NS.db.profile
     if profile and profile.locked == false then return true end
@@ -626,6 +639,46 @@ function IconGrid:DisableUnit(unit)
     inst.enabled = false
 end
 
+--- Make this module inert for a performance capture, WITHOUT a /reload and
+--- without touching `inst.enabled`.
+---
+--- The enabled flag is deliberately left alone: it is the user's setting, and
+--- Resume rebuilds from the CURRENT enabled set so a unit toggled while
+--- suspended comes back correctly (performance-§6). What goes away is the work —
+--- the module's own game events and the private per-unit dispatch frames, which
+--- AceEvent's UnregisterAllEvents cannot reach because it only knows its own
+--- table.
+---
+--- Messages are NOT unregistered. Resume republishes on the bus, and a module
+--- that had torn down its subscriptions would never hear it.
+function IconGrid:Suspend()
+    self:UnregisterAllEvents()
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.eventFrames then
+            for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
+            inst.eventFrames = {}
+        end
+        if inst and inst.grid then inst.grid:Hide() end
+    end
+end
+
+--- Restore everything Suspend took away, from current state rather than from a
+--- snapshot: RegisterLifecycleEvents re-arms the game events and ReconcileUnits
+--- re-creates the dispatch frames for whichever units are enabled NOW.
+function IconGrid:Resume()
+    self:RegisterLifecycleEvents()
+    -- Every instance was left flagged enabled, so ReconcileUnits would consider
+    -- them already reconciled and never re-create the frames Suspend released.
+    for _, u in ipairs(NS.Units.LIST) do
+        local inst = instances[u]
+        if inst and inst.enabled and #(inst.eventFrames or {}) == 0 then
+            inst.enabled = false
+        end
+    end
+    self:ReconcileUnits()
+end
+
 --- Reconcile every tracked unit's live enable-state against its desired
 --- state (NS.Units.IsEnabled). Called from OnEnable and from
 --- OnConfigChanged for the "general"/"units" sections so toggling the
@@ -636,6 +689,10 @@ end
 --- enable loop). Idempotent: EnableUnit/DisableUnit are only invoked on
 --- an actual want-vs-live mismatch.
 function IconGrid:ReconcileUnits()
+    -- While suspended, the desired state is "nothing runs". Without this the
+    -- next `general`/`units` CONFIG_CHANGED would call EnableUnit and re-create
+    -- all 8 dispatch frames per unit while the capture was still running.
+    if NS.Perf and NS.Perf.suspended then return end
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         local want = NS.Units.IsEnabled(u)
@@ -647,21 +704,12 @@ function IconGrid:ReconcileUnits()
     end
 end
 
-function IconGrid:OnEnable()
-    -- Combat flag is owned by core/State.lua's bootstrap listener, so
-    -- this module no longer seeds it on enable.
-    IconGrid.BuildCurves()
-
-    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
-    -- is fired from IconGrid:Layout itself, not via a SendMessage in OnEnable.
-    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    -- Combat-state fan-out from core/State.lua. We no longer hook
-    -- PLAYER_REGEN_* directly — State owns the only registration so the
-    -- flag write and the visibility refresh stay ordered by construction.
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
-
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm exactly the same set without re-running the rest of the
+--- enable path (rebuilding curves, re-subscribing to messages it never dropped).
+--- Registration is idempotent — AceEvent keys on (event, target) — so calling
+--- this twice is harmless.
+function IconGrid:RegisterLifecycleEvents()
     -- Spec / login events: rebuild against the new spec's spell list. The
     -- Cooldowns module hooks the same events to refresh its watched set, so
     -- both sides stay in sync.
@@ -680,6 +728,24 @@ function IconGrid:OnEnable()
     -- handler refreshes only its own unit's instance if that instance is live.
     self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
     self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+end
+
+function IconGrid:OnEnable()
+    -- Combat flag is owned by core/State.lua's bootstrap listener, so
+    -- this module no longer seeds it on enable.
+    IconGrid.BuildCurves()
+
+    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
+    -- is fired from IconGrid:Layout itself, not via a SendMessage in OnEnable.
+    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
+    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    -- Combat-state fan-out from core/State.lua. We no longer hook
+    -- PLAYER_REGEN_* directly — State owns the only registration so the
+    -- flag write and the visibility refresh stay ordered by construction.
+    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+
+    self:RegisterLifecycleEvents()
 
     -- Bring every enabled unit online. Focus defaults disabled, so only the
     -- target instance enables here and behavior matches the former singleton.
@@ -706,6 +772,7 @@ function IconGrid:OnSpellState(_evt, payload)
     -- only update icons currently in the active pool — Cooldowns may watch
     -- a slightly larger or stale set during config transitions.
     if not (payload and payload.spellID) then return end
+    local __t0 = Perf.on and debugprofilestop()
     -- Inlined (not forEachEnabled) so this hot path allocates no per-message
     -- closure. SPELL_STATE fires on every cooldown-state change.
     for _, u in ipairs(NS.Units.LIST) do
@@ -715,6 +782,7 @@ function IconGrid:OnSpellState(_evt, payload)
             if btn then btn:Apply(payload) end
         end
     end
+    if __t0 then Perf.Note("spellState", debugprofilestop() - __t0) end
 end
 
 function IconGrid:OnConfigChanged(_evt, payload)
@@ -820,6 +888,7 @@ end
 function IconGrid:RefreshVisibility(inst)
     local grid = inst.grid
     if not grid then return end
+    local __t0 = Perf.on and debugprofilestop()
     local show = shouldBeVisible(inst)
     if NS.State and NS.State.debug and show ~= inst.lastVisible then
         NS.Debug("IconGrid", "[%s] visibility %s: %s", inst.unit,
@@ -832,6 +901,7 @@ function IconGrid:RefreshVisibility(inst)
     else
         grid:Hide()
     end
+    if __t0 then Perf.Note("visibility", debugprofilestop() - __t0) end
 end
 
 --- UNIT_SPELLCAST_* events. The dispatch frame (Util.RegisterUnitCastEvent
@@ -839,11 +909,13 @@ end
 --- the instance to refresh. Both the "*_casting" visibility modes and the
 --- same-named glow triggers key off the unit's cast state.
 function IconGrid:OnUnitCastEvent(_event, unit)
+    local __t0 = Perf.on and debugprofilestop()
     local inst = instances[unit]
     if inst and inst.enabled then
         self:RefreshVisibility(inst)
         self:RefreshAllGlows(inst)
     end
+    if __t0 then Perf.Note("castEvent", debugprofilestop() - __t0) end
 end
 
 --- PLAYER_TARGET_CHANGED handler. Both the "target_casting" /

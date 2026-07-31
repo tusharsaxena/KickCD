@@ -12,6 +12,10 @@
 -- per-instance resolver published by core.
 
 local addonName, NS = ...
+-- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
+-- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
+-- loads before modules/, so this is always the real instance or its stub.
+local Perf = NS.Perf
 local IconGrid = NS:GetModule("IconGrid")
 
 local GCD_UPPER = NS.Const.GCD_UPPER
@@ -627,6 +631,7 @@ end
 --        state table, so the gate would correctly conclude "nothing moved"
 --        and skip the very work the config change was meant to refresh.
 function Icon:Apply(state, force)
+    local __t0 = Perf.on and debugprofilestop()
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     local stateWork = force or plainStateMoved(self._lastState, state)
     -- Cache so ApplyTextConfig can re-render with fresh cfg when the user
@@ -712,6 +717,7 @@ function Icon:Apply(state, force)
     else
         self.chargesText:Hide()
     end
+    if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0) end
 end
 
 -- Apply zoom (icon TexCoord crop) and border (visibility / color /
@@ -792,6 +798,7 @@ end
 -- cooldowns are active. Re-arms on the next register call.
 
 local function _tickAllTextIcons()
+    local __t0 = Perf.on and debugprofilestop()
     -- Snapshot the count and short-circuit if empty — guards against
     -- a race where the ticker fires after the last icon deregistered
     -- but before we got around to cancelling the timer.
@@ -807,6 +814,7 @@ local function _tickAllTextIcons()
             icon:_RenderCooldownText()
         end
     end
+    if __t0 then Perf.Note("cdText", debugprofilestop() - __t0) end
 end
 
 function IconGrid:_RegisterTextIcon(icon)

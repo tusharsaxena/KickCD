@@ -619,6 +619,18 @@ local function build()
         created[#created + 1] = f
         return f
     end
+    --- How many created frames are CURRENTLY registered for `event`.
+    --- Recorded rather than no-opped because a test needs to observe it: the
+    --- per-unit UNIT_SPELLCAST_* dispatch frames are the thing a perf suspend
+    --- has to release, and "did they come back?" is only answerable by counting.
+    mocks.__countFramesFor = function(event)
+        local n = 0
+        for _, f in ipairs(created) do
+            if f.__events[event] then n = n + 1 end
+        end
+        return n
+    end
+
     --- First created frame registered for `event`, or nil.
     mocks.__findFrame = function(event)
         for _, f in ipairs(created) do
@@ -647,6 +659,17 @@ local function build()
     -- Time / timers
     -- -------------------------------------------------------------------
     mocks.GetTime = function() return 0 end
+
+    -- WoW's millisecond profile clock, used by every Perf bracket
+    -- (performance-§2). MONOTONICALLY INCREASING rather than fixed: a constant
+    -- would make every measured span exactly 0, and a bucket asserting it
+    -- recorded a positive duration could then never fail. The step is small and
+    -- deterministic so a test can reason about it if it ever needs to.
+    local profileClock = 0
+    mocks.debugprofilestop = function()
+        profileClock = profileClock + 0.01
+        return profileClock
+    end
 
     -- WoW exposes `date` as a GLOBAL (it is in .luacheckrc's read_globals), and
     -- stock Lua does not — it only has os.date. modules/DebugLog.lua papered
