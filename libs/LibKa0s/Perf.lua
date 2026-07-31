@@ -22,7 +22,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Perf-1.0", 4
+local MAJOR, MINOR = "LibKa0s-Perf-1.0", 5
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -161,12 +161,22 @@ local function deriveArm(a)
     }
 end
 
--- The host's TOC Interface value as a number. C_AddOns is the modern accessor and the global is the
--- pre-10.1 one; a client with neither degrades to 0 rather than erroring mid-capture.
-local function interfaceVersion(name)
-  local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-  local raw = getMeta and getMeta(name, "Interface")
-  return tonumber(raw) or 0
+-- The interface version this capture was taken on, as a number.
+--
+-- GetBuildInfo's FOURTH return, NOT GetAddOnMetadata(name, "Interface"). Blizzard does not serve
+-- `Interface` through the addon-metadata API — it serves Title, Notes, Author, Version and X-* —
+-- so the old read answered nil and every record stamped `"interface":0`. It shipped that way and
+-- was caught only by reading a live capture: this repo's own case pinned the field at 120007 and
+-- passed throughout, because the mock returned "120007" for any field asked of it.
+--
+-- The semantics shift slightly and for the better: this is the CLIENT's interface version rather
+-- than the host's TOC line. For a current addon they agree, and when they disagree the client's is
+-- the one that explains the capture. A client without GetBuildInfo degrades to 0 rather than
+-- erroring mid-run.
+local function interfaceVersion()
+  if type(GetBuildInfo) ~= "function" then return 0 end
+  local _, _, _, toc = GetBuildInfo()
+  return tonumber(toc) or 0
 end
 
 -- ── Instances ──────────────────────────────────────────────────────────────────────────────
@@ -439,7 +449,7 @@ function lib:New(descriptor)
       addon     = d.name,
       source    = "ingame",
       version   = d.version or "?",
-      interface = interfaceVersion(d.name),
+      interface = interfaceVersion(),
       timestamp = time and time() or 0,
       label     = label or "",
       buckets   = out,

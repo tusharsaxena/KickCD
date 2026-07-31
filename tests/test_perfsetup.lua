@@ -547,3 +547,19 @@ test("every PollSpell exit is measured, including the rejections", function()
     assertEqual(b.calls, 5,
         "every exit must be counted; got " .. tostring(b.calls) .. " of 5")
 end)
+
+test("the record stamps a real client interface version, never 0", function()
+    -- The live capture read `"interface":0`. Blizzard does not serve `Interface`
+    -- through GetAddOnMetadata — confirmed in game — so the library read it from
+    -- GetBuildInfo's fourth return instead (Perf minor 5).
+    --
+    -- Asserted HERE as well as upstream because this addon's mock had the same
+    -- blind spot the library's did: a GetAddOnMetadata that answers every field
+    -- makes the broken read look fine. This case fails against a vendored copy
+    -- older than Perf 5.
+    -- red under: reverting interfaceVersion() in libs/LibKa0s/Perf.lua
+    local inst = T.load(true, true)
+    local rec = inst.NS.Perf.BuildRecord("t")
+    assertTrue(rec.interface and rec.interface > 0,
+        "the record must identify the game build; got: " .. tostring(rec.interface))
+end)

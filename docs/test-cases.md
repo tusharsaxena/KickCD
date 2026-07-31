@@ -721,7 +721,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - with LibKa0s absent /kcd still answers and host verbs still work
 - the degraded stub carries no copy of the row formatter or the parser
 
-### test_perfsetup.lua (24)
+### test_perfsetup.lua (25)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -747,6 +747,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the perf version agrees with the one /kcd version prints
 - the version fallback is reachable, not dead
 - every PollSpell exit is measured, including the rejections
+- the record stamps a real client interface version, never 0
 
 ### test_list_mode.lua (5)
 
@@ -800,6 +801,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 24 |
-| test_perfsetup.lua | 24 |
+| test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
-| **Total** | **628** |
+| **Total** | **629** |

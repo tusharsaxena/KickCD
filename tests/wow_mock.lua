@@ -779,10 +779,24 @@ local function build()
         end
         return tocMeta
     end
+    -- Reads the REAL TOC, and therefore answers nil for a field the TOC does not
+    -- carry as `## Field:` — which includes `Interface` only by accident of it
+    -- being one. Blizzard does NOT serve Interface through this API, so the mock
+    -- must not either: the library shipped an `interface` field stuck at 0
+    -- precisely because its own mock answered every field asked of it.
     mocks.C_AddOns = {
-        GetAddOnMetadata = function(_, field) return readTOCMeta()[field] end,
+        GetAddOnMetadata = function(_, field)
+            if field == "Interface" then return nil end
+            return readTOCMeta()[field]
+        end,
         IsAddOnLoaded    = function() return true end,
     }
+
+    -- Where the interface version actually comes from: GetBuildInfo's FOURTH
+    -- return. Sourced from the TOC so the mock and the addon cannot disagree.
+    mocks.GetBuildInfo = function()
+        return "12.0.7", "60000", "Jul 31 2026", tonumber(readTOCMeta()["Interface"]) or 0
+    end
 
     -- WoW's millisecond profile clock, used by every Perf bracket
     -- (performance-§2). MONOTONICALLY INCREASING rather than fixed: a constant
