@@ -619,6 +619,14 @@ local function build()
     -- Time / timers
     -- -------------------------------------------------------------------
     mocks.GetTime = function() return 0 end
+
+    -- WoW exposes `date` as a GLOBAL (it is in .luacheckrc's read_globals), and
+    -- stock Lua does not — it only has os.date. modules/DebugLog.lua papered
+    -- over the gap with its own `_G.date or os.date` fallback; the library
+    -- rightly just calls date(), so the mock has to model the client instead.
+    -- Fixed rather than live so a timestamp can be asserted on if a case ever
+    -- needs to.
+    mocks.date = function(fmt) return os.date(fmt or "%H:%M:%S", 0) end
     mocks.GetTimePreciseSec = function() return 0 end
     mocks.C_Timer = {
         After = function(_, fn) timers[#timers + 1] = fn end,

@@ -142,6 +142,7 @@ local SUITES = {
     "test_compat.lua",
     "test_compat_api.lua",
     "test_debuglog.lua",
+    "test_debuglogsetup.lua",
     "test_icongrid_layout.lua",
     "test_icongrid_apply.lua",
     "test_icongrid_visibility.lua",

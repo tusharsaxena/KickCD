@@ -262,6 +262,27 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - building the console + Add/Clear run the guarded sync headlessly (§11)
 - console WINDOW visibility is decoupled from the capture flag (§12.5)
 
+### test_debuglogsetup.lua (18)
+
+- modules/DebugLog.lua has been deleted, not left beside the library
+- the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
+- FormatPlain renders <ts> | [<tag>] <msg> byte for byte
+- FormatColored keeps the steel-blue stamp, tan tag and escaped pipe
+- a nil tag renders as empty brackets rather than the string 'nil'
+- the console registers under the same frame name modules/DebugLog.lua hardcoded
+- the console title is the brand plus the library's own suffix
+- the debug flag stays the addon's — the library never keeps a copy
+- the enable ack renders the state word green, through the addon's tagged printer
+- the disable ack renders the state word red
+- enabling brackets the session and follows it with the host's [Init] summary
+- NS.Debug is bound bare off the instance and takes no self
+- NS.Debug is zero-cost when the flag is off
+- a numeric format slot still renders correctly now the library stringifies every arg
+- a secret argument renders as the shared sentinel and cannot raise
+- with LibKa0s absent the stub answers every DebugLog member the addon calls
+- the degraded stub still flips the flag and still prints the ack
+- the degraded stub carries no copy of the line formatters
+
 ### test_icongrid_layout.lua (8)
 
 - Layout math is published on the IconGrid module
@@ -657,6 +678,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_debuglog.lua | 13 |
+| test_debuglogsetup.lua | 18 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
 | test_icongrid_visibility.lua | 22 |
@@ -681,4 +703,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_list_mode.lua | 5 |
-| **Total** | **527** |
+| **Total** | **545** |

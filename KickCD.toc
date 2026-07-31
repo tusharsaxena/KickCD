@@ -37,6 +37,7 @@ core\Constants.lua
 core\State.lua
 core\Util.lua
 core\CoreSetup.lua
+core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
 core\LSMPatch.lua
@@ -46,7 +47,6 @@ core\KickCD.lua
 defaults\Spells.lua
 
 # Modules
-modules\DebugLog.lua
 modules\Cooldowns.lua
 modules\IconGrid.lua
 modules\IconGrid_Layout.lua
