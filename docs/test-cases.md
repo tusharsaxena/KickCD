@@ -315,6 +315,21 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - PlainStateMoved deliberately IGNORES charges, unlike the cooldown gates
 - PlainStateMoved never compares a secret charge value
 
+### test_icongrid_curves.lua (12)
+
+- each unit gets its own curve pair
+- an unlinked focus builds its curve from ITS OWN readyAlpha
+- an unlinked focus builds its tint curve from ITS OWN cooldownTint
+- a LINKED focus resolves to target's values
+- CurvesFor never falls back to another unit's curves
+- rebuilding with an unchanged config reuses the same curve objects
+- an unrelated icons edit does NOT recreate the curves
+- a readyAlpha edit DOES recreate the curve
+- a cooldownAlpha edit DOES recreate the curve
+- a cooldownTint edit DOES recreate the curve
+- one unit's rebuild does not disturb the other's cached curves
+- CurveSignature covers exactly the three curve-shaping fields
+
 ### test_icongrid_buildlist.lua (20)
 
 - BuildActiveList renders one icon per enabled entry
@@ -455,6 +470,29 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 
+### test_castbar_skin.lua (20)
+
+- StructureSignature is stable for identical inputs
+- StructureSignature moves when a structural field moves
+- StructureSignature moves when the RESOLVED size moves
+- StructureSignature ignores pure colour fields
+- StructureSignature DOES move for border size/texture
+- Reskin stamps a structure signature on the instance
+- a structural config change re-sizes the frame
+- a SECOND structural change still lands (the guard is not one-shot)
+- re-skinning with no config change leaves the signature untouched
+- a colour-only change does NOT move the structure signature
+- a colour-only change still repaints the bar
+- force rebuilds the geometry even when the signature matches
+- Reskin is safe before the frame has ever been built
+- target and focus carry independent structure signatures
+- ResolveBarSize floors the long and thick axes
+- ResolveBarSize returns the configured size when auto-size is off
+- ResolveBarSize leaves thickness alone in vertical orientation
+- Reskin survived the peel as a method on the Castbar module
+- the skin sibling reads its helpers off the module, not a private copy
+- modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)
+
 ### test_cooldowns.lua (11)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
@@ -548,6 +586,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
+### test_slash_style.lua (6)
+
+- /kcd help emits no line ending in ':' (slash-commands-§4)
+- bare /kcd emits no line ending in ':'
+- /kcd debug sub-header emits no line ending in ':'
+- /kcd spells sub-header emits no line ending in ':'
+- every COMMANDS verb description is free of a trailing ':'
+- an unknown verb's error line does not end in ':'
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -576,6 +623,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_icongrid_apply.lua | 6 |
 | test_icongrid_visibility.lua | 22 |
 | test_icongrid_render.lua | 21 |
+| test_icongrid_curves.lua | 12 |
 | test_icongrid_buildlist.lua | 20 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
@@ -583,6 +631,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 27 |
 | test_castbar_frame.lua | 36 |
+| test_castbar_skin.lua | 20 |
 | test_cooldowns.lua | 11 |
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
@@ -590,5 +639,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_widgets.lua | 26 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
+| test_slash_style.lua | 6 |
 | test_list_mode.lua | 5 |
-| **Total** | **461** |
+| **Total** | **499** |

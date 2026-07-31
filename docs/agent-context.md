@@ -76,8 +76,8 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 | `KickCDDB` shape, `DEFAULT_PROFILE`, profile lifecycle | [docs/saved-variables.md](saved-variables.md) | Adding persistent state. |
 | `Compat.*` API shim catalogue + `State.*` visibility helpers | [docs/compat-layer.md](compat-layer.md) | Adding or wrapping a Blizzard spell/cast API; reasoning about taint. |
 | 12.0 secret values, plain-after-flip invariant, frame mixin, other Midnight gotchas | [docs/midnight-quirks.md](midnight-quirks.md) | **Required reading** before touching cooldown, cast, or visibility code. |
-| Icon grid layout model (anchor + grow + dimensions) | [docs/icon-grid.md](icon-grid.md) | Touching `modules/IconGrid.lua` layout. |
-| Cast bar — secret-value-gated, dual stacked widgets, anti-patterns | [docs/castbar.md](castbar.md) | Touching `modules/Castbar.lua`. |
+| Icon grid layout model (anchor + grow + dimensions) | [docs/icon-grid.md](icon-grid.md) | Touching `modules/IconGrid.lua` layout — the geometry lives in `IconGrid_Layout.lua`, the per-icon render and per-unit curves in `IconGrid_Render.lua`. |
+| Cast bar — secret-value-gated, dual stacked widgets, anti-patterns | [docs/castbar.md](castbar.md) | Touching `modules/Castbar.lua` — the config-driven re-skin lives in `Castbar_Skin.lua`, the `/kcd debug castbar` dump in `Castbar_Debug.lua`. |
 | Schema-driven canvas-layout settings panel; widget primitives; validation | [docs/settings-panel.md](settings-panel.md) | Adding an option, a tab, or a custom-body widget. |
 | Slash dispatch tables (`COMMANDS` / `DEBUG_COMMANDS` / `SPELLS_COMMANDS`) | [docs/slash-dispatch.md](slash-dispatch.md) | Adding or modifying a slash subcommand. |
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | [docs/smoke-tests.md](smoke-tests.md) | Before claiming a non-trivial change works; before tagging a release. |

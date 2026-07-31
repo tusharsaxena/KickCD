@@ -50,6 +50,7 @@ modules\IconGrid.lua
 modules\IconGrid_Layout.lua
 modules\IconGrid_Render.lua
 modules\Castbar.lua
+modules\Castbar_Skin.lua
 modules\Castbar_Debug.lua
 modules\UnitLabel.lua
 

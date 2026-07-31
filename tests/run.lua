@@ -141,6 +141,7 @@ local SUITES = {
     "test_icongrid_apply.lua",
     "test_icongrid_visibility.lua",
     "test_icongrid_render.lua",
+    "test_icongrid_curves.lua",
     "test_icongrid_buildlist.lua",
     "test_lifecycle.lua",
     "test_unitlabel.lua",
@@ -148,6 +149,7 @@ local SUITES = {
     "test_castbar.lua",
     "test_castbar_helpers.lua",
     "test_castbar_frame.lua",
+    "test_castbar_skin.lua",
     "test_cooldowns.lua",
     "test_cooldowns_gates.lua",
     "test_settings_log.lua",
@@ -155,6 +157,7 @@ local SUITES = {
     "test_settings_widgets.lua",
     "test_flow_traces.lua",
     "test_version.lua",
+    "test_slash_style.lua",
     "test_list_mode.lua",
 }
 

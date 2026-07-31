@@ -1,7 +1,8 @@
 -- modules/IconGrid_Render.lua — per-icon widget rendering (peeled from IconGrid.lua, KCD-05)
 --
 -- The icon-widget prototype (Icon), its factory (CreateIconWidget), the cooldown-
--- swipe / countdown-text / ready-glow rendering, the step-shaped alpha/tint curves,
+-- swipe / countdown-text / ready-glow rendering, the step-shaped per-unit
+-- alpha/tint curves,
 -- and the shared cooldown-text ticker — everything that draws a single icon. Core
 -- (IconGrid.lua) owns the per-unit instances, pool, layout orchestration,
 -- visibility, and message handlers; it calls IconGrid.CreateIconWidget /
@@ -15,9 +16,25 @@ local IconGrid = NS:GetModule("IconGrid")
 
 local GCD_UPPER = NS.Const.GCD_UPPER
 
--- Step-shaped curves (assigned by BuildCurves) shared across Icon:Apply /
+-- Step-shaped curves (assigned by BuildCurves) read by Icon:Apply /
 -- applyGcdSuppressionAlpha. Render-local state, formerly file-locals in IconGrid.lua.
-local alphaCurve, tintCurve, gcdSuppressCurve
+--
+-- The alpha and tint curves are PER UNIT (`_curves[unit] = {alpha, tint, sig}`):
+-- their control-point values come from that unit's resolved appearance, so an
+-- unlinked focus with its own readyAlpha / cooldownAlpha / cooldownTint renders
+-- with those values instead of silently inheriting target's. A linked focus
+-- resolves to target's table via NS.Units.Icons and simply builds an identical
+-- pair — link-awareness lives in NS.Units, not here.
+--
+-- gcdSuppressCurve stays module-level and is built once: its control points are
+-- the fixed flags 0 and 1 stepping at GCD_UPPER, with nothing config-derived to
+-- vary per unit.
+local _curves = {}
+local gcdSuppressCurve
+
+-- Returned by curvesFor when a unit has no curves yet, so every caller can
+-- read `.alpha` / `.tint` unguarded. Shared and never written to.
+local EMPTY_CURVES = {}
 
 -- Cooldown-text ticker: the set of icons needing a per-tick FontString refresh and
 -- the single shared C_Timer.NewTicker handle.
@@ -44,41 +61,32 @@ local function fetchBorderTexture(name)
     return "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
---- (Re)build the alpha/tint curves from the resolved per-unit icons config
---- (NS.Units.Icons). Called once on enable and again on any "icons" config
---- change. Cheap — these are tiny
---- 4-point curves, recreating them per change is fine.
--- TODO(perf): only rebuild when readyAlpha / cooldownAlpha / cooldownTint
--- actually changed — every "icons" Ka0s_KickCD_CONFIG_CHANGED rebuilds today,
--- including unrelated touches (border, font, layout, glow) (F-016).
-local function BuildCurves()
-    if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
-
-    -- Curves are module-level (shared across instances). They read the
-    -- target unit's resolved appearance so target's configured alphas/tint
-    -- are honored; a future task can promote these to per-unit curves when
-    -- an unlinked focus needs its own alpha/tint values.
-    local cfg = NS.Units.Icons("target")
-    local readyAlpha    = cfg.readyAlpha    or 1.0
-    local cooldownAlpha = cfg.cooldownAlpha or 0.4
+--- The three inputs an alpha/tint curve pair is built from, flattened into a
+--- comparison key. Only these five numbers change a curve's shape; every other
+--- field in the "icons" config (border, font, layout, glow, zoom, tooltip)
+--- leaves it identical.
+---
+--- Plain numbers throughout — nothing here is ever secret. These come from the
+--- SavedVariables config, not from a cooldown API.
+local function curveSignature(cfg)
     local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+    return table.concat({
+        cfg.readyAlpha    or 1.0,
+        cfg.cooldownAlpha or 0.4,
+        r, g, b,
+    }, ":")
+end
 
-    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
-    -- between adjacent points yields a sharp transition under linear
-    -- interpolation (LuaCurveType.Linear is the default).
-    alphaCurve = _G.C_CurveUtil.CreateCurve()
-    if alphaCurve.SetType and Enum and Enum.LuaCurveType then
-        alphaCurve:SetType(Enum.LuaCurveType.Linear)
-    end
-    alphaCurve:AddPoint(0,             readyAlpha)
-    alphaCurve:AddPoint(GCD_UPPER,     readyAlpha)
-    alphaCurve:AddPoint(GCD_UPPER + 0.001, cooldownAlpha)
-    alphaCurve:AddPoint(3600,          cooldownAlpha)
+--- Build the shared 0/1 GCD-suppression curve. Config-independent, so it is
+--- built once and never rebuilt.
+---
+--- Steps from 0 (hide swipe + text) to 1 (show) at GCD_UPPER. Same shape as a
+--- unit's alphaCurve but the values are visibility flags rather than alphas.
+--- The output rides through SetAlphaFromBoolean(true, value, 0) when
+--- cfg.suppressGCDSwipe is on.
+local function buildGcdSuppressCurve()
+    if gcdSuppressCurve then return end
 
-    -- Step from 0 (hide swipe + text) to 1 (show) at GCD_UPPER. Same
-    -- shape as alphaCurve but the values are visibility flags rather
-    -- than alphas. The output rides through SetAlphaFromBoolean(true,
-    -- value, 0) when cfg.suppressGCDSwipe is on.
     gcdSuppressCurve = _G.C_CurveUtil.CreateCurve()
     if gcdSuppressCurve.SetType and Enum and Enum.LuaCurveType then
         gcdSuppressCurve:SetType(Enum.LuaCurveType.Linear)
@@ -87,19 +95,86 @@ local function BuildCurves()
     gcdSuppressCurve:AddPoint(GCD_UPPER,         0)
     gcdSuppressCurve:AddPoint(GCD_UPPER + 0.001, 1)
     gcdSuppressCurve:AddPoint(3600,              1)
+end
+
+--- (Re)build one unit's alpha/tint curves from its resolved icons config
+--- (NS.Units.Icons — link-aware, so a linked focus resolves target's table).
+---
+--- Skips the rebuild when the three curve-shaping values are unchanged
+--- (F-016): every "icons" Ka0s_KickCD_CONFIG_CHANGED used to land here, so a
+--- border, font, layout or glow edit recreated all three curves for nothing.
+--- Cheap either way — these are tiny 4-point curves — but the signature check
+--- is cheaper still, and it makes "what actually shapes a curve" explicit.
+local function buildUnitCurves(unit)
+    local cfg = NS.Units.Icons(unit)
+    if not cfg then return end
+
+    local sig = curveSignature(cfg)
+    local set = _curves[unit]
+    if set and set.sig == sig then return end
+
+    local readyAlpha    = cfg.readyAlpha    or 1.0
+    local cooldownAlpha = cfg.cooldownAlpha or 0.4
+    local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+
+    set = { sig = sig }
+
+    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
+    -- between adjacent points yields a sharp transition under linear
+    -- interpolation (LuaCurveType.Linear is the default).
+    set.alpha = _G.C_CurveUtil.CreateCurve()
+    if set.alpha.SetType and Enum and Enum.LuaCurveType then
+        set.alpha:SetType(Enum.LuaCurveType.Linear)
+    end
+    set.alpha:AddPoint(0,                 readyAlpha)
+    set.alpha:AddPoint(GCD_UPPER,         readyAlpha)
+    set.alpha:AddPoint(GCD_UPPER + 0.001, cooldownAlpha)
+    set.alpha:AddPoint(3600,              cooldownAlpha)
 
     if _G.C_CurveUtil.CreateColorCurve and CreateColor then
-        tintCurve = _G.C_CurveUtil.CreateColorCurve()
-        if tintCurve.SetType and Enum and Enum.LuaCurveType then
-            tintCurve:SetType(Enum.LuaCurveType.Linear)
+        set.tint = _G.C_CurveUtil.CreateColorCurve()
+        if set.tint.SetType and Enum and Enum.LuaCurveType then
+            set.tint:SetType(Enum.LuaCurveType.Linear)
         end
-        tintCurve:AddPoint(0,             CreateColor(1, 1, 1, 1))
-        tintCurve:AddPoint(GCD_UPPER,     CreateColor(1, 1, 1, 1))
-        tintCurve:AddPoint(GCD_UPPER + 0.001, CreateColor(r, g, b, 1))
-        tintCurve:AddPoint(3600,          CreateColor(r, g, b, 1))
-    else
-        tintCurve = nil
+        set.tint:AddPoint(0,                 CreateColor(1, 1, 1, 1))
+        set.tint:AddPoint(GCD_UPPER,         CreateColor(1, 1, 1, 1))
+        set.tint:AddPoint(GCD_UPPER + 0.001, CreateColor(r, g, b, 1))
+        set.tint:AddPoint(3600,              CreateColor(r, g, b, 1))
     end
+
+    _curves[unit] = set
+end
+
+--- (Re)build the alpha/tint curves. Called once on enable and again on any
+--- "icons" config change or profile swap.
+---
+--- @param unit string|nil  rebuild just this unit, or every unit when omitted.
+--- Callers pass nothing: an "icons" edit on a linked pair moves both units'
+--- resolved config, and the per-unit signature check makes the unaffected
+--- unit's pass a no-op anyway.
+local function BuildCurves(unit)
+    if not (_G.C_CurveUtil and _G.C_CurveUtil.CreateCurve) then return end
+
+    buildGcdSuppressCurve()
+
+    if unit then
+        buildUnitCurves(unit)
+        return
+    end
+    for _, u in ipairs(NS.Units.LIST) do
+        buildUnitCurves(u)
+    end
+end
+
+--- The curve pair for a unit, or an empty table when curves were never built
+--- (no C_CurveUtil — Icon:Apply then falls through to its non-curve path).
+--- Never returns nil, so callers read `.alpha` / `.tint` without a guard.
+---
+--- Deliberately does NOT fall back to target's pair: inheriting another unit's
+--- alpha/tint is the exact bug this per-unit split exists to fix, so an
+--- unbuilt unit renders without curves rather than with the wrong ones.
+local function curvesFor(unit)
+    return _curves[unit or "target"] or EMPTY_CURVES
 end
 -- ---------------------------------------------------------------------------
 -- Per-icon widget construction
@@ -556,9 +631,13 @@ function Icon:Apply(state, force)
     -- without waiting for the next SPELL_STATE message.
     self._lastState = state
 
-    if state and state.cdObject and alphaCurve then
+    -- Resolve THIS icon's unit curves, not a module-level pair — an unlinked
+    -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
+    local curves = curvesFor(self.unit)
+
+    if state and state.cdObject and curves.alpha then
         -- Branch 1: full cooldown.
-        local alpha = state.cdObject:EvaluateRemainingDuration(alphaCurve)
+        local alpha = state.cdObject:EvaluateRemainingDuration(curves.alpha)
         -- SetAlphaFromBoolean accepts secret values for its alpha args.
         -- Passing `true` as the condition selects the second arg
         -- unconditionally.
@@ -568,8 +647,8 @@ function Icon:Apply(state, force)
             self:SetAlpha(alpha)
         end
 
-        if tintCurve then
-            local color = state.cdObject:EvaluateRemainingDuration(tintCurve)
+        if curves.tint then
+            local color = state.cdObject:EvaluateRemainingDuration(curves.tint)
             if color and color.GetRGB then
                 self.icon:SetVertexColor(color:GetRGB())
             end
@@ -754,6 +833,11 @@ end
 -- ---------------------------------------------------------------------------
 IconGrid.CreateIconWidget = CreateIconWidget
 IconGrid.BuildCurves      = BuildCurves
+-- Published so the headless suites can assert that each unit got its OWN curve
+-- pair and that an unchanged config reuses the same objects. Nothing in the
+-- addon reads it — Icon:Apply calls the file-local directly.
+IconGrid.CurvesFor        = curvesFor
+IconGrid.CurveSignature   = curveSignature
 
 -- ---------------------------------------------------------------------------
 -- Exposed for unit testing
