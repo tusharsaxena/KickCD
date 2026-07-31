@@ -10,6 +10,8 @@
 
 The geometry lives in `modules/IconGrid_Layout.lua` (published as `IconGrid.LayoutMath` — a distinct key from `modules/IconGrid.lua`'s `IconGrid:Layout()` orchestrator method, which calls into it): the three pure functions `IconGrid.LayoutMath.parseAnchor`, `IconGrid.LayoutMath.parseGrow`, `IconGrid.LayoutMath.placeBlock` (computes grid bounding box and the primary/block TOPLEFT corners), and the single `IconGrid.LayoutMath.layoutBlock` that anchors every widget to the grid frame's TOPLEFT in pixel-floored screen coordinates. The per-icon rendering — the `Icon` widget, cooldown/glow render, curves, and the countdown-text ticker — lives in the sibling `modules/IconGrid_Render.lua`. The alpha and tint curves there are **per unit**, built from each unit's own resolved `NS.Units.Icons` table, so an unlinked focus honours its own `readyAlpha` / `cooldownAlpha` / `cooldownTint` rather than inheriting target's; `BuildCurves` skips a unit whose three curve-shaping values haven't moved, so a border / font / layout / glow edit no longer recreates them.
 
+It runs on **both** the `"icons"` and the `"units"` config sections. `"units"` is easy to overlook and was the source of a shipped regression: the focus **link flag** lives there, and because `NS.Units.Icons` is link-aware, flipping it changes what a unit's curve must be built from even though no `icons.*` value moved. Without the rebuild an unlinked focus kept rendering with target's `readyAlpha` / `cooldownAlpha` / `cooldownTint` — the exact inheritance the per-unit split exists to prevent. Guarded by `tests/test_icongrid_curve_link.lua`.
+
 `secondaryOffsetX` / `secondaryOffsetY` shift the block (not the primary) in screen-pixel space (positive X = right, positive Y = down).
 
 ## Visible-count sizing

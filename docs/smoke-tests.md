@@ -41,7 +41,7 @@ Companion docs:
 | 17 | Schema validator | PLAYER_LOGIN validator output | [Schema validator boot output](#17-schema-validator-boot-output) |
 | 18 | LSM dropdowns | Statusbar / Border / Font dropdowns | [LSM dropdown rendering](#18-lsm-dropdown-rendering) |
 | 19 | Debug traces | §8 key functional-flow lines in the debug console | [Debug traces](#19-debug-traces) |
-| 20 | Focus tracking | Enable focus, independent gating, link/copy styling | [Focus tracking](#20-focus-tracking) |
+| 20 | Focus tracking | Enable focus, independent gating, link/copy styling, per-unit alpha/tint | [Focus tracking](#20-focus-tracking) |
 | 21 | Legacy migration | `FoldLegacyUnits` on a pre-`units` profile | [Legacy migration](#21-legacy-migration) |
 | 22 | Text label | `modules/UnitLabel.lua`, Text Label settings panel | [Text label](#22-text-label) |
 | 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
@@ -297,8 +297,10 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
 - For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
+- **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, tick and untick "Use same styling as Target", and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat on Cast bar and Text Label.
 
 **Pass.**
+- **The Unit dropdown lists exactly `Target` / `Focus` on every tab, always** — before and after those rebuilds, and after the `/kcd set`. Each of those actions calls `Helpers.RenderUnitPanel`, which clears and rebuilds the scroll; `/kcd set` then runs `RefreshAllPanels` over the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbour's.
 - Every panel write fires `Ka0s_KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
@@ -488,6 +490,52 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - Re-enabling focus after a fresh cast start behaves identically (no stale state from the previous enable/disable cycle).
 - `/kcd set enabled false` hides BOTH units' grids and bars regardless of per-unit `enabled`; `/kcd set enabled true` immediately revives every unit whose `units.<unit>.enabled` is still `true`, re-evaluating current cast/cooldown state for each without requiring a `/reload`.
 
+#### 20d. Unlinked focus honours its own alpha / tint
+
+The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → Icons only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
+
+This is also the reason to unlink **first** and set values **second**.
+
+**Setup.** `visibility = always` (no focus target needed — in this mode `shouldBeVisible` returns true regardless of unit existence, so both grids sit on screen for side-by-side comparison). Both units enabled:
+
+```
+/kcd set enabled true
+/kcd set visibility always
+/kcd set units.target.enabled true
+/kcd set units.focus.enabled true
+```
+
+Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use same styling as Target"**. Confirm the appearance rows appear. Only then:
+
+```
+/kcd set units.target.icons.cooldownAlpha 0.20
+/kcd set units.target.icons.cooldownTint 1 0.3 0.3 1
+/kcd set units.focus.icons.cooldownAlpha 0.90
+/kcd set units.focus.icons.cooldownTint 0.3 0.3 1 1
+```
+
+`/kcd unlock`, drag the two grids apart if they overlap, `/kcd lock`.
+
+**Steps.**
+- Cast an interrupt at a friendly target dummy. Use one whose cooldown is comfortably over ~1.6s — any real interrupt (15–24s) qualifies. Both grids render the same player cooldowns, so one cast drives both.
+- Watch both grids during the cooldown.
+- Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
+- Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` with a cap of `4`, so a one-step thickness change is invisible and proves nothing.
+- **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open runs `RefreshAllPanels`, which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
+- Re-tick "Use same styling as Target".
+
+**Pass.**
+- Target's icon is heavily dimmed and red-tinted; focus's is nearly full brightness and blue-tinted. They must be **clearly different**. Identical grids mean focus is inheriting target's curves.
+- The mid-cooldown focus alpha change takes effect **while the cooldown is still running**, and target is unaffected — the curve rebuild guard re-opens on a real change instead of stranding a stale curve.
+- Target's border visibly changes style and **neither** grid's alpha or tint shifts — an unrelated `icons` edit must not disturb the curves.
+- The **Unit** dropdown still lists exactly `Target` / `Focus` on every tab after those `/kcd set` calls. Anchor points, text positions, or any other row's values appearing there means a stale refresher survived a panel rebuild.
+- Re-ticking the checkbox immediately reverts focus to target's dim-red values, with no `/reload`.
+- Zero Lua errors throughout.
+
+**Note.** Inside the ~1.6s GCD window both icons correctly show ready visuals (the curves step at `Const.GCD_UPPER`). If both look bright and untinted, wait a moment — that is not a failure.
+
+**Cleanup.** `/kcd reset icons`.
+
 ### 21. Legacy migration
 
 **Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy from before this feature) so the active profile has top-level `icons`, `castbar`, and `anchors` tables with a few customised values (e.g. a non-default `icons.primarySize`, a moved `anchors.icons`) and NO `units` table. Set `db.global.schemaVersion` to `1` or remove it entirely (either should trigger the fold).
@@ -572,7 +620,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
-- **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers).
+- **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
 - **Debug console edits:** 15, 24 (the console window, its subcommands, and the scrollbar + line counter).
 - **Pre-release / TOC bump:** the entire suite. The 24 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.

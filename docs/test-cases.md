@@ -330,6 +330,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - one unit's rebuild does not disturb the other's cached curves
 - CurveSignature covers exactly the three curve-shaping fields
 
+### test_icongrid_curve_link.lua (6)
+
+- the mock's curve evaluation actually reads control points
+- a LINKED focus renders with target's cooldown alpha
+- unlinking focus via the `units` section re-renders with ITS OWN alpha
+- re-linking focus via the `units` section restores target's alpha
+- unlinking picks up focus's own cooldown TINT, not target's
+- a per-unit enable toggle also refreshes curves
+
 ### test_icongrid_buildlist.lua (20)
 
 - BuildActiveList renders one icon per enabled entry
@@ -576,6 +585,14 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
+### test_settings_refreshers.lua (5)
+
+- rendering rows registers refreshers
+- ClearScroll empties the refresher registry
+- a clear-and-rebuild cycle does not grow the registry
+- RefreshAllPanels never runs a refresher from a cleared render
+- ClearScroll is safe on a ctx that never rendered
+
 ### test_flow_traces.lua (1)
 
 - OnProfileChanged logs a [Profile] line
@@ -628,6 +645,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_icongrid_visibility.lua | 22 |
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
+| test_icongrid_curve_link.lua | 6 |
 | test_icongrid_buildlist.lua | 20 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
@@ -641,8 +659,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
 | test_settings_widgets.lua | 26 |
+| test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_list_mode.lua | 5 |
-| **Total** | **503** |
+| **Total** | **514** |

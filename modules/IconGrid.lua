@@ -754,6 +754,16 @@ function IconGrid:OnConfigChanged(_evt, payload)
         -- didn't revive the grid without /reload: ReconcileUnits sees
         -- want=true again and calls EnableUnit.
         self:ReconcileUnits()
+        -- The curves are per unit and resolve through NS.Units.Icons, which is
+        -- link-aware — so the focus LINK flag changes what a unit's curve
+        -- should be built from even though no icons.* value moved. That flag
+        -- lives in this section, not "icons", so a link flip has to rebuild
+        -- here or an unlinked focus keeps rendering with target's readyAlpha /
+        -- cooldownAlpha / cooldownTint. Per-unit enable toggles land here too,
+        -- and a unit coming back online wants curves matching its current
+        -- resolution. Cheap: BuildCurves skips any unit whose resolved values
+        -- are unchanged.
+        IconGrid.BuildCurves()
         forEachEnabled(function(inst)
             if inst.grid then
                 local anchor = NS.Units.Anchor(inst.unit, "icons")

@@ -38,6 +38,8 @@ Section-keyed for cheap dispatch. `Cooldowns` only acts on `"general"` (master e
 
 The `"units"` section (target/focus dual tracking) covers per-unit `enabled` toggles and the focus `link` flag / "Copy styling from Target" action. `IconGrid`/`Castbar` react by calling their `ReconcileUnits()` (enabling/disabling the affected unit's instance), and `UnitLabel` re-applies the identity label; it is a section value on the existing payload shape, not a new message.
 
+**`"units"` is an appearance-affecting section, not just a lifecycle one** — and treating it as lifecycle-only is a live bug source. Because `NS.Units.Icons` / `.Castbar` are link-aware, flipping `units.focus.link` changes which table a unit resolves to *without any `icons.*` / `castbar.*` value moving*. Anything derived from a resolved appearance table must therefore be rebuilt on `"units"` as well as on its own section: `IconGrid` rebuilds its per-unit alpha/tint curves, and `Castbar` re-skins. A regression shipped because `IconGrid` did this for `"icons"` only, leaving an unlinked focus rendering with target's alpha and tint. If you add per-unit derived state, wire it into **both** sections.
+
 ## `Ka0s_KickCD_GRID_LAYOUT` payload
 
 `IconGrid:Layout` fires `{ unit, gridFrame, primaryIcon, width, height }` after every layout pass, once per enabled unit instance (target and/or focus each have their own `IconGrid:Layout` call site inside their instance). `unit` is `"target"` or `"focus"`; `gridFrame` is that unit's parent frame (`KickCDIconGrid` for target, `KickCDIconGridFocus` for focus); `primaryIcon` is the first laid-out icon button or `nil` when the active spell list is empty; `width` / `height` are the post-layout bounding box of that unit's grid.

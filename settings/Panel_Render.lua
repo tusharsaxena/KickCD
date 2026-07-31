@@ -130,9 +130,29 @@ end
 -- Castbar builders, which need this same clear step ahead of a persistent
 -- header (unit selector, focus link/copy row) they redraw on every unit
 -- switch — see settings/Icons.lua / settings/Castbar.lua.
+--- Tear a panel's scroll body down: release its widgets AND drop the
+--- refreshers that capture them.
+---
+--- Dropping the refreshers is not tidiness, it is correctness. Every maker in
+--- Panel_Widgets registers its closure immediately after `parent:AddChild(...)`,
+--- so a refresher is only ever valid while its widget is live. ReleaseChildren
+--- hands those widgets back to AceGUI's pool, which recycles the SAME objects
+--- into whatever the rebuild creates next — so a surviving closure doesn't
+--- merely no-op, it writes its old row's value and dropdown list onto an
+--- unrelated widget. That shipped as the Unit dropdown on Icons listing
+--- anchor points and on Cast bar listing text positions, triggered by any
+--- `/kcd set` (which runs RefreshAllPanels) after a unit switch, a link tick,
+--- or "Copy styling from Target".
+---
+--- Safe to wipe wholesale precisely because of that AddChild invariant: no
+--- refresher belongs to a widget outside this scroll. If you ever register one
+--- for a persistent widget, it must NOT go in ctx.refreshers.
 function Helpers.ClearScroll(ctx)
     if ctx.scroll and ctx.scroll.ReleaseChildren then
         ctx.scroll:ReleaseChildren()
+    end
+    if ctx.refreshers then
+        for i = #ctx.refreshers, 1, -1 do ctx.refreshers[i] = nil end
     end
     ctx.lastGroup = nil
 end

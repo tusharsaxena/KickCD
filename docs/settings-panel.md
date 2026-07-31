@@ -76,6 +76,14 @@ All widgets bind directly to `db.profile` via `Helpers.Get(path)` and `Helpers.S
 
 Each widget creator pushes a refresher closure into `ctx.refreshers` so its display can re-sync after a Defaults reset or a slash-cmd `/kcd set`.
 
+### The refresher lifetime rule
+
+**A refresher is valid only while the widget it captures is live, so `Helpers.ClearScroll` wipes `ctx.refreshers` at the same time it calls `ReleaseChildren`.** Every maker registers immediately after `parent:AddChild(...)`, which is what makes the wholesale wipe safe — no entry in the registry belongs to a widget outside the scroll. If you ever add a refresher for a persistent widget, it must **not** live in `ctx.refreshers`.
+
+Getting this wrong is not a leak, it is corruption. AceGUI's pool recycles the *same widget objects* into whatever the next render creates, so a closure that outlives its widget doesn't quietly no-op — it writes its old row's value and dropdown list onto an unrelated widget. That shipped once: the **Unit** dropdown rendered anchor-point values on Icons and text-position values on Cast bar, because a stale anchor/position refresher fired against the recycled object now serving as the unit selector.
+
+It reproduces through ordinary use, since `Helpers.RenderUnitPanel` clears and rebuilds on every unit switch, "Use same styling as Target" tick, and "Copy styling from Target" press — then any `/kcd set` runs `RefreshAllPanels` and fires the whole registry. Guarded by `tests/test_settings_refreshers.lua`.
+
 Schema widgets are AceGUI primitives:
 
 - `CheckBox` for `bool`

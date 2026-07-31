@@ -734,6 +734,25 @@ local function build()
         end
         return c
     end
+
+    --- Evaluate a mock curve at `at`, the way the C side does: return the value
+    --- of the last control point at or below `at`, falling back to the first
+    --- point below the curve's start.
+    ---
+    --- This HAS to read the control points. The addon's curves are step-shaped
+    --- and every one of them is built from config — so a stub that ignores the
+    --- points and returns a constant makes "this icon used ITS unit's curve"
+    --- and "this icon used some other unit's curve" the same observation. That
+    --- blind spot is exactly what let a per-unit curve regression ship green.
+    local function evaluateCurve(curve, at)
+        local pts = curve and curve.points
+        if not (pts and pts[1]) then return nil end
+        local chosen = pts[1]
+        for _, p in ipairs(pts) do
+            if p.at <= at then chosen = p else break end
+        end
+        return chosen.value
+    end
     mocks.C_CurveUtil = {
         CreateCurve      = function() return makeCurve("number") end,
         CreateColorCurve = function() return makeCurve("color") end,
@@ -756,6 +775,11 @@ local function build()
     function mocks.__makeDurationObject(remaining)
         local o = {}
         function o.EvaluateRemainingDuration(_, curve)
+            -- Read the curve's actual control points so the caller's CHOICE of
+            -- curve is observable. Falls back to the raw remaining (number) or
+            -- a stand-in colour only when a curve carries no points at all.
+            local v = evaluateCurve(curve, remaining or 0.4)
+            if v ~= nil then return v end
             if curve and curve.__kind == "color" then return makeColor(1, 0.4, 0.4) end
             return remaining or 0.4
         end
