@@ -166,6 +166,7 @@ local SUITES = {
     "test_flow_traces.lua",
     "test_version.lua",
     "test_slash_style.lua",
+    "test_slash.lua",
     "test_list_mode.lua",
 }
 

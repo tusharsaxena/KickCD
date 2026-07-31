@@ -789,14 +789,23 @@ function Helpers.BuildMainContent(ctx)
 
     addBlock(scroll, MAIN_GAP_BELOW_HEAD)
 
-    -- 4) Slash-command rows pulled from KickCD.COMMANDS so this list
-    -- stays in lockstep with /kcd help — adding a command in
-    -- core/KickCD.lua surfaces here automatically.
-    for _, entry in ipairs(NS.COMMANDS or {}) do
+    -- 4) Slash-command rows, rendered by the SAME formatter `/kcd help` prints
+    -- through (NS.Slash:LandingRows -> LibKa0s-Slash-1.0's one row formatter),
+    -- minus the chat indent — each row here is its own label, where a leading
+    -- indent reads as a mistake.
+    --
+    -- This file used to carry its own format string for the same NS.COMMANDS
+    -- data: two spaces either side of the dash, the dash itself wrapped in the
+    -- white colour run, and the description left uncoloured. So the panel and
+    -- the help block rendered one table two ways, and every command added drifted
+    -- them further. That is the divergence the convergence exists to end, and the
+    -- visible cost is this page's spacing halving and its descriptions turning
+    -- white. Adding a command in core/KickCD.lua still surfaces here
+    -- automatically.
+    for _, text in ipairs(NS.Slash and NS.Slash:LandingRows() or {}) do
         local row = AceGUI:Create("Label")
         row:SetFullWidth(true)
-        row:SetText(("|cffffff00/kcd %s|r  |cffffffff—|r  %s")
-            :format(entry[1], entry[2]))
+        row:SetText(text)
         if row.label and row.label.SetJustifyH then
             row.label:SetJustifyH("LEFT")
         end

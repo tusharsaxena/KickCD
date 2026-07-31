@@ -57,6 +57,7 @@ modules\Castbar_Debug.lua
 modules\UnitLabel.lua
 
 # Settings (last — depend on everything else being initialized)
+settings\Slash.lua
 settings\Panel.lua
 settings\Panel_Widgets.lua
 settings\Panel_Render.lua

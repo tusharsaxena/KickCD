@@ -653,6 +653,33 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
+### test_slash.lua (24)
+
+- the dispatcher instance is built from LibKa0s-Slash-1.0
+- NS.COMMANDS stays the host's, as ordered positional triples
+- every COMMANDS handler takes (rest), not (self, rest)
+- an unknown verb names it and then prints the help index
+- only the verb is lowercased — a schema path keeps its case
+- the `options` alias still reaches `config`
+- the help header now carries the em dash the standard mandates
+- a help row is the one shared formatter, two-space indented
+- the landing page renders the SAME rows, un-indented
+- the panel no longer carries a second command-row formatter
+- list groups by the row's panel, in the addon's declared page order
+- get echoes the shared key = value pair
+- set clamps out of range and echoes what was actually STORED
+- set routes through the host's single write seam
+- a colour round-trips through the addon's positional {r,g,b,a} storage
+- a colour given in 0-255 rescales jointly
+- an unknown path says so rather than writing anything
+- reset takes a PATH and resets exactly that one row
+- the old page-shaped reset names its replacement instead of going quiet
+- `reset spells` names the verb its database rebuild moved to
+- the spell-database rebuild survives, under its new verb
+- resetall keeps its four-part host semantics rather than becoming CliResetAll
+- with LibKa0s absent /kcd still answers and host verbs still work
+- the degraded stub carries no copy of the row formatter or the parser
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -702,5 +729,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
+| test_slash.lua | 24 |
 | test_list_mode.lua | 5 |
-| **Total** | **545** |
+| **Total** | **569** |

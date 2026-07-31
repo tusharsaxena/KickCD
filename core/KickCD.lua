@@ -90,9 +90,8 @@ end
 -- unknown name. Help text is generated from the same tables, so adding a
 -- command means adding a single row.
 
-local function trim(s)
-    return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
-end
+-- (`trim` lived here to strip the raw slash input. LibKa0s-Slash-1.0's OnSlash
+-- does that itself, so the last caller went with the dispatcher.)
 
 local function p(self, ...)
     local fn = self.Util and self.Util.print or print
@@ -140,38 +139,44 @@ local runReset, runResetAll, runResetPosition, runSpells
 -- the settings panel's main page can render the same list /kcd help
 -- prints. Single-source-of-truth: a new entry surfaces in chat output AND
 -- in the Settings UI without further plumbing.
+-- Handlers take (rest) — everything after the verb, case and internal spacing
+-- preserved — because that is what LibKa0s-Slash-1.0's dispatcher calls them
+-- with (slash-commands-§3). They used to take (self, rest); `self` was always
+-- NS, so each closure now names NS directly. A handler still expecting `self`
+-- would read the REST of the line as its self and the argument as nil, which is
+-- silently wrong rather than an error — hence the case in tests/test_slash.lua.
 local COMMANDS = {
     {"help",          "List available commands",
-        function(self) printHelp(self) end},
+        function() printHelp(NS) end},
     {"version",       "Print the addon version",
-        function(self) p(self, "v" .. addonVersion()) end},
+        function() p(NS, "v" .. addonVersion()) end},
     {"config",        "Open the settings panel",
-        function(self) self:OpenSettings() end},
+        function() NS:OpenSettings() end},
     {"lock",          "Lock the icon grid in place",
-        function(self) setLocked(self, true) end},
+        function() setLocked(NS, true) end},
     {"unlock",        "Unlock the icon grid for dragging",
-        function(self) setLocked(self, false) end},
+        function() setLocked(NS, false) end},
     {"toggle",        "Toggle the icon grid lock state",
-        function(self)
-            local cur = self.db and self.db.profile and self.db.profile.locked
-            setLocked(self, not cur)
+        function()
+            local cur = NS.db and NS.db.profile and NS.db.profile.locked
+            setLocked(NS, not cur)
         end},
     {"list",          "List every setting and its current value",
-        function(self) listSettings(self) end},
+        function() listSettings(NS) end},
     {"get",           "Print a setting's current value — `/kcd get <path>`",
-        function(self, rest) getSetting(self, rest) end},
+        function(rest) getSetting(NS, rest) end},
     {"set",           "Set a setting — `/kcd set <path> <value>` (try /kcd list)",
-        function(self, rest) setSetting(self, rest) end},
-    {"reset",         "Reset a panel to defaults. `/kcd reset spells` rebuilds EVERY spec's list — for one spec, use `/kcd spells reset`.",
-        function(self, rest) runReset(self, rest) end},
+        function(rest) setSetting(NS, rest) end},
+    {"reset",         "Reset one setting to its default — `/kcd reset <path>`",
+        function(rest) runReset(NS, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
-        function(self) runResetAll(self) end},
+        function() runResetAll(NS) end},
     {"resetposition", "Restore the icon grid to its default screen position",
-        function(self) runResetPosition(self) end},
+        function() runResetPosition(NS) end},
     {"spells",        "Spell-list editor — try `/kcd spells` for the list",
-        function(self, rest) runSpells(self, rest) end},
+        function(rest) runSpells(NS, rest) end},
     {"debug",         "Debug subcommands — try `/kcd debug` for the list",
-        function(self, rest) runDebug(self, rest) end},
+        function(rest) runDebug(NS, rest) end},
 }
 NS.COMMANDS = COMMANDS
 
@@ -226,10 +231,12 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    p(self, "v" .. addonVersion() .. " slash commands (|cffffff00/kickcd|r is an alias for |cffffff00/kcd|r)")
-    for _, entry in ipairs(COMMANDS) do
-        p(self, ("  |cffffff00/kcd %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
-    end
+    -- The header, the rows and their colours are LibKa0s-Slash-1.0's one
+    -- formatter now (settings/Slash.lua). The two-space chat indent is the
+    -- library's HelpRows form; the settings landing page renders the SAME rows
+    -- through LandingRows, un-indented, so the two can no longer drift.
+    if NS.Slash and NS.Slash.cli then return NS.Slash.cli:PrintHelp() end
+    p(self, "slash help is unavailable \226\128\148 the settings layer failed to load")
 end
 
 function runDebug(self, rest)
@@ -254,23 +261,18 @@ function runDebug(self, rest)
     runDebug(self, "")
 end
 
+--- The entry point AceConsole's RegisterChatCommand resolves by name, kept here
+--- so the registration in OnInitialize is unaffected by the dispatcher moving.
+---
+--- Dispatch itself is LibKa0s-Slash-1.0's (settings/Slash.lua): the empty-line
+--- help, the verb lowercasing that deliberately does NOT touch `rest` (schema
+--- paths are case-sensitive and a colour is several tokens), the `options` ->
+--- `config` alias, and the unknown-verb line followed by the help index. NS.Slash
+--- is reached at CALL time, so settings/ loading after core/ costs nothing.
 function NS:OnSlashCommand(input)
-    local raw = trim(input)
-    if raw == "" then return printHelp(self) end
-
-    -- Lowercase only the command name; preserve case in the rest so
-    -- schema paths like `icons.primarySize` survive `/kcd set ...`.
-    local cmd, rest = raw:match("^(%S+)%s*(.*)$")
-    cmd  = (cmd or ""):lower()
-    rest = rest or ""
-    -- Backward-compat alias.
-    if cmd == "options" then cmd = "config" end
-
-    local entry = findCommand(COMMANDS, cmd)
-    if entry then return entry[3](self, rest) end
-
-    p(self, "unknown command '" .. cmd .. "'")
-    printHelp(self)
+    if NS.Slash and NS.Slash.OnSlash then return NS.Slash:OnSlash(input) end
+    -- settings/ never loaded. Say so rather than swallowing the command.
+    p(self, "slash commands are unavailable \226\128\148 the settings layer failed to load")
 end
 
 -- ---------------------------------------------------------------------------
@@ -287,219 +289,29 @@ local function helpers()
     return NS.Settings and NS.Settings.Helpers
 end
 
--- Single shared value formatter for /kcd list|get|set (slash-commands §5):
--- type-aware, unit-annotated (via the schema row's `fmt`), never hand-formatted
--- per call site. list and get/set both route through this so their value
--- strings can never diverge.
-local function formatValue(def, v)
-    if v == nil then return "nil" end
-    if def.type == "color" and type(v) == "table" then
-        return ("{%.2f, %.2f, %.2f, %.2f}"):format(
-            v[1] or 0, v[2] or 0, v[3] or 0, v[4] or 1)
-    end
-    if def.type == "number" then
-        if def.fmt then return def.fmt:format(v) end
-        return tostring(v)
-    end
-    if def.type == "bool" then
-        return v and "true" or "false"
-    end
-    if def.type == "string" and (v == nil or v == "") then
-        return "(none)"
-    end
-    return tostring(v)
-end
-
--- Shared `path = value` formatter for schema output (slash-commands §5): key
--- gold (ffff00), value white (ffffff), ` = ` separator uncoloured. Reused by
--- the /kcd list rows and the /kcd get | set single-line echo so the colouring
--- can never drift between them. No trailing colon (house style).
-local function FormatKV(path, valueStr)
-    return ("|cffffff00%s|r = |cffffffff%s|r"):format(path, valueStr)
-end
-
-local function dropdownAllowed(def)
-    local values = type(def.values) == "function" and def.values() or def.values or {}
-    local out = {}
-    for i, item in ipairs(values) do out[i] = tostring(item.value) end
-    return out
-end
-
--- Apply a typed value from a string (slash-command tail).
-local function applyFromText(self, def, text)
-    local H = helpers()
-    if not H then return p(self, "Settings layer not ready yet") end
-
-    local args = {}
-    for w in (text or ""):gmatch("%S+") do args[#args + 1] = w end
-
-    local L = self.L or {}
-    local fail = function(reason)
-        p(self, (L["Invalid value for %s"] or "Invalid value for %s"):format(def.path))
-        if reason and reason ~= "" then p(self, "  " .. reason) end
-    end
-
-    local newValue
-    if def.type == "bool" then
-        local s = (args[1] or ""):lower()
-        if s == "true" or s == "1" or s == "on"  or s == "yes" then newValue = true
-        elseif s == "false" or s == "0" or s == "off" or s == "no"  then newValue = false
-        else return fail("expected true/false/on/off/1/0") end
-    elseif def.type == "number" then
-        local n = tonumber(args[1])
-        if not n then return fail("expected a number") end
-        if def.min then n = math.max(def.min, n) end
-        if def.max then n = math.min(def.max, n) end
-        newValue = n
-    elseif def.type == "string" then
-        local v = args[1]
-        if not v then return fail("expected a value") end
-        local allowed = dropdownAllowed(def)
-        local ok = false
-        for _, a in ipairs(allowed) do if a == v then ok = true; break end end
-        if not ok then
-            local msg = (L["Allowed values: %s"] or "Allowed values: %s")
-                :format(table.concat(allowed, ", "))
-            -- def.valueGate (optional) names a sibling setting whose
-            -- current value gates the option list returned by def.values.
-            -- Surfacing it tells a confused user *why* their value is
-            -- rejected — e.g. growDirection's UP/DOWN vs RIGHT/LEFT
-            -- depends on castbar.orientation.
-            --
-            -- We append:
-            --   * The gate's current value (so the user understands
-            --     which side of the gate they're on right now).
-            --   * For every OTHER value the gate could take, the
-            --     option list this dropdown would expose under that
-            --     gate value. Probing relies on the dropdown's
-            --     `values` function reading the live profile, so we
-            --     swap the gate's profile slot to each candidate
-            --     value, re-query, restore, and tabulate. The swap
-            --     is purely transient (single call between mutate +
-            --     restore; no message bus dispatch).
-            if def.valueGate then
-                local H = helpers()
-                local gateVal = H and H.Get and H.Get(def.valueGate)
-                msg = msg .. (" (depends on %s = %s)")
-                    :format(def.valueGate, tostring(gateVal))
-                local gateDef = H and H.FindSchema and H.FindSchema(def.valueGate)
-                if gateDef and H and H.Get and H.Set then
-                    local gateValues = type(gateDef.values) == "function"
-                        and gateDef.values() or gateDef.values
-                    if type(gateValues) == "table" then
-                        local hints = {}
-                        for _, item in ipairs(gateValues) do
-                            local candidate = item.value
-                            if candidate ~= nil and candidate ~= gateVal then
-                                local profile = self.db and self.db.profile
-                                local parent, key = H.Resolve(def.valueGate)
-                                if parent and key and profile then
-                                    parent[key] = candidate
-                                    local altList = dropdownAllowed(def)
-                                    parent[key] = gateVal
-                                    if #altList > 0 then
-                                        hints[#hints + 1] = ("flip %s to %s for %s")
-                                            :format(def.valueGate, tostring(candidate),
-                                                    table.concat(altList, "/"))
-                                    end
-                                end
-                            end
-                        end
-                        if #hints > 0 then
-                            msg = msg .. "; " .. table.concat(hints, "; ")
-                        end
-                    end
-                end
-            end
-            return fail(msg)
-        end
-        newValue = v
-    elseif def.type == "color" then
-        local r, g, b = tonumber(args[1]), tonumber(args[2]), tonumber(args[3])
-        local a = tonumber(args[4]) or 1
-        if not (r and g and b) then return fail("expected: r g b [a] (each 0-1)") end
-        -- Clamp each channel to [0, 1]. Without this, `/kcd set
-        -- icons.cooldownTint 5 5 5 5` writes garbage that the texture
-        -- driver renders as overbright nonsense and the color picker
-        -- can't represent.
-        local function clamp01(n) return math.max(0, math.min(1, n)) end
-        newValue = { clamp01(r), clamp01(g), clamp01(b), clamp01(a) }
-    else
-        return fail("unknown setting type '" .. tostring(def.type) .. "'")
-    end
-
-    H.Set(def.path, def.section, newValue)
-    if def.onChange then
-        local ok, err = pcall(def.onChange, newValue)
-        if not ok then p(self, "onChange failed: " .. tostring(err)) end
-    end
-    if H.RefreshAllPanels then H.RefreshAllPanels() end
-
-    -- Echo the STORED value (post-clamp/coerce) via the shared key=value
-    -- formatter, so /kcd set reads identically to /kcd get and /kcd list.
-    p(self, FormatKV(def.path, formatValue(def, H.Get(def.path))))
-end
+-- The schema CLI is LibKa0s-Slash-1.0's (settings/Slash.lua): the value
+-- formatter, the `key = value` pair, the type-aware parser with its clamping and
+-- enum validation, and the list/get/set verbs themselves. What used to live here
+-- was ~215 lines of the same thing, one of four-plus divergent copies across the
+-- collection.
+--
+-- Two pieces did NOT generalise and moved to settings/Slash.lua rather than
+-- disappearing: the positional-{r,g,b,a} colour codec, and the `valueGate` hint
+-- that explains which sibling setting is gating a rejected dropdown value.
 
 function listSettings(self)
-    local H = helpers()
-    if not (H and NS.Settings and NS.Settings.Schema) then
-        return p(self, "Settings layer not ready yet")
-    end
-    -- Colour scheme (slash-commands §5): header green (33ff99), [page] group
-    -- headers azure (3399ff), key/value via FormatKV. No trailing colons.
-    p(self, "|cff33ff99" .. (self.L and self.L["Available settings"] or "Available settings") .. "|r")
-    -- Group by panel for readable output.
-    local byPanel = {}
-    for _, def in ipairs(NS.Settings.Schema) do
-        local key = def.panel or "?"
-        byPanel[key] = byPanel[key] or {}
-        table.insert(byPanel[key], def)
-    end
-    -- Panel order for the grouped output. MUST cover every value in
-    -- settings/Panel.lua's `_validPanels` — a panel missing here is silently
-    -- dropped from /kcd list even though `get`/`set` still reach its rows
-    -- (that's how the "label" tab went unlisted for a release).
-    for _, key in ipairs({ "general", "icons", "castbar", "label", "spells", "profiles" }) do
-        local list = byPanel[key]
-        if list then
-            p(self, "  |cff3399ff[" .. key .. "]|r")
-            for _, def in ipairs(list) do
-                p(self, "    " .. FormatKV(def.path, formatValue(def, H.Get(def.path))))
-            end
-        end
-    end
+    if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliList() end
+    p(self, "Settings layer not ready yet")
 end
 
 function getSetting(self, rest)
-    local H = helpers()
-    if not H then return p(self, "Settings layer not ready yet") end
-    local path = (rest or ""):match("^(%S+)")
-    if not path or path == "" then
-        return p(self, self.L and self.L["Usage: /kcd get <path>"]
-            or "Usage: /kcd get <path>")
-    end
-    local def = H.FindSchema(path)
-    if not def then
-        return p(self, (self.L and self.L["Setting not found: %s"]
-            or "Setting not found: %s"):format(path))
-    end
-    p(self, FormatKV(def.path, formatValue(def, H.Get(def.path))))
+    if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliGet(rest) end
+    p(self, "Settings layer not ready yet")
 end
 
 function setSetting(self, rest)
-    local H = helpers()
-    if not H then return p(self, "Settings layer not ready yet") end
-    local path, value = (rest or ""):match("^(%S+)%s*(.*)$")
-    if not path or path == "" then
-        return p(self, self.L and self.L["Usage: /kcd set <path> <value>"]
-            or "Usage: /kcd set <path> <value>")
-    end
-    local def = H.FindSchema(path)
-    if not def then
-        return p(self, (self.L and self.L["Setting not found: %s"]
-            or "Setting not found: %s"):format(path))
-    end
-    applyFromText(self, def, value or "")
+    if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliSet(rest) end
+    p(self, "Settings layer not ready yet")
 end
 
 -- ---------------------------------------------------------------------------
@@ -512,39 +324,12 @@ end
 -- shell history IS the confirmation); `/kcd resetposition` mirrors
 -- the General > "Reset position" button.
 
-local RESET_PANELS = {
-    general = true, icons = true, castbar = true, label = true, spells = true,
-}
-
+-- `/kcd reset` takes a schema PATH now, not a page. The convergence, the
+-- deprecation messages for the five retired page names, and the new home of the
+-- spell-database rebuild all live in settings/Slash.lua.
 function runReset(self, rest)
-    local panelName = (rest or ""):match("^(%S+)")
-    panelName = panelName and panelName:lower() or ""
-    if panelName == "" then
-        return p(self, "Usage: /kcd reset <general|icons|castbar|label|spells>")
-    end
-    if not RESET_PANELS[panelName] then
-        return p(self, "Unknown panel '" .. panelName .. "'. "
-                 .. "Valid: general, icons, castbar, label, spells")
-    end
-    if panelName == "spells" then
-        if self.Database and self.Database.ResetAllSpells then
-            self.Database:ResetAllSpells()
-            return p(self, "spells reset to defaults")
-        end
-        return p(self, "Database not ready")
-    end
-    local H = helpers()
-    if not (H and H.RestoreDefaults) then
-        return p(self, "Settings layer not ready yet")
-    end
-    -- Pass the live panel ctx so its widget refreshers re-sync if the
-    -- tab is open. RestoreDefaults tolerates a nil ctx (closed panel).
-    local ctx
-    for _, c in ipairs(NS.Settings._panels or {}) do
-        if c.panelKey == panelName then ctx = c; break end
-    end
-    H.RestoreDefaults(panelName, ctx)
-    p(self, ("%s panel reset to defaults"):format(panelName))
+    if NS.Slash and NS.Slash.RunReset then return NS.Slash.RunReset(rest) end
+    p(self, "Settings layer not ready yet")
 end
 
 function runResetAll(self)
@@ -868,6 +653,18 @@ local SPELLS_COMMANDS = {
         function(self, rest) spellsSetCategory(self, rest) end},
     {"reset",    "Reset one spec to defaults — `... reset [CLASS SPEC]`",
         function(self, rest) spellsReset(self, rest) end},
+    -- The new home of `/kcd reset spells`. That verb was the odd one out in the
+    -- old page-shaped reset: it never reset a settings page, it rebuilt EVERY
+    -- spec's spell list. `reset` now takes a schema path, so the capability
+    -- moved here, beside the single-spec `reset` above where it belongs.
+    {"resetall", "Rebuild EVERY spec's list from the defaults — `... resetall`",
+        function(self)
+            if not (self.Database and self.Database.ResetAllSpells) then
+                return p(self, "Database not ready")
+            end
+            self.Database:ResetAllSpells()
+            p(self, "spells reset to defaults")
+        end},
 }
 
 function runSpells(self, rest)
