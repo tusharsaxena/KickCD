@@ -16,6 +16,38 @@ Where a module's decision logic is a file-local, it is published on the module p
 
 The **authoritative test count and per-suite breakdown** live in the generated inventory at [test-cases.md](test-cases.md) — never a hand-typed number here. Regenerate it (and see the current total) with `lua tests/run.lua --list > docs/test-cases.md`. `lua tests/run.lua --list` is a non-executing listing mode: it loads every suite, prints the full inventory to stdout, and exits without running a single test.
 
+## Testing against the vendored library
+
+`tests/loader.lua` loads the eight `libs/LibKa0s/*.lua` files explicitly, in
+`LibKa0s.xml`'s own order, before any addon file — the TOC pulls them in through
+that one `.xml`, which the TOC-derived load list deliberately skips. The list is
+pinned against the XML by `tests/test_coresetup.lua`, because a library file
+omitted there makes the dependent major refuse to register, the host's setup file
+fall back to its stub, and the suite happily measure **the stub** — green, and
+testing nothing (testing-§9).
+
+The degraded path is exercised by a **real load**, never by hand-stubbing:
+
+```lua
+local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
+```
+
+Each adopted module has a case proving its stub answers every member the addon
+calls, and `tests/test_options_panel.lua` additionally pins `#NS.Settings.Schema`
+against the fully-loaded environment — the only thing standing between the
+options stub and a silent half-load.
+
+## Verifying the vendored copies
+
+```
+diff -r ../LibKa0s/LibKa0s libs/LibKa0s      # must be empty
+diff -r ../LibKa0s/testkit tests/_kit        # must be empty
+```
+
+Both must be empty before every commit. Nothing about "the tests are green" will
+tell you the copies have diverged: the library's suite passes against the
+library, and this addon's passes against a stale copy that still works.
+
 ## The source-scan guard
 
 Most suites here assert on *behaviour* — drive the real code, inspect what it produced. `tests/test_slash_style.lua` also does something different, and it's worth knowing why before writing another guard like it.
