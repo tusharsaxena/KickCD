@@ -21,7 +21,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Options-1.0", 2
+local MAJOR, MINOR = "LibKa0s-Options-1.0", 3
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -76,6 +76,8 @@ lib.STRINGS = {
   COMBAT_REFUSED = "|cffaaaaaacannot open settings during combat \226\128\148 Blizzard's " ..
                    "category-switch is protected|r",
   BUTTON_FAILED  = "button onClick failed: %s",
+  PAGE_FAILED    = "settings page '%s' failed to build: %s",
+  RENDER_FAILED  = "settings page '%s' failed to render: %s",
   -- The sub-page breadcrumb separator. An inline atlas escape rather than a font glyph, so it
   -- renders identically regardless of the FontString's font or any locale fallback.
   BREADCRUMB_SEP = " |A:common-icon-forwardarrow:16:16|a ",
@@ -139,6 +141,8 @@ function lib:New(d)
   local renderedPanels = {}
 
   local pendingPages = {}      -- file-load-time queue; page files register into it
+  local builtPages  = {}       -- the ones that actually built, in build order
+  local built       = false    -- has CreateOptionsPanel drained the queue yet?
   local mainCategory           -- Settings.RegisterCanvasLayoutCategory return
   local mainCategoryID         -- numeric ID for OpenToCategory
 
@@ -348,16 +352,95 @@ function lib:New(d)
     -- Before the refresh, not after: the hook exists to clear state no schema row owns, and a
     -- refresh that ran first would paint the panel from the pre-hook values.
     if type(d.afterRestoreAll) == "function" then d.afterRestoreAll() end
+    -- STRUCTURAL: a global reset can change which rows a page draws (a category re-enabled, a
+    -- list emptied), so re-running the renderer is the honest refresh here.
     O.RefreshAllPanels()
   end
 
   --- Re-run every registered panel's refreshers. Called after a slash write so an open panel
   --- reflects it immediately, and after a profile change so widgets re-read the new profile.
-  --- Each refresher is pcall'd: one dead widget must not take the rest of the UI with it.
-  function O.RefreshAllPanels()
-    for _, ctx in ipairs(renderedPanels) do
-      for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
+  ---
+  --- TWO TIERS, and the distinction is the whole reason SetRenderer exists:
+  ---
+  ---   RefreshAllPanels  STRUCTURAL. Re-runs the page's renderer, so rows that appeared or
+  ---                     disappeared are drawn. What a mutation that changes the SHAPE of a page
+  ---                     needs (an item added to a list, a category enabled).
+  ---   RefreshScalars    IN PLACE. Runs the refreshers only, so widgets re-read their values
+  ---                     without a rebuild. What a plain value write needs, and what every
+  ---                     widget maker's own `set()` calls.
+  ---
+  --- A page that is not on screen is not refreshed either way — it is flagged dirty and re-renders
+  --- on its next OnShow. Rebuilding fifteen hidden pages on every keystroke is the cost that
+  --- motivated the split.
+  ---
+  --- A ctx that never went through SetRenderer has no renderer to re-run, so BOTH tiers fall back
+  --- to running its refreshers ungated. That is the migration seam: a host adopting the registry
+  --- one page at a time keeps working, and so does one that never adopts it at all.
+
+  local function isShown(ctx)
+    local panel = ctx.panel
+    if not (panel and panel.IsShown) then return true end
+    return panel:IsShown() and true or false
+  end
+
+  local function runRefreshers(ctx)
+    for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
+  end
+
+  --- Re-render one ctx through its declared renderer, reporting rather than propagating a failure:
+  --- a raising renderer inside AceGUI's own dispatch would take the click handling of every widget
+  --- on the frame down with it.
+  local function renderCtx(ctx)
+    if type(ctx._renderFn) ~= "function" then return end
+    ctx._rendered = true
+    ctx._dirty    = false
+    local ok, err = pcall(ctx._renderFn, ctx)
+    if not ok then
+      print(lib.STRINGS.RENDER_FAILED:format(tostring(ctx.pageKey or "?"), tostring(err)))
     end
+  end
+
+  --- Declare how a page draws itself. The library owns WHEN — first show, and again after a
+  --- refresh marked it dirty while it was hidden — because those are the two moments only the
+  --- registry can see. It also builds the Defaults button here rather than at registration time,
+  --- for the AceGUI skinning reason above, and refuses to render during combat.
+  function O.SetRenderer(ctx, fn)
+    ctx._renderFn = fn
+    ctx.panel:SetScript("OnShow", function()
+      O.EnsureDefaultsButton(ctx.panel)
+      -- The Blizzard AddOns sidebar reaches a panel without going through OpenOptionsPanel, so
+      -- its combat guard is bypassed on exactly the path a user is most likely to take mid-fight.
+      -- Closing the window is what makes the refusal legible; a silent no-render reads as a bug.
+      if InCombatLockdown and InCombatLockdown() then
+        if SettingsPanel and SettingsPanel.Close then
+          SettingsPanel:Close()
+        elseif HideUIPanel and SettingsPanel then
+          HideUIPanel(SettingsPanel)
+        end
+        print(lib.STRINGS.COMBAT_REFUSED)
+        return
+      end
+      if ctx._rendered and not ctx._dirty then return end
+      renderCtx(ctx)
+    end)
+  end
+
+  local function refreshCtx(ctx, structural)
+    -- No renderer declared: the legacy shape, refreshed ungated exactly as it always was.
+    if type(ctx._renderFn) ~= "function" then return runRefreshers(ctx) end
+    if not isShown(ctx) then
+      ctx._dirty = true
+      return
+    end
+    if structural then renderCtx(ctx) else runRefreshers(ctx) end
+  end
+
+  function O.RefreshAllPanels()
+    for _, ctx in ipairs(renderedPanels) do refreshCtx(ctx, true) end
+  end
+
+  function O.RefreshScalars()
+    for _, ctx in ipairs(renderedPanels) do refreshCtx(ctx, false) end
   end
 
   -- ── LibSharedMedia ───────────────────────────────────────────────────────────────────────
@@ -385,9 +468,28 @@ function lib:New(d)
   --- @param builder  function(mainCategory) -> subcategory | nil. Called once at
   ---                 CreateOptionsPanel time, after the db is ready. nil means the page opted out
   ---                 (an optional dependency the host did not find).
-  function O.RegisterOptionsPage(key, name, builder)
-    pendingPages[#pendingPages + 1] = { key = key, name = name, builder = builder }
+  --- Build one page, reporting rather than propagating. The key is in the message because a
+  --- builder's own stack rarely names the page a user would recognise.
+  local function buildPage(page)
+    local ok, err = pcall(page.builder, mainCategory)
+    if ok then
+      builtPages[#builtPages + 1] = page
+      return true
+    end
+    print(lib.STRINGS.PAGE_FAILED:format(tostring(page.key or "?"), tostring(err)))
+    return false
   end
+
+  function O.RegisterOptionsPage(key, name, builder)
+    local page = { key = key, name = name, builder = builder }
+    -- A page registered AFTER the build is built immediately rather than queued behind a drain
+    -- that has already happened — otherwise it silently never appears.
+    if built and mainCategory then return buildPage(page) end
+    pendingPages[#pendingPages + 1] = page
+  end
+
+  --- Every page that built successfully, for a host's own diagnostics and for the suite.
+  function O.__pages() return builtPages end
 
   local function registerMain()
     if not (Settings and Settings.RegisterCanvasLayoutCategory
@@ -397,14 +499,13 @@ function lib:New(d)
 
     local mainCtx = O.CreatePanel(d.mainPanelName, d.parentTitle or "", { isMain = true })
 
-    -- Defer the body to first OnShow: AceGUI's ScrollFrame lays children out against the parent's
-    -- CURRENT width, which is zero at enable time.
-    local mainRendered = false
-    mainCtx.panel:SetScript("OnShow", function()
-      if mainRendered then return end
-      mainRendered = true
-      if type(d.buildMain) == "function" then d.buildMain(mainCtx) end
-    end)
+    -- Deferred to first OnShow through the same seam every sub-page uses: AceGUI's ScrollFrame
+    -- lays children out against the parent's CURRENT width, which is zero at enable time. Routing
+    -- it through SetRenderer rather than a private flag also gives the main page the combat guard
+    -- and the dirty-re-render, which it had neither of.
+    if type(d.buildMain) == "function" then
+      O.SetRenderer(mainCtx, d.buildMain)
+    end
 
     mainCategory   = Settings.RegisterCanvasLayoutCategory(mainCtx.panel, d.parentTitle)
     Settings.RegisterAddOnCategory(mainCategory)
@@ -436,13 +537,16 @@ function lib:New(d)
     registerMain()
     if not mainCategory then return end
 
-    -- Each builder registers its own Blizzard subcategory as a side effect.
+    -- Each builder registers its own Blizzard subcategory as a side effect, and each is pcall'd
+    -- SEPARATELY. Unguarded, one raising builder killed every page after it in the list — and the
+    -- user sees a half-registered options tree with no error naming which page did it.
     for _, page in ipairs(pendingPages) do
-      page.builder(mainCategory)
+      buildPage(page)
     end
     -- Drained, so a page registered before the build cannot be built twice. REASSIGNED rather than
     -- wiped in place: nothing outside this closure holds the table.
     pendingPages = {}
+    built = true
   end
 
   -- Expand the parent category in the Blizzard left tree so every sub-page is visible. Wrapped in

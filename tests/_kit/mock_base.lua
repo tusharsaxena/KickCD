@@ -217,6 +217,15 @@ return function()
   -- possible to fire their OnShow and exercise the genuine deferred render.
   M.__mainPanel     = nil
   M.__subcategories = {}   -- [displayName] = panel frame
+  -- Blizzard's settings WINDOW, distinct from the Settings registration API below. Present rather
+  -- than absent, and its Close is RECORDED (fidelity rule: anything a test needs to observe must
+  -- be observable): a panel's combat guard closes this window, and the only thing distinguishing
+  -- that from a guard which merely printed is seeing the close land. Left nil, the branch is
+  -- unreachable and the case passes either way.
+  M.__settingsClosed = 0
+  M.SettingsPanel = stubFrame()
+  function M.SettingsPanel:Close() M.__settingsClosed = M.__settingsClosed + 1 end
+
   M.Settings = {
     RegisterCanvasLayoutCategory = function(panel)
       M.__mainPanel = panel
