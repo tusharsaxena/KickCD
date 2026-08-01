@@ -40,13 +40,27 @@ options stub and a silent half-load.
 ## Verifying the vendored copies
 
 ```
-diff -r ../LibKa0s/LibKa0s libs/LibKa0s      # must be empty
-diff -r ../LibKa0s/testkit tests/_kit        # must be empty
+diff -r --strip-trailing-cr ../LibKa0s/LibKa0s libs/LibKa0s   # content — MUST be empty
+diff -r ../LibKa0s/LibKa0s libs/LibKa0s                       # bytes  — SHOULD be empty
+diff -r --strip-trailing-cr ../LibKa0s/testkit tests/_kit      # content — MUST be empty
+diff -r ../LibKa0s/testkit tests/_kit                          # bytes  — SHOULD be empty
 ```
 
-Both must be empty before every commit. Nothing about "the tests are green" will
-tell you the copies have diverged: the library's suite passes against the
-library, and this addon's passes against a stale copy that still works.
+Run **both** halves before every commit — they are different findings. Nothing about
+"the tests are green" will tell you the copies have diverged: the library's suite
+passes against the library, and this addon's passes against a stale copy that still
+works.
+
+**Content differs** → a real fork in `libs/`, the forbidden state. Name every hunk.
+
+**Bytes differ but content matches** → a line-ending divergence, not a fork. Both repos pin
+`* text=auto eol=crlf` with LF blobs, so a working tree holding *either* ending reads clean to
+`git status` and neither side's cleanliness proves anything. Establish which side drifted
+(`file -b <path>`, and `git cat-file -p HEAD:<path> | file -b -` for what git stores) and
+renormalise it. **Re-vendoring will not converge it, and the fix is never an edit to `libs/`** —
+that makes a fork nobody knows about, which the next re-vendor reverts silently. Not
+hypothetical: the bare single-diff gate this block used to publish produced a false accusation
+against the one consumer whose checkout was actually correct.
 
 ## The source-scan guard
 
@@ -61,7 +75,19 @@ The second exists because the first has a hole that is not fixable by adding mor
 
 The scan needs no exemption list. The one legitimate `:`-terminated literal closing a call is a **separator** argument (`table.concat(parts, ":")`), and it is distinguishable structurally: a separator is *exactly* `":"` with nothing before the colon, while a chat header always carries text. Flag a non-empty prefix and `curveSignature`'s concat stays legal on its own merits — no filename or function-name whitelist to rot.
 
-Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant. It is not a substitute for behavioural coverage; it is what you add when you can prove coverage is structurally impossible.
+`tests/test_perfsetup.lua` carries the second guard of this shape, for the **`L` trap**, and it is the sharper example of when the shape is mandatory. Every LibKa0s module taking an `L` override resolves the descriptor's table before its own `STRINGS`; `NS.L` answers *every* key with a string (the standard's mandated metatable fallback), so `L = NS.L` in a descriptor renders raw SCREAMING_SNAKE keys for every key at once — and only in game. **This addon shipped it**: a perf panel titled `Ka0s KickCDPANEL_TITLE_SUFFIX`. There is nothing to drive: a descriptor field is not observable after `lib:New` returns, so behavioural coverage is not merely inconvenient here, it is impossible.
+
+The guard scans the five seam files, and the interesting part is what it matches on. It flags any `L =` whose value can **evaluate to** the locale table, not one spelling of it:
+
+```
+L = NS.L                     -- the table itself                        OFFENDER
+L = NS.L or { ... }          -- NS.L is always truthy, so: the table    OFFENDER
+L = NS.L and { ... } or nil  -- evaluates to the plain table            fine
+```
+
+That third form is this addon's real descriptor at `settings/Slash.lua`, so an `and` → `or` typo yields the live trap. The original pattern anchored `L = NS.L` to end-of-line and never looked at that line at all. Three inline assertions drive the matcher against all three spellings, because a matcher nothing tests can be narrowed back to a single anchored form while still reporting green — which is exactly how it got there.
+
+Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant, and anything consumed by a library before it becomes observable. It is not a substitute for behavioural coverage; it is what you add when you can prove coverage is structurally impossible. Pair it with an in-game check where one exists — smoke-test §25 is the `L` trap's.
 
 ## Keeping the inventory & badge in sync
 

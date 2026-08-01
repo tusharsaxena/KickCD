@@ -83,7 +83,7 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - AceConsole-3.0
 - AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
 - AceGUI-3.0
-- LibKa0s (the Ka0s shared library — `Core`, `DebugLog`, `Perf`, `Slash`, `Options` are adopted here, one setup file each: `core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSetup.lua`, `settings/Slash.lua`, `settings/OptionsSetup.lua`). **Never edit `libs/LibKa0s`** — a library problem is fixed upstream in `../LibKa0s` and re-vendored; `diff -r ../LibKa0s/LibKa0s libs/LibKa0s` MUST come back empty. Every setup file degrades to a stub when the library is missing rather than erroring at load.
+- LibKa0s (the Ka0s shared library — `Core`, `DebugLog`, `Perf`, `Slash`, `Options` are adopted here, one setup file each: `core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSetup.lua`, `settings/Slash.lua`, `settings/OptionsSetup.lua`). **Never edit `libs/LibKa0s`** — a library problem is fixed upstream in `../LibKa0s` and re-vendored. The gate is two diffs, not one: `diff -r --strip-trailing-cr ../LibKa0s/LibKa0s libs/LibKa0s` MUST be empty (content), and the plain `diff -r` SHOULD be (bytes). A byte-only difference is a line-ending divergence, not a fork — renormalise the side that drifted, never edit `libs/`. Every setup file degrades to a stub when the library is missing rather than erroring at load, and all five explain the absence through **one shared cause clause**, `NS.LIBKA0S_MISSING` (defined in `core/CoreSetup.lua`, outside its own `if not lib` branch because the seams that read it are reached on both paths). Each seam appends its own "so &lt;what&gt; is unavailable", so a degraded install says the same thing about *why* five times and a different thing about *what* each time — and says it identically to AbsorbTracker and ConsumableMaster, which is the point.
 - LibSharedMedia-3.0
 - AceGUI-3.0-SharedMediaWidgets (vendored upstream r65; provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Cast bar / Icons panels). `core/LSMPatch.lua` is an in-tree fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar; lives in addon code so future lib refreshes don't blow it away.
 - LibCustomGlow-1.0
@@ -165,7 +165,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 4. `core/Constants.lua` (`NS.Const`)
 5. `core/State.lua` (`NS.State`; bootstrap CreateFrame for `PLAYER_REGEN_*` / `PLAYER_LOGIN`)
 6. `core/Util.lua`
-7. `core/CoreSetup.lua` (`LibKa0s-Core-1.0` descriptor — publishes the secret-safe, `NS.PREFIX`-tagged `NS.Util.print`; after `Constants` for the prefix and after `Util` so the latter's table assignment can't replace it)
+7. `core/CoreSetup.lua` (`LibKa0s-Core-1.0` descriptor — publishes the secret-safe, `NS.PREFIX`-tagged `NS.Util.print`, and `NS.LIBKA0S_MISSING`, the one cause clause the other four seams append their own consequence to; after `Constants` for the prefix and after `Util` so the latter's table assignment can't replace it. It is also the **first** of the five seams the TOC loads, which is why the clause lives here)
 8. `core/DebugLogSetup.lua` (`LibKa0s-DebugLog-1.0` descriptor — publishes `NS.DebugLog` and binds the sink bare as `NS.Debug(tag, fmt, …)`)
 9. `core/Units.lua` (`NS.Units`; unit identity + per-unit config resolution — loads after `Util`, before `Database`)
 10. `core/Database.lua` (defines class + `units.target`/`units.focus` in `DEFAULT_PROFILE`; doesn't init the DB at file-load time)
