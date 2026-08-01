@@ -30,14 +30,27 @@ NS.Slash = NS.Slash or {}
 --
 -- There was a third — a colour codec, folding the library's keyed
 -- { r =, g =, b =, a = } back into the positional array this addon used to
--- store. It is gone: the STORED shape migrated instead (core/Database.lua's
--- v3 -> v4 step), so host and library now agree and nothing translates between
--- them. Worth remembering why it was tolerable while it lasted, since the same
--- question will come up again: LibKa0s-Options-1.0 has descriptor colorDecode /
--- colorEncode fields for exactly this, LibKa0s-Slash-1.0 has no equivalent
--- (lib.FormatValue is lib-level and reached directly from the instance's kv()),
--- and adding one was rejected because a misfit expressible as closures over
--- `get` and `parse` is a setup-file concern, not a library change.
+-- store. It is gone, and BOTH reasons it could go are worth keeping, because
+-- they answer different questions.
+--
+-- Why it is not needed here: the STORED shape migrated (core/Database.lua's
+-- v3 -> v4 step), so host and library agree and nothing translates between them.
+-- That remains the better fix — a translation layer is a thing to keep correct
+-- forever, whereas a migration runs once.
+--
+-- Why it was tolerable while it lasted, for the next host that hits a misfit:
+-- it was expressible as closures over `get` and `parse`, and a misfit you can
+-- close in the setup file is a setup-file concern rather than a library change.
+--
+-- What HAS changed since: LibKa0s-Slash-1.0 grew the codec anyway, in minor 4.
+-- `colorDecode` / `colorEncode` now exist on the Slash descriptor under the
+-- same names LibKa0s-Options-1.0 has always used, so a host passes one pair to
+-- both majors, and `lib.FormatValue` reads the positional shape directly — the
+-- common case needs no descriptor at all. So the asymmetry this paragraph used
+-- to describe is closed. It went upstream because a SECOND host hit the same
+-- wall (ConsumableMaster, which stores colours positionally and could not
+-- migrate — the Ka0s options colour widget writes that shape), and one misfit
+-- is a setup-file concern while two is a library gap.
 
 local SlashLib = LibStub and LibStub("LibKa0s-Slash-1.0", true)
 
