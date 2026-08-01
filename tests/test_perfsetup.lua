@@ -11,8 +11,8 @@
 -- in the repo would catch it.
 
 local T = _G.KICKCD_TEST
-local test, assertEqual, assertTrue, assertNil =
-    T.test, T.assertEqual, T.assertTrue, T.assertNil
+local test, assertEqual, assertTrue, assertFalse, assertNil =
+    T.test, T.assertEqual, T.assertTrue, T.assertFalse, T.assertNil
 
 -- ── the descriptor ──────────────────────────────────────────────────────────
 
@@ -384,7 +384,36 @@ test("no LibKa0s descriptor is handed the key-returning locale table", function(
     -- table whose __index returns the key can never be a valid `L` override:
     -- it answers every key, so the library's own STRINGS become unreachable.
     -- Pass nothing, or pass a plain table holding only the real overrides.
-    -- red under: adding `L = NS.L,` to any setup file's descriptor
+    -- red under: adding `L = NS.L,` or `L = NS.L or {…},` to any setup file's descriptor
+    --
+    -- Matched on what the expression can EVALUATE TO, not on one spelling. This case used to
+    -- anchor `L = NS.L,` to end-of-line, which mattered here more than anywhere: this addon's
+    -- real descriptor at settings/Slash.lua is `L = NS.L and { ... } or nil`, so an `and` -> `or`
+    -- typo yields the live trap on a line the old pattern never looked at.
+    --
+    --   L = NS.L                     -- the table itself                        OFFENDER
+    --   L = NS.L or { ... }          -- NS.L is always truthy, so: the table    OFFENDER
+    --   L = NS.L and { ... } or nil  -- evaluates to the plain table            fine
+    --
+    -- `and` is the one operator that can select something else; anything after `NS.L` other than
+    -- `and` leaves the locale table reachable.
+    local function handedTheLocaleTable(line)
+        -- `L = NS.L` as a descriptor field, not `local L = NS.L`.
+        local tail = line:match("^%s*L%s*=%s*NS%.L(.*)$")
+                  or line:match("[{,]%s*L%s*=%s*NS%.L(.*)$")
+        if not tail then return false end
+        return not (tail:match("^%s*and$") or tail:match("^%s*and[^%w_]"))
+    end
+
+    -- Non-vacuity: pin the matcher against all three forms, so it cannot be narrowed back to the
+    -- single anchored spelling while still reporting green.
+    assertTrue(handedTheLocaleTable("    L = NS.L,"),
+        "the bare form must be flagged")
+    assertTrue(handedTheLocaleTable("    L = NS.L or {},"),
+        "the `or` form is the same trap and must be flagged")
+    assertFalse(handedTheLocaleTable("    L = NS.L and { LIST_HEADER = x } or nil,"),
+        "the `and` form evaluates to the plain table and must NOT be flagged")
+
     local offenders = {}
     for _, rel in ipairs({
         "core/CoreSetup.lua", "core/DebugLogSetup.lua", "core/PerfSetup.lua",
@@ -394,8 +423,7 @@ test("no LibKa0s descriptor is handed the key-returning locale table", function(
         local n = 0
         for line in fh:lines() do
             n = n + 1
-            -- `L = NS.L` as a descriptor field, not `local L = NS.L`.
-            if line:match("^%s*L%s*=%s*NS%.L%s*,%s*$") then
+            if handedTheLocaleTable(line) then
                 offenders[#offenders + 1] = rel .. ":" .. n
             end
         end
