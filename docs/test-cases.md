@@ -18,7 +18,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_coresetup.lua (18)
+### test_coresetup.lua (21)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for file
@@ -38,6 +38,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the degraded printer is still secret-safe and still says <secret>
 - LibKa0s-Core-1.0 still has no user-visible strings to trap
 - the Core descriptor passes no locale table, and the printer renders no key
+- the shared cause clause is published on the healthy path too
+- with LibKa0s absent all five seams say the same thing about WHY
+- no seam re-spells the cause in its own words
 
 ### test_util_anchor.lua (26)
 
@@ -773,7 +776,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 13 |
-| test_coresetup.lua | 18 |
+| test_coresetup.lua | 21 |
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 22 |
 | test_state.lua | 23 |
@@ -814,4 +817,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_slash.lua | 27 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
-| **Total** | **640** |
+| **Total** | **643** |

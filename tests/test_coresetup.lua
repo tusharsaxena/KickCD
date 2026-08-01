@@ -273,3 +273,127 @@ test("the Core descriptor passes no locale table, and the printer renders no key
             "the printed line carries a raw key '" .. word .. "': " .. lines[1])
     end
 end)
+
+-- ── the shared cause clause (adoption 2026-08-01 §8) ────────────────────────
+--
+-- The user's decision, taken over KickCD's own five separately-worded
+-- sentences: a player with a broken install must read the SAME sentence about
+-- WHY, whichever Ka0s addon they have. AbsorbTracker established the shape in
+-- its PLAN-04 — one NS.LIBKA0S_MISSING in core/CoreSetup.lua, and each seam
+-- appends its own "so <what> is unavailable" — and ConsumableMaster follows it.
+--
+-- The STUBS did not converge and must not: settings/OptionsSetup.lua's is
+-- load-completing rather than member-answering for measured reasons of its own.
+-- Only the cause sentence moved.
+--
+-- These cases pin the RENDERED BYTES rather than the presence of the word
+-- "LibKa0s", because the exact wording IS the convergence — a paraphrase that
+-- still names the library is precisely the failure this exists to catch. And
+-- they reach the seams through a real load with the library ABSENT
+-- (testing-§8), never by hand-stubbing the member under test.
+
+local CAUSE = "The LibKa0s library is missing from this installation of KickCD "
+    .. "(expected in libs/LibKa0s)"
+
+test("the shared cause clause is published on the healthy path too", function()
+    -- Set OUTSIDE core/CoreSetup.lua's `if not lib` branch on purpose. A
+    -- half-vendored libs/LibKa0s can carry Core.lua and be missing DebugLog.lua,
+    -- and then the seam that degrades reads a clause only the seam that LOADED
+    -- was in a position to publish.
+    -- red under: moving the NS.LIBKA0S_MISSING assignment inside the branch
+    assertEqual(NS.LIBKA0S_MISSING, CAUSE,
+        "the shared clause must be published whether or not the library loaded")
+end)
+
+test("with LibKa0s absent all five seams say the same thing about WHY", function()
+    -- Loaded with the library genuinely gone, then driven through each seam's
+    -- own user-facing route. Every expected string below is spelled out in
+    -- full, so a wording change has to be a decision.
+    -- red under: any seam re-wording its half of the sentence
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    assertNil(inst.mocks.LibStub("LibKa0s-Core-1.0", true),
+        "sanity: the degraded load must not have the majors")
+    assertEqual(inst.NS.LIBKA0S_MISSING, CAUSE,
+        "sanity: the degraded load must publish the same clause")
+
+    local P = inst.NS.PREFIX
+    local lines = {}
+    local frame = inst.mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    local function drive(fn)
+        for i = #lines, 1, -1 do lines[i] = nil end
+        fn()
+        return lines
+    end
+
+    -- 1. Core — said ONCE, ahead of the first line the addon ever prints, so it
+    --    has to be driven first or another seam's print consumes it.
+    local core = drive(function() inst.NS.Util.print("ping") end)
+    assertEqual(core[1], P .. " " .. CAUSE .. "; running on reduced built-in fallbacks.",
+        "core/CoreSetup.lua's announce line")
+    assertEqual(core[2], P .. " ping", "and the line the caller actually asked for")
+
+    -- 2. DebugLog — `/kcd debug window`, end to end through the verb table.
+    local dbg = drive(function() inst.NS:OnSlashCommand("debug window") end)
+    assertEqual(dbg[1], P .. " " .. CAUSE .. ", so the debug console window is unavailable.",
+        "core/DebugLogSetup.lua's stub line")
+
+    -- 3. Perf — OnCommand returns lines for the HOST to print (slash-commands-§2:
+    --    `perf` is registered by the addon, never by the library), so pin both
+    --    the returned string and what `/kcd perf` renders from it.
+    local perfLines = inst.NS.Perf.OnCommand("")
+    assertEqual(perfLines[1], CAUSE .. ", so performance measurement is unavailable.",
+        "core/PerfSetup.lua's returned line, unprefixed")
+    local perf = drive(function() inst.NS:OnSlashCommand("perf") end)
+    assertEqual(perf[1], P .. " " .. CAUSE .. ", so performance measurement is unavailable.",
+        "and the same line once the host has tagged it")
+
+    -- 4. Options — NOT reachable via `/kcd config`, which goes to Blizzard's
+    --    Settings layer. This IS the seam's entry point.
+    local opts = drive(function() inst.NS.OpenOptionsPanel() end)
+    assertEqual(opts[1], P .. " " .. CAUSE .. ", so the settings panel is unavailable.",
+        "settings/OptionsSetup.lua's stub line")
+
+    -- 5. Slash — the one seam whose consequence comes FIRST, because the verb
+    --    has to lead or `/kcd list` is buried mid-sentence. AbsorbTracker
+    --    inverts it identically (settings/Slash.lua:383).
+    local slash = drive(function() inst.NS:OnSlashCommand("list") end)
+    assertEqual(slash[1], P .. " /kcd list is unavailable. " .. CAUSE .. ".",
+        "settings/Slash.lua's stub line")
+end)
+
+test("no seam re-spells the cause in its own words", function()
+    -- The clause is only shared while there is exactly ONE copy of it. A future
+    -- seam that pastes the sentence rather than concatenating the constant
+    -- reads identically today and drifts on the next edit — which is the whole
+    -- failure mode adoption 2026-08-01 §8 was raised about.
+    -- red under: pasting "The LibKa0s library is missing from ..." into any seam
+    local SEAMS = {
+        "core/CoreSetup.lua", "core/DebugLogSetup.lua", "core/PerfSetup.lua",
+        "settings/Slash.lua", "settings/OptionsSetup.lua",
+    }
+    local offenders, users = {}, 0
+    for _, path in ipairs(SEAMS) do
+        local fh = assert(io.open(T.root .. "/" .. path, "r"))
+        local src = fh:read("*a")
+        fh:close()
+        for line in src:gmatch("[^\r\n]+") do
+            -- Comments are prose about the clause and are not what renders.
+            if not line:match("^%s*%-%-") then
+                if line:find("library is missing from", 1, true) and
+                    not line:find("NS.LIBKA0S_MISSING = ", 1, true) then
+                    offenders[#offenders + 1] = path .. ": " .. line:match("^%s*(.-)%s*$")
+                end
+                if line:find("NS.LIBKA0S_MISSING", 1, true) and
+                    not line:find("NS.LIBKA0S_MISSING = ", 1, true) then
+                    users = users + 1
+                end
+            end
+        end
+    end
+    assertEqual(#offenders, 0,
+        "a seam spells the cause itself instead of appending to NS.LIBKA0S_MISSING: "
+        .. table.concat(offenders, " | "))
+    assertEqual(users, 5, "all five seams must READ the shared clause")
+end)

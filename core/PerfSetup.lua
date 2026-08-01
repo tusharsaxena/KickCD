@@ -43,9 +43,12 @@ if not lib then
         on        = false,
         suspended = false,
         Note      = function() end,
+        -- The cause half is core/CoreSetup.lua's shared clause
+        -- (NS.LIBKA0S_MISSING); only the consequence is this seam's. Read at
+        -- CALL time rather than captured into a load-time local, so the TOC
+        -- order of the two setup files can never freeze a nil in.
         OnCommand = function()
-            return { "Performance measurement is unavailable: the LibKa0s library is missing " ..
-                "from this installation of KickCD (expected in libs/LibKa0s)." }
+            return { NS.LIBKA0S_MISSING .. ", so performance measurement is unavailable." }
         end,
     }
     return

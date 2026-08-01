@@ -60,8 +60,9 @@ if not lib then
     -- exact strings whose seven-way drift this extraction exists to end is the
     -- one duplicate testing-§8 most specifically forbids. FormatPlain and
     -- FormatColored answer plainly and say nothing about colour.
-    local missing = "The LibKa0s library is missing from this installation of KickCD " ..
-        "(expected in libs/LibKa0s), so the debug console window is unavailable."
+    -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
+    -- only the consequence is this seam's. Do not re-spell the cause here.
+    local missing = NS.LIBKA0S_MISSING .. ", so the debug console window is unavailable."
     local announced = false
     local function sayOnce()
         if announced then return end

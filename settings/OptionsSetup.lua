@@ -167,8 +167,10 @@ local descriptor = {
 -- that goes stale, and hand-copying the code whose drift the extraction exists
 -- to end is the one duplicate testing-§8 most specifically forbids.
 if not lib then
-    local MISSING = "The settings panel is unavailable: the LibKa0s library is missing from " ..
-        "this installation of KickCD (expected in libs/LibKa0s)."
+    -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
+    -- only the consequence is this seam's. Nothing about the STUB converges — it
+    -- stays load-completing for the reasons measured above — just the sentence.
+    local MISSING = NS.LIBKA0S_MISSING .. ", so the settings panel is unavailable."
 
     local Helpers = {}
     NS.Settings = NS.Settings or {}

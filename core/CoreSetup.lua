@@ -40,6 +40,27 @@ local Util = NS.Util
 -- nothing to say so. Keeping the key at NS.Util.print sidesteps the collision
 -- entirely, which is why this addon has no reclaim line and does not need one.
 
+-- The ONE cause clause, shared by every seam that has to explain the same
+-- absence: this file, core/DebugLogSetup.lua, core/PerfSetup.lua,
+-- settings/Slash.lua and settings/OptionsSetup.lua. Each appends its own
+-- "so <what> is unavailable" and its own terminal punctuation, so a degraded
+-- install says the same thing about WHY five times and a different thing about
+-- WHAT each time.
+--
+-- Converging on this wording — rather than KickCD's five separate sentences —
+-- is the user's decision (adoption 2026-08-01 §8), taken so a player with a
+-- broken install reads the same sentence whichever Ka0s addon they have.
+-- AbsorbTracker established the shape in its PLAN-04; ConsumableMaster follows
+-- it. Keep the phrasing byte-identical across the collection apart from the
+-- addon name.
+--
+-- Set OUTSIDE the branch below because the seams that read it are reached on
+-- both paths — a half-vendored libs/LibKa0s can have Core.lua present and
+-- DebugLog.lua missing — and set HERE because core/CoreSetup.lua is the first
+-- of the five the TOC loads (KickCD.toc:39, ahead of 40/45/61/62).
+NS.LIBKA0S_MISSING = "The LibKa0s library is missing from this installation of KickCD " ..
+    "(expected in libs/LibKa0s)"
+
 local lib = LibStub and LibStub("LibKa0s-Core-1.0", true)
 
 if not lib then
@@ -75,9 +96,8 @@ if not lib then
         if not DEFAULT_CHAT_FRAME then return end
         if not announced then
             announced = true
-            DEFAULT_CHAT_FRAME:AddMessage(NS.SafeToString(NS.PREFIX) ..
-                " The LibKa0s library is missing from this installation of KickCD " ..
-                "(expected in libs/LibKa0s); running on reduced built-in fallbacks.")
+            DEFAULT_CHAT_FRAME:AddMessage(NS.SafeToString(NS.PREFIX) .. " " ..
+                NS.LIBKA0S_MISSING .. "; running on reduced built-in fallbacks.")
         end
         local parts = { NS.SafeToString(NS.PREFIX) }
         for i = 1, select("#", ...) do parts[i + 1] = NS.SafeToString((select(i, ...))) end

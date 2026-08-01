@@ -204,8 +204,12 @@ NS.Slash.RunReset = runReset
 -- extraction exists to end is the one duplicate testing-§8 most specifically
 -- forbids, so a degraded help row renders plainly and says so.
 if not SlashLib then
-    local missing = " is unavailable: the LibKa0s library is missing from this installation "
-        .. "of KickCD (expected in libs/LibKa0s)."
+    -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
+    -- only the consequence is this seam's. This is the one of the five whose
+    -- consequence comes FIRST — the verb has to lead, or "/kcd list" is buried
+    -- mid-sentence — so it reads "<verb> is unavailable. <cause>." AbsorbTracker
+    -- inverts it the same way for the same reason (settings/Slash.lua:383).
+    local missing = " is unavailable. " .. NS.LIBKA0S_MISSING .. "."
     SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
 
