@@ -12,7 +12,7 @@
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 if not lib then return end
 
-local WIDGETS_MINOR = 4
+local WIDGETS_MINOR = 5
 -- Paired on the SHELL's minor as well as this file's own — see OptionsScroll.lua for why the
 -- file's own counter is not enough.
 if lib.__widgetsMinor and lib.__widgetsMinor >= WIDGETS_MINOR
@@ -463,7 +463,23 @@ function lib.__AttachWidgets(O, d)
   --- misspelled type in a host's schema must cost that one row, not the whole page.
   function O.RenderField(ctx, row, parent, relativeWidth)
     if row.type == "bool"   then return makeCheckbox(ctx, row, parent, relativeWidth)    end
-    if row.type == "number" then return makeSlider(ctx, row, parent, relativeWidth)      end
+    if row.type == "number" then
+      -- A number carrying a `values` list is an ENUM, not a range, and Slash.lua has said so
+      -- since -1.0: its parseNumber refuses a value outside the list rather than clamping, and
+      -- its comment calls the shape "a NUMERIC dropdown" and warns that clamping "lands BETWEEN
+      -- two entries, and the renderer then has no label for what is stored". That renderer did
+      -- not exist — this line is it. Until now the two majors read one row as two different
+      -- things, and a host with such a row got a CLI that validated an enum and a panel that drew
+      -- a slider over it.
+      --
+      -- INFERRED from `values`, not opted into with a `dialogControl`, because Slash infers too
+      -- and an opt-in would leave the two disagreeing for every row that declares `values` and
+      -- nothing else. The enumList duplication comment above states the requirement outright: the
+      -- two readers MUST agree. Safe in the failure direction — a values function that answers
+      -- empty falls through to the slider, which is exactly the old behaviour.
+      if #enumList(row) > 0 then return makeDropdown(ctx, row, parent, relativeWidth) end
+      return makeSlider(ctx, row, parent, relativeWidth)
+    end
     if row.type == "string" then
       if row.dialogControl == "EditBox" then
         return makeEditBox(ctx, row, parent, relativeWidth)
