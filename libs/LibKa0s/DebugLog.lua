@@ -24,7 +24,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-DebugLog-1.0", 3
+local MAJOR, MINOR = "LibKa0s-DebugLog-1.0", 4
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -110,6 +110,13 @@ local STATUS_H = 16      -- bottom status bar height
 local BAR_W    = 8       -- scrollbar gutter width
 local DEFAULT_FONT_SIZE = 10
 
+-- Title-bar arithmetic. PAD is the one gap between every control and its neighbour; CLOSE_W is what
+-- Core's own close button measures, and is the fallback when a host's button has no width yet.
+local PAD      = 6
+local CLOSE_W  = 18
+local CLEAR_W  = 42
+local COPY_W   = 40
+
 -- Small flat text button for the title bar (Copy / Clear). The close button comes from Core; this
 -- one has no other consumer yet, so it stays private until a second module wants it.
 local function makeTextButton(parent, text, width, onClick)
@@ -156,6 +163,15 @@ end
 ---   slash       string    optional. Composes the checkbox tooltip's "<slash> debug" reference.
 ---   L           table     optional. Locale override, keyed to lib.STRINGS.
 ---   skin        table     optional. Overrides Core.SKIN.
+---   applySkin   function  optional, minor 4. function(frame) — owns the whole skin job for BOTH
+---                         windows, replacing the library's own. For a host whose window chrome is
+---                         more than a backdrop (an inner-border child frame, a title tint, a
+---                         divider tint); `skin` is a table and can only reach backdrop fields.
+---                         Called on the fully-built frame, after the Hide and the Esc wiring.
+---   makeCloseButton function optional, minor 4. function(parent, onClick) -> button or nil.
+---                         Overrides Core's x for BOTH windows, for a host whose other windows
+---                         close with a different one. May answer nil, as Core's own does. The
+---                         Copy/Clear offsets are derived from the returned button's width.
 function lib:New(d)
   d = type(d) == "table" and d or {}
   for _, field in ipairs({ "name", "title", "font", "isEnabled", "setEnabled" }) do
@@ -206,7 +222,7 @@ function lib:New(d)
   -- has no `bg` or `border`, those being Core's own additions. Indexing them blind would raise
   -- midway through building a window that is not yet hidden or Esc-wired, leaving a visible console
   -- nobody can close and an EnsureFrame that will never rebuild it.
-  local function applySkin(f)
+  local function defaultApplySkin(f)
     if not f or not f.SetBackdrop then return end
     f:SetBackdrop(skin)
     if type(skin.bg) == "table" then
@@ -216,6 +232,22 @@ function lib:New(d)
       f:SetBackdropBorderColor(skin.border[1], skin.border[2], skin.border[3], skin.border[4])
     end
   end
+
+  -- `skin` is a TABLE and therefore reaches only what a backdrop is: the three calls above. Some
+  -- hosts' windows do more than that — a synthesised inner-border child frame, a title tint, a
+  -- divider tint — and none of those is a field, so no table can express them. Such a host passes
+  -- `applySkin` instead and owns the whole job for both windows.
+  --
+  -- It is handed the fully-built frame, so `frame.title` and `frame.divider` are already assigned
+  -- and a host's existing "tint whatever this window has" helper works unmodified.
+  local applySkin = type(d.applySkin) == "function" and d.applySkin or defaultApplySkin
+
+  -- Same argument, for the x. Core's is 18x18 with a fixed red hover; a host whose other windows
+  -- close with a wider, class-coloured one would have its console alone drift away from them.
+  -- Defaults to Core's, through the same forwarder `lib.MakeCloseButton` uses, so a host that says
+  -- nothing is unaffected and still tracks a Core upgraded underneath an unchanged DebugLog.
+  local makeCloseButton = type(d.makeCloseButton) == "function" and d.makeCloseButton
+    or lib.MakeCloseButton
 
   local function dragBar(parent, height)
     local bar = CreateFrame("Frame", nil, parent)
@@ -265,17 +297,36 @@ function lib:New(d)
     frame.divider = divider
 
     -- The three title-bar controls read Copy | Clear | Close, left to right. Anchored to the bar's
-    -- right edge by absolute offset rather than to each other, because Core's close-button factory
+    -- right edge by absolute offset rather than to each other, because a close-button factory
     -- answers nil where CreateFrame is unavailable and a chain anchored through it would break.
-    -- The offsets reproduce that chain exactly: close is 18 wide at -6, so Clear's right edge is
-    -- -30 and Copy's is -78, each with the same six-pixel gap.
-    local close = lib.MakeCloseButton(titleBar, function() D:Hide() end)
+    --
+    -- The offsets reproduce that chain exactly, and they are DERIVED from the button's width rather
+    -- than hard-coded, which matters as soon as a host supplies its own: Core's is 18 wide, so
+    -- Clear lands at -30 and Copy at -78 exactly as before, but a 24-wide button would have put
+    -- Clear's right edge (-30) precisely on that button's left edge and the six-pixel gap would
+    -- have vanished.
+    local close = makeCloseButton(titleBar, function() D:Hide() end)
     if close then close:SetPoint("RIGHT", titleBar, "RIGHT", -6, 0) end
 
-    local clearBtn = makeTextButton(titleBar, D:Text("CLEAR"), 42, function() D:Clear() end)
-    clearBtn:SetPoint("RIGHT", titleBar, "RIGHT", -30, 0)
-    local copyBtn = makeTextButton(titleBar, D:Text("COPY"), 40, function() D:ShowCopy() end)
-    copyBtn:SetPoint("RIGHT", titleBar, "RIGHT", -78, 0)
+    -- A frame answers 0 from GetWidth before its first layout pass, and a headless stub answers 0
+    -- forever, so anything not positive falls back to the size Core's own button is.
+    local closeW = CLOSE_W
+    if close and type(close.GetWidth) == "function" then
+      local w = close:GetWidth()
+      if type(w) == "number" and w > 0 then closeW = w end
+    end
+    local clearRight = -PAD - closeW - PAD
+    local copyRight  = clearRight - CLEAR_W - PAD
+
+    -- Recorded for the same reason `titleText` is: an anchor cannot be read back through the frame
+    -- API, so this is the only handle a host's own test has on what its close button did to the
+    -- layout.
+    frame.titleBarOffsets = { close = -PAD, clear = clearRight, copy = copyRight }
+
+    local clearBtn = makeTextButton(titleBar, D:Text("CLEAR"), CLEAR_W, function() D:Clear() end)
+    clearBtn:SetPoint("RIGHT", titleBar, "RIGHT", clearRight, 0)
+    local copyBtn = makeTextButton(titleBar, D:Text("COPY"), COPY_W, function() D:ShowCopy() end)
+    copyBtn:SetPoint("RIGHT", titleBar, "RIGHT", copyRight, 0)
 
     -- The header toggle. OnLeave restores the resting color by re-running RefreshHeader, so the
     -- label's color is always the flag's color rather than whatever the last hover left behind.
@@ -395,7 +446,7 @@ function lib:New(d)
     t:SetText(D:Text("COPY_TITLE"))
     copyFrame.title = t
 
-    local close = lib.MakeCloseButton(titleBar, function() copyFrame:Hide() end)
+    local close = makeCloseButton(titleBar, function() copyFrame:Hide() end)
     if close then close:SetPoint("RIGHT", titleBar, "RIGHT", -6, 0) end
 
     -- The scroll frame MUST carry a global name: UIPanelScrollFrameTemplate derives its scrollbar
