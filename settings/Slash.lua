@@ -15,35 +15,29 @@ NS.Slash = NS.Slash or {}
 -- core/KickCD.lua's NS:OnSlashCommand reaches NS.Slash at CALL time, so the
 -- registration in OnInitialize is unaffected by the split.
 --
--- ── THE THREE ADAPTERS, and why each is host-shaped rather than a library gap
+-- ── THE TWO ADAPTERS, and why each is host-shaped rather than a library gap
 --
 -- 1. groupKey. KickCD's schema rows carry `panel`, not `page`. The library
 --    defaults groupKey to `row.page or "settings"`, so without the override
 --    every row in the addon would list under one "settings" heading.
 --
--- 2. The colour codec. This one fails SILENTLY and only in game, which is why
---    it has its own case in tests/test_slash.lua. KickCD stores colours as a
---    POSITIONAL array {r,g,b,a} (see NS.Util.Unpack, and every default in
---    settings/*.lua); the library's ParseValue returns and its FormatValue reads
---    the KEYED {r=,g=,b=,a=} shape. Left alone, every saved colour would render
---    as {0.00, 0.00, 0.00, 1.00} and every `set` would write a table the addon
---    cannot unpack.
+-- 2. The parser override. It carries the `valueGate` hint machinery, which
+--    explains WHY a dropdown value was rejected by probing what the gating
+--    sibling setting would allow. That is genuinely this addon's
+--    (growDirection's UP/DOWN vs RIGHT/LEFT depends on castbar.orientation) and
+--    the library has no hook for it, so it stays here behind the descriptor's
+--    documented `parse` seam rather than forking the dispatcher.
 --
---    LibKa0s-Options-1.0 solves exactly this with descriptor colorDecode /
---    colorEncode fields. LibKa0s-Slash-1.0 HAS NO EQUIVALENT: lib.FormatValue is
---    lib-level and reached directly from the instance's kv(), with no seam a
---    host can inject a codec into. Considered adding one and rejected it — the
---    misfit is expressible as closures here, over `get` and `parse`, and the
---    adoption rule is that a descriptor gap you can close in the setup file is
---    not a library change. It IS reported as the place the contract did not fit.
---
--- 3. The parser override. Two things ride on it: the colour encode above, and
---    the `valueGate` hint machinery, which explains WHY a dropdown value was
---    rejected by probing what the gating sibling setting would allow. That is
---    genuinely this addon's (growDirection's UP/DOWN vs RIGHT/LEFT depends on
---    castbar.orientation) and the library has no hook for it, so it stays here
---    behind the descriptor's documented `parse` seam rather than forking the
---    dispatcher.
+-- There was a third — a colour codec, folding the library's keyed
+-- { r =, g =, b =, a = } back into the positional array this addon used to
+-- store. It is gone: the STORED shape migrated instead (core/Database.lua's
+-- v3 -> v4 step), so host and library now agree and nothing translates between
+-- them. Worth remembering why it was tolerable while it lasted, since the same
+-- question will come up again: LibKa0s-Options-1.0 has descriptor colorDecode /
+-- colorEncode fields for exactly this, LibKa0s-Slash-1.0 has no equivalent
+-- (lib.FormatValue is lib-level and reached directly from the instance's kv()),
+-- and adding one was rejected because a misfit expressible as closures over
+-- `get` and `parse` is a setup-file concern, not a library change.
 
 local SlashLib = LibStub and LibStub("LibKa0s-Slash-1.0", true)
 
@@ -67,11 +61,8 @@ NS.Slash.Version = addonVersion
 -- The parser override
 -- ---------------------------------------------------------------------
 --
--- Only the `valueGate` hint survives here. There used to be a colour codec
--- beside it, folding the library's keyed { r =, g =, b =, a = } back into a
--- positional array on write and back again on read, because this addon stored
--- colours positionally. The stored shape migrated instead (core/Database.lua's
--- v3 -> v4 step), so the two agree and the translation is gone.
+-- Only the `valueGate` hint lives here — see the header for the colour codec
+-- that used to sit beside it and why it isn't needed any more.
 
 --- The keys a dropdown row currently offers, resolved at call time because a
 --- media list is populated by another addon and is not knowable when the row is

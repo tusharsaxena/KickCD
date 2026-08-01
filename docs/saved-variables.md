@@ -1,6 +1,8 @@
 # Saved variables
 
-Single saved-variable: `KickCDDB`, an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS, true)` — the `true` third argument expands to `"Default"` per AceDB-3.0, so every character on the account starts on the shared `"Default"` profile. (Omitting the third argument falls back to the per-character profile, which contradicts the docs and was the source of "every fresh character lands on its own profile" reports.) The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See the rationale comment on the `AceDB:New` call in `core/Database.lua` for the in-tree note.
+Two saved-variables are declared in `KickCD.toc`: **`KickCDDB`**, the AceDB-3.0 store described below, and **`KickCDPerfDB`**, which is owned entirely by `LibKa0s-Perf-1.0` (wired in `core/PerfSetup.lua`) and holds the `/kcd perf` A/B capture records. Nothing in this addon reads or writes `KickCDPerfDB` directly — the library owns its shape, and it is diagnostics data, not configuration: deleting it loses captures and nothing else.
+
+`KickCDDB` is an AceDB-3.0 store. `Database:Init` calls `AceDB:New("KickCDDB", DEFAULTS, true)` — the `true` third argument expands to `"Default"` per AceDB-3.0, so every character on the account starts on the shared `"Default"` profile. (Omitting the third argument falls back to the per-character profile, which contradicts the docs and was the source of "every fresh character lands on its own profile" reports.) The user can opt into default / per-character / per-class / per-realm scope via the Profiles tab. See the rationale comment on the `AceDB:New` call in `core/Database.lua` for the in-tree note.
 
 ## `db.global` — account-wide scope
 
@@ -8,7 +10,7 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 
 ```lua
 db.global = {
-    schemaVersion = <int>,       -- addon-wide schema version (CURRENT_DB_VERSION = 3).
+    schemaVersion = <int>,       -- addon-wide schema version (CURRENT_DB_VERSION = 4).
                                  -- Database:MigrateProfile reads and writes
                                  -- db.global.schemaVersion, looping migrations[v]
                                  -- forward one step at a time until it reaches
@@ -21,7 +23,10 @@ db.global = {
                                  -- then bumps schemaVersion to 2 (see "units.* migration"
                                  -- below). v2 -> v3 (migrations[2]) runs
                                  -- Database:MigrateSpecKeys then bumps to 3 (see the
-                                 -- localised-spec-name migration below).
+                                 -- localised-spec-name migration below). v3 -> v4
+                                 -- (migrations[3]) runs Database:MigrateColorShape
+                                 -- then bumps to 4 (see the colour-shape migration
+                                 -- below).
 }
 ```
 
@@ -212,7 +217,7 @@ Pre-dual-tracking profiles stored `db.profile.icons`, `db.profile.castbar`, and 
 
 It is **shape-driven, not version-gated**: it checks `p.icons == nil and p.castbar == nil and p.anchors == nil` and returns immediately (no-op) when all three are already absent — which is true for both a fresh v2 install and an already-migrated account. Version-gating on `db.global.schemaVersion` was considered and rejected for the same reason the account-adoption code above avoids trusting a bare `schemaVersion == nil` check: AceDB's `copyDefaults` rawsets `db.global.schemaVersion` to `CURRENT_DB_VERSION` the moment `db.global` is first touched, which would make a legacy account that never had a chance to run the migrator look "already current" and silently strand its customised icons/castbar/anchors data under the old top-level keys forever. Keying on the presence of the old tables instead detects exactly (and only) the accounts that carry legacy data, regardless of what `schemaVersion` claims.
 
-The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `CURRENT_DB_VERSION = 3` — see the spec-key rekey below.
+The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `CURRENT_DB_VERSION = 4` — see the spec-key rekey and the colour-shape migration below.
 
 **Deviation recorded as intentional** (per CLAUDE.md's flag-deviations rule): restructuring `DEFAULT_PROFILE` (a rename/nest, not a pure addition) departs from a "profile shape never changes shape, only grows" expectation some Ace3-based addons hold — it was necessary because target/focus each need independently-customisable `icons`/`castbar`, and the alternative (flat `icons`, `focusIcons`, `castbar`, `focusCastbar`, …) doesn't scale to a third unit later and duplicates the anchor/label bookkeeping. The shape-driven (not version-gated) migration is the mitigation that makes the restructure safe for existing installs.
 
@@ -246,3 +251,17 @@ Two data-safety rules, both covered by tests:
 - A string key never overwrites an existing numeric one. On collision the already-migrated numeric list wins and the string key is left alone.
 
 `migrations[2]` calls the same method and bumps `db.global.schemaVersion` to 3, so the rekey also happens once from the version-gated path — safe rather than redundant, given the idempotency above.
+
+## Migration: positional colours → the keyed shape
+
+Up to schema **v3** a colour was stored as a positional array, `{ r, g, b, a }`. Schema **v4** stores it keyed:
+
+```lua
+borderColor = { r = 0.25, g = 0.5, b = 0.75, a = 1 },
+```
+
+That is the collection's shape, not a preference: `LibKa0s-Slash-1.0` parses into it and renders from it, and `LibKa0s-Options-1.0`'s colour picker decodes and encodes it. Keeping the positional array would have meant a host-side codec translating at every seam, in both libraries, forever — `settings/Slash.lua` carried exactly that for one release and now doesn't.
+
+`Database:MigrateColorShape(db)` is the v3→v4 step (`migrations[3]`). It **walks the whole profile** rather than a hardcoded path list — a list would have to be kept in step with every colour row ever added, and a row missed there reads `nil` on every channel and renders as the fallback, which is the failure this migration exists to prevent. The shape test is deliberately narrow: a table with a numeric `[1]`, length 3 or 4, whose entries are all numbers in `0..1`. That can't match an anchor table (`{ point =, x =, y = }`), a spell list (array of tables), or a curve. Recursion is depth-bounded at 12, because an unbounded walk over user data is a hang rather than an error.
+
+**The AceDB hybrid trap.** By the time this runs, AceDB has already merged the new *keyed* defaults into the saved table — `copyDefaults` fills any key the saved table lacks, and a saved positional array lacks `r`/`g`/`b`/`a`. So a pre-migration colour arrives as a hybrid, `{ 0.25, 0.5, 0.75, 0.5, r = 1, g = 0.4, … }`: the user's values in the array part, the *defaults* in the keys. Detecting "already keyed" by the presence of `.r` would therefore skip every row the migration was written to convert, and each would silently read back as its default. The array part is the tell — if `[1]` is a number, the user's real colour is there and the keys are contamination.

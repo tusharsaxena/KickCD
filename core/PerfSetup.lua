@@ -66,14 +66,15 @@ NS.Perf = lib:New({
     name    = addonName,
     title   = "Ka0s KickCD",
     slash   = "/kcd",
-    -- NOT `NS.VERSION`: this file loads BEFORE core/KickCD.lua, which is where
-    -- that constant is set, so the descriptor captured nil and every record
-    -- stamped "v?" — unattributable the moment it leaves the session
+    -- Not `NS.VERSION` alone. While this file sat ABOVE core/KickCD.lua — which
+    -- is where that constant is set — the descriptor captured nil and every
+    -- record stamped "v?", unattributable the moment it leaves the session
     -- (performance-§8). The library takes `version` as a plain STRING resolved
     -- once at :New, so unlike Slash's function form it cannot be deferred; the
-    -- value has to be resolvable HERE.
+    -- value has to be resolvable HERE. The TOC move (see TOC POSITION above) is
+    -- the belt; reading the manifest first is the braces.
     --
-    -- The TOC manifest is, and is the better source anyway: it cannot drift from
+    -- The TOC manifest is the better source anyway: it cannot drift from
     -- the packaged build (slash-commands-§3). NS.VERSION remains the fallback for
     -- a client without the metadata API, and settings/Slash.lua resolves the same
     -- pair the same way so `/kcd version` and a capture record cannot disagree.

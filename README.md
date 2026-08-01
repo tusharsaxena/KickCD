@@ -72,10 +72,11 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 | `/kcd list` | List every setting and its current value. |
 | `/kcd get setting` | Show one setting's value (for example `/kcd get units.target.icons.primarySize`). |
 | `/kcd set setting value` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
-| `/kcd reset <general\|icons\|castbar\|label\|spells>` | Reset one settings tab to its defaults. |
+| `/kcd reset setting` | Put one setting back to its default (for example `/kcd reset units.target.icons.primarySize`). To reset a whole tab, use that tab's **Defaults** button. |
 | `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults — and put every grid and cast bar back in its starting position. |
 | `/kcd resetposition` | Put the target icon grid back in its default spot on screen. |
-| `/kcd spells subcommand` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`. Defaults to your current spec. |
+| `/kcd spells subcommand` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`, `resetall`. Defaults to your current spec. |
+| `/kcd perf` | Measure the addon's performance — a guided before/after capture, driven from a clickable step panel. Mostly useful for bug reports. |
 | `/kcd debug spells` | List the cooldowns the addon is watching. |
 | `/kcd debug castbar` | Show your target's current cast and the colors in use. |
 | `/kcd debug interrupt` | Show what the addon decided about your target's cast. Handy for bug reports. |
@@ -166,7 +167,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | How do I make focus look different from target? | On the Icons, Cast bar, or Text Label tab, switch to **Focus** and untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit). Position and the label's text are always independent; the label's styling and whether it shows follow the link. |
 | I see a "Target" (or "Focus") label on my grid — what is it, and can I change or hide it? | That's the unit's identity label. Set its text, turn it off, or restyle and reposition it on the **Text Label** tab — you can attach it to the icon grid or the cast bar, and each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows at all; its text stays independent. |
 | How do I move the grids or cast bars? | `/kcd unlock`, drag, then `/kcd lock` — one lock covers every unit. Each icon grid always drags when unlocked. A cast bar drags only when it's set to move freely; when it's anchored, it follows its grid. `/kcd resetposition` puts the target grid back in its default spot, and `/kcd resetall` resets every unit's positions. |
-| Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd reset spells` (all specs) or `/kcd spells reset` (one spec). |
+| Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd spells resetall` (all specs) or `/kcd spells reset` (one spec). |
 | Can I add my own spells? | Yes — in Settings → Spells, or with `/kcd spells add`. For the spec you're currently playing, only spells the game already tracks as cooldowns can be added. |
 | Does it track items or trinkets? | Not yet — spells only. |
 | Why won't the settings panel open in combat? | The game blocks opening settings mid-fight, so `/kcd config` waits until combat ends. |
@@ -187,7 +188,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | The glow on secondary icons flickers or restarts constantly. | This shouldn't happen anymore. If it does, make sure the glow trigger is set to one of the "target casting" options, and send a short video with your settings. |
 | The settings panel won't open mid-fight. | On purpose — the game blocks it in combat. It opens the moment combat ends. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a refresh. Auto-size only controls the bar's length; its other dimension stays where you set it. |
-| I want a clean slate. | One tab: `/kcd reset general` / `icons` / `castbar` / `label` / `spells`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button. |
+| I want a clean slate. | One tab: that tab's **Defaults** button. One setting: `/kcd reset <setting>`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button; every spec's: `/kcd spells resetall`. |
 
 ## Issues and feature requests
 

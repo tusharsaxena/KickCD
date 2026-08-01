@@ -25,7 +25,7 @@ Each row is `{ name, description, fn }`. The dispatcher:
 
 ## Chat output
 
-Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`), which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
+Every chat line emitted by the addon flows through `Util.print` — `LibKa0s-Core-1.0`'s secret-safe printer, published at `NS.Util.print` by `core/CoreSetup.lua` — which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
 
 ## Top-level commands
 
@@ -43,6 +43,7 @@ Every chat line emitted by the addon flows through `Util.print` (`core/Util.lua`
 | `resetposition` | Restore the icon grid to its default screen position. | Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
+| `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
 
 `list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 
@@ -67,7 +68,7 @@ Every mutating subcommand fires `Ka0s_KickCD_CONFIG_CHANGED { section = "spells"
 
 | Subcommand | Purpose |
 |---|---|
-| `window` | Toggle the on-screen debug console window — the DIALOG-strata "Ka0s KickCD — Debug" panel (`modules/DebugLog.lua`) with a ScrollingMessageFrame, Copy/Clear buttons, a header Debug:ON/OFF toggle, and the shipped JetBrains Mono font. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
+| `window` | Toggle the on-screen debug console window — the DIALOG-strata "Ka0s KickCD — Debug" panel (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`) with a ScrollingMessageFrame, Copy/Clear buttons, a header Debug:ON/OFF toggle, and the shipped JetBrains Mono font. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
 | `on` / `off` / `toggle` | Set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Default off; never persisted to SavedVariables; resets each `/reload`. |
 | `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat. Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
 | `castbar` | Print (to chat) one unit's current cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |

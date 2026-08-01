@@ -51,7 +51,7 @@ Two consequences shaped the downstream code:
 
 Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
 
-The debug enabled-flag is outside this path: `/kcd debug on|off|toggle` sets the session-only `NS.State.debug` through `DebugLog:SetEnabled(on)` (default off, never in SavedVariables, resets each `/reload`). Continuous `NS.Debug(tag, fmt, ...)` output routes to the on-screen debug console (`modules/DebugLog.lua`), not the chat frame.
+The debug enabled-flag is outside this path: `/kcd debug on|off|toggle` sets the session-only `NS.State.debug` through `DebugLog:SetEnabled(on)` (default off, never in SavedVariables, resets each `/reload`). Continuous `NS.Debug(tag, fmt, ...)` output routes to the on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`), not the chat frame.
 
 Slash commands that mutate schema-backed fields (e.g. `/kcd lock`) route through `Helpers.SetAndRefresh(path, value)` so they share the panel widgets' write/notify/refresh code path (`Helpers.Set` → schema row's `onChange` → `RefreshAllPanels`). That way a future `onChange` added to a row doesn't silently diverge between the two paths.
 

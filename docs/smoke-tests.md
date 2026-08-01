@@ -283,7 +283,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`) — no need to close and reopen the panel.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
-- The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd reset spells`).
+- The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
 
 ### 11. Settings panel parity
 
@@ -311,10 +311,11 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 | Command | Expected |
 |---|---|
-| `/kcd reset general` | All General rows return to their `default` values; spell list and other panels untouched. |
-| `/kcd reset icons` | All Icons rows return to defaults; icon grid re-lays out. |
-| `/kcd reset castbar` | All Cast bar rows return to defaults; bar re-skins. |
-| `/kcd reset spells` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
+| `/kcd reset units.target.icons.primarySize` | That one row returns to its `default`; every other row, and the spell list, untouched. |
+| `/kcd reset units.target.icons.cooldownTint` | A colour row resets to a *copy* of its default — reset the same row on two profiles and confirm editing one doesn't move the other. |
+| `/kcd reset general` (and `icons` / `castbar` / `label` / `spells`) | Retired. Each prints a line naming where the capability went — the panel's **Defaults** button, `/kcd reset <path>`, or `/kcd spells resetall` — never "Setting not found". |
+| Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
+| `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows, so this is a dedicated `Helpers.ResetAllPositions()` pass — previously `resetall` silently left dragged grids in place). Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Icon grid snaps to its default screen position; everything else untouched. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
@@ -345,7 +346,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 3` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 4` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -372,7 +373,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd debug spells` | Per-spell line: `ready=…  active=…  cdObj=yes/no  chargeCdObj=yes/no  charges=…`. Charges may render as `<secret>` for charged spells in combat. **No remaining-time field** — `:GetRemainingDuration()` is secret in combat and printing it would error. |
 | `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
 | `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
-| `/kcd debug window` | Toggles the on-screen debug console window (`modules/DebugLog.lua`); logging keeps running whether the window is open or closed. |
+| `/kcd debug window` | Toggles the on-screen debug console window (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`); logging keeps running whether the window is open or closed. |
 | `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
 
 **Pass.**
@@ -534,7 +535,7 @@ Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use 
 
 **Note.** Inside the ~1.6s GCD window both icons correctly show ready visuals (the curves step at `Const.GCD_UPPER`). If both look bright and untinted, wait a moment — that is not a failure.
 
-**Cleanup.** `/kcd reset icons`.
+**Cleanup.** Icons panel → **Defaults**.
 
 ### 21. Legacy migration
 
@@ -544,7 +545,7 @@ Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use 
 - Log in.
 - `/kcd get units.target.icons.primarySize` — compare to the customised value from the edited file.
 - `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customised anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `3` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold and then the v2→v3 spec-key rekey in the same login.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `4` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey and the v3→v4 colour-shape rewrite in the same login. Spot-check one colour (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional colour arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
 
 **Pass.**
 - No Lua errors during the migration login.
@@ -605,7 +606,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - **Header renders.** The title-bar "Debug: ON/OFF" label is present and coloured (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
 - **Line counter.** The bottom-right label reads `N / 500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 500 lines` and the log empties.
 - **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
-- **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `modules/DebugLog.lua` has the wrong sign.
+- **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
 - **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
 
 **Pass.**
