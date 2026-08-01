@@ -18,7 +18,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Slash-1.0", 4
+local MAJOR, MINOR = "LibKa0s-Slash-1.0", 5
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -272,6 +272,11 @@ end
 ---   allRows      function  optional. Every row, in declaration order.
 ---   applyDefault function  optional. Restore one row to its default.
 ---   parse        function  optional, defaults to lib.ParseValue.
+---   format       function  optional, minor 5. function(row, storedValue) -> string. Renders a
+---                          value for display, replacing lib.FormatValue outright, at every one
+---                          of the list/get/set/reset echoes. The counterpart of `parse`, for a
+---                          row type this library does not know. Handed the value as stored, and
+---                          taking precedence over colorDecode.
 ---   groupKey     function  optional. Row -> the heading it lists under. Defaults to row.page.
 ---   colorDecode  function  optional. stored -> r, g, b, a. Defaults to reading the named-key
 ---                          form, then the positional one. Same field name as the Options
@@ -336,6 +341,14 @@ function lib:New(d)
   -- actually uses; this is the escape hatch for anything else, and it is the reason kv() no
   -- longer calls the lib-level formatter directly.
   local function formatValue(row, value)
+    -- The host's own renderer wins outright, and it is handed the value exactly as STORED. It is
+    -- the counterpart `parse` has had since -1.0: a host has always been able to teach this CLI to
+    -- READ a value type the library does not know, and had no way to teach it to WRITE one back.
+    -- BankLedger's muted-store SET (`type = "table"`) fell through to Core's SafeToString, which
+    -- probes table.concat and answers the sentinel — telling the user a plain settings value is
+    -- combat-protected. Ahead of the colour codec because a host supplying both is saying it owns
+    -- rendering; decoding first would hand the hook something other than what the host stored.
+    if type(d.format) == "function" then return d.format(row, value) end
     if row and row.type == "color" and type(d.colorDecode) == "function"
         and type(value) == "table" then
       local r, g, b, a = d.colorDecode(value)
