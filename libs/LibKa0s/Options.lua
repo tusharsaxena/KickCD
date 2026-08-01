@@ -21,7 +21,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Options-1.0", 3
+local MAJOR, MINOR = "LibKa0s-Options-1.0", 4
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -78,6 +78,11 @@ lib.STRINGS = {
   BUTTON_FAILED  = "button onClick failed: %s",
   PAGE_FAILED    = "settings page '%s' failed to build: %s",
   RENDER_FAILED  = "settings page '%s' failed to render: %s",
+  ROW_FAILED     = "settings row '%s' failed to render: %s",
+  -- The only option a media dropdown can offer when the media library is absent or has nothing
+  -- registered yet. A literal rather than a locale key: it is also the STORED value, so a
+  -- translated one would be written into the host's SavedVariables.
+  LSM_NONE       = "None",
   -- The sub-page breadcrumb separator. An inline atlas escape rather than a font glyph, so it
   -- renders identically regardless of the FontString's font or any locale fallback.
   BREADCRUMB_SEP = " |A:common-icon-forwardarrow:16:16|a ",
@@ -454,8 +459,12 @@ function lib:New(d)
     return function()
       local LSM = type(d.getLSM) == "function" and d.getLSM() or nil
       local list = (LSM and LSM.HashTable) and LSM:HashTable(mediaType) or {}
-      local out = {}
-      for k in pairs(list) do out[k] = k end
+      local out, any = {}, false
+      for k in pairs(list) do out[k] = k; any = true end
+      -- Never hand back an EMPTY list. A dropdown with no options cannot be opened, and the CLI's
+      -- allowed-values check refuses every value including the one already stored — so a row whose
+      -- media library has not loaded yet becomes unusable rather than merely unpopulated.
+      if not any then out[lib.STRINGS.LSM_NONE] = lib.STRINGS.LSM_NONE end
       return out
     end
   end

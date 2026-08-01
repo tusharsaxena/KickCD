@@ -12,7 +12,7 @@
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 if not lib then return end
 
-local WIDGETS_MINOR = 3
+local WIDGETS_MINOR = 4
 -- Paired on the SHELL's minor as well as this file's own — see OptionsScroll.lua for why the
 -- file's own counter is not enough.
 if lib.__widgetsMinor and lib.__widgetsMinor >= WIDGETS_MINOR
@@ -518,6 +518,72 @@ function lib.__AttachWidgets(O, d)
 
   --- Render an EXPLICIT list of rows. Taking a list rather than a page key is what lets a host
   --- render a filtered subset (a mirrored unit's partition) through the same engine.
+  --- Lay out arbitrary widgets two per row, in the order given.
+  ---
+  --- The sibling of RenderRows, and deliberately not the same function. RenderRows is
+  --- SCHEMA-driven: it walks declared rows, emits a Section when `group` changes, and pairs them
+  --- automatically. This one is CALLER-driven — the caller decides what goes in each cell and in
+  --- what order, and a cell may be a schema row or a bespoke widget.
+  ---
+  --- That distinction is what a host needs for a list whose LENGTH is not known from the schema:
+  --- one checkbox per macro, per unit, per spell. Every such list was previously a hand-rolled
+  --- copy of this loop in the host, which is exactly the duplication this library exists to end.
+  ---
+  --- Each item is either a schema row, or `{ make = function(ctx, parent, relativeWidth) end }`
+  --- for a bespoke widget. `wide = true` breaks the item onto its own full-width row.
+  function O.RenderGrid(ctx, items)
+    local scroll = O.EnsureScroll(ctx)
+    if not scroll then return end
+    local pendingRow, pendingCount = nil, 0
+
+    local function startRow()
+      local r = O.AceGUI:Create("SimpleGroup")
+      r:SetLayout("Flow")
+      r:SetFullWidth(true)
+      return r
+    end
+    local function flushRow()
+      if pendingRow then
+        scroll:AddChild(pendingRow)
+        O.AddSpacer(scroll, L.ROW_VSPACER)
+        pendingRow, pendingCount = nil, 0
+      end
+    end
+
+    -- Guarded per item, for the same reason RenderRows guards per row: a bespoke `make` reaches
+    -- into live addon state, and a raise inside AceGUI's layout pass would cost every item after
+    -- it.
+    local function renderInto(item, parent, relativeWidth)
+      local ok, err
+      if type(item.make) == "function" then
+        ok, err = pcall(item.make, ctx, parent, relativeWidth)
+      else
+        ok, err = pcall(O.RenderField, ctx, item, parent, relativeWidth)
+      end
+      if not ok then
+        print(lib.STRINGS.ROW_FAILED:format(tostring(item.path or "?"), tostring(err)))
+      end
+      return ok
+    end
+
+    for _, item in ipairs(items) do
+      if item.wide then
+        flushRow()
+        local r = startRow()
+        renderInto(item, r, nil)
+        scroll:AddChild(r)
+        O.AddSpacer(scroll, L.ROW_VSPACER)
+      else
+        if not pendingRow then pendingRow = startRow() end
+        if renderInto(item, pendingRow, HALF) then
+          pendingCount = pendingCount + 1
+        end
+        if pendingCount >= 2 then flushRow() end
+      end
+    end
+    flushRow()
+  end
+
   function O.RenderRows(ctx, rows, afterGroup, pairWith)
     local scroll = O.EnsureScroll(ctx)
     if not scroll then return end
@@ -557,8 +623,18 @@ function lib.__AttachWidgets(O, d)
         end
 
         if not pendingRow then pendingRow = startRow() end
-        O.RenderField(ctx, row, pendingRow, HALF)
-        pendingCount = pendingCount + 1
+        -- Each ROW is guarded, not just the page. One corrupt saved value, or one `values`
+        -- function that raises because the media library it queries is half-loaded, used to take
+        -- the whole page down from inside AceGUI's layout pass — every row after it never drew,
+        -- and the user saw a panel that simply stopped mid-way with no error naming the row.
+        -- The page-level guard added in Options minor 3 catches a raising BUILDER; this catches a
+        -- raising ROW, which is the more common failure and the one a host cannot pre-empt.
+        local ok, err = pcall(O.RenderField, ctx, row, pendingRow, HALF)
+        if ok then
+          pendingCount = pendingCount + 1
+        else
+          print(lib.STRINGS.ROW_FAILED:format(tostring(row.path or "?"), tostring(err)))
+        end
         if pairWith and row.path and pairWith[row.path] and not firedPair[row.path]
            and pendingCount == 1 then
           pairWith[row.path](ctx, pendingRow)
