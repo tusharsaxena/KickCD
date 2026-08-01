@@ -46,6 +46,7 @@ Companion docs:
 | 22 | Text label | `modules/UnitLabel.lua`, Text Label settings panel | [Text label](#22-text-label) |
 | 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
 | 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
+| 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
 
 ---
 
@@ -614,16 +615,41 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - Counter increments on every append and resets to `0 / 500 lines` on Clear.
 - Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
 
+### 25. LibKa0s seam — degraded install + the `L` trap
+
+Both halves are invisible headlessly and both are cheap. Run after any change under `libs/LibKa0s/`
+or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSetup.lua`,
+`settings/OptionsSetup.lua`, `settings/Slash.lua`).
+
+**Setup.** Rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`, `/reload`.
+
+**Checks — the degraded half.**
+- **It degrades, it does not error.** Zero Lua errors at login. `/kcd` still answers and the host verbs still work; `/kcd list` is **complete** — every unit / icons / castbar / label path present, because the page files must finish loading even with no panel library.
+- **One cause, said once.** The missing-library notice appears **exactly once** per session however many lines print afterwards, and it names `libs/LibKa0s`.
+- **The same sentence the other two addons say.** ⚠ This is the check the section exists for. The cause clause is `NS.LIBKA0S_MISSING` in `core/CoreSetup.lua` — one shared string that every seam appends its own *"so &lt;what&gt; is unavailable"* to. Do the same rename on **AbsorbTracker** and **ConsumableMaster** and compare: all three must state the cause identically, differing only in the trailing consequence and the addon name. KickCD used to phrase this its own way; converging it is the whole point, and a drift here means a seam grew its own wording again.
+- **Each seam names its own consequence.** `/kcd config` opens nothing and prints one line about the settings panel; `/kcd debug` says its piece about the console; `/kcd perf` about the capture. Same cause, different tails.
+
+**Checks — the `L` trap.** Rename the folder back and `/reload` first; this half needs the library present.
+- Open `/kcd config` and walk every panel, then `/kcd debug window` and `/kcd perf`. Every label, tooltip title, section heading, button and perf step name reads as **English prose**.
+- A `SCREAMING_SNAKE_CASE` string on screen — `STEP_START`, `PANEL_TITLE_SUFFIX`, `LIST_HEADER` — is the trap: a descriptor was handed `NS.L`, whose metatable answers every key with the key, so the library's own strings became unreachable. It fails for every key in that module at once, so one sighting means dozens. **This addon has shipped this bug**: a perf panel once read `Ka0s KickCDPANEL_TITLE_SUFFIX` / `STEP_START` / `STEP_MEASURE_A` in exactly this way.
+- The one legitimate override is `settings/Slash.lua`'s `L = NS.L and { LIST_HEADER = … } or nil` — a freshly built table, not `NS.L` itself. `tests/test_perfsetup.lua` guards the source (including the `and` → `or` typo that would quietly turn it back into the trap); this step is the only one that sees what actually rendered.
+
+**Pass.**
+- Rename the folder back and `/reload` before you finish — a `libs/LibKa0s_off` left in place is a silently degraded addon.
+- Degraded: no errors, complete `/kcd list`, one notice, wording identical to the other two Ka0s addons.
+- Normal: not one SCREAMING_SNAKE string anywhere in the UI.
+
 ---
 
 ## When to run which subset
 
+- **LibKa0s re-vendor, or any seam-file edit:** 25, plus 11 and 15 (the panel and console are what the library actually draws).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
 - **Debug console edits:** 15, 24 (the console window, its subcommands, and the scrollbar + line counter).
-- **Pre-release / TOC bump:** the entire suite. The 24 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
+- **Pre-release / TOC bump:** the entire suite. The 25 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).
