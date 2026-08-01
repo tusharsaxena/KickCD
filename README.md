@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 [![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
-![Tests](https://img.shields.io/badge/Tests-629%2F629_passing-green)
+![Tests](https://img.shields.io/badge/Tests-640%2F640_passing-green)
 
 ![Logo](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
@@ -189,6 +189,15 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | The settings panel won't open mid-fight. | On purpose — the game blocks it in combat. It opens the moment combat ends. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a refresh. Auto-size only controls the bar's length; its other dimension stays where you set it. |
 | I want a clean slate. | One tab: that tab's **Defaults** button. One setting: `/kcd reset <setting>`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button; every spec's: `/kcd spells resetall`. |
+
+## Libraries and credits
+
+KickCD bundles its libraries in `libs/` rather than fetching them at build time, so they ship inside the addon zip.
+
+*   Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.1.0 (MIT). The shared Ka0s addon library — KickCD takes five of its modules: Core (the secret-safe printer), DebugLog (the on-screen console), Slash (the `/kcd` dispatcher and schema CLI), Options (the settings panel) and Perf (the A/B capture harness). Its licence travels with the code at `libs/LibKa0s/LICENSE`.
+*   Also bundled: Ace3 (AceAddon, AceConfig, AceConsole, AceDB, AceDBOptions, AceEvent, AceGUI and the SharedMedia widgets), CallbackHandler-1.0, LibCustomGlow-1.0, LibSharedMedia-3.0 and LibStub.
+
+Whenever the vendored copy is refreshed, the LibKa0s version named above moves with it — that line is the answer to "which LibKa0s does this build carry?", so nobody has to grep minors out of `libs/LibKa0s/*.lua`.
 
 ## Issues and feature requests
 

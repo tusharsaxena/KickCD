@@ -216,3 +216,60 @@ test("the degraded printer is still secret-safe and still says <secret>", functi
     local inst = T.load(true, false, nil, { libFiles = {} })
     assertEqual(inst.NS.SafeToString({}), "<secret>")
 end)
+
+-- ── the L trap ──────────────────────────────────────────────────────────────
+--
+-- Stated plainly, because the honest answer here is "there is nothing to
+-- assert yet": LibKa0s-Core-1.0 declares NO lib.STRINGS table and reads NO
+-- descriptor `L`. Its entire rendered output is the host's own — the prefix
+-- core/CoreSetup.lua passes and whatever the caller hands Util.print. There is
+-- no library string for a locale table to shadow, so a case asserting one
+-- "resolves to prose" would be asserting something about KickCD's own literals
+-- dressed up as an adoption guard, and it could never fail.
+--
+-- What CAN fail is the assumption itself. The case below is a tripwire on the
+-- library, not on this addon: the day Core grows a user-visible string, it goes
+-- red and whoever bumps the minor writes the fall-through assertion that
+-- test_slash.lua, test_debuglogsetup.lua and test_perfsetup.lua already carry
+-- for their majors.
+
+test("LibKa0s-Core-1.0 still has no user-visible strings to trap", function()
+    -- red under: adding a `lib.STRINGS = { ... }` table or a `d.L` read to
+    -- libs/LibKa0s/Core.lua
+    local lib = mocks.LibStub("LibKa0s-Core-1.0", true)
+    assertTrue(lib ~= nil, "the vendored Core major must be registered")
+    assertNil(lib.STRINGS,
+        "Core now ships STRINGS — this major needs an L-trap assertion of its own")
+
+    local fh = assert(io.open(T.root .. "/libs/LibKa0s/Core.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:match("STRINGS"), "Core.lua now names STRINGS")
+    assertNil(src:match("d%.L[^%w_]"), "Core.lua now reads a descriptor L")
+end)
+
+test("the Core descriptor passes no locale table, and the printer renders no key", function()
+    -- The rendered half, such as it is: what actually comes out of the seam.
+    -- The prefix is the ONLY library-rendered fragment in this major, and it is
+    -- ours — so pin that it is prose and that nothing key-shaped leaks in.
+    -- red under: `NS.PREFIX = "ADDON_PREFIX"` in core/Constants.lua
+    local fh = assert(io.open(T.root .. "/core/CoreSetup.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:match("\n%s*L%s*="),
+        "the Core descriptor grew an L; Core has no STRINGS for it to override")
+
+    local lines = {}
+    local frame = mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    NS.Util.print("hello")
+    frame.AddMessage = orig
+
+    assertEqual(#lines, 1, "the printer must have emitted exactly one line")
+    local text = lines[1]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    for word in text:gmatch("%a[%a%d_]*") do
+        assertNil(word:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$"),
+            "the printed line carries a raw key '" .. word .. "': " .. lines[1])
+    end
+end)

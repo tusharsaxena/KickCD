@@ -234,3 +234,97 @@ test("the degraded stub carries no copy of the line formatters", function()
     assertNil(src:match("6f8faf"), "the stub must not carry the timestamp colour")
     assertNil(src:match("c9a66b"), "the stub must not carry the tag colour")
 end)
+
+-- ── the L trap ──────────────────────────────────────────────────────────────
+--
+-- core/DebugLogSetup.lua's descriptor omits `L` entirely, which is the correct
+-- shape for an addon that translates nothing. The guard below is what stops
+-- someone adding one — this addon SHIPPED the trap once, in its perf panel, and
+-- the console has thirteen more strings that would go the same way at once.
+--
+-- Honest about falsifiability, same split as the Slash and Perf pairs:
+--   * the first case pins the rendered result — red when a raw key reaches the
+--     override table;
+--   * the second case is the LIBRARY-regression detector — red the moment
+--     DebugLog.lua resolves an override with a plain index instead of rawget.
+-- Adding `L = NS.L` to the descriptor reddens NEITHER, because DebugLog 3 uses
+-- rawget and this addon's NS.L is keyed by English phrases, so every rawget
+-- misses and lib.STRINGS wins. That descriptor mistake is caught by the source
+-- check in test_perfsetup.lua, which sweeps all five setup files.
+
+test("every string the debug console renders resolves to prose, not to its own key", function()
+    -- red under: `L = { CLEAR = "CLEAR" }` on the descriptor in
+    -- core/DebugLogSetup.lua
+    local lib = mocks.LibStub("LibKa0s-DebugLog-1.0", true)
+    assertTrue(lib ~= nil, "the vendored DebugLog major must be registered")
+    local D = NS.DebugLog
+    assertEqual(type(D.Text), "function",
+        "Text is THE resolver; without it on the live instance this case proves nothing")
+
+    for key in pairs(lib.STRINGS) do
+        local rendered = D:Text(key)
+        assertEqual(type(rendered), "string", "Text('" .. key .. "') returned no string")
+        -- The exact shape of the trap: the rendered string IS the key. Stated
+        -- this way rather than as the bare `^[A-Z][A-Z0-9_]+$` sweep because
+        -- two of this module's strings are legitimately all-caps prose —
+        -- STATE_ON renders "ON" and STATE_OFF renders "OFF" — and a pattern
+        -- that reddens on those is a case that fails for the wrong reason.
+        assertTrue(rendered ~= key, "'" .. key .. "' rendered its own key verbatim")
+        -- The SCREAMING_SNAKE sweep still applies to everything with an
+        -- underscore in it, which is every remaining key in the table.
+        assertNil(rendered:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$"),
+            "'" .. key .. "' rendered a raw key: " .. rendered)
+        -- The descriptor declares no override, so EVERY key must be the
+        -- library's own. That is the half a bare `NS.L` would take away.
+        assertEqual(rendered, lib.STRINGS[key],
+            "'" .. key .. "' must come from the library's own STRINGS")
+    end
+end)
+
+test("the console title and checkbox carry prose, reached the way the UI reaches them", function()
+    -- Not the resolver this time: the two composed strings a user actually
+    -- reads. ConsoleCheckbox() is what settings/General.lua renders.
+    -- red under: `L = { TITLE_SUFFIX = "TITLE_SUFFIX" }` on the descriptor
+    local D = NS.DebugLog
+    local title = "Ka0s KickCD" .. D:Text("TITLE_SUFFIX")
+    assertEqual(title, "Ka0s KickCD \226\128\148 Debug",
+        "the composed title bar changed: " .. title)
+
+    local cb = D:ConsoleCheckbox()
+    assertEqual(type(cb), "table", "ConsoleCheckbox must answer")
+    for _, field in ipairs({ "label", "tooltip" }) do
+        local v = cb[field]
+        assertEqual(type(v), "string", "the checkbox " .. field .. " must be a string")
+        assertNil(v:match("^[A-Z][A-Z0-9_]+$"),
+            "the checkbox " .. field .. " rendered its raw key: " .. v)
+    end
+    -- The slash-carrying variant, so a regression to the no-slash string shows.
+    assertTrue(cb.tooltip:find("/kcd", 1, true) ~= nil,
+        "the descriptor passes slash = \"/kcd\", so the substituted tooltip is the one to render")
+end)
+
+test("the vendored DebugLog major falls THROUGH a key-returning locale table", function()
+    -- The library-regression half. Every Ka0s host's locale table answers an
+    -- unknown key WITH THE KEY (locales/enUS.lua:15, mandated by the standard),
+    -- so a synthesised value IS a string and a plain index accepts all of them.
+    --
+    -- red under: `local v = strings and rawget(strings, key)` ->
+    -- `local v = strings and strings[key]` in libs/LibKa0s/DebugLog.lua
+    local lib = mocks.LibStub("LibKa0s-DebugLog-1.0", true)
+    local D = lib:New({
+        name       = "TrapProbe",
+        title      = "TrapProbe",
+        font       = "Interface\\AddOns\\KickCD\\media\\fonts\\probe.ttf",
+        isEnabled  = function() return false end,
+        setEnabled = function() end,
+        print      = function() end,
+        L          = setmetatable({}, { __index = function(_, k) return k end }),
+    })
+    for key in pairs(lib.STRINGS) do
+        local rendered = D:Text(key)
+        assertTrue(rendered ~= key,
+            "the vendored library let the synthesised key '" .. key .. "' through verbatim")
+        assertEqual(rendered, lib.STRINGS[key],
+            "'" .. key .. "' must fall through to the library's own string")
+    end
+end)

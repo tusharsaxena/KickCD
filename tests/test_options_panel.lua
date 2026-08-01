@@ -316,3 +316,86 @@ test("the degraded stub carries no widget maker or layout constant", function()
     assertNil(src:match("ROW_VSPACER%s*="), "the stub copies a layout constant")
     assertNil(src:match("0%.492"), "the stub copies BUTTON_PAIR_REL")
 end)
+
+-- ── the L trap ──────────────────────────────────────────────────────────────
+--
+-- Options is the odd major of the five: libs/LibKa0s/Options.lua declares a
+-- lib.STRINGS table but NEVER reads `d.L` — grep it — so the descriptor in
+-- settings/OptionsSetup.lua has no locale hook to hand NS.L to, and the classic
+-- `L = NS.L` mistake is not expressible here at all.
+--
+-- What IS expressible is the same failure by the other route, and it is the one
+-- a user of THIS addon would actually hit: every label and tooltip the panel
+-- renders comes from NS.L, whose metatable answers an unknown key WITH THE KEY
+-- (locales/enUS.lua:15). One `L["ENABLE_KICKCD"]` typo in a schema file and the
+-- panel renders that key, silently, in game only. So the assertion is on the
+-- string the library actually pushed into the widget — `w.labelText`, set by
+-- the library's own maker via SetLabel — reached through a real render.
+
+test("every schema row the panel renders is labelled with prose, not with a key", function()
+    -- red under: changing any schema `label` to a key NS.L does not hold,
+    -- e.g. settings/General.lua's `label = L["Enable KickCD"]` ->
+    -- `label = L["ENABLE_KICKCD"]`
+    local rendered, keyish = 0, {}
+    for _, row in ipairs(NS.Settings.Schema) do
+        if not row.skipRender then
+            local w = select(1, renderRow(row.path))
+            assertTrue(w ~= nil, "no widget for " .. row.path)
+            local label = w.labelText
+            assertEqual(type(label), "string",
+                row.path .. " reached the widget with no label at all")
+            rendered = rendered + 1
+            -- SCREAMING_SNAKE, which no English label in this addon ever is.
+            if label:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$") then
+                keyish[#keyish + 1] = row.path .. " -> " .. label
+            end
+            -- The tooltip goes the same way and is the same locale table.
+            if row.desc ~= nil then
+                assertEqual(type(row.desc), "string", row.path .. " has a non-string desc")
+                if row.desc:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$") then
+                    keyish[#keyish + 1] = row.path .. ".desc -> " .. row.desc
+                end
+            end
+        end
+    end
+    -- No `if rendered > 0 then` guard anywhere above: a sweep that renders
+    -- nothing must fail loudly rather than pass vacuously.
+    assertTrue(rendered > 20,
+        "only " .. rendered .. " rows rendered; the sweep is not reaching the schema")
+    assertEqual(#keyish, 0, "rows rendered raw keys: " .. table.concat(keyish, ", "))
+end)
+
+test("the panel's group and section headings are prose too", function()
+    -- The other half of what a user reads on a page: the group headers the
+    -- library's Section() renders, which are also NS.L lookups.
+    -- red under: `group = L["MASTER_CONTROLS"]` in settings/General.lua
+    local seen = 0
+    for _, row in ipairs(NS.Settings.Schema) do
+        if row.group ~= nil then
+            assertEqual(type(row.group), "string", row.path .. " has a non-string group")
+            seen = seen + 1
+            assertNil(row.group:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$"),
+                row.path .. " sits under a raw-key heading: " .. row.group)
+        end
+    end
+    assertTrue(seen > 10, "only " .. seen .. " grouped rows found; the sweep proved nothing")
+end)
+
+test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed", function()
+    -- Pins the reason the pair above is shaped the way it is. If a future
+    -- Options minor grows a `d.L` hook, this case reddens and whoever bumps the
+    -- minor has to write the same fall-through assertion Slash, DebugLog and
+    -- Perf carry — rather than quietly inheriting a trap.
+    -- red under: adding `local strings = type(d.L) == "table" and d.L or nil`
+    -- to libs/LibKa0s/Options.lua
+    local fh = assert(io.open(T.root .. "/libs/LibKa0s/Options.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:match("d%.L%b()"), "Options.lua now reads a descriptor L")
+    assertNil(src:match("d%.L[^%w_]"), "Options.lua now reads a descriptor L")
+    -- ...and the descriptor this addon passes must not pretend otherwise.
+    local fh2 = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
+    local src2 = fh2:read("*a")
+    fh2:close()
+    assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
+end)

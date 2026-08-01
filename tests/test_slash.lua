@@ -296,3 +296,112 @@ test("the degraded stub carries no copy of the row formatter or the parser", fun
     assertNil(src:match("|cFFFFFFFF%%s|r"), "the stub reproduces the row formatter")
     assertNil(src:match("|cFFFFFF00%%s|r = "), "the stub reproduces the key/value shape")
 end)
+
+-- ── the L trap ──────────────────────────────────────────────────────────────
+--
+-- KickCD SHIPPED this bug once (a perf panel rendering PANEL_TITLE_SUFFIX,
+-- STEP_START, STEP_MEASURE_A verbatim), so the guard is extended here to the
+-- Slash major rather than left to Perf alone.
+--
+-- The failure: a module that takes an `L` override resolves the descriptor's
+-- table first and falls through to lib.STRINGS only when the override is NOT a
+-- string. This addon's NS.L carries the metatable fallback the standard MANDATES
+-- (locales/enUS.lua:15 — a miss returns the KEY), so handing a descriptor NS.L
+-- makes lib.STRINGS unreachable for EVERY key at once, in-game only.
+--
+-- Which half of the pair below is falsifiable, stated honestly:
+--   * the FIRST case pins the rendered result. It reddens when a host puts a
+--     raw key into the override table.
+--   * the SECOND case is the one that reddens on a LIBRARY regression — swap
+--     Slash.lua's `rawget(strings, key)` for a plain index and it fires. That is
+--     the drift a re-vendor introduces with both repos green.
+-- Note for whoever mutates this file: `L = NS.L` on the descriptor no longer
+-- reddens EITHER case, because Slash 4 resolves the override with rawget and
+-- NS.L is keyed by English phrases, so rawget misses and lib.STRINGS wins. The
+-- descriptor mistake is caught by the source check in test_perfsetup.lua.
+
+test("every string the Slash CLI renders resolves to prose, not to its own key", function()
+    -- red under: `L = NS.L and { LIST_HEADER = "LIST_HEADER" } or nil`
+    -- in settings/Slash.lua
+    local lib = mocks.LibStub("LibKa0s-Slash-1.0", true)
+    assertTrue(lib ~= nil, "the vendored Slash major must be registered")
+    local cli = NS.Slash.cli
+    assertTrue(cli ~= nil, "the library instance must be reachable for this to mean anything")
+    assertEqual(type(cli.Text), "function", "Text is THE resolver; without it this case proves nothing")
+
+    -- Every key the library declares, through the live instance's own resolver.
+    for key in pairs(lib.STRINGS) do
+        local rendered = cli:Text(key)
+        assertEqual(type(rendered), "string", "Text('" .. key .. "') returned no string")
+        -- The exact shape of the trap: the rendered string IS the key.
+        assertTrue(rendered ~= key, "'" .. key .. "' rendered its own key verbatim")
+        assertNil(rendered:match("^[A-Z][A-Z0-9_]+$"),
+            "'" .. key .. "' rendered its raw key: " .. rendered)
+    end
+
+    -- ...and the strings the addon does NOT override still come from the
+    -- library, which is the half a bare `NS.L` would take away.
+    for _, key in ipairs({ "LIST_GROUP", "LIST_EMPTY", "NOT_FOUND", "USAGE_GET",
+                           "USAGE_SET", "USAGE_RESET", "RESET_ALL", "HELP_HEADER" }) do
+        assertEqual(cli:Text(key), lib.STRINGS[key],
+            "'" .. key .. "' must fall through to the library's own string")
+    end
+
+    -- The one override this addon declares is byte-identical to the library's
+    -- default (settings/Slash.lua:331 says so). Pinned so a future divergence in
+    -- either direction is a decision rather than a surprise.
+    assertEqual(cli:Text("LIST_HEADER"), lib.STRINGS.LIST_HEADER)
+end)
+
+test("no chrome line /kcd prints is a raw SCREAMING_SNAKE key", function()
+    -- The end-to-end form: the actual chat output, not the resolver.
+    --
+    -- Scoped to the library's CHROME — headers, usage lines, errors — and
+    -- deliberately not to `path = value` rows: a stored enum token legitimately
+    -- IS SCREAMING_SNAKE ("RIGHT_MIDDLE" is the value, not an unresolved key),
+    -- so a blanket sweep cannot tell the two apart and would be a case that
+    -- fails for the wrong reason. Same reason ERR_ALLOWED is not driven here:
+    -- "allowed values: TOP_LEFT, ..." is a list of stored tokens by design.
+    -- red under: `L = NS.L and { LIST_HEADER = "LIST_HEADER" } or nil`
+    local KV = " = "   -- lib.FormatKV's separator; the rows that carry values
+    local checked = 0
+    for _, input in ipairs({ "help", "list", "get nosuchpath", "set enabled" }) do
+        for _, line in ipairs(runVerb(input)) do
+            if not line:find(KV, 1, true) then
+                checked = checked + 1
+                -- Strip colour escapes first: |cFFFFFF00 is not a rendered word.
+                local text = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                for word in text:gmatch("%a[%a%d_]*") do
+                    assertNil(word:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$"),
+                        "'" .. input .. "' printed a raw key '" .. word .. "' in: " .. line)
+                end
+            end
+        end
+    end
+    assertTrue(checked > 0, "no chrome lines were produced; the sweep proved nothing")
+end)
+
+test("the vendored Slash major falls THROUGH a key-returning locale table", function()
+    -- The library-regression half. A locale table whose __index answers every
+    -- key with the key is what every Ka0s host hands around; the library must
+    -- treat it as EMPTY, because a synthesised value is still a string.
+    --
+    -- red under: `local v = strings and rawget(strings, key)` ->
+    -- `local v = strings and strings[key]` in libs/LibKa0s/Slash.lua
+    local lib = mocks.LibStub("LibKa0s-Slash-1.0", true)
+    local cli = lib:New({
+        slash    = "/trapprobe",
+        commands = { { "help", "show help" } },
+        version  = function() return "1.0.0" end,
+        allRows  = function() return {} end,
+        L        = setmetatable({}, { __index = function(_, k) return k end }),
+    })
+    for key in pairs(lib.STRINGS) do
+        local rendered = cli:Text(key)
+        assertNil(rendered:match("^[A-Z][A-Z0-9_]+$"),
+            "the vendored library let the synthesised key '" .. key .. "' through as '"
+            .. tostring(rendered) .. "'")
+        assertEqual(rendered, lib.STRINGS[key],
+            "'" .. key .. "' must fall through to the library's own string")
+    end
+end)

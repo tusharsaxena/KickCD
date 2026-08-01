@@ -18,7 +18,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_coresetup.lua (16)
+### test_coresetup.lua (18)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for file
@@ -36,6 +36,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - no addon file emits a bare "secret" sentinel of its own
 - with LibKa0s absent the addon still loads and still prints tagged lines
 - the degraded printer is still secret-safe and still says <secret>
+- LibKa0s-Core-1.0 still has no user-visible strings to trap
+- the Core descriptor passes no locale table, and the printer renders no key
 
 ### test_util_anchor.lua (26)
 
@@ -284,7 +286,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - building the console + Add/Clear run the guarded sync headlessly (§11)
 - console WINDOW visibility is decoupled from the capture flag (§12.5)
 
-### test_debuglogsetup.lua (18)
+### test_debuglogsetup.lua (21)
 
 - modules/DebugLog.lua has been deleted, not left beside the library
 - the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
@@ -304,6 +306,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - with LibKa0s absent the stub answers every DebugLog member the addon calls
 - the degraded stub still flips the flag and still prints the ack
 - the degraded stub carries no copy of the line formatters
+- every string the debug console renders resolves to prose, not to its own key
+- the console title and checkbox carry prose, reached the way the UI reaches them
+- the vendored DebugLog major falls THROUGH a key-returning locale table
 
 ### test_icongrid_layout.lua (8)
 
@@ -638,7 +643,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (22)
+### test_options_panel.lua (25)
 
 - NS.Settings.Helpers IS the library instance, decorated in place
 - the host ships no widget maker, flow engine or layout constant of its own
@@ -662,6 +667,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the degraded stub carries no widget maker or layout constant
+- every schema row the panel renders is labelled with prose, not with a key
+- the panel's group and section headings are prose too
+- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
 
 ### test_settings_refreshers.lua (5)
 
@@ -694,7 +702,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (24)
+### test_slash.lua (27)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -720,6 +728,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - resetall keeps its four-part host semantics rather than becoming CliResetAll
 - with LibKa0s absent /kcd still answers and host verbs still work
 - the degraded stub carries no copy of the row formatter or the parser
+- every string the Slash CLI renders resolves to prose, not to its own key
+- no chrome line /kcd prints is a raw SCREAMING_SNAKE key
+- the vendored Slash major falls THROUGH a key-returning locale table
 
 ### test_perfsetup.lua (25)
 
@@ -762,7 +773,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | Suite | Cases |
 | --- | --- |
 | test_util.lua | 13 |
-| test_coresetup.lua | 16 |
+| test_coresetup.lua | 18 |
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 22 |
 | test_state.lua | 23 |
@@ -775,7 +786,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_debuglog.lua | 13 |
-| test_debuglogsetup.lua | 18 |
+| test_debuglogsetup.lua | 21 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
 | test_icongrid_visibility.lua | 22 |
@@ -795,12 +806,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 22 |
+| test_options_panel.lua | 25 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 24 |
+| test_slash.lua | 27 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
-| **Total** | **629** |
+| **Total** | **640** |
