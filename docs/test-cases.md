@@ -646,8 +646,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (25)
+### test_options_panel.lua (28)
 
+- the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
+- OnDefault reaches a defaultsOnClick parked AFTER the panel is built
+- a page that parks no defaults action still has a callable, inert OnDefault
 - NS.Settings.Helpers IS the library instance, decorated in place
 - the host ships no widget maker, flow engine or layout constant of its own
 - a bool row renders a checkbox labelled from the row
@@ -809,7 +812,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 25 |
+| test_options_panel.lua | 28 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -817,4 +820,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_slash.lua | 27 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
-| **Total** | **643** |
+| **Total** | **646** |

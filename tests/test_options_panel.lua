@@ -13,6 +13,45 @@ local test, assertEqual, assertTrue, assertNil, assertNear =
 local NS = T.NS
 local H  = NS.Settings.Helpers
 
+-- ── the Blizzard canvas contract (Options minor 5) ──────────────────────────
+--
+-- The Settings window calls OnCommit on apply, OnRefresh on re-show, and
+-- OnDefault from its own FOOTER control — a different widget from the header
+-- Defaults button this addon builds, and not per-page. LibKa0s stamps all three
+-- in CreatePanel as of minor 5, so all five of this addon's pages
+-- (settings/General.lua:129, Icons.lua:393, Castbar.lua:537, Label.lua:178,
+-- Spells.lua:941) gained a working footer control without a line of their own
+-- changing. Nothing in this repo would notice losing it again: the header
+-- Defaults button keeps working and looks equivalent to the user.
+--
+-- RAWGET, not `type(panel.OnDefault)`. The frame mock synthesises a no-op for
+-- any PascalCase key, so the type check is true whether or not anything set it.
+
+test("the canvas frame carries OnCommit, OnDefault and OnRefresh from the library", function()
+    local ctx = H.CreatePanel("KickCDCanvasPanel1", "Canvas 1", { defaultsButton = true })
+    assertEqual(type(rawget(ctx.panel, "OnCommit")),  "function", "OnCommit")
+    assertEqual(type(rawget(ctx.panel, "OnDefault")), "function", "OnDefault")
+    assertEqual(type(rawget(ctx.panel, "OnRefresh")), "function", "OnRefresh")
+end)
+
+test("OnDefault reaches a defaultsOnClick parked AFTER the panel is built", function()
+    -- Every page here parks its handler after CreatePanel returns, because the
+    -- button does not exist until first OnShow. A re-vendor that turned the
+    -- library's forwarder back into an assignment would capture nil on all five
+    -- pages at once, and only the footer control would show it — in game.
+    local ctx = H.CreatePanel("KickCDCanvasPanel2", "Canvas 2", { defaultsButton = true })
+    local ran = 0
+    ctx.panel.defaultsOnClick = function() ran = ran + 1 end
+    rawget(ctx.panel, "OnDefault")()
+    assertEqual(ran, 1, "the footer control must reach the page's parked defaults action")
+end)
+
+test("a page that parks no defaults action still has a callable, inert OnDefault", function()
+    local ctx = H.CreatePanel("KickCDCanvasPanel3", "Canvas 3", {})
+    assertNil(rawget(ctx.panel, "defaultsOnClick"))
+    rawget(ctx.panel, "OnDefault")()   -- must not raise
+end)
+
 local panelSeq = 0
 --- Render one schema row into a throwaway ctx and hand back the widget, so a
 --- case can drive it the way a click would.
@@ -388,11 +427,29 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- Perf carry — rather than quietly inheriting a trap.
     -- red under: adding `local strings = type(d.L) == "table" and d.L or nil`
     -- to libs/LibKa0s/Options.lua
+    --
+    -- All THREE files of the major, not just the shell. OptionsWidgets.lua is
+    -- where the rendered labels actually come from, so an `L` hook growing there
+    -- is the more likely of the two and the one that would show on screen first.
+    local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
+    assertTrue(type(rawget(lib, "STRINGS")) == "table",
+        "Options owning its own strings is why this tripwire is not shaped like "
+        .. "the Core one in test_coresetup.lua — asserting lib.STRINGS is absent "
+        .. "would fail here against a module behaving as designed")
+    assertTrue(type(rawget(lib, "LAYOUT")) == "table",
+        "and `local L = lib.LAYOUT` inside Options.lua is geometry, not a locale table")
+
+    for _, rel in ipairs({ "Options.lua", "OptionsWidgets.lua", "OptionsScroll.lua" }) do
+        local fh0 = assert(io.open(T.root .. "/libs/LibKa0s/" .. rel, "r"))
+        local src0 = fh0:read("*a")
+        fh0:close()
+        assertNil(src0:match("d%.L%b()"), rel .. " now reads a descriptor L")
+        assertNil(src0:match("d%.L[^%w_]"), rel .. " now reads a descriptor L")
+    end
+
     local fh = assert(io.open(T.root .. "/libs/LibKa0s/Options.lua", "r"))
     local src = fh:read("*a")
     fh:close()
-    assertNil(src:match("d%.L%b()"), "Options.lua now reads a descriptor L")
-    assertNil(src:match("d%.L[^%w_]"), "Options.lua now reads a descriptor L")
     -- ...and the descriptor this addon passes must not pretend otherwise.
     local fh2 = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
     local src2 = fh2:read("*a")
