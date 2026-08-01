@@ -21,7 +21,7 @@ local core = LibStub and LibStub("LibKa0s-Core-1.0", true)
 local NEEDS_CORE = 1
 if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary; module absent
 
-local MAJOR, MINOR = "LibKa0s-Options-1.0", 4
+local MAJOR, MINOR = "LibKa0s-Options-1.0", 5
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -204,6 +204,33 @@ function lib:New(d)
     local panel = CreateFrame("Frame", name)
     panel.name = title
     panel:Hide()
+
+    -- The Blizzard canvas contract. The Settings window calls all three on a frame handed to
+    -- RegisterCanvasLayout(Sub)category: OnCommit when the user applies, OnDefault from the
+    -- window's own FOOTER defaults control, OnRefresh on re-show. This library declared none of
+    -- them until minor 5, so every host on it shipped a canvas whose footer Defaults control did
+    -- nothing — and three did, without noticing, because the header Defaults button this library
+    -- DOES build kept working and looks equivalent to the user.
+    --
+    -- OnCommit and OnRefresh are inert BY DESIGN rather than by omission. A host's writes land
+    -- immediately through its own single write seam (options-ui-§41), so there is no staged state
+    -- to apply; and SetRenderer already owns re-show, so a second refresh path would race the
+    -- renderer it duplicates.
+    panel.OnCommit  = function() end
+    panel.OnRefresh = function() end
+
+    -- A FORWARDER, not `panel.OnDefault = panel.defaultsOnClick`, and the ordering is the whole
+    -- reason: every host parks its click handler on the panel AFTER this function returns, because
+    -- the Defaults button does not exist yet (EnsureDefaultsButton builds it on first OnShow). An
+    -- assignment here would capture nil forever while looking perfectly correct.
+    --
+    -- Resolving through the panel at call time also keeps the footer control and the header button
+    -- ONE implementation — which is what matters — rather than two that can drift. A page with no
+    -- defaults action (a landing page) gets a callable no-op, which is the point: the footer
+    -- control is not per-page and can be clicked while such a page is open.
+    panel.OnDefault = function()
+      if panel.defaultsOnClick then panel.defaultsOnClick() end
+    end
 
     local titleFS, divider = buildHeader(panel, title, opts)
     panel.title   = titleFS
