@@ -427,7 +427,7 @@ function Database:BuildSpells()
             -- Wipe in place rather than replacing the table — keeps any
             -- references downstream stable across the build.
             for i = #target, 1, -1 do target[i] = nil end
-            for i, entry in ipairs(list) do
+            for _, entry in ipairs(list) do
                 local id  = entry.spellID  or entry[1]
                 local cat = entry.category or entry[2]
                 if id then

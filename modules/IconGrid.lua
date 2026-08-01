@@ -852,7 +852,7 @@ function IconGrid:OnConfigChanged(_evt, payload)
     end
 end
 
-function IconGrid:OnProfileChanged(_evt, payload)
+function IconGrid:OnProfileChanged(_evt, _payload)
     -- Full reset: re-anchor, rebuild the active list against the new
     -- profile's spell defaults, and re-apply the lock + general state.
     -- A profile swap can carry different units.<unit>.enabled values than

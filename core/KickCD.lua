@@ -731,7 +731,6 @@ local function expandMainCategory(main)
 end
 
 function NS:OpenSettings(input)
-    local p = self.Util and self.Util.print or print
     -- Settings panel registration touches protected frames; opening it in
     -- combat would taint the dropdown / category tree. Gate here so every
     -- entry point (slash, deferred retry, future callers) shares the check.
@@ -760,7 +759,7 @@ function NS:OpenSettings(input)
         -- race the PLAYER_LOGIN-deferred RegisterPanel.
         self._openRetries = (self._openRetries or 0) + 1
         if self._openRetries <= OPEN_SETTINGS_MAX_RETRIES and C_Timer and C_Timer.After then
-            p("Settings still loading, opening shortly…")
+            p(self, "Settings still loading, opening shortly…")
             C_Timer.After(OPEN_SETTINGS_RETRY_DELAY, function()
                 self:OpenSettings(input)
             end)
@@ -768,5 +767,5 @@ function NS:OpenSettings(input)
         end
         self._openRetries = nil
     end
-    p("Settings not yet registered")
+    p(self, "Settings not yet registered")
 end

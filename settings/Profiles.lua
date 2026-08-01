@@ -10,8 +10,6 @@ local addonName, NS = ...
 
 local L = NS.L or setmetatable({}, { __index = function(_, k) return k end })
 
-local Profiles = {}
-
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil

@@ -503,7 +503,7 @@ local function makeRowIconBtn(AceGUI, opts)
     return btn
 end
 
-local function buildRow(AceGUI, parent, list, index)
+local function buildRow(AceGUI, list, index)
     local entry = list[index]
     if not entry then return end
 
@@ -911,7 +911,7 @@ function Spells:RefreshRows()
         container:AddChild(lbl)
     else
         for i = 1, #list do
-            local row = buildRow(AceGUI, body, list, i)
+            local row = buildRow(AceGUI, list, i)
             if row then container:AddChild(row) end
         end
     end

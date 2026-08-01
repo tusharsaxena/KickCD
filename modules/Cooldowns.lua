@@ -134,7 +134,9 @@ function Cooldowns:PollSpell(spellID)
     -- object covers every legitimate downstream use.
     local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
     local usable    = NS.Compat.IsSpellUsable(spellID)
-    local cur, maxC = NS.Compat.GetSpellCharges(spellID)
+    -- Only the current-charge count is needed; the max is discarded (it is
+    -- equally secret-prone and nothing downstream compares against it).
+    local cur = NS.Compat.GetSpellCharges(spellID)
 
     -- Secret-aware cooldown handle. We never call :GetRemainingDuration()
     -- on it from Lua; the IconGrid passes it through to
@@ -165,8 +167,8 @@ function Cooldowns:PollSpell(spellID)
     --
     -- GetSpellCooldownDuration returns nil at full charges and the
     -- recharge timer otherwise, so we can call it unconditionally here
-    -- (no Lua compare on possibly-secret cur/maxC needed). For combat
-    -- when both cur and maxC are secret we trust the API — if it says
+    -- (no Lua compare on the possibly-secret charge counts needed). For
+    -- combat when those counts are secret we trust the API — if it says
     -- there's no cooldown, there isn't one.
     local chargeCdObject
     if cur ~= nil and not isActive then

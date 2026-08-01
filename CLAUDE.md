@@ -40,7 +40,7 @@ This root file is a stub (per standard documentation-§2). Read these before tou
 ## Local verification (standard testing)
 
 - Unit tests: `lua tests/run.lua` (headless, exits non-zero on failure).
-- Lint: `luacheck .` (0 errors).
+- Lint: `luacheck .` (0 warnings, 0 errors — the tree is clean on both).
 - In-game: [docs/smoke-tests.md](docs/smoke-tests.md).
 
 Run both before every commit.
