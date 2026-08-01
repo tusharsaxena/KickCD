@@ -87,7 +87,7 @@ It reproduces through ordinary use, since `Helpers.RenderUnitPanel` clears and r
 Schema widgets are AceGUI primitives:
 
 - `CheckBox` for `bool`
-- `Slider` for `number`
+- `Slider` for `number` — **unless** the row also declares a `values` list. As of OptionsWidgets minor 5 the library reads that shape as a constrained enum, not a range, and renders it as a `Dropdown` (matching what `LibKa0s-Slash-1.0` has always parsed it as). No row in this addon is a `number` carrying `values` today, so no widget here changed; a new one would draw as a dropdown, not a 0-to-1 slider.
 - `Dropdown` for `string` rows that declare a `values` list (fixed-choice), or a function returning one. This addon supplies the **key-map** shape — `{ TOP_LEFT = "Top left", ... }` — paired with an explicit `sorting` array where the order matters, because alphabetising an anchor list scrambles it. `Helpers.LSMValues(mediaType)` is the standard wrapper around LibSharedMedia listings, and `Helpers.AnchorValues()` returns the canonical 13-option `<SIDE>_<ALIGN>` / `CENTER` set. As of OptionsWidgets minor 4 the library also reads an **ordered array** of `{ value =, text = }`; either shape works, and note the key is `text` — never `label`.
 - `EditBox` (`makeEditBox`) for `string` rows with NO `values` list — free text, e.g. the per-unit `label.text` caption rows. Commits on `OnEnterPressed` (Enter / focus-loss), unlike the drag/click-commit widgets above, so a half-typed label never writes a partial string to `db.profile`. `Helpers.RenderField` dispatches `type == "string"` to `makeDropdown` when `def.values` is set, `makeEditBox` otherwise.
 - `ColorPicker` for `color`
