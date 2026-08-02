@@ -426,7 +426,7 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 
 ### 19. Debug traces
 
-`docs/agent-context.md` §8 requires one gated, secret-safe line per key functional-flow transition, routed through `NS.Debug` to the on-screen console (never chat).
+Debug output is not chat: one gated, secret-safe line per key functional-flow transition, routed through `NS.Debug` to the on-screen console (see [testing.md](testing.md#debug-subcommands)).
 
 **Setup.** `/kcd debug on`, then `/kcd debug window` to keep the console visible while driving each transition below.
 

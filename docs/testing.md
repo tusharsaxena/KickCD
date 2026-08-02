@@ -2,6 +2,12 @@
 
 A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` from the repo root (exits non-zero on any failure); `luacheck .` must stay at 0 warnings and 0 errors — the tree is clean on both counts, so any new warning is a regression, not background noise. The suites load every source under a WoW-API mock and assert pure logic, the message bus, the full `OnInitialize → OnEnable` cascade that AceAddon fires on `PLAYER_LOGIN` (via `test_lifecycle`), and the per-frame coalescing of the chatty `SPELL_UPDATE_*` events (via `test_cooldowns`). The harness draws nothing and cannot model taint, so it complements rather than replaces the in-game checks.
 
+## Local toolchain
+
+`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, no test runner beyond `tests/run.lua`. Both commands run from the repo root and are the green commit gate: run them before every commit, alongside the two vendored-copy diffs below.
+
+**Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [conventions.md](conventions.md) — which is why the vendored-copy check below is two diffs rather than one.
+
 ## What the frame mock does and doesn't model
 
 `tests/wow_mock.lua`'s frame stub carries **real state** for the properties the addon's correctness depends on — visibility (`Show`/`Hide`/`SetShown`/`IsShown`, with `IsVisible` walking the parent chain), geometry (`SetPoint`/`GetPoint` round trip, size, scale with `GetEffectiveScale` as the product down the parent chain), alpha, text, colour, and `StatusBar` min/max/value. Two C-side seams that accept 12.0 **secret values** are modelled deliberately, because they are the only correct way to branch on a secret: `Frame:SetAlphaFromBoolean` (which also records the raw flag, so a suite can prove the secret was passed through rather than read) and `C_CurveUtil.EvaluateColorValueFromBoolean`.
