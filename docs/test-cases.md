@@ -774,6 +774,11 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
+### test_vendor_sync.lua (2)
+
+- libs/LibKa0s is the LibKa0s release the README says this addon bundles
+- tests/_kit is the test kit that shipped with that release
+
 ## Totals
 
 | Suite | Cases |
@@ -820,4 +825,5 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_slash.lua | 27 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
-| **Total** | **646** |
+| test_vendor_sync.lua | 2 |
+| **Total** | **648** |

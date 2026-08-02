@@ -183,6 +183,7 @@ local SUITES = {
     "test_slash.lua",
     "test_perfsetup.lua",
     "test_list_mode.lua",
+    "test_vendor_sync.lua",
 }
 
 --- Render docs/test-cases.md's body from the recorded registry (§5).
