@@ -609,11 +609,13 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
 - **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
 - **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
+- **The shared Ka0s window edge.** ⚠ This is chrome the addon does not own: `core/DebugLogSetup.lua` passes no `applySkin` and no `makeCloseButton`, so both the console and the `/kcd perf` step panel take `Core.SKIN` / `Core.ApplySkin` verbatim. The window must read as a **flat 1px black outer border** with a **1px light-grey highlight** one pixel inside it, a **gold** "Ka0s KickCD — Debug" title and a **grey** divider under the title bar — not the soft brown 12px tooltip frame with a black divider and a white title it wore before LibKa0s v1.3.0. Then open a **second** Ka0s addon's console (AbsorbTracker, ConsumableMaster, BankLedger or LootHistory) and put them side by side: border, highlight, divider and title colours must be **indistinguishable**. A difference is either a host that has gone back to passing `applySkin`, or `libs/LibKa0s` drifting from `../LibKa0s` — fix it upstream and re-vendor, never in `libs/`.
 
 **Pass.**
 - Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).
 - Counter increments on every append and resets to `0 / 500 lines` on Clear.
 - Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
+- The window edge, inner highlight, divider and title match a second Ka0s addon's console exactly.
 
 ### 25. LibKa0s seam — degraded install + the `L` trap
 
@@ -643,7 +645,7 @@ or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSet
 
 ## When to run which subset
 
-- **LibKa0s re-vendor, or any seam-file edit:** 25, plus 11 and 15 (the panel and console are what the library actually draws).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
