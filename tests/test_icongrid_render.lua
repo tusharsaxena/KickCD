@@ -32,16 +32,16 @@ end)
 
 -- ── safeUnpackColor ─────────────────────────────────────────────────────────
 
-test("SafeUnpackColor reads both the array and hash colour shapes", function()
+test("SafeUnpackColor reads both the array and hash color shapes", function()
     local r, g, b, a = IconGrid.SafeUnpackColor({ 0.1, 0.2, 0.3, 0.4 })
     assertEqual(r, 0.1); assertEqual(a, 0.4)
     local r2, g2, b2, a2 = IconGrid.SafeUnpackColor({ r = 0.5, g = 0.6, b = 0.7, a = 0.8 })
     assertEqual(r2, 0.5); assertEqual(g2, 0.6); assertEqual(b2, 0.7); assertEqual(a2, 0.8)
 end)
 
-test("SafeUnpackColor honours the caller's cooldown-tint fallback", function()
+test("SafeUnpackColor honors the caller's cooldown-tint fallback", function()
     -- The whole reason it wraps Util.Unpack: a missing tint must fall back to
-    -- the module's dimming colour, not to white.
+    -- the module's dimming color, not to white.
     local r, g, b, a = IconGrid.SafeUnpackColor(nil, 0.3, 0.3, 0.3, 0.9)
     assertEqual(r, 0.3); assertEqual(g, 0.3); assertEqual(b, 0.3); assertEqual(a, 0.9)
 end)
@@ -53,7 +53,7 @@ end)
 
 -- ── unpackGlowColor ─────────────────────────────────────────────────────────
 
-test("UnpackGlowColor reads a configured array colour", function()
+test("UnpackGlowColor reads a configured array color", function()
     local r, g, b, a = IconGrid.UnpackGlowColor({ 0.1, 0.2, 0.3, 0.4 })
     assertEqual(r, 0.1); assertEqual(g, 0.2); assertEqual(b, 0.3); assertEqual(a, 0.4)
 end)
@@ -69,7 +69,7 @@ test("UnpackGlowColor falls back to the shipped yellow glow for a non-table", fu
 end)
 
 test("UnpackGlowColor fills missing channels rather than returning nils", function()
-    -- The values go into a C-side colour setter; a nil channel errors.
+    -- The values go into a C-side color setter; a nil channel errors.
     local r, g, b, a = IconGrid.UnpackGlowColor({})
     assertEqual(r, 1); assertEqual(g, 1); assertEqual(b, 1); assertEqual(a, 1)
 end)

@@ -6,7 +6,7 @@
 --
 --   * F-016 — BuildCurves is now guarded by a signature, so an "icons" config
 --     change that only touched a border / font / layout / glow field no longer
---     recreates three curves. A guard that skips too eagerly stops honouring
+--     recreates three curves. A guard that skips too eagerly stops honoring
 --     alpha edits.
 --   * The per-unit split — the curves used to be module-level and read TARGET's
 --     resolved appearance for every unit, so an UNLINKED focus silently

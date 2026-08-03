@@ -3,7 +3,7 @@
 -- library builds is the console modules/DebugLog.lua used to build, and the
 -- library-absent load still answers every member the addon calls.
 --
--- testing-§8: the console's own behaviour is tested where it lives, in the
+-- testing-§8: the console's own behavior is tested where it lives, in the
 -- library's suite. What is pinned here is the WIRING — the descriptor fields
 -- this addon passes, and the rendered bytes that changed hands.
 
@@ -44,7 +44,7 @@ test("FormatPlain renders <ts> | [<tag>] <msg> byte for byte", function()
 end)
 
 test("FormatColored keeps the steel-blue stamp, tan tag and escaped pipe", function()
-    -- The `||` is ONE literal pipe inside a colour-coded string. "Simplifying"
+    -- The `||` is ONE literal pipe inside a color-coded string. "Simplifying"
     -- it to a single pipe silently breaks the separator.
     assertEqual(NS.DebugLog.FormatColored("12:34:56", "Cast", "hello"),
         "|cff6f8faf12:34:56|r || |cffc9a66b[Cast]|r hello")
@@ -155,7 +155,7 @@ test("NS.Debug is zero-cost when the flag is off", function()
 end)
 
 test("a numeric format slot still renders correctly now the library stringifies every arg", function()
-    -- THE behaviour change in this swap. modules/DebugLog.lua's guard was an
+    -- THE behavior change in this swap. modules/DebugLog.lua's guard was an
     -- IDENTITY pass-through, so `%d` received a number. The library routes every
     -- vararg through safeToString first, so `%d` now receives the STRING "3".
     -- Lua coerces, and the rendered bytes are unchanged — but this is the case
@@ -224,15 +224,15 @@ test("the degraded stub still flips the flag and still prints the ack", function
 end)
 
 test("the degraded stub carries no copy of the line formatters", function()
-    -- debug-logging-§3: the stub MUST NOT reproduce the format or its colour
+    -- debug-logging-§3: the stub MUST NOT reproduce the format or its color
     -- codes. Copying the exact strings whose seven-way drift this extraction
     -- exists to end is the one duplicate testing-§8 most specifically forbids.
     -- red under: pasting the real format string into the stub's FormatColored
     local fh = assert(io.open(T.root .. "/core/DebugLogSetup.lua", "r"))
     local src = fh:read("*a")
     fh:close()
-    assertNil(src:match("6f8faf"), "the stub must not carry the timestamp colour")
-    assertNil(src:match("c9a66b"), "the stub must not carry the tag colour")
+    assertNil(src:match("6f8faf"), "the stub must not carry the timestamp color")
+    assertNil(src:match("c9a66b"), "the stub must not carry the tag color")
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ end)
 test("the vendored DebugLog major falls THROUGH a key-returning locale table", function()
     -- The library-regression half. Every Ka0s host's locale table answers an
     -- unknown key WITH THE KEY (locales/enUS.lua:15, mandated by the standard),
-    -- so a synthesised value IS a string and a plain index accepts all of them.
+    -- so a synthesized value IS a string and a plain index accepts all of them.
     --
     -- red under: `local v = strings and rawget(strings, key)` ->
     -- `local v = strings and strings[key]` in libs/LibKa0s/DebugLog.lua
@@ -323,7 +323,7 @@ test("the vendored DebugLog major falls THROUGH a key-returning locale table", f
     for key in pairs(lib.STRINGS) do
         local rendered = D:Text(key)
         assertTrue(rendered ~= key,
-            "the vendored library let the synthesised key '" .. key .. "' through verbatim")
+            "the vendored library let the synthesized key '" .. key .. "' through verbatim")
         assertEqual(rendered, lib.STRINGS[key],
             "'" .. key .. "' must fall through to the library's own string")
     end

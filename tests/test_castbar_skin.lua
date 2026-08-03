@@ -1,12 +1,12 @@
 -- tests/test_castbar_skin.lua — modules/Castbar_Skin.lua, the config-driven
--- re-skin peeled out of Castbar.lua (KCD-19) and split structural-vs-colour
+-- re-skin peeled out of Castbar.lua (KCD-19) and split structural-vs-color
 -- (F-015).
 --
 -- The split is a performance change with a correctness trap: a guarded half
--- that skips too eagerly stops honouring config edits, and the failure is
+-- that skips too eagerly stops honoring config edits, and the failure is
 -- invisible headlessly unless something asserts the widget actually moved. So
 -- these cases assert on BOTH sides of the guard — that a structural edit still
--- lands, and that a pure colour edit no longer pays for the structural pass.
+-- lands, and that a pure color edit no longer pays for the structural pass.
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
 
@@ -56,8 +56,8 @@ test("StructureSignature moves when the RESOLVED size moves", function()
         "a different resolved long axis must invalidate the signature")
 end)
 
-test("StructureSignature ignores pure colour fields", function()
-    -- This is the whole point of F-015: a colour-picker drag commits every
+test("StructureSignature ignores pure color fields", function()
+    -- This is the whole point of F-015: a color-picker drag commits every
     -- 50 ms, and none of those commits may trigger the structural pass.
     local NS, Castbar = enabled()
     local c = castbarCfg(NS)
@@ -69,13 +69,13 @@ test("StructureSignature ignores pure colour fields", function()
     i.barColor = { 0, 0, 0, 1 }
     u.barColor = { 0.5, 0.5, 0.5, 1 }
     assertEqual(Castbar.StructureSignature(c, i, u, 250, 24), before,
-        "bar colours must not appear in the structure signature")
+        "bar colors must not appear in the structure signature")
 end)
 
 test("StructureSignature DOES move for border size/texture", function()
     -- Border thickness and texture are a SetBackdrop — a table allocation and
     -- a texture load — so they belong on the guarded side even though the
-    -- border's colour does not.
+    -- border's color does not.
     local NS, Castbar = enabled()
     local c = castbarCfg(NS)
     local i = { borderTexture = "Blizzard Tooltip", borderSize = 1 }
@@ -83,7 +83,7 @@ test("StructureSignature DOES move for border size/texture", function()
     local before = Castbar.StructureSignature(c, i, u, 250, 24)
     i.borderSize = 4
     assertTrue(Castbar.StructureSignature(c, i, u, 250, 24) ~= before,
-        "borderSize is structural (SetBackdrop), not a colour")
+        "borderSize is structural (SetBackdrop), not a color")
 end)
 
 -- ── Reskin through the guard ────────────────────────────────────────────────
@@ -130,8 +130,8 @@ test("re-skinning with no config change leaves the signature untouched", functio
     assertEqual(inst.structureSig, sig, "an unchanged config must not churn the signature")
 end)
 
-test("a colour-only change does NOT move the structure signature", function()
-    -- The load-bearing assertion for F-015: this is the 50 ms colour-drag path.
+test("a color-only change does NOT move the structure signature", function()
+    -- The load-bearing assertion for F-015: this is the 50 ms color-drag path.
     local NS, Castbar = enabled()
     local inst = Castbar:GetInstance("target")
     local c = castbarCfg(NS)
@@ -144,11 +144,11 @@ test("a colour-only change does NOT move the structure signature", function()
     Castbar:Reskin(inst)
 
     assertEqual(inst.structureSig, sig,
-        "a bar colour edit must not invalidate the structural signature")
+        "a bar color edit must not invalidate the structural signature")
 end)
 
-test("a colour-only change still repaints the bar", function()
-    -- Skipping the structural half must not skip the colour half with it.
+test("a color-only change still repaints the bar", function()
+    -- Skipping the structural half must not skip the color half with it.
     local NS, Castbar = enabled()
     local inst = Castbar:GetInstance("target")
     local c = castbarCfg(NS)

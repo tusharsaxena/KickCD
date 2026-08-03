@@ -226,7 +226,7 @@ end
 
 -- Resolve the active spec key the same way Database/Cooldowns do: the
 -- locale-independent class file token from UnitClass(), plus the NUMERIC
--- specID. Never the localised spec name — see issue #8.
+-- specID. Never the localized spec name — see issue #8.
 local function getActiveSpecKey()
     local _, classFile = UnitClass("player")
     if not classFile then return nil, nil end
@@ -302,7 +302,7 @@ function IconGrid:BuildActiveList(inst)
     if not (classFile and specName) then return end
 
     -- Read-only lookup via Database:GetSpellList — never lazy-creates
-    -- a per-spec table, so a class+spec the user has never customised
+    -- a per-spec table, so a class+spec the user has never customized
     -- doesn't pollute the saved-vars with an empty entry.
     local list = NS.Database and NS.Database:GetSpellList(classFile, specName)
     if not list then return end

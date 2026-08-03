@@ -2,7 +2,7 @@
 --
 -- The existing test_unitlabel.lua checks that Apply runs and picks the right
 -- PARENT. This suite covers the rest, which the stateful frame mock made
--- reachable: the text, font, colour and justification it writes, the anchor
+-- reachable: the text, font, color and justification it writes, the anchor
 -- it positions against, and the show/hide decision.
 --
 -- The load-bearing oddity is that position and visibility come from DIFFERENT
@@ -62,7 +62,7 @@ end)
 
 -- ── Appearance ──────────────────────────────────────────────────────────────
 
-test("Apply pushes the configured size and colour onto the FontString", function()
+test("Apply pushes the configured size and color onto the FontString", function()
     local NS, UnitLabel = enabled()
     local inst = applied(NS, UnitLabel, "target",
         { size = 22, color = { 0.1, 0.2, 0.3, 0.4 } })
@@ -132,7 +132,7 @@ test("Apply positions the label against its chosen ATTACH frame", function()
 end)
 
 test("Apply parents the label to the ICON GRID even when attached to the cast bar", function()
-    -- The whole point of the split: the grid honours General visibility, the
+    -- The whole point of the split: the grid honors General visibility, the
     -- cast bar additionally hides whenever nothing is being cast. Parenting to
     -- the cast bar would make the label cast-gated.
     local NS, UnitLabel = enabled()

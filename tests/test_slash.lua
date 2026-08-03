@@ -7,7 +7,7 @@
 -- below, so neither can be "fixed" back by accident:
 --   * `/kcd reset` takes a PATH, not a page;
 --   * the settings landing page renders command rows through the ONE row
---     formatter, in the help colours.
+--     formatter, in the help colors.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertNil =
@@ -92,7 +92,7 @@ test("the help header now carries the em dash the standard mandates", function()
 end)
 
 test("a help row is the one shared formatter, two-space indented", function()
-    -- Byte for byte, modulo the hex case the library standardised on.
+    -- Byte for byte, modulo the hex case the library standardized on.
     local lines = runVerb("help")
     local row
     for _, l in ipairs(lines) do
@@ -170,16 +170,16 @@ test("set routes through the host's single write seam", function()
     NS.Settings.Helpers.SetAndRefresh("locked", before)
 end)
 
-test("a colour round-trips through the library with no host translation", function()
-    -- This used to need a codec: the addon stored colours positionally while the
+test("a color round-trips through the library with no host translation", function()
+    -- This used to need a codec: the addon stored colors positionally while the
     -- library parsed and rendered the keyed shape. The STORAGE migrated instead
     -- (core/Database.lua v3 -> v4), so the two agree and settings/Slash.lua
-    -- carries no colour conversion at all.
+    -- carries no color conversion at all.
     local row
     for _, def in ipairs(NS.Settings.Schema) do
         if def.type == "color" then row = def break end
     end
-    assertTrue(row ~= nil, "the schema has no colour row to exercise")
+    assertTrue(row ~= nil, "the schema has no color row to exercise")
 
     local before = NS.Settings.Helpers.Get(row.path)
     local lines = runVerb("set " .. row.path .. " 1 0.5 0 1")
@@ -192,12 +192,12 @@ test("a colour round-trips through the library with no host translation", functi
     assertNil(stored[1], "the stored shape must be keyed, not positional")
     -- And the echo must render the real numbers, not four zeroes.
     assertTrue(joined(lines):find("{1.00, 0.50, 0.00, 1.00}", 1, true) ~= nil,
-        "colour echoed wrong; got: " .. joined(lines))
+        "color echoed wrong; got: " .. joined(lines))
 
     NS.Settings.Helpers.SetAndRefresh(row.path, before)
 end)
 
-test("a colour given in 0-255 rescales jointly", function()
+test("a color given in 0-255 rescales jointly", function()
     local row
     for _, def in ipairs(NS.Settings.Schema) do
         if def.type == "color" then row = def break end
@@ -369,7 +369,7 @@ test("no chrome line /kcd prints is a raw SCREAMING_SNAKE key", function()
         for _, line in ipairs(runVerb(input)) do
             if not line:find(KV, 1, true) then
                 checked = checked + 1
-                -- Strip colour escapes first: |cFFFFFF00 is not a rendered word.
+                -- Strip color escapes first: |cFFFFFF00 is not a rendered word.
                 local text = line:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
                 for word in text:gmatch("%a[%a%d_]*") do
                     assertNil(word:match("^[A-Z][A-Z0-9]*_[A-Z0-9_]*$"),
@@ -384,7 +384,7 @@ end)
 test("the vendored Slash major falls THROUGH a key-returning locale table", function()
     -- The library-regression half. A locale table whose __index answers every
     -- key with the key is what every Ka0s host hands around; the library must
-    -- treat it as EMPTY, because a synthesised value is still a string.
+    -- treat it as EMPTY, because a synthesized value is still a string.
     --
     -- red under: `local v = strings and rawget(strings, key)` ->
     -- `local v = strings and strings[key]` in libs/LibKa0s/Slash.lua
@@ -399,7 +399,7 @@ test("the vendored Slash major falls THROUGH a key-returning locale table", func
     for key in pairs(lib.STRINGS) do
         local rendered = cli:Text(key)
         assertNil(rendered:match("^[A-Z][A-Z0-9_]+$"),
-            "the vendored library let the synthesised key '" .. key .. "' through as '"
+            "the vendored library let the synthesized key '" .. key .. "' through as '"
             .. tostring(rendered) .. "'")
         assertEqual(rendered, lib.STRINGS[key],
             "'" .. key .. "' must fall through to the library's own string")

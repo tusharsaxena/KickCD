@@ -91,7 +91,7 @@ test("BackfillLabelStyle is idempotent and leaves an existing style untouched", 
     local inst = T.load(true)
     local ns = inst.NS
     local p = ns.db.profile
-    p.units.target.label.style.size = 22   -- user customised
+    p.units.target.label.style.size = 22   -- user customized
     ns.Database:BackfillLabelStyle(ns.db)
     ns.Database:BackfillLabelStyle(ns.db)
     assertEqual(p.units.target.label.style.size, 22, "existing style not overwritten")

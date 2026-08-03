@@ -132,26 +132,26 @@ function Util.Throttle(ms, fn)
 end
 
 -- ---------------------------------------------------------------------------
--- Spec / class token normalisation
+-- Spec / class token normalization
 -- ---------------------------------------------------------------------------
 --
--- Canonicalises a spec NAME to a comparable token: upper-cased with every
+-- Canonicalizes a spec NAME to a comparable token: upper-cased with every
 -- run of whitespace stripped, so "Beast Mastery" and "beastmastery" meet at
 -- "BEASTMASTERY".
 --
 -- This is NOT how spec keys are derived any more. Spell lists key on the
 -- numeric specID (see "Spec identity" below); deriving a storage key from a
--- localised name is issue #8. What remains here is name MATCHING, which has
+-- localized name is issue #8. What remains here is name MATCHING, which has
 -- two legitimate callers:
 --   * parsing a spec the user typed at the slash command, and
 --   * matching a legacy string key during the v2 → v3 migration.
 -- Both compare a name against other names, never against a stored key.
 
---- Normalise a spec name to a comparable token — upper-cased, whitespace
+--- Normalize a spec name to a comparable token — upper-cased, whitespace
 --- stripped. Returns the empty string for nil/missing input so callers can
 --- pass a possibly-absent name straight through.
 -- @param specName string|nil — spec display name, any locale
--- @return string  — normalised token (e.g. "BEASTMASTERY")
+-- @return string  — normalized token (e.g. "BEASTMASTERY")
 function Util.NormalizeSpecToken(specName)
     return (specName or ""):upper():gsub("%s+", "")
 end
@@ -164,7 +164,7 @@ end
 -- it is what defaults/Spells.lua and db.profile.spells[CLASS][specID] key
 -- on. NormalizeSpecToken above still exists, but only to parse names the
 -- USER typed and to match legacy saved keys during the v2 -> v3 migration.
--- Never derive a storage key from a localised name again (issue #8).
+-- Never derive a storage key from a localized name again (issue #8).
 
 --- The player's current specID, or nil when the API isn't available yet
 --- (e.g. very early login, or a character below the spec-unlock level).
@@ -174,7 +174,7 @@ function Util.PlayerSpecID()
     if not (Compat and Compat.GetSpecialization) then return nil end
     local idx = Compat.GetSpecialization()
     if not idx then return nil end
-    -- FIRST return is the numeric ID; the second is the LOCALISED name and
+    -- FIRST return is the numeric ID; the second is the LOCALIZED name and
     -- must never be used as a key.
     local specID = Compat.GetSpecializationInfo(idx)
     if type(specID) ~= "number" then return nil end
@@ -191,7 +191,7 @@ function Util.SpecTokenForID(specID)
 end
 
 --- Human-readable spec label for log lines and chat output. Prefers the
---- English token so a bug report from a localised client quotes the same
+--- English token so a bug report from a localized client quotes the same
 --- string the maintainer's English client would; falls back to the raw ID
 --- for a spec Const.SPEC doesn't know yet (e.g. a spec added by a patch
 --- newer than this build).
@@ -212,12 +212,12 @@ local function asciiFold(name)
     return (tostring(name or ""):upper():gsub("[^A-Z0-9]", ""))
 end
 
--- Lazily-built { [normalisedName] = specID } map for the CURRENT client
+-- Lazily-built { [normalizedName] = specID } map for the CURRENT client
 -- locale, plus a per-class variant so shared names (Frost, Holy,
 -- Protection, Restoration) can be disambiguated. Rebuilt on demand; the
 -- data is static for a session, so one build is enough.
 local specNameMap, specNameMapByClass
--- { [specID] = localisedName } and { [classFile] = { specID, ... } } in
+-- { [specID] = localizedName } and { [classFile] = { specID, ... } } in
 -- Blizzard's own spec order — both DISPLAY concerns (the Spells editor's
 -- dropdown), never keys.
 local specDisplayName, specOrderByClass
@@ -226,9 +226,9 @@ local specMapsReady
 
 -- Returns true once the client actually answered with at least one spec.
 -- A build that came up empty is NOT cached: Database:Init resolves spec keys
--- at ADDON_LOADED, and caching an empty map there would strand a localised
+-- at ADDON_LOADED, and caching an empty map there would strand a localized
 -- profile for the whole session — the migration would quietly stop
--- recognising localised keys with no way to recover short of a /reload.
+-- recognizing localized keys with no way to recover short of a /reload.
 local function buildSpecNameMaps()
     specNameMap, specNameMapByClass = {}, {}
     specDisplayName, specOrderByClass = {}, {}
@@ -277,7 +277,7 @@ local function ensureSpecNameMaps()
 end
 
 --- Resolve user- or profile-supplied spec input to a numeric specID.
---- Accepts, in order of preference: a number, a numeric string, a localised
+--- Accepts, in order of preference: a number, a numeric string, a localized
 --- spec name in the client's own language, and the English token used by
 --- Const.SPEC. Returns nil rather than guessing when nothing matches.
 ---
@@ -306,7 +306,7 @@ function Util.ResolveSpecID(input, classFile)
         if hit then return hit end
     end
 
-    -- Then the English token from Const.SPEC. Ahead of the global localised
+    -- Then the English token from Const.SPEC. Ahead of the global localized
     -- map so an English-speaking user's input keeps resolving identically no
     -- matter what locale the client is running.
     local Const = NS.Const
@@ -321,7 +321,7 @@ function Util.ResolveSpecID(input, classFile)
     return nil
 end
 
---- Localised spec name for UI display ("Élémentaire" on a frFR client).
+--- Localized spec name for UI display ("Élémentaire" on a frFR client).
 --- The inverse of the storage rule: keys must be locale-free, but anything
 --- the user READS should be in their own language. Falls back to a
 --- title-cased English token when the client can't be queried (or for a
@@ -352,14 +352,14 @@ function Util.SpecOrderForClass(classFile)
     return nil
 end
 
---- Normalise a class file token. Today UnitClass() already returns the
+--- Normalize a class file token. Today UnitClass() already returns the
 --- locale-independent file token in upper-case ("HUNTER", "DEATHKNIGHT",
 --- ...) so the helper is effectively a no-op — but routing every
 --- class-key build through it gives one place to fix any future locale
 --- quirk and keeps the symmetry with NormalizeSpecToken obvious at the
 --- call site.
 -- @param classFile string|nil — UnitClass() second return
--- @return string  — normalised class token (e.g. "HUNTER")
+-- @return string  — normalized class token (e.g. "HUNTER")
 function Util.NormalizeClassToken(classFile)
     return (classFile or ""):upper()
 end

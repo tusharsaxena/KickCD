@@ -2,9 +2,9 @@
 -- Castbar.lua, KCD-19)
 --
 -- Everything that turns the `castbar` config table into widget geometry and
--- colour: frame sizing (including auto-size against the icon grid), orientation
+-- color: frame sizing (including auto-size against the icon grid), orientation
 -- and reverse fill, the icon/bar inset split, the spark, fonts and text
--- anchoring, per-state backgrounds, status-bar textures and colours, and the
+-- anchoring, per-state backgrounds, status-bar textures and colors, and the
 -- per-state border backdrops. Castbar.lua keeps the instances, the frame build
 -- (EnsureFrame), the per-cast paint (RenderCast), the OnUpdate loop, the
 -- lifecycle, and every event/message handler.
@@ -20,14 +20,14 @@
 -- the time anything here runs. Same pattern as IconGrid_Render.lua.
 --
 -- ---------------------------------------------------------------------------
--- The structural / colour split (F-015)
+-- The structural / color split (F-015)
 -- ---------------------------------------------------------------------------
 --
 -- Reskin used to be one ~40-widget-call pass that ran on EVERY
--- Ka0s_KickCD_CONFIG_CHANGED for section "castbar". Dragging a colour picker
+-- Ka0s_KickCD_CONFIG_CHANGED for section "castbar". Dragging a color picker
 -- commits at 50 ms intervals, so a two-second drag re-ran frame sizing, icon
 -- insets, spark rotation, font loading and text anchoring ~40 times over — none
--- of which a colour can change.
+-- of which a color can change.
 --
 -- It is now two halves behind the same public entry point:
 --
@@ -35,12 +35,12 @@
 --     anchors, border backdrops (edgeFile / edgeSize). Guarded by a signature
 --     over exactly the config fields it reads, so it is skipped outright when
 --     none of them moved.
---   * ReskinColors — the cheap half: background colours, status-bar textures and
---     colours, border colours, the shared time-text colour. Always runs.
+--   * ReskinColors — the cheap half: background colors, status-bar textures and
+--     colors, border colors, the shared time-text color. Always runs.
 --
 -- The guard is a signature rather than a bus payload change on purpose. The
 -- alternative — adding the written path to Ka0s_KickCD_CONFIG_CHANGED so
--- subscribers could tell a colour edit from a layout edit — would widen the
+-- subscribers could tell a color edit from a layout edit — would widen the
 -- closed five-message bus for one subscriber's benefit. The signature keeps the
 -- knowledge of "which fields are structural" in the one file that reads them.
 --
@@ -94,7 +94,7 @@ local function applyBorderBackdrop(borderFrame, sc)
     })
 end
 
---- Border tint — the COLOUR half. Colours the already-configured backdrop
+--- Border tint — the COLOR half. Colors the already-configured backdrop
 --- texture, so it is safe to run without a preceding SetBackdrop.
 local function applyBorderColor(borderFrame, sc)
     borderFrame:SetBackdropBorderColor(Castbar.UnpackColor(sc.borderColor, 0, 0, 0, 1))
@@ -324,12 +324,12 @@ local function ReskinStructure(inst, c, intCfg, unintCfg, force)
     applyBorderBackdrop(frame.borderUninterruptible, unintCfg)
 end
 
---- Colour half of the re-skin: per-state backgrounds, status-bar textures and
---- colours, border tints, and the shared time-text colour. Always runs — this
---- is the half a colour-picker drag legitimately needs at 50 ms intervals, and
+--- Color half of the re-skin: per-state backgrounds, status-bar textures and
+--- colors, border tints, and the shared time-text color. Always runs — this
+--- is the half a color-picker drag legitimately needs at 50 ms intervals, and
 --- it is a handful of widget calls.
 ---
---- nameText colour is deliberately absent: it is per-state and applied in
+--- nameText color is deliberately absent: it is per-state and applied in
 --- ApplyState via curve-evaluated channels, because the interruptible flag
 --- driving the choice can be secret in combat.
 local function ReskinColors(inst, intCfg, unintCfg)
@@ -374,7 +374,7 @@ end
 --- start, recomputing ~40 widget calls per cast. CR-17 split it: cast
 --- start now goes through Castbar:RenderCast (~6 widget calls) and
 --- only re-skins on actual config changes. F-015 then split THIS into the
---- guarded structural half and the always-run colour half above.
+--- guarded structural half and the always-run color half above.
 ---
 --- @param force boolean rebuild geometry even if its signature is unchanged.
 ---        EnsureFrame passes true: a fresh frame has no geometry yet, but the

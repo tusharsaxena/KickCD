@@ -256,7 +256,7 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
         "a unit enabled while suspended must not register frames until Resume")
 
-    -- Resume then honours the CURRENT desired state, focus included.
+    -- Resume then honors the CURRENT desired state, focus included.
     NS2.Perf.Resume()
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
     assertTrue(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START") > 0,
@@ -358,7 +358,7 @@ test("the perf panel resolves real English, never a raw STRINGS key", function()
     -- for EVERY key, so its own STRINGS are never reached and the panel renders
     -- STEP_START, STEP_MEASURE_A, PANEL_TITLE_SUFFIX ... verbatim.
     --
-    -- Defence in depth, and honest about which half is falsifiable:
+    -- Defense in depth, and honest about which half is falsifiable:
     -- restoring `L = NS.L` no longer reddens this, because the vendored library
     -- now resolves an override with rawget (DebugLog 3 / Slash 3 / Perf 4). The
     -- guard that DOES redden on the descriptor mistake is the source check
@@ -455,7 +455,7 @@ test("the panel title is the host's brand plus the library's resolved suffix", f
     P.HidePanel()
 end)
 
-test("the VENDORED library ignores a fallback-synthesised locale entry", function()
+test("the VENDORED library ignores a fallback-synthesized locale entry", function()
     -- The case that actually reddens on a library regression, and the reason it
     -- builds its own instance: KickCD passes no `L`, so nothing in the addon
     -- exercises the resolver's override path at all. Reverting the rawget in
@@ -476,7 +476,7 @@ test("the VENDORED library ignores a fallback-synthesised locale entry", functio
 
     for _, step in ipairs(P.STEPS or {}) do
         assertNil(step.label:match("^[A-Z][A-Z0-9_]+$"),
-            "the vendored library let a synthesised key through as '" .. step.label .. "'")
+            "the vendored library let a synthesized key through as '" .. step.label .. "'")
         assertEqual(step.label, lib.STRINGS[step.string],
             "it must fall through to the library's own string")
     end

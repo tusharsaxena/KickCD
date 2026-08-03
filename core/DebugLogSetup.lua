@@ -11,10 +11,10 @@ local addonName, NS = ...
 --
 -- It replaces modules/DebugLog.lua (518 lines), which is deleted. That file was
 -- the cleanest win in the repo: BOTH its formatters were already byte-identical
--- to the library's, down to the muted timestamp colour, the tan tag and the
+-- to the library's, down to the muted timestamp color, the tan tag and the
 -- escaped `||` separator, and its window was the same 700x344 DIALOG-strata
--- frame. Seven such consoles existed across the collection; the colour codes
--- agreed and the scrollbar behaviour did not.
+-- frame. Seven such consoles existed across the collection; the color codes
+-- agreed and the scrollbar behavior did not.
 --
 -- (The hex codes themselves are deliberately not quoted anywhere in this file —
 -- tests/test_debuglogsetup.lua greps for them to prove the degradation stub
@@ -56,10 +56,10 @@ if not lib then
     -- WINDOW, and the stub says so once, honestly.
     --
     -- Note what is NOT here: no formatter. debug-logging-§3 forbids reproducing
-    -- the line format or its colour codes in a fallback, and hand-copying the
+    -- the line format or its color codes in a fallback, and hand-copying the
     -- exact strings whose seven-way drift this extraction exists to end is the
     -- one duplicate testing-§8 most specifically forbids. FormatPlain and
-    -- FormatColored answer plainly and say nothing about colour.
+    -- FormatColored answer plainly and say nothing about color.
     -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
     -- only the consequence is this seam's. Do not re-spell the cause here.
     local missing = NS.LIBKA0S_MISSING .. ", so the debug console window is unavailable."
@@ -89,7 +89,7 @@ if not lib then
         LastLine        = function() return nil end,
         FindLine        = function() return nil end,
         MakeCloseButton = function() return nil end,
-        -- Plain text, deliberately: the shape is recognisable, the colours are
+        -- Plain text, deliberately: the shape is recognizable, the colors are
         -- not reproduced, and nothing downstream parses these.
         FormatPlain     = function(ts, tag, msg)
             return tostring(ts) .. " | [" .. tostring(tag or "") .. "] " .. tostring(msg)

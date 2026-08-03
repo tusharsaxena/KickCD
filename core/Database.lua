@@ -23,7 +23,7 @@ NS.Database = Database
 -- Database:MigrateProfile reads it on Init and on every profile swap and
 -- walks any required migrations forward. v2 folds the legacy top-level
 -- icons/castbar/anchors tables into units.target (see migrations[1] /
--- Database:FoldLegacyUnits below). v3 rekeys profile.spells from localised
+-- Database:FoldLegacyUnits below). v3 rekeys profile.spells from localized
 -- spec NAMES to numeric spec IDs (see migrations[2] /
 -- Database:MigrateSpecKeys below).
 local CURRENT_DB_VERSION = 4
@@ -326,8 +326,8 @@ NS.DEFAULT_PROFILE = DEFAULT_PROFILE
 --- Read-only spell-list lookup. Returns the entry array (or nil if no
 --- list exists for this class+spec). Never mutates the profile shape,
 --- so safe to call from browse paths that flip class/spec dropdowns.
--- @param class string normalised class file token (e.g. "HUNTER")
--- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @param class string normalized class file token (e.g. "HUNTER")
+-- @param spec  string normalized spec token (e.g. "BEASTMASTERY")
 -- @return table|nil — the list or nil
 function Database:GetSpellList(class, spec)
     if not (class and spec and self.db and self.db.profile) then return nil end
@@ -345,8 +345,8 @@ end
 --- mutators (Add / Reset / Reorder) where an empty list IS the right
 --- post-condition for an unseeded spec. Browse-only consumers should
 --- use GetSpellList instead.
--- @param class string normalised class file token (e.g. "HUNTER")
--- @param spec  string normalised spec token (e.g. "BEASTMASTERY")
+-- @param class string normalized class file token (e.g. "HUNTER")
+-- @param spec  string normalized spec token (e.g. "BEASTMASTERY")
 -- @return table|nil — the list, or nil if the profile isn't ready
 function Database:EnsureSpellList(class, spec)
     if not (class and spec and self.db and self.db.profile) then return nil end
@@ -378,8 +378,8 @@ end
 --- already-populated profiles — only runs once per profile.
 ---
 --- "No re-seed if non-empty" is a deliberate policy, not an oversight.
---- A user who has customised any class+spec (even by clearing every row
---- of an active spec) has signalled intent: subsequent logins must NOT
+--- A user who has customized any class+spec (even by clearing every row
+--- of an active spec) has signaled intent: subsequent logins must NOT
 --- silently re-seed their work. The empty check is on the WHOLE
 --- `profile.spells` table — if any class entry exists at all, every
 --- spec list is left alone, including ones the user hasn't touched.
@@ -511,7 +511,7 @@ end
 --- defaults merge backfills it to the new CURRENT value and masks the account
 --- as already-current (the same KCD-20 backfill trap documented in
 --- MigrateProfile). Keying on the presence of the old top-level tables detects
---- exactly the accounts that carry customised legacy data; a fresh v2 install
+--- exactly the accounts that carry customized legacy data; a fresh v2 install
 --- has no top-level icons/castbar/anchors and is a no-op.
 function Database:FoldLegacyUnits(db)
     db = db or self.db
@@ -540,7 +540,7 @@ end
 --- account as already-current). show/text are left exactly as saved; the
 --- whole style is filled from LABELSTYLE_DEFAULT when missing, and — for a
 --- profile that already has a style table — only keys ABSENT from it are
---- copied in, so a user's customised values are never overwritten. A fresh
+--- copied in, so a user's customized values are never overwritten. A fresh
 --- install already has every key and is a no-op.
 function Database:BackfillLabelStyle(db)
     db = db or self.db
@@ -564,7 +564,7 @@ end
 
 --- Rekey `profile.spells[CLASS]` from spec NAME tokens to numeric spec IDs.
 ---
---- Up to v2 the spec key was the player's localised spec name, uppercased
+--- Up to v2 the spec key was the player's localized spec name, uppercased
 --- and whitespace-stripped. That silently broke every non-English client:
 --- a frFR Elemental Shaman derived "ELEMENTAIRE" and never matched the
 --- "ELEMENTAL" key the defaults shipped, so the addon tracked nothing
@@ -579,7 +579,7 @@ end
 ---
 --- Data safety: a key that can't be resolved is LEFT IN PLACE rather than
 --- dropped, and an incoming key never overwrites an existing numeric one.
---- Losing a user's customised list is worse than leaving a stale key.
+--- Losing a user's customized list is worse than leaving a stale key.
 function Database:MigrateSpecKeys(db)
     db = db or self.db
     if not (db and db.profile) then return end
@@ -592,7 +592,7 @@ function Database:MigrateSpecKeys(db)
     for classFile, bySpec in pairs(spells) do
         if type(bySpec) == "table" then
             -- Collect first: mutating a table while pairs() walks it is
-            -- undefined behaviour in Lua.
+            -- undefined behavior in Lua.
             local rekey = {}
             for specKey, list in pairs(bySpec) do
                 if type(specKey) == "string" then
@@ -624,16 +624,16 @@ function Database:MigrateSpecKeys(db)
     end
 end
 
---- v3 -> v4: colours move from a positional { r, g, b, a } array to the keyed
+--- v3 -> v4: colors move from a positional { r, g, b, a } array to the keyed
 --- { r =, g =, b =, a = } table.
 ---
 --- The shape is the collection's: LibKa0s-Slash-1.0 parses into it and renders
---- from it, and LibKa0s-Options-1.0's colour picker decodes and encodes it. The
+--- from it, and LibKa0s-Options-1.0's color picker decodes and encodes it. The
 --- alternative was translating at every seam, in both libraries, forever.
 ---
 --- Walks the whole profile rather than a hardcoded path list. A path list would
---- have to be kept in step with every colour row added to the schema, and a row
---- missed there is a colour that silently reads nil on every channel and renders
+--- have to be kept in step with every color row added to the schema, and a row
+--- missed there is a color that silently reads nil on every channel and renders
 --- as the fallback — the exact failure this migration exists to prevent, moved
 --- one release later. The shape test is deliberately narrow: a table with a
 --- numeric [1] AND no .r, of length 3 or 4, whose entries are all numbers in
@@ -641,14 +641,14 @@ end
 --- (array of tables), or a curve (values outside 0..1 and longer).
 --- CRITICAL: by the time this runs, AceDB has ALREADY merged the new keyed
 --- defaults into the saved table. `copyDefaults` fills any key the saved table
---- lacks, and a saved positional array lacks r/g/b/a — so a pre-migration colour
+--- lacks, and a saved positional array lacks r/g/b/a — so a pre-migration color
 --- arrives here as a HYBRID: `{ 0.25, 0.5, 0.75, 0.5, r = 1, g = 0.4, ... }`,
 --- carrying the user's values in the array part and the DEFAULTS in the keys.
 ---
 --- Detecting "already keyed" by the mere presence of `.r` would therefore skip
 --- every row it was written to convert, and every one would silently read back
 --- as its default. The array part is the tell: if `[1]` is a number, the user's
---- real colour is there and the keys are contamination.
+--- real color is there and the keys are contamination.
 function NS.Database:MigrateColorShape(db)
     local function looksLikeColor(v)
         if type(v) ~= "table" then return false end
@@ -678,7 +678,7 @@ function NS.Database:MigrateColorShape(db)
 
     walk(db.profile, 0)
     if converted > 0 and NS.Debug then
-        NS.Debug("Init", "migrated %s colour(s) to the keyed shape", converted)
+        NS.Debug("Init", "migrated %s color(s) to the keyed shape", converted)
     end
 end
 
@@ -808,7 +808,7 @@ function Database:Init()
     -- FoldLegacyUnits — keyed on style == nil to detect legacy profiles.
     self:BackfillLabelStyle(db)
 
-    -- Rekey any localised spec-name spell keys to numeric spec IDs before
+    -- Rekey any localized spec-name spell keys to numeric spec IDs before
     -- anything reads profile.spells. Shape-driven and unconditional for the
     -- same reason as the two above, plus one specific to spells: the schema
     -- version is per-ACCOUNT but spells are per-PROFILE, so version-gating

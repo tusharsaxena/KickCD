@@ -28,7 +28,7 @@ These have been considered and explicitly declined.
 
 - **Localization.** English only for the addon's own strings: chat output, log lines and the slash CLI's canonical tokens are English on every client. Localization plumbing is a deliberate non-goal.
 
-  This is **not** a licence to be locale-*dependent*, which is a different thing and was a real bug (issue #8): persisted keys and lookups must never be derived from a localized string. Spell-list keys are the numeric specID (`Const.SPEC`), class keys are `UnitClass()`'s file token. Localized spec names are accepted as slash-command *input* and shown as dropdown *labels*, but never stored or compared as identity.
+  This is **not** a license to be locale-*dependent*, which is a different thing and was a real bug (issue #8): persisted keys and lookups must never be derived from a localized string. Spell-list keys are the numeric specID (`Const.SPEC`), class keys are `UnitClass()`'s file token. Localized spec names are accepted as slash-command *input* and shown as dropdown *labels*, but never stored or compared as identity.
 - **TestMode preview for the cast bar.** The original test-mode preview was removed at commit `59fb5c0` and has not been re-added. While the bar is unlocked it shows a static placeholder instead so the user can grab and reposition it.
 - **Generic raid-frame / unit-frame replacement.** KickCD is scoped to the player's own interrupt rotation; mirroring party / arena cooldowns is out.
 - **Drag-and-drop reordering** of Spells panel rows. The list order is intentional (defaults first, then user-added in append order).
@@ -45,7 +45,7 @@ When syncing the defaults to the sheet, only columns **Q, S, T, U, V, X** matter
 
 ## Spell-list lifecycle and recovery
 
-`Database:BuildSpells` only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customised yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.
+`Database:BuildSpells` only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customized yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.
 
 If the user later changes their mind and wants defaults back, two slash commands cover the recovery surface:
 

@@ -12,9 +12,9 @@ test("DebugLog module loaded with its public API", function()
     assertTrue(type(NS.Debug) == "function", "the NS.Debug sink must exist")
 end)
 
-test("FormatPlain is clean, un-coloured, and well-shaped (§12.3)", function()
+test("FormatPlain is clean, un-colored, and well-shaped (§12.3)", function()
     assertEqual(DebugLog.FormatPlain("12:00:00", "Cast", "hello"), "12:00:00 | [Cast] hello")
-    -- no colour escapes in the copy buffer
+    -- no color escapes in the copy buffer
     assertFalse(DebugLog.FormatPlain("12:00:00", "Cast", "x"):find("|c", 1, true))
 end)
 
@@ -23,8 +23,8 @@ test("FormatColored carries the same fields as FormatPlain (no drift)", function
     assertTrue(c:find("12:00:00", 1, true) ~= nil, "timestamp present")
     assertTrue(c:find("[Cast]", 1, true) ~= nil, "tag present")
     assertTrue(c:find("hello", 1, true) ~= nil, "message present")
-    assertTrue(c:find("|cff6f8faf", 1, true) ~= nil, "steel-blue timestamp colour")
-    assertTrue(c:find("|cffc9a66b", 1, true) ~= nil, "tan tag colour")
+    assertTrue(c:find("|cff6f8faf", 1, true) ~= nil, "steel-blue timestamp color")
+    assertTrue(c:find("|cffc9a66b", 1, true) ~= nil, "tan tag color")
 end)
 
 test("debug flag defaults OFF and lives in State, never in SavedVariables (§12.5)", function()

@@ -1,7 +1,7 @@
 -- tests/test_locale.lua — locale independence of spec resolution (issue #8)
 --
 -- Regression cover for the frFR bug where the addon derived its spell-list
--- key from GetSpecializationInfo's LOCALISED second return, so a French
+-- key from GetSpecializationInfo's LOCALIZED second return, so a French
 -- Elemental Shaman looked up spells[SHAMAN]["ÉLÉMENTAIRE"] against defaults
 -- keyed "ELEMENTAL" and silently got an empty list.
 --
@@ -56,10 +56,10 @@ end)
 test("frFR player spec resolves to the locale-invariant numeric spec ID", function()
     local ns = loadClient(SHAMAN_CLASS_ID, 1, FRENCH).NS
     assertEqual(ns.Util.PlayerSpecID(), ELEMENTAL,
-        "PlayerSpecID must read the numeric ID, never the localised name")
+        "PlayerSpecID must read the numeric ID, never the localized name")
 end)
 
-test("frFR client resolves a localised spec name typed at the slash command", function()
+test("frFR client resolves a localized spec name typed at the slash command", function()
     local ns = loadClient(SHAMAN_CLASS_ID, 1, FRENCH).NS
     assertEqual(ns.Util.ResolveSpecID("Élémentaire", "SHAMAN"), ELEMENTAL,
         "a French user typing their own spec name must resolve")
@@ -91,16 +91,16 @@ end)
 test("SpecDisplayName falls back to the English token for an unknown spec", function()
     local ns = loadClient(SHAMAN_CLASS_ID, 1, nil).NS
     -- 250 (Blood) is a real spec ID the mock's three classes don't cover, so
-    -- the localised lookup misses and the Const.SPEC token has to carry it.
+    -- the localized lookup misses and the Const.SPEC token has to carry it.
     assertEqual(ns.Util.SpecDisplayName(250), "Blood")
 end)
 
 test("a spec-name lookup that ran before the client was ready retries later", function()
     -- Database:Init runs at ADDON_LOADED and resolves spec keys there. If the
     -- class/spec query isn't answering yet, caching that empty result would
-    -- strand a localised profile permanently — the migration would silently
-    -- stop recognising localised keys for the whole session.
-    -- Asserts on a LOCALISED name throughout: the English token resolves from
+    -- strand a localized profile permanently — the migration would silently
+    -- stop recognizing localized keys for the whole session.
+    -- Asserts on a LOCALIZED name throughout: the English token resolves from
     -- the static Const.SPEC table regardless of client readiness, so it would
     -- pass either way and prove nothing.
     local inst = T.load(true, false, function(mocks)
@@ -118,7 +118,7 @@ test("a spec-name lookup that ran before the client was ready retries later", fu
 end)
 
 test("every default spell list is reachable on a French client", function()
-    -- The bug was not Shaman-specific: any spec whose localised name differs
+    -- The bug was not Shaman-specific: any spec whose localized name differs
     -- from the English one was unreachable. Walk the whole defaults table and
     -- assert each key is a numeric spec ID, which is locale-invariant by
     -- construction.

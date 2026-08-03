@@ -319,7 +319,7 @@ test("IsSpellUsable reads the two-boolean form some Midnight builds return", fun
     assertEqual(usable, false); assertEqual(noMana, true)
 end)
 
-test("IsSpellUsable normalises the legacy API's 1/nil into real booleans", function()
+test("IsSpellUsable normalizes the legacy API's 1/nil into real booleans", function()
     -- IsUsableSpell returns 1 rather than true; callers branch on `== true`.
     local Compat, mocks = fresh()
     mocks.C_Spell = {}
@@ -399,7 +399,7 @@ end)
 test("a FRIENDLY unit's cast is forced to uninterruptible regardless of the API", function()
     -- The raw flag answers "can this spell be interrupted at all", not "can I
     -- interrupt it". Mount casts and friendly NPC casts must read as
-    -- uninterruptible so the cast bar colours them that way.
+    -- uninterruptible so the cast bar colors them that way.
     local Compat, mocks = fresh()
     mocks.UnitCanAttack = function() return false end
     mocks.UnitCastingInfo = function()

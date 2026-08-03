@@ -39,7 +39,7 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    -- CURRENT_DB_VERSION is 4 (units fold, spec-key rekey, colour reshape) — an
+    -- CURRENT_DB_VERSION is 4 (units fold, spec-key rekey, color reshape) — an
     -- unversioned account is treated as v1 and walked forward through every step.
     assertEqual(ns.db.global.schemaVersion, 4, "migration must stamp v1 then walk to current")
 end)
@@ -81,9 +81,9 @@ test("MigrateSpecKeys rewrites an English spec-name key to its numeric spec ID",
     assertEqual(list[1].spellID, 51490, "entries must survive the rekey untouched")
 end)
 
-test("MigrateSpecKeys rewrites a LOCALISED spec-name key to its numeric spec ID (issue #8)", function()
+test("MigrateSpecKeys rewrites a LOCALIZED spec-name key to its numeric spec ID (issue #8)", function()
     -- The French reporter's own saved data: /kcd spells add wrote under the
-    -- localised token, so the migration has to recognise it too.
+    -- localized token, so the migration has to recognize it too.
     local inst = T.load(true, false, function(mocks)
         mocks.__setPlayerSpec(7, 1, { [262] = "Élémentaire" })
         mocks.GetLocale = function() return "frFR" end
@@ -91,9 +91,9 @@ test("MigrateSpecKeys rewrites a LOCALISED spec-name key to its numeric spec ID 
     local ns = inst.NS
     ns.db.profile.spells = { SHAMAN = { ["ÉLÉMENTAIRE"] = { { spellID = 51490, enabled = true } } } }
     ns.Database:MigrateSpecKeys(ns.db)
-    assertEqual(ns.db.profile.spells.SHAMAN["ÉLÉMENTAIRE"], nil, "the localised key must be gone")
+    assertEqual(ns.db.profile.spells.SHAMAN["ÉLÉMENTAIRE"], nil, "the localized key must be gone")
     assertTrue(type(ns.db.profile.spells.SHAMAN[262]) == "table",
-        "a localised key must map to the same specID as the English one")
+        "a localized key must map to the same specID as the English one")
 end)
 
 test("MigrateSpecKeys is idempotent on an already-numeric profile", function()
@@ -109,7 +109,7 @@ test("MigrateSpecKeys leaves an unmappable key in place rather than dropping dat
     ns.db.profile.spells = { SHAMAN = { GIBBERISH = { { spellID = 51490 } } } }
     ns.Database:MigrateSpecKeys(ns.db)
     assertTrue(type(ns.db.profile.spells.SHAMAN.GIBBERISH) == "table",
-        "an unrecognised key must be preserved, not silently deleted")
+        "an unrecognized key must be preserved, not silently deleted")
 end)
 
 test("MigrateSpecKeys does not clobber an existing numeric key on collision", function()
@@ -143,7 +143,7 @@ test("FoldLegacyUnits moves a legacy top-level config under units.target", funct
     local inst = T.load(true)
     local ns = inst.NS
     local p = ns.db.profile
-    -- Simulate a legacy v1 profile: customised top-level icons/castbar/anchors.
+    -- Simulate a legacy v1 profile: customized top-level icons/castbar/anchors.
     p.icons   = { primarySize = 48, borderColor = { 1, 0, 0, 1 } }
     p.castbar = { width = 300 }
     p.anchors = { icons = { point = "TOP", relativePoint = "TOP", x = 5, y = -5 },
@@ -211,7 +211,7 @@ test("BackfillLabelStyle is idempotent and leaves an existing style untouched", 
     local inst = T.load(true)
     local ns = inst.NS
     local p = ns.db.profile
-    p.units.target.label.style.size = 22   -- user customised
+    p.units.target.label.style.size = 22   -- user customized
     ns.Database:BackfillLabelStyle(ns.db)
     ns.Database:BackfillLabelStyle(ns.db)
     assertEqual(p.units.target.label.style.size, 22, "existing style not overwritten")
@@ -221,7 +221,7 @@ test("BackfillLabelStyle key-fills a missing field onto an existing style, leavi
     local inst = T.load(true)
     local ns = inst.NS
     local p = ns.db.profile
-    p.units.target.label.style.size = 22   -- user customised, existing key
+    p.units.target.label.style.size = 22   -- user customized, existing key
     p.units.target.label.style.color = nil -- simulate a profile saved before `color` existed
     ns.Database:BackfillLabelStyle(ns.db)
     assertTrue(type(p.units.target.label.style.color) == "table", "missing color key backfilled")

@@ -24,7 +24,7 @@ local H  = NS.Settings.Helpers
 -- changing. Nothing in this repo would notice losing it again: the header
 -- Defaults button keeps working and looks equivalent to the user.
 --
--- RAWGET, not `type(panel.OnDefault)`. The frame mock synthesises a no-op for
+-- RAWGET, not `type(panel.OnDefault)`. The frame mock synthesizes a no-op for
 -- any PascalCase key, so the type check is true whether or not anything set it.
 
 test("the canvas frame carries OnCommit, OnDefault and OnRefresh from the library", function()
@@ -97,14 +97,14 @@ test("the host ships no widget maker, flow engine or layout constant of its own"
     fh:close()
     assertNil(src:match('AceGUI:Create%("CheckBox"%)'), "a checkbox maker came back")
     assertNil(src:match('AceGUI:Create%("Slider"%)'), "a slider maker came back")
-    assertNil(src:match('AceGUI:Create%("ColorPicker"%)'), "a colour maker came back")
+    assertNil(src:match('AceGUI:Create%("ColorPicker"%)'), "a color maker came back")
     assertNil(src:match("SnapToStep"), "step snapping is the library's now")
     assertNil(src:match("BUTTON_PAIR_REL%s*="), "a copied layout constant came back")
 end)
 
 -- ── schema -> widget ────────────────────────────────────────────────────────
 
-test("a bool row renders a checkbox labelled from the row", function()
+test("a bool row renders a checkbox labeled from the row", function()
     local w, row = renderRow("locked")
     assertEqual(w.type, "CheckBox")
     assertEqual(w.labelText, row.label)
@@ -134,10 +134,10 @@ test("a string row renders a dropdown listing the KEYED options in declared orde
     end
     assertEqual(type(w.order), "table", "the declared order must reach SetList")
     assertEqual(w.order[1], row.sorting[1], "and must be the row's own sorting")
-    assertEqual(w.order[1], "TOP_LEFT", "the anchor list must not alphabetise")
+    assertEqual(w.order[1], "TOP_LEFT", "the anchor list must not alphabetize")
 end)
 
-test("a colour row renders a picker with alpha and the decoded colour", function()
+test("a color row renders a picker with alpha and the decoded color", function()
     local w = renderRow("units.target.icons.borderColor")
     assertEqual(w.type, "ColorPicker")
     assertEqual(w.hasAlpha, true, "hasAlpha is row-driven now and must be declared")
@@ -152,7 +152,7 @@ test("ticking a checkbox writes through the addon's single write seam", function
     --
     -- SetAndRefresh is what fires CONFIG_CHANGED with the row's section and runs
     -- the row's onChange — the same path `/kcd set locked true` takes. Two write
-    -- paths is two behaviours, and only one of them gets tested.
+    -- paths is two behaviors, and only one of them gets tested.
     local before = H.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
@@ -196,7 +196,7 @@ test("choosing a dropdown option stores the option KEY, never its index", functi
     H.SetAndRefresh(path, before)
 end)
 
-test("confirming a colour stores the keyed shape the modules read", function()
+test("confirming a color stores the keyed shape the modules read", function()
     local path = "units.target.icons.borderColor"
     local before = H.Get(path)
     local w = renderRow(path)
@@ -371,7 +371,7 @@ end)
 -- string the library actually pushed into the widget — `w.labelText`, set by
 -- the library's own maker via SetLabel — reached through a real render.
 
-test("every schema row the panel renders is labelled with prose, not with a key", function()
+test("every schema row the panel renders is labeled with prose, not with a key", function()
     -- red under: changing any schema `label` to a key NS.L does not hold,
     -- e.g. settings/General.lua's `label = L["Enable KickCD"]` ->
     -- `label = L["ENABLE_KICKCD"]`

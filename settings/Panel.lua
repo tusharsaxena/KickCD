@@ -39,7 +39,7 @@ NS.Settings._panels   = NS.Settings._panels or {}
 
 -- NS.Settings.Helpers IS the LibKa0s-Options-1.0 instance, built in
 -- settings/OptionsSetup.lua which loads immediately before this file. This file
--- DECORATES it in place with the pieces that did not generalise, rather than
+-- DECORATES it in place with the pieces that did not generalize, rather than
 -- creating a fresh table (options-ui-§1): a host page helper added later has to
 -- be able to call Helpers.RenderRows like any other page does, and a suite that
 -- swaps a member out to spy on it must be swapping the one the library's own
@@ -156,7 +156,7 @@ end
 -- silently fail to render or fail to wire into the slash command.
 --
 -- The validator only PRINTS errors — it never refuses to load. A
--- broken row is an addon-author bug; the right user-visible behaviour
+-- broken row is an addon-author bug; the right user-visible behavior
 -- is "the option you wanted is missing AND a chat error tells you
 -- why," not "the entire settings panel refuses to register."
 
@@ -260,9 +260,9 @@ function Helpers.AnchorValues()
 end
 
 --- The declared render order for AnchorValues, handed to a row as `sorting`.
---- A SIBLING because a hash has none: without it the dropdown alphabetises,
+--- A SIBLING because a hash has none: without it the dropdown alphabetizes,
 --- scrambling a list whose reading order (top row, bottom row, the two sides,
---- then centre) is the whole point.
+--- then center) is the whole point.
 function Helpers.AnchorOrder()
     return {
         "TOP_LEFT", "TOP_MIDDLE", "TOP_RIGHT",
@@ -276,7 +276,7 @@ end
 --- Build the option list for a LibSharedMedia media type.
 --- The option list for a LibSharedMedia media type, as a keyed { key = key }
 --- hash. No `sorting` sibling: a media list has no meaningful declared order and
---- the widget makers alphabetise when none is given, which is what a font or
+--- the widget makers alphabetize when none is given, which is what a font or
 --- texture picker wants.
 function Helpers.LSMValues(mediaType)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
@@ -522,7 +522,7 @@ function Helpers.BuildMainContent(ctx)
     --
     -- This file used to carry its own format string for the same NS.COMMANDS
     -- data: two spaces either side of the dash, the dash itself wrapped in the
-    -- white colour run, and the description left uncoloured. So the panel and
+    -- white color run, and the description left uncolored. So the panel and
     -- the help block rendered one table two ways, and every command added drifted
     -- them further. That is the divergence the convergence exists to end, and the
     -- visible cost is this page's spacing halving and its descriptions turning

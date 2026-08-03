@@ -434,11 +434,11 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 --      keyed effects (proc / pixel / autocast) for at least one slot.
 -- Until then, leave LCG_KEY single — adding a second key has API churn
 -- across StartGlow / StopGlow / UpdateGlow callers, and a real
--- combined-glow scenario hasn't materialised yet.
+-- combined-glow scenario hasn't materialized yet.
 local LCG_KEY = "KickCD"
 
 -- The out-of-table fallback stays local (the glow's default is not white), but
--- the unpack itself goes through Util.Unpack: colours are stored keyed, and an
+-- the unpack itself goes through Util.Unpack: colors are stored keyed, and an
 -- index read would have made every glow render the same yellow.
 local function unpackGlowColor(c)
     if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
@@ -801,7 +801,7 @@ local function _tickAllTextIcons()
     local __t0 = Perf.on and debugprofilestop()
     -- Snapshot the count and short-circuit if empty — guards against
     -- a race where the ticker fires after the last icon deregistered
-    -- but before we got around to cancelling the timer.
+    -- but before we got around to canceling the timer.
     if next(_textIcons) == nil then
         if _textTicker and _textTicker.Cancel then
             _textTicker:Cancel()

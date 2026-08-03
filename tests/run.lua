@@ -71,7 +71,7 @@ local function assertError(fn, msg)
     if ok then error(msg or "expected function to error, but it returned", 2) end
 end
 --- Float comparison with an explicit tolerance — never compare computed
---- geometry or a rescaled colour channel with `==`. Same name, signature and
+--- geometry or a rescaled color channel with `==`. Same name, signature and
 --- semantics as tests/_kit/framework.lua's, so adopting the kit replaces this
 --- with an identical function rather than changing any call site.
 local function assertNear(got, want, tolerance, msg)

@@ -10,7 +10,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 ## Saved variables
 
 - Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `core/Database.lua`. New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
-- Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralised there. The exception is per-unit appearance (`icons`/`castbar`): those go through `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)` so link resolution (a linked focus reading target's tables) stays in one place — see `core/Units.lua`.
+- Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralized there. The exception is per-unit appearance (`icons`/`castbar`): those go through `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)` so link resolution (a linked focus reading target's tables) stays in one place — see `core/Units.lua`.
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
 
 ## Frame names
@@ -35,11 +35,11 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 
 - **Secret numbers.** Operate on `isActive` / `isEnabled` (plain bools) for decisions; pass the `cdObject` from `Compat.GetSpellCooldownDuration` opaquely to C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `EvaluateRemainingDuration`); never bind `:GetRemainingDuration()` to a Lua local in combat. Visual decisions that depend on remaining time (e.g. GCD-vs-real-CD filter) live in C-side curves built by `IconGrid.BuildCurves` and applied via `SetAlphaFromBoolean` / `SetVertexColor`.
 - **Secret bools and strings.** Never compare `UnitCastingInfo.notInterruptible` / `name` / `texture` / `spellID` in Lua; either pass straight to a Blizzard C method that accepts secrets (`Texture:SetTexture`, `FontString:SetText`, `Frame:SetAlphaFromBoolean`, `C_CurveUtil.EvaluateColorValueFromBoolean`) or use `NS.State.IsHostileUnitCasting` for the truthy "is something casting" check.
-- **Visibility / glow / interruptibility decisions** that depend on `notInterruptible` MUST go through the two-step gate (`NS.State.IsHostileUnitCasting` for show + `NS.State.ApplyInterruptibleAlpha` for filter; both live in `core/State.lua`, not `core/Compat.lua` — these are addon visibility decisions, not API normalisation). The full pattern catalogue is in [midnight-quirks.md](midnight-quirks.md).
+- **Visibility / glow / interruptibility decisions** that depend on `notInterruptible` MUST go through the two-step gate (`NS.State.IsHostileUnitCasting` for show + `NS.State.ApplyInterruptibleAlpha` for filter; both live in `core/State.lua`, not `core/Compat.lua` — these are addon visibility decisions, not API normalization). The full pattern catalog is in [midnight-quirks.md](midnight-quirks.md).
 
 ## Compat / State / Constants split
 
-- `core/Compat.lua` is API normalisation only (spell-info shims, cast-info record building).
+- `core/Compat.lua` is API normalization only (spell-info shims, cast-info record building).
 - `core/State.lua` owns shared mutable state (the event-driven combat flag) and visibility helpers (`IsHostileUnitCasting`, `ApplyInterruptibleAlpha`).
 - `core/Constants.lua` owns shared magic numbers under `NS.Const` (`GCD_UPPER`, panel paddings, castbar text insets).
 - New constants and shared state belong in those namespaces, not as module-local locals duplicated across files. **Don't add visibility decisions or shared state to Compat.**
@@ -70,4 +70,4 @@ When a Blizzard / WoW global is read, the form depends on whether the symbol is 
 
 ## Line endings
 
-CRLF on every tracked text file. The repo's `.gitattributes` enforces `* text=auto eol=crlf`, so git's smudge filter normalises on checkout — the working tree should never contain LF-terminated source files. The tree was normalised in commits `b6b9853` / `a74251a` / `3ba3ca3`. New files added by an agent should match the surrounding files in their directory.
+CRLF on every tracked text file. The repo's `.gitattributes` enforces `* text=auto eol=crlf`, so git's smudge filter normalizes on checkout — the working tree should never contain LF-terminated source files. The tree was normalized in commits `b6b9853` / `a74251a` / `3ba3ca3`. New files added by an agent should match the surrounding files in their directory.

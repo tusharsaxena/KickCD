@@ -19,7 +19,7 @@ Set everything up in the Blizzard settings panel (under **Ka0s KickCD**) or with
 
 ## What's new in 1.2.1
 
-*   **Fixed: no spells tracked on non-English clients.** On a French, German, Spanish or any other localised client, KickCD silently tracked nothing for most specs — the grid just stayed empty. Your spell lists now carry over automatically the first time each profile loads, with your own edits intact. Huge thanks to [@fttf7](https://github.com/fttf7), who reported this in [issue #8](https://github.com/tusharsaxena/kickcd/issues/8) with the debug output that pinpointed the cause.
+*   **Fixed: no spells tracked on non-English clients.** On a French, German, Spanish or any other localized client, KickCD silently tracked nothing for most specs — the grid just stayed empty. Your spell lists now carry over automatically the first time each profile loads, with your own edits intact. Huge thanks to [@fttf7](https://github.com/fttf7), who reported this in [issue #8](https://github.com/tusharsaxena/kickcd/issues/8) with the debug output that pinpointed the cause.
 *   **The Spells tab follows your spec.** Change spec with the settings window open and the spec dropdown now switches with you, instead of staying stuck on the old one until you closed and reopened settings.
 *   **A quieter, more useful debug log.** A spell sitting on cooldown used to write about ten identical lines a second and bury everything else. The log now records real changes only, and the rebuild line names every spell being watched or skipped — so a pasted log is far easier to act on in a bug report.
 *   **Lighter icon drawing.** Icons now skip repainting the parts that haven't changed while a cooldown ticks down — about a third less work per update, with no change to how anything looks.
@@ -194,7 +194,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 
 KickCD bundles its libraries in `libs/` rather than fetching them at build time, so they ship inside the addon zip.
 
-*   Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.5.0 (MIT). The shared Ka0s addon library — KickCD takes five of its modules: Core (the secret-safe printer), DebugLog (the on-screen console), Slash (the `/kcd` dispatcher and schema CLI), Options (the settings panel) and Perf (the A/B capture harness). Its licence travels with the code at `libs/LibKa0s/LICENSE`.
+*   Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.5.0 (MIT). The shared Ka0s addon library — KickCD takes five of its modules: Core (the secret-safe printer), DebugLog (the on-screen console), Slash (the `/kcd` dispatcher and schema CLI), Options (the settings panel) and Perf (the A/B capture harness). Its license travels with the code at `libs/LibKa0s/LICENSE`.
 *   Also bundled: Ace3 (AceAddon, AceConfig, AceConsole, AceDB, AceDBOptions, AceEvent, AceGUI and the SharedMedia widgets), CallbackHandler-1.0, LibCustomGlow-1.0, LibSharedMedia-3.0 and LibStub.
 
 Whenever the vendored copy is refreshed, the LibKa0s version named above moves with it — that line is the answer to "which LibKa0s does this build carry?", so nobody has to grep minors out of `libs/LibKa0s/*.lua`.

@@ -48,7 +48,7 @@ test("both gates are published for testing", function()
     assertTrue(type(Cooldowns.MasterEnabled) == "function")
 end)
 
--- ── Shared behaviour ────────────────────────────────────────────────────────
+-- ── Shared behavior ────────────────────────────────────────────────────────
 
 test("both gates treat a missing previous state as a change (first poll)", function()
     -- The very first poll for a spell must always emit AND log, or a spell

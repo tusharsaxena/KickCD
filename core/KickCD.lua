@@ -238,7 +238,7 @@ local function findCommand(list, name)
 end
 
 function printHelp(self)
-    -- The header, the rows and their colours are LibKa0s-Slash-1.0's one
+    -- The header, the rows and their colors are LibKa0s-Slash-1.0's one
     -- formatter now (settings/Slash.lua). The two-space chat indent is the
     -- library's HelpRows form; the settings landing page renders the SAME rows
     -- through LandingRows, un-indented, so the two can no longer drift.
@@ -273,7 +273,7 @@ end
 ---
 --- Dispatch itself is LibKa0s-Slash-1.0's (settings/Slash.lua): the empty-line
 --- help, the verb lowercasing that deliberately does NOT touch `rest` (schema
---- paths are case-sensitive and a colour is several tokens), the `options` ->
+--- paths are case-sensitive and a color is several tokens), the `options` ->
 --- `config` alias, and the unknown-verb line followed by the help index. NS.Slash
 --- is reached at CALL time, so settings/ loading after core/ costs nothing.
 function NS:OnSlashCommand(input)
@@ -302,8 +302,8 @@ end
 -- was ~215 lines of the same thing, one of four-plus divergent copies across the
 -- collection.
 --
--- Two pieces did NOT generalise and moved to settings/Slash.lua rather than
--- disappearing: the positional-{r,g,b,a} colour codec, and the `valueGate` hint
+-- Two pieces did NOT generalize and moved to settings/Slash.lua rather than
+-- disappearing: the positional-{r,g,b,a} color codec, and the `valueGate` hint
 -- that explains which sibling setting is gating a rejected dropdown value.
 
 function listSettings(self)
@@ -397,7 +397,7 @@ local function normClass(s)
 end
 
 -- Human-readable spec label for command output — English token where known
--- (see Util.SpecDisplay), never the localised name.
+-- (see Util.SpecDisplay), never the localized name.
 local function sd(spec)
     return NS.Util.SpecDisplay(spec)
 end
@@ -738,11 +738,11 @@ function NS:OpenSettings(input)
         or (_G.InCombatLockdown and _G.InCombatLockdown())
     if inCombat then
         self._openRetries = nil
-        -- Grey "notice" styling: the body is de-emphasised (this is expected,
-        -- not an error) while Util.print keeps the [KCD] tag full-colour.
+        -- Gray "notice" styling: the body is de-emphasized (this is expected,
+        -- not an error) while Util.print keeps the [KCD] tag full-color.
         local msg = (self.L and self.L["Cannot open settings during combat."])
             or "cannot open settings during combat — Blizzard's category-switch is protected"
-        p(self, (NS.GREY or "") .. msg .. "|r")
+        p(self, (NS.GRAY or "") .. msg .. "|r")
         return
     end
     if Settings and Settings.OpenToCategory then

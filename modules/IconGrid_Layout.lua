@@ -23,9 +23,9 @@ IconGrid.LayoutMath = Layout
 local floor = math.floor
 
 -- Anchor parser. Returns (side, align). Accepts the modern "<SIDE>_MIDDLE"
--- dropdown tokens (normalised to "<SIDE>_CENTER"), the legacy "<SIDE>_CENTER"
+-- dropdown tokens (normalized to "<SIDE>_CENTER"), the legacy "<SIDE>_CENTER"
 -- tokens, and the whole-frame "CENTER" (13th option). Falls back to
--- ("RIGHT", "CENTER") for anything unrecognised.
+-- ("RIGHT", "CENTER") for anything unrecognized.
 function Layout.parseAnchor(value)
     if value == "CENTER" then return "CENTER", "CENTER" end
 

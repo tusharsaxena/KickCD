@@ -1,6 +1,6 @@
 -- tests/test_constants.lua — integrity of core/Constants.lua.
 --
--- Constants.lua carries no logic, so nothing here asserts behaviour: it
+-- Constants.lua carries no logic, so nothing here asserts behavior: it
 -- asserts that the tables are INTERNALLY CONSISTENT and that the rest of the
 -- addon can't have drifted away from them. That matters more than it sounds.
 -- Const.SPEC is the locale-invariant identity every spell list, every
@@ -19,13 +19,13 @@ local SHARED_NAMES = { FROST = true, HOLY = true, PROTECTION = true, RESTORATION
 
 -- ── Chat styling ────────────────────────────────────────────────────────────
 
-test("Constants: the chat prefix is the cyan [KCD] tag and closes its colour code", function()
+test("Constants: the chat prefix is the cyan [KCD] tag and closes its color code", function()
     assertEqual(NS.PREFIX, "|cff00ffff[KCD]|r")
 end)
 
-test("Constants: the notice grey is an opener with no closer (callers add |r)", function()
-    assertTrue(NS.GREY:match("^|cff%x%x%x%x%x%x$") ~= nil,
-        "GREY must be a bare colour opener, got " .. tostring(NS.GREY))
+test("Constants: the notice gray is an opener with no closer (callers add |r)", function()
+    assertTrue(NS.GRAY:match("^|cff%x%x%x%x%x%x$") ~= nil,
+        "GRAY must be a bare color opener, got " .. tostring(NS.GRAY))
 end)
 
 -- ── Numeric constants ───────────────────────────────────────────────────────

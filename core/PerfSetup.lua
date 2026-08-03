@@ -103,7 +103,7 @@ NS.Perf = lib:New({
 
     -- `pollSpell` WAS left out at first, on the grounds that its inline
     -- early-return guards would make a single fall-through bracket under-count.
-    -- The first live capture overturned that: spellPoll totalled 125.02 ms of
+    -- The first live capture overturned that: spellPoll totaled 125.02 ms of
     -- which its only declared child accounted for 51.14, leaving 73.9 ms — the
     -- largest single cost in the addon — attributed to nothing at all. All four
     -- of PollSpell's exits are instrumented now, so the objection is answered

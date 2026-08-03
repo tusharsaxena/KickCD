@@ -242,7 +242,7 @@ end
 -- deprecated pre-11.x seam. Route every caller through Compat so feature modules
 -- never touch the deprecated globals directly (§11). Signatures are preserved:
 -- GetSpecialization returns the active spec INDEX; GetSpecializationInfo(index)
--- returns (id, localisedName, description, iconID, role, ...).
+-- returns (id, localizedName, description, iconID, role, ...).
 
 --- Active specialization index (or nil if unavailable).
 -- @return number|nil
@@ -254,7 +254,7 @@ function Compat.GetSpecialization()
 end
 
 --- Specialization info for a spec index. Multi-return passthrough of the
---- underlying API (id, localisedName, description, iconID, role, ...).
+--- underlying API (id, localizedName, description, iconID, role, ...).
 -- @param index number
 function Compat.GetSpecializationInfo(index)
     if _G.C_SpecializationInfo and _G.C_SpecializationInfo.GetSpecializationInfo then
@@ -350,7 +350,7 @@ end
 
 -- The "is this unit's cast one I should react to" feature decision used
 -- to live here as Compat.IsHostileUnitCasting / Compat.ApplyInterruptibleAlpha.
--- Both are NOT API-shape normalisation — they encode the addon's shared
+-- Both are NOT API-shape normalization — they encode the addon's shared
 -- visibility / glow gating policy and are now owned by core/State.lua
 -- (KickCD.State.IsHostileUnitCasting / KickCD.State.ApplyInterruptibleAlpha).
 -- Compat keeps the raw GetCastingInfo / GetChannelInfo shims above; reach
@@ -362,7 +362,7 @@ end
 --- (the root cause of the "uninterruptible cast still shows" bug
 --- before the alpha-mask refactor).
 ---
---- Every value pulled from a `Unit*` API is funnelled through
+--- Every value pulled from a `Unit*` API is funneled through
 --- `safeRender` first because in combat *any* string field
 --- (name, displayName, texture, even UnitName) can come back
 --- secret-tainted. tostring/format on a secret propagate the taint

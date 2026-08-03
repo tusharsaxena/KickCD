@@ -15,11 +15,11 @@ local function deepcopy(v)
     return out
 end
 
--- Numeric frame getters that are NOT modelled as real state. Code like
+-- Numeric frame getters that are NOT modeled as real state. Code like
 -- `border:SetFrameLevel(btn:GetFrameLevel() + 1)` does arithmetic on the
 -- result, so these must return numbers rather than the frame. Values are
 -- inert defaults chosen not to divide-by-zero. Everything load-bearing —
--- visibility, geometry, scale, alpha, text, colour, bar values — is real
+-- visibility, geometry, scale, alpha, text, color, bar values — is real
 -- state on the frame instead (see FRAME_METHODS below).
 local NUMERIC_GETTERS = {
     GetLeft = 0, GetRight = 0, GetTop = 0, GetBottom = 0,
@@ -42,16 +42,16 @@ local NUMERIC_GETTERS = {
 --     anchor" and "we saved garbage" are the same observation. Size and
 --     SCALE matter for the cast bar's auto-size math, which divides by
 --     GetEffectiveScale.
---   * TEXT and COLOUR — the cooldown countdown, the unit label and the cast
---     bar's per-state colours are the visible output of large code paths;
---     recording them is what turns those paths into assertable behaviour.
+--   * TEXT and COLOR — the cooldown countdown, the unit label and the cast
+--     bar's per-state colors are the visible output of large code paths;
+--     recording them is what turns those paths into assertable behavior.
 --   * STATUS BAR values — the cast bar's fill is min/max/value, so pinning
 --     them is how a progress regression gets caught headlessly.
 --
--- Anything NOT in this list keeps the old self-returning no-op, so unmodelled
+-- Anything NOT in this list keeps the old self-returning no-op, so unmodeled
 -- chains (`:SetClampedToScreen():SetToplevel()`) stay inert.
 
---- Normalise SetPoint's two overloads into one record. Addon code uses both
+--- Normalize SetPoint's two overloads into one record. Addon code uses both
 --- the (point, x, y) and (point, relativeTo, relativePoint, x, y) forms.
 local function recordPoint(point, a, b, c, d)
     if type(a) == "number" or a == nil then
@@ -62,7 +62,7 @@ end
 
 local makeFrame   -- forward declaration (regions are frames too)
 
--- Shared method table: state lives on each frame, behaviour is defined once.
+-- Shared method table: state lives on each frame, behavior is defined once.
 local FRAME_METHODS = {}
 
 -- ── Visibility ──────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ end
 function FRAME_METHODS.SetJustifyH(self, v) self.__justifyH = v; return self end
 function FRAME_METHODS.GetJustifyH(self) return self.__justifyH end
 
--- ── Textures / colour ───────────────────────────────────────────────────────
+-- ── Textures / color ───────────────────────────────────────────────────────
 function FRAME_METHODS.SetTexture(self, t) self.__texture = t; return self end
 function FRAME_METHODS.GetTexture(self) return self.__texture end
 function FRAME_METHODS.SetAtlas(self, a) self.__atlas = a; return self end
@@ -484,7 +484,7 @@ local function build()
     -- Fake AceDB: static default merge is enough for headless assertions
     -- -------------------------------------------------------------------
     --- Merge `src` into `dst` IN PLACE, leaving every key `dst` already has
-    --- alone. This is AceDB's real `copyDefaults` behaviour and the awkward half
+    --- alone. This is AceDB's real `copyDefaults` behavior and the awkward half
     --- of it is what matters: a saved value always wins over the default, and
     --- the saved table is mutated rather than replaced. A mock that returned a
     --- fresh copy of the defaults instead would make every migration untestable
@@ -711,7 +711,7 @@ local function build()
     local created = {}
     mocks.__frames = created
     mocks.CreateFrame = function(frameType, name, parent, template)
-        -- The NAME is honoured rather than discarded: the library derives frame
+        -- The NAME is honored rather than discarded: the library derives frame
         -- globals from a descriptor and the scrollbar patch builds a name from
         -- GetName(), so a test that cannot see the name cannot assert either.
         local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent, name)
@@ -841,11 +841,11 @@ local function build()
     -- swaps class/spec/locale wholesale. Default is an enUS Beast Mastery
     -- Hunter, matching the historical mock.
     --
-    -- specName is deliberately the LOCALISED display name (as Blizzard
+    -- specName is deliberately the LOCALIZED display name (as Blizzard
     -- returns it) while specID is locale-invariant: that asymmetry is the
     -- whole point of the frFR regression coverage (issue #8).
     local classSpecs = {
-        -- [classID] = { classFile, { {specID, localisedName}, ... } }
+        -- [classID] = { classFile, { {specID, localizedName}, ... } }
         [3]  = { "HUNTER",  { { 253, "Beast Mastery" }, { 254, "Marksmanship" }, { 255, "Survival" } } },
         [7]  = { "SHAMAN",  { { 262, "Elemental" }, { 263, "Enhancement" }, { 264, "Restoration" } } },
         [9]  = { "WARLOCK", { { 265, "Affliction" }, { 266, "Demonology" }, { 267, "Destruction" } } },
@@ -855,14 +855,14 @@ local function build()
     --- Reshape the simulated client. Call from a loadInstance mutate hook.
     -- @param classID number        key into classSpecs above
     -- @param specIndex number      1-based index within that class's spec list
-    -- @param localisedNames table|nil  optional { [specID] = "localised name" }
+    -- @param localizedNames table|nil  optional { [specID] = "localized name" }
     --        overrides, simulating a non-English client.
-    function mocks.__setPlayerSpec(classID, specIndex, localisedNames)
+    function mocks.__setPlayerSpec(classID, specIndex, localizedNames)
         player.classID, player.specIndex = classID, specIndex
-        if localisedNames then
+        if localizedNames then
             for _, entry in pairs(classSpecs) do
                 for _, spec in ipairs(entry[2]) do
-                    if localisedNames[spec[1]] then spec[2] = localisedNames[spec[1]] end
+                    if localizedNames[spec[1]] then spec[2] = localizedNames[spec[1]] end
                 end
             end
         end
@@ -897,7 +897,7 @@ local function build()
     mocks.UnitChannelInfo = function() return nil end
     mocks.UnitExists = function() return false end
     mocks.UnitCanAttack = function() return true end
-    -- Three returns like the live API: localised name, file token, classID.
+    -- Three returns like the live API: localized name, file token, classID.
     mocks.UnitClass = function() return "Hunter", "HUNTER", 3 end
     mocks.UnitRace = function() return "Orc", "Orc" end
     mocks.UnitIsUnit = function() return false end
@@ -989,7 +989,7 @@ local function build()
         CreateColorCurve = function() return makeCurve("color") end,
         -- The C-side boolean selector: returns `whenTrue` or `whenFalse`
         -- depending on the flag, and accepts a SECRET flag. Castbar:ApplyState
-        -- routes every per-state alpha and the name colour through it rather
+        -- routes every per-state alpha and the name color through it rather
         -- than branching in Lua, so without this the whole cast-render path is
         -- unreachable headlessly. Written as an explicit if — the `and/or`
         -- idiom would collapse a legitimate `whenTrue` of 0 to `whenFalse`,
@@ -1008,7 +1008,7 @@ local function build()
         function o.EvaluateRemainingDuration(_, curve)
             -- Read the curve's actual control points so the caller's CHOICE of
             -- curve is observable. Falls back to the raw remaining (number) or
-            -- a stand-in colour only when a curve carries no points at all.
+            -- a stand-in color only when a curve carries no points at all.
             local v = evaluateCurve(curve, remaining or 0.4)
             if v ~= nil then return v end
             if curve and curve.__kind == "color" then return makeColor(1, 0.4, 0.4) end

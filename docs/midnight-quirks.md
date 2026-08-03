@@ -65,7 +65,7 @@ Measured on a live 12.0.7 client with a one-off capability probe (since removed 
 | `GetModRate()` | plain | secret |
 | `Copy()` / `Assign()` | ok (userdata) | ok (userdata) |
 
-Two consequences worth internalising:
+Two consequences worth internalizing:
 
 **Secret BOOLEANS are unusable, not merely unprintable.** `HasExpired`, `HasStarted`, `IsActive` and `IsZero` all come back secret-tainted in combat. You cannot branch on one — `if hasExpired then` would reveal the entire value, so it errors in tainted scope exactly like `if notInterruptible then` does. Only `HasSecretValues()` stays plain, which makes it the one method you can safely gate on.
 
@@ -75,7 +75,7 @@ The way out is not a better comparison — it is to stop needing one, by letting
 
 **`GetSpellCooldownDuration` returns a ZEROED object, not nil, when nothing is on cooldown.** The out-of-combat probe above sampled a spell whose cooldown had lapsed and got a live object reporting `GetTotalDuration()==0`, `IsActive()==false`, `HasExpired()==true`. Do not treat a non-nil handle as "this spell is on cooldown" — gate on the plain `isActive` from `C_Spell.GetSpellCooldown` instead, which is what `Cooldowns:PollSpell` already does.
 
-This table is a snapshot of 12.0.7 behaviour, not a contract. After any patch that touches cooldown APIs, re-measure before trusting it: call each getter inside a `pcall` and classify the result with `issecretvalue` — never branch on a value before you know it is plain.
+This table is a snapshot of 12.0.7 behavior, not a contract. After any patch that touches cooldown APIs, re-measure before trusting it: call each getter inside a `pcall` and classify the result with `issecretvalue` — never branch on a value before you know it is plain.
 
 ### The wider `DurationObject` surface (largely unused here)
 
@@ -110,7 +110,7 @@ The Castbar caches the cast's `notInterruptible` flag on its `current` record so
 
 When `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` fires mid-cast, `Castbar:OnInterruptibilityChanged` writes `current.notInterruptible = (evt == "UNIT_SPELLCAST_NOT_INTERRUPTIBLE")` — a plain Lua boolean derived from the event name, which replaces the (possibly secret) original. After that flip the field is plain; `ApplyState`'s `C_CurveUtil.EvaluateColorValueFromBoolean` accepts both plain and secret forms identically, so the curve still works either way.
 
-The invariant matters only as a reminder: don't optimise the curve into a Lua-side `if not nint then ... else ... end` that "happens to work because the value's plain post-flip" — the very next `Start(rec)` puts a fresh secret-tainted bool back into the field before the next event arrives.
+The invariant matters only as a reminder: don't optimize the curve into a Lua-side `if not nint then ... else ... end` that "happens to work because the value's plain post-flip" — the very next `Start(rec)` puts a fresh secret-tainted bool back into the field before the next event arrives.
 
 ## Frame mixin pattern
 

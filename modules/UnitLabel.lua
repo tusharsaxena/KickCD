@@ -80,7 +80,7 @@ function UnitLabel:Apply(inst)
         fontPath = LSM:Fetch("font", style.font or "Friz Quadrata TT", true)
     end
     fs:SetFont(fontPath or STANDARD_TEXT_FONT, style.size or 14, FLAG_MAP[style.flags] or "OUTLINE")
-    -- Through Util.Unpack, not by index. Colours are stored keyed now
+    -- Through Util.Unpack, not by index. Colors are stored keyed now
     -- ({ r =, g =, b =, a = }); a positional read would have found nil on
     -- every channel and rendered the fallback gold no matter what the user
     -- picked — silently, and only in game.

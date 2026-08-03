@@ -6,7 +6,7 @@
 -- libs/AceGUI-3.0-SharedMediaWidgets/prototypes.lua). Inside our
 -- canvas-layout settings panel that tile leaves a 42px gap to the
 -- right of the closed dropdown's left edge and looks misaligned next
--- to neighbouring sliders / checkboxes.
+-- to neighboring sliders / checkboxes.
 --
 -- After PLAYER_LOGIN — by which point every addon's libs have run
 -- and the LSM30_Border registry slot is stable — wrap whatever

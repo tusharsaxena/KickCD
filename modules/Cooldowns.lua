@@ -71,7 +71,7 @@ local Perf = NS.Perf
 -- Both are locale-invariant: CLASS is the file token from UnitClass()'s
 -- second return, and the spec is the NUMERIC specID from
 -- GetSpecializationInfo's first return. Deriving the spec key from the
--- localised spec NAME instead is issue #8 — it left every non-English
+-- localized spec NAME instead is issue #8 — it left every non-English
 -- client tracking nothing.
 -- @return classToken (string|nil), specID (number|nil), classID (number|nil)
 local function ResolveClassSpec()
@@ -96,7 +96,7 @@ function Cooldowns:PollSpell(spellID)
     -- This bucket was left undeclared at first precisely because of them: a
     -- single fall-through bracket would have under-counted `calls` and reported
     -- a total that quietly excluded the rejected paths. The first live capture
-    -- then made the omission expensive — spellPoll totalled 125.02 ms of which
+    -- then made the omission expensive — spellPoll totaled 125.02 ms of which
     -- its declared child spellState accounted for only 51.14, leaving 73.9 ms
     -- (the largest single cost in the addon) attributed to nothing. So the
     -- bracket opens ABOVE the guards, because GetSpellInfo and IsSpellAvailable
@@ -297,7 +297,7 @@ function Cooldowns:Rebuild()
     end
 
     -- Read-only lookup via Database:GetSpellList — never lazy-creates
-    -- a per-spec table, so a class+spec the user has never customised
+    -- a per-spec table, so a class+spec the user has never customized
     -- doesn't pollute the saved-vars with an empty entry.
     local list = NS.Database and NS.Database:GetSpellList(class, spec)
     if not list then
@@ -531,7 +531,7 @@ end
 function Cooldowns:DebugDump()
     local p = NS.Util and NS.Util.print or print
     local class, spec = ResolveClassSpec()
-    -- English token, not the localised name: this line is what users paste
+    -- English token, not the localized name: this line is what users paste
     -- into bug reports (issue #8).
     p(("Cooldowns: class=%s spec=%s (%s)"):format(
         tostring(class), NS.Util.SpecDisplay(spec), tostring(spec)))

@@ -4,7 +4,7 @@
 -- Two peels have kept it under the 1500 hard cap: debug diagnostics
 -- (Castbar:DebugDump) to modules/Castbar_Debug.lua, and the config-driven
 -- re-skin (Castbar:Reskin — sizing, orientation, insets, spark, fonts, text
--- anchors, per-state textures/colours/borders) to modules/Castbar_Skin.lua.
+-- anchors, per-state textures/colors/borders) to modules/Castbar_Skin.lua.
 -- What remains is the instance model, the frame build (EnsureFrame), the
 -- per-cast paint (RenderCast), the OnUpdate loop, the lifecycle, and the
 -- event/message handlers. The next seam, if it grows back, is the

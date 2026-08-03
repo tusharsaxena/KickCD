@@ -3,12 +3,12 @@
 -- What is left of this file after LibKa0s-Options-1.0 took the widget layer.
 --
 -- GONE, because libs/LibKa0s/OptionsWidgets.lua provides them: the five widget
--- makers (checkbox, slider, dropdown, edit box, colour picker), RenderField's
+-- makers (checkbox, slider, dropdown, edit box, color picker), RenderField's
 -- type dispatch, the tooltip attacher, the spacer, the section heading and
 -- InlineButtonPair. They were ~300 lines and one of several near-identical
 -- copies across the collection — the drift anti-patterns #47 describes.
 --
--- WHAT STAYS, and why each could not generalise:
+-- WHAT STAYS, and why each could not generalize:
 --
 --   * InlinePair — two half-width widgets in one Flow row where each half is
 --     supplied by a caller-provided render function. The library's flow engine
@@ -32,7 +32,7 @@ local AceGUI  = LibStub("AceGUI-3.0")
 --- Two half-width widgets side by side in one Flow row. Each render fn receives
 --- (ctx, row) and must add exactly one 0.5-width widget to `row`.
 ---
---- Generalises the schema's auto-pairing for rows where one half is a bespoke
+--- Generalizes the schema's auto-pairing for rows where one half is a bespoke
 --- (non-schema) widget — the General page's "Lock frame" (a schema bool) beside
 --- the session-only "Debug console" toggle.
 function Helpers.InlinePair(ctx, leftRender, rightRender)

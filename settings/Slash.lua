@@ -28,7 +28,7 @@ NS.Slash = NS.Slash or {}
 --    the library has no hook for it, so it stays here behind the descriptor's
 --    documented `parse` seam rather than forking the dispatcher.
 --
--- There was a third — a colour codec, folding the library's keyed
+-- There was a third — a color codec, folding the library's keyed
 -- { r =, g =, b =, a = } back into the positional array this addon used to
 -- store. It is gone, and BOTH reasons it could go are worth keeping, because
 -- they answer different questions.
@@ -48,8 +48,8 @@ NS.Slash = NS.Slash or {}
 -- both majors, and `lib.FormatValue` reads the positional shape directly — the
 -- common case needs no descriptor at all. So the asymmetry this paragraph used
 -- to describe is closed. It went upstream because a SECOND host hit the same
--- wall (ConsumableMaster, which stores colours positionally and could not
--- migrate — the Ka0s options colour widget writes that shape), and one misfit
+-- wall (ConsumableMaster, which stores colors positionally and could not
+-- migrate — the Ka0s options color widget writes that shape), and one misfit
 -- is a setup-file concern while two is a library gap.
 
 local SlashLib = LibStub and LibStub("LibKa0s-Slash-1.0", true)
@@ -74,7 +74,7 @@ NS.Slash.Version = addonVersion
 -- The parser override
 -- ---------------------------------------------------------------------
 --
--- Only the `valueGate` hint lives here — see the header for the colour codec
+-- Only the `valueGate` hint lives here — see the header for the color codec
 -- that used to sit beside it and why it isn't needed any more.
 
 --- The keys a dropdown row currently offers, resolved at call time because a
@@ -95,7 +95,7 @@ end
 --- castbar.orientation. Without this, a user who types a perfectly sensible
 --- value gets "Allowed values: LEFT, RIGHT" and no clue why UP vanished.
 ---
---- The probe is real rather than modelled: swap the gate's stored value to each
+--- The probe is real rather than modeled: swap the gate's stored value to each
 --- other candidate, re-ask the row's own `values` function, and restore. That is
 --- the only way to answer it without duplicating the gating rule here, and the
 --- swap is transient — one call between mutate and restore, with no message-bus
@@ -292,7 +292,7 @@ NS.Slash.cli = SlashLib:New({
     print   = function(line) out(line) end,
     version = addonVersion,
 
-    -- The plain host reader. No translation: colours are stored in the keyed
+    -- The plain host reader. No translation: colors are stored in the keyed
     -- shape the library already parses into and renders from.
     get = function(path)
         local H = helpers()

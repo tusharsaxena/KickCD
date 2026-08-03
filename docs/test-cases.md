@@ -8,7 +8,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Unpack hash-style color
 - Util.Unpack nil defaults to opaque white
 - Util.NormalizeSpecToken strips whitespace and upper-cases
-- Util.PlayerSpecID returns the numeric spec ID, not the localised name
+- Util.PlayerSpecID returns the numeric spec ID, not the localized name
 - Util.SpecTokenForID maps a spec ID to its English token
 - Util.SpecDisplay prefers the English token and falls back to the raw ID
 - Util.ResolveSpecID accepts a number, a numeric string and an English token
@@ -45,26 +45,26 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ### test_util_anchor.lua (26)
 
 - SaveAnchor snapshots a frame's first anchor point
-- SaveAnchor stores no frame reference, only serialisable fields
-- SaveAnchor falls back to a centred anchor for a nil frame
-- SaveAnchor falls back to centred for a frame with no points set
+- SaveAnchor stores no frame reference, only serializable fields
+- SaveAnchor falls back to a centered anchor for a nil frame
+- SaveAnchor falls back to centered for a frame with no points set
 - SaveAnchor reads point ONE, ignoring later anchors
 - ApplyAnchor positions the frame against UIParent
 - ApplyAnchor clears stale points instead of stacking them
-- ApplyAnchor fills in centred defaults for a partial saved anchor
+- ApplyAnchor fills in centered defaults for a partial saved anchor
 - ApplyAnchor is a no-op for a nil frame or nil anchor
 - SaveAnchor and ApplyAnchor round-trip a dragged position exactly
 - Throttle passes the LAST call's arguments, not the first
 - Throttle re-arms after firing, so a later burst is not swallowed
 - Throttle preserves embedded nils in the argument list
 - Throttle survives a nil delay by treating it as immediate
-- SpecDisplayName returns the client's LOCALISED name for display
+- SpecDisplayName returns the client's LOCALIZED name for display
 - SpecDisplayName returns the empty string for a non-number
 - SpecDisplayName title-cases the English token for a spec the client can't name
 - SpecDisplayName falls back to the raw ID for a spec nothing knows
 - SpecTokenForID rejects a non-number rather than indexing with it
 - SpecOrderForClass returns Blizzard's order, not numeric order
-- SpecOrderForClass normalises a lower-case class token
+- SpecOrderForClass normalizes a lower-case class token
 - SpecOrderForClass is nil for a class the client can't enumerate
 - NormalizeClassToken upper-cases and tolerates nil
 - RegisterUnitCastEvent forwards the event into the module's handler
@@ -73,8 +73,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 ### test_constants.lua (22)
 
-- Constants: the chat prefix is the cyan [KCD] tag and closes its colour code
-- Constants: the notice grey is an opener with no closer (callers add |r)
+- Constants: the chat prefix is the cyan [KCD] tag and closes its color code
+- Constants: the notice gray is an opener with no closer (callers add |r)
 - Constants: the GCD upper bound covers an unhasted 1.5s global
 - Constants: the cast bar's inside and outside insets are symmetric
 - Constants: the panel header reserves more height than its top inset
@@ -127,7 +127,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
 - frFR and enUS Elemental Shaman seed byte-identical spell lists
 - frFR player spec resolves to the locale-invariant numeric spec ID
-- frFR client resolves a localised spec name typed at the slash command
+- frFR client resolves a localized spec name typed at the slash command
 - frFR Elemental Shaman actually watches its cooldowns end-to-end (issue #8)
 - the Spells editor labels specs in the client's own language
 - SpecDisplayName falls back to the English token for an unknown spec
@@ -173,7 +173,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
 - GetSpellList returns nil for an unseeded class/spec
 - MigrateSpecKeys rewrites an English spec-name key to its numeric spec ID
-- MigrateSpecKeys rewrites a LOCALISED spec-name key to its numeric spec ID (issue #8)
+- MigrateSpecKeys rewrites a LOCALIZED spec-name key to its numeric spec ID (issue #8)
 - MigrateSpecKeys is idempotent on an already-numeric profile
 - MigrateSpecKeys leaves an unmappable key in place rather than dropping data
 - MigrateSpecKeys does not clobber an existing numeric key on collision
@@ -188,23 +188,23 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 ### test_color_shape.lua (20)
 
-- the schema declares at least one colour row per colour-bearing panel
-- every schema colour default is keyed, never positional
-- every schema colour default carries all four channels
-- every colour row declares hasAlpha, so the picker keeps its alpha channel
-- the built profile stores colours keyed
-- DEFAULT_PROFILE and the schema agree on every colour
+- the schema declares at least one color row per color-bearing panel
+- every schema color default is keyed, never positional
+- every schema color default carries all four channels
+- every color row declares hasAlpha, so the picker keeps its alpha channel
+- the built profile stores colors keyed
+- DEFAULT_PROFILE and the schema agree on every color
 - Util.Unpack reads the keyed shape
 - Util.Unpack still reads a positional array, so a stray one renders rather than blanks
-- no module reads a colour by positional index any more
-- a pre-migration profile's array colours convert to the keyed shape
+- no module reads a color by positional index any more
+- a pre-migration profile's array colors convert to the keyed shape
 - the migration bumps the stored schema version so it runs once
-- an already-keyed colour passes through the migration untouched
-- the slash layer needs no colour codec now the shapes agree
-- set and get round-trip a colour through the library with no translation
+- an already-keyed color passes through the migration untouched
+- the slash layer needs no color codec now the shapes agree
+- set and get round-trip a color through the library with no translation
 - every dropdown row's values is a keyed hash, never an array of records
-- every static dropdown declares its order, so nothing silently alphabetises
-- the anchor dropdown still reads top row, bottom row, sides, centre
+- every static dropdown declares its order, so nothing silently alphabetizes
+- the anchor dropdown still reads top row, bottom row, sides, center
 - an LSM-backed row resolves its values at call time, never at declaration
 - the valueGate hint explains WHY a gated dropdown value was rejected
 - a rejected gated value carries the hint through the slash layer
@@ -257,7 +257,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - IsSpellAvailable is false for an unpicked talent choice-node sibling
 - IsSpellUsable reads the SpellUsabilityInfo table form
 - IsSpellUsable reads the two-boolean form some Midnight builds return
-- IsSpellUsable normalises the legacy API's 1/nil into real booleans
+- IsSpellUsable normalizes the legacy API's 1/nil into real booleans
 - IsSpellUsable defaults to usable when no API is available
 - GetCastingInfo builds a record from the CAST API's positions
 - GetCastingInfo falls through to the channel shim when not casting
@@ -276,7 +276,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
-- FormatPlain is clean, un-coloured, and well-shaped (§12.3)
+- FormatPlain is clean, un-colored, and well-shaped (§12.3)
 - FormatColored carries the same fields as FormatPlain (no drift)
 - debug flag defaults OFF and lives in State, never in SavedVariables (§12.5)
 - SetEnabled is the single write seam and toggles State.debug
@@ -317,12 +317,12 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 
 - Layout math is published on the IconGrid module
 - IconGrid:Layout method survives alongside the geometry table
-- parseAnchor normalises modern, legacy, and CENTER tokens
+- parseAnchor normalizes modern, legacy, and CENTER tokens
 - parseAnchor rejects invalid combos with the RIGHT/CENTER default
 - parseGrow accepts perpendicular axes and defaults otherwise
-- placeBlock RIGHT/CENTER geometry (primary left, block right, centred)
+- placeBlock RIGHT/CENTER geometry (primary left, block right, centered)
 - placeBlock TOP/CENTER geometry (block above primary)
-- placeBlock CENTER stacks both on the grid centre
+- placeBlock CENTER stacks both on the grid center
 
 ### test_icongrid_apply.lua (6)
 
@@ -344,7 +344,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - unlocked shows the grid even in a mode that would hide it
 - locked restores the mode's own decision
 - 'always' shows regardless of combat or casting
-- an unrecognised mode falls back to always-visible
+- an unrecognized mode falls back to always-visible
 - 'in_combat' follows State.inCombat in both directions
 - 'in_combat' ignores InCombatLockdown, which lags the regen events
 - 'target_casting' shows while the unit casts and hides when it stops
@@ -361,10 +361,10 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ### test_icongrid_render.lua (21)
 
 - the render helpers are published for testing
-- SafeUnpackColor reads both the array and hash colour shapes
-- SafeUnpackColor honours the caller's cooldown-tint fallback
+- SafeUnpackColor reads both the array and hash color shapes
+- SafeUnpackColor honors the caller's cooldown-tint fallback
 - SafeUnpackColor falls back to opaque white with no fallback given
-- UnpackGlowColor reads a configured array colour
+- UnpackGlowColor reads a configured array color
 - UnpackGlowColor falls back to the shipped yellow glow for a non-table
 - UnpackGlowColor fills missing channels rather than returning nils
 - the 'always' trigger glows unconditionally
@@ -448,7 +448,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Apply writes the unit's own label text
 - Apply writes an empty string rather than nil for a cleared label
 - label TEXT stays per-unit even when the units are linked
-- Apply pushes the configured size and colour onto the FontString
+- Apply pushes the configured size and color onto the FontString
 - Apply always resolves a non-nil font path
 - Apply falls back to a 14pt outline for a style with no size or flags
 - Apply applies the configured horizontal justification
@@ -480,9 +480,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ### test_castbar_helpers.lua (27)
 
 - the Castbar pure helpers are published for testing
-- UnpackColor reads an array-style colour
-- UnpackColor reads a hash-style colour
-- UnpackColor uses the CALLER's fallback for a nil colour
+- UnpackColor reads an array-style color
+- UnpackColor reads a hash-style color
+- UnpackColor uses the CALLER's fallback for a nil color
 - UnpackColor falls back to opaque white when the caller gives no fallback
 - UnpackColor defaults a missing alpha to fully opaque
 - TruncateName leaves a name shorter than the cap alone
@@ -551,14 +551,14 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - StructureSignature is stable for identical inputs
 - StructureSignature moves when a structural field moves
 - StructureSignature moves when the RESOLVED size moves
-- StructureSignature ignores pure colour fields
+- StructureSignature ignores pure color fields
 - StructureSignature DOES move for border size/texture
 - Reskin stamps a structure signature on the instance
 - a structural config change re-sizes the frame
 - a SECOND structural change still lands (the guard is not one-shot)
 - re-skinning with no config change leaves the signature untouched
-- a colour-only change does NOT move the structure signature
-- a colour-only change still repaints the bar
+- a color-only change does NOT move the structure signature
+- a color-only change still repaints the bar
 - force rebuilds the geometry even when the signature matches
 - Reskin is safe before the frame has ever been built
 - target and focus carry independent structure signatures
@@ -653,15 +653,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - a page that parks no defaults action still has a callable, inert OnDefault
 - NS.Settings.Helpers IS the library instance, decorated in place
 - the host ships no widget maker, flow engine or layout constant of its own
-- a bool row renders a checkbox labelled from the row
+- a bool row renders a checkbox labeled from the row
 - a number row renders a slider carrying the row's range
 - a string row renders a dropdown listing the KEYED options in declared order
-- a colour row renders a picker with alpha and the decoded colour
+- a color row renders a picker with alpha and the decoded color
 - ticking a checkbox writes through the addon's single write seam
 - a checkbox write fires CONFIG_CHANGED with the row's section
 - dragging a slider commits on mouse-up
 - choosing a dropdown option stores the option KEY, never its index
-- confirming a colour stores the keyed shape the modules read
+- confirming a color stores the keyed shape the modules read
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
 - InlinePair puts both caller-supplied widgets in ONE row
@@ -673,7 +673,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the degraded stub carries no widget maker or layout constant
-- every schema row the panel renders is labelled with prose, not with a key
+- every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
 
@@ -724,8 +724,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - get echoes the shared key = value pair
 - set clamps out of range and echoes what was actually STORED
 - set routes through the host's single write seam
-- a colour round-trips through the library with no host translation
-- a colour given in 0-255 rescales jointly
+- a color round-trips through the library with no host translation
+- a color given in 0-255 rescales jointly
 - an unknown path says so rather than writing anything
 - reset takes a PATH and resets exactly that one row
 - the old page-shaped reset names its replacement instead of going quiet
@@ -759,7 +759,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the perf panel resolves real English, never a raw STRINGS key
 - no LibKa0s descriptor is handed the key-returning locale table
 - the panel title is the host's brand plus the library's resolved suffix
-- the VENDORED library ignores a fallback-synthesised locale entry
+- the VENDORED library ignores a fallback-synthesized locale entry
 - the record stamps a real addon version, never "?"
 - the perf version agrees with the one /kcd version prints
 - the version fallback is reachable, not dead

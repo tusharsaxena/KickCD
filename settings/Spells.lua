@@ -108,7 +108,7 @@ end
 -- (nil, nil) when the spec API is unavailable.
 local function getPlayerClassSpec()
     -- `UnitClass and UnitClass("player")` would truncate to UnitClass's
-    -- FIRST return (the localised name); the file token we need is the
+    -- FIRST return (the localized name); the file token we need is the
     -- second. Guard without collapsing the multi-return.
     local classFile
     if UnitClass then
@@ -241,7 +241,7 @@ end
 -- is unavailable (older clients) so callers can fall back to lenient
 -- validation.
 --
--- Memoised in `_cmCache` because the walk is non-trivial (every enum value
+-- Memoized in `_cmCache` because the walk is non-trivial (every enum value
 -- × every cdID) and the result is stable for the lifetime of a (login ×
 -- spec). Invalidated by the bootstrap below on TRAIT_CONFIG_UPDATED and
 -- PLAYER_SPECIALIZATION_CHANGED. Stored as a marker table even when the
@@ -407,7 +407,7 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
         end
 
         -- Mutator path: lazy-create the per-spec table on first add so a
-        -- spec the user has never customised gains a fresh list rather
+        -- spec the user has never customized gains a fresh list rather
         -- than failing silently because GetSpellList returned nil.
         local list = ensureActiveList()
         if not list then return end
@@ -838,7 +838,7 @@ local function buildSpellsHeader(AceGUI, parent)
     -- Anchor LEFT…RIGHT against specDD.dropdown (the inner UIDropDownMenu
     -- frame) instead of specDD.frame (the outer AceGUI frame that
     -- includes the "Specialization" label above the dropdown control).
-    -- The outer frame is 40 px tall when labelled (label 18 + dropdown
+    -- The outer frame is 40 px tall when labeled (label 18 + dropdown
     -- 26) so a vertical-center anchor against it landed the button on
     -- the seam between the two — visually misaligned. Anchoring against
     -- the inner dropdown puts the button's vertical center on the

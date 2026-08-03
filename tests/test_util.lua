@@ -25,7 +25,7 @@ test("Util.NormalizeSpecToken strips whitespace and upper-cases", function()
     assertEqual(Util.NormalizeSpecToken(nil), "")
 end)
 
-test("Util.PlayerSpecID returns the numeric spec ID, not the localised name", function()
+test("Util.PlayerSpecID returns the numeric spec ID, not the localized name", function()
     -- The shared mock is an enUS Beast Mastery Hunter (specID 253).
     assertEqual(Util.PlayerSpecID(), 253)
 end)
@@ -40,7 +40,7 @@ end)
 
 test("Util.SpecDisplay prefers the English token and falls back to the raw ID", function()
     -- Log lines and /kcd output are what bug reports quote, so they must stay
-    -- English and human-readable even on a localised client (issue #8).
+    -- English and human-readable even on a localized client (issue #8).
     assertEqual(Util.SpecDisplay(262), "ELEMENTAL")
     assertEqual(Util.SpecDisplay(999999), "999999", "an unknown ID must still print something")
     assertEqual(Util.SpecDisplay(nil), "nil")

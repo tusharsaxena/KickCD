@@ -25,16 +25,16 @@ Visibility is gated by **all** of: the master enable, the unit's own `units.<uni
 
 Config-driven work — orientation, frame size, child anchors, font lookups, backdrop tables, spark rotation — lives in `Castbar:Reskin` (its own file, `modules/Castbar_Skin.lua`), called from `OnConfigChanged` / `OnGridLayout` (auto-size mode) / `OnProfileChanged` / `EnableUnit`. Cast-record-driven work — set texture, set name, seed bar values, run `ApplyState` — lives in `Castbar:RenderCast(rec)`, called from `Start`. The hot path (cast start) doesn't recompute orientation or fonts.
 
-### Inside `Reskin`: structural vs colour
+### Inside `Reskin`: structural vs color
 
 `Reskin` is itself two halves, because the two have very different costs and very different trigger rates:
 
 | Half | Does | Runs |
 |---|---|---|
 | `ReskinStructure` | frame size (incl. auto-size against the unit's grid), orientation + reverse fill, icon/bar inset split, spark size + rotation + anchor, font load, text anchoring and show/hide, per-state border **backdrops** (`SetBackdrop` — a fresh table plus a texture load) | only when its signature moves |
-| `ReskinColors` | per-state background colours, status-bar textures + colours, border **tints**, the shared time-text colour | every call |
+| `ReskinColors` | per-state background colors, status-bar textures + colors, border **tints**, the shared time-text color | every call |
 
-The guard is a signature over exactly the config fields `ReskinStructure` reads, cached on `inst.structureSig`. A colour-picker drag commits every 50 ms; without the guard each commit re-ran ~40 structural widget calls that no colour can affect (F-015).
+The guard is a signature over exactly the config fields `ReskinStructure` reads, cached on `inst.structureSig`. A color-picker drag commits every 50 ms; without the guard each commit re-ran ~40 structural widget calls that no color can affect (F-015).
 
 Two things the guard has to get right, both covered by `tests/test_castbar_skin.lua`:
 
@@ -43,7 +43,7 @@ Two things the guard has to get right, both covered by `tests/test_castbar_skin.
 
 **If you add a config read to `ReskinStructure`, add the field to `structureSignature` in the same edit** — otherwise the new setting silently does nothing until some other structural field happens to move.
 
-`nameText`'s colour is in neither half: it's per-state and applied in `ApplyState` through curve-evaluated channels, because the `notInterruptible` flag that selects it can be secret in combat.
+`nameText`'s color is in neither half: it's per-state and applied in `ApplyState` through curve-evaluated channels, because the `notInterruptible` flag that selects it can be secret in combat.
 
 `Castbar:onUpdate` is similarly minimal: `SetMinMaxValues` is hoisted to `Start` / `OnCastDelayed` (the duration's max only changes on those events), and `cfg().showTime` is cached on `current.showTime` at cast start so the per-frame loop is just two `SetValue` calls plus a conditional `SetFormattedText`.
 

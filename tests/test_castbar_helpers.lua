@@ -2,7 +2,7 @@
 --
 -- Castbar is the largest module in the addon and, until these helpers were
 -- published, only its auto-size math was reachable headlessly. Everything
--- here decides what the user actually sees: which colour a bar state resolves
+-- here decides what the user actually sees: which color a bar state resolves
 -- to, how a spell name is clipped, which SetPoint token an anchor setting
 -- maps to, and which texture path a missing LibSharedMedia key degrades to.
 --
@@ -27,21 +27,21 @@ end)
 
 -- ── unpackColor ─────────────────────────────────────────────────────────────
 
-test("UnpackColor reads an array-style colour", function()
+test("UnpackColor reads an array-style color", function()
     local r, g, b, a = Castbar.UnpackColor({ 0.2, 0.4, 0.6, 0.8 })
     assertEqual(r, 0.2); assertEqual(g, 0.4); assertEqual(b, 0.6); assertEqual(a, 0.8)
 end)
 
-test("UnpackColor reads a hash-style colour", function()
+test("UnpackColor reads a hash-style color", function()
     -- Both shapes exist in the wild: schema defaults are arrays, Blizzard
-    -- colour objects are hashes.
+    -- color objects are hashes.
     local r, g, b, a = Castbar.UnpackColor({ r = 1, g = 0, b = 0, a = 0.5 })
     assertEqual(r, 1); assertEqual(g, 0); assertEqual(b, 0); assertEqual(a, 0.5)
 end)
 
-test("UnpackColor uses the CALLER's fallback for a nil colour", function()
+test("UnpackColor uses the CALLER's fallback for a nil color", function()
     -- The module-specific fallback is why this wraps Util.Unpack at all —
-    -- a missing bar colour must not silently become white.
+    -- a missing bar color must not silently become white.
     local r, g, b, a = Castbar.UnpackColor(nil, 0.85, 0.1, 0.1, 1)
     assertEqual(r, 0.85); assertEqual(g, 0.1); assertEqual(b, 0.1); assertEqual(a, 1)
 end)
@@ -52,7 +52,7 @@ test("UnpackColor falls back to opaque white when the caller gives no fallback",
 end)
 
 test("UnpackColor defaults a missing alpha to fully opaque", function()
-    -- A three-element colour row must not render the bar invisible.
+    -- A three-element color row must not render the bar invisible.
     local _, _, _, a = Castbar.UnpackColor({ 0.2, 0.4, 0.6 })
     assertEqual(a, 1)
 end)
@@ -110,14 +110,14 @@ test("StateConfig returns the configured per-state table when present", function
 end)
 
 test("StateConfig falls back when the state key is missing", function()
-    -- A profile from before the per-state colours shipped has no key at all;
-    -- without the fallback every colour read would nil-index.
+    -- A profile from before the per-state colors shipped has no key at all;
+    -- without the fallback every color read would nil-index.
     local fb = Castbar.INT_FALLBACK
     assertTrue(rawequal(Castbar.StateConfig({}, "interruptible", fb), fb))
 end)
 
 test("StateConfig rejects a non-table value stored under the state key", function()
-    -- A legacy profile stored a bare colour string here; treating that as the
+    -- A legacy profile stored a bare color string here; treating that as the
     -- config table would nil-index on every field.
     local fb = Castbar.UNINT_FALLBACK
     assertTrue(rawequal(Castbar.StateConfig({ uninterruptible = "red" }, "uninterruptible", fb), fb))

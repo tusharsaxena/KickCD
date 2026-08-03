@@ -65,7 +65,7 @@ test("FoldLegacyUnits moves a legacy top-level config under units.target", funct
     local inst = T.load(true)
     local ns = inst.NS
     local p = ns.db.profile
-    -- Simulate a legacy v1 profile: customised top-level icons/castbar/anchors.
+    -- Simulate a legacy v1 profile: customized top-level icons/castbar/anchors.
     p.icons   = { primarySize = 48, borderColor = { 1, 0, 0, 1 } }
     p.castbar = { width = 300 }
     p.anchors = { icons = { point = "TOP", relativePoint = "TOP", x = 5, y = -5 },
@@ -157,7 +157,7 @@ Add the method (place near `MigrateProfile`):
 --- defaults merge backfills it to the new CURRENT value and masks the account
 --- as already-current (the same KCD-20 backfill trap documented in
 --- MigrateProfile). Keying on the presence of the old top-level tables detects
---- exactly the accounts that carry customised legacy data; a fresh v2 install
+--- exactly the accounts that carry customized legacy data; a fresh v2 install
 --- has no top-level icons/castbar/anchors and is a no-op.
 function Database:FoldLegacyUnits(db)
     db = db or self.db
@@ -753,7 +753,7 @@ Keep `section = "icons"` on every row (both grids react to an `icons` change; th
 
 **Interfaces:**
 - Consumes: `Helpers.RenderSchema` unit filter (Task 7), `NS.Units.CopyStyling`, `NS.Units.LIST`.
-- Produces: `ctx.unit` (default `"target"`); a dropdown `[ Target / Focus ]` at the top of Icons + Castbar panels that sets `ctx.unit`, clears `ctx.scroll` children, resets `ctx.lastGroup=nil`, and re-renders. For Focus: a "Use same styling as Target" checkbox bound to `units.focus.link` and a "Copy styling from Target" button calling `NS.Units.CopyStyling("target","focus")` then firing `CONFIG_CHANGED{section="units"}` + re-render. While `link==true`, disable the appearance widgets (grey) — simplest correct approach: when `ctx.unit=="focus"` and linked, render the selector + link/copy header but SKIP the schema-body render (show a note "Linked to Target — uncheck to customize"), so there are no editable-but-ignored widgets.
+- Produces: `ctx.unit` (default `"target"`); a dropdown `[ Target / Focus ]` at the top of Icons + Castbar panels that sets `ctx.unit`, clears `ctx.scroll` children, resets `ctx.lastGroup=nil`, and re-renders. For Focus: a "Use same styling as Target" checkbox bound to `units.focus.link` and a "Copy styling from Target" button calling `NS.Units.CopyStyling("target","focus")` then firing `CONFIG_CHANGED{section="units"}` + re-render. While `link==true`, disable the appearance widgets (gray) — simplest correct approach: when `ctx.unit=="focus"` and linked, render the selector + link/copy header but SKIP the schema-body render (show a note "Linked to Target — uncheck to customize"), so there are no editable-but-ignored widgets.
 
 - [ ] **Step 1: `ctx.unit` + re-render helper in `Panel.lua`.** Add `ctx.unit = "target"` in `CreatePanel`. Add `Helpers.RerenderUnitPanel(ctx, panelKey, afterGroup)` that releases the current AceGUI scroll children, resets `ctx.lastGroup`, and calls `RenderSchema` again. (Follow the existing `ensureScroll`/AceGUI release pattern; AceGUI containers expose `:ReleaseChildren()`.)
 
@@ -824,7 +824,7 @@ Then update the README `Tests-X/Y_passing` badge to the new counts in the SAME e
 - [ ] **Step 3: Final full verification.**
 
 Run: `lua tests/run.lua` (exit 0) and `luacheck .` (0 errors).
-Run the full `docs/smoke-tests.md` pass including every new focus scenario and a **migration smoke** (load a pre-feature `KickCDDB` with customised icons and confirm it folds into `units.target` with no visual change).
+Run the full `docs/smoke-tests.md` pass including every new focus scenario and a **migration smoke** (load a pre-feature `KickCDDB` with customized icons and confirm it folds into `units.target` with no visual change).
 
 - [ ] **Step 4: Commit** (user): `Docs: de-drift for target/focus dual tracking; regenerate test inventory + badge`.
 

@@ -1,4 +1,4 @@
--- tests/test_castbar_frame.lua — the cast bar's frame behaviour, end to end.
+-- tests/test_castbar_frame.lua — the cast bar's frame behavior, end to end.
 --
 -- This suite is what the stateful frame mock bought. Every assertion here was
 -- previously impossible: against a no-op stub, IsShown() is permanently

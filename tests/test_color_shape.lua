@@ -1,11 +1,11 @@
 -- tests/test_color_shape.lua
--- Colours are stored as the KEYED { r =, g =, b =, a = } table, not as a
+-- Colors are stored as the KEYED { r =, g =, b =, a = } table, not as a
 -- positional { r, g, b, a } array.
 --
--- WHY THE SHAPE MOVED. LibKa0s-Slash-1.0 parses a typed colour into the keyed
--- form and lib.FormatValue renders the keyed form; LibKa0s-Options-1.0's colour
+-- WHY THE SHAPE MOVED. LibKa0s-Slash-1.0 parses a typed color into the keyed
+-- form and lib.FormatValue renders the keyed form; LibKa0s-Options-1.0's color
 -- picker decodes and encodes it. The keyed shape is the collection's, and it is
--- what lets both libraries read this addon's colours with no translation layer.
+-- what lets both libraries read this addon's colors with no translation layer.
 -- The alternative — keeping arrays and supplying a codec at every seam — was a
 -- get/parse adapter pair in settings/Slash.lua plus colorDecode/colorEncode in
 -- the options descriptor, i.e. the same translation written twice.
@@ -13,14 +13,14 @@
 -- The migration is real user data: a profile written before this ran holds
 -- arrays, so core/Database.lua's ladder converts them on load. That step is what
 -- most of this suite is about — the defaults are easy, the saved profiles are
--- the part that can silently render every colour white.
+-- the part that can silently render every color white.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertNil, assertNear =
     T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear
 local NS = T.NS
 
---- Every colour path in the schema, so no case has to hardcode a list that
+--- Every color path in the schema, so no case has to hardcode a list that
 --- drifts as rows are added.
 local function colorRows()
     local out = {}
@@ -32,14 +32,14 @@ end
 
 -- ── the declared defaults ───────────────────────────────────────────────────
 
-test("the schema declares at least one colour row per colour-bearing panel", function()
+test("the schema declares at least one color row per color-bearing panel", function()
     -- A guard on the guard: if colorRows() ever returned empty, every assertion
     -- below would pass vacuously.
     assertTrue(#colorRows() >= 13,
-        "expected 13+ colour rows, found " .. #colorRows())
+        "expected 13+ color rows, found " .. #colorRows())
 end)
 
-test("every schema colour default is keyed, never positional", function()
+test("every schema color default is keyed, never positional", function()
     -- red under: reverting one `default = { r = .., g = .., b = .., a = .. }`
     -- back to `{ 1, 0.4, 0.4, 1 }`
     for _, def in ipairs(colorRows()) do
@@ -49,7 +49,7 @@ test("every schema colour default is keyed, never positional", function()
     end
 end)
 
-test("every schema colour default carries all four channels", function()
+test("every schema color default carries all four channels", function()
     -- An omitted alpha reads as nil and the picker then renders fully
     -- transparent rather than falling back, so the shape has to be complete.
     for _, def in ipairs(colorRows()) do
@@ -60,7 +60,7 @@ test("every schema colour default carries all four channels", function()
     end
 end)
 
-test("every colour row declares hasAlpha, so the picker keeps its alpha channel", function()
+test("every color row declares hasAlpha, so the picker keeps its alpha channel", function()
     -- The old panel passed hasAlpha unconditionally; the library reads it off
     -- the row. Left undeclared, every swatch silently loses its alpha slider —
     -- which for bgColor (default a = 0.5) would be a visible regression.
@@ -71,7 +71,7 @@ end)
 
 -- ── the live profile ────────────────────────────────────────────────────────
 
-test("the built profile stores colours keyed", function()
+test("the built profile stores colors keyed", function()
     local H = NS.Settings.Helpers
     for _, def in ipairs(colorRows()) do
         local v = H.Get(def.path)
@@ -81,7 +81,7 @@ test("the built profile stores colours keyed", function()
     end
 end)
 
-test("DEFAULT_PROFILE and the schema agree on every colour", function()
+test("DEFAULT_PROFILE and the schema agree on every color", function()
     -- Two literals for one value is how they drift. They are declared in both
     -- core/Database.lua and settings/*.lua, so pin that they match.
     local H = NS.Settings.Helpers
@@ -104,13 +104,13 @@ end)
 
 test("Util.Unpack still reads a positional array, so a stray one renders rather than blanks", function()
     -- Deliberately kept. The migration converts saved profiles, but an array
-    -- reaching a colour setter from anywhere the ladder did not touch should
-    -- render the colour it names, not white.
+    -- reaching a color setter from anywhere the ladder did not touch should
+    -- render the color it names, not white.
     local r, g, b, a = NS.Util.Unpack({ 1, 0.5, 0.25, 0.75 })
     assertEqual(r, 1); assertEqual(g, 0.5); assertEqual(b, 0.25); assertEqual(a, 0.75)
 end)
 
-test("no module reads a colour by positional index any more", function()
+test("no module reads a color by positional index any more", function()
     -- red under: restoring `c[1] or 1, c[2] or 1, ...` in UnitLabel/IconGrid_Render
     --
     -- Three readers bypassed Util.Unpack and indexed [1]..[4] directly. Under
@@ -131,20 +131,20 @@ test("no module reads a colour by positional index any more", function()
         end
         fh:close()
     end
-    assertEqual(#offenders, 0, "positional colour read at: " .. table.concat(offenders, ", "))
+    assertEqual(#offenders, 0, "positional color read at: " .. table.concat(offenders, ", "))
 end)
 
 -- ── the migration ───────────────────────────────────────────────────────────
 
-test("a pre-migration profile's array colours convert to the keyed shape", function()
+test("a pre-migration profile's array colors convert to the keyed shape", function()
     -- THE case that protects real user data. A profile saved before this change
-    -- holds arrays; without the ladder step every colour would read nil on every
+    -- holds arrays; without the ladder step every color would read nil on every
     -- channel and render as the fallback.
     -- red under: removing the [3] entry from the MIGRATIONS table
     local inst = T.load(false)
     local NS2 = inst.NS
 
-    -- A v3 account with one array-shaped colour saved, exactly as it was written.
+    -- A v3 account with one array-shaped color saved, exactly as it was written.
     local saved = {
         global  = { schemaVersion = 3 },
         profile = {
@@ -173,7 +173,7 @@ test("the migration bumps the stored schema version so it runs once", function()
         "expected schemaVersion >= 4, got " .. tostring(NS2.db.global.schemaVersion))
 end)
 
-test("an already-keyed colour passes through the migration untouched", function()
+test("an already-keyed color passes through the migration untouched", function()
     -- Idempotence. The ladder is keyed on schemaVersion so it should not re-run,
     -- but a converter that mangled an already-converted value would be a
     -- one-reload data loss the version guard could not undo.
@@ -197,7 +197,7 @@ end)
 
 -- ── the CLI, end to end ─────────────────────────────────────────────────────
 
-test("the slash layer needs no colour codec now the shapes agree", function()
+test("the slash layer needs no color codec now the shapes agree", function()
     -- The adapter this decision deleted. settings/Slash.lua carried a get-side
     -- array->keyed conversion and a parse-side keyed->array conversion purely
     -- because the two shapes disagreed.
@@ -206,12 +206,12 @@ test("the slash layer needs no colour codec now the shapes agree", function()
     local src = fh:read("*a")
     fh:close()
     assertNil(src:match("{ v%.r, v%.g, v%.b, v%.a }"),
-        "settings/Slash.lua still folds a parsed colour back into an array")
+        "settings/Slash.lua still folds a parsed color back into an array")
     assertNil(src:match("r = v%[1%]"),
-        "settings/Slash.lua still converts a stored colour on read")
+        "settings/Slash.lua still converts a stored color on read")
 end)
 
-test("set and get round-trip a colour through the library with no translation", function()
+test("set and get round-trip a color through the library with no translation", function()
     local H = NS.Settings.Helpers
     local row = colorRows()[1]
     local before = H.Get(row.path)
@@ -247,7 +247,7 @@ test("every dropdown row's values is a keyed hash, never an array of records", f
     end
 end)
 
-test("every static dropdown declares its order, so nothing silently alphabetises", function()
+test("every static dropdown declares its order, so nothing silently alphabetizes", function()
     -- A hash has no order, and the widget makers fall back to table.sort when a
     -- row gives none. That scrambles lists whose reading order is the point —
     -- the 13 anchors, and grow directions like "First right then down".
@@ -270,8 +270,8 @@ test("every static dropdown declares its order, so nothing silently alphabetises
     assertEqual(#missing, 0, "static dropdown with no sorting: " .. table.concat(missing, ", "))
 end)
 
-test("the anchor dropdown still reads top row, bottom row, sides, centre", function()
-    -- The one list where alphabetising is obviously wrong to a user: it would
+test("the anchor dropdown still reads top row, bottom row, sides, center", function()
+    -- The one list where alphabetizing is obviously wrong to a user: it would
     -- put BOTTOM_LEFT first and CENTER fourth.
     local H = NS.Settings.Helpers
     local order = H.AnchorOrder()

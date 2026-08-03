@@ -24,7 +24,7 @@ test("IconGrid:Layout method survives alongside the geometry table", function()
     assertTrue(IconGrid.LayoutMath ~= IconGrid.Layout, "method and geometry table must be distinct keys")
 end)
 
-test("parseAnchor normalises modern, legacy, and CENTER tokens", function()
+test("parseAnchor normalizes modern, legacy, and CENTER tokens", function()
     local s, a = Layout.parseAnchor("CENTER");        assertEqual(s, "CENTER"); assertEqual(a, "CENTER")
     s, a = Layout.parseAnchor("RIGHT_MIDDLE");        assertEqual(s, "RIGHT");  assertEqual(a, "CENTER")
     s, a = Layout.parseAnchor("RIGHT_CENTER");        assertEqual(s, "RIGHT");  assertEqual(a, "CENTER")
@@ -47,13 +47,13 @@ test("parseGrow accepts perpendicular axes and defaults otherwise", function()
     p, sec = Layout.parseGrow("nonsense");            assertEqual(p, "right"); assertEqual(sec, "down")
 end)
 
-test("placeBlock RIGHT/CENTER geometry (primary left, block right, centred)", function()
+test("placeBlock RIGHT/CENTER geometry (primary left, block right, centered)", function()
     local gW, gH, pX, pY, bX, bY = Layout.placeBlock("RIGHT", "CENTER", 64, 20, 20, 4)
     assertEqual(gW, 88, "grid width = primary + gap + block")   -- 64+4+20
     assertEqual(gH, 64, "grid height = max(primary, block)")
     assertEqual(pX, 0);  assertEqual(pY, 0)
     assertEqual(bX, 68, "block sits right of primary+gap")       -- 64+4
-    assertEqual(bY, 22, "block vertically centred")              -- floor((64-20)/2)
+    assertEqual(bY, 22, "block vertically centered")              -- floor((64-20)/2)
 end)
 
 test("placeBlock TOP/CENTER geometry (block above primary)", function()
@@ -63,7 +63,7 @@ test("placeBlock TOP/CENTER geometry (block above primary)", function()
     assertEqual(pX, 0);  assertEqual(bX, 12)  -- floor((64-40)/2)
 end)
 
-test("placeBlock CENTER stacks both on the grid centre", function()
+test("placeBlock CENTER stacks both on the grid center", function()
     local gW, gH, pX, pY, bX, bY = Layout.placeBlock("CENTER", "CENTER", 64, 20, 20, 4)
     assertEqual(gW, 64); assertEqual(gH, 64)
     assertEqual(pX, 0);  assertEqual(pY, 0)

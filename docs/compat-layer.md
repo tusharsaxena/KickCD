@@ -1,6 +1,6 @@
 # Compat layer
 
-Spell APIs have churned across recent expansions. `core/Compat.lua` provides a stable surface for those — and **only** those: it does API-shape normalisation, not feature decisions.
+Spell APIs have churned across recent expansions. `core/Compat.lua` provides a stable surface for those — and **only** those: it does API-shape normalization, not feature decisions.
 
 The visibility helpers `IsHostileUnitCasting` / `ApplyInterruptibleAlpha` (the two-step gate behind `target_casting_interruptible` mode) live in `core/State.lua` instead, since they're addon-policy decisions rather than API shims. The Settings registration shim (`Settings.RegisterAddOnSetting`) was removed entirely — the canvas widgets bind directly to `db.profile` via `Helpers.Get` / `Helpers.Set` and never went through Blizzard's Setting object lifecycle.
 
@@ -24,7 +24,7 @@ The visibility helpers `IsHostileUnitCasting` / `ApplyInterruptibleAlpha` (the t
 
 ## State helpers (visibility / policy)
 
-The visibility helpers were formerly in this layer; they were relocated to `core/State.lua` in CR-27 because they're addon-policy decisions, not API normalisation:
+The visibility helpers were formerly in this layer; they were relocated to `core/State.lua` in CR-27 because they're addon-policy decisions, not API normalization:
 
 | Visibility helper | Lives in | Purpose |
 |---|---|---|
@@ -34,6 +34,6 @@ The visibility helpers were formerly in this layer; they were relocated to `core
 
 ## Boundary rule
 
-Modules call into `Compat.*` for spell-API normalisation and `NS.State.*` for visibility decisions. **Direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell.**
+Modules call into `Compat.*` for spell-API normalization and `NS.State.*` for visibility decisions. **Direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell.**
 
 The IconGrid and Castbar modules read `_G.UnitCastingInfo` / `_G.UnitChannelInfo` directly for the addon-wide visibility gate — they only check whether the first return is non-nil through `Compat._firstReturn`, which is a taint-safe truthy check, and never inspect the secret positions themselves. The full secret-value rules live in [midnight-quirks.md](midnight-quirks.md).

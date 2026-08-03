@@ -21,11 +21,11 @@ NS.Const = Const
 -- NS.PREFIX after the private-namespace migration.
 NS.PREFIX = "|cff00ffff[KCD]|r"
 
--- Grey colour opener for de-emphasised "notice" chat lines — an action the
+-- Gray color opener for de-emphasized "notice" chat lines — an action the
 -- user should see but not be alarmed by (e.g. a refused settings-open in
--- combat). Wrap the message BODY only (`GREY .. text .. "|r"`); the cyan
--- [KCD] tag stays full-colour. Canonical Ka0s notice styling (options-ui-§2).
-NS.GREY = "|cff9d9d9d"
+-- combat). Wrap the message BODY only (`GRAY .. text .. "|r"`); the cyan
+-- [KCD] tag stays full-color. Canonical Ka0s notice styling (options-ui-§2).
+NS.GRAY = "|cff9d9d9d"
 
 -- ---------------------------------------------------------------------------
 -- IconGrid: cooldown curve threshold
@@ -100,7 +100,7 @@ Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.tt
 -- locale-invariant identity a spec has.
 --
 -- These are the keys used by defaults/Spells.lua and by
--- db.profile.spells[CLASS][specID]. Do NOT reintroduce the localised spec
+-- db.profile.spells[CLASS][specID]. Do NOT reintroduce the localized spec
 -- NAME (GetSpecializationInfo's second return) as a lookup key: that was
 -- issue #8, where a frFR Elemental Shaman derived "ELEMENTAIRE" and missed
 -- defaults keyed "ELEMENTAL", silently tracking nothing. Names are for
@@ -141,7 +141,7 @@ Const.SPEC = {
 
 -- specID -> English display token, for log lines, `/kcd spells list` output
 -- and the v2 -> v3 spell-key migration. Deliberately the ENGLISH token even
--- on a localised client: it is what bug reports quote and what the slash
+-- on a localized client: it is what bug reports quote and what the slash
 -- commands accept, so it must not drift with the user's locale.
 --
 -- Four spec names are shared across classes (Frost, Holy, Protection,

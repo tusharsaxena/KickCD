@@ -77,7 +77,7 @@ if not lib then
     -- the library's rendering", because a concat probe is not rendering: it is
     -- the difference between a chat line and a Lua error on a repeating ticker.
     -- What is deliberately NOT copied is any formatter — no row shape, no
-    -- key/value colouring, no console line format.
+    -- key/value coloring, no console line format.
     local function probeConcat(v) return table.concat({ v }) end
 
     function NS.IsConcatSafe(v)

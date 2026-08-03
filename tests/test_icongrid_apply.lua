@@ -97,7 +97,7 @@ end)
 
 test("Icon:Apply forced re-apply redoes state work even when nothing moved", function()
     -- ApplyTextConfig re-applies the SAME state table after a config change;
-    -- the gate must not swallow that or a glow/type/colour change would need
+    -- the gate must not swallow that or a glow/type/color change would need
     -- a state transition before it showed up.
     local inst = T.load(true, true)
     local icon, counts = makeIcon(inst)

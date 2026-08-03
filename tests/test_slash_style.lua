@@ -10,7 +10,7 @@
 -- The suite guards the rule two ways, deliberately, because each alone has a
 -- hole the other covers:
 --
---   1. **Behavioural** — drive the real verbs and inspect what reaches chat, so
+--   1. **Behavioral** — drive the real verbs and inspect what reaches chat, so
 --      a new sub-header under any covered path is caught automatically without
 --      anyone remembering to add a case.
 --   2. **Source scan** — grep every addon `.lua` for a string literal ending in
@@ -19,7 +19,7 @@
 --      unit exists. Five real violations survived in exactly those unreachable
 --      branches (`modules/Castbar_Debug.lua`, `core/Compat.lua`'s
 --      `DebugInterrupt`) — the audit's grep missed them because it only looked
---      at the help printers, and a behaviour-only guard would have missed them
+--      at the help printers, and a behavior-only guard would have missed them
 --      too.
 local T = _G.KICKCD_TEST
 local test, assertTrue = T.test, T.assertTrue
@@ -37,8 +37,8 @@ local function runVerb(input)
     return lines
 end
 
---- Strip WoW colour escapes and trailing whitespace so the assertion sees the
---- character a player actually reads last. `|cAARRGGBB` opens a colour run and
+--- Strip WoW color escapes and trailing whitespace so the assertion sees the
+--- character a player actually reads last. `|cAARRGGBB` opens a color run and
 --- `|r` closes it; a line ending `…subcommands:|r` still ends in a colon.
 local function visibleText(line)
     return (tostring(line)
@@ -114,7 +114,7 @@ end)
 -- ── Source scan ─────────────────────────────────────────────────────────────
 
 test("no addon source passes a ':'-terminated literal to a printer", function()
-    -- The behavioural cases above can only reach code the mock can satisfy.
+    -- The behavioral cases above can only reach code the mock can satisfy.
     -- This one reads the sources directly, so a violation in a branch the
     -- harness cannot enter (a dump that needs a live unit, a combat-only path)
     -- still fails the build. That is exactly how the five real violations in

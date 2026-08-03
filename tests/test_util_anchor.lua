@@ -29,9 +29,9 @@ test("SaveAnchor snapshots a frame's first anchor point", function()
     assertEqual(a.y, -40)
 end)
 
-test("SaveAnchor stores no frame reference, only serialisable fields", function()
+test("SaveAnchor stores no frame reference, only serializable fields", function()
     -- The saved shape goes into SavedVariables; a frame reference in there
-    -- would fail to serialise and take the whole profile with it.
+    -- would fail to serialize and take the whole profile with it.
     local f = newFrame()
     f:SetPoint("CENTER", mocks.UIParent, "CENTER", 0, 0)
     local a = Util.SaveAnchor(f)
@@ -42,7 +42,7 @@ test("SaveAnchor stores no frame reference, only serialisable fields", function(
     assertNil(a.relativeTo)
 end)
 
-test("SaveAnchor falls back to a centred anchor for a nil frame", function()
+test("SaveAnchor falls back to a centered anchor for a nil frame", function()
     -- Called from drag handlers that can fire before the frame is built.
     local a = Util.SaveAnchor(nil)
     assertEqual(a.point, "CENTER")
@@ -51,7 +51,7 @@ test("SaveAnchor falls back to a centred anchor for a nil frame", function()
     assertEqual(a.y, 0)
 end)
 
-test("SaveAnchor falls back to centred for a frame with no points set", function()
+test("SaveAnchor falls back to centered for a frame with no points set", function()
     -- A freshly created frame has never been positioned; GetPoint returns nil
     -- and every field has to default rather than propagate the nil.
     local a = Util.SaveAnchor(newFrame())
@@ -95,7 +95,7 @@ test("ApplyAnchor clears stale points instead of stacking them", function()
     assertEqual(f:GetPoint(1), "CENTER")
 end)
 
-test("ApplyAnchor fills in centred defaults for a partial saved anchor", function()
+test("ApplyAnchor fills in centered defaults for a partial saved anchor", function()
     -- Profiles written by older builds can be missing fields.
     local f = newFrame()
     Util.ApplyAnchor(f, {})
@@ -178,7 +178,7 @@ end)
 
 -- ── Spec display / ordering ─────────────────────────────────────────────────
 
-test("SpecDisplayName returns the client's LOCALISED name for display", function()
+test("SpecDisplayName returns the client's LOCALIZED name for display", function()
     -- The inverse of the storage rule: keys are locale-free, anything the
     -- user reads is in their language.
     assertEqual(Util.SpecDisplayName(253), "Beast Mastery")
@@ -216,7 +216,7 @@ test("SpecOrderForClass returns Blizzard's order, not numeric order", function()
     assertEqual(order[3], NS.Const.SPEC.RESTORATION_SHAMAN)
 end)
 
-test("SpecOrderForClass normalises a lower-case class token", function()
+test("SpecOrderForClass normalizes a lower-case class token", function()
     assertTrue(Util.SpecOrderForClass("shaman") ~= nil)
 end)
 

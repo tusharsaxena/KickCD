@@ -40,7 +40,7 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- These two helpers used to live in core/Compat.lua, but their job isn't
--- API normalisation — it's the addon's shared "is this unit's cast one
+-- API normalization — it's the addon's shared "is this unit's cast one
 -- the player can interrupt" feature decision, used identically by the
 -- icon grid (visibility + glow gating) and the cast bar (visibility +
 -- alpha mask). Compat keeps the raw GetCastingInfo / GetChannelInfo

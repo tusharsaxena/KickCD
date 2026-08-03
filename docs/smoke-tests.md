@@ -234,7 +234,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/kcd debug spells`.
 - `/kcd spells list`.
 - `/kcd spells add 51490 ELEMENTAL` and `/kcd spells add 51490 Élémentaire` (the localized name).
-- Upgrade path: log in with a `KickCDDB` saved by v1.2.0 or earlier that has customised spell lists, then inspect it after `/reload`.
+- Upgrade path: log in with a `KickCDDB` saved by v1.2.0 or earlier that has customized spell lists, then inspect it after `/reload`.
 
 **Expect.**
 - The grid populates with the spec's default spells — the original bug was an entirely empty grid with no error.
@@ -242,7 +242,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - The `[Cooldowns] rebuild` debug line reads `SHAMAN(7) ELEMENTAL(262): N watched (...); M skipped (...)` — English tokens and numeric IDs, not localized names.
 - Both `/kcd spells add` forms resolve to the same list; output echoes the English token.
 - Settings → Spells shows spec names in the client's own language (`Élémentaire`) while storing `[262]`.
-- After the upgrade, `KickCDDB` has numeric spec keys and the user's customised entries are intact under them. **Repeat with a second profile** — the rekey is per-profile and must catch each one as it is activated, not just the profile that was active at upgrade.
+- After the upgrade, `KickCDDB` has numeric spec keys and the user's customized entries are intact under them. **Repeat with a second profile** — the rekey is per-profile and must catch each one as it is activated, not just the profile that was active at upgrade.
 
 ### 9c. Icon render gating
 
@@ -250,7 +250,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - Put a spell on a long (30s+) cooldown and watch the icon through the whole cooldown.
-- With that cooldown still running, change the glow type and glow colour in Settings > Icons.
+- With that cooldown still running, change the glow type and glow color in Settings > Icons.
 - With it still running, toggle cooldown text and the charges badge.
 - Target a hostile caster and let it start and stop casting while a spell is on cooldown (glow trigger `target_casting` / `target_casting_interruptible`).
 - Use a charged spell (e.g. a talented Mind Freeze) in combat and watch the badge as charges are spent and recharge.
@@ -258,7 +258,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Expect.**
 - The swipe animates smoothly with no stutter or restart, and the countdown text ticks continuously.
 - The icon brightens from the cooldown alpha/tint to ready visuals in the final ~1.6s (the `GCD_UPPER` curve step) — this is the transition most at risk from over-gating.
-- Glow type / colour changes take effect immediately, without waiting for the cooldown to end.
+- Glow type / color changes take effect immediately, without waiting for the cooldown to end.
 - Glow follows the target's cast start/stop while the spell stays on cooldown throughout.
 - The charges badge keeps updating in combat, where the count is secret-tainted.
 
@@ -301,7 +301,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, tick and untick "Use same styling as Target", and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat on Cast bar and Text Label.
 
 **Pass.**
-- **The Unit dropdown lists exactly `Target` / `Focus` on every tab, always** — before and after those rebuilds, and after the `/kcd set`. Each of those actions calls `Helpers.RenderUnitPanel`, which clears and rebuilds the scroll; `/kcd set` then runs `RefreshAllPanels` over the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbour's.
+- **The Unit dropdown lists exactly `Target` / `Focus` on every tab, always** — before and after those rebuilds, and after the `/kcd set`. Each of those actions calls `Helpers.RenderUnitPanel`, which clears and rebuilds the scroll; `/kcd set` then runs `RefreshAllPanels` over the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
 - Every panel write fires `Ka0s_KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
@@ -313,7 +313,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | Command | Expected |
 |---|---|
 | `/kcd reset units.target.icons.primarySize` | That one row returns to its `default`; every other row, and the spell list, untouched. |
-| `/kcd reset units.target.icons.cooldownTint` | A colour row resets to a *copy* of its default — reset the same row on two profiles and confirm editing one doesn't move the other. |
+| `/kcd reset units.target.icons.cooldownTint` | A color row resets to a *copy* of its default — reset the same row on two profiles and confirm editing one doesn't move the other. |
 | `/kcd reset general` (and `icons` / `castbar` / `label` / `spells`) | Retired. Each prints a line naming where the capability went — the panel's **Defaults** button, `/kcd reset <path>`, or `/kcd spells resetall` — never "Setting not found". |
 | Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
@@ -492,7 +492,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - Re-enabling focus after a fresh cast start behaves identically (no stale state from the previous enable/disable cycle).
 - `/kcd set enabled false` hides BOTH units' grids and bars regardless of per-unit `enabled`; `/kcd set enabled true` immediately revives every unit whose `units.<unit>.enabled` is still `true`, re-evaluating current cast/cooldown state for each without requiring a `/reload`.
 
-#### 20d. Unlinked focus honours its own alpha / tint
+#### 20d. Unlinked focus honors its own alpha / tint
 
 The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → Icons only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
 
@@ -540,17 +540,17 @@ Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use 
 
 ### 21. Legacy migration
 
-**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy from before this feature) so the active profile has top-level `icons`, `castbar`, and `anchors` tables with a few customised values (e.g. a non-default `icons.primarySize`, a moved `anchors.icons`) and NO `units` table. Set `db.global.schemaVersion` to `1` or remove it entirely (either should trigger the fold).
+**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy from before this feature) so the active profile has top-level `icons`, `castbar`, and `anchors` tables with a few customized values (e.g. a non-default `icons.primarySize`, a moved `anchors.icons`) and NO `units` table. Set `db.global.schemaVersion` to `1` or remove it entirely (either should trigger the fold).
 
 **Steps.**
 - Log in.
-- `/kcd get units.target.icons.primarySize` — compare to the customised value from the edited file.
-- `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customised anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customised values. `db.global.schemaVersion` should read `4` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey and the v3→v4 colour-shape rewrite in the same login. Spot-check one colour (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional colour arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
+- `/kcd get units.target.icons.primarySize` — compare to the customized value from the edited file.
+- `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customized anchor.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `4` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey and the v3→v4 color-shape rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
 
 **Pass.**
 - No Lua errors during the migration login.
-- The icon grid renders at the SAME position and with the SAME customised appearance as before the migration — visually, nothing changes for the user.
+- The icon grid renders at the SAME position and with the SAME customized appearance as before the migration — visually, nothing changes for the user.
 - `Database:FoldLegacyUnits` output is idempotent: a second `/reload` doesn't move anything or error (the top-level tables are already gone, so the shape check short-circuits).
 - Focus (`units.focus`) is present with its own fresh defaults (`enabled = true`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
 
@@ -604,12 +604,12 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 **Setup.** `/reload`, then open the console with `/kcd debug window`. Turn capture on (`/kcd debug on`, or the header "Debug: OFF/ON" button) so lines stream in; targeting a hostile caster in combat fills it fastest.
 
 **Checks.**
-- **Header renders.** The title-bar "Debug: ON/OFF" label is present and coloured (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
+- **Header renders.** The title-bar "Debug: ON/OFF" label is present and colored (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
 - **Line counter.** The bottom-right label reads `N / 500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 500 lines` and the log empties.
 - **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
 - **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
 - **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
-- **The shared Ka0s window edge.** ⚠ This is chrome the addon does not own: `core/DebugLogSetup.lua` passes no `applySkin` and no `makeCloseButton`, so both the console and the `/kcd perf` step panel take `Core.SKIN` / `Core.ApplySkin` verbatim. The window must read as a **flat 1px black outer border** with a **1px light-grey highlight** one pixel inside it, a **gold** "Ka0s KickCD — Debug" title and a **grey** divider under the title bar — not the soft brown 12px tooltip frame with a black divider and a white title it wore before LibKa0s v1.3.0. Then open a **second** Ka0s addon's console (AbsorbTracker, ConsumableMaster, BankLedger or LootHistory) and put them side by side: border, highlight, divider and title colours must be **indistinguishable**. A difference is either a host that has gone back to passing `applySkin`, or `libs/LibKa0s` drifting from `../LibKa0s` — fix it upstream and re-vendor, never in `libs/`.
+- **The shared Ka0s window edge.** ⚠ This is chrome the addon does not own: `core/DebugLogSetup.lua` passes no `applySkin` and no `makeCloseButton`, so both the console and the `/kcd perf` step panel take `Core.SKIN` / `Core.ApplySkin` verbatim. The window must read as a **flat 1px black outer border** with a **1px light-gray highlight** one pixel inside it, a **gold** "Ka0s KickCD — Debug" title and a **gray** divider under the title bar — not the soft brown 12px tooltip frame with a black divider and a white title it wore before LibKa0s v1.3.0. Then open a **second** Ka0s addon's console (AbsorbTracker, ConsumableMaster, BankLedger or LootHistory) and put them side by side: border, highlight, divider and title colors must be **indistinguishable**. A difference is either a host that has gone back to passing `applySkin`, or `libs/LibKa0s` drifting from `../LibKa0s` — fix it upstream and re-vendor, never in `libs/`.
 
 **Pass.**
 - Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).

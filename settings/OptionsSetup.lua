@@ -11,7 +11,7 @@ local addonName, NS = ...
 --
 -- NS.Settings.Helpers IS the library instance, decorated in place by
 -- settings/Panel.lua, Panel_Widgets.lua and Panel_Render.lua with the pieces
--- that did not generalise (options-ui-§1). Never a fresh table that copies
+-- that did not generalize (options-ui-§1). Never a fresh table that copies
 -- members across: a host page helper added later has to be able to call
 -- Helpers.RenderRows like any other page does, and a suite that swaps a member
 -- out to spy on it must be swapping the one the library's own callers see.
@@ -67,7 +67,7 @@ local descriptor = {
     applyDefault = function(row)
         local H = helpers()
         if not (H and H.SetAndRefresh) then return end
-        -- DeepCopy, because a default that is a table (an RGBA colour) would
+        -- DeepCopy, because a default that is a table (an RGBA color) would
         -- otherwise be shared by every profile that reset to it.
         local d = row.default
         H.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
@@ -96,7 +96,7 @@ local descriptor = {
         if H and H.RestoreUnitLinks then H.RestoreUnitLinks() end
     end,
 
-    -- Backs the colour picker's 50 ms drag throttle. A descriptor field rather
+    -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
     -- than an AceTimer embed, because embedding would be the library's second
     -- dependency-budget breach.
     scheduleTimer = function(fn, delay) return C_Timer.After(delay, fn) end,
@@ -120,11 +120,11 @@ local descriptor = {
         if H and H.BuildMainContent then H.BuildMainContent(ctx) end
     end,
 
-    -- Colours are stored as the keyed { r =, g =, b =, a = } table, which IS the
+    -- Colors are stored as the keyed { r =, g =, b =, a = } table, which IS the
     -- library's default shape — core/Database.lua's v3 -> v4 migration moved
     -- them there rather than translating at every seam. Written out anyway
     -- rather than omitted, because the stored shape is a real contract with the
-    -- rest of the addon (NS.Util.Unpack, every module's colour read) and a
+    -- rest of the addon (NS.Util.Unpack, every module's color read) and a
     -- silent default is a poor place for it to live.
     colorDecode = function(c)
         if type(c) ~= "table" then c = {} end

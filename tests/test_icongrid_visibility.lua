@@ -144,7 +144,7 @@ test("'always' shows regardless of combat or casting", function()
     end)
 end)
 
-test("an unrecognised mode falls back to always-visible", function()
+test("an unrecognized mode falls back to always-visible", function()
     -- A future mode arriving in a SavedVariables file from a newer build must
     -- not blank the addon on an older client.
     withProfile({ enabled = true, visibility = "no_such_mode", locked = true }, function()

@@ -27,8 +27,8 @@ test("the settings helpers are published for testing", function()
 end)
 
 -- (The snapToStep cases that lived here are gone: slider-step snapping is
--- LibKa0s-Options-1.0's now, and testing-§8 moves a behaviour's coverage with
--- the behaviour. tests/test_options_panel.lua covers what this addon still
+-- LibKa0s-Options-1.0's now, and testing-§8 moves a behavior's coverage with
+-- the behavior. tests/test_options_panel.lua covers what this addon still
 -- owns, and drives the schema -> widget -> write loop the old AceGUI mock
 -- could not reach at all.)
 
