@@ -1,8 +1,9 @@
-# Analysis — 20260804-122616
+# Analysis — 20260804-182144
 
 - **Addon:** KickCD 1.2.1
 - **Verdict:** green
-- **Commit:** f0bc21341cbf (master), dirty
+- **Commit:** de662229e931 (master), dirty
+- **Started:** 2026-08-04T18:21:44+05:30
 - **Previous run:** none — this is the first recorded run
 
 ## Headline
@@ -51,7 +52,7 @@ the first one that can say something moved, and this record is what it will be r
 
 ## Complexity watch list
 
-`ReskinStructure` (36) — **peel next**, the longest non-generated body in the addon. `Castbar:DebugDump` (27), `Icon:Apply` (25, the one instrumented hot path), `IconGrid:RefreshAllGlows` (25) and `buildRow` (19, but 292 lines — **peel next**) are accepted with reasons recorded at 2026-08-04, along with fifteen others.
+`ReskinStructure` (36) — **peel next**, the longest non-generated body in the addon. `Castbar:DebugDump` (27), `Icon:Apply` (25, the one instrumented hot path), `IconGrid:RefreshAllGlows` (25) and `buildRow` (19, but 292 lines — **peel next**) are accepted with reasons recorded 2026-08-04, along with fifteen others.
 
 **Files in the 1000–1500 band:** `modules/Castbar.lua` (1296), `modules/IconGrid.lua` (1100), `settings/Spells.lua` (1047) — all **already tracked as A-2**; `tests/wow_mock.lua` (1049) — **already tracked as KCD-30**.
 
