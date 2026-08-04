@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "addon": "KickCD",
+  "addonVersion": "1.2.1",
+  "run": "20260804-122616",
+  "startedAt": "2026-08-04T12:26:16+00:00",
+  "durationMs": 34000,
+  "label": "adoption",
+  "release": null,
+  "git": { "sha": "f0bc21341cbf318a416e05c550a6fde4db047fec", "branch": "master", "dirty": true },
+  "host": { "lua": "Lua 5.1.5  Copyright (C) 1994-2012 Lua.org, PUC-Rio", "luacheck": "Luacheck: 1.2.0", "lizard": "1.23.0" },
+  "suites": {
+    "lint": { "status": "pass", "durationMs": 0, "warnings": 0, "errors": 0, "files": 32, "gating": true },
+    "tests": { "status": "pass", "durationMs": 31000, "passed": 648, "failed": 0, "total": 648, "gating": true },
+    "perf": { "status": "skip", "durationMs": 0, "skipReason": "no tests/perf.lua — this addon ships no offline scenarios", "scenarios": 0, "gating": false },
+    "complexity": { "status": "pass", "durationMs": 2000, "warnings": 20, "maxCcn": 36, "nloc": 14283, "functions": 1804, "avgCcn": 2.3, "avgNloc": 6.8, "avgToken": 51.5, "warnFunRatio": 0.01, "warnNlocRatio": 0.07, "bandFiles": 4, "overCapFiles": 0, "gating": false }
+  },
+  "verdict": "green"
+}
