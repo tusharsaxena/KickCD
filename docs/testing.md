@@ -4,7 +4,7 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` fro
 
 ## Local toolchain
 
-`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, no test runner beyond `tests/run.lua`. Both commands run from the repo root and are the green commit gate: run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third, **optional** tool used only at release (see [Complexity report — a release checkpoint](#complexity-report--a-release-checkpoint)).
+`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, and the only runner beyond `tests/run.lua` is the vendored `tests/_kit/run-automated-tests.sh`, which shells out to the same two commands. Both run from the repo root and are the green commit gate: run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third, **optional** tool, driven by the non-gating `complexity` suite of that runner (see [Automated test records — the consolidated run](#automated-test-records--the-consolidated-run)).
 
 Install instructions for all three, with the WSL2/Ubuntu commands that actually work, live in the root [DEPENDENCIES.md](../DEPENDENCIES.md). That file says *what to install*; this one says *how to verify*.
 

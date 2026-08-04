@@ -361,6 +361,30 @@ local function resolveCallback(target, method)
     end
 end
 
+--- The three AceDB sections the mock materializes, in the order the real lib
+--- would. Module-level so the fake New() allocates nothing extra per call.
+local DB_SECTIONS = { "profile", "global", "char" }
+
+--- Pull one section out of a staged-SavedVariables or defaults table. Returns a
+--- FRESH `{}` when the table or the section is absent — never a shared table,
+--- or two sections would silently alias each other.
+local function dbSection(t, key)
+    return t and t[key] or {}
+end
+
+--- The profile-management surface the addon calls on its db. Real enough to be
+--- harmless: GetProfiles genuinely fills the caller's table, the rest are
+--- no-ops. Module-level table, copied onto each db.
+local DB_STUBS = {
+    RegisterCallback  = function() end,
+    GetCurrentProfile = function() return "Default" end,
+    GetProfiles       = function(_, t) t = t or {}; t[1] = "Default"; return t end,
+    SetProfile        = function() end,
+    ResetProfile      = function() end,
+    CopyProfile       = function() end,
+    DeleteProfile     = function() end,
+}
+
 local function build()
     local mocks = {}
 
@@ -510,22 +534,15 @@ local function build()
         New = function(_, name, defaults, _defaultProfile)
             local saved = name and mocks[name] or nil
             if type(saved) ~= "table" then saved = nil end
-            local db = {
-                keys = { profile = "Default" },
-                profile = copyDefaults(saved and saved.profile or {},
-                                       defaults and defaults.profile or {}),
-                global  = copyDefaults(saved and saved.global or {},
-                                       defaults and defaults.global or {}),
-                char    = copyDefaults(saved and saved.char or {},
-                                       defaults and defaults.char or {}),
-            }
-            function db.RegisterCallback() end
-            function db.GetCurrentProfile() return "Default" end
-            function db.GetProfiles(_, t) t = t or {}; t[1] = "Default"; return t end
-            function db.SetProfile() end
-            function db.ResetProfile() end
-            function db.CopyProfile() end
-            function db.DeleteProfile() end
+            local db = { keys = { profile = "Default" } }
+            -- Argument order is the contract: the STAGED saved section is `dst`
+            -- and the declared defaults are `src`, so defaults only fill keys
+            -- the account is missing. Flip it and migration tests would be
+            -- migrating a defaults-shaped table and passing for the wrong reason.
+            for _, key in ipairs(DB_SECTIONS) do
+                db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
+            end
+            for stub, fn in pairs(DB_STUBS) do db[stub] = fn end
             return db
         end,
     }

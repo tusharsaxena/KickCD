@@ -356,6 +356,80 @@ end
 -- Compat keeps the raw GetCastingInfo / GetChannelInfo shims above; reach
 -- for State.* when you need the feature decision.
 
+-- ── /kcd debug interrupt ────────────────────────────────────────────────────
+
+-- Renderers by Lua type, so safeRender below is one lookup instead of a
+-- ladder. Every entry is total: none of them can raise on the value it is
+-- reached for.
+local RENDER_BY_TYPE = {
+    string  = function(v) return ("%q"):format(v) end,
+    number  = tostring,
+    boolean = tostring,
+    ["nil"] = function() return "nil" end,
+}
+
+-- Stringify a value safely in tainted scope: secret → "<secret>",
+-- otherwise the usual tostring (or "%q" for strings to quote them).
+local function safeRender(value)
+    if _G.issecretvalue and _G.issecretvalue(value) then
+        return "<secret>"
+    end
+    local t = type(value)
+    local render = RENDER_BY_TYPE[t]
+    if render then return render(value) end
+    return "<" .. t .. ">"
+end
+
+-- One annotated line per reported value. The column widths are what make a
+-- pasted dump line up and diff cleanly against another user's — leave them be.
+local function describe(out, label, value)
+    local t = type(value)
+    local secret = _G.issecretvalue and _G.issecretvalue(value) or false
+    out(("  %-20s type=%-8s isSecret=%-5s value=%s"):format(
+        label, t, tostring(secret), safeRender(value)))
+end
+
+-- Position labels for the two cast APIs — the only difference between the two
+-- dumps. UnitChannelInfo's signature is one position shorter than
+-- UnitCastingInfo's: there is no isTradeSkill at 6, so notInterruptible lands
+-- at 7 (not 8) and spellID at 8 (not 9). The numbering is spelled out rather
+-- than derived because it is exactly what the reader diffs against.
+local CASTING_FIELDS = {
+    "1 name", "2 displayName", "3 texture", "4 startTimeMS", "5 endTimeMS",
+    "6 isTradeSkill", "7 castID", "8 notInterruptible", "9 spellID",
+}
+local CHANNEL_FIELDS = {
+    "1 name", "2 displayName", "3 texture", "4 startTimeMS", "5 endTimeMS",
+    "6 isTradeSkill", "7 notInterruptible", "8 spellID",
+}
+
+-- Dump one API's return positions, or the idle line when nothing is in
+-- progress. The varargs are the API's RAW returns: they are never concatenated
+-- or formatted here, only handed one at a time to describe/safeRender.
+local function dumpPositions(out, title, idle, fields, ...)
+    local first = select(1, ...)
+    if not first then
+        out(title .. ": " .. idle)
+        return
+    end
+    out(title .. " positions")
+    for i = 1, #fields do
+        describe(out, fields[i], (select(i, ...)))
+    end
+end
+
+-- Report what the addon-wide visibility / glow logic decided. The visibility
+-- mode is the addon-wide setting; per-icon glow triggers live in
+-- units.<unit>.icons.{primary,secondary}GlowTrigger.
+local function dumpVisibilityGate(out, unit)
+    local profile = NS.db and NS.db.profile
+    local mode = (profile and profile.visibility) or "always"
+    out(("addon visibility mode = %s"):format(tostring(mode)))
+    local icons = (NS.Units and NS.Units.Icons and NS.Units.Icons(unit)) or {}
+    out(("primary glow trigger   = %s"):format(tostring(icons.primaryGlowTrigger)))
+    out(("secondary glow trigger = %s"):format(tostring(icons.secondaryGlowTrigger)))
+end
+
 --- Print a verbose diagnostic dump of the unit's cast state. Wired to
 --- `/kcd debug interrupt` — used to verify whether `notInterruptible`
 --- is in fact coming back secret-tainted in the user's 12.0 client
@@ -372,20 +446,6 @@ function Compat.DebugInterrupt(unit)
     local out = (NS.Util and NS.Util.print) or _G.print
     unit = unit or "target"
 
-    -- Stringify a value safely in tainted scope: secret → "<secret>",
-    -- otherwise the usual tostring (or "%q" for strings to quote them).
-    local function safeRender(value)
-        if _G.issecretvalue and _G.issecretvalue(value) then
-            return "<secret>"
-        end
-        local t = type(value)
-        if t == "string"  then return ("%q"):format(value) end
-        if t == "number"  then return tostring(value) end
-        if t == "boolean" then return tostring(value) end
-        if t == "nil"     then return "nil" end
-        return "<" .. t .. ">"
-    end
-
     if not (_G.UnitExists and _G.UnitExists(unit)) then
         out("DebugInterrupt: unit '" .. unit .. "' does not exist")
         return
@@ -396,62 +456,20 @@ function Compat.DebugInterrupt(unit)
     out(("DebugInterrupt: unit=%s name=%s canAttack=%s"):format(
         unit, safeRender(rawName), tostring(canAttack)))
 
-    local function describe(label, value)
-        local t = type(value)
-        local secret = _G.issecretvalue and _G.issecretvalue(value) or false
-        out(("  %-20s type=%-8s isSecret=%-5s value=%s"):format(
-            label, t, tostring(secret), safeRender(value)))
-    end
-
     if _G.UnitCastingInfo then
-        local castName, displayName, texture, startMS, endMS, isTradeSkill,
-              castID, notInterruptible, spellID = _G.UnitCastingInfo(unit)
-        if castName then
-            out("UnitCastingInfo positions")
-            describe("1 name",             castName)
-            describe("2 displayName",      displayName)
-            describe("3 texture",          texture)
-            describe("4 startTimeMS",      startMS)
-            describe("5 endTimeMS",        endMS)
-            describe("6 isTradeSkill",     isTradeSkill)
-            describe("7 castID",           castID)
-            describe("8 notInterruptible", notInterruptible)
-            describe("9 spellID",          spellID)
-        else
-            out("UnitCastingInfo: not casting")
-        end
+        dumpPositions(out, "UnitCastingInfo", "not casting", CASTING_FIELDS,
+            _G.UnitCastingInfo(unit))
     end
 
     if _G.UnitChannelInfo then
-        local chName, displayName, texture, startMS, endMS, isTradeSkill,
-              notInterruptible, spellID = _G.UnitChannelInfo(unit)
-        if chName then
-            out("UnitChannelInfo positions")
-            describe("1 name",             chName)
-            describe("2 displayName",      displayName)
-            describe("3 texture",          texture)
-            describe("4 startTimeMS",      startMS)
-            describe("5 endTimeMS",        endMS)
-            describe("6 isTradeSkill",     isTradeSkill)
-            describe("7 notInterruptible", notInterruptible)
-            describe("8 spellID",          spellID)
-        else
-            out("UnitChannelInfo: not channeling")
-        end
+        dumpPositions(out, "UnitChannelInfo", "not channeling", CHANNEL_FIELDS,
+            _G.UnitChannelInfo(unit))
     end
 
     out(("State.IsHostileUnitCasting(%s) = %s"):format(
         unit, tostring(NS.State.IsHostileUnitCasting(unit))))
 
-    -- Report what the addon-wide visibility / glow logic decided. The
-    -- visibility mode is the addon-wide setting; per-icon glow triggers
-    -- live in units.<unit>.icons.{primary,secondary}GlowTrigger.
-    local profile = NS.db and NS.db.profile
-    local mode = (profile and profile.visibility) or "always"
-    out(("addon visibility mode = %s"):format(tostring(mode)))
-    local icons = (NS.Units and NS.Units.Icons and NS.Units.Icons(unit)) or {}
-    out(("primary glow trigger   = %s"):format(tostring(icons.primaryGlowTrigger)))
-    out(("secondary glow trigger = %s"):format(tostring(icons.secondaryGlowTrigger)))
+    dumpVisibilityGate(out, unit)
 end
 
 --- Channel info for a unit, secret-value safe. Same record shape as the

@@ -12,11 +12,13 @@ which is never the same as a pass.
 
 | Run | Version | Lint w/e | Files | Tests | Perf | NLOC | Funcs | Avg NLOC | Avg CCN | Max CCN | CCN warn | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
+| [`20260804-233245`](20260804-233245/) | 1.2.1 | 0/0 | 32 | 737/737 | skip | 15430 | 2051 | 6.5 | 2.1 | 15 | 0 | **green** |
+| [`20260804-214315`](20260804-214315/) | 1.2.1 | 0/0 | 32 | 737/737 | skip | 15430 | 2051 | 6.5 | 2.1 | 0 | 0 | **green** |
 | [`20260804-182144`](20260804-182144/) | 1.2.1 | 0/0 | 32 | 648/648 | skip | 14283 | 1804 | 6.8 | 2.3 | 36 | 20 | **green** |
 
 ## Test suite
 
-648 cases. Note the harness prints `N passed, N failed` without a total; the runner parses both shapes since kit revision 2, after the first adoption sweep recorded 0/0 here and still called it green. The generated inventory `test-cases.md` in each bundle is the authority on what exists at that point; the README badge tracks the same number.
+737 cases, up from 648 on the previous run — the +89 are characterization cases written against the CCN refactors before those refactors moved a line, which is why the two runs agree on behavior while the code underneath changed shape. Note the harness prints `N passed, N failed` without a total; the runner parses both shapes since kit revision 2, after the first adoption sweep recorded 0/0 here and still called it green. The generated inventory `test-cases.md` in each bundle is the authority on what exists at that point; the README badge tracks the same number.
 
 ## Lint
 
@@ -28,40 +30,37 @@ This addon ships no `tests/perf.lua`, so the `perf` column is a permanent `skip`
 
 ## Complexity watch list
 
-Current state as of [`20260804-182144`](20260804-182144/) — not that run's diff.
+Current state as of [`20260804-214315`](20260804-214315/) — not that run's diff.
 Every function `lizard` warned on, and every file at or above `layout-§1`'s 1000-LOC
 on-notice threshold, each with a one-line disposition.
 
 ### Functions `lizard` warned on
 
-| Function | CCN | Location | Disposition |
-|---|---|---|---|
-| `ReskinStructure` | 36 | `modules/Castbar_Skin.lua` | **Peel next.** Highest CCN and the longest non-generated body (150 lines, 5 params); it splits along the field groups it already comments. |
-| `Castbar:DebugDump` | 27 | `modules/Castbar_Debug.lua` | **Accepted.** A `/kcd debug castbar` diagnostic probing every field's `type()`/`issecretvalue()`. The branch count *is* the diagnostic. |
-| `IconGrid:RefreshAllGlows` | 25 | `modules/IconGrid.lua` | **Accepted for now.** Glow trigger ladder × four glow kinds — the product of two small enumerations. |
-| `Icon:Apply` | 25 | `modules/IconGrid_Render.lua` | **Accepted, deliberately.** The addon's one instrumented hot path: flat and branchy on purpose, no helper calls, no allocation. |
-| `OnAccept` (spell popup) | 25 | `settings/Spells.lua` | **Accepted.** Validates one text field across every input form the CLI accepts. Revisit if a third caller appears. |
-| `UnitLabel:Apply` | 24 | `modules/UnitLabel.lua` | **Accepted.** Config→widget application; every branch is a distinct setting with no shared shape to factor. |
-| `IconGrid:BuildActiveList` | 23 | `modules/IconGrid.lua` | **Accepted.** The pick-and-order pass; branch count tracks the visibility rules, which are the addon's product. |
-| `Castbar:ApplyState` | 22 | `modules/Castbar.lua` | **Accepted.** The cast/channel/empowered/interrupted state machine, flattened so a secret `notInterruptible` never binds to a local. |
-| `Spells:RefreshRows` | 22 | `settings/Spells.lua` | **Accepted for now.** Shrinks on its own once `buildRow` is peeled — the two share the row vocabulary. |
-| `Database:MigrateSpecKeys` | 20 | `core/Database.lua` | **Accepted.** A one-shot SavedVariables migration over fixed historical key shapes; the honest simplification is deleting it once they are extinct. |
-| `Compat.DebugInterrupt` | 19 | `core/Compat.lua` | **Already tracked as `KCD-33`** and review finding **F-002**; routing through `NS.SafeToString` removes the hand-rolled stringifier. |
-| `NS:OpenSettings` | 19 | `core/KickCD.lua` | **Accepted.** Combat gate plus the Blizzard settings-category resolution ladder, which needs every fallback it has. |
-| `Cooldowns:PollSpell` | 19 | `modules/Cooldowns.lua` | **Accepted, deliberately.** Per-spell poll on the coalesced pass — inline to avoid a call and an allocation per spell. |
-| `buildRow` | 19 | `settings/Spells.lua` | **Peel next.** CCN is mid-pack but the body is **292 lines**, the longest in the addon; the per-widget blocks lift out without touching behaviour. |
-| `Database:FoldLegacyUnits` | 16 | `core/Database.lua` | **Accepted.** Fixed-shape one-shot migration; deleted rather than refactored when it expires. |
-| `Util.ResolveSpecID` | 16 | `core/Util.lua` | **Accepted.** Every branch is a supported input form the slash CLI documents. |
-| `Icon:UpdateGlow` | 16 | `modules/IconGrid_Render.lua` | **Accepted.** Four glow kinds × start/stop; sits just over the line and gains nothing from a split. |
-| `getCooldownManagerSpellSet` | 16 | `settings/Spells.lua` | **Accepted.** Reads Blizzard's Cooldown Manager set through several optional APIs, each guarded because any may be absent. |
-| `(anonymous)` bucket guard | 18 | `tests/test_perfsetup.lua` | **Accepted.** A source-scan guard; its branches are the bracket spellings it must not miss. Simplifying it is how the guard silently narrows. |
-| `New` (AceDB mock) | 16 | `tests/wow_mock.lua` | **Already tracked as `KCD-30`** — the fix rebuilds the mock as a thin extender, removing this function rather than refactoring it. |
+**None.**
+
+Every function in the addon is at or below CCN 15, so `lizard` warned on nothing. This is the result
+of the `feat/fix-ccn` work, not an empty section: the twenty functions this table carried on
+`20260804-182144` — `ReskinStructure` at 36 down through the four at 16 — were each split or
+flattened behind characterization tests, and none of them survives in a form `lizard` flags. Their
+old dispositions went with them; there is nothing left to carry forward.
+
+Three functions now sit exactly on the line at CCN 15 — `Layout.layoutBlock`
+(`modules/IconGrid_Layout.lua`), `buildSpecNameMaps` (`core/Util.lua`) and `OnAccept`
+(`settings/Spells.lua`). They are under the threshold and are not entries on this list; they are
+noted so a future run that reports a warning has somewhere obvious to look first.
+
+What this table costs to keep at "None." is visible in the other one: the same refactors added 1147
+NLOC and 247 functions, and every file in the band below grew. Zero warnings is not free, and the
+place the bill lands is file size.
 
 ### Files by `layout-§1` band
 
 | Band | File | LOC | Disposition |
 |---|---|---|---|
-| 1000–1500 (on notice) | `modules/Castbar.lua` | 1296 | **Already tracked as `A-2`.** Down from 1473 after two peels — the trend is the right way. Watch, no action. |
-| 1000–1500 (on notice) | `modules/IconGrid.lua` | 1100 | **Already tracked as `A-2`.** Watch, no action. |
-| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1049 | **Already tracked as `KCD-30`.** Not covered by `A-2`, which lists source files only; the whole file is the deviation. |
-| 1000–1500 (on notice) | `settings/Spells.lua` | 1047 | **Already tracked as `A-2`.** Peeling `buildRow` takes this file back under the band as a side effect. |
+| 1000–1500 (on notice) | `modules/Castbar.lua` | 1314 | **Already tracked as `A-2`.** Up 18 on this run. The earlier downward trend (1473 → 1296 across two peels) has stopped: the CCN work put helper signatures back. Watch, no action. |
+| 1000–1500 (on notice) | `settings/Spells.lua` | 1172 | **Already tracked as `A-2`.** Up 125, the band's largest move, from peeling `buildRow` and `RefreshRows` into named helpers that stayed in this file. The next reduction has to be a file split — the in-file peel is spent. |
+| 1000–1500 (on notice) | `modules/IconGrid.lua` | 1154 | **Already tracked as `A-2`.** Up 54 from the glow-gate and active-list peels. Watch, no action. |
+| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1066 | **Already tracked as `KCD-30`.** Up 17. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix rebuilds the mock as a thin extender rather than trimming it. |
+
+No file crossed a band boundary on this run and none is over the 1500 cap, but all four grew — the
+band is worth reading as a group now rather than file by file.

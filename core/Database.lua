@@ -505,6 +505,22 @@ end
 -- ships next to its migrator and reviewers don't have to wire one up
 -- under deadline pressure.
 
+-- The legacy top-level tables that fold into units.target. The same two names
+-- appear one level down under `p.anchors`, which folds separately because it
+-- merges into an existing sub-table rather than moving wholesale.
+local LEGACY_TOPLEVEL = { "icons", "castbar" }
+
+-- Merge the legacy top-level `anchors` table INTO units.target.anchors rather
+-- than replacing it — a profile can already carry a per-unit anchors table and
+-- overwriting it would drop a saved position — then clear the legacy one.
+local function foldAnchors(p, t)
+    t.anchors = t.anchors or {}
+    for _, k in ipairs(LEGACY_TOPLEVEL) do
+        if p.anchors[k] ~= nil then t.anchors[k] = p.anchors[k] end
+    end
+    p.anchors = nil
+end
+
 --- Fold a legacy pre-units profile (top-level icons/castbar/anchors) into
 --- units.target. Idempotent and SHAPE-DRIVEN, not version-gated: a v1 account
 --- that stored schemaVersion as the default never persisted it, so AceDB's
@@ -521,14 +537,10 @@ function Database:FoldLegacyUnits(db)
     p.units = p.units or {}
     p.units.target = p.units.target or {}
     local t = p.units.target
-    if p.icons   ~= nil then t.icons   = p.icons;   p.icons   = nil end
-    if p.castbar ~= nil then t.castbar = p.castbar; p.castbar = nil end
-    if p.anchors ~= nil then
-        t.anchors = t.anchors or {}
-        if p.anchors.icons   ~= nil then t.anchors.icons   = p.anchors.icons   end
-        if p.anchors.castbar ~= nil then t.anchors.castbar = p.anchors.castbar end
-        p.anchors = nil
+    for _, k in ipairs(LEGACY_TOPLEVEL) do
+        if p[k] ~= nil then t[k] = p[k]; p[k] = nil end
     end
+    if p.anchors ~= nil then foldAnchors(p, t) end
     if t.enabled == nil then t.enabled = true end
 end
 
@@ -562,6 +574,45 @@ function Database:BackfillLabelStyle(db)
     end
 end
 
+-- Every line the spec-key migration logs sits behind the same debug guard;
+-- one place for it keeps the three outcome arms readable.
+local function migrateDebug(fmt, ...)
+    if NS.State and NS.State.debug then
+        NS.Debug("Migrate", fmt, ...)
+    end
+end
+
+-- Snapshot the string-typed keys before anything mutates: rekeying a table
+-- while pairs() walks it is undefined behavior in Lua.
+local function collectStringKeys(bySpec)
+    local rekey = {}
+    for specKey, list in pairs(bySpec) do
+        if type(specKey) == "string" then
+            rekey[#rekey + 1] = { key = specKey, list = list }
+        end
+    end
+    return rekey
+end
+
+-- Move one collected entry onto its numeric specID. Data safety: a key that
+-- can't be resolved is LEFT IN PLACE rather than dropped, and an incoming key
+-- never overwrites an existing numeric one.
+local function rekeyOne(bySpec, entry, classFile)
+    local specID = NS.Util.ResolveSpecID(entry.key, classFile)
+    if not specID then
+        migrateDebug("spells: %s/%s unresolved, left as-is",
+            tostring(classFile), tostring(entry.key))
+    elseif bySpec[specID] ~= nil then
+        migrateDebug("spells: %s/%s collides with %d, left as-is",
+            tostring(classFile), tostring(entry.key), specID)
+    else
+        bySpec[specID] = entry.list
+        bySpec[entry.key] = nil
+        migrateDebug("spells: %s/%s -> %d",
+            tostring(classFile), tostring(entry.key), specID)
+    end
+end
+
 --- Rekey `profile.spells[CLASS]` from spec NAME tokens to numeric spec IDs.
 ---
 --- Up to v2 the spec key was the player's localized spec name, uppercased
@@ -591,34 +642,8 @@ function Database:MigrateSpecKeys(db)
 
     for classFile, bySpec in pairs(spells) do
         if type(bySpec) == "table" then
-            -- Collect first: mutating a table while pairs() walks it is
-            -- undefined behavior in Lua.
-            local rekey = {}
-            for specKey, list in pairs(bySpec) do
-                if type(specKey) == "string" then
-                    rekey[#rekey + 1] = { key = specKey, list = list }
-                end
-            end
-            for _, entry in ipairs(rekey) do
-                local specID = Util.ResolveSpecID(entry.key, classFile)
-                if not specID then
-                    if NS.State and NS.State.debug then
-                        NS.Debug("Migrate", "spells: %s/%s unresolved, left as-is",
-                            tostring(classFile), tostring(entry.key))
-                    end
-                elseif bySpec[specID] ~= nil then
-                    if NS.State and NS.State.debug then
-                        NS.Debug("Migrate", "spells: %s/%s collides with %d, left as-is",
-                            tostring(classFile), tostring(entry.key), specID)
-                    end
-                else
-                    bySpec[specID] = entry.list
-                    bySpec[entry.key] = nil
-                    if NS.State and NS.State.debug then
-                        NS.Debug("Migrate", "spells: %s/%s -> %d",
-                            tostring(classFile), tostring(entry.key), specID)
-                    end
-                end
+            for _, entry in ipairs(collectStringKeys(bySpec)) do
+                rekeyOne(bySpec, entry, classFile)
             end
         end
     end

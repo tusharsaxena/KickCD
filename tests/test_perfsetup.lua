@@ -14,6 +14,27 @@ local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertFalse, T.assertNil
 
+--- Poke a real entry point when the module and the method both exist, swallowing
+--- a throw: several of these legitimately raise headlessly. The call must stay a
+--- REAL entry point — swapping one for a direct Perf.Note would prove only that
+--- Note appends, which is the failure mode the bucket case exists to catch.
+local function tryCall(obj, method, ...)
+    if obj and obj[method] then return pcall(obj[method], obj, ...) end
+end
+
+--- Any one watched spellID, or nil. `watched` is a set, so there is no first.
+local function firstWatchedSpell(Cooldowns)
+    for id in pairs(Cooldowns and Cooldowns.watched or {}) do return id end
+end
+
+--- Every named bucket must have been reached by a real bracket.
+local function assertBucketsReached(buckets, keys)
+    for _, key in ipairs(keys) do
+        assertTrue(buckets[key] ~= nil and (buckets[key].calls or 0) > 0,
+            "bucket '" .. key .. "' was declared but no bracket reached it")
+    end
+end
+
 -- ── the descriptor ──────────────────────────────────────────────────────────
 
 test("NS.Perf is the library instance, with the hot-path gate as a plain field", function()
@@ -83,19 +104,14 @@ test("every declared bucket is reached by a real bracket", function()
     -- a freshly-built instance has nothing to report. Driven through the real
     -- entry point — the message — rather than by calling Note, which would prove
     -- only that Note appends.
-    local firstSpell
-    for id in pairs(Cooldowns and Cooldowns.watched or {}) do firstSpell = id break end
+    local firstSpell = firstWatchedSpell(Cooldowns)
     if firstSpell then
         NS2:SendMessage("Ka0s_KickCD_SPELL_STATE",
             { spellID = firstSpell, ready = true, isActive = false })
     end
     -- castEvent -> visibility.
-    if IconGrid and IconGrid.OnUnitCastEvent then
-        pcall(IconGrid.OnUnitCastEvent, IconGrid, "UNIT_SPELLCAST_START", "target")
-    end
-    if IconGrid and IconGrid.RefreshVisibility then
-        for _, u in ipairs(NS2.Units.LIST) do pcall(IconGrid.RefreshVisibility, IconGrid, u) end
-    end
+    tryCall(IconGrid, "OnUnitCastEvent", "UNIT_SPELLCAST_START", "target")
+    for _, u in ipairs(NS2.Units.LIST) do tryCall(IconGrid, "RefreshVisibility", u) end
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
 
     local buckets = P.__buckets and P.__buckets() or {}
@@ -104,10 +120,7 @@ test("every declared bucket is reached by a real bracket", function()
     -- Not every bucket is reachable headlessly (castTick needs a live cast,
     -- cdText needs the ticker), so assert on the ones this harness can drive and
     -- name the rest rather than pretending.
-    for _, key in ipairs({ "spellPoll", "spellState", "castEvent", "visibility" }) do
-        assertTrue(buckets[key] ~= nil and (buckets[key].calls or 0) > 0,
-            "bucket '" .. key .. "' was declared but no bracket reached it")
-    end
+    assertBucketsReached(buckets, { "spellPoll", "spellState", "castEvent", "visibility" })
 end)
 
 test("the declared bucket list and the bracketed call sites agree exactly", function()

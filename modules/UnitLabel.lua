@@ -26,6 +26,31 @@ local FLAG_MAP = {
     NONE = "", OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE", MONOCHROME = "MONOCHROME",
 }
 
+-- Fallback for every style field Apply reads, in one place. `flags` is
+-- deliberately absent: it defaults through FLAG_MAP above, which maps the
+-- stored token rather than the field itself.
+local STYLE_DEFAULTS = {
+    font     = "Friz Quadrata TT",
+    size     = 14,
+    justifyH = "CENTER",
+    justifyV = "MIDDLE",
+    rotation = 0,
+    attach   = "castbar",
+    point    = "BOTTOM",
+    relPoint = "TOP",
+    offsetX  = 0,
+    offsetY  = 0,
+}
+
+--- One style field with its fallback applied. Truthiness, not `== nil`, so
+--- this reads exactly like the `style.x or default` chain it replaces — an
+--- unset field and a falsy one both land on the default, as before.
+local function sv(style, key)
+    local v = style[key]
+    if v then return v end
+    return STYLE_DEFAULTS[key]
+end
+
 local instances = {}   -- [unit] = { unit, frame, text, enabled }
 
 local function titleCase(unit) return unit:sub(1, 1):upper() .. unit:sub(2) end
@@ -45,6 +70,55 @@ local function attachFrame(unit, attach)
     end
     local m = NS:GetModule("Castbar", true)
     return m and m:GetCastbarFrame(unit) or nil
+end
+
+--- Font face, size and outline flags. LSM is optional (the addon runs without
+--- it), and its Fetch can still miss, so the client's own font is the last
+--- resort.
+local function applyLabelFont(fs, style)
+    local fontPath
+    if LSM and LSM.Fetch then
+        fontPath = LSM:Fetch("font", sv(style, "font"), true)
+    end
+    fs:SetFont(fontPath or STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
+end
+
+--- Text color, when the user picked one — otherwise the font template's own.
+--- Through Util.Unpack, not by index. Colors are stored keyed now
+--- ({ r =, g =, b =, a = }); a positional read would have found nil on
+--- every channel and rendered the fallback gold no matter what the user
+--- picked — silently, and only in game.
+local function applyLabelColor(fs, style)
+    local c = style.color
+    if c then
+        local r, g, b, a = NS.Util.Unpack(c)
+        fs:SetTextColor(r, g, b, a)
+    end
+end
+
+--- Position comes from the chosen attach frame; VISIBILITY comes from the
+--- icon grid. The grid is the frame that honors General visibility
+--- (IconGrid:RefreshVisibility Show/Hides it on the visibility mode alone),
+--- whereas the cast bar additionally hides itself whenever there is no
+--- active cast — so parenting to the cast bar would make the label
+--- cast-gated instead of visibility-gated. Reparenting the label onto the
+--- grid makes it inherit exactly the grid's shown state + effective alpha,
+--- i.e. follow General visibility, with no extra event wiring; SetPoint to
+--- the attach frame keeps position independent of the parent.
+--- Returns the anchor frame (nil when that widget isn't live), which also
+--- gates visibility.
+local function applyLabelPlacement(f, unit, style)
+    local anchorFrame = attachFrame(unit, sv(style, "attach"))
+    local gridModule  = NS:GetModule("IconGrid", true)
+    local visFrame    = gridModule and gridModule:GetGridFrame(unit) or nil
+
+    f:ClearAllPoints()
+    if anchorFrame then
+        f:SetParent(visFrame or anchorFrame)  -- grid drives visibility; fall back to the anchor only if the grid isn't up yet
+        f:SetPoint(sv(style, "point"), anchorFrame, sv(style, "relPoint"),
+                   sv(style, "offsetX"), sv(style, "offsetY"))
+    end
+    return anchorFrame
 end
 
 -- Created on UIParent as a placeholder parent; Apply() reparents it to the
@@ -75,45 +149,15 @@ function UnitLabel:Apply(inst)
 
     fs:SetText(lbl.text or "")
 
-    local fontPath
-    if LSM and LSM.Fetch then
-        fontPath = LSM:Fetch("font", style.font or "Friz Quadrata TT", true)
-    end
-    fs:SetFont(fontPath or STANDARD_TEXT_FONT, style.size or 14, FLAG_MAP[style.flags] or "OUTLINE")
-    -- Through Util.Unpack, not by index. Colors are stored keyed now
-    -- ({ r =, g =, b =, a = }); a positional read would have found nil on
-    -- every channel and rendered the fallback gold no matter what the user
-    -- picked — silently, and only in game.
-    local c = style.color
-    if c then
-        local r, g, b, a = NS.Util.Unpack(c)
-        fs:SetTextColor(r, g, b, a)
-    end
-    fs:SetJustifyH(style.justifyH or "CENTER")
-    fs:SetJustifyV(style.justifyV or "MIDDLE")
+    applyLabelFont(fs, style)
+    applyLabelColor(fs, style)
+    fs:SetJustifyH(sv(style, "justifyH"))
+    fs:SetJustifyV(sv(style, "justifyV"))
     if fs.SetRotation then
-        fs:SetRotation(((style.rotation or 0) * math.pi) / 180)
+        fs:SetRotation((sv(style, "rotation") * math.pi) / 180)
     end
 
-    -- Position comes from the chosen attach frame; VISIBILITY comes from the
-    -- icon grid. The grid is the frame that honors General visibility
-    -- (IconGrid:RefreshVisibility Show/Hides it on the visibility mode alone),
-    -- whereas the cast bar additionally hides itself whenever there is no
-    -- active cast — so parenting to the cast bar would make the label
-    -- cast-gated instead of visibility-gated. Reparenting the label onto the
-    -- grid makes it inherit exactly the grid's shown state + effective alpha,
-    -- i.e. follow General visibility, with no extra event wiring; SetPoint to
-    -- the attach frame keeps position independent of the parent.
-    local anchorFrame = attachFrame(inst.unit, style.attach or "castbar")
-    local gridModule  = NS:GetModule("IconGrid", true)
-    local visFrame    = gridModule and gridModule:GetGridFrame(inst.unit) or nil
-
-    f:ClearAllPoints()
-    if anchorFrame then
-        f:SetParent(visFrame or anchorFrame)  -- grid drives visibility; fall back to the anchor only if the grid isn't up yet
-        f:SetPoint(style.point or "BOTTOM", anchorFrame, style.relPoint or "TOP",
-                   style.offsetX or 0, style.offsetY or 0)
-    end
+    local anchorFrame = applyLabelPlacement(f, inst.unit, style)
 
     -- Visibility follows the styling link (spec 2b): a linked focus mirrors
     -- target's label.show, so hiding the target label hides a linked focus too.

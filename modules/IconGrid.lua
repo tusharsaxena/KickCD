@@ -92,7 +92,8 @@ local function newInstance(unit)
         -- migrated from the former self._* module fields:
         truncationWarnedFor = nil,
         lastVisible   = nil,
-        lastGlowGate  = nil,
+        lastGateCasting      = nil,
+        lastGateInterruptible = nil,
         lastCastLabel = nil,
     }
 end
@@ -291,6 +292,64 @@ end
 --     spells the player can't see in their own spellbook are hidden)
 -- First survivor → primary; rest → secondaries.
 
+--- The spellID this list entry contributes, or nil when the entry is missing,
+--- disabled, or carries no ID. One statement of the eligibility rule, read
+--- once per entry — it used to be written out twice, once in the
+--- duplicate-detection arm and once in its else.
+local function eligibleSpellID(entry)
+    if entry and entry.enabled ~= false and entry.spellID then return entry.spellID end
+    return nil
+end
+
+--- Can the player actually see this spell in their own spellbook?
+--- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
+--- additionally requires the spell to be actually accessible right now,
+--- so an unpicked talent choice-node sibling (e.g. Blood DK's
+--- Gorefiend's Grasp ↔ Abomination Limb — both default-listed because
+--- either could be picked, but only one is castable) doesn't render.
+--- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
+--- their pet is summoned.
+local function isRenderable(spellID)
+    local name      = NS.Compat.GetSpellInfo(spellID)
+    local available = NS.Compat.IsSpellAvailable(spellID)
+    return name and available
+end
+
+--- Surface a skipped duplicate in the debug console (KickCD.State.debug).
+local function logDuplicateSpell(spellID, classFile, specName)
+    if NS.State and NS.State.debug then
+        NS.Debug("IconGrid", ("duplicate spellID %d in %s/%s — skipping"):format(
+            spellID, classFile, specName))
+    end
+end
+
+--- Paint the spell's icon texture, unless it is a 12.0 "secret value".
+--- Guarded spells (Mind Freeze etc.) hand back one, and SetTexture rejects
+--- them from tainted execution — so skip the call and leave the icon blank
+--- rather than erroring out of BuildActiveList partway.
+local function applySpellTexture(btn, spellID)
+    local tex = NS.Compat.GetSpellTexture(spellID)
+    local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
+    if tex and not texSecret then btn.icon:SetTexture(tex) end
+end
+
+--- Acquire, dress and seed one button for `spellID`, appending it to the
+--- instance's ordered list.
+local function seedIcon(grid, inst, spellID)
+    local btn = grid:AcquireIcon(inst, spellID)
+    applySpellTexture(btn, spellID)
+    btn:ApplyTextConfig(inst.cfg)
+    -- Initial state: assume ready until Cooldowns sends a real
+    -- Ka0s_KickCD_SPELL_STATE. Apply{} (no payload) treats the icon
+    -- as "not ready" because state.ready is nil-falsy, so pass
+    -- a synthetic ready frame to render correctly until the
+    -- first real state arrives.
+    -- force=true: a rebuilt list may hand a pooled button whose
+    -- _lastState still matches, and this pass has to repaint it.
+    btn:Apply({ ready = true, start = 0, duration = 0 }, true)
+    table.insert(inst.ordered, btn)
+end
+
 function IconGrid:BuildActiveList(inst)
     self:ReleaseAll(inst)
 
@@ -316,42 +375,14 @@ function IconGrid:BuildActiveList(inst)
     -- it in the debug console when debug logging is on (KickCD.State.debug).
     local _seen = {}
     for _, entry in ipairs(list) do
-        if entry and entry.enabled ~= false and entry.spellID and _seen[entry.spellID] then
-            if NS.State and NS.State.debug then
-                NS.Debug("IconGrid", ("duplicate spellID %d in %s/%s — skipping"):format(
-                    entry.spellID, classFile, specName))
-            end
-        elseif entry and entry.enabled ~= false and entry.spellID then
-            _seen[entry.spellID] = true
+        local spellID = eligibleSpellID(entry)
+        if spellID and _seen[spellID] then
+            logDuplicateSpell(spellID, classFile, specName)
+        elseif spellID then
+            _seen[spellID] = true
             -- Hide entries the player can't see in their own spellbook.
-            -- GetSpellInfo only proves the ID exists in the DB; IsSpellAvailable
-            -- additionally requires the spell to be actually accessible right now,
-            -- so an unpicked talent choice-node sibling (e.g. Blood DK's
-            -- Gorefiend's Grasp ↔ Abomination Limb — both default-listed because
-            -- either could be picked, but only one is castable) doesn't render.
-            -- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
-            -- their pet is summoned.
-            local name      = NS.Compat.GetSpellInfo(entry.spellID)
-            local available = NS.Compat.IsSpellAvailable(entry.spellID)
-            if name and available then
-                local btn = self:AcquireIcon(inst, entry.spellID)
-                local tex = NS.Compat.GetSpellTexture(entry.spellID)
-                -- Texture may be a 12.0 "secret value" on guarded spells
-                -- (Mind Freeze etc.); SetTexture rejects them from tainted
-                -- execution, so skip the call and leave the icon blank
-                -- rather than erroring out of BuildActiveList partway.
-                local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
-                if tex and not texSecret then btn.icon:SetTexture(tex) end
-                btn:ApplyTextConfig(inst.cfg)
-                -- Initial state: assume ready until Cooldowns sends a real
-                -- Ka0s_KickCD_SPELL_STATE. Apply{} (no payload) treats the icon
-                -- as "not ready" because state.ready is nil-falsy, so pass
-                -- a synthetic ready frame to render correctly until the
-                -- first real state arrives.
-                -- force=true: a rebuilt list may hand a pooled button whose
-                -- _lastState still matches, and this pass has to repaint it.
-                btn:Apply({ ready = true, start = 0, duration = 0 }, true)
-                table.insert(inst.ordered, btn)
+            if isRenderable(spellID) then
+                seedIcon(self, inst, spellID)
             end
         end
     end
@@ -941,6 +972,71 @@ function IconGrid:OnFocusChanged()
     end
 end
 
+-- The gate's fourth state: interruptibility is secret-tainted and therefore
+-- uncomparable. Named rather than written inline so it can never be mistaken
+-- for the library's rendered <secret> sentinel (see core/Compat).
+local SECRET_GATE = "secret"
+
+-- The printed name of each resolved gate state. Cannot carry a nil key, so
+-- "no hostile cast" is the caller's `or` fallback.
+local GATE_LABEL = {
+    [true]        = "on",
+    [false]       = "off",
+    [SECRET_GATE] = "secret (combat-tainted)",
+}
+
+--- Resolve the cast's interruptibility into the tri-state the gate compares:
+---   * true     — hostile cast in progress and it IS interruptible
+---   * false    — hostile cast in progress and it is NOT interruptible
+---   * "secret" — the flag is secret-tainted and cannot be compared
+---   * nil      — no hostile cast in progress
+---
+--- notInterruptible may be secret-tainted; comparing it directly
+--- in Lua would error in tainted scope. We only need to detect
+--- "did the truthy/falsy state change?" — convert through a C-side
+--- coercion via `not not` IF the value is plain. When it's a secret
+--- we leave it as-is and skip the equality compare in the gate
+--- (treat any secret reading as "moved" and re-run iteration —
+--- correctness over efficiency for the rare interruptibility flip).
+local function resolveInterruptible(unit, hostileCasting)
+    if not (hostileCasting and _G.UnitCastingInfo) then return nil end
+    local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo(unit)
+    if notInterruptible == nil and _G.UnitChannelInfo then
+        local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
+        notInterruptible = ni
+    end
+    if _G.issecretvalue and _G.issecretvalue(notInterruptible) then
+        return SECRET_GATE
+    end
+    return not notInterruptible
+end
+
+--- Has the gate moved since the last call on this instance? A "secret"
+--- reading always counts as moved — the flip behind it is uncomparable, so
+--- iteration re-runs rather than risk stranding a stale glow decision.
+--- The very first call also counts: hostileCasting is always a real boolean,
+--- so it can never equal the nil the instance starts with.
+local function gateMoved(inst, hostileCasting, interruptible)
+    return inst.lastGateCasting ~= hostileCasting
+        or inst.lastGateInterruptible ~= interruptible
+        or interruptible == SECRET_GATE
+end
+
+--- Log the gate transition, once per distinct label.
+--- Dedup: while interruptibility is secret-tainted the gate short-circuit
+--- is deliberately bypassed, so every cast event reaches here — a boss
+--- firing many casts would log an identical line each time. Emit only when
+--- the printed label actually changes (§9). Label each state precisely
+--- rather than collapsing "secret"/nil into a misleading "on".
+local function logGateChange(inst, unit, interruptible)
+    if not (NS.State and NS.State.debug) then return end
+    local gate = GATE_LABEL[interruptible] or "none (no hostile cast)"
+    if gate ~= inst.lastCastLabel then
+        inst.lastCastLabel = gate
+        NS.Debug("Cast", "[%s] cast gate: interruptible %s", unit, gate)
+    end
+end
+
 --- Re-run UpdateGlow for every active icon against its last-known state.
 --- Called when the trigger condition could have changed (unit swap,
 --- unit cast start/stop, interruptibility flip) — the icons' Cooldowns
@@ -967,56 +1063,14 @@ function IconGrid:RefreshAllGlows(inst)
     local hostileCasting = NS.State
         and NS.State.IsHostileUnitCasting
         and NS.State.IsHostileUnitCasting(unit) or false
-    local interruptible
-    if hostileCasting and _G.UnitCastingInfo then
-        local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo(unit)
-        if notInterruptible == nil and _G.UnitChannelInfo then
-            local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
-            notInterruptible = ni
-        end
-        -- notInterruptible may be secret-tainted; comparing it directly
-        -- in Lua would error in tainted scope. We only need to detect
-        -- "did the truthy/falsy state change?" — convert through a C-side
-        -- coercion via `not not` IF the value is plain. When it's a secret
-        -- we leave it as-is and skip the equality compare in the gate
-        -- (treat any secret reading as "moved" and re-run iteration —
-        -- correctness over efficiency for the rare interruptibility flip).
-        if _G.issecretvalue and _G.issecretvalue(notInterruptible) then
-            interruptible = "secret"
-        else
-            interruptible = not notInterruptible
-        end
-    else
-        interruptible = nil
-    end
+    local interruptible = resolveInterruptible(unit, hostileCasting)
 
-    local prev = inst.lastGlowGate
-    if prev
-       and prev.hostileCasting == hostileCasting
-       and prev.interruptible  == interruptible
-       and interruptible ~= "secret"
-    then
-        return
-    end
-    inst.lastGlowGate = { hostileCasting = hostileCasting, interruptible = interruptible }
+    if not gateMoved(inst, hostileCasting, interruptible) then return end
+    -- Two scalars rather than a record, so a boss chaining casts doesn't
+    -- allocate a table per gate change.
+    inst.lastGateCasting, inst.lastGateInterruptible = hostileCasting, interruptible
 
-    if NS.State and NS.State.debug then
-        -- interruptible is a resolved tri-state (true/false/nil/"secret"), never
-        -- a raw secret here — so these == compares are plain. Label each state
-        -- precisely rather than collapsing "secret"/nil into a misleading "on".
-        local gate = interruptible == true and "on"
-            or interruptible == false and "off"
-            or interruptible == "secret" and "secret (combat-tainted)"
-            or "none (no hostile cast)"
-        -- Dedup: while interruptibility is secret-tainted the gate short-circuit
-        -- above is deliberately bypassed, so every cast event reaches here — a
-        -- boss firing many casts would log an identical line each time. Emit
-        -- only when the printed label actually changes (§9).
-        if gate ~= inst.lastCastLabel then
-            inst.lastCastLabel = gate
-            NS.Debug("Cast", "[%s] cast gate: interruptible %s", unit, gate)
-        end
-    end
+    logGateChange(inst, unit, interruptible)
 
     for _, btn in ipairs(inst.ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end

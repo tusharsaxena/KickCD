@@ -145,9 +145,10 @@ end
 --- Flatten every input ReskinStructure reads into one comparison key.
 ---
 --- Anything absent from this list is, by construction, something the structural
---- half does not look at — so if you add a config read to ReskinStructure, add
---- it here in the same edit or the new field will silently fail to take effect
---- until some other structural field happens to move.
+--- half does not look at — so if you add a config read to ReskinStructure or to
+--- any of the apply* helpers it delegates to, add it here in the same edit or
+--- the new field will silently fail to take effect until some other structural
+--- field happens to move.
 ---
 --- All plain values out of SavedVariables plus the resolved dimensions; nothing
 --- here is ever secret.
@@ -164,6 +165,148 @@ local function structureSignature(c, intCfg, unintCfg, barLong, barThick)
         tostring(intCfg.borderTexture),   tostring(intCfg.borderSize),
         tostring(unintCfg.borderTexture), tostring(unintCfg.borderSize),
     }, "|")
+end
+
+--- The icon / bar inset matrix, as data. Outer key is the bar orientation,
+--- inner key the configured iconPosition; anything that is not "RIGHT" falls
+--- back to the LEFT arm, exactly as the hand-written if/else chain did.
+---
+--- `icon` is the point the icon pins to on BOTH itself and the frame. `tl` and
+--- `br` are the TOPLEFT / BOTTOMRIGHT bar offsets as MULTIPLES of the resolved
+--- iconSize, so the inset lands on the side the icon occupies.
+---
+--- In VERTICAL orientation, LEFT is remapped to TOP and RIGHT to BOTTOM since
+--- literal left/right doesn't make sense for a tall bar. Transposing an entry
+--- here is invisible to every test and obvious to every user, so the four arms
+--- are spelled out rather than derived.
+local ICON_LAYOUT = {
+    HORIZONTAL = {
+        LEFT  = { icon = "LEFT",   tl = {  1, 0 }, br = {  0, 0 } },
+        RIGHT = { icon = "RIGHT",  tl = {  0, 0 }, br = { -1, 0 } },
+    },
+    VERTICAL = {
+        LEFT  = { icon = "TOP",    tl = { 0, -1 }, br = { 0, 0 } },   -- TOP in vertical mode (default)
+        RIGHT = { icon = "BOTTOM", tl = { 0,  0 }, br = { 0, 1 } },   -- BOTTOM in vertical mode
+    },
+}
+
+--- Which edge of the bar's inner status texture the spark rides, by
+--- orientation and reverse fill:
+---   * HORIZONTAL non-reverse  → texture grows L→R, fill edge = RIGHT
+---   * HORIZONTAL reverse      → texture grows R→L, fill edge = LEFT
+---   * VERTICAL   non-reverse  → texture grows B→T, fill edge = TOP
+---   * VERTICAL   reverse      → texture grows T→B, fill edge = BOTTOM
+local SPARK_ANCHOR = {
+    HORIZONTAL = { [true] = "LEFT",   [false] = "RIGHT" },
+    VERTICAL   = { [true] = "BOTTOM", [false] = "TOP"   },
+}
+
+--- Frame size plus orientation + reverse-fill on both stacked StatusBars.
+--- Blizzard handles all the C-side texture growth math, so we never have to do
+--- per-frame arithmetic ourselves (which would error on secret CastingDuration
+--- values in combat).
+local function applyBarGeometry(frame, barOrient, reverseFill, barLong, barThick)
+    if barOrient == "VERTICAL" then
+        frame:SetSize(barThick, barLong)
+    else
+        frame:SetSize(barLong, barThick)
+    end
+
+    frame.bar.interruptible:SetOrientation(barOrient)
+    frame.bar.uninterruptible:SetOrientation(barOrient)
+    frame.bar.interruptible:SetReverseFill(reverseFill)
+    frame.bar.uninterruptible:SetReverseFill(reverseFill)
+end
+
+--- Icon position decides bar inset. "OFF" hides the icon entirely and gives
+--- the bar the full frame; every other position insets the bar on the
+--- corresponding side per ICON_LAYOUT.
+local function applyIconLayout(frame, c, barOrient, barThick)
+    local iconPos  = c.iconPosition or "LEFT"
+    local iconSize = math.max(0, c.iconSize or barThick)
+    -- Cap iconSize at the bar's thickness (the perpendicular-to-fill
+    -- dimension) so the icon never overflows the bar's short axis.
+    if iconSize > barThick then iconSize = barThick end
+    local showIcon = (iconPos ~= "OFF") and (iconSize > 0)
+
+    frame.icon:ClearAllPoints()
+    frame.bar:ClearAllPoints()
+    if not showIcon then
+        frame.icon:Hide()
+        frame.bar:SetAllPoints(frame)
+        return
+    end
+
+    local arm = ICON_LAYOUT[barOrient][iconPos] or ICON_LAYOUT[barOrient].LEFT
+    frame.icon:Show()
+    frame.icon:SetSize(iconSize, iconSize)
+    frame.icon:SetPoint(arm.icon, frame, arm.icon, 0, 0)
+    frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",
+        arm.tl[1] * iconSize, arm.tl[2] * iconSize)
+    frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",
+        arm.br[1] * iconSize, arm.br[2] * iconSize)
+end
+
+--- Spark — anchor to the fill edge of the interruptible bar's inner status
+--- texture. Both stacked bars receive identical SetMinMaxValues / SetValue
+--- calls every frame, so their textures are the same size; anchoring to either
+--- gives the same fill-edge position.
+---
+--- The natural Blizzard spark is a tall vertical line; for VERTICAL
+--- orientation we rotate it 90° so it reads as a horizontal slash across the
+--- bar's fill edge.
+local function applySpark(frame, c, barOrient, reverseFill, barThick)
+    if c.showSpark == false then
+        frame.spark:Hide()
+        return
+    end
+
+    frame.spark:Show()
+    frame.spark:ClearAllPoints()
+    if barOrient == "VERTICAL" then
+        -- Spark sized to span the bar's thickness (now the
+        -- horizontal axis); 90° rotation turns the texture's
+        -- tall line into a horizontal slash across the fill edge.
+        frame.spark:SetSize(barThick + 6, 20)
+        if frame.spark.SetRotation then frame.spark:SetRotation(math.pi / 2) end
+    else
+        frame.spark:SetSize(20, barThick + 6)
+        if frame.spark.SetRotation then frame.spark:SetRotation(0) end
+    end
+
+    local fill = frame.bar.interruptible:GetStatusBarTexture()
+    if fill then
+        frame.spark:SetPoint("CENTER", fill, SPARK_ANCHOR[barOrient][reverseFill], 0, 0)
+    end
+end
+
+--- Font for both labels (shared across states). "NONE" and an absent value
+--- both mean "no outline / no monochrome", which SetFont spells as the empty
+--- string.
+local function applyLabelFonts(frame, c)
+    local fontPath = Castbar.FetchFont(c.font)
+    local fontSize = c.fontSize or 12
+    local fontFlags = c.fontFlags
+    if fontFlags == "NONE" or fontFlags == nil then fontFlags = "" end
+
+    frame.nameText:SetFont(fontPath, fontSize, fontFlags)
+    frame.timeText:SetFont(fontPath, fontSize, fontFlags)
+end
+
+--- Position labels per their independent anchor settings, and honor the two
+--- show flags. INSIDE_* variants pin the text to a bar edge (with a 4px
+--- breathing-room inset that the user's offsetX adds to). OUTSIDE_* variants
+--- float the text just past the bar edge so multi-line layouts can put name
+--- above and time below the bar by combining OUTSIDE positions with
+--- appropriate Y offsets. CENTER pins to bar center.
+local function applyLabelPlacement(frame, c)
+    anchorTextElement(frame.nameText, frame.bar,
+        c.namePosition or "INSIDE_LEFT",  c.nameOffsetX or 0, c.nameOffsetY or 0)
+    anchorTextElement(frame.timeText, frame.bar,
+        c.timePosition or "INSIDE_RIGHT", c.timeOffsetX or 0, c.timeOffsetY or 0)
+
+    if c.showName == false then frame.nameText:Hide() else frame.nameText:Show() end
+    if c.showTime == false then frame.timeText:Hide() else frame.timeText:Show() end
 end
 
 --- Geometry half of the re-skin: everything whose cost is a frame resize, a
@@ -194,128 +337,12 @@ local function ReskinStructure(inst, c, intCfg, unintCfg, force)
         reverseFill = (c.growDirection == "LEFT")
     end
 
-    if isVertical then
-        frame:SetSize(barThick, barLong)
-    else
-        frame:SetSize(barLong, barThick)
-    end
-
-    -- Apply orientation + reverse-fill on both stacked StatusBars. Blizzard
-    -- handles all the C-side texture growth math, so we never have to do
-    -- per-frame arithmetic ourselves (which would error on secret
-    -- CastingDuration values in combat).
     local barOrient = isVertical and "VERTICAL" or "HORIZONTAL"
-    frame.bar.interruptible:SetOrientation(barOrient)
-    frame.bar.uninterruptible:SetOrientation(barOrient)
-    frame.bar.interruptible:SetReverseFill(reverseFill)
-    frame.bar.uninterruptible:SetReverseFill(reverseFill)
-
-    -- Icon position decides bar inset. "OFF" hides the icon entirely and
-    -- gives the bar the full frame; "LEFT" / "RIGHT" inset the bar on the
-    -- corresponding side. In VERTICAL orientation, LEFT is remapped to TOP
-    -- and RIGHT to BOTTOM since literal left/right doesn't make sense for
-    -- a tall bar.
-    local iconPos  = c.iconPosition or "LEFT"
-    local iconSize = math.max(0, c.iconSize or barThick)
-    -- Cap iconSize at the bar's thickness (the perpendicular-to-fill
-    -- dimension) so the icon never overflows the bar's short axis.
-    if iconSize > barThick then iconSize = barThick end
-    local showIcon = (iconPos ~= "OFF") and (iconSize > 0)
-
-    frame.icon:ClearAllPoints()
-    frame.bar:ClearAllPoints()
-    if showIcon then
-        frame.icon:Show()
-        frame.icon:SetSize(iconSize, iconSize)
-        if isVertical then
-            if iconPos == "RIGHT" then
-                -- BOTTOM in vertical mode.
-                frame.icon:SetPoint("BOTTOM", frame, "BOTTOM", 0, 0)
-                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
-                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, iconSize)
-            else
-                -- TOP in vertical mode (default).
-                frame.icon:SetPoint("TOP", frame, "TOP", 0, 0)
-                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, -iconSize)
-                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, 0)
-            end
-        else
-            if iconPos == "RIGHT" then
-                frame.icon:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
-                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      0, 0)
-                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -iconSize, 0)
-            else
-                frame.icon:SetPoint("LEFT", frame, "LEFT", 0, 0)
-                frame.bar:SetPoint("TOPLEFT",     frame, "TOPLEFT",      iconSize, 0)
-                frame.bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT",  0, 0)
-            end
-        end
-    else
-        frame.icon:Hide()
-        frame.bar:SetAllPoints(frame)
-    end
-
-    -- Spark — anchor to the fill edge of the interruptible bar's inner
-    -- status texture. Both stacked bars receive identical
-    -- SetMinMaxValues / SetValue calls every frame, so their textures are
-    -- the same size; anchoring to either gives the same fill-edge position.
-    -- The fill edge depends on orientation + reverseFill:
-    --   * HORIZONTAL non-reverse  → texture grows L→R, fill edge = RIGHT
-    --   * HORIZONTAL reverse      → texture grows R→L, fill edge = LEFT
-    --   * VERTICAL   non-reverse  → texture grows B→T, fill edge = TOP
-    --   * VERTICAL   reverse      → texture grows T→B, fill edge = BOTTOM
-    -- The natural Blizzard spark is a tall vertical line; for VERTICAL
-    -- orientation we rotate it 90° so it reads as a horizontal slash
-    -- across the bar's fill edge.
-    if c.showSpark ~= false then
-        frame.spark:Show()
-        frame.spark:ClearAllPoints()
-        if isVertical then
-            -- Spark sized to span the bar's thickness (now the
-            -- horizontal axis); 90° rotation turns the texture's
-            -- tall line into a horizontal slash across the fill edge.
-            frame.spark:SetSize(barThick + 6, 20)
-            if frame.spark.SetRotation then frame.spark:SetRotation(math.pi / 2) end
-        else
-            frame.spark:SetSize(20, barThick + 6)
-            if frame.spark.SetRotation then frame.spark:SetRotation(0) end
-        end
-        local fill = frame.bar.interruptible:GetStatusBarTexture()
-        if fill then
-            local sparkAnchor
-            if isVertical then
-                sparkAnchor = reverseFill and "BOTTOM" or "TOP"
-            else
-                sparkAnchor = reverseFill and "LEFT"   or "RIGHT"
-            end
-            frame.spark:SetPoint("CENTER", fill, sparkAnchor, 0, 0)
-        end
-    else
-        frame.spark:Hide()
-    end
-
-    -- Font for both labels (shared across states).
-    local fontPath = Castbar.FetchFont(c.font)
-    local fontSize = c.fontSize or 12
-    local fontFlags = c.fontFlags
-    if fontFlags == "NONE" or fontFlags == nil then fontFlags = "" end
-
-    frame.nameText:SetFont(fontPath, fontSize, fontFlags)
-    frame.timeText:SetFont(fontPath, fontSize, fontFlags)
-
-    -- Position labels per their independent anchor settings. INSIDE_*
-    -- variants pin the text to a bar edge (with a 4px breathing-room
-    -- inset that the user's offsetX adds to). OUTSIDE_* variants float
-    -- the text just past the bar edge so multi-line layouts can put
-    -- name above and time below the bar by combining OUTSIDE positions
-    -- with appropriate Y offsets. CENTER pins to bar center.
-    anchorTextElement(frame.nameText, frame.bar,
-        c.namePosition or "INSIDE_LEFT",  c.nameOffsetX or 0, c.nameOffsetY or 0)
-    anchorTextElement(frame.timeText, frame.bar,
-        c.timePosition or "INSIDE_RIGHT", c.timeOffsetX or 0, c.timeOffsetY or 0)
-
-    if c.showName == false then frame.nameText:Hide() else frame.nameText:Show() end
-    if c.showTime == false then frame.timeText:Hide() else frame.timeText:Show() end
+    applyBarGeometry(frame, barOrient, reverseFill, barLong, barThick)
+    applyIconLayout(frame, c, barOrient, barThick)
+    applySpark(frame, c, barOrient, reverseFill, barThick)
+    applyLabelFonts(frame, c)
+    applyLabelPlacement(frame, c)
 
     -- Per-state border backdrops. Visibility is folded into alpha switching in
     -- ApplyState; here we just configure the backdrop on each frame so it's

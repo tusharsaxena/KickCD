@@ -9,6 +9,7 @@
 -- lands, and that a pure color edit no longer pays for the structural pass.
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
+local assertFalse, assertNear = T.assertFalse, T.assertNear
 
 --- A fully enabled instance per test — Reskin writes to per-instance state
 --- (inst.structureSig), so sharing one across cases would make them
@@ -246,6 +247,201 @@ test("ResolveBarSize leaves thickness alone in vertical orientation", function()
         { unit = "target" }, { width = 320, height = 18, autoSize = false }, true)
     assertEqual(long,  320)
     assertEqual(thick, 18)
+end)
+
+-- ── Icon / bar layout matrix ────────────────────────────────────────────────
+--
+-- The 2x2 of iconPosition x orientation is pure in-game geometry with nothing
+-- else asserting it: a transposed anchor is invisible headlessly and obvious to
+-- every user. These cases pin all four arms plus the OFF arm and the clamp.
+
+--- Re-skin target with `fields` merged over its castbar config and hand back
+--- the instance. autoSize is forced off so the resolved size is the configured
+--- one; force is passed so each case rebuilds regardless of the signature.
+--- `clear` names keys to remove outright — a nil in `fields` would be invisible
+--- to pairs(), so the unset-field defaults need their own channel.
+local function skinned(fields, clear)
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.autoSize = false
+    c.width, c.height = 250, 24
+    for k, v in pairs(fields) do c[k] = v end
+    for _, k in ipairs(clear or {}) do c[k] = nil end
+    Castbar:Reskin(inst, true)
+    return inst
+end
+
+--- The i-th anchor of `region` as a flat string, for one-line comparison.
+local function pointAt(region, i)
+    local point, _relativeTo, relativePoint, x, y = region:GetPoint(i)
+    return ("%s/%s/%s/%s"):format(tostring(point), tostring(relativePoint),
+                                 tostring(x), tostring(y))
+end
+
+test("HORIZONTAL + iconPosition LEFT insets the bar from the left", function()
+    local inst = skinned({ orientation = "HORIZONTAL", iconPosition = "LEFT", iconSize = 20 })
+    assertTrue(inst.frame.icon:IsShown(), "the icon must be shown")
+    assertEqual(inst.frame.icon:GetWidth(), 20, "the icon is square at iconSize")
+    assertEqual(pointAt(inst.frame.icon, 1), "LEFT/LEFT/0/0")
+    assertEqual(pointAt(inst.frame.bar, 1), "TOPLEFT/TOPLEFT/20/0")
+    assertEqual(pointAt(inst.frame.bar, 2), "BOTTOMRIGHT/BOTTOMRIGHT/0/0")
+end)
+
+test("HORIZONTAL + iconPosition RIGHT insets the bar from the right", function()
+    local inst = skinned({ orientation = "HORIZONTAL", iconPosition = "RIGHT", iconSize = 20 })
+    assertEqual(pointAt(inst.frame.icon, 1), "RIGHT/RIGHT/0/0")
+    assertEqual(pointAt(inst.frame.bar, 1), "TOPLEFT/TOPLEFT/0/0")
+    assertEqual(pointAt(inst.frame.bar, 2), "BOTTOMRIGHT/BOTTOMRIGHT/-20/0")
+end)
+
+test("VERTICAL remaps iconPosition LEFT to the TOP of the bar", function()
+    -- Literal left/right makes no sense for a tall bar, so LEFT reads as TOP.
+    local inst = skinned({ orientation = "VERTICAL", iconPosition = "LEFT", iconSize = 20 })
+    assertEqual(pointAt(inst.frame.icon, 1), "TOP/TOP/0/0")
+    assertEqual(pointAt(inst.frame.bar, 1), "TOPLEFT/TOPLEFT/0/-20")
+    assertEqual(pointAt(inst.frame.bar, 2), "BOTTOMRIGHT/BOTTOMRIGHT/0/0")
+end)
+
+test("VERTICAL remaps iconPosition RIGHT to the BOTTOM of the bar", function()
+    local inst = skinned({ orientation = "VERTICAL", iconPosition = "RIGHT", iconSize = 20 })
+    assertEqual(pointAt(inst.frame.icon, 1), "BOTTOM/BOTTOM/0/0")
+    assertEqual(pointAt(inst.frame.bar, 1), "TOPLEFT/TOPLEFT/0/0")
+    assertEqual(pointAt(inst.frame.bar, 2), "BOTTOMRIGHT/BOTTOMRIGHT/0/20")
+end)
+
+test("iconPosition OFF hides the icon and gives the bar the whole frame", function()
+    local inst = skinned({ orientation = "HORIZONTAL", iconPosition = "OFF", iconSize = 20 })
+    assertFalse(inst.frame.icon:IsShown(), "OFF must hide the icon")
+    assertEqual(inst.frame.bar:GetNumPoints(), 0, "the bar takes SetAllPoints, not an inset")
+end)
+
+test("a zero iconSize hides the icon as surely as OFF does", function()
+    local inst = skinned({ orientation = "HORIZONTAL", iconPosition = "LEFT", iconSize = 0 })
+    assertFalse(inst.frame.icon:IsShown(), "a zero-size icon must not be shown")
+end)
+
+test("iconSize is clamped to the bar's thickness", function()
+    -- The icon sits on the short axis; an oversized one would overflow the bar.
+    local inst = skinned({ orientation = "HORIZONTAL", iconPosition = "LEFT", iconSize = 100 })
+    assertEqual(inst.frame.icon:GetWidth(), 24, "the icon clamps to the bar height")
+    assertEqual(pointAt(inst.frame.bar, 1), "TOPLEFT/TOPLEFT/24/0",
+        "the bar inset must follow the CLAMPED size, not the configured one")
+end)
+
+-- ── Spark ───────────────────────────────────────────────────────────────────
+--
+-- The spark rides the fill edge, and which edge that is depends on orientation
+-- AND reverse fill. Four combinations, all in-game-only without these.
+
+--- Re-skin with a rotation recorder on the spark and return the instance plus
+--- the last rotation applied. The mock's PascalCase fallback makes SetRotation
+--- a silent no-op otherwise, so the vertical 90-degree turn would go unseen.
+local function skinnedSpark(fields, clear)
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local rotation
+    inst.frame.spark.SetRotation = function(_, r) rotation = r end
+    local c = castbarCfg(NS)
+    c.autoSize = false
+    c.width, c.height = 250, 24
+    for k, v in pairs(fields) do c[k] = v end
+    for _, k in ipairs(clear or {}) do c[k] = nil end
+    Castbar:Reskin(inst, true)
+    return inst, rotation
+end
+
+--- The relativePoint of the spark's single anchor — the fill edge it rides.
+local function sparkAnchor(inst)
+    local _point, _relativeTo, relativePoint = inst.frame.spark:GetPoint(1)
+    return relativePoint
+end
+
+test("HORIZONTAL grow RIGHT puts the spark on the bar's RIGHT fill edge", function()
+    local inst = skinnedSpark({ orientation = "HORIZONTAL", growDirection = "RIGHT" })
+    assertEqual(sparkAnchor(inst), "RIGHT")
+end)
+
+test("HORIZONTAL grow LEFT reverses the fill and the spark rides LEFT", function()
+    local inst = skinnedSpark({ orientation = "HORIZONTAL", growDirection = "LEFT" })
+    assertEqual(sparkAnchor(inst), "LEFT")
+end)
+
+test("VERTICAL grow UP puts the spark on the TOP fill edge", function()
+    local inst = skinnedSpark({ orientation = "VERTICAL", growDirection = "UP" })
+    assertEqual(sparkAnchor(inst), "TOP")
+end)
+
+test("VERTICAL grow DOWN reverses the fill and the spark rides BOTTOM", function()
+    local inst = skinnedSpark({ orientation = "VERTICAL", growDirection = "DOWN" })
+    assertEqual(sparkAnchor(inst), "BOTTOM")
+end)
+
+test("the spark is sized across the bar and rotated 90 degrees when vertical", function()
+    local inst, rotation = skinnedSpark({ orientation = "VERTICAL", growDirection = "UP" })
+    local w, h = inst.frame.spark:GetSize()
+    assertEqual(w, 30, "vertical spans the bar thickness (24) plus 6")
+    assertEqual(h, 20)
+    assertNear(rotation, math.pi / 2, 1e-9, "the vertical spark is a horizontal slash")
+end)
+
+test("the spark is unrotated and tall when horizontal", function()
+    local inst, rotation = skinnedSpark({ orientation = "HORIZONTAL", growDirection = "RIGHT" })
+    local w, h = inst.frame.spark:GetSize()
+    assertEqual(w, 20)
+    assertEqual(h, 30, "horizontal spans the bar thickness (24) plus 6")
+    assertEqual(rotation, 0)
+end)
+
+test("showSpark=false hides the spark outright", function()
+    local inst = skinnedSpark({ showSpark = false })
+    assertFalse(inst.frame.spark:IsShown(), "an explicit false must hide the spark")
+end)
+
+test("showSpark defaults to shown when unset", function()
+    -- The guard is `~= false`, so nil means shown.
+    local inst = skinnedSpark({}, { "showSpark" })
+    assertTrue(inst.frame.spark:IsShown(), "only an explicit false hides the spark")
+end)
+
+-- ── Fonts, text anchors and label visibility ────────────────────────────────
+
+test("both labels share the config font, and NONE flags normalize to empty", function()
+    local inst = skinned({ font = "Friz Quadrata TT", fontSize = 16, fontFlags = "NONE" })
+    local _p, size, flags = inst.frame.nameText:GetFont()
+    assertEqual(size, 16)
+    assertEqual(flags, "", "NONE must reach SetFont as the empty string")
+    local _p2, size2 = inst.frame.timeText:GetFont()
+    assertEqual(size2, 16, "the time label shares the name label's font")
+end)
+
+test("absent fontFlags normalize to empty too", function()
+    local inst = skinned({}, { "fontFlags" })
+    local _p, _s, flags = inst.frame.nameText:GetFont()
+    assertEqual(flags, "")
+end)
+
+test("showName / showTime false hide their labels, and only theirs", function()
+    local inst = skinned({ showName = false, showTime = true })
+    assertFalse(inst.frame.nameText:IsShown())
+    assertTrue(inst.frame.timeText:IsShown())
+end)
+
+test("the labels default to shown when the flags are unset", function()
+    local inst = skinned({}, { "showName", "showTime" })
+    assertTrue(inst.frame.nameText:IsShown())
+    assertTrue(inst.frame.timeText:IsShown())
+end)
+
+test("name and time labels anchor per their independent position settings", function()
+    local inst = skinned({ namePosition = "OUTSIDE_LEFT", nameOffsetX = 3, nameOffsetY = -2,
+                           timePosition = "CENTER",       timeOffsetX = 1, timeOffsetY = 4 })
+    assertEqual(inst.frame.nameText:GetJustifyH(), "RIGHT",
+        "OUTSIDE_LEFT grows the text away from the bar's left edge")
+    assertEqual(pointAt(inst.frame.nameText, 1), "RIGHT/LEFT/-1/-2",
+        "the 4px outside inset carries the user's offsetX")
+    assertEqual(inst.frame.timeText:GetJustifyH(), "CENTER")
+    assertEqual(pointAt(inst.frame.timeText, 1), "CENTER/CENTER/1/4")
 end)
 
 -- ── Peel integrity ──────────────────────────────────────────────────────────

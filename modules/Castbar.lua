@@ -716,43 +716,36 @@ local function onUpdate(inst)
     if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
 end
 
---- Apply the secret-bool-driven visuals: alpha-switch the dual bg / bar /
---- border widgets and update the spell-name color, all driven off
---- `current.notInterruptible` via C_CurveUtil.EvaluateColorValueFromBoolean.
---- The curve evaluator accepts a (possibly secret) boolean as its first
---- arg and returns the second or third value accordingly. The result may
---- itself be tainted; we pass it directly to a Blizzard C method
---- (SetAlpha / SetTextColor) without binding to a local.
-function Castbar:ApplyState(inst)
-    local frame = inst.frame
-    if not frame then return end
-    local c        = cfg(inst)
-    local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
-    local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
+-- Fallback name color. Module-level so the per-call path allocates nothing:
+-- ApplyState runs on every cast start / stop, on every interruptibility flip
+-- and once per Reskin, and a fresh { 1, 1, 1, 1 } per call was pure churn.
+local WHITE = { 1, 1, 1, 1 }
 
-    local intBorderShow  = intCfg.borderShow   and 1 or 0
-    local unintBorderShow = unintCfg.borderShow and 1 or 0
+--- Four channels out of a positional color table, defaulted to white. Returns
+--- values rather than a table so the hot path stays allocation-free.
+local function rgba(c)
+    c = c or WHITE
+    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+end
 
-    if not inst.current then
-        -- Preview / no-cast: show interruptible visuals; uninterruptible
-        -- side is fully alpha=0.
-        frame.bgInterruptible:SetAlpha(1)
-        frame.bgUninterruptible:SetAlpha(0)
-        frame.bar.interruptible:SetAlpha(1)
-        frame.bar.uninterruptible:SetAlpha(0)
-        frame.borderInterruptible:SetAlpha(intBorderShow)
-        frame.borderUninterruptible:SetAlpha(0)
-        local n = intCfg.nameTextColor or { 1, 1, 1, 1 }
-        frame.nameText:SetTextColor(n[1] or 1, n[2] or 1, n[3] or 1, n[4] or 1)
-        return
-    end
+--- Preview / no-cast: show interruptible visuals; the uninterruptible side is
+--- fully alpha=0. No curve involved — there is no flag to switch on yet.
+local function applyPreviewVisuals(frame, intCfg, intBorderShow)
+    frame.bgInterruptible:SetAlpha(1)
+    frame.bgUninterruptible:SetAlpha(0)
+    frame.bar.interruptible:SetAlpha(1)
+    frame.bar.uninterruptible:SetAlpha(0)
+    frame.borderInterruptible:SetAlpha(intBorderShow)
+    frame.borderUninterruptible:SetAlpha(0)
+    frame.nameText:SetTextColor(rgba(intCfg.nameTextColor))
+end
 
-    -- Active cast. current.notInterruptible may be plain or secret. Pass
-    -- it (and the per-channel color values) to C_CurveUtil; pipe each
-    -- result straight into a Blizzard C method without binding.
-    local nint = inst.current.notInterruptible
-    local intName  = intCfg.nameTextColor   or { 1, 1, 1, 1 }
-    local unintName = unintCfg.nameTextColor or { 1, 1, 1, 1 }
+--- Active cast. `nint` may be plain or secret. Pass it (and the per-channel
+--- color values) to C_CurveUtil; pipe each result straight into a Blizzard C
+--- method without binding it to a local.
+local function applyLiveVisuals(frame, nint, intCfg, unintCfg, intBorderShow, unintBorderShow)
+    local ur, ug, ub, ua = rgba(unintCfg.nameTextColor)
+    local ir, ig, ib, ia = rgba(intCfg.nameTextColor)
 
     frame.bgInterruptible:SetAlpha(
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
@@ -773,10 +766,35 @@ function Castbar:ApplyState(inst)
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintBorderShow, 0))
 
     frame.nameText:SetTextColor(
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[1] or 1, intName[1] or 1),
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[2] or 1, intName[2] or 1),
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[3] or 1, intName[3] or 1),
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, unintName[4] or 1, intName[4] or 1))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, ur, ir),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, ug, ig),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, ub, ib),
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, ua, ia))
+end
+
+--- Apply the secret-bool-driven visuals: alpha-switch the dual bg / bar /
+--- border widgets and update the spell-name color, all driven off
+--- `current.notInterruptible` via C_CurveUtil.EvaluateColorValueFromBoolean.
+--- The curve evaluator accepts a (possibly secret) boolean as its first
+--- arg and returns the second or third value accordingly. The result may
+--- itself be tainted; we pass it directly to a Blizzard C method
+--- (SetAlpha / SetTextColor) without binding to a local.
+function Castbar:ApplyState(inst)
+    local frame = inst.frame
+    if not frame then return end
+    local c        = cfg(inst)
+    local intCfg   = stateConfig(c, "interruptible",   INT_FALLBACK)
+    local unintCfg = stateConfig(c, "uninterruptible", UNINT_FALLBACK)
+
+    local intBorderShow  = intCfg.borderShow   and 1 or 0
+    local unintBorderShow = unintCfg.borderShow and 1 or 0
+
+    if not inst.current then
+        applyPreviewVisuals(frame, intCfg, intBorderShow)
+        return
+    end
+    applyLiveVisuals(frame, inst.current.notInterruptible,
+        intCfg, unintCfg, intBorderShow, unintBorderShow)
 end
 
 function Castbar:Start(inst, rec)

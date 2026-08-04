@@ -251,17 +251,42 @@ end
 local _cmCache         -- { set | EMPTY_SENTINEL } once populated; nil otherwise
 local _CM_EMPTY = {}   -- sentinel: API returned no data; don't recompute
 
+-- The two C_CooldownViewer entry points the walk needs, or nil when this client
+-- can't answer. Older clients have no C_CooldownViewer at all, and the Enum the
+-- category walk iterates arrived with it.
+local function cooldownViewerApi()
+    if not C_CooldownViewer then return nil end
+    local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
+    local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
+    if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
+        return nil
+    end
+    return getCategorySet, getInfo
+end
+
+-- Union one category's spellIDs into `set`; returns whether it contributed any.
+-- Both pcalls are load-bearing: C_CooldownViewer throws on some category values
+-- in some client builds, and one bad category must not abort the whole walk.
+local function collectCategorySpells(getCategorySet, getInfo, category, set)
+    local ok, ids = pcall(getCategorySet, category)
+    if not (ok and type(ids) == "table") then return false end
+    local added = false
+    for _, cdID in ipairs(ids) do
+        local ok2, info = pcall(getInfo, cdID)
+        if ok2 and type(info) == "table" and info.spellID then
+            set[info.spellID] = true
+            added = true
+        end
+    end
+    return added
+end
+
 local function getCooldownManagerSpellSet()
     if _cmCache == _CM_EMPTY then return nil end
     if _cmCache then return _cmCache end
 
-    if not C_CooldownViewer then
-        _cmCache = _CM_EMPTY
-        return nil
-    end
-    local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
-    local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
-    if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
+    local getCategorySet, getInfo = cooldownViewerApi()
+    if not getCategorySet then
         _cmCache = _CM_EMPTY
         return nil
     end
@@ -269,15 +294,10 @@ local function getCooldownManagerSpellSet()
     local set = {}
     local seenAny = false
     for _, category in pairs(Enum.CooldownViewerCategory) do
-        local ok, ids = pcall(getCategorySet, category)
-        if ok and type(ids) == "table" then
-            for _, cdID in ipairs(ids) do
-                local ok2, info = pcall(getInfo, cdID)
-                if ok2 and type(info) == "table" and info.spellID then
-                    set[info.spellID] = true
-                    seenAny = true
-                end
-            end
+        -- Deliberately NOT `seenAny = seenAny or collect(...)`: that
+        -- short-circuits and stops walking once anything has been found.
+        if collectCategorySpells(getCategorySet, getInfo, category, set) then
+            seenAny = true
         end
     end
 
@@ -343,6 +363,82 @@ end
 -- StaticPopups (Add spell / Reset to defaults)
 -- ---------------------------------------------------------------------------
 
+-- The Add-spell accept path, as file-locals. A StaticPopup handler is written
+-- inline as a table field, so nothing in it can be reached — by a reader or by
+-- the harness — until it is lifted out here.
+
+local function notify(msg)
+    if NS.Util and NS.Util.print then NS.Util.print(msg) end
+end
+
+-- The player's CURRENT class file token, or nil. `UnitClass and
+-- UnitClass("player")` would truncate to UnitClass's FIRST return (the
+-- localized name); the file token we need is the second.
+local function playerClassFile()
+    if not UnitClass then return nil end
+    local _, cf = UnitClass("player")
+    return cf
+end
+
+-- Is the editor's selected (class, spec) the player's own live pair?
+--
+-- Cooldown-manager gating only applies when it is. The C_CooldownViewer API has
+-- no class/spec parameter — it returns the set for the LOGGED-IN player's
+-- currently-active spec. So a Mage editing HUNTER/BEASTMASTERY would otherwise
+-- be blocked from adding any Hunter spell. When the pair doesn't match, the gate
+-- is DROPPED and the add falls through to the lenient validateSpellInput path
+-- (which already confirmed the spell exists in the spell DB).
+local function editorIsActiveSpec()
+    local playerClass  = playerClassFile()
+    local playerSpecID = NS.Util.PlayerSpecID()
+    if playerClass and selectedClass and playerClass == selectedClass
+       and playerSpecID and selectedSpec and playerSpecID == selectedSpec then
+        return true
+    end
+    if NS.State and NS.State.debug then
+        NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
+            :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
+                    tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
+    end
+    return false
+end
+
+-- True when the Blizzard Cooldown Manager does not track this spell for the
+-- player's active spec, so the add should be refused. An UNAVAILABLE API is
+-- lenient by design: no set means no opinion, never a rejection.
+local function cooldownManagerRejects(id, resolvedName)
+    local cmSet = getCooldownManagerSpellSet()
+    if not cmSet then
+        if NS.State and NS.State.debug then
+            NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+        end
+        return false
+    end
+    if cmSet[id] then return false end
+    local name = resolvedName or getSpellName(id) or tostring(id)
+    notify(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+    return true
+end
+
+-- Mutator path: lazy-create the per-spec table on first add so a spec the user
+-- has never customized gains a fresh list rather than failing silently because
+-- GetSpellList returned nil. A spell already in the list is re-enabled IN PLACE
+-- rather than appended — the list is the render order, and a second entry for
+-- one spellID would give IconGrid two buttons for one cooldown.
+local function addOrEnableSpell(id)
+    local list = ensureActiveList()
+    if not list then return end
+    for _, e in ipairs(list) do
+        if e.spellID == id then
+            e.enabled = true
+            commitSoon()
+            return
+        end
+    end
+    list[#list + 1] = { spellID = id, category = "other", enabled = true }
+    commitSoon()
+end
+
 StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
     text         = L["Spell ID or name"],
     button1      = L["OK"],
@@ -362,64 +458,11 @@ StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
         local input = edit:GetText()
         local id, resolvedName = validateSpellInput(input)
         if not id then
-            if NS.Util and NS.Util.print then
-                NS.Util.print(L["Invalid spell"] .. ": " .. tostring(input))
-            end
+            notify(L["Invalid spell"] .. ": " .. tostring(input))
             return
         end
-
-        -- Cooldown-manager gating only applies when the user is editing
-        -- their OWN class+spec list. The C_CooldownViewer API has no
-        -- class/spec parameter — it returns the set for the LOGGED-IN
-        -- player's currently-active spec. So a Mage editing
-        -- HUNTER/BEASTMASTERY would otherwise be blocked from adding any
-        -- Hunter spell. Drop the gate when the editor's selected pair
-        -- doesn't match the player's live pair; fall through to the
-        -- lenient validateSpellInput path (which already confirmed the
-        -- spell exists in the spell DB).
-        local playerClass
-        if UnitClass then
-            local _, cf = UnitClass("player")
-            playerClass = cf
-        end
-        local playerSpecID = NS.Util.PlayerSpecID()
-        local editorIsActiveSpec =
-            playerClass and selectedClass and playerClass == selectedClass
-            and playerSpecID and selectedSpec and playerSpecID == selectedSpec
-
-        if editorIsActiveSpec then
-            local cmSet = getCooldownManagerSpellSet()
-            if cmSet then
-                if not cmSet[id] then
-                    local name = resolvedName or getSpellName(id) or tostring(id)
-                    if NS.Util and NS.Util.print then
-                        NS.Util.print(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
-                    end
-                    return
-                end
-            elseif NS.State and NS.State.debug then
-                NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
-            end
-        elseif NS.State and NS.State.debug then
-            NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
-                :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
-                        tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
-        end
-
-        -- Mutator path: lazy-create the per-spec table on first add so a
-        -- spec the user has never customized gains a fresh list rather
-        -- than failing silently because GetSpellList returned nil.
-        local list = ensureActiveList()
-        if not list then return end
-        for _, e in ipairs(list) do
-            if e.spellID == id then
-                e.enabled = true
-                commitSoon()
-                return
-            end
-        end
-        list[#list + 1] = { spellID = id, category = "other", enabled = true }
-        commitSoon()
+        if editorIsActiveSpec() and cooldownManagerRejects(id, resolvedName) then return end
+        addOrEnableSpell(id)
     end,
     EditBoxOnEnterPressed = function(self)
         local parent = self:GetParent()
@@ -503,15 +546,13 @@ local function makeRowIconBtn(AceGUI, opts)
     return btn
 end
 
-local function buildRow(AceGUI, list, index)
-    local entry = list[index]
-    if not entry then return end
+-- One builder per row widget, below. buildRow itself then reads as the column
+-- order it renders — and AddChild ORDER *is* that column order, spacer
+-- included, so the sequence of calls at the bottom is the layout.
 
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
-    row:SetHeight(28)
-
+-- The spell icon, plus the two tooltip closures the name label reuses so
+-- hovering either one shows the same spell tooltip.
+local function rowSpellIcon(AceGUI, entry)
     local icon = AceGUI:Create("Icon")
     icon:SetImage(getSpellIcon(entry.spellID) or 134400)
     icon:SetImageSize(20, 20)
@@ -530,8 +571,10 @@ local function buildRow(AceGUI, list, index)
     local function hideSpellTooltip() GameTooltip:Hide() end
     icon:SetCallback("OnEnter", showSpellTooltip)
     icon:SetCallback("OnLeave", hideSpellTooltip)
-    row:AddChild(icon)
+    return icon, showSpellTooltip, hideSpellTooltip
+end
 
+local function rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip)
     local label = AceGUI:Create("Label")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
     label:SetText(name)
@@ -540,13 +583,17 @@ local function buildRow(AceGUI, list, index)
     -- space on the right of each row — long spell names like
     -- "Counterspell" or "Shockwave (talented)" no longer truncate.
     label:SetWidth(238)
-    row:AddChild(label)
     if label.frame and label.frame.HookScript then
         label.frame:EnableMouse(true)
         label.frame:HookScript("OnEnter", function() showSpellTooltip(label) end)
         label.frame:HookScript("OnLeave", hideSpellTooltip)
     end
+    return label
+end
 
+-- The enable checkbox. It desaturates the icon it was handed, which is why the
+-- icon has to be built first.
+local function rowEnableCheck(AceGUI, entry, icon)
     local check = AceGUI:Create("CheckBox")
     check:SetLabel("")
     check:SetValue(entry.enabled ~= false)
@@ -561,19 +608,21 @@ local function buildRow(AceGUI, list, index)
         end
         commitSoon()
     end)
-    row:AddChild(check)
+    return check
+end
 
-    -- "Known to the player?" status glyph. Reads Compat.IsSpellAvailable
-    -- (the same predicate IconGrid:BuildActiveList and Cooldowns:PollSpell
-    -- use to decide whether to render the spell), so the green check ↔
-    -- red X toggle is the user-facing reflection of "this row will / will
-    -- not appear on the icon grid right now."
-    --
-    -- The check is global to the logged-in player, not scoped to the
-    -- selected (class, spec) in the dropdown — so when the user is
-    -- browsing another class's spec list, every spell will read as red,
-    -- which is the correct fact ("you can't cast any of these"). The
-    -- glyph is informational only; it doesn't gate enable/disable.
+-- "Known to the player?" status glyph. Reads Compat.IsSpellAvailable
+-- (the same predicate IconGrid:BuildActiveList and Cooldowns:PollSpell
+-- use to decide whether to render the spell), so the green check ↔
+-- red X toggle is the user-facing reflection of "this row will / will
+-- not appear on the icon grid right now."
+--
+-- The check is global to the logged-in player, not scoped to the
+-- selected (class, spec) in the dropdown — so when the user is
+-- browsing another class's spec list, every spell will read as red,
+-- which is the correct fact ("you can't cast any of these"). The
+-- glyph is informational only; it doesn't gate enable/disable.
+local function rowKnownGlyph(AceGUI, entry)
     local known = Compat.IsSpellAvailable
         and Compat.IsSpellAvailable(entry.spellID) or false
     local statusIcon = AceGUI:Create("Icon")
@@ -595,26 +644,43 @@ local function buildRow(AceGUI, list, index)
         GameTooltip:Show()
     end)
     statusIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    row:AddChild(statusIcon)
+    return statusIcon
+end
 
-    -- Empty-text Label as a fixed-width spacer — the "increase spacing after
-    -- the icon" half. AceGUI's Flow layout has no inter-widget gap of its
-    -- own, so the canonical way to inject horizontal whitespace between two
-    -- adjacent widgets is an invisible filler. Width covers the lost
-    -- padding from the narrowed icon box plus the requested extra gap
-    -- before the category dropdown.
-    local statusSpacer = AceGUI:Create("Label")
-    statusSpacer:SetText("")
-    statusSpacer:SetWidth(14)
-    row:AddChild(statusSpacer)
+-- Empty-text Label as a fixed-width spacer — the "increase spacing after
+-- the icon" half. AceGUI's Flow layout has no inter-widget gap of its
+-- own, so the canonical way to inject horizontal whitespace between two
+-- adjacent widgets is an invisible filler. Width covers the lost
+-- padding from the narrowed icon box plus the requested extra gap
+-- before the category dropdown.
+local function rowSpacer(AceGUI, width)
+    local spacer = AceGUI:Create("Label")
+    spacer:SetText("")
+    spacer:SetWidth(width)
+    return spacer
+end
 
-    local dd = AceGUI:Create("Dropdown")
-    local items, order = {}, {}
-    for i, cat in ipairs(CATEGORIES) do
-        items[cat] = L[cat] or cat
-        order[i]   = cat
+-- The dropdown's items/order are a constant — the closed CATEGORIES set, keyed
+-- through the locale table — so they are built once on first use rather than
+-- twice per row per refresh. Built lazily rather than at file load because the
+-- original resolved L[cat] at row-build time. AceGUI's Dropdown only reads the
+-- pair it is handed, so one shared copy is safe.
+local CATEGORY_ITEMS, CATEGORY_ORDER
+
+local function categoryList()
+    if not CATEGORY_ITEMS then
+        CATEGORY_ITEMS, CATEGORY_ORDER = {}, {}
+        for i, cat in ipairs(CATEGORIES) do
+            CATEGORY_ITEMS[cat] = L[cat] or cat
+            CATEGORY_ORDER[i]   = cat
+        end
     end
-    dd:SetList(items, order)
+    return CATEGORY_ITEMS, CATEGORY_ORDER
+end
+
+local function rowCategoryDropdown(AceGUI, entry)
+    local dd = AceGUI:Create("Dropdown")
+    dd:SetList(categoryList())
     dd:SetValue(entry.category or "other")
     dd:SetWidth(120)
     dd:SetCallback("OnValueChanged", function(_, _, value)
@@ -629,33 +695,49 @@ local function buildRow(AceGUI, list, index)
         end)
         dd.frame:HookScript("OnLeave", function() GameTooltip:Hide() end)
     end
-    row:AddChild(dd)
+    return dd
+end
 
-    local upBtn = makeRowIconBtn(AceGUI, {
-        image    = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-Up]],
-        tooltip  = L["Move up"],
-        disabled = index == 1,
+-- Move up / Move down are the same button with the sign flipped, so they are
+-- one spec each and one builder. Module-level: the two atEdge closures are
+-- built once at file load, not per row.
+--
+-- `atEdge` drives BOTH the disabled flag and the click guard. At build time
+-- index is always within the list (buildRow returned early otherwise), so
+-- `index <= 1` and `index == 1` agree there; the click needs the inequality
+-- because the callback closes over `index` and stays live until the next
+-- rebuild — a stale click after a removal must not swap with nil.
+local MOVE_SPECS = {
+    {
+        image      = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-Up]],
+        tooltipKey = "Move up",
+        delta      = -1,
+        atEdge     = function(index) return index <= 1 end,
+    },
+    {
+        image      = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up]],
+        tooltipKey = "Move down",
+        delta      = 1,
+        atEdge     = function(index, count) return index >= count end,
+    },
+}
+
+local function rowMoveButton(AceGUI, spec, list, index)
+    return makeRowIconBtn(AceGUI, {
+        image    = spec.image,
+        tooltip  = L[spec.tooltipKey],
+        disabled = spec.atEdge(index, #list),
         onClick  = function()
-            if index <= 1 then return end
-            list[index], list[index - 1] = list[index - 1], list[index]
+            if spec.atEdge(index, #list) then return end
+            local other = index + spec.delta
+            list[index], list[other] = list[other], list[index]
             commitSoon()
         end,
     })
-    row:AddChild(upBtn)
+end
 
-    local downBtn = makeRowIconBtn(AceGUI, {
-        image    = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up]],
-        tooltip  = L["Move down"],
-        disabled = index == #list,
-        onClick  = function()
-            if index >= #list then return end
-            list[index], list[index + 1] = list[index + 1], list[index]
-            commitSoon()
-        end,
-    })
-    row:AddChild(downBtn)
-
-    local rmBtn = makeRowIconBtn(AceGUI, {
+local function rowRemoveButton(AceGUI, list, index)
+    return makeRowIconBtn(AceGUI, {
         atlas   = "transmog-icon-remove",
         tooltip = L["Remove"],
         onClick = function()
@@ -667,7 +749,28 @@ local function buildRow(AceGUI, list, index)
             commitSoon()
         end,
     })
-    row:AddChild(rmBtn)
+end
+
+local function buildRow(AceGUI, list, index)
+    local entry = list[index]
+    if not entry then return end
+
+    local row = AceGUI:Create("SimpleGroup")
+    row:SetLayout("Flow")
+    row:SetFullWidth(true)
+    row:SetHeight(28)
+
+    local icon, showSpellTooltip, hideSpellTooltip = rowSpellIcon(AceGUI, entry)
+    row:AddChild(icon)
+    row:AddChild(rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip))
+    row:AddChild(rowEnableCheck(AceGUI, entry, icon))
+    row:AddChild(rowKnownGlyph(AceGUI, entry))
+    row:AddChild(rowSpacer(AceGUI, 14))
+    row:AddChild(rowCategoryDropdown(AceGUI, entry))
+    for _, spec in ipairs(MOVE_SPECS) do
+        row:AddChild(rowMoveButton(AceGUI, spec, list, index))
+    end
+    row:AddChild(rowRemoveButton(AceGUI, list, index))
 
     return row
 end
@@ -851,26 +954,21 @@ local function buildSpellsHeader(AceGUI, parent)
     headerWidgets[#headerWidgets + 1] = addBtn
 end
 
-function Spells:RefreshRows()
-    if not panel or not panel:IsShown() then return end
-    if rebuildScheduled then return end
-    rebuildScheduled = true
-
-    local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
-    if not AceGUI then
-        rebuildScheduled = false
-        if not fallbackLabel then
-            fallbackLabel = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            fallbackLabel:SetPoint("CENTER", body, "CENTER", 0, 0)
-            fallbackLabel:SetText("AceGUI not loaded")
-        end
-        fallbackLabel:Show()
-        return
+-- The AceGUI-is-absent arm: a plain FontString saying so, built once and
+-- re-shown thereafter.
+local function showAceGUIMissing()
+    if not fallbackLabel then
+        fallbackLabel = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fallbackLabel:SetPoint("CENTER", body, "CENTER", 0, 0)
+        fallbackLabel:SetText("AceGUI not loaded")
     end
+    fallbackLabel:Show()
+end
 
-    releaseAceGUITree()
-
-    local classes = sortedKeys(NS.DefaultSpells)
+-- Default the class/spec selection so the panel always has something to render.
+-- Prefers the player's own class when the defaults ship it, falling back to the
+-- first sorted class otherwise.
+local function ensureSelection(classes)
     if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
         local _, classFile = UnitClass("player")
         if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
@@ -882,16 +980,16 @@ function Spells:RefreshRows()
     if selectedClass and not selectedSpec then
         selectedSpec = specOrder(selectedClass)[1]
     end
+end
 
-    buildSpellsHeader(AceGUI, body)
-
-    container = AceGUI:Create("ScrollFrame")
-    container:SetLayout("List")
-    container.frame:SetParent(body)
-    container.frame:ClearAllPoints()
-    container.frame:SetPoint("TOPLEFT",     body, "TOPLEFT",     16, -56)
-    container.frame:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -16, 16)
-    container.frame:Show()
+local function buildScrollContainer(AceGUI)
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetLayout("List")
+    scroll.frame:SetParent(body)
+    scroll.frame:ClearAllPoints()
+    scroll.frame:SetPoint("TOPLEFT",     body, "TOPLEFT",     16, -56)
+    scroll.frame:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -16, 16)
+    scroll.frame:Show()
 
     -- Always render the scrollbar so this panel's right-edge gutter
     -- matches the schema-driven panels (General / Icons / Cast bar)
@@ -900,21 +998,48 @@ function Spells:RefreshRows()
     -- stays clean for any other addon.
     local PanelHelpers = NS.Settings and NS.Settings.Helpers
     if PanelHelpers and PanelHelpers.PatchAlwaysShowScrollbar then
-        PanelHelpers.PatchAlwaysShowScrollbar(container)
+        PanelHelpers.PatchAlwaysShowScrollbar(scroll)
     end
+    return scroll
+end
 
-    local list = getActiveList()
+local function fillRows(AceGUI, scroll, list)
     if not list or #list == 0 then
         local lbl = AceGUI:Create("Label")
         lbl:SetText("No spells tracked. Click " .. L["Add spell..."] .. " or " .. L["Defaults"] .. ".")
         lbl:SetFullWidth(true)
-        container:AddChild(lbl)
-    else
-        for i = 1, #list do
-            local row = buildRow(AceGUI, list, i)
-            if row then container:AddChild(row) end
-        end
+        scroll:AddChild(lbl)
+        return
     end
+    for i = 1, #list do
+        local row = buildRow(AceGUI, list, i)
+        if row then scroll:AddChild(row) end
+    end
+end
+
+function Spells:RefreshRows()
+    if not panel or not panel:IsShown() then return end
+    if rebuildScheduled then return end
+    rebuildScheduled = true
+
+    local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
+    if not AceGUI then
+        -- The flag is cleared on EVERY exit, this one included: leave it set
+        -- and the panel silently never refreshes again for the rest of the
+        -- session.
+        rebuildScheduled = false
+        showAceGUIMissing()
+        return
+    end
+
+    -- Release before creating anything new, or the AceGUI pool leaks a whole
+    -- widget tree per refresh.
+    releaseAceGUITree()
+
+    ensureSelection(sortedKeys(NS.DefaultSpells))
+    buildSpellsHeader(AceGUI, body)
+    container = buildScrollContainer(AceGUI)
+    fillRows(AceGUI, container, getActiveList())
 
     rebuildScheduled = false
 end
