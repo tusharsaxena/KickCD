@@ -273,6 +273,20 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - a record survives a client with no duration API at all
 - isChannel is a real boolean on both record paths
 
+### test_compat_debug.lua (11)
+
+- DebugInterrupt bails with the unit name when the unit does not exist
+- DebugInterrupt defaults the unit to target
+- DebugInterrupt's header quotes the unit name and reports canAttack
+- DebugInterrupt renders a secret-tainted unit name as <secret>
+- DebugInterrupt reports 'not casting' / 'not channeling' when nothing is cast
+- DebugInterrupt dumps all nine UnitCastingInfo positions, in order
+- DebugInterrupt dumps eight UnitChannelInfo positions — notInterruptible at 7
+- DebugInterrupt renders a secret notInterruptible without touching tostring
+- DebugInterrupt renders a nil position as the literal nil
+- DebugInterrupt skips the casting block entirely when the API is absent
+- DebugInterrupt closes with the addon's own visibility and glow decisions
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -738,6 +752,16 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 
+### test_opensettings.lua (7)
+
+- OpenSettings refuses in combat and clears the retry counter
+- OpenSettings also reads combat off InCombatLockdown
+- OpenSettings opens the registered category and clears the retry counter
+- OpenSettings defers with a notice when the Settings layer has not registered
+- OpenSettings retries are bounded, then fall through to the plain notice
+- OpenSettings prints the plain notice when the Settings API itself is absent
+- OpenSettings' deferred retry re-enters the same function
+
 ### test_perfsetup.lua (25)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
@@ -796,6 +820,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
+| test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 21 |
 | test_icongrid_layout.lua | 8 |
@@ -823,7 +848,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
+| test_opensettings.lua | 7 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **648** |
+| **Total** | **666** |

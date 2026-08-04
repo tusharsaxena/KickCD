@@ -730,41 +730,60 @@ local function expandMainCategory(main)
     end)
 end
 
-function NS:OpenSettings(input)
-    -- Settings panel registration touches protected frames; opening it in
-    -- combat would taint the dropdown / category tree. Gate here so every
-    -- entry point (slash, deferred retry, future callers) shares the check.
-    local inCombat = (self.State and self.State.inCombat)
+-- Settings panel registration touches protected frames; opening it in combat
+-- would taint the dropdown / category tree. Read the state both ways so every
+-- entry point (slash, deferred retry, future callers) shares one check.
+local function inCombat(self)
+    return (self.State and self.State.inCombat)
         or (_G.InCombatLockdown and _G.InCombatLockdown())
-    if inCombat then
+end
+
+-- Gray "notice" styling: the body is de-emphasized (this is expected, not an
+-- error) while Util.print keeps the [KCD] tag full-color.
+local function combatNotice(self)
+    local msg = (self.L and self.L["Cannot open settings during combat."])
+        or "cannot open settings during combat — Blizzard's category-switch is protected"
+    return (NS.GRAY or "") .. msg .. "|r"
+end
+
+-- Open the registered parent category, clearing the retry counter so a later
+-- racy login starts from zero again. Returns true once it actually opened;
+-- false means settings/Panel.lua has not assigned Settings.main yet.
+local function openRegisteredPanel(self)
+    local main = self.Settings and self.Settings.main
+    if not (main and main.GetID) then return false end
+    self._openRetries = nil
+    if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
+    Settings.OpenToCategory(main:GetID())
+    expandMainCategory(main)
+    return true
+end
+
+-- Settings layer not registered yet. Defer rather than printing "not
+-- registered" — a /kcd config the moment after login can race the
+-- PLAYER_LOGIN-deferred RegisterPanel. Returns true when a retry was armed;
+-- false once the bound is exhausted (or there is no timer to arm it with), so
+-- the caller falls through to the plain notice.
+local function scheduleOpenRetry(self, input)
+    self._openRetries = (self._openRetries or 0) + 1
+    if self._openRetries > OPEN_SETTINGS_MAX_RETRIES then return false end
+    if not (C_Timer and C_Timer.After) then return false end
+    p(self, "Settings still loading, opening shortly…")
+    C_Timer.After(OPEN_SETTINGS_RETRY_DELAY, function()
+        self:OpenSettings(input)
+    end)
+    return true
+end
+
+function NS:OpenSettings(input)
+    if inCombat(self) then
         self._openRetries = nil
-        -- Gray "notice" styling: the body is de-emphasized (this is expected,
-        -- not an error) while Util.print keeps the [KCD] tag full-color.
-        local msg = (self.L and self.L["Cannot open settings during combat."])
-            or "cannot open settings during combat — Blizzard's category-switch is protected"
-        p(self, (NS.GRAY or "") .. msg .. "|r")
+        p(self, combatNotice(self))
         return
     end
     if Settings and Settings.OpenToCategory then
-        local main = self.Settings and self.Settings.main
-        if main and main.GetID then
-            self._openRetries = nil
-            if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
-            Settings.OpenToCategory(main:GetID())
-            expandMainCategory(main)
-            return
-        end
-        -- Settings layer not registered yet. Defer rather than printing
-        -- "not registered" — a /kcd config the moment after login can
-        -- race the PLAYER_LOGIN-deferred RegisterPanel.
-        self._openRetries = (self._openRetries or 0) + 1
-        if self._openRetries <= OPEN_SETTINGS_MAX_RETRIES and C_Timer and C_Timer.After then
-            p(self, "Settings still loading, opening shortly…")
-            C_Timer.After(OPEN_SETTINGS_RETRY_DELAY, function()
-                self:OpenSettings(input)
-            end)
-            return
-        end
+        if openRegisteredPanel(self) then return end
+        if scheduleOpenRetry(self, input) then return end
         self._openRetries = nil
     end
     p(self, "Settings not yet registered")

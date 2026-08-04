@@ -276,6 +276,34 @@ local function ensureSpecNameMaps()
     specMapsReady = buildSpecNameMaps()
 end
 
+-- ── ResolveSpecID's three lookup tiers ──────────────────────────────────────
+-- One file-local per tier so each alias chain stands alone. The ORDER they are
+-- called in is the behavior (see ResolveSpecID's own comment); each returns nil
+-- to mean "not my answer, keep looking".
+
+-- Class-scoped tier: the only one that can resolve a name shared across
+-- classes (Frost, Holy, Protection, Restoration).
+local function resolveByClass(classFile, token, input, folded)
+    local byClass = classFile and specNameMapByClass[NS.Util.NormalizeClassToken(classFile)]
+    if not byClass then return nil end
+    return byClass[token] or byClass[input] or byClass[folded]
+end
+
+-- The English token from Const.SPEC.
+local function resolveByConstToken(token)
+    local Const = NS.Const
+    if not (Const and Const.SPEC) then return nil end
+    return Const.SPEC[token]
+end
+
+-- The global localized map, built for the client's own language.
+local function resolveByLocalizedName(token, input, folded)
+    local hit = specNameMap[token] or specNameMap[input] or specNameMap[folded]
+    -- `false` marks an ambiguous name with no class hint — refuse it.
+    if hit then return hit end
+    return nil
+end
+
 --- Resolve user- or profile-supplied spec input to a numeric specID.
 --- Accepts, in order of preference: a number, a numeric string, a localized
 --- spec name in the client's own language, and the English token used by
@@ -300,25 +328,12 @@ function Util.ResolveSpecID(input, classFile)
     local folded = asciiFold(input)
 
     -- Class-scoped first: it is the only tier that can resolve a shared name.
-    local byClass = classFile and specNameMapByClass[NS.Util.NormalizeClassToken(classFile)]
-    if byClass then
-        local hit = byClass[token] or byClass[input] or byClass[folded]
-        if hit then return hit end
-    end
-
-    -- Then the English token from Const.SPEC. Ahead of the global localized
+    -- Then the English token from Const.SPEC, ahead of the global localized
     -- map so an English-speaking user's input keeps resolving identically no
     -- matter what locale the client is running.
-    local Const = NS.Const
-    if Const and Const.SPEC then
-        local hit = Const.SPEC[token]
-        if hit then return hit end
-    end
-
-    local hit = specNameMap[token] or specNameMap[input] or specNameMap[folded]
-    -- `false` marks an ambiguous name with no class hint — refuse it.
-    if hit then return hit end
-    return nil
+    return resolveByClass(classFile, token, input, folded)
+        or resolveByConstToken(token)
+        or resolveByLocalizedName(token, input, folded)
 end
 
 --- Localized spec name for UI display ("Élémentaire" on a frFR client).
