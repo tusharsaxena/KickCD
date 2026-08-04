@@ -40,7 +40,8 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:10-43`); `docs/testing.md:7` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
 | **git** | any recent | The repo, obviously — but also a **test dependency**: `tests/test_vendor_sync.lua:53` shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag, and `docs/testing.md:51-54` documents the four `diff -r` vendored-copy checks. |
 | **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:169` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in `docs/testing.md:51-54` is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
-| **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (aurformance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
+| **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
+| **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
 `file` is worth having for one documented troubleshooting path — `docs/testing.md:67` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
@@ -101,8 +102,9 @@ and open a PR with only the Development group installed.
 - **Packaging is a hosted service, not local software.** `.pkgmeta` is consumed by the
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
   `ignore:` list (`.pkgmeta:1-12`) and declares **no externals**, because the libraries are
-  vendored. There is nothing to install and no packaging script to run locally — the repo contains
-  **zero** scripts of any kind: no `.sh`, `.py`, `.ps1`, `Makefile` or CI workflow.
+  vendored. There is nothing to install and no packaging script to run locally — the repo's only
+  script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
+  above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.
 - **Asset tooling: none.** `media/fonts/`, `media/logos/` and `media/screenshots/` hold committed
   binaries (JetBrains Mono under OFL, the logo, the screenshots). They are **shipped assets, not
   build outputs** — nothing in this repo regenerates them, so no image or font toolchain is a
