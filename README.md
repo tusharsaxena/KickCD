@@ -194,7 +194,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 
 KickCD bundles its libraries in `libs/` rather than fetching them at build time, so they ship inside the addon zip.
 
-*   Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.6.3 (MIT). The shared Ka0s addon library — KickCD takes five of its modules: Core (the secret-safe printer), DebugLog (the on-screen console), Slash (the `/kcd` dispatcher and schema CLI), Options (the settings panel) and Perf (the A/B capture harness). Its license travels with the code at `libs/LibKa0s/LICENSE`.
+*   Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.7.0 (MIT). The shared Ka0s addon library — KickCD takes five of its modules: Core (the secret-safe printer), DebugLog (the on-screen console), Slash (the `/kcd` dispatcher and schema CLI), Options (the settings panel) and Perf (the A/B capture harness). Its license travels with the code at `libs/LibKa0s/LICENSE`.
 *   Also bundled: Ace3 (AceAddon, AceConfig, AceConsole, AceDB, AceDBOptions, AceEvent, AceGUI and the SharedMedia widgets), CallbackHandler-1.0, LibCustomGlow-1.0, LibSharedMedia-3.0 and LibStub.
 
 Whenever the vendored copy is refreshed, the LibKa0s version named above moves with it — that line is the answer to "which LibKa0s does this build carry?", so nobody has to grep minors out of `libs/LibKa0s/*.lua`.
