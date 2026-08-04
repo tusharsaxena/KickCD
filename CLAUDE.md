@@ -69,3 +69,6 @@ This root file is a stub (per standard documentation-§2). Read these before tou
 - In-game: [docs/smoke-tests.md](docs/smoke-tests.md).
 
 Run both before every commit.
+
+- Toolchain install (WSL2/Ubuntu commands that work, with evidence per entry): [DEPENDENCIES.md](DEPENDENCIES.md). Keep it current in the same change that adds a script, an import or a tool.
+- **Complexity report — release only, never a commit gate.** Regenerate `docs/complexity.md` with exactly `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` and **read the diff** in the same change that bumps the version, before the tag; record anything newly over a threshold in its `## Watch list`. Standard performance-§10; the how and why are in [docs/testing.md](docs/testing.md#complexity-report--a-release-checkpoint).
