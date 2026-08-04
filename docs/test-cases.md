@@ -689,6 +689,34 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
+### test_settings_spells_editor.lua (25)
+
+- the Add-spell popup appends a validated spell to the selected list
+- input the spell DB does not resolve is refused and nothing is added
+- re-adding a spell already in the list re-enables it in place
+- adding to a spec the user has never customized lazy-creates its list
+- a spell the Cooldown Manager does not track for the player's own spec is refused
+- a spell the Cooldown Manager does track passes the gate
+- the gate is DROPPED when the editor is not on the player's live spec
+- an absent C_CooldownViewer falls through leniently rather than refusing
+- an API that answers nothing is remembered as empty and never re-walked
+- a category the client throws on is survived rather than aborting the walk
+- a spell row carries its nine widgets in the visual column order
+- the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
+- the row checkbox writes the entry's enabled flag as a real boolean
+- a disabled row renders its spell icon and checkbox from the stored flag
+- the move buttons are disabled at the list edges, not merely inert
+- Move up swaps the entry with the one above it
+- Move down swaps the entry with the one below it
+- Remove deletes exactly the row's entry
+- the category dropdown writes the entry's category
+- RefreshRows builds the header, the scroll container and one row per entry
+- an empty list renders the guidance label instead of rows
+- RefreshRows refuses to run against a hidden panel
+- a rebuild releases the previous widget tree before building a new one
+- the selection cascade falls back to the first sorted class the defaults know
+- a stale move click after a rebuild cannot run off the end of the list
+
 ### test_settings_widgets.lua (20)
 
 - the settings helpers are published for testing
@@ -895,6 +923,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
+| test_settings_spells_editor.lua | 25 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 28 |
 | test_settings_refreshers.lua | 5 |
@@ -906,4 +935,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **712** |
+| **Total** | **737** |

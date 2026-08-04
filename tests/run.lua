@@ -177,6 +177,7 @@ local SUITES = {
     "test_cooldowns_gates.lua",
     "test_settings_log.lua",
     "test_settings_spells.lua",
+    "test_settings_spells_editor.lua",
     "test_settings_widgets.lua",
     "test_options_panel.lua",
     "test_settings_refreshers.lua",
