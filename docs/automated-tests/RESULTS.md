@@ -16,23 +16,63 @@ which is never the same as a pass.
 | [`20260804-214315`](20260804-214315/) | 1.2.1 | 0/0 | 32 | 737/737 | skip | 15430 | 2051 | 6.5 | 2.1 | 0 | 0 | **green** |
 | [`20260804-182144`](20260804-182144/) | 1.2.1 | 0/0 | 32 | 648/648 | skip | 14283 | 1804 | 6.8 | 2.3 | 36 | 20 | **green** |
 
+**Reading the `Max CCN` column:** the `0` on `20260804-214315` is an instrument fault, not a
+measurement — see [Complexity watch list](#complexity-watch-list) below.
+
 ## Test suite
 
-737 cases, up from 648 on the previous run — the +89 are characterization cases written against the CCN refactors before those refactors moved a line, which is why the two runs agree on behavior while the code underneath changed shape. Note the harness prints `N passed, N failed` without a total; the runner parses both shapes since kit revision 2, after the first adoption sweep recorded 0/0 here and still called it green. The generated inventory `test-cases.md` in each bundle is the authority on what exists at that point; the README badge tracks the same number.
+737 cases, unmoved since [`20260804-214315`](20260804-214315/) — that run's `tests.txt` and
+`test-cases.md` are byte-identical to the newest run's, so not one case was added or renamed between
+the two. The count itself is recent: it rose from 648 on `20260804-182144`, and the +89 are the
+characterization cases written against the CCN refactors before those refactors moved a line, which
+is why runs on either side of the refactor agree on behavior while the code underneath changed shape.
+Coverage is the addon's own source and its `tests/` harness; anything that only exists in a live
+client — frame skinning as WoW actually draws it, real combat-log ordering — is covered by
+`docs/smoke-tests.md`, not here. Note the harness prints `N passed, N failed` without a total; the
+runner parses both shapes since kit revision 2, after the first adoption sweep recorded 0/0 here and
+still called it green. The generated inventory `test-cases.md` in each bundle is the authority on
+what exists at that point; the README badge tracks the same number.
 
 ## Lint
 
-Clean over 32 files: 0 warnings, 0 errors. `luacheck .` runs over the addon's own source and its `tests/`; the vendored `libs/` and `tests/_kit/` are out of scope by config, since neither is this repo's to fix.
+Clean over 32 files on [`20260804-233245`](20260804-233245/): 0 warnings, 0 errors, and the same
+figure over the same file count on the two runs before it.
+
+What those 32 files are matters more than the `0/0`, because `.luacheckrc`'s `exclude_files` is not
+short. It lists five entries — `libs/`, `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` — so
+`luacheck .` covers the addon's own shipped source and **nothing else**. The 32 files are every
+`.lua` under `core/`, `defaults/`, `locales/`, `modules/` and `settings/`, which is the complete set
+of files the TOC loads. Excluding `libs/` is the standard's own rule (vendored code is not this
+repo's to fix), and `_dev/`, `docs/audits/` and `docs/reviews/` hold scratch and frozen bundles.
+**`tests/` is the one that costs something**: the 54 files of the harness and its mock — including
+`tests/wow_mock.lua`, the largest file on the band list below — are never linted, so an unused local
+or a global typo in test code is invisible to this column. The tests would have to fail for it to
+surface.
 
 ## Perf
 
-This addon ships no `tests/perf.lua`, so the `perf` column is a permanent `skip` rather than a transient tooling gap. Two things follow, and both are standing facts rather than this run's news: the record says **nothing** about the addon's runtime cost, and `performance-§9`'s zero-overhead evidence — that bracketed instrumentation is free when capture is off — does not exist for it. Adding scenarios is the only thing that changes either.
+This addon ships no `tests/perf.lua`, so the `perf` column is a permanent `skip` rather than a
+transient tooling gap, and it has been a skip on every run in the table above. Two things follow, and
+both are standing facts rather than any run's news: the record says **nothing** about the addon's
+runtime cost, and `performance-§9`'s zero-overhead evidence — that bracketed instrumentation is free
+when capture is off — does not exist for it. Adding scenarios is the only thing that changes either.
 
 ## Complexity watch list
 
-Current state as of [`20260804-214315`](20260804-214315/) — not that run's diff.
+Current state as of [`20260804-233245`](20260804-233245/) — not that run's diff.
 Every function `lizard` warned on, and every file at or above `layout-§1`'s 1000-LOC
 on-notice threshold, each with a one-line disposition.
+
+**The `Max CCN` cells on `20260804-182144` and `20260804-214315` came from a broken instrument.**
+Testkit rev 5 read `CCN_MAX` out of `lizard`'s `!!!! Warnings` block, which is empty once an addon
+reaches zero warnings, so it recorded `"maxCcn": 0` the moment the count hit zero — that is the `0`
+in the middle of the `36 → 0 → 15` trend, and it is a reporting bug, not a regression and recovery.
+The true ceiling was always in the same bundle's own `complexity.txt`:
+[`20260804-214315/complexity.txt`](20260804-214315/complexity.txt) lists five functions at CCN 15.
+Those rows stand as the runner wrote them — a bundle is frozen evidence (`automated-tests-§1`) and a
+hand-corrected number is worse than a wrong one because it reads as measured (`performance-§10`).
+`20260804-233245` is the first run produced by testkit rev 6, which reads the ceiling from the
+per-function table, so its `15` is the real figure.
 
 ### Functions `lizard` warned on
 
@@ -44,10 +84,14 @@ of the `feat/fix-ccn` work, not an empty section: the twenty functions this tabl
 flattened behind characterization tests, and none of them survives in a form `lizard` flags. Their
 old dispositions went with them; there is nothing left to carry forward.
 
-Three functions now sit exactly on the line at CCN 15 — `Layout.layoutBlock`
-(`modules/IconGrid_Layout.lua`), `buildSpecNameMaps` (`core/Util.lua`) and `OnAccept`
-(`settings/Spells.lua`). They are under the threshold and are not entries on this list; they are
-noted so a future run that reports a warning has somewhere obvious to look first.
+**Five** functions now sit exactly on the line at CCN 15, all of them named here rather than a sample
+of them, in [`20260804-233245/complexity.txt`](20260804-233245/complexity.txt) order:
+`State.ApplyInterruptibleAlpha` (`core/State.lua:99-118`), `buildSpecNameMaps`
+(`core/Util.lua:232-269`), `StateChanged` (`modules/Cooldowns.lua:250-279`), `Layout.layoutBlock`
+(`modules/IconGrid_Layout.lua:145-249`) and `OnAccept` (`settings/Spells.lua:481-504`). They are at
+the threshold, not over it, so none is an entry on this list; they are named so a future run that
+reports a warning has five obvious places to look first, and so that whoever next edits one of them
+knows there is exactly one line of headroom.
 
 What this table costs to keep at "None." is visible in the other one: the same refactors added 1147
 NLOC and 247 functions, and every file in the band below grew. Zero warnings is not free, and the
@@ -57,10 +101,11 @@ place the bill lands is file size.
 
 | Band | File | LOC | Disposition |
 |---|---|---|---|
-| 1000–1500 (on notice) | `modules/Castbar.lua` | 1314 | **Already tracked as `A-2`.** Up 18 on this run. The earlier downward trend (1473 → 1296 across two peels) has stopped: the CCN work put helper signatures back. Watch, no action. |
-| 1000–1500 (on notice) | `settings/Spells.lua` | 1172 | **Already tracked as `A-2`.** Up 125, the band's largest move, from peeling `buildRow` and `RefreshRows` into named helpers that stayed in this file. The next reduction has to be a file split — the in-file peel is spent. |
-| 1000–1500 (on notice) | `modules/IconGrid.lua` | 1154 | **Already tracked as `A-2`.** Up 54 from the glow-gate and active-list peels. Watch, no action. |
-| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1066 | **Already tracked as `KCD-30`.** Up 17. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix rebuilds the mock as a thin extender rather than trimming it. |
+| 1000–1500 (on notice) | `modules/Castbar.lua` | 1314 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 18. The earlier downward trend (1473 → 1296 across two peels) has stopped: the CCN work put helper signatures back. Watch, no action. |
+| 1000–1500 (on notice) | `settings/Spells.lua` | 1172 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 125 — the band's largest move — from peeling `buildRow` and `RefreshRows` into named helpers that stayed in this file. The next reduction has to be a file split; the in-file peel is spent. |
+| 1000–1500 (on notice) | `modules/IconGrid.lua` | 1154 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 54 from the glow-gate and active-list peels. Watch, no action. |
+| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1066 | **Already tracked as `KCD-30`.** Unmoved since `20260804-214315`, where it rose 17. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix rebuilds the mock as a thin extender rather than trimming it. It is also the largest file `luacheck` never sees — see **Lint** above. |
 
-No file crossed a band boundary on this run and none is over the 1500 cap, but all four grew — the
-band is worth reading as a group now rather than file by file.
+No file crossed a band boundary and none is over the 1500 cap. All four grew on `20260804-214315`
+and none has moved since, so the band is still worth reading as a group rather than file by file:
+the CCN work traded function complexity for file size, and this is where the bill landed.
