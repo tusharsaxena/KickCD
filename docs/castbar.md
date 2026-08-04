@@ -34,14 +34,16 @@ Config-driven work — orientation, frame size, child anchors, font lookups, bac
 | `ReskinStructure` | frame size (incl. auto-size against the unit's grid), orientation + reverse fill, icon/bar inset split, spark size + rotation + anchor, font load, text anchoring and show/hide, per-state border **backdrops** (`SetBackdrop` — a fresh table plus a texture load) | only when its signature moves |
 | `ReskinColors` | per-state background colors, status-bar textures + colors, border **tints**, the shared time-text color | every call |
 
-The guard is a signature over exactly the config fields `ReskinStructure` reads, cached on `inst.structureSig`. A color-picker drag commits every 50 ms; without the guard each commit re-ran ~40 structural widget calls that no color can affect (F-015).
+The guard is a signature over exactly the config fields the structural half reads, cached on `inst.structureSig`. A color-picker drag commits every 50 ms; without the guard each commit re-ran ~40 structural widget calls that no color can affect (F-015).
+
+`ReskinStructure` itself is now a short orchestrator: it resolves the bar dimensions (`resolveBarSize`), takes the signature, and then delegates the actual widget work to file-local helpers — `applyBarGeometry`, `applyIconLayout`, `applySpark`, `applyLabelFonts`, `applyLabelPlacement`, plus `applyBorderBackdrop` per state. **The config reads live in those helpers, not in `ReskinStructure`**, which is what matters for the rule below.
 
 Two things the guard has to get right, both covered by `tests/test_castbar_skin.lua`:
 
 - **The signature folds in the *resolved* dimensions, not the raw config.** With `castbar.autoSize` on, the bar's long axis tracks the icon grid's footprint, which moves on `Ka0s_KickCD_GRID_LAYOUT` while the config table sits perfectly still. Signing the raw config would freeze auto-size.
 - **`EnableUnit` passes `force = true`.** `EnsureFrame` may have just built fresh widgets with no geometry at all, while the instance can still carry a matching signature from before it was disabled.
 
-**If you add a config read to `ReskinStructure`, add the field to `structureSignature` in the same edit** — otherwise the new setting silently does nothing until some other structural field happens to move.
+**If you add a config read anywhere under the structural half — `ReskinStructure` itself or any of the `apply*` helpers it calls — add the field to `structureSignature` in the same edit** — otherwise the new setting silently does nothing until some other structural field happens to move.
 
 `nameText`'s color is in neither half: it's per-state and applied in `ApplyState` through curve-evaluated channels, because the `notInterruptible` flag that selects it can be secret in combat.
 

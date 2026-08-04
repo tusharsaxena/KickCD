@@ -145,9 +145,10 @@ end
 --- Flatten every input ReskinStructure reads into one comparison key.
 ---
 --- Anything absent from this list is, by construction, something the structural
---- half does not look at — so if you add a config read to ReskinStructure, add
---- it here in the same edit or the new field will silently fail to take effect
---- until some other structural field happens to move.
+--- half does not look at — so if you add a config read to ReskinStructure or to
+--- any of the apply* helpers it delegates to, add it here in the same edit or
+--- the new field will silently fail to take effect until some other structural
+--- field happens to move.
 ---
 --- All plain values out of SavedVariables plus the resolved dimensions; nothing
 --- here is ever secret.
