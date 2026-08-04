@@ -37,12 +37,12 @@ The whole contributor toolchain. There is no build step and no compiler.
 |---|---|---|
 | **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/loader.lua:84` calls `setfenv(chunk, env)` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
 | **`lua` on `PATH`** | same 5.1 binary | `tests/test_list_mode.lua:10` re-invokes the runner as a child process: `io.popen("lua " .. T.root .. "/tests/run.lua --list")`. The command is literally `lua`, so `lua5.1` alone on `PATH` is not enough. |
-| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:10-40`); `docs/testing.md:7` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
-| **git** | any recent | The repo, obviously — but also a **test dependency**: `tests/test_vendor_sync.lua:53` shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag, and `docs/testing.md:49-52` documents the four `diff -r` vendored-copy checks. |
-| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:169` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in `docs/testing.md:46-53` is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
+| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:10-43`); `docs/testing.md:7` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
+| **git** | any recent | The repo, obviously — but also a **test dependency**: `tests/test_vendor_sync.lua:53` shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag, and `docs/testing.md:51-54` documents the four `diff -r` vendored-copy checks. |
+| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:169` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in `docs/testing.md:51-54` is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **lizard** | any recent (1.23.0 here) | Generates `docs/complexity.md` with the exact invocation in that file's header (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:65` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:67` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
@@ -110,7 +110,7 @@ and open a PR with only the Development group installed.
 - **No Python, no Node, no image libraries.** Stated positively so nobody goes looking. The only
   Python-adjacent thing in the toolchain is `lizard`, which is in Development above and is optional.
 - **The LibKa0s sibling checkout** (`../LibKa0s`) is not software you install, but the vendored-copy
-  gate in `docs/testing.md:46-53` cannot run without it, and `tests/test_vendor_sync.lua:51-53`
+  gate in `docs/testing.md:51-54` cannot run without it, and `tests/test_vendor_sync.lua:51-53`
   degrades to a skip when it is absent. Clone it next to this repo if you touch `libs/LibKa0s/`.
 
 ---
