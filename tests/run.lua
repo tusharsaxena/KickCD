@@ -171,6 +171,7 @@ local SUITES = {
     "test_castbar_helpers.lua",
     "test_castbar_frame.lua",
     "test_castbar_skin.lua",
+    "test_castbar_debug.lua",
     "test_cooldowns.lua",
     "test_cooldowns_gates.lua",
     "test_settings_log.lua",

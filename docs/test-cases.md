@@ -560,7 +560,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 
-### test_castbar_skin.lua (20)
+### test_castbar_skin.lua (40)
 
 - StructureSignature is stable for identical inputs
 - StructureSignature moves when a structural field moves
@@ -579,9 +579,50 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - ResolveBarSize floors the long and thick axes
 - ResolveBarSize returns the configured size when auto-size is off
 - ResolveBarSize leaves thickness alone in vertical orientation
+- HORIZONTAL + iconPosition LEFT insets the bar from the left
+- HORIZONTAL + iconPosition RIGHT insets the bar from the right
+- VERTICAL remaps iconPosition LEFT to the TOP of the bar
+- VERTICAL remaps iconPosition RIGHT to the BOTTOM of the bar
+- iconPosition OFF hides the icon and gives the bar the whole frame
+- a zero iconSize hides the icon as surely as OFF does
+- iconSize is clamped to the bar's thickness
+- HORIZONTAL grow RIGHT puts the spark on the bar's RIGHT fill edge
+- HORIZONTAL grow LEFT reverses the fill and the spark rides LEFT
+- VERTICAL grow UP puts the spark on the TOP fill edge
+- VERTICAL grow DOWN reverses the fill and the spark rides BOTTOM
+- the spark is sized across the bar and rotated 90 degrees when vertical
+- the spark is unrotated and tall when horizontal
+- showSpark=false hides the spark outright
+- showSpark defaults to shown when unset
+- both labels share the config font, and NONE flags normalize to empty
+- absent fontFlags normalize to empty too
+- showName / showTime false hide their labels, and only theirs
+- the labels default to shown when the flags are unset
+- name and time labels anchor per their independent position settings
 - Reskin survived the peel as a method on the Castbar module
 - the skin sibling reads its helpers off the module, not a private copy
 - modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)
+
+### test_castbar_debug.lua (18)
+
+- DebugDump opens with the resolved unit and bails when it does not exist
+- DebugDump defaults the unit to target
+- DebugDump's unit line reports name, isUnit and canAttack
+- DebugDump reports isUnit=self for the player's own unit
+- DebugDump falls back to '?' when the unit has no name
+- DebugDump stops after the no-cast line when nothing is tracked
+- DebugDump flags a missed event when Compat still sees a cast
+- DebugDump reports a plain boolean notInterruptible by value
+- DebugDump reports a nil notInterruptible as interruptible
+- DebugDump reports a secret notInterruptible without touching tostring
+- DebugDump prints no state line for a secret value with no curve evaluator
+- DebugDump reports the channel flag and the record's field TYPES only
+- DebugDump reports secret record fields by type, never by value
+- DebugDump renders the configured per-state colors from the live profile
+- DebugDump reads colors through Util.Unpack, in the keyed storage shape
+- DebugDump reports a missing color table as (missing)
+- DebugDump reports the colors live on the StatusBar widgets
+- DebugDump says (no widget) before the frame has ever been built
 
 ### test_cooldowns.lua (11)
 
@@ -836,7 +877,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 27 |
 | test_castbar_frame.lua | 36 |
-| test_castbar_skin.lua | 20 |
+| test_castbar_skin.lua | 40 |
+| test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
@@ -852,4 +894,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **666** |
+| **Total** | **704** |

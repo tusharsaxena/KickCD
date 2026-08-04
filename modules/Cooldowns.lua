@@ -85,38 +85,17 @@ end
 -- Watched-list management
 -- ---------------------------------------------------------------------------
 
---- Compute the freshly-polled state for a single spellID.
--- @param spellID number
--- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
---   Returns nil if the spell isn't actually known by the player so the
---   icon grid can hide entries the player can't see in their own spellbook.
-function Cooldowns:PollSpell(spellID)
-    -- FOUR exits, and all four are instrumented on purpose.
-    --
-    -- This bucket was left undeclared at first precisely because of them: a
-    -- single fall-through bracket would have under-counted `calls` and reported
-    -- a total that quietly excluded the rejected paths. The first live capture
-    -- then made the omission expensive — spellPoll totaled 125.02 ms of which
-    -- its declared child spellState accounted for only 51.14, leaving 73.9 ms
-    -- (the largest single cost in the addon) attributed to nothing. So the
-    -- bracket opens ABOVE the guards, because GetSpellInfo and IsSpellAvailable
-    -- are themselves API calls and part of the poll's real cost, and every exit
-    -- closes it. tests/test_perfsetup.lua pins that no exit is left unclosed.
-    local __t0 = Perf.on and debugprofilestop()
-
+--- Is this spellID worth polling at all? All three rejection guards live here
+--- so PollSpell keeps exactly two exits, both inside the Perf bracket.
+-- @return boolean  false when the grid should hide the entry
+local function isPollable(spellID)
     -- Reject obviously-bad IDs early.
-    if not spellID or type(spellID) ~= "number" then
-        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
-        return nil
-    end
+    if not spellID or type(spellID) ~= "number" then return false end
 
     -- A spell that doesn't return GetSpellInfo at all is definitely not in
     -- the player's spellbook (or the ID is wrong).
     local name = NS.Compat.GetSpellInfo(spellID)
-    if not name then
-        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
-        return nil
-    end
+    if not name then return false end
 
     -- GetSpellInfo only proves the ID exists in the spell DB, not that the
     -- player has chosen / learned it. IsSpellAvailable is the
@@ -124,11 +103,38 @@ function Cooldowns:PollSpell(spellID)
     -- the unpicked branch of a talent choice node (e.g. Blood DK's
     -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
     -- currently summoned.
-    if not NS.Compat.IsSpellAvailable(spellID) then
-        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
-        return nil
-    end
+    return NS.Compat.IsSpellAvailable(spellID)
+end
 
+--- Charges may come back secret on guarded spells. If so, conservatively
+--- assume the spell has charges available — better to flag a spell as
+--- ready when it isn't than to spam errors.
+local function chargesAvailable(cur)
+    if cur == nil then return true end
+    if _G.issecretvalue and _G.issecretvalue(cur) then return true end
+    return cur > 0
+end
+
+--- Charge-recharge handle: when the spell has charges and the spell-level
+--- cooldown is NOT active (i.e. at least one charge is available), a missing
+--- charge is silently recharging in the background. The IconGrid uses this to
+--- render the recharge swipe + countdown text WITHOUT applying the
+--- on-cooldown alpha/tint — the spell IS castable, it just has fewer charges
+--- available than max.
+---
+--- GetSpellCooldownDuration returns nil at full charges and the recharge timer
+--- otherwise, so we can call it unconditionally here (no Lua compare on the
+--- possibly-secret charge counts needed). For combat when those counts are
+--- secret we trust the API — if it says there's no cooldown, there isn't one.
+local function rechargeHandle(spellID, cur, isActive)
+    if cur ~= nil and not isActive then
+        return NS.Compat.GetSpellCooldownDuration(spellID)
+    end
+    return nil
+end
+
+--- The state record for a spell that passed isPollable.
+local function buildSpellState(spellID)
     -- Plain-bool active flag from the legacy API. We deliberately discard
     -- start/duration here — they're secret in combat and the duration
     -- object covers every legitimate downstream use.
@@ -146,54 +152,52 @@ function Cooldowns:PollSpell(spellID)
     -- — all of which accept secret values via C-side argument paths.
     local cdObject = isActive and NS.Compat.GetSpellCooldownDuration(spellID) or nil
 
-    -- Charges may come back secret on guarded spells. If so, conservatively
-    -- assume the spell has charges available — better to flag a spell as
-    -- ready when it isn't than to spam errors.
-    local hasCharges
-    if cur == nil then
-        hasCharges = true
-    elseif _G.issecretvalue and _G.issecretvalue(cur) then
-        hasCharges = true
-    else
-        hasCharges = cur > 0
-    end
-
-    -- Charge-recharge handle: when the spell has charges and the
-    -- spell-level cooldown is NOT active (i.e. at least one charge is
-    -- available), a missing charge is silently recharging in the
-    -- background. The IconGrid uses this to render the recharge swipe +
-    -- countdown text WITHOUT applying the on-cooldown alpha/tint — the
-    -- spell IS castable, it just has fewer charges available than max.
-    --
-    -- GetSpellCooldownDuration returns nil at full charges and the
-    -- recharge timer otherwise, so we can call it unconditionally here
-    -- (no Lua compare on the possibly-secret charge counts needed). For
-    -- combat when those counts are secret we trust the API — if it says
-    -- there's no cooldown, there isn't one.
-    local chargeCdObject
-    if cur ~= nil and not isActive then
-        chargeCdObject = NS.Compat.GetSpellCooldownDuration(spellID)
-    end
-
     -- `ready` is the canonical "this spell can be cast right now" boolean.
     -- It's used for the spec-locked-spells filter and for downstream UI
     -- "show charges?" decisions, but NOT for visual states — visual states
     -- are derived in the IconGrid by evaluating cdObject against curves so
     -- that a GCD-only "active" period reads as ready visually while still
     -- being uncastable.
-    local ready = (not isActive) and usable and hasCharges
+    local ready = (not isActive) and usable and chargesAvailable(cur)
 
-    -- Built into a local rather than returned inline, so the bracket can close
-    -- on this path too. Lua forbids a statement after `return`, and a bracket
-    -- that skipped the SUCCESS path would measure only the rejections.
-    local state = {
+    return {
         spellID        = spellID,
         ready          = ready,
         isActive       = isActive == true,
         cdObject       = cdObject,
-        chargeCdObject = chargeCdObject,
+        chargeCdObject = rechargeHandle(spellID, cur, isActive),
         charges        = cur,
     }
+end
+
+--- Compute the freshly-polled state for a single spellID.
+-- @param spellID number
+-- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--   Returns nil if the spell isn't actually known by the player so the
+--   icon grid can hide entries the player can't see in their own spellbook.
+function Cooldowns:PollSpell(spellID)
+    -- TWO exits, and both are instrumented on purpose.
+    --
+    -- This bucket was left undeclared at first precisely because of them: a
+    -- single fall-through bracket would have under-counted `calls` and reported
+    -- a total that quietly excluded the rejected paths. The first live capture
+    -- then made the omission expensive — spellPoll totaled 125.02 ms of which
+    -- its declared child spellState accounted for only 51.14, leaving 73.9 ms
+    -- (the largest single cost in the addon) attributed to nothing. So the
+    -- bracket opens ABOVE the guards, because GetSpellInfo and IsSpellAvailable
+    -- are themselves API calls and part of the poll's real cost, and every exit
+    -- closes it. tests/test_perfsetup.lua pins that no exit is left unclosed.
+    local __t0 = Perf.on and debugprofilestop()
+
+    if not isPollable(spellID) then
+        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+        return nil
+    end
+
+    -- Built into a local rather than returned inline, so the bracket can close
+    -- on this path too. Lua forbids a statement after `return`, and a bracket
+    -- that skipped the SUCCESS path would measure only the rejections.
+    local state = buildSpellState(spellID)
     if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
     return state
 end
