@@ -164,6 +164,7 @@ local SUITES = {
     "test_icongrid_curves.lua",
     "test_icongrid_curve_link.lua",
     "test_icongrid_buildlist.lua",
+    "test_icongrid_glowgate.lua",
     "test_lifecycle.lua",
     "test_unitlabel.lua",
     "test_unitlabel_apply.lua",

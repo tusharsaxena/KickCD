@@ -443,6 +443,17 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - BuildActiveList caches the unit's resolved icon config on the instance
 - each unit builds from its own resolved config
 
+### test_icongrid_glowgate.lua (8)
+
+- RefreshAllGlows pushes the glow decision through every icon
+- an unmoved gate short-circuits the per-icon loop
+- an interruptibility flip moves the gate and re-iterates
+- cast start and cast stop each move the gate
+- the gate cache is per-instance, so target and focus don't clobber
+- a SECRET interruptibility reading defeats the short-circuit
+- the debug line dedups on the printed label
+- each gate state gets its own debug label
+
 ### test_lifecycle.lua (4)
 
 - addon + all modules enable cleanly on the Ace3 login path
@@ -871,6 +882,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_buildlist.lua | 20 |
+| test_icongrid_glowgate.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 21 |
@@ -894,4 +906,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **704** |
+| **Total** | **712** |

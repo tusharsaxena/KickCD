@@ -529,18 +529,30 @@ end
 -- 0, 1) — the C-side path that accepts the secret-tainted flag. So
 -- uninterruptible casts run the animation invisibly until the flag
 -- flips back (UNIT_SPELLCAST_INTERRUPTIBLE) or the cast ends.
+--- The glow trigger, type and color for this slot — the primary and the
+--- secondaries carry separate schema entries.
+local function glowConfig(cfg, isPrimary)
+    if isPrimary then
+        return cfg.primaryGlowTrigger,   cfg.primaryGlowType,   cfg.primaryGlowColor
+    end
+    return cfg.secondaryGlowTrigger, cfg.secondaryGlowType, cfg.secondaryGlowColor
+end
+
+--- Per-cast interruptibility filter (alpha mask on the glow frame). Truthy
+--- when the mask took over the glow's alpha, so the caller leaves it alone.
+--- Only the target_casting_interruptible trigger masks.
+local function applyInterruptibleMask(icon, trigger)
+    return trigger == "target_casting_interruptible"
+       and icon.glow
+       and NS.State.ApplyInterruptibleAlpha
+       and NS.State.ApplyInterruptibleAlpha(icon.glow, icon.unit or "target", 1)
+end
+
 function Icon:UpdateGlow(state)
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     if not cfg then return self:StopGlow() end
 
-    local trigger, kind, color
-    if self._isPrimary then
-        trigger, kind, color =
-            cfg.primaryGlowTrigger,   cfg.primaryGlowType,   cfg.primaryGlowColor
-    else
-        trigger, kind, color =
-            cfg.secondaryGlowTrigger, cfg.secondaryGlowType, cfg.secondaryGlowColor
-    end
+    local trigger, kind, color = glowConfig(cfg, self._isPrimary)
 
     local ready = state and state.ready and true or false
     if not ready or not triggerSatisfied(trigger, self.instance) then
@@ -549,13 +561,7 @@ function Icon:UpdateGlow(state)
     end
     self:StartGlow(kind, color)
 
-    -- Per-cast interruptibility filter (alpha mask on the glow frame).
-    if trigger == "target_casting_interruptible"
-       and self.glow
-       and NS.State.ApplyInterruptibleAlpha
-       and NS.State.ApplyInterruptibleAlpha(self.glow, self.unit or "target", 1) then
-        return
-    end
+    if applyInterruptibleMask(self, trigger) then return end
     if self.glow then self.glow:SetAlpha(1) end
 end
 
@@ -624,6 +630,78 @@ local function plainStateMoved(prev, next_)
     return false
 end
 
+--- Branch 1: full spell-level cooldown (real CD or just-GCD). The curves drive
+--- the icon-body alpha / tint so a GCD-only window still reads as "ready";
+--- a real CD past the GCD threshold dims and tints the icon.
+local function renderFullCooldown(icon, state, curves, stateWork)
+    local alpha = state.cdObject:EvaluateRemainingDuration(curves.alpha)
+    -- SetAlphaFromBoolean accepts secret values for its alpha args.
+    -- Passing `true` as the condition selects the second arg
+    -- unconditionally.
+    if icon.SetAlphaFromBoolean then
+        icon:SetAlphaFromBoolean(true, alpha, 0)
+    else
+        icon:SetAlpha(alpha)
+    end
+
+    if curves.tint then
+        local color = state.cdObject:EvaluateRemainingDuration(curves.tint)
+        if color and color.GetRGB then
+            icon.icon:SetVertexColor(color:GetRGB())
+        end
+    end
+
+    icon.cooldown:SetCooldownFromDurationObject(state.cdObject)
+    if stateWork then icon.cooldown:Show() end
+    icon:StartCooldownText(state.cdObject, true)
+    applyGcdSuppressionAlpha(icon, state.cdObject)
+end
+
+--- Branch 2: charge recharge ticking; spell is still castable.
+--- Show swipe + countdown text but keep the icon body at ready
+--- visuals (no alpha dim, no tint shift). state.ready stays true
+--- so the glow trigger keeps firing as configured.
+local function renderChargeRecharge(icon, state, cfg, stateWork)
+    if stateWork then
+        icon:SetAlpha(cfg.readyAlpha or 1.0)
+        icon.icon:SetVertexColor(1, 1, 1)
+    end
+    icon.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
+    if stateWork then icon.cooldown:Show() end
+    icon:StartCooldownText(state.chargeCdObject, false)
+    applyGcdSuppressionAlpha(icon, state.chargeCdObject)
+end
+
+--- Branch 3: no active cooldown of any kind. Plain ready visuals.
+local function renderIdle(icon, cfg, stateWork)
+    if stateWork then
+        icon:SetAlpha(cfg.readyAlpha or 1.0)
+        icon.icon:SetVertexColor(1, 1, 1)
+        icon.cooldown:Hide()
+        icon.cooldown:Clear()
+        icon:StopCooldownText()
+    end
+end
+
+--- Charges badge. Visibility = "this spell has charges at all",
+--- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
+--- for spells that don't track charges (regular Mind Freeze etc.) and a
+--- number (0..max) for spells that do, so the truthy check on `c` is
+--- the right gate — and it works for plain numbers, secret-tainted
+--- numbers (in-combat guarded spells), and the nil/no-charges case
+--- alike. SetFormattedText is the canonical secret-safe render path
+--- (the format is interpreted C-side, accepts secret args without
+--- erroring; same pattern as the cooldown text overlay).
+local function renderChargesBadge(icon, cfg, state)
+    local c = state and state.charges
+    if cfg.showCharges and c then
+        icon.chargesText:SetFormattedText("%d", c)
+        icon.chargesText:Show()
+    else
+        icon.chargesText:Hide()
+    end
+end
+
 --- Apply a Ka0s_KickCD_SPELL_STATE payload.
 -- @param state table   the payload (see the block comment above)
 -- @param force boolean pass true when re-applying after a CONFIG change
@@ -643,51 +721,14 @@ function Icon:Apply(state, force)
     -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
     local curves = curvesFor(self.unit)
 
+    -- The branch predicate is "which duration handle is non-nil", which an
+    -- if/elseif states far more clearly than a dispatch table would.
     if state and state.cdObject and curves.alpha then
-        -- Branch 1: full cooldown.
-        local alpha = state.cdObject:EvaluateRemainingDuration(curves.alpha)
-        -- SetAlphaFromBoolean accepts secret values for its alpha args.
-        -- Passing `true` as the condition selects the second arg
-        -- unconditionally.
-        if self.SetAlphaFromBoolean then
-            self:SetAlphaFromBoolean(true, alpha, 0)
-        else
-            self:SetAlpha(alpha)
-        end
-
-        if curves.tint then
-            local color = state.cdObject:EvaluateRemainingDuration(curves.tint)
-            if color and color.GetRGB then
-                self.icon:SetVertexColor(color:GetRGB())
-            end
-        end
-
-        self.cooldown:SetCooldownFromDurationObject(state.cdObject)
-        if stateWork then self.cooldown:Show() end
-        self:StartCooldownText(state.cdObject, true)
-        applyGcdSuppressionAlpha(self, state.cdObject)
+        renderFullCooldown(self, state, curves, stateWork)
     elseif state and state.chargeCdObject then
-        -- Branch 2: charge recharge ticking; spell is still castable.
-        -- Show swipe + countdown text but keep the icon body at ready
-        -- visuals (no alpha dim, no tint shift). state.ready stays true
-        -- so the glow trigger keeps firing as configured.
-        if stateWork then
-            self:SetAlpha(cfg.readyAlpha or 1.0)
-            self.icon:SetVertexColor(1, 1, 1)
-        end
-        self.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
-        if stateWork then self.cooldown:Show() end
-        self:StartCooldownText(state.chargeCdObject, false)
-        applyGcdSuppressionAlpha(self, state.chargeCdObject)
+        renderChargeRecharge(self, state, cfg, stateWork)
     else
-        -- Branch 3: no active cooldown of any kind. Plain ready visuals.
-        if stateWork then
-            self:SetAlpha(cfg.readyAlpha or 1.0)
-            self.icon:SetVertexColor(1, 1, 1)
-            self.cooldown:Hide()
-            self.cooldown:Clear()
-            self:StopCooldownText()
-        end
+        renderIdle(self, cfg, stateWork)
     end
 
     -- Ready glow (off when on cooldown, on when castable). Driven from
@@ -701,22 +742,7 @@ function Icon:Apply(state, force)
     -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
     if stateWork then self:UpdateGlow(state) end
 
-    -- Charges badge. Visibility = "this spell has charges at all",
-    -- not "this spell has > 0 charges". Compat.GetSpellCharges returns nil
-    -- for spells that don't track charges (regular Mind Freeze etc.) and a
-    -- number (0..max) for spells that do, so the truthy check on `c` is
-    -- the right gate — and it works for plain numbers, secret-tainted
-    -- numbers (in-combat guarded spells), and the nil/no-charges case
-    -- alike. SetFormattedText is the canonical secret-safe render path
-    -- (the format is interpreted C-side, accepts secret args without
-    -- erroring; same pattern as the cooldown text overlay).
-    local c = state and state.charges
-    if cfg.showCharges and c then
-        self.chargesText:SetFormattedText("%d", c)
-        self.chargesText:Show()
-    else
-        self.chargesText:Hide()
-    end
+    renderChargesBadge(self, cfg, state)
     if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0) end
 end
 
