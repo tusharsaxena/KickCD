@@ -40,7 +40,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:10-43`); `docs/testing.md:7` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
 | **git** | any recent | The repo, obviously — but also a **test dependency**: `tests/test_vendor_sync.lua:53` shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag, and `docs/testing.md:51-54` documents the four `diff -r` vendored-copy checks. |
 | **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:169` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in `docs/testing.md:51-54` is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
-| **lizard** | any recent (1.23.0 here) | Generates `docs/complexity.md` with the exact invocation in that file's header (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
+| **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (aurformance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
 `file` is worth having for one documented troubleshooting path — `docs/testing.md:67` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
@@ -122,7 +122,7 @@ The exact commands this repo is verified with. All run from the repo root.
 ```bash
 luacheck .                                          # must be 0 warnings, 0 errors
 lua tests/run.lua                                   # must exit 0, all cases passing
-lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .   # regenerates docs/complexity.md (release only)
+lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .   # the `complexity` suite; recorded in each run bundle
 ```
 
 The first two are the **green commit gate**. The third is a **release** checkpoint and is
