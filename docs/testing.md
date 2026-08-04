@@ -4,7 +4,9 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` fro
 
 ## Local toolchain
 
-`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, no test runner beyond `tests/run.lua`. Both commands run from the repo root and are the green commit gate: run them before every commit, alongside the two vendored-copy diffs below.
+`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, no test runner beyond `tests/run.lua`. Both commands run from the repo root and are the green commit gate: run them before every commit, alongside the two vendored-copy diffs below. `lizard` is a third, **optional** tool used only at release (see [Complexity report — a release checkpoint](#complexity-report--a-release-checkpoint)).
+
+Install instructions for all three, with the WSL2/Ubuntu commands that actually work, live in the root [DEPENDENCIES.md](../DEPENDENCIES.md). That file says *what to install*; this one says *how to verify*.
 
 **Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [conventions.md](conventions.md) — which is why the vendored-copy check below is two diffs rather than one.
 
@@ -67,6 +69,20 @@ renormalize it. **Re-vendoring will not converge it, and the fix is never an edi
 that makes a fork nobody knows about, which the next re-vendor reverts silently. Not
 hypothetical: the bare single-diff gate this block used to publish produced a false accusation
 against the one consumer whose checkout was actually correct.
+
+## Complexity report — a release checkpoint
+
+`docs/complexity.md` is a generated `lizard` report over this addon's own source and its own tests. Regenerate it with **exactly** this, from the repo root:
+
+```
+lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .
+```
+
+Do not add flags, re-tune thresholds or narrow the path to a subfolder. The invocation is fixed collection-wide by the Ka0s WoW Addon Standard (performance-§10) for one reason: two reports produced by different invocations cannot be diffed, and the diff is the entire point. The file is **one path, overwritten in place** — never dated, never a directory — so its git history is the trend line.
+
+**This runs at RELEASE, and it is NOT a commit gate.** Regenerate it and **read the diff** in the same change that bumps the version and rolls the README's `## What's new` and `## Version History` forward, before the tag. Record in the report's `## Watch list` anything that newly crossed a `lizard` threshold or newly entered layout-§1's 1000–1500 LOC band since the previous report, each with a one-line disposition — accepted and why, peel next, or already tracked as a deviation ID. A report regenerated but not read is worse than no report, because it looks like a decision.
+
+Nothing here blocks a commit. `luacheck .` and `lua tests/run.lua` are the green gate; complexity is a signal about where the addon is getting hard to change, not a verdict, and a threshold that fails a build only teaches people to route around it. `lizard` is optional local tooling — if it is not installed, the committed report is **stale**, which is a fact to state in the release notes, not a reason to delete the file or hand-edit its numbers. See performance-§10 for the full rule.
 
 ## The source-scan guard
 
