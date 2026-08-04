@@ -52,9 +52,39 @@ the first one that can say something moved, and this record is what it will be r
 
 ## Complexity watch list
 
-`ReskinStructure` (36) — **peel next**, the longest non-generated body in the addon. `Castbar:DebugDump` (27), `Icon:Apply` (25, the one instrumented hot path), `IconGrid:RefreshAllGlows` (25) and `buildRow` (19, but 292 lines — **peel next**) are accepted with reasons recorded 2026-08-04, along with fifteen others.
+### Functions `lizard` warned on
 
-**Files in the 1000–1500 band:** `modules/Castbar.lua` (1296), `modules/IconGrid.lua` (1100), `settings/Spells.lua` (1047) — all **already tracked as A-2**; `tests/wow_mock.lua` (1049) — **already tracked as KCD-30**.
+| Function | CCN | Location | Disposition |
+|---|---|---|---|
+| `ReskinStructure` | 36 | `modules/Castbar_Skin.lua` | **Peel next.** Highest CCN and the longest non-generated body (150 lines, 5 params); it splits along the field groups it already comments. |
+| `Castbar:DebugDump` | 27 | `modules/Castbar_Debug.lua` | **Accepted.** A `/kcd debug castbar` diagnostic probing every field's `type()`/`issecretvalue()`. The branch count *is* the diagnostic. |
+| `IconGrid:RefreshAllGlows` | 25 | `modules/IconGrid.lua` | **Accepted for now.** Glow trigger ladder × four glow kinds — the product of two small enumerations. |
+| `Icon:Apply` | 25 | `modules/IconGrid_Render.lua` | **Accepted, deliberately.** The addon's one instrumented hot path: flat and branchy on purpose, no helper calls, no allocation. |
+| `OnAccept` (spell popup) | 25 | `settings/Spells.lua` | **Accepted.** Validates one text field across every input form the CLI accepts. Revisit if a third caller appears. |
+| `UnitLabel:Apply` | 24 | `modules/UnitLabel.lua` | **Accepted.** Config→widget application; every branch is a distinct setting with no shared shape to factor. |
+| `IconGrid:BuildActiveList` | 23 | `modules/IconGrid.lua` | **Accepted.** The pick-and-order pass; branch count tracks the visibility rules, which are the addon's product. |
+| `Castbar:ApplyState` | 22 | `modules/Castbar.lua` | **Accepted.** The cast/channel/empowered/interrupted state machine, flattened so a secret `notInterruptible` never binds to a local. |
+| `Spells:RefreshRows` | 22 | `settings/Spells.lua` | **Accepted for now.** Shrinks on its own once `buildRow` is peeled — the two share the row vocabulary. |
+| `Database:MigrateSpecKeys` | 20 | `core/Database.lua` | **Accepted.** A one-shot SavedVariables migration over fixed historical key shapes; the honest simplification is deleting it once they are extinct. |
+| `Compat.DebugInterrupt` | 19 | `core/Compat.lua` | **Already tracked as `KCD-33`** and review finding **F-002**; routing through `NS.SafeToString` removes the hand-rolled stringifier. |
+| `NS:OpenSettings` | 19 | `core/KickCD.lua` | **Accepted.** Combat gate plus the Blizzard settings-category resolution ladder, which needs every fallback it has. |
+| `Cooldowns:PollSpell` | 19 | `modules/Cooldowns.lua` | **Accepted, deliberately.** Per-spell poll on the coalesced pass — inline to avoid a call and an allocation per spell. |
+| `buildRow` | 19 | `settings/Spells.lua` | **Peel next.** CCN is mid-pack but the body is **292 lines**, the longest in the addon; the per-widget blocks lift out without touching behaviour. |
+| `Database:FoldLegacyUnits` | 16 | `core/Database.lua` | **Accepted.** Fixed-shape one-shot migration; deleted rather than refactored when it expires. |
+| `Util.ResolveSpecID` | 16 | `core/Util.lua` | **Accepted.** Every branch is a supported input form the slash CLI documents. |
+| `Icon:UpdateGlow` | 16 | `modules/IconGrid_Render.lua` | **Accepted.** Four glow kinds × start/stop; sits just over the line and gains nothing from a split. |
+| `getCooldownManagerSpellSet` | 16 | `settings/Spells.lua` | **Accepted.** Reads Blizzard's Cooldown Manager set through several optional APIs, each guarded because any may be absent. |
+| `(anonymous)` bucket guard | 18 | `tests/test_perfsetup.lua` | **Accepted.** A source-scan guard; its branches are the bracket spellings it must not miss. Simplifying it is how the guard silently narrows. |
+| `New` (AceDB mock) | 16 | `tests/wow_mock.lua` | **Already tracked as `KCD-30`** — the fix rebuilds the mock as a thin extender, removing this function rather than refactoring it. |
+
+### Files by `layout-§1` band
+
+| Band | File | LOC | Disposition |
+|---|---|---|---|
+| 1000–1500 (on notice) | `modules/Castbar.lua` | 1296 | **Already tracked as `A-2`.** Down from 1473 after two peels — the trend is the right way. Watch, no action. |
+| 1000–1500 (on notice) | `modules/IconGrid.lua` | 1100 | **Already tracked as `A-2`.** Watch, no action. |
+| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1049 | **Already tracked as `KCD-30`.** Not covered by `A-2`, which lists source files only; the whole file is the deviation. |
+| 1000–1500 (on notice) | `settings/Spells.lua` | 1047 | **Already tracked as `A-2`.** Peeling `buildRow` takes this file back under the band as a side effect. |
 
 ## Actions
 
