@@ -41,13 +41,20 @@ figure over the same file count on the two runs before it.
 What those 32 files are matters more than the `0/0`, because `.luacheckrc`'s `exclude_files` is not
 short. It lists five entries — `libs/`, `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` — so
 `luacheck .` covers the addon's own shipped source and **nothing else**. The 32 files are every
-`.lua` under `core/`, `defaults/`, `locales/`, `modules/` and `settings/`, which is the complete set
-of files the TOC loads. Excluding `libs/` is the standard's own rule (vendored code is not this
-repo's to fix), and `_dev/`, `docs/audits/` and `docs/reviews/` hold scratch and frozen bundles.
-**`tests/` is the one that costs something**: the 54 files of the harness and its mock — including
-`tests/wow_mock.lua`, the largest file on the band list below — are never linted, so an unused local
-or a global typo in test code is invisible to this column. The tests would have to fail for it to
-surface.
+`.lua` under `core/` (11), `settings/` (11), `modules/` (8), `defaults/` (1) and `locales/` (1), and
+those are exactly the `.lua` files `KickCD.toc` loads **from outside `libs/`** — not the complete set
+of files the TOC loads. The TOC carries 13 further load lines, every one of them under `libs/`: seven
+`.lua` files (`LibStub`, `CallbackHandler-1.0`, `AceAddon-3.0`, `AceEvent-3.0`, `AceDB-3.0`,
+`AceDBOptions-3.0`, `AceConsole-3.0`) and six `.xml` files (`AceConfig-3.0`, `AceGUI-3.0`, `LibKa0s`,
+`LibSharedMedia-3.0`, `AceGUI-3.0-SharedMediaWidgets`, `LibCustomGlow-1.0`) that pull in more Lua
+still. `luacheck` sees none of those. Excluding `libs/` is the standard's own rule (vendored code is
+not this repo's to fix), and `_dev/`, `docs/audits/` and `docs/reviews/` hold scratch and frozen
+bundles. **`tests/` is the one that costs something**: the 54 `.lua` files of the harness and its
+mock are never linted, so an unused local or a global typo in test code is invisible to this column.
+The tests would have to fail for it to surface. The biggest of those 54 is `tests/wow_mock.lua` at
+1066 lines — the largest file under `tests/`, but neither the largest file `luacheck` skips (that is
+the vendored `libs/AceConfig-3.0/AceConfigDialog-3.0/AceConfigDialog-3.0.lua`, 2045 lines) nor the
+largest on the band list below, where it is in fact the **smallest** of the four.
 
 ## Perf
 
@@ -79,10 +86,40 @@ per-function table, so its `15` is the real figure.
 **None.**
 
 Every function in the addon is at or below CCN 15, so `lizard` warned on nothing. This is the result
-of the `feat/fix-ccn` work, not an empty section: the twenty functions this table carried on
-`20260804-182144` — `ReskinStructure` at 36 down through the four at 16 — were each split or
-flattened behind characterization tests, and none of them survives in a form `lizard` flags. Their
-old dispositions went with them; there is nothing left to carry forward.
+of the `feat/fix-ccn` work, not an empty section. [`20260804-182144/complexity.txt`](20260804-182144/complexity.txt)
+warned on **twenty** functions, and because a count is worth nothing without its members, here are
+all twenty in descending CCN, as that file lists them:
+
+| CCN | Function | File |
+|---|---|---|
+| 36 | `ReskinStructure@176-325` | `modules/Castbar_Skin.lua` |
+| 27 | `Castbar@17-95` | `modules/Castbar_Debug.lua` |
+| 25 | `OnAccept@360-423` | `settings/Spells.lua` |
+| 25 | `IconGrid@957-1024` | `modules/IconGrid.lua` |
+| 25 | `Icon@633-721` | `modules/IconGrid_Render.lua` |
+| 24 | `UnitLabel@70-123` | `modules/UnitLabel.lua` |
+| 23 | `IconGrid@294-358` | `modules/IconGrid.lua` |
+| 22 | `Spells@854-920` | `settings/Spells.lua` |
+| 22 | `Castbar@726-780` | `modules/Castbar.lua` |
+| 20 | `Database@583-625` | `core/Database.lua` |
+| 19 | `Compat.DebugInterrupt@371-455` | `core/Compat.lua` |
+| 19 | `NS@733-771` | `core/KickCD.lua` |
+| 19 | `Cooldowns@93-199` | `modules/Cooldowns.lua` |
+| 19 | `buildRow@506-797` | `settings/Spells.lua` |
+| 18 | `(anonymous)@65-111` | `tests/test_perfsetup.lua` |
+| 16 | `Database@516-533` | `core/Database.lua` |
+| 16 | `Util.ResolveSpecID@290-322` | `core/Util.lua` |
+| 16 | `Icon@532-560` | `modules/IconGrid_Render.lua` |
+| 16 | `getCooldownManagerSpellSet@254-290` | `settings/Spells.lua` |
+| 16 | `New@510-530` | `tests/wow_mock.lua` |
+
+Five sat at 16, not four: `Database@516-533`, `Util.ResolveSpecID`, `Icon@532-560`,
+`getCooldownManagerSpellSet` and `New@510-530`. Eighteen of the twenty are addon source and were
+split or flattened behind characterization tests; the remaining two — `(anonymous)@65-111` in
+`tests/test_perfsetup.lua` and `New@510-530` in `tests/wow_mock.lua` — are harness code, which
+`lizard` measures (only `tests/_kit/` is excluded) but no characterization test guards. None of the
+twenty survives in a form `lizard` flags. Their old dispositions went with them; there is nothing
+left to carry forward.
 
 **Five** functions now sit exactly on the line at CCN 15, all of them named here rather than a sample
 of them, in [`20260804-233245/complexity.txt`](20260804-233245/complexity.txt) order:
@@ -104,7 +141,7 @@ place the bill lands is file size.
 | 1000–1500 (on notice) | `modules/Castbar.lua` | 1314 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 18. The earlier downward trend (1473 → 1296 across two peels) has stopped: the CCN work put helper signatures back. Watch, no action. |
 | 1000–1500 (on notice) | `settings/Spells.lua` | 1172 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 125 — the band's largest move — from peeling `buildRow` and `RefreshRows` into named helpers that stayed in this file. The next reduction has to be a file split; the in-file peel is spent. |
 | 1000–1500 (on notice) | `modules/IconGrid.lua` | 1154 | **Already tracked as `A-2`.** Unmoved since `20260804-214315`, where it rose 54 from the glow-gate and active-list peels. Watch, no action. |
-| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1066 | **Already tracked as `KCD-30`.** Unmoved since `20260804-214315`, where it rose 17. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix rebuilds the mock as a thin extender rather than trimming it. It is also the largest file `luacheck` never sees — see **Lint** above. |
+| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1066 | **Already tracked as `KCD-30`.** Unmoved since `20260804-214315`, where it rose 17. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix rebuilds the mock as a thin extender rather than trimming it. It is the largest file under `tests/`, the smallest of the four in this band, and `luacheck` never sees it — see **Lint** above. |
 
 No file crossed a band boundary and none is over the 1500 cap. All four grew on `20260804-214315`
 and none has moved since, so the band is still worth reading as a group rather than file by file:
