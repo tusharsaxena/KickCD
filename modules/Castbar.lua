@@ -693,6 +693,11 @@ local function onUpdate(inst)
     local d = current and current.duration
     if not d then
         frame:SetScript("OnUpdate", nil)
+        -- Close the bracket on THIS exit too. This is the frame that tears the
+        -- OnUpdate handler down at the end of every cast, so it is taken once
+        -- per cast — leaving it unclosed under-counts `castTick.calls` by one
+        -- per cast and hides the cost of the teardown frame itself.
+        if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
         return
     end
 

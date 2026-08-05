@@ -833,6 +833,12 @@ local function _tickAllTextIcons()
             _textTicker:Cancel()
         end
         _textTicker = nil
+        -- Close the bracket on THIS exit too. The tick that finds the set
+        -- empty still paid for the ticker callback and the `next` probe, and
+        -- it is the exit taken on the very last tick of every cooldown burst
+        -- — so leaving it unclosed under-counts `cdText.calls` by exactly the
+        -- number of bursts and drops their teardown cost on the floor.
+        if __t0 then Perf.Note("cdText", debugprofilestop() - __t0) end
         return
     end
     for icon in pairs(_textIcons) do

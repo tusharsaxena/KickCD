@@ -850,7 +850,7 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (25)
+### test_perfsetup.lua (26)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -876,6 +876,7 @@ badge and any count quoted in the docs must agree with it.
 - the perf version agrees with the one /kcd version prints
 - the version fallback is reachable, not dead
 - every PollSpell exit is measured, including the rejections
+- no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
 ### test_list_mode.lua (5)
@@ -949,8 +950,8 @@ badge and any count quoted in the docs must agree with it.
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 25 |
+| test_perfsetup.lua | 26 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **747** |
+| **Total** | **748** |

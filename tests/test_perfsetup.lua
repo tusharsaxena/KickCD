@@ -589,6 +589,87 @@ test("every PollSpell exit is measured, including the rejections", function()
         "every exit must be counted; got " .. tostring(b.calls) .. " of 5")
 end)
 
+test("no bracketed function leaks an exit — every return closes the bracket", function()
+    -- The generalization of the PollSpell case above, and the reason it exists:
+    -- PollSpell got its four-exit coverage by hand, and two OTHER brackets were
+    -- leaking the whole time. `_tickAllTextIcons` returned unclosed on the
+    -- empty-set guard (taken on the last tick of every cooldown burst) and
+    -- Castbar's `onUpdate` returned unclosed on the no-duration guard (taken
+    -- once per cast, on the frame that tears the handler down). Both are
+    -- `Note`-shaped rather than `Open`/`Close`-shaped, so LibKa0s cannot detect
+    -- them for us — there is no stack to leave unbalanced. Nothing observes the
+    -- leak either: the bucket still reports, just with a `calls` count short by
+    -- exactly the number of times the leaked exit was taken, which reads as a
+    -- cheap path rather than as a bug.
+    --
+    -- Behavioral coverage is not available here. `cdText` is driven by a
+    -- C_Timer ticker and `castTick` by an OnUpdate script; the harness drives
+    -- neither, which is exactly why these two survived. testing-§11's
+    -- source-scan shape is the fallback, and this comment is its justification.
+    --
+    -- red under: deleting the `Perf.Note` line from any early return in any of
+    -- the four bracketed modules.
+    local leaks = {}
+    for _, rel in ipairs({
+        "modules/Cooldowns.lua", "modules/IconGrid.lua",
+        "modules/IconGrid_Render.lua", "modules/Castbar.lua",
+    }) do
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local lines = {}
+        for line in fh:lines() do lines[#lines + 1] = (line:gsub("\r$", "")) end
+        fh:close()
+
+        -- Walk top-level function blocks. Every bracket site in this addon is a
+        -- column-0 `local function f(` or `function M:f(` closed by a column-0
+        -- `end`, so the block boundaries need no Lua parser — and a bracket that
+        -- ever moves inside a nested closure trips the "no closing Note" arm
+        -- below rather than being silently skipped.
+        local i, n = 1, #lines
+        while i <= n do
+            local head = lines[i]
+            if head:match("^local function [%w_]+%(") or head:match("^function [%w_.:]+%(") then
+                local body, j = {}, i + 1
+                while j <= n and lines[j] ~= "end" do body[#body + 1] = lines[j]; j = j + 1 end
+                local bracketed = false
+                for _, l in ipairs(body) do
+                    if l:match("__t0%s*=%s*Perf%.on") then bracketed = true break end
+                end
+                if bracketed then
+                    local where = rel .. ":" .. i .. " " .. head
+                    local sawNote = false
+                    for k, l in ipairs(body) do
+                        if l:match("Perf%.Note%(") then sawNote = true end
+                        if l:match("^%s*return%f[%W]") then
+                            -- The Note must be on the nearest preceding line
+                            -- that is neither blank nor a comment.
+                            local guarded, m = false, k - 1
+                            while m >= 1 do
+                                local p = body[m]
+                                if p:match("^%s*$") or p:match("^%s*%-%-") then
+                                    m = m - 1
+                                else
+                                    guarded = p:match("Perf%.Note%(") ~= nil
+                                    break
+                                end
+                            end
+                            if not guarded then
+                                leaks[#leaks + 1] = where .. " — unclosed `return` at body line " .. k
+                            end
+                        end
+                    end
+                    if not sawNote then
+                        leaks[#leaks + 1] = where .. " — opens a bracket it never closes"
+                    end
+                end
+                i = j + 1
+            else
+                i = i + 1
+            end
+        end
+    end
+    assertEqual(#leaks, 0, "bracketed exits left unclosed:\n  " .. table.concat(leaks, "\n  "))
+end)
+
 test("the record stamps a real client interface version, never 0", function()
     -- The live capture read `"interface":0`. Blizzard does not serve `Interface`
     -- through GetAddOnMetadata — confirmed in game — so the library read it from
