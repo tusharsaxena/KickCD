@@ -172,6 +172,29 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 - No automated in-client tests — headless unit tests plus manual in-game smoke tests only (see [smoke-tests.md](smoke-tests.md)).
 - Debug logging is session-only (`NS.State.debug`) and resets on every `/reload`.
 
+## Documented deviations
+
+The **single home** for a ratified deviation from the Ka0s WoW Addon Standard (`documentation-§3`).
+A deviation not in this table is not ratified: an audit that cannot find the decision here re-files it
+as an open MUST failure, and the same argument gets had every cycle. The reasoning may live at length
+in the topic doc named in **Why**; the row is what makes it a decision rather than a note.
+
+**Re-check trigger** is the condition that *ends* the deviation, written so a reader can tell whether
+it has already fired. A row without one is a permanent opt-out wearing a table's clothes. When a cited
+rule changes so that the behavior is now mandated or permitted outright, the row is **retired** — this
+table must not become a graveyard.
+
+| Rule | What differs | Why | Decided | Re-check trigger |
+|---|---|---|---|---|
+| `savedvariables-§1` | Two profile migrators run off the **stored shape**, not off `db.global.schemaVersion`. `schemaVersion` and a migration function both exist as the rule requires; these two run beside them, ungated. | A bare `schemaVersion` bump cannot distinguish "pre-`label.style`" from "current", because AceDB's `copyDefaults` has already written the new sub-table into the stored profile before any migrator looks — the same masking trap `FoldLegacyUnits` was written around. Reasoned at [saved-variables.md](saved-variables.md#L212). | 2026-07-16 | An AceDB release where `copyDefaults` no longer backfills before migration runs, **or** a third shape addition under an existing profile field — either makes a version-gated migrator sufficient and retires both shape-driven ones. |
+| `savedvariables-§1` | `DEFAULT_PROFILE` was **restructured** — target/focus nested under `units.<unit>` — rather than only grown, departing from the "a profile shape never changes shape, only grows" expectation the section's example implies. | Target and focus each need independently customizable `icons`/`castbar`; the flat alternative (`icons`, `focusIcons`, `castbar`, `focusCastbar`, …) does not scale to a third unit and duplicates the anchor/label bookkeeping. The shape-driven migration above is the mitigation that makes it safe for existing installs. Reasoned at [saved-variables.md](saved-variables.md#L222). | 2026-07-15 | A third tracked unit is added — at which point the nested shape is load-bearing rather than a departure, and this row retires. |
+
+**Not in this table, and why.** The `KickCD<Widget><UnitTitleCase>` frame-naming notes at
+[conventions.md](conventions.md) and the additive `GRID_LAYOUT` payload note at
+[message-bus.md](message-bus.md) read as deviations but are not: they depart from *this addon's own*
+conventions, not from a numbered rule in the standard, so neither has a `filename-§N` to cite and
+neither belongs in a register of standards deviations. They stay where they are reasoned.
+
 ## Load order
 
 `KickCD.toc` is the source of truth. Order is dependency, not alphabetical:
