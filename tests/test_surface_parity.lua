@@ -133,7 +133,15 @@ test("the Options stub carries every member the host calls", function()
         -- The library's layout constants. Same rule, stated as constants:
         -- tests/test_options_panel.lua's source scan already fails if a copy of any of these
         -- appears in the host or in the stub.
-        "PADDING_X", "SECTION_HEADING_H", "BUTTON_PAIR_REL",
+        --
+        -- ROW_VSPACER joined this list when the host stopped restating it. settings/Panel.lua used
+        -- to declare `local ROW_VSPACER = 8` and assign it over the library's published value, so
+        -- the member existed on BOTH paths and parity held for the wrong reason — the host copy was
+        -- filling the degraded hole. With the copy deleted (options-ui-§8) it is live-only like its
+        -- three siblings, and the stub MUST NOT grow it back: settings/Panel_Render.lua binds it at
+        -- load and settings/Panel_Widgets.lua forwards it to AddSpacer, both of which are no-ops on
+        -- the degraded path, so nil is inert there.
+        "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL",
         -- The AceGUI handle the library resolves at CreateOptionsPanel time. With no library there
         -- is no CreateOptionsPanel, so there is nothing to resolve; the host reads NS.AceGUI.
         "AceGUI",

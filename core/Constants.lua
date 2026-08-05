@@ -60,10 +60,13 @@ Const.CASTBAR_OUTSIDE_INSET = 4
 -- Settings panel: header layout
 -- ---------------------------------------------------------------------------
 
--- Horizontal padding from the panel's left and right edges to its
--- header / divider / body content. Single value used for both edges so
--- the layout stays symmetric.
-Const.PANEL_PADDING_X    = 16
+-- PANEL_PADDING_X is deliberately absent. The horizontal inset from the
+-- panel's left and right edges to its header / divider / body is
+-- LibKa0s-Options-1.0's, published on the instance as `Helpers.PADDING_X`
+-- and applied by the library's own header and EnsureScroll. options-ui-§8
+-- forbids a host copy: the host copy is the one that goes stale, and the
+-- whole point of extracting the panel chrome is that the panels cannot
+-- drift apart. Read it off the instance; never restate the number here.
 
 -- Vertical inset of the title (and the per-panel "Defaults" button next
 -- to it) from the top of the panel. Roughly half the height of the

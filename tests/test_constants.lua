@@ -52,11 +52,59 @@ test("Constants: the panel header reserves more height than its top inset", func
 end)
 
 test("Constants: every panel metric is a positive number", function()
-    for _, key in ipairs({ "PANEL_PADDING_X", "PANEL_HEADER_TOP",
+    -- PANEL_PADDING_X is NOT here: it was a host copy of the library's
+    -- published PADDING_X and is deleted (options-ui-§8). The case below
+    -- pins that it stays deleted.
+    for _, key in ipairs({ "PANEL_HEADER_TOP",
                            "PANEL_HEADER_HEIGHT", "PANEL_DEFAULTS_W" }) do
         assertTrue(type(Const[key]) == "number" and Const[key] > 0,
             key .. " must be a positive number")
     end
+end)
+
+test("Constants: no host copy of a LibKa0s-Options layout constant", function()
+    -- options-ui-§8: a host MUST NOT restate a value the options library
+    -- publishes on the instance. A host copy is the one that goes stale, and
+    -- because both copies start out equal nothing observes the divergence
+    -- until the library retunes its value and only some panels move.
+    --
+    -- This addon shipped two: `Const.PANEL_PADDING_X = 16` restating
+    -- `lib.LAYOUT.PADDING_X`, and `settings/Panel.lua`'s `local ROW_VSPACER = 8`
+    -- which then ASSIGNED ITSELF OVER the published `O.ROW_VSPACER`, so the
+    -- library's value could not have won even where a caller read the instance.
+    -- Both are gone; this is what keeps them gone.
+    --
+    -- Source-scanned rather than driven, per testing-§11: a reintroduced copy
+    -- is a declaration, and no runtime observation distinguishes "read the
+    -- library's 8" from "read a host 8" while the two agree — which is the
+    -- entire failure mode.
+    --
+    -- red under: restoring `Const.PANEL_PADDING_X = 16` in core/Constants.lua,
+    -- or `local ROW_VSPACER = 8` in settings/Panel.lua.
+    local published = { "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL" }
+    local offenders = {}
+    for _, rel in ipairs({ "core/Constants.lua", "settings/Panel.lua",
+                           "settings/Panel_Render.lua", "settings/Panel_Widgets.lua" }) do
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local ln = 0
+        for line in fh:lines() do
+            ln = ln + 1
+            local code = line:gsub("%-%-.*$", "")
+            for _, key in ipairs(published) do
+                -- A declaration assigning a NUMERIC LITERAL to the published
+                -- name (with or without a PANEL_ prefix). Reading the value off
+                -- the instance -- `= Helpers.ROW_VSPACER` -- is the compliant
+                -- shape and must not trip this.
+                if code:match("[%w_.]*" .. key .. "%s*=%s*[%d.]+%s*$") then
+                    offenders[#offenders + 1] = rel .. ":" .. ln .. " " .. line:gsub("^%s+", "")
+                end
+            end
+        end
+        fh:close()
+    end
+    assertEqual(#offenders, 0,
+        "host copies of a published LibKa0s-Options layout constant:\n  "
+        .. table.concat(offenders, "\n  "))
 end)
 
 -- ── Shipped media ───────────────────────────────────────────────────────────

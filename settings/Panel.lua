@@ -291,107 +291,26 @@ function Helpers.LSMValues(mediaType)
 end
 
 -- ---------------------------------------------------------------------
--- Layout constants
+-- Layout constants — there are none left, and that is the point
 -- ---------------------------------------------------------------------
 --
--- Sourced from KickCD.Const so the values live in exactly one place
--- across the addon — see core/Constants.lua for the rationale on each.
+-- options-ui-§8: a host MUST NOT keep its own copies of the library's layout
+-- constants. A host copy is the copy that goes stale, and the whole reason the
+-- panel chrome was extracted is that the panels cannot then drift apart. This
+-- file used to state the rule here and break it twenty lines later.
+--
+-- Everything is read off the instance now — Helpers.PADDING_X,
+-- Helpers.ROW_VSPACER, Helpers.SECTION_HEADING_H, Helpers.BUTTON_PAIR_REL —
+-- and `NS.Const.PANEL_PADDING_X` is deleted outright: its only reader was this
+-- file's own EnsureScroll copy, and LibKa0s-Options-1.0's EnsureScroll applies
+-- the identical inset from `lib.LAYOUT.PADDING_X` (both 16).
 
--- Only PADDING_X survives, and only because this addon's own landing-page body
--- still uses it. HEADER_TOP and HEADER_HEIGHT went with the header: those are
--- LibKa0s-Options-1.0's LAYOUT table now, and options-ui-§8 is explicit that a
--- host MUST NOT keep its own copies — a host copy is the copy that goes stale,
--- and the whole point is that the panels cannot drift apart. Where host code
--- needs one, it reads it off the instance (Helpers.ROW_VSPACER,
--- Helpers.SECTION_HEADING_H, Helpers.BUTTON_PAIR_REL) rather than restating it.
-local PADDING_X = NS.Const.PANEL_PADDING_X
-
--- ---------------------------------------------------------------------
--- Tooltip helper — works on AceGUI widgets (via SetCallback) and plain
--- Blizzard frames (via HookScript). Anchors on widget.frame when the
--- target is an AceGUI widget.
--- ---------------------------------------------------------------------
-
-local function attachTooltip(widget, label, tooltip)
-    if not widget then return end
-    local anchor = widget.frame or widget
-    if not anchor then return end
-
-    local function show()
-        if not GameTooltip then return end
-        GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
-        if label and label ~= "" then
-            GameTooltip:SetText(label, 1, 1, 1)
-        end
-        if tooltip and tooltip ~= "" then
-            GameTooltip:AddLine(tooltip, nil, nil, nil, true)
-        end
-        GameTooltip:Show()
-    end
-    local function hide() if GameTooltip then GameTooltip:Hide() end end
-
-    if widget.SetCallback then
-        widget:SetCallback("OnEnter", show)
-        widget:SetCallback("OnLeave", hide)
-    elseif widget.HookScript then
-        widget:HookScript("OnEnter", show)
-        widget:HookScript("OnLeave", hide)
-    end
-end
-Helpers.AttachTooltip = attachTooltip
 
 -- ---------------------------------------------------------------------
 -- Header (title + Defaults button + divider)
 -- ---------------------------------------------------------------------
 
 
--- ---------------------------------------------------------------------
--- Lazy AceGUI scroll container. Tabs that drive ctx.body directly
--- (Spells, Profiles) never trigger this; they place their own AceGUI
--- containers on top of ctx.body.
--- ---------------------------------------------------------------------
-
-local function ensureScroll(ctx)
-    if ctx.scroll then return ctx.scroll end
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    scroll.frame:SetParent(ctx.body)
-    scroll.frame:ClearAllPoints()
-    -- Right-edge inset of PADDING_X+12 leaves room for the scrollbar
-    -- (which AceGUI nudges 20px to the right of the scrollframe when
-    -- visible) without it being flush against the panel border.
-    scroll.frame:SetPoint("TOPLEFT",     ctx.body, "TOPLEFT",      PADDING_X - 4, -8)
-    scroll.frame:SetPoint("BOTTOMRIGHT", ctx.body, "BOTTOMRIGHT", -(PADDING_X + 12), 8)
-    scroll.frame:Show()
-
-    -- AceGUI's ScrollFrame normally has its width/height set by a parent
-    -- AceGUI container during DoLayout, which fires OnWidthSet/OnHeightSet
-    -- and updates content.width / the scrollbar visibility. We parent it
-    -- to a Blizzard frame via anchors instead, so those callbacks never
-    -- fire and `content.width` stays nil. Hook OnSizeChanged to forward
-    -- the actual size into AceGUI and then re-run DoLayout + FixScroll so
-    -- the scrollbar appears whenever the body resizes (panel open / show).
-    scroll.frame:SetScript("OnSizeChanged", function(_, w, h)
-        if scroll.OnWidthSet  then scroll:OnWidthSet(w)  end
-        if scroll.OnHeightSet then scroll:OnHeightSet(h) end
-        if scroll.DoLayout    then scroll:DoLayout()     end
-        if scroll.FixScroll   then scroll:FixScroll()    end
-    end)
-
-    -- Always render the scrollbar, even on short panels — gives every
-    -- settings tab a symmetric right-edge gutter. See
-    -- Helpers.PatchAlwaysShowScrollbar.
-    Helpers.PatchAlwaysShowScrollbar(scroll)
-
-    ctx.scroll = scroll
-    return scroll
-end
-
--- Exposed so per-unit panel builders (Icons / Castbar) can add a
--- persistent header (unit selector, focus link/copy row) directly to the
--- panel's AceGUI scroll container ahead of the schema-driven body — see
--- Helpers.ClearScroll / Helpers.RerenderUnitPanel below.
-Helpers.EnsureScroll = ensureScroll
 
 local function fireOnChange(def, value)
     if def.onChange then
@@ -420,27 +339,11 @@ Helpers.FireOnChange = fireOnChange
 --     widget of the section away from the heading.
 -- ---------------------------------------------------------------------
 
--- Pixel gap inserted between each two-column row of schema widgets so adjacent
--- rows have visual breathing room. AceGUI's "List" layout packs children flush
--- by default; this spacer is what gives the rendered panel its airy look.
-local ROW_VSPACER = 8
--- Published so settings/Panel_Widgets.lua (InlinePair) and
--- settings/Panel_Render.lua (RenderRows / RenderUnitPanel) insert the
--- same inter-row gap as the in-file renderers.
-Helpers.ROW_VSPACER = ROW_VSPACER
-
-local function addSpacer(scroll, height)
-    local sp = AceGUI:Create("SimpleGroup")
-    sp:SetLayout(nil)
-    sp:SetFullWidth(true)
-    sp:SetHeight(height)
-    scroll:AddChild(sp)
-end
-
--- Exposed alongside Helpers.EnsureScroll for the same reason — per-unit
--- panel headers (unit selector, focus link/copy row) want the same
--- breathing-room spacer the schema renderer uses between rows.
-Helpers.AddSpacer = addSpacer
+-- The inter-row pixel gap and the invisible full-width spacer that applies it
+-- both come off the instance now (Helpers.ROW_VSPACER, Helpers.AddSpacer).
+-- This file used to declare `local ROW_VSPACER = 8` here and then assign it
+-- over the library's published `O.ROW_VSPACER` — same number today, and a
+-- silent divergence the first time the library retunes it.
 
 -- ---------------------------------------------------------------------
 -- Main (parent-category) page content
@@ -448,7 +351,7 @@ Helpers.AddSpacer = addSpacer
 --
 -- The parent canvas page carries the standard header (title + divider)
 -- plus a static splash: logo, the addon's one-liner, and the slash-
--- command list. Rendered through ensureScroll(ctx) so the page picks
+-- command list. Rendered through Helpers.EnsureScroll(ctx) so the page picks
 -- up the same always-visible vertical scrollbar as every other tab,
 -- and so AceGUI's "List" layout left-aligns every child for free.
 
@@ -457,17 +360,8 @@ local MAIN_GAP_AFTER_LOGO = 8
 local MAIN_GAP_AFTER_DESC = 12
 local MAIN_GAP_BELOW_HEAD = 6
 
-local function addBlock(scroll, height)
-    local sp = AceGUI:Create("SimpleGroup")
-    sp:SetLayout(nil)
-    sp:SetFullWidth(true)
-    sp:SetHeight(height)
-    scroll:AddChild(sp)
-    return sp
-end
-
 function Helpers.BuildMainContent(ctx)
-    local scroll = ensureScroll(ctx)
+    local scroll = Helpers.EnsureScroll(ctx)
 
     -- 1) Logo. SimpleGroup is a full-width child so AceGUI's List layout
     -- gives it the scroll's full width to live in; the texture inside
@@ -485,7 +379,7 @@ function Helpers.BuildMainContent(ctx)
     logoTex:SetPoint("TOPLEFT", logoGroup.frame, "TOPLEFT", 0, 0)
     scroll:AddChild(logoGroup)
 
-    addBlock(scroll, MAIN_GAP_AFTER_LOGO)
+    Helpers.AddSpacer(scroll, MAIN_GAP_AFTER_LOGO)
 
     -- 2) One-liner — full-width Label (left-aligned by AceGUI default).
     local desc = AceGUI:Create("Label")
@@ -499,7 +393,7 @@ function Helpers.BuildMainContent(ctx)
     end
     scroll:AddChild(desc)
 
-    addBlock(scroll, MAIN_GAP_AFTER_DESC)
+    Helpers.AddSpacer(scroll, MAIN_GAP_AFTER_DESC)
 
     -- 3) Separator + "Slash Commands" heading: a single AceGUI Heading
     -- widget renders as a label flanked by side dividers, so this one
@@ -513,7 +407,7 @@ function Helpers.BuildMainContent(ctx)
     end
     scroll:AddChild(heading)
 
-    addBlock(scroll, MAIN_GAP_BELOW_HEAD)
+    Helpers.AddSpacer(scroll, MAIN_GAP_BELOW_HEAD)
 
     -- 4) Slash-command rows, rendered by the SAME formatter `/kcd help` prints
     -- through (NS.Slash:LandingRows -> LibKa0s-Slash-1.0's one row formatter),

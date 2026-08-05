@@ -77,7 +77,7 @@ badge and any count quoted in the docs must agree with it.
 - RegisterUnitCastEvent tolerates a handler that isn't defined yet
 - RegisterUnitCastEvent returns a frame the caller can unregister
 
-### test_constants.lua (22)
+### test_constants.lua (23)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
@@ -85,6 +85,7 @@ badge and any count quoted in the docs must agree with it.
 - Constants: the cast bar's inside and outside insets are symmetric
 - Constants: the panel header reserves more height than its top inset
 - Constants: every panel metric is a positive number
+- Constants: no host copy of a LibKa0s-Options layout constant
 - Constants: FONT_MONO points at a font that is actually shipped
 - Constants: the shipped mono font ships its OFL license alongside it
 - Constants: every spec ID is a positive integer
@@ -908,7 +909,7 @@ badge and any count quoted in the docs must agree with it.
 | test_util.lua | 13 |
 | test_coresetup.lua | 23 |
 | test_util_anchor.lua | 26 |
-| test_constants.lua | 22 |
+| test_constants.lua | 23 |
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
@@ -954,4 +955,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **748** |
+| **Total** | **749** |
