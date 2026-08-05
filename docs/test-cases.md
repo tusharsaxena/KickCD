@@ -513,7 +513,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
 
-### test_castbar_helpers.lua (28)
+### test_castbar_helpers.lua (29)
 
 - the Castbar pure helpers are published for testing
 - UnpackColor reads an array-style color
@@ -531,7 +531,8 @@ badge and any count quoted in the docs must agree with it.
 - StateConfig returns the configured per-state table when present
 - StateConfig falls back when the state key is missing
 - StateConfig rejects a non-table value stored under the state key
-- each state fallback IS the shipped default, not a second copy of it
+- the fallbacks are the shipped defaults, and defaults/Profile.lua declares them
+- a malformed per-state config renders exactly like a fresh profile
 - the interruptible fallback is gold, the uninterruptible red with a heavier border
 - both state fallbacks carry every field the reskin path reads
 - ToSetPoint maps every schema anchor token to a real SetPoint token
@@ -940,7 +941,7 @@ badge and any count quoted in the docs must agree with it.
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 21 |
 | test_castbar.lua | 7 |
-| test_castbar_helpers.lua | 28 |
+| test_castbar_helpers.lua | 29 |
 | test_castbar_frame.lua | 37 |
 | test_castbar_skin.lua | 40 |
 | test_castbar_debug.lua | 18 |
@@ -961,4 +962,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **755** |
+| **Total** | **756** |
