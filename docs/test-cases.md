@@ -193,7 +193,7 @@ badge and any count quoted in the docs must agree with it.
 - BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
 - DB label.style.color default matches the settings schema color row default (DB<->schema sync)
 
-### test_color_shape.lua (20)
+### test_color_shape.lua (21)
 
 - the schema declares at least one color row per color-bearing panel
 - every schema color default is keyed, never positional
@@ -215,6 +215,7 @@ badge and any count quoted in the docs must agree with it.
 - an LSM-backed row resolves its values at call time, never at declaration
 - the valueGate hint explains WHY a gated dropdown value was rejected
 - a rejected gated value carries the hint through the slash layer
+- a valueGate probe whose values() raises leaves the gating setting restored
 
 ### test_bus.lua (4)
 
@@ -915,7 +916,7 @@ badge and any count quoted in the docs must agree with it.
 | test_units.lua | 12 |
 | test_schema.lua | 11 |
 | test_database.lua | 20 |
-| test_color_shape.lua | 20 |
+| test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
@@ -955,4 +956,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **749** |
+| **Total** | **750** |

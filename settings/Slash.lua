@@ -100,6 +100,14 @@ end
 --- the only way to answer it without duplicating the gating rule here, and the
 --- swap is transient — one call between mutate and restore, with no message-bus
 --- dispatch in between.
+---
+--- The one call in that window is `row.values()`, addon-authored and free to
+--- raise (an LSM row asks another addon's table). If it did, the restore below
+--- would never run and the swapped-in candidate would stay in SavedVariables —
+--- silently, with no onChange and no panel refresh, from a READ-ONLY hint. So
+--- the probe runs under `pcall`: the restore is unconditional, and a raising
+--- `values` costs the user one missing hint clause rather than a changed
+--- setting. tests/test_color_shape.lua pins that.
 function NS.Slash.GateHint(row)
     local H = helpers()
     if not (H and H.Get and H.FindSchema and H.Resolve) then return "" end
@@ -119,9 +127,9 @@ function NS.Slash.GateHint(row)
     for candidate in pairs(gateValues) do
         if candidate ~= gateVal then
             parent[key] = candidate
-            local alt = allowedKeys(row)
+            local ok, alt = pcall(allowedKeys, row)
             parent[key] = gateVal
-            if #alt > 0 then
+            if ok and #alt > 0 then
                 hints[#hints + 1] = ("flip %s to %s for %s")
                     :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
             end
