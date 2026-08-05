@@ -114,23 +114,33 @@ tests/_kit/run-automated-tests.sh --suite complexity          # a subset
 tests/_kit/run-automated-tests.sh --suite lint --suite tests --no-bundle   # the green gate; writes nothing
 ```
 
-| Suite | Command | Gates? |
-|---|---|---|
-| `lint` | `luacheck .` | **yes** |
-| `tests` | `lua tests/run.lua` | **yes** |
-| `perf` | `lua tests/perf.lua` | no — recorded only |
-| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only |
+There are **two checkpoints** — the run/commit and the tag — and a suite's answer differs between
+them, so the table names both:
 
-**`perf` and `complexity` never fail a run.** They are measured, recorded and diffed — a threshold
-that fails a run teaches everyone to reach for `--no-verify`, after which the gate protects nothing
-and the habit remains. They contribute `amber`, which is a signal rather than a stop. **A missing
-tool is a skip recorded with its reason**, never a pass.
+| Suite | Command | Gates the run and the commit? | Gates the tag? |
+|---|---|---|---|
+| `lint` | `luacheck .` | **yes** | **yes** |
+| `tests` | `lua tests/run.lua` | **yes** | **yes** |
+| `perf` | `lua tests/perf.lua` | no — recorded only | **yes** |
+| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only | **yes** |
+
+**`perf` and `complexity` never fail a run and never block a commit** — they are measured, recorded
+and diffed, not thresholded. A threshold that fails a run teaches everyone to reach for
+`--no-verify`, after which the gate protects nothing and the habit remains. They contribute `amber`,
+which is a signal rather than a stop.
+
+**They do gate the tag.** The release gate requires all four suites at `pass` plus zero functions
+above CCN 15, evaluated by `/wow-addon:bump-version` from the `manifest.json` the release run writes
+— not by the runner, whose exit code is unchanged. **A missing tool is a skip recorded with its
+reason**, never a pass: at the release gate a `skip` is NOT EVALUATED rather than passed, so install
+the tool and re-run.
 
 The runner is **vendored** from `LibKa0s`'s `testkit/`; never edit `tests/_kit/`. A kit fix goes
 upstream and is re-vendored.
 
 **At release, not at commit.** A full bundle is produced as part of every version bump, before the
-tag, with an `ANALYSIS.md` write-up. Commits are gated on lint + tests only.
+tag, with an `ANALYSIS.md` write-up. Commits are gated on lint + tests only; the **tag** is gated on
+all four suites at `pass` plus zero functions above CCN 15.
 
 Results live in [`automated-tests/`](./automated-tests/): `RESULTS.md` is one row per run across all
 four suites plus the current complexity watch list — **one file, overwritten in place**, so its git
