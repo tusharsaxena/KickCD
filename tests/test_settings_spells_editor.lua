@@ -27,7 +27,10 @@ local function editorInstance(specIndex)
         mocks.UnitClass = function() return "Shaman", "SHAMAN", SHAMAN_CLASS_ID end
         mocks.__setPlayerSpec(SHAMAN_CLASS_ID, specIndex or 1)
     end)
-    inst.NS.Settings.Register()
+    -- No explicit registration call: `enable = true` runs the AceAddon OnEnable
+    -- cascade, and OnEnable is where NS.CreateOptionsPanel() lives. This line
+    -- used to read `inst.NS.Settings.Register()` — the private registry's entry
+    -- point, deleted with the registry itself (KCD-A-09).
     for _, ctx in ipairs(inst.NS.Settings.Helpers.__panels()) do ctx.panel:Show() end
     local p = inst.NS.Settings.SpellsPanel
     p:SeedSelectionToPlayer()

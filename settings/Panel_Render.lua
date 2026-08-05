@@ -256,10 +256,22 @@ end
 -- General tab's "Reset all settings" popup and the `/kcd resetall`
 -- slash command — both go through this single helper so the two paths
 -- never diverge.
+--
+-- ResetAllPositions and RestoreUnitLinks are NOT called here. They used to be,
+-- and RestoreAllDefaults had already run both by the time it returned: the
+-- descriptor's `afterRestoreAll` hook (settings/OptionsSetup.lua) is exactly
+-- those two calls, and libs/LibKa0s/Options.lua's O.RestoreAllDefaults fires it
+-- before the refresh — deliberately before, so the refresh paints the
+-- post-hook values. Repeating them here re-ran two whole-profile writes and two
+-- CONFIG_CHANGED fan-outs per reset, and, worse, made the hook look optional:
+-- delete `afterRestoreAll` and this path still worked, while `/kcd resetall`'s
+-- other caller (the library's own Defaults button) silently stopped clearing
+-- anchors (KCD-R-04). One caller, one place.
+--
+-- What is genuinely NOT the library's is the spell lists: they are not schema
+-- rows and not positions, so nothing upstream can reach them.
 function Helpers.ResetAll()
     Helpers.RestoreAllDefaults()
-    Helpers.ResetAllPositions()
-    Helpers.RestoreUnitLinks()
     if NS.Database and NS.Database.ResetAllSpells then
         NS.Database:ResetAllSpells()
     end

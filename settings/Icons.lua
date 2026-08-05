@@ -413,6 +413,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Icons"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("icons", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("icons", L["Icons"], Build)
 end

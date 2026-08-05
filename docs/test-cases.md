@@ -741,13 +741,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (28)
+### test_options_panel.lua (30)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
 - a page that parks no defaults action still has a callable, inert OnDefault
 - NS.Settings.Helpers IS the library instance, decorated in place
 - the host ships no widget maker, flow engine or layout constant of its own
+- every page registers exactly once, through the library's registry
+- no page file reaches a registry other than the library's
 - a bool row renders a checkbox labeled from the row
 - a number row renders a slider carrying the row's range
 - a string row renders a dropdown listing the KEYED options in declared order
@@ -833,15 +835,14 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 
-### test_opensettings.lua (7)
+### test_opensettings.lua (6)
 
-- OpenSettings refuses in combat and clears the retry counter
+- OpenSettings refuses in combat
 - OpenSettings also reads combat off InCombatLockdown
-- OpenSettings opens the registered category and clears the retry counter
-- OpenSettings defers with a notice when the Settings layer has not registered
-- OpenSettings retries are bounded, then fall through to the plain notice
-- OpenSettings prints the plain notice when the Settings API itself is absent
-- OpenSettings' deferred retry re-enters the same function
+- the combat refusal is KickCD's and never reaches the library
+- OpenSettings opens through the library forwarder, not a private copy
+- OpenSettings prints the plain notice when the settings layer never loaded
+- with LibKa0s absent the open says so instead of touching the category API
 
 ### test_perfsetup.lua (25)
 
@@ -926,14 +927,14 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 25 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 28 |
+| test_options_panel.lua | 30 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
-| test_opensettings.lua | 7 |
+| test_opensettings.lua | 6 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **738** |
+| **Total** | **739** |

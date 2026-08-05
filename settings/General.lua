@@ -179,6 +179,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["General"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("general", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("general", L["General"], Build)
 end

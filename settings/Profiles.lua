@@ -62,6 +62,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Profiles"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("profiles", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("profiles", L["Profiles"], Build)
 end

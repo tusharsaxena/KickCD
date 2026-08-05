@@ -363,7 +363,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
 - Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
 - Out of combat `/kcd config` opens the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
-- Running `/kcd config` immediately after login (before `PLAYER_LOGIN`-deferred `RegisterPanel`) eventually succeeds — `OpenSettings` schedules deferred retries via `C_Timer.After(0.5, …)`, capped at 3 attempts.
+- Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
 
 ### 15. Debug commands
 

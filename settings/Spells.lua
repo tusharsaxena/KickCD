@@ -1154,8 +1154,8 @@ local function Build(mainCategory)
     return Settings.RegisterCanvasLayoutSubcategory(mainCategory, panel, L["Spells"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("spells", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("spells", L["Spells"], Build)
 end
 
 -- ---------------------------------------------------------------------------

@@ -556,7 +556,7 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Cast bar"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("castbar", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("castbar", L["Cast bar"], Build)
 end
 
