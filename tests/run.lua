@@ -171,6 +171,7 @@ local SUITES = {
     "test_opensettings",
     "test_perfsetup",
     "test_list_mode",
+    "test_surface_parity",
     "test_vendor_sync",
 }
 

@@ -886,6 +886,15 @@ badge and any count quoted in the docs must agree with it.
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
+### test_surface_parity.lua (6)
+
+- sanity: the degraded arm really has no LibKa0s
+- the whole namespace survives a LibKa0s-less load
+- the Core printer seam degrades with its whole surface intact
+- the DebugLog stub carries the whole live surface
+- the Slash stub carries the whole live surface
+- the Options stub carries every member the host calls
+
 ### test_vendor_sync.lua (2)
 
 - libs/LibKa0s is the LibKa0s release the README says this addon bundles
@@ -942,5 +951,6 @@ badge and any count quoted in the docs must agree with it.
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
+| test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **741** |
+| **Total** | **747** |
