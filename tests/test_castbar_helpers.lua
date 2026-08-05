@@ -124,15 +124,33 @@ test("StateConfig rejects a non-table value stored under the state key", functio
     assertTrue(rawequal(Castbar.StateConfig({ uninterruptible = false }, "uninterruptible", fb), fb))
 end)
 
-test("the interruptible fallback is gold with no border, the uninterruptible red with one", function()
+test("each state fallback IS the shipped default, not a second copy of it", function()
+    -- savedvariables-§2: one declaration site. These two tables used to be a
+    -- second hardcoded copy in modules/Castbar.lua, and the copy had drifted
+    -- from defaults/Profile.lua in both the color SHAPE (positional there,
+    -- keyed here) and the interruptible border. A malformed profile that falls
+    -- back must render exactly like a fresh one, so identity is the assertion
+    -- — equality would still pass on a re-forked copy.
+    local d = inst.NS.CASTBAR_DEFAULT
+    assertTrue(d ~= nil, "defaults/Profile.lua must publish NS.CASTBAR_DEFAULT")
+    assertTrue(rawequal(Castbar.INT_FALLBACK,   d.interruptible),
+        "the interruptible fallback must BE defaults/Profile.lua's table")
+    assertTrue(rawequal(Castbar.UNINT_FALLBACK, d.uninterruptible),
+        "the uninterruptible fallback must BE defaults/Profile.lua's table")
+end)
+
+test("the interruptible fallback is gold, the uninterruptible red with a heavier border", function()
     -- These are the shipped visual defaults and the reason the two states are
     -- distinguishable at a glance; a silent change here is a UX regression.
+    -- Read through UnpackColor so the assertion does not re-encode a shape
+    -- (the stored shape is keyed since the v3→v4 color migration).
     local i, u = Castbar.INT_FALLBACK, Castbar.UNINT_FALLBACK
-    assertFalse(i.borderShow, "an interruptible cast needs no warning border")
     assertTrue(u.borderShow, "an uninterruptible cast is flagged with a border")
-    assertTrue(u.borderSize > i.borderSize)
-    assertTrue(i.barColor[1] > 0.9 and i.barColor[2] > 0.5, "interruptible reads as gold")
-    assertTrue(u.barColor[1] > 0.5 and u.barColor[2] < 0.3, "uninterruptible reads as red")
+    assertTrue(u.borderSize >= i.borderSize)
+    local ir, ig = Castbar.UnpackColor(i.barColor)
+    local ur, ug = Castbar.UnpackColor(u.barColor)
+    assertTrue(ir > 0.9 and ig > 0.5, "interruptible reads as gold")
+    assertTrue(ur > 0.5 and ug < 0.3, "uninterruptible reads as red")
 end)
 
 test("both state fallbacks carry every field the reskin path reads", function()

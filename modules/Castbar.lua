@@ -557,34 +557,27 @@ end
 -- caller and this file loads first.
 
 -- Default sub-config used when a profile is missing the per-state nested
--- block (safety net against malformed saved-vars). Mirrors the Database
--- defaults.
+-- block (safety net against malformed saved-vars).
 local function stateConfig(c, key, fallback)
     local sc = c[key]
     if type(sc) == "table" then return sc end
     return fallback
 end
 
-local INT_FALLBACK = {
-    statusBarTexture = "Blizzard Raid Bar",
-    barColor         = { 1,    0.85, 0.05, 1   },
-    bgColor          = { 0,    0,    0,    0.5 },
-    nameTextColor    = { 1,    1,    1,    1   },
-    borderShow       = false,
-    borderTexture    = "Blizzard Tooltip",
-    borderColor      = { 0,    0,    0,    1   },
-    borderSize       = 1,
-}
-local UNINT_FALLBACK = {
-    statusBarTexture = "Blizzard Raid Bar",
-    barColor         = { 0.85, 0.10, 0.10, 1   },
-    bgColor          = { 0,    0,    0,    0.5 },
-    nameTextColor    = { 1,    1,    1,    1   },
-    borderShow       = true,
-    borderTexture    = "Blizzard Tooltip",
-    borderColor      = { 1,    0.20, 0.20, 1   },
-    borderSize       = 2,
-}
+-- The fallbacks ARE the shipped defaults, read straight off the one
+-- declaration site (defaults/Profile.lua, savedvariables-§2). They used to be
+-- a second hardcoded copy of the same two tables, and the copy had drifted:
+-- it stored its colors POSITIONALLY where the defaults tree stores them keyed
+-- (the v3→v4 color-shape migration's whole subject), and it disagreed about
+-- the interruptible border. A fallback that disagrees with the default it
+-- claims to mirror renders a malformed profile differently from a fresh one,
+-- which is exactly the bug the single-declaration rule exists to prevent.
+--
+-- Captured at load: the TOC loads `# Defaults` before `# Modules`. Read-only
+-- for every consumer (ApplyState and Castbar_Skin's Reskin both only read), so
+-- sharing the tables rather than deep-copying cannot write back into defaults.
+local INT_FALLBACK   = NS.CASTBAR_DEFAULT and NS.CASTBAR_DEFAULT.interruptible   or {}
+local UNINT_FALLBACK = NS.CASTBAR_DEFAULT and NS.CASTBAR_DEFAULT.uninterruptible or {}
 
 
 --- Per-cast paint of the bar widgets. Sets the spell icon texture, the

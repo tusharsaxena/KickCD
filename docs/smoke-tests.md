@@ -589,7 +589,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 **Steps.**
 - Log in.
 - `/kcd get units.target.label.style.font` (or open Settings → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `core/Database.lua`.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`.
 
 **Pass.**
 - No Lua errors during the migration login or on the Text Label panel.

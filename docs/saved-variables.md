@@ -30,7 +30,7 @@ db.global = {
 }
 ```
 
-Profile shape (see `core/Database.lua` `DEFAULT_PROFILE`):
+Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C` / `NS.DEFAULT_PROFILE`):
 
 ```lua
 {
@@ -182,7 +182,7 @@ units[unit] = {
 }
 ```
 
-`icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `core/Database.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (both default `true`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (target seeds `y = 120`, focus seeds `y = 260` — Focus sits 140px above Target so the two grids don't overlap on first enable; this leaves roughly 10px of clearance between the Focus cast-timer bottom and the Target label top, a computed estimate from default element sizes that may need a small nudge once rendered).
+`icons` / `castbar` are structurally identical for `target` and `focus` (both seeded from the same `ICONS_DEFAULT` / `CASTBAR_DEFAULT` tables in `defaults/Profile.lua`) — the only per-unit differences in `DEFAULT_PROFILE` are `enabled` (both default `true`), `link` (focus defaults `true`), `label.text`, and each unit's default screen offset in `anchors` (target seeds `y = 120`, focus seeds `y = 260` — Focus sits 140px above Target so the two grids don't overlap on first enable; this leaves roughly 10px of clearance between the Focus cast-timer bottom and the Target label top, a computed estimate from default element sizes that may need a small nudge once rendered).
 
 **Link resolution lives in `core/Units.lua` (`NS.Units`), not scattered across the widget modules.** `IconGrid` and `Castbar` never read `db.profile.units.<unit>.icons` / `.castbar` directly for appearance — they call `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)`, which resolve to `units.target.icons` / `.castbar` whenever `units.focus.link == true` (target is never linked). Position (`anchors`) and `label.text` are read straight off the unit's own config via `NS.Units.Anchor` / `.Label` — they are NOT link-resolved, so a linked focus grid still drags independently of target and keeps showing its own "Focus" identity text. `label.show` is the exception among the label fields: it resolves through `NS.Units.LabelShow`, so turning target's label off also hides a linked focus's. `NS.Units.CopyStyling(from, to)` deep-copies `icons`/`castbar`/`label.style` and snapshots `label.show` (it has to — otherwise unlinking would revive focus's stale independent `show`), then flips `link = false`; `label.text` is deliberately not copied. It backs the settings panel's "Copy styling from Target" button.
 
@@ -203,7 +203,7 @@ units[unit].label.style = {
 }
 ```
 
-`label.style` is **single-sourced** from one `LABELSTYLE_DEFAULT` table in `core/Database.lua`, deep-copied into both `units.target.label.style` and `units.focus.label.style` — Target and Focus ship with an IDENTICAL label appearance out of the box (unlike `icons`/`castbar`, which are also structurally identical but seeded from their own `ICONS_DEFAULT`/`CASTBAR_DEFAULT`, this is the same pattern applied to label styling). `label.style` **is** link-resolved (`NS.Units.LabelStyle(unit)`, resolving to `units.target.label.style` for a linked focus), and so is `label.show` (`NS.Units.LabelShow(unit)`) — only `text` stays per-unit (`NS.Units.Label(unit)`, never link-resolved), so a linked Focus mirrors Target's font/position/rotation/color *and* its on/off state while still showing its own "Focus" text.
+`label.style` is **single-sourced** from one `LABELSTYLE_DEFAULT` table in `defaults/Profile.lua`, deep-copied into both `units.target.label.style` and `units.focus.label.style` — Target and Focus ship with an IDENTICAL label appearance out of the box (unlike `icons`/`castbar`, which are also structurally identical but seeded from their own `ICONS_DEFAULT`/`CASTBAR_DEFAULT`, this is the same pattern applied to label styling). `label.style` **is** link-resolved (`NS.Units.LabelStyle(unit)`, resolving to `units.target.label.style` for a linked focus), and so is `label.show` (`NS.Units.LabelShow(unit)`) — only `text` stays per-unit (`NS.Units.Label(unit)`, never link-resolved), so a linked Focus mirrors Target's font/position/rotation/color *and* its on/off state while still showing its own "Focus" text.
 
 **Visibility:** the label's holder frame is created on `UIParent` but `SetParent`'d onto the unit's **icon grid** (`IconGrid:GetGridFrame(unit)`, falling back to the attach frame only if the grid isn't up yet) on every `Apply`, while `SetPoint`-anchoring to the resolved attach frame for position alone. Parenting to the grid — not the attach frame — means the label inherits the grid's shown state + effective alpha, so it follows the addon's General visibility (`db.profile.visibility`) without being cast-gated by a cast bar that hides itself between casts. See [conventions.md](conventions.md#frame-names).
 

@@ -9,7 +9,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 
 ## Saved variables
 
-- Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `core/Database.lua`. New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
+- Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `defaults/Profile.lua` — the only place a profile default is hardcoded (`savedvariables-§2`). New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
 - Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralized there. The exception is per-unit appearance (`icons`/`castbar`): those go through `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)` so link resolution (a linked focus reading target's tables) stays in one place — see `core/Units.lua`.
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
 

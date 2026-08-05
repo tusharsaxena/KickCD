@@ -44,7 +44,8 @@ core\LSMPatch.lua
 core\KickCD.lua
 core\PerfSetup.lua
 
-# Defaults
+# Defaults (the only place a profile default is hardcoded — savedvariables-§2)
+defaults\Profile.lua
 defaults\Spells.lua
 
 # Modules
