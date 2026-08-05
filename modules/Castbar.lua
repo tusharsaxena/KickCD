@@ -716,16 +716,14 @@ local function onUpdate(inst)
     if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
 end
 
--- Fallback name color. Module-level so the per-call path allocates nothing:
--- ApplyState runs on every cast start / stop, on every interruptibility flip
--- and once per Reskin, and a fresh { 1, 1, 1, 1 } per call was pure churn.
-local WHITE = { 1, 1, 1, 1 }
-
---- Four channels out of a positional color table, defaulted to white. Returns
---- values rather than a table so the hot path stays allocation-free.
+--- Four channels out of a color table, defaulted to opaque white.
+--- Delegates to Util.Unpack: colors are STORED KEYED (core/Database.lua's
+--- `nameTextColor = { r =, g =, b =, a = }`), so the positional read this
+--- replaced saw nil on every channel and painted the spell name white no
+--- matter what the user picked. Util.Unpack reads either shape, allocates
+--- nothing and returns values, so the hot path is unchanged.
 local function rgba(c)
-    c = c or WHITE
-    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    return NS.Util.Unpack(c)
 end
 
 --- Preview / no-cast: show interruptible visuals; the uninterruptible side is

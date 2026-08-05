@@ -532,7 +532,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (36)
+### test_castbar_frame.lua (37)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -558,6 +558,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the alpha switch never branches on notInterruptible in Lua
 - the no-cast state falls back to interruptible visuals
 - the uninterruptible warning border is on and the interruptible one off
+- the user's spell-name color reaches the label, in the keyed storage shape
 - Stop clears the cast, empties both bars and disarms the animation
 - Stop HIDES the bar while locked
 - Stop leaves a PREVIEW on screen while unlocked, so it stays draggable
@@ -916,7 +917,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_unitlabel_apply.lua | 21 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 27 |
-| test_castbar_frame.lua | 36 |
+| test_castbar_frame.lua | 37 |
 | test_castbar_skin.lua | 40 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
@@ -935,4 +936,4 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_perfsetup.lua | 25 |
 | test_list_mode.lua | 5 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **737** |
+| **Total** | **738** |
