@@ -17,8 +17,38 @@ local loader  = dofile(root .. "/tests/loader.lua")
 -- ---------------------------------------------------------------------------
 -- Micro-framework
 -- ---------------------------------------------------------------------------
-local passed, failed = 0, 0
+local passed, failed, skipped = 0, 0, 0
 local failures = {}
+
+-- ── skip ───────────────────────────────────────────────────────────────────
+-- A third case status, with the same name, signature and semantics as
+-- tests/_kit/framework.lua's `Kit.skip`, so adopting the kit wholesale
+-- (M3-10) replaces this with an identical function rather than changing any
+-- call site. A case that CANNOT LOOK — no sibling checkout, no `git`, a
+-- fixture the platform cannot produce — used to be written as a bare
+-- `return`, and a bare `return` registers as PASS. That is how this repo's
+-- vendored-payload gate reported "checked, fine" for a comparison that never
+-- ran. Two properties are non-negotiable:
+--   * a skip is NEVER folded into `passed` — the README [tests] badge and
+--     docs/test-cases.md count passes, and a skip counted as one is the
+--     original lie in a new place;
+--   * a skip NEVER changes the exit code. A skip is "not evaluated", which is
+--     a fact for the release flow to judge, not a failure to re-litigate here.
+-- It raises a sentinel so it can be called from inside a case body at any
+-- depth — inside a helper, inside a loop — without restructuring the case
+-- into a predicate plus a body.
+local SKIP = {}
+
+--- Abandon the current case with a reason, reported as SKIP, not PASS or FAIL.
+local function skip(reason)
+    error(setmetatable({ reason = tostring(reason or "no reason given") }, SKIP), 0)
+end
+
+--- The reason, if `err` is a skip sentinel; nil for any other error value.
+local function skipReasonOf(err)
+    if type(err) == "table" and getmetatable(err) == SKIP then return err.reason end
+    return nil
+end
 
 -- --list mode (§5): enumerate every registered case grouped by suite without
 -- running it. Set once from argv; `currentSuite` is stamped around each dofile
@@ -44,7 +74,11 @@ local function test(name, fn)
         return
     end
     local ok, err = pcall(fn)
-    if ok then
+    local reason = (not ok) and skipReasonOf(err) or nil
+    if reason then
+        skipped = skipped + 1
+        io.write("  \27[33mSKIP\27[0m  " .. name .. " — " .. reason .. "\n")
+    elseif ok then
         passed = passed + 1
         io.write("  \27[32mPASS\27[0m  " .. name .. "\n")
     else
@@ -122,6 +156,7 @@ local shared = loadInstance(true)
 local T = {
     root = root,
     test = test,
+    skip = skip,
     assertTrue = assertTrue,
     assertFalse = assertFalse,
     assertNil = assertNil,
@@ -250,7 +285,8 @@ if listMode then
     os.exit(0)
 end
 
-io.write(("\n-------------------\n%d passed, %d failed\n"):format(passed, failed))
+io.write(("\n-------------------\n%d passed, %d failed, %d skipped, %d total\n")
+    :format(passed, failed, skipped, passed + failed + skipped))
 if failed > 0 then
     io.write("\nFailures:\n")
     for _, f in ipairs(failures) do io.write("  - " .. f .. "\n") end
