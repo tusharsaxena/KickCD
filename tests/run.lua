@@ -91,7 +91,7 @@ local function loadInstance(initDB, enable, mutate, opts)
     if mutate then mutate(mocks) end
     -- `_G` must resolve to a table that answers from THIS instance's mocks. Nearly every WoW-API
     -- read in this addon is written `_G.C_SpecializationInfo`, `_G.InCombatLockdown`, `_G.UnitGUID`
-    -- — explicit, because §4.1 forbids the deprecated bare globals and the `_G.` prefix is what
+    -- — explicit, because architecture-§1 forbids the deprecated bare globals and the `_G.` prefix is what
     -- makes a Compat-bypassing read visible in review. The kit's loader gives each chunk an
     -- environment whose `__index` falls through to the real `_G`, and the real `_G` has none of the
     -- client API in it, so an unbound `_G.X` reads nil and 144 cases measure the absent-API

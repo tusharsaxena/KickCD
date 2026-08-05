@@ -4,7 +4,7 @@
 -- Returns a builder: each call to build() produces a FRESH `mocks` table
 -- (the fake WoW global namespace) plus a fresh LibStub with fake Ace3 libs,
 -- so every test instance is fully isolated. The key correctness requirement
--- (§4.4 / AP-33) is that the AceEvent fake keys message callbacks by
+-- (architecture-§4 / AP-33) is that the AceEvent fake keys message callbacks by
 -- (message, target) and fans SendMessage out to EVERY registered target —
 -- a no-op bus mock would hide the last-registrant-wins clobber bug.
 --

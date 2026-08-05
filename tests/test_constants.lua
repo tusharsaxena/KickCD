@@ -72,7 +72,7 @@ test("Constants: FONT_MONO points at a font that is actually shipped", function(
 end)
 
 test("Constants: the shipped mono font ships its OFL license alongside it", function()
-    -- §12.2 requires the license to travel with the font.
+    -- debug-logging-§2 requires the license to travel with the font.
     local fh = io.open(T.root .. "/media/fonts/JetBrainsMono-OFL.txt", "r")
     assertTrue(fh ~= nil, "the shipped font's OFL license is missing")
     if fh then fh:close() end

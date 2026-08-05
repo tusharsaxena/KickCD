@@ -2,7 +2,7 @@
 --
 -- Settings UI framework — the canvas/layout core. The widget-maker
 -- primitives and the schema render/reset layer were peeled into siblings
--- (KCD-24, §1.2): settings/Panel_Widgets.lua (the makers) and
+-- (KCD-24, layout-§1): settings/Panel_Widgets.lua (the makers) and
 -- settings/Panel_Render.lua (RenderRows / RenderSchema / Restore* / Reset*).
 -- All three publish onto the one NS.Settings.Helpers table, so call order
 -- across the trio is irrelevant; the siblings load right after this file.

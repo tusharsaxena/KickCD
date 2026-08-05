@@ -1,6 +1,6 @@
 -- modules/Castbar.lua
 --
--- NOTE (KCD-19, §1.2): this file sits in the 1000–1500 LOC "on notice" band.
+-- NOTE (KCD-19, layout-§1): this file sits in the 1000–1500 LOC "on notice" band.
 -- Two peels have kept it under the 1500 hard cap: debug diagnostics
 -- (Castbar:DebugDump) to modules/Castbar_Debug.lua, and the config-driven
 -- re-skin (Castbar:Reskin — sizing, orientation, insets, spark, fonts, text

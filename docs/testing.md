@@ -16,7 +16,7 @@ The registry, the assertion set, the `skip` status, the suite-inventory gate, th
 
 The kit **collects, then runs**: `test()` records a case and nothing executes until the runner decides to. This file's runner used to `pcall` each case body at registration time and short-circuit it under `--list`, which made the inventory a second code path through the same function and made "what has already happened when this case runs?" depend on where in its file the case sat. `--list` is now a pure filter over the registry and cannot disagree with the run.
 
-One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (§4.1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
+One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (architecture-§1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
 
 ## What the frame mock does and doesn't model
 

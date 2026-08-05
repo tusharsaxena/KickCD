@@ -24,7 +24,7 @@ local addonName, NS = ...
 -- namespace table WoW passes as the second vararg to every file, and the
 -- core/* files loaded earlier have already hung Compat / Util / Database /
 -- Const / State onto this same NS. After this call NS IS the addon object —
--- there is NO _G.KickCD rebind; the namespace stays private (§4.1).
+-- there is NO _G.KickCD rebind; the namespace stays private (architecture-§1).
 -- The return value is deliberately discarded: NewAddon promotes the table it
 -- is handed, so it hands back the very NS we passed in. Capturing it (as the
 -- former NS.addon field did) only created a self-reference with no callers.
@@ -37,7 +37,7 @@ LibStub("AceAddon-3.0"):NewAddon(
 -- Public version stamp.
 NS.VERSION = "1.2.1"
 
--- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (§4.4).
+-- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (architecture-§4).
 -- Any consumer that is NOT itself an AceAddon module (which already gets its
 -- own AceEvent embed) MUST own a private target from this factory rather than
 -- registering on the shared addon object: CallbackHandler keys callbacks by
@@ -64,7 +64,7 @@ function NS:OnInitialize()
     end
 
     -- Debug logging is a session-only flag (KickCD.State.debug) seeded off on
-    -- every load — it is NEVER read back from SavedVariables (§12.5). No
+    -- every load — it is NEVER read back from SavedVariables (debug-logging-§5). No
     -- seeding here on purpose.
 
     -- Slash commands. Both /kickcd and /kcd dispatch to OnSlashCommand,
@@ -114,7 +114,7 @@ end
 -- build; fall back to the in-code NS.VERSION stamp when the metadata API is
 -- unavailable (older clients, or the headless test harness). 12.0 exposes the
 -- reader under C_AddOns; the bare _G.GetAddOnMetadata is deprecated, so we don't
--- touch it (§4.1 no-deprecated-globals).
+-- touch it (architecture-§1 no-deprecated-globals).
 local function addonVersion()
     local get = C_AddOns and C_AddOns.GetAddOnMetadata
     local v = get and get(addonName, "Version")
@@ -264,7 +264,7 @@ function runDebug(self, rest)
     local sub = (rest or ""):match("^(%S*)") or ""
     sub = sub:lower()
     if sub == "" then
-        -- Bare `/kcd debug` toggles the console window (§12.5); the flag is
+        -- Bare `/kcd debug` toggles the console window (debug-logging-§5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.
         if self.DebugLog then self.DebugLog:Toggle() end
         p(self, "debug subcommands")

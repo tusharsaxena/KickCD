@@ -15,7 +15,7 @@ local addonName, NS = ...
 local Const = {}
 NS.Const = Const
 
--- Chat tag prepended to every user-facing chat line (§7.4). Single source of
+-- Chat tag prepended to every user-facing chat line (slash-commands-§4). Single source of
 -- truth: core/Util.lua's print() and any other chat-writing site reference
 -- KickCD.PREFIX rather than hand-duplicating the escape sequence. Becomes
 -- NS.PREFIX after the private-namespace migration.
@@ -87,7 +87,7 @@ Const.PANEL_DEFAULTS_W    = 110
 
 -- Monospace TTF shipped under media/fonts/ (JetBrains Mono, OFL — license in
 -- media/fonts/JetBrainsMono-OFL.txt) so the debug console's timestamps and
--- [tags] line up regardless of the user's installed fonts (§12.2). Registered
+-- [tags] line up regardless of the user's installed fonts (debug-logging-§2). Registered
 -- with LibSharedMedia at load in modules/DebugLog.lua and applied at 10pt.
 Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]
 

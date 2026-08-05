@@ -1,4 +1,4 @@
--- tests/test_debuglog.lua — pure formatters + session-only sink (§12.3/§12.4/§12.5)
+-- tests/test_debuglog.lua — pure formatters + session-only sink (debug-logging-§3/debug-logging-§4/debug-logging-§5)
 local T = _G.KICKCD_TEST
 local NS = T.NS
 local test, assertEqual, assertTrue, assertFalse = T.test, T.assertEqual, T.assertTrue, T.assertFalse
@@ -12,7 +12,7 @@ test("DebugLog module loaded with its public API", function()
     assertTrue(type(NS.Debug) == "function", "the NS.Debug sink must exist")
 end)
 
-test("FormatPlain is clean, un-colored, and well-shaped (§12.3)", function()
+test("FormatPlain is clean, un-colored, and well-shaped (debug-logging-§3)", function()
     assertEqual(DebugLog.FormatPlain("12:00:00", "Cast", "hello"), "12:00:00 | [Cast] hello")
     -- no color escapes in the copy buffer
     assertFalse(DebugLog.FormatPlain("12:00:00", "Cast", "x"):find("|c", 1, true))
@@ -27,7 +27,7 @@ test("FormatColored carries the same fields as FormatPlain (no drift)", function
     assertTrue(c:find("|cffc9a66b", 1, true) ~= nil, "tan tag color")
 end)
 
-test("debug flag defaults OFF and lives in State, never in SavedVariables (§12.5)", function()
+test("debug flag defaults OFF and lives in State, never in SavedVariables (debug-logging-§5)", function()
     local inst = T.load(true)
     local ns = inst.NS
     assertEqual(ns.State.debug, false, "debug must default off")
@@ -44,7 +44,7 @@ test("SetEnabled is the single write seam and toggles State.debug", function()
     assertEqual(ns.State.debug, false)
 end)
 
-test("SetEnabled brackets each session with a console line at both ends (§12.5)", function()
+test("SetEnabled brackets each session with a console line at both ends (debug-logging-§5)", function()
     local inst = T.load(true)
     local ns = inst.NS
     ns.DebugLog:SetEnabled(true)
@@ -139,7 +139,7 @@ test("building the console + Add/Clear run the guarded sync headlessly (§11)", 
     assertTrue(ok, "console build + Add/Clear must not error: " .. tostring(err))
 end)
 
-test("console WINDOW visibility is decoupled from the capture flag (§12.5)", function()
+test("console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)", function()
     -- The General "Debug console" checkbox drives IsShown/Show/Hide (window),
     -- NOT SetEnabled (capture). Enabling capture must not open the window.
     local ns = T.load(true).NS

@@ -55,7 +55,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 Suppressions come in two forms, and the choice between them is about scope:
 
 - **Repo-wide → `.luacheckrc`.** The `ignore` list holds allowances that are true everywhere: `212/self` and `212/event` (Ace handler signatures that name arguments they don't all use) and `211/addonName` (the `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`, `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
-- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the current example: it keeps the standard bootstrap header (§4.1) even though it is a standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there rather than the header being trimmed or the allowance being widened repo-wide.
+- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the current example: it keeps the standard bootstrap header (architecture-§1) even though it is a standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there rather than the header being trimmed or the allowance being widened repo-wide.
 
 Prefer the inline form for anything that is genuinely local. Adding a name to `.luacheckrc` silences it in every file at once, including files that haven't been written yet.
 

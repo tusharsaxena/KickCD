@@ -21,7 +21,7 @@ local Spells = {}
 -- Published so the headless suites can drive the editor's selection state
 -- (which is otherwise file-local). Not part of the inter-module contract —
 -- nothing in the addon reads this; the message bus stays the only channel
--- between modules (§4.4).
+-- between modules (architecture-§4).
 NS.Settings = NS.Settings or {}
 NS.Settings.SpellsPanel = Spells
 
@@ -1097,7 +1097,7 @@ local function ensurePanel()
     end)
 
     -- The Spells panel is a plain-table module, not an AceAddon submodule, so
-    -- it owns a PRIVATE AceEvent target (§4.4 / KCD-09). Registering these
+    -- it owns a PRIVATE AceEvent target (architecture-§4 / KCD-09). Registering these
     -- receivers on the shared KickCD addon object would risk clobbering a
     -- future receiver of the same message. ensurePanel short-circuits on
     -- subsequent calls, so this registers exactly once.

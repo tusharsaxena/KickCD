@@ -19,7 +19,7 @@ NS.Database = Database
 -- DEFAULT_PROFILE's shape (rename, restructure, type change). Additive
 -- changes (new leaf settings) are absorbed by AceDB's defaults merge
 -- and don't need a version bump. The version is an addon-wide integer
--- stored in db.global.schemaVersion (§2.2 / §5.1) — NOT per-profile.
+-- stored in db.global.schemaVersion (toc-file-§2 / savedvariables-§1) — NOT per-profile.
 -- Database:MigrateProfile reads it on Init and on every profile swap and
 -- walks any required migrations forward. v2 folds the legacy top-level
 -- icons/castbar/anchors tables into units.target (see migrations[1] /
@@ -241,7 +241,7 @@ local DEFAULT_PROFILE = {
     locked     = false,
     scale      = 1.0,
     alpha      = 1.0,
-    -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — §12.5)
+    -- (debug logging is a session-only flag in KickCD.State.debug, never in SV — debug-logging-§5)
     -- "always" | "in_combat" | "target_casting" | "target_casting_interruptible"
     -- Controls when the icon grid is visible. "in_combat" gates on
     -- InCombatLockdown(); "target_casting" gates on UnitCastingInfo /
@@ -292,7 +292,7 @@ local DEFAULTS = {
     profile = DEFAULT_PROFILE,
     -- Addon-wide (account) scope. The schema version lives here, not on the
     -- profile, so a migration runs once per account rather than once per
-    -- profile (§5.1). See Database:MigrateProfile for the one-shot adoption
+    -- profile (savedvariables-§1). See Database:MigrateProfile for the one-shot adoption
     -- of a legacy per-profile dbVersion.
     global = {
         schemaVersion = CURRENT_DB_VERSION,

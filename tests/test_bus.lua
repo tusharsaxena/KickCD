@@ -1,4 +1,4 @@
--- tests/test_bus.lua — message bus keyed by (message, target) (§4.4 / AP-33)
+-- tests/test_bus.lua — message bus keyed by (message, target) (architecture-§4 / AP-33)
 --
 -- The whole point: two receivers of ONE message, each on its OWN target,
 -- must BOTH fire. A no-op or single-slot mock would hide the last-registrant-

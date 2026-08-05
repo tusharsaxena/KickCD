@@ -1,7 +1,7 @@
 -- modules/Castbar_Debug.lua
 --
 -- Debug diagnostics peeled out of modules/Castbar.lua to keep that file under
--- the §1.2 1500-line hard cap (recorded intentional split, KCD-19). This file
+-- the layout-§1 1500-line hard cap (recorded intentional split, KCD-19). This file
 -- adds the Castbar:DebugDump method to the already-registered Castbar module;
 -- it is loaded AFTER modules/Castbar.lua (see the TOC). /kcd debug castbar
 -- routes here via NS:GetModule("Castbar"):DebugDump() (core/KickCD.lua).

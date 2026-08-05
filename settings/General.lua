@@ -59,7 +59,7 @@ add{
 }
 
 -- Debug logging is a SESSION-ONLY flag (KickCD.State.debug), never persisted
--- to SavedVariables (§12.5), so it is deliberately NOT a schema row here.
+-- to SavedVariables (debug-logging-§5), so it is deliberately NOT a schema row here.
 -- Toggle it via the debug console's header button or `/kcd debug on|off|toggle`.
 
 add{
@@ -143,7 +143,7 @@ local function Build(mainCategory)
                 -- Lock frame (schema bool, skipRender) pairs on one row with a
                 -- bespoke, SESSION-ONLY Debug console toggle. The Debug checkbox
                 -- shows/hides the console WINDOW (DebugLog:Show/Hide) — it does
-                -- NOT touch the debug capture flag (§12.5); that stays on the
+                -- NOT touch the debug capture flag (debug-logging-§5); that stays on the
                 -- in-window "Debug: ON/OFF" button and `/kcd debug on|off`. It's
                 -- bespoke (not a schema row) so it never persists to SV and
                 -- never appears in /kcd get|set|list.

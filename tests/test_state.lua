@@ -38,7 +38,7 @@ end
 test("State: the combat flag starts false and holds `debug` session-only", function()
     local State = freshState()
     assertFalse(State.inCombat)
-    assertFalse(State.debug, "debug must default off and never be persisted (§12.5)")
+    assertFalse(State.debug, "debug must default off and never be persisted (debug-logging-§5)")
 end)
 
 test("State.SetInCombat coerces any truthy value to a real boolean", function()

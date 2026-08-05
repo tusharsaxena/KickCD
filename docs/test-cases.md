@@ -167,7 +167,7 @@ badge and any count quoted in the docs must agree with it.
 - label panel carries per-unit label rows; General no longer does
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
-- debug console stays session-only: no schema row targets it (§12.5)
+- debug console stays session-only: no schema row targets it (debug-logging-§5)
 
 ### test_database.lua (20)
 
@@ -296,18 +296,18 @@ badge and any count quoted in the docs must agree with it.
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
-- FormatPlain is clean, un-colored, and well-shaped (§12.3)
+- FormatPlain is clean, un-colored, and well-shaped (debug-logging-§3)
 - FormatColored carries the same fields as FormatPlain (no drift)
-- debug flag defaults OFF and lives in State, never in SavedVariables (§12.5)
+- debug flag defaults OFF and lives in State, never in SavedVariables (debug-logging-§5)
 - SetEnabled is the single write seam and toggles State.debug
-- SetEnabled brackets each session with a console line at both ends (§12.5)
+- SetEnabled brackets each session with a console line at both ends (debug-logging-§5)
 - NS.Debug is a no-op when disabled (zero capture) and appends when enabled
 - NS.Debug sanitizes secret args and never errors
 - NS.Debug passes plain args through unchanged
 - scrollbar + line-counter sync methods exist (§11)
 - sync methods are a clean no-op before the window is built (§11)
 - building the console + Add/Clear run the guarded sync headlessly (§11)
-- console WINDOW visibility is decoupled from the capture flag (§12.5)
+- console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
 ### test_debuglogsetup.lua (21)
 

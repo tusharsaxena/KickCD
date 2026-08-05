@@ -1,7 +1,7 @@
 -- settings/Panel_Render.lua
 --
 -- Schema-driven render + reset/orchestration layer for the settings
--- panel, peeled out of settings/Panel.lua (KCD-24, §1.2) so each file
+-- panel, peeled out of settings/Panel.lua (KCD-24, layout-§1) so each file
 -- stays under the LOC cap. Turns schema rows into two-column Flow rows
 -- (RenderRows / RenderSchema / RenderUnitPanel) and owns the Defaults /
 -- reset-all / reset-position helpers. Loads AFTER settings/Panel.lua and
