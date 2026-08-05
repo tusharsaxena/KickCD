@@ -62,6 +62,56 @@ test("Constants: every panel metric is a positive number", function()
     end
 end)
 
+-- The panel metrics that are NOT in the loop above because the host no longer
+-- declares them: they come off the LibKa0s-Options instance. Deleting the host
+-- copies deleted the "is a positive number" guarantee along with them, and
+-- nothing replaced it — the lint below only asserts the host does not RESTATE a
+-- number, which stays green when the library stops publishing one. These two
+-- cases restore the guarantee, read off the instance instead of off Const.
+test("Constants: the library publishes every panel layout metric as a positive number", function()
+    -- NS.Settings.Helpers IS the LibKa0s-Options instance (test_options_panel.lua:70).
+    -- If a future LibKa0s stops publishing one of these, settings/Panel_Render.lua:20
+    -- and settings/Panel_Widgets.lua:49 bind nil at file load and forward nil.
+    local H = NS.Settings.Helpers
+    for _, key in ipairs({ "PADDING_X", "ROW_VSPACER",
+                           "SECTION_HEADING_H", "BUTTON_PAIR_REL" }) do
+        assertTrue(type(H[key]) == "number" and H[key] > 0,
+            "Helpers." .. key .. " must be published as a positive number, got "
+            .. tostring(H[key]))
+    end
+end)
+
+test("Constants: a rendered unit panel spaces its rows by a real number of pixels", function()
+    -- The user-visible end of the same guarantee, and the reason the type check
+    -- above is not enough on its own: settings/Panel_Render.lua:20 binds
+    -- `local ROW_VSPACER = Helpers.ROW_VSPACER` AT FILE LOAD and forwards that
+    -- binding at :83 and :117. A nil arriving there is silent — AddSpacer
+    -- creates a full-width SimpleGroup with no height, every options row loses
+    -- its spacing in game, and nothing raises.
+    --
+    -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua:210.
+    local H = NS.Settings.Helpers
+    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { panelKey = "castbar" })
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    ctx.unit = "target"
+
+    H.RenderUnitPanel(ctx, "castbar")
+
+    -- The spacers are the layout-less full-width SimpleGroups AddSpacer makes.
+    local spacers = 0
+    for _, child in ipairs(ctx.scroll.children) do
+        if child.type == "SimpleGroup" and child.fullWidth and child.layout == nil then
+            spacers = spacers + 1
+            assertTrue(type(child.height) == "number" and child.height > 0,
+                "row spacer " .. spacers .. " rendered with height "
+                .. tostring(child.height) .. "; rows would sit flush in game")
+        end
+    end
+    assertTrue(spacers > 0,
+        "precondition: rendering a unit panel must emit at least one row spacer")
+end)
+
 test("Constants: no host copy of a LibKa0s-Options layout constant", function()
     -- options-ui-§8: a host MUST NOT restate a value the options library
     -- publishes on the instance. A host copy is the one that goes stale, and
