@@ -136,7 +136,10 @@ local function setLocked(self, value)
     local H = self.Settings and self.Settings.Helpers
     if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
         self.db.profile.locked = v
-        self:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+        -- Announce through the one sender (settings/Panel.lua's
+        -- Helpers.FireConfigChanged), never with a second SendMessage of our
+        -- own: architecture-Â§4 wants one emitter per message.
+        if H and H.FireConfigChanged then H.FireConfigChanged("general") end
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
@@ -464,9 +467,8 @@ end
 -- without a direct cross-module call from this layer (closed-bus
 -- contract — see docs/message-bus.md).
 local function commitSpellsChange()
-    if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "spells" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("spells") end
 end
 
 local function resolveSpellInput(input)

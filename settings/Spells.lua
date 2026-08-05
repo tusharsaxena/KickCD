@@ -341,9 +341,8 @@ end
 -- indefinitely.
 
 local function FireConfigChanged()
-    if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "spells" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("spells") end
 end
 
 local commitSoon

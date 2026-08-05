@@ -329,9 +329,8 @@ local function onDragStop(inst, self)
     -- Castbar's own OnConfigChanged handles { section = "castbar" }
     -- idempotently (Reskin + ApplyLock are no-ops for an already-correct
     -- frame), so the dispatch is safe to re-enter.
-    if NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "castbar" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("castbar") end
 end
 
 -- Translate a 13-point anchor token (the new `<SIDE>_<ALIGN>` /

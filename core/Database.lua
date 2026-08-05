@@ -28,6 +28,17 @@ NS.Database = Database
 -- Database:MigrateSpecKeys below).
 local CURRENT_DB_VERSION = 4
 
+-- The one and only Ka0s_KickCD_PROFILE_CHANGED emitter (architecture-§4:
+-- one sender per message). Both paths that make the active profile a
+-- different thing — an AceDB swap/copy/reset, and a spells re-seed — route
+-- here rather than each writing its own SendMessage, so the bus catalog in
+-- docs/ARCHITECTURE.md names one site and stays true.
+local function fireProfileChanged(key)
+    if NS and NS.SendMessage then
+        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
+    end
+end
+
 -- File-local recursive deep-copy. Deliberately independent of NS.Util —
 -- Database.lua is one of the first files to load and must stay
 -- self-contained rather than depend on load order.
@@ -480,10 +491,7 @@ function Database:ResetAllSpells()
     if not (self.db and self.db.profile) then return end
     self.db.profile.spells = {}
     self:BuildSpells()
-    if NS and NS.SendMessage then
-        local key = (self.db.keys and self.db.keys.profile) or "Default"
-        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
-    end
+    fireProfileChanged((self.db.keys and self.db.keys.profile) or "Default")
 end
 
 -- ---------------------------------------------------------------------------
@@ -790,11 +798,9 @@ function Database:OnProfileChanged(_, db, newProfileKey)
     self:BuildSpells()
     self:MigrateProfile()
 
-    -- Fire the closed internal message — see docs/message-bus.md.
-    -- This is the only message Database is allowed to emit.
-    if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
-    end
+    -- Fire the closed internal message — see docs/message-bus.md, through
+    -- the file's single fireProfileChanged emitter.
+    fireProfileChanged(key)
 end
 
 -- ---------------------------------------------------------------------------
