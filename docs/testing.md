@@ -34,13 +34,23 @@ The **authoritative test count and per-suite breakdown** live in the generated i
 
 ## Testing against the vendored library
 
-`tests/run.lua` loads the eight `libs/LibKa0s/*.lua` files explicitly, in
-`LibKa0s.xml`'s own order, before any addon file — the TOC pulls them in through
-that one `.xml`, which the TOC-derived load list deliberately skips. The list is
-pinned against the XML by `tests/test_coresetup.lua`, because a library file
-omitted there makes the dependent major refuse to register, the host's setup file
-fall back to its stub, and the suite happily measure **the stub** — green, and
-testing nothing (testing-§9).
+`tests/run.lua` loads every `libs/LibKa0s/*.lua` file before any addon file, in
+`LibKa0s.xml`'s own order — **derived from that XML** by `Loader.xmlFiles`, not
+typed in the runner. The TOC pulls the library in through the one `.xml`, which
+`Loader.tocFiles` deliberately skips, so this list used to be hand-maintained in
+every runner in the collection; a short list does not raise, it just leaves the
+dependent major unregistered, the host's setup file falling back to its stub, and
+the suite happily measuring **the stub** — green, and testing nothing
+(testing-§9).
+
+`tests/test_coresetup.lua` pins the three things the derivation cannot guarantee
+on its own: that the derived list is the one the runner actually **fed** the
+loader and is not empty, that every path in it resolves on disk, and that the
+TOC-derived addon list leaks no `libs/` entry back in (which would load a library
+file twice, and out of XML order). The suite list is the third list testing-§9
+names: `Kit.run` asserts it against `tests/test_*.lua` on disk in both directions
+before it loads a single case, and `test_coresetup` calls
+`Kit.assertSuiteInventory` again so the gate has a name in the inventory.
 
 The degraded path is exercised by a **real load**, never by hand-stubbing:
 

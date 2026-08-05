@@ -33,31 +33,30 @@ Loader.addonName = "KickCD"
 -- The vendored library load list
 -- ---------------------------------------------------------------------------
 --
--- The vendored library files, in libs/LibKa0s/LibKa0s.xml's own order.
+-- The vendored library files, in libs/LibKa0s/LibKa0s.xml's own order — DERIVED FROM THE XML, not
+-- typed here (testing-§9).
 --
--- Spelled out rather than derived from the TOC, because the TOC pulls the whole module in through
--- that one .xml and Loader.tocFiles deliberately skips `libs/`. testing-§9 requires the list to be
--- explicit AND pinned: a library file omitted here makes the dependent major refuse to register
--- (its Core floor is unmet), the host's setup file falls back to its stub, and the suite happily
--- measures the stub — green, and testing nothing. tests/test_coresetup.lua compares this list
--- against the XML file for file so the omission cannot happen quietly.
+-- The TOC pulls the whole module in through that one `.xml`, which Loader.tocFiles deliberately
+-- skips, so every runner in the collection re-typed the same eight-entry list. Eight hand-typed
+-- copies of one list is eight chances to drop an entry, and one of them did: a sibling addon's
+-- runner named six of the eight and nothing noticed, because a SHORT load list does not raise. It
+-- leaves the dependent major unregistered, the host's setup file falls back to its stub, and the
+-- suite happily measures the stub — green, and testing nothing.
 --
--- Order matters and is not alphabetical: Core registers first because the other four `return`
+-- Order comes out of the XML and matters: Core registers first because the other four `return`
 -- before LibStub:NewLibrary without it, and the two Options attach files must follow their shell.
-local LIB_FILES = {
-    "libs/LibKa0s/Core.lua",
-    "libs/LibKa0s/DebugLog.lua",
-    "libs/LibKa0s/Slash.lua",
-    "libs/LibKa0s/Options.lua",
-    "libs/LibKa0s/OptionsWidgets.lua",
-    "libs/LibKa0s/OptionsScroll.lua",
-    "libs/LibKa0s/Perf.lua",
-    "libs/LibKa0s/PerfPanel.lua",
-}
+-- Loader.xmlFiles preserves XML order and raises on a missing XML rather than returning an empty
+-- list, which would load nothing at all and read exactly like a clean run.
+--
+-- Already resolved against `root` — xmlFiles prefixes each entry with the XML's own directory —
+-- so, unlike the TOC list below, these are handed to the loader as they come.
+local LIB_FILES = Loader.xmlFiles(root .. "/libs/LibKa0s/LibKa0s.xml")
 
---- Repo-relative paths, resolved against the root this script was invoked through. The lists are
---- kept repo-relative because that is what the TOC and the XML say and what the suites assert on;
---- only the loader needs them resolved.
+-- The addon's own files, in TOC order. Repo-relative (`core/Compat.lua`), because that is what the
+-- TOC says; the loader is the only thing that needs them resolved.
+local TOC_FILES = Loader.tocFiles(root .. "/KickCD.toc")
+
+--- Repo-relative paths resolved against the root this script was invoked through.
 local function rooted(list)
     local out = {}
     for i, rel in ipairs(list) do out[i] = root .. "/" .. rel end
@@ -101,8 +100,8 @@ local function loadInstance(initDB, enable, mutate, opts)
     -- does. Per instance, so two instances never see each other's client.
     mocks._G = Loader.makeEnv(mocks)
     local NS = {}
-    Loader.loadAll(rooted((opts and opts.libFiles) or LIB_FILES), NS, mocks)
-    Loader.loadAll(rooted(Loader.tocFiles(root .. "/KickCD.toc")), NS, mocks)
+    Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
+    Loader.loadAll(rooted(TOC_FILES), NS, mocks)
     if initDB and NS.OnInitialize then pcall(NS.OnInitialize, NS) end
     -- Enable is NOT pcall-wrapped on purpose: a lifecycle throw (e.g. the
     -- IconGrid.Layout clobber) must surface to the calling test() so it's
@@ -182,9 +181,11 @@ _G.KICKCD_TEST = Kit.expose{
     mocks = shared.mocks,
     -- fresh isolated instance for migration / bus / degradation tests
     load = loadInstance,
-    -- the two lists suites assert against
+    -- The three lists testing-§9 makes assertable: the suite list, the derived library load list
+    -- exactly as it was fed to the loader, and the TOC-derived addon list.
     suites = SUITES,
     libFiles = LIB_FILES,
+    tocFiles = TOC_FILES,
     Loader = Loader,
 }
 
