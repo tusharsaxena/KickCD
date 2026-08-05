@@ -188,7 +188,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | The glow on secondary icons flickers or restarts constantly. | This shouldn't happen anymore. If it does, make sure the glow trigger is set to one of the "target casting" options, and send a short video with your settings. |
 | The settings panel won't open mid-fight. | On purpose — the game blocks it in combat. It opens the moment combat ends. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a refresh. Auto-size only controls the bar's length; its other dimension stays where you set it. |
-| I want a clean slate. | One tab: that tab's **Defaults** button. One setting: `/kcd reset <setting>`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button; every spec's: `/kcd spells resetall`. |
+| I want a clean slate. | One tab: that tab's **Defaults** button. One setting: `/kcd reset setting`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button; every spec's: `/kcd spells resetall`. |
 
 ## Libraries and credits
 
