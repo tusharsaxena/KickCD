@@ -6,478 +6,899 @@ badge and any count quoted in the docs must agree with it.
 
 **Generated — do not hand-edit.** Regenerate with `lua tests/run.lua --list > docs/test-cases.md`.
 
-### test_harness.lua (7)
+### test_util.lua (13)
 
-- harness: the runner is on the shared kit and reports its revision
-- harness: the addon's load list is DERIVED from the TOC, in TOC order (testing-§9)
-- harness: every derived addon path exists on disk
-- harness: no libs/ path leaked into the derived addon list
-- harness: the explicit LibKa0s list matches LibKa0s.xml, in XML order (anti-patterns #48)
-- harness: every LibKa0s file the runner loads exists on disk
-- harness: the libraries load BEFORE the addon's own files
+- Util.Unpack array-style color
+- Util.Unpack hash-style color
+- Util.Unpack nil defaults to opaque white
+- Util.NormalizeSpecToken strips whitespace and upper-cases
+- Util.PlayerSpecID returns the numeric spec ID, not the localized name
+- Util.SpecTokenForID maps a spec ID to its English token
+- Util.SpecDisplay prefers the English token and falls back to the raw ID
+- Util.ResolveSpecID accepts a number, a numeric string and an English token
+- Util.ResolveSpecID rejects unknown input rather than guessing
+- Util.NormalizeClassToken upper-cases
+- Util.DeepCopy clones nested tables (no shared refs)
+- Util.Throttle coalesces a burst to one trailing-args call
+- RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_libka0s.lua (46)
+### test_coresetup.lua (23)
 
-- libka0s: every vendored major registers under LibStub
-- libka0s: MODULES names every file of every major, at a positive integer minor
-- core: the published seams ARE the library's, not a lookalike
-- core: the printer emits <prefix><space><body> as one line
-- core: the prefix is read at CALL time, not captured at load
-- core: the sink is the Lua global print, so the harness can see chat output
-- debuglog: the console is the library's instance, and the sink is bound bare
-- debuglog: the descriptor keeps the frame globals the old console used
-- debuglog: the composed window title is unchanged
-- debuglog: the flag stays the addon's — the library never keeps a copy
-- debuglog: the [Init] summary is the addon's, reached through the descriptor
-- debuglog: the console's user-visible strings resolve to prose, not to their own keys
-- debuglog: the gated sink survives a format its arguments cannot satisfy (WG-22)
-- options: Settings.Helpers IS the library instance, decorated in place
-- options: the host's data seams survived the move onto the instance
-- options: the host's RestoreAllDefaults deliberately overrides the library's
-- options: a panel write takes the addon's single write seam
-- options: no layout constant is restated in this addon's own source
-- options: the panel body still builds on the NEXT frame, not inside OnShow
-- slash: the help header is the library's, with this addon's alias sentence
-- slash: a help row is the one command-row formatter, indented two spaces
-- slash: the landing page renders the SAME rows, un-indented (convergence #2)
-- slash: the landing page draws those rows and nothing of its own
-- slash: `list` renders through the shared key/value formatter
-- slash: a number row still renders through its schema `fmt`
-- slash: `toggle` survived the adoption, through the descriptor's parse adapter
-- slash: the descriptor's L overrides exactly one string and nothing else
-- slash: every user-visible CLI string resolves to prose, not to its own key
-- degraded: the addon loads with LibKa0s absent
-- degraded: the cause clause is published on BOTH paths
-- degraded: the printer announces the absence exactly ONCE, then prints normally
-- degraded: the fallback printer still degrades a secret in place
-- degraded: every DebugLog member the addon calls still answers
-- degraded: the console stub copies NO library formatter
-- degraded: the schema loads WHOLE with the options library absent (options-ui-§1)
-- degraded: the settings stub carries no widget maker and no layout constant
-- degraded: the settings panel explains itself once at load and once per config
-- degraded: `/wg debug on` still moves the flag and explains the missing window ONCE
-- parity: the Core seam's whole namespace surface survives the library's absence
-- parity: the DebugLog stub carries the whole live surface
-- parity: the Slash stub carries the whole live surface
-- parity: the Options helpers stub carries the whole live surface
-- libka0s: the L-trap matcher flags the table and the `or` spelling, not the `and` one
-- libka0s: no seam file hands a descriptor this addon's locale table (the L trap)
-- libka0s: Core has no STRINGS and reads no descriptor L (tripwire)
-- libka0s: Options reads no descriptor L (tripwire)
+- the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
+- the runner FEEDS the derived library list, and it is not empty
+- every file the runner loads for LibKa0s exists on disk
+- the TOC-derived addon list leaks no libs/ entry
+- the suite list and tests/test_*.lua on disk agree in both directions
+- NS.SafeToString renders ordinary values through tostring
+- NS.SafeToString answers nil and booleans up front, never masking them
+- NS.SafeToString renders an unconcatable value as the shared <secret> sentinel
+- NS.IsConcatSafe probes table.concat, not the .. operator
+- NS.Util.print renders prefix, one space, then the body — byte for byte
+- NS.Util.print space-joins its arguments, mirroring print()
+- NS.Util.print is secret-safe: an unconcatable argument cannot raise
+- NS.Util.print resolves the prefix at call time, not at load time
+- NS.Util.print is the library printer, not a host reimplementation
+- core/Util.lua no longer defines a printer of its own
+- no addon file emits a bare "secret" sentinel of its own
+- with LibKa0s absent the addon still loads and still prints tagged lines
+- the degraded printer is still secret-safe and still says <secret>
+- LibKa0s-Core-1.0 still has no user-visible strings to trap
+- the Core descriptor passes no locale table, and the printer renders no key
+- the shared cause clause is published on the healthy path too
+- with LibKa0s absent all five seams say the same thing about WHY
+- no seam re-spells the cause in its own words
 
-### test_util.lua (26)
+### test_util_anchor.lua (26)
 
-- util: SafeToString handles nil / booleans / strings / numbers
-- util: SafeToString yields <secret> for a value that raises in concat
-- util: IsConcatSafe true for scalars, false for a raising value
-- util: NS.Print prepends the [WG] prefix and stringifies each arg
-- util: NS.Print degrades a secret-like arg in place, never raising
-- util: Windows.Save/Restore round-trips a frame point through db.global (WG-26)
-- util: Windows.Restore is a no-op when nothing is saved (WG-26)
-- util: SafeToString renders a negative and a fractional number
-- util: SafeToString degrades a function and a coroutine
-- util: IsConcatSafe reports a boolean as unsafe
-- util: IsConcatSafe reports nil as safe (concat of an empty table)
-- util: NS.Print with no arguments still prints the prefix
-- util: NS.Print joins several arguments with single spaces
-- util: NS.Print stringifies nil and boolean arguments in place
-- util: PointOf reads a frame's primary anchor
-- util: PointOf defaults relPoint to the point and offsets to zero
-- util: PointOf returns nil for a frame with no anchor yet
-- util: PointOf returns nil for nil or a non-frame
-- util: Save is a no-op before the db is ready
-- util: Save skips a frame that has no anchor
-- util: Save overwrites a previously stored point
-- util: windows are stored under independent names
-- util: Restore returns false for a frame that cannot be anchored
-- util: Restore is a no-op before the db is ready
-- util: Restore clears existing anchors before applying the saved one
-- util: a Save/Restore round trip survives through the real frame stub
+- SaveAnchor snapshots a frame's first anchor point
+- SaveAnchor stores no frame reference, only serializable fields
+- SaveAnchor falls back to a centered anchor for a nil frame
+- SaveAnchor falls back to centered for a frame with no points set
+- SaveAnchor reads point ONE, ignoring later anchors
+- ApplyAnchor positions the frame against UIParent
+- ApplyAnchor clears stale points instead of stacking them
+- ApplyAnchor fills in centered defaults for a partial saved anchor
+- ApplyAnchor is a no-op for a nil frame or nil anchor
+- SaveAnchor and ApplyAnchor round-trip a dragged position exactly
+- Throttle passes the LAST call's arguments, not the first
+- Throttle re-arms after firing, so a later burst is not swallowed
+- Throttle preserves embedded nils in the argument list
+- Throttle survives a nil delay by treating it as immediate
+- SpecDisplayName returns the client's LOCALIZED name for display
+- SpecDisplayName returns the empty string for a non-number
+- SpecDisplayName title-cases the English token for a spec the client can't name
+- SpecDisplayName falls back to the raw ID for a spec nothing knows
+- SpecTokenForID rejects a non-number rather than indexing with it
+- SpecOrderForClass returns Blizzard's order, not numeric order
+- SpecOrderForClass normalizes a lower-case class token
+- SpecOrderForClass is nil for a class the client can't enumerate
+- NormalizeClassToken upper-cases and tolerates nil
+- RegisterUnitCastEvent forwards the event into the module's handler
+- RegisterUnitCastEvent tolerates a handler that isn't defined yet
+- RegisterUnitCastEvent returns a frame the caller can unregister
 
-### test_compat.lua (17)
+### test_constants.lua (23)
 
-- compat: GetSpellName returns the C_Spell name
-- compat: GetSpellTexture is non-nil (caller supplies default)
-- compat: GetSpellLink returns a hyperlink for the spell
-- compat: IsSpellKnown true when learned
-- compat: IsSpellKnown false when not learned
-- compat: GetActivityInfoTable passes the table through
-- compat: GetSpellName falls back to the legacy GetSpellInfo global
-- compat: GetSpellName falls through when the modern API returns nil
-- compat: GetSpellName returns nil when no API exists at all
-- compat: GetSpellTexture falls back to the legacy global
-- compat: GetSpellTexture returns nil with no API (the caller supplies a default)
-- compat: GetSpellLink returns nil with no API (the caller renders plain text)
-- compat: IsSpellKnown normalizes to a plain boolean
-- compat: IsSpellKnown returns false when the API is missing
-- compat: GetActivityInfoTable returns nil for an unknown activity
-- compat: GetActivityInfoTable returns nil when C_LFGList is absent
-- compat: Compat is the sole namespace the addon reads variant APIs through
+- Constants: the chat prefix is the cyan [KCD] tag and closes its color code
+- Constants: the notice gray is an opener with no closer (callers add |r)
+- Constants: the GCD upper bound covers an unhasted 1.5s global
+- Constants: the cast bar's inside and outside insets are symmetric
+- Constants: the panel header reserves more height than its top inset
+- Constants: every panel metric is a positive number
+- Constants: no host copy of a LibKa0s-Options layout constant
+- Constants: FONT_MONO points at a font that is actually shipped
+- Constants: the shipped mono font ships its OFL license alongside it
+- Constants: every spec ID is a positive integer
+- Constants: every spec token is UPPER_SNAKE_CASE
+- Constants: no two spec tokens share a spec ID
+- Constants: the three Midnight-era spec IDs are present and correct
+- Constants: SPEC covers all thirteen player classes at three specs each
+- Constants: every spec ID has a reverse token
+- Constants: the reverse map is exactly as large as the forward map
+- Constants: the reverse map strips the disambiguating class suffix
+- Constants: a non-shared token survives the suffix strip unchanged
+- Constants: exactly the four reused spec names carry a class suffix
+- Constants: every shared spec name is suffixed on every class that has it
+- Constants: every spec key in defaults/Spells.lua is a known spec ID
+- Constants: every spec ID in Const.SPEC has a shipped default list
+- Constants: defaults ship one class table per class, all UPPER-case tokens
 
-### test_database.lua (9)
+### test_state.lua (23)
 
-- database: fresh DB lands at schemaVersion 1
-- database: RunMigrations is idempotent
-- database: RunMigrations re-seeds a missing schemaVersion
-- database: BuildDefaults seeds global.schemaVersion from NS.SCHEMA_VERSION
-- database: RunMigrations before the db exists is a no-op
-- database: an older saved DB is stepped up to the current version
-- database: a version move is logged, a no-op migration is silent (debug-logging-§8)
-- database: migrations run before any profile read (OnInitialize order)
-- database: the profile is untouched by a migration pass
+- State: the combat flag starts false and holds `debug` session-only
+- State.SetInCombat coerces any truthy value to a real boolean
+- State: the bootstrap frame owns all three combat/login events
+- State: PLAYER_REGEN_DISABLED / _ENABLED drive the flag both ways
+- State: PLAYER_LOGIN seeds the flag from InCombatLockdown
+- State: PLAYER_LOGIN releases its own registration after seeding
+- State: every combat transition fans out COMBAT_STATE with the new flag
+- IsHostileUnitCasting is false for a nil unit or one that doesn't exist
+- IsHostileUnitCasting is false for a friendly caster
+- IsHostileUnitCasting is true for a hostile CAST
+- IsHostileUnitCasting is true for a hostile CHANNEL
+- IsHostileUnitCasting is false for a hostile unit doing nothing
+- IsHostileUnitCasting only truth-tests the cast name, never reads it
+- IsHostileUnitCasting collapses the API multi-return to position 1
+- ApplyInterruptibleAlpha refuses a frame that can't take the secret
+- ApplyInterruptibleAlpha declines when the unit is absent or friendly
+- ApplyInterruptibleAlpha declines when the unit has no cast at all
+- ApplyInterruptibleAlpha maps interruptible -> alpha, uninterruptible -> 0
+- ApplyInterruptibleAlpha defaults the visible alpha to 1
+- ApplyInterruptibleAlpha passes a SECRET notInterruptible through verbatim
+- ApplyInterruptibleAlpha reads the CHANNEL flag from position 7, not 8
+- ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
+- ApplyInterruptibleAlpha never inspects the cast name it gates on
 
-### test_settings.lua (42)
+### test_locale.lua (9)
 
-- settings: BuildDefaults threads profile + global defaults
-- settings: defaults source from NS.C (defaults/Profile.lua, WG-24)
-- settings: BuildDefaults seeds an empty global.windows table (WG-26)
-- settings: debug is not a persisted schema row (WG-12)
-- settings: ValidateSchema reports zero errors
-- settings: Get/Set round-trips through db.profile
-- settings: RestoreAllDefaults resets a changed value
-- settings: RestoreAllDefaults prunes orphaned profile keys (F1)
-- settings: RestoreAllDefaults deep-copies table defaults (F2)
-- settings: RestoreAllDefaults skips per-row onChange (F3)
-- settings: enabled=false onChange wipes capture
-- settings: every schema row declares the fields the panel and CLI need
-- settings: schema paths are unique
-- settings: every schema row carries a tooltip
-- settings: every number row declares min, max and step
-- settings: ValidateSchema counts each defect on a broken row
-- settings: ValidateSchema reports a non-table row
-- settings: a broken row does not stop the panel registering
-- settings: BuildDefaults nests dotted paths into real subtables
-- settings: BuildDefaults covers every schema row
-- settings: BuildDefaults deep-copies table defaults
-- settings: BuildDefaults is a fresh table each call
-- settings: Get returns nil before the db exists
-- settings: Set before the db exists is a harmless no-op
-- settings: a write creates the intermediate tables it walks through
-- settings: Get on an unknown deep path returns nil and creates no table
-- settings: Resolve replaces a non-table intermediate
-- settings: RawSet writes without firing onChange
-- settings: Set skipOnChange suppresses the side effect
-- settings: a throwing onChange is caught and reported, not propagated
-- settings: Set on a path with no schema row still writes
-- settings: FindSchema matches on the exact path
-- settings: RestoreAllDefaults restores every schema row
-- settings: RestoreAllDefaults leaves db.global untouched
-- settings: RefreshAll runs every refresher on the open page, in registration order
-- settings: a throwing refresher does not abort the sweep
-- settings: a hidden page is not refreshed — it is flagged dirty (options-ui-§11)
-- settings: Set skipRefresh suppresses the widget re-sync
-- settings: RestoreAllDefaults refreshes once, not once per row
-- settings: EnsureResetPopup is idempotent
-- settings: the reset dialog is a blocking, escapable confirmation
-- settings: accepting the reset dialog acknowledges in chat
+- frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
+- frFR and enUS Elemental Shaman seed byte-identical spell lists
+- frFR player spec resolves to the locale-invariant numeric spec ID
+- frFR client resolves a localized spec name typed at the slash command
+- frFR Elemental Shaman actually watches its cooldowns end-to-end (issue #8)
+- the Spells editor labels specs in the client's own language
+- SpecDisplayName falls back to the English token for an unknown spec
+- a spec-name lookup that ran before the client was ready retries later
+- every default spell list is reachable on a French client
 
-### test_slash.lua (43)
+### test_units.lua (12)
 
-- slash: COMMANDS has a standalone version verb (WG-29)
-- slash: /wg version prints [WG] v<version> on its own line (WG-29)
-- slash: help header has no trailing colon (WG-19)
-- slash: a bare /wg prints the help index
-- slash: whitespace-only input is treated as bare /wg
-- slash: nil input is tolerated
-- slash: help lists one row per COMMANDS entry, plus the header
-- slash: every COMMANDS row carries a verb, a description and a handler
-- slash: an unknown verb says so and then prints the help index
-- slash: the verb is case-insensitive
-- slash: only the verb is lower-cased — the argument keeps its case
-- slash: /wg version reads the version from TOC metadata
-- slash: /wg version falls back to the in-code constant
-- slash: /wg list prints every schema row
-- slash: /wg list groups rows under their section header
-- slash: /wg list shows current values, not defaults
-- slash: /wg get prints key = value
-- slash: /wg get with no path prints usage
-- slash: /wg get reports an unknown path rather than printing nil
-- slash: /wg get formats a number through the schema fmt
-- slash: /wg set with no path prints usage
-- slash: /wg set reports an unknown path
-- slash: /wg set accepts 'true' as true
-- slash: /wg set accepts '1' as true
-- slash: /wg set accepts 'on' as true
-- slash: /wg set accepts 'yes' as true
-- slash: /wg set accepts 'false' as false
-- slash: /wg set accepts '0' as false
-- slash: /wg set accepts 'off' as false
-- slash: /wg set accepts 'no' as false
-- slash: /wg set bool words are case-insensitive
-- slash: /wg set toggle flips the current value
-- slash: /wg set rejects a non-boolean word and lists the accepted ones
-- slash: /wg set writes a number
-- slash: /wg set rejects a non-numeric value for a number row
-- slash: /wg set clamps a number below the schema min
-- slash: /wg set clamps a number above the schema max
-- slash: /wg set echoes the STORED value back, not the typed one
-- slash: /wg set with a missing value is rejected, not silently applied
-- slash: /wg set enabled false runs the master-switch onChange
-- slash: /wg debug with a bad subcommand prints both usage lines
-- slash: /wg debug (bare) toggles the console window's visibility
-- slash: /wg debug on does not open the window
+- Units.LIST is target then focus
+- target is never linked; focus honors its link flag
+- Icons(focus) resolves to target's icons when linked
+- IsEnabled combines master and per-unit enable
+- CopyStyling snapshots target appearance into focus and unlinks
+- Label.text is per-unit and not link-resolved
+- IconGrid:ReconcileUnits enables focus once units.focus.enabled is true
+- Castbar:ReconcileUnits mirrors IconGrid's enable/disable transitions
+- master-enable off then on disables then revives both units without a reload
+- LabelStyle resolves to target's style when focus is linked
+- LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
+- CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_labels.lua (31)
+### test_schema.lua (11)
 
-- labels: GetGroupTypeLabel Mythic+
-- labels: GetGroupTypeLabel Dungeon by categoryID
-- labels: GetGroupTypeLabel Raid by player count
-- labels: GetGroupTypeLabel fallback Group
-- labels: GetPlaystyleLabel prefers playstyleString
-- labels: GetPlaystyleLabel enum lookup when string empty
-- teleport: GetTeleportSpell picks the known spell from a list
-- teleport: GetTeleportSpell returns first + false when none known
-- teleport: GetTeleportSpell nil when no mapping
-- labels: GetGroupTypeLabel Raid (Current)
-- labels: GetGroupTypeLabel Heroic Raid
-- labels: GetGroupTypeLabel PvP by categoryID 2
-- labels: GetGroupTypeLabel Dungeon by a small player count
-- labels: GetGroupTypeLabel treats exactly 10 players as a Raid
-- labels: GetGroupTypeLabel treats 9 players as a Dungeon
-- labels: GetGroupTypeLabel falls back to Group at zero players
-- labels: Mythic+ outranks every other signal
-- labels: the raid flags outrank categoryID
-- labels: categoryID outranks the player count
-- labels: every playstyle enum maps to its Blizzard-localized wording
-- labels: playstyle None (0) has no label
-- labels: an unmapped playstyle enum yields an empty label, not nil
-- labels: playstyleString wins even when the enum is also set
-- labels: a nil playstyleString falls through to the enum
-- teleport: a scalar mapping returns (spellID, known) directly
-- teleport: a scalar mapping the player has not learned reports known=false
-- teleport: mapID takes precedence over activityID
-- teleport: activityID is the fallback when the mapID is unmapped
-- teleport: a nil mapID and nil activityID resolve to nothing
-- teleport: the FIRST known spell in a candidate list wins
-- teleport: the shipped mapping table is keyed by numbers only
+- Settings.Schema is assembled from the settings/* files
+- Helpers.ValidateSchema reports zero malformed rows
+- Every schema row has a string path and a known type
+- Helpers.Resolve walks a dotted path into db.profile
+- icons/castbar/label schema rows are unit-scoped and valid
+- Helpers.FindSchema locates a row by path
+- General exposes focus rows; unit-selector panels still filter them out
+- label panel carries per-unit label rows; General no longer does
+- every label-panel row's default is a member of its static values list
+- PartitionUnitRows splits alwaysPerUnit rows from styled rows
+- debug console stays session-only: no schema row targets it (debug-logging-§5)
 
-### test_capture.lua (29)
+### test_database.lua (20)
 
-- capture: inviteaccepted prefers FRESH when both have mapID
-- capture: inviteaccepted falls back to QUEUED when fresh lacks mapID
-- capture: enabled queues so pendingInfo survives a nil fresh fetch
-- capture: master switch off means nothing is queued
-- capture: master switch off blocks the inviteaccepted fresh fetch too
-- capture: CaptureGroupInfo maps the search-result fields
-- capture: CaptureGroupInfo maps the activity fields
-- capture: CaptureGroupInfo returns nil when the search result is gone
-- capture: missing search-result fields fall back to safe defaults
-- capture: an unknown activity leaves the activity fields at their defaults
-- capture: no activityIDs at all leaves activityID nil
-- capture: fullName falls back to the activity name
-- capture: the legacy `playstyle` field is used when generalPlaystyle is absent
-- capture: the raid flags are carried through
-- capture: applications are matched to captures in FIFO order
-- capture: an 'invited' status changes nothing — it waits for the accept
-- capture: an unrecognized status is ignored
-- capture: accepting clears the queue so a stale apply can't resurface
-- capture: 'applied' with nothing queued is a harmless no-op
-- capture: accepting with no data anywhere leaves pendingInfo nil
-- capture: re-enabling the master switch resumes capturing
-- capture: inviteaccepted resolves the searchResultID via GetApplicationInfo
-- capture: GetApplicationInfo may return a table; the id is read off it
-- capture: an unmapped application falls back to treating appID as the id
-- capture: a missing GetApplicationInfo degrades to the appID path
-- capture: a raising GetApplicationInfo is caught and falls back
-- capture: a search field holding false takes the default, not the false
-- capture: an activity field holding false takes the default, not the false
-- capture: a stored zero survives the defaults, because 0 is truthy in Lua
+- DEFAULT_PROFILE carries the expected top-level shape
+- OnInitialize built a live db with a merged profile
+- Schema version lives in db.global, not the profile (KCD-20)
+- MigrateProfile is a no-op at the current schema version
+- MigrateProfile treats a missing version as v1 and walks forward to current
+- MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
+- GetSpellList returns nil for an unseeded class/spec
+- MigrateSpecKeys rewrites an English spec-name key to its numeric spec ID
+- MigrateSpecKeys rewrites a LOCALIZED spec-name key to its numeric spec ID (issue #8)
+- MigrateSpecKeys is idempotent on an already-numeric profile
+- MigrateSpecKeys leaves an unmappable key in place rather than dropping data
+- MigrateSpecKeys does not clobber an existing numeric key on collision
+- DEFAULT_PROFILE nests appearance under units.target / units.focus
+- FoldLegacyUnits moves a legacy top-level config under units.target
+- FoldLegacyUnits is idempotent and leaves a fresh v2 profile untouched
+- DEFAULT_PROFILE ships an identical label.style for target and focus
+- BackfillLabelStyle adds a missing label.style and preserves show/text
+- BackfillLabelStyle is idempotent and leaves an existing style untouched
+- BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
+- DB label.style.color default matches the settings schema color row default (DB<->schema sync)
 
-### test_notify.lua (44)
+### test_color_shape.lua (21)
 
-- notify: no pendingInfo schedules no timer
-- notify: out of a group schedules no timer even with pendingInfo
-- notify: in a group with pendingInfo schedules exactly one timer
-- notify: the scheduled delay comes from notify.delay
-- notify: firing the timer prints the summary and clears the handle
-- notify: a second call for the SAME pendingInfo schedules nothing more
-- notify: both event paths together fire the summary exactly once
-- notify: a NEW pendingInfo is eligible to fire again
-- notify: a re-fire cancels the in-flight timer so two can't race
-- notify: a callback whose pendingInfo was replaced mid-flight prints nothing
-- notify: WipeCapture cancels an in-flight notify so it never fires
-- notify: WipeCapture clears pendingInfo
-- notify: WipeCapture re-arms a later capture (notifiedFor is cleared)
-- notify: the master-switch off-flip wipes an in-flight capture (Schema onChange)
-- notify: autoShow on opens the popup when the timer fires
-- notify: autoShow off prints the summary but never builds the popup
-- notify: autoShow is read at SCHEDULE time, not at fire time
-- notify: notify.enabled off prints nothing at all
-- notify: no pendingInfo prints nothing
-- notify: the default summary carries every row
-- notify: the Group row always prints, even with every toggle off
-- notify: notify.showInstance off drops the Instance: row
-- notify: notify.showInstance on keeps the Instance: row
-- notify: notify.showType off drops the Type: row
-- notify: notify.showType on keeps the Type: row
-- notify: notify.showLeader off drops the Leader: row
-- notify: notify.showLeader on keeps the Leader: row
-- notify: notify.showPlaystyle off drops the Playstyle: row
-- notify: notify.showPlaystyle on keeps the Playstyle: row
-- notify: notify.showTeleport off drops the Teleport: row
-- notify: notify.showTeleport on keeps the Teleport: row
-- notify: notify.showClickLink off drops the [Click here to view details] row
-- notify: notify.showClickLink on keeps the [Click here to view details] row
-- notify: the Instance row falls back to Unknown when fullName is empty
-- notify: the Type row prefers shortName over the derived label
-- notify: the Type row derives the label when shortName is empty
-- notify: the Playstyle row is skipped when the label resolves empty
-- notify: the Teleport row is skipped when the map has no teleport spell
-- notify: an unlearned teleport is tagged '(not learned)'
-- notify: a learned teleport carries no '(not learned)' tag
-- notify: every summary line carries the shared [WG] prefix
-- notify: a secret-like title degrades in place instead of raising
-- notify: the Leader row still prints when leaderName is nil
-- notify: Playstyle and Teleport drop their rows while Leader keeps its own
+- the schema declares at least one color row per color-bearing panel
+- every schema color default is keyed, never positional
+- every schema color default carries all four channels
+- every color row declares hasAlpha, so the picker keeps its alpha channel
+- the built profile stores colors keyed
+- DEFAULT_PROFILE and the schema agree on every color
+- Util.Unpack reads the keyed shape
+- Util.Unpack still reads a positional array, so a stray one renders rather than blanks
+- no module reads a color by positional index any more
+- a pre-migration profile's array colors convert to the keyed shape
+- the migration bumps the stored schema version so it runs once
+- an already-keyed color passes through the migration untouched
+- the slash layer needs no color codec now the shapes agree
+- set and get round-trip a color through the library with no translation
+- every dropdown row's values is a keyed hash, never an array of records
+- every static dropdown declares its order, so nothing silently alphabetizes
+- the anchor dropdown still reads top row, bottom row, sides, center
+- an LSM-backed row resolves its values at call time, never at declaration
+- the valueGate hint explains WHY a gated dropdown value was rejected
+- a rejected gated value carries the hint through the slash layer
+- a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_frame.lua (32)
+### test_bus.lua (4)
 
-- frame: nothing is created at addon load
-- frame: the first ShowFrame builds and shows the popup
-- frame: buildFrame is one-shot — a second show reuses the same frame
-- frame: ESC-to-close is registered lazily, on the first show only
-- frame: the Close button hides the popup
-- frame: fields render the pending capture
-- frame: with no pendingInfo every field reads 'No data'
-- frame: the no-data playstyle renders the dim em-dash placeholder
-- frame: an empty fullName falls back to Unknown
-- frame: the Type field prefers shortName
-- frame: the Type field derives a label when shortName is empty
-- frame: the Playstyle field prefers the server-rendered string
-- frame: the Playstyle field falls back to the enum label
-- frame: playstyle None (0) renders the dim em-dash, not an empty row
-- frame: re-showing with a new capture re-renders the fields
-- frame: the teleport button registers exactly one click edge, so one press is one cast
-- frame: a known teleport wires the secure /cast macro
-- frame: a known teleport renders at full alpha, undesaturated
-- frame: an unlearned teleport shows desaturated at half alpha and casts nothing
-- frame: a map with no teleport hides the button entirely
-- frame: the button clears a stale macro when re-shown for a teleport-less map
-- frame: the teleport icon uses the spell's texture
-- frame: no pendingInfo hides the teleport button
-- frame: a first show in combat defers the build and says so
-- frame: leaving combat builds the deferred popup
-- frame: the deferred show restores a pendingInfo cleared during the wait
-- frame: repeated in-combat shows queue exactly one wait frame
-- frame: once built, showing during combat is allowed
-- frame: reconfiguring the teleport button in combat stashes and replays it
-- frame: a fresh profile leaves the popup at its default center anchor
-- frame: dragging the title bar persists the popup position
-- frame: a saved position is restored on the next build
+- AceEvent mock fans one message out to two distinct targets
+- Two receivers on the SAME target clobber (proves keying is by target)
+- Addon SendMessage reaches a registered module target
+- NewBusTarget gives each receiver its own target — both fire (KCD-09)
 
-### test_panel.lua (47)
+### test_compat.lua (5)
 
-- panel: OnEnable registers the parent category and the General subcategory
-- panel: the parent category is added to the AddOns list
-- panel: Register is idempotent — a second call registers nothing more
-- panel: registering during combat still registers (options-ui-§9)
-- panel: a login taken in combat needs no second registration
-- panel: registration validates the schema
-- panel: both panels start hidden
-- panel: registration creates no AceGUI widgets
-- panel: OnShow itself builds nothing; the deferred hop does
-- panel: the build is one-shot across repeated shows
-- panel: two OnShows before the hop runs still build only once
-- panel: the Defaults button is built lazily, on the General page only
-- panel: clicking Defaults raises the confirmation popup rather than resetting
-- panel: confirming the popup restores defaults
-- panel: the reset dialog is not registered before it is needed (taint)
-- panel: every schema row renders a widget
-- panel: bool rows render checkboxes and number rows render sliders
-- panel: widgets open showing the current profile value
-- panel: the slider inherits its bounds and step from the schema row
-- panel: each section renders a heading
-- panel: paired rows get half width, solo rows go full width
-- panel: the General group renders its Test action button
-- panel: the Test button runs the same path as /wg test
-- panel: a throwing button onClick is caught, not propagated
-- panel: the Debug console checkbox renders as a non-schema extra
-- panel: ticking Debug console shows the window without touching db.profile
-- panel: unticking Debug console hides the window
-- panel: opening the console while General is OPEN moves the checkbox
-- panel: re-opening General re-syncs the Debug console checkbox
-- panel: ticking a checkbox writes through to db.profile
-- panel: a checkbox coerces its value to a real boolean
-- panel: releasing the slider writes through to db.profile
-- panel: the slider snaps its committed value to the schema step
-- panel: unticking Enable fires the master-switch onChange
-- panel: rendering registers one refresher per rendered widget
-- panel: a re-render REPLACES the refresher list rather than growing it
-- panel: a /wg set re-syncs the open widget
-- panel: RestoreAllDefaults re-syncs every open widget once
-- panel: a throwing refresher does not abort the remaining ones
-- panel: the scroll container is patched to always show its scrollbar
-- panel: the patch is one-shot per widget
-- panel: releasing the widget restores AceGUI's stock behavior
-- panel: the landing page lists one row per slash command
-- panel: the landing page shows the TOC Notes line
-- panel: the landing page renders the Slash Commands heading and the logo
-- panel: the landing page adds logo, notes, heading and command rows in that order
-- panel: a dirty landing page re-renders in place instead of stacking a second copy
+- Compat exposes the spec shims
+- GetSpecialization prefers C_SpecializationInfo
+- GetSpecializationInfo passes the multi-return through
+- GetSpecialization falls back to the deprecated global when C_ is absent
+- GetSpecializationInfo falls back to the deprecated global when C_ is absent
 
-### test_lifecycle.lua (37)
+### test_compat_api.lua (46)
 
-- lifecycle: the addon exposes no public global (WG-01)
-- lifecycle: NS IS the addon object (AceAddon mixes into the namespace)
-- lifecycle: earlier files' fields survive NewAddon
-- lifecycle: the shared chat prefix is the cyan [WG] tag
-- lifecycle: NS.Print, WhatGroup._print and NS.Util.print are one seam
-- lifecycle: debug state is session-only and starts off
-- lifecycle: OnInitialize builds the db from the schema defaults
-- lifecycle: OnInitialize registers both slash verbs
-- lifecycle: OnEnable registers the two capture events
-- lifecycle: no events are registered before OnEnable
-- lifecycle: OnEnable seeds wasInGroup from the current roster state
-- lifecycle: the ApplyToGroup and SetItemRef hooks install at file load
-- lifecycle: the ApplyToGroup hook routes into the capture pipeline
-- lifecycle: the SetItemRef hook ignores links that aren't ours
-- lifecycle: the SetItemRef hook ignores a non-string link argument
-- lifecycle: clicking the chat link opens the popup
-- lifecycle: a stale chat link prints a hint instead of an empty popup
-- lifecycle: joining a group with a capture waiting fires the notify
-- lifecycle: a roster tick while already grouped is not a transition
-- lifecycle: leaving the group wipes the capture
-- lifecycle: leaving the group cancels an in-flight notify
-- lifecycle: rejoining after a leave fires a fresh notify
-- lifecycle: the retail ordering (ROSTER before inviteaccepted) still notifies
-- lifecycle: InitSummary reflects live runtime state
-- lifecycle: InitSummary is safe before the db exists
-- lifecycle: /wg config opens the parent settings category
-- lifecycle: /wg config is refused during combat (options-ui-§2)
-- lifecycle: a login taken in combat still registers the panel
-- lifecycle: /wg test injects a synthetic capture and runs the full flow
-- lifecycle: /wg test bypasses the master switch
-- lifecycle: /wg test fires immediately, without the notify delay
-- lifecycle: /wg show opens the popup when a capture exists
-- lifecycle: /wg show with no capture prints a hint and opens nothing
-- lifecycle: /wg reset <path> resets one setting, with no confirmation
-- lifecycle: a bare /wg reset explains the change rather than resetting or erroring
-- lifecycle: /wg resetall asks for confirmation rather than resetting outright
-- lifecycle: /wg resetall and the Defaults button share one OnAccept body
+- Compat._firstReturn tolerates a nil API (pre-12.0 client)
+- Compat._firstReturn collapses a multi-return to position 1
+- Compat._firstReturn forwards its arguments to the API
+- Compat._firstReturn returns a nil first value even when later ones are set
+- GetSpellCooldown reads the modern C_Spell info table
+- GetSpellCooldown returns the inert tuple when the API yields no info
+- GetSpellCooldown treats a missing isEnabled as enabled, missing isActive as inactive
+- GetSpellCooldown coerces a non-boolean isActive to false
+- GetSpellCooldown passes SECRET timings through without touching them
+- GetSpellCooldown falls back to the deprecated global on a pre-12.0 client
+- GetSpellCooldown's legacy path reports a zero duration as off cooldown
+- GetSpellCooldown's legacy path refuses to compare a secret duration
+- GetSpellCooldown returns the inert tuple when NO cooldown API exists
+- GetSpellCooldownDuration hands back the opaque handle unchanged
+- GetSpellCooldownDuration is nil on a client without the 12.0 API
+- GetSpellTexture prefers C_Spell and falls back to the global
+- GetSpellTexture is nil when neither API exists
+- GetSpellInfo flattens the modern info table into the legacy tuple order
+- GetSpellInfo is nil for an unknown spell, without falling through
+- GetSpellInfo falls back to the deprecated global's multi-return
+- GetSpellCharges flattens the modern charge table
+- GetSpellCharges is nil for a spell without charges
+- GetSpellCharges passes a SECRET charge count through untouched
+- GetSpellCharges falls back to the deprecated global
+- IsSpellAvailable rejects a non-number spell ID outright
+- IsSpellAvailable is true when IsPlayerSpell says so
+- IsSpellAvailable falls back to the spellbook for racials and professions
+- IsSpellAvailable catches PET spells via the IsSpellKnown pet flag
+- IsSpellAvailable is false for an unpicked talent choice-node sibling
+- IsSpellUsable reads the SpellUsabilityInfo table form
+- IsSpellUsable reads the two-boolean form some Midnight builds return
+- IsSpellUsable normalizes the legacy API's 1/nil into real booleans
+- IsSpellUsable defaults to usable when no API is available
+- GetCastingInfo builds a record from the CAST API's positions
+- GetCastingInfo falls through to the channel shim when not casting
+- GetCastingInfo is nil when the unit is neither casting nor channeling
+- GetChannelInfo reads notInterruptible from position 7, spellID from 8
+- GetChannelInfo is nil when the API itself is missing
+- a FRIENDLY unit's cast is forced to uninterruptible regardless of the API
+- a HOSTILE unit's raw notInterruptible flag is returned unchanged
+- the friendly override applies to CHANNELS too, not just casts
+- the cast record carries SECRET name/texture/flag/id without inspecting them
+- the cast record attaches the plain-number CastingDuration object
+- a channel record sources its duration from UnitChannelDuration
+- a record survives a client with no duration API at all
+- isChannel is a real boolean on both record paths
 
-### test_debuglog.lua (21)
+### test_compat_debug.lua (11)
 
-- debuglog: FONT_MONO points at the vendored JetBrains Mono TTF
-- debuglog: the console renders in the vendored TTF when the client can fetch it
-- debuglog: a TTF the client cannot fetch falls back to a Blizzard font (debug-logging-§2)
-- debuglog: FormatPlain wraps the tag in brackets, single-space separators
-- debuglog: FormatPlain tolerates a nil tag
-- debuglog: FormatColored colors timestamp + tag; pipe and content default
-- debuglog: /wg debug on enables session state
-- debuglog: /wg debug off disables session state
-- debuglog: /wg debug (no arg) toggles the window, not the state
-- debuglog: header toggle click flips debug state
-- debuglog: enabling writes a '[Debug] logging enabled' console line
-- debuglog: enabling debug appends the [Init] session summary after the bracket (debug-logging-§5)
-- debuglog: [Init] fires only on enable, not on disable (debug-logging-§5)
-- debuglog: disabling still appends a '[Debug] logging disabled' line
-- debuglog: NS.Debug survives an unsafe format arg without raising (WG-22)
-- debuglog: NS.Debug is a no-op (no console write) when debug is off
-- debuglog: §11 scrollbar + line-counter sync is a safe no-op under the mock
-- debuglog: settings change logs one [Set] line at the write seam (debug-logging-§10)
-- debuglog: RestoreAllDefaults coalesces to one [Reset], zero [Set] (debug-logging-§9)
-- debuglog: InitSummary leads with the debug-logging-§5 identity fields, then runtime state
-- debuglog: enable ack is color-coded green/red matching the header (debug-logging-§5)
+- DebugInterrupt bails with the unit name when the unit does not exist
+- DebugInterrupt defaults the unit to target
+- DebugInterrupt's header quotes the unit name and reports canAttack
+- DebugInterrupt renders a secret-tainted unit name as <secret>
+- DebugInterrupt reports 'not casting' / 'not channeling' when nothing is cast
+- DebugInterrupt dumps all nine UnitCastingInfo positions, in order
+- DebugInterrupt dumps eight UnitChannelInfo positions — notInterruptible at 7
+- DebugInterrupt renders a secret notInterruptible without touching tostring
+- DebugInterrupt renders a nil position as the literal nil
+- DebugInterrupt skips the casting block entirely when the API is absent
+- DebugInterrupt closes with the addon's own visibility and glow decisions
+
+### test_debuglog.lua (13)
+
+- DebugLog module loaded with its public API
+- FormatPlain is clean, un-colored, and well-shaped (debug-logging-§3)
+- FormatColored carries the same fields as FormatPlain (no drift)
+- debug flag defaults OFF and lives in State, never in SavedVariables (debug-logging-§5)
+- SetEnabled is the single write seam and toggles State.debug
+- SetEnabled brackets each session with a console line at both ends (debug-logging-§5)
+- NS.Debug is a no-op when disabled (zero capture) and appends when enabled
+- NS.Debug sanitizes secret args and never errors
+- NS.Debug passes plain args through unchanged
+- scrollbar + line-counter sync methods exist (§11)
+- sync methods are a clean no-op before the window is built (§11)
+- building the console + Add/Clear run the guarded sync headlessly (§11)
+- console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
+
+### test_debuglogsetup.lua (22)
+
+- modules/DebugLog.lua has been deleted, not left beside the library
+- the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
+- FormatPlain renders <ts> | [<tag>] <msg> byte for byte
+- FormatColored keeps the steel-blue stamp, tan tag and escaped pipe
+- a nil tag renders as empty brackets rather than the string 'nil'
+- the console registers under the same frame name modules/DebugLog.lua hardcoded
+- the console title is the brand plus the library's own suffix
+- the debug flag stays the addon's — the library never keeps a copy
+- the enable ack renders the state word green, through the addon's tagged printer
+- the disable ack renders the state word red
+- enabling brackets the session and follows it with the host's [Init] summary
+- NS.Debug is bound bare off the instance and takes no self
+- NS.Debug is zero-cost when the flag is off
+- a numeric format slot still renders correctly now the library stringifies every arg
+- a secret argument renders as the shared sentinel and cannot raise
+- with LibKa0s absent the stub answers every DebugLog member the addon calls
+- the degraded stub still flips the flag and still prints the ack
+- the degraded stub renders no line of its own
+- the degraded stub carries no copy of the line format or the state hexes
+- every string the debug console renders resolves to prose, not to its own key
+- the console title and checkbox carry prose, reached the way the UI reaches them
+- the vendored DebugLog major falls THROUGH a key-returning locale table
+
+### test_icongrid_layout.lua (8)
+
+- Layout math is published on the IconGrid module
+- IconGrid:Layout method survives alongside the geometry table
+- parseAnchor normalizes modern, legacy, and CENTER tokens
+- parseAnchor rejects invalid combos with the RIGHT/CENTER default
+- parseGrow accepts perpendicular axes and defaults otherwise
+- placeBlock RIGHT/CENTER geometry (primary left, block right, centered)
+- placeBlock TOP/CENTER geometry (block above primary)
+- placeBlock CENTER stacks both on the grid center
+
+### test_icongrid_apply.lua (6)
+
+- Icon:Apply skips glow work when no plain state field moved
+- Icon:Apply STILL re-arms the swipe when only the handle changed
+- Icon:Apply redoes glow work when `ready` actually flips
+- Icon:Apply redoes glow work when the cooldown ends
+- Icon:Apply forced re-apply redoes state work even when nothing moved
+- Icon:Apply keeps the charges badge live when charges are secret
+
+### test_icongrid_visibility.lua (22)
+
+- the visibility deciders are published for testing
+- visibilityMode reads the addon-wide setting
+- visibilityMode defaults to 'always' when the field is missing
+- the cast bar reads the SAME visibility setting as the grid
+- master enable off hides the grid in every mode
+- a fresh profile with no enable field reads as enabled
+- unlocked shows the grid even in a mode that would hide it
+- locked restores the mode's own decision
+- 'always' shows regardless of combat or casting
+- an unrecognized mode falls back to always-visible
+- 'in_combat' follows State.inCombat in both directions
+- 'in_combat' ignores InCombatLockdown, which lags the regen events
+- 'target_casting' shows while the unit casts and hides when it stops
+- 'target_casting' counts a CHANNEL as casting
+- 'target_casting' hides when the unit doesn't exist
+- 'target_casting' does NOT filter on hostility, unlike the interruptible mode
+- 'target_casting_interruptible' shows for any HOSTILE cast
+- 'target_casting_interruptible' hides for a FRIENDLY cast
+- 'target_casting_interruptible' hides when nothing is being cast
+- each unit's decision is made against its OWN unit token
+- instanceCasting truth-tests the cast name without ever reading it
+- instanceCasting is false for a unit that doesn't exist
+
+### test_icongrid_render.lua (21)
+
+- the render helpers are published for testing
+- SafeUnpackColor reads both the array and hash color shapes
+- SafeUnpackColor honors the caller's cooldown-tint fallback
+- SafeUnpackColor falls back to opaque white with no fallback given
+- UnpackGlowColor reads a configured array color
+- UnpackGlowColor falls back to the shipped yellow glow for a non-table
+- UnpackGlowColor fills missing channels rather than returning nils
+- the 'always' trigger glows unconditionally
+- the 'never' trigger and any unknown token keep the glow off
+- 'target_casting' asks the INSTANCE whether its unit is casting
+- 'target_casting' is false for an instance with no predicate yet
+- 'target_casting_interruptible' glows for ANY hostile cast
+- 'target_casting_interruptible' does NOT glow for a friendly cast
+- 'target_casting_interruptible' resolves per-unit, defaulting to target
+- PlainStateMoved treats a first render as a change
+- PlainStateMoved is false when nothing plain moved
+- PlainStateMoved fires on a ready or isActive flip
+- PlainStateMoved watches handle PRESENCE, not handle identity
+- PlainStateMoved watches the charge timer's presence independently
+- PlainStateMoved deliberately IGNORES charges, unlike the cooldown gates
+- PlainStateMoved never compares a secret charge value
+
+### test_icongrid_curves.lua (12)
+
+- each unit gets its own curve pair
+- an unlinked focus builds its curve from ITS OWN readyAlpha
+- an unlinked focus builds its tint curve from ITS OWN cooldownTint
+- a LINKED focus resolves to target's values
+- CurvesFor never falls back to another unit's curves
+- rebuilding with an unchanged config reuses the same curve objects
+- an unrelated icons edit does NOT recreate the curves
+- a readyAlpha edit DOES recreate the curve
+- a cooldownAlpha edit DOES recreate the curve
+- a cooldownTint edit DOES recreate the curve
+- one unit's rebuild does not disturb the other's cached curves
+- CurveSignature covers exactly the three curve-shaping fields
+
+### test_icongrid_curve_link.lua (6)
+
+- the mock's curve evaluation actually reads control points
+- a LINKED focus renders with target's cooldown alpha
+- unlinking focus via the `units` section re-renders with ITS OWN alpha
+- re-linking focus via the `units` section restores target's alpha
+- unlinking picks up focus's own cooldown TINT, not target's
+- a per-unit enable toggle also refreshes curves
+
+### test_icongrid_buildlist.lua (20)
+
+- BuildActiveList renders one icon per enabled entry
+- BuildActiveList preserves the saved list's ORDER
+- the first entry becomes the primary icon the cast bar anchors to
+- BuildActiveList replaces the previous list rather than appending to it
+- an empty list produces an empty grid, not an error
+- a disabled entry is skipped
+- an entry with no enabled field is treated as enabled
+- an entry with no spellID is skipped rather than acquiring a nil-keyed icon
+- a spell the player cannot currently cast is not rendered
+- a spell missing from the client's spell DB is not rendered
+- a pet spell appears only while its pet is out
+- a duplicate spellID is skipped, keeping the pool 1:1 with the ID
+- the FIRST occurrence of a duplicated spellID is the one kept
+- a duplicate that is DISABLED doesn't suppress the enabled original
+- a duplicate is reported to the debug console when logging is on
+- a SECRET icon texture is skipped instead of erroring the whole build
+- a plain texture IS applied to the icon widget
+- a class+spec with no saved list renders nothing and creates no entry
+- BuildActiveList caches the unit's resolved icon config on the instance
+- each unit builds from its own resolved config
+
+### test_icongrid_glowgate.lua (8)
+
+- RefreshAllGlows pushes the glow decision through every icon
+- an unmoved gate short-circuits the per-icon loop
+- an interruptibility flip moves the gate and re-iterates
+- cast start and cast stop each move the gate
+- the gate cache is per-instance, so target and focus don't clobber
+- a SECRET interruptibility reading defeats the short-circuit
+- the debug line dedups on the printed label
+- each gate state gets its own debug label
+
+### test_lifecycle.lua (4)
+
+- addon + all modules enable cleanly on the Ace3 login path
+- IconGrid:OnEnable installs its bus subscriptions
+- Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
+- post-enable CONFIG_CHANGED re-layout runs end-to-end without error
+
+### test_unitlabel.lua (4)
+
+- UnitLabel module is registered
+- UnitLabel.ApplyAll runs without error for both units
+- Castbar:GetCastbarFrame does not create an instance for an unknown unit
+- UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)
+
+### test_unitlabel_apply.lua (21)
+
+- Apply writes the unit's own label text
+- Apply writes an empty string rather than nil for a cleared label
+- label TEXT stays per-unit even when the units are linked
+- Apply pushes the configured size and color onto the FontString
+- Apply always resolves a non-nil font path
+- Apply falls back to a 14pt outline for a style with no size or flags
+- Apply applies the configured horizontal justification
+- Apply defaults justification to CENTER
+- a LINKED focus renders target's styling but its own text
+- Apply positions the label against its chosen ATTACH frame
+- Apply parents the label to the ICON GRID even when attached to the cast bar
+- Apply anchors POSITION to the cast bar while parenting to the grid
+- re-applying never stacks anchors on the holder frame
+- the label shows when the unit is enabled and show is on
+- turning the label's show off hides it
+- disabling the unit hides its label regardless of the show flag
+- the master enable gates the label too
+- a LINKED focus mirrors target's show flag (spec 2b)
+- EnsureFrame builds the holder once and reuses it
+- target and focus each get their own label widgets
+- ApplyAll renders every unit in one pass
+
+### test_castbar.lua (7)
+
+- Castbar exposes the pure AutoSizeLong helper
+- AutoSizeLong copies the grid extent verbatim when scales match
+- AutoSizeLong shrinks the bar when the grid is scaled down (master scale < 1)
+- AutoSizeLong grows the bar when the grid is scaled up (master scale > 1)
+- AutoSizeLong honors the bar's own effective scale
+- AutoSizeLong returns the fallback for a zero/nil grid extent
+- AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
+
+### test_castbar_helpers.lua (28)
+
+- the Castbar pure helpers are published for testing
+- UnpackColor reads an array-style color
+- UnpackColor reads a hash-style color
+- UnpackColor uses the CALLER's fallback for a nil color
+- UnpackColor falls back to opaque white when the caller gives no fallback
+- UnpackColor defaults a missing alpha to fully opaque
+- TruncateName leaves a name shorter than the cap alone
+- TruncateName leaves a name EXACTLY at the cap alone
+- TruncateName clips and appends an ellipsis past the cap
+- TruncateName treats 0 and nil as 'no truncation'
+- TruncateName treats a negative cap as 'no truncation'
+- TruncateName returns an empty string for a nil name
+- TruncateName passes a SECRET name through without measuring it
+- StateConfig returns the configured per-state table when present
+- StateConfig falls back when the state key is missing
+- StateConfig rejects a non-table value stored under the state key
+- each state fallback IS the shipped default, not a second copy of it
+- the interruptible fallback is gold, the uninterruptible red with a heavier border
+- both state fallbacks carry every field the reskin path reads
+- ToSetPoint maps every schema anchor token to a real SetPoint token
+- ToSetPoint defaults a nil anchor to CENTER
+- ToSetPoint passes an already-valid SetPoint token straight through
+- FetchStatusBarTexture returns the LSM path when the key resolves
+- FetchStatusBarTexture degrades to a client-shipped path for an unknown key
+- FetchBorderTexture degrades to a client-shipped border
+- FetchFont always yields a usable font path
+- AutoSizeLong matches on-screen extents for frames at different scales
+- AutoSizeLong accounts for scale INHERITED from a parent frame
+
+### test_castbar_frame.lua (37)
+
+- EnsureFrame builds the full widget stack once and reuses it
+- EnsureFrame creates BOTH state bars and both backgrounds
+- EnsureFrame parents the state bars inside the bar container
+- EnsureFrame seeds both bars to an empty 0..1 range
+- target and focus get separate frames, not one shared bar
+- GetCastbarFrame never creates an instance for an unknown unit
+- Start renders the cast name into the bar's FontString
+- Start applies the user's name truncation
+- Start blanks the name entirely when showName is off
+- Start pushes the cast's icon texture onto the icon widget
+- a CAST fills the bar 0 -> total
+- a CHANNEL drains the bar total -> 0
+- both stacked bars carry identical values so the alpha switch is seamless
+- Start shows the frame and arms the per-frame OnUpdate
+- Start refuses a record with no duration object rather than faking one
+- the OnUpdate tick advances the bar as the cast progresses
+- the OnUpdate tick writes the remaining/total countdown when showTime is on
+- the OnUpdate tick leaves the countdown alone when showTime is off
+- the OnUpdate script disarms itself once the cast record is gone
+- an INTERRUPTIBLE cast shows the interruptible widgets and hides the others
+- an UNINTERRUPTIBLE cast flips the whole stack the other way
+- the alpha switch never branches on notInterruptible in Lua
+- the no-cast state falls back to interruptible visuals
+- the uninterruptible warning border is on and the interruptible one off
+- the user's spell-name color reaches the label, in the keyed storage shape
+- Stop clears the cast, empties both bars and disarms the animation
+- Stop HIDES the bar while locked
+- Stop leaves a PREVIEW on screen while unlocked, so it stays draggable
+- the preview resets the bar range so it doesn't inherit the last cast's total
+- Stop is safe before the frame has ever been built
+- a cast starting out of combat is suppressed in the in_combat mode
+- the same cast shows once combat is flagged
+- disabling the cast bar for a unit keeps its frame hidden through a cast
+- the interruptible mode masks the bar's alpha from the SECRET flag
+- an interruptible cast in that mode stays fully visible
+- ApplyAnchor in FREE mode restores the saved anchor against UIParent
+- re-anchoring never stacks a second point on the frame
+
+### test_castbar_skin.lua (40)
+
+- StructureSignature is stable for identical inputs
+- StructureSignature moves when a structural field moves
+- StructureSignature moves when the RESOLVED size moves
+- StructureSignature ignores pure color fields
+- StructureSignature DOES move for border size/texture
+- Reskin stamps a structure signature on the instance
+- a structural config change re-sizes the frame
+- a SECOND structural change still lands (the guard is not one-shot)
+- re-skinning with no config change leaves the signature untouched
+- a color-only change does NOT move the structure signature
+- a color-only change still repaints the bar
+- force rebuilds the geometry even when the signature matches
+- Reskin is safe before the frame has ever been built
+- target and focus carry independent structure signatures
+- ResolveBarSize floors the long and thick axes
+- ResolveBarSize returns the configured size when auto-size is off
+- ResolveBarSize leaves thickness alone in vertical orientation
+- HORIZONTAL + iconPosition LEFT insets the bar from the left
+- HORIZONTAL + iconPosition RIGHT insets the bar from the right
+- VERTICAL remaps iconPosition LEFT to the TOP of the bar
+- VERTICAL remaps iconPosition RIGHT to the BOTTOM of the bar
+- iconPosition OFF hides the icon and gives the bar the whole frame
+- a zero iconSize hides the icon as surely as OFF does
+- iconSize is clamped to the bar's thickness
+- HORIZONTAL grow RIGHT puts the spark on the bar's RIGHT fill edge
+- HORIZONTAL grow LEFT reverses the fill and the spark rides LEFT
+- VERTICAL grow UP puts the spark on the TOP fill edge
+- VERTICAL grow DOWN reverses the fill and the spark rides BOTTOM
+- the spark is sized across the bar and rotated 90 degrees when vertical
+- the spark is unrotated and tall when horizontal
+- showSpark=false hides the spark outright
+- showSpark defaults to shown when unset
+- both labels share the config font, and NONE flags normalize to empty
+- absent fontFlags normalize to empty too
+- showName / showTime false hide their labels, and only theirs
+- the labels default to shown when the flags are unset
+- name and time labels anchor per their independent position settings
+- Reskin survived the peel as a method on the Castbar module
+- the skin sibling reads its helpers off the module, not a private copy
+- modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)
+
+### test_castbar_debug.lua (18)
+
+- DebugDump opens with the resolved unit and bails when it does not exist
+- DebugDump defaults the unit to target
+- DebugDump's unit line reports name, isUnit and canAttack
+- DebugDump reports isUnit=self for the player's own unit
+- DebugDump falls back to '?' when the unit has no name
+- DebugDump stops after the no-cast line when nothing is tracked
+- DebugDump flags a missed event when Compat still sees a cast
+- DebugDump reports a plain boolean notInterruptible by value
+- DebugDump reports a nil notInterruptible as interruptible
+- DebugDump reports a secret notInterruptible without touching tostring
+- DebugDump prints no state line for a secret value with no curve evaluator
+- DebugDump reports the channel flag and the record's field TYPES only
+- DebugDump reports secret record fields by type, never by value
+- DebugDump renders the configured per-state colors from the live profile
+- DebugDump reads colors through Util.Unpack, in the keyed storage shape
+- DebugDump reports a missing color table as (missing)
+- DebugDump reports the colors live on the StatusBar widgets
+- DebugDump says (no widget) before the frame has ever been built
+
+### test_cooldowns.lua (11)
+
+- SPELL_UPDATE_* burst coalesces to one Refresh per frame
+- Refresh logs one coalesced line only when a spell changed
+- Refresh coalesces multiple simultaneous changes into ONE line
+- Refresh does not log when only the cooldown handle identity changed
+- Refresh STILL emits SPELL_STATE when the cooldown handle changed
+- Refresh logs a genuine on-cooldown -> ready transition
+- Rebuild summary names the class/spec IDs and every watched + skipped spell
+- Rebuild summary distinguishes an empty watched set from an empty skipped set
+- Rebuild summary re-logs when only the SKIPPED set changes
+- Rebuild summary logs on a material change and is silent on a repeat
+- Refresh logs nothing when no spell changed
+
+### test_cooldowns_gates.lua (22)
+
+- both gates are published for testing
+- both gates treat a missing previous state as a change (first poll)
+- both gates are silent when nothing at all moved
+- both gates fire on a ready flip — the transition that matters most
+- both gates fire on an isActive flip
+- both gates fire when a cooldown handle APPEARS
+- both gates fire when a cooldown handle DISAPPEARS
+- both gates fire when a charge-recharge timer appears
+- StateChanged fires on a NEW handle for the same cooldown
+- MaterialChange ignores a new handle for the same cooldown
+- MaterialChange ignores a new CHARGE handle too
+- both gates ignore charges that stayed nil
+- both gates fire on a plain charge count that moved
+- both gates ignore a plain charge count that held still
+- both gates fire when charges appear from nothing
+- StateChanged EMITS conservatively when either charge count is secret
+- MaterialChange stays QUIET when either charge count is secret
+- one secret side is enough to trigger each gate's secret rule
+- a secret charge count never blocks a real ready/isActive transition
+- neither gate ever reads a secret charge value itself
+- Cooldowns.MasterEnabled defaults to true when the field is absent
+- Cooldowns.MasterEnabled is false only for an explicit false
+
+### test_settings_log.lua (5)
+
+- Helpers.Set logs one debounced [Set] line with the settled value
+- Helpers.Set formats an RGBA table compactly
+- ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
+- ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
+- ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)
+
+### test_settings_spells.lua (4)
+
+- Spells editor seeds its selection to the player's own class and spec
+- Spells editor selection follows an in-game spec change (dropdown regression)
+- Spells editor spec change also tracks a class it can render
+- Spells editor exposes specs in Blizzard's order, not numeric order
+
+### test_settings_spells_editor.lua (25)
+
+- the Add-spell popup appends a validated spell to the selected list
+- input the spell DB does not resolve is refused and nothing is added
+- re-adding a spell already in the list re-enables it in place
+- adding to a spec the user has never customized lazy-creates its list
+- a spell the Cooldown Manager does not track for the player's own spec is refused
+- a spell the Cooldown Manager does track passes the gate
+- the gate is DROPPED when the editor is not on the player's live spec
+- an absent C_CooldownViewer falls through leniently rather than refusing
+- an API that answers nothing is remembered as empty and never re-walked
+- a category the client throws on is survived rather than aborting the walk
+- a spell row carries its nine widgets in the visual column order
+- the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
+- the row checkbox writes the entry's enabled flag as a real boolean
+- a disabled row renders its spell icon and checkbox from the stored flag
+- the move buttons are disabled at the list edges, not merely inert
+- Move up swaps the entry with the one above it
+- Move down swaps the entry with the one below it
+- Remove deletes exactly the row's entry
+- the category dropdown writes the entry's category
+- RefreshRows builds the header, the scroll container and one row per entry
+- an empty list renders the guidance label instead of rows
+- RefreshRows refuses to run against a hidden panel
+- a rebuild releases the previous widget tree before building a new one
+- the selection cascade falls back to the first sorted class the defaults know
+- a stale move click after a rebuild cannot run off the end of the list
+
+### test_settings_widgets.lua (20)
+
+- the settings helpers are published for testing
+- SortedKeys returns a deterministic ordering
+- SortedKeys returns an empty list for a nil or non-table input
+- SpecOrder lists specs in Blizzard's order, not numeric order
+- SpecOrder falls back to sorted numeric keys when the client can't be queried
+- SpecOrder only offers specs the addon ships defaults for
+- SpecOrder lists EVERY spec the defaults ship for that class
+- SpecOrder is empty for a class with no shipped defaults
+- Druid's four specs all survive the ordering
+- ValidateSpellInput accepts a numeric spell ID and resolves its name
+- ValidateSpellInput accepts an ID typed as a string
+- ValidateSpellInput rejects empty and nil input
+- ValidateSpellInput rejects an ID the client doesn't know
+- ValidateSpellInput resolves a spell NAME to its numeric ID
+- ValidateSpellInput rejects a name that resolves to no spell
+- ValidateSpellInput refuses a name whose lookup yields no ID
+- ClassDisplayName spaces the two-word class tokens
+- TitleCaseToken lower-cases everything after the first letter
+- TitleCaseToken returns an empty string for nil rather than erroring
+- every shipped class token produces a non-empty display name
+
+### test_options_panel.lua (30)
+
+- the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
+- OnDefault reaches a defaultsOnClick parked AFTER the panel is built
+- a page that parks no defaults action still has a callable, inert OnDefault
+- NS.Settings.Helpers IS the library instance, decorated in place
+- the host ships no widget maker, flow engine or layout constant of its own
+- every page registers exactly once, through the library's registry
+- no page file reaches a registry other than the library's
+- a bool row renders a checkbox labeled from the row
+- a number row renders a slider carrying the row's range
+- a string row renders a dropdown listing the KEYED options in declared order
+- a color row renders a picker with alpha and the decoded color
+- ticking a checkbox writes through the addon's single write seam
+- a checkbox write fires CONFIG_CHANGED with the row's section
+- dragging a slider commits on mouse-up
+- choosing a dropdown option stores the option KEY, never its index
+- confirming a color stores the keyed shape the modules read
+- an external write re-syncs an open widget through its refresher
+- releasing a page's widgets drops that page's refreshers
+- InlinePair puts both caller-supplied widgets in ONE row
+- SessionToggle adapts this addon's argument order onto the library's
+- a session toggle never becomes a saved setting
+- the Profiles page is vetoed from a global reset
+- a global reset also clears the state no schema row owns
+- with LibKa0s absent the schema still loads COMPLETE
+- the degraded stub keeps the global reset real
+- the degraded stub opens no panel and says so once
+- the degraded stub carries no widget maker or layout constant
+- every schema row the panel renders is labeled with prose, not with a key
+- the panel's group and section headings are prose too
+- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+
+### test_settings_refreshers.lua (5)
+
+- rendering rows registers refreshers
+- ClearScroll empties the refresher registry
+- a clear-and-rebuild cycle does not grow the registry
+- RefreshAllPanels never runs a refresher from a cleared render
+- ClearScroll is safe on a ctx that never rendered
+
+### test_flow_traces.lua (1)
+
+- OnProfileChanged logs a [Profile] line
+
+### test_version.lua (3)
+
+- `version` is a registered COMMANDS verb (slash-commands-§3)
+- `/kcd version` prints v<version> on exactly one line
+- `version` falls back to the NS.VERSION stamp when TOC metadata is absent
+
+### test_slash_style.lua (10)
+
+- /kcd help emits no line ending in ':' (slash-commands-§4)
+- bare /kcd emits no line ending in ':'
+- /kcd debug sub-header emits no line ending in ':'
+- /kcd spells sub-header emits no line ending in ':'
+- every COMMANDS verb description is free of a trailing ':'
+- an unknown verb's error line does not end in ':'
+- /kcd debug spells emits no line ending in ':'
+- /kcd debug castbar emits no line ending in ':'
+- /kcd debug interrupt emits no line ending in ':'
+- no addon source passes a ':'-terminated literal to a printer
+
+### test_slash.lua (27)
+
+- the dispatcher instance is built from LibKa0s-Slash-1.0
+- NS.COMMANDS stays the host's, as ordered positional triples
+- every COMMANDS handler takes (rest), not (self, rest)
+- an unknown verb names it and then prints the help index
+- only the verb is lowercased — a schema path keeps its case
+- the `options` alias still reaches `config`
+- the help header now carries the em dash the standard mandates
+- a help row is the one shared formatter, two-space indented
+- the landing page renders the SAME rows, un-indented
+- the panel no longer carries a second command-row formatter
+- list groups by the row's panel, in the addon's declared page order
+- get echoes the shared key = value pair
+- set clamps out of range and echoes what was actually STORED
+- set routes through the host's single write seam
+- a color round-trips through the library with no host translation
+- a color given in 0-255 rescales jointly
+- an unknown path says so rather than writing anything
+- reset takes a PATH and resets exactly that one row
+- the old page-shaped reset names its replacement instead of going quiet
+- `reset spells` names the verb its database rebuild moved to
+- the spell-database rebuild survives, under its new verb
+- resetall keeps its four-part host semantics rather than becoming CliResetAll
+- with LibKa0s absent /kcd still answers and host verbs still work
+- the degraded stub carries no copy of the row formatter or the parser
+- every string the Slash CLI renders resolves to prose, not to its own key
+- no chrome line /kcd prints is a raw SCREAMING_SNAKE key
+- the vendored Slash major falls THROUGH a key-returning locale table
+
+### test_opensettings.lua (6)
+
+- OpenSettings refuses in combat
+- OpenSettings also reads combat off InCombatLockdown
+- the combat refusal is KickCD's and never reaches the library
+- OpenSettings opens through the library forwarder, not a private copy
+- OpenSettings prints the plain notice when the settings layer never loaded
+- with LibKa0s absent the open says so instead of touching the category API
+
+### test_perfsetup.lua (26)
+
+- NS.Perf is the library instance, with the hot-path gate as a plain field
+- the capture ring is declared in the TOC as a second SavedVariables global
+- every bracket call site reads the gate through a load-time upvalue
+- every declared bucket is reached by a real bracket
+- the declared bucket list and the bracketed call sites agree exactly
+- nesting is declared for every bucket that runs inside another
+- instrumentation is inert when capture is off
+- the show decisions consult Perf.suspended as step 0, at the source
+- suspend releases the per-unit dispatch frames AceEvent cannot reach
+- enabling a unit while suspended does not re-register its frames mid-capture
+- resume restores from CURRENT state, not from a snapshot
+- the suspended flag is session-only and never persisted
+- `perf` is a host verb in NS.COMMANDS, not registered by the library
+- a bare /kcd perf answers through the addon's tagged printer
+- with LibKa0s absent the probe stub answers every member the addon calls
+- with LibKa0s absent the bracketed paths still run
+- the perf panel resolves real English, never a raw STRINGS key
+- no LibKa0s descriptor is handed the key-returning locale table
+- the panel title is the host's brand plus the library's resolved suffix
+- the VENDORED library ignores a fallback-synthesized locale entry
+- the record stamps a real addon version, never "?"
+- the perf version agrees with the one /kcd version prints
+- the version fallback is reachable, not dead
+- every PollSpell exit is measured, including the rejections
+- no bracketed function leaks an exit — every return closes the bracket
+- the record stamps a real client interface version, never 0
+
+### test_list_mode.lua (5)
+
+- --list emits a generated '# Test Cases' inventory header + regen note
+- --list stdout is inventory-only, no run output
+- --list emits CRLF line endings (matches the repo eol=crlf policy)
+- --list per-suite header counts match their bullet counts
+- --list Totals row equals the grand total of bullets
+
+### test_surface_parity.lua (6)
+
+- sanity: the degraded arm really has no LibKa0s
+- the whole namespace survives a LibKa0s-less load
+- the Core printer seam degrades with its whole surface intact
+- the DebugLog stub carries the whole live surface
+- the Slash stub carries the whole live surface
+- the Options stub carries every member the host calls
 
 ### test_vendor_sync.lua (2)
 
@@ -488,19 +909,53 @@ badge and any count quoted in the docs must agree with it.
 
 | Suite | Cases |
 |-------|------:|
-| test_harness.lua | 7 |
-| test_libka0s.lua | 46 |
-| test_util.lua | 26 |
-| test_compat.lua | 17 |
-| test_database.lua | 9 |
-| test_settings.lua | 42 |
-| test_slash.lua | 43 |
-| test_labels.lua | 31 |
-| test_capture.lua | 29 |
-| test_notify.lua | 44 |
-| test_frame.lua | 32 |
-| test_panel.lua | 47 |
-| test_lifecycle.lua | 37 |
-| test_debuglog.lua | 21 |
+| test_util.lua | 13 |
+| test_coresetup.lua | 23 |
+| test_util_anchor.lua | 26 |
+| test_constants.lua | 23 |
+| test_state.lua | 23 |
+| test_locale.lua | 9 |
+| test_units.lua | 12 |
+| test_schema.lua | 11 |
+| test_database.lua | 20 |
+| test_color_shape.lua | 21 |
+| test_bus.lua | 4 |
+| test_compat.lua | 5 |
+| test_compat_api.lua | 46 |
+| test_compat_debug.lua | 11 |
+| test_debuglog.lua | 13 |
+| test_debuglogsetup.lua | 22 |
+| test_icongrid_layout.lua | 8 |
+| test_icongrid_apply.lua | 6 |
+| test_icongrid_visibility.lua | 22 |
+| test_icongrid_render.lua | 21 |
+| test_icongrid_curves.lua | 12 |
+| test_icongrid_curve_link.lua | 6 |
+| test_icongrid_buildlist.lua | 20 |
+| test_icongrid_glowgate.lua | 8 |
+| test_lifecycle.lua | 4 |
+| test_unitlabel.lua | 4 |
+| test_unitlabel_apply.lua | 21 |
+| test_castbar.lua | 7 |
+| test_castbar_helpers.lua | 28 |
+| test_castbar_frame.lua | 37 |
+| test_castbar_skin.lua | 40 |
+| test_castbar_debug.lua | 18 |
+| test_cooldowns.lua | 11 |
+| test_cooldowns_gates.lua | 22 |
+| test_settings_log.lua | 5 |
+| test_settings_spells.lua | 4 |
+| test_settings_spells_editor.lua | 25 |
+| test_settings_widgets.lua | 20 |
+| test_options_panel.lua | 30 |
+| test_settings_refreshers.lua | 5 |
+| test_flow_traces.lua | 1 |
+| test_version.lua | 3 |
+| test_slash_style.lua | 10 |
+| test_slash.lua | 27 |
+| test_opensettings.lua | 6 |
+| test_perfsetup.lua | 26 |
+| test_list_mode.lua | 5 |
+| test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **433** |
+| **Total** | **752** |

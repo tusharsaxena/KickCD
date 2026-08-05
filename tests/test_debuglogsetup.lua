@@ -219,20 +219,56 @@ test("the degraded stub still flips the flag and still prints the ack", function
 
     assertEqual(inst.NS.State.debug, true, "the stub must still write the flag")
     local joined = table.concat(lines, "\n")
-    assertTrue(joined:find("debug logging |cff40ff40ON|r", 1, true) ~= nil,
+    assertTrue(joined:find("debug logging ON", 1, true) ~= nil,
         "the ack must still print; got: " .. joined)
+    -- ... and the STATE WORD must print uncolored. The green/red state hexes are
+    -- the library's string (libs/LibKa0s/DebugLog.lua's STATE_ON / STATE_OFF),
+    -- and a stub that copies them has forked exactly what the extraction
+    -- unified. The [KCD] tag's own color is NS.Util.print's and is not in scope.
+    local ack
+    for _, line in ipairs(lines) do
+        if line:find("debug logging", 1, true) then ack = line end
+    end
+    assertTrue(ack ~= nil, "no ack line was printed")
+    assertNil(ack:match("debug logging |c"),
+        "the stub's state word must carry no color escape; got: " .. ack)
 end)
 
-test("the degraded stub carries no copy of the line formatters", function()
+test("the degraded stub renders no line of its own", function()
+    -- debug-logging-§3: "The addon MUST NOT redefine, wrap, or hand-copy those
+    -- formatters." The stub has no console, so it has no line to render — and
+    -- inventing one would be a second format to keep in step with the library's.
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    local D = inst.NS.DebugLog
+    assertEqual(D.FormatPlain("12:34:56", "Cast", "hello"), "hello",
+        "the stub must hand back the message, not a formatted line")
+    assertEqual(D.FormatColored("12:34:56", "Cast", "hello"), "hello")
+end)
+
+test("the degraded stub carries no copy of the line format or the state hexes", function()
     -- debug-logging-§3: the stub MUST NOT reproduce the format or its color
     -- codes. Copying the exact strings whose seven-way drift this extraction
     -- exists to end is the one duplicate testing-§8 most specifically forbids.
-    -- red under: pasting the real format string into the stub's FormatColored
+    --
+    -- Read off the SOURCE, not off the stub table, because a copy is a defect
+    -- the moment it is written down — even in a branch no test happens to call.
+    -- The three probes below are the three things that were actually copied:
+    -- the console colors, the plain line's `| [` separator-and-bracket pair,
+    -- and the ON/OFF state hexes. The file used to carry the second and third
+    -- while its own comment claimed it carried none of them.
+    --
+    -- red under: pasting any of the three back into core/DebugLogSetup.lua.
     local fh = assert(io.open(T.root .. "/core/DebugLogSetup.lua", "r"))
     local src = fh:read("*a")
     fh:close()
+    -- The block comment explains the rule and has to be able to quote it, so
+    -- only the executable half is searched.
+    src = src:gsub("%-%-[^\n]*", "")
     assertNil(src:match("6f8faf"), "the stub must not carry the timestamp color")
     assertNil(src:match("c9a66b"), "the stub must not carry the tag color")
+    assertNil(src:match("| %["), "the stub must not carry the plain line's separator")
+    assertNil(src:match("cff40ff40"), "the stub must not carry the debug-ON state hex")
+    assertNil(src:match("cffff4040"), "the stub must not carry the debug-OFF state hex")
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────
