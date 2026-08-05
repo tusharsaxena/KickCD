@@ -37,7 +37,6 @@ test("the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for f
     -- A file added to the library and forgotten in the runner is exactly the
     -- silent failure testing-§9 describes, so derive the truth from the XML
     -- instead of restating it.
-    local loader = dofile(T.root .. "/tests/loader.lua")
     local fromXML = {}
     local f = assert(io.open(T.root .. "/libs/LibKa0s/LibKa0s.xml", "r"))
     for line in f:lines() do
@@ -47,15 +46,14 @@ test("the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for f
     f:close()
 
     assertTrue(#fromXML > 0, "parsed no <Script> entries out of LibKa0s.xml")
-    assertEqual(#loader.LIB_FILES, #fromXML, "library file count")
+    assertEqual(#T.libFiles, #fromXML, "library file count")
     for i = 1, #fromXML do
-        assertEqual(loader.LIB_FILES[i], fromXML[i], "library file " .. i)
+        assertEqual(T.libFiles[i], fromXML[i], "library file " .. i)
     end
 end)
 
 test("every file the runner loads for LibKa0s exists on disk", function()
-    local loader = dofile(T.root .. "/tests/loader.lua")
-    for _, rel in ipairs(loader.LIB_FILES) do
+    for _, rel in ipairs(T.libFiles) do
         local fh = io.open(T.root .. "/" .. rel, "r")
         assertTrue(fh ~= nil, "missing library file: " .. rel)
         if fh then fh:close() end

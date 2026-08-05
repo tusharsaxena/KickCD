@@ -24,13 +24,19 @@ end)
 
 test("--list stdout is inventory-only, no run output", function()
     local out = listOutput()
-    -- Key on run-only markers (the banner + the ANSI PASS glyph), not the bare
-    -- word "PASS" — a case name may legitimately contain it (this one does).
-    assertTrue(not out:find("KickCD test harness", 1, true),
-        "list mode must not print the harness banner")
-    assertTrue(not out:find("\27[32mPASS", 1, true), "list mode must not run tests")
-    assertTrue(not out:find("\n-------------------\n", 1, true),
-        "list mode must not print the run tail")
+    -- Keyed on the KIT runner's own markers, since tests/run.lua delegates to
+    -- Kit.run: the per-case result line is two spaces, the verdict, two spaces,
+    -- and the tail is the "N passed, N failed" summary. Not the bare word
+    -- "PASS" — a case name may legitimately contain it (this one does).
+    --
+    -- This assertion is why `--list` being a PURE FILTER over the registry
+    -- matters (KCD-R-08). The runner this file used to test short-circuited
+    -- each case body inside `test()` when --list was set, which made the
+    -- inventory a second code path through the same function; the kit's
+    -- `test()` only records, and nothing runs until Kit.run decides to.
+    assertTrue(not out:find("\n  PASS  ", 1, true), "list mode must not run tests")
+    assertTrue(not out:find("\n  FAIL  ", 1, true), "list mode must not run tests")
+    assertTrue(not out:find(" passed, ", 1, true), "list mode must not print the run tail")
 end)
 
 test("--list emits CRLF line endings (matches the repo eol=crlf policy)", function()

@@ -1,6 +1,10 @@
 # Test Cases
 
-_Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > docs/test-cases.md`._
+The full inventory of every headless test case in this repo, grouped by the suite file it
+lives in. The `## Totals` table below is the **authoritative pass count** — the README test
+badge and any count quoted in the docs must agree with it.
+
+**Generated — do not hand-edit.** Regenerate with `lua tests/run.lua --list > docs/test-cases.md`.
 
 ### test_util.lua (13)
 
@@ -888,7 +892,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ## Totals
 
 | Suite | Cases |
-| --- | --- |
+|-------|------:|
 | test_util.lua | 13 |
 | test_coresetup.lua | 21 |
 | test_util_anchor.lua | 26 |

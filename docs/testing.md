@@ -10,9 +10,17 @@ Install instructions for all three, with the WSL2/Ubuntu commands that actually 
 
 **Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [conventions.md](conventions.md) — which is why the vendored-copy check below is two diffs rather than one.
 
+## What is the harness, and what is KickCD's
+
+The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, and the suite list.
+
+The kit **collects, then runs**: `test()` records a case and nothing executes until the runner decides to. This file's runner used to `pcall` each case body at registration time and short-circuit it under `--list`, which made the inventory a second code path through the same function and made "what has already happened when this case runs?" depend on where in its file the case sat. `--list` is now a pure filter over the registry and cannot disagree with the run.
+
+One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (§4.1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
+
 ## What the frame mock does and doesn't model
 
-`tests/wow_mock.lua`'s frame stub carries **real state** for the properties the addon's correctness depends on — visibility (`Show`/`Hide`/`SetShown`/`IsShown`, with `IsVisible` walking the parent chain), geometry (`SetPoint`/`GetPoint` round trip, size, scale with `GetEffectiveScale` as the product down the parent chain), alpha, text, color, and `StatusBar` min/max/value. Two C-side seams that accept 12.0 **secret values** are modeled deliberately, because they are the only correct way to branch on a secret: `Frame:SetAlphaFromBoolean` (which also records the raw flag, so a suite can prove the secret was passed through rather than read) and `C_CurveUtil.EvaluateColorValueFromBoolean`.
+`tests/wow_mock.lua` layers KickCD's half over the shared base in `tests/_kit/mock_base.lua`, overwriting per key (it reassigns 29 of the base's 56 keys and inherits 27, none of which any addon source touches — the file's own header lists them). Its frame stub carries **real state** for the properties the addon's correctness depends on — visibility (`Show`/`Hide`/`SetShown`/`IsShown`, with `IsVisible` walking the parent chain), geometry (`SetPoint`/`GetPoint` round trip, size, scale with `GetEffectiveScale` as the product down the parent chain), alpha, text, color, and `StatusBar` min/max/value. Two C-side seams that accept 12.0 **secret values** are modeled deliberately, because they are the only correct way to branch on a secret: `Frame:SetAlphaFromBoolean` (which also records the raw flag, so a suite can prove the secret was passed through rather than read) and `C_CurveUtil.EvaluateColorValueFromBoolean`.
 
 **Curve evaluation reads the control points.** `__makeDurationObject`'s `EvaluateRemainingDuration` walks the curve it is handed and returns the value of the last point at or below the queried remaining — it does not return a constant. This is load-bearing for the same reason `IsShown` is: the addon's curves are per unit and built from config, so a stub that ignores the points makes "this icon used ITS unit's curve" and "this icon used some other unit's curve" the same observation. A per-unit curve regression shipped green through exactly that hole (see `tests/test_icongrid_curve_link.lua`); the fix was to model the evaluation, not to add more assertions on the curve objects.
 
@@ -26,7 +34,7 @@ The **authoritative test count and per-suite breakdown** live in the generated i
 
 ## Testing against the vendored library
 
-`tests/loader.lua` loads the eight `libs/LibKa0s/*.lua` files explicitly, in
+`tests/run.lua` loads the eight `libs/LibKa0s/*.lua` files explicitly, in
 `LibKa0s.xml`'s own order, before any addon file — the TOC pulls them in through
 that one `.xml`, which the TOC-derived load list deliberately skips. The list is
 pinned against the XML by `tests/test_coresetup.lua`, because a library file
