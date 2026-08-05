@@ -401,7 +401,8 @@ test("with LibKa0s absent all five seams say the same thing about WHY", function
 
     -- 5. Slash — the one seam whose consequence comes FIRST, because the verb
     --    has to lead or `/kcd list` is buried mid-sentence. AbsorbTracker
-    --    inverts it identically (settings/Slash.lua:383).
+    --    inverts it identically, in its own
+    --    ../AbsorbTracker/settings/Slash.lua `missing` stub.
     local slash = drive(function() inst.NS:OnSlashCommand("list") end)
     assertEqual(slash[1], P .. " /kcd list is unavailable. " .. CAUSE .. ".",
         "settings/Slash.lua's stub line")

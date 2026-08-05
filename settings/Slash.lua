@@ -208,7 +208,8 @@ if not SlashLib then
     -- only the consequence is this seam's. This is the one of the five whose
     -- consequence comes FIRST — the verb has to lead, or "/kcd list" is buried
     -- mid-sentence — so it reads "<verb> is unavailable. <cause>." AbsorbTracker
-    -- inverts it the same way for the same reason (settings/Slash.lua:383).
+    -- inverts it the same way for the same reason, in its own
+    -- ../AbsorbTracker/settings/Slash.lua `missing` stub.
     local missing = " is unavailable. " .. NS.LIBKA0S_MISSING .. "."
     SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
