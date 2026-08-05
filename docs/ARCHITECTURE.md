@@ -189,13 +189,30 @@ table must not become a graveyard.
 |---|---|---|---|---|
 | `savedvariables-§1` | Two profile migrators run off the **stored shape**, not off `db.global.schemaVersion`. `schemaVersion` and a migration function both exist as the rule requires; these two run beside them, ungated. | A bare `schemaVersion` bump cannot distinguish "pre-`label.style`" from "current", because AceDB's `copyDefaults` has already written the new sub-table into the stored profile before any migrator looks — the same masking trap `FoldLegacyUnits` was written around. Reasoned at [saved-variables.md](saved-variables.md#L212). | 2026-07-16 | An AceDB release where `copyDefaults` no longer backfills before migration runs, **or** a third shape addition under an existing profile field — either makes a version-gated migrator sufficient and retires both shape-driven ones. |
 | `savedvariables-§1` | `DEFAULT_PROFILE` was **restructured** — target/focus nested under `units.<unit>` — rather than only grown, departing from the "a profile shape never changes shape, only grows" expectation the section's example implies. | Target and focus each need independently customizable `icons`/`castbar`; the flat alternative (`icons`, `focusIcons`, `castbar`, `focusCastbar`, …) does not scale to a third unit and duplicates the anchor/label bookkeeping. The shape-driven migration above is the mitigation that makes it safe for existing installs. Reasoned at [saved-variables.md](saved-variables.md#L222). | 2026-07-15 | A third tracked unit is added — at which point the nested shape is load-bearing rather than a departure, and this row retires. |
-
 | `options-ui-§1` | `Helpers.LSMValues` / `Helpers.AnchorValues` / `Helpers.AnchorOrder` stay the **host's own** code in `settings/Panel.lua`, shadowing the library's published `O.LSMValues`, rather than being read off the instance like every other member. | `settings/Icons.lua` and `settings/Castbar.lua` evaluate these inside schema-row literals **at FILE LOAD**. Were they instance members, the LibKa0s-absent stub would have to publish them or the page files raise, the rows never register, and a large part of `NS.Settings.Schema` goes missing — taking `/kcd list|get|set|reset` and the profile defaults with it, silently. Keeping them host-side is what lets the degraded stub need **zero** load-time members. The library's `O.LSMValues` is also not a drop-in: it returns a deferred **closure** where the host's returns a **table**, and falls back to `STRINGS.LSM_NONE` ("None") where the host's uses `"Default"`. Measured, not assumed, and reasoned in full at [../settings/OptionsSetup.lua](../settings/OptionsSetup.lua) — the measurement is gated by `tests/test_options_panel.lua`, which loads the addon with the library absent and pins `#NS.Settings.Schema`. | 2026-08-05 | Any KickCD page file stops evaluating these inside a schema-row literal at file load — at which point the load-completing constraint is gone and all three move onto the instance. The pinning case in `tests/test_options_panel.lua` is what makes that visible. |
+| `events-frames-taint-§8` | `core/Compat.lua`'s `/kcd debug interrupt` dump carries its own value renderer (`safeRender` at `:373-381`, used by `describe` at `:387-390`) beside the library's `NS.SafeToString`, which `core/CoreSetup.lua` publishes. The section's closing line makes a second stringifier the deviation, and option (a)'s scoping of the pre-formatting MUST does not touch it. | It is not the printer seam's stringifier and nothing routes through it to reach chat. It renders a diagnostic **value column** — `%q`-quoted strings, `<table>`/`<function>` for a non-scalar, printed beside that value's `type=` and `isSecret=` — which is a dump's cell, not a chat line's argument, and which `SafeToString` does not produce and should not learn to. Its detection is `issecretvalue()`, the engine's own predicate: that is what §8's `table.concat` probe exists to approximate where the predicate is unavailable, not the `..` probe §8 forbids. Every value reaching `describe`'s `string.format` has already been through `safeRender`, so the dump cannot raise on a secret. | 2026-08-05 | `LibKa0s-Core-1.0` publishes a diagnostic value renderer (a `Describe` / `RenderValue`), **or** `safeRender` gains a caller outside the `/kcd debug interrupt` dump — either makes the local copy redundant and retires this row. |
 **Not in this table, and why.** The `KickCD<Widget><UnitTitleCase>` frame-naming notes at
 [conventions.md](conventions.md) and the additive `GRID_LAYOUT` payload note at
 [message-bus.md](message-bus.md) read as deviations but are not: they depart from *this addon's own*
 conventions, not from a numbered rule in the standard, so neither has a `filename-§N` to cite and
 neither belongs in a register of standards deviations. They stay where they are reasoned.
+
+**Also not in this table:** `modules/Castbar_Debug.lua`'s pre-formatted debug lines (`:35`, `:82`,
+`:85-86`, `:102`). `events-frames-taint-§8` now **scopes** its pre-formatting MUST to call sites whose
+arguments can reach a value read from one of the APIs it names, and a SHOULD everywhere else. KickCD
+uses none of the named APIs, and the one combat-protected value it does handle —
+`current.notInterruptible` from `UnitCastingInfo`/`UnitChannelInfo` — is never formatted: those lines
+build from its `type()` and from `issecretvalue()`'s boolean, and the `NINT_REPORT.boolean` arm is
+reachable only when the type already *is* `boolean`. So the sites are permitted, not ratified
+deviations, and there is nothing to record beyond this sentence.
+
+One thing the scoping does **not** relax, and it is still open: `modules/Castbar_Debug.lua:125` binds
+`local print = NS.Util and NS.Util.print or _G.print`. §8's prohibition on the global `print()` for
+user-facing output is unqualified — it is about the missing `NS.PREFIX` tag, not about secrets. The
+fallback arm is unreachable today (`core/CoreSetup.lua` defines `Util.print` on **both** the
+library-present and library-absent paths, so `NS.Util.print` is never nil), which is why it grades
+Info rather than a live defect — but it is dead code that reads as a sanctioned escape hatch, and it
+should go the next time that file is touched.
 
 ## Load order
 
