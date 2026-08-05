@@ -24,7 +24,7 @@
 -- the vendored AceGUI-3.0-SharedMediaWidgets lib don't blow it away.
 
 -- luacheck: ignore 211/NS
-local addonName, NS = ...  -- standard bootstrap header (§4.1); this file is a
+local addonName, NS = ...  -- standard bootstrap header (architecture-§1); this file is a
                            -- standalone LSM widget fixup and doesn't use NS,
                            -- so the unused-variable warning is suppressed
                            -- rather than the header being trimmed.

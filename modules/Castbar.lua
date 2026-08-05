@@ -1,6 +1,6 @@
 -- modules/Castbar.lua
 --
--- NOTE (KCD-19, §1.2): this file sits in the 1000–1500 LOC "on notice" band.
+-- NOTE (KCD-19, layout-§1): this file sits in the 1000–1500 LOC "on notice" band.
 -- Two peels have kept it under the 1500 hard cap: debug diagnostics
 -- (Castbar:DebugDump) to modules/Castbar_Debug.lua, and the config-driven
 -- re-skin (Castbar:Reskin — sizing, orientation, insets, spark, fonts, text
@@ -329,9 +329,8 @@ local function onDragStop(inst, self)
     -- Castbar's own OnConfigChanged handles { section = "castbar" }
     -- idempotently (Reskin + ApplyLock are no-ops for an already-correct
     -- frame), so the dispatch is safe to re-enter.
-    if NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "castbar" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("castbar") end
 end
 
 -- Translate a 13-point anchor token (the new `<SIDE>_<ALIGN>` /
@@ -558,34 +557,27 @@ end
 -- caller and this file loads first.
 
 -- Default sub-config used when a profile is missing the per-state nested
--- block (safety net against malformed saved-vars). Mirrors the Database
--- defaults.
+-- block (safety net against malformed saved-vars).
 local function stateConfig(c, key, fallback)
     local sc = c[key]
     if type(sc) == "table" then return sc end
     return fallback
 end
 
-local INT_FALLBACK = {
-    statusBarTexture = "Blizzard Raid Bar",
-    barColor         = { 1,    0.85, 0.05, 1   },
-    bgColor          = { 0,    0,    0,    0.5 },
-    nameTextColor    = { 1,    1,    1,    1   },
-    borderShow       = false,
-    borderTexture    = "Blizzard Tooltip",
-    borderColor      = { 0,    0,    0,    1   },
-    borderSize       = 1,
-}
-local UNINT_FALLBACK = {
-    statusBarTexture = "Blizzard Raid Bar",
-    barColor         = { 0.85, 0.10, 0.10, 1   },
-    bgColor          = { 0,    0,    0,    0.5 },
-    nameTextColor    = { 1,    1,    1,    1   },
-    borderShow       = true,
-    borderTexture    = "Blizzard Tooltip",
-    borderColor      = { 1,    0.20, 0.20, 1   },
-    borderSize       = 2,
-}
+-- The fallbacks ARE the shipped defaults, read straight off the one
+-- declaration site (defaults/Profile.lua, savedvariables-§2). They used to be
+-- a second hardcoded copy of the same two tables, and the copy had drifted:
+-- it stored its colors POSITIONALLY where the defaults tree stores them keyed
+-- (the v3→v4 color-shape migration's whole subject), and it disagreed about
+-- the interruptible border. A fallback that disagrees with the default it
+-- claims to mirror renders a malformed profile differently from a fresh one,
+-- which is exactly the bug the single-declaration rule exists to prevent.
+--
+-- Captured at load: the TOC loads `# Defaults` before `# Modules`. Read-only
+-- for every consumer (ApplyState and Castbar_Skin's Reskin both only read), so
+-- sharing the tables rather than deep-copying cannot write back into defaults.
+local INT_FALLBACK   = NS.CASTBAR_DEFAULT and NS.CASTBAR_DEFAULT.interruptible   or {}
+local UNINT_FALLBACK = NS.CASTBAR_DEFAULT and NS.CASTBAR_DEFAULT.uninterruptible or {}
 
 
 --- Per-cast paint of the bar widgets. Sets the spell icon texture, the
@@ -693,6 +685,11 @@ local function onUpdate(inst)
     local d = current and current.duration
     if not d then
         frame:SetScript("OnUpdate", nil)
+        -- Close the bracket on THIS exit too. This is the frame that tears the
+        -- OnUpdate handler down at the end of every cast, so it is taken once
+        -- per cast — leaving it unclosed under-counts `castTick.calls` by one
+        -- per cast and hides the cost of the teardown frame itself.
+        if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
         return
     end
 
@@ -716,16 +713,14 @@ local function onUpdate(inst)
     if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
 end
 
--- Fallback name color. Module-level so the per-call path allocates nothing:
--- ApplyState runs on every cast start / stop, on every interruptibility flip
--- and once per Reskin, and a fresh { 1, 1, 1, 1 } per call was pure churn.
-local WHITE = { 1, 1, 1, 1 }
-
---- Four channels out of a positional color table, defaulted to white. Returns
---- values rather than a table so the hot path stays allocation-free.
+--- Four channels out of a color table, defaulted to opaque white.
+--- Delegates to Util.Unpack: colors are STORED KEYED (core/Database.lua's
+--- `nameTextColor = { r =, g =, b =, a = }`), so the positional read this
+--- replaced saw nil on every channel and painted the spell name white no
+--- matter what the user picked. Util.Unpack reads either shape, allocates
+--- nothing and returns values, so the hot path is unchanged.
 local function rgba(c)
-    c = c or WHITE
-    return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    return NS.Util.Unpack(c)
 end
 
 --- Preview / no-cast: show interruptible visuals; the uninterruptible side is
@@ -1308,7 +1303,3 @@ Castbar.UNINT_FALLBACK = UNINT_FALLBACK
 -- auto-size reference frame, and the payload-preferred / accessor-fallback
 -- policy must stay in exactly one place.
 Castbar.ResolveGridFrame = resolveGridFrame
-
-NS.Castbar = Castbar
-
-

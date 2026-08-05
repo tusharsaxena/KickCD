@@ -102,6 +102,76 @@ test("the host ships no widget maker, flow engine or layout constant of its own"
     assertNil(src:match("BUTTON_PAIR_REL%s*="), "a copied layout constant came back")
 end)
 
+-- ── page registration (one registry, six pages, once each) ──────────────────
+
+--- The six pages, in the order the TOC loads settings/<page>.lua — which is the
+--- order they call NS.RegisterOptionsPage in, and therefore the order the
+--- library drains its queue in. It used to be spelled a second time in
+--- NS.Settings.order.
+local PAGE_KEYS  = { "general", "icons", "castbar", "label", "spells", "profiles" }
+local PAGE_FILES = { "General", "Icons", "Castbar", "Label", "Spells", "Profiles" }
+
+test("every page registers exactly once, through the library's registry", function()
+    -- The acceptance criterion for KCD-R-03 / KCD-A-09 stated headlessly: the
+    -- Blizzard options list gets ONE parent category and SIX subcategories.
+    -- With the private registry in settings/Panel.lua still present alongside
+    -- the library's, whichever one ran won and the other's guarantees applied to
+    -- nothing; wiring the library forwarders WITHOUT deleting the private path
+    -- would have registered both, and the user would see every page twice.
+    -- red under: restoring NS.Settings.RegisterTab + RegisterPanel + the private
+    -- bootstrap frame to settings/Panel.lua.
+    local parents, subs = 0, 0
+    local inst = T.load(true, true, function(mocks)
+        local S = mocks.Settings
+        local realParent = S.RegisterCanvasLayoutCategory
+        local realSub    = S.RegisterCanvasLayoutSubcategory
+        S.RegisterCanvasLayoutCategory =
+            function(...) parents = parents + 1; return realParent(...) end
+        S.RegisterCanvasLayoutSubcategory =
+            function(...) subs = subs + 1; return realSub(...) end
+    end)
+
+    assertEqual(parents, 1, "exactly one parent category may be registered")
+    assertEqual(subs, #PAGE_KEYS, "one Blizzard subcategory per page, no more")
+
+    local seen = {}
+    local built = inst.NS.Settings.Helpers.__pages()
+    assertEqual(#built, #PAGE_KEYS, "the library must have built every page and no page twice")
+    for i, page in ipairs(built) do
+        assertEqual(page.key, PAGE_KEYS[i], "page " .. i .. " out of TOC order")
+        assertNil(seen[page.key], "page registered twice: " .. tostring(page.key))
+        seen[page.key] = true
+    end
+end)
+
+test("no page file reaches a registry other than the library's", function()
+    -- The other half of the same finding, pinned at the source so a new page
+    -- cannot quietly reintroduce the private path. Panel.lua is checked for the
+    -- registry itself; the six page tails for how they enter it.
+    -- red under: putting `NS.Settings.RegisterTab("general", Build)` back into
+    -- settings/General.lua.
+    local function read(rel)
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local src = fh:read("*a")
+        fh:close()
+        return src
+    end
+
+    local panel = read("settings/Panel.lua")
+    assertNil(panel:match("function NS%.Settings%.RegisterTab"),
+        "the private tab registry came back")
+    assertNil(panel:match("Settings%.RegisterCanvasLayoutCategory%("),
+        "a second parent-category registration came back")
+
+    for i, key in ipairs(PAGE_KEYS) do
+        local file = "settings/" .. PAGE_FILES[i] .. ".lua"
+        local src  = read(file)
+        assertTrue(src:find(('NS.RegisterOptionsPage("%s"'):format(key), 1, true) ~= nil,
+            file .. " must register through the library forwarder")
+        assertNil(src:match("NS%.Settings%.RegisterTab"), file .. " reaches the private registry")
+    end
+end)
+
 -- ── schema -> widget ────────────────────────────────────────────────────────
 
 test("a bool row renders a checkbox labeled from the row", function()

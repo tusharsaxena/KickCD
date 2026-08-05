@@ -33,33 +33,77 @@ test("the harness loads the vendored LibKa0s majors, so the suite is not measuri
     end
 end)
 
-test("the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for file", function()
-    -- A file added to the library and forgotten in the runner is exactly the
-    -- silent failure testing-§9 describes, so derive the truth from the XML
-    -- instead of restating it.
-    local loader = dofile(T.root .. "/tests/loader.lua")
-    local fromXML = {}
-    local f = assert(io.open(T.root .. "/libs/LibKa0s/LibKa0s.xml", "r"))
-    for line in f:lines() do
-        local file = line:match('<Script%s+file="([^"]+)"')
-        if file then fromXML[#fromXML + 1] = "libs/LibKa0s/" .. file end
-    end
-    f:close()
+-- ── the three lists testing-§9 makes assertable ─────────────────────────────
+--
+-- The library load list is no longer typed in the runner and then compared
+-- against libs/LibKa0s/LibKa0s.xml — it is DERIVED from that XML by
+-- Loader.xmlFiles, so a file-for-file comparison against the same XML would now
+-- only be asserting that the parser is deterministic. What is still worth
+-- pinning is what the derivation cannot guarantee on its own: that the derived
+-- list is the one the runner actually FED the loader, that every path in it
+-- resolves, and that the addon's own TOC-derived list does not leak a `libs/`
+-- entry back in (which would load a library file twice, and out of XML order).
 
-    assertTrue(#fromXML > 0, "parsed no <Script> entries out of LibKa0s.xml")
-    assertEqual(#loader.LIB_FILES, #fromXML, "library file count")
-    for i = 1, #fromXML do
-        assertEqual(loader.LIB_FILES[i], fromXML[i], "library file " .. i)
+test("the runner FEEDS the derived library list, and it is not empty", function()
+    -- An empty list loads nothing and reads exactly like a clean run: every
+    -- major would be unregistered, every setup file would fall back to its stub,
+    -- and the suite would happily measure the stub. The first case above is what
+    -- catches that; this is what names it.
+    -- red under: handing loadInstance a hand-typed list instead of LIB_FILES
+    assertTrue(#T.libFiles > 0, "the runner fed the loader an EMPTY library list")
+    assertEqual(#T.libFiles, #T.Loader.xmlFiles(T.root .. "/libs/LibKa0s/LibKa0s.xml"),
+        "the fed list is not the list Loader.xmlFiles derives from LibKa0s.xml")
+    for i, path in ipairs(T.libFiles) do
+        assertTrue(path:find("libs/LibKa0s/", 1, true) ~= nil,
+            "entry " .. i .. " is not a libs/LibKa0s path: " .. tostring(path))
     end
 end)
 
 test("every file the runner loads for LibKa0s exists on disk", function()
-    local loader = dofile(T.root .. "/tests/loader.lua")
-    for _, rel in ipairs(loader.LIB_FILES) do
-        local fh = io.open(T.root .. "/" .. rel, "r")
-        assertTrue(fh ~= nil, "missing library file: " .. rel)
+    -- Loader.xmlFiles is line-based over the XML, so a `<Script file="...">`
+    -- naming a file nobody shipped derives cleanly. The loader raises on it
+    -- first, before this case is reached — so this is the belt to that braces:
+    -- it is what answers WHICH path is missing when the list is consulted
+    -- without being loaded (a degraded arm, or a future perf runner).
+    for _, path in ipairs(T.libFiles) do
+        local fh = io.open(path, "r")
+        assertTrue(fh ~= nil, "missing library file: " .. path)
         if fh then fh:close() end
     end
+end)
+
+test("the TOC-derived addon list leaks no libs/ entry", function()
+    -- Loader.tocFiles skips `libs\` lines on purpose: the vendored library is
+    -- pulled in through an XML the TOC scan cannot see inside, and the runner
+    -- loads it FIRST, from LIB_FILES. A `libs/` path surviving into this list
+    -- would load a library file a second time, after the addon's own sources,
+    -- in TOC order rather than XML order.
+    -- red under: deleting the `libs\\...\\*.lua` lines from KickCD.toc, which
+    -- is what would make this guard assert nothing at all.
+    assertTrue(#T.tocFiles > 0, "the TOC-derived addon list is empty")
+
+    -- The guard is only meaningful while the TOC actually declares a `.lua`
+    -- under `libs\\` for it to skip. It declares three today (LibStub,
+    -- CallbackHandler and the five Ace majors); assert at least one, so a TOC
+    -- that stopped shipping them turns this case red rather than vacuous.
+    local toc = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local tocSrc = toc:read("*a")
+    toc:close()
+    assertTrue(tocSrc:lower():match("[\r\n]%s*libs[\\/][^\r\n]*%.lua") ~= nil,
+        "the TOC declares no libs/*.lua line, so the skip guard asserts nothing")
+    for _, rel in ipairs(T.tocFiles) do
+        assertNil(rel:lower():match("^libs/"), "libs/ path leaked into the addon list: " .. rel)
+    end
+end)
+
+test("the suite list and tests/test_*.lua on disk agree in both directions", function()
+    -- Kit.run asserts this before it loads a single case, so a drifting list
+    -- takes the whole run down rather than quietly running fewer cases. Called
+    -- again here so the gate has a NAME in docs/test-cases.md — "the runner
+    -- refused to start" is a bad place for a reader to first learn it exists.
+    -- red under: adding tests/test_undeclared.lua, or declaring a suite with no
+    -- file on disk
+    T.assertSuiteInventory(T.root .. "/tests/", T.suites)
 end)
 
 -- ── the secret-safe seam ────────────────────────────────────────────────────
@@ -357,7 +401,8 @@ test("with LibKa0s absent all five seams say the same thing about WHY", function
 
     -- 5. Slash — the one seam whose consequence comes FIRST, because the verb
     --    has to lead or `/kcd list` is buried mid-sentence. AbsorbTracker
-    --    inverts it identically (settings/Slash.lua:383).
+    --    inverts it identically, in its own
+    --    ../AbsorbTracker/settings/Slash.lua `missing` stub.
     local slash = drive(function() inst.NS:OnSlashCommand("list") end)
     assertEqual(slash[1], P .. " /kcd list is unavailable. " .. CAUSE .. ".",
         "settings/Slash.lua's stub line")

@@ -589,6 +589,147 @@ test("every PollSpell exit is measured, including the rejections", function()
         "every exit must be counted; got " .. tostring(b.calls) .. " of 5")
 end)
 
+test("every castTick exit is measured, including the teardown frame", function()
+    -- The Castbar half of the leak the case below was written for, driven
+    -- instead of source-scanned. `onUpdate` (modules/Castbar.lua:682) opens the
+    -- bracket and has two exits: the no-duration guard at :692, taken once per
+    -- cast on the frame that tears the handler down, and the normal tick at
+    -- :713. An unclosed guard exit is silent — the bucket still reports, just
+    -- with `calls` short by one per cast, which reads as a cheap path.
+    --
+    -- Same shape as the PollSpell case above: drive every exit through a real
+    -- entry point and assert the live count off P.__buckets(). The OnUpdate
+    -- script IS reachable headlessly — tests/test_castbar_frame.lua:251-259
+    -- already drives exactly this teardown frame — so the source scan below is
+    -- not the only thing that can see it.
+    --
+    -- red under: deleting the `Perf.Note` line from onUpdate's no-duration
+    -- guard exit (modules/Castbar.lua:692).
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local P = NS.Perf
+    local Castbar = NS:GetModule("Castbar", true)
+    assertTrue(Castbar ~= nil, "no Castbar module to drive")
+
+    NS.db.profile.locked     = true
+    NS.db.profile.visibility = "always"
+    NS.db.profile.enabled    = true
+
+    local d = {
+        GetTotalDuration     = function() return 3 end,
+        GetElapsedDuration   = function() return 1 end,
+        GetRemainingDuration = function() return 2 end,
+    }
+    local bar = Castbar:GetInstance("target")
+    Castbar:Start(bar, { name = "Chaos Bolt", texture = "tex", spellID = 116858,
+                         notInterruptible = false, isChannel = false, duration = d })
+
+    P.Reset()
+    P.on = true
+    local frames = 0
+    -- Exit 2, the normal tick: three ordinary frames of an active cast.
+    for _ = 1, 3 do bar.frame:_run("OnUpdate"); frames = frames + 1 end
+    -- Exit 1, the guard: the cast record is gone, so this frame disarms the
+    -- script and returns early. Taken once per cast, in every cast.
+    bar.current = nil
+    bar.frame:_run("OnUpdate"); frames = frames + 1
+    P.on = false
+
+    local b = (P.__buckets and P.__buckets() or {}).castTick
+    assertTrue(b ~= nil, "no castTick measurement recorded at all")
+    assertEqual(b.calls, frames,
+        "every OnUpdate exit must be counted; got " .. tostring(b.calls)
+        .. " of " .. frames .. " — one short means the teardown frame leaked")
+end)
+
+test("no bracketed function leaks an exit — every return closes the bracket", function()
+    -- The generalization of the PollSpell case above, and the reason it exists:
+    -- PollSpell got its four-exit coverage by hand, and two OTHER brackets were
+    -- leaking the whole time. `_tickAllTextIcons` returned unclosed on the
+    -- empty-set guard (taken on the last tick of every cooldown burst) and
+    -- Castbar's `onUpdate` returned unclosed on the no-duration guard (taken
+    -- once per cast, on the frame that tears the handler down). Both are
+    -- `Note`-shaped rather than `Open`/`Close`-shaped, so LibKa0s cannot detect
+    -- them for us — there is no stack to leave unbalanced. Nothing observes the
+    -- leak either: the bucket still reports, just with a `calls` count short by
+    -- exactly the number of times the leaked exit was taken, which reads as a
+    -- cheap path rather than as a bug.
+    --
+    -- SUPPLEMENTARY LINT, not the coverage. This case used to justify itself
+    -- with "behavioral coverage is not available here — the harness drives
+    -- neither ticker nor OnUpdate script", and that was wrong for `castTick`:
+    -- the case above drives every one of onUpdate's exits and counts them off
+    -- P.__buckets(), the same way the PollSpell case does. What this scan is
+    -- for is the brackets nothing yet drives (`cdText`, behind a C_Timer
+    -- ticker) and the ones a future commit adds before its driving case
+    -- exists. Being line-based it is also approximate — a `return` inside a
+    -- nested closure, or a bracket closed through a helper rather than a
+    -- literal `Perf.Note(`, reads as a leak here — so a failure is a prompt to
+    -- look, and the behavioral cases are what must stay authoritative.
+    --
+    -- red under: deleting the `Perf.Note` line from any early return in any of
+    -- the four bracketed modules.
+    local leaks = {}
+    for _, rel in ipairs({
+        "modules/Cooldowns.lua", "modules/IconGrid.lua",
+        "modules/IconGrid_Render.lua", "modules/Castbar.lua",
+    }) do
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local lines = {}
+        for line in fh:lines() do lines[#lines + 1] = (line:gsub("\r$", "")) end
+        fh:close()
+
+        -- Walk top-level function blocks. Every bracket site in this addon is a
+        -- column-0 `local function f(` or `function M:f(` closed by a column-0
+        -- `end`, so the block boundaries need no Lua parser — and a bracket that
+        -- ever moves inside a nested closure trips the "no closing Note" arm
+        -- below rather than being silently skipped.
+        local i, n = 1, #lines
+        while i <= n do
+            local head = lines[i]
+            if head:match("^local function [%w_]+%(") or head:match("^function [%w_.:]+%(") then
+                local body, j = {}, i + 1
+                while j <= n and lines[j] ~= "end" do body[#body + 1] = lines[j]; j = j + 1 end
+                local bracketed = false
+                for _, l in ipairs(body) do
+                    if l:match("__t0%s*=%s*Perf%.on") then bracketed = true break end
+                end
+                if bracketed then
+                    local where = rel .. ":" .. i .. " " .. head
+                    local sawNote = false
+                    for k, l in ipairs(body) do
+                        if l:match("Perf%.Note%(") then sawNote = true end
+                        if l:match("^%s*return%f[%W]") then
+                            -- The Note must be on the nearest preceding line
+                            -- that is neither blank nor a comment.
+                            local guarded, m = false, k - 1
+                            while m >= 1 do
+                                local p = body[m]
+                                if p:match("^%s*$") or p:match("^%s*%-%-") then
+                                    m = m - 1
+                                else
+                                    guarded = p:match("Perf%.Note%(") ~= nil
+                                    break
+                                end
+                            end
+                            if not guarded then
+                                leaks[#leaks + 1] = where .. " — unclosed `return` at body line " .. k
+                            end
+                        end
+                    end
+                    if not sawNote then
+                        leaks[#leaks + 1] = where .. " — opens a bracket it never closes"
+                    end
+                end
+                i = j + 1
+            else
+                i = i + 1
+            end
+        end
+    end
+    assertEqual(#leaks, 0, "bracketed exits left unclosed:\n  " .. table.concat(leaks, "\n  "))
+end)
+
 test("the record stamps a real client interface version, never 0", function()
     -- The live capture read `"interface":0`. Blizzard does not serve `Interface`
     -- through GetAddOnMetadata — confirmed in game — so the library read it from

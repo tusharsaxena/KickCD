@@ -21,7 +21,7 @@
 
 local addonName, NS = ...
 
--- `debug` is the session-only debug-logging flag (§12.5). It defaults OFF,
+-- `debug` is the session-only debug-logging flag (debug-logging-§5). It defaults OFF,
 -- is NEVER persisted to SavedVariables, and resets to off on every /reload
 -- and fresh login (a fresh addon load re-runs this file, re-seeding false).
 -- The ONLY write path is KickCD.DebugLog:SetEnabled — modules read

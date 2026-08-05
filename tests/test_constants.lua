@@ -52,11 +52,109 @@ test("Constants: the panel header reserves more height than its top inset", func
 end)
 
 test("Constants: every panel metric is a positive number", function()
-    for _, key in ipairs({ "PANEL_PADDING_X", "PANEL_HEADER_TOP",
+    -- PANEL_PADDING_X is NOT here: it was a host copy of the library's
+    -- published PADDING_X and is deleted (options-ui-§8). The case below
+    -- pins that it stays deleted.
+    for _, key in ipairs({ "PANEL_HEADER_TOP",
                            "PANEL_HEADER_HEIGHT", "PANEL_DEFAULTS_W" }) do
         assertTrue(type(Const[key]) == "number" and Const[key] > 0,
             key .. " must be a positive number")
     end
+end)
+
+-- The panel metrics that are NOT in the loop above because the host no longer
+-- declares them: they come off the LibKa0s-Options instance. Deleting the host
+-- copies deleted the "is a positive number" guarantee along with them, and
+-- nothing replaced it — the lint below only asserts the host does not RESTATE a
+-- number, which stays green when the library stops publishing one. These two
+-- cases restore the guarantee, read off the instance instead of off Const.
+test("Constants: the library publishes every panel layout metric as a positive number", function()
+    -- NS.Settings.Helpers IS the LibKa0s-Options instance (test_options_panel.lua:70).
+    -- If a future LibKa0s stops publishing one of these, settings/Panel_Render.lua:20
+    -- and settings/Panel_Widgets.lua:49 bind nil at file load and forward nil.
+    local H = NS.Settings.Helpers
+    for _, key in ipairs({ "PADDING_X", "ROW_VSPACER",
+                           "SECTION_HEADING_H", "BUTTON_PAIR_REL" }) do
+        assertTrue(type(H[key]) == "number" and H[key] > 0,
+            "Helpers." .. key .. " must be published as a positive number, got "
+            .. tostring(H[key]))
+    end
+end)
+
+test("Constants: a rendered unit panel spaces its rows by a real number of pixels", function()
+    -- The user-visible end of the same guarantee, and the reason the type check
+    -- above is not enough on its own: settings/Panel_Render.lua:20 binds
+    -- `local ROW_VSPACER = Helpers.ROW_VSPACER` AT FILE LOAD and forwards that
+    -- binding at :83 and :117. A nil arriving there is silent — AddSpacer
+    -- creates a full-width SimpleGroup with no height, every options row loses
+    -- its spacing in game, and nothing raises.
+    --
+    -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua:210.
+    local H = NS.Settings.Helpers
+    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { panelKey = "castbar" })
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    ctx.unit = "target"
+
+    H.RenderUnitPanel(ctx, "castbar")
+
+    -- The spacers are the layout-less full-width SimpleGroups AddSpacer makes.
+    local spacers = 0
+    for _, child in ipairs(ctx.scroll.children) do
+        if child.type == "SimpleGroup" and child.fullWidth and child.layout == nil then
+            spacers = spacers + 1
+            assertTrue(type(child.height) == "number" and child.height > 0,
+                "row spacer " .. spacers .. " rendered with height "
+                .. tostring(child.height) .. "; rows would sit flush in game")
+        end
+    end
+    assertTrue(spacers > 0,
+        "precondition: rendering a unit panel must emit at least one row spacer")
+end)
+
+test("Constants: no host copy of a LibKa0s-Options layout constant", function()
+    -- options-ui-§8: a host MUST NOT restate a value the options library
+    -- publishes on the instance. A host copy is the one that goes stale, and
+    -- because both copies start out equal nothing observes the divergence
+    -- until the library retunes its value and only some panels move.
+    --
+    -- This addon shipped two: `Const.PANEL_PADDING_X = 16` restating
+    -- `lib.LAYOUT.PADDING_X`, and `settings/Panel.lua`'s `local ROW_VSPACER = 8`
+    -- which then ASSIGNED ITSELF OVER the published `O.ROW_VSPACER`, so the
+    -- library's value could not have won even where a caller read the instance.
+    -- Both are gone; this is what keeps them gone.
+    --
+    -- Source-scanned rather than driven, per testing-§11: a reintroduced copy
+    -- is a declaration, and no runtime observation distinguishes "read the
+    -- library's 8" from "read a host 8" while the two agree — which is the
+    -- entire failure mode.
+    --
+    -- red under: restoring `Const.PANEL_PADDING_X = 16` in core/Constants.lua,
+    -- or `local ROW_VSPACER = 8` in settings/Panel.lua.
+    local published = { "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL" }
+    local offenders = {}
+    for _, rel in ipairs({ "core/Constants.lua", "settings/Panel.lua",
+                           "settings/Panel_Render.lua", "settings/Panel_Widgets.lua" }) do
+        local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+        local ln = 0
+        for line in fh:lines() do
+            ln = ln + 1
+            local code = line:gsub("%-%-.*$", "")
+            for _, key in ipairs(published) do
+                -- A declaration assigning a NUMERIC LITERAL to the published
+                -- name (with or without a PANEL_ prefix). Reading the value off
+                -- the instance -- `= Helpers.ROW_VSPACER` -- is the compliant
+                -- shape and must not trip this.
+                if code:match("[%w_.]*" .. key .. "%s*=%s*[%d.]+%s*$") then
+                    offenders[#offenders + 1] = rel .. ":" .. ln .. " " .. line:gsub("^%s+", "")
+                end
+            end
+        end
+        fh:close()
+    end
+    assertEqual(#offenders, 0,
+        "host copies of a published LibKa0s-Options layout constant:\n  "
+        .. table.concat(offenders, "\n  "))
 end)
 
 -- ── Shipped media ───────────────────────────────────────────────────────────
@@ -72,7 +170,7 @@ test("Constants: FONT_MONO points at a font that is actually shipped", function(
 end)
 
 test("Constants: the shipped mono font ships its OFL license alongside it", function()
-    -- §12.2 requires the license to travel with the font.
+    -- debug-logging-§2 requires the license to travel with the font.
     local fh = io.open(T.root .. "/media/fonts/JetBrainsMono-OFL.txt", "r")
     assertTrue(fh ~= nil, "the shipped font's OFL license is missing")
     if fh then fh:close() end

@@ -363,7 +363,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
 - Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
 - Out of combat `/kcd config` opens the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
-- Running `/kcd config` immediately after login (before `PLAYER_LOGIN`-deferred `RegisterPanel`) eventually succeeds — `OpenSettings` schedules deferred retries via `C_Timer.After(0.5, …)`, capped at 3 attempts.
+- Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
 
 ### 15. Debug commands
 
@@ -589,7 +589,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 **Steps.**
 - Log in.
 - `/kcd get units.target.label.style.font` (or open Settings → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `core/Database.lua`.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`.
 
 **Pass.**
 - No Lua errors during the migration login or on the Text Label panel.

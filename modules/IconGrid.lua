@@ -549,9 +549,8 @@ local function onDragStop(inst, frame)
     -- grid's free-floating position) gets notified. IconGrid's own
     -- OnConfigChanged handler is idempotent on `general` — re-anchoring
     -- to the just-saved value is a no-op — so this doesn't double-work.
-    if NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("general") end
 end
 
 function IconGrid:ApplyLock(inst)

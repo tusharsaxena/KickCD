@@ -9,7 +9,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 
 ## Saved variables
 
-- Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `core/Database.lua`. New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
+- Saved variables live under `KickCDDB`; the active profile shape is `DEFAULT_PROFILE` in `defaults/Profile.lua` — the only place a profile default is hardcoded (`savedvariables-§2`). New persistent fields go in that table, with a comment explaining the shape and any 12.0 secret-value caveats. See [saved-variables.md](saved-variables.md).
 - Modules read/write `NS.db.profile` directly but treat the schema as defined in `core/Database.lua` — the saved-variable boundary is centralized there. The exception is per-unit appearance (`icons`/`castbar`): those go through `NS.Units.Icons(unit)` / `NS.Units.Castbar(unit)` so link resolution (a linked focus reading target's tables) stays in one place — see `core/Units.lua`.
 - Anchor format is fixed: `{ point, relativePoint, x, y }` relative to UIParent. No `relativeTo` frame references.
 
@@ -55,7 +55,7 @@ Code style and module-level rules. The mid-level architecture (boundaries, messa
 Suppressions come in two forms, and the choice between them is about scope:
 
 - **Repo-wide → `.luacheckrc`.** The `ignore` list holds allowances that are true everywhere: `212/self` and `212/event` (Ace handler signatures that name arguments they don't all use) and `211/addonName` (the `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`, `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
-- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the current example: it keeps the standard bootstrap header (§4.1) even though it is a standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there rather than the header being trimmed or the allowance being widened repo-wide.
+- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the current example: it keeps the standard bootstrap header (architecture-§1) even though it is a standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there rather than the header being trimmed or the allowance being widened repo-wide.
 
 Prefer the inline form for anything that is genuinely local. Adding a name to `.luacheckrc` silences it in every file at once, including files that haven't been written yet.
 

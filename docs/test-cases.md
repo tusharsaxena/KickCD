@@ -1,6 +1,10 @@
 # Test Cases
 
-_Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > docs/test-cases.md`._
+The full inventory of every headless test case in this repo, grouped by the suite file it
+lives in. The `## Totals` table below is the **authoritative pass count** — the README test
+badge and any count quoted in the docs must agree with it.
+
+**Generated — do not hand-edit.** Regenerate with `lua tests/run.lua --list > docs/test-cases.md`.
 
 ### test_util.lua (13)
 
@@ -18,11 +22,13 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_coresetup.lua (21)
+### test_coresetup.lua (23)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
-- the runner's library load list matches libs/LibKa0s/LibKa0s.xml file for file
+- the runner FEEDS the derived library list, and it is not empty
 - every file the runner loads for LibKa0s exists on disk
+- the TOC-derived addon list leaks no libs/ entry
+- the suite list and tests/test_*.lua on disk agree in both directions
 - NS.SafeToString renders ordinary values through tostring
 - NS.SafeToString answers nil and booleans up front, never masking them
 - NS.SafeToString renders an unconcatable value as the shared <secret> sentinel
@@ -71,7 +77,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - RegisterUnitCastEvent tolerates a handler that isn't defined yet
 - RegisterUnitCastEvent returns a frame the caller can unregister
 
-### test_constants.lua (22)
+### test_constants.lua (25)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
@@ -79,6 +85,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Constants: the cast bar's inside and outside insets are symmetric
 - Constants: the panel header reserves more height than its top inset
 - Constants: every panel metric is a positive number
+- Constants: the library publishes every panel layout metric as a positive number
+- Constants: a rendered unit panel spaces its rows by a real number of pixels
+- Constants: no host copy of a LibKa0s-Options layout constant
 - Constants: FONT_MONO points at a font that is actually shipped
 - Constants: the shipped mono font ships its OFL license alongside it
 - Constants: every spec ID is a positive integer
@@ -161,7 +170,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - label panel carries per-unit label rows; General no longer does
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
-- debug console stays session-only: no schema row targets it (§12.5)
+- debug console stays session-only: no schema row targets it (debug-logging-§5)
 
 ### test_database.lua (20)
 
@@ -186,7 +195,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
 - DB label.style.color default matches the settings schema color row default (DB<->schema sync)
 
-### test_color_shape.lua (20)
+### test_color_shape.lua (21)
 
 - the schema declares at least one color row per color-bearing panel
 - every schema color default is keyed, never positional
@@ -208,6 +217,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - an LSM-backed row resolves its values at call time, never at declaration
 - the valueGate hint explains WHY a gated dropdown value was rejected
 - a rejected gated value carries the hint through the slash layer
+- a valueGate probe whose values() raises leaves the gating setting restored
 
 ### test_bus.lua (4)
 
@@ -290,20 +300,20 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
-- FormatPlain is clean, un-colored, and well-shaped (§12.3)
+- FormatPlain is clean, un-colored, and well-shaped (debug-logging-§3)
 - FormatColored carries the same fields as FormatPlain (no drift)
-- debug flag defaults OFF and lives in State, never in SavedVariables (§12.5)
+- debug flag defaults OFF and lives in State, never in SavedVariables (debug-logging-§5)
 - SetEnabled is the single write seam and toggles State.debug
-- SetEnabled brackets each session with a console line at both ends (§12.5)
+- SetEnabled brackets each session with a console line at both ends (debug-logging-§5)
 - NS.Debug is a no-op when disabled (zero capture) and appends when enabled
 - NS.Debug sanitizes secret args and never errors
 - NS.Debug passes plain args through unchanged
 - scrollbar + line-counter sync methods exist (§11)
 - sync methods are a clean no-op before the window is built (§11)
 - building the console + Add/Clear run the guarded sync headlessly (§11)
-- console WINDOW visibility is decoupled from the capture flag (§12.5)
+- console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
-### test_debuglogsetup.lua (21)
+### test_debuglogsetup.lua (22)
 
 - modules/DebugLog.lua has been deleted, not left beside the library
 - the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
@@ -322,7 +332,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - a secret argument renders as the shared sentinel and cannot raise
 - with LibKa0s absent the stub answers every DebugLog member the addon calls
 - the degraded stub still flips the flag and still prints the ack
-- the degraded stub carries no copy of the line formatters
+- the degraded stub renders no line of its own
+- the degraded stub carries no copy of the line format or the state hexes
 - every string the debug console renders resolves to prose, not to its own key
 - the console title and checkbox carry prose, reached the way the UI reaches them
 - the vendored DebugLog major falls THROUGH a key-returning locale table
@@ -502,7 +513,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
 
-### test_castbar_helpers.lua (27)
+### test_castbar_helpers.lua (29)
 
 - the Castbar pure helpers are published for testing
 - UnpackColor reads an array-style color
@@ -520,7 +531,9 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - StateConfig returns the configured per-state table when present
 - StateConfig falls back when the state key is missing
 - StateConfig rejects a non-table value stored under the state key
-- the interruptible fallback is gold with no border, the uninterruptible red with one
+- the fallbacks are the shipped defaults, and defaults/Profile.lua declares them
+- a malformed per-state config renders exactly like a fresh profile
+- the interruptible fallback is gold, the uninterruptible red with a heavier border
 - both state fallbacks carry every field the reskin path reads
 - ToSetPoint maps every schema anchor token to a real SetPoint token
 - ToSetPoint defaults a nil anchor to CENTER
@@ -532,7 +545,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (36)
+### test_castbar_frame.lua (37)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -558,6 +571,7 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the alpha switch never branches on notInterruptible in Lua
 - the no-cast state falls back to interruptible visuals
 - the uninterruptible warning border is on and the interruptible one off
+- the user's spell-name color reaches the label, in the keyed storage shape
 - Stop clears the cast, empties both bars and disarms the animation
 - Stop HIDES the bar while locked
 - Stop leaves a PREVIEW on screen while unlocked, so it stays draggable
@@ -740,13 +754,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (28)
+### test_options_panel.lua (30)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
 - a page that parks no defaults action still has a callable, inert OnDefault
 - NS.Settings.Helpers IS the library instance, decorated in place
 - the host ships no widget maker, flow engine or layout constant of its own
+- every page registers exactly once, through the library's registry
+- no page file reaches a registry other than the library's
 - a bool row renders a checkbox labeled from the row
 - a number row renders a slider carrying the row's range
 - a string row renders a dropdown listing the KEYED options in declared order
@@ -832,17 +848,16 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 
-### test_opensettings.lua (7)
+### test_opensettings.lua (6)
 
-- OpenSettings refuses in combat and clears the retry counter
+- OpenSettings refuses in combat
 - OpenSettings also reads combat off InCombatLockdown
-- OpenSettings opens the registered category and clears the retry counter
-- OpenSettings defers with a notice when the Settings layer has not registered
-- OpenSettings retries are bounded, then fall through to the plain notice
-- OpenSettings prints the plain notice when the Settings API itself is absent
-- OpenSettings' deferred retry re-enters the same function
+- the combat refusal is KickCD's and never reaches the library
+- OpenSettings opens through the library forwarder, not a private copy
+- OpenSettings prints the plain notice when the settings layer never loaded
+- with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (25)
+### test_perfsetup.lua (27)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -868,6 +883,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - the perf version agrees with the one /kcd version prints
 - the version fallback is reachable, not dead
 - every PollSpell exit is measured, including the rejections
+- every castTick exit is measured, including the teardown frame
+- no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
 ### test_list_mode.lua (5)
@@ -878,6 +895,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
+### test_surface_parity.lua (6)
+
+- sanity: the degraded arm really has no LibKa0s
+- the whole namespace survives a LibKa0s-less load
+- the Core printer seam degrades with its whole surface intact
+- the DebugLog stub carries the whole live surface
+- the Slash stub carries the whole live surface
+- the Options stub carries every member the host calls
+
 ### test_vendor_sync.lua (2)
 
 - libs/LibKa0s is the LibKa0s release the README says this addon bundles
@@ -886,23 +912,23 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 ## Totals
 
 | Suite | Cases |
-| --- | --- |
+|-------|------:|
 | test_util.lua | 13 |
-| test_coresetup.lua | 21 |
+| test_coresetup.lua | 23 |
 | test_util_anchor.lua | 26 |
-| test_constants.lua | 22 |
+| test_constants.lua | 25 |
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
 | test_schema.lua | 11 |
 | test_database.lua | 20 |
-| test_color_shape.lua | 20 |
+| test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
-| test_debuglogsetup.lua | 21 |
+| test_debuglogsetup.lua | 22 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
 | test_icongrid_visibility.lua | 22 |
@@ -915,8 +941,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 21 |
 | test_castbar.lua | 7 |
-| test_castbar_helpers.lua | 27 |
-| test_castbar_frame.lua | 36 |
+| test_castbar_helpers.lua | 29 |
+| test_castbar_frame.lua | 37 |
 | test_castbar_skin.lua | 40 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
@@ -925,14 +951,15 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 25 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 28 |
+| test_options_panel.lua | 30 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
-| test_opensettings.lua | 7 |
-| test_perfsetup.lua | 25 |
+| test_opensettings.lua | 6 |
+| test_perfsetup.lua | 27 |
 | test_list_mode.lua | 5 |
+| test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **737** |
+| **Total** | **756** |

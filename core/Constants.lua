@@ -15,7 +15,7 @@ local addonName, NS = ...
 local Const = {}
 NS.Const = Const
 
--- Chat tag prepended to every user-facing chat line (§7.4). Single source of
+-- Chat tag prepended to every user-facing chat line (slash-commands-§4). Single source of
 -- truth: core/Util.lua's print() and any other chat-writing site reference
 -- KickCD.PREFIX rather than hand-duplicating the escape sequence. Becomes
 -- NS.PREFIX after the private-namespace migration.
@@ -60,10 +60,13 @@ Const.CASTBAR_OUTSIDE_INSET = 4
 -- Settings panel: header layout
 -- ---------------------------------------------------------------------------
 
--- Horizontal padding from the panel's left and right edges to its
--- header / divider / body content. Single value used for both edges so
--- the layout stays symmetric.
-Const.PANEL_PADDING_X    = 16
+-- PANEL_PADDING_X is deliberately absent. The horizontal inset from the
+-- panel's left and right edges to its header / divider / body is
+-- LibKa0s-Options-1.0's, published on the instance as `Helpers.PADDING_X`
+-- and applied by the library's own header and EnsureScroll. options-ui-§8
+-- forbids a host copy: the host copy is the one that goes stale, and the
+-- whole point of extracting the panel chrome is that the panels cannot
+-- drift apart. Read it off the instance; never restate the number here.
 
 -- Vertical inset of the title (and the per-panel "Defaults" button next
 -- to it) from the top of the panel. Roughly half the height of the
@@ -87,7 +90,7 @@ Const.PANEL_DEFAULTS_W    = 110
 
 -- Monospace TTF shipped under media/fonts/ (JetBrains Mono, OFL — license in
 -- media/fonts/JetBrainsMono-OFL.txt) so the debug console's timestamps and
--- [tags] line up regardless of the user's installed fonts (§12.2). Registered
+-- [tags] line up regardless of the user's installed fonts (debug-logging-§2). Registered
 -- with LibSharedMedia at load in modules/DebugLog.lua and applied at 10pt.
 Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]
 

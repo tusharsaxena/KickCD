@@ -1,85 +1,66 @@
--- tests/run.lua
--- Headless test runner + micro-framework (§14A.1).
+-- tests/run.lua — the headless runner (testing-§1).
 --
 --   lua tests/run.lua            -- from the repo root; exits non-zero on any failure
+--   lua tests/run.lua --list     -- emit docs/test-cases.md's body and exit 0
 --
--- Loads every addon source once in TOC order under the WoW mock, builds the
--- DB, then dofiles each test_*.lua suite. Suites pull the shared framework
--- and namespace off the single global table _G.KICKCD_TEST.
+-- The registry, the assertion set, the skip status, the suite-inventory gate, the `--list` renderer
+-- and the source loader are all the VENDORED KIT's (tests/_kit/, from LibKa0s — never edited here;
+-- tests/test_vendor_sync.lua is the byte-identity gate). What stays in this file is what is
+-- genuinely KickCD's: the library load list, the instance factory, and the suite list.
+--
+-- COLLECT-THEN-RUN. This file used to carry its own `test()` which pcall'd the case body AT
+-- REGISTRATION TIME and short-circuited it under `--list` (KCD-R-08). Two things were wrong with
+-- that. `--list` was a second code path through the same function, so the inventory could disagree
+-- with the run it claims to enumerate; and a case body ran while its own suite file was still being
+-- dofile'd, which makes "what has already happened when this case runs?" depend on where in the
+-- file the case sits. The kit's `test()` only records, and nothing executes until `Kit.run`.
 
 -- Resolve the repo root from this script's path so it runs from anywhere.
 local root = (arg and arg[0] and arg[0]:match("^(.*)/tests/run%.lua$")) or "."
 package.path = root .. "/tests/?.lua;" .. package.path
 
-local mockmod = dofile(root .. "/tests/wow_mock.lua")
-local loader  = dofile(root .. "/tests/loader.lua")
+local Kit     = dofile(root .. "/tests/_kit/framework.lua")
+local Loader  = dofile(root .. "/tests/_kit/loader.lua")
+-- loadfile-and-call rather than dofile, so the mock builder is handed `root` and can resolve
+-- tests/_kit/mock_base.lua — the base it layers over — without assuming the process's CWD.
+local mockmod = assert(loadfile(root .. "/tests/wow_mock.lua"))(root)
+
+-- Every addon chunk is called as chunk("KickCD", NS), reproducing the client's
+-- `local addonName, NS = ...` header. Library chunks ignore the varargs.
+Loader.addonName = "KickCD"
 
 -- ---------------------------------------------------------------------------
--- Micro-framework
+-- The vendored library load list
 -- ---------------------------------------------------------------------------
-local passed, failed = 0, 0
-local failures = {}
+--
+-- The vendored library files, in libs/LibKa0s/LibKa0s.xml's own order — DERIVED FROM THE XML, not
+-- typed here (testing-§9).
+--
+-- The TOC pulls the whole module in through that one `.xml`, which Loader.tocFiles deliberately
+-- skips, so every runner in the collection re-typed the same eight-entry list. Eight hand-typed
+-- copies of one list is eight chances to drop an entry, and one of them did: a sibling addon's
+-- runner named six of the eight and nothing noticed, because a SHORT load list does not raise. It
+-- leaves the dependent major unregistered, the host's setup file falls back to its stub, and the
+-- suite happily measures the stub — green, and testing nothing.
+--
+-- Order comes out of the XML and matters: Core registers first because the other four `return`
+-- before LibStub:NewLibrary without it, and the two Options attach files must follow their shell.
+-- Loader.xmlFiles preserves XML order and raises on a missing XML rather than returning an empty
+-- list, which would load nothing at all and read exactly like a clean run.
+--
+-- Already resolved against `root` — xmlFiles prefixes each entry with the XML's own directory —
+-- so, unlike the TOC list below, these are handed to the loader as they come.
+local LIB_FILES = Loader.xmlFiles(root .. "/libs/LibKa0s/LibKa0s.xml")
 
--- --list mode (§5): enumerate every registered case grouped by suite without
--- running it. Set once from argv; `currentSuite` is stamped around each dofile
--- below so test() can attribute each case to its originating file.
-local listMode = false
-if arg then
-    for _, a in ipairs(arg) do
-        if a == "--list" then listMode = true end
-    end
-end
-local registry = {}       -- ordered { name = ..., suite = ... } records
-local currentSuite = nil  -- base filename (no .lua) of the suite being loaded
+-- The addon's own files, in TOC order. Repo-relative (`core/Compat.lua`), because that is what the
+-- TOC says; the loader is the only thing that needs them resolved.
+local TOC_FILES = Loader.tocFiles(root .. "/KickCD.toc")
 
-local function fmt(v)
-    if type(v) == "table" then return "<table>" end
-    return tostring(v)
-end
-
-local function test(name, fn)
-    if listMode then
-        -- List mode: record attribution only, never execute the body.
-        registry[#registry + 1] = { name = name, suite = currentSuite }
-        return
-    end
-    local ok, err = pcall(fn)
-    if ok then
-        passed = passed + 1
-        io.write("  \27[32mPASS\27[0m  " .. name .. "\n")
-    else
-        failed = failed + 1
-        failures[#failures + 1] = name .. " -> " .. tostring(err)
-        io.write("  \27[31mFAIL\27[0m  " .. name .. "\n         " .. tostring(err) .. "\n")
-    end
-end
-
-local function assertTrue(cond, msg)
-    if not cond then error(msg or "expected truthy, got " .. fmt(cond), 2) end
-end
-local function assertFalse(cond, msg)
-    if cond then error(msg or "expected falsy, got " .. fmt(cond), 2) end
-end
-local function assertNil(v, msg)
-    if v ~= nil then error(msg or "expected nil, got " .. fmt(v), 2) end
-end
-local function assertEqual(a, b, msg)
-    if a ~= b then error((msg or "not equal") .. ": expected " .. fmt(b) .. ", got " .. fmt(a), 2) end
-end
-local function assertError(fn, msg)
-    local ok = pcall(fn)
-    if ok then error(msg or "expected function to error, but it returned", 2) end
-end
---- Float comparison with an explicit tolerance — never compare computed
---- geometry or a rescaled color channel with `==`. Same name, signature and
---- semantics as tests/_kit/framework.lua's, so adopting the kit replaces this
---- with an identical function rather than changing any call site.
-local function assertNear(got, want, tolerance, msg)
-    tolerance = tolerance or 1e-6
-    if type(got) ~= "number" or math.abs(got - want) > tolerance then
-        error((msg or "assertNear") ..
-            (" (expected %s +/- %s, got %s)"):format(fmt(want), fmt(tolerance), fmt(got)), 2)
-    end
+--- Repo-relative paths resolved against the root this script was invoked through.
+local function rooted(list)
+    local out = {}
+    for i, rel in ipairs(list) do out[i] = root .. "/" .. rel end
+    return out
 end
 
 -- ---------------------------------------------------------------------------
@@ -93,166 +74,120 @@ end
 ---        change the simulated client *before* init-time reads happen — e.g. the
 ---        frFR locale suite, where BuildSpells() resolves the player's spec during
 ---        OnInitialize and a post-load mock swap would be too late.
---- @param opts function|nil  optional loader options, forwarded verbatim. The
----        one that matters is `{ libFiles = {} }`, which loads the addon with
----        LibKa0s absent so the degradation stubs are exercised by a real load
----        rather than by hand-stubbing the member under test (testing-§8).
---- @return table inst  { NS, env, mocks }
+--- @param opts table|nil  { libFiles = { ... } } overrides the vendored library
+---        load list. Pass `{}` to load the addon with LibKa0s ABSENT — the
+---        degraded scenario debug-logging-§7 and testing-§8 require to be
+---        exercised by a real load rather than by hand-stubbing the member
+---        under test.
+--- @return table inst  { NS, mocks }
+---
+--- Isolation is per-instance and comes from the mock, not from the environment: the kit's loader
+--- resolves every WoW global through THIS instance's `mocks` table, and every symbol the addon
+--- publishes lands on THIS instance's `NS`. There is no `_G.KickCD` rebind to share (see
+--- docs/ARCHITECTURE.md) and no source in this addon writes a global, so nothing crosses between
+--- instances.
 local function loadInstance(initDB, enable, mutate, opts)
     local mocks = mockmod.build()
     if mutate then mutate(mocks) end
-    local env, ns = loader.loadAll(root, mocks, opts)
-    -- Pre-migration sources publish onto the global namespace (env.KickCD);
-    -- post-KCD-01 sources populate the private `ns`. Prefer whichever exists.
-    local NS = env.KickCD or ns
-    if initDB and NS and NS.OnInitialize then pcall(NS.OnInitialize, NS) end
+    -- `_G` must resolve to a table that answers from THIS instance's mocks. Nearly every WoW-API
+    -- read in this addon is written `_G.C_SpecializationInfo`, `_G.InCombatLockdown`, `_G.UnitGUID`
+    -- — explicit, because architecture-§1 forbids the deprecated bare globals and the `_G.` prefix is what
+    -- makes a Compat-bypassing read visible in review. The kit's loader gives each chunk an
+    -- environment whose `__index` falls through to the real `_G`, and the real `_G` has none of the
+    -- client API in it, so an unbound `_G.X` reads nil and 144 cases measure the absent-API
+    -- fallback instead of the API. Publishing one such environment AS `mocks._G` closes it: the
+    -- kit's own makeEnv builds it, and `_G.X` then resolves through the same mock table a bare `X`
+    -- does. Per instance, so two instances never see each other's client.
+    mocks._G = Loader.makeEnv(mocks)
+    local NS = {}
+    Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
+    Loader.loadAll(rooted(TOC_FILES), NS, mocks)
+    if initDB and NS.OnInitialize then pcall(NS.OnInitialize, NS) end
     -- Enable is NOT pcall-wrapped on purpose: a lifecycle throw (e.g. the
     -- IconGrid.Layout clobber) must surface to the calling test() so it's
     -- reported as a failure, not silently swallowed like OnInitialize.
-    if enable and NS and NS.__enableAll then
+    if enable and NS.__enableAll then
         NS:__enableAll()
         if mocks.__flushTimers then mocks.__flushTimers() end
     end
-    return { NS = NS, env = env, mocks = mocks }
+    return { NS = NS, mocks = mocks }
 end
 
 -- Shared instance most suites use (DB built once).
 local shared = loadInstance(true)
 
-local T = {
-    root = root,
-    test = test,
-    assertTrue = assertTrue,
-    assertFalse = assertFalse,
-    assertNil = assertNil,
-    assertEqual = assertEqual,
-    assertError = assertError,
-    assertNear = assertNear,
-    -- shared instance
-    NS = shared.NS,
-    env = shared.env,
-    mocks = shared.mocks,
-    -- fresh isolated instance for migration / bus tests
-    load = loadInstance,
-}
-_G.KICKCD_TEST = T
-
 -- ---------------------------------------------------------------------------
 -- Suites (append new suites here as sprints add coverage)
 -- ---------------------------------------------------------------------------
+--
+-- BASENAMES, no extension — the kit appends it. A declared suite with no file on disk is a hard
+-- error, and a `tests/test_*.lua` that is not declared here is one too: Kit.run asserts the list
+-- against the directory in both directions before it loads a single case.
 local SUITES = {
-    "test_util.lua",
-    "test_coresetup.lua",
-    "test_util_anchor.lua",
-    "test_constants.lua",
-    "test_state.lua",
-    "test_locale.lua",
-    "test_units.lua",
-    "test_schema.lua",
-    "test_database.lua",
-    "test_color_shape.lua",
-    "test_bus.lua",
-    "test_compat.lua",
-    "test_compat_api.lua",
-    "test_compat_debug.lua",
-    "test_debuglog.lua",
-    "test_debuglogsetup.lua",
-    "test_icongrid_layout.lua",
-    "test_icongrid_apply.lua",
-    "test_icongrid_visibility.lua",
-    "test_icongrid_render.lua",
-    "test_icongrid_curves.lua",
-    "test_icongrid_curve_link.lua",
-    "test_icongrid_buildlist.lua",
-    "test_icongrid_glowgate.lua",
-    "test_lifecycle.lua",
-    "test_unitlabel.lua",
-    "test_unitlabel_apply.lua",
-    "test_castbar.lua",
-    "test_castbar_helpers.lua",
-    "test_castbar_frame.lua",
-    "test_castbar_skin.lua",
-    "test_castbar_debug.lua",
-    "test_cooldowns.lua",
-    "test_cooldowns_gates.lua",
-    "test_settings_log.lua",
-    "test_settings_spells.lua",
-    "test_settings_spells_editor.lua",
-    "test_settings_widgets.lua",
-    "test_options_panel.lua",
-    "test_settings_refreshers.lua",
-    "test_flow_traces.lua",
-    "test_version.lua",
-    "test_slash_style.lua",
-    "test_slash.lua",
-    "test_opensettings.lua",
-    "test_perfsetup.lua",
-    "test_list_mode.lua",
-    "test_vendor_sync.lua",
+    "test_util",
+    "test_coresetup",
+    "test_util_anchor",
+    "test_constants",
+    "test_state",
+    "test_locale",
+    "test_units",
+    "test_schema",
+    "test_database",
+    "test_color_shape",
+    "test_bus",
+    "test_compat",
+    "test_compat_api",
+    "test_compat_debug",
+    "test_debuglog",
+    "test_debuglogsetup",
+    "test_icongrid_layout",
+    "test_icongrid_apply",
+    "test_icongrid_visibility",
+    "test_icongrid_render",
+    "test_icongrid_curves",
+    "test_icongrid_curve_link",
+    "test_icongrid_buildlist",
+    "test_icongrid_glowgate",
+    "test_lifecycle",
+    "test_unitlabel",
+    "test_unitlabel_apply",
+    "test_castbar",
+    "test_castbar_helpers",
+    "test_castbar_frame",
+    "test_castbar_skin",
+    "test_castbar_debug",
+    "test_cooldowns",
+    "test_cooldowns_gates",
+    "test_settings_log",
+    "test_settings_spells",
+    "test_settings_spells_editor",
+    "test_settings_widgets",
+    "test_options_panel",
+    "test_settings_refreshers",
+    "test_flow_traces",
+    "test_version",
+    "test_slash_style",
+    "test_slash",
+    "test_opensettings",
+    "test_perfsetup",
+    "test_list_mode",
+    "test_surface_parity",
+    "test_vendor_sync",
 }
 
---- Render docs/test-cases.md's body from the recorded registry (§5).
--- Suites keep their load order (first-seen); cases keep registration order.
-local function renderInventory()
-    local order, bySuite = {}, {}
-    for _, rec in ipairs(registry) do
-        local g = bySuite[rec.suite]
-        if not g then
-            g = {}
-            bySuite[rec.suite] = g
-            order[#order + 1] = rec.suite
-        end
-        g[#g + 1] = rec.name
-    end
+_G.KICKCD_TEST = Kit.expose{
+    root = root,
+    -- shared instance
+    NS = shared.NS,
+    mocks = shared.mocks,
+    -- fresh isolated instance for migration / bus / degradation tests
+    load = loadInstance,
+    -- The three lists testing-§9 makes assertable: the suite list, the derived library load list
+    -- exactly as it was fed to the loader, and the TOC-derived addon list.
+    suites = SUITES,
+    libFiles = LIB_FILES,
+    tocFiles = TOC_FILES,
+    Loader = Loader,
+}
 
-    local out, total = {}, 0
-    out[#out + 1] = "# Test Cases"
-    out[#out + 1] = ""
-    out[#out + 1] = "_Generated — do not hand-edit. Regenerate with "
-        .. "`lua tests/run.lua --list > docs/test-cases.md`._"
-    out[#out + 1] = ""
-    for _, suite in ipairs(order) do
-        local g = bySuite[suite]
-        out[#out + 1] = ("### %s.lua (%d)"):format(suite, #g)
-        out[#out + 1] = ""
-        for _, name in ipairs(g) do
-            out[#out + 1] = "- " .. name
-        end
-        out[#out + 1] = ""
-        total = total + #g
-    end
-    out[#out + 1] = "## Totals"
-    out[#out + 1] = ""
-    out[#out + 1] = "| Suite | Cases |"
-    out[#out + 1] = "| --- | --- |"
-    for _, suite in ipairs(order) do
-        out[#out + 1] = ("| %s.lua | %d |"):format(suite, #bySuite[suite])
-    end
-    out[#out + 1] = ("| **Total** | **%d** |"):format(total)
-    out[#out + 1] = ""
-    -- CRLF to match the repo-wide `eol=crlf` policy (.gitattributes): the body
-    -- is redirected straight into docs/test-cases.md, which is stored/checked
-    -- out as CRLF, so `diff <(--list) docs/test-cases.md` stays clean.
-    return table.concat(out, "\r\n")
-end
-
-if not listMode then
-    io.write("\nKickCD test harness\n===================\n")
-end
-for _, suite in ipairs(SUITES) do
-    currentSuite = suite:gsub("%.lua$", "")
-    if not listMode then io.write("\n" .. suite .. "\n") end
-    dofile(root .. "/tests/" .. suite)
-end
-
-if listMode then
-    io.write(renderInventory())
-    os.exit(0)
-end
-
-io.write(("\n-------------------\n%d passed, %d failed\n"):format(passed, failed))
-if failed > 0 then
-    io.write("\nFailures:\n")
-    for _, f in ipairs(failures) do io.write("  - " .. f .. "\n") end
-end
-os.exit(failed == 0 and 0 or 1)
+Kit.run{ dir = root .. "/tests/", suites = SUITES }

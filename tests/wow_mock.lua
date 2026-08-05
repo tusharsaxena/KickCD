@@ -1,12 +1,47 @@
 -- tests/wow_mock.lua
--- WoW API mock builder for the headless test harness (§14A.1).
+-- KickCD's half of the WoW-API mock, layered over the shared base in tests/_kit (testing-§1).
 --
 -- Returns a builder: each call to build() produces a FRESH `mocks` table
 -- (the fake WoW global namespace) plus a fresh LibStub with fake Ace3 libs,
 -- so every test instance is fully isolated. The key correctness requirement
--- (§4.4 / AP-33) is that the AceEvent fake keys message callbacks by
+-- (architecture-§4 / AP-33) is that the AceEvent fake keys message callbacks by
 -- (message, target) and fans SendMessage out to EVERY registered target —
 -- a no-op bus mock would hide the last-registrant-wins clobber bug.
+--
+-- ── WHAT THE BASE CONTRIBUTES, AND WHAT THIS FILE OVERRIDES ────────────────
+--
+-- build() starts from tests/_kit/mock_base.lua's builder and then overwrites,
+-- per key, everything below. Plain per-key overwrite, per the kit's README: the
+-- base hands back a fresh table on every call, so there is no merge machinery.
+--
+-- MEASURED, not assumed: of the base's 56 keys, this file reassigns 29 and
+-- INHERITS 27 — GetNumGroupMembers, GetRealmName, GetZoneText, GetSubZoneText,
+-- IsInGroup, IsInInstance, IsInRaid, UnitAffectingCombat, UnitLevel, the four
+-- Stopwatch entry points, `format`, `time`, and the base's own `__` seams
+-- (__context, __deepcopy, __fireTimers, __inCombat, __makeAceGUIWidget, __now,
+-- __profileMs, __settingsClosed, __stopwatch, __stubFrame, __subcategories,
+-- __unitExists). Not one of those 27 is referenced by any file under core/,
+-- settings/, modules/, defaults/ or locales/, so layering the base in is
+-- additive and inert here — which is exactly why the suite count did not move
+-- when it landed. They are what a future window/group feature would otherwise
+-- have to re-stub.
+--
+-- The overrides are NOT the base being wrong. The base's own header states the
+-- policy — single-consumer fidelity lives in the consumer's extender — and
+-- names this addon's frame model as a deliberate divergence it is not going to
+-- adopt unilaterally: CreateTexture / CreateFontString here return DISTINCT
+-- objects rather than the frame itself, because a font string and its parent
+-- are not one object and several suites assert on the difference. The rest of
+-- the overrides are the same story at a smaller scale: real state for
+-- visibility, geometry, scale, text, color and status-bar values (see the
+-- FRAME_METHODS note below), the spec/cooldown/cast APIs this addon is built
+-- on, and a LibStub whose Ace fakes model AceEvent's per-target fan-out.
+
+-- The repo root, forwarded by tests/run.lua's `loadfile(...)(root)` so the kit
+-- resolves the same way every other vendored path in the harness does, rather
+-- than assuming the process was started from the repo root.
+local root = ... or "."
+local kitMockBase = dofile(root .. "/tests/_kit/mock_base.lua")
 
 local function deepcopy(v)
     if type(v) ~= "table" then return v end
@@ -386,7 +421,7 @@ local DB_STUBS = {
 }
 
 local function build()
-    local mocks = {}
+    local mocks = kitMockBase()
 
     -- Deferred-timer queue so Throttle / C_Timer.After can be flushed on demand.
     local timers = {}
@@ -786,7 +821,7 @@ local function build()
     local function readTOCMeta()
         if tocMeta then return tocMeta end
         tocMeta = {}
-        local fh = io.open("KickCD.toc", "r")
+        local fh = io.open(root .. "/KickCD.toc", "r")
         if fh then
             for line in fh:lines() do
                 local k, v = line:match("^##%s*([%w%-]+)%s*:%s*(.-)%s*\r?$")

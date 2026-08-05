@@ -101,21 +101,28 @@ NS.Perf = lib:New({
         { key = "castTick" },                           -- Castbar OnUpdate, per frame while casting
     },
 
+    -- NOTE ON EVIDENCE. Both decisions below were taken off an early live
+    -- capture that predates docs/perf-runs/ and was never committed. Under
+    -- performance-§8 an interpretation without its record is an assertion, not
+    -- evidence, so the figures that used to be quoted here have been removed
+    -- rather than left reading as fact. What survives is the reasoning, which
+    -- stands on its own; the next in-game capture lands in docs/perf-runs/ and
+    -- can be cited by filename from then on.
+    --
     -- `pollSpell` WAS left out at first, on the grounds that its inline
     -- early-return guards would make a single fall-through bracket under-count.
-    -- The first live capture overturned that: spellPoll totaled 125.02 ms of
-    -- which its only declared child accounted for 51.14, leaving 73.9 ms — the
-    -- largest single cost in the addon — attributed to nothing at all. All four
-    -- of PollSpell's exits are instrumented now, so the objection is answered
-    -- rather than avoided.
+    -- Leaving it out was worse: `spellPoll` is the parent and PollSpell is where
+    -- it spends most of its time, so the addon's largest single cost was
+    -- attributed to nothing at all. Both of PollSpell's exits are instrumented
+    -- now, so the objection is answered rather than avoided.
     --
     -- `visibility` no longer declares `within = "castEvent"`. That reading came
-    -- from the dominant IN-COMBAT caller, but the same capture recorded six
-    -- `visibility` calls against ZERO for `castEvent` — every one arrived from
-    -- one of its six other call sites (a config change, a target swap, a
-    -- layout). The report was indenting it under a parent that never ran, which
-    -- is worse than not declaring the relationship: nesting exists to tell a
-    -- reader which totals overlap, and that one did not.
+    -- from the dominant IN-COMBAT caller, but RefreshVisibility has seven call
+    -- sites and six of them are not cast events (a config change, a target swap,
+    -- a layout, ...) — out of combat the parent may not run at all. The report
+    -- was indenting a bucket under a parent that had not run, which is worse
+    -- than not declaring the relationship: nesting exists to tell a reader which
+    -- totals overlap, and that one did not.
     --
     -- STILL NOT DECLARED: `glowGate` (IconGrid:RefreshAllGlows), same
     -- multi-exit shape and no capture has yet pointed at it. `Note()` records an

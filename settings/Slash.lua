@@ -100,6 +100,14 @@ end
 --- the only way to answer it without duplicating the gating rule here, and the
 --- swap is transient — one call between mutate and restore, with no message-bus
 --- dispatch in between.
+---
+--- The one call in that window is `row.values()`, addon-authored and free to
+--- raise (an LSM row asks another addon's table). If it did, the restore below
+--- would never run and the swapped-in candidate would stay in SavedVariables —
+--- silently, with no onChange and no panel refresh, from a READ-ONLY hint. So
+--- the probe runs under `pcall`: the restore is unconditional, and a raising
+--- `values` costs the user one missing hint clause rather than a changed
+--- setting. tests/test_color_shape.lua pins that.
 function NS.Slash.GateHint(row)
     local H = helpers()
     if not (H and H.Get and H.FindSchema and H.Resolve) then return "" end
@@ -119,9 +127,9 @@ function NS.Slash.GateHint(row)
     for candidate in pairs(gateValues) do
         if candidate ~= gateVal then
             parent[key] = candidate
-            local alt = allowedKeys(row)
+            local ok, alt = pcall(allowedKeys, row)
             parent[key] = gateVal
-            if #alt > 0 then
+            if ok and #alt > 0 then
                 hints[#hints + 1] = ("flip %s to %s for %s")
                     :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
             end
@@ -208,7 +216,8 @@ if not SlashLib then
     -- only the consequence is this seam's. This is the one of the five whose
     -- consequence comes FIRST — the verb has to lead, or "/kcd list" is buried
     -- mid-sentence — so it reads "<verb> is unavailable. <cause>." AbsorbTracker
-    -- inverts it the same way for the same reason (settings/Slash.lua:383).
+    -- inverts it the same way for the same reason, in its own
+    -- ../AbsorbTracker/settings/Slash.lua `missing` stub.
     local missing = " is unavailable. " .. NS.LIBKA0S_MISSING .. "."
     SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end

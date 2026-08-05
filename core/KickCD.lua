@@ -24,7 +24,7 @@ local addonName, NS = ...
 -- namespace table WoW passes as the second vararg to every file, and the
 -- core/* files loaded earlier have already hung Compat / Util / Database /
 -- Const / State onto this same NS. After this call NS IS the addon object —
--- there is NO _G.KickCD rebind; the namespace stays private (§4.1).
+-- there is NO _G.KickCD rebind; the namespace stays private (architecture-§1).
 -- The return value is deliberately discarded: NewAddon promotes the table it
 -- is handed, so it hands back the very NS we passed in. Capturing it (as the
 -- former NS.addon field did) only created a self-reference with no callers.
@@ -37,7 +37,7 @@ LibStub("AceAddon-3.0"):NewAddon(
 -- Public version stamp.
 NS.VERSION = "1.2.1"
 
--- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (§4.4).
+-- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (architecture-§4).
 -- Any consumer that is NOT itself an AceAddon module (which already gets its
 -- own AceEvent embed) MUST own a private target from this factory rather than
 -- registering on the shared addon object: CallbackHandler keys callbacks by
@@ -64,7 +64,7 @@ function NS:OnInitialize()
     end
 
     -- Debug logging is a session-only flag (KickCD.State.debug) seeded off on
-    -- every load — it is NEVER read back from SavedVariables (§12.5). No
+    -- every load — it is NEVER read back from SavedVariables (debug-logging-§5). No
     -- seeding here on purpose.
 
     -- Slash commands. Both /kickcd and /kcd dispatch to OnSlashCommand,
@@ -76,7 +76,18 @@ end
 
 function NS:OnEnable()
     -- Modules register themselves via NewModule(...) and AceAddon
-    -- auto-enables them. Nothing to do here.
+    -- auto-enables them.
+
+    -- Build the options surface (settings/OptionsSetup.lua -> the library's
+    -- O.CreateOptionsPanel): resolve AceGUI, validate the assembled schema,
+    -- register the parent canvas category, then drain the six page builders
+    -- queued by settings/<page>.lua's NS.RegisterOptionsPage calls.
+    --
+    -- Here rather than in a private bootstrap frame of its own, because
+    -- options-ui-§5 puts registration at PLAYER_LOGIN and AceAddon's OnEnable
+    -- IS PLAYER_LOGIN. The call is idempotent (the library refuses to register
+    -- a second Blizzard category), so a re-enable is harmless.
+    if NS.CreateOptionsPanel then NS.CreateOptionsPanel() end
 end
 
 -- ---------------------------------------------------------------------------
@@ -103,7 +114,7 @@ end
 -- build; fall back to the in-code NS.VERSION stamp when the metadata API is
 -- unavailable (older clients, or the headless test harness). 12.0 exposes the
 -- reader under C_AddOns; the bare _G.GetAddOnMetadata is deprecated, so we don't
--- touch it (§4.1 no-deprecated-globals).
+-- touch it (architecture-§1 no-deprecated-globals).
 local function addonVersion()
     local get = C_AddOns and C_AddOns.GetAddOnMetadata
     local v = get and get(addonName, "Version")
@@ -125,7 +136,10 @@ local function setLocked(self, value)
     local H = self.Settings and self.Settings.Helpers
     if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
         self.db.profile.locked = v
-        self:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+        -- Announce through the one sender (settings/Panel.lua's
+        -- Helpers.FireConfigChanged), never with a second SendMessage of our
+        -- own: architecture-Â§4 wants one emitter per message.
+        if H and H.FireConfigChanged then H.FireConfigChanged("general") end
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
@@ -253,7 +267,7 @@ function runDebug(self, rest)
     local sub = (rest or ""):match("^(%S*)") or ""
     sub = sub:lower()
     if sub == "" then
-        -- Bare `/kcd debug` toggles the console window (§12.5); the flag is
+        -- Bare `/kcd debug` toggles the console window (debug-logging-§5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.
         if self.DebugLog then self.DebugLog:Toggle() end
         p(self, "debug subcommands")
@@ -453,9 +467,8 @@ end
 -- without a direct cross-module call from this layer (closed-bus
 -- contract — see docs/message-bus.md).
 local function commitSpellsChange()
-    if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "spells" })
-    end
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.FireConfigChanged then H.FireConfigChanged("spells") end
 end
 
 local function resolveSpellInput(input)
@@ -697,94 +710,53 @@ end
 -- Settings entry point
 -- ---------------------------------------------------------------------------
 
---- Open the Blizzard Settings panel to KickCD's parent page.
--- Settings layer is set up by settings/Panel.lua, which assigns
--- KickCD.Settings.main. If that hasn't run yet we schedule a deferred
--- retry (3 attempts, 0.5s apart) and ultimately print rather than
--- error so this is safe to call at any time after PLAYER_LOGIN.
--- @param input slash-command tail (ignored)
-local OPEN_SETTINGS_MAX_RETRIES = 3
-local OPEN_SETTINGS_RETRY_DELAY = 0.5
-
--- Force-expand the parent category in the Blizzard Settings left tree
--- so every sub-page is visible after we open the parent (Blizzard's
--- CategoryList only auto-expands a parent's tree when one of its
--- *children* is selected, never on parent self-select). The whole
--- thing is wrapped in pcall: SettingsPanel internals
--- (CategoryList / GetCategoryList / GetCategoryEntry / SetExpanded)
--- are private API and could shift between patches; if any call goes
--- missing we fall through to "parent opened, tree collapsed" rather
--- than erroring out — the user is then one click away from what they
--- wanted, same as if we hadn't tried at all.
-local function expandMainCategory(main)
-    if not (main and SettingsPanel) then return end
-    pcall(function()
-        local list = SettingsPanel.GetCategoryList
-            and SettingsPanel:GetCategoryList()
-            or SettingsPanel.CategoryList
-        if not (list and list.GetCategoryEntry) then return end
-        local entry = list:GetCategoryEntry(main)
-        if entry and entry.SetExpanded then
-            entry:SetExpanded(true)
-        end
-    end)
-end
-
 -- Settings panel registration touches protected frames; opening it in combat
 -- would taint the dropdown / category tree. Read the state both ways so every
--- entry point (slash, deferred retry, future callers) shares one check.
+-- entry point (slash, a /run script, a future internal caller) shares one check.
 local function inCombat(self)
     return (self.State and self.State.inCombat)
         or (_G.InCombatLockdown and _G.InCombatLockdown())
 end
 
 -- Gray "notice" styling: the body is de-emphasized (this is expected, not an
--- error) while Util.print keeps the [KCD] tag full-color.
+-- error) while Util.print keeps the [KCD] tag full-color. This is the reason
+-- the combat gate stays HERE rather than being left to the library's own
+-- refusal: the library prints its shared English string, and this addon's
+-- refusal is a localized line (locales/enUS.lua's "Cannot open settings during
+-- combat.").
 local function combatNotice(self)
     local msg = (self.L and self.L["Cannot open settings during combat."])
         or "cannot open settings during combat — Blizzard's category-switch is protected"
     return (NS.GRAY or "") .. msg .. "|r"
 end
 
--- Open the registered parent category, clearing the retry counter so a later
--- racy login starts from zero again. Returns true once it actually opened;
--- false means settings/Panel.lua has not assigned Settings.main yet.
-local function openRegisteredPanel(self)
-    local main = self.Settings and self.Settings.main
-    if not (main and main.GetID) then return false end
-    self._openRetries = nil
-    if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
-    Settings.OpenToCategory(main:GetID())
-    expandMainCategory(main)
-    return true
-end
-
--- Settings layer not registered yet. Defer rather than printing "not
--- registered" — a /kcd config the moment after login can race the
--- PLAYER_LOGIN-deferred RegisterPanel. Returns true when a retry was armed;
--- false once the bound is exhausted (or there is no timer to arm it with), so
--- the caller falls through to the plain notice.
-local function scheduleOpenRetry(self, input)
-    self._openRetries = (self._openRetries or 0) + 1
-    if self._openRetries > OPEN_SETTINGS_MAX_RETRIES then return false end
-    if not (C_Timer and C_Timer.After) then return false end
-    p(self, "Settings still loading, opening shortly…")
-    C_Timer.After(OPEN_SETTINGS_RETRY_DELAY, function()
-        self:OpenSettings(input)
-    end)
-    return true
-end
-
-function NS:OpenSettings(input)
+--- Open the Blizzard Settings panel to KickCD's parent page.
+--
+-- This function used to BE the open path: it read KickCD.Settings.main off the
+-- private registry in settings/Panel.lua, called Settings.OpenToCategory itself
+-- and force-expanded the category tree through SettingsPanel's private API — a
+-- line-for-line second copy of LibKa0s-Options-1.0's O.OpenOptionsPanel, which
+-- the addon also shipped and never called (KCD-A-09). It also carried a
+-- three-attempt, 0.5s-apart retry, for the race between `/kcd config` and the
+-- PLAYER_LOGIN-deferred private RegisterPanel.
+--
+-- Both are gone with the registry (options-ui-§5). Registration is no longer
+-- deferred behind its own frame: OnEnable calls NS.CreateOptionsPanel()
+-- synchronously in the same PLAYER_LOGIN turn, before any slash input can
+-- arrive, so there is nothing left to race and nothing to retry into. The open
+-- itself, the ID lookup and the tree expansion are the library's.
+--
+-- @param input slash-command tail (ignored)
+function NS:OpenSettings()
     if inCombat(self) then
-        self._openRetries = nil
         p(self, combatNotice(self))
         return
     end
-    if Settings and Settings.OpenToCategory then
-        if openRegisteredPanel(self) then return end
-        if scheduleOpenRetry(self, input) then return end
-        self._openRetries = nil
+    if not NS.OpenOptionsPanel then
+        -- settings/OptionsSetup.lua never loaded at all. Say so rather than
+        -- failing silently; the stub in that file covers "LibKa0s missing".
+        return p(self, "Settings not yet registered")
     end
-    p(self, "Settings not yet registered")
+    if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
+    NS.OpenOptionsPanel()
 end

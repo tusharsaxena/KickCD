@@ -158,7 +158,7 @@ test("PartitionUnitRows splits alwaysPerUnit rows from styled rows", function()
     assertEqual(styled[1].path, "b")
 end)
 
-test("debug console stays session-only: no schema row targets it (§12.5)", function()
+test("debug console stays session-only: no schema row targets it (debug-logging-§5)", function()
     local NS = T.NS
     -- The General "Debug console" checkbox is a bespoke SessionToggle, never a
     -- schema row — a schema row would persist to SavedVariables. Guard that no

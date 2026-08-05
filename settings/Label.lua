@@ -189,6 +189,6 @@ local function Build(mainCategory)
         mainCategory, ctx.panel, L["Text Label"])
 end
 
-if NS.Settings and NS.Settings.RegisterTab then
-    NS.Settings.RegisterTab("label", Build)
+if NS.RegisterOptionsPage then
+    NS.RegisterOptionsPage("label", L["Text Label"], Build)
 end

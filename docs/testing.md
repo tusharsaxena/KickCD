@@ -10,9 +10,17 @@ Install instructions for all three, with the WSL2/Ubuntu commands that actually 
 
 **Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [conventions.md](conventions.md) — which is why the vendored-copy check below is two diffs rather than one.
 
+## What is the harness, and what is KickCD's
+
+The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, and the suite list.
+
+The kit **collects, then runs**: `test()` records a case and nothing executes until the runner decides to. This file's runner used to `pcall` each case body at registration time and short-circuit it under `--list`, which made the inventory a second code path through the same function and made "what has already happened when this case runs?" depend on where in its file the case sat. `--list` is now a pure filter over the registry and cannot disagree with the run.
+
+One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (architecture-§1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
+
 ## What the frame mock does and doesn't model
 
-`tests/wow_mock.lua`'s frame stub carries **real state** for the properties the addon's correctness depends on — visibility (`Show`/`Hide`/`SetShown`/`IsShown`, with `IsVisible` walking the parent chain), geometry (`SetPoint`/`GetPoint` round trip, size, scale with `GetEffectiveScale` as the product down the parent chain), alpha, text, color, and `StatusBar` min/max/value. Two C-side seams that accept 12.0 **secret values** are modeled deliberately, because they are the only correct way to branch on a secret: `Frame:SetAlphaFromBoolean` (which also records the raw flag, so a suite can prove the secret was passed through rather than read) and `C_CurveUtil.EvaluateColorValueFromBoolean`.
+`tests/wow_mock.lua` layers KickCD's half over the shared base in `tests/_kit/mock_base.lua`, overwriting per key (it reassigns 29 of the base's 56 keys and inherits 27, none of which any addon source touches — the file's own header lists them). Its frame stub carries **real state** for the properties the addon's correctness depends on — visibility (`Show`/`Hide`/`SetShown`/`IsShown`, with `IsVisible` walking the parent chain), geometry (`SetPoint`/`GetPoint` round trip, size, scale with `GetEffectiveScale` as the product down the parent chain), alpha, text, color, and `StatusBar` min/max/value. Two C-side seams that accept 12.0 **secret values** are modeled deliberately, because they are the only correct way to branch on a secret: `Frame:SetAlphaFromBoolean` (which also records the raw flag, so a suite can prove the secret was passed through rather than read) and `C_CurveUtil.EvaluateColorValueFromBoolean`.
 
 **Curve evaluation reads the control points.** `__makeDurationObject`'s `EvaluateRemainingDuration` walks the curve it is handed and returns the value of the last point at or below the queried remaining — it does not return a constant. This is load-bearing for the same reason `IsShown` is: the addon's curves are per unit and built from config, so a stub that ignores the points makes "this icon used ITS unit's curve" and "this icon used some other unit's curve" the same observation. A per-unit curve regression shipped green through exactly that hole (see `tests/test_icongrid_curve_link.lua`); the fix was to model the evaluation, not to add more assertions on the curve objects.
 
@@ -26,13 +34,23 @@ The **authoritative test count and per-suite breakdown** live in the generated i
 
 ## Testing against the vendored library
 
-`tests/loader.lua` loads the eight `libs/LibKa0s/*.lua` files explicitly, in
-`LibKa0s.xml`'s own order, before any addon file — the TOC pulls them in through
-that one `.xml`, which the TOC-derived load list deliberately skips. The list is
-pinned against the XML by `tests/test_coresetup.lua`, because a library file
-omitted there makes the dependent major refuse to register, the host's setup file
-fall back to its stub, and the suite happily measure **the stub** — green, and
-testing nothing (testing-§9).
+`tests/run.lua` loads every `libs/LibKa0s/*.lua` file before any addon file, in
+`LibKa0s.xml`'s own order — **derived from that XML** by `Loader.xmlFiles`, not
+typed in the runner. The TOC pulls the library in through the one `.xml`, which
+`Loader.tocFiles` deliberately skips, so this list used to be hand-maintained in
+every runner in the collection; a short list does not raise, it just leaves the
+dependent major unregistered, the host's setup file falling back to its stub, and
+the suite happily measuring **the stub** — green, and testing nothing
+(testing-§9).
+
+`tests/test_coresetup.lua` pins the three things the derivation cannot guarantee
+on its own: that the derived list is the one the runner actually **fed** the
+loader and is not empty, that every path in it resolves on disk, and that the
+TOC-derived addon list leaks no `libs/` entry back in (which would load a library
+file twice, and out of XML order). The suite list is the third list testing-§9
+names: `Kit.run` asserts it against `tests/test_*.lua` on disk in both directions
+before it loads a single case, and `test_coresetup` calls
+`Kit.assertSuiteInventory` again so the gate has a name in the inventory.
 
 The degraded path is exercised by a **real load**, never by hand-stubbing:
 
@@ -40,10 +58,25 @@ The degraded path is exercised by a **real load**, never by hand-stubbing:
 local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
 ```
 
-Each adopted module has a case proving its stub answers every member the addon
-calls, and `tests/test_options_panel.lua` additionally pins `#NS.Settings.Schema`
-against the fully-loaded environment — the only thing standing between the
-options stub and a silent half-load.
+`tests/test_surface_parity.lua` carries one `Kit.assertSurfaceParity` case per
+adopted seam — Core (the namespace and the printer), DebugLog, Slash and Options
+— comparing a live load against that degraded one and reporting **every**
+divergence in one message (testing-§8, anti-pattern #56). It walks the LIVE
+table, so the question is "what does the library export today?" rather than
+"what did somebody remember to list": a re-vendor that adds a member forces a
+decision. A member that is live-only *on purpose* is recorded in the case's
+`ignore` list, as data, with the reason — the library's own string resolvers and
+the widget makers and layout constants `options-ui-§1` forbids a host copy of.
+
+What parity cannot catch is a stub with the right member set and a **wrong
+implementation** — a hand-copied line format or ack string. That is
+`debug-logging-§7`, and it stays with the source-scan cases in
+`tests/test_debuglogsetup.lua`.
+
+`tests/test_options_panel.lua` additionally pins `#NS.Settings.Schema` against
+the fully-loaded environment — the only thing standing between the options stub
+and a silent half-load — and exercises a **write** through the degraded settings
+path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.
 
 ## Verifying the vendored copies
 
@@ -81,23 +114,33 @@ tests/_kit/run-automated-tests.sh --suite complexity          # a subset
 tests/_kit/run-automated-tests.sh --suite lint --suite tests --no-bundle   # the green gate; writes nothing
 ```
 
-| Suite | Command | Gates? |
-|---|---|---|
-| `lint` | `luacheck .` | **yes** |
-| `tests` | `lua tests/run.lua` | **yes** |
-| `perf` | `lua tests/perf.lua` | no — recorded only |
-| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only |
+There are **two checkpoints** — the run/commit and the tag — and a suite's answer differs between
+them, so the table names both:
 
-**`perf` and `complexity` never fail a run.** They are measured, recorded and diffed — a threshold
-that fails a run teaches everyone to reach for `--no-verify`, after which the gate protects nothing
-and the habit remains. They contribute `amber`, which is a signal rather than a stop. **A missing
-tool is a skip recorded with its reason**, never a pass.
+| Suite | Command | Gates the run and the commit? | Gates the tag? |
+|---|---|---|---|
+| `lint` | `luacheck .` | **yes** | **yes** |
+| `tests` | `lua tests/run.lua` | **yes** | **yes** |
+| `perf` | `lua tests/perf.lua` | no — recorded only | **yes** |
+| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only | **yes** |
+
+**`perf` and `complexity` never fail a run and never block a commit** — they are measured, recorded
+and diffed, not thresholded. A threshold that fails a run teaches everyone to reach for
+`--no-verify`, after which the gate protects nothing and the habit remains. They contribute `amber`,
+which is a signal rather than a stop.
+
+**They do gate the tag.** The release gate requires all four suites at `pass` plus zero functions
+above CCN 15, evaluated by `/wow-addon:bump-version` from the `manifest.json` the release run writes
+— not by the runner, whose exit code is unchanged. **A missing tool is a skip recorded with its
+reason**, never a pass: at the release gate a `skip` is NOT EVALUATED rather than passed, so install
+the tool and re-run.
 
 The runner is **vendored** from `LibKa0s`'s `testkit/`; never edit `tests/_kit/`. A kit fix goes
 upstream and is re-vendored.
 
 **At release, not at commit.** A full bundle is produced as part of every version bump, before the
-tag, with an `ANALYSIS.md` write-up. Commits are gated on lint + tests only.
+tag, with an `ANALYSIS.md` write-up. Commits are gated on lint + tests only; the **tag** is gated on
+all four suites at `pass` plus zero functions above CCN 15.
 
 Results live in [`automated-tests/`](./automated-tests/): `RESULTS.md` is one row per run across all
 four suites plus the current complexity watch list — **one file, overwritten in place**, so its git

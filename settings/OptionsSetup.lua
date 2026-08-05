@@ -107,7 +107,7 @@ local descriptor = {
         if H and H.ValidateSchema then H.ValidateSchema() end
     end,
 
-    -- Ka0s standard §3.4: resolve AceGUI once and read the upvalue. The page
+    -- Ka0s standard, library-stack-§4: resolve AceGUI once and read the upvalue. The page
     -- builders read NS.AceGUI, so the library hands it over rather than keeping
     -- it private.
     onAceGUI = function(AceGUI) NS.AceGUI = AceGUI end,

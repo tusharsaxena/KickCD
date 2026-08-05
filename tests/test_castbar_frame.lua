@@ -326,6 +326,35 @@ test("the uninterruptible warning border is on and the interruptible one off", f
     assertEqual(inst.frame.borderInterruptible:GetAlpha(), 0)
 end)
 
+test("the user's spell-name color reaches the label, in the keyed storage shape", function()
+    -- KCD-R-01. Colors are STORED KEYED ({ r =, g =, b =, a = } — see the
+    -- per-state block in core/Database.lua); ApplyState's local reader indexed
+    -- [1]..[4]. Every channel read nil, fell back to 1, and the spell name
+    -- rendered white for every user who ever set the option — silently, and
+    -- only in game.
+    --
+    -- red under: restoring `c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1` in
+    -- modules/Castbar.lua's rgba().
+    local NS, _, Castbar = enabled()
+    makeVisible(NS)
+    local cb = NS.db.profile.units.target.castbar
+    cb.interruptible.nameTextColor   = { r = 1, g = 0, b = 0, a = 1 }
+    cb.uninterruptible.nameTextColor = { r = 0, g = 0, b = 1, a = 0.5 }
+    local inst = Castbar:GetInstance("target")
+
+    -- Preview / no-cast path: the interruptible color, applied directly.
+    Castbar:EnsureFrame(inst)
+    inst.current = nil
+    Castbar:ApplyState(inst)
+    local r, g, b, a = inst.frame.nameText:GetTextColor()
+    assertEqual(r, 1); assertEqual(g, 0); assertEqual(b, 0); assertEqual(a, 1)
+
+    -- Live path: the same values routed through the curve evaluator.
+    Castbar:Start(inst, castRecord({ notInterruptible = true }))
+    r, g, b, a = inst.frame.nameText:GetTextColor()
+    assertEqual(r, 0); assertEqual(g, 0); assertEqual(b, 1); assertEqual(a, 0.5)
+end)
+
 -- ── Stop ────────────────────────────────────────────────────────────────────
 
 test("Stop clears the cast, empties both bars and disarms the animation", function()

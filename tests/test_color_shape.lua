@@ -339,3 +339,39 @@ test("a rejected gated value carries the hint through the slash layer", function
     assertTrue(text:find("depends on", 1, true) ~= nil,
         "the gate hint must reach the user; got: " .. text)
 end)
+
+test("a valueGate probe whose values() raises leaves the gating setting restored", function()
+    -- KCD-R-06 / KCD-A-17. GateHint is a READ-ONLY hint, but it answers "what
+    -- would flipping the gate offer?" by actually swapping the gate's stored
+    -- value, re-asking the row's `values`, and restoring. The call in that
+    -- window is addon-authored and can raise (an LSM row reads another addon's
+    -- table). Unguarded, the restore is skipped and the swapped-in candidate is
+    -- left in SavedVariables -- a silent write from a read, outside the single
+    -- write seam, with no onChange and no panel refresh.
+    -- red under: dropping the pcall in settings/Slash.lua's GateHint probe.
+    local row
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.valueGate then row = def break end
+    end
+    assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
+
+    local H = NS.Settings.Helpers
+    local before = H.Get(row.valueGate)
+
+    -- Same row, same gate, but a `values` that blows up mid-probe.
+    local exploding = {
+        path = row.path, type = row.type, valueGate = row.valueGate,
+        values = function() error("values() raised mid-probe", 0) end,
+    }
+
+    local ok, hint = pcall(NS.Slash.GateHint, exploding)
+    assertTrue(ok, "GateHint must not propagate the row's error; got: " .. tostring(hint))
+    assertEqual(H.Get(row.valueGate), before,
+        "the gating setting must be restored even when the probe raises")
+
+    -- And the hint still names the gate, minus the flip clauses it could not
+    -- compute: a raising `values` costs a sentence, not a setting.
+    assertTrue(hint:find("depends on", 1, true) ~= nil, "got: " .. tostring(hint))
+    assertTrue(hint:find("flip", 1, true) == nil,
+        "no flip clause is computable when every probe raised; got: " .. hint)
+end)

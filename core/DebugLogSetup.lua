@@ -55,11 +55,22 @@ if not lib then
     -- `/kcd debug on` must not be told nothing happened. What is lost is the
     -- WINDOW, and the stub says so once, honestly.
     --
-    -- Note what is NOT here: no formatter. debug-logging-§3 forbids reproducing
-    -- the line format or its color codes in a fallback, and hand-copying the
-    -- exact strings whose seven-way drift this extraction exists to end is the
-    -- one duplicate testing-§8 most specifically forbids. FormatPlain and
-    -- FormatColored answer plainly and say nothing about color.
+    -- WHAT IS NOT HERE, AND WHY. debug-logging-§3 forbids reproducing the line
+    -- format OR its color codes in a fallback, and the format is the half that
+    -- matters: a log pasted from any Ka0s addon parses the same way by eye
+    -- BECAUSE one library renders it. A stub that re-spells the library's
+    -- timestamp / separator / bracketed-tag line has forked that guarantee
+    -- whether or not it also copied the hexes — and this file used to do
+    -- exactly that while its own comment claimed the opposite, arguing only
+    -- about color. The shape is deliberately not quoted here either: a grep for
+    -- a hand-copied format must not find one in the very file that swore off it.
+    --
+    -- So the stub renders NO line. It has no console to render one into, and
+    -- inventing a shape here would be a second format to keep in step with the
+    -- library's. FormatPlain / FormatColored answer the member (surface parity
+    -- is what debug-logging-§7 asks for) and hand back the message unchanged.
+    -- The state words in the ack below are likewise uncolored: the ON/OFF hexes
+    -- are the library's string, not this file's to copy.
     -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
     -- only the consequence is this seam's. Do not re-spell the cause here.
     local missing = NS.LIBKA0S_MISSING .. ", so the debug console window is unavailable."
@@ -89,16 +100,18 @@ if not lib then
         LastLine        = function() return nil end,
         FindLine        = function() return nil end,
         MakeCloseButton = function() return nil end,
-        -- Plain text, deliberately: the shape is recognizable, the colors are
-        -- not reproduced, and nothing downstream parses these.
-        FormatPlain     = function(ts, tag, msg)
-            return tostring(ts) .. " | [" .. tostring(tag or "") .. "] " .. tostring(msg)
-        end,
+        -- The message, verbatim. NOT the library's line — see the note above.
+        -- Nothing in this addon calls these; they exist so the stub's surface
+        -- matches the live instance's, which is what the parity case asserts.
+        FormatPlain     = function(_ts, _tag, msg) return tostring(msg) end,
         SetEnabled      = function(_, on)
             on = not not on
             if NS.State then NS.State.debug = on end
             if NS.Util and NS.Util.print then
-                NS.Util.print("debug logging " .. (on and "|cff40ff40ON|r" or "|cffff4040OFF|r"))
+                -- Uncolored on purpose: the green/red state hexes are the
+                -- library's, and copying them is the same defect as copying
+                -- the line format. The ACK itself is required (debug-logging-§7).
+                NS.Util.print("debug logging " .. (on and "ON" or "OFF"))
             end
             if on then sayOnce() end
         end,

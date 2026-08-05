@@ -124,15 +124,111 @@ test("StateConfig rejects a non-table value stored under the state key", functio
     assertTrue(rawequal(Castbar.StateConfig({ uninterruptible = false }, "uninterruptible", fb), fb))
 end)
 
-test("the interruptible fallback is gold with no border, the uninterruptible red with one", function()
+test("the fallbacks are the shipped defaults, and defaults/Profile.lua declares them", function()
+    -- savedvariables-§2: one declaration site. These two tables used to be a
+    -- second hardcoded copy in modules/Castbar.lua, and the copy had drifted
+    -- from defaults/Profile.lua in both the color SHAPE (positional there,
+    -- keyed here) and the interruptible border.
+    --
+    -- The requirement that follows from that is a RENDER one — a malformed
+    -- profile must look like a fresh one — and the case below is what drives
+    -- it. This one only says the fallbacks come off the published defaults
+    -- rather than out of thin air, which is what makes the render case's
+    -- comparison meaningful. Deliberately NOT `rawequal`: a
+    -- `copy(NS.CASTBAR_DEFAULT.interruptible)` is still one declaration site,
+    -- still renders identically, and is the correct shape the moment any
+    -- consumer needs to write to the sub-config — identity would redden it.
+    local d = inst.NS.CASTBAR_DEFAULT
+    assertTrue(d ~= nil, "defaults/Profile.lua must publish NS.CASTBAR_DEFAULT")
+    for _, pair in ipairs({ { Castbar.INT_FALLBACK,   d.interruptible,   "interruptible" },
+                            { Castbar.UNINT_FALLBACK, d.uninterruptible, "uninterruptible" } }) do
+        local fb, def, which = pair[1], pair[2], pair[3]
+        assertTrue(type(def) == "table", "no shipped default for " .. which)
+        for key, want in pairs(def) do
+            if type(want) ~= "table" then
+                assertEqual(fb[key], want,
+                    which .. " fallback disagrees with the shipped default at " .. key)
+            end
+        end
+    end
+end)
+
+test("a malformed per-state config renders exactly like a fresh profile", function()
+    -- THE REQUIREMENT the case above only gestures at, driven end to end.
+    -- stateConfig's fallback arm is what a profile written before the
+    -- per-state colors shipped (no key at all) or by an older version (a bare
+    -- color string under the key) takes on every paint. If the fallback ever
+    -- drifts from the shipped default again — the exact historical bug — those
+    -- users get a bar in the wrong colors and nothing in the suite notices,
+    -- because every other case here reads the fallback tables directly instead
+    -- of rendering through them.
+    --
+    -- red under: re-forking INT_FALLBACK / UNINT_FALLBACK in modules/Castbar.lua
+    -- as a hardcoded second copy that disagrees with defaults/Profile.lua.
+    local live    = T.load(true, true)
+    local NS      = live.NS
+    local CB      = NS:GetModule("Castbar")
+    NS.db.profile.locked     = true
+    NS.db.profile.visibility = "always"
+    NS.db.profile.enabled    = true
+
+    local rec = {
+        name = "Chaos Bolt", texture = "tex", spellID = 116858,
+        notInterruptible = false, isChannel = false,
+        duration = { GetTotalDuration     = function() return 3 end,
+                     GetElapsedDuration   = function() return 1 end,
+                     GetRemainingDuration = function() return 2 end },
+    }
+
+    --- Everything the two per-state configs paint that the frame mock records.
+    local function render(bar)
+        CB:Start(bar, rec)
+        CB:Reskin(bar, true)
+        local f = bar.frame
+        local out = {}
+        local function push(...) for i = 1, select("#", ...) do out[#out + 1] = select(i, ...) end end
+        push(f.bar.interruptible:GetStatusBarColor())
+        push(f.bar.uninterruptible:GetStatusBarColor())
+        push(f.nameText:GetTextColor())
+        push(f.borderInterruptible:GetAlpha(), f.borderUninterruptible:GetAlpha())
+        for _, b in ipairs({ f.borderInterruptible, f.borderUninterruptible }) do
+            local c = b.__backdropBorderColor or {}
+            push(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0)
+        end
+        return out
+    end
+
+    local cfg = NS.Units.Castbar("target")
+    assertTrue(type(cfg.interruptible) == "table" and type(cfg.uninterruptible) == "table",
+        "precondition: a fresh profile carries both per-state tables")
+    local fresh = render(CB:GetInstance("target"))
+    assertTrue(#fresh > 0, "precondition: the render must observe something")
+
+    -- The two malformed shapes stateConfig exists for: key absent, and a
+    -- non-table stored under it.
+    for _, bad in ipairs({ { desc = "absent" }, { desc = "a bare color string", v = "gold" } }) do
+        cfg.interruptible, cfg.uninterruptible = bad.v, bad.v
+        local got = render(CB:GetInstance("target"))
+        for i = 1, #fresh do
+            assertEqual(got[i], fresh[i],
+                "a profile whose per-state config is " .. bad.desc
+                .. " must render identically to a fresh one (slot " .. i .. ")")
+        end
+    end
+end)
+
+test("the interruptible fallback is gold, the uninterruptible red with a heavier border", function()
     -- These are the shipped visual defaults and the reason the two states are
     -- distinguishable at a glance; a silent change here is a UX regression.
+    -- Read through UnpackColor so the assertion does not re-encode a shape
+    -- (the stored shape is keyed since the v3→v4 color migration).
     local i, u = Castbar.INT_FALLBACK, Castbar.UNINT_FALLBACK
-    assertFalse(i.borderShow, "an interruptible cast needs no warning border")
     assertTrue(u.borderShow, "an uninterruptible cast is flagged with a border")
-    assertTrue(u.borderSize > i.borderSize)
-    assertTrue(i.barColor[1] > 0.9 and i.barColor[2] > 0.5, "interruptible reads as gold")
-    assertTrue(u.barColor[1] > 0.5 and u.barColor[2] < 0.3, "uninterruptible reads as red")
+    assertTrue(u.borderSize >= i.borderSize)
+    local ir, ig = Castbar.UnpackColor(i.barColor)
+    local ur, ug = Castbar.UnpackColor(u.barColor)
+    assertTrue(ir > 0.9 and ig > 0.5, "interruptible reads as gold")
+    assertTrue(ur > 0.5 and ug < 0.3, "uninterruptible reads as red")
 end)
 
 test("both state fallbacks carry every field the reskin path reads", function()
