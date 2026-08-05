@@ -1311,7 +1311,3 @@ Castbar.UNINT_FALLBACK = UNINT_FALLBACK
 -- auto-size reference frame, and the payload-preferred / accessor-fallback
 -- policy must stay in exactly one place.
 Castbar.ResolveGridFrame = resolveGridFrame
-
-NS.Castbar = Castbar
-
-

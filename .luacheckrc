@@ -26,7 +26,7 @@ read_globals = {
   "IsPlayerSpell", "IsSpellKnown", "IsSpellKnownOrOverridesKnown",
   "GetSpecializationInfoForClassID", "GetNumSpecializationsForClassID",
   -- settings panel
-  "Settings", "SettingsPanel", "InterfaceOptionsFrame_OpenToCategory",
+  "Settings", "SettingsPanel",
   "DEFAULT_CHAT_FRAME", "UISpecialFrames", "UIDropDownMenu_AddButton",
   -- color / util
   "CreateColor", "CreateColorFromHexString", "WrapTextInColorCode",
