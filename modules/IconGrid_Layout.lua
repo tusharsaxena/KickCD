@@ -6,7 +6,7 @@
 -- layoutBlock is the frame-manipulating orchestrator that positions the
 -- primary + secondary buttons against the grid frame using those helpers.
 --
--- Published on the IconGrid module as IconGrid.LayoutMath so core/IconGrid.lua
+-- Published on the IconGrid module as IconGrid.LayoutMath so modules/IconGrid.lua
 -- can call IconGrid.LayoutMath.layoutBlock(...) and the test harness can exercise
 -- the pure parsers directly. (NOT IconGrid.Layout — that key is the OnEnable
 -- orchestrator method; see the load-order note at the assignment below.)
@@ -15,7 +15,7 @@ local addonName, NS = ...
 local IconGrid = NS:GetModule("IconGrid")
 
 -- Published under a DISTINCT key from the IconGrid:Layout() orchestrator method
--- (core/IconGrid.lua). Sharing the key would clobber the method — this file
+-- (modules/IconGrid.lua). Sharing the key would clobber the method — this file
 -- loads after IconGrid.lua — and break every self:Layout() call (KCD-05).
 local Layout = {}
 IconGrid.LayoutMath = Layout

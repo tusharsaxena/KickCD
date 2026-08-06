@@ -706,7 +706,7 @@ local function build()
     local minors = {}
 
     --- The real LibStub:NewLibrary contract, reproduced because the vendored
-    --- LibKa0s files are loaded as REAL SOURCE by tests/loader.lua rather than
+    --- LibKa0s files are loaded as REAL SOURCE by tests/_kit/loader.lua rather than
     --- faked (testing-§9: a suite that measures the degradation stub instead of
     --- the library is green and tests nothing).
     ---

@@ -872,7 +872,7 @@ function IconGrid:_UnregisterTextIcon(icon)
 end
 
 -- ---------------------------------------------------------------------------
--- Exposed to core/IconGrid.lua
+-- Exposed to modules/IconGrid.lua
 -- ---------------------------------------------------------------------------
 IconGrid.CreateIconWidget = CreateIconWidget
 IconGrid.BuildCurves      = BuildCurves

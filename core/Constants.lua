@@ -91,7 +91,7 @@ Const.PANEL_DEFAULTS_W    = 110
 -- Monospace TTF shipped under media/fonts/ (JetBrains Mono, OFL — license in
 -- media/fonts/JetBrainsMono-OFL.txt) so the debug console's timestamps and
 -- [tags] line up regardless of the user's installed fonts (debug-logging-§2). Registered
--- with LibSharedMedia at load in modules/DebugLog.lua and applied at 10pt.
+-- with LibSharedMedia at load in core/DebugLogSetup.lua and applied at 10pt.
 Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]
 
 -- ---------------------------------------------------------------------------

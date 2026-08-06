@@ -6,7 +6,7 @@
 --
 -- Load order: the TOC's `# Defaults` block sits AFTER `# Core`, so
 -- core/Database.lua cannot capture this tree in a file-scope local. It reaches
--- it at CALL time (Database:InitDB builds the AceDB defaults table, and
+-- it at CALL time (Database:Init builds the AceDB defaults table, and
 -- Database:BackfillLabelStyle reads NS.LABELSTYLE_DEFAULT), which is well after
 -- every file has loaded. modules/ and settings/ load after this file and may
 -- capture at load time, which modules/Castbar.lua does for its two per-state

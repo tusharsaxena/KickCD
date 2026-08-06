@@ -1,0 +1,35 @@
+Checking core/Compat.lua                          OK
+Checking core/Constants.lua                       OK
+Checking core/CoreSetup.lua                       OK
+Checking core/Database.lua                        OK
+Checking core/DebugLogSetup.lua                   OK
+Checking core/KickCD.lua                          OK
+Checking core/LSMPatch.lua                        OK
+Checking core/PerfSetup.lua                       OK
+Checking core/State.lua                           OK
+Checking core/Units.lua                           OK
+Checking core/Util.lua                            OK
+Checking defaults/Profile.lua                     OK
+Checking defaults/Spells.lua                      OK
+Checking locales/enUS.lua                         OK
+Checking modules/Castbar.lua                      OK
+Checking modules/Castbar_Debug.lua                OK
+Checking modules/Castbar_Skin.lua                 OK
+Checking modules/Cooldowns.lua                    OK
+Checking modules/IconGrid.lua                     OK
+Checking modules/IconGrid_Layout.lua              OK
+Checking modules/IconGrid_Render.lua              OK
+Checking modules/UnitLabel.lua                    OK
+Checking settings/Castbar.lua                     OK
+Checking settings/General.lua                     OK
+Checking settings/Icons.lua                       OK
+Checking settings/Label.lua                       OK
+Checking settings/OptionsSetup.lua                OK
+Checking settings/Panel.lua                       OK
+Checking settings/Panel_Render.lua                OK
+Checking settings/Panel_Widgets.lua               OK
+Checking settings/Profiles.lua                    OK
+Checking settings/Slash.lua                       OK
+Checking settings/Spells.lua                      OK
+
+Total: 0 warnings / 0 errors in 33 files
