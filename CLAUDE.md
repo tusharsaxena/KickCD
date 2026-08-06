@@ -29,7 +29,7 @@ the addon on the day it was born, forever, and because it loads as *working cont
 does not go quiet, it gets **followed** (documentation-§3). This root `CLAUDE.md` is the repo's
 only agent brief.
 
-Older audit bundles, review bundles, ledgers and plans under `docs/` predate v2.17.0 and still
+Older audit bundles, review bundles and plans under `docs/` predate v2.17.0 and still
 name the file, and some describe a four-file or a pre-v2.3.0 `agent-context.md`-based set. Those
 are **frozen history** — never treat them as a live requirement, and never "restore" the file.
 

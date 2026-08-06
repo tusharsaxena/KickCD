@@ -176,12 +176,13 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 ## Documentation map
 
 Every `.md` under `docs/` appears in exactly one table below (`documentation-§3`). Frozen and
-generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/pending/`, `docs/superpowers/`, `docs/perf-runs/`.
+generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-runs/`.
 
 ### Required (documentation-§3, Tier 1)
 
 | Doc | Covers |
 |---|---|
+| `ARCHITECTURE.md` | This file — the hub: overview, module map, message bus, slash commands, taint notes, deviations |
 | `scope.md` | What the tracker watches, and the cooldowns it deliberately ignores |
 | `module-map.md` | Every non-vendored file, its responsibility, and load order |
 | `schema.md` | The persisted shape, every default, and the migration seam |
