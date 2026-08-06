@@ -6,11 +6,16 @@ This addon adheres to the **Ka0s WoW Addon Standard** — <https://github.com/tu
 
 ## Standards compliance (read first)
 
-All development in this repo is measured against the Ka0s WoW Addon Standard (URL above) — structure, naming, conventions, packaging, testing. When doing any work here:
+All development in this repo — features, refactors, doc changes — **MUST conform to** the Ka0s WoW Addon Standard (URL above), which is the source of truth for structure, naming, conventions, packaging and testing. When doing any work here:
 
 - **Flag every deviation from the standard.** If a change you're about to make — or existing code you notice — departs from the standard, **call it out explicitly**. Do not silently conform, and do not silently diverge. Then **let the user decide** whether it should be:
-  1. an **intentional deviation** (recorded with a justifying comment, per the standard's SHOULD rule), or
-  2. a signal that the **standard definition itself should change** to accommodate it.
+  1. **An accepted deviation** — this addon intentionally differs; record it as a row in
+     [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) → `## Documented deviations`, shaped
+     `| Rule | What differs | Why | Decided | Re-check trigger |`, where Rule is the `filename-§N`
+     reference. That register is the single home: the reasoning may live in the issue-audit GitHub
+     issue or an audit bundle and the row cites it, but a deviation not in the register is not ratified.
+  2. **A change to the standard itself** — the standard's definition should evolve; the update
+     belongs upstream in the WowAddonStandards repo, after which this addon conforms to the new rule.
 - The user owns that decision — never resolve a standard conflict unilaterally.
 - The current compliance baseline is the frozen audit bundle in `docs/audits/<date>/`. Re-run `/wow-addon:standards-audit` when in doubt; it fetches the living standard and writes a fresh dated bundle.
 
