@@ -90,7 +90,7 @@ In `Helpers.RenderSchema` (and thus every unit panel), wrap each row's `Helpers.
 - `alwaysPerUnit` schema/render flag.
 - New settings panel key `label` ("Text Label").
 
-Each recorded as an intentional deviation with a one-line justification in the relevant doc, per the existing pattern in `docs/conventions.md` / `docs/saved-variables.md` / `docs/module-map.md`.
+Each recorded as an intentional deviation with a one-line justification in the relevant doc, per the existing pattern in `docs/conventions.md` / `docs/schema.md` / `docs/module-map.md`.
 
 ## Testing
 

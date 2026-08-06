@@ -11,11 +11,11 @@ Two UI widgets, each tracked for **two enemy units — target and focus** — sh
 - **Icon grid** — pooled per-spell icon buttons with per-icon ready glow (LibCustomGlow), placed by an orthogonal anchor + grow + dimensions model (13 anchor points × 8 grow directions × free row/col dims). Visual states (ready / cooldown / GCD-suppressed) drive C-side curves so the GCD-vs-real-CD filter never compares secret-tainted remaining time in Lua.
 - **Cast bar** — mirrors its unit's cast/channel via secret-value-gated `UnitCastingDuration` / `UnitChannelDuration`. Stacked dual `StatusBar`s + per-state borders are alpha-curve-switched on the cast's secret `notInterruptible` bool via `C_CurveUtil.EvaluateColorValueFromBoolean`, so per-state appearance is rendered without the addon ever inspecting the protected boolean from Lua.
 
-Both widget types render **the same player cooldowns** (the tracked spell list is player-centric, not unit-specific) against each enabled unit's own cast state — `modules/IconGrid.lua` and `modules/Castbar.lua` are per-unit **instance managers**: `instances[unit]` holds one live frame set per enabled unit (target and focus both enabled by default). Target keeps the legacy global frame names (`KickCDIconGrid`, `KickCDCastbar`); focus gets the suffixed `KickCDIconGridFocus` / `KickCDCastbarFocus`. A focus unit can **link** to target's appearance (`units.focus.link`, default on) so it mirrors target's `icons`/`castbar` styling live; position and the optional identity label stay per-unit even while linked. See [core/Units.lua](../core/Units.lua) (`NS.Units`) for the single place link resolution happens, and [saved-variables.md](saved-variables.md#unitsunit-shape) for the DB shape.
+Both widget types render **the same player cooldowns** (the tracked spell list is player-centric, not unit-specific) against each enabled unit's own cast state — `modules/IconGrid.lua` and `modules/Castbar.lua` are per-unit **instance managers**: `instances[unit]` holds one live frame set per enabled unit (target and focus both enabled by default). Target keeps the legacy global frame names (`KickCDIconGrid`, `KickCDCastbar`); focus gets the suffixed `KickCDIconGridFocus` / `KickCDCastbarFocus`. A focus unit can **link** to target's appearance (`units.focus.link`, default on) so it mirrors target's `icons`/`castbar` styling live; position and the optional identity label stay per-unit even while linked. See [core/Units.lua](../core/Units.lua) (`NS.Units`) for the single place link resolution happens, and [schema.md](schema.md#unitsunit-shape) for the DB shape.
 
 Both widgets honor the master enable, **plus their own unit's per-unit `enabled` toggle**, the shared lock (`db.profile.locked`), and the addon-wide visibility mode (`db.profile.visibility`: `always` / `in_combat` / `target_casting` / `target_casting_interruptible`) — **one lock and one visibility mode still cover both units**, evaluated per-unit against that unit's own cast state. The `_interruptible` mode uses a two-step gate (Show on hostile cast, alpha-mask uninterruptible via `SetAlphaFromBoolean`) because the underlying flag can't be compared in Lua under 12.0.
 
-Each unit can also show a single configurable identity label (`units.<unit>.label`), rendered by `modules/UnitLabel.lua` — a per-unit instance manager, mirroring `IconGrid`/`Castbar`'s pattern, that owns one `FontString` per unit in a holder frame parented to `UIParent` (`KickCDUnitLabelTarget` / `KickCDUnitLabelFocus`) and `SetPoint`-anchors it to that unit's chosen widget (`label.style.attach`: cast bar or icon grid). Only `text` stays per-unit while linked (`NS.Units.Label`); both `show` (`NS.Units.LabelShow`) and `label.style` (position, font, justify, rotation, color — `NS.Units.LabelStyle`) follow the Focus link like `icons`/`castbar` do. See [saved-variables.md](saved-variables.md#unitsunitlabelstyle-shape).
+Each unit can also show a single configurable identity label (`units.<unit>.label`), rendered by `modules/UnitLabel.lua` — a per-unit instance manager, mirroring `IconGrid`/`Castbar`'s pattern, that owns one `FontString` per unit in a holder frame parented to `UIParent` (`KickCDUnitLabelTarget` / `KickCDUnitLabelFocus`) and `SetPoint`-anchors it to that unit's chosen widget (`label.style.attach`: cast bar or icon grid). Only `text` stays per-unit while linked (`NS.Units.Label`); both `show` (`NS.Units.LabelShow`) and `label.style` (position, font, justify, rotation, color — `NS.Units.LabelStyle`) follow the Focus link like `icons`/`castbar` do. See [schema.md](schema.md#unitsunitlabelstyle-shape).
 
 An on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`. The console and the `/kcd perf` step panel are the **library's** windows and wear the **shared Ka0s window edge** (`Core.SKIN` applied by `Core.ApplySkin`: a flat 1px black outer border, a 1px light-gray highlight synthesized inside it, a gold title, a gray divider) — this addon passes neither `applySkin` nor `makeCloseButton`, so both track the library and stay identical to their counterparts in the sibling Ka0s addons. The addon's own on-screen widgets — the icon grids, cast bars and unit labels in `modules/` — are not windows and carry no Ka0s edge; their look is entirely profile-driven (`modules/Castbar_Skin.lua`, `modules/IconGrid_Render.lua`). Don't reach for `Core.SKIN` there.
 
@@ -42,10 +42,10 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 | Subsystem | Lives in | Read |
 |-----------|----------|------|
 | Per-module APIs + roles, TOC load order, AceAddon lifecycle | `core/`, `defaults/`, `modules/`, `settings/` | [module-map.md](module-map.md) |
-| Unit identity + per-unit (target/focus) config resolution, link semantics | `core/Units.lua` | [module-map.md](module-map.md), [saved-variables.md](saved-variables.md#unitsunit-shape) |
+| Unit identity + per-unit (target/focus) config resolution, link semantics | `core/Units.lua` | [module-map.md](module-map.md), [schema.md](schema.md#unitsunit-shape) |
 | Game event → state → message → render pipeline; visibility gate; lock + anchor | `modules/Cooldowns.lua`, `modules/IconGrid.lua`, `modules/Castbar.lua`, `core/State.lua`, `settings/Panel.lua` | [data-flow.md](data-flow.md) |
 | Closed message contract (5 messages, sender/listener/payload) | every module that emits or subscribes | [message-bus.md](message-bus.md) |
-| `KickCDDB` AceDB schema + `DEFAULT_PROFILE` shape + spell-list lifecycle | `defaults/Profile.lua` (the shape), `core/Database.lua` (the AceDB instance + migrations) | [saved-variables.md](saved-variables.md) |
+| `KickCDDB` AceDB schema + `DEFAULT_PROFILE` shape + spell-list lifecycle | `defaults/Profile.lua` (the shape), `core/Database.lua` (the AceDB instance + migrations) | [schema.md](schema.md) |
 | `Compat.*` spell/cast API shims + `State.*` visibility helpers (boundary) | `core/Compat.lua`, `core/State.lua` | [compat-layer.md](compat-layer.md) |
 | 12.0 secret values + cast interruptibility two-step gate + frame mixin | `core/Compat.lua`, `core/State.lua`, `modules/IconGrid.lua`, `modules/Castbar.lua` | [midnight-quirks.md](midnight-quirks.md) |
 | Icon grid layout (anchor + grow + dimensions) | `modules/IconGrid.lua` | [icon-grid.md](icon-grid.md) |
@@ -55,7 +55,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [smoke-tests.md](smoke-tests.md) |
 | Slash-command + debug coverage matrices (what each command produces) | — | [testing.md](testing.md) |
 | Performance instrumentation: the buckets, the offline scenarios, the in-game A/B and suspend | `core/PerfSetup.lua`, `tests/perf.lua` | [performance.md](performance.md), [perf-runs/README.md](perf-runs/README.md) |
-| Code style, saved-variable boundary, `_G.X` vs bare X | every module | [conventions.md](conventions.md) |
+| Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
 
 ## Namespace, naming, and the module publishing pattern
@@ -173,6 +173,52 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 - No automated in-client tests — headless unit tests plus manual in-game smoke tests only (see [smoke-tests.md](smoke-tests.md)).
 - Debug logging is session-only (`NS.State.debug`) and resets on every `/reload`.
 
+## Documentation map
+
+Every `.md` under `docs/` appears in exactly one table below (`documentation-§3`). Frozen and
+generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/pending/`, `docs/superpowers/`, `docs/perf-runs/`.
+
+### Required (documentation-§3, Tier 1)
+
+| Doc | Covers |
+|---|---|
+| `scope.md` | What the tracker watches, and the cooldowns it deliberately ignores |
+| `module-map.md` | Every non-vendored file, its responsibility, and load order |
+| `schema.md` | The persisted shape, every default, and the migration seam |
+| `settings-panel.md` | The panel tree, per-option behavior, and the write seam |
+| `data-flow.md` | Cast/cooldown events in → state → icon grid and cast bar out |
+| `common-tasks.md` | Recipes for the changes made most often here |
+
+### Conditional (documentation-§3, Tier 2)
+
+| Doc | Status | Trigger |
+|---|---|---|
+| `slash-dispatch.md` | Present | 15 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
+| `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
+| `compat-layer.md` | Present | `core/Compat.lua` is 490 lines of addon-specific shimming beyond LibKa0s |
+| `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |
+| `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
+| `debug.md` | Not applicable | The console is `LibKa0s-DebugLog-1.0`’s; the `/kcd debug` subcommands dump state through it rather than adding a surface |
+| `perf-runs/README.md` | Present | The performance harness is wired (`core/PerfSetup.lua`) |
+
+### Verification and record
+
+| Doc | Covers |
+|---|---|
+| `testing.md` | How to run the harness and lint; the green commit gate |
+| `smoke-tests.md` | The in-game smoke-test suite |
+| `test-cases.md` | The generated case inventory (authoritative pass count) |
+| `performance.md` | The addon performance page |
+| `automated-tests/README.md` | What the automated-test record is and how to produce it |
+| `automated-tests/RESULTS.md` | One row per run; generated, never hand-edited |
+
+### Addon-specific (documentation-§3, Tier 3)
+
+| Doc | Covers |
+|---|---|
+| `castbar.md` | The cast bar: skin, layout, and its debug dump |
+| `icon-grid.md` | The icon grid: layout, render, and the C-side alpha curves |
+
 ## Documented deviations
 
 The **single home** for a ratified deviation from the Ka0s WoW Addon Standard (`documentation-§3`).
@@ -187,12 +233,12 @@ table must not become a graveyard.
 
 | Rule | What differs | Why | Decided | Re-check trigger |
 |---|---|---|---|---|
-| `savedvariables-§1` | Two profile migrators run off the **stored shape**, not off `db.global.schemaVersion`. `schemaVersion` and a migration function both exist as the rule requires; these two run beside them, ungated. | A bare `schemaVersion` bump cannot distinguish "pre-`label.style`" from "current", because AceDB's `copyDefaults` has already written the new sub-table into the stored profile before any migrator looks — the same masking trap `FoldLegacyUnits` was written around. Reasoned at [saved-variables.md](saved-variables.md#L212). | 2026-07-16 | An AceDB release where `copyDefaults` no longer backfills before migration runs, **or** a third shape addition under an existing profile field — either makes a version-gated migrator sufficient and retires both shape-driven ones. |
-| `savedvariables-§1` | `DEFAULT_PROFILE` was **restructured** — target/focus nested under `units.<unit>` — rather than only grown, departing from the "a profile shape never changes shape, only grows" expectation the section's example implies. | Target and focus each need independently customizable `icons`/`castbar`; the flat alternative (`icons`, `focusIcons`, `castbar`, `focusCastbar`, …) does not scale to a third unit and duplicates the anchor/label bookkeeping. The shape-driven migration above is the mitigation that makes it safe for existing installs. Reasoned at [saved-variables.md](saved-variables.md#L222). | 2026-07-15 | A third tracked unit is added — at which point the nested shape is load-bearing rather than a departure, and this row retires. |
+| `savedvariables-§1` | Two profile migrators run off the **stored shape**, not off `db.global.schemaVersion`. `schemaVersion` and a migration function both exist as the rule requires; these two run beside them, ungated. | A bare `schemaVersion` bump cannot distinguish "pre-`label.style`" from "current", because AceDB's `copyDefaults` has already written the new sub-table into the stored profile before any migrator looks — the same masking trap `FoldLegacyUnits` was written around. Reasoned at [schema.md](schema.md#L212). | 2026-07-16 | An AceDB release where `copyDefaults` no longer backfills before migration runs, **or** a third shape addition under an existing profile field — either makes a version-gated migrator sufficient and retires both shape-driven ones. |
+| `savedvariables-§1` | `DEFAULT_PROFILE` was **restructured** — target/focus nested under `units.<unit>` — rather than only grown, departing from the "a profile shape never changes shape, only grows" expectation the section's example implies. | Target and focus each need independently customizable `icons`/`castbar`; the flat alternative (`icons`, `focusIcons`, `castbar`, `focusCastbar`, …) does not scale to a third unit and duplicates the anchor/label bookkeeping. The shape-driven migration above is the mitigation that makes it safe for existing installs. Reasoned at [schema.md](schema.md#L222). | 2026-07-15 | A third tracked unit is added — at which point the nested shape is load-bearing rather than a departure, and this row retires. |
 | `options-ui-§1` | `Helpers.LSMValues` / `Helpers.AnchorValues` / `Helpers.AnchorOrder` stay the **host's own** code in `settings/Panel.lua`, shadowing the library's published `O.LSMValues`, rather than being read off the instance like every other member. | `settings/Icons.lua` and `settings/Castbar.lua` evaluate these inside schema-row literals **at FILE LOAD**. Were they instance members, the LibKa0s-absent stub would have to publish them or the page files raise, the rows never register, and a large part of `NS.Settings.Schema` goes missing — taking `/kcd list|get|set|reset` and the profile defaults with it, silently. Keeping them host-side is what lets the degraded stub need **zero** load-time members. The library's `O.LSMValues` is also not a drop-in: it returns a deferred **closure** where the host's returns a **table**, and falls back to `STRINGS.LSM_NONE` ("None") where the host's uses `"Default"`. Measured, not assumed, and reasoned in full at [../settings/OptionsSetup.lua](../settings/OptionsSetup.lua) — the measurement is gated by `tests/test_options_panel.lua`, which loads the addon with the library absent and pins `#NS.Settings.Schema`. | 2026-08-05 | Any KickCD page file stops evaluating these inside a schema-row literal at file load — at which point the load-completing constraint is gone and all three move onto the instance. The pinning case in `tests/test_options_panel.lua` is what makes that visible. |
 | `events-frames-taint-§8` | `core/Compat.lua`'s `/kcd debug interrupt` dump carries its own value renderer (`safeRender` at `:373-381`, used by `describe` at `:387-390`) beside the library's `NS.SafeToString`, which `core/CoreSetup.lua` publishes. The section's closing line makes a second stringifier the deviation, and option (a)'s scoping of the pre-formatting MUST does not touch it. | It is not the printer seam's stringifier and nothing routes through it to reach chat. It renders a diagnostic **value column** — `%q`-quoted strings, `<table>`/`<function>` for a non-scalar, printed beside that value's `type=` and `isSecret=` — which is a dump's cell, not a chat line's argument, and which `SafeToString` does not produce and should not learn to. Its detection is `issecretvalue()`, the engine's own predicate: that is what §8's `table.concat` probe exists to approximate where the predicate is unavailable, not the `..` probe §8 forbids. Every value reaching `describe`'s `string.format` has already been through `safeRender`, so the dump cannot raise on a secret. | 2026-08-05 | `LibKa0s-Core-1.0` publishes a diagnostic value renderer (a `Describe` / `RenderValue`), **or** `safeRender` gains a caller outside the `/kcd debug interrupt` dump — either makes the local copy redundant and retires this row. |
 **Not in this table, and why.** The `KickCD<Widget><UnitTitleCase>` frame-naming notes at
-[conventions.md](conventions.md) and the additive `GRID_LAYOUT` payload note at
+[common-tasks.md](common-tasks.md) and the additive `GRID_LAYOUT` payload note at
 [message-bus.md](message-bus.md) read as deviations but are not: they depart from *this addon's own*
 conventions, not from a numbered rule in the standard, so neither has a `filename-§N` to cite and
 neither belongs in a register of standards deviations. They stay where they are reasoned.

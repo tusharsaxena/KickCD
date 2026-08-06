@@ -43,7 +43,7 @@ Every task's requirements implicitly include these (verbatim from CLAUDE.md / sp
 - Modify `KickCD.toc` — add `modules\UnitLabel.lua` and `settings\Label.lua`.
 - Modify `locales/enUS.lua` — new strings.
 - Modify tests: `test_database.lua`, `test_units.lua`, `test_schema.lua`; add `test_unitlabel` seam test.
-- Modify docs: `saved-variables.md`, `module-map.md`, `conventions.md`, `smoke-tests.md`, `ARCHITECTURE.md`; regenerate `test-cases.md` + README badge.
+- Modify docs: `schema.md`, `module-map.md`, `conventions.md`, `smoke-tests.md`, `ARCHITECTURE.md`; regenerate `test-cases.md` + README badge.
 
 ---
 
@@ -869,12 +869,12 @@ L["Bottom"]              = "Bottom"
 # Task 7: Docs, deviations, badges
 
 **Files:**
-- Modify: `docs/saved-variables.md`, `docs/module-map.md`, `docs/conventions.md`, `docs/ARCHITECTURE.md`, `docs/smoke-tests.md`
+- Modify: `docs/schema.md`, `docs/module-map.md`, `docs/conventions.md`, `docs/ARCHITECTURE.md`, `docs/smoke-tests.md`
 - Regenerate: `docs/test-cases.md` + README `[Tests]` badge
 
 - [ ] **Step 1: Record the deviations** (per the existing intentional-deviation pattern):
   - `docs/conventions.md` — new frame names `KickCDUnitLabelTarget` / `KickCDUnitLabelFocus` (extend the existing frame-name deviation note: the label frames follow the same `KickCD<Widget><UnitTitleCase>` pattern; they are parented to `UIParent`, not a widget, because the label's visibility is deliberately independent of its attach target).
-  - `docs/saved-variables.md` — `units.<unit>.label.style` sub-shape + the shape-driven `BackfillLabelStyle` migration; note `show`/`text` are per-unit and `style` is link-resolved.
+  - `docs/schema.md` — `units.<unit>.label.style` sub-shape + the shape-driven `BackfillLabelStyle` migration; note `show`/`text` are per-unit and `style` is link-resolved.
   - `docs/module-map.md` — new `modules/UnitLabel.lua` (per-unit single label; parented to UIParent, SetPoint-anchored to grid/cast bar); IconGrid/Castbar no longer own labels; new `alwaysPerUnit` schema flag; new `label` settings panel/section.
   - `docs/ARCHITECTURE.md` — add UnitLabel to the module map + message-subscriber list (subscribes CONFIG_CHANGED / PROFILE_CHANGED / GRID_LAYOUT).
 

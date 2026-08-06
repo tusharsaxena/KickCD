@@ -8,7 +8,7 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` fro
 
 Install instructions for all three, with the WSL2/Ubuntu commands that actually work, live in the root [DEPENDENCIES.md](../DEPENDENCIES.md). That file says *what to install*; this one says *how to verify*.
 
-**Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [conventions.md](conventions.md) — which is why the vendored-copy check below is two diffs rather than one.
+**Dual-path WSL.** `/home/tushar/GIT/KickCD/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/` are the same repo via symlink; either path works for git and for file tools. Line endings are CRLF everywhere by `.gitattributes` policy — see [common-tasks.md](common-tasks.md) — which is why the vendored-copy check below is two diffs rather than one.
 
 ## What is the harness, and what is KickCD's
 
@@ -154,7 +154,7 @@ output. Bundles are never edited and never pruned.
 
 Most suites here assert on *behavior* — drive the real code, inspect what it produced. `tests/test_slash_style.lua` also does something different, and it's worth knowing why before writing another guard like it.
 
-It enforces the no-trailing-colon chat rule (slash-commands-§4, see [conventions.md](conventions.md#chat-output)) two ways:
+It enforces the no-trailing-colon chat rule (slash-commands-§4, see [common-tasks.md](common-tasks.md#chat-output)) two ways:
 
 1. **Behaviorally** — drive `/kcd help`, `debug`, `spells`, and the three diagnostic dumps, then inspect every line that reached `DEFAULT_CHAT_FRAME`. New sub-headers under those paths are covered without anyone adding a case.
 2. **By reading the sources** — scan every `.lua` under `core/`, `modules/`, `settings/`, `defaults/`, `locales/` for a string literal ending in `:` that closes a call.

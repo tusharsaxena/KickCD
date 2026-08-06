@@ -15,7 +15,7 @@ NS.Database = Database
 
 -- ---------------------------------------------------------------------------
 -- Schema version (the defaults tree is defaults/Profile.lua — see
--- docs/saved-variables.md)
+-- docs/schema.md)
 -- ---------------------------------------------------------------------------
 
 -- Schema version. Increment whenever a non-additive change is made to

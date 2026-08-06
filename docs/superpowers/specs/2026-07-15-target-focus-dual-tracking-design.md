@@ -197,7 +197,7 @@ Deferred, cheaply addable later on the unit-keyed instance model:
 | Suffixed global frame names (`KickCDIconGridFocus`, `KickCDCastbarFocus`) | Extends "frame names stay literally `KickCD`" | Intentional; document in conventions/module-map |
 | `Ka0s_KickCD_GRID_LAYOUT` gains `unit` field | Payload change within closed bus | Update `docs/message-bus.md` |
 | Module singleton → per-unit instance manager | Internal structure change | Update `docs/module-map.md` / `ARCHITECTURE.md` |
-| DB restructure to `units.*` + migration | Saved-variables shape change | Update `docs/saved-variables.md`; migration test |
+| DB restructure to `units.*` + migration | Saved-variables shape change | Update `docs/schema.md`; migration test |
 | One lock + one visibility mode | **Preserved** — no deviation | — |
 
 The user owns any decision to record these as intentional deviations vs. amend the standard.

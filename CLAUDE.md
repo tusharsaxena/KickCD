@@ -20,7 +20,7 @@ When in doubt, treat conformance as a hard requirement and ask.
 
 The canonical `docs/` set is exactly three files: **`ARCHITECTURE.md`** (what this addon is),
 **`testing.md`** (how to verify) and **`smoke-tests.md`** (in-game checks) — plus the generated
-`test-cases.md` and the topic-detail docs.
+`test-cases.md`, and the topic-detail docs — Tier 1 (`scope.md`, `module-map.md`, `schema.md`, `settings-panel.md`, `data-flow.md`, `common-tasks.md`) is always present, and `ARCHITECTURE.md` → `## Documentation map` lists the rest.
 
 **`docs/agent-context.md` does not exist in this repo and MUST NOT be created.** The standard
 deleted it in **v2.17.0**; shipping it is **anti-pattern #49**. It held `NEW_ADDON_CONTEXT.md` —
@@ -37,10 +37,10 @@ are **frozen history** — never treat them as a live requirement, and never "re
 
 This root file is a stub (per standard documentation-§2). Read these before touching code:
 
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what this addon is: design overview, module map, namespace + module publishing pattern, message bus, slash commands, taint notes, invariants, and the index of every topic-detail doc. **Start here.**
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what this addon is: design overview, module map, namespace + module publishing pattern, message bus, slash commands, taint notes, invariants, and the `## Documentation map` listing every page under `docs/` (`documentation-§3`). **Start here.**
 - **[docs/testing.md](docs/testing.md)** — how to verify: the headless harness, lint, the local toolchain, the vendored-copy diffs, and the slash/debug coverage matrices.
 - **[docs/midnight-quirks.md](docs/midnight-quirks.md)** — required reading before touching cooldown/cast/visibility code (12.0 secret values).
-- **[docs/conventions.md](docs/conventions.md)** — code style, chat-output rule, saved-variable boundary, line endings.
+- **[docs/common-tasks.md](docs/common-tasks.md)** — code style, chat-output rule, saved-variable boundary, line endings.
 
 ## Hard rules
 

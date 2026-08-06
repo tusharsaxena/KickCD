@@ -113,4 +113,4 @@ is what flushes a finished run to disk.
 
 The perf ring is deliberately a separate top-level global rather than part of the AceDB tree, so it
 is never cloned by "copy profile", wiped by "reset profile", or swapped out by a profile switch —
-see [saved-variables.md](../saved-variables.md).
+see [schema.md](../schema.md).

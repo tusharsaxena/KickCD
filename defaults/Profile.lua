@@ -12,7 +12,7 @@
 -- capture at load time, which modules/Castbar.lua does for its two per-state
 -- fallbacks.
 --
--- See docs/saved-variables.md for the shape and its migration history.
+-- See docs/schema.md for the shape and its migration history.
 
 local addonName, NS = ...
 
@@ -241,7 +241,7 @@ local DEFAULT_PROFILE = {
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live
     -- (NS.Units resolves the link). enabled/anchors/label.text stay per-unit
-    -- even while linked. See docs/saved-variables.md.
+    -- even while linked. See docs/schema.md.
     units = {
         target = {
             enabled = true,

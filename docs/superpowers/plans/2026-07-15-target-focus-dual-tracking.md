@@ -106,7 +106,7 @@ In `core/Database.lua`, wrap the existing `icons = {…}` and `castbar = {…}` 
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live
     -- (NS.Units resolves the link). enabled/anchors/label.text stay per-unit
-    -- even while linked. See docs/saved-variables.md.
+    -- even while linked. See docs/schema.md.
     units = {
         target = {
             enabled = true,
@@ -811,7 +811,7 @@ end
 ## Task 10: Docs, message-bus, saved-variables, badges
 
 **Files:**
-- Modify: `docs/message-bus.md` (GRID_LAYOUT payload gains `unit`), `docs/saved-variables.md` (`db.profile.units.*` shape + migration), `docs/module-map.md` + `docs/ARCHITECTURE.md` (instance-manager structure; new `core/Units.lua`; new frame names `KickCDIconGridFocus`/`KickCDCastbarFocus`; the `Ka0s_KickCD_CONFIG_CHANGED` `units` section), `docs/conventions.md` (frame-name extension), `docs/icon-grid.md` + `docs/castbar.md` (per-unit notes), `docs/smoke-tests.md` (new focus scenarios), `docs/scope.md` (focus now in scope)
+- Modify: `docs/message-bus.md` (GRID_LAYOUT payload gains `unit`), `docs/schema.md` (`db.profile.units.*` shape + migration), `docs/module-map.md` + `docs/ARCHITECTURE.md` (instance-manager structure; new `core/Units.lua`; new frame names `KickCDIconGridFocus`/`KickCDCastbarFocus`; the `Ka0s_KickCD_CONFIG_CHANGED` `units` section), `docs/conventions.md` (frame-name extension), `docs/icon-grid.md` + `docs/castbar.md` (per-unit notes), `docs/smoke-tests.md` (new focus scenarios), `docs/scope.md` (focus now in scope)
 - Modify: `docs/test-cases.md` (regenerate) + `README.md` (`[Tests]` badge count)
 
 - [ ] **Step 1: Regenerate the test inventory + badge.**
