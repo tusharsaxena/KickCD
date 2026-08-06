@@ -42,6 +42,23 @@ This root file is a stub (per standard documentation-§2). Read these before tou
 - **[docs/midnight-quirks.md](docs/midnight-quirks.md)** — required reading before touching cooldown/cast/visibility code (12.0 secret values).
 - **[docs/common-tasks.md](docs/common-tasks.md)** — code style, chat-output rule, saved-variable boundary, line endings.
 
+## Vendored library provenance
+
+Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.8.1 (MIT). That line is the answer to
+"which LibKa0s does this build carry?", so nobody has to grep minors out of `libs/LibKa0s/*.lua`. It
+lives here rather than in `README.md` because it answers a maintainer's question on a page written
+for maintainers; the README is player-facing and no longer carries a library inventory at all.
+
+`tests/test_vendor_sync.lua` greps the version out of *this* file and compares both vendored payloads
+— `libs/LibKa0s/` and `tests/_kit/` — against that tag in the sibling checkout. There is no fallback
+to `README.md`: a stale line here is a red suite, not a silent one. **The version above moves in the
+same commit as the vendored bytes**, never as a follow-up.
+
+Also bundled, and not gated by the above: Ace3 (AceAddon, AceConfig, AceConsole, AceDB, AceDBOptions,
+AceEvent, AceGUI and the SharedMedia widgets), CallbackHandler-1.0, LibCustomGlow-1.0,
+LibSharedMedia-3.0 and LibStub. Everything ships inside the addon zip from `libs/`; there is no build
+step that fetches them.
+
 ## Hard rules
 
 - **Never auto-stage / commit / push.** The user controls `git add` / `commit` / `push`. Leave edits in the working tree; don't touch the index. (`/wow-addon:commit` is the one explicit exception.)
