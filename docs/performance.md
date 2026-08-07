@@ -5,7 +5,7 @@ Two harnesses answer two different questions, and neither substitutes for the ot
 | | Question | How | Where the output lands |
 |---|---|---|---|
 | **Offline** ([`tests/perf.lua`](../tests/perf.lua)) | Does a hot path allocate more than it used to? | `lua tests/perf.lua`, under the headless mock | the run bundle, `docs/automated-tests/<run>/perf.txt` + `perf.json` |
-| **In-game** (`/kcd perf`) | What does this addon actually cost a live client, and is that cost even ours? | a guided A/B in a real client | [`docs/perf-runs/`](perf-runs/) |
+| **In-game** (`/kcd perf`) | What does this addon actually cost a live client, and is that cost even ours? | a guided A/B in a real client | a frozen bundle under [`docs/perf-analysis/`](perf-analysis/) |
 
 WoW's built-in Addon Profiler cannot answer the second one. It bills a **shared** library's dispatch
 frame to whichever addon created it, so enabling and disabling addons moves the blame around and the
@@ -151,7 +151,9 @@ sender of a message [message-bus.md](message-bus.md) governs.
    — or just click through the step panel, which runs the identical code path.
 4. `/kcd perf finish`, then `/kcd perf report` for totals and `/kcd perf dump` for the record.
    `/reload` to flush `KickCDPerfDB` to disk.
-5. Export it and commit it under [`docs/perf-runs/`](perf-runs/) if it is worth keeping.
+5. Press **Copy** on the debug-log window and commit the run as a bundle under
+   [`docs/perf-analysis/`](perf-analysis/) if it is worth keeping. One paste carries the report, the
+   dump and the run's lifecycle lines, which is all three of the bundle's artifacts.
 
 Caveat worth knowing before you read a delta: `fps.deltaMsPerFrame` has a resolution floor. Treat a
 delta below roughly 0.5 ms/frame as **unresolved** rather than as zero, and read the bucket figures
@@ -161,14 +163,19 @@ judge that from the arms (two arms at the same frame time, or at a round one lik
 
 ## 3. Where the numbers go
 
-- **In-game captures worth keeping** → [`docs/perf-runs/`](perf-runs/), standing and cumulative, so
-  runs compare across addon versions. That directory's `README.md` documents the naming and the
-  schema.
+- **In-game captures worth keeping** → [`docs/perf-analysis/`](perf-analysis/), standing and
+  cumulative, so captures compare across addon versions. One **frozen bundle per capture** at
+  `docs/perf-analysis/<YYYYMMDD-HHMMSS>/` — the stamp is local time taken from the record's own
+  `timestamp`, so a capture written up a week later still sorts where it happened — holding exactly
+  three artifacts: `report.md` (what the client printed, plus the run's lifecycle lines),
+  `dump.json` (the record, verbatim, one line) and `ANALYSIS.md` (the write-up). That directory's
+  `README.md` documents the naming, the artifacts and the schema, and indexes the captures taken so
+  far.
 - **Offline runs** → the bundle for the run that produced them, under
   [`docs/automated-tests/`](automated-tests/). They are reproducible from the repo, so they do not
   need a standing store.
 - **An interpretation without its record is an assertion** (`performance-§8`). If a decision is taken
-  off a capture, the capture gets committed and the decision cites it by filename. `core/PerfSetup.lua`
+  off a capture, the capture gets committed and the decision cites its bundle. `core/PerfSetup.lua`
   carries a note saying exactly which of its decisions predate this rule and therefore quote no
   figures.
 

@@ -102,12 +102,12 @@ NS.Perf = lib:New({
     },
 
     -- NOTE ON EVIDENCE. Both decisions below were taken off an early live
-    -- capture that predates docs/perf-runs/ and was never committed. Under
+    -- capture that predates docs/perf-analysis/ and was never committed. Under
     -- performance-§8 an interpretation without its record is an assertion, not
     -- evidence, so the figures that used to be quoted here have been removed
     -- rather than left reading as fact. What survives is the reasoning, which
-    -- stands on its own; the next in-game capture lands in docs/perf-runs/ and
-    -- can be cited by filename from then on.
+    -- stands on its own; the next in-game capture lands in a frozen bundle at
+    -- docs/perf-analysis/<YYYYMMDD-HHMMSS>/ and can be cited from then on.
     --
     -- `pollSpell` WAS left out at first, on the grounds that its inline
     -- early-return guards would make a single fall-through bracket under-count.

@@ -110,8 +110,9 @@ signal and the timings as host noise. Timings are for orientation only: compare 
 a run, never across runs or machines, and never read a millisecond figure as a threshold. Perf never
 fails a run and never blocks a commit; it does gate the **tag**, along with the other three suites
 (`automated-tests-§3`).
-In-game captures are a separate store and remain in `docs/perf-runs/` — a script cannot produce
-them, and the two directories are deliberately not merged.
+In-game captures are a separate store and live in `docs/perf-analysis/`, one frozen
+`<YYYYMMDD-HHMMSS>/` bundle per capture — a script cannot produce them, and the two directories are
+deliberately not merged.
 
 ## Complexity watch list
 

@@ -54,7 +54,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 | Slash dispatch tables and command catalog | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [smoke-tests.md](smoke-tests.md) |
 | Slash-command + debug coverage matrices (what each command produces) | — | [testing.md](testing.md) |
-| Performance instrumentation: the buckets, the offline scenarios, the in-game A/B and suspend | `core/PerfSetup.lua`, `tests/perf.lua` | [performance.md](performance.md), [perf-runs/README.md](perf-runs/README.md) |
+| Performance instrumentation: the buckets, the offline scenarios, the in-game A/B and suspend | `core/PerfSetup.lua`, `tests/perf.lua` | [performance.md](performance.md), [perf-analysis/README.md](perf-analysis/README.md) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
 
@@ -176,7 +176,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 ## Documentation map
 
 Every `.md` under `docs/` appears in exactly one table below (`documentation-§3`). Frozen and
-generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-runs/`.
+generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-analysis/`.
 
 ### Required (documentation-§3, Tier 1)
 
@@ -200,7 +200,7 @@ generated directories are named once each and never enumerated per run: `docs/au
 | `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `debug.md` | Not applicable | The console is `LibKa0s-DebugLog-1.0`’s; the `/kcd debug` subcommands dump state through it rather than adding a surface |
-| `perf-runs/README.md` | Present | The performance harness is wired (`core/PerfSetup.lua`) |
+| `perf-analysis/README.md` | Present | The performance harness is wired (`core/PerfSetup.lua`) |
 
 ### Verification and record
 
