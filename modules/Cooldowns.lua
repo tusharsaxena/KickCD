@@ -18,7 +18,7 @@
 --     Blizzard C methods. The IconGrid module routes it to:
 --       - Cooldown:SetCooldownFromDurationObject  (swipe)
 --       - FontString:SetFormattedText             (countdown text)
---       - cdObj:EvaluateRemainingDuration(curve)  (GCD-vs-real-CD filter
+--       - cdObj:EvaluateTotalDuration(curve)      (GCD-vs-real-CD filter
 --                                                  for alpha/tint visuals)
 --   * UNIT_SPELLCAST_SUCCEEDED is suppressed by Blizzard for protected
 --     interrupts (Mind Freeze, Pummel, Kick, ...) — the event simply does
@@ -26,9 +26,11 @@
 --     tracker can never disambiguate "real CD" from "just GCD" for the
 --     primary icon. Instead, we hand the duration object straight to the
 --     IconGrid; the IconGrid evaluates it against a step-shaped curve
---     (ready alpha for remaining ≤ ~GCD upper bound, cooldown alpha
---     beyond), and Blizzard's curve evaluation runs C-side so no Lua
---     comparison ever happens.
+--     keyed on the cooldown's TOTAL length (ready alpha for a total ≤ ~GCD
+--     upper bound, cooldown alpha beyond), and Blizzard's curve evaluation
+--     runs C-side so no Lua comparison ever happens. Keying on the
+--     REMAINING time instead reads the last ~1.5s of a real cooldown as a
+--     GCD and shows the spell ready before it is.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
 -- false (master disable); a "general" Ka0s_KickCD_CONFIG_CHANGED triggers a
@@ -148,7 +150,7 @@ local function buildSpellState(spellID)
     -- on it from Lua; the IconGrid passes it through to
     -- Cooldown:SetCooldownFromDurationObject (swipe),
     -- FontString:SetFormattedText (text), and
-    -- cdObj:EvaluateRemainingDuration(curve) (GCD-vs-real-CD visual filter)
+    -- cdObj:EvaluateTotalDuration(curve) (GCD-vs-real-CD visual filter)
     -- — all of which accept secret values via C-side argument paths.
     local cdObject = isActive and NS.Compat.GetSpellCooldownDuration(spellID) or nil
 

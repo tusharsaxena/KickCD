@@ -153,10 +153,12 @@ drifts from the code is worse than one that names none.
 
 - **Secret numbers.** Operate on `isActive` / `isEnabled` (plain bools) for decisions; pass the
   `cdObject` from `Compat.GetSpellCooldownDuration` opaquely to C methods
-  (`SetCooldownFromDurationObject`, `SetFormattedText`, `EvaluateRemainingDuration`); never bind
-  `:GetRemainingDuration()` to a Lua local in combat. Visual decisions that depend on remaining time
+  (`SetCooldownFromDurationObject`, `SetFormattedText`, `EvaluateTotalDuration` /
+  `EvaluateRemainingDuration`); never bind
+  `:GetRemainingDuration()` to a Lua local in combat. Visual decisions that depend on a cooldown's timings
   (the GCD-vs-real-CD filter) live in C-side curves built by `IconGrid.BuildCurves` and applied via
-  `SetAlphaFromBoolean` / `SetVertexColor`.
+  `SetAlphaFromBoolean` / `SetVertexColor`. That filter reads the cooldown's **total** length, not
+  its remaining time — near the end of a real cooldown the two are indistinguishable.
 - **Secret bools and strings.** Never compare `UnitCastingInfo.notInterruptible` / `name` / `texture` /
   `spellID` in Lua; either pass straight to a Blizzard C method that accepts secrets
   (`Texture:SetTexture`, `FontString:SetText`, `Frame:SetAlphaFromBoolean`,

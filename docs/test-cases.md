@@ -431,6 +431,14 @@ badge and any count quoted in the docs must agree with it.
 - unlinking picks up focus's own cooldown TINT, not target's
 - a per-unit enable toggle also refreshes curves
 
+### test_icongrid_gcd_classify.lua (5)
+
+- a real cooldown in its final second still renders as ON cooldown
+- a GCD-only lockout still renders as READY
+- the swipe stays visible through a real cooldown's final second
+- the swipe is still suppressed for a GCD-only lockout
+- classification falls back to remaining on a client without the total API
+
 ### test_icongrid_buildlist.lua (20)
 
 - BuildActiveList renders one icon per enabled entry
@@ -935,6 +943,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
+| test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 20 |
 | test_icongrid_glowgate.lua | 8 |
 | test_lifecycle.lua | 4 |
@@ -962,4 +971,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **756** |
+| **Total** | **761** |

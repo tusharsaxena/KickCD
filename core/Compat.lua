@@ -109,6 +109,12 @@ end
 --     :EvaluateRemainingDuration(curve) — pass remaining through a numeric
 --                                         or color curve; same caveat
 --                                         applies to the result.
+--     :EvaluateTotalDuration(curve)     — same, but against the cooldown's
+--                                         TOTAL length. This is the one that
+--                                         separates a GCD lockout from a real
+--                                         cooldown, since the two are
+--                                         indistinguishable by remaining time
+--                                         once the real one nears its end.
 --     The object itself can be handed straight to
 --     Cooldown:SetCooldownFromDurationObject for the radial swipe — that C
 --     method handles the secret value internally.

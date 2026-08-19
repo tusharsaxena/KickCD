@@ -33,11 +33,13 @@ NS.GRAY = "|cff9d9d9d"
 
 -- Upper bound on the global cooldown duration. WoW's GCD is haste-modified
 -- (typically 1.0–1.5s); 1.6s comfortably covers the unhasted case plus a
--- small fp epsilon. The alpha / tint / GCD-suppress curves in IconGrid
--- treat any remaining ≤ this value as "GCD only — show as ready" and
--- remaining > this value as "real CD — apply visual states." Sub-second
--- precision isn't critical because the transition is a step, not a
--- gradient.
+-- small fp epsilon. The alpha / tint / GCD-suppress curves in IconGrid are
+-- evaluated against the cooldown's TOTAL length: a total ≤ this value is
+-- "GCD only — show as ready", a total above it is "real CD — apply visual
+-- states." Reading the REMAINING time instead conflates the tail of a real
+-- cooldown with a GCD and brightens the icon ~1.5s early; see
+-- evaluateByTotal in modules/IconGrid_Render.lua. Sub-second precision
+-- isn't critical because the transition is a step, not a gradient.
 Const.GCD_UPPER = 1.6
 
 -- ---------------------------------------------------------------------------

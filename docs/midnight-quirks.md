@@ -41,7 +41,7 @@ This bites any "did the state change?" diff that includes the handle. `modules/C
 
 **Do not "fix" this by comparing handle presence instead of identity in `StateChanged`.** The re-emit is load-bearing twice over:
 
-1. `Icon:Apply` evaluates the alpha, tint and GCD-suppression curves **at emit time** and sets static values from them. Nothing else re-runs them — the shared 0.1s ticker (`_tickAllTextIcons`) only refreshes the countdown *text*. The re-emit is what re-crosses the step-shaped curves' `GCD_UPPER` threshold as a cooldown winds down, so cutting it freezes those visuals mid-cooldown.
+1. `Icon:Apply` evaluates the alpha, tint and GCD-suppression curves **at emit time** and sets static values from them. Nothing else re-runs them — the shared 0.1s ticker (`_tickAllTextIcons`) only refreshes the countdown *text*. Those curves are read against the cooldown's **total** length (`evaluateByTotal`), so a given cooldown classifies the same for its whole life and the re-emit is no longer what keeps them honest *within* one cooldown — but the handle it carries still has to reach the swipe, and the GCD → real-cooldown handoff below still needs it.
 2. The GCD → real-cooldown transition changes the handle without changing `isActive` (both are "on cooldown"). Presence-only comparison would miss it and leave the icon rendering the expired GCD handle.
 
 The fix that IS correct is to separate the two decisions: emit on `StateChanged` (identity included), but gate the debug line on `MaterialChange`, which keys on `ready` / `isActive` / handle **presence** / charges. Same pattern as `Cooldowns:_logRebuild`'s material-change signature.

@@ -84,8 +84,9 @@ end
 --- Build the shared 0/1 GCD-suppression curve. Config-independent, so it is
 --- built once and never rebuilt.
 ---
---- Steps from 0 (hide swipe + text) to 1 (show) at GCD_UPPER. Same shape as a
---- unit's alphaCurve but the values are visibility flags rather than alphas.
+--- Steps from 0 (hide swipe + text) to 1 (show) at GCD_UPPER, read against the
+--- cooldown's TOTAL length. Same shape as a unit's alphaCurve but the values
+--- are visibility flags rather than alphas.
 --- The output rides through SetAlphaFromBoolean(true, value, 0) when
 --- cfg.suppressGCDSwipe is on.
 local function buildGcdSuppressCurve()
@@ -123,7 +124,8 @@ local function buildUnitCurves(unit)
 
     set = { sig = sig }
 
-    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER. The 0.001s gap
+    -- Step from readyAlpha to cooldownAlpha at GCD_UPPER, read against the
+    -- cooldown's TOTAL length (evaluateByTotal). The 0.001s gap
     -- between adjacent points yields a sharp transition under linear
     -- interpolation (LuaCurveType.Linear is the default).
     set.alpha = _G.C_CurveUtil.CreateCurve()
@@ -565,18 +567,44 @@ function Icon:UpdateGlow(state)
     if self.glow then self.glow:SetAlpha(1) end
 end
 
+--- Evaluate one of the step curves against the cooldown's TOTAL length.
+---
+--- The curves ask "is this a real cooldown or just the GCD?", and that is a
+--- question about how LONG the cooldown is, not how much of it is left. Read
+--- off the remaining time instead (which is what shipped first), the final
+--- GCD_UPPER seconds of a real 15s interrupt cooldown are indistinguishable
+--- from a 1.5s GCD lockout, so the icon brightens — swipe and countdown
+--- suppressed with it — a second or two before the spell is actually
+--- castable. On an interrupt that is precisely the window being watched.
+---
+--- :EvaluateTotalDuration classifies once and never drifts: a GCD totals
+--- ~1.5s for its whole life, a real cooldown totals 15s+ for its whole life.
+--- Like its remaining-based sibling it runs C-side and returns a
+--- possibly-secret value — pass the result straight on to a C method.
+---
+--- docs/midnight-quirks.md records the DurationObject surface as a measured
+--- 12.0.7 snapshot rather than a contract, so a client without the method
+--- falls back to the old approximation instead of erroring.
+local function evaluateByTotal(cdObject, curve)
+    if cdObject.EvaluateTotalDuration then
+        return cdObject:EvaluateTotalDuration(curve)
+    end
+    return cdObject:EvaluateRemainingDuration(curve)
+end
+
 -- Apply the configured GCD-suppression alpha mask to the cooldown
 -- swipe + countdown text using a duration object. When
--- cfg.suppressGCDSwipe is on, the gcdSuppressCurve evaluates to 0 below
--- GCD_UPPER (hide) and 1 above (show). The result is fed through
--- SetAlphaFromBoolean(true, value, 0) — both args may be secret-tainted
+-- cfg.suppressGCDSwipe is on, the gcdSuppressCurve evaluates to 0 for a
+-- cooldown whose TOTAL is below GCD_UPPER (hide) and 1 above (show). The
+-- result is fed through SetAlphaFromBoolean(true, value, 0) — both args
+-- may be secret-tainted
 -- in combat but the C method handles it.
 local function applyGcdSuppressionAlpha(icon, cdObject)
     local cfg = icon.cfg or NS.Units.Icons(icon.unit or "target")
     if cfg and cfg.suppressGCDSwipe and gcdSuppressCurve and cdObject
         and icon.cooldown.SetAlphaFromBoolean and icon.cooldownText.SetAlphaFromBoolean
     then
-        local visAlpha = cdObject:EvaluateRemainingDuration(gcdSuppressCurve)
+        local visAlpha = evaluateByTotal(cdObject, gcdSuppressCurve)
         icon.cooldown:SetAlphaFromBoolean(true, visAlpha, 0)
         icon.cooldownText:SetAlphaFromBoolean(true, visAlpha, 0)
     else
@@ -634,7 +662,7 @@ end
 --- the icon-body alpha / tint so a GCD-only window still reads as "ready";
 --- a real CD past the GCD threshold dims and tints the icon.
 local function renderFullCooldown(icon, state, curves, stateWork)
-    local alpha = state.cdObject:EvaluateRemainingDuration(curves.alpha)
+    local alpha = evaluateByTotal(state.cdObject, curves.alpha)
     -- SetAlphaFromBoolean accepts secret values for its alpha args.
     -- Passing `true` as the condition selects the second arg
     -- unconditionally.
@@ -645,7 +673,7 @@ local function renderFullCooldown(icon, state, curves, stateWork)
     end
 
     if curves.tint then
-        local color = state.cdObject:EvaluateRemainingDuration(curves.tint)
+        local color = evaluateByTotal(state.cdObject, curves.tint)
         if color and color.GetRGB then
             icon.icon:SetVertexColor(color:GetRGB())
         end

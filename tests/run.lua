@@ -146,6 +146,7 @@ local SUITES = {
     "test_icongrid_render",
     "test_icongrid_curves",
     "test_icongrid_curve_link",
+    "test_icongrid_gcd_classify",
     "test_icongrid_buildlist",
     "test_icongrid_glowgate",
     "test_lifecycle",

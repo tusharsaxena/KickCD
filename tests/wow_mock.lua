@@ -1054,19 +1054,28 @@ local function build()
 
     --- Build a stand-in DurationObject. Mirrors the live API's two defining
     --- traits: a FRESH object per call, and getters that may be secret.
+    --
+    --- `total` is what separates a GCD-only lockout from the tail of a real
+    --- cooldown: both can sit at the same tiny REMAINING, and only the total
+    --- length tells them apart. Defaults to `remaining` so the many callers
+    --- that only care about a deep cooldown keep reading the same.
     -- @param remaining number  value EvaluateRemainingDuration resolves to
-    function mocks.__makeDurationObject(remaining)
+    -- @param total     number  value EvaluateTotalDuration resolves to
+    function mocks.__makeDurationObject(remaining, total)
         local o = {}
-        function o.EvaluateRemainingDuration(_, curve)
+        local function evalAt(curve, at)
             -- Read the curve's actual control points so the caller's CHOICE of
-            -- curve is observable. Falls back to the raw remaining (number) or
+            -- curve is observable. Falls back to the raw value (number) or
             -- a stand-in color only when a curve carries no points at all.
-            local v = evaluateCurve(curve, remaining or 0.4)
+            local v = evaluateCurve(curve, at)
             if v ~= nil then return v end
             if curve and curve.__kind == "color" then return makeColor(1, 0.4, 0.4) end
-            return remaining or 0.4
+            return at
         end
+        function o.EvaluateRemainingDuration(_, curve) return evalAt(curve, remaining or 0.4) end
+        function o.EvaluateTotalDuration(_, curve) return evalAt(curve, total or remaining or 0.4) end
         function o.GetRemainingDuration() return remaining or 0.4 end
+        function o.GetTotalDuration() return total or remaining or 0.4 end
         function o.HasSecretValues() return false end
         return o
     end

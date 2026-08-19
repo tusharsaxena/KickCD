@@ -257,7 +257,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Expect.**
 - The swipe animates smoothly with no stutter or restart, and the countdown text ticks continuously.
-- The icon brightens from the cooldown alpha/tint to ready visuals in the final ~1.6s (the `GCD_UPPER` curve step) — this is the transition most at risk from over-gating.
+- The icon holds the cooldown alpha/tint for the **whole** cooldown, including its final second, and snaps to ready visuals only when the spell is actually castable. Brightening early is the regression the `evaluateByTotal` classification exists to prevent — the curves read the cooldown's total length, not its remaining time.
 - Glow type / color changes take effect immediately, without waiting for the cooldown to end.
 - Glow follows the target's cast start/stop while the spell stays on cooldown throughout.
 - The charges badge keeps updating in combat, where the count is secret-tainted.
@@ -534,7 +534,7 @@ Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use 
 - Re-ticking the checkbox immediately reverts focus to target's dim-red values, with no `/reload`.
 - Zero Lua errors throughout.
 
-**Note.** Inside the ~1.6s GCD window both icons correctly show ready visuals (the curves step at `Const.GCD_UPPER`). If both look bright and untinted, wait a moment — that is not a failure.
+**Note.** While only the GCD is running (no real cooldown on the watched spell) both icons correctly show ready visuals — the curves classify that lockout by its total length, below `Const.GCD_UPPER`. If both look bright and untinted right after you press something else, wait a moment — that is not a failure.
 
 **Cleanup.** Icons panel → **Defaults**.
 
