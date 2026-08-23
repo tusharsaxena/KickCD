@@ -17,6 +17,7 @@ local NS, mocks = T.NS, T.mocks
 -- next case can compare it against the XML rather than trusting this list.
 local MAJORS = {
     "LibKa0s-Core-1.0",
+    "LibKa0s-Media-1.0",
     "LibKa0s-DebugLog-1.0",
     "LibKa0s-Slash-1.0",
     "LibKa0s-Options-1.0",
@@ -441,4 +442,59 @@ test("no seam re-spells the cause in its own words", function()
         "a seam spells the cause itself instead of appending to NS.LIBKA0S_MISSING: "
         .. table.concat(offenders, " | "))
     assertEqual(users, 5, "all five seams must READ the shared clause")
+end)
+
+test("CoreSetup: the close button is the library's, told which addon folder is asking", function()
+    -- The one Core seam that is WRAPPED rather than handed over. LibKa0s draws this
+    -- collection's own close mark when it can build a texture path, and it cannot work
+    -- that out for itself: it is vendored, so there is no one path to it and a copy
+    -- cannot know which folder it was copied into. The wrapper supplies the answer
+    -- once, for every close control this addon builds.
+    --
+    -- THE ARGUMENT IS WHAT IS TESTED, not the appearance. A two-argument passthrough
+    -- onto a three-argument library function compiles, runs and passes every other
+    -- case here while the panel quietly keeps its multiplication sign
+    -- (anti-patterns-§64).
+    -- red under: NS.MakeCloseButton = lib.MakeCloseButton, or dropping addonName.
+    local seen, sawFrame, sawClick
+    local lib = mocks.LibStub("LibKa0s-Core-1.0", true)
+    local real = lib.MakeCloseButton
+    lib.MakeCloseButton = function(parent, onClick, name)
+        sawFrame, sawClick, seen = parent, onClick, name
+        return nil
+    end
+    local frame, click = mocks.CreateFrame("Frame"), function() end
+    NS.MakeCloseButton(frame, click)
+    lib.MakeCloseButton = real
+
+    assertEqual(seen, "KickCD",
+        "the library was not told which addon folder to build the texture path from")
+    assertTrue(sawFrame == frame, "the wrapper dropped the parent frame")
+    assertTrue(sawClick == click, "the wrapper dropped the click handler")
+end)
+
+test("CoreSetup: nothing reaches the close-button seam around the wrapper", function()
+    -- One wrapper only works if it is the only route. core/PerfSetup.lua used to call
+    -- NS.DebugLog.MakeCloseButton directly, which is the same library function reached
+    -- without the folder name -- correct against a two-argument vendored copy and
+    -- silently wrong the instant a three-argument one arrives.
+    -- red under: any addon file calling MakeCloseButton other than through NS.
+    local offenders = {}
+    for _, rel in ipairs(T.tocFiles) do
+        -- core/CoreSetup.lua is the wrapper's own home: it is the one file that is
+        -- SUPPOSED to name the library seam, and it is the file this case protects.
+        local fh = rel ~= "core/CoreSetup.lua" and io.open(T.root .. "/" .. rel, "r")
+        if fh then
+            local src = fh:read("*a"); fh:close()
+            for line in src:gmatch("[^\r\n]+") do
+                -- The CALL shape, so the degradation stub's own member (an assignment, not a
+                -- call) is not mistaken for a second route to the library.
+                if not line:match("^%s*%-%-") and line:find("MakeCloseButton(", 1, true)
+                    and not line:find("NS.MakeCloseButton", 1, true) then
+                    offenders[#offenders + 1] = rel .. ": " .. line:match("^%s*(.-)%s*$")
+                end
+            end
+        end
+    end
+    assertEqual(table.concat(offenders, " | "), "")
 end)

@@ -33,6 +33,10 @@ locales\enUS.lua
 
 # Core
 core\Compat.lua
+# LOAD-BEARING POSITION: core/Constants.lua resolves Const.FONT_MONO from
+# NS.MediaFont at file load, so the LibKa0s-Media-1.0 seam must already be
+# published. This line moves only with that one.
+core\MediaSetup.lua
 core\Constants.lua
 core\State.lua
 core\Util.lua

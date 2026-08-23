@@ -90,11 +90,24 @@ Const.PANEL_DEFAULTS_W    = 110
 -- Debug console: shipped monospace font
 -- ---------------------------------------------------------------------------
 
--- Monospace TTF shipped under media/fonts/ (JetBrains Mono, OFL — license in
--- media/fonts/JetBrainsMono-OFL.txt) so the debug console's timestamps and
--- [tags] line up regardless of the user's installed fonts (debug-logging-§2). Registered
--- with LibSharedMedia at load in core/DebugLogSetup.lua and applied at 10pt.
-Const.FONT_MONO = [[Interface\AddOns\KickCD\media\fonts\JetBrainsMono-Regular.ttf]]
+-- The face, by NAME. This is what LibSharedMedia is keyed on, because a name is
+-- portable across installs where a path names one addon's folder.
+-- core/MediaSetup.lua registers it at load.
+Const.FONT_MONO_NAME = "JetBrains Mono"
+
+-- Monospace TTF so the debug console's timestamps and [tags] line up regardless of
+-- the user's installed fonts (debug-logging-§2), applied at 10pt. The bytes ship inside
+-- the VENDORED LibKa0s payload (libs/LibKa0s/media/fonts/, OFL license beside
+-- them) rather than under this addon's own media/ — one copy for the whole
+-- collection, one license to track. core/MediaSetup.lua resolves the path, which
+-- is why its TOC line sits above this file's.
+--
+-- THE FALLBACK IS A REAL CLIENT FONT, never a constructed path. SetFont accepts a
+-- path to a file that is not there, fails to load it, and the text simply does not
+-- draw — no error, no missing-file warning. A degraded install (no LibKa0s, so no
+-- payload) gets Blizzard's own face and a console that is still readable.
+Const.FONT_MONO = (NS.MediaFont and NS.MediaFont(Const.FONT_MONO_NAME))
+    or _G.STANDARD_TEXT_FONT
 
 -- ---------------------------------------------------------------------------
 -- Specialization IDs

@@ -350,7 +350,7 @@ test("the vendored DebugLog major falls THROUGH a key-returning locale table", f
     local D = lib:New({
         name       = "TrapProbe",
         title      = "TrapProbe",
-        font       = "Interface\\AddOns\\KickCD\\media\\fonts\\probe.ttf",
+        font       = "Interface\\AddOns\\KickCD\\libs\\LibKa0s\\media\\fonts\\probe.ttf",
         isEnabled  = function() return false end,
         setEnabled = function() end,
         print      = function() end,
@@ -363,4 +363,21 @@ test("the vendored DebugLog major falls THROUGH a key-returning locale table", f
         assertEqual(rendered, lib.STRINGS[key],
             "'" .. key .. "' must fall through to the library's own string")
     end
+end)
+
+test("DebugLogSetup: the library is told the FOLDER name, not just the frame name", function()
+    -- Two fields, two questions, one string in this addon: `name` seeds the frame
+    -- globals, `addonName` is what the library builds a texture path from so its own
+    -- copy, clear and close controls draw this collection's art instead of two words
+    -- and a multiplication sign. A host where the two diverge would hand the library a
+    -- path into nowhere -- which draws nothing and raises nothing -- so it is passed
+    -- explicitly rather than inferred.
+    -- red under: dropping `addonName` and leaving the console on the minor-8 title bar.
+    local fh = assert(io.open(T.root .. "/core/DebugLogSetup.lua", "r"))
+    local src = fh:read("*a"); fh:close()
+    src = src:gsub("%-%-[^\r\n]*", "")
+    assertTrue(src:match("addonName%s*=%s*addonName") ~= nil,
+        "the descriptor does not pass addonName, so the console draws words and a glyph")
+    assertTrue(src:match("name%s*=%s*addonName") ~= nil,
+        "`name` must stay BESIDE addonName -- it is what seeds the frame globals")
 end)

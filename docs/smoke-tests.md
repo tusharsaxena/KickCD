@@ -47,6 +47,7 @@ Companion docs:
 | 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
 | 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
 | 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
+| 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
 
 ---
 
@@ -643,15 +644,70 @@ or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSet
 
 ---
 
+### 26. The shared icon set and the shipped face
+
+The art on the console's title bar and the face its lines are drawn in both live in the VENDORED
+LibKa0s payload (`libs/LibKa0s/media/`), not in this addon. Neither can be checked headlessly: a
+texture path that resolves to nothing draws nothing and raises nothing, and `SetFont` on a missing
+file loads nothing and raises nothing. That is the whole reason this section exists.
+
+Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `core/CoreSetup.lua`,
+`core/DebugLogSetup.lua`, `core/PerfSetup.lua` or `core/Constants.lua`.
+
+**Setup.** `/reload`, then `/kcd debug window`.
+
+**Checks.**
+- **The console title bar is three MARKS, not two words and a glyph.** Left to right on the right-hand
+  side of the bar: a **copy** sheet, a **clear**/eraser mark, and a **close** cross — all three small
+  white square glyphs of the same weight, all three from `libs/LibKa0s/media/icons/`. There is **no
+  tooltip** on any of them, and that is deliberate: one shipped for a single release, anchored under
+  the control, and it covered the first line of the log.
+- **The regression to watch for is a multiplication sign.** A `×` on the console close — or the words
+  `Copy` and `Clear` next to it — means the addon FOLDER name stopped reaching the library. The
+  library is vendored: it cannot work out which folder it was copied into, so it falls back to the
+  glyph and the words when nothing tells it. The one line that tells it is `addonName = addonName`
+  in `core/DebugLogSetup.lua`'s descriptor, beside `name` and not instead of it.
+- **The copy window closes with the same mark.** Click **copy**; `KickCDDebugCopyWindow` opens with a
+  read-only edit box. Its close control must be the same `close` art, not a `×`. A mismatch between
+  the two windows means the descriptor is right and something else regressed.
+- **The perf panel closes with the same mark, too.** `/kcd perf start` and look at the step panel's
+  top-right. ⚠ **This is the one close button in this addon that the HOST builds**, so it is the one
+  that can silently disagree with the console beside it. It must come through `NS.MakeCloseButton`
+  (`core/CoreSetup.lua`), the addon's single wrapper — a call that reaches the library seam directly
+  compiles, runs and passes every suite while drawing a `×` (anti-patterns-§64). Put the panel and the
+  console on screen together and compare the two close controls pixel for pixel.
+- **The console text is monospace.** Timestamps and `[tags]` line up in a column down the left. If
+  they do not, `Const.FONT_MONO` resolved to something that is not JetBrains Mono. Two outcomes are
+  possible and they look different: a **proportional** face means the fallback to the client's
+  `STANDARD_TEXT_FONT` fired (no library, or `media/fonts/` missing from the payload — honest
+  degradation); **no text at all** means the path is dead, which is the failure the fallback exists to
+  prevent and is never acceptable.
+- **The face is in the font dropdowns.** `/kcd config` → **Text Label** → the font dropdown lists
+  **JetBrains Mono** beside the player's other fonts. `core/MediaSetup.lua` registers it with
+  LibSharedMedia at file load; if it is missing, `Media.RegisterLSM` did not run or ran before LSM.
+- **Degraded stays honest.** Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` (section 25's
+  setup). The console is gone entirely with the library, but `/kcd config` must still open, still
+  render text, and the **Text Label** font dropdown must simply not list JetBrains Mono. No errors, no
+  blank labels. Rename it back before you finish.
+
+**Pass.**
+- Copy, clear and close are art; nothing on the title bar is a word or a `×`.
+- The console close, the copy-window close and the perf panel close are the SAME mark.
+- Console timestamps line up; JetBrains Mono is in the font dropdown.
+- With the library renamed away: no errors, no missing text, no dead font.
+
+---
+
 ## When to run which subset
 
-- **LibKa0s re-vendor, or any seam-file edit:** 25, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25 and 26, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
-- **Debug console edits:** 15, 24 (the console window, its subcommands, and the scrollbar + line counter).
-- **Pre-release / TOC bump:** the entire suite. The 25 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
+- **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
+- **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
+- **Pre-release / TOC bump:** the entire suite. The 26 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).

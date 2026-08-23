@@ -87,6 +87,13 @@ diff -r --strip-trailing-cr ../LibKa0s/testkit tests/_kit      # content — MUS
 diff -r ../LibKa0s/testkit tests/_kit                          # bytes  — SHOULD be empty
 ```
 
+The payload carries **art as well as code** now: `libs/LibKa0s/media/` holds the shared
+icon set and the JetBrains Mono face (this addon shipped its own copy of that face under
+`media/fonts/` until the LibKa0s-Media adoption; it does not any more). `diff -r` recurses
+into it, and `--strip-trailing-cr` is meaningless on a `.tga` or a `.ttf` — the plain
+byte diff is the one that matters for those, so a re-vendor that dropped a texture shows
+up in the second command and not the first.
+
 Run **both** halves before every commit — they are different findings. Nothing about
 "the tests are green" will tell you the copies have diverged: the library's suite
 passes against the library, and this addon's passes against a stale copy that still
@@ -203,7 +210,7 @@ For end-to-end test scenarios — fresh install, visibility modes, lock/drag, ca
 
 Continuous debug output does **not** go to the chat frame. It routes through the `NS.Debug(tag, fmt, ...)` sink (gated on the session flag `NS.State.debug`) into the on-screen debug console — the DIALOG-strata "Ka0s KickCD — Debug" window `LibKa0s-DebugLog-1.0` builds from the descriptor in `core/DebugLogSetup.lua`. The enabled flag is session-only: default off, never persisted to SavedVariables (there is no `db.profile.debugLog` field and no General → "Debug" checkbox), and it resets each `/reload`. The structured `spells|castbar|interrupt` dumps below are still printed to chat.
 
-- `/kcd debug window` — toggle the on-screen debug console window (ScrollingMessageFrame, Copy/Clear buttons, header Debug:ON/OFF toggle, shipped JetBrains Mono font). This is where `NS.Debug` output lands.
+- `/kcd debug window` — toggle the on-screen debug console window (ScrollingMessageFrame, a title-bar `copy` / `clear` / `close` trio drawn from the shared LibKa0s icon set, header Debug:ON/OFF toggle, the JetBrains Mono face out of the vendored LibKa0s payload). This is where `NS.Debug` output lands.
 - `/kcd debug on` / `/kcd debug off` / `/kcd debug toggle` — set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Off by default; not persisted; resets each `/reload`.
 - `/kcd debug spells` — dump (to chat) the watched cooldown list with `ready / active / cdObj / chargeCdObj / charges` per spell. `cdObj=yes` means a full-cooldown duration object is held; `chargeCdObj=yes` means a charge-recharge timer is ticking while the spell is still castable. We deliberately do NOT print remaining time — `:GetRemainingDuration()` is secret in combat and `tostring` would error in tainted scope; charges are also secret-safed via a `safeStr` placeholder.
 - `/kcd debug castbar` — print (to chat) one unit's cast state plus the configured/live per-state colors and `notInterruptible`'s type/secret-status (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump.

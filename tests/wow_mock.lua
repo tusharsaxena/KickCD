@@ -590,8 +590,20 @@ local function build()
 
     local LSM = noopLib()
     LSM.MediaType = { FONT = "font", STATUSBAR = "statusbar", BORDER = "border", SOUND = "sound" }
-    function LSM.Register() return true end
-    function LSM.Fetch() return "Fonts\\FRIZQT__.TTF" end
+    -- Registration is RECORDED rather than swallowed. core/MediaSetup.lua hands the
+    -- library the addon folder name and the library registers every face it ships
+    -- under its own key; a no-op Register would let a seam that registered nothing,
+    -- or registered a path built from the wrong folder, pass unnoticed.
+    LSM.__registered = {}
+    function LSM.Register(_, mediaType, key, path)
+        LSM.__registered[mediaType] = LSM.__registered[mediaType] or {}
+        LSM.__registered[mediaType][key] = path
+        return true
+    end
+    function LSM.Fetch(_, mediaType, key)
+        local byType = LSM.__registered[mediaType]
+        return (byType and byType[key]) or "Fonts\\FRIZQT__.TTF"
+    end
     function LSM.List() return {} end
     function LSM.HashTable() return {} end
     function LSM.IsValid() return true end
@@ -790,6 +802,12 @@ local function build()
         end
     end
     mocks.UISpecialFrames = {}
+
+    -- The client's own fallback face. core/Constants.lua falls back to it when the
+    -- LibKa0s payload — which is where the monospace face lives now — is absent, and
+    -- a nil here would make that fallback look like it worked while SetFont drew
+    -- nothing.
+    mocks.STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
     -- WoW aliases the table.insert/remove/wipe globals; the addon uses `tinsert`
     -- (e.g. registering windows into UISpecialFrames), so the debug console can
     -- only build headlessly if the sandbox provides it.

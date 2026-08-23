@@ -30,17 +30,13 @@ local addonName, NS = ...
 -- skin or its close button — the sibling addons where that inversion bites do
 -- not apply.
 
--- The monospace font ships to LibSharedMedia at load (debug-logging-§2), and it
--- does so ABOVE the library guard: the registration exposes the face to other
--- addons and is not the console's to skip just because the console is missing.
--- A no-op when LSM is absent; the console takes the path directly either way.
-do
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    local FONT = NS.Const and NS.Const.FONT_MONO
-    if LSM and LSM.Register and FONT then
-        LSM:Register("font", "JetBrains Mono", FONT)
-    end
-end
+-- THE FONT REGISTRATION MOVED, it did not go away. It used to sit here, above the
+-- library guard, on the argument that exposing the face to other addons is not the
+-- console's to skip just because the console is missing (debug-logging-§2). That
+-- argument still holds and the registration is still unconditional on DebugLog —
+-- it just is not this file's job any more. The face ships in the LibKa0s payload,
+-- so core/MediaSetup.lua registers it, guarded on the library that owns the bytes.
+-- This file only READS the resolved path, below, out of NS.Const.FONT_MONO.
 
 local lib = LibStub and LibStub("LibKa0s-DebugLog-1.0", true)
 
@@ -135,6 +131,15 @@ NS.DebugLog = lib:New({
     -- the three globals modules/DebugLog.lua spelled out by hand, reproduced
     -- exactly, so a saved frame position and ESC-to-close behave as before.
     name  = addonName,
+    -- THE FOLDER NAME, which is a different question from the one above even though
+    -- this addon answers both with the same string. `name` seeds those frame globals;
+    -- `addonName` is what the library builds a texture path from, so the title bar's
+    -- own copy, clear and close controls draw this collection's art instead of two
+    -- words and a multiplication sign. A vendored library cannot work that out for
+    -- itself — there is no one path to it — and a host where the two strings diverge
+    -- would hand it a path into nowhere, which draws nothing and raises nothing.
+    -- Passed explicitly for that reason rather than left to the library to infer.
+    addonName = addonName,
     -- The library appends its own " — Debug", giving "Ka0s KickCD — Debug",
     -- which is byte for byte what the old title bar read.
     title = "Ka0s KickCD",

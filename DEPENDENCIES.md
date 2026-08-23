@@ -105,10 +105,14 @@ and open a PR with only the Development group installed.
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.
-- **Asset tooling: none.** `media/fonts/`, `media/logos/` and `media/screenshots/` hold committed
-  binaries (JetBrains Mono under OFL, the logo, the screenshots). They are **shipped assets, not
-  build outputs** — nothing in this repo regenerates them, so no image or font toolchain is a
-  dependency of this addon. Do not install one on this file's account.
+- **Asset tooling: none.** `media/logos/` and `media/screenshots/` hold committed binaries (the
+  logo, the screenshots). They are **shipped assets, not build outputs** — nothing in this repo
+  regenerates them, so no image or font toolchain is a dependency of this addon. Do not install
+  one on this file's account. The monospace face and the shared icon set are **not this addon's
+  assets at all**: they arrive inside the vendored LibKa0s payload at `libs/LibKa0s/media/`, with
+  the OFL license beside the font, and the tool that produces them lives in the LibKa0s repo. One
+  copy for the collection, one license to track — `media/fonts/` used to hold a duplicate here and
+  no longer exists.
 - **No Python, no Node, no image libraries.** Stated positively so nobody goes looking. The only
   Python-adjacent thing in the toolchain is `lizard`, which is in Development above and is optional.
 - **The LibKa0s sibling checkout** (`../LibKa0s`) is not software you install, but the vendored-copy

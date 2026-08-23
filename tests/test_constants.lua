@@ -160,20 +160,47 @@ end)
 -- ── Shipped media ───────────────────────────────────────────────────────────
 
 test("Constants: FONT_MONO points at a font that is actually shipped", function()
-    -- A path typo here is invisible until a user opens the debug console and
-    -- gets Blizzard's fallback font, so check the file exists on disk.
+    -- A path typo here is invisible until a user opens the debug console and gets
+    -- Blizzard's fallback font, so check the file exists on disk. The bytes moved
+    -- OUT of this addon and into the vendored LibKa0s payload, so what is checked
+    -- now is the copy under libs/ — a re-vendor that dropped media/fonts/, or a
+    -- packaging step that filtered it out, is exactly this test's job.
     -- The constant is a WoW-style path; map it back to a repo-relative one.
     local rel = Const.FONT_MONO:gsub("\\", "/"):gsub("^Interface/AddOns/KickCD/", "")
+    assertTrue(rel:find("libs/LibKa0s/media/fonts/", 1, true) ~= nil,
+        "FONT_MONO must resolve into the vendored payload, got " .. rel)
     local fh = io.open(T.root .. "/" .. rel, "r")
     assertTrue(fh ~= nil, "missing shipped font: " .. rel)
     if fh then fh:close() end
 end)
 
 test("Constants: the shipped mono font ships its OFL license alongside it", function()
-    -- debug-logging-§2 requires the license to travel with the font.
-    local fh = io.open(T.root .. "/media/fonts/JetBrainsMono-OFL.txt", "r")
+    -- debug-logging-§2 requires the license to travel with the font. It travels with
+    -- the LIBRARY now: one copy of the face for the whole collection means one copy
+    -- of the license, and it has to arrive in the vendored payload or this build
+    -- ships a font it has no license for.
+    local fh = io.open(T.root .. "/libs/LibKa0s/media/fonts/JetBrainsMono-OFL.txt", "r")
     assertTrue(fh ~= nil, "the shipped font's OFL license is missing")
     if fh then fh:close() end
+end)
+
+test("Constants: this addon no longer ships its own copy of the mono font", function()
+    -- red under: media/fonts/ coming back. Two copies of one face is two licenses to
+    -- track and two provenance stories, and the second copy is the one that silently
+    -- stops matching after the first is regenerated (library-stack-§8).
+    local fh = io.open(T.root .. "/media/fonts/JetBrainsMono-Regular.ttf", "rb")
+    if fh then fh:close() end
+    assertTrue(fh == nil,
+        "media/fonts/ is back — the face ships in libs/LibKa0s/media/fonts/ now")
+end)
+
+test("Constants: FONT_MONO is the face FONT_MONO_NAME names, not a hand-typed path", function()
+    -- The two constants answer different questions -- a name for LibSharedMedia and
+    -- for anything a profile stores, a path for SetFont -- and they must be two
+    -- spellings of ONE face. A profile naming a key nobody registered renders in
+    -- Blizzard's fallback, which is the exact outcome shipping a monospace font was
+    -- meant to prevent.
+    assertEqual(Const.FONT_MONO, NS.MediaFont(Const.FONT_MONO_NAME))
 end)
 
 -- ── Const.SPEC ──────────────────────────────────────────────────────────────

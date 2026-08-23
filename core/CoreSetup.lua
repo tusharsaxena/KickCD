@@ -57,7 +57,7 @@ local Util = NS.Util
 -- Set OUTSIDE the branch below because the seams that read it are reached on
 -- both paths — a half-vendored libs/LibKa0s can have Core.lua present and
 -- DebugLog.lua missing — and set HERE because core/CoreSetup.lua is the first
--- of the five the TOC loads (KickCD.toc:39, ahead of 40/45/61/62).
+-- of the five the TOC loads (KickCD.toc:43, ahead of 44/49/66/67).
 NS.LIBKA0S_MISSING = "The LibKa0s library is missing from this installation of KickCD " ..
     "(expected in libs/LibKa0s)"
 
@@ -91,6 +91,13 @@ if not lib then
         return "<secret>"
     end
 
+    -- The degraded branch owes the caller the same NAME the live half publishes,
+    -- because tests/test_surface_parity.lua is right that a member which exists on
+    -- one path and not the other is a nil-call waiting for a half-vendored install.
+    -- nil is the honest answer: the art is inside the payload that is missing, and
+    -- every caller already treats a nil close button as "do without one".
+    function NS.MakeCloseButton() return nil end
+
     local announced = false
     function Util.print(...)
         if not DEFAULT_CHAT_FRAME then return end
@@ -108,6 +115,23 @@ end
 
 NS.IsConcatSafe = lib.IsConcatSafe
 NS.SafeToString = lib.SafeToString
+
+-- WRAPPED, TO SAY WHO IS ASKING — and the only seam here that is wrapped rather
+-- than handed over. LibKa0s draws this collection's own `close` mark when it is
+-- told which addon FOLDER to build a texture path from, and it cannot work that
+-- out for itself: the library is vendored, so there is no one path to it and a
+-- copy cannot know which folder it was copied into. `addonName` is that answer,
+-- and this file has it as its first vararg.
+--
+-- ONE WRAPPER, so every close control this addon builds gets the same mark
+-- instead of each call site remembering — today that is core/PerfSetup.lua's step
+-- panel, and tomorrow it is whatever window is added next. A passthrough that
+-- dropped the third argument would be green in every suite and wrong on screen:
+-- the library falls back to a multiplication sign, which is what a degraded
+-- install should get and not what a working one should (anti-patterns-§64).
+NS.MakeCloseButton = function(parent, onClick)
+    return lib.MakeCloseButton(parent, onClick, addonName)
+end
 
 -- The prefix is handed over as a FUNCTION rather than as the value of NS.PREFIX.
 -- It reads the same here, where core/Constants.lua has already run — but the

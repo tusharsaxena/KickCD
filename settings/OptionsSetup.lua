@@ -199,7 +199,8 @@ if not lib then
     for _, name in ipairs({
         "CreatePanel", "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
         "AddSpacer", "AttachTooltip", "InlineButtonPair", "RenderField", "RenderRows",
-        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RestoreDefaults",
+        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel",
+        "RestoreDefaults",
         "PatchAlwaysShowScrollbar",
     }) do
         Helpers[name] = function() end

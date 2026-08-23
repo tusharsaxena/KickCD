@@ -207,14 +207,16 @@ NS.Perf = lib:New({
     -- must pass a PLAIN table holding only the keys it actually translates —
     -- never the addon-wide locale table. settings/Slash.lua does exactly that.
 
-    -- Built by the console's own close-button factory rather than a lookalike,
-    -- so the two windows cannot drift apart. Resolved HERE and not into a
-    -- load-time local: decorate fires at frame-build time, long after every file
-    -- has loaded, which is the only reason this file may reach for a member of a
-    -- module that loads after it.
+    -- Built by the addon's ONE close-button wrapper (core/CoreSetup.lua) rather
+    -- than a lookalike or a second route to the same library function, so this
+    -- panel and the debug console beside it cannot drift apart. The wrapper is
+    -- what supplies the addon FOLDER name the library needs to build a texture
+    -- path from; calling the library seam directly from here would compile, run,
+    -- pass every suite, and quietly draw a multiplication sign on the one window
+    -- in this addon whose close button the host builds (anti-patterns-§64).
     decorate = function(frame, api)
-        if not (NS.DebugLog and NS.DebugLog.MakeCloseButton) then return end
-        local close = NS.DebugLog.MakeCloseButton(frame, api.Hide)
+        if not NS.MakeCloseButton then return end
+        local close = NS.MakeCloseButton(frame, api.Hide)
         -- The factory answers nil where CreateFrame is unavailable — a close
         -- button is worth degrading over, not erroring over.
         if close then

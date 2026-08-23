@@ -22,7 +22,7 @@ badge and any count quoted in the docs must agree with it.
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_coresetup.lua (23)
+### test_coresetup.lua (25)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner FEEDS the derived library list, and it is not empty
@@ -47,6 +47,19 @@ badge and any count quoted in the docs must agree with it.
 - the shared cause clause is published on the healthy path too
 - with LibKa0s absent all five seams say the same thing about WHY
 - no seam re-spells the cause in its own words
+- CoreSetup: the close button is the library's, told which addon folder is asking
+- CoreSetup: nothing reaches the close-button seam around the wrapper
+
+### test_mediasetup.lua (8)
+
+- MediaSetup: NS.Icon answers the vendored path, extensionless
+- MediaSetup: an icon the library does not ship answers nil
+- MediaSetup: NS.MediaFont answers the vendored face, and only a face it ships
+- MediaSetup: the font this addon names is a face the library actually registers
+- MediaSetup: the face is registered with LibSharedMedia at file load
+- MediaSetup: every mark this addon's windows draw is one the library ships
+- MediaSetup: every name the library ships has a file in the vendored copy
+- MediaSetup: with no library there is no art and no face, and that is not an error
 
 ### test_util_anchor.lua (26)
 
@@ -77,7 +90,7 @@ badge and any count quoted in the docs must agree with it.
 - RegisterUnitCastEvent tolerates a handler that isn't defined yet
 - RegisterUnitCastEvent returns a frame the caller can unregister
 
-### test_constants.lua (25)
+### test_constants.lua (27)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
@@ -90,6 +103,8 @@ badge and any count quoted in the docs must agree with it.
 - Constants: no host copy of a LibKa0s-Options layout constant
 - Constants: FONT_MONO points at a font that is actually shipped
 - Constants: the shipped mono font ships its OFL license alongside it
+- Constants: this addon no longer ships its own copy of the mono font
+- Constants: FONT_MONO is the face FONT_MONO_NAME names, not a hand-typed path
 - Constants: every spec ID is a positive integer
 - Constants: every spec token is UPPER_SNAKE_CASE
 - Constants: no two spec tokens share a spec ID
@@ -313,7 +328,7 @@ badge and any count quoted in the docs must agree with it.
 - building the console + Add/Clear run the guarded sync headlessly (§11)
 - console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
-### test_debuglogsetup.lua (22)
+### test_debuglogsetup.lua (23)
 
 - modules/DebugLog.lua has been deleted, not left beside the library
 - the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
@@ -337,6 +352,7 @@ badge and any count quoted in the docs must agree with it.
 - every string the debug console renders resolves to prose, not to its own key
 - the console title and checkbox carry prose, reached the way the UI reaches them
 - the vendored DebugLog major falls THROUGH a key-returning locale table
+- DebugLogSetup: the library is told the FOLDER name, not just the frame name
 
 ### test_icongrid_layout.lua (8)
 
@@ -922,9 +938,10 @@ badge and any count quoted in the docs must agree with it.
 | Suite | Cases |
 |-------|------:|
 | test_util.lua | 13 |
-| test_coresetup.lua | 23 |
+| test_coresetup.lua | 25 |
+| test_mediasetup.lua | 8 |
 | test_util_anchor.lua | 26 |
-| test_constants.lua | 25 |
+| test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
@@ -936,7 +953,7 @@ badge and any count quoted in the docs must agree with it.
 | test_compat_api.lua | 46 |
 | test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
-| test_debuglogsetup.lua | 22 |
+| test_debuglogsetup.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 6 |
 | test_icongrid_visibility.lua | 22 |
@@ -971,4 +988,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **761** |
+| **Total** | **774** |
