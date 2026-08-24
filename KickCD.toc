@@ -33,6 +33,9 @@ locales\enUS.lua
 
 # Core
 core\Compat.lua
+# The LibKa0s-Env seam: this addon's own version, read from its TOC manifest.
+# After Compat; nothing here resolves at load, so this line is free to move.
+core\EnvSetup.lua
 # LOAD-BEARING POSITION: core/Constants.lua resolves Const.FONT_MONO from
 # NS.MediaFont at file load, so the LibKa0s-Media-1.0 seam must already be
 # published. This line moves only with that one.

@@ -79,10 +79,10 @@ NS.Perf = lib:New({
     --
     -- The TOC manifest is the better source anyway: it cannot drift from
     -- the packaged build (slash-commands-§3). NS.VERSION remains the fallback for
-    -- a client without the metadata API, and settings/Slash.lua resolves the same
-    -- pair the same way so `/kcd version` and a capture record cannot disagree.
-    version = (C_AddOns and C_AddOns.GetAddOnMetadata
-               and C_AddOns.GetAddOnMetadata(addonName, "Version")) or NS.VERSION,
+    -- a client without the metadata API — both live in core/EnvSetup.lua now, so
+    -- `/kcd version` and a capture record resolve the SAME function rather than
+    -- two copies of one ladder that were free to drift apart.
+    version = NS.Version(),
     sv      = "KickCDPerfDB",
 
     -- Ordered for the report, with nesting DECLARED rather than left as prose:

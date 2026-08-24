@@ -127,6 +127,7 @@ local SUITES = {
     "test_util",
     "test_coresetup",
     "test_mediasetup",
+    "test_envsetup",
     "test_util_anchor",
     "test_constants",
     "test_state",

@@ -109,18 +109,12 @@ local function p(self, ...)
     fn(...)
 end
 
--- Addon version for the `version` verb and the help header (slash-commands-§3).
--- Prefer the TOC manifest so the reported version can't drift from the packaged
--- build; fall back to the in-code NS.VERSION stamp when the metadata API is
--- unavailable (older clients, or the headless test harness). 12.0 exposes the
--- reader under C_AddOns; the bare _G.GetAddOnMetadata is deprecated, so we don't
--- touch it (architecture-§1 no-deprecated-globals).
-local function addonVersion()
-    local get = C_AddOns and C_AddOns.GetAddOnMetadata
-    local v = get and get(addonName, "Version")
-    if type(v) == "string" and v ~= "" then return v end
-    return NS.VERSION
-end
+-- (The `version` verb reads NS.Version(), the core/EnvSetup.lua seam. The
+-- six-line C_AddOns ladder that used to sit here was one of THREE inline copies
+-- in this addon and one of eleven across the collection; it lives in
+-- LibKa0s-Env-1.0 now, with the same TOC-then-NS.VERSION preference and the
+-- same refusal to touch the deprecated global. settings/Slash.lua and
+-- core/PerfSetup.lua went the same way, so the three cannot disagree.)
 
 -- Set db.profile.locked through the schema's write+notify+refresh path
 -- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
@@ -163,7 +157,7 @@ local COMMANDS = {
     {"help",          "List available commands",
         function() printHelp(NS) end},
     {"version",       "Print the addon version",
-        function() p(NS, "v" .. addonVersion()) end},
+        function() p(NS, "v" .. NS.Version()) end},
     {"config",        "Open the settings panel",
         function() NS:OpenSettings() end},
     {"lock",          "Lock the icon grid in place",

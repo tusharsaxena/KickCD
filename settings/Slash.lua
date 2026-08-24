@@ -62,13 +62,11 @@ local function out(line)
     if NS.Util and NS.Util.print then NS.Util.print(line) end
 end
 
-local function addonVersion()
-    local get = C_AddOns and C_AddOns.GetAddOnMetadata
-    local v = get and get(addonName, "Version")
-    if type(v) == "string" and v ~= "" then return v end
-    return NS.VERSION
-end
-NS.Slash.Version = addonVersion
+-- The version this layer reports, from core/EnvSetup.lua rather than from a
+-- fourth copy of the C_AddOns ladder. Published on NS.Slash because
+-- tests/test_perfsetup.lua asserts a capture record and `/kcd version` agree,
+-- and they can only be checked against each other through a named surface.
+NS.Slash.Version = NS.Version
 
 -- ---------------------------------------------------------------------
 -- The parser override
@@ -299,7 +297,7 @@ NS.Slash.cli = SlashLib:New({
     aliases      = { options = "config" },   -- back-compat: `/kcd options` -> `config`
 
     print   = function(line) out(line) end,
-    version = addonVersion,
+    version = NS.Version,
 
     -- The plain host reader. No translation: colors are stored in the keyed
     -- shape the library already parses into and renders from.

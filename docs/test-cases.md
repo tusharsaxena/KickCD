@@ -61,6 +61,15 @@ badge and any count quoted in the docs must agree with it.
 - MediaSetup: every name the library ships has a file in the vendored copy
 - MediaSetup: with no library there is no art and no face, and that is not an error
 
+### test_envsetup.lua (6)
+
+- EnvSetup: NS.Meta reads THIS addon's TOC manifest
+- EnvSetup: the TOC version and the in-code stamp cannot drift
+- EnvSetup: NS.Version answers the TOC version
+- EnvSetup: NS.Version falls back to this addon's own NS.VERSION stamp
+- EnvSetup: no file inlines its own C_AddOns ladder any more
+- EnvSetup: with no LibKa0s the seam still reads this addon's own TOC
+
 ### test_util_anchor.lua (26)
 
 - SaveAnchor snapshots a frame's first anchor point
@@ -940,6 +949,7 @@ badge and any count quoted in the docs must agree with it.
 | test_util.lua | 13 |
 | test_coresetup.lua | 25 |
 | test_mediasetup.lua | 8 |
+| test_envsetup.lua | 6 |
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
@@ -988,4 +998,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **774** |
+| **Total** | **780** |
