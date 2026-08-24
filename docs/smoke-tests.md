@@ -606,7 +606,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Checks.**
 - **Header renders.** The title-bar "Debug: ON/OFF" label is present and colored (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
-- **Line counter.** The bottom-right label reads `N / 500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 500 lines` and the log empties.
+- **Line counter.** The bottom-right label reads `N / 1500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 1500 lines` and the log empties.
 - **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
 - **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
 - **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
@@ -614,7 +614,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Pass.**
 - Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).
-- Counter increments on every append and resets to `0 / 500 lines` on Clear.
+- Counter increments on every append and resets to `0 / 1500 lines` on Clear.
 - Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
 - The window edge, inner highlight, divider and title match a second Ka0s addon's console exactly.
 

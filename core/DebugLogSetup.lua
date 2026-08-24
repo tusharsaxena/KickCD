@@ -2,7 +2,7 @@ local addonName, NS = ...
 
 -- core/DebugLogSetup.lua — wires the addon into LibKa0s-DebugLog-1.0.
 --
--- The console window, the copy window, the two formatters, the 500-line buffer,
+-- The console window, the copy window, the two formatters, the 1500-line buffer,
 -- the scrollbar sync, the line counter and the enable seam live in
 -- libs/LibKa0s/DebugLog.lua and are shared across every Ka0s addon. This file
 -- supplies only the part that is ours: the frame-name prefix, the title, the
