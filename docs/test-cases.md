@@ -464,7 +464,7 @@ badge and any count quoted in the docs must agree with it.
 - the swipe is still suppressed for a GCD-only lockout
 - classification falls back to remaining on a client without the total API
 
-### test_icongrid_buildlist.lua (20)
+### test_icongrid_buildlist.lua (23)
 
 - BuildActiveList renders one icon per enabled entry
 - BuildActiveList preserves the saved list's ORDER
@@ -486,6 +486,9 @@ badge and any count quoted in the docs must agree with it.
 - a class+spec with no saved list renders nothing and creates no entry
 - BuildActiveList caches the unit's resolved icon config on the instance
 - each unit builds from its own resolved config
+- pool: a release/rebuild cycle allocates NOTHING new
+- pool: the rebuild draws from the EXISTING widgets, not new ones
+- pool: a release leaves no icon shown
 
 ### test_icongrid_glowgate.lua (8)
 
@@ -971,7 +974,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
-| test_icongrid_buildlist.lua | 20 |
+| test_icongrid_buildlist.lua | 23 |
 | test_icongrid_glowgate.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
@@ -998,4 +1001,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **780** |
+| **Total** | **783** |
