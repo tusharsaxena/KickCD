@@ -196,7 +196,7 @@ generated directories are named once each and never enumerated per run: `docs/au
 |---|---|---|
 | `slash-dispatch.md` | Present | 15 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
-| `compat-layer.md` | Present | `core/Compat.lua` is 490 lines of addon-specific shimming beyond LibKa0s |
+| `compat-layer.md` | Present | `core/Compat.lua` is 496 lines of addon-specific shimming beyond LibKa0s |
 | `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `debug.md` | Not applicable | The console is `LibKa0s-DebugLog-1.0`’s; the `/kcd debug` subcommands dump state through it rather than adding a surface |

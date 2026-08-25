@@ -35,15 +35,15 @@ The whole contributor toolchain. There is no build step and no compiler.
 
 | Tool | Version | Why it is needed (evidence) |
 |---|---|---|
-| **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/_kit/loader.lua:31` calls `setfenv(chunk, makeEnv(mocks))` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
+| **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/_kit/loader.lua:72` calls `setfenv(chunk, makeEnv(mocks))` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
 | **`lua` on `PATH`** | same 5.1 binary | `tests/test_list_mode.lua:10` re-invokes the runner as a child process: `io.popen("lua " .. T.root .. "/tests/run.lua --list")`. The command is literally `lua`, so `lua5.1` alone on `PATH` is not enough. |
 | **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:10-43`); `docs/testing.md:7` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
 | **git** | any recent | The repo, obviously — but also a **test dependency**: the vendored gate `tests/_kit/vendor_sync.lua` (driven by the five-line `tests/test_vendor_sync.lua`) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
-| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:213` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
+| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:214` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:100` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:107` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
