@@ -59,8 +59,8 @@ local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
 ```
 
 `tests/test_surface_parity.lua` carries one `Kit.assertSurfaceParity` case per
-adopted seam — Core (the namespace and the printer), DebugLog, Slash and Options
-— comparing a live load against that degraded one and reporting **every**
+adopted seam that has a degradation stub — Core (the namespace and the printer),
+DebugLog, Slash, Options and Perf — comparing a live load against that degraded one and reporting **every**
 divergence in one message (testing-§8, anti-pattern #56). It walks the LIVE
 table, so the question is "what does the library export today?" rather than
 "what did somebody remember to list": a re-vendor that adds a member forces a
