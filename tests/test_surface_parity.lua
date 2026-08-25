@@ -1,7 +1,7 @@
 -- tests/test_surface_parity.lua — one stub-surface parity case per adopted LibKa0s seam
 -- (testing-§8, anti-pattern #56).
 --
--- KickCD adopts five LibKa0s majors, and each has a degradation stub in its setup file:
+-- KickCD adopts eight LibKa0s majors; these five have a degradation stub in their setup file:
 --
 --   Core      core/CoreSetup.lua        NS.IsConcatSafe / NS.SafeToString / NS.Util.print
 --   DebugLog  core/DebugLogSetup.lua    NS.DebugLog

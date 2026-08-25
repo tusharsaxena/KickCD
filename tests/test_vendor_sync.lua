@@ -8,7 +8,7 @@
 -- fine" for a comparison that never ran. The gate now lives once, in the
 -- payload it checks, at `tests/_kit/vendor_sync.lua`. See its header for what
 -- it compares and why it compares against the TAG rather than the working
--- tree; see `docs/api/testkit/version-8-docs.md` in LibKa0s for the contract.
+-- tree; see `docs/api/testkit/version-13-docs.md` in LibKa0s for the contract.
 --
 -- ONE NORMALIZATION, AND ONLY ONE — carried in verbatim, because it is the one
 -- thing a reader must not have to infer. `git show` hands back the stored blob,
