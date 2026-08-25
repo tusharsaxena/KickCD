@@ -84,7 +84,7 @@ local function newInstance(unit)
     return {
         unit        = unit,
         grid        = nil,
-        pool        = { active = {}, free = {} },
+        pool        = NS.Pool.NewKeyed(),
         ordered     = {},
         eventFrames = {},
         cfg         = nil,
@@ -241,10 +241,12 @@ end
 -- ---------------------------------------------------------------------------
 
 function IconGrid:AcquireIcon(inst, spellID)
-    local btn = table.remove(inst.pool.free)
-    if not btn then
-        btn = IconGrid.CreateIconWidget(inst.grid)
-    end
+    -- The pool half is LibKa0s-Pool-1.0's, keyed by spellID (core/PoolSetup.lua says why the
+    -- keying is load-bearing). The library shows what it hands back, so the anchors are cleared
+    -- immediately after — the caller anchors it before anything can be drawn.
+    local btn = NS.Pool.AcquireKeyed(inst.pool, spellID, function()
+        return IconGrid.CreateIconWidget(inst.grid)
+    end)
     btn.spellID    = spellID
     btn.cfg        = inst.cfg
     btn.unit       = inst.unit
@@ -252,15 +254,14 @@ function IconGrid:AcquireIcon(inst, spellID)
     btn._lastState = nil
     btn._cdObject  = nil
     btn:ClearAllPoints()
-    btn:Show()
-    inst.pool.active[spellID] = btn
     return btn
 end
 
 function IconGrid:ReleaseAll(inst)
-    local pool = inst.pool
-    for spellID, btn in pairs(pool.active) do
-        btn:Hide()
+    -- Hiding and returning every button to the free list is the library's; what runs in the hook
+    -- is the part that is about an ICON rather than about a pool. The hook fires while the button
+    -- is still shown and the library hides it immediately after, in the same call.
+    NS.Pool.ReleaseAllKeyed(inst.pool, function(btn)
         btn:ClearAllPoints()
         btn.spellID    = nil
         btn._lastState = nil
@@ -274,9 +275,7 @@ function IconGrid:ReleaseAll(inst)
         if btn.chargesText then btn.chargesText:Hide() end
         if btn.cooldownText then btn.cooldownText:Hide() end
         if btn.StopGlow then btn:StopGlow() end
-        table.insert(pool.free, btn)
-        pool.active[spellID] = nil
-    end
+    end)
     -- Clear the ordered list — next BuildActiveList rebuilds it.
     local ordered = inst.ordered
     for i = #ordered, 1, -1 do ordered[i] = nil end

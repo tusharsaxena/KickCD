@@ -38,6 +38,15 @@ local function entry(spellID, over)
     return e
 end
 
+--- free, active for the instance's keyed pool. Counted with pairs, because the pool is keyed by
+--- spellID and therefore has no array part for `#` to read — which is exactly why
+--- LibKa0s-Pool-1.0 minor 2 ships CountsKeyed alongside Counts.
+local function NS_Pool_Counts(gi)
+    local free, active = #gi.pool.free, 0
+    for _ in pairs(gi.pool.active) do active = active + 1 end
+    return free, active
+end
+
 local function idsOf(gi)
     local out = {}
     for _, btn in ipairs(gi.ordered) do out[#out + 1] = btn.spellID end
@@ -241,4 +250,61 @@ test("each unit builds from its own resolved config", function()
     IconGrid:BuildActiveList(t)
     IconGrid:BuildActiveList(f)
     assertFalse(rawequal(t.cfg, f.cfg), "an unlinked focus resolves its own config")
+end)
+
+-- ── The pool actually recycles (LibKa0s-Pool-1.0, keyed) ────────────────────
+--
+-- The assertion the whole library exists for, and the one no hand-rolled copy in
+-- this collection could make. A release that only hides is an allocator wearing a
+-- pool's name: the grid still draws, every other case here still passes, and the
+-- client gets heavier every time a group composition changes. Counting is the
+-- only way to see it.
+
+test("pool: a release/rebuild cycle allocates NOTHING new", function()
+    -- The leak signature, stated as the only thing that actually distinguishes a pool from an
+    -- allocator: the TOTAL number of widgets in existence must not grow across a cycle. A release
+    -- that hid without recycling would answer 0 free after the release and build two fresh icons
+    -- on the rebuild, and every other case in this file would still pass.
+    local gi, IconGrid = withList({ entry(1766), entry(47528) })
+    local free0, active0 = NS_Pool_Counts(gi)
+    local total0 = free0 + active0
+    assertEqual(active0, 2, "two icons are out")
+
+    IconGrid:ReleaseAll(gi)
+    local freeR, activeR = NS_Pool_Counts(gi)
+    assertEqual(activeR, 0, "the keyed map is emptied")
+    assertEqual(freeR, total0, "and every widget is parked — a smaller number here is the leak")
+
+    IconGrid:BuildActiveList(gi)
+    local free1, active1 = NS_Pool_Counts(gi)
+    assertEqual(active1, 2, "the rebuild drew two icons again")
+    assertEqual(free1 + active1, total0, "taken from the free list; nothing was allocated")
+end)
+
+test("pool: the rebuild draws from the EXISTING widgets, not new ones", function()
+    -- Note what is NOT claimed: a spellID does not get "its own" widget back. The free list is a
+    -- stack and the pool is deliberately anonymous — `AcquireKeyed` hands out whichever widget is
+    -- parked and files it under the key it was asked for. What must hold is that every widget in
+    -- use after the cycle is one that already existed before it, which is the recycling claim
+    -- stated as identity rather than as a count.
+    local gi, IconGrid = withList({ entry(1766), entry(47528) })
+    local known = {}
+    for _, btn in pairs(gi.pool.active) do known[btn] = true end
+    for _, btn in ipairs(gi.pool.free) do known[btn] = true end
+
+    IconGrid:ReleaseAll(gi)
+    IconGrid:BuildActiveList(gi)
+
+    for id, btn in pairs(gi.pool.active) do
+        assertTrue(known[btn] == true,
+            "spellID " .. tostring(id) .. " is drawn by a widget that already existed")
+    end
+end)
+
+test("pool: a release leaves no icon shown", function()
+    local gi, IconGrid = withList({ entry(1766), entry(47528) })
+    IconGrid:ReleaseAll(gi)
+    for _, btn in ipairs(gi.pool.free) do
+        assertFalse(btn.__shown, "a parked icon is hidden")
+    end
 end)
