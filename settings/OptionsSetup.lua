@@ -30,7 +30,16 @@ local addonName, NS = ...
 -- once because it is enforced twice — by the library through
 -- descriptor.skipRestoreAll, and by the degradation stub's own reset loop, which
 -- has to keep working with no library at all.
-local function vetoedFromResetAll(row) return row.panel == "profiles" end
+--
+-- EVERY PROFILE-BACKED ROW IS VETOED TOO (options-ui-§12). The global reset IS a
+-- profile reset now — see afterRestoreAll — so writing each row's default into
+-- the profile first would refresh the panel once per row for values about to be
+-- discarded whole. What the walk keeps is what a profile reset cannot reach: the
+-- sessionOnly rows, whose storage is their own `set()` rather than the db.
+local function vetoedFromResetAll(row)
+    if row.panel == "profiles" then return true end
+    return not row.sessionOnly
+end
 
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 
@@ -85,15 +94,25 @@ local descriptor = {
     skipRestoreAll = vetoedFromResetAll,
 
     -- Anchors, the per-unit `link` flag and the spell lists are NOT schema rows,
-    -- so applyDefault never reaches them. `/kcd resetall` and the General page's
-    -- popup both funnel through Helpers.ResetAll, which clears all three — this
-    -- hook is how the library's own RestoreAllDefaults gets there too. It runs
-    -- BEFORE the refresh, which is load-bearing: a refresh first would paint the
-    -- pre-hook values.
+    -- so applyDefault never reaches them — and none of them needs a hook of its
+    -- own any more, because RESET ALL IS A PROFILE RESET (options-ui-§12) and all
+    -- three live IN the profile.
+    --
+    -- One call, and the same act as the Profiles page's Reset Profile. AceDB
+    -- empties the ACTIVE profile — only that one; the profile LIST is untouched,
+    -- which is the line the veto above exists for — `aceDBDefaults()` merges
+    -- NS.DEFAULT_PROFILE back over it (anchors and every unit's `link` flag with
+    -- it), and OnProfileReset reaches Database:OnProfileChanged, which already
+    -- folds legacy units, migrates spec keys, RE-SEEDS THE SPELL LISTS and
+    -- refreshes — exactly what it does for a profile switch.
+    --
+    -- ResetAllPositions and RestoreUnitLinks leave this path and keep their other
+    -- callers; the spell wipe leaves Helpers.ResetAll for the same reason.
+    -- It runs BEFORE the refresh, which is load-bearing: a refresh first would
+    -- paint the pre-hook values.
     afterRestoreAll = function()
-        local H = helpers()
-        if H and H.ResetAllPositions then H.ResetAllPositions() end
-        if H and H.RestoreUnitLinks then H.RestoreUnitLinks() end
+        local db = NS.db
+        if db and db.ResetProfile then db:ResetProfile() end
     end,
 
     -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
@@ -185,14 +204,21 @@ if not lib then
     -- is exactly the user who needs "reset everything", and the schema loaded
     -- fine, so the reset still works with no panel at all.
     Helpers.RestoreAllDefaults = function()
+        -- The sessionOnly rows first -- they are the ONLY ones the veto lets
+        -- through, and the only ones a profile reset cannot reach, because their
+        -- storage is their own set() rather than the db (options-ui-§12).
         for _, row in ipairs(NS.Settings.Schema or {}) do
             if not vetoedFromResetAll(row) and Helpers.SetAndRefresh then
                 local d = row.default
                 Helpers.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
             end
         end
-        if Helpers.ResetAllPositions then Helpers.ResetAllPositions() end
-        if Helpers.RestoreUnitLinks then Helpers.RestoreUnitLinks() end
+        -- Then the profile itself, which is the reset. The same one call the live
+        -- descriptor's afterRestoreAll makes -- this stub exists because the
+        -- LIBRARY is missing, not the db, and the user whose panel will not open
+        -- is exactly the user who needs "reset everything".
+        local db = NS.db
+        if db and db.ResetProfile then db:ResetProfile() end
     end
 
     -- Reached only from a builder or a user action, so a no-op is honest.

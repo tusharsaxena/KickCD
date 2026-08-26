@@ -578,6 +578,56 @@ local function build()
                 db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
             end
             for stub, fn in pairs(DB_STUBS) do db[stub] = fn end
+
+            -- ── ResetProfile, for real ──────────────────────────────────────
+            --
+            -- It was one of the no-op DB_STUBS, and that stopped being harmless
+            -- the moment the global reset became a PROFILE reset (options-ui-§12,
+            -- settings/OptionsSetup.lua). A no-op here does not fail a case, it
+            -- passes one: the suite measures a reset that never ran.
+            --
+            -- Two fidelities matter and both are the real library's:
+            --
+            --   * the profile table keeps its IDENTITY across a reset. It is
+            --     wiped in place, so `NS.db.profile` — captured at load by
+            --     several modules — keeps pointing at the live table. Replacing
+            --     the table instead would leave every holder on a stale one, and
+            --     that bug is invisible to a suite that re-reads `db.profile`.
+            --   * the callbacks fire, in CallbackHandler's BOTH registration
+            --     forms. core/Database.lua registers all three profile events as
+            --     `db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")`
+            --     — the string-METHOD form, dispatched as `obj:method(event, ...)`.
+            --     A fake that stores the handler and calls it raises on a string,
+            --     which is why the registration stub swallowed everything.
+            local callbacks = {}
+            db.RegisterCallback = function(target, event, handler)
+                callbacks[event] = callbacks[event] or {}
+                callbacks[event][#callbacks[event] + 1] = { target = target, handler = handler }
+            end
+
+            local function fire(event)
+                for _, entry in ipairs(callbacks[event] or {}) do
+                    local target, handler = entry.target, entry.handler
+                    if type(handler) == "function" then
+                        handler(event, db, db.keys.profile)
+                    elseif type(handler) == "string" and type(target) == "table"
+                        and type(target[handler]) == "function"
+                    then
+                        target[handler](target, event, db, db.keys.profile)
+                    end
+                end
+            end
+
+            db.ResetProfile = function()
+                local profile = db.profile
+                for k in pairs(profile) do profile[k] = nil end
+                copyDefaults(profile, dbSection(defaults, "profile"))
+                -- The real library passes nil for the third argument on a reset;
+                -- `fire` substitutes the active key, which is what the host's
+                -- OnProfileChanged does for itself anyway.
+                fire("OnProfileReset")
+            end
+
             return db
         end,
     }

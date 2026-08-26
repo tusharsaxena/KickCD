@@ -271,10 +271,15 @@ end
 -- What is genuinely NOT the library's is the spell lists: they are not schema
 -- rows and not positions, so nothing upstream can reach them.
 function Helpers.ResetAll()
+    -- ONE CALL, because RestoreAllDefaults is a PROFILE reset now
+    -- (options-ui-§12, settings/OptionsSetup.lua's afterRestoreAll). The spell
+    -- lists live at `db.profile.spells`, so emptying the profile clears them and
+    -- Database:OnProfileChanged re-seeds them through BuildSpells on the way back
+    -- — the same path a profile switch takes. The explicit ResetAllSpells call
+    -- that used to follow was doing that work a second time.
+    --
+    -- Database:ResetAllSpells is untouched and still backs `/kcd spells resetall`.
     Helpers.RestoreAllDefaults()
-    if NS.Database and NS.Database.ResetAllSpells then
-        NS.Database:ResetAllSpells()
-    end
 end
 
 

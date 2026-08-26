@@ -199,8 +199,8 @@ L["Visibility"]                  = "Visibility"
 L["Reset all settings"]          = "Reset all settings"
 L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."] =
     "Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."
-L["Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."] =
-    "Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."
+L["Reset this profile to the addon's defaults? Everything you have configured or added in it is discarded \226\128\148 your other profiles are not affected."] =
+    "Reset this profile to the addon's defaults? Everything you have configured or added in it is discarded \226\128\148 your other profiles are not affected."
 
 -- Icons tab — sizing and layout
 L["Sizing and Layout"]           = "Sizing and Layout"

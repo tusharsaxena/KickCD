@@ -83,7 +83,7 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `NS.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.
 
-`Database:ResetAllSpells` wipes `db.profile.spells` and re-runs `BuildSpells` so every spec — not just the active one — gets the current addon defaults back. It's the helper behind the General → "Reset all settings" popup, `/kcd spells resetall`, and `/kcd resetall`. The narrower per-spec reset (Spells panel's Defaults button + `KICKCD_RESET_SPELLS` popup, and `/kcd spells reset [CLASS SPEC]`) instead rebuilds only one `(class, spec)` slot.
+`Database:ResetAllSpells` wipes `db.profile.spells` and re-runs `BuildSpells` so every spec — not just the active one — gets the current addon defaults back. It backs `/kcd spells resetall`. It is **no longer on the global reset's path**: `/kcd resetall` and the General → "Reset all settings" popup are a **profile reset** now (`options-ui-§12`), and `db.profile.spells` goes with the profile — `Database:OnProfileChanged` re-seeds it through `BuildSpells` on the way back, which is the same path a profile switch takes. The narrower per-spec reset (Spells panel's Defaults button + `KICKCD_RESET_SPELLS` popup, and `/kcd spells reset [CLASS SPEC]`) instead rebuilds only one `(class, spec)` slot.
 
 The full lifecycle / recovery flow is in [scope.md](scope.md#spell-list-lifecycle-and-recovery).
 

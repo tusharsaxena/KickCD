@@ -105,7 +105,10 @@ end
 -- `/kcd resetall` slash command all share a single implementation —
 -- no chance of the popup and the slash diverging.
 StaticPopupDialogs["KICKCD_RESET_ALL"] = {
-    text         = L["Reset every schema-driven setting (General, Icons, Cast bar) AND every spec's spell list to addon defaults? The active profile is the only one affected."],
+    -- THE COLLECTION'S ONE WORDING (options-ui-§12), verbatim. Addon-agnostic on
+    -- purpose: no addon enumerates its own nouns, and eight phrasings of one act
+    -- is how a collection reads as eight addons.
+    text         = L["Reset this profile to the addon's defaults? Everything you have configured or added in it is discarded \226\128\148 your other profiles are not affected."],
     button1      = L["Yes"],
     button2      = L["No"],
     timeout      = 0,

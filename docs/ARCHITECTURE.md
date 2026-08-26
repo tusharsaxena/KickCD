@@ -141,7 +141,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `set <path> <value>` | Set a setting (try `/kcd list`) |
 | `perf` | Guided A/B performance capture (`LibKa0s-Perf-1.0`), driven from a clickable step panel |
 | `reset <path>` | Reset one setting to its default. Page-scoped reset lives on each panel's **Defaults** button; the every-spec spell rebuild moved to `/kcd spells resetall` |
-| `resetall` | Reset every schema-driven panel and every spec's spell list to defaults |
+| `resetall` | Reset the **active profile** to the shipped defaults — a profile reset, and the same act as Profiles → Reset Profile (`options-ui-§12`). Every panel, every anchor, every unit's `link` flag and every spec's spell list come back with it, because all of them live in the profile; `Database:OnProfileChanged` re-seeds and refreshes on the way back, exactly as it does for a profile switch. Other profiles are never touched |
 | `resetposition` | Restore the icon grid to its default screen position |
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
