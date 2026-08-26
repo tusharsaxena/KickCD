@@ -32,7 +32,7 @@ local addonName, NS = ...
 -- has to keep working with no library at all.
 --
 -- EVERY PROFILE-BACKED ROW IS VETOED TOO (options-ui-§12). The global reset IS a
--- profile reset now — see afterRestoreAll — so writing each row's default into
+-- profile reset now — see resetProfile — so writing each row's default into
 -- the profile first would refresh the panel once per row for values about to be
 -- discarded whole. What the walk keeps is what a profile reset cannot reach: the
 -- sessionOnly rows, whose storage is their own `set()` rather than the db.
@@ -96,7 +96,7 @@ local descriptor = {
     -- Anchors, the per-unit `link` flag and the spell lists are NOT schema rows,
     -- so applyDefault never reaches them — and none of them needs a hook of its
     -- own any more, because RESET ALL IS A PROFILE RESET (options-ui-§12) and all
-    -- three live IN the profile.
+    -- three live IN the profile. The library calls `resetProfile` below.
     --
     -- One call, and the same act as the Profiles page's Reset Profile. AceDB
     -- empties the ACTIVE profile — only that one; the profile LIST is untouched,
@@ -110,7 +110,12 @@ local descriptor = {
     -- callers; the spell wipe leaves Helpers.ResetAll for the same reason.
     -- It runs BEFORE the refresh, which is load-bearing: a refresh first would
     -- paint the pre-hook values.
-    afterRestoreAll = function()
+    -- `resetProfile` rather than a hand-written afterRestoreAll: LibKa0s-Options-1.0
+    -- minor 9 made this a descriptor field precisely so eight sibling addons stop
+    -- writing the same two lines. With it supplied the library narrows its own row
+    -- walk to the sessionOnly rows before calling this, so the veto above is belt to
+    -- that braces on the live path and the whole policy on the degraded one.
+    resetProfile = function()
         local db = NS.db
         if db and db.ResetProfile then db:ResetProfile() end
     end,
@@ -214,7 +219,7 @@ if not lib then
             end
         end
         -- Then the profile itself, which is the reset. The same one call the live
-        -- descriptor's afterRestoreAll makes -- this stub exists because the
+        -- descriptor's resetProfile makes -- this stub exists because the
         -- LIBRARY is missing, not the db, and the user whose panel will not open
         -- is exactly the user who needs "reset everything".
         local db = NS.db
