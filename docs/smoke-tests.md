@@ -205,7 +205,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Set `units.target.icons.primaryGlowTrigger` and `units.target.icons.secondaryGlowTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
 
 **Pass.**
-- Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons → Annotations → Show cooldown text` countdown ticking down.
+- Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons > Annotations > Show cooldown text` countdown ticking down.
 - The unrelated GCD does NOT visually trigger Pummel's swipe — the C-side curve gates GCD vs real CD without comparing the secret remaining time in Lua.
 - Glow on the primary icon triggers only on hostile interruptible casts; glow on the secondary icons triggers on any hostile cast, per the per-trigger config. The two are independent.
 - After Pummel comes off CD, `Cooldowns:Refresh` re-emits `Ka0s_KickCD_SPELL_STATE { ready = true }`, the icon re-saturates, and the cooldown swipe vanishes — no `0.0` stuck-text bug (regression check from 1.0.0).
@@ -299,14 +299,19 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
 - For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
-- **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, tick and untick "Use same styling as Target", and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat on Cast bar and Text Label.
+- **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
 
 **Pass.**
-- **The Unit dropdown lists exactly `Target` / `Focus` on every tab, always** — before and after those rebuilds, and after the `/kcd set`. Each of those actions calls `Helpers.RenderUnitPanel`, which clears and rebuilds the scroll; `/kcd set` then runs `RefreshAllPanels` over the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
+- **The Unit dropdown lists exactly `Target` / `Focus` on every page, always** — before and after those rebuilds, and after the `/kcd set`. A unit switch calls `Helpers.RenderUnitPanel` and a tab click clears and rebuilds the scroll; `/kcd set` then runs the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
 - Every panel write fires `Ka0s_KickCD_CONFIG_CHANGED { section = … }`; subscribed modules redraw.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
 - Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
+- **The tab strip matches the table in [settings-panel.md](settings-panel.md).** General shows `Master controls | Units`; Icons shows `Sizing | Layout | Visual states | Border | Annotations | Ready glow`; Cast bar shows `General | Position | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Text Label shows `General | Placement | Font`. No tab name appears twice on one page (a duplicate means a row was filed under a group its page had already left), and Profiles shows **no strip at all** — it stays one scrolling AceDBOptions page.
+- **The Unit dropdown sits ABOVE the tab strip, in the page's chrome, and stays there when you click a tab.** This is the check that catches the whole class of regression the banner exists to prevent: a picker drawn into the scroll looks correct until the first tab click and then disappears. Click through every tab on Icons and confirm the dropdown is still there, still naming the same unit, on each one.
+- **Selecting a unit retargets every tab, not just the visible one.** On Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colours shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
+- **Charges badge inset (new controls).** On a spell with charges, tick Icons → Annotations → "Show charges". With both `Charges X offset` and `Charges Y offset` at their defaults (`-2` and `2`) the badge sits exactly where it did before this setting existed — flush inside the icon's bottom-right corner. Drag `Charges X offset` to `-20`: the badge moves LEFT by 18 px. Drag `Charges Y offset` to `20`: it moves UP by 18 px. `/kcd set units.target.icons.chargesOffsetX 900` clamps to `32 px`, and the badge lands at the slider's maximum rather than off the icon.
+- **Rotation reads in plain ASCII.** Text Label → Placement → "Rotation (degrees)" and `/kcd get units.target.label.style.rotation` both render e.g. `45 deg` — never an empty box where a degree sign used to be.
 - **Renderer robustness (per-row `pcall` in `Helpers.RenderRows`):** a single malformed saved value degrades to one missing widget plus a red `schema error:` line — it does NOT blank the rest of the panel body (regression: a stale saved value once left a whole panel showing only its header). This is exercised by the headless suite (`tests/test_schema.lua`); it is not readily inducible in-game, so there is nothing to click here — it is listed for completeness of branch coverage.
 
 ### 12. Resets
@@ -466,17 +471,18 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 **Setup.** `/kcd set units.focus.enabled true`. Open Settings → Icons.
 
 **Steps.**
-- Select **Focus** in the Icons panel's Unit dropdown. Confirm the panel shows only "Use same styling as Target" (checked) + "Copy styling from Target" — no appearance rows, plus a "Linked to Target — uncheck to customize." note.
+- Select **Focus** in the Icons panel's Unit dropdown. Confirm the page shows **no tab strip and no appearance rows** — just the Unit dropdown in the chrome and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
 - Change Target's `units.target.icons.primarySize` (switch the dropdown to Target first). Switch back to Focus — the linked Focus grid should visually match Target's new size live (no manual sync needed).
-- Uncheck "Use same styling as Target". The appearance schema rows appear, seeded with target's last-copied values (or defaults if never copied).
+- Go to **General → Units** and untick "Use same styling as Target". Return to Icons with Focus selected: the tab strip and the appearance rows appear, seeded with target's last-copied values (or defaults if never copied). The tick reaching a page you were not looking at is the point — it is a structural refresh, and a page that was hidden repaints on its next show.
 - Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
-- Re-check "Use same styling as Target" — Focus reverts to mirroring Target live; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
-- Uncheck again, then click **"Copy styling from Target"** — Focus's `icons`/`castbar` tables are deep-copied from Target's current values and `link` flips to `false` (button also unlinks if still linked).
+- Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and the Icons page collapses back to the note with its strip gone; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
+- Untick again, then click **"Copy styling from Target"** (also on General → Units) — Focus's `icons`/`castbar` tables are deep-copied from Target's current values and `link` flips to `false` (button also unlinks if still linked).
 
 **Pass.**
 - While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
 - Position (`units.focus.anchors.icons`/`castbar`) and the Focus identity label (`units.focus.label.text`, if shown) stay independent of Target's position/label at every step, linked or not — dragging the Focus grid never moves Target's.
 - "Copy styling from Target" is a one-time deep copy (not a live link) — a subsequent Target-only appearance change does NOT propagate to the now-unlinked Focus.
+- Neither control appears anywhere else. There is exactly one "Use same styling as Target" tick and one "Copy styling from Target" button in the whole panel, both on General → Units; the three unit pages carry the note and nothing else.
 - No Lua errors at any toggle.
 
 #### 20c. Mid-cast enable + master-enable revive
@@ -495,7 +501,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 #### 20d. Unlinked focus honors its own alpha / tint
 
-The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → Icons only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
+The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → General → Units only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
 
 This is also the reason to unlink **first** and set values **second**.
 
@@ -508,7 +514,7 @@ This is also the reason to unlink **first** and set values **second**.
 /kcd set units.focus.enabled true
 ```
 
-Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use same styling as Target"**. Confirm the appearance rows appear. Only then:
+Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
 
 ```
 /kcd set units.target.icons.cooldownAlpha 0.20
@@ -525,7 +531,7 @@ Open Settings → Icons, pick **Focus** in the Unit dropdown, and **untick "Use 
 - Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
 - Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` with a cap of `4`, so a one-step thickness change is invisible and proves nothing.
 - **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open runs `RefreshAllPanels`, which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
-- Re-tick "Use same styling as Target".
+- Re-tick "Use same styling as Target" on General → Units.
 
 **Pass.**
 - Target's icon is heavily dimmed and red-tinted; focus's is nearly full brightness and blue-tinted. They must be **clearly different**. Identical grids mean focus is inheriting target's curves.

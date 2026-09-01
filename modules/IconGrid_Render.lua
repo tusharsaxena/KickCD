@@ -250,9 +250,11 @@ local function CreateIconWidget(parent)
     cdText:Hide()
     btn.cooldownText = cdText
 
-    -- Charges badge — top-right corner, à la action-bar charges.
+    -- Charges badge — bottom-right corner, à la action-bar charges. The inset
+    -- used to be the literal `-2, 2` here; it is icons.chargesOffsetX /
+    -- chargesOffsetY now, defaulted to exactly those two numbers, and re-applied
+    -- by ApplyChargesAnchor below on every config change.
     local charges = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    charges:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
     charges:Hide()
     btn.chargesText = charges
 
@@ -807,11 +809,40 @@ end
 -- always suppressed — we render our own FontString via StartCooldownText
 -- so the text displays even when the swipe is hidden (interrupts) and
 -- inherits parent alpha for free.
+--- Clamp a hand-editable pixel offset into the range the slider offers.
+---
+--- These come from SavedVariables, where nothing stops a `chargesOffsetX = 900`
+--- typed by hand or left by a broken import. Out of range is not an error, it is
+--- a badge parked somewhere off the icon with no way to tell why — so it lands
+--- on the nearest legal value instead, which is what the slider would have done.
+local CHARGES_OFFSET_LIMIT = 32
+
+local function chargesOffset(v, fallback)
+    if type(v) ~= "number" then return fallback end
+    if v < -CHARGES_OFFSET_LIMIT then return -CHARGES_OFFSET_LIMIT end
+    if v >  CHARGES_OFFSET_LIMIT then return  CHARGES_OFFSET_LIMIT end
+    return v
+end
+
+--- Re-anchor the charges badge from this unit's configured inset.
+function Icon:ApplyChargesAnchor(cfg)
+    cfg = cfg or NS.Units.Icons(self.unit or "target")
+    self.chargesText:ClearAllPoints()
+    self.chargesText:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT",
+        chargesOffset(cfg and cfg.chargesOffsetX, -2),
+        chargesOffset(cfg and cfg.chargesOffsetY, 2))
+end
+
 function Icon:ApplyTextConfig(cfg)
     cfg = cfg or NS.Units.Icons(self.unit or "target")
     if self.cooldown.SetHideCountdownNumbers then
         self.cooldown:SetHideCountdownNumbers(true)
     end
+
+    -- The badge's inset travels with the cooldown text's font: both are
+    -- "annotations" on the icon, both come off the same cfg table, and both are
+    -- re-applied by the one CONFIG_CHANGED pass that reaches this function.
+    self:ApplyChargesAnchor(cfg)
 
     local mediaFont = nil
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)

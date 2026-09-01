@@ -1,6 +1,24 @@
 # Settings panel — schema-driven canvas layout
 
-All six tabs (General, Icons, Cast bar, Text Label, Spells, Profiles) are registered as **canvas-layout subcategories** so they share one custom header design:
+## The tab strip
+
+Every schema-driven page draws a **pinned tab strip** in its chrome band (`options-ui-§13`, `Helpers.RenderTabbedSchema`). The strip is partitioned from the rows themselves: one tab per distinct `group`, **in declaration order**, with no second list naming the tabs. So the schema array's order *is* the strip's order, and a group's rows must stay **contiguous** — a row filed under a group the array has already left prints that tab a second time further down. A page with fewer than two groups draws no strip and falls back to `RenderSchema`.
+
+| Page | Tabs, in strip order (rows per tab) | Rows |
+|---|---|---|
+| **General** | Master controls (5) \| Units (2) | 7 |
+| **Icons** | Sizing (4) \| Layout (6) \| Visual states (4) \| Border (4) \| Annotations (8) \| Ready glow (6) | 32 per unit |
+| **Cast bar** | General (9) \| Position (5) \| Font (3) \| Spell name (5) \| Cast time (4) \| Interruptible (8) \| Non-interruptible (8) | 42 per unit |
+| **Text Label** | General (2) \| Placement (8) \| Font (4) | 14 per unit |
+| **Spells** | no strip — a bespoke editor, no schema rows | — |
+| **Profiles** | no strip — AceDBOptions draws one scrolling page, and tabbing a library-drawn page is out of scope | — |
+
+Counts are **per unit** on the three unit-scoped pages, because that is what a reader sees: the page renders only the unit its banner names. General has no unit picker, so its Units tab shows both units' toggles.
+
+The table is pinned by `tests/test_schema.lua`, which asserts the strip order, the per-tab counts, that no group's rows resume after the page has left it, that no page falls below two tabs, and that Target and Focus partition identically.
+
+
+All six pages (General, Icons, Cast bar, Text Label, Spells, Profiles) are registered as **canvas-layout subcategories** so they share one custom header design:
 
 * `GameFontNormalHuge` title on the left
 * `Defaults` button on the right (AceGUI `Button`, which wraps `UIPanelButtonTemplate`) — present on General / Icons / Cast bar / Text Label / Spells, omitted on Profiles. It is **created lazily**, on the panel's first `OnShow`, by `Helpers.EnsureDefaultsButton(panel)`: AceGUI is a shared library and UI skins restyle its widgets by hooking `RegisterAsWidget`, so a widget built during load (when the category is registered) keeps Blizzard's stock red `UI-Panel-Button-Up` art whenever this addon happens to load before the skinner. Builders therefore park the handler as `ctx.panel.defaultsOnClick = fn` (a plain function — `EnsureDefaultsButton` wires it with `:SetCallback("OnClick", …)`, NOT `:SetScript`, since the AceGUI widget object isn't a Blizzard Frame) and call `H.EnsureDefaultsButton(ctx.panel)` as the first statement of the panel's `OnShow`. As of Options minor 5 that parked handler feeds a **second** control as well: `CreatePanel` stamps `OnCommit` / `OnRefresh` / `OnDefault` on the canvas frame, which is what the Settings window's own **footer** Defaults control calls. `OnDefault` is a *forwarder* — it reads `panel.defaultsOnClick` at click time, not at `CreatePanel` time, which is the only ordering that works when every builder parks its handler after `CreatePanel` has returned — so all five pages gained a working footer control with no host edit, and Profiles (which parks nothing) gets a callable, inert one. Pinned by three cases in `tests/test_options_panel.lua`; nothing else here would notice losing it, since the header button keeps working and looks equivalent to the user.
@@ -10,13 +28,23 @@ The header is built by `Helpers.CreatePanel(name, title, opts)` in `settings/Pan
 
 Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
 
-## Per-unit panels (Icons / Cast bar)
+## Per-unit pages (Icons / Cast bar / Text Label)
 
-Icons and Cast bar render their schema per-unit via `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel_Render.lua`): a full-width `Unit` dropdown (Target / Focus, from `NS.Units.LIST`) sits above the schema body and re-renders the whole panel (`Helpers.ClearScroll` + re-run) on selection — `ctx.unit` is stashed on the panel ctx so `Helpers.SchemaForPanel(panelKey, ctx.unit)` can filter rows to the selected unit's `units.<unit>.icons.*` / `units.<unit>.castbar.*` paths.
+These three render through `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel_Render.lua`), which does three things in this order and the order matters:
 
-When `ctx.unit == "focus"`, a header row adds a **"Use same styling as Target"** checkbox (`units.focus.link`) and a **"Copy styling from Target"** button (`NS.Units.CopyStyling("target", "focus")`, a one-time deep-copy that also flips `link = false`) — both fire `Ka0s_KickCD_CONFIG_CHANGED{section="units"}` and re-render the panel. While linked, the appearance schema body is hidden entirely (replaced with a "Linked to Target — uncheck to customize." label) rather than shown-but-inert, since any edit there would silently write to a table nothing reads (`NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.*` while linked).
+1. **The Unit picker, as the page banner** (`Helpers.PageBanner`, `options-ui-§14`). It is pinned in the page's **chrome band, above the tab strip** — not added to the scroll, and not a tab. It scopes the whole page: `ctx.unit` is stashed on the panel ctx so `Helpers.SchemaForPanel(panelKey, ctx.unit)` filters rows to the selected unit's `units.<unit>.icons.*` / `.castbar.*` / `.label.*` paths, and every tab on the page edits that unit.
 
-General has no unit selector — its only per-unit rows are the two `units.<unit>.enabled` toggles, which render together, tagged with `unit = "target"|"focus"` purely so `RestoreDefaults`/`RestoreAllDefaults` reset both units together. (`label.show` / `label.text` used to live here; they moved to the Text Label panel, which does use the unit selector.)
+   Putting it in the chrome band is load-bearing rather than cosmetic. A tab click clears the **scroll** and redraws the rows; the chrome band survives it. A picker added to the scroll therefore looks right on the render that drew it and vanishes the first time the reader clicks a tab — which no static reading of the builder shows. Pinned by `tests/test_schema.lua`.
+
+   It is also the page's **only** picker, which is the other half of `§14`: two controls over one piece of state is a synchronisation problem the design invents and then owns forever. Selecting a unit re-enters `RenderUnitPanel`, and `PageBanner` drains **both** chrome ledgers (its own and the strip's) before it draws, so a switch onto a linked Focus — which draws no strip — cannot leave the previous unit's tabs stranded above the note.
+
+2. **The linked-Focus branch.** When `ctx.unit == "focus"` and `units.focus.link` is set, the page draws the `alwaysPerUnit` rows (there are none today) and a note reading *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."* — and **no strip**. Editable-but-inert appearance widgets are worse than none: a linked Focus renders with Target's tables, so any styled row here would write to a table nothing reads (`NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.*` while linked).
+
+3. **The strip and the rows**, via `Helpers.RenderTabbedSchema`.
+
+The **"Use same styling as Target"** checkbox (`units.focus.link`) and the **"Copy styling from Target"** button (`NS.Units.CopyStyling("target", "focus")`, a one-time deep-copy that also flips `link = false`) live on **General → Units** now (`settings/General.lua`, the group's `afterGroup`). They used to be drawn three times over, once in each unit page's hand-built header; there is exactly one of them — whether Focus keeps its own appearance or mirrors Target's — and the scroll, the only place left to draw them on a tabbed page, is cleared out from under them by every tab click. Both fire `Ka0s_KickCD_CONFIG_CHANGED{section="units"}` and then `Helpers.RefreshAllPanels`, which is a **structural** refresh: it re-renders every page that declared a renderer and marks the hidden ones dirty so they repaint on their next `OnShow`. That is what lets the control reach the three unit pages from another page at all.
+
+General has no unit picker — its only per-unit rows are the two `units.<unit>.enabled` toggles on its Units tab, which render together, tagged with `unit = "target"|"focus"` purely so `RestoreDefaults`/`RestoreAllDefaults` reset both units together. (`label.show` / `label.text` used to live here; they moved to the Text Label page, which does use the picker.)
 
 ## `NS.Settings.Schema` is the single source of truth
 
@@ -26,7 +54,8 @@ General has no unit selector — its only per-unit rows are the two `units.<unit
 {
     panel    = "general",                    -- which tab renders it
     section  = "general",                    -- Ka0s_KickCD_CONFIG_CHANGED section
-    group    = L["Master controls"],         -- sub-section header text
+    group    = L["Master controls"],         -- THE TAB. One tab per distinct
+                                             --   group, in declaration order
     path     = "scale",                      -- dotted db.profile path (per-unit rows use
                                              --   "units.<unit>.icons.<field>" etc.)
     unit     = "target"|"focus",             -- optional; tags a row as belonging to one
@@ -35,7 +64,13 @@ General has no unit selector — its only per-unit rows are the two `units.<unit
                                              --   Icons/Castbar rows on this
     type     = "bool"|"number"|"string"|"color",
     label    = L["Master scale"],
-    tooltip  = L["..."],
+    desc     = L["..."],                     -- the tooltip BODY. A schema row may key it
+                                             --   `desc` OR `tooltip`; the library reads either.
+                                             --   A BESPOKE spec (SessionToggle, InlineButtonPair,
+                                             --   PageBanner) must key it `tooltip` -- those makers
+                                             --   read spec.tooltip and nothing else, so `desc`
+                                             --   there draws the label with an empty body,
+                                             --   silently and only in game.
     default  = 1.0,
     min, max, step, fmt,                     -- numbers
     values   = { { value=, label= }, ... },  -- strings (dropdown); array or fn
@@ -55,7 +90,7 @@ General has no unit selector — its only per-unit rows are the two `units.<unit
 
 **Adding an option = one schema row.** UI widget, slash CLI, and Defaults reset are wired automatically.
 
-A row may declare `solo = true` to be rendered alone in the left half of its own row (visual pivot above the controls it governs — Icons → Border → "Show border", Cast bar → Position → "Anchor mode").
+A row may declare `solo = true` to be rendered alone in the left half of its own line — a genuine pivot above the controls it governs, never spacing. Three rows use it: Cast bar → General → "Enable cast bar" (everything under it is inert without it), Cast bar → Position → "Anchor mode" (it decides whether the two attach-point dropdowns below it are read at all), and Text Label → Placement → "Attach to" (it decides what the two anchor points beneath it even refer to).
 
 A row may declare `skipRender = true` to stay a full schema row — `/kcd get|set|list`, Defaults reset, validation — while being left out of the automatic `RenderSchema` pass, because the panel builder renders it by hand somewhere specific. The one user today is General's `locked`, which an `afterGroup` callback renders via `Helpers.RenderField(c, H.FindSchema("locked"), row, 0.5)` so it can share a row with the bespoke session-only "Debug console" toggle.
 
@@ -82,7 +117,9 @@ Each widget creator pushes a refresher closure into `ctx.refreshers` so its disp
 
 Getting this wrong is not a leak, it is corruption. AceGUI's pool recycles the *same widget objects* into whatever the next render creates, so a closure that outlives its widget doesn't quietly no-op — it writes its old row's value and dropdown list onto an unrelated widget. That shipped once: the **Unit** dropdown rendered anchor-point values on Icons and text-position values on Cast bar, because a stale anchor/position refresher fired against the recycled object now serving as the unit selector.
 
-It reproduces through ordinary use, since `Helpers.RenderUnitPanel` clears and rebuilds on every unit switch, "Use same styling as Target" tick, and "Copy styling from Target" press — then any `/kcd set` runs `RefreshAllPanels` and fires the whole registry. Guarded by `tests/test_settings_refreshers.lua`.
+It reproduces through ordinary use, since the page clears and rebuilds on every unit switch, every **tab click**, and every structural refresh (the General → Units link tick, "Copy styling from Target", a profile switch) — then any `/kcd set` fires the whole registry. Guarded by `tests/test_settings_refreshers.lua`.
+
+`Helpers.SetAndRefresh` — the addon's single write seam — ends in `Helpers.RefreshScalars`, **never** `RefreshAllPanels`. A value write changes what a widget *shows*; it does not make a row appear or vanish. A structural sweep there would clear and rebuild every rendered page on each committed change, including the page holding the slider or the colour swatch the user is still dragging, which AceGUI would take back into its pool mid-gesture. Structural refreshes have their own callers: `NS.RefreshOptionsPanel` on a profile switch, and the Units tab's link toggle, which really does change what the unit pages draw.
 
 Schema widgets are AceGUI primitives:
 
@@ -103,7 +140,11 @@ This matches the visual style of AceConfig-driven addons (e.g. Consumable Master
 
 ## Deferred render
 
-Schema rendering is **deferred to the panel's `OnShow`** because at build time (`PLAYER_LOGIN`) `ctx.body` has zero width and AceGUI's List-layout pass against the AceGUI `ScrollFrame` would size every fullwidth child to zero. See the `local rendered = false; OnShow{...}` guard in `settings/General.lua`, `settings/Icons.lua`, and `settings/Castbar.lua`.
+Rendering is **deferred**, because at build time (`PLAYER_LOGIN`) `ctx.body` has zero width and AceGUI's List-layout pass would size every fullwidth child to zero.
+
+The four schema-driven pages declare *how* they draw with `Helpers.SetRenderer(ctx, fn)` and let the **library** own *when*: first show, and again when a refresh marked the page dirty while it was hidden. That second half is what makes a structural refresh from another page work — see the General → Units link toggle above — and it is why these pages no longer carry the hand-rolled `local rendered = false; OnShow{...}` guard. `SetRenderer` also installs the combat refusal (`options-ui-§2`): the Blizzard AddOns sidebar reaches a panel without going through `OpenOptionsPanel`, so its combat guard was bypassed on exactly the path a user is most likely to take mid-fight.
+
+Spells and Profiles still park their own `OnShow` — they render bespoke bodies with their own lifecycles, not schema rows.
 
 ## ColorPicker
 

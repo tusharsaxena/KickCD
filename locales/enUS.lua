@@ -36,9 +36,11 @@ L["Icons"]                       = "Icons"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
--- General tab — section headers
+-- General tab — tab names (the strip is partitioned from the schema's `group`
+-- field, so a tab name IS a group key). "Appearance" retired when master scale
+-- and master alpha moved onto Master controls: two rows whose labels both say
+-- Master were never a second subject.
 L["Master controls"]             = "Master controls"
-L["Appearance"]                  = "Appearance"
 L["Position"]                    = "Position"
 L["Debug"]                       = "Debug"
 L["Units"]                       = "Units"
@@ -71,8 +73,14 @@ L["Target"]                      = "Target"
 L["Focus"]                       = "Focus"
 L["Use same styling as Target"]  = "Use same styling as Target"
 L["Copy styling from Target"]    = "Copy styling from Target"
-L["Linked to Target — uncheck to customize."] =
-    "Linked to Target — uncheck to customize."
+L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."] =
+    "Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."
+L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
+    "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
+L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."] =
+    "Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."
+L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
+    "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
 L["Reset position"]              = "Reset position"
 L["Restore the icon grid to its default screen position."] =
     "Restore the icon grid to its default screen position."
@@ -115,8 +123,17 @@ L["Cooldown tint"]               = "Cooldown tint"
 L["RGB tint applied to icons during cooldown."] =
     "RGB tint applied to icons during cooldown."
 L["Suppress GCD swipe + text"]   = "Suppress GCD swipe + text"
-L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."] =
-    "Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."
+-- "1.6s remaining or less", never the ≤ sign: U+2264 is not ASCII and a glyph
+-- the settings-panel font does not carry draws as an empty box in game, which
+-- no test can see.
+L["Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."] =
+    "Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."
+L["Charges X offset (in px)"]    = "Charges X offset (in px)"
+L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."] =
+    "Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."
+L["Charges Y offset (in px)"]    = "Charges Y offset (in px)"
+L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."] =
+    "Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."
 L["Show cooldown text"]          = "Show cooldown text"
 L["Render numeric seconds remaining on each icon."] =
     "Render numeric seconds remaining on each icon."
@@ -194,16 +211,18 @@ L["OK"]                          = "OK"
 L["Cancel"]                      = "Cancel"
 
 
--- General — visibility, master controls, resets
-L["Visibility"]                  = "Visibility"
+-- General — master controls, resets. ("Visibility" retired as a tab name when
+-- the cast bar's one-row Visibility section folded into its General tab; the
+-- addon-wide `visibility` ROW is still here, under its own label.)
 L["Reset all settings"]          = "Reset all settings"
 L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."] =
     "Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."
 L["Reset this profile to the addon's defaults? Everything you have configured or added in it is discarded \226\128\148 your other profiles are not affected."] =
     "Reset this profile to the addon's defaults? Everything you have configured or added in it is discarded \226\128\148 your other profiles are not affected."
 
--- Icons tab — sizing and layout
-L["Sizing and Layout"]           = "Sizing and Layout"
+-- Icons tab — sizing and layout. ("Sizing and Layout" retired as a tab name
+-- when the cast bar folded it into General beside the Auto-size toggle that
+-- decides whether its width and height are read at all.)
 L["Primary size (in px)"]        = "Primary size (in px)"
 L["Gap (in px)"]                 = "Gap (in px)"
 L["Columns"]                     = "Columns"
@@ -302,8 +321,10 @@ L["Horizontal: bar stretches across width. Vertical: bar runs up/down."] =
     "Horizontal: bar stretches across width. Vertical: bar runs up/down."
 L["Up"]                          = "Up"
 L["Down"]                        = "Down"
-L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."] =
-    "Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."
+-- "gives", never an arrow: U+2192 is not ASCII. Where a menu PATH needs one,
+-- the collection writes ">".
+L["Which side the cast bar fills toward. Options change with Orientation: horizontal gives Right / Left, vertical gives Up / Down."] =
+    "Which side the cast bar fills toward. Options change with Orientation: horizontal gives Right / Left, vertical gives Up / Down."
 L["Auto-size to icon grid"]      = "Auto-size to icon grid"
 L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
     "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
@@ -348,8 +369,10 @@ L["Off"]                         = "Off"
 L["Outline"]                     = "Outline"
 L["Thick outline"]               = "Thick outline"
 L["Monochrome"]                  = "Monochrome"
-L["Interruptible casts"]         = "Interruptible casts"
-L["Non-interruptible casts"]     = "Non-interruptible casts"
+-- The tab names lost the word "casts": the page is called Cast bar, so every
+-- tab on it is about a cast and the word carried nothing.
+L["Interruptible"]               = "Interruptible"
+L["Non-interruptible"]           = "Non-interruptible"
 L["Bar texture"]                 = "Bar texture"
 L["LibSharedMedia statusbar texture used for interruptible casts."] =
     "LibSharedMedia statusbar texture used for interruptible casts."
@@ -378,16 +401,15 @@ L["RGBA border color for interruptible casts."] =
     "RGBA border color for interruptible casts."
 L["RGBA border color for non-interruptible casts."] =
     "RGBA border color for non-interruptible casts."
-L["Text"]                        = "Text"
 
 -- Cast bar runtime labels
 L["KickCD castbar"]              = "KickCD castbar"
 L["KickCD castbar — drag to move"] =
     "KickCD castbar — drag to move"
 
--- Text Label tab
+-- Text Label tab. Its first tab is "General" (already keyed above), not
+-- "Label": on a page called Text Label the word was the page's, not the tab's.
 L["Text Label"]                  = "Text Label"
-L["Label"]                       = "Label"
 L["Show label"]                  = "Show label"
 L["Show this unit's identity label."] =
     "Show this unit's identity label."

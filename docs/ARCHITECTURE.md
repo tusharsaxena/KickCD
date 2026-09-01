@@ -36,7 +36,7 @@ Settings widget / slash CLI ─▶ Helpers.Set ─▶ Ka0s_KickCD_CONFIG_CHANGED
 AceDB profile change         ─▶                Ka0s_KickCD_PROFILE_CHANGED ─▶ same
 IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { unit, ... } ─▶ Castbar instances[unit] (re-anchor / auto-size)
 
-  AceDB (all chars share the "Default" profile; user-switchable)  ──  6-tab settings panel + /kcd CLI
+  AceDB (all chars share the "Default" profile; user-switchable)  ──  6-page settings panel (each schema page tab-stripped) + /kcd CLI
 ```
 
 | Subsystem | Lives in | Read |
@@ -117,7 +117,7 @@ Five `AceEvent` messages are the only inter-module communication channel — mod
 | Message | Sender(s) | Consumers | Payload |
 |---|---|---|---|
 | `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `:Refresh` | `IconGrid` (every enabled unit instance) | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
-| `Ka0s_KickCD_CONFIG_CHANGED` | **One sender**: `settings/Panel.lua` `Helpers.FireConfigChanged`. Everything that wants to announce a config change calls it — `Helpers.Set`, `Panel_Render`'s reset/focus-link/copy helpers, `core/KickCD.lua`'s lock toggle and spells commit, the Spells editor's throttled commit, and IconGrid / Castbar `OnDragStop` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ section }` — section ∈ `general`\|`icons`\|`castbar`\|`label`\|`spells`\|`units` |
+| `Ka0s_KickCD_CONFIG_CHANGED` | **One sender**: `settings/Panel.lua` `Helpers.FireConfigChanged`. Everything that wants to announce a config change calls it — `Helpers.Set`, `Panel_Render`'s reset helpers, `settings/General.lua`'s Units-tab focus link / copy-styling controls, `core/KickCD.lua`'s lock toggle and spells commit, the Spells editor's throttled commit, and IconGrid / Castbar `OnDragStop` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ section }` — section ∈ `general`\|`icons`\|`castbar`\|`label`\|`spells`\|`units` |
 | `Ka0s_KickCD_PROFILE_CHANGED` | **One sender**: `core/Database.lua`'s file-local `fireProfileChanged`, called by `Database:OnProfileChanged` (swap / copy / reset) and `Database:ResetAllSpells` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ newProfileKey }` |
 | `Ka0s_KickCD_GRID_LAYOUT` | `IconGrid:Layout`, once per unit instance | `Castbar` (filters on `payload.unit`), `UnitLabel` (re-applies every unit; cheap `ApplyAll`, no per-unit filter) | `{ unit, gridFrame, primaryIcon, width, height }` |
 | `Ka0s_KickCD_COMBAT_STATE` | `core/State.lua` bootstrap frame | `IconGrid`, `Castbar` | `{ inCombat }` |

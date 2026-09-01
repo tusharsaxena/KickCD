@@ -10,23 +10,25 @@
 
 local addonName, NS = ...
 local L       = NS.L
-local AceGUI  = LibStub("AceGUI-3.0")
 local Helpers = NS.Settings.Helpers
 
--- Framework helpers published by settings/Panel.lua, rebound to
--- file-locals so the moved code below reads exactly as it did in place.
+-- Framework helpers published by settings/Panel.lua, rebound to a file-local so
+-- the moved code below reads exactly as it did in place.
+--
+-- AceGUI, Helpers.AddSpacer and Helpers.ROW_VSPACER used to be bound here too.
+-- They were the hand-built unit-selector header's: the dropdown, the Focus
+-- link/copy row, and the gap under each. The picker is the library's PageBanner
+-- now and the link controls moved to the General page, so this file creates no
+-- widget of its own and measures no gap of its own.
 local ensureScroll      = Helpers.EnsureScroll
-local addSpacer         = Helpers.AddSpacer
-local ROW_VSPACER       = Helpers.ROW_VSPACER
 
--- Re-render a per-unit schema panel (Icons / Castbar) after the unit
--- selector switches ctx.unit: clears the panel's scroll frame (via
--- Helpers.ClearScroll) and re-runs RenderSchema, which re-filters
--- SchemaForPanel(panelKey, ctx.unit) for the newly-selected unit.
-function Helpers.RerenderUnitPanel(ctx, panelKey, afterGroup)
-    Helpers.ClearScroll(ctx)
-    Helpers.RenderSchema(ctx, panelKey, afterGroup)
-end
+-- (Helpers.RerenderUnitPanel is GONE. It cleared the scroll and re-ran
+-- RenderSchema, which is the untabbed render; a unit page draws a tab strip in
+-- its chrome band now (options-ui-§13) and RenderUnitPanel below is the one
+-- entry point that puts the banner, the strip and the rows back in the right
+-- order. It had no callers -- the unit dropdown always re-entered
+-- RenderUnitPanel directly -- so what it left behind was a second, wrong answer
+-- to "how does this page redraw?".)
 
 -- Split a unit panel's rows into those that stay editable even when Focus
 -- is linked (alwaysPerUnit — e.g. label show/text, which are per-unit by
@@ -44,98 +46,80 @@ function Helpers.PartitionUnitRows(rows)
 end
 
 -- ---------------------------------------------------------------------
--- Per-unit panel header — unit selector + focus link/copy row (Task 8).
--- Shared by the Icons and Castbar builders, which are otherwise
--- pure-schema panels; this is the one bit of hand-built AceGUI markup
--- both need, so it lives here once rather than being duplicated.
+-- Per-unit page chrome -- the Unit picker, and what a linked Focus shows
 -- ---------------------------------------------------------------------
 --
--- Full rebuild on every call rather than a "persistent, never-released"
--- header widget: ensureScroll's ScrollFrame anchors flush to ctx.body, so
--- there's no free real estate above it to park a truly persistent
--- dropdown without further surgery on that anchor. AceGUI's widget pool
--- exists exactly to make release-and-recreate cheap and safe, so each
--- call here clears ctx.scroll and rebuilds the selector (and, for Focus,
--- the link checkbox + copy button) from scratch — visually identical to
--- a persistent widget, and far simpler to reason about than partially
--- clearing around a surviving header row.
+-- THE UNIT DROPDOWN IS THE PAGE BANNER (options-ui-§14), pinned in the chrome
+-- band ABOVE the tab strip rather than added to the scroll. That is not a
+-- cosmetic move. The strip's own re-render on a tab click clears the SCROLL and
+-- redraws the rows; anything a page parks in the scroll ahead of the strip is
+-- gone the first time the reader clicks a tab. The chrome band survives it, and
+-- the picker scopes the whole page -- every tab on it edits the selected unit --
+-- so the band is where it belongs.
+--
+-- It is also the ONLY picker on the page, which is the other half of §14: two
+-- controls over one piece of state is a synchronisation problem invented by the
+-- design and owned forever. There is one value, read at render time, and the
+-- re-render the selection triggers repaints everything below it.
+--
+-- Full rebuild on every call rather than a persistent widget: AceGUI's pool
+-- exists to make release-and-recreate cheap, and PageBanner drains both chrome
+-- ledgers (the banner's and the strip's) before it draws, so a unit switch that
+-- lands on a linked Focus -- which draws NO strip -- cannot leave the previous
+-- unit's tabs stranded above the note.
+--
+-- The Focus "Use same styling as Target" tick and the "Copy styling from
+-- Target" button used to be drawn here, once per unit page. They are on the
+-- General page's Units tab now (settings/General.lua): they are one relationship
+-- between two units rather than three per-page copies of it, and the scroll --
+-- the only place left to draw them -- is cleared out from under them by every
+-- tab click.
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
     ctx.unit = ctx.unit or "target"
     Helpers.ClearScroll(ctx)
-    local scroll = ensureScroll(ctx)
 
-    -- Unit selector -----------------------------------------------------
-    local dd = AceGUI:Create("Dropdown")
-    dd:SetLabel(L["Unit"])
-    dd:SetFullWidth(true)
     local items, order = {}, {}
     for i, u in ipairs(NS.Units.LIST) do
         items[u] = (u == "target") and L["Target"] or L["Focus"]
         order[i] = u
     end
-    dd:SetList(items, order)
-    dd:SetValue(ctx.unit)
-    dd:SetCallback("OnValueChanged", function(_, _, value)
-        ctx.unit = value
-        Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
-    end)
-    scroll:AddChild(dd)
-    addSpacer(scroll, ROW_VSPACER)
 
-    -- Focus link + copy header ------------------------------------------
+    local dd = Helpers.PageBanner(ctx, {
+        label   = L["Unit"],
+        tooltip = L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."],
+        list    = items,
+        order   = order,
+        value   = ctx.unit,
+        onSelect = function(value)
+            if not value or value == ctx.unit then return end
+            ctx.unit = value
+            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+        end,
+    })
+    -- Parked on the ctx so a suite can drive the selection the way a click
+    -- would; the library keeps its own chrome widgets private.
+    ctx.__bannerWidget = dd
+
     if ctx.unit == "focus" then
         local cfg = NS.Units.Config("focus")
-        local linked = cfg ~= nil and cfg.link == true
-
-        local row = AceGUI:Create("SimpleGroup")
-        row:SetLayout("Flow")
-        row:SetFullWidth(true)
-
-        local cb = AceGUI:Create("CheckBox")
-        cb:SetLabel(L["Use same styling as Target"])
-        cb:SetRelativeWidth(0.5)
-        cb:SetValue(linked)
-        cb:SetCallback("OnValueChanged", function(_, _, value)
-            local c = NS.Units.Config("focus")
-            if c then c.link = value and true or false end
-            Helpers.FireConfigChanged("units")
-            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
-        end)
-        row:AddChild(cb)
-
-        local btn = AceGUI:Create("Button")
-        btn:SetText(L["Copy styling from Target"])
-        btn:SetRelativeWidth(0.5)
-        btn:SetCallback("OnClick", function()
-            NS.Units.CopyStyling("target", "focus")
-            Helpers.FireConfigChanged("units")
-            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
-        end)
-        row:AddChild(btn)
-
-        scroll:AddChild(row)
-        addSpacer(scroll, ROW_VSPACER)
-
-        if linked then
-            -- Editable-but-ignored appearance widgets are worse than none:
-            -- a linked Focus renders with Target's tables, so any styled row
-            -- here would write to a table nothing reads. But alwaysPerUnit
-            -- rows (label show/text) ARE per-unit even while linked, so they
-            -- stay editable; only the appearance rows are replaced by a note.
+        if cfg ~= nil and cfg.link == true then
+            -- Editable-but-ignored appearance widgets are worse than none: a
+            -- linked Focus renders with Target's tables, so any styled row here
+            -- would write to a table nothing reads. alwaysPerUnit rows ARE
+            -- per-unit even while linked, so they stay editable; everything else
+            -- is replaced by the note. No strip either -- a tab strip over a
+            -- note is chrome for its own sake.
             local perUnit = Helpers.PartitionUnitRows(
                 Helpers.SchemaForPanel(panelKey, ctx.unit))
             Helpers.RenderRows(ctx, perUnit, afterGroup)
-
-            local note = AceGUI:Create("Label")
-            note:SetFullWidth(true)
-            note:SetText(L["Linked to Target — uncheck to customize."])
-            scroll:AddChild(note)
-            if scroll.DoLayout then scroll:DoLayout() end
+            Helpers.TextRow(ctx, L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."])
+            local scroll = ensureScroll(ctx)
+            if scroll and scroll.DoLayout then scroll:DoLayout() end
             return
         end
     end
 
-    Helpers.RenderSchema(ctx, panelKey, afterGroup)
+    Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup)
 end
 
 -- Look up `path` in the schema and write `value` through the same
@@ -160,7 +144,15 @@ function Helpers.SetAndRefresh(path, value)
                               .. " failed: " .. tostring(err))
         end
     end
-    Helpers.RefreshAllPanels()
+    -- SCALAR, never structural. A value write changes what a widget SHOWS; it
+    -- does not make a row appear or vanish. A structural sweep here would clear
+    -- and rebuild every rendered page on each committed change -- including the
+    -- page holding the slider or the color swatch the user is still dragging,
+    -- which is released back to AceGUI's pool mid-gesture. Structural refreshes
+    -- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
+    -- the Units tab's link toggle, which really does change what the unit pages
+    -- draw.
+    Helpers.RefreshScalars()
     return true
 end
 

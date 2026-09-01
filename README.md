@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-783%2F783_passing-green)
+![Tests](https://img.shields.io/badge/Tests-791%2F791_passing-green)
 
 ![Logo](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
@@ -72,8 +72,8 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 | `/kcd list` | List every setting and its current value. |
 | `/kcd get setting` | Show one setting's value (for example `/kcd get units.target.icons.primarySize`). |
 | `/kcd set setting value` | Change a setting. Colors take red/green/blue numbers, e.g. `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. |
-| `/kcd reset setting` | Put one setting back to its default (for example `/kcd reset units.target.icons.primarySize`). To reset a whole tab, use that tab's **Defaults** button. |
-| `/kcd resetall` | Reset every tab, and every spec's spell list, to defaults — and put every grid and cast bar back in its starting position. |
+| `/kcd reset setting` | Put one setting back to its default (for example `/kcd reset units.target.icons.primarySize`). To reset a whole page, use that page's **Defaults** button — it covers every tab on the page. |
+| `/kcd resetall` | Reset every page, and every spec's spell list, to defaults — and put every grid and cast bar back in its starting position. |
 | `/kcd resetposition` | Put the target icon grid back in its default spot on screen. |
 | `/kcd spells subcommand` | Edit the tracked spells for a class and spec: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`, `resetall`. Defaults to your current spec. |
 | `/kcd perf` | Measure the addon's performance — a guided before/after capture, driven from a clickable step panel. Mostly useful for bug reports. |
@@ -85,9 +85,9 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 
 ### Settings panel
 
-Six tabs under **Ka0s KickCD**:
+Six pages under **Ka0s KickCD**. General, Icons, Cast bar and Text Label group their options into tabs across the top of the page; Spells and Profiles are single pages.
 
-| Tab | Covers |
+| Page | Covers |
 | --- | --- |
 | **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
 | **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
@@ -96,7 +96,7 @@ Six tabs under **Ka0s KickCD**:
 | **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, realm, or faction. |
 
-On the Icons, Cast bar, and Text Label tabs, switch between **Target** and **Focus** at the top. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. Untick "Use same styling as Target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and its own label text.
+On the Icons, Cast bar, and Text Label pages, switch between **Target** and **Focus** with the picker above the tabs — it scopes the whole page. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. On General → Units, untick "Use same styling as Target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and its own label text.
 
 Use `/kcd unlock` to drag each grid (and its cast bar, if it's set to move freely) into position, then `/kcd lock` to fix them.
 
@@ -120,7 +120,7 @@ A few settings shape the addon's behavior more than the rest.
 KickCD tracks two enemy units, and each gets its own icon grid, cast bar, and identity label:
 
 *   **Target** — always tracked while the addon is on.
-*   **Focus** — tracked by default, and **linked** to target so it copies target's icon and cast-bar styling. Turn it off in General → Units, or unlink it to style it on its own.
+*   **Focus** — tracked by default, and **linked** to target so it copies target's icon and cast-bar styling. Turn it off in General → Units, or untick "Use same styling as Target" there to style it on its own.
 
 Position and the label's text are always per-unit, linked or not — the two sets start well apart so they don't overlap, and each can say "Target" / "Focus". While focus is linked it also mirrors target's label styling and whether the label shows at all; unlink it to set those separately. The drag lock, the visibility mode, and overall size/transparency stay shared across both.
 
@@ -146,7 +146,7 @@ Two modes:
 
 By default the bar sits just below the icon grid, lined up with its left edge.
 
-#### Cast bar direction and auto-size (Cast bar → Orientation)
+#### Cast bar direction and auto-size (Cast bar → General)
 
 *   **Orientation** — horizontal (default) or vertical.
 *   **Fill direction** — which way the bar fills. Horizontal fills to the right or left; vertical fills up or down.
@@ -164,8 +164,8 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | --- | --- |
 | Does this replace Blizzard's cast bars? | No. It adds its own cast bars and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target/focus cast bars in Edit Mode. |
 | Does it track my focus too? | Yes — target and focus are both tracked out of the box, each with its own grid and cast bar. The focus set copies target's look by default. Turn focus off in General → Units if you only want your target. |
-| How do I make focus look different from target? | On the Icons, Cast bar, or Text Label tab, switch to **Focus** and untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit). Position and the label's text are always independent; the label's styling and whether it shows follow the link. |
-| I see a "Target" (or "Focus") label on my grid — what is it, and can I change or hide it? | That's the unit's identity label. Set its text, turn it off, or restyle and reposition it on the **Text Label** tab — you can attach it to the icon grid or the cast bar, and each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows at all; its text stays independent. |
+| How do I make focus look different from target? | On General → Units, untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit), then switch the Icons, Cast bar or Text Label page's unit picker to **Focus**. Position and the label's text are always independent; the label's styling and whether it shows follow the link. |
+| I see a "Target" (or "Focus") label on my grid — what is it, and can I change or hide it? | That's the unit's identity label. Set its text, turn it off, or restyle and reposition it on the **Text Label** page — you can attach it to the icon grid or the cast bar, and each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows at all; its text stays independent. |
 | How do I move the grids or cast bars? | `/kcd unlock`, drag, then `/kcd lock` — one lock covers every unit. Each icon grid always drags when unlocked. A cast bar drags only when it's set to move freely; when it's anchored, it follows its grid. `/kcd resetposition` puts the target grid back in its default spot, and `/kcd resetall` resets every unit's positions. |
 | Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned, and pet abilities without a pet are hidden. To start over, use `/kcd spells resetall` (all specs) or `/kcd spells reset` (one spec). |
 | Can I add my own spells? | Yes — in Settings → Spells, or with `/kcd spells add`. For the spec you're currently playing, only spells the game already tracks as cooldowns can be added. |
@@ -188,7 +188,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 | The glow on secondary icons flickers or restarts constantly. | This shouldn't happen anymore. If it does, make sure the glow trigger is set to one of the "target casting" options, and send a short video with your settings. |
 | The settings panel won't open mid-fight. | On purpose — the game blocks it in combat. It opens the moment combat ends. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition` to force a refresh. Auto-size only controls the bar's length; its other dimension stays where you set it. |
-| I want a clean slate. | One tab: that tab's **Defaults** button. One setting: `/kcd reset setting`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells tab's Defaults button; every spec's: `/kcd spells resetall`. |
+| I want a clean slate. | One page: that page's **Defaults** button. One setting: `/kcd reset setting`. Everything but profiles: `/kcd resetall` (or General → Reset all settings). Just the grid's position: `/kcd resetposition`. One spec's spell list: `/kcd spells reset` or the Spells page's Defaults button; every spec's: `/kcd spells resetall`. |
 
 ## Issues and feature requests
 

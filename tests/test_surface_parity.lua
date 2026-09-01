@@ -129,7 +129,7 @@ test("the Options stub carries every member the host calls", function()
         "RegisterOptionsPage", "CreateOptionsPanel", "OpenOptionsPanel", "__pages",
         -- The widget makers, the flow engine and the landing-page renderer. options-ui-§1 forbids
         -- a host copy outright; a page that cannot be built has nothing to render into.
-        "SetRenderer", "RenderGrid", "TextRow", "BuildLandingPage", "RefreshScalars",
+        "SetRenderer", "RenderGrid", "TextRow", "BuildLandingPage",
         -- The library's layout constants. Same rule, stated as constants:
         -- tests/test_options_panel.lua's source scan already fails if a copy of any of these
         -- appears in the host or in the stub.
@@ -141,7 +141,18 @@ test("the Options stub carries every member the host calls", function()
         -- three siblings, and the stub MUST NOT grow it back: settings/Panel_Render.lua binds it at
         -- load and settings/Panel_Widgets.lua forwards it to AddSpacer, both of which are no-ops on
         -- the degraded path, so nil is inert there.
+        --
+        -- RefreshScalars LEFT this list when settings/Panel_Render.lua's SetAndRefresh started
+        -- calling it (the write seam is a SCALAR refresh now, never a structural one -- a
+        -- structural sweep rebuilds the page under the slider being dragged). A member the host
+        -- calls is a member the stub owes, so it is stubbed rather than exempted.
         "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL",
+        -- The three that arrived with the tabbed page and the banner (options-ui-§13 / §14) are
+        -- the same class and exempt for the same reason: BANNER_H is the banner's height floor,
+        -- TAB_H one row of the strip, CHROME_GAP the gap under the whole band. The host reads them
+        -- off the instance or not at all, and tests/test_options_panel.lua fails if a copy of any
+        -- of them appears in settings/OptionsSetup.lua.
+        "BANNER_H", "CHROME_GAP", "TAB_H",
         -- The AceGUI handle the library resolves at CreateOptionsPanel time. With no library there
         -- is no CreateOptionsPanel, so there is nothing to resolve; the host reads NS.AceGUI.
         "AceGUI",

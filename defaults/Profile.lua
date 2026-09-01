@@ -67,6 +67,16 @@ local ICONS_DEFAULT = {
         cooldownTextSize = 14,
         cooldownTextFlags = "OUTLINE", -- "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
         showCharges      = true,
+        -- The charges badge's inset from the icon's bottom-right corner, in
+        -- pixels (positive X = right, positive Y = up). These two WERE the
+        -- literal `-2, 2` in modules/IconGrid_Render.lua's SetPoint call and
+        -- nothing else; the defaults are those exact numbers, so a profile
+        -- that never touches either row draws the badge exactly where it
+        -- always drew. Clamped to +/-32 on the way out (chargesOffset there),
+        -- because a hand-edited SavedVariable is not an error, it is a badge
+        -- parked off the icon with nothing to say why.
+        chargesOffsetX   = -2,
+        chargesOffsetY   = 2,
         -- Hover-tooltip on individual icons. The grid swallows mouse for
         -- drag while unlocked, so tooltips only fire while locked AND
         -- this flag is true (see modules/IconGrid.lua:ApplyLock).

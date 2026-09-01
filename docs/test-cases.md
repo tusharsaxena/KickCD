@@ -182,7 +182,7 @@ badge and any count quoted in the docs must agree with it.
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (11)
+### test_schema.lua (18)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -195,6 +195,13 @@ badge and any count quoted in the docs must agree with it.
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: no schema row targets it (debug-logging-§5)
+- every page partitions into the designed tab strip, in strip order
+- no page draws a tab twice: every group's rows are contiguous
+- no schema page falls below two tabs and loses its strip
+- a unit page's strip is identical for Target and for Focus
+- the Unit picker is drawn in the page's chrome band, never into the scroll
+- the Unit banner retargets the page and every tab follows it
+- a linked Focus draws the note and no strip at all
 
 ### test_database.lua (20)
 
@@ -790,7 +797,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (30)
+### test_options_panel.lua (31)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -818,6 +825,7 @@ badge and any count quoted in the docs must agree with it.
 - with LibKa0s absent the schema still loads COMPLETE
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
+- General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
@@ -958,7 +966,7 @@ badge and any count quoted in the docs must agree with it.
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
-| test_schema.lua | 11 |
+| test_schema.lua | 18 |
 | test_database.lua | 20 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
@@ -990,7 +998,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 25 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 30 |
+| test_options_panel.lua | 31 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1001,4 +1009,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **783** |
+| **Total** | **791** |

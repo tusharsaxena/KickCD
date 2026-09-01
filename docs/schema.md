@@ -127,9 +127,14 @@ units[unit] = {
         readyAlpha, cooldownAlpha, cooldownTint, suppressGCDSwipe,
         -- Border
         borderShow, borderTexture, borderColor, borderSize,
-        -- Annotations
+        -- Annotations. chargesOffsetX/Y are the charges badge's inset from the
+        -- icon's bottom-right corner, in pixels (positive X = right, positive
+        -- Y = up). They WERE the hardcoded `-2, 2` in modules/IconGrid_Render's
+        -- SetPoint call; the defaults are those exact numbers, so an untouched
+        -- profile draws the badge exactly where it always did, and the render
+        -- path clamps to +/-32 because a SavedVariable can hold anything.
         showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
-        showCharges,
+        showCharges, chargesOffsetX, chargesOffsetY,
         -- Per-slot ready glow (LibCustomGlow). Trigger ∈
         --   { never, always, target_casting, target_casting_interruptible }
         -- Type ∈ { button, proc, pixel, autocast }.

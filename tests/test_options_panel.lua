@@ -415,6 +415,36 @@ test("the degraded stub opens no panel and says so once", function()
         "the stub must name the missing library")
 end)
 
+test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", function()
+    -- The library reads a SCHEMA row's body through tooltipBody(), which accepts
+    -- either key. Its bespoke makers do NOT: O.SessionCheckbox and
+    -- O.InlineButtonPair read `spec.tooltip` directly, so a spec that says
+    -- `desc` renders the label with an EMPTY body -- silently, and only in game.
+    -- Five specs in settings/General.lua's builder are affected: the Debug
+    -- console toggle, Reset position, Reset all settings, "Use same styling as
+    -- Target" and "Copy styling from Target".
+    --
+    -- Scanned rather than driven because the failure is the absence of a
+    -- tooltip line, which no widget mock can distinguish from a spec that
+    -- deliberately has none. The builder is the whole region after `local
+    -- function Build` -- every schema row on this page is declared above it, so
+    -- a `desc` key below that line is always a bespoke spec.
+    -- red under: reverting any of those five keys to `desc`.
+    local fh = assert(io.open(T.root .. "/settings/General.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    local at = src:find("local function Build", 1, true)
+    assertTrue(at ~= nil, "settings/General.lua must still declare Build")
+    local builder = src:sub(at)
+    assertNil(builder:match("desc%s*="),
+        "a bespoke spec in General's builder keys its tooltip `desc`; the library reads `tooltip` and draws no body")
+    -- ...and the five bodies are really there, so the rule above cannot be
+    -- satisfied by deleting them instead.
+    local n = 0
+    for _ in builder:gmatch("tooltip%s*=") do n = n + 1 end
+    assertEqual(n, 5, "General's builder must carry all five bespoke tooltip bodies")
+end)
+
 test("the degraded stub carries no widget maker or layout constant", function()
     -- options-ui-§1 is explicit: MUST NOT carry a copy of a widget maker, the
     -- flow engine, the header, or any of the library's layout constants.
@@ -424,6 +454,13 @@ test("the degraded stub carries no widget maker or layout constant", function()
     assertNil(src:match('AceGUI:Create'), "the stub reaches for AceGUI")
     assertNil(src:match("ROW_VSPACER%s*="), "the stub copies a layout constant")
     assertNil(src:match("0%.492"), "the stub copies BUTTON_PAIR_REL")
+    -- The three constants the tabbed page and the banner added (options-ui-§13 / §14). They are
+    -- exempted from the surface-parity sweep in tests/test_surface_parity.lua PRECISELY because
+    -- copying them here is forbidden, so the exemption and this scan are two halves of one rule:
+    -- without the scan, "exempt" would read as "optional".
+    assertNil(src:match("BANNER_H%s*="), "the stub copies the banner height")
+    assertNil(src:match("CHROME_GAP%s*="), "the stub copies the chrome gap")
+    assertNil(src:match("TAB_H%s*="), "the stub copies the tab height")
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────

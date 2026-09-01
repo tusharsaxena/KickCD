@@ -1,8 +1,13 @@
 -- settings/Icons.lua
 --
 -- Icons canvas panel. Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the builder just calls Helpers.RenderSchema.
--- Adding a new icons-section option means adding one schema row here.
+-- KickCD.Settings.Schema; the builder calls Helpers.RenderUnitPanel, which
+-- pins the Unit picker into the page's chrome band and hands the rows to
+-- Helpers.RenderTabbedSchema -- six tabs (Sizing, Layout, Visual states,
+-- Border, Annotations, Ready glow), partitioned from `group` in declaration
+-- order (options-ui-§13). Adding an option means adding one row INSIDE the run
+-- its group already owns: a row filed after the array has left that group
+-- prints the tab a second time further down.
 
 local addonName, NS = ...
 local L      = NS.L
@@ -162,27 +167,27 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.suppressGCDSwipe", type = "bool",
     label = L["Suppress GCD swipe + text"],
-    desc = L["Hide the cooldown swipe and countdown text during the global cooldown period (≤1.6s remaining). The icon body still pops back to ready alpha/tint regardless of this setting."],
+    desc = L["Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."],
     default = true,
 }
 
 -- Border -------------------------------------------------------------
 -- Order produces:
---     [Show border] | [Border color]
---     [Border style] | [Border thickness]
+--     [Show border]  | [Border style]
+--     [Border color] | [Border thickness]
+--
+-- The master toggle leads what it governs, then the two questions a reader
+-- actually pairs: what the edge is made of, then how it is painted and how
+-- thick. This is the SAME order the cast bar's Interruptible / Non-interruptible
+-- tabs use for their four border rows — they used to disagree (icons ran
+-- show/color/style/size), which is the drift a player feels without being able
+-- to name it.
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderShow", type = "bool",
     label = L["Show border"],
     desc = L["Draw a thin border around each icon."],
     default = true,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderColor", type = "color", hasAlpha = true,
-    label = L["Border color"],
-    desc = L["Border color (RGBA)."],
-    default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
@@ -197,6 +202,13 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Border"],
+    path  = "units."..unit..".icons.borderColor", type = "color", hasAlpha = true,
+    label = L["Border color"],
+    desc = L["Border color (RGBA)."],
+    default = { r = 0, g = 0, b = 0, a = 1 },
+}
+add{
+    panel = "icons", section = "icons", unit = unit, group = L["Border"],
     path  = "units."..unit..".icons.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     desc = L["Border thickness in pixels."],
@@ -204,10 +216,25 @@ add{
 }
 
 -- Annotations --------------------------------------------------------
--- Order produces:
---     [Font]               | [Font size]
---     [Font flags]         | [Show tooltip on hover]
---     [Show cooldown text] | [Show charges]
+-- Everything drawn ON TOP of an icon: the countdown, the charges badge and
+-- the hover tooltip. Order produces:
+--     [Show cooldown text] | [Font]
+--     [Font size]          | [Font flags]
+--     [Show charges]       | [Show tooltip on hover]
+--     [Charges X offset]   | [Charges Y offset]
+--
+-- The show-toggle LEADS the three rows that style what it shows, which is the
+-- same shape the cast bar's Spell name and Cast time tabs use. Below it the two
+-- remaining toggles pair, and the badge's two offsets read across one line
+-- rather than down a column — they are one position asked twice, and comparing
+-- them is the question someone nudging a badge off a border actually has.
+add{
+    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    path  = "units."..unit..".icons.showCooldownText", type = "bool",
+    label = L["Show cooldown text"],
+    desc = L["Render numeric seconds remaining on each icon."],
+    default = true,
+}
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.cooldownTextFont", type = "string",
@@ -242,24 +269,39 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    path  = "units."..unit..".icons.showCharges", type = "bool",
+    label = L["Show charges"],
+    desc = L["Render a charges badge for spells with charges."],
+    default = true,
+}
+add{
+    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     path  = "units."..unit..".icons.showTooltip", type = "bool",
     label = L["Show tooltip on hover"],
     desc = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
     default = false,
 }
+-- The charges badge's inset from the icon's bottom-right corner. Promoted out
+-- of modules/IconGrid_Render.lua, where it was the hardcoded
+-- `SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)` and nothing else. The
+-- defaults ARE those two numbers, so a profile that touches neither row draws
+-- exactly the badge it drew before; a border or an aggressive icon zoom is
+-- what makes the stock inset wrong, and both of those are settings on this
+-- same page. Two literals, two questions, two rows — collapsing them into one
+-- "badge inset" slider would answer neither.
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.showCooldownText", type = "bool",
-    label = L["Show cooldown text"],
-    desc = L["Render numeric seconds remaining on each icon."],
-    default = true,
+    path  = "units."..unit..".icons.chargesOffsetX", type = "number",
+    label = L["Charges X offset (in px)"],
+    desc = L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."],
+    default = -2, min = -32, max = 32, step = 1, fmt = "%d px",
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.showCharges", type = "bool",
-    label = L["Show charges"],
-    desc = L["Render a charges badge for spells with charges."],
-    default = true,
+    path  = "units."..unit..".icons.chargesOffsetY", type = "number",
+    label = L["Charges Y offset (in px)"],
+    desc = L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."],
+    default = 2, min = -32, max = 32, step = 1, fmt = "%d px",
 }
 
 -- Ready glow ---------------------------------------------------------
@@ -394,20 +436,16 @@ local function Build(mainCategory)
         H.RestoreDefaults("icons", ctx)
     end
 
-    -- Defer the AceGUI render until the panel becomes visible: build-time
-    -- happens at PLAYER_LOGIN when ctx.body has 0 width, and AceGUI lays
-    -- children out against the container's current width.
+    -- The library owns WHEN this draws (H.SetRenderer): first show, and again
+    -- when a refresh marked it dirty while it was hidden — which is what makes
+    -- the General page's Focus styling link reach this page at all. Building at
+    -- registration time would lay the widgets out against a zero-width body,
+    -- because registration happens at PLAYER_LOGIN.
     --
-    -- H.RenderUnitPanel (not RenderSchema directly) draws the unit
-    -- selector + Focus link/copy header above the schema body and
-    -- re-renders the whole thing on every unit switch (Task 8).
-    local rendered = false
-    ctx.panel:SetScript("OnShow", function()
-        H.EnsureDefaultsButton(ctx.panel)
-        if rendered then return end
-        rendered = true
-        H.RenderUnitPanel(ctx, "icons")
-    end)
+    -- H.RenderUnitPanel (not RenderTabbedSchema directly) pins the Unit picker
+    -- into the page's chrome band ABOVE the tab strip and then hands over
+    -- (settings/Panel_Render.lua).
+    H.SetRenderer(ctx, function(c) H.RenderUnitPanel(c, "icons") end)
 
     return Settings.RegisterCanvasLayoutSubcategory(
         mainCategory, ctx.panel, L["Icons"])

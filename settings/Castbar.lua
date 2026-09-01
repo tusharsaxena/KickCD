@@ -1,8 +1,12 @@
 -- settings/Castbar.lua
 --
 -- Castbar canvas panel. Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the builder just calls Helpers.RenderSchema.
--- Adding a new castbar option means adding one schema row here.
+-- KickCD.Settings.Schema; the builder just calls Helpers.RenderUnitPanel,
+-- which draws the Unit picker as the page banner and then hands the rows to
+-- Helpers.RenderTabbedSchema. Adding a new castbar option means adding one
+-- schema row here -- into the run of rows its `group` already owns, because
+-- the strip is partitioned by group in declaration order (options-ui-§13) and
+-- a row filed after the page has left its group prints that tab twice.
 
 local addonName, NS = ...
 local L      = NS.L
@@ -30,14 +34,175 @@ local function add(t) Schema[#Schema + 1] = t end
 -- NS.Units.Castbar(unit).
 local function addUnitRows(unit)
 
--- Visibility ---------------------------------------------------------
+-- General --------------------------------------------------------------
+-- The page's master toggle, the axis the bar runs on, and how big it is.
+--
+-- FOUR SECTIONS BECAME THIS ONE. "Visibility" held a single row -- the enable
+-- -- and one control is not a subject, it is a drawer. "Orientation" and
+-- "Sizing and Layout" were two halves of one question and the schema itself
+-- said so: `autoSize` decides whether `width` and `height` are read at all, and
+-- WHICH of the two it overrides depends on `orientation`. Three tabs to answer
+-- "how big is this bar" is three clicks to find the one that is actually in
+-- charge.
+--
+-- Order produces:
+--     [Enable cast bar]                                (solo)
+--     [Orientation]           | [Growth direction]
+--     [Auto-size to icon grid]| [Show spark]
+--     [Cast bar width]        | [Cast bar height]
+--     [Icon position]         | [Icon size]
+--
+-- The enable is solo because everything under it is inert without it. Then the
+-- mode beside the thing it modes (growth direction's option list IS orientation's
+-- axis), the master toggle immediately above the two sliders it can override,
+-- and the icon's placement leading its size.
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Visibility"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
     path  = "units."..unit..".castbar.enabled", type = "bool",
     label = L["Enable cast bar"],
     desc = L["Show the target cast bar."],
     default = true,
+    solo    = true,
 }
+
+local GROW_DEFAULT_FOR_ORIENTATION = {
+    HORIZONTAL = "RIGHT",
+    VERTICAL   = "UP",
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.orientation", type = "string",
+    label = L["Orientation"],
+    desc = L["Horizontal: bar stretches across width. Vertical: bar runs up/down."],
+    default = "HORIZONTAL",
+    values  = {
+        ["HORIZONTAL"] = L["Horizontal"],
+        ["VERTICAL"] = L["Vertical"],
+    },
+    sorting = { "HORIZONTAL", "VERTICAL" },
+    -- Reset growDirection to the new orientation's canonical default
+    -- so we can never end up with an inconsistent pair (e.g. a
+    -- horizontal bar with growDirection="UP"). H.Set fires
+    -- Ka0s_KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
+    -- with both fields consistent — the transient state from the
+    -- orientation write alone is overwritten before any frame
+    -- renders. RefreshAllPanels then re-evaluates the growDirection
+    -- dropdown's `values` function so its option list rebuilds for
+    -- the new axis and shows the freshly-reset selection.
+    --
+    -- No manual ApplyConfig / Reskin call here: Helpers.Set has
+    -- already fired Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" } for
+    -- the orientation write, and the secondary H.Set above fires it
+    -- a second time for growDirection. Castbar:OnConfigChanged
+    -- subscribes and reapplies — adding a direct call would just
+    -- triple-dispatch the same work.
+    onChange = function(value)
+        local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
+        if newGrow then
+            H.Set("units."..unit..".castbar.growDirection", "castbar", newGrow)
+        end
+        -- SCALAR, not structural, and the difference now matters. The library's
+        -- dropdown refresher re-runs its `values` function before re-reading
+        -- the value (libs/LibKa0s/OptionsWidgets.lua's makeDropdown/applyList),
+        -- so a scalar sweep is already enough to rebuild the growth-direction
+        -- option list on the new axis. A structural one would clear the scroll
+        -- and rebuild the page from inside this dropdown's own OnValueChanged,
+        -- releasing the widget mid-callback for no gain.
+        H.RefreshScalars()
+    end,
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.growDirection", type = "string",
+    label = L["Growth direction"],
+    desc = L["Which side the cast bar fills toward. Options change with Orientation: horizontal gives Right / Left, vertical gives Up / Down."],
+    default = "RIGHT",
+    -- valueGate names the OTHER setting whose current value gates the
+    -- options this dropdown returns. The slash command's invalid-value
+    -- error appends `(depends on <gate> = <current>)` so a user who
+    -- types `/kcd set castbar.growDirection LEFT` while orientation is
+    -- VERTICAL gets a hint about why the value list is UP/DOWN.
+    valueGate = "units."..unit..".castbar.orientation",
+    -- Function so the dropdown re-evaluates its options every time
+    -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
+    -- inside its refresh closure). Pulled together with the
+    -- orientation onChange above this gives the dropdown a single
+    -- valid pair of options at all times — no "(horizontal)" /
+    -- "(vertical)" disambiguation suffixes needed in the labels.
+    values  = function()
+        local profile = NS.db and NS.db.profile
+        local unitProfile = profile and profile.units and profile.units[unit]
+        local orientation = unitProfile and unitProfile.castbar
+                            and unitProfile.castbar.orientation
+        if orientation == "VERTICAL" then
+            return {
+                { value = "UP",   label = L["Up"]   },
+                { value = "DOWN", label = L["Down"] },
+            }
+        end
+        return {
+            { value = "RIGHT", label = L["Right"] },
+            { value = "LEFT",  label = L["Left"]  },
+        }
+    end,
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.autoSize", type = "bool",
+    label = L["Auto-size to icon grid"],
+    desc = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
+    default = true,
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.showSpark", type = "bool",
+    label = L["Show spark"],
+    desc = L["Render the leading-edge spark on the bar."],
+    default = true,
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.width", type = "number",
+    label = L["Cast bar width (in px)"],
+    desc = L["Cast bar width in pixels."],
+    default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.height", type = "number",
+    label = L["Cast bar height (in px)"],
+    desc = L["Cast bar height in pixels."],
+    default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.iconPosition", type = "string",
+    label = L["Icon position"],
+    desc = L["Where to place the spell icon, or hide it entirely."],
+    default = "OFF",
+    values  = {
+        ["LEFT"] = L["Left"],
+        ["RIGHT"] = L["Right"],
+        ["OFF"] = L["Off"],
+    },
+    sorting = { "LEFT", "RIGHT", "OFF" },
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
+    path  = "units."..unit..".castbar.iconSize", type = "number",
+    label = L["Icon size (in px)"],
+    desc = L["Spell icon size in pixels (0 hides the icon)."],
+    default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
+}
+
 
 -- Position ------------------------------------------------------------
 -- Frame-anchor values for the "anchor on primary icon" and "anchor on
@@ -102,159 +267,18 @@ add{
     default = -1, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 
--- Orientation --------------------------------------------------------
--- Per-orientation default fill direction. Used by:
---   * `castbar.orientation`'s onChange to reset growDirection when
---     the user flips orientation (so a stale "UP" doesn't linger
---     after switching from Vertical to Horizontal).
---   * `castbar.growDirection`'s default — when the user resets the
---     panel to defaults the value falls back to the horizontal one;
---     a vertical profile picks up "UP" via the orientation reset.
-local GROW_DEFAULT_FOR_ORIENTATION = {
-    HORIZONTAL = "RIGHT",
-    VERTICAL   = "UP",
-}
-
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
-    path  = "units."..unit..".castbar.orientation", type = "string",
-    label = L["Orientation"],
-    desc = L["Horizontal: bar stretches across width. Vertical: bar runs up/down."],
-    default = "HORIZONTAL",
-    values  = {
-        ["HORIZONTAL"] = L["Horizontal"],
-        ["VERTICAL"] = L["Vertical"],
-    },
-    sorting = { "HORIZONTAL", "VERTICAL" },
-    -- Reset growDirection to the new orientation's canonical default
-    -- so we can never end up with an inconsistent pair (e.g. a
-    -- horizontal bar with growDirection="UP"). H.Set fires
-    -- Ka0s_KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
-    -- with both fields consistent — the transient state from the
-    -- orientation write alone is overwritten before any frame
-    -- renders. RefreshAllPanels then re-evaluates the growDirection
-    -- dropdown's `values` function so its option list rebuilds for
-    -- the new axis and shows the freshly-reset selection.
-    --
-    -- No manual ApplyConfig / Reskin call here: Helpers.Set has
-    -- already fired Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" } for
-    -- the orientation write, and the secondary H.Set above fires it
-    -- a second time for growDirection. Castbar:OnConfigChanged
-    -- subscribes and reapplies — adding a direct call would just
-    -- triple-dispatch the same work.
-    onChange = function(value)
-        local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
-        if newGrow then
-            H.Set("units."..unit..".castbar.growDirection", "castbar", newGrow)
-        end
-        H.RefreshAllPanels()
-    end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
-    path  = "units."..unit..".castbar.growDirection", type = "string",
-    label = L["Growth direction"],
-    desc = L["Which side the cast bar fills toward. Options change with Orientation: horizontal → Right / Left, vertical → Up / Down."],
-    default = "RIGHT",
-    -- valueGate names the OTHER setting whose current value gates the
-    -- options this dropdown returns. The slash command's invalid-value
-    -- error appends `(depends on <gate> = <current>)` so a user who
-    -- types `/kcd set castbar.growDirection LEFT` while orientation is
-    -- VERTICAL gets a hint about why the value list is UP/DOWN.
-    valueGate = "units."..unit..".castbar.orientation",
-    -- Function so the dropdown re-evaluates its options every time
-    -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
-    -- inside its refresh closure). Pulled together with the
-    -- orientation onChange above this gives the dropdown a single
-    -- valid pair of options at all times — no "(horizontal)" /
-    -- "(vertical)" disambiguation suffixes needed in the labels.
-    values  = function()
-        local profile = NS.db and NS.db.profile
-        local unitProfile = profile and profile.units and profile.units[unit]
-        local orientation = unitProfile and unitProfile.castbar
-                            and unitProfile.castbar.orientation
-        if orientation == "VERTICAL" then
-            return {
-                { value = "UP",   label = L["Up"]   },
-                { value = "DOWN", label = L["Down"] },
-            }
-        end
-        return {
-            { value = "RIGHT", label = L["Right"] },
-            { value = "LEFT",  label = L["Left"]  },
-        }
-    end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Orientation"],
-    path  = "units."..unit..".castbar.autoSize", type = "bool",
-    label = L["Auto-size to icon grid"],
-    desc = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
-    default = true,
-}
-
--- Sizing and Layout --------------------------------------------------
--- Merged from the previous two-subsection split (Sizing + Layout) so
--- everything that determines the bar's dimensions and icon placement
--- lives in one section. Order produces:
---     [Cast bar width] | [Cast bar height]
---     [Icon size]      | [Icon position]
---     [Show spark]                                  (alone — last in
---                                                    section, group
---                                                    transition flushes
---                                                    the row).
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
-    path  = "units."..unit..".castbar.width", type = "number",
-    label = L["Cast bar width (in px)"],
-    desc = L["Cast bar width in pixels."],
-    default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
-    path  = "units."..unit..".castbar.height", type = "number",
-    label = L["Cast bar height (in px)"],
-    desc = L["Cast bar height in pixels."],
-    default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
-    path  = "units."..unit..".castbar.iconSize", type = "number",
-    label = L["Icon size (in px)"],
-    desc = L["Spell icon size in pixels (0 hides the icon)."],
-    default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
-    path  = "units."..unit..".castbar.iconPosition", type = "string",
-    label = L["Icon position"],
-    desc = L["Where to place the spell icon, or hide it entirely."],
-    default = "OFF",
-    values  = {
-        ["LEFT"] = L["Left"],
-        ["RIGHT"] = L["Right"],
-        ["OFF"] = L["Off"],
-    },
-    sorting = { "LEFT", "RIGHT", "OFF" },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Sizing and Layout"],
-    path  = "units."..unit..".castbar.showSpark", type = "bool",
-    label = L["Show spark"],
-    desc = L["Render the leading-edge spark on the bar."],
-    default = true,
-}
-
--- Text -----------------------------------------------------------------
--- Just the typography (font / size / flags). The "Show spell name" and
--- "Show cast time" toggles each used to live here too, but now sit
--- alongside their own anchor + offset controls under the Spell name and
--- Cast time sections below — reads more naturally per-element than as a
--- pair of show-toggles separated from their position controls. Order:
+-- Font -----------------------------------------------------------------
+-- The typography the spell name and the cast time SHARE. Named Font rather
+-- than Text so it agrees with the Text Label page's Font tab and so it is not
+-- mistaken for the two tabs beside it, which are the text ELEMENTS. The "Show
+-- spell name" and "Show cast time" toggles each sit with their own anchor and
+-- offsets on those tabs -- that decision is older than the strip and it holds:
+-- a reader asking "where does the spell name go?" wants the on/off switch in
+-- front of the placement controls, not on a third tab.
+--
+-- Order produces:
 --     [Font]       | [Font size]
---     [Font flags] |                                      (alone — group
---                                                          break flushes
---                                                          the row).
+--     [Font flags]                                     (last in the tab)
 local TEXT_POSITION_VALUES = {
     ["INSIDE_LEFT"] = L["Inside left"],
     ["INSIDE_RIGHT"] = L["Inside right"],
@@ -271,7 +295,7 @@ local TEXT_POSITION_VALUES_ORDER = {
 }
 
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
     path  = "units."..unit..".castbar.font", type = "string",
     label = L["Font"],
     desc = L["Font for the spell name and cast time text."],
@@ -280,14 +304,14 @@ add{
     values  = function() return H.LSMValues("font") end,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
     path  = "units."..unit..".castbar.fontSize", type = "number",
     label = L["Font size"],
     desc = L["Cast-bar text size in pixels."],
     default = 10, min = 8, max = 24, step = 1, fmt = "%d",
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
     path  = "units."..unit..".castbar.fontFlags", type = "string",
     label = L["Font flags"],
     desc = L["Outline / monochrome flags applied to cast-bar text."],
@@ -392,7 +416,7 @@ add{
 
 -- Interruptible appearance --------------------------------------------
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     desc = L["LibSharedMedia statusbar texture used for interruptible casts."],
@@ -401,35 +425,35 @@ add{
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.barColor", type = "color", hasAlpha = true,
     label = L["Bar color"],
     desc = L["RGBA bar fill color when the target's cast is interruptible."],
     default = { r = 1, g = 0.85, b = 0.05, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.bgColor", type = "color", hasAlpha = true,
     label = L["Background color"],
     desc = L["RGBA color drawn behind the bar."],
     default = { r = 0, g = 0, b = 0, a = 0.5 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.nameTextColor", type = "color", hasAlpha = true,
     label = L["Spell name color"],
     desc = L["RGBA color of the spell-name text."],
     default = { r = 1, g = 1, b = 1, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.borderShow", type = "bool",
     label = L["Show border"],
     desc = L["Draw a border around the cast bar for interruptible casts."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.borderTexture", type = "string",
     label = L["Border style"],
     desc = L["LibSharedMedia border texture (edge style) for interruptible casts."],
@@ -438,14 +462,14 @@ add{
     values  = function() return H.LSMValues("border") end,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
     desc = L["RGBA border color for interruptible casts."],
     default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
     path  = "units."..unit..".castbar.interruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     desc = L["Border edge size in pixels."],
@@ -454,7 +478,7 @@ add{
 
 -- Uninterruptible appearance ------------------------------------------
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.statusBarTexture", type = "string",
     label = L["Bar texture"],
     desc = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
@@ -463,35 +487,35 @@ add{
     values  = function() return H.LSMValues("statusbar") end,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.barColor", type = "color", hasAlpha = true,
     label = L["Bar color"],
     desc = L["RGBA bar fill color when the target's cast cannot be interrupted."],
     default = { r = 0.85, g = 0.10, b = 0.10, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.bgColor", type = "color", hasAlpha = true,
     label = L["Background color"],
     desc = L["RGBA color drawn behind the bar."],
     default = { r = 0, g = 0, b = 0, a = 0.5 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.nameTextColor", type = "color", hasAlpha = true,
     label = L["Spell name color"],
     desc = L["RGBA color of the spell-name text."],
     default = { r = 1, g = 1, b = 1, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.borderShow", type = "bool",
     label = L["Show border"],
     desc = L["Draw a border around the cast bar for non-interruptible casts."],
     default = true,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.borderTexture", type = "string",
     label = L["Border style"],
     desc = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
@@ -500,14 +524,14 @@ add{
     values  = function() return H.LSMValues("border") end,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.borderColor", type = "color", hasAlpha = true,
     label = L["Border color"],
     desc = L["RGBA border color for non-interruptible casts."],
     default = { r = 0, g = 0, b = 0, a = 1 },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible casts"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
     path  = "units."..unit..".castbar.uninterruptible.borderSize", type = "number",
     label = L["Border thickness (in px)"],
     desc = L["Border edge size in pixels."],
@@ -538,19 +562,10 @@ local function Build(mainCategory)
         H.RestoreDefaults("castbar", ctx)
     end
 
-    -- Defer the AceGUI render until the panel becomes visible — same
-    -- zero-width caveat as the General / Icons tabs.
-    --
-    -- H.RenderUnitPanel (not RenderSchema directly) draws the unit
-    -- selector + Focus link/copy header above the schema body and
-    -- re-renders the whole thing on every unit switch (Task 8).
-    local rendered = false
-    ctx.panel:SetScript("OnShow", function()
-        H.EnsureDefaultsButton(ctx.panel)
-        if rendered then return end
-        rendered = true
-        H.RenderUnitPanel(ctx, "castbar")
-    end)
+    -- The library owns WHEN this draws (H.SetRenderer) and H.RenderUnitPanel
+    -- pins the Unit picker into the chrome band above the tab strip; see
+    -- settings/Icons.lua's builder for the long form.
+    H.SetRenderer(ctx, function(c) H.RenderUnitPanel(c, "castbar") end)
 
     return Settings.RegisterCanvasLayoutSubcategory(
         mainCategory, ctx.panel, L["Cast bar"])

@@ -227,17 +227,37 @@ if not lib then
     end
 
     -- Reached only from a builder or a user action, so a no-op is honest.
+    --
+    -- The tabbed-page members (options-ui-§13) and the page banner (§14) joined the list when
+    -- the pages adopted them: TabStrip and PageBanner draw the chrome band, SetChromeHeight moves
+    -- the scroll's top edge under it, and RenderTabbedSchema is what settings/Panel_Render.lua and
+    -- settings/General.lua now call in RenderSchema's place. RefreshScalars joined for a different
+    -- reason and it is NOT cosmetic: Helpers.SetAndRefresh calls it on every write now, so on the
+    -- degraded path a missing member is a raise inside `/kcd set`, which still works with no panel.
     for _, name in ipairs({
         "CreatePanel", "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
         "AddSpacer", "AttachTooltip", "InlineButtonPair", "RenderField", "RenderRows",
-        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel",
+        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel", "RefreshScalars",
         "RestoreDefaults",
         "PatchAlwaysShowScrollbar",
+        "SetChromeHeight", "TabStrip", "PageBanner", "RenderTabbedSchema",
     }) do
         Helpers[name] = function() end
     end
-    Helpers.__panels   = function() return {} end
-    Helpers.__panelFor = function() return nil end
+    -- The library's own internals, mirrored for the same reason __panels and __panelFor already
+    -- were: the parity gate reads the WHOLE live surface, and a member that exists live and not
+    -- here is a hole whether or not today's host code happens to reach it. The three layout
+    -- CONSTANTS that arrived with them -- BANNER_H, CHROME_GAP, TAB_H -- deliberately do NOT
+    -- appear: options-ui-§8 forbids a host copy of a library constant, the copy is the one that
+    -- goes stale, and tests/test_options_panel.lua scans this file for exactly that.
+    Helpers.__panels        = function() return {} end
+    Helpers.__panelFor      = function() return nil end
+    Helpers.__bannerBand    = function() end
+    Helpers.__layoutTabs    = function() end
+    Helpers.__releaseChrome = function() end
+    Helpers.__scrollTopInset = function() end
+    Helpers.__tabBand       = function() end
+    Helpers.__tabPlacement  = function() end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end

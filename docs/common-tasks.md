@@ -20,13 +20,20 @@ so **do not** write a parallel mutator for a field that already has a row.
 1. Pick the panel file under `settings/` that owns the option (`General.lua`, `Icons.lua`,
    `Castbar.lua`, `Label.lua`, `Spells.lua`, `Profiles.lua`).
 2. Add one `add{ … }` block: `panel`, `section`, `group`, `path`, `type`, `label`, `desc`, `default`,
-   plus `values` for a `string` enum or `min`/`max`/`step` for a number. Order within the file is the
-   render order — the schema renderer pairs consecutive rows into two columns.
+   plus `values` for a `string` enum or `min`/`max`/`step` for a number. **`group` is the tab**, and
+   the strip is partitioned in declaration order, so put the new row *inside the run of rows that
+   group already owns* — a row appended after the array has left its group prints that tab a second
+   time further down the page, which is visible only in game. Order within the run is the layout: the
+   flow engine pairs consecutive rows two per line, so put a mode beside the thing it modes and rest
+   beside hover rather than one above the other.
 3. Add the `default` to `DEFAULT_PROFILE` in `defaults/Profile.lua` at the matching path. That table
    is the **only** place a profile default is hardcoded (`savedvariables-§2`); the schema row's
    `default` and the profile entry must agree.
-4. Add the `label`/`desc` strings to `locales/enUS.lua`.
-5. If the option needs to do something beyond being stored, wire it where the value is read — not in
+4. Add the `label`/`desc` strings to `locales/enUS.lua`, in **pure ASCII** — a glyph the
+   settings-panel font does not carry draws as an empty box in game and nothing else ever says so.
+5. Update the page → tab → count table in `tests/test_schema.lua` and in
+   [settings-panel.md](settings-panel.md). The test fails until you do, which is the point.
+6. If the option needs to do something beyond being stored, wire it where the value is read — not in
    the row. Settings writes originating outside `settings/Panel*.lua` route through
    `Helpers.SetAndRefresh(path, value)` so they share the panel's write-notify-refresh path.
 
