@@ -49,7 +49,7 @@ This root file is a stub (per standard documentation-§2). Read these before tou
 
 ## Vendored library provenance
 
-Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.19.0 (MIT). That line is the answer to
+Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.23.0 (MIT). That line is the answer to
 "which LibKa0s does this build carry?", so nobody has to grep minors out of `libs/LibKa0s/*.lua`. It
 lives here rather than in `README.md` because it answers a maintainer's question on a page written
 for maintainers; the README is player-facing and no longer carries a library inventory at all.
