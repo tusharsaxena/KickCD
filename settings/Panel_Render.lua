@@ -295,20 +295,21 @@ end
 --
 -- ResetAllPositions and RestoreUnitLinks are NOT called here. They used to be,
 -- and RestoreAllDefaults had already run both by the time it returned: the
--- descriptor's `afterRestoreAll` hook (settings/OptionsSetup.lua) is exactly
--- those two calls, and libs/LibKa0s/Options.lua's O.RestoreAllDefaults fires it
--- before the refresh — deliberately before, so the refresh paints the
--- post-hook values. Repeating them here re-ran two whole-profile writes and two
--- CONFIG_CHANGED fan-outs per reset, and, worse, made the hook look optional:
--- delete `afterRestoreAll` and this path still worked, while `/kcd resetall`'s
--- other caller (the library's own Defaults button) silently stopped clearing
--- anchors (KCD-R-04). One caller, one place.
+-- descriptor's `resetProfile` hook (settings/OptionsSetup.lua) empties the
+-- active profile and merges NS.DEFAULT_PROFILE back over it, anchors and every
+-- unit's `link` flag included, and libs/LibKa0s/Options.lua's
+-- O.RestoreAllDefaults fires it before the refresh — deliberately before, so
+-- the refresh paints the post-hook values. Repeating them here re-ran two
+-- whole-profile writes and two CONFIG_CHANGED fan-outs per reset, and, worse,
+-- made the hook look optional: delete `resetProfile` and this path still worked,
+-- while `/kcd resetall`'s other caller (the library's own Defaults button)
+-- silently stopped clearing anchors (KCD-R-04). One caller, one place.
 --
 -- What is genuinely NOT the library's is the spell lists: they are not schema
 -- rows and not positions, so nothing upstream can reach them.
 function Helpers.ResetAll()
     -- ONE CALL, because RestoreAllDefaults is a PROFILE reset now
-    -- (options-ui-§12, settings/OptionsSetup.lua's afterRestoreAll). The spell
+    -- (options-ui-§12, settings/OptionsSetup.lua's resetProfile). The spell
     -- lists live at `db.profile.spells`, so emptying the profile clears them and
     -- Database:OnProfileChanged re-seeds them through BuildSpells on the way back
     -- — the same path a profile switch takes. The explicit ResetAllSpells call

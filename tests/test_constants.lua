@@ -70,8 +70,8 @@ end)
 -- cases restore the guarantee, read off the instance instead of off Const.
 test("Constants: the library publishes every panel layout metric as a positive number", function()
     -- NS.Settings.Helpers IS the LibKa0s-Options instance (test_options_panel.lua:70).
-    -- If a future LibKa0s stops publishing one of these, settings/Panel_Render.lua:20
-    -- and settings/Panel_Widgets.lua:49 bind nil at file load and forward nil.
+    -- If a future LibKa0s stops publishing one of these, anything that binds it
+    -- at file load binds nil and forwards nil.
     local H = NS.Settings.Helpers
     for _, key in ipairs({ "PADDING_X", "ROW_VSPACER",
                            "SECTION_HEADING_H", "BUTTON_PAIR_REL" }) do

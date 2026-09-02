@@ -18,8 +18,8 @@ local addonName, NS = ...
 --
 -- TOC POSITION: BEFORE settings/Panel.lua (which decorates this instance) and
 -- therefore before every settings/<page>.lua, because those page files call
--- Helpers.LSMValues and Helpers.AnchorValues inside schema-row literals AT FILE
--- LOAD. See the stub below for what that costs.
+-- Helpers.AnchorValues and Helpers.AnchorOrder AT FILE LOAD, into the locals
+-- their schema-row literals read. See the stub below for what that costs.
 
 -- ---------------------------------------------------------------------
 -- The one rule about what a global reset must not touch
@@ -165,20 +165,22 @@ local descriptor = {
 -- print an honest "not installed" line. This one MUST NOT, and the reason is not
 -- importance but WHEN the missing code is reached (options-ui-§1).
 --
--- settings/Icons.lua and settings/Castbar.lua evaluate `H.LSMValues("border")`
--- and `H.AnchorValues()` inside schema-row literals, at FILE LOAD. With those
--- members nil the page file raises, so its rows never register, so a large part
--- of NS.Settings.Schema is missing — and `/kcd list`, `/kcd get`, `/kcd set`,
--- `/kcd reset` and the profile defaults all break with it, silently. The addon
--- would not degrade; it would half-load and say nothing.
+-- settings/Icons.lua and settings/Castbar.lua evaluate `H.AnchorValues()` and
+-- `H.AnchorOrder()` at FILE LOAD, into the file-scope locals their schema-row
+-- literals read. With those members nil the page file raises, so its rows never
+-- register, so a large part of NS.Settings.Schema is missing — and `/kcd list`,
+-- `/kcd get`, `/kcd set`, `/kcd reset` and the profile defaults all break with
+-- it, silently. The addon would not degrade; it would half-load and say nothing.
 --
 -- MEASURED, not assumed (options-ui-§1 requires exactly that): this stub needs
 -- ZERO load-time members, and that is a real difference from the reference
 -- consumer. AbsorbTracker takes LSMValues from the LIBRARY, so its stub must
--- publish one or its page files raise. KickCD keeps LSMValues, AnchorValues and
--- AnchorOrder as its OWN code in settings/Panel.lua — host code that is present
--- whether or not LibKa0s is — and Panel.lua loads before every page file. So the
--- load-time hole AbsorbTracker's stub exists to plug does not exist here.
+-- publish one or its page files raise. KickCD's load-time callers are
+-- AnchorValues and AnchorOrder, both of them its OWN code in settings/Panel.lua
+-- (host code that is present whether or not LibKa0s is), and Panel.lua loads
+-- before every page file. So the load-time hole AbsorbTracker's stub exists to
+-- plug does not exist here. LSMValues is host code here too, but nothing
+-- evaluates it at load any more.
 --
 -- The measurement is the gate, not this comment:
 -- tests/test_options_panel.lua loads the addon with the library ABSENT and pins
