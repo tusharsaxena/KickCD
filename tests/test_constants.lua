@@ -92,7 +92,7 @@ test("Constants: a rendered unit panel spaces its rows by a real number of pixel
     -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua:210.
     local H = NS.Settings.Helpers
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { panelKey = "castbar" })
+    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { pageKey = "castbar" })
     ctx.scroll = AceGUI:Create("ScrollFrame")
     ctx.unit = "target"
 

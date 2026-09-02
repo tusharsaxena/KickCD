@@ -96,8 +96,13 @@ end
 
 --- Border tint — the COLOR half. Colors the already-configured backdrop
 --- texture, so it is safe to run without a preceding SetBackdrop.
-local function applyBorderColor(borderFrame, sc)
-    borderFrame:SetBackdropBorderColor(Castbar.UnpackColor(sc.borderColor, 0, 0, 0, 1))
+---
+--- `unit` is the RENDERING unit, never the unit whose config table `sc` came
+--- out of (options-ui-§17). A linked Focus draws with Target's tables, and the
+--- class the reader is looking at is the one on their focus frame.
+local function applyBorderColor(borderFrame, sc, unit)
+    borderFrame:SetBackdropBorderColor(
+        NS.ResolveColor(sc.borderColor, sc.useClassColorBorder, unit))
 end
 
 --- Resolve the bar's long / thick axes from config, applying the auto-size
@@ -159,6 +164,7 @@ local function structureSignature(c, intCfg, unintCfg, barLong, barThick)
         tostring(c.iconPosition), tostring(c.iconSize),
         tostring(c.showSpark),
         tostring(c.font), tostring(c.fontSize), tostring(c.fontFlags),
+        tostring(c.fontShadow),
         tostring(c.namePosition), tostring(c.nameOffsetX), tostring(c.nameOffsetY),
         tostring(c.timePosition), tostring(c.timeOffsetX), tostring(c.timeOffsetY),
         tostring(c.showName), tostring(c.showTime),
@@ -287,10 +293,24 @@ local function applyLabelFonts(frame, c)
     local fontPath = Castbar.FetchFont(c.font)
     local fontSize = c.fontSize or 12
     local fontFlags = c.fontFlags
+    -- "NONE" is the PRE-v5 token and core/Database.lua rewrites it, but a
+    -- profile that has not been through the migration yet still reaches here on
+    -- the first frame after login.
     if fontFlags == "NONE" or fontFlags == nil then fontFlags = "" end
 
     frame.nameText:SetFont(fontPath, fontSize, fontFlags)
     frame.timeText:SetFont(fontPath, fontSize, fontFlags)
+
+    -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED, never
+    -- left alone: these FontStrings are pooled with the frame, so a bar that had
+    -- the shadow on and then had it turned off would keep drawing one.
+    local ox, oy = 0, 0
+    local sa = 0
+    if c.fontShadow then ox, oy, sa = 1, -1, 1 end
+    for _, fs in ipairs({ frame.nameText, frame.timeText }) do
+        fs:SetShadowOffset(ox, oy)
+        fs:SetShadowColor(0, 0, 0, sa)
+    end
 end
 
 --- Position labels per their independent anchor settings, and honor the two
@@ -358,30 +378,49 @@ end
 ---
 --- nameText color is deliberately absent: it is per-state and applied in
 --- ApplyState via curve-evaluated channels, because the interruptible flag
---- driving the choice can be secret in combat.
+--- driving the choice can be secret in combat. So is bar OPACITY, for the same
+--- reason -- it folds into that curve's parameters rather than being a SetAlpha
+--- here, which ApplyState would overwrite on the next cast anyway.
+---
+--- Every color here goes through NS.ResolveColor (LibKa0s-Core-1.0), so the
+--- "Use class color" companion beside each swatch is honored in one place, with
+--- one set of rules: the stored ALPHA always applies, and an unresolvable class
+--- -- an NPC boss, which is most of the time -- falls through to the stored
+--- swatch rather than to a substitute hue.
 local function ReskinColors(inst, intCfg, unintCfg)
     local frame = inst.frame
-    local unpack_ = Castbar.UnpackColor
+    local c     = NS.Units.Castbar(inst.unit)
+    -- THE UNIT THE SURFACE DESCRIBES, which is the one being RENDERED. A linked
+    -- Focus reads Target's appearance tables and still draws on the focus frame,
+    -- so resolving on the table's source unit would paint a focus bar in the
+    -- target's class color (options-ui-§17).
+    local unit  = inst.unit
 
     -- Per-state backgrounds (alpha-switched in ApplyState).
-    frame.bgInterruptible:SetColorTexture(unpack_(intCfg.bgColor, 0, 0, 0, 0.5))
-    frame.bgUninterruptible:SetColorTexture(unpack_(unintCfg.bgColor, 0, 0, 0, 0.5))
+    frame.bgInterruptible:SetColorTexture(
+        NS.ResolveColor(intCfg.bgColor, intCfg.useClassColorBgColor, unit))
+    frame.bgUninterruptible:SetColorTexture(
+        NS.ResolveColor(unintCfg.bgColor, unintCfg.useClassColorBgColor, unit))
 
     -- Per-state bar textures + colors. Both bars share size/anchors so
     -- the spark anchor (to the interruptible inner status texture) is
     -- always at the correct fill edge regardless of which one is visible.
     frame.bar.interruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(intCfg.statusBarTexture))
-    frame.bar.interruptible:SetStatusBarColor(unpack_(intCfg.barColor, 1, 0.85, 0.05, 1))
+    frame.bar.interruptible:SetStatusBarColor(
+        NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit))
     frame.bar.uninterruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(unintCfg.statusBarTexture))
-    frame.bar.uninterruptible:SetStatusBarColor(unpack_(unintCfg.barColor, 0.85, 0.1, 0.1, 1))
+    frame.bar.uninterruptible:SetStatusBarColor(
+        NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit))
 
-    -- timeText color stays shared (white).
-    frame.timeText:SetTextColor(1, 1, 1, 1)
+    -- The CAST TIME text. Shared across the two states and hardcoded white until
+    -- the Font tab grew a swatch for it (options-ui-§16); the spell name's color
+    -- is per-state and stays in ApplyState, where the curve can switch it.
+    frame.timeText:SetTextColor(NS.ResolveColor(c.textColor, c.useClassColorText, unit))
 
-    applyBorderColor(frame.borderInterruptible,   intCfg)
-    applyBorderColor(frame.borderUninterruptible, unintCfg)
+    applyBorderColor(frame.borderInterruptible,   intCfg,   unit)
+    applyBorderColor(frame.borderUninterruptible, unintCfg, unit)
 end
 
 --- Config-driven re-skin of the cast bar widgets. Recomputes orientation,

@@ -235,3 +235,106 @@ test("ApplyAll renders every unit in one pass", function()
     assertEqual(UnitLabel:GetInstance("target").text:GetText(), "T")
     assertEqual(UnitLabel:GetInstance("focus").text:GetText(), "F")
 end)
+
+-- ── the font shadow, and the class-color companion (options-ui-§16 / §17) ───
+--
+-- Both arrived with the composed Font tab. Neither can be wrong on the render
+-- that turns it ON — what breaks is the render that turns it OFF, because a
+-- FontString outlives a config change and keeps drawing whatever it was last
+-- told.
+
+test("Apply sets the drop shadow, and CLEARS it again", function()
+    -- red under: making the shadow branch a one-way `if style.shadow then`
+    local NS, UnitLabel = enabled()
+    local inst = applied(NS, UnitLabel, "target", { shadow = true })
+    local x, y = inst.text:GetShadowOffset()
+    assertTrue(x ~= 0 or y ~= 0, "a shadow that is on must have an offset")
+    local _, _, _, a = inst.text:GetShadowColor()
+    assertEqual(a, 1, "and an opaque shadow color")
+
+    applied(NS, UnitLabel, "target", { shadow = false })
+    local x2, y2 = inst.text:GetShadowOffset()
+    assertEqual(x2, 0, "the offset must be cleared")
+    assertEqual(y2, 0, "the offset must be cleared")
+    local _, _, _, a2 = inst.text:GetShadowColor()
+    assertEqual(a2, 0, "and the shadow color made transparent")
+end)
+
+test("the label color falls through to the stored swatch with the companion off",
+function()
+    local NS, UnitLabel = enabled()
+    local inst = applied(NS, UnitLabel, "target",
+        { color = { r = 0.25, g = 0.5, b = 0.75, a = 0.5 }, useClassColor = false })
+    local r, g, b, a = inst.text:GetTextColor()
+    assertEqual(r, 0.25); assertEqual(g, 0.5); assertEqual(b, 0.75); assertEqual(a, 0.5)
+end)
+
+test("the label takes the TRACKED unit's class color, keeping the stored alpha",
+function()
+    -- options-ui-§17: a label NAMES the unit it is drawn beside, so its class is
+    -- that unit's — and no class-color source carries an alpha, so the swatch's
+    -- opacity survives the mode.
+    -- red under: passing nil (the player) as the unit token in applyLabelColor,
+    -- or dropping the alpha from the resolver's return
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = { PRIEST = { r = 1, g = 1, b = 1 },
+                                    SHAMAN = { r = 0, g = 0.44, b = 0.87 } }
+        mocks.UnitClass = function(unit)
+            if unit == "player" then return "Priest", "PRIEST", 5 end
+            return "Shaman", "SHAMAN", 7
+        end
+    end)
+    local NS = inst.NS
+    local UnitLabel = NS:GetModule("UnitLabel")
+    local li = applied(NS, UnitLabel, "target",
+        { color = { r = 0.25, g = 0.5, b = 0.75, a = 0.5 }, useClassColor = true })
+    local r, g, b, a = li.text:GetTextColor()
+    assertEqual(r, 0, "the tracked unit's class red")
+    assertEqual(g, 0.44)
+    assertEqual(b, 0.87)
+    assertEqual(a, 0.5, "the STORED alpha must survive the mode")
+end)
+
+test("an unresolvable class falls through to the swatch, never to white", function()
+    -- An NPC boss is the common case for this addon, not the edge one.
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = {}
+        mocks.UnitClass = function() return "Boss", nil, nil end
+    end)
+    local NS = inst.NS
+    local li = applied(NS, NS:GetModule("UnitLabel"), "target",
+        { color = { r = 0.25, g = 0.5, b = 0.75, a = 1 }, useClassColor = true })
+    local r, g, b = li.text:GetTextColor()
+    assertEqual(r, 0.25); assertEqual(g, 0.5); assertEqual(b, 0.75)
+end)
+
+test("a LINKED Focus resolves on the unit being drawn, not on the table's source",
+function()
+    -- The whole reason the resolver takes the unit as an argument. A linked
+    -- Focus renders with TARGET's style table (NS.Units.LabelStyle follows the
+    -- link) and still draws beside the FOCUS frame, so the class a reader
+    -- expects to see there is their focus's.
+    -- red under: passing the source unit — or the row's own classColorUnit —
+    -- into applyLabelColor instead of inst.unit
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 },
+                                    ROGUE  = { r = 1, g = 0.96, b = 0.41 } }
+        mocks.UnitClass = function(unit)
+            if unit == "focus" then return "Rogue", "ROGUE", 4 end
+            return "Shaman", "SHAMAN", 7
+        end
+    end)
+    local NS = inst.NS
+    NS.Units.Config("focus").link = true
+    local style = NS.Units.LabelStyle("focus")
+    style.color = { r = 0.25, g = 0.5, b = 0.75, a = 1 }
+    style.useClassColor = true
+
+    local UnitLabel = NS:GetModule("UnitLabel")
+    local li = UnitLabel:GetInstance("focus")
+    UnitLabel:Apply(li)
+    local r, g, b = li.text:GetTextColor()
+    assertEqual(r, 1, "the FOCUS's class, not the linked-from target's")
+    assertEqual(g, 0.96)
+    assertEqual(b, 0.41)
+end)

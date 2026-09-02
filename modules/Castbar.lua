@@ -713,44 +713,59 @@ local function onUpdate(inst)
     if __t0 then Perf.Note("castTick", debugprofilestop() - __t0) end
 end
 
---- Four channels out of a color table, defaulted to opaque white.
---- Delegates to Util.Unpack: colors are STORED KEYED (core/Database.lua's
---- `nameTextColor = { r =, g =, b =, a = }`), so the positional read this
---- replaced saw nil on every channel and painted the spell name white no
---- matter what the user picked. Util.Unpack reads either shape, allocates
---- nothing and returns values, so the hot path is unchanged.
-local function rgba(c)
-    return NS.Util.Unpack(c)
+--- The per-state bar OPACITY, clamped to 0..1. A settings row rather than a
+--- constant since options-ui-§16 made "Bar opacity" one of the four mandated
+--- bar rows; it multiplies nothing, it IS the alpha the curve switches to.
+local function barAlpha(sc)
+    local a = tonumber(sc.barAlpha)
+    if not a then return 1 end
+    if a < 0 then return 0 end
+    if a > 1 then return 1 end
+    return a
 end
 
 --- Preview / no-cast: show interruptible visuals; the uninterruptible side is
 --- fully alpha=0. No curve involved — there is no flag to switch on yet.
-local function applyPreviewVisuals(frame, intCfg, intBorderShow)
+local function applyPreviewVisuals(frame, intCfg, intBorderShow, unit)
     frame.bgInterruptible:SetAlpha(1)
     frame.bgUninterruptible:SetAlpha(0)
-    frame.bar.interruptible:SetAlpha(1)
+    frame.bar.interruptible:SetAlpha(barAlpha(intCfg))
     frame.bar.uninterruptible:SetAlpha(0)
     frame.borderInterruptible:SetAlpha(intBorderShow)
     frame.borderUninterruptible:SetAlpha(0)
-    frame.nameText:SetTextColor(rgba(intCfg.nameTextColor))
+    frame.nameText:SetTextColor(
+        NS.ResolveColor(intCfg.nameTextColor, intCfg.useClassColorNameTextColor, unit))
 end
 
 --- Active cast. `nint` may be plain or secret. Pass it (and the per-channel
 --- color values) to C_CurveUtil; pipe each result straight into a Blizzard C
 --- method without binding it to a local.
-local function applyLiveVisuals(frame, nint, intCfg, unintCfg, intBorderShow, unintBorderShow)
-    local ur, ug, ub, ua = rgba(unintCfg.nameTextColor)
-    local ir, ig, ib, ia = rgba(intCfg.nameTextColor)
+---
+--- `unit` is the RENDERING unit, so a linked Focus resolves its class colors on
+--- FOCUS even though every table here came out of Target's config
+--- (options-ui-§17).
+local function applyLiveVisuals(frame, nint, intCfg, unintCfg, intBorderShow, unintBorderShow, unit)
+    -- RESOLVED BEFORE THE CURVE, never inside it: NS.ResolveColor reads
+    -- RAID_CLASS_COLORS and the companion flag, both of which are plain addon
+    -- values, and the result is four plain numbers the curve can switch between.
+    local ur, ug, ub, ua =
+        NS.ResolveColor(unintCfg.nameTextColor, unintCfg.useClassColorNameTextColor, unit)
+    local ir, ig, ib, ia =
+        NS.ResolveColor(intCfg.nameTextColor, intCfg.useClassColorNameTextColor, unit)
 
     frame.bgInterruptible:SetAlpha(
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
     frame.bgUninterruptible:SetAlpha(
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
 
+    -- Bar OPACITY folds into the curve's parameters exactly as the border show
+    -- toggles below do, and for the same reason: multiplying a secret curve
+    -- result afterwards would raise. 0 in the other slot still disables that
+    -- side outright.
     frame.bar.interruptible:SetAlpha(
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, barAlpha(intCfg)))
     frame.bar.uninterruptible:SetAlpha(
-        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 1, 0))
+        _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, barAlpha(unintCfg), 0))
 
     -- Border show toggles fold INTO the curve params, not as a separate
     -- multiplication afterwards (multiplying a secret curve result would
@@ -785,11 +800,11 @@ function Castbar:ApplyState(inst)
     local unintBorderShow = unintCfg.borderShow and 1 or 0
 
     if not inst.current then
-        applyPreviewVisuals(frame, intCfg, intBorderShow)
+        applyPreviewVisuals(frame, intCfg, intBorderShow, inst.unit)
         return
     end
     applyLiveVisuals(frame, inst.current.notInterruptible,
-        intCfg, unintCfg, intBorderShow, unintBorderShow)
+        intCfg, unintCfg, intBorderShow, unintBorderShow, inst.unit)
 end
 
 function Castbar:Start(inst, rec)

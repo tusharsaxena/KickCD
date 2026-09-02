@@ -28,8 +28,11 @@ NS.Database = Database
 -- icons/castbar/anchors tables into units.target (see migrations[1] /
 -- Database:FoldLegacyUnits below). v3 rekeys profile.spells from localized
 -- spec NAMES to numeric spec IDs (see migrations[2] /
--- Database:MigrateSpecKeys below).
-local CURRENT_DB_VERSION = 4
+-- Database:MigrateSpecKeys below). v4 moves every stored color to the keyed
+-- { r =, g =, b =, a = } shape (migrations[3] / Database:MigrateColorShape).
+-- v5 rewrites the "NONE" font-flag token to the empty string the client's
+-- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
+local CURRENT_DB_VERSION = 5
 
 -- The one and only Ka0s_KickCD_PROFILE_CHANGED emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -474,6 +477,47 @@ function NS.Database:MigrateColorShape(db)
     end
 end
 
+--- v4 -> v5: the "NONE" font-flag token becomes the empty string.
+---
+--- A STORED-VALUE TYPE CHANGE, so it takes the full savedvariables treatment
+--- rather than an edit to defaults/Profile.lua: the three font-flag dropdowns
+--- now offer LibKa0s' canonical set (options-ui-§16), where "None" is the EMPTY
+--- STRING because that is what FontString:SetFont spells "no outline, no
+--- monochrome" as. This addon shipped the literal "NONE", which SetFont did not
+--- recognize and therefore ignored -- so the rendering is unchanged either way,
+--- and what the migration fixes is the DROPDOWN: a stored "NONE" matches no key
+--- in the new list, and the control would have opened showing nothing.
+---
+--- Every unit, both cast-bar text and the icon countdown and the label. Walked
+--- by explicit path rather than by shape, unlike MigrateColorShape: a bare
+--- "NONE" string is not distinguishable from a legitimate user value anywhere
+--- else in the profile, and three known paths per unit is not a list that needs
+--- deriving.
+function NS.Database:MigrateFontFlags(db)
+    local p = db and db.profile
+    if not (p and p.units) then return end
+
+    local converted = 0
+    local function fix(t, key)
+        if type(t) == "table" and t[key] == "NONE" then
+            t[key] = ""
+            converted = converted + 1
+        end
+    end
+
+    for _, unit in pairs(p.units) do
+        if type(unit) == "table" then
+            fix(unit.icons, "cooldownTextFlags")
+            fix(unit.castbar, "fontFlags")
+            fix(unit.label and unit.label.style, "flags")
+        end
+    end
+
+    if converted > 0 and NS.Debug then
+        NS.Debug("Init", "migrated %s font-flag token(s) off \"NONE\"", converted)
+    end
+end
+
 local migrations = {
     -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
     -- Each step bumps db.global.schemaVersion to the from-version+1 and may
@@ -481,6 +525,7 @@ local migrations = {
     [1] = function(db) NS.Database:FoldLegacyUnits(db); db.global.schemaVersion = 2 end,
     [2] = function(db) NS.Database:MigrateSpecKeys(db); db.global.schemaVersion = 3 end,
     [3] = function(db) NS.Database:MigrateColorShape(db); db.global.schemaVersion = 4 end,
+    [4] = function(db) NS.Database:MigrateFontFlags(db); db.global.schemaVersion = 5 end,
 }
 
 --- Migrate the account forward to CURRENT_DB_VERSION. The schema version is

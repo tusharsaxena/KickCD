@@ -7,6 +7,16 @@
 -- schema row here -- into the run of rows its `group` already owns, because
 -- the strip is partitioned by group in declaration order (options-ui-§13) and
 -- a row filed after the page has left its group prints that tab twice.
+--
+-- EIGHT TABS: General, Size and position, Icon, Font, Spell name, Cast time,
+-- Interruptible, Non-interruptible. The middle two are new and General is five
+-- rows lighter for it -- see the comment on each.
+--
+-- The font block and both per-state appearance blocks are COMPOSED
+-- (libs/LibKa0s/OptionsCompose.lua): options-ui-§16 makes the bar, border and
+-- font row sets the collection's rather than this page's, and §17 makes the
+-- class-color companion beside every swatch non-optional. H.AddComposed stamps
+-- this addon's `panel` / `section` / `unit` onto what comes back.
 
 local addonName, NS = ...
 local L      = NS.L
@@ -34,28 +44,31 @@ local function add(t) Schema[#Schema + 1] = t end
 -- NS.Units.Castbar(unit).
 local function addUnitRows(unit)
 
+-- What every composed block on this page takes: where its stored paths hang,
+-- and the host row fields H.AddComposed stamps onto what comes back
+-- (settings/Panel.lua). The two per-state blocks prefix further, off PREFIX.
+local PREFIX = "units." .. unit .. ".castbar."
+local STAMP  = { panel = "castbar", section = "castbar", unit = unit }
+
 -- General --------------------------------------------------------------
--- The page's master toggle, the axis the bar runs on, and how big it is.
---
--- FOUR SECTIONS BECAME THIS ONE. "Visibility" held a single row -- the enable
--- -- and one control is not a subject, it is a drawer. "Orientation" and
--- "Sizing and Layout" were two halves of one question and the schema itself
--- said so: `autoSize` decides whether `width` and `height` are read at all, and
--- WHICH of the two it overrides depends on `orientation`. Three tabs to answer
--- "how big is this bar" is three clicks to find the one that is actually in
--- charge.
+-- The page's master toggle and the axis the bar runs on. NINE ROWS BECAME
+-- FIVE: this tab had grown into the drawer everything landed in, and four of
+-- its rows were two other subjects wearing its name. The two size sliders went
+-- to the tab that already held the bar's placement -- which is now "Size and
+-- position", because that is what it answers -- and the two icon rows became a
+-- tab of their own, since the spell icon is a piece of the bar you can turn off
+-- entirely rather than a property of the bar's geometry.
 --
 -- Order produces:
 --     [Enable cast bar]                                (solo)
 --     [Orientation]           | [Growth direction]
 --     [Auto-size to icon grid]| [Show spark]
---     [Cast bar width]        | [Cast bar height]
---     [Icon position]         | [Icon size]
 --
 -- The enable is solo because everything under it is inert without it. Then the
--- mode beside the thing it modes (growth direction's option list IS orientation's
--- axis), the master toggle immediately above the two sliders it can override,
--- and the icon's placement leading its size.
+-- mode beside the thing it modes (growth direction's option list IS
+-- orientation's axis), and the auto-size toggle beside the other bar-wide
+-- boolean. `autoSize` still governs the two width/height sliders a tab away,
+-- and its own tooltip is where that is said.
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["General"],
     path  = "units."..unit..".castbar.enabled", type = "bool",
@@ -165,44 +178,6 @@ add{
     default = true,
 }
 
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
-    path  = "units."..unit..".castbar.width", type = "number",
-    label = L["Cast bar width (in px)"],
-    desc = L["Cast bar width in pixels."],
-    default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
-}
-
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
-    path  = "units."..unit..".castbar.height", type = "number",
-    label = L["Cast bar height (in px)"],
-    desc = L["Cast bar height in pixels."],
-    default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
-}
-
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
-    path  = "units."..unit..".castbar.iconPosition", type = "string",
-    label = L["Icon position"],
-    desc = L["Where to place the spell icon, or hide it entirely."],
-    default = "OFF",
-    values  = {
-        ["LEFT"] = L["Left"],
-        ["RIGHT"] = L["Right"],
-        ["OFF"] = L["Off"],
-    },
-    sorting = { "LEFT", "RIGHT", "OFF" },
-}
-
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
-    path  = "units."..unit..".castbar.iconSize", type = "number",
-    label = L["Icon size (in px)"],
-    desc = L["Spell icon size in pixels (0 hides the icon)."],
-    default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
-}
-
 
 -- Position ------------------------------------------------------------
 -- Frame-anchor values for the "anchor on primary icon" and "anchor on
@@ -217,14 +192,44 @@ add{
 local POSITION_ANCHOR_VALUES = H.AnchorValues()
 local POSITION_ANCHOR_VALUES_ORDER = H.AnchorOrder()
 
--- Position layout produces:
---     [Anchor mode]                                        (solo)
---     [Anchor on primary icon] | [Anchor on cast bar]
---     [X offset]               | [Y offset]
--- anchor mode is a higher-level pivot than the two attach-point
--- dropdowns it controls, hence the row of its own.
+-- "Size and position" -- renamed from "Position", because the two width/height
+-- sliders moved here from the overloaded General tab and the tab now answers
+-- both halves of "how big is this bar and where does it sit". Two kinds of
+-- control on one tab, so each block carries a subsection heading
+-- (options-ui-§7); neither heading repeats the tab's own name.
+--
+-- Layout produces:
+--     Size      [Cast bar width]         | [Cast bar height]
+--     Position  [Anchor mode]                                (solo)
+--               [Anchor on primary icon] | [Anchor on cast bar]
+--               [X offset]               | [Y offset]
+--
+-- Anchor mode is a higher-level pivot than the two attach-point dropdowns it
+-- controls, hence the row of its own.
+--
+-- NOTHING re-keyed an afterGroup over this rename: this page renders through
+-- H.RenderUnitPanel with no afterGroup at all, so there was no hook to detach.
+-- Renaming a group that DOES carry one detaches it silently, because the group
+-- name IS the hook key.
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Size"],
+    path  = "units."..unit..".castbar.width", type = "number",
+    label = L["Cast bar width (in px)"],
+    desc = L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."],
+    default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Size"],
+    path  = "units."..unit..".castbar.height", type = "number",
+    label = L["Cast bar height (in px)"],
+    desc = L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."],
+    default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorMode", type = "string",
     label = L["Anchor mode"],
     desc = L["Free: drag the bar anywhere. Anchored to primary icon: the bar follows the icon grid's primary icon at the configured anchor points and offsets."],
@@ -237,7 +242,8 @@ add{
     solo    = true,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     desc = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
@@ -245,7 +251,8 @@ add{
     values  = POSITION_ANCHOR_VALUES, sorting = POSITION_ANCHOR_VALUES_ORDER,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Position"],
     path  = "units."..unit..".castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     desc = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
@@ -253,18 +260,47 @@ add{
     values  = POSITION_ANCHOR_VALUES, sorting = POSITION_ANCHOR_VALUES_ORDER,
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorOffsetX", type = "number",
     label = L["X offset (in px)"],
     desc = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Position"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorOffsetY", type = "number",
     label = L["Y offset (in px)"],
     desc = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
     default = -1, min = -200, max = 200, step = 1, fmt = "%d px",
+}
+
+-- Icon -----------------------------------------------------------------
+-- The spell icon beside the bar: whether it is drawn at all, on which side, and
+-- how big. A tab rather than two more rows on General, because "Off" makes the
+-- whole thing vanish -- the icon is a piece of the cast bar you can turn off,
+-- not a property of the bar's own geometry, and it was the pair that pushed
+-- General to nine rows.
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Icon"],
+    path  = "units."..unit..".castbar.iconPosition", type = "string",
+    label = L["Icon position"],
+    desc = L["Where to place the spell icon, or hide it entirely."],
+    default = "OFF",
+    values  = {
+        ["LEFT"] = L["Left"],
+        ["RIGHT"] = L["Right"],
+        ["OFF"] = L["Off"],
+    },
+    sorting = { "LEFT", "RIGHT", "OFF" },
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Icon"],
+    path  = "units."..unit..".castbar.iconSize", type = "number",
+    label = L["Icon size (in px)"],
+    desc = L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."],
+    default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
 }
 
 -- Font -----------------------------------------------------------------
@@ -276,9 +312,21 @@ add{
 -- a reader asking "where does the spell name go?" wants the on/off switch in
 -- front of the placement controls, not on a third tab.
 --
--- Order produces:
---     [Font]       | [Font size]
---     [Font flags]                                     (last in the tab)
+-- COMPOSED (options-ui-§16), which is what brings the two rows this tab did not
+-- have: a color and a font shadow.
+--     [Font]            | [Font size]
+--     [Cast time color] | [Use class color]
+--     [Font flags]      | [Font shadow]
+--
+-- WHY THE COLOR IS LABELLED "Cast time color" AND NOT "Font color". The spell
+-- name already has two writers, one per cast state -- the `nameTextColor`
+-- swatches on the Interruptible and Non-interruptible tabs, which have to be
+-- per-state because the flag driving the choice can be a 12.0 secret value and
+-- the switch is a curve evaluation. A third control over the same FontString
+-- would be a control that loses every argument it has with those two. The cast
+-- TIME text is the half of this tab's typography that had no color at all --
+-- it was hardcoded white in modules/Castbar_Skin.lua -- so `castbar.textColor`
+-- is what the composed swatch governs, and its label says so.
 local TEXT_POSITION_VALUES = {
     ["INSIDE_LEFT"] = L["Inside left"],
     ["INSIDE_RIGHT"] = L["Inside right"],
@@ -294,36 +342,27 @@ local TEXT_POSITION_VALUES_ORDER = {
     "OUTSIDE_RIGHT",
 }
 
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
-    path  = "units."..unit..".castbar.font", type = "string",
-    label = L["Font"],
-    desc = L["Font for the spell name and cast time text."],
-    default = "Friz Quadrata TT",
-    lsm     = "font",
-    values  = function() return H.LSMValues("font") end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
-    path  = "units."..unit..".castbar.fontSize", type = "number",
-    label = L["Font size"],
-    desc = L["Cast-bar text size in pixels."],
-    default = 10, min = 8, max = 24, step = 1, fmt = "%d",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Font"],
-    path  = "units."..unit..".castbar.fontFlags", type = "string",
-    label = L["Font flags"],
-    desc = L["Outline / monochrome flags applied to cast-bar text."],
-    default = "OUTLINE",
-    values  = {
-        ["NONE"] = L["None"],
-        ["OUTLINE"] = L["Outline"],
-        ["THICKOUTLINE"] = L["Thick outline"],
-        ["MONOCHROME"] = L["Monochrome"],
+
+H.AddComposed(H.FontGroup{
+    prefix = PREFIX, page = "castbar", group = L["Font"],
+    keys = {
+        fontColor         = "textColor",
+        useClassColorFont = "useClassColorText",
     },
-    sorting = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROME" },
-}
+    labels   = { fontColor = L["Cast time color"] },
+    defaults = {
+        font       = "Friz Quadrata TT",
+        fontSize   = 10,
+        fontColor  = { r = 1, g = 1, b = 1, a = 1 },
+        fontFlags  = "OUTLINE",
+        fontShadow = false,
+    },
+    -- The bar DESCRIBES the tracked unit, so its text takes that unit's class
+    -- (options-ui-§17). Against an NPC boss -- which is most of the time -- the
+    -- class is unresolvable and the stored swatch is what renders; that is the
+    -- library's rule 2, it is intended, and the swatch's tooltip says so.
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
 
 -- Spell name -----------------------------------------------------------
 -- Renamed from "Spell name position" — now bundles the show-toggle with
@@ -413,131 +452,96 @@ add{
 -- castbar.uninterruptible.*); the addon stacks two widgets and
 -- alpha-curve-switches between them so a single cast renders only the
 -- relevant half.
+--
+-- FOUR KINDS OF CONTROL ON ONE TAB, so each block carries a subsection heading
+-- (options-ui-§7) and each is COMPOSED (options-ui-§16, §17):
+--     Bar         [Bar texture]        | [Bar opacity]
+--                 [Bar color]          | [Use class color]
+--     Background  [Background color]   | [Use class color]
+--     Text        [Spell name color]   | [Use class color]
+--     Border      [Show border]
+--                 [Border style]       | [Border thickness (px)]
+--                 [Border color]       | [Use class color]
+--
+-- The BACKGROUND is not a bar group and gets no texture picker: it is a
+-- SetColorTexture with no fill, so a texture control there would be wired to
+-- nothing (options-ui-§16).
+--
+-- `Bar opacity` is NEW. It folds into the per-state alpha CURVE rather than
+-- being a SetAlpha of its own — modules/Castbar.lua's ApplyState already
+-- alpha-switches the two stacked bars off the secret flag, and a second
+-- multiplication afterwards would either be overwritten or, worse, arithmetic
+-- on a secret value.
+--
+-- The two composer calls per block differ only in their prefix. Called twice
+-- rather than hand-duplicated, which is the rule and also the only way the two
+-- states cannot drift apart.
 
 -- Interruptible appearance --------------------------------------------
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.statusBarTexture", type = "string",
-    label = L["Bar texture"],
-    desc = L["LibSharedMedia statusbar texture used for interruptible casts."],
-    default = "Blizzard Raid Bar",
-    lsm     = "statusbar",
-    values  = function() return H.LSMValues("statusbar") end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.barColor", type = "color", hasAlpha = true,
-    label = L["Bar color"],
-    desc = L["RGBA bar fill color when the target's cast is interruptible."],
-    default = { r = 1, g = 0.85, b = 0.05, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.bgColor", type = "color", hasAlpha = true,
-    label = L["Background color"],
-    desc = L["RGBA color drawn behind the bar."],
-    default = { r = 0, g = 0, b = 0, a = 0.5 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.nameTextColor", type = "color", hasAlpha = true,
-    label = L["Spell name color"],
-    desc = L["RGBA color of the spell-name text."],
-    default = { r = 1, g = 1, b = 1, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.borderShow", type = "bool",
-    label = L["Show border"],
-    desc = L["Draw a border around the cast bar for interruptible casts."],
-    default = true,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.borderTexture", type = "string",
-    label = L["Border style"],
-    desc = L["LibSharedMedia border texture (edge style) for interruptible casts."],
-    default = "Blizzard Tooltip",
-    lsm     = "border",
-    values  = function() return H.LSMValues("border") end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.borderColor", type = "color", hasAlpha = true,
-    label = L["Border color"],
-    desc = L["RGBA border color for interruptible casts."],
-    default = { r = 0, g = 0, b = 0, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Interruptible"],
-    path  = "units."..unit..".castbar.interruptible.borderSize", type = "number",
-    label = L["Border thickness (in px)"],
-    desc = L["Border edge size in pixels."],
-    default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
-}
+H.AddComposed(H.BarGroup{
+    prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
+    subgroup = L["Bar"],
+    keys     = { barTexture = "statusBarTexture" },
+    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1,
+                 barColor = { r = 1, g = 0.85, b = 0.05, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.ColorPair{
+    prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
+    subgroup = L["Background"],
+    key      = "bgColor", label = L["Background color"],
+    defaults = { bgColor = { r = 0, g = 0, b = 0, a = 0.5 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.ColorPair{
+    prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
+    subgroup = L["Text"],
+    key      = "nameTextColor", label = L["Spell name color"],
+    defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.BorderGroup{
+    prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
+    subgroup = L["Border"],
+    show     = true,
+    keys     = { borderStyle = "borderTexture" },
+    defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
+                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
 
 -- Uninterruptible appearance ------------------------------------------
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.statusBarTexture", type = "string",
-    label = L["Bar texture"],
-    desc = L["LibSharedMedia statusbar texture used for non-interruptible casts."],
-    default = "Blizzard Raid Bar",
-    lsm     = "statusbar",
-    values  = function() return H.LSMValues("statusbar") end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.barColor", type = "color", hasAlpha = true,
-    label = L["Bar color"],
-    desc = L["RGBA bar fill color when the target's cast cannot be interrupted."],
-    default = { r = 0.85, g = 0.10, b = 0.10, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.bgColor", type = "color", hasAlpha = true,
-    label = L["Background color"],
-    desc = L["RGBA color drawn behind the bar."],
-    default = { r = 0, g = 0, b = 0, a = 0.5 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.nameTextColor", type = "color", hasAlpha = true,
-    label = L["Spell name color"],
-    desc = L["RGBA color of the spell-name text."],
-    default = { r = 1, g = 1, b = 1, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.borderShow", type = "bool",
-    label = L["Show border"],
-    desc = L["Draw a border around the cast bar for non-interruptible casts."],
-    default = true,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.borderTexture", type = "string",
-    label = L["Border style"],
-    desc = L["LibSharedMedia border texture (edge style) for non-interruptible casts."],
-    default = "Blizzard Tooltip",
-    lsm     = "border",
-    values  = function() return H.LSMValues("border") end,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.borderColor", type = "color", hasAlpha = true,
-    label = L["Border color"],
-    desc = L["RGBA border color for non-interruptible casts."],
-    default = { r = 0, g = 0, b = 0, a = 1 },
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Non-interruptible"],
-    path  = "units."..unit..".castbar.uninterruptible.borderSize", type = "number",
-    label = L["Border thickness (in px)"],
-    desc = L["Border edge size in pixels."],
-    default = 2, min = 1, max = 16, step = 1, fmt = "%d px",
-}
-
+H.AddComposed(H.BarGroup{
+    prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
+    subgroup = L["Bar"],
+    keys     = { barTexture = "statusBarTexture" },
+    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1,
+                 barColor = { r = 0.85, g = 0.10, b = 0.10, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.ColorPair{
+    prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
+    subgroup = L["Background"],
+    key      = "bgColor", label = L["Background color"],
+    defaults = { bgColor = { r = 0, g = 0, b = 0, a = 0.5 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.ColorPair{
+    prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
+    subgroup = L["Text"],
+    key      = "nameTextColor", label = L["Spell name color"],
+    defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
+H.AddComposed(H.BorderGroup{
+    prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
+    subgroup = L["Border"],
+    show     = true,
+    keys     = { borderStyle = "borderTexture" },
+    defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
+                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 } },
+    classColor = { source = "unit", unit = unit },
+}, STAMP)
 end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
@@ -553,7 +557,7 @@ local function Build(mainCategory)
 
     local ctx
     ctx = H.CreatePanel("KickCDCastbarPanel", L["Cast bar"], {
-        panelKey       = "castbar",
+        pageKey        = "castbar",
         defaultsButton = true,
     })
     -- Parked, not wired: the Defaults button doesn't exist until the

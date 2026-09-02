@@ -1,11 +1,23 @@
 -- settings/Spells.lua
 --
 -- Per-class+spec spell-list editor. Uses the unified canvas panel
--- header (title + Defaults button + divider) from Panel.lua, then
--- hosts the AceGUI editor (class/spec dropdowns, Add spell button,
--- scrollable row list) inside ctx.body. The "Defaults" button in the
--- header runs the existing reset-to-defaults StaticPopup for the
--- currently selected class+spec.
+-- header (title + Defaults button + divider) from Panel.lua, then draws the
+-- page the way every other page in this addon is drawn (options-ui-§13/§14):
+--
+--   * the spec picker and Add spell in a page-wide CHROME BLOCK (H.PageHeader)
+--     -- both apply to every tab, so neither may live in the scroll;
+--   * a one-tab STRIP under it (H.TabStrip). A page with one section still
+--     draws a strip; the tab is what names the list;
+--   * the rows in the library's own scroll (H.EnsureScroll), which anchors
+--     itself under whatever band the two above reserved.
+--
+-- The rows DRAG (LibKa0s-Widgets-1.0's ReorderList, options-ui-§18). The paired
+-- up/down arrows that used to sit on each row are gone, and so is the row
+-- background: the library owns the handle, the bounded box, the ghost, the
+-- insertion line and the index arithmetic.
+--
+-- The "Defaults" button in the header runs the existing reset-to-defaults
+-- StaticPopup for the currently selected class+spec.
 --
 -- Writes go through a 50ms debounced setter that mutates the profile,
 -- re-renders the rows, and fires Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
@@ -38,6 +50,13 @@ local CATEGORIES = {
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
+-- The height of the page-wide chrome block (options-ui-§14): one labelled AceGUI
+-- Dropdown, which renders its label above the control, plus the Add-spell button
+-- beside it. The library owns the band arithmetic around it -- the divider, the
+-- gaps and the scroll's top edge -- so this is the block's own height and
+-- nothing else.
+local HEADER_BLOCK_H = 44
+
 -- ---------------------------------------------------------------------------
 -- Module-private state
 -- ---------------------------------------------------------------------------
@@ -45,8 +64,12 @@ local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 local ctx              -- the H.CreatePanel context (panel + body + cursor + ...)
 local panel            -- ctx.panel — the canvas Frame
 local body             -- ctx.body — frame below the unified header
-local container        -- AceGUI ScrollFrame (re-created on each show)
+local container        -- the library's AceGUI ScrollFrame (ctx.scroll)
 local headerWidgets    -- AceGUI dropdowns/button — released on hide
+-- The drag-reorder controller for the CURRENT render. One per render, never one
+-- per list: it holds the rows of the pass that built it (libs/LibKa0s/Widgets.lua),
+-- and a repaint builds a new one.
+local reorder
 local fallbackLabel    -- shown when AceGUI isn't available
 local selectedClass
 local selectedSpec
@@ -697,42 +720,43 @@ local function rowCategoryDropdown(AceGUI, entry)
     return dd
 end
 
--- Move up / Move down are the same button with the sign flipped, so they are
--- one spec each and one builder. Module-level: the two atEdge closures are
--- built once at file load, not per row.
+-- Move to index — the WHOLE of what a drag writes, and one write.
 --
--- `atEdge` drives BOTH the disabled flag and the click guard. At build time
--- index is always within the list (buildRow returned early otherwise), so
--- `index <= 1` and `index == 1` agree there; the click needs the inequality
--- because the callback closes over `index` and stays live until the next
--- rebuild — a stale click after a removal must not swap with nil.
-local MOVE_SPECS = {
-    {
-        image      = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-Up]],
-        tooltipKey = "Move up",
-        delta      = -1,
-        atEdge     = function(index) return index <= 1 end,
-    },
-    {
-        image      = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up]],
-        tooltipKey = "Move down",
-        delta      = 1,
-        atEdge     = function(index, count) return index >= count end,
-    },
-}
+-- The paired up/down arrow buttons that used to live here are gone
+-- (options-ui-§18, anti-pattern #75): two clicks per position, no feedback about
+-- where an item is going, and a different set of arrows drawn in every addon
+-- that had them. The list drags now, through LibKa0s-Widgets-1.0's ReorderList.
+--
+-- A SPLICE, deliberately not a run of adjacent swaps. The old arrow did
+-- `list[i], list[o] = list[o], list[i]` and that is right for one step and wrong
+-- for a drag: expressed as swaps, a four-position move is four mutations and
+-- four commitSoon calls, each re-rendering the page out from under the gesture
+-- that is still finishing.
+--
+-- Pure, and published as Spells.MoveTo so the suite drives it with no frame at
+-- all.
+local function moveTo(list, from, to)
+    if type(list) ~= "table" then return false end
+    if type(from) ~= "number" or type(to) ~= "number" then return false end
+    local n = #list
+    if from < 1 or from > n or to < 1 or to > n or from == to then return false end
+    table.insert(list, to, table.remove(list, from))
+    return true
+end
 
-local function rowMoveButton(AceGUI, spec, list, index)
-    return makeRowIconBtn(AceGUI, {
-        image    = spec.image,
-        tooltip  = L[spec.tooltipKey],
-        disabled = spec.atEdge(index, #list),
-        onClick  = function()
-            if spec.atEdge(index, #list) then return end
-            local other = index + spec.delta
-            list[index], list[other] = list[other], list[index]
-            commitSoon()
-        end,
-    })
+--- Stop any drag in flight and give every pooled handle and row box back.
+---
+--- CALLED AT THE TOP OF THE RENDER, before the first widget is created -- not
+--- merely before the list is rebuilt (options-ui-§18). Handles and boxes are
+--- pooled and parented to the host's row frames, and those frames go back into
+--- AceGUI's pool the moment releaseAceGUITree runs. A Cancel after that point
+--- reclaims a handle from a widget that by then belongs to something else, which
+--- is the single most common way an adoption of this widget goes wrong.
+local function cancelReorder()
+    if reorder then
+        reorder:Cancel()
+        reorder = nil
+    end
 end
 
 local function rowRemoveButton(AceGUI, list, index)
@@ -750,6 +774,12 @@ local function rowRemoveButton(AceGUI, list, index)
     })
 end
 
+-- Every row in this list is the SAME height, and that is a requirement rather
+-- than a tidy coincidence: ReorderList computes the drop position as arithmetic
+-- on the stride, never as a hit test, so a list of unequal rows drops in the
+-- wrong place (options-ui-§18).
+local ROW_HEIGHT = 28
+
 local function buildRow(AceGUI, list, index)
     local entry = list[index]
     if not entry then return end
@@ -757,7 +787,14 @@ local function buildRow(AceGUI, list, index)
     local row = AceGUI:Create("SimpleGroup")
     row:SetLayout("Flow")
     row:SetFullWidth(true)
-    row:SetHeight(28)
+    row:SetHeight(ROW_HEIGHT)
+
+    -- The drag handle owns a fixed gutter at the row's FAR LEFT and the row's
+    -- contents start beyond it (options-ui-§8's `handle gutter`). The width is
+    -- read off the library rather than restated, for the reason every layout
+    -- constant is: a host copy is the copy that goes stale.
+    local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
+    row:AddChild(rowSpacer(AceGUI, (W and W.ROW_BOX and W.ROW_BOX.HANDLE_W) or 30))
 
     local icon, showSpellTooltip, hideSpellTooltip = rowSpellIcon(AceGUI, entry)
     row:AddChild(icon)
@@ -766,9 +803,6 @@ local function buildRow(AceGUI, list, index)
     row:AddChild(rowKnownGlyph(AceGUI, entry))
     row:AddChild(rowSpacer(AceGUI, 14))
     row:AddChild(rowCategoryDropdown(AceGUI, entry))
-    for _, spec in ipairs(MOVE_SPECS) do
-        row:AddChild(rowMoveButton(AceGUI, spec, list, index))
-    end
     row:AddChild(rowRemoveButton(AceGUI, list, index))
 
     return row
@@ -778,12 +812,17 @@ end
 -- Rebuild
 -- ---------------------------------------------------------------------------
 
+-- The scroll itself is the LIBRARY's now (H.EnsureScroll), and it is reused
+-- across renders exactly as every other page's is -- so this drains its children
+-- through H.ClearScroll rather than releasing the ScrollFrame. The header
+-- widgets are still ours: they live inside the page's chrome block, which is
+-- rebuilt whole on every render.
 local function releaseAceGUITree()
-    if container then
-        container:ReleaseChildren()
-        if container.Release then container:Release() end
-        container = nil
+    if ctx then
+        local H = NS.Settings and NS.Settings.Helpers
+        if H and H.ClearScroll then H.ClearScroll(ctx) end
     end
+    container = nil
     if headerWidgets then
         for _, w in ipairs(headerWidgets) do
             if w and w.Release then w:Release() end
@@ -898,6 +937,15 @@ local function buildSpecEntries()
     return entries
 end
 
+--- The page-wide chrome block's contents: which spec is being edited, and the
+--- act of adding a spell to it (options-ui-§14).
+---
+--- IT IS DRAWN ABOVE THE STRIP, not in the scroll, and that is the rule rather
+--- than a preference: choosing which thing the page edits and creating a new one
+--- both apply to every tab, so a control for either that sits under one tab
+--- reads as belonging to that tab and vanishes the moment the reader clicks a
+--- different one. `parent` is the frame H.PageHeader hands over; the block owns
+--- everything inside it and the library owns the band it occupies.
 local function buildSpellsHeader(AceGUI, parent)
     headerWidgets = {}
 
@@ -925,7 +973,7 @@ local function buildSpellsHeader(AceGUI, parent)
     end)
     specDD.frame:SetParent(parent)
     specDD.frame:ClearAllPoints()
-    specDD.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, -16)
+    specDD.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
     specDD.frame:Show()
     headerWidgets[#headerWidgets + 1] = specDD
 
@@ -981,27 +1029,22 @@ local function ensureSelection(classes)
     end
 end
 
-local function buildScrollContainer(AceGUI)
-    local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("List")
-    scroll.frame:SetParent(body)
-    scroll.frame:ClearAllPoints()
-    scroll.frame:SetPoint("TOPLEFT",     body, "TOPLEFT",     16, -56)
-    scroll.frame:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -16, 16)
-    scroll.frame:Show()
+-- (buildScrollContainer is GONE. This page hand-built an AceGUI ScrollFrame
+-- anchored to ctx.body at a hardcoded -56 top inset, which is exactly the band
+-- the chrome now occupies -- and that number cannot be right for both a page
+-- with a chrome block and one without. H.EnsureScroll anchors under
+-- ctx.chromeHeight, which H.PageHeader and H.TabStrip have already set, and it
+-- carries the always-shown scrollbar patch this page used to apply by hand.)
 
-    -- Always render the scrollbar so this panel's right-edge gutter
-    -- matches the schema-driven panels (General / Icons / Cast bar)
-    -- regardless of how many spell rows the active class+spec has.
-    -- The patch is restored on widget release, so the AceGUI pool
-    -- stays clean for any other addon.
-    local PanelHelpers = NS.Settings and NS.Settings.Helpers
-    if PanelHelpers and PanelHelpers.PatchAlwaysShowScrollbar then
-        PanelHelpers.PatchAlwaysShowScrollbar(scroll)
-    end
-    return scroll
-end
-
+--- Paint the rows, and hand each one to the reorder controller.
+---
+--- WITHOUT LibKa0s-Widgets there is no handle and no row box, and the list is
+--- not reorderable. That is an accepted cosmetic degradation (options-ui-§18)
+--- and the arrows are deliberately NOT re-added as a fallback -- a host-drawn
+--- alternative is the drift the shared widget exists to end.
+---
+--- No row background or border is drawn here either. The library owns the
+--- bounded box now, and a host box under it would stack two fills.
 local function fillRows(AceGUI, scroll, list)
     if not list or #list == 0 then
         local lbl = AceGUI:Create("Label")
@@ -1010,10 +1053,47 @@ local function fillRows(AceGUI, scroll, list)
         scroll:AddChild(lbl)
         return
     end
+
+    local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
+    if W and W.ReorderList then
+        reorder = W.ReorderList{
+            -- Uniform rows, so the stride IS the row height: AceGUI's List
+            -- layout stacks children with no gap of its own.
+            stride        = ROW_HEIGHT,
+            -- No `boundary`: one flat priority list, with no section a drag
+            -- must not cross.
+            handleIcon    = NS.Icon and NS.Icon("segment") or nil,
+            handleTooltip = L["Drag to reorder"],
+            onMove        = function(from, to)
+                -- ONE write, ONE re-render, however far the row travelled.
+                if moveTo(list, from, to) then
+                    if NS.State and NS.State.debug then
+                        NS.Debug("Spells", "move %d -> %d", from, to)
+                    end
+                    commitSoon()
+                end
+            end,
+            debug = function(fmt, ...)
+                if NS.State and NS.State.debug then NS.Debug("Spells", fmt, ...) end
+            end,
+        }
+    end
+
     for i = 1, #list do
         local row = buildRow(AceGUI, list, i)
-        if row then scroll:AddChild(row) end
+        if row then
+            -- AddChild FIRST: the handle and the box are parented to the row
+            -- frame, and it has no parent of its own until the scroll takes it.
+            scroll:AddChild(row)
+            if reorder then
+                reorder:AddRow(row.frame, {
+                    ghostText = getSpellName(list[i].spellID)
+                                or ("#" .. tostring(list[i].spellID)),
+                })
+            end
+        end
     end
+    if reorder then reorder:Finish(scroll.content or scroll.frame) end
 end
 
 function Spells:RefreshRows()
@@ -1031,14 +1111,54 @@ function Spells:RefreshRows()
         return
     end
 
+    -- FIRST, before releaseAceGUITree and before any widget is created. The
+    -- handles and row boxes this reclaims are parented to row frames that
+    -- releaseAceGUITree is about to hand back to AceGUI's pool; cancel after
+    -- that and they stay attached to whatever takes those frames next
+    -- (options-ui-§18).
+    cancelReorder()
+
     -- Release before creating anything new, or the AceGUI pool leaks a whole
     -- widget tree per refresh.
     releaseAceGUITree()
 
     ensureSelection(sortedKeys(NS.DefaultSpells))
-    buildSpellsHeader(AceGUI, body)
-    container = buildScrollContainer(AceGUI)
+
+    local H = NS.Settings and NS.Settings.Helpers
+
+    -- The chrome band, then the strip, then the content -- in that order,
+    -- because the strip's own reservation reads the band the block already
+    -- claimed (options-ui-§14). The spec picker and Add spell are page-wide, so
+    -- they go ABOVE the strip rather than into the scroll.
+    H.PageHeader(ctx, {
+        height = HEADER_BLOCK_H,
+        build  = function(_, frame) buildSpellsHeader(AceGUI, frame) end,
+    })
+
+    -- ONE TAB, and it draws a strip anyway (options-ui-§13). "A single tab is
+    -- chrome for its own sake" is a true sentence about this page and the wrong
+    -- rule for a panel: every other page in this addon meets the reader with a
+    -- strip, and the one that has none is the one that looks broken. The tab is
+    -- also the only thing left naming what the list below it IS.
+    --
+    -- Not RenderTabbedSchema: this page has no schema rows at all, so there is
+    -- nothing for the flow engine to partition. The strip is drawn directly and
+    -- there is only ever one value to select, so onSelect has nothing to do.
+    H.TabStrip(ctx, {
+        tabs  = { { key = "list", label = L["Spell list"],
+                    tooltip = L["The tracked spells for the selected specialization, in priority order."] } },
+        value = "list",
+        onSelect = function() end,
+    })
+
+    container = H.EnsureScroll(ctx)
+    if not container then
+        rebuildScheduled = false
+        showAceGUIMissing()
+        return
+    end
     fillRows(AceGUI, container, getActiveList())
+    if container.DoLayout then container:DoLayout() end
 
     rebuildScheduled = false
 end
@@ -1054,7 +1174,7 @@ local function ensurePanel()
     if not (H and H.CreatePanel) then return nil end
 
     ctx = H.CreatePanel("KickCDSpellsPanel", L["Spells"], {
-        panelKey       = "spells",
+        pageKey        = "spells",
         defaultsButton = true,
     })
     panel = ctx.panel
@@ -1082,6 +1202,10 @@ local function ensurePanel()
         Spells:RefreshRows()
     end)
     panel:SetScript("OnHide", function()
+        -- Ahead of releaseAceGUITree here for the same reason it is ahead of it
+        -- in RefreshRows: a hide hands every row frame back to AceGUI's pool,
+        -- and a handle still parented to one goes with it (options-ui-§18).
+        cancelReorder()
         releaseAceGUITree()
         if fallbackLabel then fallbackLabel:Hide() end
         -- Distinguish "user closed the entire Settings UI" from "user
@@ -1165,6 +1289,7 @@ end
 -- published so the harness can reach them without building an AceGUI tree
 -- (same idiom as Castbar.AutoSizeLong).
 Spells.ValidateSpellInput = validateSpellInput
+Spells.MoveTo             = moveTo
 Spells.SpecOrder          = specOrder
 Spells.SortedKeys         = sortedKeys
 Spells.TitleCaseToken     = titleCaseToken

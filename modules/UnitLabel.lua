@@ -21,9 +21,15 @@ local UnitLabel = NS:NewModule("UnitLabel", "AceEvent-3.0")
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
--- OUTLINE-family flag string fed to FontString:SetFont. "NONE" -> "".
+-- OUTLINE-family flag string fed to FontString:SetFont. The library's canonical
+-- set spells "no flags" as the EMPTY STRING, which is a real stored value and
+-- has to map to itself -- `FLAG_MAP[""] or "OUTLINE"` would otherwise fall
+-- through to an outline nobody asked for. "NONE" is the pre-v5 token and stays
+-- mapped for the frame or two before core/Database.lua's migration lands.
 local FLAG_MAP = {
-    NONE = "", OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE", MONOCHROME = "MONOCHROME",
+    [""] = "", NONE = "",
+    OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE", MONOCHROME = "MONOCHROME",
+    ["OUTLINE, MONOCHROME"] = "OUTLINE, MONOCHROME",
 }
 
 -- Fallback for every style field Apply reads, in one place. `flags` is
@@ -81,18 +87,34 @@ local function applyLabelFont(fs, style)
         fontPath = LSM:Fetch("font", sv(style, "font"), true)
     end
     fs:SetFont(fontPath or STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
+
+    -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED on every
+    -- apply: the FontString outlives a config change, so leaving the old offset
+    -- in place is how a shadow the user just turned off stays on screen.
+    if style.shadow then
+        fs:SetShadowOffset(1, -1)
+        fs:SetShadowColor(0, 0, 0, 1)
+    else
+        fs:SetShadowOffset(0, 0)
+        fs:SetShadowColor(0, 0, 0, 0)
+    end
 end
 
 --- Text color, when the user picked one — otherwise the font template's own.
---- Through Util.Unpack, not by index. Colors are stored keyed now
---- ({ r =, g =, b =, a = }); a positional read would have found nil on
---- every channel and rendered the fallback gold no matter what the user
---- picked — silently, and only in game.
-local function applyLabelColor(fs, style)
+---
+--- Through NS.ResolveColor (LibKa0s-Core-1.0), so the "Use class color"
+--- companion beside the swatch is honored here in the one place, with the
+--- collection's rules: the stored ALPHA always applies, and an unresolvable
+--- class falls through to the stored swatch rather than to a substitute hue.
+---
+--- `unit` IS THE UNIT BEING DRAWN, not the unit the style table came from. A
+--- linked Focus reads Target's `label.style` (NS.Units.LabelStyle resolves the
+--- link) and still draws beside the FOCUS frame, so the class a reader expects
+--- to see is their focus's — options-ui-§17's "the unit the surface describes".
+local function applyLabelColor(fs, style, unit)
     local c = style.color
     if c then
-        local r, g, b, a = NS.Util.Unpack(c)
-        fs:SetTextColor(r, g, b, a)
+        fs:SetTextColor(NS.ResolveColor(c, style.useClassColor, unit))
     end
 end
 
@@ -150,7 +172,7 @@ function UnitLabel:Apply(inst)
     fs:SetText(lbl.text or "")
 
     applyLabelFont(fs, style)
-    applyLabelColor(fs, style)
+    applyLabelColor(fs, style, inst.unit)
     fs:SetJustifyH(sv(style, "justifyH"))
     fs:SetJustifyV(sv(style, "justifyV"))
     if fs.SetRotation then

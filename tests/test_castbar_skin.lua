@@ -481,3 +481,193 @@ test("modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)", functi
         assertTrue(n < 1500, path .. " is " .. n .. " LOC, over the 1500 hard cap")
     end
 end)
+
+-- ── the composed Bar / Background / Border blocks (options-ui-§16, §17) ─────
+--
+-- Three settings arrived with them that the cast bar did not have: bar opacity,
+-- a cast-time color and a "use class color" companion beside every swatch. Each
+-- is asserted where it lands on a widget, because a setting that is declared and
+-- not honored is worse than one that is absent.
+
+--- An enabled instance whose player and target are DIFFERENT classes, so a
+--- class-color test can tell which of the two the resolver picked.
+local function classy()
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = { PRIEST = { r = 1, g = 1, b = 1 },
+                                    SHAMAN = { r = 0, g = 0.44, b = 0.87 } }
+        mocks.UnitClass = function(unit)
+            if unit == "player" then return "Priest", "PRIEST", 5 end
+            return "Shaman", "SHAMAN", 7
+        end
+    end)
+    return inst.NS, inst.NS:GetModule("Castbar")
+end
+
+test("bar opacity folds into the per-state alpha, and is not a second SetAlpha",
+function()
+    -- It has to ride the CURVE: modules/Castbar.lua's ApplyState alpha-switches
+    -- the two stacked bars off the secret notInterruptible flag, so an alpha
+    -- applied anywhere else is either overwritten on the next cast or, worse,
+    -- arithmetic on a secret value.
+    -- red under: dropping barAlpha from the EvaluateColorValueFromBoolean call
+    -- and doing frame.bar.interruptible:SetAlpha(barAlpha(intCfg)) in ReskinColors
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.interruptible.barAlpha = 0.4
+    Castbar:Reskin(inst)
+    Castbar:ApplyState(inst)   -- the no-cast preview arm
+    assertNear(inst.frame.bar.interruptible:GetAlpha(), 0.4, 1e-6,
+        "the visible bar must be drawn at the configured opacity")
+end)
+
+test("a bar opacity outside 0..1 is clamped rather than passed through", function()
+    -- SavedVariables are hand-editable, and an alpha of 7 is not an error the
+    -- player can see -- it is a bar that is simply opaque forever.
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.interruptible.barAlpha = 7
+    Castbar:ApplyState(inst)
+    assertEqual(inst.frame.bar.interruptible:GetAlpha(), 1)
+    c.interruptible.barAlpha = -3
+    Castbar:ApplyState(inst)
+    assertEqual(inst.frame.bar.interruptible:GetAlpha(), 0)
+end)
+
+test("the cast time text takes its own color, which it never had before", function()
+    -- The spell NAME keeps its two per-state swatches; this governs the cast
+    -- TIME, which modules/Castbar_Skin.lua hardcoded to white.
+    -- red under: restoring `frame.timeText:SetTextColor(1, 1, 1, 1)`
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.textColor = { r = 0.25, g = 0.5, b = 0.75, a = 0.6 }
+    c.useClassColorText = false
+    Castbar:Reskin(inst)
+    local r, g, b, a = inst.frame.timeText:GetTextColor()
+    assertEqual(r, 0.25); assertEqual(g, 0.5); assertEqual(b, 0.75); assertEqual(a, 0.6)
+end)
+
+test("the font shadow is applied, and CLEARED again", function()
+    -- red under: making the shadow branch a one-way `if c.fontShadow then`
+    local NS, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.fontShadow = true
+    Castbar:Reskin(inst, true)
+    local x, y = inst.frame.nameText:GetShadowOffset()
+    assertTrue(x ~= 0 or y ~= 0, "a shadow that is on must have an offset")
+
+    c.fontShadow = false
+    Castbar:Reskin(inst, true)
+    local x2, y2 = inst.frame.nameText:GetShadowOffset()
+    assertEqual(x2, 0); assertEqual(y2, 0)
+    local _, _, _, a2 = inst.frame.timeText:GetShadowColor()
+    assertEqual(a2, 0, "both text elements share the setting")
+end)
+
+test("the font shadow is part of the structure signature", function()
+    -- Fonts are the guarded half, so a shadow toggle that is not in the
+    -- signature simply never takes effect until something else structural moves.
+    -- red under: removing tostring(c.fontShadow) from structureSignature
+    local NS, Castbar = enabled()
+    local c = castbarCfg(NS)
+    local i, u = Castbar.INT_FALLBACK, Castbar.UNINT_FALLBACK
+    local before = Castbar.StructureSignature(c, i, u, 250, 24)
+    c.fontShadow = not c.fontShadow
+    assertTrue(Castbar.StructureSignature(c, i, u, 250, 24) ~= before,
+        "a font-shadow flip must invalidate the structure signature")
+end)
+
+-- ── which class the cast bar means (options-ui-§17) ─────────────────────────
+
+test("every cast-bar swatch takes the TRACKED unit's class, not the player's",
+function()
+    -- The bar DESCRIBES the tracked unit. The player is a Priest (white) and the
+    -- target a Shaman (blue) in this fixture, so a resolver that reached for the
+    -- player would be white on every channel and indistinguishable from the
+    -- stored swatch only by luck.
+    -- red under: passing nil instead of inst.unit into ReskinColors' resolver calls
+    local NS, Castbar = classy()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.interruptible.barColor          = { r = 1, g = 0, b = 0, a = 0.5 }
+    c.interruptible.useClassColorBar  = true
+    c.interruptible.bgColor           = { r = 1, g = 0, b = 0, a = 0.25 }
+    c.interruptible.useClassColorBgColor = true
+    c.interruptible.borderColor       = { r = 1, g = 0, b = 0, a = 1 }
+    c.interruptible.useClassColorBorder = true
+    Castbar:Reskin(inst, true)
+
+    local br, bg, bb, ba = inst.frame.bar.interruptible:GetStatusBarColor()
+    assertEqual(br, 0); assertNear(bg, 0.44, 1e-6); assertNear(bb, 0.87, 1e-6)
+    assertEqual(ba, 0.5, "the stored alpha survives the mode")
+
+    local kr, kg, kb, ka = inst.frame.bgInterruptible:GetColorTexture()
+    assertEqual(kr, 0); assertNear(kg, 0.44, 1e-6); assertNear(kb, 0.87, 1e-6)
+    assertEqual(ka, 0.25, "the background keeps its own alpha too")
+
+    local er, eg, eb = inst.frame.borderInterruptible:GetBackdropBorderColor()
+    assertEqual(er, 0); assertNear(eg, 0.44, 1e-6); assertNear(eb, 0.87, 1e-6)
+end)
+
+test("the spell name takes the tracked unit's class, per state", function()
+    -- Resolved BEFORE the curve, never inside it: the resolver reads plain addon
+    -- values and hands the curve four plain numbers to switch between.
+    local NS, Castbar = classy()
+    local inst = Castbar:GetInstance("target")
+    local c = castbarCfg(NS)
+    c.interruptible.nameTextColor = { r = 1, g = 0, b = 0, a = 1 }
+    c.interruptible.useClassColorNameTextColor = true
+    Castbar:ApplyState(inst)   -- preview arm: interruptible visuals
+    local r, g, b = inst.frame.nameText:GetTextColor()
+    assertEqual(r, 0); assertNear(g, 0.44, 1e-6); assertNear(b, 0.87, 1e-6)
+end)
+
+test("an NPC target falls through to the stored swatch, which is the common case",
+function()
+    -- Most of what this addon watches is a boss. The fall-through is intended,
+    -- and the swatch's own tooltip is where it is said to the player.
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = {}
+        mocks.UnitClass = function() return "Boss", nil, nil end
+    end)
+    local NS = inst.NS
+    local Castbar = NS:GetModule("Castbar")
+    local ci = Castbar:GetInstance("target")
+    local c = NS.db.profile.units.target.castbar
+    c.interruptible.barColor         = { r = 0.25, g = 0.5, b = 0.75, a = 1 }
+    c.interruptible.useClassColorBar = true
+    Castbar:Reskin(ci, true)
+    local r, g, b = ci.frame.bar.interruptible:GetStatusBarColor()
+    assertEqual(r, 0.25); assertEqual(g, 0.5); assertEqual(b, 0.75)
+end)
+
+test("a LINKED Focus paints in the FOCUS's class, not the linked-from target's",
+function()
+    -- The appearance table is Target's; the bar on screen is Focus's.
+    -- red under: resolving on the config table's source unit
+    local inst = T.load(true, true, function(mocks)
+        mocks.RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 },
+                                    ROGUE  = { r = 1, g = 0.96, b = 0.41 } }
+        mocks.UnitClass = function(unit)
+            if unit == "focus" then return "Rogue", "ROGUE", 4 end
+            return "Shaman", "SHAMAN", 7
+        end
+    end)
+    local NS = inst.NS
+    local Castbar = NS:GetModule("Castbar")
+    NS.Units.Config("focus").link = true
+    local c = NS.db.profile.units.target.castbar
+    c.interruptible.barColor         = { r = 1, g = 0, b = 0, a = 1 }
+    c.interruptible.useClassColorBar = true
+
+    local fi = Castbar:GetInstance("focus")
+    Castbar:EnableUnit("focus")
+    Castbar:Reskin(fi, true)
+    local r, g, b = fi.frame.bar.interruptible:GetStatusBarColor()
+    assertEqual(r, 1, "the FOCUS's class")
+    assertNear(g, 0.96, 1e-6)
+    assertNear(b, 0.41, 1e-6)
+end)

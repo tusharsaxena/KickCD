@@ -80,7 +80,7 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
         assertEqual(type(H[m]), "function", "library member missing: " .. m)
     end
     -- ...and the host's own decorations sit on the SAME table.
-    for _, m in ipairs({ "InlinePair", "SessionToggle", "SetAndRefresh", "ResetAll",
+    for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
                          "RenderUnitPanel", "PartitionUnitRows", "ResetAllPositions",
                          "RestoreUnitLinks", "AnchorValues", "AnchorOrder",
                          "BuildMainContent", "ValidateSchema", "SchemaForPanel" }) do
@@ -178,10 +178,24 @@ test("a bool row renders a checkbox labeled from the row", function()
     local w, row = renderRow("locked")
     assertEqual(w.type, "CheckBox")
     assertEqual(w.labelText, row.label)
-    -- `desc`, not `tooltip`: the library's makers read desc, which is why all 98
-    -- rows were renamed. An unmapped field is not an error — it is a tooltip
-    -- that silently stops rendering.
-    assertTrue(row.desc ~= nil, "the row must carry a desc for the tooltip")
+    -- EITHER KEY, because the library's tooltipBody() reads `row.tooltip or
+    -- row.desc` and both are in the tree now: this addon's hand-written rows key
+    -- it `desc`, the composed ones key it `tooltip`. What is not acceptable is
+    -- NEITHER — an unmapped field is not an error, it is a tooltip that silently
+    -- stops rendering.
+    assertTrue((row.tooltip or row.desc) ~= nil, "the row must carry a tooltip body")
+end)
+
+test("every schema row in the addon carries a tooltip body under one key or the other",
+function()
+    -- The case above proves one row; this proves there is no row anywhere the
+    -- library would render with an empty body.
+    -- red under: dropping `desc` from any hand-written row
+    local missing = {}
+    for _, def in ipairs(NS.Settings.Schema) do
+        if (def.tooltip or def.desc) == nil then missing[#missing + 1] = tostring(def.path) end
+    end
+    assertEqual(#missing, 0, "rows with no tooltip body: " .. table.concat(missing, ", "))
 end)
 
 test("a number row renders a slider carrying the row's range", function()
@@ -298,19 +312,12 @@ test("releasing a page's widgets drops that page's refreshers", function()
     assertEqual(#ctx.refreshers, 0, "ClearScroll must reset the refresher list")
 end)
 
--- ── the two host survivors ──────────────────────────────────────────────────
-
-test("InlinePair puts both caller-supplied widgets in ONE row", function()
-    panelSeq = panelSeq + 1
-    local ctx = H.CreatePanel("KickCDTestPanelIP" .. panelSeq, "T", { pageKey = "test" })
-    local left, right
-    local row = H.InlinePair(ctx,
-        function(c, r) left  = H.RenderField(c, H.FindSchema("locked"), r, 0.5) end,
-        function(c, r) right = H.RenderField(c, H.FindSchema("scale"), r, 0.5) end)
-    assertTrue(row ~= nil, "InlinePair must return its row")
-    assertTrue(left ~= nil and right ~= nil, "both halves must render")
-    assertEqual(#row.children, 2, "both must land in the SAME row")
-end)
+-- ── the one host survivor ───────────────────────────────────────────────────
+--
+-- (InlinePair went with the bespoke Debug-console toggle it existed for: that
+-- line is H.MasterControls' now and both halves are ordinary schema rows, which
+-- the flow engine pairs by itself. A host widget maker with no caller is the
+-- thing options-ui-§1 says must not sit in this addon.)
 
 test("SessionToggle adapts this addon's argument order onto the library's", function()
     -- Host order (ctx, spec, parent, relativeWidth) -> library order
@@ -375,20 +382,107 @@ end)
 
 -- ── the degraded path ───────────────────────────────────────────────────────
 
-test("with LibKa0s absent the schema still loads COMPLETE", function()
+test("with LibKa0s absent the schema loads complete BAR the composed blocks", function()
     -- THE case options-ui-§1's degradation rule exists for, and the reason this
     -- stub is load-completing rather than member-answering: page files call
-    -- Helpers.LSMValues and Helpers.AnchorValues inside schema-row literals AT
-    -- FILE LOAD. With either nil the page file raises, its rows never register,
-    -- and `/kcd list`, `get`, `set`, `reset` and the profile defaults all break
-    -- with it — silently.
-    -- red under: deleting Helpers.LSMValues or Helpers.AnchorValues from the stub
+    -- Helpers.LSMValues, Helpers.AnchorValues AND the five schema composers
+    -- inside schema-row literals AT FILE LOAD. With any of them nil the page
+    -- file raises, its rows never register, and `/kcd list`, `get`, `set`,
+    -- `reset` and the profile defaults all break with it — silently.
+    --
+    -- WHAT CHANGED, AND WHY IT IS NOT A WEAKENING. This used to assert the two
+    -- row counts were EQUAL, which they were while the host declared 100% of its
+    -- rows by hand. The canonical font / border / bar / color-pair /
+    -- master-controls blocks live in libs/LibKa0s/OptionsCompose.lua now
+    -- (options-ui-§16, §17), and a host copy of them in the stub is precisely
+    -- the drift the composers were extracted to end (anti-pattern #73) — the
+    -- same argument options-ui-§1 already makes against copying a widget maker
+    -- or a layout constant into this stub. So the stub's composers are hollow,
+    -- and the degraded schema is short by EXACTLY the composed rows.
+    --
+    -- The delta is pinned by its own fingerprint rather than by a number typed
+    -- here: every composed row carries an `order`, which no hand-written row in
+    -- this addon sets. So this says three things the old equality could not —
+    -- how many rows the library composes, that every surviving degraded row is
+    -- host-declared, and that nothing ELSE went missing.
+    -- red under: deleting Helpers.LSMValues, Helpers.AnchorValues or any
+    -- composer from settings/OptionsSetup.lua's stub, which takes a whole page
+    -- file's rows with it rather than just that block's
     local full     = T.load(true)
     local degraded = T.load(true, false, nil, { libFiles = {} })
     assertNil(degraded.mocks.LibStub("LibKa0s-Options-1.0", true),
         "sanity: the degraded load must not have the major")
-    assertEqual(#degraded.NS.Settings.Schema, #full.NS.Settings.Schema,
-        "the degraded load must register EVERY schema row")
+
+    local composed, hostDeclared = 0, 0
+    for _, row in ipairs(full.NS.Settings.Schema) do
+        if row.order ~= nil then composed = composed + 1 else hostDeclared = hostDeclared + 1 end
+    end
+    assertTrue(composed > 0, "sanity: this addon must actually compose something")
+
+    assertEqual(#degraded.NS.Settings.Schema, hostDeclared,
+        "the degraded load must register every row the HOST declares")
+    for _, row in ipairs(degraded.NS.Settings.Schema) do
+        assertNil(row.order,
+            "a composed row survived the library's absence: " .. tostring(row.path))
+    end
+    assertEqual(#full.NS.Settings.Schema - #degraded.NS.Settings.Schema, composed,
+        "the degraded load is short by more than the composed blocks")
+end)
+
+test("the hollow composers cost the degraded path no CLI reach it otherwise has",
+function()
+    -- THE BLAST RADIUS OF THE options-ui-§1 DEVIATION, measured rather than
+    -- argued -- and it is smaller than the deviation row used to claim.
+    --
+    -- §1's stated harm is that a short schema takes `list`, `get`, `set`, `reset`
+    -- and the profile defaults down with it, silently. Neither half is reachable
+    -- here, and this case is what says so rather than a paragraph:
+    --
+    --   1. THE SCHEMA CLI IS NOT RUNNING ON THIS LOAD AT ALL. LibKa0s-Slash-1.0
+    --      lives in the same libs/LibKa0s/ folder as LibKa0s-Options-1.0, which
+    --      options-ui-§1 requires be vendored WHOLE (anti-pattern #48), so the
+    --      load that loses the composers loses the CLI in the same breath.
+    --      settings/Slash.lua's stub answers `set`/`get`/`list`/`reset` with one
+    --      "is unavailable" line each -- for a HOST-DECLARED row exactly as for a
+    --      composed one. There is no state of this addon in which a composed path
+    --      is addressable-but-missing.
+    --   2. The profile defaults are defaults/Profile.lua's, merged by AceDB in
+    --      core/Database.lua's aceDBDefaults, and never read off the schema. A
+    --      composed setting a player already made keeps being honored.
+    --
+    -- What the deviation does cost is #NS.Settings.Schema being short by 116 rows
+    -- on a load where the only three things that read it -- the CLI, the panel and
+    -- RestoreAllDefaults' sessionOnly walk -- are respectively absent, absent, and
+    -- looking for `state.debugConsole`, whose console window is unavailable on
+    -- this path too (core/DebugLogSetup.lua:70-72).
+    --
+    -- red under: settings/Slash.lua's stub gaining a real CliSet, which would
+    -- make the composed rows genuinely unreachable-but-asked-for and turn the
+    -- deviation into the regression it was reported as
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    assertNil(inst.mocks.LibStub("LibKa0s-Slash-1.0", true),
+        "sanity: the degraded load must not have the slash major either")
+
+    -- A row that SURVIVES the library's absence, so the only thing under test is
+    -- whether the CLI can reach anything at all.
+    local path = "units.target.enabled"
+    assertTrue(inst.NS.Settings.Helpers.FindSchema(path) ~= nil,
+        "precondition: this witness must be a host-declared row, present on both paths")
+
+    local lines = {}
+    local frame = inst.mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    inst.NS:OnSlashCommand("set " .. path .. " false")
+    frame.AddMessage = orig
+
+    assertEqual(inst.NS.Settings.Helpers.Get(path), true,
+        "the degraded `/kcd set` must not write -- for a surviving row either")
+    local said = false
+    for _, line in ipairs(lines) do
+        if tostring(line):find("unavailable", 1, true) then said = true end
+    end
+    assertTrue(said, "the degraded `/kcd set` must name the missing library, not go quiet")
 end)
 
 test("the degraded stub keeps the global reset real", function()
@@ -397,9 +491,16 @@ test("the degraded stub keeps the global reset real", function()
     local inst = T.load(true, false, nil, { libFiles = {} })
     local H2 = inst.NS.Settings.Helpers
     assertEqual(type(H2.RestoreAllDefaults), "function")
-    inst.NS.Settings.Helpers.SetAndRefresh("locked", true)
+    -- A HOST-DECLARED row, deliberately: `locked` used to be the witness here and
+    -- is a COMPOSED row now, so it does not exist on the degraded path at all
+    -- (see the case above for why that is the measured cost rather than a bug).
+    -- The per-unit enable is hand-written in settings/General.lua and is present
+    -- on both paths, which is what makes it a witness for the reset itself.
+    local path = "units.target.enabled"
+    inst.NS.Settings.Helpers.SetAndRefresh(path, false)
+    assertEqual(H2.Get(path), false, "precondition: the write landed")
     H2.RestoreAllDefaults()
-    assertEqual(H2.Get("locked"), inst.NS.Settings.Helpers.FindSchema("locked").default,
+    assertEqual(H2.Get(path), inst.NS.Settings.Helpers.FindSchema(path).default,
         "the reset must still reach the profile with no panel at all")
 end)
 
@@ -420,16 +521,18 @@ test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", 
     -- either key. Its bespoke makers do NOT: O.SessionCheckbox and
     -- O.InlineButtonPair read `spec.tooltip` directly, so a spec that says
     -- `desc` renders the label with an EMPTY body -- silently, and only in game.
-    -- Five specs in settings/General.lua's builder are affected: the Debug
-    -- console toggle, Reset position, Reset all settings, "Use same styling as
-    -- Target" and "Copy styling from Target".
+    -- TWO specs in settings/General.lua's builder are affected now: "Use same
+    -- styling as Target" and "Copy styling from Target". The other three — the
+    -- Debug console toggle and the two reset buttons — are H.MasterControls'
+    -- (options-ui-§15), so their tooltip bodies are the composer's and are
+    -- keyed correctly there by construction.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
     -- deliberately has none. The builder is the whole region after `local
     -- function Build` -- every schema row on this page is declared above it, so
     -- a `desc` key below that line is always a bespoke spec.
-    -- red under: reverting any of those five keys to `desc`.
+    -- red under: reverting either of those two keys to `desc`.
     local fh = assert(io.open(T.root .. "/settings/General.lua", "r"))
     local src = fh:read("*a")
     fh:close()
@@ -442,7 +545,7 @@ test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", 
     -- satisfied by deleting them instead.
     local n = 0
     for _ in builder:gmatch("tooltip%s*=") do n = n + 1 end
-    assertEqual(n, 5, "General's builder must carry all five bespoke tooltip bodies")
+    assertEqual(n, 2, "General's builder must carry both surviving bespoke tooltip bodies")
 end)
 
 test("the degraded stub carries no widget maker or layout constant", function()

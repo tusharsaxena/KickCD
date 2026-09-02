@@ -452,3 +452,25 @@ L["Spell known"]                 = "Spell known"
 L["Spell not known"]             = "Spell not known"
 L["Category for future filtering. Currently informational only."] =
     "Category for future filtering. Currently informational only."
+
+-- Settings revamp v2 (options-ui-§13 / §16 / §17 / §18)
+--
+-- Tab names the strip draws, and the SUBSECTION headings a tab carries when it
+-- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,
+-- never a repeat of its tab's own name.
+L["Size and position"]           = "Size and position"
+L["Icon"]                        = "Icon"
+L["Size"]                        = "Size"
+L["Bar"]                         = "Bar"
+L["Background"]                  = "Background"
+L["Text"]                        = "Text"
+L["Charges"]                     = "Charges"
+L["Spell list"]                  = "Spell list"
+L["The tracked spells for the selected specialization, in priority order."] =
+    "The tracked spells for the selected specialization, in priority order."
+L["Drag to reorder"]             = "Drag to reorder"
+L["Cast time color"]             = "Cast time color"
+L["Track cooldowns for your current target."] =
+    "Track cooldowns for your current target."
+L["Track cooldowns for your current focus."] =
+    "Track cooldowns for your current focus."

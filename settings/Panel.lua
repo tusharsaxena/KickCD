@@ -66,7 +66,28 @@ local function Resolve(path)
 end
 Helpers.Resolve = Resolve
 
+-- Session-only schema rows store OUTSIDE the profile. options-ui-§15 puts the
+-- Debug console in the Master controls tab as a session-only row, and the
+-- composer emits its path VERBATIM (`state.debugConsole`) because session state
+-- is not under any block's prefix -- so Resolve finds nothing there and a write
+-- would silently no-op. One table, keyed by that path, is the whole seam, and it
+-- sits INSIDE Get/Set so the panel checkbox, `/kcd set` and the reset sweep all
+-- take the addon's one write path (options-ui-§1).
+local SESSION_PATHS = {
+    -- The console WINDOW, never the debug CAPTURE flag (debug-logging-§5) --
+    -- that stays on the in-window "Debug: ON/OFF" button and `/kcd debug on|off`.
+    ["state.debugConsole"] = {
+        get = function() return NS.DebugLog ~= nil and NS.DebugLog:IsShown() end,
+        set = function(on)
+            if not NS.DebugLog then return end
+            if on then NS.DebugLog:Show() else NS.DebugLog:Hide() end
+        end,
+    },
+}
+
 function Helpers.Get(path)
+    local session = SESSION_PATHS[path]
+    if session then return session.get() end
     local parent, key = Resolve(path)
     if not parent then return nil end
     return parent[key]
@@ -114,6 +135,15 @@ local function logSet(path, value)
 end
 
 function Helpers.Set(path, section, value)
+    local session = SESSION_PATHS[path]
+    if session then
+        -- No FireConfigChanged: nothing on the bus renders session state, and a
+        -- CONFIG_CHANGED here would fan a full re-apply out over a window that
+        -- opened.
+        session.set(value)
+        logSet(path, value)
+        return
+    end
     local parent, key = Resolve(path)
     if not parent then return end
     parent[key] = value
@@ -144,6 +174,26 @@ function Helpers.FindSchema(path)
     for _, def in ipairs(NS.Settings.Schema) do
         if def.path == path then return def end
     end
+end
+
+--- Stamp a composed block with this addon's own row fields and append it.
+---
+--- The composers (libs/LibKa0s/OptionsCompose.lua) return ORDINARY schema rows
+--- carrying `page`, `group`, `subgroup` and `order`. This addon keys its rows
+--- `panel` + `section` -- and, on the three per-unit pages, `unit` -- so one
+--- pass stamps those on and appends in declaration order. Nothing else about a
+--- composed row is touched: what comes back is indistinguishable from a
+--- hand-written row, which is the whole point of the composers being pure.
+---
+--- @param rows  table|nil  what a composer returned (nil on the degraded path)
+--- @param stamp table      the host fields every row in the block carries
+--- @return table rows
+function Helpers.AddComposed(rows, stamp)
+    for _, row in ipairs(rows or {}) do
+        for field, value in pairs(stamp) do row[field] = value end
+        NS.Settings.Schema[#NS.Settings.Schema + 1] = row
+    end
+    return rows or {}
 end
 
 -- ---------------------------------------------------------------------

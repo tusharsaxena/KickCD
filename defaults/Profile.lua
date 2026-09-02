@@ -48,6 +48,11 @@ local ICONS_DEFAULT = {
         readyAlpha       = 1.0,
         cooldownAlpha    = 0.25,
         cooldownTint     = { r = 1, g = 0.4, b = 0.4, a = 1 },
+        -- Every "use class color" companion in this tree is the class-color
+        -- half of a swatch (options-ui-§17) and every one of them defaults OFF.
+        -- On this page they resolve to the PLAYER's class: the grid draws the
+        -- player's own interrupt cooldowns, whichever unit's page you set it on.
+        useClassColorCooldownTint = false,
         -- When true, the cooldown swipe + countdown text are hidden
         -- during the global cooldown period (≤ ~1.6s remaining); only
         -- real cooldowns render the swipe/text. The icon-body alpha and
@@ -61,11 +66,23 @@ local ICONS_DEFAULT = {
         -- pieces of UI.
         borderTexture    = "Blizzard Tooltip",
         borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+        useClassColorBorder = false,
         borderSize       = 2,
         showCooldownText = true,
         cooldownTextFont = "Friz Quadrata TT",
         cooldownTextSize = 14,
-        cooldownTextFlags = "OUTLINE", -- "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
+        -- ""|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"|"OUTLINE, MONOCHROME" -- the
+        -- library's canonical set, where the EMPTY STRING is "None" and is a
+        -- real stored value. The pre-v5 token for that was the literal "NONE",
+        -- which SetFont ignored rather than honored; core/Database.lua's v4 -> v5
+        -- step rewrites it.
+        cooldownTextFlags = "OUTLINE",
+        cooldownTextColor = { r = 1, g = 1, b = 1, a = 1 },
+        useClassColorCooldownText = false,
+        -- A soft drop shadow behind the countdown, for legibility over bright
+        -- icon art. modules/IconGrid_Render.lua's ApplyTextConfig sets or clears
+        -- it; there is no half state.
+        cooldownTextShadow = false,
         showCharges      = true,
         -- The charges badge's inset from the icon's bottom-right corner, in
         -- pixels (positive X = right, positive Y = up). These two WERE the
@@ -114,9 +131,11 @@ local ICONS_DEFAULT = {
         primaryGlowTrigger   = "never",
         primaryGlowType      = "pixel",
         primaryGlowColor     = { r = 1, g = 1, b = 0, a = 1 },
+        useClassColorPrimaryGlowColor = false,
         secondaryGlowTrigger = "never",
         secondaryGlowType    = "pixel",
         secondaryGlowColor   = { r = 1, g = 1, b = 0, a = 1 },
+        useClassColorSecondaryGlowColor = false,
 }
 
 local CASTBAR_DEFAULT = {
@@ -131,6 +150,14 @@ local CASTBAR_DEFAULT = {
         font         = "Friz Quadrata TT",
         fontSize     = 10,
         fontFlags    = "OUTLINE",
+        fontShadow   = false,
+        -- The CAST TIME text's color. The spell name's is per-state and lives
+        -- in the two tables below, because the interruptible flag that picks
+        -- between them can be secret in combat and the switch is a curve
+        -- evaluation -- a third writer over the same FontString would just lose
+        -- to them. The cast time had no color at all before this.
+        textColor         = { r = 1, g = 1, b = 1, a = 1 },
+        useClassColorText = false,
 
         -- Anchoring. "FREE" = a free-floating frame the user drags around
         -- (saved to anchors.castbar). "PRIMARY" = anchored to the icon grid's
@@ -197,21 +224,41 @@ local CASTBAR_DEFAULT = {
         interruptible = {
             statusBarTexture = "Blizzard Raid Bar",
             barColor         = { r = 1, g = 0.85, b = 0.05, a = 1 },  -- yellow
+            useClassColorBar = false,
+            -- How opaque the bar's FILL is. Folded into the per-state alpha
+            -- curve in modules/Castbar.lua's ApplyState rather than applied as a
+            -- SetAlpha of its own -- the two stacked bars are already
+            -- alpha-switched off the secret notInterruptible flag, and a second
+            -- multiplication would be arithmetic on a secret value.
+            barAlpha         = 1,
             bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            useClassColorBgColor = false,
             nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
+            useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+            useClassColorBorder = false,
             borderSize       = 2,
         },
         uninterruptible = {
             statusBarTexture = "Blizzard Raid Bar",
             barColor         = { r = 0.85, g = 0.10, b = 0.10, a = 1 },  -- red
+            useClassColorBar = false,
+            -- How opaque the bar's FILL is. Folded into the per-state alpha
+            -- curve in modules/Castbar.lua's ApplyState rather than applied as a
+            -- SetAlpha of its own -- the two stacked bars are already
+            -- alpha-switched off the secret notInterruptible flag, and a second
+            -- multiplication would be arithmetic on a secret value.
+            barAlpha         = 1,
             bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            useClassColorBgColor = false,
             nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
+            useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+            useClassColorBorder = false,
             borderSize       = 2,
         },
 }
@@ -230,8 +277,14 @@ local LABELSTYLE_DEFAULT = {
         rotation = 0,             -- degrees
         font     = "Friz Quadrata TT",
         size     = 14,
-        flags    = "OUTLINE",     -- NONE | OUTLINE | THICKOUTLINE | MONOCHROME
+        flags    = "OUTLINE",     -- "" | OUTLINE | THICKOUTLINE | MONOCHROME | "OUTLINE, MONOCHROME"
+        shadow   = false,
         color    = { r = 1, g = 0.82, b = 0, a = 1 }, -- Blizzard gold, matches GameFontNormal
+        -- Unit-scoped, unlike the icon grid's companions: a label NAMES the unit
+        -- it is drawn beside, so its class is that unit's (options-ui-§17). A
+        -- linked Focus reads Target's style table and still resolves on FOCUS --
+        -- the rendering unit, never the source of the table.
+        useClassColor = false,
 }
 
 local DEFAULT_PROFILE = {

@@ -240,10 +240,53 @@ if not lib then
         "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel", "RefreshScalars",
         "RestoreDefaults",
         "PatchAlwaysShowScrollbar",
-        "SetChromeHeight", "TabStrip", "PageBanner", "RenderTabbedSchema",
+        "SetChromeHeight", "TabStrip", "PageBanner", "PageHeader", "SubTabStrip",
+        "RenderTabbedSchema",
     }) do
         Helpers[name] = function() end
     end
+
+    -- The SCHEMA COMPOSERS (libs/LibKa0s/OptionsCompose.lua), and the one place
+    -- in this stub that is load-completing for a NEW reason. Every page file
+    -- calls them inside its schema declaration at FILE LOAD, so nil members
+    -- would raise and take that page's whole row set with them -- the failure
+    -- this stub exists to prevent.
+    --
+    -- HOLLOW, deliberately, AND THE DEVIATION THIS PASS MOST WANTS REVIEWED --
+    -- docs/ARCHITECTURE.md's `## Documented deviations` carries it as the one
+    -- PROVISIONAL row in the table. The canonical font / border / bar /
+    -- color-pair / master-controls blocks live in the library, and a host copy of
+    -- them is exactly the drift the composers were extracted to end
+    -- (options-ui-§16, anti-pattern #73) -- the same argument options-ui-§1 makes
+    -- against copying a widget maker or a layout constant here. So the degraded
+    -- load registers 112 of the addon's 228 rows.
+    --
+    -- WHAT THAT COSTS, MEASURED. §1's stated harm is `list`, `get`, `set`,
+    -- `reset` and the profile defaults breaking silently, and neither half is
+    -- reachable here:
+    --   * LibKa0s-Slash-1.0 is in this same libs/LibKa0s/ folder, which §1
+    --     requires be vendored WHOLE (anti-pattern #48), so the load that loses
+    --     the composers loses the schema CLI in the same breath.
+    --     settings/Slash.lua's stub answers set/get/list/reset with one "is
+    --     unavailable" line each -- for a HOST-DECLARED row exactly as for a
+    --     composed one. A composed path is never addressable-but-missing.
+    --   * The profile defaults are defaults/Profile.lua's, merged by AceDB in
+    --     core/Database.lua's aceDBDefaults, and are never read off the schema.
+    -- The three readers of NS.Settings.Schema are the CLI, the panel and
+    -- RestoreAllDefaults' sessionOnly walk -- absent, absent, and looking for
+    -- state.debugConsole, whose console window is unavailable on this path too.
+    --
+    -- Both halves are pinned rather than argued: tests/test_options_panel.lua's
+    -- "with LibKa0s absent the schema loads complete BAR the composed blocks"
+    -- fingerprints the delta, and "the hollow composers cost the degraded path no
+    -- CLI reach it otherwise has" pins the blast radius.
+    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup" }) do
+        Helpers[name] = function() return {} end
+    end
+    -- Two returns, because the live one has two: the rows, and the afterGroup
+    -- that draws the tab's closing button pair. settings/General.lua keys its
+    -- afterGroup table with the second, inside a renderer that never runs here.
+    Helpers.MasterControls = function() return {}, function() end end
     -- The library's own internals, mirrored for the same reason __panels and __panelFor already
     -- were: the parity gate reads the WHOLE live surface, and a member that exists live and not
     -- here is a hole whether or not today's host code happens to reach it. The three layout
@@ -258,6 +301,9 @@ if not lib then
     Helpers.__scrollTopInset = function() end
     Helpers.__tabBand       = function() end
     Helpers.__tabPlacement  = function() end
+    Helpers.__releaseSubTabs   = function() end
+    Helpers.__tabArtHeight     = function() end
+    Helpers.__resetTabArtHeight = function() end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end

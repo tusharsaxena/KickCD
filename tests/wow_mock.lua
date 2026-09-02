@@ -220,6 +220,29 @@ function FRAME_METHODS.GetFont(self)
     if not f then return nil end
     return f.path, f.size, f.flags
 end
+-- The drop shadow. RECORDED rather than swallowed by the catch-all metatable,
+-- because "font shadow" is a setting now (options-ui-§16) and the only way it
+-- can be wrong is by not being CLEARED: a FontString outlives a config change,
+-- so a shadow turned off that nobody clears keeps drawing. A no-op mock cannot
+-- tell the two apart.
+function FRAME_METHODS.SetShadowOffset(self, x, y)
+    self.__shadowOffset = { x, y }
+    return self
+end
+function FRAME_METHODS.GetShadowOffset(self)
+    local o = self.__shadowOffset
+    if not o then return nil end
+    return o[1], o[2]
+end
+function FRAME_METHODS.SetShadowColor(self, r, g, b, a)
+    self.__shadowColor = { r, g, b, a }
+    return self
+end
+function FRAME_METHODS.GetShadowColor(self)
+    local c = self.__shadowColor
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
+end
 function FRAME_METHODS.SetJustifyH(self, v) self.__justifyH = v; return self end
 function FRAME_METHODS.GetJustifyH(self) return self.__justifyH end
 
@@ -231,6 +254,11 @@ function FRAME_METHODS.GetAtlas(self) return self.__atlas end
 function FRAME_METHODS.SetColorTexture(self, r, g, b, a)
     self.__colorTexture = { r, g, b, a or 1 }
     return self
+end
+function FRAME_METHODS.GetColorTexture(self)
+    local c = self.__colorTexture
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
 end
 function FRAME_METHODS.SetVertexColor(self, r, g, b, a)
     self.__vertexColor = { r, g, b, a or 1 }
@@ -248,6 +276,11 @@ end
 function FRAME_METHODS.SetBackdropBorderColor(self, r, g, b, a)
     self.__backdropBorderColor = { r, g, b, a or 1 }
     return self
+end
+function FRAME_METHODS.GetBackdropBorderColor(self)
+    local c = self.__backdropBorderColor
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
 end
 
 -- ── Status bar ──────────────────────────────────────────────────────────────

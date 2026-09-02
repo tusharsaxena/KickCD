@@ -36,7 +36,7 @@ local function Build(mainCategory)
     AceConfig:RegisterOptionsTable("KickCD-Profiles", opts)
 
     local ctx = H.CreatePanel("KickCDProfilesPanel", L["Profiles"], {
-        panelKey       = "profiles",
+        pageKey        = "profiles",
         defaultsButton = false,    -- explicit: per spec, no Defaults here
     })
 

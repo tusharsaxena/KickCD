@@ -39,9 +39,10 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    -- CURRENT_DB_VERSION is 4 (units fold, spec-key rekey, color reshape) — an
-    -- unversioned account is treated as v1 and walked forward through every step.
-    assertEqual(ns.db.global.schemaVersion, 4, "migration must stamp v1 then walk to current")
+    -- CURRENT_DB_VERSION is 5 (units fold, spec-key rekey, color reshape, font-flag
+    -- token) — an unversioned account is treated as v1 and walked forward through
+    -- every step.
+    assertEqual(ns.db.global.schemaVersion, 5, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -56,10 +57,10 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     ns.db.profile.dbVersion = 1
     ns.Database:MigrateProfile()
     assertTrue(ns.db.global.schemaVersion ~= 99, "legacy dbVersion must override the backfilled global value")
-    -- CURRENT_DB_VERSION is 4 — the adopted v1 account walks forward through
-    -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys) and [3]
-    -- (MigrateColorShape) to the current version.
-    assertEqual(ns.db.global.schemaVersion, 4, "adopted version migrates forward to the current version")
+    -- CURRENT_DB_VERSION is 5 — the adopted v1 account walks forward through
+    -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys), [3]
+    -- (MigrateColorShape) and [4] (MigrateFontFlags) to the current version.
+    assertEqual(ns.db.global.schemaVersion, 5, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
@@ -250,4 +251,62 @@ test("DB label.style.color default matches the settings schema color row default
     for i = 1, 4 do
         assertEqual(dbColor[i], focusColor[i], "target/focus color mismatch at index " .. i)
     end
+end)
+
+-- ── v4 -> v5: the font-flag token ───────────────────────────────────────────
+--
+-- The three font-flag dropdowns now offer LibKa0s' canonical set
+-- (options-ui-§16), where "None" is the EMPTY STRING because that is what
+-- FontString:SetFont spells it as. This addon shipped the literal "NONE", which
+-- SetFont did not recognise and therefore ignored — so the RENDERING is
+-- identical either way and what the migration saves is the control: a stored
+-- "NONE" matches no key in the new list, and the dropdown would have come up
+-- showing nothing.
+
+test("a stored NONE font flag reads back as the empty string after migration", function()
+    -- red under: deleting migrations[4], or narrowing MigrateFontFlags to one
+    -- of the three paths
+    local inst = T.load(true)
+    local ns = inst.NS
+    for _, unit in ipairs({ "target", "focus" }) do
+        local u = ns.db.profile.units[unit]
+        u.icons.cooldownTextFlags = "NONE"
+        u.castbar.fontFlags       = "NONE"
+        u.label.style.flags       = "NONE"
+    end
+    ns.db.global.schemaVersion = 4
+    ns.Database:MigrateProfile()
+
+    assertEqual(ns.db.global.schemaVersion, 5)
+    for _, unit in ipairs({ "target", "focus" }) do
+        local u = ns.db.profile.units[unit]
+        assertEqual(u.icons.cooldownTextFlags, "", unit .. " icons")
+        assertEqual(u.castbar.fontFlags, "", unit .. " castbar")
+        assertEqual(u.label.style.flags, "", unit .. " label")
+    end
+end)
+
+test("the font-flag migration leaves every other token exactly as it found it", function()
+    -- It rewrites ONE value, not "anything that looks like a flag": OUTLINE and
+    -- the new combination token must survive it untouched.
+    local inst = T.load(true)
+    local ns = inst.NS
+    local u = ns.db.profile.units.target
+    u.icons.cooldownTextFlags = "THICKOUTLINE"
+    u.castbar.fontFlags       = "OUTLINE, MONOCHROME"
+    u.label.style.flags       = ""
+    ns.Database:MigrateFontFlags(ns.db)
+    assertEqual(u.icons.cooldownTextFlags, "THICKOUTLINE")
+    assertEqual(u.castbar.fontFlags, "OUTLINE, MONOCHROME")
+    assertEqual(u.label.style.flags, "")
+end)
+
+test("the font-flag migration is idempotent and survives a half-built profile", function()
+    local inst = T.load(true)
+    local ns = inst.NS
+    ns.db.profile.units.target.icons.cooldownTextFlags = "NONE"
+    ns.db.profile.units.focus.label = nil          -- a profile mid-backfill
+    ns.Database:MigrateFontFlags(ns.db)
+    ns.Database:MigrateFontFlags(ns.db)
+    assertEqual(ns.db.profile.units.target.icons.cooldownTextFlags, "")
 end)

@@ -61,18 +61,6 @@ local JUSTIFY_V_VALUES_ORDER = {
     "MIDDLE",
     "BOTTOM",
 }
-local FLAG_VALUES = {
-    ["NONE"] = L["None"],
-    ["OUTLINE"] = L["Outline"],
-    ["THICKOUTLINE"] = L["Thick outline"],
-    ["MONOCHROME"] = L["Monochrome"],
-}
-local FLAG_VALUES_ORDER = {
-    "NONE",
-    "OUTLINE",
-    "THICKOUTLINE",
-    "MONOCHROME",
-}
 local ATTACH_VALUES = {
     ["castbar"] = L["Cast bar"],
     ["icons"] = L["Icon grid"],
@@ -83,7 +71,9 @@ local ATTACH_VALUES_ORDER = {
 }
 
 -- Three tabs, partitioned from `group` in declaration order (options-ui-§13):
--- General, Placement, Font.
+-- General, Placement, Font. The Font tab is COMPOSED
+-- (libs/LibKa0s/OptionsCompose.lua), which is what brings the class-color
+-- companion beside the label color and the font shadow this page did not have.
 --
 -- The first used to be called "Label" on a page called Text Label, which told
 -- the reader nothing the page had not already said; it is General now, the way
@@ -101,8 +91,19 @@ local function addUnitRows(unit)
          label = L["Show label"],
          desc = L["Show this unit's identity label."],
          default = true }
+    -- FREE TEXT, and it has to SAY so. This row shipped as `type = "string"`
+    -- with no `values` and no `dialogControl`, and LibKa0s' RenderField sends
+    -- every string row that is not an EditBox to makeDropdown -- which then
+    -- called SetList({}, {}), because enumList answers an empty table for a nil
+    -- `values`. The result was a dropdown that opened on nothing, in game only.
+    -- The library does not INFER free text from a missing `values` (inference
+    -- would silently turn a row whose values function returned empty into a
+    -- text box -- the LSM-before-registration case), so the opt-in is explicit
+    -- and this is it. The re-vendored library now warns on the bad shape, so the
+    -- next one announces itself the first time its page is opened.
     add{ panel = "label", section = "label", unit = unit, group = L["General"],
          path = "units." .. unit .. ".label.text", type = "string",
+         dialogControl = "EditBox", maxLetters = 32,
          label = L["Label text"],
          desc = L["Text shown on this unit's label."],
          default = (unit == "target" and "Target" or "Focus") }
@@ -167,29 +168,40 @@ local function addUnitRows(unit)
          default = 0, min = -180, max = 180, step = 5, fmt = "%d deg" }
 
     -- Font ------------------------------------------------------------------
-    -- [Font] | [Font size] / [Font flags] | [Label color] — the shape every
-    -- text surface in this addon uses.
-    add{ panel = "label", section = "label", unit = unit, group = L["Font"],
-         path = "units." .. unit .. ".label.style.font", type = "string",
-         label = L["Font"],
-         desc = L["LSM font for the label."],
-         default = "Friz Quadrata TT", lsm = "font",
-         values = function() return H.LSMValues("font") end }
-    add{ panel = "label", section = "label", unit = unit, group = L["Font"],
-         path = "units." .. unit .. ".label.style.size", type = "number",
-         label = L["Font size"],
-         desc = L["Label font size in pixels."],
-         default = 14, min = 6, max = 48, step = 1, fmt = "%d" }
-    add{ panel = "label", section = "label", unit = unit, group = L["Font"],
-         path = "units." .. unit .. ".label.style.flags", type = "string",
-         label = L["Font flags"],
-         desc = L["Outline / monochrome flags."],
-         default = "OUTLINE", values = FLAG_VALUES, sorting = FLAG_VALUES_ORDER }
-    add{ panel = "label", section = "label", unit = unit, group = L["Font"],
-         path = "units." .. unit .. ".label.style.color", type = "color", hasAlpha = true,
-         label = L["Label color"],
-         desc = L["Color of the label text."],
-         default = { r = 1, g = 0.82, b = 0, a = 1 } }
+    -- The canonical font block (options-ui-§16), COMPOSED. `keys` keeps every
+    -- shipped path -- this addon has always stored the label's typography flat
+    -- under `label.style` (font/size/flags/color), and the composer must not
+    -- change what is stored:
+    --     [Font]         | [Font size]
+    --     [Label color]  | [Use class color]
+    --     [Font flags]   | [Font shadow]
+    --
+    -- Font shadow is new here and is honored by modules/UnitLabel.lua's
+    -- applyLabelFont. The label NAMES the tracked unit, so its color is
+    -- unit-scoped -- and on a linked Focus the style table read is Target's
+    -- while the unit drawn is Focus, so modules/UnitLabel.lua resolves on the
+    -- RENDERING unit, never on the source of the table.
+    H.AddComposed(H.FontGroup{
+        prefix = "units." .. unit .. ".label.style.",
+        page   = "label", group = L["Font"],
+        keys   = {
+            font              = "font",
+            fontSize          = "size",
+            fontColor         = "color",
+            useClassColorFont = "useClassColor",
+            fontFlags         = "flags",
+            fontShadow        = "shadow",
+        },
+        labels   = { fontColor = L["Label color"] },
+        defaults = {
+            font       = "Friz Quadrata TT",
+            fontSize   = 14,
+            fontColor  = { r = 1, g = 0.82, b = 0, a = 1 },
+            fontFlags  = "OUTLINE",
+            fontShadow = false,
+        },
+        classColor = { source = "unit", unit = unit },
+    }, { panel = "label", section = "label", unit = unit })
 end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
@@ -200,7 +212,7 @@ local function Build(mainCategory)
     end
     local ctx
     ctx = H.CreatePanel("KickCDLabelPanel", L["Text Label"], {
-        panelKey       = "label",
+        pageKey        = "label",
         defaultsButton = true,
     })
     -- Parked, not wired: the Defaults button doesn't exist until the

@@ -98,6 +98,16 @@ if not lib then
     -- every caller already treats a nil close button as "do without one".
     function NS.MakeCloseButton() return nil end
 
+    -- The class-color resolver (options-ui-§17). Rule 2 of the library's three
+    -- is the whole degraded answer: an unresolvable class falls through to the
+    -- STORED SWATCH, never to white and never to a substitute hue -- and with no
+    -- library, no class is ever resolvable. So this is not a second
+    -- implementation of the lookup, it is the one branch of it that survives.
+    -- The stored alpha travels with it, exactly as rule 1 requires.
+    function NS.ResolveColor(stored)
+        return NS.Util.Unpack(stored)
+    end
+
     local announced = false
     function Util.print(...)
         if not DEFAULT_CHAT_FRAME then return end
@@ -115,6 +125,21 @@ end
 
 NS.IsConcatSafe = lib.IsConcatSafe
 NS.SafeToString = lib.SafeToString
+
+-- ONE RESOLVER for every "use class color" companion in the addon
+-- (options-ui-§17). Handed over rather than wrapped: the library's signature IS
+-- the one every call site wants -- (stored, on, unit) in, four channels out --
+-- and it already owns the three rules a host would otherwise re-decide per
+-- surface: the stored ALPHA always applies, an unresolvable class falls through
+-- to the stored swatch, and the swatch is therefore never disabled.
+--
+-- `unit` is the token the SURFACE DESCRIBES, never the unit whose settings table
+-- the value was read from: the cast bar and the label pass their tracked unit,
+-- the icon grid passes nil because it draws the player's own cooldowns. On a
+-- linked Focus that distinction is load-bearing -- the appearance table is
+-- Target's, the unit being drawn is Focus, and it is the RENDERING unit whose
+-- class the reader is looking at.
+NS.ResolveColor = lib.ResolveColor
 
 -- WRAPPED, TO SAY WHO IS ASKING — and the only seam here that is wrapped rather
 -- than handed over. LibKa0s draws this collection's own `close` mark when it is

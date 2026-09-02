@@ -73,7 +73,7 @@ end
 --- Plain numbers throughout — nothing here is ever secret. These come from the
 --- SavedVariables config, not from a cooldown API.
 local function curveSignature(cfg)
-    local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+    local r, g, b = NS.ResolveColor(cfg.cooldownTint, cfg.useClassColorCooldownTint, nil)
     return table.concat({
         cfg.readyAlpha    or 1.0,
         cfg.cooldownAlpha or 0.4,
@@ -120,7 +120,11 @@ local function buildUnitCurves(unit)
 
     local readyAlpha    = cfg.readyAlpha    or 1.0
     local cooldownAlpha = cfg.cooldownAlpha or 0.4
-    local r, g, b = safeUnpackColor(cfg.cooldownTint, 1, 0.4, 0.4)
+    -- Resolved, not unpacked: the tint's "Use class color" companion feeds the
+    -- CURVE, and it is already in the signature above -- so toggling it rebuilds
+    -- the curves exactly as moving the swatch does, rather than leaving the old
+    -- hue baked into a curve nobody rebuilds.
+    local r, g, b = NS.ResolveColor(cfg.cooldownTint, cfg.useClassColorCooldownTint, nil)
 
     set = { sig = sig }
 
@@ -442,11 +446,15 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 local LCG_KEY = "KickCD"
 
 -- The out-of-table fallback stays local (the glow's default is not white), but
--- the unpack itself goes through Util.Unpack: colors are stored keyed, and an
--- index read would have made every glow render the same yellow.
-local function unpackGlowColor(c)
+-- the read itself goes through NS.ResolveColor: colors are stored keyed, and it
+-- is what honors the "Use class color" companion beside the swatch.
+--
+-- THE PLAYER'S CLASS, hence the nil unit token. A ready glow fires on the
+-- PLAYER'S OWN interrupt coming off cooldown; that the setting is stored under
+-- `units.<unit>.` says nothing about whose class it means (options-ui-§17).
+local function unpackGlowColor(c, useClassColor)
     if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
-    return NS.Util.Unpack(c)
+    return NS.ResolveColor(c, useClassColor, nil)
 end
 
 function Icon:StopGlow()
@@ -462,10 +470,14 @@ function Icon:StopGlow()
     self._glowColor = nil
 end
 
-function Icon:StartGlow(kind, color)
+function Icon:StartGlow(kind, color, useClassColor)
     local g = self.glow
     if not (g and LCG) then return end
-    local r, gr, b, a = unpackGlowColor(color)
+    -- Resolved HERE rather than in glowConfig so nothing allocates a table on a
+    -- path that re-enters on every SPELL_STATE: the idempotency gate below
+    -- compares the four resolved numbers, so a class-color toggle restarts the
+    -- glow exactly as a swatch edit does and a no-op change still costs nothing.
+    local r, gr, b, a = unpackGlowColor(color, useClassColor)
     -- Idempotency gate: UpdateGlow gets called on every SPELL_STATE re-emit
     -- (Cooldowns:Refresh fires for any non-trivially-equal poll, and charged
     -- secondaries hit this path multiple times per second because
@@ -537,9 +549,11 @@ end
 --- secondaries carry separate schema entries.
 local function glowConfig(cfg, isPrimary)
     if isPrimary then
-        return cfg.primaryGlowTrigger,   cfg.primaryGlowType,   cfg.primaryGlowColor
+        return cfg.primaryGlowTrigger,   cfg.primaryGlowType,
+               cfg.primaryGlowColor,     cfg.useClassColorPrimaryGlowColor
     end
-    return cfg.secondaryGlowTrigger, cfg.secondaryGlowType, cfg.secondaryGlowColor
+    return cfg.secondaryGlowTrigger, cfg.secondaryGlowType,
+           cfg.secondaryGlowColor,   cfg.useClassColorSecondaryGlowColor
 end
 
 --- Per-cast interruptibility filter (alpha mask on the glow frame). Truthy
@@ -556,14 +570,14 @@ function Icon:UpdateGlow(state)
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     if not cfg then return self:StopGlow() end
 
-    local trigger, kind, color = glowConfig(cfg, self._isPrimary)
+    local trigger, kind, color, useClassColor = glowConfig(cfg, self._isPrimary)
 
     local ready = state and state.ready and true or false
     if not ready or not triggerSatisfied(trigger, self.instance) then
         self:StopGlow()
         return
     end
-    self:StartGlow(kind, color)
+    self:StartGlow(kind, color, useClassColor)
 
     if applyInterruptibleMask(self, trigger) then return end
     if self.glow then self.glow:SetAlpha(1) end
@@ -796,8 +810,11 @@ function Icon:ApplyAppearance(cfg)
             edgeFile = fetchBorderTexture(cfg.borderTexture),
             edgeSize = size,
         })
+        -- Through NS.ResolveColor so the border's "Use class color" companion is
+        -- honored. Player-scoped (nil unit): the border frames the player's own
+        -- interrupt icon, on the Focus grid exactly as on the Target one.
         self.border:SetBackdropBorderColor(
-            safeUnpackColor(cfg.borderColor, 0, 0, 0, 1))
+            NS.ResolveColor(cfg.borderColor, cfg.useClassColorBorder, nil))
         self.border:Show()
     else
         self.border:Hide()
@@ -854,9 +871,30 @@ function Icon:ApplyTextConfig(cfg)
         fontPath = self.cooldownText:GetFont()
     end
     if fontPath then
+        -- "NONE" is the PRE-v5 stored token; core/Database.lua rewrites it to
+        -- the empty string the client's SetFont actually spells, and this arm
+        -- covers the frame or two before that migration lands.
         local flags = cfg.cooldownTextFlags or "OUTLINE"
         if flags == "NONE" then flags = "" end
         self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
+    end
+
+    -- The countdown's COLOR and its drop shadow — the two rows options-ui-§16's
+    -- font block brought to this tab. Both are applied unconditionally, never
+    -- "only when set": the FontString is pooled with its button, so a shadow
+    -- turned off would otherwise keep drawing on the next spell to take the slot.
+    --
+    -- classColorSource is "player" and the path does NOT decide that: this text
+    -- counts down the PLAYER'S OWN interrupt, so it is the player's class the
+    -- swatch defers to on both units' grids. Hence nil for the unit token.
+    self.cooldownText:SetTextColor(
+        NS.ResolveColor(cfg.cooldownTextColor, cfg.useClassColorCooldownText, nil))
+    if cfg.cooldownTextShadow then
+        self.cooldownText:SetShadowOffset(1, -1)
+        self.cooldownText:SetShadowColor(0, 0, 0, 1)
+    else
+        self.cooldownText:SetShadowOffset(0, 0)
+        self.cooldownText:SetShadowColor(0, 0, 0, 0)
     end
 
     -- Re-render so a showCooldownText toggle (or any other visual state

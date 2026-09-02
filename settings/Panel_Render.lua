@@ -64,9 +64,8 @@ end
 --
 -- Full rebuild on every call rather than a persistent widget: AceGUI's pool
 -- exists to make release-and-recreate cheap, and PageBanner drains both chrome
--- ledgers (the banner's and the strip's) before it draws, so a unit switch that
--- lands on a linked Focus -- which draws NO strip -- cannot leave the previous
--- unit's tabs stranded above the note.
+-- ledgers (the banner's and the strip's) before it draws, so a unit switch
+-- cannot leave the previous unit's tabs stranded under the new one's.
 --
 -- The Focus "Use same styling as Target" tick and the "Copy styling from
 -- Target" button used to be drawn here, once per unit page. They are on the
@@ -100,26 +99,71 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
     -- would; the library keeps its own chrome widgets private.
     ctx.__bannerWidget = dd
 
-    if ctx.unit == "focus" then
-        local cfg = NS.Units.Config("focus")
-        if cfg ~= nil and cfg.link == true then
-            -- Editable-but-ignored appearance widgets are worse than none: a
-            -- linked Focus renders with Target's tables, so any styled row here
-            -- would write to a table nothing reads. alwaysPerUnit rows ARE
-            -- per-unit even while linked, so they stay editable; everything else
-            -- is replaced by the note. No strip either -- a tab strip over a
-            -- note is chrome for its own sake.
-            local perUnit = Helpers.PartitionUnitRows(
-                Helpers.SchemaForPanel(panelKey, ctx.unit))
-            Helpers.RenderRows(ctx, perUnit, afterGroup)
-            Helpers.TextRow(ctx, L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."])
-            local scroll = ensureScroll(ctx)
-            if scroll and scroll.DoLayout then scroll:DoLayout() end
-            return
-        end
+    if NS.Units.IsLinked(ctx.unit) then
+        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        return
     end
 
     Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup)
+end
+
+--- A linked Focus: the STRIP FIRST, always, and the link note as content.
+---
+--- This used to return before the strip was drawn, on the argument that "a tab
+--- strip over a note is chrome for its own sake". That argument is about one
+--- page and it is the wrong rule for a panel (options-ui-§13): a reader who
+--- flips the Unit picker to Focus watched the whole page shape change under
+--- them, and the page that lost its strip is the one that looks broken. The
+--- link state is a STATE OF THE PAGE, so it belongs inside the page.
+---
+--- Editable-but-ignored appearance widgets are still worse than none -- a linked
+--- Focus renders with Target's tables, so a styled row here would write to a
+--- table nothing reads -- so the tab's CONTENT is still only its alwaysPerUnit
+--- rows plus the note. What changed is that the strip is above them.
+---
+--- The strip is drawn by hand rather than by RenderTabbedSchema because that
+--- function renders the active tab's rows itself, and the whole point here is
+--- that most of them must not be rendered. Tab selection, the stale-pointer
+--- heal and the re-render on click are the same three things it does.
+function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
+
+    local groups, seen = {}, {}
+    for _, def in ipairs(rows) do
+        if def.group and not seen[def.group] then
+            seen[def.group] = true
+            groups[#groups + 1] = def.group
+        end
+    end
+    -- A tab pointing at a group this page no longer has renders a blank page
+    -- under a strip, so a stale pointer heals to the first rather than being
+    -- trusted -- the same heal RenderTabbedSchema does, for the same reason.
+    if not (ctx.activeTab and seen[ctx.activeTab]) then ctx.activeTab = groups[1] end
+
+    local tabs = {}
+    for i, name in ipairs(groups) do tabs[i] = { key = name, label = name } end
+    Helpers.TabStrip(ctx, {
+        tabs  = tabs,
+        value = ctx.activeTab,
+        onSelect = function(key)
+            if key == ctx.activeTab then return end
+            ctx.activeTab = key
+            Helpers.ClearScroll(ctx)
+            Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        end,
+    })
+
+    local active = {}
+    for _, def in ipairs(rows) do
+        if def.group == ctx.activeTab then active[#active + 1] = def end
+    end
+    local perUnit = Helpers.PartitionUnitRows(active)
+    -- noHeadings, because the tab label already carries the section's name and
+    -- drawing a Heading under it is the same label twice (options-ui-§7).
+    Helpers.RenderRows(ctx, perUnit, afterGroup, nil, { noHeadings = true })
+    Helpers.TextRow(ctx, L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."])
+    local scroll = ensureScroll(ctx)
+    if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
 
 -- Look up `path` in the schema and write `value` through the same

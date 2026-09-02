@@ -165,14 +165,14 @@ KickCD (AceAddon)
                         main landing page. Peeled into two siblings that
                         load right after it (KCD-24 — all three publish onto
                         the one NS.Settings.Helpers table):
-    ├── Panel_Widgets.lua — the widget-maker primitives (checkbox / slider /
-                        dropdown / editbox / colorpicker) behind
-                        Helpers.RenderField, plus the inline Button /
-                        InlinePair / InlineButtonPair / SessionToggle
-                        helpers. makeEditBox commits on Enter/focus-loss
-                        (unlike the drag/click-commit widgets); the
-                        ColorPicker commit runs through Util.Throttle(50, …)
-                        so a color-slider drag doesn't thrash the bus/frames.
+    ├── Panel_Widgets.lua — what is LEFT of the host widget layer: the
+                        SessionToggle argument-order adapter over the
+                        library's SessionCheckbox, and nothing else.
+                        (InlinePair went with the bespoke Debug-console
+                        toggle it existed for — that line is
+                        H.MasterControls' now and both halves are ordinary
+                        schema rows, so a host maker with no caller was
+                        left sitting here.)
     ├── Panel_Render.lua — schema render + reset layer: Helpers.RenderUnitPanel
                         (the Unit picker drawn as the page BANNER in the
                         chrome band ABOVE the tab strip, then the linked-
@@ -185,9 +185,15 @@ KickCD (AceAddon)
                         under a slider mid-drag; RestoreDefaults,
                         RestoreAllDefaults, ResetAll, ResetIconPosition).
                         Creates no AceGUI widget of its own any more
-    ├── General.lua   — 2 tabs. Master controls (5): enable/visibility/
-                        scale/alpha/lock, plus the bespoke Debug console
-                        toggle and the Reset position / Reset all buttons.
+    ├── General.lua   — 2 tabs. Master controls (6): the CANONICAL block
+                        (options-ui-§15), COMPOSED by H.MasterControls —
+                        enable / visibility / scale / alpha / lock / the
+                        session-only Debug console — plus the Reset position
+                        / Reset all button pair, which is the composer's own
+                        returned afterGroup, keyed on H.MASTER_GROUP. This
+                        addon is the collection's reference for that tab.
+                        `visibility` keeps its own four cast-state values
+                        (a ratified deviation; see ARCHITECTURE.md).
                         Units (2): the per-unit enabled toggles (both target
                         and focus, section="units"; no unit picker — General
                         renders both units' rows together), plus the Focus
@@ -196,19 +202,26 @@ KickCD (AceAddon)
                         unit pages' headers. label.show/label.text moved OFF
                         General onto the Text Label panel; debug ENABLE is
                         session-only NS.State.debug, not a schema row
-    ├── Icons.lua     — 6 tabs, 32 rows per unit: Sizing (4), Layout (6),
-                        Visual states (4), Border (4), Annotations (8 — the
-                        cooldown text, the charges badge and its inset, the
-                        hover tooltip), Ready glow (6). Rendered per-unit via
-                        Helpers.RenderUnitPanel (Unit banner; a linked focus
-                        hides the appearance body)
-    ├── Castbar.lua   — 7 tabs, 42 rows per unit: General (9 — the enable,
-                        the axis and every dimension, because auto-size
-                        decides whether width and height are read at all),
-                        Position (5), Font (3), Spell name (5), Cast time
-                        (4), Interruptible (8), Non-interruptible (8).
-                        Rendered per-unit via Helpers.RenderUnitPanel (Unit
-                        banner; a linked focus hides the appearance body).
+    ├── Icons.lua     — 6 tabs, 39 rows per unit: Sizing (4), Layout (6),
+                        Visual states (5), Border (5 — H.BorderGroup),
+                        Annotations (11 — subgrouped Icon / Font / Charges,
+                        the font block composed by H.FontGroup), Ready glow
+                        (8). Every colour is an H.ColorPair, so each carries
+                        its "Use class color" companion — all PLAYER-scoped,
+                        because this grid counts down the player's own
+                        interrupts whichever unit's page you are on. Rendered
+                        per-unit via Helpers.RenderUnitPanel
+    ├── Castbar.lua   — 8 tabs, 55 rows per unit: General (5 — the enable
+                        and the axis), Size and position (7, subgrouped Size
+                        / Position), Icon (2), Font (6 — H.FontGroup, whose
+                        new colour governs the CAST TIME text), Spell name
+                        (5), Cast time (4), Interruptible (13) and
+                        Non-interruptible (13) — each of the last two
+                        subgrouped Bar / Background / Text / Border and
+                        composed by H.BarGroup + two H.ColorPairs +
+                        H.BorderGroup. Every colour here is UNIT-scoped: the
+                        bar describes the tracked unit. Rendered per-unit via
+                        Helpers.RenderUnitPanel.
                         Schema rows do NOT
                         carry onChange callbacks — Helpers.Set fires the bus
                         and the Castbar module's listener handles the redraw,
@@ -228,7 +241,15 @@ KickCD (AceAddon)
                         justify/rotation/font/size/flags/color) are link-resolved
                         appearance and follow the same body the Icons/Castbar
                         panels use. Rendered via the shared unit selector
-    ├── Spells.lua    — unified header + AceGUI per-class+spec spell editor.
+    ├── Spells.lua    — per-class+spec spell editor, drawn the way every
+                        other page is: the spec picker and Add spell in a
+                        page-wide chrome block (H.PageHeader), a one-tab
+                        strip under it (H.TabStrip), and the rows in the
+                        library's own scroll (H.EnsureScroll). The rows DRAG
+                        (LibKa0s-Widgets-1.0's ReorderList) — the up/down
+                        arrow pair and this page's own row background are
+                        gone, and Spells.MoveTo is the splice-to-index the
+                        drag calls back into.
                         Listens for Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }
                         to refresh rows after a slash-command edit, and caches
                         the Cooldown Manager spell-set (invalidated on
@@ -275,10 +296,10 @@ KickCD (AceAddon)
 18. `settings/Slash.lua` — the `LibKa0s-Slash-1.0` descriptor: the `/kcd` dispatcher, the help renderer, the row / key-value formatters, the list builder and the type-aware parser are the library's. What stays here is the host-shaped remainder — the `groupKey` adapter (KickCD rows carry `panel`, not `page`), the `parse` override carrying `NS.Slash.GateHint` (which sibling setting gated a rejected dropdown value; it probes by swapping the gate's stored value and re-asking the row's own `values` function), the `PAGE_ORDER` that `/kcd list` groups by, and the `reset` convergence: `reset` takes a schema **path**, and each retired page name (`general`/`icons`/`castbar`/`label`) plus `reset spells` answers with where its capability went. Loads after `core/KickCD.lua`, which defines the `NS.COMMANDS` verb table passed into the descriptor at load; `NS:OnSlashCommand` reaches `NS.Slash` at call time, so the registration in `OnInitialize` is unaffected by the split. Degrades to a stub — host verbs keep working, the schema CLI names the missing library — with no hand-copied formatter.
 19. `settings/OptionsSetup.lua` — the `LibKa0s-Options-1.0` descriptor. The settings-canvas shell, header and breadcrumb, the lazy Defaults button, the five widget makers, the two-column flow engine and the always-shown scrollbar patch are the library's. `NS.Settings.Helpers` **is** the library instance, decorated in place by `Panel.lua` / `Panel_Widgets.lua` / `Panel_Render.lua` — never a fresh table copying members across, so a later-added host helper and a suite's spy both see the same object the library's own callers do. Supplies where a value lives, which rows belong to which page, and `descriptor.skipRestoreAll` — the Profiles rows are AceDBOptions-supplied and resetting them deletes user data, so they are vetoed from "reset everything" both by the library and by the degradation stub's own reset loop. Loads **before** `settings/Panel.lua` and therefore before every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load.
 20. `settings/Panel.lua` — the canvas-panel framework core. Registers the top-level Blizzard Settings category and the per-tab builder mailbox, builds the shared header (`Helpers.CreatePanel`), owns the lazy AceGUI scroll container + the always-visible-scrollbar patch (`Helpers.PatchAlwaysShowScrollbar`) + `Helpers.Section`, runs the schema query helpers (`Helpers.SchemaForPanel` / `Helpers.FindSchema`) and the schema-shape validator (`Helpers.ValidateSchema` runs at panel-register time and prints clear `|cffff0000KickCD schema error|r:` lines on a misshapen row), and exposes the profile-write seam (`Helpers.Set`/`Helpers.Get`), the dropdown value builders (`Helpers.AnchorValues`, `Helpers.LSMValues`), and the main landing page (`Helpers.BuildMainContent`). Peeled into two siblings (KCD-24) that load right after it; all three publish onto the one `NS.Settings.Helpers` table, so call order across the trio is irrelevant.
-20b. `settings/Panel_Widgets.lua` — the widget-maker primitives, peeled from `Panel.lua`. `Helpers.RenderField` dispatches by `def.type` to a checkbox / slider / dropdown (stock or `LSM30_*` for media rows) / free-text editbox / colorpicker maker; each binds directly to `db.profile` via `Helpers.Get`/`Set` and registers a `ctx.refreshers` closure so the widget re-syncs after a Defaults reset or a `/kcd set`. `makeEditBox` commits on Enter/focus-loss (unlike the drag/click-commit widgets) and backs the per-unit label-text rows; the ColorPicker's `OnValueChanged` commit runs through `Util.Throttle(50, ...)` so dragging a color slider doesn't thrash the bus or live frames. Also the inline action helpers: `Helpers.InlinePair` (two half-width widgets on one Flow row — backs General's "Lock frame" + "Debug console" pairing) and `Helpers.InlineButtonPair` (two 50/50 action buttons — backs "Reset position" + "Reset all settings"), plus the session-only (non-schema) `Helpers.SessionToggle` (backs the debug-console checkbox).
+20b. `settings/Panel_Widgets.lua` — the widget-maker primitives, peeled from `Panel.lua`. `Helpers.RenderField` dispatches by `def.type` to a checkbox / slider / dropdown (stock or `LSM30_*` for media rows) / free-text editbox / colorpicker maker; each binds directly to `db.profile` via `Helpers.Get`/`Set` and registers a `ctx.refreshers` closure so the widget re-syncs after a Defaults reset or a `/kcd set`. `makeEditBox` commits on Enter/focus-loss (unlike the drag/click-commit widgets) and backs the per-unit label-text rows; the ColorPicker's `OnValueChanged` commit runs through `Util.Throttle(50, ...)` so dragging a color slider doesn't thrash the bus or live frames. What is left in this file is the session-only (non-schema) `Helpers.SessionToggle`, a pure argument-order adapter over the library's `SessionCheckbox`, which backs the General → Units "Use same styling as Target" tick. `Helpers.InlinePair` was **deleted**: its one caller was General's "Lock frame" + "Debug console" line, and that line is `H.MasterControls`' now, where both halves are ordinary schema rows the flow engine pairs by itself — a host widget maker with no caller is exactly what `options-ui-§1` says must not sit here.
 20c. `settings/Panel_Render.lua` — the schema render + reset/orchestration layer, peeled from `Panel.lua`. Its centrepiece is `Helpers.RenderUnitPanel`, which draws the **Unit picker as the page banner** (`Helpers.PageBanner`, `options-ui-§14`) pinned in the chrome band **above** the tab strip, then either the linked-Focus note or `Helpers.RenderTabbedSchema` — shared by the Icons, Cast bar and Text Label builders. It creates no AceGUI widget of its own any more: the hand-built unit header (a Dropdown, the focus link checkbox and the copy Button, each with its own spacer) is gone, the picker is the library's, and the two focus controls moved to General → Units. `Helpers.RerenderUnitPanel` is gone with it — it re-ran the *untabbed* `RenderSchema` and had no callers, so it was a second, wrong answer to "how does this page redraw?". Also here: `Helpers.ClearScroll`'s companion invariant (it drops `ctx.refreshers` as well as releasing the widgets — a refresher outliving its widget gets replayed against whatever AceGUI's pool recycled that object into); the `alwaysPerUnit` splitter (`Helpers.PartitionUnitRows` — generic infra for keeping a row editable on a linked Focus's page while the rest of that panel is link-gated; it was added for the label `show`/`text` rows, which no longer set the flag, so today no schema row does); and the write-and-refresh / reset helpers (`Helpers.SetAndRefresh` — which ends in `Helpers.RefreshScalars`, never a structural sweep, so a committed drag tick cannot rebuild the page under the widget being dragged — `Helpers.RestoreDefaults`, `Helpers.RestoreAllDefaults`, `Helpers.ResetAll`, `Helpers.ResetIconPosition`, `Helpers.ResetAllPositions`, `Helpers.RestoreUnitLinks`).
 
-21. `settings/{General,Icons,Castbar,Label,Spells,Profiles}.lua` — register their pages via `NS.RegisterOptionsPage` — the `settings/OptionsSetup.lua` forwarder onto LibKa0s-Options-1.0's page registry, drained once by `NS.CreateOptionsPanel()` in `core/KickCD.lua`'s `OnEnable`. General / Icons / Cast bar / Label are pure schema (rows in `NS.Settings.Schema`) and each draws a **tab strip** partitioned from its rows' `group` field in declaration order (`Helpers.RenderTabbedSchema`, `options-ui-§13`): General 2 tabs / 7 rows, Icons 6 tabs / 32 rows per unit, Cast bar 7 tabs / 42 rows per unit, Text Label 3 tabs / 14 rows per unit. The per-page table is in [settings-panel.md](settings-panel.md) and pinned by `tests/test_schema.lua`. All four declare how they draw with `Helpers.SetRenderer` and let the library own when, which is what lets a structural refresh from another page repaint them. General carries the per-unit `enabled` rows (`section = "units"`) for both `target` and `focus` on its Units tab — General has no unit picker, so both units' rows render together — plus the Focus "Use same styling as Target" tick and "Copy styling from Target" button, which used to be drawn once per unit page. `label.show`/`label.text` moved off General onto the Label page. Icons / Cast bar / Label render through `Helpers.RenderUnitPanel` (the Unit banner above the strip; `SchemaForPanel` filters rows to `ctx.unit`); Label's `show`/`text` rows no longer carry `alwaysPerUnit` (removed in the defaults follow-up), so a linked Focus's Text Label page renders no body rows and no strip — just the "Linked to Target" note, matching Icons/Cast bar. Both stay per-unit *data* in the DB, but only `text` is read per-unit (`NS.Units.Label`) — `show` resolves through the link (`NS.Units.LabelShow`), so a linked, enabled Focus shows its own label text with Target's style and Target's show flag. Neither is editable on the page while linked — untick the link on General → Units to edit them. Spells parents an AceGUI editor to `ctx.body` and listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }` to rebuild rows after a slash-command write; Profiles parents an AceConfigDialog into `ctx.body` for the AceDBOptions table, and is deliberately **not** tabbed — it is library-drawn and identical in every addon in the collection.
+21. `settings/{General,Icons,Castbar,Label,Spells,Profiles}.lua` — register their pages via `NS.RegisterOptionsPage` — the `settings/OptionsSetup.lua` forwarder onto LibKa0s-Options-1.0's page registry, drained once by `NS.CreateOptionsPanel()` in `core/KickCD.lua`'s `OnEnable`. General / Icons / Cast bar / Label are pure schema (rows in `NS.Settings.Schema`) and each draws a **tab strip** partitioned from its rows' `group` field in declaration order (`Helpers.RenderTabbedSchema`, `options-ui-§13`): General 2 tabs / 8 rows, Icons 6 tabs / 39 rows per unit, Cast bar 8 tabs / 55 rows per unit, Text Label 3 tabs / 16 rows per unit. The per-page table is in [settings-panel.md](settings-panel.md) and pinned by `tests/test_schema.lua`. All four declare how they draw with `Helpers.SetRenderer` and let the library own when, which is what lets a structural refresh from another page repaint them. General carries the per-unit `enabled` rows (`section = "units"`) for both `target` and `focus` on its Units tab — General has no unit picker, so both units' rows render together — plus the Focus "Use same styling as Target" tick and "Copy styling from Target" button, which used to be drawn once per unit page. `label.show`/`label.text` moved off General onto the Label page. Icons / Cast bar / Label render through `Helpers.RenderUnitPanel` (the Unit banner above the strip; `SchemaForPanel` filters rows to `ctx.unit`); Label's `show`/`text` rows no longer carry `alwaysPerUnit` (removed in the defaults follow-up), so a linked Focus's Text Label page renders no body rows — just the "Linked to Target" note under a full strip, matching Icons/Cast bar (`Helpers.RenderLinkedUnit`: the strip is drawn FIRST, always, and the link state is content inside the page). Both stay per-unit *data* in the DB, but only `text` is read per-unit (`NS.Units.Label`) — `show` resolves through the link (`NS.Units.LabelShow`), so a linked, enabled Focus shows its own label text with Target's style and Target's show flag. Neither is editable on the page while linked — untick the link on General → Units to edit them. Spells has no schema rows but draws the same furniture — a page-wide chrome block (`H.PageHeader`) holding the spec picker and Add spell, a one-tab strip (`H.TabStrip`) and the library's own scroll — and listens for `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }` to rebuild rows after a slash-command write; its rows drag through `LibKa0s-Widgets-1.0`'s `ReorderList`. Profiles parents an AceConfigDialog into `ctx.body` for the AceDBOptions table and is the **one exempt page** — it never reaches the flow engine, so there is no mechanism there for a strip to use (the landing page is the other exemption, and for the same reason).
 
 ## AceAddon lifecycle
 
