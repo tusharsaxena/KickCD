@@ -103,7 +103,8 @@ units[unit] = {
                               -- only `text` is READ per-unit (NS.Units.Label(unit));
                               -- `show` follows the link (NS.Units.LabelShow(unit))
               style = { attach, point, relPoint, offsetX, offsetY,
-                        justifyH, justifyV, rotation, font, size, flags } },
+                        justifyH, justifyV, rotation, font, size, flags,
+                        shadow, color, useClassColor } },
                               -- style is link-resolved (NS.Units.LabelStyle(unit) —
                               -- a linked focus reads target's style); see the
                               -- "units.<unit>.label.style" section below
@@ -139,19 +140,33 @@ units[unit] = {
         -- SetPoint call; the defaults are those exact numbers, so an untouched
         -- profile draws the badge exactly where it always did, and the render
         -- path clamps to +/-32 because a SavedVariable can hold anything.
+        -- The countdown's typography is the composed font block (options-ui-§16),
+        -- so cooldownTextColor / useClassColorCooldownText / cooldownTextShadow
+        -- arrived with it; every one of them keeps this addon's shipped leaf name
+        -- through the composer's `keys` map.
         showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
+        cooldownTextColor, useClassColorCooldownText, cooldownTextShadow,
         showCharges, chargesOffsetX, chargesOffsetY,
         -- Per-slot ready glow (LibCustomGlow). Trigger ∈
         --   { never, always, target_casting, target_casting_interruptible }
         -- Type ∈ { button, proc, pixel, autocast }.
+        -- Each glow color is an H.ColorPair, so each carries its own
+        -- useClassColor* companion immediately after it (options-ui-§17).
         primaryGlowTrigger,   primaryGlowType,   primaryGlowColor,
+        useClassColorPrimaryGlowColor,
         secondaryGlowTrigger, secondaryGlowType, secondaryGlowColor,
+        useClassColorSecondaryGlowColor,
     },
     castbar = {
         enabled,                                -- sub-module enable (master + unit enable still win)
         width, height, iconSize, iconPosition,  -- "LEFT" | "RIGHT" | "OFF"
         showSpark, showName, showTime,
-        font, fontSize, fontFlags,
+        -- The composed font block (options-ui-§16). fontShadow, textColor and
+        -- useClassColorText arrived with it; textColor governs the CAST TIME
+        -- text (the spell name's color is per-state, below) and is labelled
+        -- "Cast time color" in the panel for that reason.
+        font, fontSize, fontFlags, fontShadow,
+        textColor, useClassColorText,
         -- Anchor: FREE = drag-positioned (saved to anchors.castbar);
         -- PRIMARY = SetPoint to this unit's icon grid primary icon button at
         -- (anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY).
@@ -183,12 +198,23 @@ units[unit] = {
         timePosition, timeOffsetX, timeOffsetY,
         -- Per-state appearance (curve-switched on the cast's secret
         -- notInterruptible bool via C_CurveUtil.EvaluateColorValueFromBoolean).
-        interruptible   = { statusBarTexture, barColor, bgColor,
-                            nameTextColor, borderShow, borderTexture,
-                            borderColor, borderSize },
-        uninterruptible = { statusBarTexture, barColor, bgColor,
-                            nameTextColor, borderShow, borderTexture,
-                            borderColor, borderSize },
+        -- Each per-state table is one composed bar group plus two composed
+        -- swatch pairs plus one composed border group (options-ui-§16/§17), so
+        -- every color carries a useClassColor* companion and the bar carries
+        -- barAlpha -- which folds into the per-state alpha CURVE in
+        -- modules/Castbar.lua's ApplyState, never a SetAlpha of its own.
+        interruptible   = { statusBarTexture, barColor, useClassColorBar,
+                            barAlpha,
+                            bgColor, useClassColorBgColor,
+                            nameTextColor, useClassColorNameTextColor,
+                            borderShow, borderTexture,
+                            borderColor, useClassColorBorder, borderSize },
+        uninterruptible = { statusBarTexture, barColor, useClassColorBar,
+                            barAlpha,
+                            bgColor, useClassColorBgColor,
+                            nameTextColor, useClassColorNameTextColor,
+                            borderShow, borderTexture,
+                            borderColor, useClassColorBorder, borderSize },
     },
 }
 ```

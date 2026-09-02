@@ -357,7 +357,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 4` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -533,8 +533,8 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 - Cast an interrupt at a friendly target dummy. Use one whose cooldown is comfortably over ~1.6s — any real interrupt (15–24s) qualifies. Both grids render the same player cooldowns, so one cast drives both.
 - Watch both grids during the cooldown.
 - Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
-- Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` with a cap of `4`, so a one-step thickness change is invisible and proves nothing.
-- **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open runs `RefreshAllPanels`, which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
+- Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
+- **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open fires every refresher in `ctx.refreshers` (through `RefreshScalars`), which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
 - Re-tick "Use same styling as Target" on General → Units.
 
 **Pass.**

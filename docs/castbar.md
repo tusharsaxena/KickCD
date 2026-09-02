@@ -7,7 +7,7 @@
 Two anchor modes (`units.<unit>.castbar.anchorMode`, resolved through `NS.Units.Castbar(unit)`):
 
 - **FREE** — drag to position, persisted to `units.<unit>.anchors.castbar` (never link-resolved — position stays per-unit even for a linked focus).
-- **PRIMARY** — `SetPoint` against the SAME unit's icon grid primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = TOP_LEFT`, `castbarPoint = BOTTOM_LEFT`, `(0, 1)` offset → bar sits 1 px above the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows its unit's grid for free.
+- **PRIMARY** — `SetPoint` against the SAME unit's icon grid primary icon button using the configured `(anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY)` tuple, both translated from the 13-option `<SIDE>_<ALIGN>` / `CENTER` form via the `SETPOINT_MAP` table in `modules/Castbar.lua` (legacy 9-point tokens like `TOPLEFT` / `BOTTOM` from older saved profiles still pass through unchanged). PRIMARY is the **default** anchor mode; defaults `anchorPoint = BOTTOM_LEFT` (the point on the primary icon), `castbarPoint = TOP_LEFT` (the point on the bar), `(0, -1)` offset → bar sits 1 px below the primary icon, left-aligned. Drag is forced off in this mode regardless of the global lock; the bar follows its unit's grid for free.
 
 Each Castbar instance listens to `Ka0s_KickCD_GRID_LAYOUT`, filters on `payload.unit`, and re-anchors when its own unit's primary icon button reference changes (e.g. when that unit's grid rebuilds against a new spec) — a focus instance ignores a target `GRID_LAYOUT` payload and vice versa. The same listener re-runs `Reskin` (the config-driven half of the CR-17 split) when `castbar.autoSize` is on so the bar's orientation-relevant dimension tracks its own unit's grid's actual visible footprint — `IconGrid:Layout` sizes the grid frame against `usedRows * usedCols` (the rectangular area occupied by the visible icons), not the configured `secondaryRows * secondaryCols` capacity, so disabling a spell shrinks the bar instead of leaving phantom width.
 
@@ -15,7 +15,7 @@ Each Castbar instance listens to `Ka0s_KickCD_GRID_LAYOUT`, filters on `payload.
 
 `HORIZONTAL` and `VERTICAL`. The "rotate by 90°" mental model is faked C-side — `Reskin` swaps which physical axis maps to width vs height, then drives `StatusBar:SetOrientation` and `SetReverseFill` so all per-frame texture-growth math stays C-side. Vertical mode also rotates the spark texture 90° so it reads as a horizontal slash across the fill edge.
 
-`growDirection`'s option list depends on `orientation` (`RIGHT`/`LEFT` for horizontal, `UP`/`DOWN` for vertical) and is enforced via the schema row's `valueGate = "castbar.orientation"`. Switching orientation runs the schema row's onChange to rewrite `growDirection` to the canonical default for the new axis (`RIGHT` / `UP`) so an inconsistent pair can't linger after a flip.
+`growDirection`'s option list depends on `orientation` (`RIGHT`/`LEFT` for horizontal, `UP`/`DOWN` for vertical) and is enforced via the schema row's `valueGate = "units.<unit>.castbar.orientation"` (the paths are per-unit, so the gate names the same unit's row). Switching orientation runs the schema row's onChange to rewrite `growDirection` to the canonical default for the new axis (`RIGHT` / `UP`) so an inconsistent pair can't linger after a flip.
 
 ## Visibility
 
@@ -80,7 +80,7 @@ frame.timeText:SetFormattedText(
 
 `SetMinMaxValues`, `SetValue`, and `SetFormattedText` all accept secret args without erroring; the format string is interpreted C-side. **No `local total = d:GetTotalDuration()` followed by `if total > 0` anywhere** — that's the four-iteration trap.
 
-**End-of-cast detection lives in events, not OnUpdate.** `if remaining <= 0 then Stop() end` would be a secret comparison and would error. Stop happens on `UNIT_SPELLCAST_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_STOP` (filtered to `unit == "target"`).
+**End-of-cast detection lives in events, not OnUpdate.** `if remaining <= 0 then Stop() end` would be a secret comparison and would error. Stop happens on `UNIT_SPELLCAST_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_STOP`, registered per instance through `Util.RegisterUnitCastEvent` so each instance only sees its own unit's events.
 
 **The spark uses a static anchor, not per-frame arithmetic.** Computing `frame.spark:SetPoint("CENTER", frame.bar, "LEFT", barWidth * (elapsed / total), 0)` would error on the `elapsed / total` division. Instead, anchor once in `Reskin` to `frame.bar.interruptible:GetStatusBarTexture()`'s fill edge (RIGHT for HORIZONTAL non-reverse, LEFT for HORIZONTAL reverse, TOP / BOTTOM for the VERTICAL pair) — Blizzard reanchors the inner status texture C-side as the bar value changes, so the spark follows the fill edge automatically for both casts (texture grows toward the fill edge) and channels (texture shrinks away from it).
 
@@ -127,7 +127,7 @@ Each one was tried and broke; don't repeat:
 - Binding `CastingDuration:Get…Duration()` returns to a Lua local for `if x > 0` / `x / y` / `x <= 0`. Pass the method calls as arguments only.
 - Computing the spark position from `barWidth * (elapsed / total)`. Anchor to `bar:GetStatusBarTexture():RIGHT` and let Blizzard reposition C-side.
 - Detecting end-of-cast in OnUpdate via `if remaining <= 0`. Use `UNIT_SPELLCAST_STOP` and friends.
-- `tonumber` / `tostring` / `+0` / `securecallfunction` "detox" of secret values — see `core/Compat.lua` line 265.
+- `tonumber` / `tostring` / `+0` / `securecallfunction` "detox" of secret values — see `core/Compat.lua` line 282.
 - Using `CastingBarFrameTemplate` and pointing it at `"target"`. Its built-in `OnUpdate` does `GetTime() < self.maxValue`, which becomes `GetTime() < <secret>` and errors once the addon sets `maxValue` from a secret `endTime`.
 - Restyling `TargetFrameSpellBar` (the default UI cast bar) instead of building a fresh frame.
 - Gating `name` / `texture` / `notInterruptible` with `issecretvalue` and replacing with placeholders. They may be secret, but `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` accept secret args without erroring — gating just makes the bar look worse for no benefit.

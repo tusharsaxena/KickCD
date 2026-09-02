@@ -26,6 +26,15 @@ so **do not** write a parallel mutator for a field that already has a row.
    time further down the page, which is visible only in game. Order within the run is the layout: the
    flow engine pairs consecutive rows two per line, so put a mode beside the thing it modes and rest
    beside hover rather than one above the other.
+
+   **A font, border, bar or colour block is COMPOSED, never typed out** (`options-ui-§16`/`§17`) —
+   call `H.FontGroup` / `H.BorderGroup` / `H.BarGroup` / `H.ColorPair` and hand the result to
+   `H.AddComposed(rows, stamp)`, passing `keys` for any leaf whose stored name this addon already
+   shipped, because the composer changes what is *declared* and never what is *stored*. A
+   hand-written colour row is anti-pattern #73 and reddens `tests/test_schema.lua`, which asserts
+   that every `color` row is followed immediately by a `useClassColor*` companion, declares
+   `startsLine`, carries the class-colour note in its tooltip, and never carries `disabledIf`.
+
 3. Add the `default` to `DEFAULT_PROFILE` in `defaults/Profile.lua` at the matching path. That table
    is the **only** place a profile default is hardcoded (`savedvariables-§2`); the schema row's
    `default` and the profile entry must agree.
@@ -39,13 +48,13 @@ so **do not** write a parallel mutator for a field that already has a row.
 
 ### Add a slash command
 
-1. Append an entry to the `COMMANDS` table in `core/KickCD.lua` (around `:162`), shaped
+1. Append an entry to the `COMMANDS` table in `core/KickCD.lua` (around `:156`), shaped
    `{"verb", "One-line description", function(rest) … end}`.
 2. The handler takes **`(rest)` only** — everything after the verb, case and internal spacing
    preserved. It does **not** take `self`: `LibKa0s-Slash-1.0`'s dispatcher calls it with the
    remainder alone, and a handler still expecting `self` silently reads the rest of the line as its
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
-3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:202` and is the single source
+3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:196` and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
    in the UI. Regenerate the README's slash table with `/wow-addon:sync-docs`.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered

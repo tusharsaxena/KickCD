@@ -101,7 +101,7 @@ and open a PR with only the Development group installed.
 
 - **Packaging is a hosted service, not local software.** `.pkgmeta` is consumed by the
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
-  `ignore:` list (`.pkgmeta:1-12`) and declares **no externals**, because the libraries are
+  `ignore:` list (`.pkgmeta:1-17`) and declares **no externals**, because the libraries are
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.

@@ -18,7 +18,7 @@ Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colore
 - **Movable icon grid** with anchor + grow model (13 anchor points × 8 grow directions × free row/col dims). Per-icon ready glow via LibCustomGlow. Tracked independently for target and focus (each unit's own enable, position, and — unless linked — appearance).
 - **Cast bar** mirroring the tracked unit's (target and/or focus) cast via secret-value-gated `UnitCastingDuration` / `UnitChannelDuration`. Stacked dual widgets render distinct interruptible / uninterruptible appearance via `C_CurveUtil.EvaluateColorValueFromBoolean`.
 - **Target + focus dual tracking.** Focus is on by default and links to target's icon grid + cast bar appearance (`units.focus.link`, default on) — or can be styled independently via "Copy styling from Target" + manual edits. Position and the identity label's *text* stay independent regardless of link state; the label's styling and its on/off flag follow the link like `icons`/`castbar` do. One shared drag lock and one shared visibility mode still cover both units — see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking).
-- **Per-class+spec spell list** with default seed plus user add / remove / enable / disable / re-categorize. CLI parity for every list operation.
+- **Per-class+spec spell list** with default seed plus user add / remove / enable / disable / re-categorize, and **drag-to-reorder** on the Spells page (`LibKa0s-Widgets-1.0`'s `ReorderList`, `options-ui-§18`) — the order of a list *is* the priority order the grid renders in. CLI parity for every list operation.
 - **Settings panel** integrated into Blizzard's AddOns settings + matching `/kcd` slash CLI for every panel-shaped operation. Schema is the single source of truth — see [settings-panel.md](settings-panel.md).
 - **AceDB profiles** (every character starts on the shared `"Default"` profile; user can opt into per-character / per-class / per-realm scope via the Profiles page).
 
@@ -31,7 +31,6 @@ These have been considered and explicitly declined.
   This is **not** a license to be locale-*dependent*, which is a different thing and was a real bug (issue #8): persisted keys and lookups must never be derived from a localized string. Spell-list keys are the numeric specID (`Const.SPEC`), class keys are `UnitClass()`'s file token. Localized spec names are accepted as slash-command *input* and shown as dropdown *labels*, but never stored or compared as identity.
 - **TestMode preview for the cast bar.** The original test-mode preview was removed at commit `59fb5c0` and has not been re-added. While the bar is unlocked it shows a static placeholder instead so the user can grab and reposition it.
 - **Generic raid-frame / unit-frame replacement.** KickCD is scoped to the player's own interrupt rotation; mirroring party / arena cooldowns is out.
-- **Drag-and-drop reordering** of Spells panel rows. The list order is intentional (defaults first, then user-added in append order).
 - **LDB / minimap icon.**
 - **Per-encounter / per-boss visibility profiles.**
 
