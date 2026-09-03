@@ -43,7 +43,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:107` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:108` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
