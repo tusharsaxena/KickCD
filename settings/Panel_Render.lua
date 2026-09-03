@@ -64,9 +64,8 @@ end
 --
 -- Full rebuild on every call rather than a persistent widget: AceGUI's pool
 -- exists to make release-and-recreate cheap, and PageBanner drains both chrome
--- ledgers (the banner's and the strip's) before it draws, so a unit switch that
--- lands on a linked Focus -- which draws NO strip -- cannot leave the previous
--- unit's tabs stranded above the note.
+-- ledgers (the banner's and the strip's) before it draws, so a unit switch
+-- cannot leave the previous unit's tabs stranded under the new one's.
 --
 -- The Focus "Use same styling as Target" tick and the "Copy styling from
 -- Target" button used to be drawn here, once per unit page. They are on the
@@ -74,8 +73,35 @@ end
 -- between two units rather than three per-page copies of it, and the scroll --
 -- the only place left to draw them -- is cleared out from under them by every
 -- tab click.
+--- Which unit every per-unit page is editing, and the only writer of it.
+---
+--- ONE value for the three pages rather than one per ctx, which is what it was:
+--- flipping the picker to Focus on Icons and walking to Cast bar landed back on
+--- Target, because each page's ctx carried its own. The picker names which half
+--- of the addon you are configuring, and that is a property of the reader's
+--- session, not of the page they happen to have open.
+---
+--- Session-only (core/State.lua) and never persisted: see the note there.
+--- Validated on read, so a value that is not a real unit -- an old field, a hand
+--- edit -- falls back to Target rather than rendering a page for nothing.
+function Helpers.ViewedUnit()
+    local want = NS.State and NS.State.viewedUnit
+    for _, u in ipairs(NS.Units.LIST) do
+        if u == want then return u end
+    end
+    return NS.Units.LIST[1] or "target"
+end
+
+function Helpers.SetViewedUnit(unit)
+    if NS.State then NS.State.viewedUnit = unit end
+end
+
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
-    ctx.unit = ctx.unit or "target"
+    -- Read, never defaulted from the ctx: the shared value is the source of
+    -- truth, and a ctx that kept its own would be the second copy this exists to
+    -- remove. It is still written onto the ctx because everything below -- the
+    -- schema partition, the link check, the tests -- reads ctx.unit.
+    ctx.unit = Helpers.ViewedUnit()
     Helpers.ClearScroll(ctx)
 
     local items, order = {}, {}
@@ -92,34 +118,127 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
         value   = ctx.unit,
         onSelect = function(value)
             if not value or value == ctx.unit then return end
-            ctx.unit = value
-            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+            Helpers.SetViewedUnit(value)
+            -- STRUCTURAL, not a re-render of this page alone. The selection is
+            -- shared, so the other two unit pages are now showing the wrong unit;
+            -- RefreshAllPanels re-renders the ones on screen and marks the hidden
+            -- ones dirty so they repaint on their next OnShow. Re-rendering only
+            -- this page -- which is what this used to do -- is what let the three
+            -- pages disagree in the first place.
+            Helpers.RefreshAllPanels()
         end,
     })
     -- Parked on the ctx so a suite can drive the selection the way a click
     -- would; the library keeps its own chrome widgets private.
     ctx.__bannerWidget = dd
 
-    if ctx.unit == "focus" then
-        local cfg = NS.Units.Config("focus")
-        if cfg ~= nil and cfg.link == true then
-            -- Editable-but-ignored appearance widgets are worse than none: a
-            -- linked Focus renders with Target's tables, so any styled row here
-            -- would write to a table nothing reads. alwaysPerUnit rows ARE
-            -- per-unit even while linked, so they stay editable; everything else
-            -- is replaced by the note. No strip either -- a tab strip over a
-            -- note is chrome for its own sake.
-            local perUnit = Helpers.PartitionUnitRows(
-                Helpers.SchemaForPanel(panelKey, ctx.unit))
-            Helpers.RenderRows(ctx, perUnit, afterGroup)
-            Helpers.TextRow(ctx, L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."])
-            local scroll = ensureScroll(ctx)
-            if scroll and scroll.DoLayout then scroll:DoLayout() end
-            return
-        end
+    if NS.Units.IsLinked(ctx.unit) then
+        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        return
     end
 
     Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup)
+end
+
+--- A linked Focus: the STRIP FIRST, always, and the link note as content.
+---
+--- This used to return before the strip was drawn, on the argument that "a tab
+--- strip over a note is chrome for its own sake". That argument is about one
+--- page and it is the wrong rule for a panel (options-ui-§13): a reader who
+--- flips the Unit picker to Focus watched the whole page shape change under
+--- them, and the page that lost its strip is the one that looks broken. The
+--- link state is a STATE OF THE PAGE, so it belongs inside the page.
+---
+--- Editable-but-ignored appearance widgets are still worse than none -- a linked
+--- Focus renders with Target's tables, so a styled row here would write to a
+--- table nothing reads -- so the tab's CONTENT is still only its alwaysPerUnit
+--- rows plus the note. What changed is that the strip is above them.
+---
+--- The strip is drawn by hand rather than by RenderTabbedSchema because that
+--- function renders the active tab's rows itself, and the whole point here is
+--- that most of them must not be rendered. Tab selection, the stale-pointer
+--- heal and the re-render on click are the same three things it does.
+--- Make a drawn strip inert: every button disabled, every one of its textures
+--- desaturated.
+---
+--- ONLY for the linked-Focus page, and the reason is that its tabs have nothing
+--- to switch BETWEEN. No schema row is `alwaysPerUnit`, so every group's linked
+--- content is the same: the note and nothing else. A strip you can click that
+--- redraws the identical page is a control that appears to do something and does
+--- not -- the same defect the ↑/↓ arrows had before the reorder lists took a
+--- drag. The strip still draws, because the page must not change shape when the
+--- picker flips (options-ui-§13); it just cannot be operated, and the desaturation
+--- is what makes that read as deliberate rather than broken.
+---
+--- Done on the buttons TabStrip returns rather than through a flag on the tab
+--- spec, because the spec has no such flag: the library owns the strip and this is
+--- one page in one addon. If a second page ever needs it, that is the moment it
+--- becomes `disabled` on the spec and moves into LibKa0s, not before.
+local function deadenStrip(buttons)
+    for _, b in ipairs(buttons or {}) do
+        if b.SetEnabled then b:SetEnabled(false) end
+        -- The art is created by the library and kept in no named field, so it is
+        -- reached the way the client offers it. A FontString answers no
+        -- SetDesaturated, hence the guard rather than a blanket call.
+        if b.GetRegions then
+            for _, region in ipairs({ b:GetRegions() }) do
+                if region and region.SetDesaturated then region:SetDesaturated(true) end
+            end
+        end
+    end
+end
+
+function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+    local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
+
+    local groups, seen = {}, {}
+    for _, def in ipairs(rows) do
+        if def.group and not seen[def.group] then
+            seen[def.group] = true
+            groups[#groups + 1] = def.group
+        end
+    end
+    -- A tab pointing at a group this page no longer has renders a blank page
+    -- under a strip, so a stale pointer heals to the first rather than being
+    -- trusted -- the same heal RenderTabbedSchema does, for the same reason.
+    if not (ctx.activeTab and seen[ctx.activeTab]) then ctx.activeTab = groups[1] end
+
+    local tabs = {}
+    for i, name in ipairs(groups) do tabs[i] = { key = name, label = name } end
+    local buttons = Helpers.TabStrip(ctx, {
+        tabs  = tabs,
+        value = ctx.activeTab,
+        onSelect = function(key)
+            if key == ctx.activeTab then return end
+            ctx.activeTab = key
+            Helpers.ClearScroll(ctx)
+            Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        end,
+    })
+    deadenStrip(buttons)
+
+    local active = {}
+    for _, def in ipairs(rows) do
+        if def.group == ctx.activeTab then active[#active + 1] = def end
+    end
+    local perUnit = Helpers.PartitionUnitRows(active)
+    -- noHeadings, because the tab label already carries the section's name and
+    -- drawing a Heading under it is the same label twice (options-ui-§7).
+    Helpers.RenderRows(ctx, perUnit, afterGroup, nil, { noHeadings = true })
+    -- A LINK, not a sentence about where to go. The note named the control and
+    -- the page holding it and then left the reader to find both by hand, two
+    -- categories away in Blizzard's list -- so the phrase naming the destination
+    -- now IS the way there. The whole line takes the click (AceGUI has no widget
+    -- that mixes clickable and static runs in one string); the colour on the
+    -- middle phrase is what says so.
+    Helpers.LinkRow(ctx,
+        L["Linked to Target. Untick 'Use same styling as Target' on the "]
+            .. Helpers.LinkText(L["General page's Units tab"])
+            .. L[" to give Focus its own."],
+        function() Helpers.OpenPageTab("general", L["Units"]) end,
+        L["Open the General page's Units tab."])
+    local scroll = ensureScroll(ctx)
+    if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
 
 -- Look up `path` in the schema and write `value` through the same
@@ -251,20 +370,21 @@ end
 --
 -- ResetAllPositions and RestoreUnitLinks are NOT called here. They used to be,
 -- and RestoreAllDefaults had already run both by the time it returned: the
--- descriptor's `afterRestoreAll` hook (settings/OptionsSetup.lua) is exactly
--- those two calls, and libs/LibKa0s/Options.lua's O.RestoreAllDefaults fires it
--- before the refresh — deliberately before, so the refresh paints the
--- post-hook values. Repeating them here re-ran two whole-profile writes and two
--- CONFIG_CHANGED fan-outs per reset, and, worse, made the hook look optional:
--- delete `afterRestoreAll` and this path still worked, while `/kcd resetall`'s
--- other caller (the library's own Defaults button) silently stopped clearing
--- anchors (KCD-R-04). One caller, one place.
+-- descriptor's `resetProfile` hook (settings/OptionsSetup.lua) empties the
+-- active profile and merges NS.DEFAULT_PROFILE back over it, anchors and every
+-- unit's `link` flag included, and libs/LibKa0s/Options.lua's
+-- O.RestoreAllDefaults fires it before the refresh — deliberately before, so
+-- the refresh paints the post-hook values. Repeating them here re-ran two
+-- whole-profile writes and two CONFIG_CHANGED fan-outs per reset, and, worse,
+-- made the hook look optional: delete `resetProfile` and this path still worked,
+-- while `/kcd resetall`'s other caller (the library's own Defaults button)
+-- silently stopped clearing anchors (KCD-R-04). One caller, one place.
 --
 -- What is genuinely NOT the library's is the spell lists: they are not schema
 -- rows and not positions, so nothing upstream can reach them.
 function Helpers.ResetAll()
     -- ONE CALL, because RestoreAllDefaults is a PROFILE reset now
-    -- (options-ui-§12, settings/OptionsSetup.lua's afterRestoreAll). The spell
+    -- (options-ui-§12, settings/OptionsSetup.lua's resetProfile). The spell
     -- lists live at `db.profile.spells`, so emptying the profile clears them and
     -- Database:OnProfileChanged re-seeds them through BuildSpells on the way back
     -- — the same path a profile switch takes. The explicit ResetAllSpells call

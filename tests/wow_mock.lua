@@ -220,6 +220,29 @@ function FRAME_METHODS.GetFont(self)
     if not f then return nil end
     return f.path, f.size, f.flags
 end
+-- The drop shadow. RECORDED rather than swallowed by the catch-all metatable,
+-- because "font shadow" is a setting now (options-ui-§16) and the only way it
+-- can be wrong is by not being CLEARED: a FontString outlives a config change,
+-- so a shadow turned off that nobody clears keeps drawing. A no-op mock cannot
+-- tell the two apart.
+function FRAME_METHODS.SetShadowOffset(self, x, y)
+    self.__shadowOffset = { x, y }
+    return self
+end
+function FRAME_METHODS.GetShadowOffset(self)
+    local o = self.__shadowOffset
+    if not o then return nil end
+    return o[1], o[2]
+end
+function FRAME_METHODS.SetShadowColor(self, r, g, b, a)
+    self.__shadowColor = { r, g, b, a }
+    return self
+end
+function FRAME_METHODS.GetShadowColor(self)
+    local c = self.__shadowColor
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
+end
 function FRAME_METHODS.SetJustifyH(self, v) self.__justifyH = v; return self end
 function FRAME_METHODS.GetJustifyH(self) return self.__justifyH end
 
@@ -231,6 +254,11 @@ function FRAME_METHODS.GetAtlas(self) return self.__atlas end
 function FRAME_METHODS.SetColorTexture(self, r, g, b, a)
     self.__colorTexture = { r, g, b, a or 1 }
     return self
+end
+function FRAME_METHODS.GetColorTexture(self)
+    local c = self.__colorTexture
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
 end
 function FRAME_METHODS.SetVertexColor(self, r, g, b, a)
     self.__vertexColor = { r, g, b, a or 1 }
@@ -248,6 +276,11 @@ end
 function FRAME_METHODS.SetBackdropBorderColor(self, r, g, b, a)
     self.__backdropBorderColor = { r, g, b, a or 1 }
     return self
+end
+function FRAME_METHODS.GetBackdropBorderColor(self)
+    local c = self.__backdropBorderColor
+    if not c then return nil end
+    return c[1], c[2], c[3], c[4]
 end
 
 -- ── Status bar ──────────────────────────────────────────────────────────────
@@ -300,6 +333,21 @@ function FRAME_METHODS.CreateFontString(self, _name, _layer, template)
 end
 function FRAME_METHODS.CreateLine(self) return createRegion(self, "Line", nil) end
 function FRAME_METHODS.CreateMaskTexture(self) return createRegion(self, "MaskTexture", nil) end
+
+-- ── Enabled / saturation ────────────────────────────────────────────────────
+--
+-- Both are RECORDED rather than swallowed. A control the page deliberately makes
+-- inert -- the tab strip on a linked Focus, which has one thing to show whichever
+-- tab is picked -- is a state a case has to be able to read back, and a
+-- PascalCase no-op answers "did the page disable it?" with nothing at all. The
+-- mock cannot make a disabled button refuse a directly-fired script, so the flag
+-- is what a case asserts (the library's own makeTab says the same thing about its
+-- redundant `if active then return end` guard).
+function FRAME_METHODS.SetEnabled(self, v) self.__enabled = not not v; return self end
+function FRAME_METHODS.IsEnabled(self) return self.__enabled ~= false end
+function FRAME_METHODS.SetDesaturated(self, v) self.__desaturated = not not v; return self end
+function FRAME_METHODS.IsDesaturated(self) return self.__desaturated == true end
+function FRAME_METHODS.GetRegions(self) return unpack(self.__regions or {}) end
 
 -- ── Scripts / events ────────────────────────────────────────────────────────
 function FRAME_METHODS.SetScript(self, which, fn)
@@ -696,6 +744,12 @@ local function build()
         function w:SetImage(...) self.image = { ... }; return self end
         function w:SetImageSize(...) self.imageSize = { ... }; return self end
         function w:SetMaxLetters(v) self.maxLetters = v; return self end
+        -- RECORDED, not swallowed. AceGUI's InteractiveLabel forwards this to
+        -- Texture:SetTexture, whose four-number form is the deprecated colour API
+        -- -- and the client answers it with a solid bright-green block across the
+        -- whole label on mouseover. A no-op here cannot tell "no highlight" from
+        -- "a highlight nobody meant", which is exactly what shipped.
+        function w:SetHighlight(...) self.__highlight = { ... }; return self end
         function w:SetCallback(name, fn) self.callbacks[name] = fn; return self end
         function w:AddChild(child) self.children[#self.children + 1] = child; return self end
         function w:ReleaseChildren() self.children = {}; return self end

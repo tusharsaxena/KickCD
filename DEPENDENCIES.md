@@ -43,7 +43,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:107` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:108` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
@@ -101,7 +101,7 @@ and open a PR with only the Development group installed.
 
 - **Packaging is a hosted service, not local software.** `.pkgmeta` is consumed by the
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
-  `ignore:` list (`.pkgmeta:1-12`) and declares **no externals**, because the libraries are
+  `ignore:` list (`.pkgmeta:1-17`) and declares **no externals**, because the libraries are
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.

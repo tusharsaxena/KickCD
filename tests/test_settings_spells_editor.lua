@@ -243,37 +243,59 @@ end)
 
 -- ── the row builder ─────────────────────────────────────────────────────────
 
-test("a spell row carries its nine widgets in the visual column order", function()
-    -- AddChild order IS the column order, spacer included, and the widths are
-    -- tuned: 238 for the name label, 22 so the status glyph's box hugs its
+test("a spell row carries its eight widgets in the visual column order", function()
+    -- AddChild order IS the column order, and the widths are tuned: 30 for the
+    -- drag handle's gutter (read off LibKa0s-Widgets' ROW_BOX.HANDLE_W, never
+    -- restated), 238 for the name label, 22 so the status glyph's box hugs its
     -- 20 px image, 14 for the gap before the category dropdown.
+    --
+    -- NINE BECAME EIGHT, and it is one deletion plus one addition: the two
+    -- move-arrow Icons went (options-ui-§18, anti-pattern #75) and the handle
+    -- gutter arrived at the FAR LEFT, which is where the library parents its
+    -- handle and therefore the one place the row must leave clear.
+    -- red under: dropping the leading gutter spacer, which puts the spell icon
+    -- underneath the drag handle
     local inst, p = editorInstance()
     local rows = rebuildRows(inst, p)
     assertTrue(#rows > 0, "the fixture must render at least one row")
     local kids = rows[1].children
-    assertEqual(#kids, 9, "nine widgets per row")
+    assertEqual(#kids, 8, "eight widgets per row")
     local want = {
-        { "Icon", 28 }, { "Label", 238 }, { "CheckBox", 40 }, { "Icon", 22 },
-        { "Label", 14 }, { "Dropdown", 120 }, { "Icon", 30 }, { "Icon", 30 },
-        { "Icon", 30 },
+        { "Label", 30 }, { "Icon", 28 }, { "Label", 238 }, { "CheckBox", 40 },
+        { "Icon", 22 }, { "Label", 14 }, { "Dropdown", 120 }, { "Icon", 30 },
     }
     for i, spec in ipairs(want) do
         assertEqual(kids[i].type, spec[1], "column " .. i .. " type")
         assertEqual(kids[i].width, spec[2], "column " .. i .. " width")
     end
-    assertEqual(kids[5].text, "", "the spacer is an empty-text label")
+    assertEqual(kids[1].text, "", "the handle gutter is an empty-text label")
+    assertEqual(kids[6].text, "", "the spacer is an empty-text label")
+end)
+
+test("every row in the list is the same height, which the drop arithmetic needs",
+function()
+    -- options-ui-§18: the drop position is arithmetic on the row STRIDE, never a
+    -- hit test, so a list of unequal rows drops in the wrong place. Nothing in
+    -- the row builder varies the height today; this is what says so.
+    -- red under: sizing a row from its content instead of ROW_HEIGHT
+    local inst, p = editorInstance()
+    local rows = rebuildRows(inst, p)
+    assertTrue(#rows >= 2, "the fixture needs at least two rows")
+    for i, row in ipairs(rows) do
+        assertEqual(row.height, rows[1].height, "row " .. i .. " is a different height")
+    end
 end)
 
 test("the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row", function()
     local inst, p = editorInstance()
     inst.NS.Compat.IsSpellAvailable = function() return false end
     local rows = rebuildRows(inst, p)
-    assertEqual(rows[1].children[4].image[1], [[Interface\RaidFrame\ReadyCheck-NotReady]])
-    assertTrue(rows[1].children[3].value ~= nil, "the checkbox is still live")
+    assertEqual(rows[1].children[5].image[1], [[Interface\RaidFrame\ReadyCheck-NotReady]])
+    assertTrue(rows[1].children[4].value ~= nil, "the checkbox is still live")
 
     inst.NS.Compat.IsSpellAvailable = function() return true end
     rows = rebuildRows(inst, p)
-    assertEqual(rows[1].children[4].image[1], [[Interface\RaidFrame\ReadyCheck-Ready]])
+    assertEqual(rows[1].children[5].image[1], [[Interface\RaidFrame\ReadyCheck-Ready]])
 end)
 
 test("the row checkbox writes the entry's enabled flag as a real boolean", function()
@@ -283,9 +305,9 @@ test("the row checkbox writes the entry's enabled flag as a real boolean", funct
     local inst, p = editorInstance()
     local list = activeList(inst)
     local rows = rebuildRows(inst, p)
-    rows[1].children[3]:__fire("OnValueChanged", nil)
+    rows[1].children[4]:__fire("OnValueChanged", nil)
     assertEqual(list[1].enabled, false, "an unchecked box must store a real false")
-    rebuildRows(inst, p)[1].children[3]:__fire("OnValueChanged", true)
+    rebuildRows(inst, p)[1].children[4]:__fire("OnValueChanged", true)
     assertEqual(list[1].enabled, true)
 end)
 
@@ -294,41 +316,74 @@ test("a disabled row renders its spell icon and checkbox from the stored flag", 
     local list = activeList(inst)
     list[1].enabled = false
     local rows = rebuildRows(inst, p)
-    assertEqual(rows[1].children[3].value, false, "the checkbox reflects the entry")
-    assertEqual(rows[2].children[3].value, true)
+    assertEqual(rows[1].children[4].value, false, "the checkbox reflects the entry")
+    assertEqual(rows[2].children[4].value, true)
 end)
 
-test("the move buttons are disabled at the list edges, not merely inert", function()
+-- ── the drag reorder (options-ui-§18) ───────────────────────────────────────
+--
+-- The arrows are gone, so what used to be four button cases is two: the SPLICE
+-- the drag writes, and the fact that it is exactly one write. The gesture itself
+-- is the library's and is tested there; what is this addon's is the mutator it
+-- calls back into.
+
+test("a move is a SPLICE to the index, not a swap with the neighbour", function()
+    -- red under: reverting moveTo to `list[from], list[to] = list[to], list[from]`,
+    -- which leaves the two rows BETWEEN the ends in the wrong order.
     local inst, p = editorInstance()
     local list = activeList(inst)
-    assertTrue(#list >= 2, "the fixture needs at least two rows")
-    local rows = rebuildRows(inst, p)
-    assertNil(rows[1].children[7].callbacks.OnClick,
-        "the first row's Move up must carry no click action at all")
-    assertNil(rows[#rows].children[8].callbacks.OnClick,
-        "the last row's Move down must carry no click action at all")
-    assertTrue(rows[2].children[7].callbacks.OnClick ~= nil,
-        "an interior row's Move up must be live")
+    assertTrue(#list >= 4, "the fixture needs at least four rows")
+    local a, b, c, d = list[1].spellID, list[2].spellID, list[3].spellID, list[4].spellID
+
+    assertEqual(p.MoveTo(list, 1, 4), true, "a legal move reports the write")
+    assertEqual(list[1].spellID, b, "row 2 shifted up")
+    assertEqual(list[2].spellID, c, "row 3 shifted up")
+    assertEqual(list[3].spellID, d, "row 4 shifted up")
+    assertEqual(list[4].spellID, a, "the dragged row landed at 4")
 end)
 
-test("Move up swaps the entry with the one above it", function()
+test("a move backwards splices just as cleanly", function()
     local inst, p = editorInstance()
     local list = activeList(inst)
-    local first, second = list[1].spellID, list[2].spellID
-    local rows = rebuildRows(inst, p)
-    rows[2].children[7]:__fire("OnClick")
-    assertEqual(list[1].spellID, second)
-    assertEqual(list[2].spellID, first)
+    local a, b, c = list[1].spellID, list[2].spellID, list[3].spellID
+    assertEqual(p.MoveTo(list, 3, 1), true)
+    assertEqual(list[1].spellID, c)
+    assertEqual(list[2].spellID, a)
+    assertEqual(list[3].spellID, b)
 end)
 
-test("Move down swaps the entry with the one below it", function()
+test("a move that goes nowhere or off the ends writes nothing", function()
+    -- The controller clamps, but a stale drop after a rebuild can still name an
+    -- index the list no longer has -- the same class of bug the arrows' bounds
+    -- checks existed for.
+    -- red under: dropping the range guards in moveTo
     local inst, p = editorInstance()
     local list = activeList(inst)
-    local first, second = list[1].spellID, list[2].spellID
+    local n = #list
+    local first = list[1].spellID
+    assertEqual(p.MoveTo(list, 2, 2), false, "a move to its own index is not a write")
+    assertEqual(p.MoveTo(list, 0, 1), false, "an index below the list is refused")
+    assertEqual(p.MoveTo(list, 1, n + 1), false, "an index past the list is refused")
+    assertEqual(p.MoveTo(nil, 1, 2), false, "no list is not a crash")
+    assertEqual(#list, n, "nothing was added or removed")
+    assertEqual(list[1].spellID, first, "nothing moved")
+end)
+
+test("no row carries a move button any more", function()
+    -- red under: re-adding the arrow pair as a degraded-path fallback, which
+    -- options-ui-§18 forbids outright -- a host-drawn alternative is the drift
+    -- the shared widget exists to end.
+    local inst, p = editorInstance()
     local rows = rebuildRows(inst, p)
-    rows[1].children[8]:__fire("OnClick")
-    assertEqual(list[1].spellID, second)
-    assertEqual(list[2].spellID, first)
+    for _, row in ipairs(rows) do
+        for i, kid in ipairs(row.children) do
+            local img = kid.image and kid.image[1]
+            if type(img) == "string" then
+                assertTrue(not img:find("ChatIcon-Scroll", 1, true),
+                    "row widget #" .. i .. " is still a scroll arrow: " .. img)
+            end
+        end
+    end
 end)
 
 test("Remove deletes exactly the row's entry", function()
@@ -336,7 +391,7 @@ test("Remove deletes exactly the row's entry", function()
     local list = activeList(inst)
     local before, victim = #list, list[2].spellID
     local rows = rebuildRows(inst, p)
-    rows[2].children[9]:__fire("OnClick")
+    rows[2].children[8]:__fire("OnClick")
     assertEqual(#list, before - 1)
     assertEqual(hasSpell(list, victim), 0)
 end)
@@ -345,13 +400,18 @@ test("the category dropdown writes the entry's category", function()
     local inst, p = editorInstance()
     local list = activeList(inst)
     local rows = rebuildRows(inst, p)
-    rows[1].children[6]:__fire("OnValueChanged", "silence")
+    rows[1].children[7]:__fire("OnValueChanged", "silence")
     assertEqual(list[1].category, "silence")
 end)
 
 -- ── the panel rebuild ───────────────────────────────────────────────────────
 
-test("RefreshRows builds the header, the scroll container and one row per entry", function()
+test("RefreshRows builds the chrome block, then the rows, in that order", function()
+    -- ORDER IS THE ASSERTION. The spec picker and Add spell go into the page's
+    -- chrome block ABOVE the strip (options-ui-§14) and the block has to be
+    -- drawn BEFORE the strip, because the strip's own band reservation reads the
+    -- one the block already claimed. The scroll is NOT in this list: it is the
+    -- library's now and is created once per ctx, not once per render.
     local inst, p = editorInstance()
     local list = activeList(inst)
     local g = inst.mocks.__aceGUI
@@ -359,12 +419,27 @@ test("RefreshRows builds the header, the scroll container and one row per entry"
     p:RefreshRows()
     local types = {}
     for i = mark + 1, #g.__created do types[#types + 1] = g.__created[i].type end
-    assertEqual(types[1], "Dropdown", "the spec dropdown leads the header")
+    assertEqual(types[1], "Dropdown", "the spec dropdown leads the chrome block")
     assertEqual(types[2], "Button", "then the Add spell button")
-    assertEqual(types[3], "ScrollFrame", "then the scroll container")
     local rows = 0
     for _, ty in ipairs(types) do if ty == "SimpleGroup" then rows = rows + 1 end end
     assertEqual(rows, #list, "one row group per list entry")
+end)
+
+test("the page draws its strip, and the rows land in the LIBRARY's scroll", function()
+    -- options-ui-§13: a page with one section still draws a one-tab strip, and
+    -- this page is the addon's only fully bespoke one -- it had none at all.
+    -- red under: deleting the H.TabStrip call from Spells:RefreshRows
+    local inst, p = editorInstance()
+    p:RefreshRows()
+    local ctx
+    for _, c in ipairs(inst.NS.Settings.Helpers.__panels()) do
+        if c.pageKey == "spells" then ctx = c end
+    end
+    assertTrue(ctx ~= nil, "the Spells page must have a library ctx")
+    assertTrue(#(ctx.__tabKids or {}) > 0, "the Spells page draws no tab strip")
+    assertTrue(ctx.scroll ~= nil, "the rows must go into the library's scroll")
+    assertTrue(#ctx.scroll.children > 0, "the library scroll holds the rows")
 end)
 
 test("an empty list renders the guidance label instead of rows", function()
@@ -390,20 +465,71 @@ test("RefreshRows refuses to run against a hidden panel", function()
     assertEqual(#g.__created, mark, "a hidden panel must build no widgets")
 end)
 
-test("a rebuild releases the previous widget tree before building a new one", function()
-    -- releaseAceGUITree must stay ahead of any new widget creation or the
-    -- AceGUI pool leaks a full tree per refresh.
+test("a rebuild drains the scroll before building a new tree into it", function()
+    -- The scroll is the library's and is REUSED across renders, so what has to
+    -- happen is a drain (H.ClearScroll) rather than a release -- and it has to
+    -- stay ahead of any new widget creation or the AceGUI pool leaks a full tree
+    -- per refresh. Counted at the moment the drain lands, not at the end: a
+    -- second RefreshRows refills it immediately.
     local inst, p = editorInstance()
     p:RefreshRows()
-    local g = inst.mocks.__aceGUI
-    local container
-    for i = #g.__created, 1, -1 do
-        if g.__created[i].type == "ScrollFrame" then container = g.__created[i] break end
+    local ctx
+    for _, c in ipairs(inst.NS.Settings.Helpers.__panels()) do
+        if c.pageKey == "spells" then ctx = c end
     end
+    local container = ctx.scroll
     assertTrue(container ~= nil)
-    assertTrue(#container.children > 0, "the container holds the rendered rows")
+    local before = #container.children
+    assertTrue(before > 0, "the container holds the rendered rows")
+
+    local drained
+    local realClear = inst.NS.Settings.Helpers.ClearScroll
+    inst.NS.Settings.Helpers.ClearScroll = function(c)
+        realClear(c)
+        if c == ctx then drained = #container.children end
+    end
     p:RefreshRows()
-    assertEqual(#container.children, 0, "the previous container must have been released")
+    inst.NS.Settings.Helpers.ClearScroll = realClear
+    assertEqual(drained, 0, "the previous tree must have been drained")
+    assertEqual(#container.children, before, "and the same number of rows rebuilt")
+end)
+
+test("a re-render cancels the reorder controller BEFORE it clears the tree", function()
+    -- options-ui-§18's shipped-bug lesson, and the one thing about this adoption
+    -- that cannot be seen by looking at the finished page. Handles and row boxes
+    -- are POOLED and parented to the row frames; those frames go back to AceGUI
+    -- on the clear. A Cancel that runs after it reclaims a handle from whatever
+    -- widget took the frame next.
+    -- red under: moving cancelReorder() below releaseAceGUITree() in RefreshRows
+    local inst, p = editorInstance()
+    p:RefreshRows()
+    local ctx
+    for _, c in ipairs(inst.NS.Settings.Helpers.__panels()) do
+        if c.pageKey == "spells" then ctx = c end
+    end
+    local seq = {}
+    local W = inst.mocks.LibStub("LibKa0s-Widgets-1.0", true)
+    local realReorder = W.ReorderList
+    W.ReorderList = function(opts)
+        local ctl = realReorder(opts)
+        local realCancel = ctl.Cancel
+        ctl.Cancel = function(self) seq[#seq + 1] = "cancel"; return realCancel(self) end
+        return ctl
+    end
+    local realClear = inst.NS.Settings.Helpers.ClearScroll
+    inst.NS.Settings.Helpers.ClearScroll = function(c)
+        if c == ctx then seq[#seq + 1] = "clear" end
+        return realClear(c)
+    end
+
+    p:RefreshRows()   -- builds a controller whose Cancel we can see
+    p:RefreshRows()   -- ...and cancels it on the way in
+
+    W.ReorderList = realReorder
+    inst.NS.Settings.Helpers.ClearScroll = realClear
+    assertEqual(seq[1], "clear", "the first render only clears; nothing to cancel yet")
+    assertEqual(seq[2], "cancel", "the second render must cancel FIRST")
+    assertEqual(seq[3], "clear", "and clear after")
 end)
 
 test("the selection cascade falls back to the first sorted class the defaults know", function()
@@ -422,16 +548,42 @@ test("the selection cascade falls back to the first sorted class the defaults kn
     assertEqual(spec, p.SpecOrder(class)[1], "and on that class's first spec")
 end)
 
-test("a stale move click after a rebuild cannot run off the end of the list", function()
-    -- The move/remove callbacks close over `index`, which is only valid until
-    -- the next rebuild. The bounds checks inside them are the guard against a
-    -- click landing on a row that no longer exists.
+test("a stale remove click after a rebuild cannot run off the end of the list", function()
+    -- The remove callback closes over `index`, which is only valid until the
+    -- next rebuild. table.remove past the end is a no-op rather than a raise,
+    -- and this is what says the list is not corrupted by one.
     local inst, p = editorInstance()
     local list = activeList(inst)
     local rows = rebuildRows(inst, p)
-    local staleDown = rows[#rows - 1].children[8]
+    local staleRemove = rows[#rows].children[8]
     -- Shrink the list under the captured index, then fire the stale handler.
     for i = #list, 2, -1 do table.remove(list, i) end
-    staleDown:__fire("OnClick")
-    assertEqual(#list, 1, "the stale click must be a no-op, not a swap with nil")
+    staleRemove:__fire("OnClick")
+    assertEqual(#list, 1, "the stale click must not eat the surviving row")
+end)
+
+test("hiding the page cancels the reorder controller too", function()
+    -- A hide hands every row frame back to AceGUI's pool exactly as a re-render
+    -- does, so it is the same bug by the other door: a handle still parented to
+    -- one goes into the pool with it and reappears on whatever takes that frame
+    -- next -- possibly in another addon.
+    -- red under: dropping cancelReorder() from the panel's OnHide
+    local inst, p = editorInstance()
+    p:RefreshRows()
+    local cancelled = 0
+    local W = inst.mocks.LibStub("LibKa0s-Widgets-1.0", true)
+    local realReorder = W.ReorderList
+    W.ReorderList = function(opts)
+        local ctl = realReorder(opts)
+        local realCancel = ctl.Cancel
+        ctl.Cancel = function(self) cancelled = cancelled + 1; return realCancel(self) end
+        return ctl
+    end
+    p:RefreshRows()          -- build a controller we can watch
+    W.ReorderList = realReorder
+
+    for _, c in ipairs(inst.NS.Settings.Helpers.__panels()) do
+        if c.pageKey == "spells" then c.panel:Hide() end
+    end
+    assertEqual(cancelled, 1, "the hide must reclaim the handles and boxes")
 end)

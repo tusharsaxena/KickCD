@@ -1,21 +1,28 @@
 -- settings/General.lua
 --
--- General canvas panel. Declares its schema entries (master enable,
--- visibility, lock, master scale/alpha) and registers a builder that renders
--- them via Helpers.RenderTabbedSchema -- two tabs, Master controls and Units,
--- partitioned from the `group` field in declaration order (options-ui-§13).
--- The "Reset position" action is injected as a button after the Master
--- controls schema rows via the afterGroup callback (anchors live outside the
--- simple key=value space the schema covers, so they can't be a schema row
--- themselves), and the Units tab's afterGroup carries the Focus styling link.
+-- General canvas panel. Two tabs, Master controls and Units, partitioned from
+-- the `group` field in declaration order (options-ui-§13).
+--
+-- The first tab is the collection's canonical Master controls block
+-- (options-ui-§15) and it is COMPOSED, not written out: H.MasterControls emits
+-- SIX canonical rows from one declaration, and the afterGroup it returns draws
+-- the closing Reset position / Reset all settings button pair.
+--
+-- SIX, not eight. §15's canonical table has EIGHT cells and its last line IS the
+-- button pair, so "the eight canonical rows, plus the button-pair hook" counts
+-- those two twice. What the composer emits is `enabled`, `visibility`, `scale`,
+-- `alpha`, `locked` and `state.debugConsole`
+-- (libs/LibKa0s/OptionsCompose.lua:350-380). The two resets are actions rather
+-- than settings -- an anchor is not a key=value the schema covers -- which is
+-- why they are a button pair and not rows.
 --
 -- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
 -- holding master scale and master alpha. Two rows whose LABELS both say Master
 -- is not a second subject, it is the same subject broken over a click: enable,
--- visibility, lock, scale and alpha are all the addon-as-a-whole. Units is the
--- one genuinely different question on this page -- which grids exist, and
--- whether Focus is its own thing -- and it is what a player sets once, so it
--- sits last.
+-- visibility, lock, scale and alpha are all the addon-as-a-whole, and §15 puts
+-- all five under one tab anyway. Units is the one genuinely different question
+-- on this page -- which grids exist, and whether Focus is its own thing -- and
+-- it is what a player sets once, so it sits last.
 --
 -- Every schema entry here is automatically wired into /kcd get|set,
 -- so adding a new General option = one row in this file.
@@ -27,79 +34,63 @@ local Schema = NS.Settings.Schema
 
 local function add(t) Schema[#Schema + 1] = t end
 
--- Master controls — deliberately ordered so the flow engine's pair-into-lines
--- pass produces:
+-- Master controls — the canonical tab (options-ui-§15), COMPOSED rather than
+-- typed out (options-ui-§16). H.MasterControls emits the canonical set in the
+-- one order nine addons share:
 --     [Enable KickCD]   | [General visibility]
 --     [Master scale]    | [Master alpha]
--- followed by the afterGroup's two bespoke lines:
 --     [Lock frame]      | [Debug console]
+-- and hands back the afterGroup that closes the tab with its button pair:
 --     [Reset position]  | [Reset all settings]
+--
+-- The Debug console is the composer's SESSION-ONLY row now, not the bespoke
+-- SessionToggle this page used to draw beside Lock frame. It still shows/hides
+-- the console WINDOW and still never persists — settings/Panel.lua's
+-- SESSION_PATHS is where its path resolves — but it is a schema row, so
+-- `/kcd get|set|list state.debugConsole` reaches it like anything else.
 --
 -- The group's rows MUST stay contiguous: RenderTabbedSchema partitions by
 -- `group` in declaration order, and a row filed under a group the array has
--- already left prints that tab a second time. `locked` is skipRender and still
--- has to sit inside the run for that reason.
-add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
-    path     = "enabled",  type    = "bool",
-    label    = L["Enable KickCD"],
-    desc  = L["Master enable for the addon."],
-    default  = true,
+-- already left prints that tab a second time.
+local masterRows, masterTail = H.MasterControls{
+    prefix           = "",
+    page             = "general",
+    addonName        = "KickCD",
+    debugConsolePath = "state.debugConsole",
+    -- The two stored values this addon does not share with the canonical block.
+    -- PASSED, never edited into the composer: the composer must not change what
+    -- is stored, and `visibility` has shipped as
+    -- "target_casting_interruptible" since the addon's first release.
+    defaults         = {
+        visibility   = "target_casting_interruptible",
+        debugConsole = false,
+    },
+    onResetPosition  = function() H.ResetIconPosition() end,
+    onResetAll       = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
 }
+H.AddComposed(masterRows, { panel = "general", section = "general" })
 
-add{
-    panel    = "general",   section = "general", group = L["Master controls"],
-    path     = "visibility", type    = "string",
-    label    = L["General visibility"],
-    desc  = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."],
-    default  = "target_casting_interruptible",
-    values   = {
+-- THE ONE OVERRIDE, and it is a ratified deviation from options-ui-§15's value
+-- list — see docs/ARCHITECTURE.md's `## Documented deviations`. KickCD's
+-- visibility is CAST-state driven: "when the target is casting an interruptible
+-- spell" is the mode the whole addon exists for, and the canonical Always /
+-- Only in combat / Only out of combat / Never cannot express it. The stored
+-- KEYS are untouched, so nothing migrates; only the option list and the prose
+-- describing it differ. The row's position, label and pairing stay the
+-- composer's.
+local visibilityRow = H.FindSchema("visibility")
+if visibilityRow then
+    visibilityRow.values  = {
         ["always"] = L["Always"],
         ["in_combat"] = L["In combat"],
         ["target_casting"] = L["When target is casting"],
         ["target_casting_interruptible"] = L["When target is casting an interruptible spell"],
-    },
-    sorting = { "always", "in_combat", "target_casting", "target_casting_interruptible" },
-}
-
--- Master scale and master alpha were the whole of a separate "Appearance"
--- section until the tab strip landed. They read across one line as a pair --
--- how big, how solid -- and both are the MASTER value their labels say they
--- are, so they belong beside the master enable rather than behind a tab of
--- their own.
-add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
-    path     = "scale",    type    = "number",
-    label    = L["Master scale"],
-    desc  = L["Scale multiplier applied to the entire icon grid."],
-    default  = 1.0,
-    min = 0.5, max = 2.0, step = 0.05, fmt = "%.2fx",
-}
-
-add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
-    path     = "alpha",    type    = "number",
-    label    = L["Master alpha"],
-    desc  = L["Global opacity for the icon grid."],
-    default  = 1.0,
-    min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
-}
-
-add{
-    panel    = "general",  section = "general",  group = L["Master controls"],
-    path     = "locked",   type    = "bool",
-    label    = L["Lock frame"],
-    desc  = L["When unlocked, you can drag the icon grid to reposition it."],
-    default  = false,
-    -- Rendered manually by the Master-controls afterGroup so it can pair on
-    -- one row with the bespoke session-only Debug console toggle (InlinePair).
-    -- Still a normal schema row for /kcd get|set and Defaults.
-    skipRender = true,
-}
-
--- Debug logging is a SESSION-ONLY flag (KickCD.State.debug), never persisted
--- to SavedVariables (debug-logging-§5), so it is deliberately NOT a schema row here.
--- Toggle it via the debug console's header button or `/kcd debug on|off|toggle`.
+    }
+    visibilityRow.sorting = {
+        "always", "in_combat", "target_casting", "target_casting_interruptible",
+    }
+    visibilityRow.tooltip = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."]
+end
 
 -- Per-unit ENABLE toggles (§Task 6). One row per NS.Units.LIST entry, driving
 -- `/kcd set units.<unit>.enabled` and (via Helpers.Set firing
@@ -112,6 +103,9 @@ for _, u in ipairs(NS.Units.LIST) do
         panel   = "general", section = "units", group = L["Units"],
         path    = "units." .. u .. ".enabled", unit = u, type = "bool",
         label   = (u == "target" and L["Enable Target grid"] or L["Enable Focus grid"]),
+        desc    = (u == "target"
+                   and L["Track cooldowns for your current target."]
+                   or L["Track cooldowns for your current focus."]),
         default = true,
     }
 end
@@ -138,14 +132,48 @@ StaticPopupDialogs["KICKCD_RESET_ALL"] = {
     OnAccept     = function() H.ResetAll() end,
 }
 
+--- The "Copy styling from Target" button, built into a caller-supplied Flow cell.
+---
+--- Hand-built rather than through H.InlineButtonPair, which is what drew it
+--- before: that helper owns its own full-width row, so a button from it can never
+--- share a line with anything. This is one button in one cell of a row the flow
+--- engine is already assembling, which is the shape the pairing needs.
+---
+--- Returns the widget, because RenderGrid counts a cell as filled only when its
+--- `make` answers one -- a cell that returns nothing leaves the row half-empty
+--- and the next item lands beside the tick instead of below it.
+local function copyStylingButton(parent, relativeWidth)
+    -- The instance's handle for the reason Helpers.LinkRow gives.
+    local AceGUI = H.AceGUI or NS.AceGUI
+    if not (AceGUI and parent) then return nil end
+
+    local btn = AceGUI:Create("Button")
+    btn:SetText(L["Copy styling from Target"])
+    btn:SetRelativeWidth(relativeWidth or 0.5)
+    btn:SetCallback("OnClick", function()
+        NS.Units.CopyStyling("target", "focus")
+        H.FireConfigChanged("units")
+        H.RefreshAllPanels()
+    end)
+    H.AttachTooltip(btn, L["Copy styling from Target"],
+        L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
+    parent:AddChild(btn)
+    return btn
+end
+
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil
     end
 
     local ctx
+    -- `pageKey`, not `panelKey`: the library's CreatePanel reads opts.pageKey and
+    -- drops anything else, so every page in this addon had been handing it a key
+    -- it ignored -- leaving ctx.pageKey nil, O.__panelFor unable to find any
+    -- page, and the library's render-failure line naming "?" instead of the page
+    -- that raised. Inert until something asked, which is exactly why it survived.
     ctx = H.CreatePanel("KickCDGeneralPanel", L["General"], {
-        panelKey       = "general",
+        pageKey        = "general",
         defaultsButton = true,
     })
     -- Parked, not wired: the Defaults button doesn't exist until the
@@ -161,39 +189,7 @@ local function Build(mainCategory)
     H.SetRenderer(ctx, function(c)
         H.ClearScroll(c)
         H.RenderTabbedSchema(c, "general", {
-            [L["Master controls"]] = function(ctxRef)
-                -- Lock frame (schema bool, skipRender) pairs on one row with a
-                -- bespoke, SESSION-ONLY Debug console toggle. The Debug checkbox
-                -- shows/hides the console WINDOW (DebugLog:Show/Hide) — it does
-                -- NOT touch the debug capture flag (debug-logging-§5); that stays on the
-                -- in-window "Debug: ON/OFF" button and `/kcd debug on|off`. It's
-                -- bespoke (not a schema row) so it never persists to SV and
-                -- never appears in /kcd get|set|list.
-                H.InlinePair(ctxRef,
-                    function(c2, row) H.RenderField(c2, H.FindSchema("locked"), row, 0.5) end,
-                    function(c2, row)
-                        H.SessionToggle(c2, {
-                            label   = L["Debug console"],
-                            tooltip = L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."],
-                            get     = function() return NS.DebugLog and NS.DebugLog:IsShown() end,
-                            set     = function(on)
-                                if not NS.DebugLog then return end
-                                if on then NS.DebugLog:Show() else NS.DebugLog:Hide() end
-                            end,
-                        }, row, 0.5)
-                    end)
-                H.InlineButtonPair(ctxRef,
-                    {
-                        text    = L["Reset position"],
-                        tooltip = L["Restore the icon grid to its default screen position."],
-                        onClick = function() H.ResetIconPosition() end,
-                    },
-                    {
-                        text    = L["Reset all settings"],
-                        tooltip = L["Reset every General, Icons, and Cast bar setting to its default, and rebuild every spec's spell list from the addon defaults. Profiles are left alone."],
-                        onClick = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
-                    })
-            end,
+            [H.MASTER_GROUP] = masterTail,
             -- The Focus styling link. It used to be drawn three times over, once
             -- in each unit page's hand-built header, and there is exactly one of
             -- it: whether Focus keeps its own appearance or mirrors Target's.
@@ -206,31 +202,38 @@ local function Build(mainCategory)
             -- that declared a renderer, and marks the hidden ones dirty so they
             -- repaint on their next OnShow. Ticking this here really does change
             -- what Icons / Cast bar / Text Label draw.
+            -- THE TWO ARE ONE LINE, [tick][button], through the flow engine's
+            -- caller-driven sibling. They were two lines -- a half-width tick,
+            -- then a button pair holding one button -- which read as a button
+            -- belonging to whatever came next rather than to the tick above it.
+            -- They are two halves of one decision (does Focus follow Target, and
+            -- if not, start it from Target's current look), so they pair.
+            --
+            -- RenderGrid rather than a hand-built Flow row: the 50/50 split, the
+            -- row's spacer and the per-cell pcall are the library's, and a row
+            -- assembled here would be a fourth copy of that arithmetic.
             [L["Units"]] = function(ctxRef)
-                H.SessionToggle(ctxRef, {
-                    label = L["Use same styling as Target"],
-                    tooltip = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
-                    get   = function()
-                        local cfg = NS.Units.Config("focus")
-                        return cfg ~= nil and cfg.link == true
-                    end,
-                    set   = function(on)
-                        local cfg = NS.Units.Config("focus")
-                        if cfg then cfg.link = on and true or false end
-                        H.FireConfigChanged("units")
-                        H.RefreshAllPanels()
-                    end,
-                }, nil, 0.5)
-                H.InlineButtonPair(ctxRef,
-                    {
-                        text    = L["Copy styling from Target"],
-                        tooltip = L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."],
-                        onClick = function()
-                            NS.Units.CopyStyling("target", "focus")
-                            H.FireConfigChanged("units")
-                            H.RefreshAllPanels()
-                        end,
-                    })
+                H.RenderGrid(ctxRef, {
+                    { make = function(gridCtx, parent, relWidth)
+                        return H.SessionToggle(gridCtx, {
+                            label = L["Use same styling as Target"],
+                            tooltip = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
+                            get   = function()
+                                local cfg = NS.Units.Config("focus")
+                                return cfg ~= nil and cfg.link == true
+                            end,
+                            set   = function(on)
+                                local cfg = NS.Units.Config("focus")
+                                if cfg then cfg.link = on and true or false end
+                                H.FireConfigChanged("units")
+                                H.RefreshAllPanels()
+                            end,
+                        }, parent, relWidth)
+                    end },
+                    { make = function(_, parent, relWidth)
+                        return copyStylingButton(parent, relWidth)
+                    end },
+                })
             end,
         })
     end)

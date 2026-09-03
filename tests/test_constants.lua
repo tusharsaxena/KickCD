@@ -70,8 +70,8 @@ end)
 -- cases restore the guarantee, read off the instance instead of off Const.
 test("Constants: the library publishes every panel layout metric as a positive number", function()
     -- NS.Settings.Helpers IS the LibKa0s-Options instance (test_options_panel.lua:70).
-    -- If a future LibKa0s stops publishing one of these, settings/Panel_Render.lua:20
-    -- and settings/Panel_Widgets.lua:49 bind nil at file load and forward nil.
+    -- If a future LibKa0s stops publishing one of these, anything that binds it
+    -- at file load binds nil and forwards nil.
     local H = NS.Settings.Helpers
     for _, key in ipairs({ "PADDING_X", "ROW_VSPACER",
                            "SECTION_HEADING_H", "BUTTON_PAIR_REL" }) do
@@ -92,7 +92,7 @@ test("Constants: a rendered unit panel spaces its rows by a real number of pixel
     -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua:210.
     local H = NS.Settings.Helpers
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { panelKey = "castbar" })
+    local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { pageKey = "castbar" })
     ctx.scroll = AceGUI:Create("ScrollFrame")
     ctx.unit = "target"
 

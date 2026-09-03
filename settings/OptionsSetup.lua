@@ -18,8 +18,8 @@ local addonName, NS = ...
 --
 -- TOC POSITION: BEFORE settings/Panel.lua (which decorates this instance) and
 -- therefore before every settings/<page>.lua, because those page files call
--- Helpers.LSMValues and Helpers.AnchorValues inside schema-row literals AT FILE
--- LOAD. See the stub below for what that costs.
+-- Helpers.AnchorValues and Helpers.AnchorOrder AT FILE LOAD, into the locals
+-- their schema-row literals read. See the stub below for what that costs.
 
 -- ---------------------------------------------------------------------
 -- The one rule about what a global reset must not touch
@@ -165,20 +165,22 @@ local descriptor = {
 -- print an honest "not installed" line. This one MUST NOT, and the reason is not
 -- importance but WHEN the missing code is reached (options-ui-§1).
 --
--- settings/Icons.lua and settings/Castbar.lua evaluate `H.LSMValues("border")`
--- and `H.AnchorValues()` inside schema-row literals, at FILE LOAD. With those
--- members nil the page file raises, so its rows never register, so a large part
--- of NS.Settings.Schema is missing — and `/kcd list`, `/kcd get`, `/kcd set`,
--- `/kcd reset` and the profile defaults all break with it, silently. The addon
--- would not degrade; it would half-load and say nothing.
+-- settings/Icons.lua and settings/Castbar.lua evaluate `H.AnchorValues()` and
+-- `H.AnchorOrder()` at FILE LOAD, into the file-scope locals their schema-row
+-- literals read. With those members nil the page file raises, so its rows never
+-- register, so a large part of NS.Settings.Schema is missing — and `/kcd list`,
+-- `/kcd get`, `/kcd set`, `/kcd reset` and the profile defaults all break with
+-- it, silently. The addon would not degrade; it would half-load and say nothing.
 --
 -- MEASURED, not assumed (options-ui-§1 requires exactly that): this stub needs
 -- ZERO load-time members, and that is a real difference from the reference
 -- consumer. AbsorbTracker takes LSMValues from the LIBRARY, so its stub must
--- publish one or its page files raise. KickCD keeps LSMValues, AnchorValues and
--- AnchorOrder as its OWN code in settings/Panel.lua — host code that is present
--- whether or not LibKa0s is — and Panel.lua loads before every page file. So the
--- load-time hole AbsorbTracker's stub exists to plug does not exist here.
+-- publish one or its page files raise. KickCD's load-time callers are
+-- AnchorValues and AnchorOrder, both of them its OWN code in settings/Panel.lua
+-- (host code that is present whether or not LibKa0s is), and Panel.lua loads
+-- before every page file. So the load-time hole AbsorbTracker's stub exists to
+-- plug does not exist here. LSMValues is host code here too, but nothing
+-- evaluates it at load any more.
 --
 -- The measurement is the gate, not this comment:
 -- tests/test_options_panel.lua loads the addon with the library ABSENT and pins
@@ -237,13 +239,57 @@ if not lib then
     for _, name in ipairs({
         "CreatePanel", "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
         "AddSpacer", "AttachTooltip", "InlineButtonPair", "RenderField", "RenderRows",
-        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel", "RefreshScalars",
+        "RenderSchema", "RenderGrid", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel",
+        "RefreshScalars",
         "RestoreDefaults",
         "PatchAlwaysShowScrollbar",
-        "SetChromeHeight", "TabStrip", "PageBanner", "RenderTabbedSchema",
+        "SetChromeHeight", "TabStrip", "PageBanner", "PageHeader", "SubTabStrip",
+        "RenderTabbedSchema",
     }) do
         Helpers[name] = function() end
     end
+
+    -- The SCHEMA COMPOSERS (libs/LibKa0s/OptionsCompose.lua), and the one place
+    -- in this stub that is load-completing for a NEW reason. Every page file
+    -- calls them inside its schema declaration at FILE LOAD, so nil members
+    -- would raise and take that page's whole row set with them -- the failure
+    -- this stub exists to prevent.
+    --
+    -- HOLLOW, deliberately, AND THE DEVIATION THIS PASS MOST WANTS REVIEWED --
+    -- docs/ARCHITECTURE.md's `## Documented deviations` carries it as the one
+    -- PROVISIONAL row in the table. The canonical font / border / bar /
+    -- color-pair / master-controls blocks live in the library, and a host copy of
+    -- them is exactly the drift the composers were extracted to end
+    -- (options-ui-§16, anti-pattern #73) -- the same argument options-ui-§1 makes
+    -- against copying a widget maker or a layout constant here. So the degraded
+    -- load registers 112 of the addon's 228 rows.
+    --
+    -- WHAT THAT COSTS, MEASURED. §1's stated harm is `list`, `get`, `set`,
+    -- `reset` and the profile defaults breaking silently, and neither half is
+    -- reachable here:
+    --   * LibKa0s-Slash-1.0 is in this same libs/LibKa0s/ folder, which §1
+    --     requires be vendored WHOLE (anti-pattern #48), so the load that loses
+    --     the composers loses the schema CLI in the same breath.
+    --     settings/Slash.lua's stub answers set/get/list/reset with one "is
+    --     unavailable" line each -- for a HOST-DECLARED row exactly as for a
+    --     composed one. A composed path is never addressable-but-missing.
+    --   * The profile defaults are defaults/Profile.lua's, merged by AceDB in
+    --     core/Database.lua's aceDBDefaults, and are never read off the schema.
+    -- The three readers of NS.Settings.Schema are the CLI, the panel and
+    -- RestoreAllDefaults' sessionOnly walk -- absent, absent, and looking for
+    -- state.debugConsole, whose console window is unavailable on this path too.
+    --
+    -- Both halves are pinned rather than argued: tests/test_options_panel.lua's
+    -- "with LibKa0s absent the schema loads complete BAR the composed blocks"
+    -- fingerprints the delta, and "the hollow composers cost the degraded path no
+    -- CLI reach it otherwise has" pins the blast radius.
+    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup" }) do
+        Helpers[name] = function() return {} end
+    end
+    -- Two returns, because the live one has two: the rows, and the afterGroup
+    -- that draws the tab's closing button pair. settings/General.lua keys its
+    -- afterGroup table with the second, inside a renderer that never runs here.
+    Helpers.MasterControls = function() return {}, function() end end
     -- The library's own internals, mirrored for the same reason __panels and __panelFor already
     -- were: the parity gate reads the WHOLE live surface, and a member that exists live and not
     -- here is a hole whether or not today's host code happens to reach it. The three layout
@@ -258,6 +304,9 @@ if not lib then
     Helpers.__scrollTopInset = function() end
     Helpers.__tabBand       = function() end
     Helpers.__tabPlacement  = function() end
+    Helpers.__releaseSubTabs   = function() end
+    Helpers.__tabArtHeight     = function() end
+    Helpers.__resetTabArtHeight = function() end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end
@@ -277,7 +326,23 @@ NS.Settings.Helpers = lib:New(descriptor)
 
 local Helpers = NS.Settings.Helpers
 
-NS.RegisterOptionsPage = function(key, name, builder) Helpers.RegisterOptionsPage(key, name, builder) end
+-- Every page's Blizzard subcategory, by page key. The library's registry drops
+-- the builder's return value -- it has no use for it -- so the one thing a host
+-- needs to send a reader to ANOTHER page is otherwise unrecoverable: Blizzard's
+-- Settings.OpenToCategory takes a category id, and the object that carries it
+-- exists for exactly one statement inside each builder.
+--
+-- Captured HERE rather than in the builders, so a page added later gets it for
+-- free instead of remembering to file itself.
+NS.Settings.categoryFor = NS.Settings.categoryFor or {}
+
+NS.RegisterOptionsPage = function(key, name, builder)
+    Helpers.RegisterOptionsPage(key, name, function(mainCategory)
+        local category = builder(mainCategory)
+        NS.Settings.categoryFor[key] = category
+        return category
+    end)
+end
 NS.CreateOptionsPanel  = function() Helpers.CreateOptionsPanel() end
 NS.OpenOptionsPanel    = function() Helpers.OpenOptionsPanel() end
 

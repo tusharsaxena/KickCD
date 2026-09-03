@@ -30,7 +30,7 @@ local function panelCtx(name)
     local NS = T.NS
     local H = NS.Settings.Helpers
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel(name, name, { panelKey = "icons" })
+    local ctx = H.CreatePanel(name, name, { pageKey = "icons" })
     ctx.scroll = AceGUI:Create("ScrollFrame")
     return ctx, H
 end

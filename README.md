@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-791%2F791_passing-green)
+![Tests](https://img.shields.io/badge/Tests-841%2F841_passing-green)
 
 ![Logo](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 
@@ -85,7 +85,7 @@ Type `/kcd` (or the longer `/kickcd`) to control the addon from chat. Replies ar
 
 ### Settings panel
 
-Six pages under **Ka0s KickCD**. General, Icons, Cast bar and Text Label group their options into tabs across the top of the page; Spells and Profiles are single pages.
+Six pages under **Ka0s KickCD**. Each page groups its options into tabs across the top: General, Icons, Cast bar and Text Label have several, Spells has a single **Spell list** tab, and Profiles is one scrolling page.
 
 | Page | Covers |
 | --- | --- |
@@ -93,7 +93,7 @@ Six pages under **Ka0s KickCD**. General, Icons, Cast bar and Text Label group t
 | **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
 | **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt — per unit, via the same Target / Focus switch. |
 | **Text Label** | Show a custom identity label on a unit's icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. Each unit has its own label. |
-| **Spells** | Choose which spells to track for each class and spec. Only spells you can actually cast right now show up. |
+| **Spells** | Choose which spells to track for each class and spec, and drag a row by its handle to change its priority order. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, realm, or faction. |
 
 On the Icons, Cast bar, and Text Label pages, switch between **Target** and **Focus** with the picker above the tabs — it scopes the whole page. The focus set starts **linked** to target — it copies target's icon and cast-bar styling automatically. On General → Units, untick "Use same styling as Target" (or press "Copy styling from Target" and then edit) to give focus its own look; either way, each unit keeps its own position and its own label text.
@@ -137,7 +137,7 @@ One setting controls when the grids and cast bars appear. The master switch alwa
 
 The ready glow has its own copy of this setting (Icons → Ready glow), with the same choices plus a `never` option to turn the glow off. Your primary and secondary icons can use different triggers.
 
-#### Cast bar placement (Cast bar → Position)
+#### Cast bar placement (Cast bar → Size and position)
 
 Two modes:
 
@@ -149,7 +149,7 @@ By default the bar sits just below the icon grid, lined up with its left edge.
 #### Cast bar direction and auto-size (Cast bar → General)
 
 *   **Orientation** — horizontal (default) or vertical.
-*   **Fill direction** — which way the bar fills. Horizontal fills to the right or left; vertical fills up or down.
+*   **Growth direction** — which way the bar fills. Horizontal fills to the right or left; vertical fills up or down.
 *   **Auto-size to icon grid** — when on, the bar's length matches the icon grid and follows it, so adding, removing, or disabling icons resizes the bar in place. Its other dimension stays where you set it.
 
 #### Icon grid layout (Icons → Layout)

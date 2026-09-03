@@ -182,7 +182,7 @@ badge and any count quoted in the docs must agree with it.
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (18)
+### test_schema.lua (35)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -194,16 +194,33 @@ badge and any count quoted in the docs must agree with it.
 - label panel carries per-unit label rows; General no longer does
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
-- debug console stays session-only: no schema row targets it (debug-logging-§5)
+- debug console stays session-only: it is a row, and it never reaches the db
 - every page partitions into the designed tab strip, in strip order
 - no page draws a tab twice: every group's rows are contiguous
-- no schema page falls below two tabs and loses its strip
+- every schema page names at least one tab, so every one draws a strip
+- every schema row on every page carries a `group`
+- every color row is followed IMMEDIATELY by its class-color companion
+- no color row anywhere carries `disabledIf`
+- every swatch's tooltip says the alpha still applies under class color
+- each color pair declares WHICH class it means, on both halves
 - a unit page's strip is identical for Target and for Focus
 - the Unit picker is drawn in the page's chrome band, never into the scroll
 - the Unit banner retargets the page and every tab follows it
-- a linked Focus draws the note and no strip at all
+- the Unit picker is one selection shared by every per-unit page
+- a linked Focus draws the strip FIRST and the note as content
+- a linked Focus's tab strip is disabled and desaturated
+- the General page's FIRST tab is named exactly `Master controls`
+- Master controls holds exactly the canonical rows, in canonical order
+- every canonical Master control is declared exactly ONCE in the repo
+- the tab's closing button pair is the composer's afterGroup, not a page hook
+- Label text declares itself an EditBox, so it is not an empty dropdown
+- no string row in the addon is a dropdown over nothing
+- every tab on every page is classified as mixed-kind or single-subject
+- a tab that mixes kinds of control carries a subgroup on every row
+- a single-subject tab draws NO subsection heading
+- no page draws a hand-rolled heading in place of H.Section
 
-### test_database.lua (20)
+### test_database.lua (23)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -225,6 +242,9 @@ badge and any count quoted in the docs must agree with it.
 - BackfillLabelStyle is idempotent and leaves an existing style untouched
 - BackfillLabelStyle key-fills a missing field onto an existing style, leaving other keys untouched
 - DB label.style.color default matches the settings schema color row default (DB<->schema sync)
+- a stored NONE font flag reads back as the empty string after migration
+- the font-flag migration leaves every other token exactly as it found it
+- the font-flag migration is idempotent and survives a half-built profile
 
 ### test_color_shape.lua (21)
 
@@ -381,7 +401,7 @@ badge and any count quoted in the docs must agree with it.
 - placeBlock TOP/CENTER geometry (block above primary)
 - placeBlock CENTER stacks both on the grid center
 
-### test_icongrid_apply.lua (6)
+### test_icongrid_apply.lua (13)
 
 - Icon:Apply skips glow work when no plain state field moved
 - Icon:Apply STILL re-arms the swipe when only the handle changed
@@ -389,6 +409,13 @@ badge and any count quoted in the docs must agree with it.
 - Icon:Apply redoes glow work when the cooldown ends
 - Icon:Apply forced re-apply redoes state work even when nothing moved
 - Icon:Apply keeps the charges badge live when charges are secret
+- the countdown takes its configured color, which it never had before
+- the countdown's class color is the PLAYER's, on the Focus grid too
+- the countdown's drop shadow is applied, and CLEARED again
+- the icon border honors its class-color companion, player-scoped
+- the ready glow's class color is the player's, and a toggle restarts it
+- toggling the cooldown tint's companion rebuilds the alpha/tint curves
+- master scale and master alpha reach the grid frame
 
 ### test_icongrid_visibility.lua (22)
 
@@ -522,7 +549,7 @@ badge and any count quoted in the docs must agree with it.
 - Castbar:GetCastbarFrame does not create an instance for an unknown unit
 - UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)
 
-### test_unitlabel_apply.lua (21)
+### test_unitlabel_apply.lua (26)
 
 - Apply writes the unit's own label text
 - Apply writes an empty string rather than nil for a cleared label
@@ -545,6 +572,11 @@ badge and any count quoted in the docs must agree with it.
 - EnsureFrame builds the holder once and reuses it
 - target and focus each get their own label widgets
 - ApplyAll renders every unit in one pass
+- Apply sets the drop shadow, and CLEARS it again
+- the label color falls through to the stored swatch with the companion off
+- the label takes the TRACKED unit's class color, keeping the stored alpha
+- an unresolvable class falls through to the swatch, never to white
+- a LINKED Focus resolves on the unit being drawn, not on the table's source
 
 ### test_castbar.lua (7)
 
@@ -628,7 +660,7 @@ badge and any count quoted in the docs must agree with it.
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 
-### test_castbar_skin.lua (40)
+### test_castbar_skin.lua (49)
 
 - StructureSignature is stable for identical inputs
 - StructureSignature moves when a structural field moves
@@ -670,6 +702,15 @@ badge and any count quoted in the docs must agree with it.
 - Reskin survived the peel as a method on the Castbar module
 - the skin sibling reads its helpers off the module, not a private copy
 - modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)
+- bar opacity folds into the per-state alpha, and is not a second SetAlpha
+- a bar opacity outside 0..1 is clamped rather than passed through
+- the cast time text takes its own color, which it never had before
+- the font shadow is applied, and CLEARED again
+- the font shadow is part of the structure signature
+- every cast-bar swatch takes the TRACKED unit's class, not the player's
+- the spell name takes the tracked unit's class, per state
+- an NPC target falls through to the stored swatch, which is the common case
+- a LINKED Focus paints in the FOCUS's class, not the linked-from target's
 
 ### test_castbar_debug.lua (18)
 
@@ -746,7 +787,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (25)
+### test_settings_spells_editor.lua (30)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -758,21 +799,26 @@ badge and any count quoted in the docs must agree with it.
 - an absent C_CooldownViewer falls through leniently rather than refusing
 - an API that answers nothing is remembered as empty and never re-walked
 - a category the client throws on is survived rather than aborting the walk
-- a spell row carries its nine widgets in the visual column order
+- a spell row carries its eight widgets in the visual column order
+- every row in the list is the same height, which the drop arithmetic needs
 - the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
 - the row checkbox writes the entry's enabled flag as a real boolean
 - a disabled row renders its spell icon and checkbox from the stored flag
-- the move buttons are disabled at the list edges, not merely inert
-- Move up swaps the entry with the one above it
-- Move down swaps the entry with the one below it
+- a move is a SPLICE to the index, not a swap with the neighbour
+- a move backwards splices just as cleanly
+- a move that goes nowhere or off the ends writes nothing
+- no row carries a move button any more
 - Remove deletes exactly the row's entry
 - the category dropdown writes the entry's category
-- RefreshRows builds the header, the scroll container and one row per entry
+- RefreshRows builds the chrome block, then the rows, in that order
+- the page draws its strip, and the rows land in the LIBRARY's scroll
 - an empty list renders the guidance label instead of rows
 - RefreshRows refuses to run against a hidden panel
-- a rebuild releases the previous widget tree before building a new one
+- a rebuild drains the scroll before building a new tree into it
+- a re-render cancels the reorder controller BEFORE it clears the tree
 - the selection cascade falls back to the first sorted class the defaults know
-- a stale move click after a rebuild cannot run off the end of the list
+- a stale remove click after a rebuild cannot run off the end of the list
+- hiding the page cancels the reorder controller too
 
 ### test_settings_widgets.lua (20)
 
@@ -797,7 +843,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (31)
+### test_options_panel.lua (35)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -807,6 +853,7 @@ badge and any count quoted in the docs must agree with it.
 - every page registers exactly once, through the library's registry
 - no page file reaches a registry other than the library's
 - a bool row renders a checkbox labeled from the row
+- every schema row in the addon carries a tooltip body under one key or the other
 - a number row renders a slider carrying the row's range
 - a string row renders a dropdown listing the KEYED options in declared order
 - a color row renders a picker with alpha and the decoded color
@@ -817,14 +864,17 @@ badge and any count quoted in the docs must agree with it.
 - confirming a color stores the keyed shape the modules read
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
-- InlinePair puts both caller-supplied widgets in ONE row
 - SessionToggle adapts this addon's argument order onto the library's
 - a session toggle never becomes a saved setting
 - the Profiles page is vetoed from a global reset
 - a global reset also clears the state no schema row owns
-- with LibKa0s absent the schema still loads COMPLETE
+- with LibKa0s absent the schema loads complete BAR the composed blocks
+- the hollow composers cost the degraded path no CLI reach it otherwise has
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
+- the linked-Focus note has no hover highlight but is still clickable
+- the linked-Focus note opens General on its Units tab
+- the Focus link's tick and its Copy button share one row
 - General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
 - every schema row the panel renders is labeled with prose, not with a key
@@ -966,8 +1016,8 @@ badge and any count quoted in the docs must agree with it.
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
-| test_schema.lua | 18 |
-| test_database.lua | 20 |
+| test_schema.lua | 35 |
+| test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
 | test_compat.lua | 5 |
@@ -976,7 +1026,7 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 23 |
 | test_icongrid_layout.lua | 8 |
-| test_icongrid_apply.lua | 6 |
+| test_icongrid_apply.lua | 13 |
 | test_icongrid_visibility.lua | 22 |
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
@@ -986,19 +1036,19 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_glowgate.lua | 8 |
 | test_lifecycle.lua | 4 |
 | test_unitlabel.lua | 4 |
-| test_unitlabel_apply.lua | 21 |
+| test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 29 |
 | test_castbar_frame.lua | 37 |
-| test_castbar_skin.lua | 40 |
+| test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 25 |
+| test_settings_spells_editor.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 31 |
+| test_options_panel.lua | 35 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1009,4 +1059,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **791** |
+| **Total** | **841** |

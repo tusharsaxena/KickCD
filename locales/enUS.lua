@@ -77,8 +77,16 @@ L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to gi
     "Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
-L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."] =
-    "Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."
+-- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
+-- the second is the phrase that carries the colour and names where the click
+-- lands. Kept as two strings rather than one with a format slot so a translator
+-- can move the link phrase within the sentence -- in a language where it belongs
+-- first, "%s" in the middle of the English word order would fight them.
+L["Linked to Target. Untick 'Use same styling as Target' on the "] =
+    "Linked to Target. Untick 'Use same styling as Target' on the "
+L["General page's Units tab"] = "General page's Units tab"
+L[" to give Focus its own."] = " to give Focus its own."
+L["Open the General page's Units tab."] = "Open the General page's Units tab."
 L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
     "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
 L["Reset position"]              = "Reset position"
@@ -452,3 +460,25 @@ L["Spell known"]                 = "Spell known"
 L["Spell not known"]             = "Spell not known"
 L["Category for future filtering. Currently informational only."] =
     "Category for future filtering. Currently informational only."
+
+-- Settings revamp v2 (options-ui-§13 / §16 / §17 / §18)
+--
+-- Tab names the strip draws, and the SUBSECTION headings a tab carries when it
+-- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,
+-- never a repeat of its tab's own name.
+L["Size and position"]           = "Size and position"
+L["Icon"]                        = "Icon"
+L["Size"]                        = "Size"
+L["Bar"]                         = "Bar"
+L["Background"]                  = "Background"
+L["Text"]                        = "Text"
+L["Charges"]                     = "Charges"
+L["Spell list"]                  = "Spell list"
+L["The tracked spells for the selected specialization, in priority order."] =
+    "The tracked spells for the selected specialization, in priority order."
+L["Drag to reorder"]             = "Drag to reorder"
+L["Cast time color"]             = "Cast time color"
+L["Track cooldowns for your current target."] =
+    "Track cooldowns for your current target."
+L["Track cooldowns for your current focus."] =
+    "Track cooldowns for your current focus."

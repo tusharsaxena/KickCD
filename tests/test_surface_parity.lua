@@ -153,6 +153,18 @@ test("the Options stub carries every member the host calls", function()
         -- off the instance or not at all, and tests/test_options_panel.lua fails if a copy of any
         -- of them appears in settings/OptionsSetup.lua.
         "BANNER_H", "CHROME_GAP", "TAB_H",
+        -- The composers' PUBLISHED CONSTANTS (OptionsCompose 1) are the same
+        -- class of thing one layer up: FONT_FLAGS / FONT_FLAGS_SORT are the
+        -- canonical font-flag value list, VISIBILITY_VALUES / VISIBILITY_SORT
+        -- the canonical visibility list, MASTER_GROUP the literal that is both
+        -- the tab name and the afterGroup key, CLASS_COLOR_NOTE the sentence
+        -- every color swatch's tooltip ends with. Copying any of them here is
+        -- the copy that goes stale, and the whole point of the composers is that
+        -- nine addons cannot drift apart on exactly these values
+        -- (options-ui-§15/§16/§17). The host reads them off the instance inside
+        -- a renderer or not at all, and no renderer runs on the degraded path.
+        "FONT_FLAGS", "FONT_FLAGS_SORT", "VISIBILITY_VALUES", "VISIBILITY_SORT",
+        "MASTER_GROUP", "CLASS_COLOR_NOTE",
         -- The AceGUI handle the library resolves at CreateOptionsPanel time. With no library there
         -- is no CreateOptionsPanel, so there is nothing to resolve; the host reads NS.AceGUI.
         "AceGUI",

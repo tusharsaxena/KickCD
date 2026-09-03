@@ -8,6 +8,12 @@
 -- order (options-ui-§13). Adding an option means adding one row INSIDE the run
 -- its group already owns: a row filed after the array has left that group
 -- prints the tab a second time further down.
+--
+-- The border block, the annotation font block and all three color swatches are
+-- COMPOSED (libs/LibKa0s/OptionsCompose.lua), not written out: options-ui-§16
+-- and §17 make the row set, its order and the class-color companion the
+-- collection's rather than this page's. H.AddComposed stamps the host's own
+-- `panel` / `section` / `unit` onto what comes back and appends it in place.
 
 local addonName, NS = ...
 local L      = NS.L
@@ -24,6 +30,12 @@ local function add(t) Schema[#Schema + 1] = t end
 -- "icons" for every row — both grids react to an `icons` CONFIG_CHANGED
 -- and resolve their own unit's data via NS.Units.Icons(unit).
 local function addUnitRows(unit)
+
+-- The two arguments every composed block on this page takes: where its stored
+-- paths hang, and the host row fields H.AddComposed stamps onto what comes back
+-- (settings/Panel.lua). Hoisted per unit so no composer call restates them.
+local PREFIX = "units." .. unit .. ".icons."
+local STAMP  = { panel = "icons", section = "icons", unit = unit }
 
 -- Layout helpers ----------------------------------------------------
 --
@@ -156,13 +168,23 @@ add{
     desc = L["Icon alpha while the spell is on cooldown."],
     default = 0.25, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
-    path  = "units."..unit..".icons.cooldownTint", type = "color", hasAlpha = true,
-    label = L["Cooldown tint"],
-    desc = L["RGB tint applied to icons during cooldown."],
-    default = { r = 1, g = 0.4, b = 0.4, a = 1 },
-}
+-- The cooldown tint and its class-color companion (options-ui-§17). Composed
+-- rather than hand-paired, because the composer sets `startsLine` on the swatch:
+-- the pair then cannot be split across two lines by an odd number of widgets
+-- above it, which is what "immediately to its right" actually requires.
+--
+-- classColorSource = "player", and THE PATH DOES NOT DECIDE THAT. Every icon on
+-- this grid lives under `units.<unit>.` and draws the PLAYER'S OWN interrupt
+-- cooldowns -- modules/Cooldowns.lua's ResolveClassSpec and
+-- modules/IconGrid.lua's getActiveSpecKey both key the watched list on
+-- UnitClass("player") -- so the class this tint means is the player's, on the
+-- Focus page exactly as on the Target one.
+H.AddComposed(H.ColorPair{
+    prefix     = PREFIX,   page  = "icons", group = L["Visual states"],
+    key        = "cooldownTint", label = L["Cooldown tint"],
+    defaults   = { cooldownTint = { r = 1, g = 0.4, b = 0.4, a = 1 } },
+    classColor = { source = "player" },
+}, STAMP)
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
     path  = "units."..unit..".icons.suppressGCDSwipe", type = "bool",
@@ -172,64 +194,48 @@ add{
 }
 
 -- Border -------------------------------------------------------------
--- Order produces:
---     [Show border]  | [Border style]
---     [Border color] | [Border thickness]
+-- The canonical border block (options-ui-§16), composed. Four mandated rows,
+-- led by this addon's own Show-border toggle (`spec.show`):
+--     [Show border]
+--     [Border style]  | [Border thickness (px)]
+--     [Border color]  | [Use class color]
 --
--- The master toggle leads what it governs, then the two questions a reader
--- actually pairs: what the edge is made of, then how it is painted and how
--- thick. This is the SAME order the cast bar's Interruptible / Non-interruptible
--- tabs use for their four border rows — they used to disagree (icons ran
--- show/color/style/size), which is the drift a player feels without being able
--- to name it.
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderShow", type = "bool",
-    label = L["Show border"],
-    desc = L["Draw a thin border around each icon."],
-    default = true,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderTexture", type = "string",
-    label = L["Border style"],
-    desc = L["LibSharedMedia border texture (edge style) used to draw each icon's border."],
-    default = "Blizzard Tooltip",
-    lsm     = "border",
-    -- Function so we re-query LSM at click time (more borders may register
-    -- after the schema is declared).
-    values  = function() return H.LSMValues("border") end,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderColor", type = "color", hasAlpha = true,
-    label = L["Border color"],
-    desc = L["Border color (RGBA)."],
-    default = { r = 0, g = 0, b = 0, a = 1 },
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Border"],
-    path  = "units."..unit..".icons.borderSize", type = "number",
-    label = L["Border thickness (in px)"],
-    desc = L["Border thickness in pixels."],
-    default = 2, min = 0, max = 4, step = 1, fmt = "%d px",
-}
+-- `keys` keeps the SHIPPED path: this addon has always stored the edge texture
+-- at `icons.borderTexture`, and the composer must not change what is stored.
+-- The border is drawn around the player's own cooldown icons, so it is
+-- player-scoped for the same reason the cooldown tint above is.
+H.AddComposed(H.BorderGroup{
+    prefix   = PREFIX, page = "icons", group = L["Border"],
+    show     = true,
+    keys     = { borderStyle = "borderTexture" },
+    defaults = {
+        borderShow  = true,
+        borderStyle = "Blizzard Tooltip",
+        borderSize  = 2,
+        borderColor = { r = 0, g = 0, b = 0, a = 1 },
+    },
+    classColor = { source = "player" },
+}, STAMP)
 
 -- Annotations --------------------------------------------------------
--- Everything drawn ON TOP of an icon: the countdown, the charges badge and
--- the hover tooltip. Order produces:
---     [Show cooldown text] | [Font]
---     [Font size]          | [Font flags]
---     [Show charges]       | [Show tooltip on hover]
---     [Charges X offset]   | [Charges Y offset]
+-- Everything drawn ON TOP of an icon: the countdown, the charges badge and the
+-- hover tooltip. Three kinds of control on one tab, so each carries a subsection
+-- heading (options-ui-§7) -- the tab label names the section, the headings name
+-- what each block is:
+--     Icon     [Show cooldown text] | [Show tooltip on hover]
+--     Font     [Font]               | [Font size]
+--              [Font color]         | [Use class color]
+--              [Font flags]         | [Font shadow]
+--     Charges  [Show charges]
+--              [Charges X offset]   | [Charges Y offset]
 --
--- The show-toggle LEADS the three rows that style what it shows, which is the
--- same shape the cast bar's Spell name and Cast time tabs use. Below it the two
--- remaining toggles pair, and the badge's two offsets read across one line
--- rather than down a column — they are one position asked twice, and comparing
--- them is the question someone nudging a badge off a border actually has.
+-- The font block is R1d's canonical six (options-ui-§16), so it brings a font
+-- COLOR and a font SHADOW this addon did not have. Both are honored:
+-- modules/IconGrid_Render.lua's ApplyTextConfig paints and shadows the countdown
+-- FontString from them.
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Icon"],
     path  = "units."..unit..".icons.showCooldownText", type = "bool",
     label = L["Show cooldown text"],
     desc = L["Render numeric seconds remaining on each icon."],
@@ -237,50 +243,39 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.cooldownTextFont", type = "string",
-    label = L["Font"],
-    desc = L["Font for the cooldown text overlay."],
-    default = "Friz Quadrata TT",
-    lsm     = "font",
-    -- Function so we re-query LSM at click time (more fonts may register
-    -- after the schema is declared).
-    values  = function() return H.LSMValues("font") end,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.cooldownTextSize", type = "number",
-    label = L["Font size"],
-    desc = L["Cooldown text size in pixels."],
-    default = 14, min = 8, max = 24, step = 1, fmt = "%d",
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.cooldownTextFlags", type = "string",
-    label = L["Font flags"],
-    desc = L["Outline / monochrome flags applied to cooldown text."],
-    default = "OUTLINE",
-    values  = {
-        ["NONE"] = L["None"],
-        ["OUTLINE"] = L["Outline"],
-        ["THICKOUTLINE"] = L["Thick outline"],
-        ["MONOCHROME"] = L["Monochrome"],
-    },
-    sorting = { "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROME" },
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    path  = "units."..unit..".icons.showCharges", type = "bool",
-    label = L["Show charges"],
-    desc = L["Render a charges badge for spells with charges."],
-    default = true,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Icon"],
     path  = "units."..unit..".icons.showTooltip", type = "bool",
     label = L["Show tooltip on hover"],
     desc = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
     default = false,
 }
+
+-- `keys` on all six leaves, because every one of them already had a stored name
+-- on this page and the composer must not change what is stored. Two are NEW
+-- settings rather than renames -- cooldownTextColor and cooldownTextShadow --
+-- and they are the reason the block is contiguous and complete rather than the
+-- five rows the screenshot showed.
+H.AddComposed(H.FontGroup{
+    prefix = PREFIX, page = "icons", group = L["Annotations"],
+    subgroup = L["Font"],
+    keys = {
+        font              = "cooldownTextFont",
+        fontSize          = "cooldownTextSize",
+        fontColor         = "cooldownTextColor",
+        useClassColorFont = "useClassColorCooldownText",
+        fontFlags         = "cooldownTextFlags",
+        fontShadow        = "cooldownTextShadow",
+    },
+    defaults = {
+        font       = "Friz Quadrata TT",
+        fontSize   = 14,
+        fontColor  = { r = 1, g = 1, b = 1, a = 1 },
+        fontFlags  = "OUTLINE",
+        fontShadow = false,
+    },
+    classColor = { source = "player" },
+}, STAMP)
+
 -- The charges badge's inset from the icon's bottom-right corner. Promoted out
 -- of modules/IconGrid_Render.lua, where it was the hardcoded
 -- `SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)` and nothing else. The
@@ -289,8 +284,21 @@ add{
 -- what makes the stock inset wrong, and both of those are settings on this
 -- same page. Two literals, two questions, two rows — collapsing them into one
 -- "badge inset" slider would answer neither.
+--
+-- `solo` on the toggle so the two offsets read ACROSS one line rather than the
+-- first of them pairing with the toggle that governs whether the badge exists.
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Charges"],
+    path  = "units."..unit..".icons.showCharges", type = "bool",
+    label = L["Show charges"],
+    desc = L["Render a charges badge for spells with charges."],
+    default = true,
+    solo    = true,
+}
+add{
+    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Charges"],
     path  = "units."..unit..".icons.chargesOffsetX", type = "number",
     label = L["Charges X offset (in px)"],
     desc = L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."],
@@ -298,6 +306,7 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Charges"],
     path  = "units."..unit..".icons.chargesOffsetY", type = "number",
     label = L["Charges Y offset (in px)"],
     desc = L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."],
@@ -396,21 +405,29 @@ add{
     values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
 }
 
--- Color row -------------------------------------------------------
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
-    path  = "units."..unit..".icons.primaryGlowColor", type = "color", hasAlpha = true,
-    label = L["Primary glow color"],
-    desc = L["Glow color on the primary icon."],
-    default = { r = 1, g = 1, b = 0, a = 1 },
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
-    path  = "units."..unit..".icons.secondaryGlowColor", type = "color", hasAlpha = true,
-    label = L["Secondary glow color"],
-    desc = L["Glow color on secondary icons."],
-    default = { r = 1, g = 1, b = 0, a = 1 },
-}
+-- Color rows ------------------------------------------------------
+-- The two swatches STOP mirroring each other across a line here, and that is
+-- the rule rather than a slip: options-ui-§17 puts the class-color companion
+-- IMMEDIATELY to the swatch's right, so each glow color takes a line of its own
+-- with its companion beside it:
+--     [Primary glow color]   | [Use class color]
+--     [Secondary glow color] | [Use class color]
+--
+-- Player-scoped, for the reason the cooldown tint above gives: a ready glow
+-- fires on the PLAYER'S OWN interrupt being off cooldown. The tracked unit's
+-- class has nothing to do with it, whichever unit's page you are on.
+H.AddComposed(H.ColorPair{
+    prefix     = PREFIX, page = "icons", group = L["Ready glow"],
+    key        = "primaryGlowColor", label = L["Primary glow color"],
+    defaults   = { primaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
+    classColor = { source = "player" },
+}, STAMP)
+H.AddComposed(H.ColorPair{
+    prefix     = PREFIX, page = "icons", group = L["Ready glow"],
+    key        = "secondaryGlowColor", label = L["Secondary glow color"],
+    defaults   = { secondaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
+    classColor = { source = "player" },
+}, STAMP)
 
 end
 
@@ -427,7 +444,7 @@ local function Build(mainCategory)
 
     local ctx
     ctx = H.CreatePanel("KickCDIconsPanel", L["Icons"], {
-        panelKey       = "icons",
+        pageKey        = "icons",
         defaultsButton = true,
     })
     -- Parked, not wired: the Defaults button doesn't exist until the

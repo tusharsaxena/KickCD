@@ -26,7 +26,17 @@ local addonName, NS = ...
 -- and fresh login (a fresh addon load re-runs this file, re-seeding false).
 -- The ONLY write path is KickCD.DebugLog:SetEnabled — modules read
 -- KickCD.State.debug (via the KickCD.Debug sink) but never mutate it.
-local State = { inCombat = false, debug = false }
+-- `viewedUnit` is which unit the three per-unit settings pages (Icons, Cast bar,
+-- Text label) are currently editing. ONE value across all three, so flipping the
+-- picker on Icons and walking to Cast bar arrives on the same unit rather than
+-- back on Target -- the pages edit one addon and the picker names which half of
+-- it, which is not a fact each page should hold separately.
+--
+-- SESSION-ONLY, deliberately, and NOT a SavedVariable: it is where the reader
+-- happens to be looking, not something they configured. Persisting it would mean
+-- a fresh login opening on whichever unit was selected weeks ago, with nothing on
+-- screen explaining why. Re-seeded to "target" by this file on every load.
+local State = { inCombat = false, debug = false, viewedUnit = "target" }
 NS.State = State
 
 --- Set the live combat flag. Called only from the bootstrap event
