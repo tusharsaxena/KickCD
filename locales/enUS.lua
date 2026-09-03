@@ -77,8 +77,16 @@ L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to gi
     "Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
-L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."] =
-    "Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."
+-- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
+-- the second is the phrase that carries the colour and names where the click
+-- lands. Kept as two strings rather than one with a format slot so a translator
+-- can move the link phrase within the sentence -- in a language where it belongs
+-- first, "%s" in the middle of the English word order would fight them.
+L["Linked to Target. Untick 'Use same styling as Target' on the "] =
+    "Linked to Target. Untick 'Use same styling as Target' on the "
+L["General page's Units tab"] = "General page's Units tab"
+L[" to give Focus its own."] = " to give Focus its own."
+L["Open the General page's Units tab."] = "Open the General page's Units tab."
 L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
     "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
 L["Reset position"]              = "Reset position"

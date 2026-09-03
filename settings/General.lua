@@ -132,6 +132,35 @@ StaticPopupDialogs["KICKCD_RESET_ALL"] = {
     OnAccept     = function() H.ResetAll() end,
 }
 
+--- The "Copy styling from Target" button, built into a caller-supplied Flow cell.
+---
+--- Hand-built rather than through H.InlineButtonPair, which is what drew it
+--- before: that helper owns its own full-width row, so a button from it can never
+--- share a line with anything. This is one button in one cell of a row the flow
+--- engine is already assembling, which is the shape the pairing needs.
+---
+--- Returns the widget, because RenderGrid counts a cell as filled only when its
+--- `make` answers one -- a cell that returns nothing leaves the row half-empty
+--- and the next item lands beside the tick instead of below it.
+local function copyStylingButton(parent, relativeWidth)
+    -- The instance's handle for the reason Helpers.LinkRow gives.
+    local AceGUI = H.AceGUI or NS.AceGUI
+    if not (AceGUI and parent) then return nil end
+
+    local btn = AceGUI:Create("Button")
+    btn:SetText(L["Copy styling from Target"])
+    btn:SetRelativeWidth(relativeWidth or 0.5)
+    btn:SetCallback("OnClick", function()
+        NS.Units.CopyStyling("target", "focus")
+        H.FireConfigChanged("units")
+        H.RefreshAllPanels()
+    end)
+    H.AttachTooltip(btn, L["Copy styling from Target"],
+        L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
+    parent:AddChild(btn)
+    return btn
+end
+
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil
@@ -173,31 +202,38 @@ local function Build(mainCategory)
             -- that declared a renderer, and marks the hidden ones dirty so they
             -- repaint on their next OnShow. Ticking this here really does change
             -- what Icons / Cast bar / Text Label draw.
+            -- THE TWO ARE ONE LINE, [tick][button], through the flow engine's
+            -- caller-driven sibling. They were two lines -- a half-width tick,
+            -- then a button pair holding one button -- which read as a button
+            -- belonging to whatever came next rather than to the tick above it.
+            -- They are two halves of one decision (does Focus follow Target, and
+            -- if not, start it from Target's current look), so they pair.
+            --
+            -- RenderGrid rather than a hand-built Flow row: the 50/50 split, the
+            -- row's spacer and the per-cell pcall are the library's, and a row
+            -- assembled here would be a fourth copy of that arithmetic.
             [L["Units"]] = function(ctxRef)
-                H.SessionToggle(ctxRef, {
-                    label = L["Use same styling as Target"],
-                    tooltip = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
-                    get   = function()
-                        local cfg = NS.Units.Config("focus")
-                        return cfg ~= nil and cfg.link == true
-                    end,
-                    set   = function(on)
-                        local cfg = NS.Units.Config("focus")
-                        if cfg then cfg.link = on and true or false end
-                        H.FireConfigChanged("units")
-                        H.RefreshAllPanels()
-                    end,
-                }, nil, 0.5)
-                H.InlineButtonPair(ctxRef,
-                    {
-                        text    = L["Copy styling from Target"],
-                        tooltip = L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."],
-                        onClick = function()
-                            NS.Units.CopyStyling("target", "focus")
-                            H.FireConfigChanged("units")
-                            H.RefreshAllPanels()
-                        end,
-                    })
+                H.RenderGrid(ctxRef, {
+                    { make = function(gridCtx, parent, relWidth)
+                        return H.SessionToggle(gridCtx, {
+                            label = L["Use same styling as Target"],
+                            tooltip = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
+                            get   = function()
+                                local cfg = NS.Units.Config("focus")
+                                return cfg ~= nil and cfg.link == true
+                            end,
+                            set   = function(on)
+                                local cfg = NS.Units.Config("focus")
+                                if cfg then cfg.link = on and true or false end
+                                H.FireConfigChanged("units")
+                                H.RefreshAllPanels()
+                            end,
+                        }, parent, relWidth)
+                    end },
+                    { make = function(_, parent, relWidth)
+                        return copyStylingButton(parent, relWidth)
+                    end },
+                })
             end,
         })
     end)

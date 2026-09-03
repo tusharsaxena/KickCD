@@ -516,23 +516,151 @@ test("the degraded stub opens no panel and says so once", function()
         "the stub must name the missing library")
 end)
 
+-- The link note draws NO hover highlight, and that is a fix rather than a
+-- preference: it shipped with `SetHighlight(1, 1, 1, 0.12)`, which AceGUI forwards
+-- to Texture:SetTexture -- whose four-number form is the deprecated colour API --
+-- and the client painted a solid BRIGHT GREEN block over the whole line on
+-- mouseover. The line stays clickable; it simply does not light up.
+--
+-- red under: re-adding SetHighlight in any form, or dropping the OnClick with it.
+test("the linked-Focus note has no hover highlight but is still clickable", function()
+    local NS = T.NS
+    local cfg = NS.Units.Config("focus")
+    local before = cfg and cfg.link
+    if cfg then cfg.link = true end
+    local H = NS.Settings.Helpers
+    local wasUnit = H.ViewedUnit()
+
+    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDNoteHL", "castbar", { pageKey = "castbar" })
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    H.SetViewedUnit("focus")
+    H.RenderUnitPanel(ctx, "castbar")
+
+    local note
+    for _, child in ipairs(ctx.scroll.children) do
+        if type(child.text) == "string"
+           and child.text:find("Linked to Target", 1, true) then note = child end
+    end
+    assertTrue(note ~= nil, "the linked page must draw the note")
+    assertNil(note.__highlight,
+        "the note must set no hover highlight; AceGUI paints a solid green block for one")
+    assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
+        "…and it must still be clickable")
+
+    H.SetViewedUnit(wasUnit)
+    if cfg then cfg.link = before end
+end)
+
+-- The link note GOES somewhere. Naming a destination and not being able to reach
+-- it is the failure this replaced -- the note named a control and a page and left
+-- the reader to find both by hand, two categories away in Blizzard's list.
+--
+-- Driven through the real click: the assertion is that Blizzard's category switch
+-- is called with the General page's OWN category id, and that the page is put on
+-- the Units tab BEFORE the switch rather than a frame later.
+--
+-- red under: dropping the OpenPageTab wiring, opening the parent category instead
+-- of the page's own, or setting the tab after the switch.
+test("the linked-Focus note opens General on its Units tab", function()
+    local opened
+    local inst = T.load(true, true, function(mocks)
+        local S = mocks.Settings
+        S.OpenToCategory = function(id) opened = id end
+    end)
+    local NS = inst.NS
+    local H  = NS.Settings.Helpers
+
+    local general = NS.Settings.categoryFor and NS.Settings.categoryFor.general
+    assertTrue(general ~= nil, "the General page's category must be recorded")
+
+    local cfg = NS.Units.Config("focus")
+    if cfg then cfg.link = true end
+    H.SetViewedUnit("focus")
+
+    local ctx = H.__panelFor("castbar")
+    assertTrue(ctx ~= nil, "the Cast bar page must be registered")
+    ctx.panel:Show()
+    H.RefreshPanel(ctx, true)
+
+    local note
+    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
+        if type(child.text) == "string"
+           and child.text:find("Linked to Target", 1, true) then note = child end
+    end
+    assertTrue(note ~= nil, "the linked page must draw the note")
+
+    note:__fire("OnClick")
+
+    assertEqual(opened, general:GetID(),
+        "the click must open the General page's own category")
+    local generalCtx = H.__panelFor("general")
+    assertEqual(generalCtx and generalCtx.activeTab, NS.L["Units"],
+        "…already on the Units tab, not on whatever it was last left on")
+
+    if cfg then cfg.link = false end
+    H.SetViewedUnit("target")
+end)
+
+-- The Focus link's two controls are ONE LINE: [Use same styling as Target]
+-- [Copy styling from Target]. They were two -- a half-width tick, then a button
+-- pair holding a single button -- and a button on its own line reads as belonging
+-- to whatever follows it rather than to the tick above.
+--
+-- Driven through a real render rather than scanned, because the claim is about
+-- LAYOUT: both must land in ONE Flow row, which is a fact about the widget tree
+-- and not about the source.
+--
+-- red under: going back to SessionToggle + InlineButtonPair (two rows), or
+-- dropping either cell's `make` return, which leaves RenderGrid counting the row
+-- half-filled and puts the next item beside the tick.
+test("the Focus link's tick and its Copy button share one row", function()
+    local inst = T.load(true, true)
+    local H = inst.NS.Settings.Helpers
+    local ctx = H.__panelFor("general")
+    assertTrue(ctx ~= nil, "the General page must be registered")
+
+    ctx.activeTab = inst.NS.L["Units"]
+    ctx.panel:Show()            -- the body is built lazily, on first OnShow
+    H.RefreshPanel(ctx, true)
+
+    local tickLabel = inst.NS.L["Use same styling as Target"]
+    local btnLabel  = inst.NS.L["Copy styling from Target"]
+    local paired
+    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
+        local sawTick, sawBtn = false, false
+        for _, w in ipairs(child.children or {}) do
+            if w.labelText == tickLabel then sawTick = true end
+            if w.text == btnLabel then sawBtn = true end
+        end
+        if sawTick and sawBtn then paired = child end
+    end
+    assertTrue(paired ~= nil,
+        "the tick and the Copy button must be two children of ONE row")
+end)
+
 test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", function()
     -- The library reads a SCHEMA row's body through tooltipBody(), which accepts
-    -- either key. Its bespoke makers do NOT: O.SessionCheckbox and
-    -- O.InlineButtonPair read `spec.tooltip` directly, so a spec that says
-    -- `desc` renders the label with an EMPTY body -- silently, and only in game.
-    -- TWO specs in settings/General.lua's builder are affected now: "Use same
-    -- styling as Target" and "Copy styling from Target". The other three — the
-    -- Debug console toggle and the two reset buttons — are H.MasterControls'
-    -- (options-ui-§15), so their tooltip bodies are the composer's and are
-    -- keyed correctly there by construction.
+    -- either key. Its bespoke makers do NOT: O.SessionCheckbox reads
+    -- `spec.tooltip` directly, so a spec that says `desc` renders the label with
+    -- an EMPTY body -- silently, and only in game. ONE spec in
+    -- settings/General.lua's builder is affected: "Use same styling as Target".
+    -- The other three — the Debug console toggle and the two reset buttons — are
+    -- H.MasterControls' (options-ui-§15), so their bodies are the composer's and
+    -- are keyed correctly there by construction.
+    --
+    -- "Copy styling from Target" left this count when it moved onto the tick's
+    -- line: it is no longer an InlineButtonPair spec but a button built by
+    -- `copyStylingButton`, above Build, whose body goes to H.AttachTooltip
+    -- POSITIONALLY -- a call that cannot key it wrongly. That it still HAS a body
+    -- is asserted separately below, so the move cannot have quietly dropped it.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
     -- deliberately has none. The builder is the whole region after `local
     -- function Build` -- every schema row on this page is declared above it, so
     -- a `desc` key below that line is always a bespoke spec.
-    -- red under: reverting either of those two keys to `desc`.
+    -- red under: reverting the key to `desc`, or dropping either body.
     local fh = assert(io.open(T.root .. "/settings/General.lua", "r"))
     local src = fh:read("*a")
     fh:close()
@@ -541,11 +669,13 @@ test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", 
     local builder = src:sub(at)
     assertNil(builder:match("desc%s*="),
         "a bespoke spec in General's builder keys its tooltip `desc`; the library reads `tooltip` and draws no body")
-    -- ...and the five bodies are really there, so the rule above cannot be
-    -- satisfied by deleting them instead.
+    -- ...and the bodies are really there, so the rule above cannot be satisfied
+    -- by deleting them instead.
     local n = 0
     for _ in builder:gmatch("tooltip%s*=") do n = n + 1 end
-    assertEqual(n, 2, "General's builder must carry both surviving bespoke tooltip bodies")
+    assertEqual(n, 1, "General's builder must carry the surviving bespoke tooltip body")
+    assertTrue(src:find("H.AttachTooltip(btn", 1, true) ~= nil,
+        "the Copy styling button must still attach a tooltip body of its own")
 end)
 
 test("the degraded stub carries no widget maker or layout constant", function()

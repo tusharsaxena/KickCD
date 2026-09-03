@@ -239,7 +239,8 @@ if not lib then
     for _, name in ipairs({
         "CreatePanel", "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
         "AddSpacer", "AttachTooltip", "InlineButtonPair", "RenderField", "RenderRows",
-        "RenderSchema", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel", "RefreshScalars",
+        "RenderSchema", "RenderGrid", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel",
+        "RefreshScalars",
         "RestoreDefaults",
         "PatchAlwaysShowScrollbar",
         "SetChromeHeight", "TabStrip", "PageBanner", "PageHeader", "SubTabStrip",
@@ -325,7 +326,23 @@ NS.Settings.Helpers = lib:New(descriptor)
 
 local Helpers = NS.Settings.Helpers
 
-NS.RegisterOptionsPage = function(key, name, builder) Helpers.RegisterOptionsPage(key, name, builder) end
+-- Every page's Blizzard subcategory, by page key. The library's registry drops
+-- the builder's return value -- it has no use for it -- so the one thing a host
+-- needs to send a reader to ANOTHER page is otherwise unrecoverable: Blizzard's
+-- Settings.OpenToCategory takes a category id, and the object that carries it
+-- exists for exactly one statement inside each builder.
+--
+-- Captured HERE rather than in the builders, so a page added later gets it for
+-- free instead of remembering to file itself.
+NS.Settings.categoryFor = NS.Settings.categoryFor or {}
+
+NS.RegisterOptionsPage = function(key, name, builder)
+    Helpers.RegisterOptionsPage(key, name, function(mainCategory)
+        local category = builder(mainCategory)
+        NS.Settings.categoryFor[key] = category
+        return category
+    end)
+end
 NS.CreateOptionsPanel  = function() Helpers.CreateOptionsPanel() end
 NS.OpenOptionsPanel    = function() Helpers.OpenOptionsPanel() end
 

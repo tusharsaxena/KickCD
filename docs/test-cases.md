@@ -182,7 +182,7 @@ badge and any count quoted in the docs must agree with it.
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (33)
+### test_schema.lua (35)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -206,7 +206,9 @@ badge and any count quoted in the docs must agree with it.
 - a unit page's strip is identical for Target and for Focus
 - the Unit picker is drawn in the page's chrome band, never into the scroll
 - the Unit banner retargets the page and every tab follows it
+- the Unit picker is one selection shared by every per-unit page
 - a linked Focus draws the strip FIRST and the note as content
+- a linked Focus's tab strip is disabled and desaturated
 - the General page's FIRST tab is named exactly `Master controls`
 - Master controls holds exactly the canonical rows, in canonical order
 - every canonical Master control is declared exactly ONCE in the repo
@@ -841,7 +843,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (32)
+### test_options_panel.lua (35)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -870,6 +872,9 @@ badge and any count quoted in the docs must agree with it.
 - the hollow composers cost the degraded path no CLI reach it otherwise has
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
+- the linked-Focus note has no hover highlight but is still clickable
+- the linked-Focus note opens General on its Units tab
+- the Focus link's tick and its Copy button share one row
 - General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
 - every schema row the panel renders is labeled with prose, not with a key
@@ -1011,7 +1016,7 @@ badge and any count quoted in the docs must agree with it.
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
-| test_schema.lua | 33 |
+| test_schema.lua | 35 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
@@ -1043,7 +1048,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 32 |
+| test_options_panel.lua | 35 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1054,4 +1059,4 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **836** |
+| **Total** | **841** |

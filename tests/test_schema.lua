@@ -445,9 +445,23 @@ local function renderedUnitPage(page, unit)
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
     local ctx = H.CreatePanel("KickCDStrip" .. page .. tostring(unit), page, { pageKey = page })
     ctx.scroll = AceGUI:Create("ScrollFrame")
-    ctx.unit = unit
+    -- Through the SHARED value, not onto the ctx: the selection is one piece of
+    -- session state across all three unit pages, and a ctx field set here would
+    -- be overwritten by the read at the top of the render anyway.
+    H.SetViewedUnit(unit)
     H.RenderUnitPanel(ctx, page)
     return ctx, H
+end
+
+--- The same fixture, but WITHOUT seeding the unit: it renders whatever the shared
+--- selection currently says, which is how a page a reader walks to behaves.
+local function renderedUnitPage2(page)
+    local H = T.NS.Settings.Helpers
+    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDWalk" .. page, page, { pageKey = page })
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    H.RenderUnitPanel(ctx, page)
+    return ctx
 end
 
 test("the Unit picker is drawn in the page's chrome band, never into the scroll", function()
@@ -476,14 +490,47 @@ test("the Unit banner retargets the page and every tab follows it", function()
 
     ctx.__bannerWidget:__fire("OnValueChanged", "focus")
 
-    assertEqual(ctx.unit, "focus", "selecting Focus must retarget the page")
+    assertEqual(T.NS.Settings.Helpers.ViewedUnit(), "focus",
+        "selecting Focus must retarget the pages")
     assertTrue(ctx.__bannerWidget ~= nil, "the banner must survive its own selection")
+    -- The click publishes a STRUCTURAL refresh rather than re-rendering this page
+    -- by hand, so the ctx catches up on that pass; re-render it here to read the
+    -- result the way an on-screen page would have.
+    T.NS.Settings.Helpers.RenderUnitPanel(ctx, "icons")
+    assertEqual(ctx.unit, "focus", "…and this page followed it")
     -- Every row the page now holds belongs to Focus. RenderTabbedSchema renders
     -- one tab's rows, so this reads the active tab's partition back out.
     local H = T.NS.Settings.Helpers
     for _, def in ipairs(H.SchemaForPanel("icons", ctx.unit)) do
         assertEqual(def.unit, "focus", "row " .. def.path .. " is not the selected unit's")
     end
+end)
+
+-- THE PICKER IS SHARED ACROSS THE THREE UNIT PAGES. It was per-ctx, so selecting
+-- Focus on Icons and walking to Cast bar arrived back on Target -- the reader had
+-- to re-pick the unit on each page, and nothing on screen said why it had moved.
+--
+-- Session-only and deliberately NOT a SavedVariable: it is where the reader is
+-- looking, not something they configured.
+--
+-- red under: reading the unit off the ctx again (`ctx.unit = ctx.unit or ...`),
+-- or writing the selection to the ctx instead of through SetViewedUnit.
+test("the Unit picker is one selection shared by every per-unit page", function()
+    local H = T.NS.Settings.Helpers
+    local before = H.ViewedUnit()
+
+    local icons = renderedUnitPage("icons", "target")
+    icons.__bannerWidget:__fire("OnValueChanged", "focus")
+
+    for _, page in ipairs({ "castbar", "label" }) do
+        local ctx = renderedUnitPage2(page)
+        assertEqual(ctx.unit, "focus",
+            page .. " opened on Target after Icons was switched to Focus")
+        assertEqual(ctx.__bannerWidget.value, "focus",
+            page .. "'s picker disagrees with the page it heads")
+    end
+
+    H.SetViewedUnit(before)
 end)
 
 test("a linked Focus draws the strip FIRST and the note as content", function()
@@ -513,13 +560,72 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
         "a linked Focus draws the same strip an unlinked one does")
     assertTrue(unlinked > 1, "sanity: the unlinked page really drew a strip")
 
-    -- ...and the note is IN THE SCROLL, under the strip.
-    local noted = false
+    -- ...and the note is IN THE SCROLL, under the strip -- as a LINK that opens
+    -- the page holding the tick it names. It used to be a plain line naming a
+    -- control and a page and leaving the reader to find both by hand, two
+    -- categories away in Blizzard's list.
+    local note
     for _, child in ipairs(ctx.scroll.children) do
         if type(child.text) == "string"
-           and child.text:find("Linked to Target", 1, true) then noted = true end
+           and child.text:find("Linked to Target", 1, true) then note = child end
     end
-    assertTrue(noted, "the link note must be drawn as page content")
+    assertTrue(note ~= nil, "the link note must be drawn as page content")
+    assertEqual(note.type, "InteractiveLabel", "the note must be clickable")
+    assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
+        "the destination must be named in the note")
+    assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
+        "and coloured, or nothing on screen says it is a link")
+    assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
+        "the note names a destination but goes nowhere")
+
+    if cfg then cfg.link = before end
+end)
+
+-- A linked Focus's strip is INERT. Every tab on it draws the same thing -- the
+-- link note, and nothing else, because no schema row is `alwaysPerUnit` -- so a
+-- strip you can click is a control that appears to do something and does nothing,
+-- which is the failure the arrows were removed from the reorder lists for.
+--
+-- The strip still DRAWS (options-ui-§13: the page keeps its shape when the picker
+-- flips), it just cannot be operated, and it is desaturated so that reads as
+-- deliberate rather than broken.
+--
+-- red under: dropping the disable pass, or applying it to an unlinked page --
+-- where the tabs are the only way to reach most of the page's rows.
+test("a linked Focus's tab strip is disabled and desaturated", function()
+    local NS = T.NS
+    local cfg = NS.Units.Config("focus")
+    local before = cfg and cfg.link
+    if cfg then cfg.link = true end
+
+    local ctx = renderedUnitPage("castbar", "focus")
+    local buttons = (ctx.__tabLayout or {}).buttons or {}
+    assertTrue(#buttons > 1, "sanity: the linked page still draws its strip")
+    for i, b in ipairs(buttons) do
+        assertEqual(b.__enabled, false, "tab " .. i .. " is still clickable")
+        local dim = false
+        for _, r in ipairs(b.__regions or {}) do
+            if r.__desaturated then dim = true end
+        end
+        assertTrue(dim, "tab " .. i .. " was not desaturated")
+    end
+
+    -- And an UNLINKED page's strip is untouched: there the tabs are how you reach
+    -- the rows, so disabling them would be a page you cannot use. Counted rather
+    -- than asserted per button, because the library disables the SELECTED tab on
+    -- every strip -- that one is already where you are -- so "none disabled" is
+    -- not the invariant; "the others still work" is.
+    if cfg then cfg.link = false end
+    local live = renderedUnitPage("castbar", "focus")
+    local operable, dimmed = 0, 0
+    for _, b in ipairs((live.__tabLayout or {}).buttons or {}) do
+        if b.__enabled ~= false then operable = operable + 1 end
+        for _, r in ipairs(b.__regions or {}) do
+            if r.__desaturated then dimmed = dimmed + 1 end
+        end
+    end
+    assertTrue(operable > 0, "an unlinked page's strip must stay operable")
+    assertEqual(dimmed, 0, "and it must not be dimmed")
 
     if cfg then cfg.link = before end
 end)

@@ -73,8 +73,35 @@ end
 -- between two units rather than three per-page copies of it, and the scroll --
 -- the only place left to draw them -- is cleared out from under them by every
 -- tab click.
+--- Which unit every per-unit page is editing, and the only writer of it.
+---
+--- ONE value for the three pages rather than one per ctx, which is what it was:
+--- flipping the picker to Focus on Icons and walking to Cast bar landed back on
+--- Target, because each page's ctx carried its own. The picker names which half
+--- of the addon you are configuring, and that is a property of the reader's
+--- session, not of the page they happen to have open.
+---
+--- Session-only (core/State.lua) and never persisted: see the note there.
+--- Validated on read, so a value that is not a real unit -- an old field, a hand
+--- edit -- falls back to Target rather than rendering a page for nothing.
+function Helpers.ViewedUnit()
+    local want = NS.State and NS.State.viewedUnit
+    for _, u in ipairs(NS.Units.LIST) do
+        if u == want then return u end
+    end
+    return NS.Units.LIST[1] or "target"
+end
+
+function Helpers.SetViewedUnit(unit)
+    if NS.State then NS.State.viewedUnit = unit end
+end
+
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
-    ctx.unit = ctx.unit or "target"
+    -- Read, never defaulted from the ctx: the shared value is the source of
+    -- truth, and a ctx that kept its own would be the second copy this exists to
+    -- remove. It is still written onto the ctx because everything below -- the
+    -- schema partition, the link check, the tests -- reads ctx.unit.
+    ctx.unit = Helpers.ViewedUnit()
     Helpers.ClearScroll(ctx)
 
     local items, order = {}, {}
@@ -91,8 +118,14 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
         value   = ctx.unit,
         onSelect = function(value)
             if not value or value == ctx.unit then return end
-            ctx.unit = value
-            Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+            Helpers.SetViewedUnit(value)
+            -- STRUCTURAL, not a re-render of this page alone. The selection is
+            -- shared, so the other two unit pages are now showing the wrong unit;
+            -- RefreshAllPanels re-renders the ones on screen and marks the hidden
+            -- ones dirty so they repaint on their next OnShow. Re-rendering only
+            -- this page -- which is what this used to do -- is what let the three
+            -- pages disagree in the first place.
+            Helpers.RefreshAllPanels()
         end,
     })
     -- Parked on the ctx so a suite can drive the selection the way a click
@@ -125,6 +158,36 @@ end
 --- function renders the active tab's rows itself, and the whole point here is
 --- that most of them must not be rendered. Tab selection, the stale-pointer
 --- heal and the re-render on click are the same three things it does.
+--- Make a drawn strip inert: every button disabled, every one of its textures
+--- desaturated.
+---
+--- ONLY for the linked-Focus page, and the reason is that its tabs have nothing
+--- to switch BETWEEN. No schema row is `alwaysPerUnit`, so every group's linked
+--- content is the same: the note and nothing else. A strip you can click that
+--- redraws the identical page is a control that appears to do something and does
+--- not -- the same defect the ↑/↓ arrows had before the reorder lists took a
+--- drag. The strip still draws, because the page must not change shape when the
+--- picker flips (options-ui-§13); it just cannot be operated, and the desaturation
+--- is what makes that read as deliberate rather than broken.
+---
+--- Done on the buttons TabStrip returns rather than through a flag on the tab
+--- spec, because the spec has no such flag: the library owns the strip and this is
+--- one page in one addon. If a second page ever needs it, that is the moment it
+--- becomes `disabled` on the spec and moves into LibKa0s, not before.
+local function deadenStrip(buttons)
+    for _, b in ipairs(buttons or {}) do
+        if b.SetEnabled then b:SetEnabled(false) end
+        -- The art is created by the library and kept in no named field, so it is
+        -- reached the way the client offers it. A FontString answers no
+        -- SetDesaturated, hence the guard rather than a blanket call.
+        if b.GetRegions then
+            for _, region in ipairs({ b:GetRegions() }) do
+                if region and region.SetDesaturated then region:SetDesaturated(true) end
+            end
+        end
+    end
+end
+
 function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
 
@@ -142,7 +205,7 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
 
     local tabs = {}
     for i, name in ipairs(groups) do tabs[i] = { key = name, label = name } end
-    Helpers.TabStrip(ctx, {
+    local buttons = Helpers.TabStrip(ctx, {
         tabs  = tabs,
         value = ctx.activeTab,
         onSelect = function(key)
@@ -152,6 +215,7 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
             Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
         end,
     })
+    deadenStrip(buttons)
 
     local active = {}
     for _, def in ipairs(rows) do
@@ -161,7 +225,18 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     -- noHeadings, because the tab label already carries the section's name and
     -- drawing a Heading under it is the same label twice (options-ui-§7).
     Helpers.RenderRows(ctx, perUnit, afterGroup, nil, { noHeadings = true })
-    Helpers.TextRow(ctx, L["Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."])
+    -- A LINK, not a sentence about where to go. The note named the control and
+    -- the page holding it and then left the reader to find both by hand, two
+    -- categories away in Blizzard's list -- so the phrase naming the destination
+    -- now IS the way there. The whole line takes the click (AceGUI has no widget
+    -- that mixes clickable and static runs in one string); the colour on the
+    -- middle phrase is what says so.
+    Helpers.LinkRow(ctx,
+        L["Linked to Target. Untick 'Use same styling as Target' on the "]
+            .. Helpers.LinkText(L["General page's Units tab"])
+            .. L[" to give Focus its own."],
+        function() Helpers.OpenPageTab("general", L["Units"]) end,
+        L["Open the General page's Units tab."])
     local scroll = ensureScroll(ctx)
     if scroll and scroll.DoLayout then scroll:DoLayout() end
 end

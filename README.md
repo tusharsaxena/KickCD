@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-836%2F836_passing-green)
+![Tests](https://img.shields.io/badge/Tests-841%2F841_passing-green)
 
 ![Logo](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
 

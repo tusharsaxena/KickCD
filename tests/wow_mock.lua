@@ -334,6 +334,21 @@ end
 function FRAME_METHODS.CreateLine(self) return createRegion(self, "Line", nil) end
 function FRAME_METHODS.CreateMaskTexture(self) return createRegion(self, "MaskTexture", nil) end
 
+-- ── Enabled / saturation ────────────────────────────────────────────────────
+--
+-- Both are RECORDED rather than swallowed. A control the page deliberately makes
+-- inert -- the tab strip on a linked Focus, which has one thing to show whichever
+-- tab is picked -- is a state a case has to be able to read back, and a
+-- PascalCase no-op answers "did the page disable it?" with nothing at all. The
+-- mock cannot make a disabled button refuse a directly-fired script, so the flag
+-- is what a case asserts (the library's own makeTab says the same thing about its
+-- redundant `if active then return end` guard).
+function FRAME_METHODS.SetEnabled(self, v) self.__enabled = not not v; return self end
+function FRAME_METHODS.IsEnabled(self) return self.__enabled ~= false end
+function FRAME_METHODS.SetDesaturated(self, v) self.__desaturated = not not v; return self end
+function FRAME_METHODS.IsDesaturated(self) return self.__desaturated == true end
+function FRAME_METHODS.GetRegions(self) return unpack(self.__regions or {}) end
+
 -- ── Scripts / events ────────────────────────────────────────────────────────
 function FRAME_METHODS.SetScript(self, which, fn)
     self.__scripts[which] = fn and { fn } or nil
@@ -729,6 +744,12 @@ local function build()
         function w:SetImage(...) self.image = { ... }; return self end
         function w:SetImageSize(...) self.imageSize = { ... }; return self end
         function w:SetMaxLetters(v) self.maxLetters = v; return self end
+        -- RECORDED, not swallowed. AceGUI's InteractiveLabel forwards this to
+        -- Texture:SetTexture, whose four-number form is the deprecated colour API
+        -- -- and the client answers it with a solid bright-green block across the
+        -- whole label on mouseover. A no-op here cannot tell "no highlight" from
+        -- "a highlight nobody meant", which is exactly what shipped.
+        function w:SetHighlight(...) self.__highlight = { ... }; return self end
         function w:SetCallback(name, fn) self.callbacks[name] = fn; return self end
         function w:AddChild(child) self.children[#self.children + 1] = child; return self end
         function w:ReleaseChildren() self.children = {}; return self end
