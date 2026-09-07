@@ -236,8 +236,16 @@ if not lib then
     -- settings/General.lua now call in RenderSchema's place. RefreshScalars joined for a different
     -- reason and it is NOT cosmetic: Helpers.SetAndRefresh calls it on every write now, so on the
     -- degraded path a missing member is a raise inside `/kcd set`, which still works with no panel.
+    --
+    -- SetRenderer joined the list with CX03. It had been EXEMPTED in
+    -- tests/test_surface_parity.lua on the argument that a page which cannot be built has nothing
+    -- to render into -- true, and equally true of CreatePanel and EnsureScroll beside it, which are
+    -- stubbed anyway. That exemption is how AbsorbTracker's stub came to omit the member outright
+    -- with every suite green, and it is now called by all six of this addon's pages rather than
+    -- four. A member the host calls is a member the stub owes.
     for _, name in ipairs({
-        "CreatePanel", "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
+        "CreatePanel", "SetRenderer",
+        "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
         "AddSpacer", "AttachTooltip", "InlineButtonPair", "RenderField", "RenderRows",
         "RenderSchema", "RenderGrid", "SessionCheckbox", "RefreshAllPanels", "RefreshPanel",
         "RefreshScalars",

@@ -1186,8 +1186,19 @@ local function ensurePanel()
         StaticPopup_Show("KICKCD_RESET_SPELLS")
     end
 
-    panel:SetScript("OnShow", function()
-        H.EnsureDefaultsButton(panel)
+    -- Through H.SetRenderer rather than a parked OnShow (options-ui-§11,
+    -- CX03). The library builds the Defaults button and refuses to render in
+    -- combat, which is the point: the Blizzard AddOns sidebar reaches a canvas
+    -- panel without going through OpenOptionsPanel, so the handler this
+    -- replaces was the one way into the Spells page with no combat guard on
+    -- it, on the path a player is most likely to take mid-fight.
+    --
+    -- This page renders on EVERY show, not only the first: OnHide below hands
+    -- the whole widget tree back to AceGUI's pool, so a second show that
+    -- skipped the renderer would draw nothing at all. It says so through
+    -- H.RefreshPanel there rather than by reaching for the library's dirty
+    -- flag directly.
+    H.SetRenderer(ctx, function()
         -- "Fresh open" = the user just brought the entire Settings UI
         -- back up (vs. just switching tabs within an already-open
         -- session). Re-seed the spec dropdown to the player's CURRENT
@@ -1217,6 +1228,11 @@ local function ensurePanel()
         if not (SettingsPanel and SettingsPanel:IsShown()) then
             freshOpen = true
         end
+        -- The tree released above is the page's entire body, so the next show
+        -- MUST re-render. Marking the hidden page dirty is how a host says that
+        -- to the library (H.RefreshPanel, structural); the renderer is skipped
+        -- on a show that finds the page neither unrendered nor dirty.
+        H.RefreshPanel(ctx, true)
     end)
 
     -- The Spells panel is a plain-table module, not an AceAddon submodule, so

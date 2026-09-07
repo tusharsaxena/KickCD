@@ -129,7 +129,15 @@ test("the Options stub carries every member the host calls", function()
         "RegisterOptionsPage", "CreateOptionsPanel", "OpenOptionsPanel", "__pages",
         -- The widget makers, the flow engine and the landing-page renderer. options-ui-§1 forbids
         -- a host copy outright; a page that cannot be built has nothing to render into.
-        "SetRenderer", "RenderGrid", "TextRow", "BuildLandingPage",
+        --
+        -- SetRenderer LEFT this list (CX03). It sat here under that same sentence, but it is not a
+        -- widget maker or a layout constant -- it is the lifecycle registrar every page hands its
+        -- renderer to, and it is where the Blizzard-sidebar combat refusal lives. The exemption is
+        -- how AbsorbTracker's stub could omit the member entirely with its own parity case green,
+        -- so the collection stopped granting it. It is stubbed in settings/OptionsSetup.lua now,
+        -- like CreatePanel, which is exempt from nothing and is unreachable on the degraded path
+        -- for exactly the same reason.
+        "RenderGrid", "TextRow", "BuildLandingPage",
         -- The library's layout constants. Same rule, stated as constants:
         -- tests/test_options_panel.lua's source scan already fails if a copy of any of these
         -- appears in the host or in the stub.
