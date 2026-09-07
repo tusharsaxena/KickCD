@@ -724,7 +724,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump reports a plain boolean notInterruptible by value
 - DebugDump reports a nil notInterruptible as interruptible
 - DebugDump reports a secret notInterruptible without touching tostring
-- DebugDump prints no state line for a secret value with no curve evaluator
+- DebugDump still reports a secret value when the curve evaluator is missing
 - DebugDump reports the channel flag and the record's field TYPES only
 - DebugDump reports secret record fields by type, never by value
 - DebugDump renders the configured per-state colors from the live profile

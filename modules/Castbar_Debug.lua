@@ -39,14 +39,23 @@ local NINT_REPORT = {
     end,
 }
 
+--- The DEFAULT arm of NINT_REPORT: anything that is neither a boolean nor a
+--- nil lands here, which on a 12.0 client is the interesting case.
+---
+--- The line goes out UNCONDITIONALLY. Whether C_CurveUtil is there decides how
+--- the visual state is being determined, and that is a clause of the sentence;
+--- it is not permission to say anything at all. Printing only when the
+--- evaluator exists is what this used to do, and it left a client without one
+--- reporting the field as secret and then falling silent about it -- which,
+--- to somebody pasting the dump into a bug report, reads exactly like a dump
+--- that had nothing to say rather than one that could not render it.
+---
+--- The value itself is still never tostring'd or formatted: it is described.
 local function reportSecretNint(print)
-    -- Likely secret. Use the curve evaluator to surface a safe int.
-    if _G.C_CurveUtil and _G.C_CurveUtil.EvaluateColorValueFromBoolean then
-        -- Pass to FontString:SetText via a hidden frame to render and
-        -- read back. Cleanest: just say "secret" and trust the curve.
-        print("    secret-tainted; visual state determined via "
-            .. "C_CurveUtil.EvaluateColorValueFromBoolean")
-    end
+    local via = (_G.C_CurveUtil and _G.C_CurveUtil.EvaluateColorValueFromBoolean)
+        and "visual state determined via C_CurveUtil.EvaluateColorValueFromBoolean"
+        or  "C_CurveUtil.EvaluateColorValueFromBoolean unavailable"
+    print("    secret-tainted; " .. via)
 end
 
 --- Who the unit is and whether we can attack it.
