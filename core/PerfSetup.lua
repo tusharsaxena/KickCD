@@ -67,6 +67,16 @@ end
 
 NS.Perf = lib:New({
     name    = addonName,
+    -- THE FOLDER NAME, and a different question from the one above even though
+    -- this addon answers both with the same string. `name` is what the panel's
+    -- frame globals are seeded from; `addonName` is what
+    -- libs/LibKa0s/PerfPanel.lua builds the close control's texture path from,
+    -- and it reads `d.addonName or d.name` -- so leaving this out would still be
+    -- right, by luck, until the day the two strings diverge. `title` below is
+    -- already a THIRD string, which is what a rename reaches for first. Passed
+    -- explicitly for the same reason core/DebugLogSetup.lua passes it, and the
+    -- two descriptors are deliberately the same shape.
+    addonName = addonName,
     title   = "Ka0s KickCD",
     slash   = "/kcd",
     -- Not `NS.VERSION` alone. While this file sat ABOVE core/KickCD.lua — which
@@ -207,21 +217,32 @@ NS.Perf = lib:New({
     -- must pass a PLAIN table holding only the keys it actually translates —
     -- never the addon-wide locale table. settings/Slash.lua does exactly that.
 
-    -- Built by the addon's ONE close-button wrapper (core/CoreSetup.lua) rather
-    -- than a lookalike or a second route to the same library function, so this
-    -- panel and the debug console beside it cannot drift apart. The wrapper is
-    -- what supplies the addon FOLDER name the library needs to build a texture
-    -- path from; calling the library seam directly from here would compile, run,
-    -- pass every suite, and quietly draw a multiplication sign on the one window
-    -- in this addon whose close button the host builds (anti-patterns-§64).
-    decorate = function(frame, api)
-        if not NS.MakeCloseButton then return end
-        local close = NS.MakeCloseButton(frame, api.Hide)
-        -- The factory answers nil where CreateFrame is unavailable — a close
-        -- button is worth degrading over, not erroring over.
-        if close then
-            close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -(api.TITLE_H - 18) / 2)
-            frame.closeButton = close
-        end
-    end,
+    -- NO `decorate`, and the descriptor deliberately ends here. This file used
+    -- to supply that hook, and by the end its whole body was a close button:
+    -- LibKa0s-Perf's own panel draws the identical control in its else arm
+    -- (libs/LibKa0s/PerfPanel.lua:185-196) out of the same LibKa0s-Core factory,
+    -- at the same TOPRIGHT anchor and the same -(TITLE_H - 18) / 2 offset,
+    -- resolving the folder through `d.addonName or d.name` -- which the
+    -- `addonName` field above answers explicitly rather than by luck.
+    --
+    -- THE HOOK EARNED ITS PLACE ONCE. It began as
+    -- `NS.DebugLog.MakeCloseButton(frame, api.Hide)`, two arguments onto a
+    -- three-argument function, so this panel drew a multiplication sign while
+    -- the console beside it wore the collection's mark -- a texture path that is
+    -- never built draws nothing and raises nothing, so luacheck was clean and
+    -- every suite was green. Routing it through NS.MakeCloseButton fixed the
+    -- drawing and made the hook IDENTICAL to the arm it was shadowing, which is
+    -- the point at which a private copy stops being a fix and becomes a
+    -- liability: the two arms are EXCLUSIVE, so for as long as `decorate` sat
+    -- here the library's own control never ran once, in any client, and nothing
+    -- would have said so the day the two drifted (performance-§4,
+    -- anti-patterns-§64). tests/test_perfsetup.lua pins BOTH directions -- the
+    -- folder name present, the hook absent -- and then shows the real panel
+    -- against a spy on the library's factory, because a descriptor's shape says
+    -- nothing about what reaches the screen.
+    --
+    -- Add one back only for chrome the library does not draw, and build its
+    -- close control through `NS.MakeCloseButton` (core/CoreSetup.lua) -- the one
+    -- wrapper that carries the folder name -- never through the library seam
+    -- directly.
 })

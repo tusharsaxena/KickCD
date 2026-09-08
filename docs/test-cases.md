@@ -953,11 +953,12 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (27)
+### test_perfsetup.lua (28)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
 - every bracket call site reads the gate through a load-time upvalue
+- the perf descriptor names the FOLDER and leaves the close control to the library
 - every declared bucket is reached by a real bracket
 - the declared bucket list and the bracketed call sites agree exactly
 - nesting is declared for every bucket that runs inside another
@@ -1061,9 +1062,9 @@ badge and any count quoted in the docs must agree with it.
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 27 |
+| test_perfsetup.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **844** |
+| **Total** | **845** |

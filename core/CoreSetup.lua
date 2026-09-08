@@ -152,11 +152,24 @@ NS.ResolveColor = lib.ResolveColor
 -- and this file has it as its first vararg.
 --
 -- ONE WRAPPER, so every close control this addon builds gets the same mark
--- instead of each call site remembering — today that is core/PerfSetup.lua's step
--- panel, and tomorrow it is whatever window is added next. A passthrough that
--- dropped the third argument would be green in every suite and wrong on screen:
--- the library falls back to a multiplication sign, which is what a degraded
--- install should get and not what a working one should (anti-patterns-§64).
+-- instead of each call site remembering. A passthrough that dropped the third
+-- argument would be green in every suite and wrong on screen: the library falls
+-- back to a multiplication sign, which is what a degraded install should get and
+-- not what a working one should (anti-patterns-§64).
+--
+-- NO CALL SITE TODAY, recorded here rather than left to be rediscovered.
+-- core/PerfSetup.lua's `decorate` hook was the last one and M4-16 deleted it: the
+-- perf panel's close control now comes from libs/LibKa0s/PerfPanel.lua's own else
+-- arm, which calls the same library factory with the folder name that
+-- descriptor's `addonName` supplies, and the debug console's controls were always
+-- the library's. The wrapper STAYS, for two reasons. It is the live half of a
+-- two-sided seam — the degradation branch above publishes the same name, and
+-- tests/test_surface_parity.lua compares the whole namespace across the two loads,
+-- so deleting one side means deleting both. And the first close control this addon
+-- draws itself must come through here rather than reaching for lib.MakeCloseButton
+-- and dropping the argument again, which is exactly how the perf panel wore a
+-- multiplication sign through a green suite. If a dead-export sweep reaches this
+-- before such a control arrives, deleting the pair is the right answer.
 NS.MakeCloseButton = function(parent, onClick)
     return lib.MakeCloseButton(parent, onClick, addonName)
 end

@@ -689,11 +689,12 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
   read-only edit box. Its close control must be the same `close` art, not a `×`. A mismatch between
   the two windows means the descriptor is right and something else regressed.
 - **The perf panel closes with the same mark, too.** `/kcd perf start` and look at the step panel's
-  top-right. ⚠ **This is the one close button in this addon that the HOST builds**, so it is the one
-  that can silently disagree with the console beside it. It must come through `NS.MakeCloseButton`
-  (`core/CoreSetup.lua`), the addon's single wrapper — a call that reaches the library seam directly
-  compiles, runs and passes every suite while drawing a `×` (anti-patterns-§64). Put the panel and the
-  console on screen together and compare the two close controls pixel for pixel.
+  top-right. ⚠ **As of `M4-16` no close button in this addon is built by the HOST** — this one used
+  to be, through a `decorate` hook in `core/PerfSetup.lua`, and that hook is gone; the library's own
+  `PerfPanel` arm draws it now, from the `addonName` the descriptor states. So this bullet has
+  changed meaning: it is no longer checking a wrapper call, it is checking that a descriptor field
+  reached the library. Put the panel and the console on screen together and compare the two close
+  controls pixel for pixel — see **30** for the full check.
 - **The console text is monospace.** Timestamps and `[tags]` line up in a column down the left. If
   they do not, `Const.FONT_MONO` resolved to something that is not JetBrains Mono. Two outcomes are
   possible and they look different: a **proportional** face means the fallback to the client's
@@ -823,6 +824,35 @@ carries its own.
 
 ---
 
+### 30. The perf panel's close control, after `decorate` was deleted
+
+**Smoke, session 3.** Run after `M4-16` removed the `decorate` field from `core/PerfSetup.lua`'s
+descriptor. **Nothing on screen is supposed to change**, and that is precisely why it needs a human:
+the change swaps which code draws the control, not what the control looks like, and the two arms are
+exclusive — `libs/LibKa0s/PerfPanel.lua` runs the host's hook **or** its own else arm, never both. For
+as long as the hook existed the library's arm never ran once in a client from this addon, so this is
+the first time it will have run at all. A headless case pins the argument that reaches the factory
+(`tests/test_perfsetup.lua`); nothing headless can see what was drawn.
+
+**Setup.** `/reload`, then `/kcd perf start`.
+
+**Checks.**
+- The step panel opens with **exactly one** close control in its top-right corner — not two stacked on
+  the same corner, and not none.
+- That control is the shared **`close`** mark from `libs/LibKa0s/media/icons/`, the same small white
+  glyph the debug console wears. **A multiplication sign `×` is the regression**, and it means the
+  addon FOLDER name stopped reaching `MakeCloseButton`: the library is vendored, cannot infer which
+  folder it was copied into, and falls back to the glyph when nothing tells it. The one line that
+  tells it is now `addonName = addonName` in the perf descriptor.
+- It sits at the same inset from the same corner as before the change — level with the title, ~6px in
+  from the right edge. Put the panel and `/kcd debug window` on screen together and compare the two
+  close controls pixel for pixel; they come from one factory and must be indistinguishable.
+- **Clicking it hides the panel** and nothing else: the run is not canceled, and `/kcd perf report`
+  afterwards still has the capture. The click handler is now the library's own `HidePanel` rather
+  than one this addon passed in, which is the half of the swap a screenshot cannot show.
+- No Lua errors at any point.
+
+---
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
@@ -833,6 +863,7 @@ carries its own.
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
+- **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
 - **Pre-release / TOC bump:** the entire suite. The 26 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
