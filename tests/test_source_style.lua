@@ -19,7 +19,7 @@
 --
 -- This is a SOURCE SCAN, and here that is forced rather than chosen. tests/run.lua:83-97
 -- publishes the per-instance mock table AS `mocks._G`, precisely so that `_G.X` and a
--- bare `X` resolve through the same table — the two spellings are behaviourally
+-- bare `X` resolve through the same table — the two spellings are behaviorally
 -- identical under the harness, and in the client too. No input a case can pass
 -- distinguishes them. The rule's whole value is legibility, so the defect is invisible
 -- to execution, which is how the violations this now guards sat under 845 green cases

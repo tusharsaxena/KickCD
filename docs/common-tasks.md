@@ -281,3 +281,20 @@ CRLF on every tracked text file. The repo's `.gitattributes` enforces `* text=au
 smudge filter normalizes on checkout — the working tree should never contain LF-terminated source
 files. The tree was normalized in commits `b6b9853` / `a74251a` / `3ba3ca3`. New files should match the
 surrounding files in their directory.
+
+### US English
+
+Every word a person wrote in this repository is US English — labels, chat text, comments,
+identifiers and Markdown prose alike. `localization-§5` publishes the canonical `BRITISH` /
+`ALLOWED` pair, and `tests/test_spelling.lua` carries both lists whole and sweeps everything git
+tracks. The rule is not taste. A locale key *is* the English source string (`localization-§1`), so a
+British spelling wrapped in `NS.L` is frozen into every translation that derives from it, and
+correcting it later orphans the key without a sound.
+
+Four things are out of scope, and each is named in the gate rather than inferred from a pattern:
+`libs/` and `tests/_kit/`, which are vendored and not ours to respell; the frozen dated bundles under
+`docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/revendor/` and `docs/perf-analysis/`,
+which record what was true on a past day; and the gate's own copy of the lists. One narrower waiver
+sits beside them, per file and per word: `docs/smoke-tests.md`'s session-3 perf check quotes two
+forbidden spellings in order to tell the reader that a double L in the client means the string did
+not come from the vendored payload, so correcting the quote would delete the check.

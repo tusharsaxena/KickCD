@@ -345,10 +345,10 @@ end
 --   DEGRADED FALLBACK The `or` arm behind an L lookup, for the load path where
 --                     locales/enUS.lua has not run. Routing it through L is
 --                     circular: it exists precisely because L is not there.
---   SPLIT COLOUR      The sentence's spans carry different colours mid-line
+--   SPLIT COLOR       The sentence's spans carry different colors mid-line
 --                     because slash-dispatch.md fixes them. One key per sentence
 --                     would carry `|c…|r` inside translatable text and would
---                     depend on the colour stack restoring the outer span, a
+--                     depend on the color stack restoring the outer span, a
 --                     rendering question no headless case can settle. One key
 --                     per span pins English word order and leaves a translator
 --                     nothing to reorder.
@@ -388,12 +388,12 @@ local RESIDUE = {
     -- settings/Slash.lua — the schema-gate hints and the degraded dispatcher.
     {"settings/Slash.lua", " (depends on %s = %s)", "NOT YET ROUTED"},
     {"settings/Slash.lua", "flip %s to %s for %s", "NOT YET ROUTED"},
-    {"settings/Slash.lua", "`/kcd reset spells` has moved to |cFFFFFF00/kcd spells resetall|r ", "SPLIT COLOUR"},
-    {"settings/Slash.lua", "\\226\\128\\148 it rebuilds every spec's list.", "SPLIT COLOUR"},
-    {"settings/Slash.lua", "`/kcd reset %s` is gone \\226\\128\\148 `reset` now takes a setting path. ", "SPLIT COLOUR"},
-    {"settings/Slash.lua", "Use the ", "SPLIT COLOUR"},
-    {"settings/Slash.lua", " panel's |cFFFFFF00Defaults|r button to reset the ", "SPLIT COLOUR"},
-    {"settings/Slash.lua", "whole page, or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOUR"},
+    {"settings/Slash.lua", "`/kcd reset spells` has moved to |cFFFFFF00/kcd spells resetall|r ", "SPLIT COLOR"},
+    {"settings/Slash.lua", "\\226\\128\\148 it rebuilds every spec's list.", "SPLIT COLOR"},
+    {"settings/Slash.lua", "`/kcd reset %s` is gone \\226\\128\\148 `reset` now takes a setting path. ", "SPLIT COLOR"},
+    {"settings/Slash.lua", "Use the ", "SPLIT COLOR"},
+    {"settings/Slash.lua", " panel's |cFFFFFF00Defaults|r button to reset the ", "SPLIT COLOR"},
+    {"settings/Slash.lua", "whole page, or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOR"},
     {"settings/Slash.lua", " is unavailable. ", "DEGRADED STEM"},
     {"settings/Slash.lua", "the LibKa0s library is missing", "VALIDATOR"},
     {"settings/Slash.lua", " slash commands", "FRAGMENT"},
@@ -442,7 +442,7 @@ local RESIDUE = {
     -- French client these two classes read English while the other eleven do not.
     -- Routing them would put that inconsistency in a locale file instead of
     -- ending it; the fix is to consult the client first and keep these as the
-    -- no-global fallback, which is a behaviour change M4-21 does not scope.
+    -- no-global fallback, which is a behavior change M4-21 does not scope.
     {"settings/Spells.lua", "Death Knight", "CLIENT SUPPLIED"},
     {"settings/Spells.lua", "Demon Hunter", "CLIENT SUPPLIED"},
 }
@@ -450,7 +450,7 @@ local RESIDUE = {
 local CLASSES = {
     ["DIAGNOSTIC"]        = true, ["VALIDATOR"]      = true,
     ["DEGRADED STEM"]     = true, ["DEGRADED FALLBACK"] = true,
-    ["SPLIT COLOUR"]      = true, ["FRAGMENT"]       = true,
+    ["SPLIT COLOR"]       = true, ["FRAGMENT"]       = true,
     ["LIB DESCRIPTOR"]    = true, ["MEDIA KEY"]      = true,
     ["FORMAT SUFFIX"]     = true, ["CLIENT SUPPLIED"] = true,
     ["NOT YET ROUTED"]    = true,
@@ -552,7 +552,7 @@ end)
 test("every recorded residue literal is still unrouted in the file that names it", function()
     -- The direction that keeps the register from decaying into a mute button: an
     -- entry whose literal was wrapped, reworded or deleted goes red here rather
-    -- than living on as a licence for a string that no longer exists.
+    -- than living on as a license for a string that no longer exists.
     local stale = {}
     for _, entry in ipairs(RESIDUE) do
         local rel, text = entry[1], entry[2]

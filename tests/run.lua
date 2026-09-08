@@ -170,6 +170,7 @@ local SUITES = {
     "test_flow_traces",
     "test_version",
     "test_source_style",
+    "test_spelling",
     "test_slash_style",
     "test_slash",
     "test_opensettings",

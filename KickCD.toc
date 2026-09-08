@@ -91,7 +91,7 @@ settings\Slash.lua
 # any of them raises during load, not on first open.
 settings\OptionsSetup.lua
 # LOAD-BEARING POSITION: this file DECORATES the Helpers instance in place with
-# the members that did not generalise into the library — Helpers.AddComposed,
+# the members that did not generalize into the library — Helpers.AddComposed,
 # Helpers.AnchorValues and Helpers.LSMValues among them. settings/General.lua,
 # settings/Icons.lua and settings/Castbar.lua call AddComposed at file scope, and
 # settings/Icons.lua and settings/Castbar.lua resolve AnchorValues into a

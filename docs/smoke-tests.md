@@ -329,7 +329,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows, so this is a dedicated `Helpers.ResetAllPositions()` pass — previously `resetall` silently left dragged grids in place). Profiles untouched. No CLI confirmation prompt. |
-| `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen centre, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
+| `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
 | Per-panel **Defaults** button (General / Icons / Cast bar) | That panel only; mirrors `/kcd reset <panel>`. |
@@ -861,12 +861,12 @@ session 3 because that is this repository's outstanding seam run, and the setup 
 renamed `libs/LibKa0s` folder — is already section 25's.
 
 `M4-20` deleted `modules/Castbar_Debug.lua`'s `local emit = NS.Util and NS.Util.print or _G.print`
-in favour of `local emit = NS.Util.print`. The deleted arm was unreachable: `core/CoreSetup.lua`
+in favor of `local emit = NS.Util.print`. The deleted arm was unreachable: `core/CoreSetup.lua`
 defines `Util.print` on the library-absent path at `:115` and returns, and on the library-present
 path at `:187`, so there is no load in which `NS.Util.print` is nil. But the guard and the fallback
 went together, and what used to degrade into an untagged global `print` now raises. That is the
 intended trade — an untagged dump pasted into a bug report is worse than a visible error — and it is
-the only behaviour this deletion can change.
+the only behavior this deletion can change.
 
 Both halves are pinned headlessly and neither pins the join. `tests/test_coresetup.lua`'s "the
 degraded printer is still secret-safe and still says `<secret>`" proves `Util.print` exists with no

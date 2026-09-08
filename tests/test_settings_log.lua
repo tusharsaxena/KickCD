@@ -113,7 +113,7 @@ test("ResetIconPosition writes nothing when the defaults tree is absent (M4-18 /
     -- layers" — and then the line under it duplicated the number anyway, and got
     -- it wrong: the fallback wrote y = -180 where defaults/Profile.lua ships
     -- y = +120. 300 px apart and opposite in sign, so a fallback that fired would
-    -- have parked the grid below screen centre instead of above it.
+    -- have parked the grid below screen center instead of above it.
     --
     -- The branch cannot be reached in a shipping install — defaults/Profile.lua is
     -- a TOC-loaded file, so NS.DEFAULT_PROFILE is always there — which is exactly

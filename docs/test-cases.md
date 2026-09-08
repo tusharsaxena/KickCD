@@ -913,6 +913,12 @@ badge and any count quoted in the docs must agree with it.
 
 - a WoW global on the standing _G. list is never read bare
 
+### test_spelling.lua (3)
+
+- the spelling scan reaches this repository's authored text and skips the vendored and frozen
+- the spelling matcher catches the published British forms and spares the US words ALLOWED names
+- authored English is US English
+
 ### test_slash_style.lua (10)
 
 - /kcd help emits no line ending in ':' (slash-commands-§4)
@@ -1072,6 +1078,7 @@ badge and any count quoted in the docs must agree with it.
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_source_style.lua | 1 |
+| test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
 | test_opensettings.lua | 6 |
@@ -1080,4 +1087,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **854** |
+| **Total** | **857** |
