@@ -182,7 +182,7 @@ badge and any count quoted in the docs must agree with it.
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (35)
+### test_schema.lua (36)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -209,6 +209,7 @@ badge and any count quoted in the docs must agree with it.
 - the Unit picker is one selection shared by every per-unit page
 - a linked Focus draws the strip FIRST and the note as content
 - a linked Focus's tab strip is disabled and desaturated
+- an unlinked Focus's tab strip is left operable and undimmed
 - the General page's FIRST tab is named exactly `Master controls`
 - Master controls holds exactly the canonical rows, in canonical order
 - every canonical Master control is declared exactly ONCE in the repo
@@ -1021,7 +1022,7 @@ badge and any count quoted in the docs must agree with it.
 | test_state.lua | 23 |
 | test_locale.lua | 9 |
 | test_units.lua | 12 |
-| test_schema.lua | 35 |
+| test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
@@ -1065,4 +1066,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **843** |
+| **Total** | **844** |

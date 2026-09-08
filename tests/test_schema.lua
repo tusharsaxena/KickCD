@@ -590,8 +590,7 @@ end)
 -- flips), it just cannot be operated, and it is desaturated so that reads as
 -- deliberate rather than broken.
 --
--- red under: dropping the disable pass, or applying it to an unlinked page --
--- where the tabs are the only way to reach most of the page's rows.
+-- red under: dropping the disable pass.
 test("a linked Focus's tab strip is disabled and desaturated", function()
     local NS = T.NS
     local cfg = NS.Units.Config("focus")
@@ -610,12 +609,22 @@ test("a linked Focus's tab strip is disabled and desaturated", function()
         assertTrue(dim, "tab " .. i .. " was not desaturated")
     end
 
-    -- And an UNLINKED page's strip is untouched: there the tabs are how you reach
-    -- the rows, so disabling them would be a page you cannot use. Counted rather
-    -- than asserted per button, because the library disables the SELECTED tab on
-    -- every strip -- that one is already where you are -- so "none disabled" is
-    -- not the invariant; "the others still work" is.
+    if cfg then cfg.link = before end
+end)
+
+-- ...and an UNLINKED page's strip is untouched: there the tabs are how you reach
+-- the rows, so disabling them would be a page you cannot use. Counted rather
+-- than asserted per button, because the library disables the SELECTED tab on
+-- every strip -- that one is already where you are -- so "none disabled" is
+-- not the invariant; "the others still work" is.
+--
+-- red under: applying the disable pass to an unlinked page.
+test("an unlinked Focus's tab strip is left operable and undimmed", function()
+    local NS = T.NS
+    local cfg = NS.Units.Config("focus")
+    local before = cfg and cfg.link
     if cfg then cfg.link = false end
+
     local live = renderedUnitPage("castbar", "focus")
     local operable, dimmed = 0, 0
     for _, b in ipairs((live.__tabLayout or {}).buttons or {}) do
