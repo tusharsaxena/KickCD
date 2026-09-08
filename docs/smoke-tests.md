@@ -48,6 +48,7 @@ Companion docs:
 | 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
 | 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
 | 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
+| 27 | Composed media rows | `LibKa0s-OptionsCompose` minor 3, the `Helpers.LSMValues` shadow | [Composed media dropdowns after the v1.26.0 re-vendor](#27-composed-media-dropdowns-after-the-v1260-re-vendor) |
 
 ---
 
@@ -715,9 +716,46 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
 
 ---
 
+### 27. Composed media dropdowns after the v1.26.0 re-vendor
+
+**Smoke, session 4.** The proof that `LIBKA0S-A-01` — the collection's only Critical — is closed in a
+consumer, and the proof that closing it did not break the one consumer that was already working around
+it. Nothing here is headless-testable end to end: the harness pins that a composed media row hands back
+a **reader** rather than a reading, but only a live client has a LibSharedMedia that fills after the
+schema files have been read, which is the whole failure mode.
+
+**Setup.** A media addon that registers extra faces, borders and bar textures — SharedMedia,
+SharedMediaAdditionalFonts or ElvUI's media pack — enabled alongside KickCD, so LSM holds more than the
+Blizzard defaults. Log in fresh; do not `/reload` before the first check.
+
+**Steps.**
+- `/kcd config` → **Icons**. Open **Border texture** and **Cooldown text font**.
+- → **Text Label**. Open the **Font** dropdown.
+- → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
+  **Bar texture** and **Border texture**. That is eight dropdowns across the three pages; they are the
+  eight composed rows this item moved.
+- `/dump LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose`
+- Pick a non-default face in **Text Label** → **Font** and confirm the label redraws in it.
+- Now the deferral itself, which is the half a snapshot would pass: with the client already running,
+  enable a media addon you had disabled, `/reload`, and re-open **Cast bar** → **Bar texture**.
+
+**Pass.**
+- All eight dropdowns list real media — several faces, several borders, several bar textures — not a
+  single `Default` entry and not an empty list that opens onto nothing.
+- The `/dump` reports **3**. A 2 means the vendored payload is still v1.25.0 and CLAUDE.md's provenance
+  line is lying; anything else means a foreign LibKa0s won the LibStub resolve.
+- The chosen face applies live, and survives `/reload`.
+- The newly registered media appears in the dropdown after the reload. If the list is identical to what
+  it held before, `Helpers.LSMValues` (`settings/Panel.lua`) has gone back to returning a **table** and
+  every composed media row is frozen at file load — silently, with no error and no empty control. That
+  is the regression this step exists to catch, and it is invisible to every other check in this suite.
+- No Lua errors at any point.
+
+---
+
 ## When to run which subset
 
-- **LibKa0s re-vendor, or any seam-file edit:** 25 and 26, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26 and **27**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).

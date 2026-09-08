@@ -323,21 +323,38 @@ function Helpers.AnchorOrder()
     }
 end
 
---- Build the option list for a LibSharedMedia media type.
---- The option list for a LibSharedMedia media type, as a keyed { key = key }
---- hash. No `sorting` sibling: a media list has no meaningful declared order and
---- the widget makers alphabetize when none is given, which is what a font or
---- texture picker wants.
+--- A DEFERRED reader for a LibSharedMedia media type: returns a FUNCTION which,
+--- called, answers the keyed { key = key } hash. No `sorting` sibling: a media
+--- list has no meaningful declared order and the widget makers alphabetize when
+--- none is given, which is what a font or texture picker wants.
+---
+--- WHY A CLOSURE AND NOT THE HASH ITSELF. This member SHADOWS the library's
+--- published `O.LSMValues` (docs/ARCHITECTURE.md's deviation register says so and
+--- says why), and from LibKa0s-OptionsCompose minor 3 the shadow has a contract to
+--- keep: `lib.__AttachCompose` reads this member ONCE, at row-declaration time, and
+--- assigns what comes back straight into a row's `values`. Handing back the hash
+--- there froze every composed media row at whatever LibSharedMedia happened to hold
+--- while `settings/Icons.lua` was being read -- before any media addon has run.
+--- Silently: no error, no empty dropdown, just a list that never grows. Until that
+--- minor the composer wrapped this call in its own closure, which deferred the read
+--- and hid the shape difference; minor 3 dropped that wrapper, because for a host
+--- that does NOT shadow the member the double wrap was the collection's one Critical
+--- -- `enumList` unwraps a row's `values` exactly once, so a closure round a closure
+--- reached it as a function and came back empty.
+---
+--- The return shape is therefore the library's now: a reader, never a reading.
 function Helpers.LSMValues(mediaType)
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
-    local out = {}
-    if LSM and LSM.List then
-        for _, key in ipairs(LSM:List(mediaType) or {}) do out[key] = key end
+    return function()
+        local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+        local out = {}
+        if LSM and LSM.List then
+            for _, key in ipairs(LSM:List(mediaType) or {}) do out[key] = key end
+        end
+        -- Never empty: a dropdown with no options renders as a dead control, and an
+        -- absent optional media library should cost the swatch, not the setting.
+        if next(out) == nil then out["Default"] = "Default" end
+        return out
     end
-    -- Never empty: a dropdown with no options renders as a dead control, and an
-    -- absent optional media library should cost the swatch, not the setting.
-    if next(out) == nil then out["Default"] = "Default" end
-    return out
 end
 
 -- ---------------------------------------------------------------------
