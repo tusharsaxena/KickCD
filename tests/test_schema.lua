@@ -36,7 +36,6 @@ test("Helpers.Resolve walks a dotted path into db.profile", function()
 end)
 
 test("icons/castbar/label schema rows are unit-scoped and valid", function()
-    local NS = T.NS
     local seen = { target = false, focus = false }
     for _, def in ipairs(NS.Settings.Schema) do
         if def.panel == "icons" or def.panel == "castbar" or def.panel == "label" then
@@ -99,7 +98,6 @@ test("General exposes focus rows; unit-selector panels still filter them out", f
 end)
 
 test("label panel carries per-unit label rows; General no longer does", function()
-    local NS = T.NS
     local H  = NS.Settings.Helpers
     local function hasPath(rows, path)
         for _, d in ipairs(rows) do if d.path == path then return true end end
@@ -134,7 +132,6 @@ end)
 
 
 test("every label-panel row's default is a member of its static values list", function()
-    local NS = T.NS
     for _, def in ipairs(NS.Settings.Schema) do
         if def.panel == "label" and type(def.values) == "table" and def.default ~= nil then
             -- `values` is a keyed { key = label } hash now, so membership is a
@@ -171,7 +168,6 @@ test("debug console stays session-only: it is a row, and it never reaches the db
     -- NS.DebugLog, so a write never touches db.profile at all.
     -- red under: deleting the SESSION_PATHS branch from Helpers.Set, which sends
     -- the write to Resolve and, the day a `state` table exists, into SavedVariables
-    local NS = T.NS
     local H  = NS.Settings.Helpers
 
     local row = H.FindSchema("state.debugConsole")
@@ -278,7 +274,7 @@ test("no page draws a tab twice: every group's rows are contiguous", function()
     -- tab's heading further down the page — visible only in game.
     local H = T.NS.Settings.Helpers
     for page in pairs(STRIP) do
-        local seen, closed, last = {}, {}, nil
+        local closed, last = {}, nil
         for _, def in ipairs(H.SchemaForPanel(page, STRIP_FILTER[page])) do
             local g = def.group
             if g ~= nil then
@@ -288,7 +284,6 @@ test("no page draws a tab twice: every group's rows are contiguous", function()
                             .. "' resume after the page has left that group ("
                             .. tostring(def.path) .. ")")
                     if last ~= nil then closed[last] = true end
-                    seen[g] = true
                     last = g
                 end
             end
@@ -541,7 +536,6 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
     -- strip is the one that reads as broken. The link is a STATE of the page, so
     -- it is content inside it.
     -- red under: restoring the early return in Helpers.RenderUnitPanel
-    local NS = T.NS
     local cfg = NS.Units.Config("focus")
     local before = cfg and cfg.link
     if cfg then cfg.link = true end
@@ -592,7 +586,6 @@ end)
 --
 -- red under: dropping the disable pass.
 test("a linked Focus's tab strip is disabled and desaturated", function()
-    local NS = T.NS
     local cfg = NS.Units.Config("focus")
     local before = cfg and cfg.link
     if cfg then cfg.link = true end
@@ -620,7 +613,6 @@ end)
 --
 -- red under: applying the disable pass to an unlinked page.
 test("an unlinked Focus's tab strip is left operable and undimmed", function()
-    local NS = T.NS
     local cfg = NS.Units.Config("focus")
     local before = cfg and cfg.link
     if cfg then cfg.link = false end

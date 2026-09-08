@@ -11,8 +11,7 @@
 -- secret error in tainted scope. Losing truncation for a frame is the correct
 -- degradation; throwing is not.
 local T = _G.KICKCD_TEST
-local test, assertEqual, assertTrue, assertFalse =
-    T.test, T.assertEqual, T.assertTrue, T.assertFalse
+local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
 
 local inst    = T.load(true)
 local mocks   = inst.mocks

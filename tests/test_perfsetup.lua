@@ -24,6 +24,10 @@ end
 
 --- Any one watched spellID, or nil. `watched` is a set, so there is no first.
 local function firstWatchedSpell(Cooldowns)
+    -- luacheck: ignore 512
+    -- 512 (loop is executed at most once) is right about the control flow and
+    -- wrong about the intent: returning on the first iteration IS how you take
+    -- an arbitrary element of a set in Lua. `next(t)` would read as a pair.
     for id in pairs(Cooldowns and Cooldowns.watched or {}) do return id end
 end
 
@@ -95,7 +99,6 @@ test("every declared bucket is reached by a real bracket", function()
     P.on = true
 
     local IconGrid = NS2:GetModule("IconGrid", true)
-    local Castbar  = NS2:GetModule("Castbar", true)
     local Cooldowns = NS2:GetModule("Cooldowns", true)
 
     -- spellPoll: the coalesced poll over the watched table.
@@ -572,8 +575,7 @@ test("every PollSpell exit is measured, including the rejections", function()
     -- of a talent choice node, or a pet spell with no pet out). Reached by
     -- making the availability check say no, since every watched spell is by
     -- definition available.
-    local known
-    for id in pairs(Cooldowns.watched or {}) do known = id break end
+    local known = firstWatchedSpell(Cooldowns)
     assertTrue(known ~= nil, "the fixture has no watched spell to reject")
     local realAvail = inst.NS.Compat.IsSpellAvailable
     inst.NS.Compat.IsSpellAvailable = function() return false end

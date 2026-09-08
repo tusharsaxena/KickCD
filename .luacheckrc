@@ -1,7 +1,14 @@
 std = "lua51"
 max_line_length = false
 codes = true
-exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/", "docs/reviews/" }
+-- libs/ holds vendored code, including libs/LibKa0s/ whose upstream is the LibKa0s repo, so it is
+-- linted there and not here. tests/_kit/ is the same fact one level down: it is a byte copy of the
+-- library's testkit/, linted in LibKa0s as source, and linting the copy too would report every
+-- finding twice while letting the copy drift green as the original went red -- the one state
+-- tests/test_vendor_sync.lua exists to make impossible. Everything else under tests/ is ours and
+-- is linted (lint-§1). Under docs/ only the FROZEN evidence bundles are excluded; a blanket docs/
+-- exclude would silently drop any Lua a future doc directory carries out of the gate.
+exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews/" }
 ignore = {
   "212/self",       -- unused argument self
   "212/event",      -- unused argument event
@@ -47,4 +54,20 @@ globals = {
   "KickCDPerfDB",       -- LibKa0s-Perf capture ring; a SECOND top-level SV global,
                         -- deliberately outside the AceDB tree so "copy profile" does
                         -- not clone it and "reset profile" does not wipe it
+}
+
+-- The harness publishes its exposed table under a per-repo global, written at tests/run.lua:217
+-- and read back by every suite file. It is declared HERE, in a files["tests/"] stanza, rather
+-- than in the top-level `read_globals` above, and the difference is not cosmetic: a name granted
+-- at the top level is granted to core/, modules/ and settings/ as much as to a suite, and a
+-- shipped file reaching for the test harness is exactly what this gate exists to refuse.
+-- `globals` rather than `read_globals` because tests/run.lua is the writer, and spelt as a _G.
+-- field because that is how run.lua writes it and every suite reads it.
+--
+-- The two SavedVariables tables are NOT named here. No suite in this repo touches either through
+-- _G: the fixtures hand each instance its own inst.mocks.KickCDDB, and test_perfsetup.lua asserts
+-- on KickCDPerfDB as a STRING inside the TOC. Declaring them would grant a permission nothing
+-- uses, which is how a stanza stops describing the tree it guards.
+files["tests/"] = {
+  globals = { "_G.KICKCD_TEST" },
 }

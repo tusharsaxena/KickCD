@@ -524,11 +524,9 @@ end)
 --
 -- red under: re-adding SetHighlight in any form, or dropping the OnClick with it.
 test("the linked-Focus note has no hover highlight but is still clickable", function()
-    local NS = T.NS
     local cfg = NS.Units.Config("focus")
     local before = cfg and cfg.link
     if cfg then cfg.link = true end
-    local H = NS.Settings.Helpers
     local wasUnit = H.ViewedUnit()
 
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
@@ -568,20 +566,20 @@ test("the linked-Focus note opens General on its Units tab", function()
         local S = mocks.Settings
         S.OpenToCategory = function(id) opened = id end
     end)
-    local NS = inst.NS
-    local H  = NS.Settings.Helpers
+    local iNS = inst.NS
+    local iH  = iNS.Settings.Helpers
 
-    local general = NS.Settings.categoryFor and NS.Settings.categoryFor.general
+    local general = iNS.Settings.categoryFor and iNS.Settings.categoryFor.general
     assertTrue(general ~= nil, "the General page's category must be recorded")
 
-    local cfg = NS.Units.Config("focus")
+    local cfg = iNS.Units.Config("focus")
     if cfg then cfg.link = true end
-    H.SetViewedUnit("focus")
+    iH.SetViewedUnit("focus")
 
-    local ctx = H.__panelFor("castbar")
+    local ctx = iH.__panelFor("castbar")
     assertTrue(ctx ~= nil, "the Cast bar page must be registered")
     ctx.panel:Show()
-    H.RefreshPanel(ctx, true)
+    iH.RefreshPanel(ctx, true)
 
     local note
     for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
@@ -594,12 +592,12 @@ test("the linked-Focus note opens General on its Units tab", function()
 
     assertEqual(opened, general:GetID(),
         "the click must open the General page's own category")
-    local generalCtx = H.__panelFor("general")
-    assertEqual(generalCtx and generalCtx.activeTab, NS.L["Units"],
+    local generalCtx = iH.__panelFor("general")
+    assertEqual(generalCtx and generalCtx.activeTab, iNS.L["Units"],
         "…already on the Units tab, not on whatever it was last left on")
 
     if cfg then cfg.link = false end
-    H.SetViewedUnit("target")
+    iH.SetViewedUnit("target")
 end)
 
 -- The Focus link's two controls are ONE LINE: [Use same styling as Target]
@@ -616,13 +614,13 @@ end)
 -- half-filled and puts the next item beside the tick.
 test("the Focus link's tick and its Copy button share one row", function()
     local inst = T.load(true, true)
-    local H = inst.NS.Settings.Helpers
-    local ctx = H.__panelFor("general")
+    local iH = inst.NS.Settings.Helpers
+    local ctx = iH.__panelFor("general")
     assertTrue(ctx ~= nil, "the General page must be registered")
 
     ctx.activeTab = inst.NS.L["Units"]
     ctx.panel:Show()            -- the body is built lazily, on first OnShow
-    H.RefreshPanel(ctx, true)
+    iH.RefreshPanel(ctx, true)
 
     local tickLabel = inst.NS.L["Use same styling as Target"]
     local btnLabel  = inst.NS.L["Copy styling from Target"]
@@ -787,9 +785,6 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
         assertNil(src0:match("d%.L[^%w_]"), rel .. " now reads a descriptor L")
     end
 
-    local fh = assert(io.open(T.root .. "/libs/LibKa0s/Options.lua", "r"))
-    local src = fh:read("*a")
-    fh:close()
     -- ...and the descriptor this addon passes must not pretend otherwise.
     local fh2 = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
     local src2 = fh2:read("*a")

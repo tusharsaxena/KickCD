@@ -211,14 +211,20 @@ Suppressions come in two forms, and the choice between them is about scope:
 - **Repo-wide → `.luacheckrc`.** The `ignore` list holds allowances true everywhere: `212/self` and
   `212/event` (Ace handler signatures that name arguments they don't all use) and `211/addonName` (the
   `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`,
-  `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
+  `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
+  **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua` and `wow_mock.lua` are this
+  addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
+  that tree, because it is a byte copy of LibKa0s' `testkit/` and is linted there as source. A run
+  reporting fewer files than `luacheck . --formatter plain | tail -1` says today is a run that has
+  stopped checking half the Lua in the repo.
 - **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
-  offending line, with a comment saying why the warning doesn't apply. **There is no live example in
-  this repo right now.** The last one was `core/LSMPatch.lua`, which kept the standard bootstrap
-  header (`architecture-§1`) while using neither `addonName` nor `NS` and so suppressed `211/NS`
-  locally rather than widening the repo-wide allowance; that file is gone — its wrapper is
-  `lib.__PatchLSM30Border()` in LibKa0s now. Reach for this form anyway when the next one appears:
-  the shape is right, it is just currently unexercised.
+  offending line, with a comment saying why the warning doesn't apply. The live example is
+  `tests/test_perfsetup.lua`'s `firstWatchedSpell`, which suppresses `512` (loop is executed at most
+  once): returning on the first iteration is how you take an arbitrary element of a set in Lua, so
+  the warning is right about the control flow and wrong about the intent. The one before it was
+  `core/LSMPatch.lua`, which kept the standard bootstrap header (`architecture-§1`) while using
+  neither `addonName` nor `NS` and so suppressed `211/NS` locally rather than widening the repo-wide
+  allowance; that file is gone — its wrapper is `lib.__PatchLSM30Border()` in LibKa0s now.
 
 Prefer the inline form for anything genuinely local. Adding a name to `.luacheckrc` silences it in
 every file at once, including files that haven't been written yet.

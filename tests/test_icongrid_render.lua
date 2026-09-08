@@ -34,7 +34,7 @@ end)
 
 test("SafeUnpackColor reads both the array and hash color shapes", function()
     local r, g, b, a = IconGrid.SafeUnpackColor({ 0.1, 0.2, 0.3, 0.4 })
-    assertEqual(r, 0.1); assertEqual(a, 0.4)
+    assertEqual(r, 0.1); assertEqual(g, 0.2); assertEqual(b, 0.3); assertEqual(a, 0.4)
     local r2, g2, b2, a2 = IconGrid.SafeUnpackColor({ r = 0.5, g = 0.6, b = 0.7, a = 0.8 })
     assertEqual(r2, 0.5); assertEqual(g2, 0.6); assertEqual(b2, 0.7); assertEqual(a2, 0.8)
 end)
