@@ -53,7 +53,7 @@
 --                               GetPrimaryIcon remain for callers that
 --                               haven't yet adopted the payload form.
 
-local addonName, NS = ...
+local _, NS = ...
 local IconGrid = NS:NewModule("IconGrid", "AceEvent-3.0")
 -- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua

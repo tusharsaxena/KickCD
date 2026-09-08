@@ -25,7 +25,7 @@
 -- The same schema feeds /kcd list|get|set (see core/KickCD.lua), so
 -- adding a new option = one row that auto-wires UI and CLI.
 
-local addonName, NS = ...
+local _, NS = ...
 local L      = NS.L
 local AceGUI = LibStub("AceGUI-3.0")
 

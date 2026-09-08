@@ -178,6 +178,7 @@ local SUITES = {
     "test_list_mode",
     "test_surface_parity",
     "test_doc_structure",
+    "test_lintconfig",
     "test_vendor_sync",
     -- The kit has shipped one suite of its own since revision 15: the working-tree
     -- line-ending gate, over every path `git ls-files` reports. It lives where the rest of the

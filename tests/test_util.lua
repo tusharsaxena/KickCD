@@ -88,7 +88,7 @@ end)
 
 test("RegisterUnitCastEvent registers the dispatch frame for the named unit", function()
     local calls = {}
-    local module = { OnX = function(self, event, unit) calls[#calls+1] = { event, unit } end }
+    local module = { OnX = function(_, event, unit) calls[#calls+1] = { event, unit } end }
     local f = NS.Util.RegisterUnitCastEvent(module, "focus", "UNIT_SPELLCAST_START", "OnX")
     assertTrue(f ~= nil, "returns a frame for teardown")
     assertEqual(f._unitEvents["UNIT_SPELLCAST_START"], "focus", "registered for focus, not target")

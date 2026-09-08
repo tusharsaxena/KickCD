@@ -1025,6 +1025,13 @@ badge and any count quoted in the docs must agree with it.
 - every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
 - every deviation id the register cites is assigned by a bundle in docs/audits/
 
+### test_lintconfig.lua (4)
+
+- lintconfig: .luacheckrc sets no top-level ignore
+- lintconfig: .luacheckrc switches no warning class off wholesale
+- lintconfig: every files[...] ignore is narrowed to a file or a name
+- lintconfig: no source file carries a bare inline luacheck ignore
+
 ### test_vendor_sync.lua (2)
 
 - libs/LibKa0s is the LibKa0s release CLAUDE.md says this addon bundles
@@ -1092,6 +1099,7 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_doc_structure.lua | 3 |
+| test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **860** |
+| **Total** | **864** |

@@ -8,7 +8,7 @@
 -- settings/Panel_Widgets.lua (it uses the makers via Helpers.RenderField)
 -- and BEFORE the per-tab files that call RenderSchema / Restore* / Reset*.
 
-local addonName, NS = ...
+local _, NS = ...
 local L       = NS.L
 local Helpers = NS.Settings.Helpers
 

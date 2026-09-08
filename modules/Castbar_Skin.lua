@@ -49,7 +49,7 @@
 -- footprint, which moves on Ka0s_KickCD_GRID_LAYOUT while the config table sits
 -- perfectly still. Signing the resolved size is what keeps auto-size working.
 
-local addonName, NS = ...
+local _, NS = ...
 local Castbar = NS:GetModule("Castbar")
 
 -- A 4px inset on the inside positions keeps text from touching the bar

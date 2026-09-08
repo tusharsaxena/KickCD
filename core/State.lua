@@ -19,7 +19,7 @@
 -- core/Util.lua so any helper / module that loads later can read
 -- KickCD.State.* without an existence check.
 
-local addonName, NS = ...
+local _, NS = ...
 
 -- `debug` is the session-only debug-logging flag (debug-logging-§5). It defaults OFF,
 -- is NEVER persisted to SavedVariables, and resets to off on every /reload

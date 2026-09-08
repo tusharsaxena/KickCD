@@ -23,7 +23,7 @@
 -- AoE Slow are intentionally excluded since neither category stops casts):
 -- https://docs.google.com/spreadsheets/d/1lXIRuETd3s3wxLHE8mOwhXtz0xm71ayhrlYxwi6herU/edit?gid=2092737897
 
-local addonName, NS = ...
+local _, NS = ...
 
 -- Readable aliases for the numeric spec IDs (see core/Constants.lua). Using
 -- [SPEC.ELEMENTAL] rather than a bare 262 keeps this table greppable while

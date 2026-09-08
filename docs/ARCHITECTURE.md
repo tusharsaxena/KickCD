@@ -67,12 +67,19 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 Every module is built on the **private addon namespace** — the vararg WoW hands each file. There is no `_G.KickCD` and no `KickCD = KickCD or {}` bootstrap:
 
 ```lua
-local addonName, NS = ...
+local _, NS = ...
 NS.Foo = NS.Foo or {}
 local F = NS.Foo
 ```
 
-- Every source file opens with `local addonName, NS = ...`; `NS` is the shared private table.
+- Every source file opens on that vararg, and the FIRST half is spelt `_` unless the file reads
+  it. Five do: `core/CoreSetup.lua`, `core/EnvSetup.lua`, `core/MediaSetup.lua`,
+  `core/DebugLogSetup.lua` and `core/PerfSetup.lua`, each handing the addon FOLDER name to a
+  vendored LibKa0s payload that cannot work out which folder it was copied into. Those five
+  write `local addonName, NS = ...`; the other thirty write `local _, NS = ...`. Writing the
+  name where nothing reads it is a dead local, and `M4c-06` removed twenty-nine of them --
+  they had been invisible under a top-level `211/addonName` in `.luacheckrc`.
+- `NS` is the shared private table.
 - Never overwrite an existing `NS.Foo` without `or {}` — another file may have reached it first, and never shadow it with a file-local of the same name.
 - The public API hangs off `F` (or `NS.Foo` directly); helpers stay `local` to the file.
 - `core/KickCD.lua` calls `LibStub("AceAddon-3.0"):NewAddon(NS, "KickCD", …)` and **discards the return**: `NewAddon` promotes the table it is handed, so the return is that same `NS`. There is no `_G.KickCD = addon` rebind and no `NS.addon` self-reference — later files get `NS` from their own header, not from `GetAddon`. `core/Compat.lua` simply hangs `NS.Compat` on the shared `NS` at TOC load time.

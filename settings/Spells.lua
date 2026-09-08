@@ -22,7 +22,7 @@
 -- Writes go through a 50ms debounced setter that mutates the profile,
 -- re-renders the rows, and fires Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
 
-local addonName, NS = ...
+local _, NS = ...
 
 local L      = NS.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = NS.Compat or {}

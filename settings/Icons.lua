@@ -15,7 +15,7 @@
 -- collection's rather than this page's. H.AddComposed stamps the host's own
 -- `panel` / `section` / `unit` onto what comes back and appends it in place.
 
-local addonName, NS = ...
+local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
 local Schema = NS.Settings.Schema

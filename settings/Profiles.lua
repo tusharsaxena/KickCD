@@ -6,7 +6,7 @@
 -- into which AceConfigDialog renders the AceDBOptions options table
 -- on first show.
 
-local addonName, NS = ...
+local _, NS = ...
 
 local L = NS.L or setmetatable({}, { __index = function(_, k) return k end })
 

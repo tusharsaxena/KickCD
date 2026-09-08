@@ -16,7 +16,7 @@
 -- The label text is a plain addon string (NS.Units.Label(unit).text), never
 -- a 12.0 secret value, so SetText/SetFont on it are safe.
 
-local addonName, NS = ...
+local _, NS = ...
 local UnitLabel = NS:NewModule("UnitLabel", "AceEvent-3.0")
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)

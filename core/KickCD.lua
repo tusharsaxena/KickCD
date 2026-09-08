@@ -18,7 +18,7 @@
 -- ... (set by the mixins). The global rebinding makes downstream code that
 -- looks up `KickCD` from _G see the mixed-in version.
 
-local addonName, NS = ...
+local _, NS = ...
 
 -- AceAddon stamps its mixin methods onto NS in place. NS is the private
 -- namespace table WoW passes as the second vararg to every file, and the

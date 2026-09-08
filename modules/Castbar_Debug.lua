@@ -6,7 +6,7 @@
 -- it is loaded AFTER modules/Castbar.lua (see the TOC). /kcd debug castbar
 -- routes here via NS:GetModule("Castbar"):DebugDump() (core/KickCD.lua).
 
-local addonName, NS = ...
+local _, NS = ...
 local Castbar = NS:GetModule("Castbar")   -- registered by modules/Castbar.lua, which loads first
 
 -- Configured per-state colors as actually read from the live profile

@@ -7,7 +7,7 @@
 --   * Throttle wrapper using C_Timer.After to coalesce setting writes
 --   * print() with the addon's chat prefix
 
-local addonName, NS = ...
+local _, NS = ...
 local Util = {}
 NS.Util = Util
 

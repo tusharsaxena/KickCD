@@ -64,7 +64,7 @@
 --   without erroring (Blizzard's protection is on arithmetic, not on
 --   UI render calls).
 
-local addonName, NS = ...
+local _, NS = ...
 local Castbar = NS:NewModule("Castbar", "AceEvent-3.0")
 -- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua

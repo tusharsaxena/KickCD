@@ -499,7 +499,10 @@ local function build()
         function t.UnregisterMessage(self, message)
             if registry[message] then registry[message][self] = nil end
         end
-        function t.SendMessage(self, message, ...)
+        -- The sender is not read here: a message goes to every registrant, and the two
+        -- functions above are the ones that key the registry by sender. Spelt `_` rather
+        -- than dropped, so the arity still matches AceEvent-3.0's own SendMessage.
+        function t.SendMessage(_, message, ...)
             local targets = registry[message]
             if not targets then return end
             for _, cb in pairs(targets) do cb(message, ...) end

@@ -11,7 +11,7 @@
 -- per-unit text still renders). Uses the shared Unit banner + tab strip via
 -- RenderUnitPanel.
 
-local addonName, NS = ...
+local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
 local Schema = NS.Settings.Schema

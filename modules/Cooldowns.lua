@@ -58,7 +58,7 @@
 --   LISTEN:  Ka0s_KickCD_PROFILE_CHANGED,
 --            Ka0s_KickCD_CONFIG_CHANGED (section=="spells" or "general")
 
-local addonName, NS = ...
+local _, NS = ...
 local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
 -- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua

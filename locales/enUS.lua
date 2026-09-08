@@ -9,7 +9,7 @@
 
 -- locales/enUS.lua loads BEFORE core/Compat.lua per the TOC, so we have
 -- to bootstrap the global namespace ourselves here.
-local addonName, NS = ...
+local _, NS = ...
 
 local L = setmetatable({}, {
     __index = function(_, k) return k end,

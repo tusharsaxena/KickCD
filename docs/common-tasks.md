@@ -221,28 +221,46 @@ LibCustomGlow.
 warning is a regression rather than background noise to scroll past — fix the code first, and reach
 for a suppression only when the warning is wrong about this file.
 
+**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (lint-§1, `M4-11`).
+This page used to describe one — `212/self`, `212/event`, `211/addonName` — and to call it
+"allowances true everywhere". They were not true everywhere. `M4c-06` removed the three lines and
+`luacheck .` went from 0/0 to **61 warnings**, of which **32 were defects rather than conventions**:
+twenty-nine files opening `local addonName, NS = ...` over a folder name they never read, two named
+receivers in the test tree, and one `NS.Slash:PrintHelp` forwarder nothing called. All thirty-two
+were fixed at source. `212/event`, meanwhile, matched nothing at all — a stale suppression nobody
+could tell from a live one while it was switched on everywhere. `tests/test_lintconfig.lua` is the
+gate that keeps the blanket out, and it fails rather than skips when it cannot read the config.
+
 Suppressions come in two forms, and the choice between them is about scope:
 
-- **Repo-wide → `.luacheckrc`.** The `ignore` list holds allowances true everywhere: `212/self` and
-  `212/event` (Ace handler signatures that name arguments they don't all use) and `211/addonName` (the
-  `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`,
+- **One file → a `files[...]` stanza in `.luacheckrc`.** The key names the single `.lua` file that
+  earns the code, and the entry names the code AND the variable, in luacheck's `<code>/<variable>`
+  form. Nine stanzas exist today, all `212/self`, all on files whose methods a calling convention
+  reaches with the colon — the AceAddon modules, the AceEvent handler registered by name, the
+  `LibKa0s-Slash-1.0` degradation stub — and each carries a comment naming the obligation that
+  forces the receiver. An argument that falls out of use under any other name, in those nine files
+  or in the other 84, still reports. `libs/`,
   `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
   **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua` and `wow_mock.lua` are this
   addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
   that tree, because it is a byte copy of LibKa0s' `testkit/` and is linted there as source. A run
   reporting fewer files than `luacheck . --formatter plain | tail -1` says today is a run that has
   stopped checking half the Lua in the repo.
-- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
-  offending line, with a comment saying why the warning doesn't apply. The live example is
+- **One line → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
+  offending line, with a comment saying why the warning doesn't apply. Never the bare
+  `-- luacheck: ignore` with no code after it: that silences every warning in scope and is the
+  blanket wearing a different hat, which is why `tests/test_lintconfig.lua` scans every tracked
+  `.lua` for it. The live example is
   `tests/test_perfsetup.lua`'s `firstWatchedSpell`, which suppresses `512` (loop is executed at most
   once): returning on the first iteration is how you take an arbitrary element of a set in Lua, so
   the warning is right about the control flow and wrong about the intent. The one before it was
-  `core/LSMPatch.lua`, which kept the standard bootstrap header (`architecture-§1`) while using
-  neither `addonName` nor `NS` and so suppressed `211/NS` locally rather than widening the repo-wide
-  allowance; that file is gone — its wrapper is `lib.__PatchLSM30Border()` in LibKa0s now.
+  `core/LSMPatch.lua`, which kept the bootstrap header while using neither name half nor `NS` and so
+  suppressed `211/NS` locally rather than widening a repo-wide allowance; that file is gone — its
+  wrapper is `lib.__PatchLSM30Border()` in LibKa0s now.
 
-Prefer the inline form for anything genuinely local. Adding a name to `.luacheckrc` silences it in
-every file at once, including files that haven't been written yet.
+Prefer the inline form for anything genuinely local, and prefer FIXING the code to either. An unused
+variable is usually a real defect or dead code, and a `542` is usually a missing case — reach for a
+stanza only where the code is right as written, and say why beside it.
 
 ### Global lookup form
 

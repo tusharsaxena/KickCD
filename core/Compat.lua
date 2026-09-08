@@ -16,7 +16,7 @@
 -- after it can rely on _G.KickCD existing as a plain table to hang
 -- helpers on (the AceAddon object replaces it later in core/KickCD.lua,
 -- but the merge there preserves these fields).
-local addonName, NS = ...
+local _, NS = ...
 
 local Compat = {}
 NS.Compat = Compat

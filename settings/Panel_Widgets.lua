@@ -26,7 +26,7 @@
 --     re-ordering the call sites, and it forwards to the library so there is
 --     still only ONE implementation.
 
-local addonName, NS = ...
+local _, NS = ...
 local Helpers = NS.Settings.Helpers
 
 --- A checkbox wired to caller-supplied get/set instead of a settings path, for
