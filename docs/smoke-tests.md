@@ -888,11 +888,49 @@ helper loads `T.load(true, …)` throughout. This step is that composition and n
 - Rename the folder back and `/reload` before you finish.
 
 ---
+
+### 32. Two cast bars driven by one cached handler each
+
+**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-22` landed.** Folded into
+session 3 because that is this repository's outstanding run, and it needs no setup of its own.
+
+`M4-22` stopped `Castbar:Start` from minting `function() onUpdate(inst) end` on every cast start.
+`EnsureFrame` builds `inst.onUpdateScript` once per unit instead, and Start installs that. Section
+7a already watches one bar fill and snap off, and it would have caught a handler that was never
+installed. What it cannot see is the failure this change actually risks, which is a handler that is
+installed but bound to the **wrong instance** — because 7a drives one unit.
+
+Headless proof exists for the binding (`tests/test_castbar_frame.lua` asserts target and focus get
+distinct handler objects) and for the allocation (`tests/perf.lua`'s `castStart` scenario, 304.0 ->
+208.0 bytes per start/stop pair). Neither runs a frame. `SetScript` under the mock is a table write
+and `GetScript` reads it back; nothing headless ever calls the handler the way the client does,
+sixty times a second, against two live casts at once. This step is that and nothing else.
+
+**Setup.** `/kcd set units.target.castbar.enabled true` and the same for `units.focus.castbar`.
+`/kcd lock`. `/kcd set units.target.visibility always`. Find two hostile casters — a pull with two
+casting mobs is the easiest arrangement.
+
+**Steps.**
+- Target one caster and focus the other, both mid-cast, and watch both bars at once.
+- Let each finish and start a second cast without retargeting.
+- Swap target and focus and repeat.
+
+**Pass.**
+- **Both bars animate simultaneously and independently.** One bar frozen while the other runs, or
+  both bars showing the same fill, is the finding — that is a shared or mis-bound handler, and it is
+  exactly what a single file-scope handler would produce.
+- The second cast on the same unit animates like the first. A bar that fills on the first cast of a
+  session and is static afterwards means the handler is being torn down and not re-installed.
+- Spell name and remaining time keep tracking on both bars, and neither shows the other's spell.
+- No Lua error naming `Castbar.lua` and a nil `onUpdateScript` — that would mean Start ran on an
+  instance `EnsureFrame` had not reached, which no headless load reproduces.
+
+---
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
 - **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28** and **31**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
-- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
+- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass. Anything touching the cast bar's `OnUpdate` install or teardown — `EnsureFrame`, `Start`, `Stop` — also needs **32**, which is the only step that drives two units at once.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.

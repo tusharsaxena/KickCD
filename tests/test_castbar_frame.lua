@@ -111,6 +111,41 @@ test("target and focus get separate frames, not one shared bar", function()
     assertFalse(rawequal(t, f))
 end)
 
+test("cast start installs ONE cached OnUpdate handler, per unit, not one per cast", function()
+    -- M4-22. Start used to install `function() onUpdate(inst) end`, minting a
+    -- closure per cast start; EnsureFrame now builds inst.onUpdateScript once
+    -- and Start installs that. tests/perf.lua's castStart scenario measures the
+    -- allocation (304.0 -> 208.0 bytes per start/stop pair), but that runner is
+    -- deliberately outside the green gate, so the property itself is pinned
+    -- here — identity, which is what "one closure per cast" actually means.
+    --
+    -- The per-UNIT half is the one worth having. The obvious way to kill the
+    -- allocation is a single file-scope handler, and a single handler cannot
+    -- carry the instance: focus would drive the target's bar, and every other
+    -- case in this file would stay green because they drive one unit at a time.
+    local NS, _, Castbar = enabled()
+    makeVisible(NS)
+
+    local t = Castbar:GetInstance("target")
+    Castbar:Start(t, castRecord())
+    local first = t.frame:GetScript("OnUpdate")
+    assertTrue(first ~= nil, "cast start installed no OnUpdate handler")
+    Castbar:Stop(t)
+    assertTrue(t.frame:GetScript("OnUpdate") == nil, "Stop must tear the handler down")
+
+    Castbar:Start(t, castRecord())
+    assertTrue(rawequal(t.frame:GetScript("OnUpdate"), first),
+        "the second cast start installed a DIFFERENT handler — Start is closing over the "
+     .. "instance per cast again")
+    assertTrue(rawequal(first, t.onUpdateScript),
+        "the installed handler is not the one EnsureFrame cached")
+
+    local f = Castbar:GetInstance("focus")
+    Castbar:Start(f, castRecord())
+    assertFalse(rawequal(f.frame:GetScript("OnUpdate"), first),
+        "target and focus share one handler — the closure is not carrying its instance")
+end)
+
 test("GetCastbarFrame never creates an instance for an unknown unit", function()
     -- UnitLabel anchors to whatever exists; creating on read would leak an
     -- instance per query.

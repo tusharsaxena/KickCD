@@ -94,6 +94,14 @@ local L       = NS.L
 --                         IconGrid:GetGridFrame(unit) / :GetPrimaryIcon(unit)
 --                         covers the first tick after enable / empty payloads.
 --   inst.eventFrames    — private UNIT_SPELLCAST_* dispatch frames (teardown).
+--   inst.onUpdateScript — THIS unit's OnUpdate handler, built once in
+--                         EnsureFrame and installed by Start / torn down by
+--                         Stop. It has to be per-instance rather than one
+--                         file-scope function because onUpdate takes the
+--                         instance while a WoW OnUpdate handler is called with
+--                         the frame; the closure IS that binding. One per unit
+--                         for the session, against one per cast start before
+--                         M4-22 — see tests/perf.lua's castStart scenario.
 local instances = {}   -- [unit] = instance
 
 local function newInstance(unit)
@@ -104,6 +112,7 @@ local function newInstance(unit)
         lastGridLayout = { gridFrame = nil, primaryIcon = nil },
         eventFrames    = {},
         enabled        = false,
+        onUpdateScript = nil,
     }
 end
 
@@ -133,6 +142,14 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
+
+-- FORWARD DECLARATION. onUpdate is defined far below, beside RenderCast and
+-- ApplyState where the render path reads as one story; EnsureFrame is above it
+-- and now has to name it to build the per-instance handler. Declaring the local
+-- here is the smaller move — hoisting onUpdate would put a per-frame function
+-- in the middle of the widget build, and leaving the closure in Start is the
+-- allocation M4-22 removed.
+local onUpdate
 
 local function cfg(inst)
     return NS.Units.Castbar(inst.unit)
@@ -542,6 +559,14 @@ function Castbar:EnsureFrame(inst)
     frame.dragHint:SetPoint("BOTTOM", frame, "TOP", 0, 2)
     frame.dragHint:Hide()
 
+    -- Built ONCE per instance, here, because this is the only code that runs
+    -- once per unit for the life of the session: inst.frame is never cleared,
+    -- so the early return at the top of this function is the guard. Start used
+    -- to close over `inst` afresh on every cast start (M4-22). A cached handler
+    -- also makes SetScript idempotent — installing the SAME function twice is a
+    -- no-op, where installing two equal-but-distinct ones is not.
+    inst.onUpdateScript = function() onUpdate(inst) end
+
     frame:Hide()
     return frame
 end
@@ -678,7 +703,7 @@ end
 -- Per-frame work shrinks from ~6 method calls (2 SetMinMaxValues + 2
 -- SetValue + 1 SetFormattedText + 1 cfg() table lookup) to 2-3
 -- (SetValue × 2 + (conditional) SetFormattedText × 1).
-local function onUpdate(inst)
+function onUpdate(inst)
     local __t0 = Perf.on and debugprofilestop()
     local frame   = inst.frame
     local current = inst.current
@@ -830,7 +855,7 @@ function Castbar:Start(inst, rec)
     if isVisible(inst) then
         inst.frame:Show()
         ApplyVisibilityMask(inst.frame, inst.unit)
-        inst.frame:SetScript("OnUpdate", function() onUpdate(inst) end)
+        inst.frame:SetScript("OnUpdate", inst.onUpdateScript)
     end
 end
 

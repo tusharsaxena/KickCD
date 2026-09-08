@@ -200,7 +200,23 @@ NS.Perf.on = false
 -- Icon:Apply itself, BOTH arms rise together and `off <= on + 1` still holds. The dormant arm
 -- therefore also carries an ABSOLUTE ceiling, set just above the measured figure. Raise it only
 -- with a recorded reason — a rise IS the finding.
-local PROBE_OFF_BYTES_CEILING = 900   -- measured 848.0 with the brackets dormant
+-- RE-VERIFIED 2026-09-08 under M4-22, three consecutive runs, and left exactly where it stands.
+-- The item re-baselines "the ceilings that bound nothing"; this is not one of them.
+--
+--   measured   848.0 bytes/iter with the brackets dormant, identical to the tenth in all three
+--              runs and identical to the plain `iconApply` figure, which is the point — the probe
+--              contributes none of it. Unmoved by this commit's new scenario, which is worth
+--              knowing: a figure taken this way reports what the collector has NOT reclaimed by
+--              the end of the loop, so it can move with unrelated edits to this file. This one
+--              did not.
+--   ceiling    900, i.e. 52 bytes of headroom, 6.1%.
+--   margin     Measured rather than asserted: one empty table added to this scenario's body moves
+--              the figure 848.0 -> 912.0, so a table costs 64 bytes/pass under this interpreter
+--              and the 52-byte margin admits NONE of them. The smallest realistic regression on
+--              this path trips this line, which is the whole of what it is for.
+--
+-- Raise it only by filling in those three lines again — a rise IS the finding.
+local PROBE_OFF_BYTES_CEILING = 900
 
 assert_(probeOff.bytesPerIter <= PROBE_OFF_BYTES_CEILING,
     ("a dormant pass allocated %.1f bytes/iter, over the %d-byte ceiling — Icon:Apply grew")
@@ -214,6 +230,86 @@ assert_(probeOff.apiPerIter == probeOn.apiPerIter,
         :format(probeOff.apiPerIter, probeOn.apiPerIter))
 assert_(math.abs(iconApply.bytesPerIter - probeOff.bytesPerIter) < 1,
     "the dormant arm did not reproduce the plain iconApply figure — the two are the same path")
+
+-- 5. castStart — Castbar:Start / Castbar:Stop, the cast-start half of the cast bar.
+--
+--    Cast starts are EVENT-rate, not frame-rate: UNIT_SPELLCAST_START fires once per cast, and the
+--    per-frame half of this module is `castTick`, which the in-game probe owns. So this scenario is
+--    not here because the path is hot. It is here because M4-22 forbids the allocation fix without
+--    it: the review found a fresh closure minted per cast start and graded the perf claim
+--    "unverified", which is what an unmeasured path always is. The plan's wording is take it "only
+--    with a scenario that measures them, added first — otherwise skip them", so this went in and
+--    was watched red before modules/Castbar.lua moved.
+--
+--    THE PROFILE IS PUT INTO ITS STEADY STATE FIRST, and both writes are load-bearing. `locked` is
+--    false by default, and an unlocked Stop calls ShowPreview — a full re-skin — so measuring the
+--    shipped default would time the drag affordance rather than the cast. `visibility` defaults to
+--    "target_casting_interruptible", which is evaluated against NS.State and would leave isVisible
+--    false, so Start would render the cast and never reach the SetScript line this scenario is
+--    about. A player watching a cast bar during combat is locked and visible; that is what is set.
+--
+--    THE CAST RECORD IS HELD CONSTANT across iterations, unlike the live path where
+--    Compat.GetCastingInfo builds a fresh one per cast. That is deliberate: a per-iteration record
+--    would put its own allocation in the column and bury the thing being measured. What this
+--    scenario reports is what Start and Stop allocate GIVEN a record, and nothing else.
+local Castbar = NS:GetModule("Castbar")
+NS.db.profile.locked     = true
+NS.db.profile.visibility = "always"
+
+local castInst = Castbar:GetInstance("target")
+Castbar:EnsureFrame(castInst)   -- the widget build is a one-off; keep it out of the loop
+
+local castRecord = {
+    name = "Chaos Bolt", texture = "tex", spellID = 116858,
+    notInterruptible = false, isChannel = false,
+    duration = {
+        GetTotalDuration     = function() return 3 end,
+        GetElapsedDuration   = function() return 1 end,
+        GetRemainingDuration = function() return 2 end,
+    },
+}
+
+local castStart = measure("castStart", ITERS, function()
+    Castbar:Start(castInst, castRecord)
+    Castbar:Stop(castInst)
+end)
+
+-- THE LOAD-BEARING ASSERTION IS AN IDENTITY, not a number. "Cast start mints a new closure" is a
+-- property of the code rather than of this machine: it is the same on every interpreter, it cannot
+-- drift with the live heap, and it states the defect exactly. The byte ceiling below is the backstop.
+Castbar:Start(castInst, castRecord)
+local handlerA = castInst.frame:GetScript("OnUpdate")
+Castbar:Stop(castInst)
+Castbar:Start(castInst, castRecord)
+local handlerB = castInst.frame:GetScript("OnUpdate")
+Castbar:Stop(castInst)
+
+assert_(handlerA ~= nil, "cast start installed no OnUpdate handler — this scenario measured nothing")
+assert_(rawequal(handlerA, handlerB),
+    "two cast starts installed two DIFFERENT OnUpdate handlers — Castbar:Start is closing over the "
+ .. "instance per cast again instead of installing inst.onUpdateScript")
+
+-- And a byte ceiling beside it, because the identity alone does not forbid every per-cast
+-- allocation: a shape that cached the handler and then built one small table per Start would pass
+-- the line above untouched.
+--
+-- BASELINED 2026-09-08, three consecutive runs.
+--
+--   measured   208.0 bytes per start/stop pair, identical to the tenth in all three runs.
+--   ceiling    288 bytes.
+--   margin     80 bytes, and its size is measured rather than asserted: one empty table added to
+--              this scenario's body moves the figure 208.0 -> 273.0, so a table costs 65 bytes per
+--              pass under this interpreter and the margin admits exactly ONE of them. That is the
+--              deliberate width — a benign edit that adds a table to RenderCast should not redden
+--              a suite whose real assertion is the identity above, while the defect this line
+--              exists to catch measured 304.0 over the same three runs and trips it by 16 bytes.
+--
+-- Raise it only by filling in those three lines again — a rise IS the finding.
+local CAST_START_BYTES_CEILING = 288
+assert_(castStart.bytesPerIter <= CAST_START_BYTES_CEILING,
+    ("a cast start/stop pair allocated %.1f bytes, over the %d-byte ceiling — something on the "
+     .. "cast-start path is allocating per cast again")
+        :format(castStart.bytesPerIter, CAST_START_BYTES_CEILING))
 
 -- ── report ──────────────────────────────────────────────────────────────────────────────────
 

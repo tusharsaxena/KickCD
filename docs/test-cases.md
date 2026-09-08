@@ -627,13 +627,14 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (37)
+### test_castbar_frame.lua (38)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
 - EnsureFrame parents the state bars inside the bar container
 - EnsureFrame seeds both bars to an empty 0..1 range
 - target and focus get separate frames, not one shared bar
+- cast start installs ONE cached OnUpdate handler, per unit, not one per cast
 - GetCastbarFrame never creates an instance for an unknown unit
 - Start renders the cast name into the bar's FontString
 - Start applies the user's name truncation
@@ -1057,7 +1058,7 @@ badge and any count quoted in the docs must agree with it.
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 37 |
+| test_castbar_frame.lua | 38 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
@@ -1079,4 +1080,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **853** |
+| **Total** | **854** |

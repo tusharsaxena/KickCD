@@ -76,16 +76,33 @@ generator that trains people to ignore the suite.
 | `spellState` | `IconGrid:OnSpellState`, fanning out to every enabled unit | recorded only |
 | `iconApply` | `Icon:Apply` in steady state — same logical state re-applied, so only the time-varying half runs | recorded only |
 | `probeOverheadOff` / `probeOverheadOn` | the same `Icon:Apply` path with the brackets dormant, then armed | the **zero-overhead** assertions below |
+| `castStart` | `Castbar:Start` / `Castbar:Stop`, one cast start and its teardown | that both starts install the **same** `OnUpdate` handler object, plus a byte ceiling (288 bytes/pair; measured 208.0) |
 
-The last pair is the one `performance-§9` requires by name, and it carries three assertions:
+The `probeOverheadOff` / `probeOverheadOn` pair is the one `performance-§9` requires by name (it is
+no longer the last row in that table), and it carries three assertions:
 
-- the dormant arm stays under an **absolute byte ceiling** (900 bytes/pass; measured 848.0). The
-  relation alone is not enough — if a regression adds allocation to `Icon:Apply` itself, both arms
-  rise together and `off <= on` still holds. **A rise in that figure IS the finding**; raise the
-  ceiling only with a recorded reason.
+- the dormant arm stays under an **absolute byte ceiling** (900 bytes/pass; measured 848.0,
+  re-verified over three runs on 2026-09-08 under `M4-22` and left where it stands). The relation
+  alone is not enough — if a regression adds allocation to `Icon:Apply` itself, both arms rise
+  together and `off <= on` still holds. The 52-byte margin is narrower than one empty table
+  (64 bytes/pass on this path, measured), so the smallest realistic regression trips it. **A rise
+  in that figure IS the finding**; raise the ceiling only with a recorded reason.
 - the dormant arm allocates no more than the armed one, which is what `performance-§2`'s gating
   idiom (one upvalue read, one field read, one boolean test — no call, no allocation) buys.
 - the probe does not change how many API calls a pass makes.
+
+`castStart` is the odd one out and deliberately so. Cast starts are **event**-rate — one per cast —
+so this scenario is not here because the path is hot; the per-frame half of the cast bar is
+`castTick`, which only the in-game probe sees. It exists because `M4-22` would not let the
+allocation fix land without a measurement of it, and because the property it pins is not really a
+number: `Castbar:Start` used to build `function() onUpdate(inst) end` on every cast start, and
+`EnsureFrame` now builds `inst.onUpdateScript` once per unit for the session. **The identity
+assertion is the load-bearing one** — a handler object is the same on every interpreter and cannot
+drift with the live heap. The byte ceiling is the backstop for a shape that caches the handler and
+then allocates something else per cast; it is set at 288 against a measured 208.0, wide enough for
+one added table (65 bytes/pass here) and still 16 bytes under the 304.0 the defect measured. The
+same identity is pinned inside the green gate by `tests/test_castbar_frame.lua`'s "cast start
+installs ONE cached OnUpdate handler, per unit, not one per cast", because this runner is not.
 
 ### Reading the output
 
