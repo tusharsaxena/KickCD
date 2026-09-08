@@ -4,7 +4,7 @@ Orient-yourself map for **Ka0s KickCD**. Tracks the player's interrupt and CC co
 
 This file is the high-level index; topic detail lives in `docs/`.
 
-## What it does
+## Overview
 
 Two UI widgets, each tracked for **two enemy units — target and focus** — sharing one configuration model:
 
@@ -19,7 +19,11 @@ Each unit can also show a single configurable identity label (`units.<unit>.labe
 
 An on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`. The console and the `/kcd perf` step panel are the **library's** windows and wear the **shared Ka0s window edge** (`Core.SKIN` applied by `Core.ApplySkin`: a flat 1px black outer border, a 1px light-gray highlight synthesized inside it, a gold title, a gray divider) — this addon passes neither `applySkin` nor `makeCloseButton`, so both track the library and stay identical to their counterparts in the sibling Ka0s addons. The addon's own on-screen widgets — the icon grids, cast bars and unit labels in `modules/` — are not windows and carry no Ka0s edge; their look is entirely profile-driven (`modules/Castbar_Skin.lua`, `modules/IconGrid_Render.lua`). Don't reach for `Core.SKIN` there.
 
-## Subsystems at a glance
+## Module map
+
+The pipeline first, then one row per subsystem naming the files it lives in and the page that
+covers it. Per-file responsibilities and the AceAddon lifecycle are [module-map.md](module-map.md)'s;
+the TOC order those files actually load in is [Load order](#load-order), at the foot of this page.
 
 ```
 WoW events ─▶ Cooldowns:Refresh ─▶ Ka0s_KickCD_SPELL_STATE ─▶ IconGrid instances[target]:OnSpellState

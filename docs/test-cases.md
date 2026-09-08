@@ -1019,6 +1019,11 @@ badge and any count quoted in the docs must agree with it.
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
 
+### test_doc_structure.lua (2)
+
+- docs/ARCHITECTURE.md carries the section names documentation-§3 mandates
+- every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
+
 ### test_vendor_sync.lua (2)
 
 - libs/LibKa0s is the LibKa0s release CLAUDE.md says this addon bundles
@@ -1085,6 +1090,7 @@ badge and any count quoted in the docs must agree with it.
 | test_perfsetup.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
+| test_doc_structure.lua | 2 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **857** |
+| **Total** | **859** |
