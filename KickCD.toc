@@ -50,7 +50,6 @@ core\CoreSetup.lua
 core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
-core\LSMPatch.lua
 core\KickCD.lua
 core\PerfSetup.lua
 

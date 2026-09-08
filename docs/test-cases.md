@@ -843,7 +843,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (35)
+### test_options_panel.lua (36)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -880,6 +880,7 @@ badge and any count quoted in the docs must agree with it.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- the live wiring patches LSM30_Border through the library, not a private copy
 
 ### test_settings_refreshers.lua (5)
 
@@ -1052,7 +1053,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 35 |
+| test_options_panel.lua | 36 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1064,4 +1065,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **842** |
+| **Total** | **843** |

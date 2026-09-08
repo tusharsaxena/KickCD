@@ -8,8 +8,8 @@
 -- this module on a fireable widget mock, and it is what most of this file is.
 
 local T = _G.KICKCD_TEST
-local test, assertEqual, assertTrue, assertNil, assertNear =
-    T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear
+local test, assertEqual, assertTrue, assertNil, assertNear, assertFalse =
+    T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear, T.assertFalse
 local NS = T.NS
 local H  = NS.Settings.Helpers
 
@@ -795,4 +795,47 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     local src2 = fh2:read("*a")
     fh2:close()
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
+end)
+
+-- ── the LSM30_Border fixup, promoted out of core/LSMPatch.lua ────────────────
+
+test("the live wiring patches LSM30_Border through the library, not a private copy", function()
+    -- AceGUI's WidgetRegistry is PROCESS-GLOBAL: one slot named "LSM30_Border"
+    -- shared by every addon in the client. This addon and four siblings each
+    -- carried the same wrapper in their own core/LSMPatch.lua, each registering
+    -- at whatever version it found plus one, so a session running all five
+    -- stacked five wrappers and the outermost belonged to whichever addon the
+    -- loader reached last. No suite in any of the five could see that — each one
+    -- loads a single copy, registers once and passes, which is exactly what this
+    -- addon's own test_options_panel.lua did through the whole defect.
+    --
+    -- lib.__PatchLSM30Border (LibKa0s-Options-1.0 minor 15) is that wrapper
+    -- published once, behind lib.__lsmBorderPatched. LibStub hands five vendored
+    -- copies the same instance, so five callers make one registration.
+    --
+    -- WHY A FRESH INSTANCE WITH A SEEDED REGISTRY. The mock's WidgetRegistry
+    -- starts empty, which models AGSMW being absent; the call then finds nothing
+    -- to wrap, returns false without arming the sentinel, and proves nothing. The
+    -- `mutate` hook runs BEFORE any source loads, which is the only window in
+    -- which a stand-in constructor can be in the slot when settings/OptionsSetup
+    -- .lua's live arm executes.
+    -- red under: dropping the lib.__PatchLSM30Border() call from the live wiring.
+    local upstream = function() return { frame = {} } end
+    local inst = T.load(true, false, function(m)
+        m.LibStub("AceGUI-3.0"):RegisterWidgetType("LSM30_Border", upstream, 20)
+    end)
+
+    local AceGUI = inst.mocks.LibStub("AceGUI-3.0")
+    assertTrue(AceGUI.WidgetRegistry["LSM30_Border"] ~= upstream,
+        "the live wiring never called lib.__PatchLSM30Border(): the slot still holds "
+        .. "the constructor the registry was seeded with")
+    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
+        "the wrapper must register one version above what it wrapped, to win the race")
+
+    -- The sentinel is armed, so a sibling addon's copy of the library — the same
+    -- instance, as far as LibStub is concerned — registers nothing on top.
+    local lib = inst.mocks.LibStub("LibKa0s-Options-1.0")
+    assertFalse(lib.__PatchLSM30Border(), "a second call must be a no-op")
+    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
+        "and must leave the one registration alone")
 end)

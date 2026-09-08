@@ -213,10 +213,12 @@ Suppressions come in two forms, and the choice between them is about scope:
   `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`,
   `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
 - **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
-  offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the
-  current example: it keeps the standard bootstrap header (`architecture-§1`) even though it is a
-  standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there
-  rather than the header being trimmed or the allowance widened repo-wide.
+  offending line, with a comment saying why the warning doesn't apply. **There is no live example in
+  this repo right now.** The last one was `core/LSMPatch.lua`, which kept the standard bootstrap
+  header (`architecture-§1`) while using neither `addonName` nor `NS` and so suppressed `211/NS`
+  locally rather than widening the repo-wide allowance; that file is gone — its wrapper is
+  `lib.__PatchLSM30Border()` in LibKa0s now. Reach for this form anyway when the next one appears:
+  the shape is right, it is just currently unexercised.
 
 Prefer the inline form for anything genuinely local. Adding a name to `.luacheckrc` silences it in
 every file at once, including files that haven't been written yet.

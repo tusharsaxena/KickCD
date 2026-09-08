@@ -427,7 +427,7 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 
 ### 18. LSM dropdown rendering
 
-The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. `core/LSMPatch.lua` is a defensive in-tree fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar; it runs at `PLAYER_LOGIN`.
+The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is `lib.__PatchLSM30Border()`, a `LibKa0s-Options-1.0` member called once from `settings/OptionsSetup.lua`. **This section checks it with KickCD alone, which is exactly the check that stayed green through the defect section 29 exists for** — run 29 too whenever this one matters.
 
 **Steps.**
 - Open Settings → Cast bar.
@@ -435,7 +435,7 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 
 **Pass.**
 - Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
-- The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; `LSMPatch.lua` hides it).
+- The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; the library's patch hides it).
 - Switching to Settings → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
 
 ### 19. Debug traces
@@ -787,10 +787,45 @@ five, so run two.
   vendored payload.
 - No Lua errors at any point.
 
+### 29. The Border dropdown when five Ka0s addons share one registry
+
+**Smoke, session 5.** Run after this addon's `core/LSMPatch.lua` was deleted and
+`settings/OptionsSetup.lua`'s live wiring took over the fixup (`M4-04`), and again after **each** of
+the four remaining deletions — PanelMaster, ConsumableMaster, MultiMeters, then AbsorbTracker last,
+because AbsorbTracker's copy is the one that diverges (a callable `NS.ApplyLSMBorderPatch()` rather
+than a `PLAYER_LOGIN` frame). Five deletions, five commits, five bisect points if this goes wrong.
+
+**The thing under test is not KickCD.** AceGUI's `WidgetRegistry` is process-global: one slot named
+`LSM30_Border` shared by every addon in the client. Five Ka0s addons each carried a private copy of
+the wrapper, each registering at whatever version it found plus one, so the wrapper a Border dropdown
+actually got belonged to whichever addon the client loaded last. Nothing headless in any of the five
+repos could see it — each suite loads one copy, registers once and passes — and section 18 above,
+which checks the alignment with KickCD alone, passed throughout.
+
+KickCD is now the **only** one of the five with no private copy. So this run is also the first
+evidence that one library-level registration is enough to dress a dropdown in an addon that no longer
+carries its own.
+
+**Steps.**
+- Enable KickCD, PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters together, and log in.
+- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Cast bar** → **Border
+  style**.
+- Change the load order — disable and re-enable addons, or rename folders so a different one is
+  reached last — `/reload`, and walk the five dropdowns again.
+
+**Pass.**
+- In all five, the closed control's left edge is **flush** with the sliders and checkboxes stacked
+  with it, with **no ~42px gap**, and opening it still draws the per-row hover previews.
+- Nothing differs between the two passes. **Any dropdown that looks different from the other four, or
+  that changes when the load order changes, is the finding** — the whole point of moving the
+  registration into LibKa0s is that the answer no longer depends on who loaded last.
+- No Lua errors at any point.
+
 ---
 
 ## When to run which subset
 
+- **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
 - **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27** and **28**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).

@@ -329,6 +329,44 @@ end
 -- The live wiring
 -- ---------------------------------------------------------------------
 
+-- The LSM30_Border fixup, and why it is a call rather than a file.
+--
+-- A LIBRARY ACT, NOT AN ADDON ONE. AceGUI's WidgetRegistry is process-global:
+-- one slot named "LSM30_Border" that every addon in the client shares, Ka0s or
+-- not. This addon carried the fixup privately in core/LSMPatch.lua, and so did
+-- AbsorbTracker, ConsumableMaster, MultiMeters and PanelMaster -- five copies,
+-- five distinct md5s, each registering its wrapper at whatever version it found
+-- plus one. Load all five in one session and the wrapper a Border dropdown
+-- actually gets belongs to whichever addon the loader reached last. Nothing in
+-- any of the five repos could see it: each suite loads one copy, registers once
+-- and passes.
+--
+-- lib.__PatchLSM30Border (LibKa0s-Options-1.0 minor 15) is the same wrapper
+-- published once, guarded by lib.__lsmBorderPatched. Five vendored copies of
+-- the library are still ONE instance to LibStub, so five callers produce one
+-- registration and the return value says which call made it. Calling it is
+-- unconditional and needs no agreement with any sibling addon.
+--
+-- HERE, AT FILE LOAD, is early enough. KickCD.toc pulls
+-- libs\AceGUI-3.0-SharedMediaWidgets\widget.xml in with the other libraries
+-- (:28), well before settings\OptionsSetup.lua (:72), so the slot already holds
+-- AGSMW's own constructor when this line runs. AceGUI refuses a registration
+-- whose version is not strictly higher than the one it already holds, so
+-- another addon's later copy of AGSMW cannot take the slot back at its own
+-- fixed version. (Written without naming the AceGUI entry point, so that
+-- C02's acceptance grep for it over core/, modules/ and settings/ keeps
+-- returning nothing rather than one comment an auditor has to re-read.)
+-- It sits in this file because this is where the addon's options
+-- surface is wired, which is where the library's own note on the member says to
+-- call it from.
+--
+-- core/LSMPatch.lua IS GONE, deleted in the same commit that added this line.
+-- Keeping it would have been a second registration of a wrapper the library has
+-- already installed -- harmless in effect, since both hide the same tile and
+-- re-anchor the same two regions, but it is the exact shape the promotion
+-- exists to remove.
+lib.__PatchLSM30Border()
+
 NS.Settings = NS.Settings or {}
 NS.Settings.Helpers = lib:New(descriptor)
 

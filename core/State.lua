@@ -154,7 +154,10 @@ boot:SetScript("OnEvent", function(self, event)
     elseif event == "PLAYER_LOGIN" then
         State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
         -- PLAYER_LOGIN fires once per session; release the listener once
-        -- we've seeded the flag (mirrors core/LSMPatch.lua's pattern).
+        -- we've seeded the flag. (This used to cite core/LSMPatch.lua as the
+        -- other example of the pattern; that file is gone -- its wrapper is
+        -- lib.__PatchLSM30Border in LibKa0s now -- so this is the only
+        -- one-shot PLAYER_LOGIN listener left in the addon.)
         self:UnregisterEvent("PLAYER_LOGIN")
     end
     -- Fan out the freshly-written flag so subscribers (IconGrid,
