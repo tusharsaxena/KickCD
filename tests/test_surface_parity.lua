@@ -176,5 +176,15 @@ test("the Options stub carries every member the host calls", function()
         -- The AceGUI handle the library resolves at CreateOptionsPanel time. With no library there
         -- is no CreateOptionsPanel, so there is nothing to resolve; the host reads NS.AceGUI.
         "AceGUI",
+        -- New at LibKa0s v1.27.0 (Options minor 8): the ONE instance print sink the shell publishes
+        -- so OptionsWidgets stops building a second one from the same descriptor
+        -- (libs/LibKa0s/Options.lua:392, read at OptionsWidgets.lua:763). Its own comment there
+        -- calls it internal rather than surface and says a degradation stub does not mirror it,
+        -- because Kit.assertSurfaceParity skips the `__` prefix -- true of the kit's BY-NAME form,
+        -- which filters through Kit.publicMembers, and not of the four-argument form this case
+        -- uses, which walks every key of the live table. The host calls nothing on it: it is the
+        -- library talking to itself across a file boundary, and a stub copy would be a printer
+        -- with no caller.
+        "__print",
     })
 end)

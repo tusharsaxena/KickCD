@@ -751,11 +751,47 @@ Blizzard defaults. Log in fresh; do not `/reload` before the first check.
   is the regression this step exists to catch, and it is invisible to every other check in this suite.
 - No Lua errors at any point.
 
+### 28. The pooled tab strip, and the perf strings, after the v1.27.0 re-vendor
+
+**Smoke, session 3.** Two things arrived with `M4-01`'s LibKa0s v1.27.0 payload that only a client
+can settle. Nothing here may be reported as passing until someone has actually looked at it.
+
+`TabStrip` (`libs/LibKa0s/OptionsWidgets.lua`) no longer builds a button and a content panel per
+click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
+`OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
+pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
+the shared mock answers `GetHeight` with 0 for every frame and that flips at kit 16, not here. **So a
+stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
+every automated check in this repo.**
+
+**Steps — the strip.**
+- `/kcd config` → **General**, **Icons** (six tabs, the widest strip here) and **Cast bar**. On each
+  page, cycle every tab three times, ending back on the first.
+- Watch three things on each pass: the **label** is that tab's own, the **selected** tab is the one
+  you pressed, and the strip's **band height** does not move as you go through it.
+
+**Steps — the strings.** `LibKa0s-Perf-1.0` minor 8 respells five player-facing strings: two
+`CANCELLED` and three `unlabelled` become `CANCELED` and `unlabeled`. No single capture shows all
+five, so run two.
+- `/kcd perf start mylabel`, then `finish` — the started line and the report header both name the
+  label.
+- `/kcd perf start` with no label, then `cancel`.
+
+**Pass.**
+- Every tab labelled and selected correctly on all three passes, on all three pages, and no band that
+  grows or shrinks. A label carried over from the previously-dressed tab, a highlight on the wrong
+  button, a body drawn under the wrong tab, or a strip whose height moves between passes is the pool
+  handing back a frame it did not finish dressing.
+- The unlabelled start line, its report header and the cancel line read **`unlabeled`** and
+  **`perf run CANCELED`**. A double-L in either is a copy of the string that did not come from the
+  vendored payload.
+- No Lua errors at any point.
+
 ---
 
 ## When to run which subset
 
-- **LibKa0s re-vendor, or any seam-file edit:** 25, 26 and **27**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27** and **28**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
