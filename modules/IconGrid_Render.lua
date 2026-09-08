@@ -752,7 +752,12 @@ end
 --        rather than a fresh poll. Config re-applies hand back the SAME
 --        state table, so the gate would correctly conclude "nothing moved"
 --        and skip the very work the config change was meant to refresh.
-function Icon:Apply(state, force)
+-- @param parentKey string|nil the Perf bucket this apply is running inside
+--        (performance-§3). Only IconGrid:OnSpellState passes one; the other
+--        two callers — BuildActiveList's initial paint and ApplyTextConfig's
+--        re-apply — run under no bracket, and saying "spellState" for them
+--        would report containment inside a handler that never ran.
+function Icon:Apply(state, force, parentKey)
     local __t0 = Perf.on and debugprofilestop()
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     local stateWork = force or plainStateMoved(self._lastState, state)
@@ -787,7 +792,7 @@ function Icon:Apply(state, force)
     if stateWork then self:UpdateGlow(state) end
 
     renderChargesBadge(self, cfg, state)
-    if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0) end
+    if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0, parentKey) end
 end
 
 -- Apply zoom (icon TexCoord crop) and border (visibility / color /

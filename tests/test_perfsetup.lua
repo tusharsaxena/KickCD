@@ -187,6 +187,21 @@ test("every declared bucket is reached by a real bracket", function()
 
     -- spellPoll: the coalesced poll over the watched table.
     if Cooldowns and Cooldowns.Refresh then Cooldowns:Refresh() end
+
+    -- stateEmit: the publish inside that poll, which only happens when a
+    -- spell's state actually MOVED — so a second Refresh over an untouched
+    -- watched table emits nothing and the bucket would read zero forever.
+    -- Falsify one carried record and poll again: the change detector then has
+    -- something to report and the emit runs for real, which is the only way to
+    -- prove the bracket wraps the publish rather than merely existing.
+    local staleSpell = firstWatchedSpell(Cooldowns)
+    if staleSpell then
+        local prev = Cooldowns.watched[staleSpell]
+        if type(prev) == "table" then
+            prev.ready, prev.isActive = not prev.ready, not prev.isActive
+        end
+        Cooldowns:Refresh()
+    end
     -- spellState: Refresh only emits when a spell's state actually CHANGED, and
     -- a freshly-built instance has nothing to report. Driven through the real
     -- entry point — the message — rather than by calling Note, which would prove
@@ -207,7 +222,7 @@ test("every declared bucket is reached by a real bracket", function()
     -- Not every bucket is reachable headlessly (castTick needs a live cast,
     -- cdText needs the ticker), so assert on the ones this harness can drive and
     -- name the rest rather than pretending.
-    assertBucketsReached(buckets, { "spellPoll", "spellState", "castEvent", "visibility" })
+    assertBucketsReached(buckets, { "spellPoll", "spellState", "castEvent", "visibility", "glowGate", "stateEmit" })
 end)
 
 test("the declared bucket list and the bracketed call sites agree exactly", function()
@@ -254,8 +269,17 @@ test("nesting is declared for every bucket that runs inside another", function()
     -- visibility calls against ZERO castEvent calls — they all came from its
     -- other call sites. Declaring the nesting made the report indent it under a
     -- parent that never ran, which tells the reader the opposite of the truth.
+    -- `glowGate` is absent for the identical reason: only one of
+    -- IconGrid:RefreshAllGlows' five call sites runs inside `castEvent`.
+    --
+    -- `spellState` moved from `spellPoll` to `stateEmit` when the publish it
+    -- runs inside gained a bracket of its own. The chain is four deep now —
+    -- spellPoll > stateEmit > spellState > iconApply — and pinning each LINK
+    -- rather than the depth is what keeps the report from indenting a bucket
+    -- under a grandparent and inviting the reader to subtract it twice.
     for _, pair in ipairs({
-        { "spellState", "spellPoll" },
+        { "stateEmit",  "spellPoll" },
+        { "spellState", "stateEmit" },
         { "pollSpell",  "spellPoll" },
         { "iconApply",  "spellState" },
     }) do
@@ -264,6 +288,66 @@ test("nesting is declared for every bucket that runs inside another", function()
             pair[1] .. " must declare `within = \"" .. pair[2] .. "\"`")
     end
     assertTrue(inst.NS.Perf ~= nil)
+end)
+
+test("the nesting the descriptor declares is the nesting a run OBSERVES", function()
+    -- The other half of performance-§3, and the half a source read cannot give
+    -- you. A `within` is the author's CLAIM about containment; `observedWithin`
+    -- is what a call site actually passed. docs/perf-analysis/20260909-014035
+    -- is what happens when only the claim exists: every nested row in it read
+    -- "declares itself within X — not observed", so subtracting a child from
+    -- its parent to find the residual was arithmetic on an unverified tree.
+    -- red under: dropping the third argument from any Perf.Note below it.
+    local inst = T.load(true, true)
+    local NS2, P = inst.NS, inst.NS.Perf
+    P.on = true
+
+    local Cooldowns = NS2:GetModule("Cooldowns", true)
+    if Cooldowns and Cooldowns.Refresh then
+        Cooldowns:Refresh()
+        -- Force a material change so the poll actually publishes; see the
+        -- bucket-reached case above for why an untouched table emits nothing.
+        local id = firstWatchedSpell(Cooldowns)
+        local prev = id and Cooldowns.watched[id]
+        if type(prev) == "table" then
+            prev.ready, prev.isActive = not prev.ready, not prev.isActive
+            Cooldowns:Refresh()
+        end
+    end
+
+    local buckets = P.__buckets and P.__buckets() or {}
+    P.on = false
+
+    for _, pair in ipairs({
+        { "pollSpell", "spellPoll" },
+        { "stateEmit", "spellPoll" },
+    }) do
+        local b = buckets[pair[1]]
+        assertTrue(b ~= nil and (b.calls or 0) > 0,
+            pair[1] .. " must have been reached for its parent to mean anything")
+        assertEqual(b.observedWithin, pair[2],
+            pair[1] .. " must OBSERVE itself inside " .. pair[2] ..
+            ", not merely declare it")
+        assertFalse(b.observedMixed,
+            pair[1] .. " reported two different parents; the declaration cannot " ..
+            "be true for both call paths")
+    end
+
+    -- The counter-case, and the reason PollSpell takes its parent rather than
+    -- hard-coding one: Rebuild polls the same spells from OUTSIDE `spellPoll`.
+    -- Were the bracket to name its parent itself, that path would report
+    -- containment in a pass that never ran — the precise failure this test
+    -- exists to prevent, arriving through the fix for it.
+    local inst2 = T.load(true, true)
+    local P2, CD2 = inst2.NS.Perf, inst2.NS:GetModule("Cooldowns", true)
+    P2.on = true
+    if CD2 and CD2.Rebuild then pcall(CD2.Rebuild, CD2) end
+    local rebuilt = (P2.__buckets and P2.__buckets() or {}).pollSpell
+    P2.on = false
+    if rebuilt and (rebuilt.calls or 0) > 0 then
+        assertNil(rebuilt.observedWithin,
+            "a poll driven from Rebuild runs inside no bucket and must claim none")
+    end
 end)
 
 test("instrumentation is inert when capture is off", function()

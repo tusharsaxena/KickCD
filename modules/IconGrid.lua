@@ -808,7 +808,7 @@ function IconGrid:OnSpellState(_evt, payload)
         local inst = instances[u]
         if inst and inst.enabled then
             local btn = inst.pool.active[payload.spellID]
-            if btn then btn:Apply(payload) end
+            if btn then btn:Apply(payload, nil, "spellState") end
         end
     end
     if __t0 then Perf.Note("spellState", debugprofilestop() - __t0) end
@@ -1049,6 +1049,13 @@ end
 --- iteration when neither moved. Cache is per-instance so target and
 --- focus don't share (or clobber) each other's gate.
 function IconGrid:RefreshAllGlows(inst)
+    -- Bracketed as `glowGate`, opening ABOVE the gate check for the same reason
+    -- Cooldowns:PollSpell opens above its guards: resolveInterruptible and
+    -- IsHostileUnitCasting are themselves API calls, and a bracket that covered
+    -- only the fall-through would measure the cache's misses and call the hits
+    -- free. Both exits close it. No parentKey: four of the five call sites run
+    -- under no bracket at all (core/PerfSetup.lua).
+    local __t0 = Perf.on and debugprofilestop()
     local unit = inst.unit
     -- Compute the gate booleans once. `interruptible` is a tri-state:
     --   * true  — unit is hostile-casting AND the cast is interruptible
@@ -1063,7 +1070,10 @@ function IconGrid:RefreshAllGlows(inst)
         and NS.State.IsHostileUnitCasting(unit) or false
     local interruptible = resolveInterruptible(unit, hostileCasting)
 
-    if not gateMoved(inst, hostileCasting, interruptible) then return end
+    if not gateMoved(inst, hostileCasting, interruptible) then
+        if __t0 then Perf.Note("glowGate", debugprofilestop() - __t0) end
+        return
+    end
     -- Two scalars rather than a record, so a boss chaining casts doesn't
     -- allocate a table per gate change.
     inst.lastGateCasting, inst.lastGateInterruptible = hostileCasting, interruptible
@@ -1073,6 +1083,7 @@ function IconGrid:RefreshAllGlows(inst)
     for _, btn in ipairs(inst.ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end
     end
+    if __t0 then Perf.Note("glowGate", debugprofilestop() - __t0) end
 end
 
 --- Re-evaluate visibility on combat-state transitions. The flag itself

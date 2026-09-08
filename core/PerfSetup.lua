@@ -103,10 +103,12 @@ NS.Perf = lib:New({
     buckets = {
         { key = "spellPoll" },                          -- Cooldowns:Refresh, the coalesced pass
         { key = "pollSpell",  within = "spellPoll"  },  -- Cooldowns:PollSpell, per watched spell
-        { key = "spellState", within = "spellPoll"  },  -- IconGrid:OnSpellState, synchronous
+        { key = "stateEmit",  within = "spellPoll"  },  -- the SPELL_STATE publish, per emitting spell
+        { key = "spellState", within = "stateEmit"  },  -- IconGrid:OnSpellState, synchronous
         { key = "iconApply",  within = "spellState" },  -- Icon:Apply, per icon per unit
         { key = "cdText" },                             -- the 0.1s cooldown-text ticker pass
         { key = "castEvent" },                          -- IconGrid:OnUnitCastEvent
+        { key = "glowGate" },                           -- IconGrid:RefreshAllGlows
         { key = "visibility" },                         -- IconGrid:RefreshVisibility
         { key = "castTick" },                           -- Castbar OnUpdate, per frame while casting
     },
@@ -134,9 +136,42 @@ NS.Perf = lib:New({
     -- than not declaring the relationship: nesting exists to tell a reader which
     -- totals overlap, and that one did not.
     --
-    -- STILL NOT DECLARED: `glowGate` (IconGrid:RefreshAllGlows), same
-    -- multi-exit shape and no capture has yet pointed at it. `Note()` records an
-    -- undeclared key anyway, so it can be added ad hoc the moment one does.
+    -- `stateEmit` EXISTS BECAUSE A CAPTURE ASKED A QUESTION THE BUCKETS COULD
+    -- NOT ANSWER. docs/perf-analysis/20260909-014035 recorded one `spellPoll`
+    -- pass at 9.6400 ms — 37x its own mean and 69.7% of that capture's 13.83 ms
+    -- frame — with NO child anywhere near it (`pollSpell` max 0.2961,
+    -- `spellState` 0.2135, `iconApply` 0.1948). The cost was inside
+    -- Cooldowns:Refresh and outside every bracket it contained, so the record
+    -- could locate the hitch to a function and no further.
+    --
+    -- What sat in that gap was the publish. `spellState` brackets the SUBSCRIBER
+    -- (IconGrid:OnSpellState); nothing bracketed the `NS:SendMessage` around it,
+    -- which is CallbackHandler's dispatch plus the six-field payload table this
+    -- loop allocates per emitting spell — ~2 emits per pass, so ~1590 tables
+    -- across that capture's 810 passes. A collection landing inside the bracket
+    -- is charged to whatever pass was unlucky, which is the shape a lone 9.64 ms
+    -- outlier with no child spike actually has. `stateEmit` measures the publish
+    -- so the next capture can separate dispatch from handler, and
+    -- `spellPoll - pollSpell - stateEmit` is then the bare loop.
+    --
+    -- NOT `glowGate`, which the 20260909 write-up first proposed and which
+    -- would have measured the wrong function: RefreshAllGlows is NOT reachable
+    -- from Cooldowns:Refresh. The only glow work on the poll path is
+    -- Icon:UpdateGlow, called from Icon:Apply (modules/IconGrid_Render.lua:787)
+    -- and therefore already inside `iconApply`.
+    --
+    -- `glowGate` IS declared now, on its own merits rather than that one's:
+    -- RefreshAllGlows walks every active icon into UpdateGlow, and four of its
+    -- five call sites (EnableUnit, a config change, a target swap, a focus swap)
+    -- sit inside no bracket at all, so LibCustomGlow's cost has been invisible
+    -- in every capture taken so far.
+    --
+    -- It declares NO `within`, for the reason the paragraph above gives for
+    -- `visibility`: only OnUnitCastEvent's call site runs inside `castEvent`,
+    -- and out of combat that parent may not run at all. Both buckets therefore
+    -- overlap `castEvent` on one path and stand alone on the others — which is
+    -- why the report's roots must not be summed, and why neither claims a
+    -- parent it cannot keep.
 
     --- Make the addon inert without a /reload.
     ---

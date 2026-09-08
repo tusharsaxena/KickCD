@@ -180,10 +180,17 @@ end
 
 --- Compute the freshly-polled state for a single spellID.
 -- @param spellID number
+-- @param parentKey string|nil  the Perf bucket this poll is running inside, for
+--   the OBSERVED half of the nesting declaration (performance-§3). Passed by
+--   Refresh (which runs inside `spellPoll`) and omitted by Rebuild (which does
+--   not). Hard-coding "spellPoll" at the brackets below would have been the
+--   same class of unverified claim the parameter exists to end: two callers,
+--   one parent between them, and the record would have reported the Rebuild
+--   path as nested inside a pass that never ran.
 -- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --   Returns nil if the spell isn't actually known by the player so the
 --   icon grid can hide entries the player can't see in their own spellbook.
-function Cooldowns:PollSpell(spellID)
+function Cooldowns:PollSpell(spellID, parentKey)
     -- TWO exits, and both are instrumented on purpose.
     --
     -- This bucket was left undeclared at first precisely because of them: a
@@ -198,7 +205,7 @@ function Cooldowns:PollSpell(spellID)
     local __t0 = Perf.on and debugprofilestop()
 
     if not isPollable(spellID) then
-        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+        if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0, parentKey) end
         return nil
     end
 
@@ -206,7 +213,7 @@ function Cooldowns:PollSpell(spellID)
     -- on this path too. Lua forbids a statement after `return`, and a bracket
     -- that skipped the SUCCESS path would measure only the rejections.
     local state = buildSpellState(spellID)
-    if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0) end
+    if __t0 then Perf.Note("pollSpell", debugprofilestop() - __t0, parentKey) end
     return state
 end
 
@@ -424,7 +431,7 @@ function Cooldowns:Refresh()
 
     for id, prev in pairs(self.watched) do
         watched = watched + 1
-        local next_ = self:PollSpell(id)
+        local next_ = self:PollSpell(id, "spellPoll")
         if next_ == nil then
             -- Spell disappeared (pet dismiss, talent untrain, ...). Force
             -- the icon back to ready visuals and stop polling it; the next
@@ -433,10 +440,16 @@ function Cooldowns:Refresh()
             -- A vanished spell is always material.
             logged = logged + 1
             if dbg then dropIds[#dropIds + 1] = id end
+            -- BRACKETED AS `stateEmit`, and the bracket covers the table
+            -- constructor as well as the publish: the allocation is per
+            -- emitting spell and is the half of this statement that a
+            -- collection can be charged to. See core/PerfSetup.lua.
+            local __e0 = Perf.on and debugprofilestop()
             NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID = id, ready = false, isActive = false,
                 cdObject = nil, chargeCdObject = nil, charges = nil,
             })
+            if __e0 then Perf.Note("stateEmit", debugprofilestop() - __e0, "spellPoll") end
         elseif not StateChanged(prev, next_) then
             -- NOTHING CHANGED, AND THE ATTRIBUTION STILL CAN. A spell parked on a real cooldown
             -- does not change from poll to poll, so this is the only place its GCD attribution can
@@ -483,11 +496,13 @@ function Cooldowns:Refresh()
                 end
             end
             self.watched[id] = next_
+            local __e0 = Perf.on and debugprofilestop()
             NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
                 spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
                 cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
                 charges = next_.charges,
             })
+            if __e0 then Perf.Note("stateEmit", debugprofilestop() - __e0, "spellPoll") end
         end
     end
 
