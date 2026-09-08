@@ -105,3 +105,40 @@ test("ResetAll (via RestoreUnitLinks) restores each unit's link flag to default 
     assertEqual(NS.db.profile.units.target.link,
         NS.DEFAULT_PROFILE.units.target.link, "target link restored to default (false)")
 end)
+
+test("ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)", function()
+    -- RED before M4-18. Helpers.ResetIconPosition's header promises the default
+    -- coordinate lives in exactly one place, DEFAULT_PROFILE.units.target.anchors
+    -- .icons, "so we don't duplicate magic numbers across UI / CLI / Database
+    -- layers" — and then the line under it duplicated the number anyway, and got
+    -- it wrong: the fallback wrote y = -180 where defaults/Profile.lua ships
+    -- y = +120. 300 px apart and opposite in sign, so a fallback that fired would
+    -- have parked the grid below screen centre instead of above it.
+    --
+    -- The branch cannot be reached in a shipping install — defaults/Profile.lua is
+    -- a TOC-loaded file, so NS.DEFAULT_PROFILE is always there — which is exactly
+    -- why nothing caught the wrong number for as long as it sat there. Taking the
+    -- table away by hand is the only way to pin the contract. The right answer for
+    -- a reset with no defaults to reset TO is to do nothing at all: leave the
+    -- stored anchor where the user dragged it and publish nothing, which is what
+    -- the sibling Helpers.ResetAllPositions has always done.
+    local inst = T.load(true)
+    local NS = inst.NS
+    local Helpers = NS.Settings.Helpers
+
+    NS.db.profile.units.target.anchors.icons =
+        { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 400, y = -300 }
+    NS.DEFAULT_PROFILE = nil
+
+    local fired = false
+    local busTarget = NS.NewBusTarget()
+    busTarget:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function() fired = true end)
+    Helpers.ResetIconPosition()
+    busTarget:UnregisterMessage("Ka0s_KickCD_CONFIG_CHANGED")
+
+    local a = NS.db.profile.units.target.anchors.icons
+    assertEqual(a.point, "TOPLEFT", "no defaults tree, no write: the dragged point survives")
+    assertEqual(a.x, 400, "no defaults tree, no write: the dragged x survives")
+    assertEqual(a.y, -300, "no defaults tree, no write: the dragged y survives, and is not -180")
+    assertTrue(not fired, "and nothing is published, because nothing changed")
+end)
