@@ -169,6 +169,7 @@ local SUITES = {
     "test_settings_refreshers",
     "test_flow_traces",
     "test_version",
+    "test_source_style",
     "test_slash_style",
     "test_slash",
     "test_opensettings",

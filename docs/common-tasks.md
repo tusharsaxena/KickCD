@@ -164,6 +164,14 @@ drifts from the code is worse than one that names none.
   separate sweeps missed. A colon *mid*-line (`"name: " .. value`) is fine; the rule is about the last
   character a player reads. Guarded by `tests/test_slash_style.lua` — see
   [testing.md](testing.md#the-source-scan-guard).
+- **A chat sink threaded through helpers is a parameter named `emit`, never `print`.** A dump that
+  splits across several local helpers passes the sink down rather than each helper reaching for
+  `NS.Util.print` again — `modules/Castbar_Debug.lua` does this eight times. Name that parameter
+  `emit`, and name the local that resolves it `emit` too. Calling it `print` shadows the Lua global
+  inside every one of those functions, so `print(...)` in the body no longer means what a reader
+  scanning for `slash-commands-§4` violations assumes it means, and `tests/test_source_style.lua`
+  cannot tell the shadow from a bare global read either. `settings/Slash.lua:61`'s `out(line)` is the
+  same idea one level up, where the sink is a module-level local rather than an argument.
 
 ### 12.0 secret-value rule of thumb
 
@@ -231,20 +239,28 @@ every file at once, including files that haven't been written yet.
 
 ### Global lookup form
 
-When a Blizzard / WoW global is read, the form depends on whether the symbol is guarded anywhere in
-the module:
+When a Blizzard / WoW global is read, the form depends on the symbol: a standing list always carries
+the `_G.` prefix, and outside that list the form follows whether the module guards the symbol.
 
-- **Guarded somewhere → `_G.X` everywhere.** If the module ever guards the symbol (`if X then`,
-  `X and X(...)`, `... or X`), write `_G.X` for **every** reference to that symbol in the module —
-  including reads inside the guard's protected block. The `_G.` form makes the "this might not exist"
-  intent obvious and matches `core/Compat.lua`. Symbols in this bucket today: `C_Spell`, `C_Timer`,
-  `C_CurveUtil`, `issecretvalue`, `InCombatLockdown`, `UnitCastingInfo`, `UnitChannelInfo`,
-  `UnitCastingDuration`, `UnitChannelDuration`, `UnitExists`, `UnitCanAttack`, `UnitName`,
-  `GameFontNormal`, every legacy `GetSpell*` / `IsSpell*` / `IsPlayerSpell` / `IsUsableSpell`, `print`
-  (used as a fallback), and the cast-event API surface.
+- **The standing `_G.` list — prefix everywhere, and this half is gated.** `C_Spell`, `C_Timer`,
+  `C_CurveUtil`, `issecretvalue`, `InCombatLockdown`, `IsLoggedIn`, `UnitCastingInfo`,
+  `UnitChannelInfo`, `UnitCastingDuration`, `UnitChannelDuration`, `UnitExists`, `UnitCanAttack`,
+  `UnitName`, `UnitIsDead`, `GameFontNormal`, `STANDARD_TEXT_FONT`, every legacy `GetSpell*` /
+  `IsSpell*` / `IsPlayerSpell` / `IsUsableSpell`, `print` (used as a fallback), and the cast-event API
+  surface. The `_G.` form makes the "this might not exist" intent obvious and matches
+  `core/Compat.lua`. `tests/test_source_style.lua` reads this list and fails on a bare read of any
+  name on it — so a name added here must be added there in the same change, and vice versa.
+- **Guarded somewhere → `_G.X` everywhere, as guidance.** If a module ever guards a symbol (`if X
+  then`, `X and X(...)`, `... or X`), write `_G.X` for **every** reference to that symbol in that
+  module, including reads inside the guard's protected block. Applied per module, which is why
+  `UnitClass` is `_G.UnitClass` throughout `core/KickCD.lua` and `settings/Spells.lua` (both guard it)
+  and bare in `modules/IconGrid.lua`, `modules/Cooldowns.lua` and `core/Database.lua` (none do).
+  **Not gated, and the residue is why:** `LibStub`, `Settings`, `GameTooltip`, `Enum`,
+  `DEFAULT_CHAT_FRAME`, `C_CooldownViewer` and `RAID_CLASS_COLORS` are all guarded and all bare, at
+  roughly seventy sites. Bringing them in is a mechanical sweep with no reader on the other side, so
+  the rule binds new and edited code and the standing list above is what the suite measures.
 - **Never guarded → bare `X`.** A trusted baseline global the surrounding code does not short-circuit
-  on: `UnitClass`, `UnitRace`, `UnitIsDead`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`,
-  `CreateColor`.
+  on: `UnitClass`, `UnitRace`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`, `CreateColor`.
 - **Spec APIs are wrapped, not read raw.** The deprecated `GetSpecialization` /
   `GetSpecializationInfo` globals route through `NS.Compat.GetSpecialization()` /
   `NS.Compat.GetSpecializationInfo(i)` — no direct calls to the globals remain outside

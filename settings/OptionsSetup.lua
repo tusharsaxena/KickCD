@@ -123,7 +123,7 @@ local descriptor = {
     -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
     -- than an AceTimer embed, because embedding would be the library's second
     -- dependency-budget breach.
-    scheduleTimer = function(fn, delay) return C_Timer.After(delay, fn) end,
+    scheduleTimer = function(fn, delay) return _G.C_Timer.After(delay, fn) end,
 
     getLSM   = function() return LibStub and LibStub("LibSharedMedia-3.0", true) end,
     validate = function()

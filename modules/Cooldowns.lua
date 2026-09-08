@@ -492,7 +492,7 @@ function Cooldowns:OnEnable()
     -- Initial build deferred to PLAYER_ENTERING_WORLD when the spec / spellbook
     -- are guaranteed to be populated. If the addon enables late, also try a
     -- best-effort rebuild now.
-    if IsLoggedIn and IsLoggedIn() then
+    if _G.IsLoggedIn and _G.IsLoggedIn() then
         self:Rebuild()
     end
 end
@@ -535,7 +535,7 @@ end
 
 --- /kickcd debug spells — print the watched-list with current state.
 function Cooldowns:DebugDump()
-    local p = NS.Util and NS.Util.print or print
+    local p = NS.Util and NS.Util.print or _G.print
     local class, spec = ResolveClassSpec()
     -- English token, not the localized name: this line is what users paste
     -- into bug reports (issue #8).

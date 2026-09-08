@@ -30,12 +30,12 @@ end
 --- boolean or a nil is safe to render; anything else is presumed secret and
 --- only ever described, never tostring'd. The default arm is the secret one.
 local NINT_REPORT = {
-    boolean = function(print, v)
+    boolean = function(emit, v)
         -- Plain boolean — safe to tostring.
-        print("    plain value = " .. tostring(v))
+        emit("    plain value = " .. tostring(v))
     end,
-    ["nil"] = function(print)
-        print("    plain nil (treated as interruptible)")
+    ["nil"] = function(emit)
+        emit("    plain nil (treated as interruptible)")
     end,
 }
 
@@ -51,22 +51,22 @@ local NINT_REPORT = {
 --- that had nothing to say rather than one that could not render it.
 ---
 --- The value itself is still never tostring'd or formatted: it is described.
-local function reportSecretNint(print)
+local function reportSecretNint(emit)
     local via = (_G.C_CurveUtil and _G.C_CurveUtil.EvaluateColorValueFromBoolean)
         and "visual state determined via C_CurveUtil.EvaluateColorValueFromBoolean"
         or  "C_CurveUtil.EvaluateColorValueFromBoolean unavailable"
-    print("    secret-tainted; " .. via)
+    emit("    secret-tainted; " .. via)
 end
 
 --- Who the unit is and whether we can attack it.
 --- @return boolean true when the unit exists and the dump should continue
-local function dumpUnitHeader(print, inst)
-    if not UnitExists(inst.unit) then
-        print("  no " .. inst.unit)
+local function dumpUnitHeader(emit, inst)
+    if not _G.UnitExists(inst.unit) then
+        emit("  no " .. inst.unit)
         return false
     end
     local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", inst.unit)
-    print("  " .. inst.unit .. " = " .. (UnitName(inst.unit) or "?")
+    emit("  " .. inst.unit .. " = " .. (_G.UnitName(inst.unit) or "?")
         .. ", isUnit="    .. (UnitIsUnit(inst.unit, "player") and "self" or "other")
         .. ", canAttack=" .. tostring(canAttack and true or false))
     return true
@@ -75,53 +75,53 @@ end
 --- The no-tracked-cast arm. Probing Compat here is the whole diagnostic value
 --- of the branch: `current` nil while the API still reports a cast means an
 --- event was dropped somewhere.
-local function dumpNoCastHint(print, inst)
-    print("  no active cast tracked (current = nil)")
+local function dumpNoCastHint(emit, inst)
+    emit("  no active cast tracked (current = nil)")
     local rec = NS.Compat.GetCastingInfo(inst.unit)
     if rec then
-        print("  but Compat.GetCastingInfo returned a record — debug a missed event?")
+        emit("  but Compat.GetCastingInfo returned a record — debug a missed event?")
     end
 end
 
 --- The tracked cast record. Don't tostring/format secret values: use type()
 --- and a boolean branch to safely report the state without arithmetic on a
 --- secret.
-local function dumpCastRecord(print, inst)
+local function dumpCastRecord(emit, inst)
     local current = inst.current
-    print("  current.isChannel = " .. tostring(current.isChannel))
+    emit("  current.isChannel = " .. tostring(current.isChannel))
 
     local nintType = type(current.notInterruptible)
-    print("  current.notInterruptible: type=" .. nintType
+    emit("  current.notInterruptible: type=" .. nintType
         .. ", isSecret=" .. tostring(_G.issecretvalue and _G.issecretvalue(current.notInterruptible) or false))
     local report = NINT_REPORT[nintType] or reportSecretNint
-    report(print, current.notInterruptible)
+    report(emit, current.notInterruptible)
 
-    print("  duration: " .. (current.duration and "present" or "nil"))
-    print("  texture:  type=" .. type(current.texture))
-    print("  spellID:  type=" .. type(current.spellID))
-    print("  name:     type=" .. type(current.name))
+    emit("  duration: " .. (current.duration and "present" or "nil"))
+    emit("  texture:  type=" .. type(current.texture))
+    emit("  spellID:  type=" .. type(current.spellID))
+    emit("  name:     type=" .. type(current.name))
 end
 
 --- The per-state colors the profile currently holds for this unit.
-local function dumpConfiguredColors(print, inst)
+local function dumpConfiguredColors(emit, inst)
     local castCfg = NS.Units.Castbar(inst.unit)
     local intCfg = castCfg.interruptible   or {}
     local nintCfg = castCfg.uninterruptible or {}
-    print("  configured colors")
-    print("    interruptible   bar="    .. fmtColor(intCfg.barColor)
+    emit("  configured colors")
+    emit("    interruptible   bar="    .. fmtColor(intCfg.barColor)
         .. " border=" .. fmtColor(intCfg.borderColor)
         .. " bg="     .. fmtColor(intCfg.bgColor))
-    print("    uninterruptible bar="    .. fmtColor(nintCfg.barColor)
+    emit("    uninterruptible bar="    .. fmtColor(nintCfg.barColor)
         .. " border=" .. fmtColor(nintCfg.borderColor)
         .. " bg="     .. fmtColor(nintCfg.bgColor))
 end
 
 --- And the colors actually live on the StatusBar widgets right now.
-local function dumpLiveBarColors(print, inst)
-    print("  live SetStatusBarColor values")
+local function dumpLiveBarColors(emit, inst)
+    emit("  live SetStatusBarColor values")
     local f = inst.frame
-    print("    interruptible   = " .. fmtStatusColor(f and f.bar and f.bar.interruptible))
-    print("    uninterruptible = " .. fmtStatusColor(f and f.bar and f.bar.uninterruptible))
+    emit("    interruptible   = " .. fmtStatusColor(f and f.bar and f.bar.interruptible))
+    emit("    uninterruptible = " .. fmtStatusColor(f and f.bar and f.bar.uninterruptible))
 end
 
 --- Print diagnostic info about `unit`'s cast (default "target") and what the
@@ -131,13 +131,13 @@ end
 --- branching with `not not` to avoid arithmetic on secrets.
 function Castbar:DebugDump(unit)
     local inst = self:GetInstance(unit or "target")
-    local print = NS.Util and NS.Util.print or _G.print
-    print("castbar state (" .. inst.unit .. ")")
+    local emit = NS.Util and NS.Util.print or _G.print
+    emit("castbar state (" .. inst.unit .. ")")
 
-    if not dumpUnitHeader(print, inst) then return end
-    if not inst.current then dumpNoCastHint(print, inst); return end
+    if not dumpUnitHeader(emit, inst) then return end
+    if not inst.current then dumpNoCastHint(emit, inst); return end
 
-    dumpCastRecord(print, inst)
-    dumpConfiguredColors(print, inst)
-    dumpLiveBarColors(print, inst)
+    dumpCastRecord(emit, inst)
+    dumpConfiguredColors(emit, inst)
+    dumpLiveBarColors(emit, inst)
 end

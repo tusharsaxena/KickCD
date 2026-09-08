@@ -275,8 +275,8 @@ build from its `type()` and from `issecretvalue()`'s boolean, and the `NINT_REPO
 reachable only when the type already *is* `boolean`. So the sites are permitted, not ratified
 deviations, and there is nothing to record beyond this sentence.
 
-One thing the scoping does **not** relax, and it is still open: `modules/Castbar_Debug.lua:125` binds
-`local print = NS.Util and NS.Util.print or _G.print`. §8's prohibition on the global `print()` for
+One thing the scoping does **not** relax, and it is still open: `modules/Castbar_Debug.lua:134` binds
+`local emit = NS.Util and NS.Util.print or _G.print`. §8's prohibition on the global `print()` for
 user-facing output is unqualified — it is about the missing `NS.PREFIX` tag, not about secrets. The
 fallback arm is unreachable today (`core/CoreSetup.lua` defines `Util.print` on **both** the
 library-present and library-absent paths, so `NS.Util.print` is never nil), which is why it grades

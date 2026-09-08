@@ -134,8 +134,8 @@ local function getPlayerClassSpec()
     -- FIRST return (the localized name); the file token we need is the
     -- second. Guard without collapsing the multi-return.
     local classFile
-    if UnitClass then
-        local _, cf = UnitClass("player")
+    if _G.UnitClass then
+        local _, cf = _G.UnitClass("player")
         classFile = cf
     end
     if not (classFile and NS.DefaultSpells
@@ -397,8 +397,8 @@ end
 -- UnitClass("player")` would truncate to UnitClass's FIRST return (the
 -- localized name); the file token we need is the second.
 local function playerClassFile()
-    if not UnitClass then return nil end
-    local _, cf = UnitClass("player")
+    if not _G.UnitClass then return nil end
+    local _, cf = _G.UnitClass("player")
     return cf
 end
 
@@ -1017,7 +1017,7 @@ end
 -- first sorted class otherwise.
 local function ensureSelection(classes)
     if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
-        local _, classFile = UnitClass("player")
+        local _, classFile = _G.UnitClass("player")
         if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
             selectedClass = classFile
         else

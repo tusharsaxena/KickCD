@@ -901,6 +901,10 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
+### test_source_style.lua (1)
+
+- a WoW global on the standing _G. list is never read bare
+
 ### test_slash_style.lua (10)
 
 - /kcd help emits no line ending in ':' (slash-commands-§4)
@@ -1059,6 +1063,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
+| test_source_style.lua | 1 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
 | test_opensettings.lua | 6 |
@@ -1067,4 +1072,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **845** |
+| **Total** | **846** |

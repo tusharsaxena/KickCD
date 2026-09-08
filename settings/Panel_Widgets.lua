@@ -118,7 +118,7 @@ end
 --- English one, matching `/kcd config`'s refusal -- one act, one sentence,
 --- whichever door it came through.
 local function refusedInCombat()
-    if not (InCombatLockdown and InCombatLockdown()) then return false end
+    if not (_G.InCombatLockdown and _G.InCombatLockdown()) then return false end
     local msg = (NS.L and NS.L["Cannot open settings during combat."])
         or "cannot open settings during combat"
     if NS.Util then NS.Util.print((NS.GRAY or "") .. msg .. "|r") end

@@ -123,7 +123,7 @@ local function logSet(path, value)
     pendingSet[path] = value
     local gen = (setGen[path] or 0) + 1
     setGen[path] = gen
-    C_Timer.After(SET_LOG_DEBOUNCE, function()
+    _G.C_Timer.After(SET_LOG_DEBOUNCE, function()
         if setGen[path] ~= gen then return end   -- superseded by a later write
         local v = pendingSet[path]
         pendingSet[path] = nil

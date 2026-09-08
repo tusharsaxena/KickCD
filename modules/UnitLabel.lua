@@ -86,7 +86,7 @@ local function applyLabelFont(fs, style)
     if LSM and LSM.Fetch then
         fontPath = LSM:Fetch("font", sv(style, "font"), true)
     end
-    fs:SetFont(fontPath or STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
+    fs:SetFont(fontPath or _G.STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
 
     -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED on every
     -- apply: the FontString outlives a config change, so leaving the old offset
