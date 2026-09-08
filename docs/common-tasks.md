@@ -221,7 +221,7 @@ LibCustomGlow.
 warning is a regression rather than background noise to scroll past — fix the code first, and reach
 for a suppression only when the warning is wrong about this file.
 
-**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (lint-§1, `M4-11`).
+**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (lint.md, `M4-11`).
 This page used to describe one — `212/self`, `212/event`, `211/addonName` — and to call it
 "allowances true everywhere". They were not true everywhere. `M4c-06` removed the three lines and
 `luacheck .` went from 0/0 to **61 warnings**, of which **32 were defects rather than conventions**:
