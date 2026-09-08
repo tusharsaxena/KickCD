@@ -46,11 +46,25 @@ core\MediaSetup.lua
 core\Constants.lua
 core\State.lua
 core\Util.lua
+# LOAD-BEARING POSITION: this file hangs the secret-safe printer on NS.Util as
+# NS.Util.print, and core/Util.lua assigns NS.Util a FRESH table unconditionally.
+# Above that line the printer is replaced rather than merged, and every one of the
+# ~20 call sites reads it as `NS.Util and NS.Util.print` — so the addon goes
+# silent instead of raising. The `NS.Util = NS.Util or {}` at the head of this
+# file survives the reversed order without an error, which is what makes the
+# order worth stating here rather than only in the file.
 core\CoreSetup.lua
 core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
 core\KickCD.lua
+# LOAD-BEARING POSITION: modules/Cooldowns.lua, modules/IconGrid.lua,
+# modules/IconGrid_Render.lua and modules/Castbar.lua each take
+# `local Perf = NS.Perf` at file scope, so this seam must have published NS.Perf
+# — the LibKa0s-Perf-1.0 instance or its stub — before the # Modules block is
+# reached. It is also below core/KickCD.lua because the descriptor's `version`
+# falls back to NS.VERSION, which that file sets; above it every capture record
+# stamped "v?" (performance-§8). LAST in this block satisfies both.
 core\PerfSetup.lua
 
 # Defaults (the only place a profile default is hardcoded — savedvariables-§2)
@@ -69,7 +83,19 @@ modules\UnitLabel.lua
 
 # Settings (last — depend on everything else being initialized)
 settings\Slash.lua
+# LOAD-BEARING POSITION: this file creates NS.Settings and publishes the
+# LibKa0s-Options-1.0 instance on it as NS.Settings.Helpers. settings/Panel.lua,
+# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the per-tab files
+# General/Icons/Castbar/Label all take that member as a file-scope upvalue, and
+# General and Icons then CALL H.AddComposed at file scope — so a position below
+# any of them raises during load, not on first open.
 settings\OptionsSetup.lua
+# LOAD-BEARING POSITION: this file DECORATES the Helpers instance in place with
+# the members that did not generalise into the library — Helpers.AddComposed,
+# Helpers.AnchorValues and Helpers.LSMValues among them. settings/General.lua,
+# settings/Icons.lua and settings/Castbar.lua call AddComposed at file scope, and
+# settings/Icons.lua and settings/Castbar.lua resolve AnchorValues into a
+# file-scope local, so this line must stay above every per-tab file.
 settings\Panel.lua
 settings\Panel_Widgets.lua
 settings\Panel_Render.lua
