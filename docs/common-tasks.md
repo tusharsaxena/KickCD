@@ -82,6 +82,13 @@ so **do not** write a parallel mutator for a field that already has a row.
 Add the key to `locales/enUS.lua`. Reference it as `L["…"]` — never a bare literal in panel or chat
 code (`localization-§1`).
 
+`tests/test_locale.lua` gates both halves of that, and it is worth knowing which half it gates where.
+A key used anywhere the TOC loads and left undefined here is red — that is how three cast-bar `desc`
+sentences got reworded at the call site and never added (KICKCD-R-03). A bare prose literal added to a
+file under `settings/` is red too, until it is either wrapped or given a class in that file's residue
+register. Chat text outside `settings/` — the `/kcd` verbs in `core/KickCD.lua`, the debug dumps — is
+still bare English and is **not** gated; the rule above still applies to it, nothing enforces it yet.
+
 ### Add a message
 
 Declare it in the emitter's file header, add it to [message-bus.md](message-bus.md) in the same

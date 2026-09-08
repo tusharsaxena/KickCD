@@ -337,15 +337,17 @@ L["Auto-size to icon grid"]      = "Auto-size to icon grid"
 L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
     "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
 L["Cast bar width (in px)"]      = "Cast bar width (in px)"
-L["Cast bar width in pixels."]   = "Cast bar width in pixels."
+L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."] =
+    "Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."
 L["Cast bar height (in px)"]     = "Cast bar height (in px)"
-L["Cast bar height in pixels."]  = "Cast bar height in pixels."
+L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."] =
+    "Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."
 L["Icon position"]               = "Icon position"
 L["Where to place the spell icon, or hide it entirely."] =
     "Where to place the spell icon, or hide it entirely."
 L["Icon size (in px)"]           = "Icon size (in px)"
-L["Spell icon size in pixels (0 hides the icon)."] =
-    "Spell icon size in pixels (0 hides the icon)."
+L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."] =
+    "Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."
 L["Show spark"]                  = "Show spark"
 L["Render the leading-edge spark on the bar."] =
     "Render the leading-edge spark on the bar."

@@ -155,7 +155,7 @@ badge and any count quoted in the docs must agree with it.
 - ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
 - ApplyInterruptibleAlpha never inspects the cast name it gates on
 
-### test_locale.lua (9)
+### test_locale.lua (15)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
 - frFR and enUS Elemental Shaman seed byte-identical spell lists
@@ -166,6 +166,12 @@ badge and any count quoted in the docs must agree with it.
 - SpecDisplayName falls back to the English token for an unknown spec
 - a spec-name lookup that ran before the client was ready retries later
 - every default spell list is reachable on a French client
+- the locale scan actually reads the surface it is meant to guard
+- every L[...] key the addon subscripts is defined in locales/enUS.lua
+- every user-facing literal in the settings surface is routed or recorded
+- every recorded residue literal is still unrouted in the file that names it
+- every residue entry carries one of the declared classes
+- the three reworded cast-bar descs are keyed as the panel renders them
 
 ### test_units.lua (12)
 
@@ -1026,7 +1032,7 @@ badge and any count quoted in the docs must agree with it.
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
-| test_locale.lua | 9 |
+| test_locale.lua | 15 |
 | test_units.lua | 12 |
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
@@ -1073,4 +1079,4 @@ badge and any count quoted in the docs must agree with it.
 | test_surface_parity.lua | 6 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **847** |
+| **Total** | **853** |
