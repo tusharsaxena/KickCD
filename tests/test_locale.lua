@@ -204,12 +204,10 @@ end
 -- half a dozen — so `body:gmatch('"(.-)"')` reports a paragraph ABOUT a string
 -- as a string, and a gate that invents an offender is a gate people switch off.
 --
--- `wrapped` tracks the SUBSCRIPT DEPTH, not the characters in front of the
--- quote, because a key may be built by concatenation across lines and a check
--- on the preceding few characters calls the second fragment of such a key
--- unrouted. The `L` has to be a whole word, so `SPELL_KNOWN_LABEL[field]` is
--- not a locale lookup, and `NS.L["…"]` is (settings/Panel_Widgets.lua uses
--- exactly that spelling, with no `L` upvalue in the file).
+-- It comes apart into three helpers and a dispatch. Two answer "where does this
+-- lexeme end" — `longBracket` and `endOfQuoted` — one answers "am I inside an
+-- `L[…]`" — `trackSubscript` — and `scanLiterals` asks them in the one order
+-- that is correct, and records what falls out.
 --
 -- Long brackets are handled rather than skipped: `settings/Spells.lua:50-51`
 -- holds two `[[Interface\…]]` texture paths, and a lexer that walked past `[[`
@@ -224,6 +222,51 @@ local function longBracket(src, i)
     return from, (at or #src + 1) - 1, (at and at + #close or #src + 1)
 end
 
+-- The short-quote sibling of `longBracket`. Given the opening quote at `i`,
+-- where does the literal stop? At its own closing quote, or at the newline a
+-- broken literal never gets past — an unterminated `'` that ran on would eat
+-- the rest of the file the same way an unread `[[` does. A backslash takes the
+-- character behind it with it, so `"he said \"no\""` is one literal, not three.
+local function endOfQuoted(src, i, n)
+    local q, j = src:sub(i, i), i + 1
+    while j <= n do
+        local d = src:sub(j, j)
+        if d == "\\" then j = j + 2
+        elseif d == q or d == "\n" then break
+        else j = j + 1 end
+    end
+    return j
+end
+
+-- Is the character at `i` inside an `L[…]` subscript? Answers by returning
+-- where to carry on from and the depth to carry with it.
+--
+-- Depth is what `wrapped` is read off, rather than the characters in front of
+-- the quote, because a key may be built by concatenation across lines and a
+-- check on the preceding few characters calls the second fragment of such a key
+-- unrouted. The `L` has to be a whole word, so `SPELL_KNOWN_LABEL[field]` is
+-- not a locale lookup, and `NS.L["…"]` is (settings/Panel_Widgets.lua uses
+-- exactly that spelling, with no `L` upvalue in the file).
+local function trackSubscript(src, i, depth)
+    local c = src:sub(i, i)
+    if depth > 0 then
+        if c == "[" then return i + 1, depth + 1 end
+        if c == "]" then return i + 1, depth - 1 end
+        return i + 1, depth
+    end
+    if c == "L" and src:sub(i - 1, i - 1):match("[%w_]") == nil then
+        local open = src:match("^L%s*()%[", i)
+        if open then return open + 1, 1 end
+    end
+    return i + 1, depth
+end
+
+-- The dispatch, and the order is the whole contract: a newline first so the
+-- line counter is never wrong, then a comment — which may itself be a long
+-- bracket — then the two literal forms, and only what none of those claimed
+-- reaches the subscript tracker. That ordering is why a `"` inside an `L[…]` is
+-- still recorded as a literal, carrying `wrapped`, and why a `[[…]]` inside one
+-- is read as a string rather than as two more levels of depth.
 local function scanLiterals(src)
     local out, i, n, line, depth = {}, 1, #src, 1, 0
     local function advance(from, to)
@@ -248,29 +291,11 @@ local function scanLiterals(src)
             out[#out + 1] = { text = src:sub(from, to), line = at, wrapped = depth > 0 }
             i = after
         elseif c == '"' or c == "'" then
-            local q, j = c, i + 1
-            while j <= n do
-                local d = src:sub(j, j)
-                if d == "\\" then j = j + 2
-                elseif d == q or d == "\n" then break
-                else j = j + 1 end
-            end
+            local j = endOfQuoted(src, i, n)
             out[#out + 1] = { text = src:sub(i + 1, j - 1), line = line, wrapped = depth > 0 }
             i = j + 1
-        elseif depth > 0 then
-            if c == "[" then depth = depth + 1
-            elseif c == "]" then depth = depth - 1 end
-            i = i + 1
-        elseif c == "L" and src:sub(i - 1, i - 1):match("[%w_]") == nil then
-            local open = src:match("^L%s*()%[", i)
-            if open then
-                depth = 1
-                i = open + 1
-            else
-                i = i + 1
-            end
         else
-            i = i + 1
+            i, depth = trackSubscript(src, i, depth)
         end
     end
     return out
