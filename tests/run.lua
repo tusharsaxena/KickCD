@@ -215,6 +215,70 @@ Kit.setSurfaceSource{
     ["LibKa0s-Options-1.0"]  = shared.NS.Settings and shared.NS.Settings.Helpers,
 }
 
+-- ---------------------------------------------------------------------------
+-- Guaranteed-run fixture wrappers over the SHARED instance's session state
+-- ---------------------------------------------------------------------------
+--
+-- Both of these park a value, run a body, and put the value back WHATEVER HAPPENS.
+--
+-- They exist because the restore used to be the last STATEMENT of the case body,
+-- and tests/_kit/framework.lua's runCase does `pcall(t.fn)`: a case that goes red
+-- never reaches its own last line. The shared instance was then left carrying the
+-- state that the FAILING case configured, and every case after it read a fixture a
+-- failure had set up -- so the first genuine red could manufacture more, and a
+-- reader triaging the run cannot tell which of them are real.
+--
+-- What a reader would otherwise get wrong: this is prophylaxis, not the repair of a
+-- live symptom, and the measurement rather than the argument is what says so.
+--
+-- defaults/Profile.lua:322 ships `units.focus.link = true`, so two of the three
+-- linked-Focus cases park the DEFAULT and force the DEFAULT: their skipped restore
+-- put back exactly what was already there. Only the unlinked case leaves a value
+-- that differs -- `false` -- and a probe that leaked `false` on purpose, once at the
+-- top of tests/test_schema.lua and once straight after those cases, reddened nothing
+-- either time. The viewed unit is looser still: renderedUnitPage writes it in nearly
+-- every unit-page case and restores it in none, so a leak there is indistinguishable
+-- from the suite running normally.
+--
+-- So the defect the finding names is real -- a pcall'd body does not reach its own
+-- last line, and these cases only cleaned up on the path where cleaning up matters
+-- least -- while the cascade it predicts is not real today. It stops being latent
+-- the first time a case renders a Focus page without seeding the flag, and that case
+-- inherits whatever the last failure left. Guaranteeing the restore costs one
+-- wrapper. Making the restore MEAN something -- parking this state around every
+-- suite that writes it and never puts it back -- is a larger job and is not this
+-- item.
+--
+-- Published from the runner rather than typed into each suite because two suites
+-- park the same two pieces of state, and one guarantee is easier to keep honest
+-- than two copies of it.
+
+--- Run `fn` with Focus's `link` flag forced to `linked`, restoring it always.
+--- `fn` receives the Focus config table, which may be nil -- the call sites were
+--- already nil-safe and stay that way.
+local function withFocusLink(linked, fn)
+    local cfg = shared.NS.Units and shared.NS.Units.Config("focus")
+    local before = cfg and cfg.link
+    if cfg then cfg.link = linked end
+    local ok, err = pcall(fn, cfg)
+    if cfg then cfg.link = before end
+    -- Level 0: the message already carries the position the assertion raised at,
+    -- and re-stamping it here would point every failure at this line instead.
+    if not ok then error(err, 0) end
+end
+
+--- Run `fn` with the shared Unit-picker selection put back afterwards, always.
+--- The selection is session state on the shared instance (NS.State.viewedUnit) and
+--- every unit-page fixture writes it, so a case that parks it must also put it back
+--- on the red path.
+local function withViewedUnit(fn)
+    local H = shared.NS.Settings.Helpers
+    local before = H.ViewedUnit()
+    local ok, err = pcall(fn)
+    H.SetViewedUnit(before)
+    if not ok then error(err, 0) end
+end
+
 _G.KICKCD_TEST = Kit.expose{
     root = root,
     -- shared instance
@@ -228,6 +292,9 @@ _G.KICKCD_TEST = Kit.expose{
     libFiles = LIB_FILES,
     tocFiles = TOC_FILES,
     Loader = Loader,
+    -- Guaranteed-run fixture wrappers; see the block above.
+    withFocusLink  = withFocusLink,
+    withViewedUnit = withViewedUnit,
 }
 
 Kit.run{ dir = root .. "/tests/", suites = SUITES }

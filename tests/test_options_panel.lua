@@ -524,30 +524,31 @@ end)
 --
 -- red under: re-adding SetHighlight in any form, or dropping the OnClick with it.
 test("the linked-Focus note has no hover highlight but is still clickable", function()
-    local cfg = NS.Units.Config("focus")
-    local before = cfg and cfg.link
-    if cfg then cfg.link = true end
-    local wasUnit = H.ViewedUnit()
+    -- Both parked pieces of shared state go through the runner's guaranteed-run
+    -- wrappers. They used to be put back by the last two statements of this body,
+    -- which tests/_kit/framework.lua pcalls -- so the case could only clean up
+    -- after itself on the green path, which is the path where cleaning up matters
+    -- least.
+    T.withFocusLink(true, function()
+        T.withViewedUnit(function()
+            local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+            local ctx = H.CreatePanel("KickCDNoteHL", "castbar", { pageKey = "castbar" })
+            ctx.scroll = AceGUI:Create("ScrollFrame")
+            H.SetViewedUnit("focus")
+            H.RenderUnitPanel(ctx, "castbar")
 
-    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel("KickCDNoteHL", "castbar", { pageKey = "castbar" })
-    ctx.scroll = AceGUI:Create("ScrollFrame")
-    H.SetViewedUnit("focus")
-    H.RenderUnitPanel(ctx, "castbar")
-
-    local note
-    for _, child in ipairs(ctx.scroll.children) do
-        if type(child.text) == "string"
-           and child.text:find("Linked to Target", 1, true) then note = child end
-    end
-    assertTrue(note ~= nil, "the linked page must draw the note")
-    assertNil(note.__highlight,
-        "the note must set no hover highlight; AceGUI paints a solid green block for one")
-    assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-        "…and it must still be clickable")
-
-    H.SetViewedUnit(wasUnit)
-    if cfg then cfg.link = before end
+            local note
+            for _, child in ipairs(ctx.scroll.children) do
+                if type(child.text) == "string"
+                   and child.text:find("Linked to Target", 1, true) then note = child end
+            end
+            assertTrue(note ~= nil, "the linked page must draw the note")
+            assertNil(note.__highlight,
+                "the note must set no hover highlight; AceGUI paints a solid green block for one")
+            assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
+                "…and it must still be clickable")
+        end)
+    end)
 end)
 
 -- The link note GOES somewhere. Naming a destination and not being able to reach

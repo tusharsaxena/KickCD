@@ -511,21 +511,18 @@ end)
 -- red under: reading the unit off the ctx again (`ctx.unit = ctx.unit or ...`),
 -- or writing the selection to the ctx instead of through SetViewedUnit.
 test("the Unit picker is one selection shared by every per-unit page", function()
-    local H = T.NS.Settings.Helpers
-    local before = H.ViewedUnit()
+    T.withViewedUnit(function()
+        local icons = renderedUnitPage("icons", "target")
+        icons.__bannerWidget:__fire("OnValueChanged", "focus")
 
-    local icons = renderedUnitPage("icons", "target")
-    icons.__bannerWidget:__fire("OnValueChanged", "focus")
-
-    for _, page in ipairs({ "castbar", "label" }) do
-        local ctx = renderedUnitPage2(page)
-        assertEqual(ctx.unit, "focus",
-            page .. " opened on Target after Icons was switched to Focus")
-        assertEqual(ctx.__bannerWidget.value, "focus",
-            page .. "'s picker disagrees with the page it heads")
-    end
-
-    H.SetViewedUnit(before)
+        for _, page in ipairs({ "castbar", "label" }) do
+            local ctx = renderedUnitPage2(page)
+            assertEqual(ctx.unit, "focus",
+                page .. " opened on Target after Icons was switched to Focus")
+            assertEqual(ctx.__bannerWidget.value, "focus",
+                page .. "'s picker disagrees with the page it heads")
+        end
+    end)
 end)
 
 test("a linked Focus draws the strip FIRST and the note as content", function()
@@ -536,43 +533,43 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
     -- strip is the one that reads as broken. The link is a STATE of the page, so
     -- it is content inside it.
     -- red under: restoring the early return in Helpers.RenderUnitPanel
-    local cfg = NS.Units.Config("focus")
-    local before = cfg and cfg.link
-    if cfg then cfg.link = true end
+    T.withFocusLink(true, function(cfg)
+        local ctx = renderedUnitPage("castbar", "focus")
+        assertTrue(ctx.__bannerWidget ~= nil, "the Unit picker stays, linked or not")
 
-    local ctx = renderedUnitPage("castbar", "focus")
-    assertTrue(ctx.__bannerWidget ~= nil, "the Unit picker stays, linked or not")
+        -- Against the UNLINKED page's own ledger rather than against a count of
+        -- sections: the strip ledger also holds the content panel, and a test that
+        -- knew that would be asserting a library internal instead of the invariant,
+        -- which is that the two states draw the same strip.
+        --
+        -- These two inner writes stay bare. They are a flip and a flip back INSIDE
+        -- the wrapper, so whichever of them a red lands between, the wrapper still
+        -- puts the value the case found back.
+        if cfg then cfg.link = false end
+        local unlinked = #(renderedUnitPage("castbar", "focus").__tabKids or {})
+        if cfg then cfg.link = true end
+        assertEqual(#(ctx.__tabKids or {}), unlinked,
+            "a linked Focus draws the same strip an unlinked one does")
+        assertTrue(unlinked > 1, "sanity: the unlinked page really drew a strip")
 
-    -- Against the UNLINKED page's own ledger rather than against a count of
-    -- sections: the strip ledger also holds the content panel, and a test that
-    -- knew that would be asserting a library internal instead of the invariant,
-    -- which is that the two states draw the same strip.
-    if cfg then cfg.link = false end
-    local unlinked = #(renderedUnitPage("castbar", "focus").__tabKids or {})
-    if cfg then cfg.link = true end
-    assertEqual(#(ctx.__tabKids or {}), unlinked,
-        "a linked Focus draws the same strip an unlinked one does")
-    assertTrue(unlinked > 1, "sanity: the unlinked page really drew a strip")
-
-    -- ...and the note is IN THE SCROLL, under the strip -- as a LINK that opens
-    -- the page holding the tick it names. It used to be a plain line naming a
-    -- control and a page and leaving the reader to find both by hand, two
-    -- categories away in Blizzard's list.
-    local note
-    for _, child in ipairs(ctx.scroll.children) do
-        if type(child.text) == "string"
-           and child.text:find("Linked to Target", 1, true) then note = child end
-    end
-    assertTrue(note ~= nil, "the link note must be drawn as page content")
-    assertEqual(note.type, "InteractiveLabel", "the note must be clickable")
-    assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
-        "the destination must be named in the note")
-    assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
-        "and colored, or nothing on screen says it is a link")
-    assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-        "the note names a destination but goes nowhere")
-
-    if cfg then cfg.link = before end
+        -- ...and the note is IN THE SCROLL, under the strip -- as a LINK that opens
+        -- the page holding the tick it names. It used to be a plain line naming a
+        -- control and a page and leaving the reader to find both by hand, two
+        -- categories away in Blizzard's list.
+        local note
+        for _, child in ipairs(ctx.scroll.children) do
+            if type(child.text) == "string"
+               and child.text:find("Linked to Target", 1, true) then note = child end
+        end
+        assertTrue(note ~= nil, "the link note must be drawn as page content")
+        assertEqual(note.type, "InteractiveLabel", "the note must be clickable")
+        assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
+            "the destination must be named in the note")
+        assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
+            "and colored, or nothing on screen says it is a link")
+        assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
+            "the note names a destination but goes nowhere")
+    end)
 end)
 
 -- A linked Focus's strip is INERT. Every tab on it draws the same thing -- the
@@ -586,23 +583,19 @@ end)
 --
 -- red under: dropping the disable pass.
 test("a linked Focus's tab strip is disabled and desaturated", function()
-    local cfg = NS.Units.Config("focus")
-    local before = cfg and cfg.link
-    if cfg then cfg.link = true end
-
-    local ctx = renderedUnitPage("castbar", "focus")
-    local buttons = (ctx.__tabLayout or {}).buttons or {}
-    assertTrue(#buttons > 1, "sanity: the linked page still draws its strip")
-    for i, b in ipairs(buttons) do
-        assertEqual(b.__enabled, false, "tab " .. i .. " is still clickable")
-        local dim = false
-        for _, r in ipairs(b.__regions or {}) do
-            if r.__desaturated then dim = true end
+    T.withFocusLink(true, function()
+        local ctx = renderedUnitPage("castbar", "focus")
+        local buttons = (ctx.__tabLayout or {}).buttons or {}
+        assertTrue(#buttons > 1, "sanity: the linked page still draws its strip")
+        for i, b in ipairs(buttons) do
+            assertEqual(b.__enabled, false, "tab " .. i .. " is still clickable")
+            local dim = false
+            for _, r in ipairs(b.__regions or {}) do
+                if r.__desaturated then dim = true end
+            end
+            assertTrue(dim, "tab " .. i .. " was not desaturated")
         end
-        assertTrue(dim, "tab " .. i .. " was not desaturated")
-    end
-
-    if cfg then cfg.link = before end
+    end)
 end)
 
 -- ...and an UNLINKED page's strip is untouched: there the tabs are how you reach
@@ -613,22 +606,18 @@ end)
 --
 -- red under: applying the disable pass to an unlinked page.
 test("an unlinked Focus's tab strip is left operable and undimmed", function()
-    local cfg = NS.Units.Config("focus")
-    local before = cfg and cfg.link
-    if cfg then cfg.link = false end
-
-    local live = renderedUnitPage("castbar", "focus")
-    local operable, dimmed = 0, 0
-    for _, b in ipairs((live.__tabLayout or {}).buttons or {}) do
-        if b.__enabled ~= false then operable = operable + 1 end
-        for _, r in ipairs(b.__regions or {}) do
-            if r.__desaturated then dimmed = dimmed + 1 end
+    T.withFocusLink(false, function()
+        local live = renderedUnitPage("castbar", "focus")
+        local operable, dimmed = 0, 0
+        for _, b in ipairs((live.__tabLayout or {}).buttons or {}) do
+            if b.__enabled ~= false then operable = operable + 1 end
+            for _, r in ipairs(b.__regions or {}) do
+                if r.__desaturated then dimmed = dimmed + 1 end
+            end
         end
-    end
-    assertTrue(operable > 0, "an unlinked page's strip must stay operable")
-    assertEqual(dimmed, 0, "and it must not be dimmed")
-
-    if cfg then cfg.link = before end
+        assertTrue(operable > 0, "an unlinked page's strip must stay operable")
+        assertEqual(dimmed, 0, "and it must not be dimmed")
+    end)
 end)
 
 -- ── the Master controls tab (options-ui-§15) ────────────────────────────────

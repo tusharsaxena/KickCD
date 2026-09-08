@@ -12,11 +12,34 @@ Install instructions for all three, with the WSL2/Ubuntu commands that actually 
 
 ## What is the harness, and what is KickCD's
 
-The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, and the suite list.
+The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, the suite list, and the two guaranteed-run fixture wrappers described below.
 
 The kit **collects, then runs**: `test()` records a case and nothing executes until the runner decides to. This file's runner used to `pcall` each case body at registration time and short-circuit it under `--list`, which made the inventory a second code path through the same function and made "what has already happened when this case runs?" depend on where in its file the case sat. `--list` is now a pure filter over the registry and cannot disagree with the run.
 
 One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (architecture-§1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
+
+## Parking shared state: `T.withFocusLink` / `T.withViewedUnit`
+
+Most suites run against **one shared instance**, so a case that changes session
+state has to put it back. Doing that on the last line of the case body does not
+work: the kit `pcall`s the body, so a case that goes red never reaches its own
+last line and leaves the next case reading a fixture a *failure* set up.
+
+Both pieces of state this comes up for are parked through the runner instead:
+
+```lua
+T.withFocusLink(true, function(cfg) ... end)   -- units.focus.link, restored always
+T.withViewedUnit(function() ... end)           -- the shared Unit picker, restored always
+```
+
+Each parks the value, `pcall`s the body, restores, and re-raises the original
+error at level 0 so the failure still points at the assertion that raised it.
+
+They are a guarantee, not the repair of an observed break: `units.focus.link`
+defaults to `true` (`defaults/Profile.lua:322`) and the viewed unit is written
+without restore by every unit-page fixture, so a leak out of these cases reddens
+nothing measurable today. Write new cases through the wrappers anyway — the first
+case to render a Focus page without seeding the flag is the one that pays.
 
 ## What the frame mock does and doesn't model
 
