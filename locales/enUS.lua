@@ -78,7 +78,7 @@ L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to gi
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
 -- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
--- the second is the phrase that carries the colour and names where the click
+-- the second is the phrase that carries the color and names where the click
 -- lands. Kept as two strings rather than one with a format slot so a translator
 -- can move the link phrase within the sentence -- in a language where it belongs
 -- first, "%s" in the middle of the English word order would fight them.

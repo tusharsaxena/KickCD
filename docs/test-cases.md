@@ -805,7 +805,7 @@ badge and any count quoted in the docs must agree with it.
 - the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
 - the row checkbox writes the entry's enabled flag as a real boolean
 - a disabled row renders its spell icon and checkbox from the stored flag
-- a move is a SPLICE to the index, not a swap with the neighbour
+- a move is a SPLICE to the index, not a swap with the neighbor
 - a move backwards splices just as cleanly
 - a move that goes nowhere or off the ends writes nothing
 - no row carries a move button any more

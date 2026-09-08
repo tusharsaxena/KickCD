@@ -473,7 +473,7 @@ test("the Unit picker is drawn in the page's chrome band, never into the scroll"
         assertTrue(ctx.__bannerWidget ~= nil,
             page .. " drew no Unit banner at all")
         assertEqual(ctx.__bannerWidget.labelText, T.NS.L["Unit"],
-            page .. "'s banner is not labelled Unit")
+            page .. "'s banner is not labeled Unit")
         for i, child in ipairs(ctx.scroll.children) do
             assertTrue(child.labelText ~= T.NS.L["Unit"],
                 page .. ": the Unit picker is scroll child #" .. i
@@ -574,7 +574,7 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
     assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
         "the destination must be named in the note")
     assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
-        "and coloured, or nothing on screen says it is a link")
+        "and colored, or nothing on screen says it is a link")
     assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
         "the note names a destination but goes nowhere")
 
@@ -771,7 +771,7 @@ end)
 -- literal MIXED list naming the four tabs that carry subgroups, which asserted
 -- nothing at all about a tab NOT on it: a tab added later that mixed kinds of
 -- control and carried no heading passed in silence, which is the one R1g
--- assertion that did not generalise.
+-- assertion that did not generalize.
 --
 -- So every tab is named, in one of two tables, and the tab list is read off the
 -- LIVE schema rather than off STRIP. A new tab belongs to neither table and
@@ -812,8 +812,8 @@ local TAB_SINGLE_SUBJECT = {
             .. "each and name properties of one subject rather than separate subjects.",
         ["Border"] = "options-ui-§16's composed border block and nothing beside it.",
         ["Ready glow"] = "ONE effect, declared twice because there are two icon slots: trigger, "
-            .. "style and colour for the primary icon and for the secondary. Every row's label "
-            .. "already says 'glow'. Headings would read Trigger / Style / Colour over two rows "
+            .. "style and color for the primary icon and for the secondary. Every row's label "
+            .. "already says 'glow'. Headings would read Trigger / Style / Color over two rows "
             .. "each -- properties of the glow, not subjects beside it -- and the tab label "
             .. "names the subject.",
     },
@@ -835,7 +835,7 @@ local TAB_SINGLE_SUBJECT = {
 }
 
 test("every tab on every page is classified as mixed-kind or single-subject", function()
-    -- The generalising half, and the case a NEW tab dies under. It reads the tab
+    -- The generalizing half, and the case a NEW tab dies under. It reads the tab
     -- list off the live schema, so adding a tab to settings/<page>.lua is enough
     -- to fail it -- no second list has to be edited first.
     -- red under: adding a row with a `group` no table below names

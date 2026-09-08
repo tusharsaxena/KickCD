@@ -745,7 +745,7 @@ local function build()
         function w:SetImageSize(...) self.imageSize = { ... }; return self end
         function w:SetMaxLetters(v) self.maxLetters = v; return self end
         -- RECORDED, not swallowed. AceGUI's InteractiveLabel forwards this to
-        -- Texture:SetTexture, whose four-number form is the deprecated colour API
+        -- Texture:SetTexture, whose four-number form is the deprecated color API
         -- -- and the client answers it with a solid bright-green block across the
         -- whole label on mouseover. A no-op here cannot tell "no highlight" from
         -- "a highlight nobody meant", which is exactly what shipped.

@@ -94,7 +94,7 @@ test("the debug flag stays the addon's — the library never keeps a copy", func
     NS.State.debug = prev
 end)
 
--- ── the rendered acknowledgement ────────────────────────────────────────────
+-- ── the rendered acknowledgment ─────────────────────────────────────────────
 
 local function capture(fn)
     local lines = {}

@@ -50,7 +50,7 @@ local CATEGORIES = {
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
--- The height of the page-wide chrome block (options-ui-§14): one labelled AceGUI
+-- The height of the page-wide chrome block (options-ui-§14): one labeled AceGUI
 -- Dropdown, which renders its label above the control, plus the Add-spell button
 -- beside it. The library owns the band arithmetic around it -- the divider, the
 -- gaps and the scroll's top edge -- so this is the block's own height and
@@ -1065,7 +1065,7 @@ local function fillRows(AceGUI, scroll, list)
             handleIcon    = NS.Icon and NS.Icon("segment") or nil,
             handleTooltip = L["Drag to reorder"],
             onMove        = function(from, to)
-                -- ONE write, ONE re-render, however far the row travelled.
+                -- ONE write, ONE re-render, however far the row traveled.
                 if moveTo(list, from, to) then
                     if NS.State and NS.State.debug then
                         NS.Debug("Spells", "move %d -> %d", from, to)

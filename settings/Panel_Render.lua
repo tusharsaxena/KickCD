@@ -229,7 +229,7 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     -- the page holding it and then left the reader to find both by hand, two
     -- categories away in Blizzard's list -- so the phrase naming the destination
     -- now IS the way there. The whole line takes the click (AceGUI has no widget
-    -- that mixes clickable and static runs in one string); the colour on the
+    -- that mixes clickable and static runs in one string); the color on the
     -- middle phrase is what says so.
     Helpers.LinkRow(ctx,
         L["Linked to Target. Untick 'Use same styling as Target' on the "]

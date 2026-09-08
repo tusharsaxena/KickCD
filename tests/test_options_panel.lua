@@ -518,7 +518,7 @@ end)
 
 -- The link note draws NO hover highlight, and that is a fix rather than a
 -- preference: it shipped with `SetHighlight(1, 1, 1, 0.12)`, which AceGUI forwards
--- to Texture:SetTexture -- whose four-number form is the deprecated colour API --
+-- to Texture:SetTexture -- whose four-number form is the deprecated color API --
 -- and the client painted a solid BRIGHT GREEN block over the whole line on
 -- mouseover. The line stays clickable; it simply does not light up.
 --

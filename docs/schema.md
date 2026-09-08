@@ -163,7 +163,7 @@ units[unit] = {
         showSpark, showName, showTime,
         -- The composed font block (options-ui-§16). fontShadow, textColor and
         -- useClassColorText arrived with it; textColor governs the CAST TIME
-        -- text (the spell name's color is per-state, below) and is labelled
+        -- text (the spell name's color is per-state, below) and is labeled
         -- "Cast time color" in the panel for that reason.
         font, fontSize, fontFlags, fontShadow,
         textColor, useClassColorText,
@@ -322,7 +322,7 @@ Up to schema **v4** this addon spelled "no outline, no monochrome" as the litera
 
 Schema **v5** stores `""` instead, which is what `FontString:SetFont` actually spells it as and what `LibKa0s-Options-1.0`'s canonical `FONT_FLAGS` list is keyed on (`options-ui-§16`).
 
-**The rendering never changed.** `SetFont` did not recognise `"NONE"` and ignored it, which is the same result as `""` — every call site mapped the token to `""` on the way out anyway. What the migration saves is the **control**: a stored `"NONE"` matches no key in the new value list, so the dropdown would have come up showing nothing, in game only.
+**The rendering never changed.** `SetFont` did not recognize `"NONE"` and ignored it, which is the same result as `""` — every call site mapped the token to `""` on the way out anyway. What the migration saves is the **control**: a stored `"NONE"` matches no key in the new value list, so the dropdown would have come up showing nothing, in game only.
 
 `Database:MigrateFontFlags(db)` is the v4→v5 step (`migrations[4]`). Unlike `MigrateColorShape` it walks an **explicit path list** rather than the whole profile: a bare `"NONE"` string is not distinguishable from a legitimate user value anywhere else in the tree, and three known leaves per unit is not a list that needs deriving. It is idempotent, and it survives a half-built profile (a unit mid-backfill with no `label` table yet).
 

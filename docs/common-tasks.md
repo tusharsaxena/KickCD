@@ -27,13 +27,13 @@ so **do not** write a parallel mutator for a field that already has a row.
    flow engine pairs consecutive rows two per line, so put a mode beside the thing it modes and rest
    beside hover rather than one above the other.
 
-   **A font, border, bar or colour block is COMPOSED, never typed out** (`options-ui-§16`/`§17`) —
+   **A font, border, bar or color block is COMPOSED, never typed out** (`options-ui-§16`/`§17`) —
    call `H.FontGroup` / `H.BorderGroup` / `H.BarGroup` / `H.ColorPair` and hand the result to
    `H.AddComposed(rows, stamp)`, passing `keys` for any leaf whose stored name this addon already
    shipped, because the composer changes what is *declared* and never what is *stored*. A
-   hand-written colour row is anti-pattern #73 and reddens `tests/test_schema.lua`, which asserts
+   hand-written color row is anti-pattern #73 and reddens `tests/test_schema.lua`, which asserts
    that every `color` row is followed immediately by a `useClassColor*` companion, declares
-   `startsLine`, carries the class-colour note in its tooltip, and never carries `disabledIf`.
+   `startsLine`, carries the class-color note in its tooltip, and never carries `disabledIf`.
 
 3. Add the `default` to `DEFAULT_PROFILE` in `defaults/Profile.lua` at the matching path. That table
    is the **only** place a profile default is hardcoded (`savedvariables-§2`); the schema row's

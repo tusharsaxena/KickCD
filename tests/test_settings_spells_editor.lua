@@ -327,7 +327,7 @@ end)
 -- is the library's and is tested there; what is this addon's is the mutator it
 -- calls back into.
 
-test("a move is a SPLICE to the index, not a swap with the neighbour", function()
+test("a move is a SPLICE to the index, not a swap with the neighbor", function()
     -- red under: reverting moveTo to `list[from], list[to] = list[to], list[from]`,
     -- which leaves the two rows BETWEEN the ends in the wrong order.
     local inst, p = editorInstance()
@@ -570,13 +570,13 @@ test("hiding the page cancels the reorder controller too", function()
     -- red under: dropping cancelReorder() from the panel's OnHide
     local inst, p = editorInstance()
     p:RefreshRows()
-    local cancelled = 0
+    local canceled = 0
     local W = inst.mocks.LibStub("LibKa0s-Widgets-1.0", true)
     local realReorder = W.ReorderList
     W.ReorderList = function(opts)
         local ctl = realReorder(opts)
         local realCancel = ctl.Cancel
-        ctl.Cancel = function(self) cancelled = cancelled + 1; return realCancel(self) end
+        ctl.Cancel = function(self) canceled = canceled + 1; return realCancel(self) end
         return ctl
     end
     p:RefreshRows()          -- build a controller we can watch
@@ -585,5 +585,5 @@ test("hiding the page cancels the reorder controller too", function()
     for _, c in ipairs(inst.NS.Settings.Helpers.__panels()) do
         if c.pageKey == "spells" then c.panel:Hide() end
     end
-    assertEqual(cancelled, 1, "the hide must reclaim the handles and boxes")
+    assertEqual(canceled, 1, "the hide must reclaim the handles and boxes")
 end)

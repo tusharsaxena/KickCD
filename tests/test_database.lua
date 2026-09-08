@@ -258,7 +258,7 @@ end)
 -- The three font-flag dropdowns now offer LibKa0s' canonical set
 -- (options-ui-§16), where "None" is the EMPTY STRING because that is what
 -- FontString:SetFont spells it as. This addon shipped the literal "NONE", which
--- SetFont did not recognise and therefore ignored — so the RENDERING is
+-- SetFont did not recognize and therefore ignored — so the RENDERING is
 -- identical either way and what the migration saves is the control: a stored
 -- "NONE" matches no key in the new list, and the dropdown would have come up
 -- showing nothing.
