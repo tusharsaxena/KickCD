@@ -11,7 +11,9 @@
 ## X-License: MIT
 ## X-Standard: https://github.com/tusharsaxena/WowAddonStandards
 ## X-Curse-Project-ID: 1530802
-# ## X-Wago-ID: <id>   -- TODO(KCD-18): add once published on Wago
+# ## X-Wago-ID is absent deliberately: toc-file-§1 makes a distribution id mandatory
+# only for a platform the addon actually ships on, and this addon is CurseForge-only.
+# Add the line if and when it is listed on Wago; do not commit a placeholder.
 
 # Libraries (must load first)
 libs\LibStub\LibStub.lua

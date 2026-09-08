@@ -1019,10 +1019,11 @@ badge and any count quoted in the docs must agree with it.
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
 
-### test_doc_structure.lua (2)
+### test_doc_structure.lua (3)
 
 - docs/ARCHITECTURE.md carries the section names documentation-§3 mandates
 - every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
+- every deviation id the register cites is assigned by a bundle in docs/audits/
 
 ### test_vendor_sync.lua (2)
 
@@ -1090,7 +1091,7 @@ badge and any count quoted in the docs must agree with it.
 | test_perfsetup.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
-| test_doc_structure.lua | 2 |
+| test_doc_structure.lua | 3 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **859** |
+| **Total** | **860** |

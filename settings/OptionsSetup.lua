@@ -263,9 +263,12 @@ if not lib then
     -- would raise and take that page's whole row set with them -- the failure
     -- this stub exists to prevent.
     --
-    -- HOLLOW, deliberately, AND THE DEVIATION THIS PASS MOST WANTS REVIEWED --
-    -- docs/ARCHITECTURE.md's `## Documented deviations` carries it as the one
-    -- PROVISIONAL row in the table. The canonical font / border / bar /
+    -- HOLLOW, deliberately, AND NOW THE COMPLIANT ANSWER RATHER THAN A ROW.
+    -- This was docs/ARCHITECTURE.md's one PROVISIONAL register row until
+    -- options-ui-§1 ruled on it: when the missing content is COMPOSED the
+    -- no-copy MUST wins, a stub's composer members answer an empty row list,
+    -- and the rows already written for the shape retire. The canonical
+    -- font / border / bar /
     -- color-pair / master-controls blocks live in the library, and a host copy of
     -- them is exactly the drift the composers were extracted to end
     -- (options-ui-§16, anti-pattern #73) -- the same argument options-ui-§1 makes
