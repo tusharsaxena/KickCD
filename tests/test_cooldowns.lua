@@ -49,6 +49,55 @@ test("Refresh logs one coalesced line only when a spell changed", function()
         "line names the changed id; got: " .. tostring(line))
 end)
 
+test("Refresh marks a line the global cooldown explains (#15)", function()
+    -- From a live 45-second fight: seventeen [Cooldowns] lines, and only two were cooldowns.
+    -- Every global cooldown flips `ready` and `isActive` for every watched spell, because
+    -- buildSpellState derives both from the legacy active flag and that flag covers "real CD or
+    -- just GCD" (modules/Cooldowns.lua:50). MaterialChange keys on exactly those two fields, so
+    -- the churn is material by its own test and gets a line.
+    --
+    -- Suppression is not available: the C-side curve evaluation that separates a GCD from a real
+    -- cooldown cannot return its answer into a Lua `if`, and every duration involved is secret in
+    -- combat. Spell 61304 is the GCD, and its plain-bool active flag is the one thing that CAN be
+    -- branched on -- so the line says which it was and lets the reader judge.
+    -- red under: a log line that reports a GCD flip identically to a real cooldown.
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    inst.NS.State.debug = true
+    inst.NS.DebugLog:Clear()
+
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = true, startTime = 0, duration = 0 }
+    Cooldowns.watched = { [100] = { spellID = 100, ready = true, isActive = false } }
+    Cooldowns.PollSpell = function() return { spellID = 100, ready = false, isActive = true } end
+
+    Cooldowns:Refresh()
+    local line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("gcd", 1, true) ~= nil,
+        "a flip the GCD explains must say so; got: " .. tostring(line))
+end)
+
+test("Refresh does not cry GCD when the global cooldown is not running (#15)", function()
+    -- The half that keeps the marker worth reading. Mind Freeze coming off its own 15s cooldown
+    -- arrives with no GCD running, and marking that line too would make the annotation noise
+    -- itself -- an marker on every line carries exactly as much information as none.
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    inst.NS.State.debug = true
+    inst.NS.DebugLog:Clear()
+
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = false, startTime = 0, duration = 0 }
+    Cooldowns.watched = { [47528] = { spellID = 47528, ready = false, isActive = true } }
+    Cooldowns.PollSpell = function() return { spellID = 47528, ready = true, isActive = false } end
+
+    Cooldowns:Refresh()
+    local line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("47528", 1, true) ~= nil, "the real transition still logs")
+    assertTrue(line:find("gcd", 1, true) == nil,
+        "an unmarked line is the signal; got: " .. tostring(line))
+end)
+
 test("Refresh coalesces multiple simultaneous changes into ONE line", function()
     -- The discriminating case: two spells change in the same pass. Coalesced
     -- logging emits exactly one summary line naming both ids; the old per-spell

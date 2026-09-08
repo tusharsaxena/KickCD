@@ -1003,9 +1003,19 @@ local function build()
     -- -------------------------------------------------------------------
     -- Spell / unit / combat APIs (safe inert returns)
     -- -------------------------------------------------------------------
+    -- Seeded per spell by a suite. Spell 61304 is the GLOBAL COOLDOWN, and whether it reports
+    -- active is the only plain boolean that separates a GCD flip from a real cooldown starting —
+    -- every duration involved is secret in combat, so nothing else can be branched on in Lua.
+    mocks.spellCooldowns = {}
+
     mocks.C_Spell = {
         GetSpellInfo = function(id) return { name = "Spell" .. tostring(id), iconID = 12345, spellID = id } end,
-        GetSpellCooldown = function() return { isEnabled = true, startTime = 0, duration = 0 } end,
+        -- Per spell now. Anything unseeded answers the inert "ready" shape this returned for every
+        -- id before, so no existing suite changes behavior.
+        GetSpellCooldown = function(id)
+            return mocks.spellCooldowns[id]
+                or { isEnabled = true, startTime = 0, duration = 0, isActive = false }
+        end,
         GetSpellTexture = function() return 12345 end,
         IsSpellUsable = function() return true end,
     }

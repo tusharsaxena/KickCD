@@ -65,6 +65,12 @@ local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
 -- loads before modules/, so this is always the real instance or its stub.
 local Perf = NS.Perf
 
+-- Blizzard's global-cooldown spell. Queried for one thing only: its plain-bool active flag, which
+-- is the sole value in this module's reach that distinguishes a GCD from a real cooldown without
+-- comparing a secret. Used by the debug line, never by the render path -- the IconGrid separates
+-- them properly, C-side, against a curve.
+local GCD_SPELL_ID = 61304
+
 -- ---------------------------------------------------------------------------
 -- Spec resolution
 -- ---------------------------------------------------------------------------
@@ -444,6 +450,23 @@ function Cooldowns:Refresh()
         if #readyIds  > 0 then parts[#parts+1] = "ready=["  .. table.concat(readyIds, ",")  .. "]" end
         if #activeIds > 0 then parts[#parts+1] = "active=[" .. table.concat(activeIds, ",") .. "]" end
         if #dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(dropIds, ",")   .. "]" end
+        -- MARK WHAT THE GLOBAL COOLDOWN EXPLAINS (#15). Every GCD flips `ready` and `isActive` for
+        -- every watched spell, because both are derived from the legacy active flag and that flag
+        -- covers "real CD or just GCD" (header, :50). MaterialChange keys on exactly those two
+        -- fields, so the churn is material by its own test. In a live 45-second fight that was
+        -- fifteen lines of GCD against two real cooldown transitions, with the two in the middle.
+        --
+        -- MARKED RATHER THAN SUPPRESSED, and that is forced rather than preferred. The C-side
+        -- curve evaluation that separates a GCD from a real cooldown cannot hand its answer back
+        -- into a Lua `if`, and every duration involved is secret in combat -- the same wall the
+        -- header documents for the icon path. A time-based heuristic that hid the churn would also
+        -- hide a real cooldown starting, since one always coincides with the other: the 5/5 line
+        -- where Mind Freeze goes on its own cooldown IS a GCD line too.
+        --
+        -- Spell 61304 is the global cooldown and its plain-bool active flag is the one value in
+        -- reach that can be branched on at all. The line says which it was; the reader judges.
+        local _, _, _, _, gcdActive = NS.Compat.GetSpellCooldown(GCD_SPELL_ID)
+        if gcdActive then parts[#parts+1] = "(gcd)" end
         NS.Debug("Cooldowns", "%d/%d changed: %s", logged, watched, table.concat(parts, " "))
     end
     if __t0 then Perf.Note("spellPoll", debugprofilestop() - __t0) end
