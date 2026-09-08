@@ -61,13 +61,33 @@ local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
 `tests/test_surface_parity.lua` carries one `Kit.assertSurfaceParity` case per
 adopted seam whose degradation stub answers members — Core (the namespace and the
 printer), DebugLog, Slash (both `NS.Slash` and `NS.Slash.cli`) and Options —
-comparing a live load against that degraded one and reporting **every**
-divergence in one message (testing-§8, anti-pattern #56). It walks the LIVE
-table, so the question is "what does the library export today?" rather than
-"what did somebody remember to list": a re-vendor that adds a member forces a
-decision. A member that is live-only *on purpose* is recorded in the case's
-`ignore` list, as data, with the reason — the library's own string resolvers and
-the widget makers and layout constants `options-ui-§1` forbids a host copy of.
+reporting **every** divergence in one message rather than the first
+(testing-§8, anti-pattern #56). The question it asks is "what does the library
+export today?" rather than "what did somebody remember to list": a re-vendor that
+adds a member forces a decision. A member that is live-only *on purpose* is
+recorded in the case's `ignore` list, as data, with the reason — the library's
+own string resolvers and the widget makers and layout constants `options-ui-§1`
+forbids a host copy of.
+
+The three library-backed seams — DebugLog, Slash and Options — call the kit's
+**by-name** form, `assertSurfaceParity(stub, "LibKa0s-Options-1.0", ignore)`:
+
+* The live half is **named, not rebuilt**. `tests/run.lua` registers it with
+  `Kit.setSurfaceSource`, and it has to be explicit — each of the three stubs
+  mirrors an *instance* (what `lib:New(descriptor)` returned), not the library
+  table `LibStub` answers for the same major, so `Kit.expose`'s auto-wiring would
+  resolve the wrong thing and report members no stub was ever meant to carry.
+* Only the **public** members are walked (`Kit.publicMembers`): `MAJOR`, `MINOR`,
+  `MODULES` and every `__`-prefixed key are the library talking to itself across
+  its own file boundary, and a stub does not mirror them. That rule is the kit's
+  now, so a re-vendor that publishes a new internal needs no edit in this repo.
+  The one exception is pinned by hand — `settings/Panel_Widgets.lua:138` calls
+  `Helpers.__panelFor`, so the stub owes it and a line beside the parity call
+  says so.
+
+Core keeps the four-argument form (`assertSurfaceParity(live, degraded, label,
+ignore)`) because `NS` and `NS.Util` are this addon's own namespace, not a
+major's surface: there is no name to look up.
 
 What parity cannot catch is a stub with the right member set and a **wrong
 implementation** — a hand-copied line format or ack string. That is

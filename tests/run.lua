@@ -184,6 +184,36 @@ local SUITES = {
     { name = "test_eol", dir = root .. "/tests/_kit/" },
 }
 
+-- ---------------------------------------------------------------------------
+-- Where the by-name surface-parity gate looks the LIVE half up
+-- ---------------------------------------------------------------------------
+--
+-- Kit.assertSurfaceParity's by-name form -- assertSurfaceParity(stub, "LibKa0s-Options-1.0"), new
+-- at kit 15 and vendored by M4-01 -- resolves that name through whatever the harness registers
+-- here. Registered EXPLICITLY, and the explicitness is the point.
+--
+-- Kit.expose auto-wires the mock's LibStub when nothing is registered yet, which is right for a
+-- repo whose degradation stubs mirror LIBRARY TABLES. None of this addon's three do: each mirrors
+-- an INSTANCE -- what `lib:New(descriptor)` returned, built from a descriptor only the host has.
+-- Left to the auto-wiring, "LibKa0s-Options-1.0" resolves the small library table LibStub answers
+-- for that major rather than the decorated instance settings/Panel*.lua and every page file
+-- actually call, and tests/test_surface_parity.lua goes red naming members no stub was ever meant
+-- to carry.
+--
+-- Set BEFORE Kit.expose, which is what makes it stick: expose registers a source only when none is
+-- registered yet, precisely so a runner like this one keeps its own.
+--
+-- The SHARED instance rather than a fresh one, because it is the live load this runner already
+-- owns and it is built exactly as tests/test_surface_parity.lua's own live arm is
+-- (`loadInstance(true)`: every library file, every TOC file, OnInitialize, no enable cascade). The
+-- degraded halves still come from a real library-less load inside that file, so neither arm is
+-- ever hand-built.
+Kit.setSurfaceSource{
+    ["LibKa0s-DebugLog-1.0"] = shared.NS.DebugLog,
+    ["LibKa0s-Slash-1.0"]    = shared.NS.Slash and shared.NS.Slash.cli,
+    ["LibKa0s-Options-1.0"]  = shared.NS.Settings and shared.NS.Settings.Helpers,
+}
+
 _G.KICKCD_TEST = Kit.expose{
     root = root,
     -- shared instance

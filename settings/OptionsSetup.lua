@@ -298,23 +298,32 @@ if not lib then
     -- that draws the tab's closing button pair. settings/General.lua keys its
     -- afterGroup table with the second, inside a renderer that never runs here.
     Helpers.MasterControls = function() return {}, function() end end
-    -- The library's own internals, mirrored for the same reason __panels and __panelFor already
-    -- were: the parity gate reads the WHOLE live surface, and a member that exists live and not
-    -- here is a hole whether or not today's host code happens to reach it. The three layout
-    -- CONSTANTS that arrived with them -- BANNER_H, CHROME_GAP, TAB_H -- deliberately do NOT
-    -- appear: options-ui-§8 forbids a host copy of a library constant, the copy is the one that
-    -- goes stale, and tests/test_options_panel.lua scans this file for exactly that.
-    Helpers.__panels        = function() return {} end
-    Helpers.__panelFor      = function() return nil end
-    Helpers.__bannerBand    = function() end
-    Helpers.__layoutTabs    = function() end
-    Helpers.__releaseChrome = function() end
-    Helpers.__scrollTopInset = function() end
-    Helpers.__tabBand       = function() end
-    Helpers.__tabPlacement  = function() end
-    Helpers.__releaseSubTabs   = function() end
-    Helpers.__tabArtHeight     = function() end
-    Helpers.__resetTabArtHeight = function() end
+    -- ONE of the library's `__` internals, and the list used to be eleven.
+    --
+    -- The ten that left -- __panels, __bannerBand, __layoutTabs, __releaseChrome, __scrollTopInset,
+    -- __tabBand, __tabPlacement, __releaseSubTabs, __tabArtHeight, __resetTabArtHeight -- were
+    -- mirrored for ONE reason, and it was stated here: the parity gate read the WHOLE live surface,
+    -- so a member that existed live and not here was reported as a hole. M4-09 moved
+    -- tests/test_surface_parity.lua onto Kit.assertSurfaceParity's by-name form, which compares
+    -- Kit.publicMembers and drops the whole `__` prefix, so that reason is gone and what was left
+    -- was ten no-op members with no caller anywhere in this addon -- copies waiting to go stale on
+    -- the next re-vendor that renames one. libs/LibKa0s/Options.lua's comment at O.__print states
+    -- the rule the kit now enforces: a `__` member is the library talking to itself across its own
+    -- file boundary, and a degradation stub does not mirror it.
+    --
+    -- __panelFor STAYS, because this addon is the exception to that rule and the kit cannot know
+    -- it: settings/Panel_Widgets.lua:138's OpenPageTab reads
+    -- `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination page's
+    -- tab. A member the host calls is a member the stub owes -- the same sentence SetRenderer
+    -- joined the no-op list under. The guard means losing it costs a tab selection rather than a
+    -- raise, which is why tests/test_surface_parity.lua pins it BY HAND beside the parity call
+    -- rather than trusting the filter.
+    --
+    -- The three layout CONSTANTS that arrived with the departed ten -- BANNER_H, CHROME_GAP, TAB_H
+    -- -- never appeared here and still must not: options-ui-§8 forbids a host copy of a library
+    -- constant, the copy is the one that goes stale, and tests/test_options_panel.lua scans this
+    -- file for exactly that.
+    Helpers.__panelFor = function() return nil end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end

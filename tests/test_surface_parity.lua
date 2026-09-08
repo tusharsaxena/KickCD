@@ -13,13 +13,39 @@
 -- member: a stub returns without assigning a function the addon calls, and the command raises on
 -- exactly the degraded path the stub exists to survive. A member-by-member checklist does not
 -- catch it, because the checklist is written from the same stale reading of the surface that
--- produced the stub. Kit.assertSurfaceParity walks the LIVE table and reports every divergence in
--- one message, so the question becomes "what does the library actually export today?" rather than
--- "what did somebody remember to list?".
+-- produced the stub. Kit.assertSurfaceParity reads the LIVE surface and reports every divergence
+-- in one message, so the question becomes "what does the library actually export today?" rather
+-- than "what did somebody remember to list?".
 --
 -- BOTH ARMS COME FROM A REAL LOAD. The degraded arm is produced by feeding the loader an empty
 -- library file list — `T.load(true, false, nil, { libFiles = {} })` — never by hand-stubbing the
 -- member under test, which would only assert the test's own typing.
+--
+-- THE THREE LIBRARY-BACKED SEAMS CALL THE KIT'S BY-NAME FORM — assertSurfaceParity(stub, major,
+-- ignore) — which arrived with kit 15 and was vendored by M4-01. Two things change.
+--
+--   * WHICH KEYS ARE WALKED. The by-name form compares Kit.publicMembers rather than every key of
+--     the live table: LibStub's own MAJOR / MINOR / MODULES go, and so does every `__`-prefixed
+--     key. Those are the library talking to itself across its own file boundary — __bannerBand,
+--     __tabPlacement, __print — and the rule that a stub does not mirror them is the kit's now
+--     instead of this file's typing. libs/LibKa0s/Options.lua's own comment at O.__print states
+--     it and cites this filter by name. The exemptions that used to say so here are gone, and the
+--     next internal a re-vendor publishes needs no edit in this file or in the stub.
+--   * WHERE THE LIVE HALF COMES FROM. tests/run.lua registers it with Kit.setSurfaceSource, and it
+--     has to: all three of these stubs mirror an INSTANCE — what `lib:New(descriptor)` returned —
+--     not the library table LibStub answers for the same major. Left to Kit.expose's auto-wiring,
+--     which reaches for the mock's LibStub, "LibKa0s-Options-1.0" would resolve a table of four
+--     members and this case would go red for reasons that have nothing to do with the stub.
+--
+-- THE COST OF THE SECOND, STATED PLAINLY: the live half is now the runner's SHARED instance, which
+-- earlier suites have already driven, rather than this file's pristine `live`. Two DebugLog test
+-- seams are exempted below for exactly that reason. It is the same construction either way
+-- (`loadInstance(true)`), and a divergence a preceding suite introduces is a real one.
+--
+-- CORE STAYS ON THE FOUR-ARGUMENT FORM, and the reason is worth having written down: it is not a
+-- major's surface at all. `NS` and `NS.Util` are this addon's own namespace, half-published by
+-- core/CoreSetup.lua's live arm and half by its stub. There is no name to look up, and comparing
+-- two namespaces the host built itself is precisely what the four-argument form is for.
 --
 -- WHAT THIS CANNOT CATCH, stated so nobody over-claims: a stub with the right member set and a
 -- WRONG IMPLEMENTATION. `KCD-A-14` — the DebugLog stub hand-copying the library's line format and
@@ -68,17 +94,28 @@ end)
 
 -- ── DebugLog ────────────────────────────────────────────────────────────────
 --
--- Members from: grep -nE "^\s+function D[:.]|^\s+D\.[A-Za-z_]+\s*=" libs/LibKa0s/DebugLog.lua
+-- The live half is the LibKa0s-DebugLog-1.0 instance core/DebugLogSetup.lua:129 builds, which
+-- tests/run.lua registers under that name. Read off the built instance rather than the file, which
+-- is the same list as
+--   grep -nE "^\s+function D[:.]|^\s+D\.[A-Za-z_]+\s*=" libs/LibKa0s/DebugLog.lua
+-- without a parser.
 
 test("the DebugLog stub carries the whole live surface", function()
     -- red under: deleting `ConsoleCheckbox` from core/DebugLogSetup.lua's stub table
-    assertSurfaceParity(live.NS.DebugLog, degraded.NS.DebugLog, "NS.DebugLog", {
+    assertSurfaceParity(degraded.NS.DebugLog, "LibKa0s-DebugLog-1.0", {
         -- The library's own string resolver and the copy-window's text builder. Neither is
         -- reachable on the degraded path: `ShowCopy` is stubbed to the say-once notice, so nothing
         -- asks for the buffer as text, and every string the stub emits is either the host's own or
         -- NS.LIBKA0S_MISSING. Stubbing `Text` would mean shipping a second answer for the
         -- library's strings, which debug-logging-§7 is specifically about not doing.
         "Text", "CopyText",
+        -- Test seams the library stamps ON THE INSTANCE when it BUILDS the console window
+        -- (libs/LibKa0s/DebugLog.lua:477, :482). They are on the live half by the time this case
+        -- runs only because tests/test_debuglogsetup.lua:70 showed the window on the shared
+        -- instance; a library-less build has no window to build, so their absence from the stub is
+        -- the condition under test rather than a gap in it. SINGLE underscore, so Kit.publicMembers
+        -- does not filter them for us — its exclusion is the `__` prefix.
+        "_frameForTest", "_toggleClickForTest",
     })
 end)
 
@@ -86,13 +123,15 @@ end)
 --
 -- Members from: grep -n "^  function Sl[:.]" libs/LibKa0s/Slash.lua
 --
--- NS.Slash is the host's own table and is identical on both paths; the seam is NS.Slash.cli, which
--- is `SlashLib:New(...)` live and settings/Slash.lua:206's local stub degraded.
+-- NS.Slash is the host's own table and is identical on both paths, so it keeps the four-argument
+-- form for the reason Core does. The SEAM is NS.Slash.cli, which is `SlashLib:New(...)` live and
+-- settings/Slash.lua:223's local stub degraded; tests/run.lua registers the live one under the
+-- major's name.
 
 test("the Slash stub carries the whole live surface", function()
     -- red under: deleting `CliList` from settings/Slash.lua's stub `New`
     assertSurfaceParity(live.NS.Slash, degraded.NS.Slash, "NS.Slash")
-    assertSurfaceParity(live.NS.Slash.cli, degraded.NS.Slash.cli, "NS.Slash.cli", {
+    assertSurfaceParity(degraded.NS.Slash.cli, "LibKa0s-Slash-1.0", {
         -- `Text` is the library's string resolver (see the DebugLog note — same reason).
         "Text",
         -- `HelpHeader` and `BuildListLines` are renderers the library calls from inside PrintHelp
@@ -105,7 +144,12 @@ end)
 
 -- ── Options ─────────────────────────────────────────────────────────────────
 --
--- Members from: grep -n "^  function O\." libs/LibKa0s/Options.lua
+-- The live half is the LibKa0s-Options-1.0 instance the live arm of settings/OptionsSetup.lua
+-- assigns to NS.Settings.Helpers, decorated in place by settings/Panel.lua, Panel_Widgets.lua and
+-- Panel_Render.lua, and registered under that name by tests/run.lua. Read off the built instance
+-- rather than the file, which is the same list as
+--   grep -n "^  function O\." libs/LibKa0s/Options.lua
+-- plus the host's own decorations, without a parser.
 --
 -- This stub is LOAD-COMPLETING rather than member-answering, and that is a different contract from
 -- the other three (settings/OptionsSetup.lua says so and says why). options-ui-§1 is explicit that
@@ -120,13 +164,18 @@ end)
 
 test("the Options stub carries every member the host calls", function()
     -- red under: deleting `RenderRows` from settings/OptionsSetup.lua's stub no-op list
-    assertSurfaceParity(live.NS.Settings.Helpers, degraded.NS.Settings.Helpers,
-        "NS.Settings.Helpers", {
+    --
+    -- ONE `__` MEMBER IS PINNED BY HAND, below the parity call, and it is the one thing the kit's
+    -- filter cannot decide for this repo: settings/Panel_Widgets.lua:138 CALLS Helpers.__panelFor.
+    -- The kit drops the prefix because a `__` member is normally the library talking to itself and
+    -- no host reaches it; here one does, and this file's own rule is that a member the host calls
+    -- is a member the stub owes. Without the pin the stub could lose it in silence.
+    assertSurfaceParity(degraded.NS.Settings.Helpers, "LibKa0s-Options-1.0", {
         -- The registry and the panel lifecycle. The host does not call these on Helpers at all —
         -- it calls NS.RegisterOptionsPage / NS.CreateOptionsPanel / NS.OpenOptionsPanel, which the
         -- stub DOES define (settings/OptionsSetup.lua), so the degraded path is covered on the
         -- surface the host actually uses.
-        "RegisterOptionsPage", "CreateOptionsPanel", "OpenOptionsPanel", "__pages",
+        "RegisterOptionsPage", "CreateOptionsPanel", "OpenOptionsPanel",
         -- The widget makers, the flow engine and the landing-page renderer. options-ui-§1 forbids
         -- a host copy outright; a page that cannot be built has nothing to render into.
         --
@@ -176,15 +225,22 @@ test("the Options stub carries every member the host calls", function()
         -- The AceGUI handle the library resolves at CreateOptionsPanel time. With no library there
         -- is no CreateOptionsPanel, so there is nothing to resolve; the host reads NS.AceGUI.
         "AceGUI",
-        -- New at LibKa0s v1.27.0 (Options minor 8): the ONE instance print sink the shell publishes
-        -- so OptionsWidgets stops building a second one from the same descriptor
-        -- (libs/LibKa0s/Options.lua:392, read at OptionsWidgets.lua:763). Its own comment there
-        -- calls it internal rather than surface and says a degradation stub does not mirror it,
-        -- because Kit.assertSurfaceParity skips the `__` prefix -- true of the kit's BY-NAME form,
-        -- which filters through Kit.publicMembers, and not of the four-argument form this case
-        -- uses, which walks every key of the live table. The host calls nothing on it: it is the
-        -- library talking to itself across a file boundary, and a stub copy would be a printer
-        -- with no caller.
-        "__print",
+        -- WHAT IS NO LONGER ON THIS LIST, and why it got shorter rather than laxer. `__pages` and
+        -- `__print` were exempted here one at a time, the second added three days ago by
+        -- v1.27.0's Options minor 8 with the library's own comment at O.__print saying a stub does
+        -- not mirror it and citing Kit.publicMembers by name. That filter is what this case runs
+        -- through now, so the whole prefix is the kit's business and the next internal a re-vendor
+        -- publishes needs no entry here. The ten no-op `__` mirrors the STUB carried for the same
+        -- vanished reason went with them, in this commit — settings/OptionsSetup.lua says which
+        -- one stayed and why.
     })
+    -- The exception the filter cannot make for us. settings/Panel_Widgets.lua:138's OpenPageTab
+    -- reads `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination
+    -- page's tab, so the degraded path reaches this member — guarded, so losing it costs a tab
+    -- selection rather than a raise, which is exactly the kind of quiet degradation nothing else
+    -- would report. Kit.publicMembers dropped it with the rest of the prefix; this line puts it
+    -- back for this repo alone.
+    -- red under: deleting `Helpers.__panelFor` from settings/OptionsSetup.lua's stub
+    assertTrue(type(degraded.NS.Settings.Helpers.__panelFor) == "function",
+        "the stub owes __panelFor: settings/Panel_Widgets.lua:138 calls it")
 end)
