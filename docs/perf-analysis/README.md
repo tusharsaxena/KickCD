@@ -15,12 +15,15 @@ compare across addon versions. Bundles are committed as **evidence**: the raw ca
 write-up that interprets it, and an interpretation without its record is an assertion
 (`performance-§8`).
 
-**The store holds one capture.** [`20260807-131311/`](20260807-131311/) — KickCD 1.2.1, a solo world
+**The store holds two captures.** [`20260807-131311/`](20260807-131311/) — KickCD 1.2.1, a solo world
 fight in Silvermoon City — is the first committed bundle, and it is what makes the nesting decisions
 in `core/PerfSetup.lua` citable against a real record rather than the early uncommitted capture they
-were originally taken off. One capture is a baseline, not a trend: there is nothing yet to compare a
-second run against on anything but the `ms/s` and call-ratio figures that survive a change of combat
-duration.
+were originally taken off. [`20260909-014035/`](20260909-014035/) is the second, on the same addon
+version but a different class, zone and group size, so the pair compares only on the `ms/s` and
+call-ratio figures that survive a change of combat duration — and even those carry a confound the
+second bundle's `ANALYSIS.md` names, because the debug console was on for the first run and off for
+the second. Two uncontrolled captures are still not a trend; the next one wants a training dummy, a
+fixed rotation and a known console state.
 
 ## Bundle naming
 
@@ -146,19 +149,19 @@ bracketed buckets calls `Perf.Note(key, ms)` with **two** arguments and no `pare
 
 | Bucket | Call site |
 |---|---|
-| `spellPoll` | `modules/Cooldowns.lua:447` |
-| `pollSpell` | `modules/Cooldowns.lua:193`, `:201` (both exits) |
-| `spellState` | `modules/IconGrid.lua:815` |
-| `visibility` | `modules/IconGrid.lua:934` |
-| `castEvent` | `modules/IconGrid.lua:948` |
-| `iconApply` | `modules/IconGrid_Render.lua:746` |
-| `cdText` | `modules/IconGrid_Render.lua:841`, `:849` (both exits) |
-| `castTick` | `modules/Castbar.lua:692`, `:713` (both exits) |
+| `spellPoll` | `modules/Cooldowns.lua:517` |
+| `pollSpell` | `modules/Cooldowns.lua:201`, `:209` (both exits) |
+| `spellState` | `modules/IconGrid.lua:814` |
+| `visibility` | `modules/IconGrid.lua:933` |
+| `castEvent` | `modules/IconGrid.lua:947` |
+| `iconApply` | `modules/IconGrid_Render.lua:790` |
+| `cdText` | `modules/IconGrid_Render.lua:938`, `:946` (both exits) |
+| `castTick` | `modules/Castbar.lua:717`, `:738` (both exits) |
 
 So `observedWithin` is **never populated** in a KickCD record, and every KickCD report prints the
 *"`<bucket>` declares itself within `<parent>` — not observed"* form for its nested buckets.
 
-The declared tree in `core/PerfSetup.lua:93-102` — `pollSpell` and `spellState` within `spellPoll`,
+The declared tree in `core/PerfSetup.lua:103-112` — `pollSpell` and `spellState` within `spellPoll`,
 `iconApply` within `spellState` — is therefore an **unverified claim**. It is a reasoned one (the
 `SendMessage` dispatch is inline through CallbackHandler, so the spell-state handler really should
 run inside `Cooldowns:Refresh`'s frame), but reasoning is not observation. An `ANALYSIS.md` **must
@@ -207,3 +210,4 @@ One row per bundle, newest last.
 | Bundle | Addon version | Label | What it measured |
 |---|---|---|---|
 | [`20260807-131311`](20260807-131311/) | 1.2.1 | `2026-08-07 13:09` | Solo world combat, level 90 Destruction Warlock, Silvermoon City — Falconwing Square. 4 watched spells, target + focus grids both live. All eight buckets fired; accounted cost 6.30–12.99 ms/s of combat (a range, because nesting is declared but not observed). Frame-time delta −0.17 ms/frame — **unresolved and sign-backwards**; arms unequal (25.7 s vs 39.7 s) and not the same fight. |
+| [`20260909-014035`](20260909-014035/) | 1.2.1 | `2026-09-09 01:36` | Party-of-five combat at Nexus-Point Xenas, level 90 Protection Paladin. 3 watched spells, target + focus grids both live, debug console OFF. All eight buckets fired; accounted cost 3.67 ms/s of combat (top-level buckets; the three nested totals are contained in `spellPoll` if the declared tree is real, and nothing in the record verifies it). Frame-time delta +0.04 ms/frame — **unresolved**, about a seventh of the instrument's floor. One `spellPoll` pass hit 9.64 ms, 5.5× the previous capture's worst and unattributed by any child bucket. |
