@@ -90,7 +90,7 @@ end)
 -- ── Reskin through the guard ────────────────────────────────────────────────
 
 test("Reskin stamps a structure signature on the instance", function()
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     local inst = Castbar:GetInstance("target")
     assertTrue(inst.structureSig ~= nil,
         "EnableUnit's Reskin must record the signature it applied")
@@ -188,7 +188,7 @@ test("force rebuilds the geometry even when the signature matches", function()
 end)
 
 test("Reskin is safe before the frame has ever been built", function()
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     Castbar:Reskin({ unit = "target", frame = nil })
 end)
 
@@ -224,7 +224,7 @@ end)
 test("ResolveBarSize floors the long and thick axes", function()
     -- A degenerate config (or a corrupt saved-var) must not produce a
     -- zero-sized frame that the user can never find again to fix.
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     local long, thick = Castbar.ResolveBarSize(
         { unit = "target" }, { width = 1, height = 1 }, false)
     assertEqual(long,  40, "long axis floors at 40")
@@ -232,7 +232,7 @@ test("ResolveBarSize floors the long and thick axes", function()
 end)
 
 test("ResolveBarSize returns the configured size when auto-size is off", function()
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     local long, thick = Castbar.ResolveBarSize(
         { unit = "target" }, { width = 320, height = 18, autoSize = false }, false)
     assertEqual(long,  320)
@@ -242,7 +242,7 @@ end)
 test("ResolveBarSize leaves thickness alone in vertical orientation", function()
     -- Vertical swaps which PHYSICAL axis each semantic dimension maps to, but
     -- the semantic values themselves don't change — the caller does the swap.
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     local long, thick = Castbar.ResolveBarSize(
         { unit = "target" }, { width = 320, height = 18, autoSize = false }, true)
     assertEqual(long,  320)
@@ -274,7 +274,7 @@ end
 
 --- The i-th anchor of `region` as a flat string, for one-line comparison.
 local function pointAt(region, i)
-    local point, _relativeTo, relativePoint, x, y = region:GetPoint(i)
+    local point, _, relativePoint, x, y = region:GetPoint(i)
     return ("%s/%s/%s/%s"):format(tostring(point), tostring(relativePoint),
                                  tostring(x), tostring(y))
 end
@@ -353,7 +353,7 @@ end
 
 --- The relativePoint of the spark's single anchor — the fill edge it rides.
 local function sparkAnchor(inst)
-    local _point, _relativeTo, relativePoint = inst.frame.spark:GetPoint(1)
+    local _, _, relativePoint = inst.frame.spark:GetPoint(1)
     return relativePoint
 end
 
@@ -408,16 +408,16 @@ end)
 
 test("both labels share the config font, and NONE flags normalize to empty", function()
     local inst = skinned({ font = "Friz Quadrata TT", fontSize = 16, fontFlags = "NONE" })
-    local _p, size, flags = inst.frame.nameText:GetFont()
+    local _, size, flags = inst.frame.nameText:GetFont()
     assertEqual(size, 16)
     assertEqual(flags, "", "NONE must reach SetFont as the empty string")
-    local _p2, size2 = inst.frame.timeText:GetFont()
+    local _, size2 = inst.frame.timeText:GetFont()
     assertEqual(size2, 16, "the time label shares the name label's font")
 end)
 
 test("absent fontFlags normalize to empty too", function()
     local inst = skinned({}, { "fontFlags" })
-    local _p, _s, flags = inst.frame.nameText:GetFont()
+    local _, _, flags = inst.frame.nameText:GetFont()
     assertEqual(flags, "")
 end)
 
@@ -449,7 +449,7 @@ end)
 test("Reskin survived the peel as a method on the Castbar module", function()
     -- Castbar_Skin.lua re-opens the module rather than forking it; if the TOC
     -- ever loses the file, this is the case that says so out loud.
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     assertTrue(type(Castbar.Reskin) == "function",
         "modules/Castbar_Skin.lua must be loaded and must attach Castbar:Reskin")
 end)
@@ -457,7 +457,7 @@ end)
 test("the skin sibling reads its helpers off the module, not a private copy", function()
     -- The peel deliberately did NOT duplicate the pure helpers; they are
     -- published on the module table and consumed from there.
-    local _NS, Castbar = enabled()
+    local _, Castbar = enabled()
     for _, name in ipairs({ "UnpackColor", "StateConfig", "FetchFont",
                             "FetchBorderTexture", "FetchStatusBarTexture",
                             "AutoSizeLong", "ResolveGridFrame" }) do

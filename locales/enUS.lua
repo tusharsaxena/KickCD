@@ -9,7 +9,7 @@
 
 -- locales/enUS.lua loads BEFORE core/Compat.lua per the TOC, so we have
 -- to bootstrap the global namespace ourselves here.
-local addonName, NS = ...
+local _, NS = ...
 
 local L = setmetatable({}, {
     __index = function(_, k) return k end,
@@ -78,7 +78,7 @@ L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to gi
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
 -- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
--- the second is the phrase that carries the colour and names where the click
+-- the second is the phrase that carries the color and names where the click
 -- lands. Kept as two strings rather than one with a format slot so a translator
 -- can move the link phrase within the sentence -- in a language where it belongs
 -- first, "%s" in the middle of the English word order would fight them.
@@ -337,15 +337,17 @@ L["Auto-size to icon grid"]      = "Auto-size to icon grid"
 L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
     "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
 L["Cast bar width (in px)"]      = "Cast bar width (in px)"
-L["Cast bar width in pixels."]   = "Cast bar width in pixels."
+L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."] =
+    "Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."
 L["Cast bar height (in px)"]     = "Cast bar height (in px)"
-L["Cast bar height in pixels."]  = "Cast bar height in pixels."
+L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."] =
+    "Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."
 L["Icon position"]               = "Icon position"
 L["Where to place the spell icon, or hide it entirely."] =
     "Where to place the spell icon, or hide it entirely."
 L["Icon size (in px)"]           = "Icon size (in px)"
-L["Spell icon size in pixels (0 hides the icon)."] =
-    "Spell icon size in pixels (0 hides the icon)."
+L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."] =
+    "Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."
 L["Show spark"]                  = "Show spark"
 L["Render the leading-edge spark on the bar."] =
     "Render the leading-edge spark on the bar."

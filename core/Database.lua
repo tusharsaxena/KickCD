@@ -8,7 +8,7 @@
 -- that into the profile only on first creation so user edits are never
 -- stomped.
 
-local addonName, NS = ...
+local _, NS = ...
 
 local Database = {}
 NS.Database = Database

@@ -27,13 +27,13 @@ so **do not** write a parallel mutator for a field that already has a row.
    flow engine pairs consecutive rows two per line, so put a mode beside the thing it modes and rest
    beside hover rather than one above the other.
 
-   **A font, border, bar or colour block is COMPOSED, never typed out** (`options-ui-§16`/`§17`) —
+   **A font, border, bar or color block is COMPOSED, never typed out** (`options-ui-§16`/`§17`) —
    call `H.FontGroup` / `H.BorderGroup` / `H.BarGroup` / `H.ColorPair` and hand the result to
    `H.AddComposed(rows, stamp)`, passing `keys` for any leaf whose stored name this addon already
    shipped, because the composer changes what is *declared* and never what is *stored*. A
-   hand-written colour row is anti-pattern #73 and reddens `tests/test_schema.lua`, which asserts
+   hand-written color row is anti-pattern #73 and reddens `tests/test_schema.lua`, which asserts
    that every `color` row is followed immediately by a `useClassColor*` companion, declares
-   `startsLine`, carries the class-colour note in its tooltip, and never carries `disabledIf`.
+   `startsLine`, carries the class-color note in its tooltip, and never carries `disabledIf`.
 
 3. Add the `default` to `DEFAULT_PROFILE` in `defaults/Profile.lua` at the matching path. That table
    is the **only** place a profile default is hardcoded (`savedvariables-§2`); the schema row's
@@ -81,6 +81,13 @@ so **do not** write a parallel mutator for a field that already has a row.
 
 Add the key to `locales/enUS.lua`. Reference it as `L["…"]` — never a bare literal in panel or chat
 code (`localization-§1`).
+
+`tests/test_locale.lua` gates both halves of that, and it is worth knowing which half it gates where.
+A key used anywhere the TOC loads and left undefined here is red — that is how three cast-bar `desc`
+sentences got reworded at the call site and never added (KICKCD-R-03). A bare prose literal added to a
+file under `settings/` is red too, until it is either wrapped or given a class in that file's residue
+register. Chat text outside `settings/` — the `/kcd` verbs in `core/KickCD.lua`, the debug dumps — is
+still bare English and is **not** gated; the rule above still applies to it, nothing enforces it yet.
 
 ### Add a message
 
@@ -164,6 +171,14 @@ drifts from the code is worse than one that names none.
   separate sweeps missed. A colon *mid*-line (`"name: " .. value`) is fine; the rule is about the last
   character a player reads. Guarded by `tests/test_slash_style.lua` — see
   [testing.md](testing.md#the-source-scan-guard).
+- **A chat sink threaded through helpers is a parameter named `emit`, never `print`.** A dump that
+  splits across several local helpers passes the sink down rather than each helper reaching for
+  `NS.Util.print` again — `modules/Castbar_Debug.lua` does this eight times. Name that parameter
+  `emit`, and name the local that resolves it `emit` too. Calling it `print` shadows the Lua global
+  inside every one of those functions, so `print(...)` in the body no longer means what a reader
+  scanning for `slash-commands-§4` violations assumes it means, and `tests/test_source_style.lua`
+  cannot tell the shadow from a bare global read either. `settings/Slash.lua:61`'s `out(line)` is the
+  same idea one level up, where the sink is a module-level local rather than an argument.
 
 ### 12.0 secret-value rule of thumb
 
@@ -206,37 +221,71 @@ LibCustomGlow.
 warning is a regression rather than background noise to scroll past — fix the code first, and reach
 for a suppression only when the warning is wrong about this file.
 
+**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (lint-§1, `M4-11`).
+This page used to describe one — `212/self`, `212/event`, `211/addonName` — and to call it
+"allowances true everywhere". They were not true everywhere. `M4c-06` removed the three lines and
+`luacheck .` went from 0/0 to **61 warnings**, of which **32 were defects rather than conventions**:
+twenty-nine files opening `local addonName, NS = ...` over a folder name they never read, two named
+receivers in the test tree, and one `NS.Slash:PrintHelp` forwarder nothing called. All thirty-two
+were fixed at source. `212/event`, meanwhile, matched nothing at all — a stale suppression nobody
+could tell from a live one while it was switched on everywhere. `tests/test_lintconfig.lua` is the
+gate that keeps the blanket out, and it fails rather than skips when it cannot read the config.
+
 Suppressions come in two forms, and the choice between them is about scope:
 
-- **Repo-wide → `.luacheckrc`.** The `ignore` list holds allowances true everywhere: `212/self` and
-  `212/event` (Ace handler signatures that name arguments they don't all use) and `211/addonName` (the
-  `local addonName, NS = ...` bootstrap header, where the name half is usually unread). `libs/`,
-  `tests/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
-- **One file → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
-  offending line, with a comment saying why the warning doesn't apply. `core/LSMPatch.lua` is the
-  current example: it keeps the standard bootstrap header (`architecture-§1`) even though it is a
-  standalone LSM widget fixup that uses neither `addonName` nor `NS`, so `211/NS` is suppressed there
-  rather than the header being trimmed or the allowance widened repo-wide.
+- **One file → a `files[...]` stanza in `.luacheckrc`.** The key names the single `.lua` file that
+  earns the code, and the entry names the code AND the variable, in luacheck's `<code>/<variable>`
+  form. Nine stanzas exist today, all `212/self`, all on files whose methods a calling convention
+  reaches with the colon — the AceAddon modules, the AceEvent handler registered by name, the
+  `LibKa0s-Slash-1.0` degradation stub — and each carries a comment naming the obligation that
+  forces the receiver. An argument that falls out of use under any other name, in those nine files
+  or in the other 84, still reports. `libs/`,
+  `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
+  **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua` and `wow_mock.lua` are this
+  addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
+  that tree, because it is a byte copy of LibKa0s' `testkit/` and is linted there as source. A run
+  reporting fewer files than `luacheck . --formatter plain | tail -1` says today is a run that has
+  stopped checking half the Lua in the repo.
+- **One line → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
+  offending line, with a comment saying why the warning doesn't apply. Never the bare
+  `-- luacheck: ignore` with no code after it: that silences every warning in scope and is the
+  blanket wearing a different hat, which is why `tests/test_lintconfig.lua` scans every tracked
+  `.lua` for it. The live example is
+  `tests/test_perfsetup.lua`'s `firstWatchedSpell`, which suppresses `512` (loop is executed at most
+  once): returning on the first iteration is how you take an arbitrary element of a set in Lua, so
+  the warning is right about the control flow and wrong about the intent. The one before it was
+  `core/LSMPatch.lua`, which kept the bootstrap header while using neither name half nor `NS` and so
+  suppressed `211/NS` locally rather than widening a repo-wide allowance; that file is gone — its
+  wrapper is `lib.__PatchLSM30Border()` in LibKa0s now.
 
-Prefer the inline form for anything genuinely local. Adding a name to `.luacheckrc` silences it in
-every file at once, including files that haven't been written yet.
+Prefer the inline form for anything genuinely local, and prefer FIXING the code to either. An unused
+variable is usually a real defect or dead code, and a `542` is usually a missing case — reach for a
+stanza only where the code is right as written, and say why beside it.
 
 ### Global lookup form
 
-When a Blizzard / WoW global is read, the form depends on whether the symbol is guarded anywhere in
-the module:
+When a Blizzard / WoW global is read, the form depends on the symbol: a standing list always carries
+the `_G.` prefix, and outside that list the form follows whether the module guards the symbol.
 
-- **Guarded somewhere → `_G.X` everywhere.** If the module ever guards the symbol (`if X then`,
-  `X and X(...)`, `... or X`), write `_G.X` for **every** reference to that symbol in the module —
-  including reads inside the guard's protected block. The `_G.` form makes the "this might not exist"
-  intent obvious and matches `core/Compat.lua`. Symbols in this bucket today: `C_Spell`, `C_Timer`,
-  `C_CurveUtil`, `issecretvalue`, `InCombatLockdown`, `UnitCastingInfo`, `UnitChannelInfo`,
-  `UnitCastingDuration`, `UnitChannelDuration`, `UnitExists`, `UnitCanAttack`, `UnitName`,
-  `GameFontNormal`, every legacy `GetSpell*` / `IsSpell*` / `IsPlayerSpell` / `IsUsableSpell`, `print`
-  (used as a fallback), and the cast-event API surface.
+- **The standing `_G.` list — prefix everywhere, and this half is gated.** `C_Spell`, `C_Timer`,
+  `C_CurveUtil`, `issecretvalue`, `InCombatLockdown`, `IsLoggedIn`, `UnitCastingInfo`,
+  `UnitChannelInfo`, `UnitCastingDuration`, `UnitChannelDuration`, `UnitExists`, `UnitCanAttack`,
+  `UnitName`, `UnitIsDead`, `GameFontNormal`, `STANDARD_TEXT_FONT`, every legacy `GetSpell*` /
+  `IsSpell*` / `IsPlayerSpell` / `IsUsableSpell`, `print` (used as a fallback), and the cast-event API
+  surface. The `_G.` form makes the "this might not exist" intent obvious and matches
+  `core/Compat.lua`. `tests/test_source_style.lua` reads this list and fails on a bare read of any
+  name on it — so a name added here must be added there in the same change, and vice versa.
+- **Guarded somewhere → `_G.X` everywhere, as guidance.** If a module ever guards a symbol (`if X
+  then`, `X and X(...)`, `... or X`), write `_G.X` for **every** reference to that symbol in that
+  module, including reads inside the guard's protected block. Applied per module, which is why
+  `UnitClass` is `_G.UnitClass` throughout `core/KickCD.lua` and `settings/Spells.lua` (both guard it)
+  and bare in `modules/IconGrid.lua`, `modules/Cooldowns.lua` and `core/Database.lua` (none do).
+  **Not gated, and the residue is why:** `LibStub`, `Settings`, `GameTooltip`, `Enum`,
+  `DEFAULT_CHAT_FRAME`, `C_CooldownViewer` and `RAID_CLASS_COLORS` are all guarded and all bare, at
+  roughly seventy sites. Bringing them in is a mechanical sweep with no reader on the other side, so
+  the rule binds new and edited code and the standing list above is what the suite measures.
 - **Never guarded → bare `X`.** A trusted baseline global the surrounding code does not short-circuit
-  on: `UnitClass`, `UnitRace`, `UnitIsDead`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`,
-  `CreateColor`.
+  on: `UnitClass`, `UnitRace`, `UnitIsUnit`, `CreateFrame`, `Mixin`, `Enum`, `CreateColor`.
 - **Spec APIs are wrapped, not read raw.** The deprecated `GetSpecialization` /
   `GetSpecializationInfo` globals route through `NS.Compat.GetSpecialization()` /
   `NS.Compat.GetSpecializationInfo(i)` — no direct calls to the globals remain outside
@@ -250,3 +299,20 @@ CRLF on every tracked text file. The repo's `.gitattributes` enforces `* text=au
 smudge filter normalizes on checkout — the working tree should never contain LF-terminated source
 files. The tree was normalized in commits `b6b9853` / `a74251a` / `3ba3ca3`. New files should match the
 surrounding files in their directory.
+
+### US English
+
+Every word a person wrote in this repository is US English — labels, chat text, comments,
+identifiers and Markdown prose alike. `localization-§5` publishes the canonical `BRITISH` /
+`ALLOWED` pair, and `tests/test_spelling.lua` carries both lists whole and sweeps everything git
+tracks. The rule is not taste. A locale key *is* the English source string (`localization-§1`), so a
+British spelling wrapped in `NS.L` is frozen into every translation that derives from it, and
+correcting it later orphans the key without a sound.
+
+Four things are out of scope, and each is named in the gate rather than inferred from a pattern:
+`libs/` and `tests/_kit/`, which are vendored and not ours to respell; the frozen dated bundles under
+`docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/revendor/` and `docs/perf-analysis/`,
+which record what was true on a past day; and the gate's own copy of the lists. One narrower waiver
+sits beside them, per file and per word: `docs/smoke-tests.md`'s session-3 perf check quotes two
+forbidden spellings in order to tell the reader that a double L in the client means the string did
+not come from the vendored payload, so correcting the quote would delete the check.

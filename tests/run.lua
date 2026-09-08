@@ -169,14 +169,118 @@ local SUITES = {
     "test_settings_refreshers",
     "test_flow_traces",
     "test_version",
+    "test_source_style",
+    "test_spelling",
     "test_slash_style",
     "test_slash",
     "test_opensettings",
     "test_perfsetup",
     "test_list_mode",
     "test_surface_parity",
+    "test_doc_structure",
+    "test_lintconfig",
     "test_vendor_sync",
+    -- The kit has shipped one suite of its own since revision 15: the working-tree
+    -- line-ending gate, over every path `git ls-files` reports. It lives where the rest of the
+    -- kit lives rather than being re-typed into nine repositories, so it is declared with its
+    -- own `dir`. Kit.assertSuiteInventory fails the run until it is declared, so it cannot
+    -- arrive with a re-vendor and then quietly run nothing.
+    { name = "test_eol", dir = root .. "/tests/_kit/" },
 }
+
+-- ---------------------------------------------------------------------------
+-- Where the by-name surface-parity gate looks the LIVE half up
+-- ---------------------------------------------------------------------------
+--
+-- Kit.assertSurfaceParity's by-name form -- assertSurfaceParity(stub, "LibKa0s-Options-1.0"), new
+-- at kit 15 and vendored by M4-01 -- resolves that name through whatever the harness registers
+-- here. Registered EXPLICITLY, and the explicitness is the point.
+--
+-- Kit.expose auto-wires the mock's LibStub when nothing is registered yet, which is right for a
+-- repo whose degradation stubs mirror LIBRARY TABLES. None of this addon's three do: each mirrors
+-- an INSTANCE -- what `lib:New(descriptor)` returned, built from a descriptor only the host has.
+-- Left to the auto-wiring, "LibKa0s-Options-1.0" resolves the small library table LibStub answers
+-- for that major rather than the decorated instance settings/Panel*.lua and every page file
+-- actually call, and tests/test_surface_parity.lua goes red naming members no stub was ever meant
+-- to carry.
+--
+-- Set BEFORE Kit.expose, which is what makes it stick: expose registers a source only when none is
+-- registered yet, precisely so a runner like this one keeps its own.
+--
+-- The SHARED instance rather than a fresh one, because it is the live load this runner already
+-- owns and it is built exactly as tests/test_surface_parity.lua's own live arm is
+-- (`loadInstance(true)`: every library file, every TOC file, OnInitialize, no enable cascade). The
+-- degraded halves still come from a real library-less load inside that file, so neither arm is
+-- ever hand-built.
+Kit.setSurfaceSource{
+    ["LibKa0s-DebugLog-1.0"] = shared.NS.DebugLog,
+    ["LibKa0s-Slash-1.0"]    = shared.NS.Slash and shared.NS.Slash.cli,
+    ["LibKa0s-Options-1.0"]  = shared.NS.Settings and shared.NS.Settings.Helpers,
+}
+
+-- ---------------------------------------------------------------------------
+-- Guaranteed-run fixture wrappers over the SHARED instance's session state
+-- ---------------------------------------------------------------------------
+--
+-- Both of these park a value, run a body, and put the value back WHATEVER HAPPENS.
+--
+-- They exist because the restore used to be the last STATEMENT of the case body,
+-- and tests/_kit/framework.lua's runCase does `pcall(t.fn)`: a case that goes red
+-- never reaches its own last line. The shared instance was then left carrying the
+-- state that the FAILING case configured, and every case after it read a fixture a
+-- failure had set up -- so the first genuine red could manufacture more, and a
+-- reader triaging the run cannot tell which of them are real.
+--
+-- What a reader would otherwise get wrong: this is prophylaxis, not the repair of a
+-- live symptom, and the measurement rather than the argument is what says so.
+--
+-- defaults/Profile.lua:322 ships `units.focus.link = true`, so two of the three
+-- linked-Focus cases park the DEFAULT and force the DEFAULT: their skipped restore
+-- put back exactly what was already there. Only the unlinked case leaves a value
+-- that differs -- `false` -- and a probe that leaked `false` on purpose, once at the
+-- top of tests/test_schema.lua and once straight after those cases, reddened nothing
+-- either time. The viewed unit is looser still: renderedUnitPage writes it in nearly
+-- every unit-page case and restores it in none, so a leak there is indistinguishable
+-- from the suite running normally.
+--
+-- So the defect the finding names is real -- a pcall'd body does not reach its own
+-- last line, and these cases only cleaned up on the path where cleaning up matters
+-- least -- while the cascade it predicts is not real today. It stops being latent
+-- the first time a case renders a Focus page without seeding the flag, and that case
+-- inherits whatever the last failure left. Guaranteeing the restore costs one
+-- wrapper. Making the restore MEAN something -- parking this state around every
+-- suite that writes it and never puts it back -- is a larger job and is not this
+-- item.
+--
+-- Published from the runner rather than typed into each suite because two suites
+-- park the same two pieces of state, and one guarantee is easier to keep honest
+-- than two copies of it.
+
+--- Run `fn` with Focus's `link` flag forced to `linked`, restoring it always.
+--- `fn` receives the Focus config table, which may be nil -- the call sites were
+--- already nil-safe and stay that way.
+local function withFocusLink(linked, fn)
+    local cfg = shared.NS.Units and shared.NS.Units.Config("focus")
+    local before = cfg and cfg.link
+    if cfg then cfg.link = linked end
+    local ok, err = pcall(fn, cfg)
+    if cfg then cfg.link = before end
+    -- Level 0: the message already carries the position the assertion raised at,
+    -- and re-stamping it here would point every failure at this line instead.
+    if not ok then error(err, 0) end
+end
+
+--- Run `fn` with the shared Unit-picker selection put back afterwards, always.
+--- The selection is session state on the shared instance (NS.State.viewedUnit) and
+--- every unit-page fixture writes it, so a case that parks it must also put it back
+--- on the red path.
+local function withViewedUnit(fn)
+    local H = shared.NS.Settings.Helpers
+    local before = H.ViewedUnit()
+    local ok, err = pcall(fn)
+    H.SetViewedUnit(before)
+    if not ok then error(err, 0) end
+end
 
 _G.KICKCD_TEST = Kit.expose{
     root = root,
@@ -191,6 +295,9 @@ _G.KICKCD_TEST = Kit.expose{
     libFiles = LIB_FILES,
     tocFiles = TOC_FILES,
     Loader = Loader,
+    -- Guaranteed-run fixture wrappers; see the block above.
+    withFocusLink  = withFocusLink,
+    withViewedUnit = withViewedUnit,
 }
 
 Kit.run{ dir = root .. "/tests/", suites = SUITES }

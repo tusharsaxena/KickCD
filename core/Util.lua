@@ -7,7 +7,7 @@
 --   * Throttle wrapper using C_Timer.After to coalesce setting writes
 --   * print() with the addon's chat prefix
 
-local addonName, NS = ...
+local _, NS = ...
 local Util = {}
 NS.Util = Util
 
@@ -120,7 +120,7 @@ function Util.Throttle(ms, fn)
         pendingArgs = { n = select("#", ...), ... }
         if scheduled then return end
         scheduled = true
-        C_Timer.After(delay, function()
+        _G.C_Timer.After(delay, function()
             scheduled = false
             local args = pendingArgs
             pendingArgs = nil

@@ -1,0 +1,13 @@
+Ka0s KickCD — offline perf  (v1.2.1, label 'offline')
+6 spells watched, 2 units enabled, spell 19577 measured
+
+scenario                iters      ms/iter     api/iter   bytes/iter
+spellPoll                2000      0.01817         18.0        526.3
+spellState               2000      0.00660          0.0        210.6
+iconApply                2000      0.00285          0.0        848.0
+probeOverheadOff         2000      0.00271          0.0        848.0
+probeOverheadOn          2000      0.00307          0.0        848.1
+castStart                2000      0.00550          0.0        208.0
+
+timings are for orientation only — compare scenarios within a run, never across machines
+wrote docs/automated-tests/20260908-181321/perf.json

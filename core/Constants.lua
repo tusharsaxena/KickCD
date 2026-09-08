@@ -11,7 +11,7 @@
 -- early has no side effects. Add a constant here only if it is used
 -- across modules or a comment at the use site has to explain it.
 
-local addonName, NS = ...
+local _, NS = ...
 local Const = {}
 NS.Const = Const
 

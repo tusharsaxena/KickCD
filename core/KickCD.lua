@@ -18,7 +18,7 @@
 -- ... (set by the mixins). The global rebinding makes downstream code that
 -- looks up `KickCD` from _G see the mixed-in version.
 
-local addonName, NS = ...
+local _, NS = ...
 
 -- AceAddon stamps its mixin methods onto NS in place. NS is the private
 -- namespace table WoW passes as the second vararg to every file, and the
@@ -105,7 +105,7 @@ end
 -- does that itself, so the last caller went with the dispatcher.)
 
 local function p(self, ...)
-    local fn = self.Util and self.Util.print or print
+    local fn = self.Util and self.Util.print or _G.print
     fn(...)
 end
 
@@ -414,8 +414,8 @@ end
 -- back to the player's class+spec.
 local function resolvePlayerClassSpec()
     local classFile
-    if UnitClass then
-        local _, cf = UnitClass("player")
+    if _G.UnitClass then
+        local _, cf = _G.UnitClass("player")
         classFile = cf
     end
     return classFile, NS.Util.PlayerSpecID()

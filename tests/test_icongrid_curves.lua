@@ -106,7 +106,7 @@ end)
 test("CurvesFor never falls back to another unit's curves", function()
     -- Returning target's pair for an unbuilt unit would silently reintroduce
     -- the exact inheritance bug, so an unknown unit gets an empty table.
-    local _NS, IconGrid = enabled()
+    local _, IconGrid = enabled()
     IconGrid.BuildCurves()
     local unknown = IconGrid.CurvesFor("nosuchunit")
     assertTrue(unknown ~= nil, "must return a table, not nil, so callers need no guard")
@@ -116,7 +116,7 @@ end)
 -- ── The rebuild guard (F-016) ───────────────────────────────────────────────
 
 test("rebuilding with an unchanged config reuses the same curve objects", function()
-    local _NS, IconGrid = enabled()
+    local _, IconGrid = enabled()
     IconGrid.BuildCurves()
     local before = IconGrid.CurvesFor("target").alpha
     IconGrid.BuildCurves()
@@ -189,7 +189,7 @@ end)
 -- ── Signature ───────────────────────────────────────────────────────────────
 
 test("CurveSignature covers exactly the three curve-shaping fields", function()
-    local _NS, IconGrid = enabled()
+    local _, IconGrid = enabled()
     local base = { readyAlpha = 1, cooldownAlpha = 0.4, cooldownTint = { 1, 0.4, 0.4, 1 } }
     local sig  = IconGrid.CurveSignature(base)
 

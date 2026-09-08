@@ -57,7 +57,10 @@ local Util = NS.Util
 -- Set OUTSIDE the branch below because the seams that read it are reached on
 -- both paths — a half-vendored libs/LibKa0s can have Core.lua present and
 -- DebugLog.lua missing — and set HERE because core/CoreSetup.lua is the first
--- of the five the TOC loads (KickCD.toc:43, ahead of 44/49/66/67).
+-- of the five the TOC loads, ahead of core/DebugLogSetup.lua, core/PerfSetup.lua,
+-- settings/Slash.lua and settings/OptionsSetup.lua. Named rather than cited by TOC
+-- line: the line numbers this comment used to carry had drifted by six and this
+-- item's annotations move them again.
 NS.LIBKA0S_MISSING = "The LibKa0s library is missing from this installation of KickCD " ..
     "(expected in libs/LibKa0s)"
 
@@ -149,11 +152,24 @@ NS.ResolveColor = lib.ResolveColor
 -- and this file has it as its first vararg.
 --
 -- ONE WRAPPER, so every close control this addon builds gets the same mark
--- instead of each call site remembering — today that is core/PerfSetup.lua's step
--- panel, and tomorrow it is whatever window is added next. A passthrough that
--- dropped the third argument would be green in every suite and wrong on screen:
--- the library falls back to a multiplication sign, which is what a degraded
--- install should get and not what a working one should (anti-patterns-§64).
+-- instead of each call site remembering. A passthrough that dropped the third
+-- argument would be green in every suite and wrong on screen: the library falls
+-- back to a multiplication sign, which is what a degraded install should get and
+-- not what a working one should (anti-patterns-§64).
+--
+-- NO CALL SITE TODAY, recorded here rather than left to be rediscovered.
+-- core/PerfSetup.lua's `decorate` hook was the last one and M4-16 deleted it: the
+-- perf panel's close control now comes from libs/LibKa0s/PerfPanel.lua's own else
+-- arm, which calls the same library factory with the folder name that
+-- descriptor's `addonName` supplies, and the debug console's controls were always
+-- the library's. The wrapper STAYS, for two reasons. It is the live half of a
+-- two-sided seam — the degradation branch above publishes the same name, and
+-- tests/test_surface_parity.lua compares the whole namespace across the two loads,
+-- so deleting one side means deleting both. And the first close control this addon
+-- draws itself must come through here rather than reaching for lib.MakeCloseButton
+-- and dropping the argument again, which is exactly how the perf panel wore a
+-- multiplication sign through a green suite. If a dead-export sweep reaches this
+-- before such a control arrives, deleting the pair is the right answer.
 NS.MakeCloseButton = function(parent, onClick)
     return lib.MakeCloseButton(parent, onClick, addonName)
 end

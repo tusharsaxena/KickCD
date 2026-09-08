@@ -2,7 +2,7 @@
 
 local T = _G.KICKCD_TEST
 
-local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
+local test, assertEqual = T.test, T.assertEqual
 
 
 

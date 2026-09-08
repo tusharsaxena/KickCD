@@ -136,13 +136,20 @@ test("DebugDump reports a secret notInterruptible without touching tostring", fu
         .. "C_CurveUtil.EvaluateColorValueFromBoolean")
 end)
 
-test("DebugDump prints no state line for a secret value with no curve evaluator", function()
+test("DebugDump still reports a secret value when the curve evaluator is missing", function()
+    -- KICKCD-R-07. The secret arm is the DEFAULT arm: anything that is neither a boolean nor nil
+    -- lands here, which on a 12.0 client is the interesting case. Its whole body used to sit
+    -- inside the C_CurveUtil test with no else, so a client without the evaluator got a dump that
+    -- said the field was secret and then said nothing about it -- indistinguishable, to a reader
+    -- pasting this into a bug report, from a dump that had nothing to say. Whether the evaluator
+    -- exists is a clause of the line, not permission to print it.
     local lines = dump(function(mocks, inst)
         mocks.C_CurveUtil = false
         withCast(SECRET)(mocks, inst)
     end)
     assertEqual(lines[4], "  current.notInterruptible: type=table, isSecret=true")
-    assertEqual(lines[5], "  duration: nil")
+    assertEqual(lines[5], "    secret-tainted; C_CurveUtil.EvaluateColorValueFromBoolean unavailable")
+    assertEqual(lines[6], "  duration: nil")
 end)
 
 test("DebugDump reports the channel flag and the record's field TYPES only", function()

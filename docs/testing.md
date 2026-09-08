@@ -12,11 +12,34 @@ Install instructions for all three, with the WSL2/Ubuntu commands that actually 
 
 ## What is the harness, and what is KickCD's
 
-The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, and the suite list.
+The registry, the assertion set, the `skip` status, the suite-inventory gate, the `--list` renderer and the source loader are the **vendored kit's** (`tests/_kit/framework.lua`, `loader.lua`, `mock_base.lua` — copied verbatim from LibKa0s, never edited here; `tests/test_vendor_sync.lua` is the byte-identity gate). `tests/run.lua` holds only what is genuinely per-addon: the `libs/LibKa0s` load list, the instance factory `T.load`, the suite list, and the two guaranteed-run fixture wrappers described below.
 
 The kit **collects, then runs**: `test()` records a case and nothing executes until the runner decides to. This file's runner used to `pcall` each case body at registration time and short-circuit it under `--list`, which made the inventory a second code path through the same function and made "what has already happened when this case runs?" depend on where in its file the case sat. `--list` is now a pure filter over the registry and cannot disagree with the run.
 
 One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (architecture-§1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
+
+## Parking shared state: `T.withFocusLink` / `T.withViewedUnit`
+
+Most suites run against **one shared instance**, so a case that changes session
+state has to put it back. Doing that on the last line of the case body does not
+work: the kit `pcall`s the body, so a case that goes red never reaches its own
+last line and leaves the next case reading a fixture a *failure* set up.
+
+Both pieces of state this comes up for are parked through the runner instead:
+
+```lua
+T.withFocusLink(true, function(cfg) ... end)   -- units.focus.link, restored always
+T.withViewedUnit(function() ... end)           -- the shared Unit picker, restored always
+```
+
+Each parks the value, `pcall`s the body, restores, and re-raises the original
+error at level 0 so the failure still points at the assertion that raised it.
+
+They are a guarantee, not the repair of an observed break: `units.focus.link`
+defaults to `true` (`defaults/Profile.lua:322`) and the viewed unit is written
+without restore by every unit-page fixture, so a leak out of these cases reddens
+nothing measurable today. Write new cases through the wrappers anyway — the first
+case to render a Focus page without seeding the flag is the one that pays.
 
 ## What the frame mock does and doesn't model
 
@@ -61,13 +84,33 @@ local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
 `tests/test_surface_parity.lua` carries one `Kit.assertSurfaceParity` case per
 adopted seam whose degradation stub answers members — Core (the namespace and the
 printer), DebugLog, Slash (both `NS.Slash` and `NS.Slash.cli`) and Options —
-comparing a live load against that degraded one and reporting **every**
-divergence in one message (testing-§8, anti-pattern #56). It walks the LIVE
-table, so the question is "what does the library export today?" rather than
-"what did somebody remember to list": a re-vendor that adds a member forces a
-decision. A member that is live-only *on purpose* is recorded in the case's
-`ignore` list, as data, with the reason — the library's own string resolvers and
-the widget makers and layout constants `options-ui-§1` forbids a host copy of.
+reporting **every** divergence in one message rather than the first
+(testing-§8, anti-pattern #56). The question it asks is "what does the library
+export today?" rather than "what did somebody remember to list": a re-vendor that
+adds a member forces a decision. A member that is live-only *on purpose* is
+recorded in the case's `ignore` list, as data, with the reason — the library's
+own string resolvers and the widget makers and layout constants `options-ui-§1`
+forbids a host copy of.
+
+The three library-backed seams — DebugLog, Slash and Options — call the kit's
+**by-name** form, `assertSurfaceParity(stub, "LibKa0s-Options-1.0", ignore)`:
+
+* The live half is **named, not rebuilt**. `tests/run.lua` registers it with
+  `Kit.setSurfaceSource`, and it has to be explicit — each of the three stubs
+  mirrors an *instance* (what `lib:New(descriptor)` returned), not the library
+  table `LibStub` answers for the same major, so `Kit.expose`'s auto-wiring would
+  resolve the wrong thing and report members no stub was ever meant to carry.
+* Only the **public** members are walked (`Kit.publicMembers`): `MAJOR`, `MINOR`,
+  `MODULES` and every `__`-prefixed key are the library talking to itself across
+  its own file boundary, and a stub does not mirror them. That rule is the kit's
+  now, so a re-vendor that publishes a new internal needs no edit in this repo.
+  The one exception is pinned by hand — `settings/Panel_Widgets.lua:138` calls
+  `Helpers.__panelFor`, so the stub owes it and a line beside the parity call
+  says so.
+
+Core keeps the four-argument form (`assertSurfaceParity(live, degraded, label,
+ignore)`) because `NS` and `NS.Util` are this addon's own namespace, not a
+major's surface: there is no name to look up.
 
 What parity cannot catch is a stub with the right member set and a **wrong
 implementation** — a hand-copied line format or ack string. That is
@@ -82,11 +125,43 @@ path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.
 ## Verifying the vendored copies
 
 ```
-diff -r --strip-trailing-cr ../LibKa0s/LibKa0s libs/LibKa0s   # content — MUST be empty
+diff -r --strip-trailing-cr ../LibKa0s/LibKa0s libs/LibKa0s   # content — empty vs the CLAIMED tag
 diff -r ../LibKa0s/LibKa0s libs/LibKa0s                       # bytes  — SHOULD be empty
-diff -r --strip-trailing-cr ../LibKa0s/testkit tests/_kit      # content — MUST be empty
+diff -r --strip-trailing-cr ../LibKa0s/testkit tests/_kit      # content — empty vs the CLAIMED tag
 diff -r ../LibKa0s/testkit tests/_kit                          # bytes  — SHOULD be empty
 ```
+
+### When these diffs are supposed to be non-empty
+
+They compare against the sibling checkout's **working tree** — whatever `../LibKa0s` happens to have
+checked out — which is a different question from *"is the vendored payload the release this addon
+claims?"*. The two questions give the same answer only while the library has tagged nothing newer
+than the tag this addon has taken.
+
+Between a library release and the re-vendor that carries it they disagree, and that disagreement is
+the normal state rather than a defect. It is the state as this is written: `../LibKa0s` sits on
+**v1.27.0**, [`CLAUDE.md`](../CLAUDE.md) names **v1.26.0**, and the commands above report **306**
+differing lines for the library and **947** for the test kit. Re-vendoring to quiet them would be
+the actual mistake — it would pull an untested library release for the sake of a clean diff.
+
+**The authoritative comparison is against the tag `CLAUDE.md` names**, and that one must be empty at
+every commit:
+
+```sh
+tag=$(grep -oE 'Bundles \[LibKa0s\]\([^)]*\) v[0-9]+\.[0-9]+\.[0-9]+' CLAUDE.md \
+        | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+rm -rf "/tmp/libka0s-$tag" && mkdir -p "/tmp/libka0s-$tag"
+git -C ../LibKa0s archive "$tag" | tar -x -C "/tmp/libka0s-$tag"
+diff -r --strip-trailing-cr "/tmp/libka0s-$tag/LibKa0s" libs/LibKa0s   # MUST be empty
+diff -r --strip-trailing-cr "/tmp/libka0s-$tag/testkit" tests/_kit     # MUST be empty
+```
+
+`tests/test_vendor_sync.lua` asks exactly this question inside the suite — it greps the tag out of
+`CLAUDE.md` and reads that blob out of git — so **a green suite has already answered it**, and the
+block above is only the by-eye version for when you want to see the hunks. Which leaves the
+working-tree diffs above answering a real but different question: *how far behind the library is
+this addon?* That is release planning, not a gate.
+
 
 The payload carries **art as well as code** now: `libs/LibKa0s/media/` holds the shared
 icon set and the JetBrains Mono face (this addon shipped its own copy of that face under
@@ -184,6 +259,20 @@ L = NS.L and { ... } or nil  -- evaluates to the plain table            fine
 That third form is this addon's real descriptor at `settings/Slash.lua`, so an `and` → `or` typo yields the live trap. The original pattern anchored `L = NS.L` to end-of-line and never looked at that line at all. Three inline assertions drive the matcher against all three spellings, because a matcher nothing tests can be narrowed back to a single anchored form while still reporting green — which is exactly how it got there.
 
 That guard is no longer alone: every adopted major now carries the same shape in its own suite — `tests/test_slash.lua`, `tests/test_debuglogsetup.lua`, `tests/test_coresetup.lua` and `tests/test_options_panel.lua` alongside `tests/test_perfsetup.lua`. The Options one is shaped differently on purpose, and the difference is worth copying: `libs/LibKa0s/Options.lua` never reads a descriptor `L` at all, so the trap is not *expressible* for that major today and there is no rendered string to assert on. What it pins instead is that absence, by scanning all **three** files of the major — `Options.lua`, `OptionsWidgets.lua`, `OptionsScroll.lua` — so a future minor that grows an `L` hook reddens here rather than inheriting the trap silently. `OptionsWidgets.lua` is in that sweep because it is where the rendered labels actually come from, which makes it the likelier of the three to grow one.
+
+`tests/test_source_style.lua` joined them on 2026-09-08, and it is the one where the shape is not a fallback but the *only* option. It reads the standing `_G.` list out of [common-tasks.md](common-tasks.md#global-lookup-form) and fails on a bare read of any name on it. There is nothing to drive: `tests/run.lua` publishes each instance's mock table as `mocks._G` on purpose, so `_G.UnitExists` and `UnitExists` resolve through the same table — the two spellings are indistinguishable at runtime, in the harness and in the client alike. The rule's entire value is that a reader skimming a file can see which reads might find nothing there, so the only instrument that can measure it is one that reads. The violations it now guards sat under 845 green cases until the 2026-09-07 review opened the files.
+
+It is also narrower than the doc's rule, deliberately, and the narrowing is recorded in the doc rather than hidden here: the "guarded somewhere → `_G.X` everywhere" half is advisory, because `LibStub`, `Settings`, `GameTooltip` and four more are guarded and bare at some seventy sites. A gate is worth having only where the tree can be green today and stay green; a gate that ships red teaches everyone to read past it.
+
+`tests/test_locale.lua` grew the fourth of these on 2026-09-08 (M4-21, KICKCD-R-03), and it is the one whose *direction* is the point. The obvious locale gate is a `gmatch` for `L["…"]` over the sources checked against `locales/enUS.lua` — four repositories in the collection had one, and everything such a scan can find is by construction already wrapped, so the one thing it exists to catch is the one thing it cannot see. What is here instead lexes the TOC-derived source list for string **literals** and asks two questions in opposite directions: every literal that *is* an `L[…]` subscript must be defined in `locales/enUS.lua`, and every literal in `settings/` that is *not* one and reads as prose must be recorded, with a declared class, in the residue register at the foot of the file. Both directions are pinned — an unrecorded bare sentence is red, and so is a register entry whose literal has since been wrapped, reworded or deleted, which is what keeps the register from becoming a mute button.
+
+It lexes rather than `gmatch`es because this repo's comments are prose and quote strings freely, so a naive `"(.-)"` scan reports a paragraph *about* a string as a string — and it handles long brackets rather than skipping them, because `settings/Spells.lua:50-51` holds two `[[Interface\…]]` texture paths and a lexer that walked past `[[` would misread the next apostrophe as a string opener and lose the rest of the file. Two limits are stated rather than papered over. The prose floor is two adjacent alphabetic words, so a one-word label is invisible to it. And the residue half reads `settings/` **only**: `/kcd` command output in `core/KickCD.lua` (about a hundred prose literals) and the debug-console text in `modules/Castbar_Debug.lua` and `modules/Cooldowns.lua` are still bare English and are a known gap this gate does not close. The key-coverage half has no such fence — it reads every file the TOC loads outside `libs/`.
+
+`tests/test_spelling.lua` is the fifth, added on 2026-09-08 (M4c-02), and it is the one that exists because a *sweep* was not enough. `M4-13` ran `localization-§5`'s published `BRITISH` / `ALLOWED` pair over this tree and left it clean — one line survived, a deliberate quote in the smoke doc. Eight commits later the same scan found fifteen lines, put back by five different items that had no way to know: a TOC comment, two comments about where the icon grid sits relative to the screen's center, two more in the smoke doc, and a locale-lexer transplanted from PrettyChat and ConsumableMaster whose residue taxonomy spelled one of its eleven class names the British way in every entry that carried it. Nothing here could see any of it — `luacheck` does not read English, and every other suite reads behavior — so the sweep would have been re-run forever. The gate carries both published lists **whole**, because a private subset is a gate whose green tells a reader nothing about which spellings it covers, and it derives its candidate set from `git ls-files` rather than a hand-typed list, for the reason `tests/_kit/test_eol.lua` gives about its own: a typed list is a list the next document quietly falls out of. Its four exclusions and its one per-word waiver are in [common-tasks.md](common-tasks.md#us-english).
+
+`tests/test_lintconfig.lua` is the sixth, added on 2026-09-08 (`M4c-06`), and it guards the *lint configuration* rather than the code — because `luacheck .` reporting 0/0 is only worth reading if the config it obeyed was not the thing doing the silencing. `.luacheckrc` here carried `ignore = { "212/self", "212/event", "211/addonName" }`, and the trap is that those entries are in the narrow `<code>/<variable>` SPELLING while sitting at the top level, which is the widest SCOPE there is: all 93 files, including every file with no business producing them. Removing the three lines took the tree from 0/0 to 61 warnings, 32 of them defects — 29 `local addonName, NS = ...` headers over an unread folder name, two named-and-unread receivers in the test tree, and a `NS.Slash:PrintHelp` forwarder nothing called, which under a silenced receiver read like the third member of a trio. Four cases hold the line: no top-level `ignore`; no warning class switched off wholesale (`unused_args = false` and eight relatives, which is `ignore` spelled as a switch); no `files[...]` ignore that is neither keyed to one `.lua` file nor narrowed to a variable; and no bare `-- luacheck: ignore` in any tracked `.lua`. All four were watched red in the working tree before the commit landed.
+
+It loads `.luacheckrc` **as Lua**, under a sandbox whose `__index` auto-creates tables the way luacheck's own config loader does, rather than scanning it as text — Lua has half a dozen ways to write the same assignment, and a text scan loses to all of them. What this gate reads is therefore the table luacheck obeys. It fails rather than skips when it cannot look — no config, no `io.popen`, no git, a chunk that will not compile — the same bargain `tests/test_doc_structure.lua` and `tests/_kit/test_eol.lua` strike.
 
 Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant, and anything consumed by a library before it becomes observable. It is not a substitute for behavioral coverage; it is what you add when you can prove coverage is structurally impossible. Pair it with an in-game check where one exists — smoke-test §25 is the `L` trap's.
 

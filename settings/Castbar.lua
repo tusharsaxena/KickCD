@@ -18,7 +18,7 @@
 -- class-color companion beside every swatch non-optional. H.AddComposed stamps
 -- this addon's `panel` / `section` / `unit` onto what comes back.
 
-local addonName, NS = ...
+local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
 local Schema = NS.Settings.Schema
@@ -318,7 +318,7 @@ add{
 --     [Cast time color] | [Use class color]
 --     [Font flags]      | [Font shadow]
 --
--- WHY THE COLOR IS LABELLED "Cast time color" AND NOT "Font color". The spell
+-- WHY THE COLOR IS LABELED "Cast time color" AND NOT "Font color". The spell
 -- name already has two writers, one per cast state -- the `nameTextColor`
 -- swatches on the Interruptible and Non-interruptible tabs, which have to be
 -- per-state because the flag driving the choice can be a 12.0 secret value and

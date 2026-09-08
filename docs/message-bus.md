@@ -58,7 +58,7 @@ Payload `{ inCombat }` carries the freshly-written flag value, but subscribers t
 
 Adding a message means updating:
 
-1. The source emitter — the table above is sender-authoritative, and a message has exactly ONE owning module (`architecture-§4`). A second module wanting to announce is not a judgement call to be justified: give the message a named emitter in its owning file — `settings/Panel.lua`'s `Helpers.FireConfigChanged`, `core/Database.lua`'s `fireProfileChanged` — and have every announcing path call that. Those two messages each have exactly one `SendMessage` site as a result. `Ka0s_KickCD_SPELL_STATE` (three) and `Ka0s_KickCD_GRID_LAYOUT` (two) still have several, but all of them sit inside the one module that owns the message, which is what the rule requires; a cross-module `SendMessage` is the defect.
+1. The source emitter — the table above is sender-authoritative, and a message has exactly ONE owning module (`architecture-§4`). A second module wanting to announce is not a judgment call to be justified: give the message a named emitter in its owning file — `settings/Panel.lua`'s `Helpers.FireConfigChanged`, `core/Database.lua`'s `fireProfileChanged` — and have every announcing path call that. Those two messages each have exactly one `SendMessage` site as a result. `Ka0s_KickCD_SPELL_STATE` (three) and `Ka0s_KickCD_GRID_LAYOUT` (two) still have several, but all of them sit inside the one module that owns the message, which is what the rule requires; a cross-module `SendMessage` is the defect.
 2. Every consumer that reacts to it.
 3. The table above (sender, listeners, payload).
 4. The relevant module header comment.

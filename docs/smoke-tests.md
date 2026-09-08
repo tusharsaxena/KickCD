@@ -48,6 +48,7 @@ Companion docs:
 | 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
 | 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
 | 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
+| 27 | Composed media rows | `LibKa0s-OptionsCompose` minor 3, the `Helpers.LSMValues` shadow | [Composed media dropdowns after the v1.26.0 re-vendor](#27-composed-media-dropdowns-after-the-v1260-re-vendor) |
 
 ---
 
@@ -308,12 +309,12 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `valueGate` errors name both the option list and the gating sibling.
 - Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
 - **The tab strip matches the table in [settings-panel.md](settings-panel.md).** General shows `Master controls | Units`; Icons shows `Sizing | Layout | Visual states | Border | Annotations | Ready glow`; Cast bar shows `General | Size and position | Icon | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Text Label shows `General | Placement | Font`; **Spells shows a one-tab strip reading `Spell list`**, with the spec picker and *Add spell* pinned above it. No tab name appears twice on one page (a duplicate means a row was filed under a group its page had already left), and **Profiles is the only page with no strip** — it stays one scrolling AceDBOptions page.
-- **Every colour swatch has a `Use class color` checkbox immediately to its right, on the same line.** Tick one and the surface takes a class colour; the swatch stays enabled, because its opacity still applies. Against an NPC boss the cast-bar and label swatches keep their stored colour — that is intended, and the swatch's tooltip says so. The Icons page's swatches take the PLAYER's class on both units' pages.
+- **Every color swatch has a `Use class color` checkbox immediately to its right, on the same line.** Tick one and the surface takes a class color; the swatch stays enabled, because its opacity still applies. Against an NPC boss the cast-bar and label swatches keep their stored color — that is intended, and the swatch's tooltip says so. The Icons page's swatches take the PLAYER's class on both units' pages.
 - **Icons → Annotations shows three headings** (`Icon`, `Font`, `Charges`), Cast bar → Size and position shows two (`Size`, `Position`), and Cast bar → Interruptible / Non-interruptible show four (`Bar`, `Background`, `Text`, `Border`). No page draws a heading that repeats the tab you just clicked.
 - **Text Label → General → `Label text` is a text box you can type into**, not a dropdown that opens on nothing. Type a caption, press Enter, and the label above the grid changes.
 - **Spells rows drag.** Grab the handle at a row's far left and move it several positions in one gesture; the list re-orders to where you dropped it, and the icon grid's priority order follows. There is exactly one box and one handle per row — two stacked fills means the host drew its own. Leave and re-enter the page twice: no handle or box is left stranded on anything.
 - **The Unit dropdown sits ABOVE the tab strip, in the page's chrome, and stays there when you click a tab.** This is the check that catches the whole class of regression the banner exists to prevent: a picker drawn into the scroll looks correct until the first tab click and then disappears. Click through every tab on Icons and confirm the dropdown is still there, still naming the same unit, on each one.
-- **Selecting a unit retargets every tab, not just the visible one.** On Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colours shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
+- **Selecting a unit retargets every tab, not just the visible one.** On Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colors shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
 - **Charges badge inset (new controls).** On a spell with charges, tick Icons → Annotations → "Show charges". With both `Charges X offset` and `Charges Y offset` at their defaults (`-2` and `2`) the badge sits exactly where it did before this setting existed — flush inside the icon's bottom-right corner. Drag `Charges X offset` to `-20`: the badge moves LEFT by 18 px. Drag `Charges Y offset` to `20`: it moves UP by 18 px. `/kcd set units.target.icons.chargesOffsetX 900` clamps to `32 px`, and the badge lands at the slider's maximum rather than off the icon.
 - **Rotation reads in plain ASCII.** Text Label → Placement → "Rotation (degrees)" and `/kcd get units.target.label.style.rotation` both render e.g. `45 deg` — never an empty box where a degree sign used to be.
 - **Renderer robustness (per-row `pcall` in `Helpers.RenderRows`):** a single malformed saved value degrades to one missing widget plus a red `schema error:` line — it does NOT blank the rest of the panel body (regression: a stale saved value once left a whole panel showing only its header). This is exercised by the headless suite (`tests/test_schema.lua`); it is not readily inducible in-game, so there is nothing to click here — it is listed for completeness of branch coverage.
@@ -328,7 +329,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows, so this is a dedicated `Helpers.ResetAllPositions()` pass — previously `resetall` silently left dragged grids in place). Profiles untouched. No CLI confirmation prompt. |
-| `/kcd resetposition` | Icon grid snaps to its default screen position; everything else untouched. |
+| `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
 | Per-panel **Defaults** button (General / Icons / Cast bar) | That panel only; mirrors `/kcd reset <panel>`. |
@@ -367,12 +368,14 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Steps.**
 - Run `/kcd config` mid-combat.
 - Run `/kcd set units.target.icons.primarySize 50` mid-combat.
+- Still in combat, open the game menu → **Options → AddOns** and click **Ka0s KickCD** in the sidebar. Then click each of the six sub-pages in turn: General, Icons, Cast bar, Text Label, **Spells**, **Profiles**.
 - Drop combat. Run `/kcd config` again.
 
 **Pass.**
 - Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
 - Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
 - Out of combat `/kcd config` opens the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
+- Mid-combat, **every one of the six pages opened from the Blizzard AddOns sidebar** prints the library's refusal line and closes the Settings window. This is a **different path** from the `/kcd config` check above and it fails for different reasons: the sidebar reaches a canvas panel without going through `OpenOptionsPanel`, so the only guard on it is the one `Helpers.SetRenderer` installs (`libs/LibKa0s/Options.lua:695-716`). Spells and Profiles parked their own `OnShow` until `CX03` and had no guard at all on this path, so a green here before that change proved nothing about them — run all six, not a sample, after anything that touches a page builder's render wiring.
 - Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
 
 ### 15. Debug commands
@@ -390,6 +393,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Every subcommand runs mid-combat without Lua errors.
 - `interrupt` shows `<secret>` for `notInterruptible` (and any other secret-tainted field) when targeting a hostile caster mid-cast for a protected interrupt — never a Lua-coerced value.
+- **`/kcd debug castbar` with and without `C_CurveUtil`.** Target a hostile caster mid-cast for a protected interrupt so `notInterruptible` comes back secret, and run the dump. The `current.notInterruptible: type=…, isSecret=true` line is **always** followed by a `secret-tainted; …` line — one saying the visual state is determined via `C_CurveUtil.EvaluateColorValueFromBoolean` where that evaluator exists, and one saying it is unavailable where it does not. **Fail:** the dump reports the field as secret and then says nothing further about it, which reads to whoever is given the paste as a dump that had nothing to say. A client without `C_CurveUtil` is the awkward half to arrange — a Classic-flavor or pre-12.0 build is the honest test; on a live Retail client the evaluator is present and only the first half is observable.
 - `/kcd debug on` starts streaming `Ka0s_KickCD_*` traffic to the on-screen console window (not chat); `off` cleanly stops it. After a `/reload` the flag is back off — `NS.State.debug` is session-only and never persisted.
 - `/kcd debug window` opens / closes the console window without touching the logging flag.
 
@@ -423,7 +427,7 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 
 ### 18. LSM dropdown rendering
 
-The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. `core/LSMPatch.lua` is a defensive in-tree fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar; it runs at `PLAYER_LOGIN`.
+The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is `lib.__PatchLSM30Border()`, a `LibKa0s-Options-1.0` member called once from `settings/OptionsSetup.lua`. **This section checks it with KickCD alone, which is exactly the check that stayed green through the defect section 29 exists for** — run 29 too whenever this one matters.
 
 **Steps.**
 - Open Settings → Cast bar.
@@ -431,7 +435,7 @@ The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / 
 
 **Pass.**
 - Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
-- The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; `LSMPatch.lua` hides it).
+- The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; the library's patch hides it).
 - Switching to Settings → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
 
 ### 19. Debug traces
@@ -476,8 +480,8 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 **Steps.**
 - Select **Focus** in the Icons panel's Unit dropdown. Confirm the page draws its **tab strip** and no appearance rows — just the Unit dropdown in the chrome, the strip, and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
-- **The strip is inert.** Every tab on it is **desaturated** and **none of them can be clicked** — every tab of a linked page draws the same note, so a clickable strip would redraw the identical page. Confirm the strip is still THERE (the page must not change shape when the picker flips) and that switching back to Target restores full colour and clickability.
-- **The note is a link.** *"General page's Units tab"* is drawn in link blue. Mouse along the whole line: **nothing lights up behind it** — no plate, and above all no bright-green block (AceGUI paints one for a `SetHighlight` given colour numbers). Clicking anywhere on it opens **General**, already on the **Units** tab — not the parent category, not General's Master controls tab. Then pull something and click it in combat: it must refuse with `[KCD] cannot open settings during combat` and **not** open the panel (Blizzard's category switch is protected — opening it under lockdown taints the panel for the session).
+- **The strip is inert.** Every tab on it is **desaturated** and **none of them can be clicked** — every tab of a linked page draws the same note, so a clickable strip would redraw the identical page. Confirm the strip is still THERE (the page must not change shape when the picker flips) and that switching back to Target restores full color and clickability.
+- **The note is a link.** *"General page's Units tab"* is drawn in link blue. Mouse along the whole line: **nothing lights up behind it** — no plate, and above all no bright-green block (AceGUI paints one for a `SetHighlight` given color numbers). Clicking anywhere on it opens **General**, already on the **Units** tab — not the parent category, not General's Master controls tab. Then pull something and click it in combat: it must refuse with `[KCD] cannot open settings during combat` and **not** open the panel (Blizzard's category switch is protected — opening it under lockdown taints the panel for the session).
 - **The Unit dropdown is one selection across the three pages.** With Focus selected on Icons, walk to **Cast bar** and to **Text label**: both open on **Focus**, not back on Target. Flip one of them to Target and return to Icons — it is on Target too. Then `/reload`: every unit page opens on **Target** again, because the selection is session-only and deliberately not saved.
 - Change Target's `units.target.icons.primarySize` (switch the dropdown to Target first). Switch back to Focus — the linked Focus grid should visually match Target's new size live (no manual sync needed).
 - Go to **General → Units** and untick "Use same styling as Target". Return to Icons with Focus selected: the tab strip and the appearance rows appear, seeded with target's last-copied values (or defaults if never copied). The tick reaching a page you were not looking at is the point — it is a structural refresh, and a page that was hidden repaints on its next show.
@@ -685,11 +689,12 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
   read-only edit box. Its close control must be the same `close` art, not a `×`. A mismatch between
   the two windows means the descriptor is right and something else regressed.
 - **The perf panel closes with the same mark, too.** `/kcd perf start` and look at the step panel's
-  top-right. ⚠ **This is the one close button in this addon that the HOST builds**, so it is the one
-  that can silently disagree with the console beside it. It must come through `NS.MakeCloseButton`
-  (`core/CoreSetup.lua`), the addon's single wrapper — a call that reaches the library seam directly
-  compiles, runs and passes every suite while drawing a `×` (anti-patterns-§64). Put the panel and the
-  console on screen together and compare the two close controls pixel for pixel.
+  top-right. ⚠ **As of `M4-16` no close button in this addon is built by the HOST** — this one used
+  to be, through a `decorate` hook in `core/PerfSetup.lua`, and that hook is gone; the library's own
+  `PerfPanel` arm draws it now, from the `addonName` the descriptor states. So this bullet has
+  changed meaning: it is no longer checking a wrapper call, it is checking that a descriptor field
+  reached the library. Put the panel and the console on screen together and compare the two close
+  controls pixel for pixel — see **30** for the full check.
 - **The console text is monospace.** Timestamps and `[tags]` line up in a column down the left. If
   they do not, `Const.FONT_MONO` resolved to something that is not JetBrains Mono. Two outcomes are
   possible and they look different: a **proportional** face means the fallback to the client's
@@ -712,15 +717,227 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
 
 ---
 
+### 27. Composed media dropdowns after the v1.26.0 re-vendor
+
+**Smoke, session 4.** The proof that `LIBKA0S-A-01` — the collection's only Critical — is closed in a
+consumer, and the proof that closing it did not break the one consumer that was already working around
+it. Nothing here is headless-testable end to end: the harness pins that a composed media row hands back
+a **reader** rather than a reading, but only a live client has a LibSharedMedia that fills after the
+schema files have been read, which is the whole failure mode.
+
+**Setup.** A media addon that registers extra faces, borders and bar textures — SharedMedia,
+SharedMediaAdditionalFonts or ElvUI's media pack — enabled alongside KickCD, so LSM holds more than the
+Blizzard defaults. Log in fresh; do not `/reload` before the first check.
+
+**Steps.**
+- `/kcd config` → **Icons**. Open **Border texture** and **Cooldown text font**.
+- → **Text Label**. Open the **Font** dropdown.
+- → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
+  **Bar texture** and **Border texture**. That is eight dropdowns across the three pages; they are the
+  eight composed rows this item moved.
+- `/dump LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose`
+- Pick a non-default face in **Text Label** → **Font** and confirm the label redraws in it.
+- Now the deferral itself, which is the half a snapshot would pass: with the client already running,
+  enable a media addon you had disabled, `/reload`, and re-open **Cast bar** → **Bar texture**.
+
+**Pass.**
+- All eight dropdowns list real media — several faces, several borders, several bar textures — not a
+  single `Default` entry and not an empty list that opens onto nothing.
+- The `/dump` reports **3**. A 2 means the vendored payload is still v1.25.0 and CLAUDE.md's provenance
+  line is lying; anything else means a foreign LibKa0s won the LibStub resolve.
+- The chosen face applies live, and survives `/reload`.
+- The newly registered media appears in the dropdown after the reload. If the list is identical to what
+  it held before, `Helpers.LSMValues` (`settings/Panel.lua`) has gone back to returning a **table** and
+  every composed media row is frozen at file load — silently, with no error and no empty control. That
+  is the regression this step exists to catch, and it is invisible to every other check in this suite.
+- No Lua errors at any point.
+
+### 28. The pooled tab strip, and the perf strings, after the v1.27.0 re-vendor
+
+**Smoke, session 3.** Two things arrived with `M4-01`'s LibKa0s v1.27.0 payload that only a client
+can settle. Nothing here may be reported as passing until someone has actually looked at it.
+
+`TabStrip` (`libs/LibKa0s/OptionsWidgets.lua`) no longer builds a button and a content panel per
+click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
+`OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
+pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
+the shared mock answers `GetHeight` with 0 for every frame and that flips at kit 16, not here. **So a
+stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
+every automated check in this repo.**
+
+**Steps — the strip.**
+- `/kcd config` → **General**, **Icons** (six tabs, the widest strip here) and **Cast bar**. On each
+  page, cycle every tab three times, ending back on the first.
+- Watch three things on each pass: the **label** is that tab's own, the **selected** tab is the one
+  you pressed, and the strip's **band height** does not move as you go through it.
+
+**Steps — the strings.** `LibKa0s-Perf-1.0` minor 8 respells five player-facing strings: two
+`CANCELLED` and three `unlabelled` become `CANCELED` and `unlabeled`. No single capture shows all
+five, so run two.
+- `/kcd perf start mylabel`, then `finish` — the started line and the report header both name the
+  label.
+- `/kcd perf start` with no label, then `cancel`.
+
+**Pass.**
+- Every tab labeled and selected correctly on all three passes, on all three pages, and no band that
+  grows or shrinks. A label carried over from the previously-dressed tab, a highlight on the wrong
+  button, a body drawn under the wrong tab, or a strip whose height moves between passes is the pool
+  handing back a frame it did not finish dressing.
+- The unlabeled start line, its report header and the cancel line read **`unlabeled`** and
+  **`perf run CANCELED`**. A double-L in either is a copy of the string that did not come from the
+  vendored payload.
+- No Lua errors at any point.
+
+### 29. The Border dropdown when five Ka0s addons share one registry
+
+**Smoke, session 5.** Run after this addon's `core/LSMPatch.lua` was deleted and
+`settings/OptionsSetup.lua`'s live wiring took over the fixup (`M4-04`), and again after **each** of
+the four remaining deletions — PanelMaster, ConsumableMaster, MultiMeters, then AbsorbTracker last,
+because AbsorbTracker's copy is the one that diverges (a callable `NS.ApplyLSMBorderPatch()` rather
+than a `PLAYER_LOGIN` frame). Five deletions, five commits, five bisect points if this goes wrong.
+
+**The thing under test is not KickCD.** AceGUI's `WidgetRegistry` is process-global: one slot named
+`LSM30_Border` shared by every addon in the client. Five Ka0s addons each carried a private copy of
+the wrapper, each registering at whatever version it found plus one, so the wrapper a Border dropdown
+actually got belonged to whichever addon the client loaded last. Nothing headless in any of the five
+repos could see it — each suite loads one copy, registers once and passes — and section 18 above,
+which checks the alignment with KickCD alone, passed throughout.
+
+KickCD is now the **only** one of the five with no private copy. So this run is also the first
+evidence that one library-level registration is enough to dress a dropdown in an addon that no longer
+carries its own.
+
+**Steps.**
+- Enable KickCD, PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters together, and log in.
+- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Cast bar** → **Border
+  style**.
+- Change the load order — disable and re-enable addons, or rename folders so a different one is
+  reached last — `/reload`, and walk the five dropdowns again.
+
+**Pass.**
+- In all five, the closed control's left edge is **flush** with the sliders and checkboxes stacked
+  with it, with **no ~42px gap**, and opening it still draws the per-row hover previews.
+- Nothing differs between the two passes. **Any dropdown that looks different from the other four, or
+  that changes when the load order changes, is the finding** — the whole point of moving the
+  registration into LibKa0s is that the answer no longer depends on who loaded last.
+- No Lua errors at any point.
+
+---
+
+### 30. The perf panel's close control, after `decorate` was deleted
+
+**Smoke, session 3.** Run after `M4-16` removed the `decorate` field from `core/PerfSetup.lua`'s
+descriptor. **Nothing on screen is supposed to change**, and that is precisely why it needs a human:
+the change swaps which code draws the control, not what the control looks like, and the two arms are
+exclusive — `libs/LibKa0s/PerfPanel.lua` runs the host's hook **or** its own else arm, never both. For
+as long as the hook existed the library's arm never ran once in a client from this addon, so this is
+the first time it will have run at all. A headless case pins the argument that reaches the factory
+(`tests/test_perfsetup.lua`); nothing headless can see what was drawn.
+
+**Setup.** `/reload`, then `/kcd perf start`.
+
+**Checks.**
+- The step panel opens with **exactly one** close control in its top-right corner — not two stacked on
+  the same corner, and not none.
+- That control is the shared **`close`** mark from `libs/LibKa0s/media/icons/`, the same small white
+  glyph the debug console wears. **A multiplication sign `×` is the regression**, and it means the
+  addon FOLDER name stopped reaching `MakeCloseButton`: the library is vendored, cannot infer which
+  folder it was copied into, and falls back to the glyph when nothing tells it. The one line that
+  tells it is now `addonName = addonName` in the perf descriptor.
+- It sits at the same inset from the same corner as before the change — level with the title, ~6px in
+  from the right edge. Put the panel and `/kcd debug window` on screen together and compare the two
+  close controls pixel for pixel; they come from one factory and must be indistinguishable.
+- **Clicking it hides the panel** and nothing else: the run is not canceled, and `/kcd perf report`
+  afterwards still has the capture. The click handler is now the library's own `HidePanel` rather
+  than one this addon passed in, which is the half of the swap a screenshot cannot show.
+- No Lua errors at any point.
+
+---
+
+### 31. The castbar dump with no LibKa0s, after the `_G.print` arm went
+
+**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-20` landed.** Folded into
+session 3 because that is this repository's outstanding seam run, and the setup it needs — the
+renamed `libs/LibKa0s` folder — is already section 25's.
+
+`M4-20` deleted `modules/Castbar_Debug.lua`'s `local emit = NS.Util and NS.Util.print or _G.print`
+in favor of `local emit = NS.Util.print`. The deleted arm was unreachable: `core/CoreSetup.lua`
+defines `Util.print` on the library-absent path at `:115` and returns, and on the library-present
+path at `:187`, so there is no load in which `NS.Util.print` is nil. But the guard and the fallback
+went together, and what used to degrade into an untagged global `print` now raises. That is the
+intended trade — an untagged dump pasted into a bug report is worse than a visible error — and it is
+the only behavior this deletion can change.
+
+Both halves are pinned headlessly and neither pins the join. `tests/test_coresetup.lua`'s "the
+degraded printer is still secret-safe and still says `<secret>`" proves `Util.print` exists with no
+library; the 18 cases in `tests/test_castbar_debug.lua` drive the dump line by line **with** one.
+Nothing headless runs the dump on a library-less load, because `tests/test_castbar_debug.lua`'s
+helper loads `T.load(true, …)` throughout. This step is that composition and nothing else.
+
+**Setup.** Section 25's — rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`,
+`/reload`. Run this while you are already in there for 25 rather than arranging it twice.
+
+**Checks.**
+- Target anything and run `/kcd debug castbar`. It prints the dump. **A Lua error naming
+  `Castbar_Debug.lua` and a nil `emit` is the finding** — it would mean `Util.print` is not on the
+  namespace by the time a slash command runs on the degraded path, which no headless load reproduces.
+- **Every line carries the `[KCD]` tag.** The degraded printer prefixes with `NS.PREFIX` the same way
+  the library's does; a run of untagged lines means something else is doing the printing.
+- The one-off missing-library notice appears before the dump, not once per dump line — the same
+  `announced` latch section 25 checks, seen through a command that prints ~20 lines at once.
+- Rename the folder back and `/reload` before you finish.
+
+---
+
+### 32. Two cast bars driven by one cached handler each
+
+**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-22` landed.** Folded into
+session 3 because that is this repository's outstanding run, and it needs no setup of its own.
+
+`M4-22` stopped `Castbar:Start` from minting `function() onUpdate(inst) end` on every cast start.
+`EnsureFrame` builds `inst.onUpdateScript` once per unit instead, and Start installs that. Section
+7a already watches one bar fill and snap off, and it would have caught a handler that was never
+installed. What it cannot see is the failure this change actually risks, which is a handler that is
+installed but bound to the **wrong instance** — because 7a drives one unit.
+
+Headless proof exists for the binding (`tests/test_castbar_frame.lua` asserts target and focus get
+distinct handler objects) and for the allocation (`tests/perf.lua`'s `castStart` scenario, 304.0 ->
+208.0 bytes per start/stop pair). Neither runs a frame. `SetScript` under the mock is a table write
+and `GetScript` reads it back; nothing headless ever calls the handler the way the client does,
+sixty times a second, against two live casts at once. This step is that and nothing else.
+
+**Setup.** `/kcd set units.target.castbar.enabled true` and the same for `units.focus.castbar`.
+`/kcd lock`. `/kcd set units.target.visibility always`. Find two hostile casters — a pull with two
+casting mobs is the easiest arrangement.
+
+**Steps.**
+- Target one caster and focus the other, both mid-cast, and watch both bars at once.
+- Let each finish and start a second cast without retargeting.
+- Swap target and focus and repeat.
+
+**Pass.**
+- **Both bars animate simultaneously and independently.** One bar frozen while the other runs, or
+  both bars showing the same fill, is the finding — that is a shared or mis-bound handler, and it is
+  exactly what a single file-scope handler would produce.
+- The second cast on the same unit animates like the first. A bar that fills on the first cast of a
+  session and is static afterwards means the handler is being torn down and not re-installed.
+- Spell name and remaining time keep tracking on both bars, and neither shows the other's spell.
+- No Lua error naming `Castbar.lua` and a nil `onUpdateScript` — that would mean Start ran on an
+  instance `EnsureFrame` had not reached, which no headless load reproduces.
+
+---
 ## When to run which subset
 
-- **LibKa0s re-vendor, or any seam-file edit:** 25 and 26, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
-- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
+- **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28** and **31**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass. Anything touching the cast bar's `OnUpdate` install or teardown — `EnsureFrame`, `Start`, `Stop` — also needs **32**, which is the only step that drives two units at once.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
+- **`NS.Util.print` call-site edits, or anything under `core/CoreSetup.lua`'s printer:** **31**, then 15. 31 is the only step that runs a call site on the library-less load.
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
+- **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
 - **Pre-release / TOC bump:** the entire suite. The 26 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 

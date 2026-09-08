@@ -231,7 +231,7 @@ test("Refresh logs nothing when no spell changed", function()
     inst.NS.State.debug = true
     inst.NS.DebugLog:Clear()
     Cooldowns.watched = { [200] = { spellID = 200, ready = true, isActive = false } }
-    Cooldowns.PollSpell = function(_, id) return { spellID = 200, ready = true, isActive = false } end
+    Cooldowns.PollSpell = function() return { spellID = 200, ready = true, isActive = false } end
     local before = inst.NS.DebugLog:BufferSize()
     Cooldowns:Refresh()
     assertEqual(inst.NS.DebugLog:BufferSize(), before, "no line on a no-change pass")

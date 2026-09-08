@@ -10,7 +10,7 @@
 -- Target's icons/castbar tables (total mirror). enabled, anchors (position),
 -- and label.text stay per-unit even while linked. Target is never linked.
 
-local addonName, NS = ...
+local _, NS = ...
 local Units = {}
 NS.Units = Units
 

@@ -14,7 +14,7 @@
 --
 -- See docs/schema.md for the shape and its migration history.
 
-local addonName, NS = ...
+local _, NS = ...
 
 -- File-local recursive deep-copy. Deliberately independent of NS.Util —
 -- this file loads ahead of the modules and must stay self-contained rather

@@ -499,7 +499,10 @@ local function build()
         function t.UnregisterMessage(self, message)
             if registry[message] then registry[message][self] = nil end
         end
-        function t.SendMessage(self, message, ...)
+        -- The sender is not read here: a message goes to every registrant, and the two
+        -- functions above are the ones that key the registry by sender. Spelt `_` rather
+        -- than dropped, so the arity still matches AceEvent-3.0's own SendMessage.
+        function t.SendMessage(_, message, ...)
             local targets = registry[message]
             if not targets then return end
             for _, cb in pairs(targets) do cb(message, ...) end
@@ -745,7 +748,7 @@ local function build()
         function w:SetImageSize(...) self.imageSize = { ... }; return self end
         function w:SetMaxLetters(v) self.maxLetters = v; return self end
         -- RECORDED, not swallowed. AceGUI's InteractiveLabel forwards this to
-        -- Texture:SetTexture, whose four-number form is the deprecated colour API
+        -- Texture:SetTexture, whose four-number form is the deprecated color API
         -- -- and the client answers it with a solid bright-green block across the
         -- whole label on mouseover. A no-op here cannot tell "no highlight" from
         -- "a highlight nobody meant", which is exactly what shipped.

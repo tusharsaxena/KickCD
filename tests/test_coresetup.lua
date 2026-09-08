@@ -364,7 +364,6 @@ test("with LibKa0s absent all five seams say the same thing about WHY", function
     local P = inst.NS.PREFIX
     local lines = {}
     local frame = inst.mocks.DEFAULT_CHAT_FRAME
-    local orig = frame.AddMessage
     frame.AddMessage = function(_, m) lines[#lines + 1] = m end
     local function drive(fn)
         for i = #lines, 1, -1 do lines[i] = nil end

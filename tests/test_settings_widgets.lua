@@ -17,7 +17,6 @@ local test, assertEqual, assertTrue, assertNil =
 local inst    = T.load(true)
 local NS      = inst.NS
 local mocks   = inst.mocks
-local Helpers = NS.Settings.Helpers
 local Spells  = NS.Settings.SpellsPanel
 
 test("the settings helpers are published for testing", function()

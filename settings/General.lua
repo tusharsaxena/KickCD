@@ -27,7 +27,7 @@
 -- Every schema entry here is automatically wired into /kcd get|set,
 -- so adding a new General option = one row in this file.
 
-local addonName, NS = ...
+local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
 local Schema = NS.Settings.Schema

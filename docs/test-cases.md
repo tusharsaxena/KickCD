@@ -155,7 +155,7 @@ badge and any count quoted in the docs must agree with it.
 - ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
 - ApplyInterruptibleAlpha never inspects the cast name it gates on
 
-### test_locale.lua (9)
+### test_locale.lua (15)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
 - frFR and enUS Elemental Shaman seed byte-identical spell lists
@@ -166,6 +166,12 @@ badge and any count quoted in the docs must agree with it.
 - SpecDisplayName falls back to the English token for an unknown spec
 - a spec-name lookup that ran before the client was ready retries later
 - every default spell list is reachable on a French client
+- the locale scan actually reads the surface it is meant to guard
+- every L[...] key the addon subscripts is defined in locales/enUS.lua
+- every user-facing literal in the settings surface is routed or recorded
+- every recorded residue literal is still unrouted in the file that names it
+- every residue entry carries one of the declared classes
+- the three reworded cast-bar descs are keyed as the panel renders them
 
 ### test_units.lua (12)
 
@@ -182,7 +188,7 @@ badge and any count quoted in the docs must agree with it.
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 
-### test_schema.lua (35)
+### test_schema.lua (36)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -209,6 +215,7 @@ badge and any count quoted in the docs must agree with it.
 - the Unit picker is one selection shared by every per-unit page
 - a linked Focus draws the strip FIRST and the note as content
 - a linked Focus's tab strip is disabled and desaturated
+- an unlinked Focus's tab strip is left operable and undimmed
 - the General page's FIRST tab is named exactly `Master controls`
 - Master controls holds exactly the canonical rows, in canonical order
 - every canonical Master control is declared exactly ONCE in the repo
@@ -620,13 +627,14 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (37)
+### test_castbar_frame.lua (38)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
 - EnsureFrame parents the state bars inside the bar container
 - EnsureFrame seeds both bars to an empty 0..1 range
 - target and focus get separate frames, not one shared bar
+- cast start installs ONE cached OnUpdate handler, per unit, not one per cast
 - GetCastbarFrame never creates an instance for an unknown unit
 - Start renders the cast name into the bar's FontString
 - Start applies the user's name truncation
@@ -724,7 +732,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump reports a plain boolean notInterruptible by value
 - DebugDump reports a nil notInterruptible as interruptible
 - DebugDump reports a secret notInterruptible without touching tostring
-- DebugDump prints no state line for a secret value with no curve evaluator
+- DebugDump still reports a secret value when the curve evaluator is missing
 - DebugDump reports the channel flag and the record's field TYPES only
 - DebugDump reports secret record fields by type, never by value
 - DebugDump renders the configured per-state colors from the live profile
@@ -772,13 +780,14 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 
-### test_settings_log.lua (5)
+### test_settings_log.lua (6)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
 - ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)
+- ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
 
 ### test_settings_spells.lua (4)
 
@@ -804,7 +813,7 @@ badge and any count quoted in the docs must agree with it.
 - the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
 - the row checkbox writes the entry's enabled flag as a real boolean
 - a disabled row renders its spell icon and checkbox from the stored flag
-- a move is a SPLICE to the index, not a swap with the neighbour
+- a move is a SPLICE to the index, not a swap with the neighbor
 - a move backwards splices just as cleanly
 - a move that goes nowhere or off the ends writes nothing
 - no row carries a move button any more
@@ -843,7 +852,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (35)
+### test_options_panel.lua (36)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -880,6 +889,7 @@ badge and any count quoted in the docs must agree with it.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- the live wiring patches LSM30_Border through the library, not a private copy
 
 ### test_settings_refreshers.lua (5)
 
@@ -898,6 +908,16 @@ badge and any count quoted in the docs must agree with it.
 - `version` is a registered COMMANDS verb (slash-commands-§3)
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
+
+### test_source_style.lua (1)
+
+- a WoW global on the standing _G. list is never read bare
+
+### test_spelling.lua (3)
+
+- the spelling scan reaches this repository's authored text and skips the vendored and frozen
+- the spelling matcher catches the published British forms and spares the US words ALLOWED names
+- authored English is US English
 
 ### test_slash_style.lua (10)
 
@@ -951,11 +971,12 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (27)
+### test_perfsetup.lua (28)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
 - every bracket call site reads the gate through a load-time upvalue
+- the perf descriptor names the FOLDER and leaves the close control to the library
 - every declared bucket is reached by a real bracket
 - the declared bucket list and the bracketed call sites agree exactly
 - nesting is declared for every bucket that runs inside another
@@ -998,10 +1019,27 @@ badge and any count quoted in the docs must agree with it.
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
 
+### test_doc_structure.lua (3)
+
+- docs/ARCHITECTURE.md carries the section names documentation-§3 mandates
+- every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
+- every deviation id the register cites is assigned by a bundle in docs/audits/
+
+### test_lintconfig.lua (4)
+
+- lintconfig: .luacheckrc sets no top-level ignore
+- lintconfig: .luacheckrc switches no warning class off wholesale
+- lintconfig: every files[...] ignore is narrowed to a file or a name
+- lintconfig: no source file carries a bare inline luacheck ignore
+
 ### test_vendor_sync.lua (2)
 
 - libs/LibKa0s is the LibKa0s release CLAUDE.md says this addon bundles
 - tests/_kit is the test kit that shipped with that release
+
+### test_eol.lua (1)
+
+- eol: every tracked file carries the terminator .gitattributes declares for it
 
 ## Totals
 
@@ -1014,9 +1052,9 @@ badge and any count quoted in the docs must agree with it.
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
-| test_locale.lua | 9 |
+| test_locale.lua | 15 |
 | test_units.lua | 12 |
-| test_schema.lua | 35 |
+| test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 4 |
@@ -1039,24 +1077,29 @@ badge and any count quoted in the docs must agree with it.
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 37 |
+| test_castbar_frame.lua | 38 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 11 |
 | test_cooldowns_gates.lua | 22 |
-| test_settings_log.lua | 5 |
+| test_settings_log.lua | 6 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 35 |
+| test_options_panel.lua | 36 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
+| test_source_style.lua | 1 |
+| test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 27 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 27 |
+| test_perfsetup.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
+| test_doc_structure.lua | 3 |
+| test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 2 |
-| **Total** | **841** |
+| test_eol.lua | 1 |
+| **Total** | **864** |

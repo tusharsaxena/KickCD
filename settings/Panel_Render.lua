@@ -8,7 +8,7 @@
 -- settings/Panel_Widgets.lua (it uses the makers via Helpers.RenderField)
 -- and BEFORE the per-tab files that call RenderSchema / Restore* / Reset*.
 
-local addonName, NS = ...
+local _, NS = ...
 local L       = NS.L
 local Helpers = NS.Settings.Helpers
 
@@ -229,7 +229,7 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     -- the page holding it and then left the reader to find both by hand, two
     -- categories away in Blizzard's list -- so the phrase naming the destination
     -- now IS the way there. The whole line takes the click (AceGUI has no widget
-    -- that mixes clickable and static runs in one string); the colour on the
+    -- that mixes clickable and static runs in one string); the color on the
     -- middle phrase is what says so.
     Helpers.LinkRow(ctx,
         L["Linked to Target. Untick 'Use same styling as Target' on the "]
@@ -288,6 +288,16 @@ end
 -- Database layers. (Task 1 moved anchors from the profile's top level to
 -- units.target/.focus — this helper previously read/wrote the stale
 -- top-level path and was a silent no-op ever since.)
+--
+-- No defaults tree, no reset: the guard below early-returns rather than
+-- falling back to a hand-written coordinate. It used to carry one, and it
+-- disagreed with defaults/Profile.lua by 300 px in the opposite direction —
+-- the exact duplication the paragraph above says this function avoids. The
+-- branch needs defaults/Profile.lua to have failed to load, which the TOC
+-- rules out, so nothing was ever going to notice the wrong number. Doing
+-- nothing is also the honest answer: with no default to restore, the least
+-- surprising outcome is to leave the grid where the user dragged it, which
+-- is what the sibling Helpers.ResetAllPositions has always done.
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
     local d = NS.DEFAULT_PROFILE
@@ -295,13 +305,12 @@ function Helpers.ResetIconPosition()
               and NS.DEFAULT_PROFILE.units.target
               and NS.DEFAULT_PROFILE.units.target.anchors
               and NS.DEFAULT_PROFILE.units.target.anchors.icons
+    if not d then return end
     NS.db.profile.units = NS.db.profile.units or {}
     NS.db.profile.units.target = NS.db.profile.units.target or {}
     NS.db.profile.units.target.anchors = NS.db.profile.units.target.anchors or {}
-    NS.db.profile.units.target.anchors.icons = d
-        and { point = d.point, relativePoint = d.relativePoint,
-              x = d.x, y = d.y }
-        or  { point = "CENTER", relativePoint = "CENTER", x = 0, y = -180 }
+    NS.db.profile.units.target.anchors.icons =
+        { point = d.point, relativePoint = d.relativePoint, x = d.x, y = d.y }
     -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
     -- branch re-anchors every enabled unit's grid from its own
     -- units.<unit>.anchors.icons. The previous "icons" fire was

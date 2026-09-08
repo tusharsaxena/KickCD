@@ -26,7 +26,7 @@
 --     re-ordering the call sites, and it forwards to the library so there is
 --     still only ONE implementation.
 
-local addonName, NS = ...
+local _, NS = ...
 local Helpers = NS.Settings.Helpers
 
 --- A checkbox wired to caller-supplied get/set instead of a settings path, for
@@ -43,9 +43,9 @@ function Helpers.SessionToggle(ctx, spec, parent, relativeWidth)
     return Helpers.SessionCheckbox(ctx, parent, relativeWidth or 0.5, spec)
 end
 
---- Blizzard's link blue, the colour a player already reads as "this goes
+--- Blizzard's link blue, the color a player already reads as "this goes
 --- somewhere". Not the collection's gold, which every heading and every label on
---- these pages is already wearing -- a link that shares its colour with the
+--- these pages is already wearing -- a link that shares its color with the
 --- static text around it is not a link, it is a sentence.
 local LINK_COLOR = "|cff71d5ff"
 
@@ -58,7 +58,7 @@ end
 ---
 --- An AceGUI InteractiveLabel: the whole line takes the click, because AceGUI has
 --- no widget that mixes clickable and static runs inside one string. The caller
---- therefore colours the ACTIONABLE PHRASE with Helpers.LinkText and leaves the
+--- therefore colors the ACTIONABLE PHRASE with Helpers.LinkText and leaves the
 --- rest plain, which is what tells the reader where the sentence leads even
 --- though the hit area is the whole of it.
 ---
@@ -77,9 +77,9 @@ function Helpers.LinkRow(ctx, text, onClick, tooltip)
     w:SetFullWidth(true)
     w:SetText(text or "")
     -- NO SetHighlight, deliberately. AceGUI's InteractiveLabel forwards it to
-    -- Texture:SetTexture, and the four-number form is the deprecated colour API:
+    -- Texture:SetTexture, and the four-number form is the deprecated color API:
     -- the client answered `(1, 1, 1, 0.12)` with a solid BRIGHT GREEN block over
-    -- the whole line on mouseover. The colour on the link phrase is what marks the
+    -- the whole line on mouseover. The color on the link phrase is what marks the
     -- line as clickable; a hover highlight is not needed to say so, and there is
     -- no correct number to pass here -- a texture path would be, and this line
     -- wants no plate behind it either.
@@ -118,7 +118,7 @@ end
 --- English one, matching `/kcd config`'s refusal -- one act, one sentence,
 --- whichever door it came through.
 local function refusedInCombat()
-    if not (InCombatLockdown and InCombatLockdown()) then return false end
+    if not (_G.InCombatLockdown and _G.InCombatLockdown()) then return false end
     local msg = (NS.L and NS.L["Cannot open settings during combat."])
         or "cannot open settings during combat"
     if NS.Util then NS.Util.print((NS.GRAY or "") .. msg .. "|r") end

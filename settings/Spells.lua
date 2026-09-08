@@ -22,7 +22,7 @@
 -- Writes go through a 50ms debounced setter that mutates the profile,
 -- re-renders the rows, and fires Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
 
-local addonName, NS = ...
+local _, NS = ...
 
 local L      = NS.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = NS.Compat or {}
@@ -50,7 +50,7 @@ local CATEGORIES = {
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
--- The height of the page-wide chrome block (options-ui-§14): one labelled AceGUI
+-- The height of the page-wide chrome block (options-ui-§14): one labeled AceGUI
 -- Dropdown, which renders its label above the control, plus the Add-spell button
 -- beside it. The library owns the band arithmetic around it -- the divider, the
 -- gaps and the scroll's top edge -- so this is the block's own height and
@@ -134,8 +134,8 @@ local function getPlayerClassSpec()
     -- FIRST return (the localized name); the file token we need is the
     -- second. Guard without collapsing the multi-return.
     local classFile
-    if UnitClass then
-        local _, cf = UnitClass("player")
+    if _G.UnitClass then
+        local _, cf = _G.UnitClass("player")
         classFile = cf
     end
     if not (classFile and NS.DefaultSpells
@@ -397,8 +397,8 @@ end
 -- UnitClass("player")` would truncate to UnitClass's FIRST return (the
 -- localized name); the file token we need is the second.
 local function playerClassFile()
-    if not UnitClass then return nil end
-    local _, cf = UnitClass("player")
+    if not _G.UnitClass then return nil end
+    local _, cf = _G.UnitClass("player")
     return cf
 end
 
@@ -1017,7 +1017,7 @@ end
 -- first sorted class otherwise.
 local function ensureSelection(classes)
     if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
-        local _, classFile = UnitClass("player")
+        local _, classFile = _G.UnitClass("player")
         if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
             selectedClass = classFile
         else
@@ -1065,7 +1065,7 @@ local function fillRows(AceGUI, scroll, list)
             handleIcon    = NS.Icon and NS.Icon("segment") or nil,
             handleTooltip = L["Drag to reorder"],
             onMove        = function(from, to)
-                -- ONE write, ONE re-render, however far the row travelled.
+                -- ONE write, ONE re-render, however far the row traveled.
                 if moveTo(list, from, to) then
                     if NS.State and NS.State.debug then
                         NS.Debug("Spells", "move %d -> %d", from, to)
@@ -1186,8 +1186,19 @@ local function ensurePanel()
         StaticPopup_Show("KICKCD_RESET_SPELLS")
     end
 
-    panel:SetScript("OnShow", function()
-        H.EnsureDefaultsButton(panel)
+    -- Through H.SetRenderer rather than a parked OnShow (options-ui-§11,
+    -- CX03). The library builds the Defaults button and refuses to render in
+    -- combat, which is the point: the Blizzard AddOns sidebar reaches a canvas
+    -- panel without going through OpenOptionsPanel, so the handler this
+    -- replaces was the one way into the Spells page with no combat guard on
+    -- it, on the path a player is most likely to take mid-fight.
+    --
+    -- This page renders on EVERY show, not only the first: OnHide below hands
+    -- the whole widget tree back to AceGUI's pool, so a second show that
+    -- skipped the renderer would draw nothing at all. It says so through
+    -- H.RefreshPanel there rather than by reaching for the library's dirty
+    -- flag directly.
+    H.SetRenderer(ctx, function()
         -- "Fresh open" = the user just brought the entire Settings UI
         -- back up (vs. just switching tabs within an already-open
         -- session). Re-seed the spec dropdown to the player's CURRENT
@@ -1217,6 +1228,11 @@ local function ensurePanel()
         if not (SettingsPanel and SettingsPanel:IsShown()) then
             freshOpen = true
         end
+        -- The tree released above is the page's entire body, so the next show
+        -- MUST re-render. Marking the hidden page dirty is how a host says that
+        -- to the library (H.RefreshPanel, structural); the renderer is skipped
+        -- on a show that finds the page neither unrendered nor dirty.
+        H.RefreshPanel(ctx, true)
     end)
 
     -- The Spells panel is a plain-table module, not an AceAddon submodule, so

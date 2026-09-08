@@ -11,7 +11,7 @@
 -- the pure parsers directly. (NOT IconGrid.Layout — that key is the OnEnable
 -- orchestrator method; see the load-order note at the assignment below.)
 
-local addonName, NS = ...
+local _, NS = ...
 local IconGrid = NS:GetModule("IconGrid")
 
 -- Published under a DISTINCT key from the IconGrid:Layout() orchestrator method

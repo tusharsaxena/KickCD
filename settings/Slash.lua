@@ -1,4 +1,4 @@
-local addonName, NS = ...
+local _, NS = ...
 NS.Slash = NS.Slash or {}
 
 -- settings/Slash.lua — wires the addon into LibKa0s-Slash-1.0.
@@ -351,4 +351,10 @@ NS.Slash.cli = SlashLib:New({
 function NS.Slash:LandingRows() return NS.Slash.cli:LandingRows() end
 
 function NS.Slash:OnSlash(msg) return NS.Slash.cli:OnSlash(msg) end
-function NS.Slash:PrintHelp() return NS.Slash.cli:PrintHelp() end
+
+-- There is no `NS.Slash:PrintHelp` forwarder beside these two, and its absence is deliberate:
+-- `M4c-06` deleted one. `core/KickCD.lua`'s `printHelp` reaches `NS.Slash.cli:PrintHelp()`
+-- directly, behind the same "did settings/ load at all" guard the forwarder carried, so
+-- nothing in the addon ever called it -- and `NS` is private (there is no `_G.KickCD`), so
+-- nothing outside could. The blanket `212/self` hid it: with the receiver unreported the line
+-- read like the third member of a trio rather than dead code.

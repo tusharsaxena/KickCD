@@ -11,7 +11,7 @@
 -- stamped on each icon (btn.instance / btn.unit) — inst.isCasting() is the
 -- per-instance resolver published by core.
 
-local addonName, NS = ...
+local _, NS = ...
 -- Perf bracket upvalue (performance-§2 / anti-patterns #43): resolved ONCE at
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
 -- loads before modules/, so this is always the real instance or its stub.

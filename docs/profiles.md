@@ -32,10 +32,13 @@ Three decisions in that file are deliberate:
 - **Rendered into our container, not its own window.** `AceConfigDialog:Open` accepts any AceGUI
   container as its target, so the AceDBOptions widgets land inside the canvas frame instead of
   popping a separate dialog.
-- **Opened lazily on every `OnShow`, not once.** Re-opening is cheap — AceConfigDialog reuses an
+- **Opened lazily on every show, not once.** Re-opening is cheap — AceConfigDialog reuses an
   existing widget tree — and it is what makes the page reflect the **current** profile after a
   switch. Opening once would leave the page describing whichever profile was active the first time it
-  was shown.
+  was shown. The open is the page's `Helpers.SetRenderer` body rather than a parked `OnShow`
+  (`CX03`), so the Blizzard AddOns sidebar cannot reach it in combat; the library re-runs a renderer
+  on first show and on the next show after the page was marked dirty, and the page's `OnHide` marks
+  it with `Helpers.RefreshPanel(ctx, true)` to keep "every show" true.
 
 This is the one place `AceConfigDialog` is used. Every other page is raw AceGUI on a Blizzard canvas
 (`options-ui`); AceDBOptions is the exception because the options table is Ace's, not the addon's.

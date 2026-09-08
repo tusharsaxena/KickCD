@@ -8,8 +8,8 @@
 -- this module on a fireable widget mock, and it is what most of this file is.
 
 local T = _G.KICKCD_TEST
-local test, assertEqual, assertTrue, assertNil, assertNear =
-    T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear
+local test, assertEqual, assertTrue, assertNil, assertNear, assertFalse =
+    T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear, T.assertFalse
 local NS = T.NS
 local H  = NS.Settings.Helpers
 
@@ -518,38 +518,37 @@ end)
 
 -- The link note draws NO hover highlight, and that is a fix rather than a
 -- preference: it shipped with `SetHighlight(1, 1, 1, 0.12)`, which AceGUI forwards
--- to Texture:SetTexture -- whose four-number form is the deprecated colour API --
+-- to Texture:SetTexture -- whose four-number form is the deprecated color API --
 -- and the client painted a solid BRIGHT GREEN block over the whole line on
 -- mouseover. The line stays clickable; it simply does not light up.
 --
 -- red under: re-adding SetHighlight in any form, or dropping the OnClick with it.
 test("the linked-Focus note has no hover highlight but is still clickable", function()
-    local NS = T.NS
-    local cfg = NS.Units.Config("focus")
-    local before = cfg and cfg.link
-    if cfg then cfg.link = true end
-    local H = NS.Settings.Helpers
-    local wasUnit = H.ViewedUnit()
+    -- Both parked pieces of shared state go through the runner's guaranteed-run
+    -- wrappers. They used to be put back by the last two statements of this body,
+    -- which tests/_kit/framework.lua pcalls -- so the case could only clean up
+    -- after itself on the green path, which is the path where cleaning up matters
+    -- least.
+    T.withFocusLink(true, function()
+        T.withViewedUnit(function()
+            local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+            local ctx = H.CreatePanel("KickCDNoteHL", "castbar", { pageKey = "castbar" })
+            ctx.scroll = AceGUI:Create("ScrollFrame")
+            H.SetViewedUnit("focus")
+            H.RenderUnitPanel(ctx, "castbar")
 
-    local AceGUI = T.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel("KickCDNoteHL", "castbar", { pageKey = "castbar" })
-    ctx.scroll = AceGUI:Create("ScrollFrame")
-    H.SetViewedUnit("focus")
-    H.RenderUnitPanel(ctx, "castbar")
-
-    local note
-    for _, child in ipairs(ctx.scroll.children) do
-        if type(child.text) == "string"
-           and child.text:find("Linked to Target", 1, true) then note = child end
-    end
-    assertTrue(note ~= nil, "the linked page must draw the note")
-    assertNil(note.__highlight,
-        "the note must set no hover highlight; AceGUI paints a solid green block for one")
-    assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-        "…and it must still be clickable")
-
-    H.SetViewedUnit(wasUnit)
-    if cfg then cfg.link = before end
+            local note
+            for _, child in ipairs(ctx.scroll.children) do
+                if type(child.text) == "string"
+                   and child.text:find("Linked to Target", 1, true) then note = child end
+            end
+            assertTrue(note ~= nil, "the linked page must draw the note")
+            assertNil(note.__highlight,
+                "the note must set no hover highlight; AceGUI paints a solid green block for one")
+            assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
+                "…and it must still be clickable")
+        end)
+    end)
 end)
 
 -- The link note GOES somewhere. Naming a destination and not being able to reach
@@ -568,20 +567,20 @@ test("the linked-Focus note opens General on its Units tab", function()
         local S = mocks.Settings
         S.OpenToCategory = function(id) opened = id end
     end)
-    local NS = inst.NS
-    local H  = NS.Settings.Helpers
+    local iNS = inst.NS
+    local iH  = iNS.Settings.Helpers
 
-    local general = NS.Settings.categoryFor and NS.Settings.categoryFor.general
+    local general = iNS.Settings.categoryFor and iNS.Settings.categoryFor.general
     assertTrue(general ~= nil, "the General page's category must be recorded")
 
-    local cfg = NS.Units.Config("focus")
+    local cfg = iNS.Units.Config("focus")
     if cfg then cfg.link = true end
-    H.SetViewedUnit("focus")
+    iH.SetViewedUnit("focus")
 
-    local ctx = H.__panelFor("castbar")
+    local ctx = iH.__panelFor("castbar")
     assertTrue(ctx ~= nil, "the Cast bar page must be registered")
     ctx.panel:Show()
-    H.RefreshPanel(ctx, true)
+    iH.RefreshPanel(ctx, true)
 
     local note
     for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
@@ -594,12 +593,12 @@ test("the linked-Focus note opens General on its Units tab", function()
 
     assertEqual(opened, general:GetID(),
         "the click must open the General page's own category")
-    local generalCtx = H.__panelFor("general")
-    assertEqual(generalCtx and generalCtx.activeTab, NS.L["Units"],
+    local generalCtx = iH.__panelFor("general")
+    assertEqual(generalCtx and generalCtx.activeTab, iNS.L["Units"],
         "…already on the Units tab, not on whatever it was last left on")
 
     if cfg then cfg.link = false end
-    H.SetViewedUnit("target")
+    iH.SetViewedUnit("target")
 end)
 
 -- The Focus link's two controls are ONE LINE: [Use same styling as Target]
@@ -616,13 +615,13 @@ end)
 -- half-filled and puts the next item beside the tick.
 test("the Focus link's tick and its Copy button share one row", function()
     local inst = T.load(true, true)
-    local H = inst.NS.Settings.Helpers
-    local ctx = H.__panelFor("general")
+    local iH = inst.NS.Settings.Helpers
+    local ctx = iH.__panelFor("general")
     assertTrue(ctx ~= nil, "the General page must be registered")
 
     ctx.activeTab = inst.NS.L["Units"]
     ctx.panel:Show()            -- the body is built lazily, on first OnShow
-    H.RefreshPanel(ctx, true)
+    iH.RefreshPanel(ctx, true)
 
     local tickLabel = inst.NS.L["Use same styling as Target"]
     local btnLabel  = inst.NS.L["Copy styling from Target"]
@@ -787,12 +786,52 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
         assertNil(src0:match("d%.L[^%w_]"), rel .. " now reads a descriptor L")
     end
 
-    local fh = assert(io.open(T.root .. "/libs/LibKa0s/Options.lua", "r"))
-    local src = fh:read("*a")
-    fh:close()
     -- ...and the descriptor this addon passes must not pretend otherwise.
     local fh2 = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
     local src2 = fh2:read("*a")
     fh2:close()
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
+end)
+
+-- ── the LSM30_Border fixup, promoted out of core/LSMPatch.lua ────────────────
+
+test("the live wiring patches LSM30_Border through the library, not a private copy", function()
+    -- AceGUI's WidgetRegistry is PROCESS-GLOBAL: one slot named "LSM30_Border"
+    -- shared by every addon in the client. This addon and four siblings each
+    -- carried the same wrapper in their own core/LSMPatch.lua, each registering
+    -- at whatever version it found plus one, so a session running all five
+    -- stacked five wrappers and the outermost belonged to whichever addon the
+    -- loader reached last. No suite in any of the five could see that — each one
+    -- loads a single copy, registers once and passes, which is exactly what this
+    -- addon's own test_options_panel.lua did through the whole defect.
+    --
+    -- lib.__PatchLSM30Border (LibKa0s-Options-1.0 minor 15) is that wrapper
+    -- published once, behind lib.__lsmBorderPatched. LibStub hands five vendored
+    -- copies the same instance, so five callers make one registration.
+    --
+    -- WHY A FRESH INSTANCE WITH A SEEDED REGISTRY. The mock's WidgetRegistry
+    -- starts empty, which models AGSMW being absent; the call then finds nothing
+    -- to wrap, returns false without arming the sentinel, and proves nothing. The
+    -- `mutate` hook runs BEFORE any source loads, which is the only window in
+    -- which a stand-in constructor can be in the slot when settings/OptionsSetup
+    -- .lua's live arm executes.
+    -- red under: dropping the lib.__PatchLSM30Border() call from the live wiring.
+    local upstream = function() return { frame = {} } end
+    local inst = T.load(true, false, function(m)
+        m.LibStub("AceGUI-3.0"):RegisterWidgetType("LSM30_Border", upstream, 20)
+    end)
+
+    local AceGUI = inst.mocks.LibStub("AceGUI-3.0")
+    assertTrue(AceGUI.WidgetRegistry["LSM30_Border"] ~= upstream,
+        "the live wiring never called lib.__PatchLSM30Border(): the slot still holds "
+        .. "the constructor the registry was seeded with")
+    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
+        "the wrapper must register one version above what it wrapped, to win the race")
+
+    -- The sentinel is armed, so a sibling addon's copy of the library — the same
+    -- instance, as far as LibStub is concerned — registers nothing on top.
+    local lib = inst.mocks.LibStub("LibKa0s-Options-1.0")
+    assertFalse(lib.__PatchLSM30Border(), "a second call must be a no-op")
+    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
+        "and must leave the one registration alone")
 end)
