@@ -411,6 +411,17 @@ function Cooldowns:Refresh()
     -- match the ids actually listed, so the line reports `logged`.
     local watched, logged = 0, 0
 
+    -- Read ONCE per pass, and only when the console is listening: this is the hot path, and the
+    -- answer is the same for every spell in the loop. `allGcd` stays true only while every logged
+    -- transition is the global cooldown's doing -- one real transition disqualifies the whole line,
+    -- because a "(gcd)" marker on a line carrying a real cooldown reads as "skip me" over the one
+    -- thing worth reading.
+    local gcdActive, allGcd = false, true
+    if dbg then
+        local _, _, _, _, active = NS.Compat.GetSpellCooldown(GCD_SPELL_ID)
+        gcdActive = active and true or false
+    end
+
     for id, prev in pairs(self.watched) do
         watched = watched + 1
         local next_ = self:PollSpell(id)
@@ -426,12 +437,47 @@ function Cooldowns:Refresh()
                 spellID = id, ready = false, isActive = false,
                 cdObject = nil, chargeCdObject = nil, charges = nil,
             })
-        elseif StateChanged(prev, next_) then
+        elseif not StateChanged(prev, next_) then
+            -- NOTHING CHANGED, AND THE ATTRIBUTION STILL CAN. A spell parked on a real cooldown
+            -- does not change from poll to poll, so this is the only place its GCD attribution can
+            -- be withdrawn — and it must be, or a spell that went down under a GCD and stayed down
+            -- keeps that attribution for the whole cooldown and is labeled noise when it finally
+            -- comes back. Written in place on the record we already hold: no allocation, and the
+            -- branch does nothing at all when the console is not listening.
+            if dbg and prev and prev.isActive and prev.gcdOnly and not gcdActive then
+                prev.gcdOnly = false
+            end
+        else
             -- Emit unconditionally — the renderer needs the fresh handle to
             -- re-evaluate its curves. Log only a material change.
+            -- WHOSE DOING WAS THIS? Carried per spell across polls, because the question cannot be
+            -- answered from a snapshot at emit time. A GCD flips a spell active NOW and back to
+            -- ready ~1.5s LATER, by which point the GCD has ended -- so reading the live flag when
+            -- the line is written marks the opening half of the churn and misses the closing half.
+            -- The first cut of this did exactly that, and a live trace showed it inside a minute.
+            if dbg then
+                if next_.isActive and not (prev and prev.isActive) then
+                    -- It just went down. If a GCD was running, the GCD is the likeliest cause.
+                    next_.gcdOnly = gcdActive
+                elseif next_.isActive then
+                    -- Still down. If the GCD has since ended and this is STILL active, it is a real
+                    -- cooldown wearing a GCD's clothes, and the attribution is withdrawn.
+                    next_.gcdOnly = (prev and prev.gcdOnly and gcdActive) and true or false
+                else
+                    next_.gcdOnly = false
+                end
+            end
+
             if MaterialChange(prev, next_) then
                 logged = logged + 1
                 if dbg then
+                    -- A transition to ready is attributed to whatever put the spell DOWN, which is
+                    -- the state we carried, not the flag that happens to be set now. That is what
+                    -- keeps an off-GCD interrupt coming off its own cooldown -- the one line in the
+                    -- log worth reading -- from being labeled as noise because someone else's
+                    -- global cooldown was running at that instant.
+                    local byGcd = next_.isActive and next_.gcdOnly or (prev and prev.gcdOnly)
+                    if not byGcd then allGcd = false end
                     if next_.ready then readyIds[#readyIds + 1] = id
                     elseif next_.isActive then activeIds[#activeIds + 1] = id end
                 end
@@ -465,8 +511,7 @@ function Cooldowns:Refresh()
         --
         -- Spell 61304 is the global cooldown and its plain-bool active flag is the one value in
         -- reach that can be branched on at all. The line says which it was; the reader judges.
-        local _, _, _, _, gcdActive = NS.Compat.GetSpellCooldown(GCD_SPELL_ID)
-        if gcdActive then parts[#parts+1] = "(gcd)" end
+        if allGcd then parts[#parts+1] = "(gcd)" end
         NS.Debug("Cooldowns", "%d/%d changed: %s", logged, watched, table.concat(parts, " "))
     end
     if __t0 then Perf.Note("spellPoll", debugprofilestop() - __t0) end

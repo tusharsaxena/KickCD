@@ -741,11 +741,14 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump reports the colors live on the StatusBar widgets
 - DebugDump says (no widget) before the frame has ever been built
 
-### test_cooldowns.lua (13)
+### test_cooldowns.lua (16)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
 - Refresh logs one coalesced line only when a spell changed
 - Refresh marks a line the global cooldown explains (#15)
+- Refresh marks the ready half of a GCD too (#15)
+- Refresh does not mark a real cooldown that merely coincides with a GCD (#15)
+- Refresh leaves a line MIXED with a real transition unmarked (#15)
 - Refresh does not cry GCD when the global cooldown is not running (#15)
 - Refresh coalesces multiple simultaneous changes into ONE line
 - Refresh does not log when only the cooldown handle identity changed
@@ -1082,7 +1085,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_frame.lua | 38 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
-| test_cooldowns.lua | 13 |
+| test_cooldowns.lua | 16 |
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 6 |
 | test_settings_spells.lua | 4 |
@@ -1104,4 +1107,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 2 |
 | test_eol.lua | 1 |
-| **Total** | **866** |
+| **Total** | **869** |

@@ -77,6 +77,111 @@ test("Refresh marks a line the global cooldown explains (#15)", function()
         "a flip the GCD explains must say so; got: " .. tostring(line))
 end)
 
+test("Refresh marks the ready half of a GCD too (#15)", function()
+    -- The first attempt marked "was a GCD running?" when the question is "is this line explained
+    -- by the GCD?", and the live trace showed the difference immediately. A GCD flips a spell
+    -- active, and ~1.5s LATER flips it back to ready -- by which time the GCD has ended, so the
+    -- closing half of the same churn came out unmarked. Half the noise stayed unlabeled.
+    -- red under: a marker read from the live GCD flag at emit time.
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    inst.NS.State.debug = true
+
+    -- The GCD starts: the spell goes active while it runs.
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = true }
+    Cooldowns.watched = { [100] = { spellID = 100, ready = true, isActive = false } }
+    Cooldowns.PollSpell = function() return { spellID = 100, ready = false, isActive = true } end
+    Cooldowns:Refresh()
+
+    -- The GCD ends: the same spell comes back ready, and no GCD is running now.
+    inst.NS.DebugLog:Clear()
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = false }
+    Cooldowns.PollSpell = function() return { spellID = 100, ready = true, isActive = false } end
+    Cooldowns:Refresh()
+
+    local line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("gcd", 1, true) ~= nil,
+        "the closing half of a GCD is the same churn; got: " .. tostring(line))
+end)
+
+test("Refresh does not mark a real cooldown that merely coincides with a GCD (#15)", function()
+    -- From the live trace, and the sharper half of the same mistake:
+    --
+    --   00:30:35 | 1/5 changed: ready=[47528] (gcd)
+    --
+    -- Mind Freeze coming off its own 15s cooldown -- the single most interesting line in the log --
+    -- flagged as noise because an unrelated GCD happened to be running. Mind Freeze is OFF the
+    -- global cooldown, so nothing about its transition is the GCD's doing.
+    -- red under: a marker read from the live GCD flag at emit time.
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    inst.NS.State.debug = true
+
+    -- It went on its own cooldown with no GCD running (an off-GCD interrupt).
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = false }
+    Cooldowns.watched = { [47528] = { spellID = 47528, ready = true, isActive = false } }
+    Cooldowns.PollSpell = function() return { spellID = 47528, ready = false, isActive = true } end
+    Cooldowns:Refresh()
+
+    -- Fifteen seconds later it comes back, and someone's GCD is running at that moment.
+    inst.NS.DebugLog:Clear()
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = true }
+    Cooldowns.PollSpell = function() return { spellID = 47528, ready = true, isActive = false } end
+    Cooldowns:Refresh()
+
+    local line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("47528", 1, true) ~= nil, "the real transition still logs")
+    assertTrue(line:find("gcd", 1, true) == nil,
+        "a coincident GCD does not make this the GCD's doing; got: " .. tostring(line))
+end)
+
+test("Refresh leaves a line MIXED with a real transition unmarked (#15)", function()
+    -- The live trace's `5/5 changed: ready=[4 spells] active=[47528]`: four spells closing a GCD
+    -- alongside Mind Freeze starting a real cooldown. Marking that line would bury the real half
+    -- under a label that says "skip me".
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    inst.NS.State.debug = true
+
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = true }
+    Cooldowns.watched = {
+        [100]   = { spellID = 100,   ready = true, isActive = false },
+        [47528] = { spellID = 47528, ready = true, isActive = false },
+    }
+    Cooldowns.PollSpell = function(_, id) return { spellID = id, ready = false, isActive = true } end
+    Cooldowns:Refresh()   -- both go active under a GCD
+
+    inst.NS.DebugLog:Clear()
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = false }
+    -- The GCD ends. 100 comes back ready; 47528 stays down on a real cooldown.
+    Cooldowns.PollSpell = function(_, id)
+        if id == 100 then return { spellID = 100, ready = true, isActive = false } end
+        return { spellID = 47528, ready = false, isActive = true }
+    end
+    Cooldowns:Refresh()
+
+    -- 47528 did not change this pass, so only 100 is logged and the line is pure churn.
+    local line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("gcd", 1, true) ~= nil, "got: " .. tostring(line))
+
+    -- Now 47528 comes off its real cooldown, with a fresh GCD running.
+    inst.NS.DebugLog:Clear()
+    inst.mocks.spellCooldowns[61304] = { isEnabled = true, isActive = true }
+    Cooldowns.PollSpell = function(_, id)
+        if id == 100 then return { spellID = 100, ready = false, isActive = true } end
+        return { spellID = 47528, ready = true, isActive = false }
+    end
+    Cooldowns:Refresh()
+
+    line = inst.NS.DebugLog:LastLine()
+    assertTrue(line:find("47528", 1, true) ~= nil, "the real transition is on this line")
+    assertTrue(line:find("gcd", 1, true) == nil,
+        "one real transition disqualifies the whole line; got: " .. tostring(line))
+end)
+
 test("Refresh does not cry GCD when the global cooldown is not running (#15)", function()
     -- The half that keeps the marker worth reading. Mind Freeze coming off its own 15s cooldown
     -- arrives with no GCD running, and marking that line too would make the annotation noise
