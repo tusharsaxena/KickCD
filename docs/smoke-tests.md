@@ -853,15 +853,51 @@ the first time it will have run at all. A headless case pins the argument that r
 - No Lua errors at any point.
 
 ---
+
+### 31. The castbar dump with no LibKa0s, after the `_G.print` arm went
+
+**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-20` landed.** Folded into
+session 3 because that is this repository's outstanding seam run, and the setup it needs — the
+renamed `libs/LibKa0s` folder — is already section 25's.
+
+`M4-20` deleted `modules/Castbar_Debug.lua`'s `local emit = NS.Util and NS.Util.print or _G.print`
+in favour of `local emit = NS.Util.print`. The deleted arm was unreachable: `core/CoreSetup.lua`
+defines `Util.print` on the library-absent path at `:115` and returns, and on the library-present
+path at `:187`, so there is no load in which `NS.Util.print` is nil. But the guard and the fallback
+went together, and what used to degrade into an untagged global `print` now raises. That is the
+intended trade — an untagged dump pasted into a bug report is worse than a visible error — and it is
+the only behaviour this deletion can change.
+
+Both halves are pinned headlessly and neither pins the join. `tests/test_coresetup.lua`'s "the
+degraded printer is still secret-safe and still says `<secret>`" proves `Util.print` exists with no
+library; the 18 cases in `tests/test_castbar_debug.lua` drive the dump line by line **with** one.
+Nothing headless runs the dump on a library-less load, because `tests/test_castbar_debug.lua`'s
+helper loads `T.load(true, …)` throughout. This step is that composition and nothing else.
+
+**Setup.** Section 25's — rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`,
+`/reload`. Run this while you are already in there for 25 rather than arranging it twice.
+
+**Checks.**
+- Target anything and run `/kcd debug castbar`. It prints the dump. **A Lua error naming
+  `Castbar_Debug.lua` and a nil `emit` is the finding** — it would mean `Util.print` is not on the
+  namespace by the time a slash command runs on the degraded path, which no headless load reproduces.
+- **Every line carries the `[KCD]` tag.** The degraded printer prefixes with `NS.PREFIX` the same way
+  the library's does; a run of untagged lines means something else is doing the printing.
+- The one-off missing-library notice appears before the dump, not once per dump line — the same
+  `announced` latch section 25 checks, seen through a command that prints ~20 lines at once.
+- Rename the folder back and `/reload` before you finish.
+
+---
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
-- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27** and **28**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28** and **31**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
+- **`NS.Util.print` call-site edits, or anything under `core/CoreSetup.lua`'s printer:** **31**, then 15. 31 is the only step that runs a call site on the library-less load.
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
 - **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.

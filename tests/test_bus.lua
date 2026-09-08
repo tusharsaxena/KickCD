@@ -43,13 +43,7 @@ end)
 test("Addon SendMessage reaches a registered module target", function()
     local inst = T.load(true)
     local NS = inst.NS
-    local target = NS.NewBusTarget and NS.NewBusTarget()
-    if not target then
-        -- NewBusTarget lands in Sprint 3 (KCD-09); until then, exercise the
-        -- addon object's own embed so the bus path is still covered.
-        target = {}
-        inst.mocks.__libs["AceEvent-3.0"]:Embed(target)
-    end
+    local target = assert(NS.NewBusTarget, "NS.NewBusTarget must exist (core/KickCD.lua)")()
     local got = false
     target:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function() got = true end)
     NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "test" })

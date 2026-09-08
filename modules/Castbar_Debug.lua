@@ -131,7 +131,7 @@ end
 --- branching with `not not` to avoid arithmetic on secrets.
 function Castbar:DebugDump(unit)
     local inst = self:GetInstance(unit or "target")
-    local emit = NS.Util and NS.Util.print or _G.print
+    local emit = NS.Util.print
     emit("castbar state (" .. inst.unit .. ")")
 
     if not dumpUnitHeader(emit, inst) then return end
