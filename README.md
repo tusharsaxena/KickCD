@@ -14,21 +14,6 @@ It watches two enemy units, your **target** and your **focus**. Each one gets a 
 
 Focus tracking is on out of the box and mirrors your target set's styling, so the second pair costs you nothing to set up. Both sets move, resize and lock together. Don't want focus? Switch it off. Want it looking nothing like your target set? Unlink it.
 
-## What's new in 1.2.1
-
-*   Localized clients tracked nothing at all. On a French, German, Spanish or any other non-English client most specs came up with an empty grid and said nothing about why. Spell lists now carry over automatically the first time each profile loads, with your own edits intact. Huge thanks to [@fttf7](https://github.com/fttf7), who reported this in [issue #8](https://github.com/tusharsaxena/kickcd/issues/8) with the debug output that pinpointed the cause.
-*   Change spec with the settings window open and the Spells tab's spec dropdown now follows you, rather than sitting on the old spec until you closed and reopened settings.
-*   The debug log got a lot quieter. A spell sitting on cooldown used to write about ten identical lines a second and bury everything else; it records real changes only now, and the rebuild line names every spell being watched or skipped. Pasted logs are far easier to act on as a result.
-*   Icons skip repainting the parts that haven't changed while a cooldown ticks down. About a third less work per update, and nothing looks any different.
-
-### Also in 1.2.0
-
-*   Focus tracking arrived. KickCD watches your focus as well as your target, each with its own icon grid and cast bar; focus is on out of the box and copies your target's look until you unlink it.
-*   A new **Text Label** tab puts a label on a unit's icon grid or cast bar — "Target", "Focus", or whatever you'd rather call them — placed however you like.
-*   Debug output moved out of chat and into its own movable window with Copy and Clear buttons, cleared on every reload. Toggle it with `/kcd debug on\|off\|toggle\|window`.
-*   The default layout was refreshed: cast bar under the icon grid, cast time below that, and the target and focus sets starting well apart so they don't land on top of each other.
-*   `/kcd resetall` now restores positions too, putting every grid and cast bar back to its starting spot. `/kcd version` tells you which build you're running.
-
 ## Screenshots
 
 **_KickCD in Action_**
