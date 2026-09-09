@@ -56,7 +56,7 @@ so **do not** write a parallel mutator for a field that already has a row.
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
 3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:196` and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
-   in the UI. Regenerate the README's slash table with `/wow-addon:sync-docs`.
+   in the UI.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered
    here — do not shadow it.
 

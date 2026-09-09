@@ -1,5 +1,20 @@
 # Settings panel — schema-driven canvas layout
 
+## The pages
+
+Six pages sit under **Ka0s KickCD** in the game's own settings. This is the page-granularity view; the tab strip below is the same thing one level finer.
+
+| Page | Covers |
+|---|---|
+| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
+| **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
+| **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt — per unit, via the same Target / Focus switch. |
+| **Text Label** | Show a custom identity label on a unit's icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. Each unit has its own label. |
+| **Spells** | Choose which spells to track for each class and spec, and drag a row by its handle to change its priority order. Only spells you can actually cast right now show up. |
+| **Profiles** | Save separate settings per character, class, realm, or faction. |
+
+On the Icons, Cast bar and Text Label pages, the unit picker above the tabs scopes the whole page. The focus set starts **linked** to target, copying its icon and cast-bar styling; General → Units is where that link is broken. Position and label text stay per-unit either way.
+
 ## The tab strip
 
 **Every page draws a strip** (`options-ui-§13`). It is not a size threshold and not a choice: a Ka0s page has a strip, so a player who has learned one page has learned all of them. For the four schema-driven pages the strip is partitioned from the rows themselves — one tab per distinct `group`, **in declaration order**, with no second list naming the tabs. So the schema array's order *is* the strip's order, and a group's rows must stay **contiguous**: a row filed under a group the array has already left prints that tab a second time further down.
