@@ -177,7 +177,7 @@ If you enable more spells than the grid can hold, the extras are left off and th
 
 ## Troubleshooting
 
-| Symptom | What to check |
+| Symptom | Fix |
 | --- | --- |
 | The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility` — some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd debug spells` lists what it's watching. |
 | The icon grid won't drag. | It's locked. `/kcd unlock`, drag, `/kcd lock`. If unlocking doesn't seem to take, run `/kcd toggle`. |
