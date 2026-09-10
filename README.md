@@ -1,10 +1,10 @@
 # Ka0s KickCD
 
-![WoW](https://img.shields.io/badge/WoW-Midnight_12.0.7-purple)
+![WoW](https://img.shields.io/badge/WoW-Midnight_12.1.0-purple)
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-869%2F869_passing-green)
+![Tests](https://img.shields.io/badge/Tests-870%2F870_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
 
@@ -120,6 +120,7 @@ Found a bug or want a feature? File it at [https://github.com/tusharsaxena/kickc
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.3.0 | 2026-09-10 | The global cooldown is now attributed per spell rather than per log line, so icons stop reading as ready when they are not (#15)<br>Fixed the cast bar minting a closure on every cast<br>Debug lines now mark which entries the global cooldown explains<br>The download is about 7.5 MB smaller — project-page art no longer ships to players<br>Updated for game patch 12.1.0 |
 | 1.2.1 | 2026-07-26 | Fixed spell lists being empty on non-English clients — spec lists are now keyed on Blizzard's spec ID rather than the translated spec name, and existing profiles migrate automatically on load.<br>The Spells tab's spec dropdown now follows an in-game spec change while settings are open.<br>Debug log no longer floods with repeated lines while a spell is on cooldown; the rebuild line now names every watched and skipped spell.<br>Icons skip redundant repainting as a cooldown ticks down — about a third less work per update, with no visual change. |
 | 1.2.0 | 2026-07-13 | Added target **and** focus tracking — each unit gets its own icon grid and cast bar, with focus on by default and linked to target's look. New **Text Label** tab for custom identity labels on any grid or cast bar. Added an on-screen debug window with Copy/Clear buttons, controlled by `/kcd debug on\|off\|toggle\|window` (replacing `/kcd debug log`); debug messages now go there instead of chat and reset each reload. Refreshed default layout: cast bar under the grid, cast time below it, and the two sets spaced apart. `/kcd resetall` now restores positions; added `/kcd version`. |
 | 1.1.0 | 2026-05-03 | Added texture, font, and border dropdowns with live previews. The settings panel's main page now shows the logo and command list, with breadcrumb headers on subpages. All chat output now uses a single cyan `[KCD]` label. |
