@@ -1,4 +1,4 @@
-## Interface: 120007
+## Interface: 120100
 ## Title: Ka0s KickCD
 ## Notes: Tracks interrupt + CC cooldowns on a movable icon grid.
 ## Author: add1kted2ka0s
