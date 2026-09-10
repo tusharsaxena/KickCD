@@ -6,11 +6,7 @@
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
 ![Tests](https://img.shields.io/badge/Tests-869%2F869_passing-green)
 
-![Logo](https://media.forgecdn.net/attachments/1659/608/kickcd-logo-jpg.jpg)
-
-KickCD answers one question: is this cast worth a kick?
-
-It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
+KickCD answers one question: is this cast worth a kick? It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
 
 Focus tracking is on out of the box and mirrors your target set's styling, so the second pair costs you nothing to set up. Both sets move, resize and lock together. Don't want focus? Switch it off. Want it looking nothing like your target set? Unlink it.
 
@@ -26,18 +22,6 @@ _[Watch on YouTube](https://youtu.be/-rUhkVdmZfo)_
 **_Zoomed in view of the icon grid and cast bar_**
 
 ![Zoomed in view of the icon grid and cast bar](https://media.forgecdn.net/attachments/1806/482/kickcd-image-01-addon-png.png)
-
-**_Settings panel_**
-
-![Settings panel](https://media.forgecdn.net/attachments/1806/483/kickcd-image-02-general-png.png)
-
-![Settings panel](https://media.forgecdn.net/attachments/1806/484/kickcd-image-03-icons-png.png)
-
-![Settings panel](https://media.forgecdn.net/attachments/1806/485/kickcd-image-04-castbar-png.png)
-
-![Settings panel](https://media.forgecdn.net/attachments/1806/486/kickcd-image-05-textlabel-png.png)
-
-![Settings panel](https://media.forgecdn.net/attachments/1806/487/kickcd-image-06-spells-png.png)
 
 ## Usage
 
