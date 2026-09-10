@@ -8,7 +8,7 @@ KickCD is a WoW addon that tracks the player's interrupt and CC cooldowns and su
 
 Both UI pieces are gated by the addon-wide `db.profile.visibility` mode (`always` / `in_combat` / `target_casting` / `target_casting_interruptible`); both honor the master enable, the shared lock, and (per-unit, on top of those) each unit's own `units.<unit>.enabled` toggle. The tracked spell list itself stays player-centric (not unit-specific) — target and focus each render the *same* cooldowns against their own cast state. The full message contract between the cooldown poller, the icon grid, the cast bar, and the settings layer is documented in [message-bus.md](message-bus.md); per-unit config resolution (including "focus links to target's styling") lives in `core/Units.lua` (`NS.Units`) — see [schema.md](schema.md#unitsunit-shape).
 
-Target client: WoW 12.0.7 (Midnight). Mainline branch: `master`. English-only.
+Target client: WoW 12.1.0 (Midnight). Mainline branch: `master`. English-only.
 
 Display name in the addon list and the Settings panel: `Ka0s KickCD` (the colored `## Title` field in `KickCD.toc`). The folder, addon ID, slash commands (`/kcd`, `/kickcd`), saved-variable namespace (`KickCDDB`), and global frame names all stay unprefixed `KickCD` for ergonomics — extended for target/focus dual tracking with a `Focus`-suffixed sibling per per-unit frame (`KickCDIconGridFocus`, `KickCDCastbarFocus`); target keeps the exact legacy unsuffixed names. See [common-tasks.md](common-tasks.md#frame-names).
 

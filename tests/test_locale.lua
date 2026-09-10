@@ -330,8 +330,7 @@ end
 --   DIAGNOSTIC        Reaches chat or the debug console only when the addon is
 --                     already wrong — a malformed schema row, a raise out of a
 --                     pcall, a rebuild the player never asked to see. The
---                     audience is whoever reads the bug report, and
---                     docs/debug.md owns the wording.
+--                     audience is whoever reads the bug report.
 --   VALIDATOR         The `reason` half of a `nil, reason` pair that a caller
 --                     pastes into a sentence assembled somewhere else. Keying
 --                     the clause alone keys half a sentence and pins the English
@@ -412,7 +411,6 @@ local RESIDUE = {
     {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, profiles)", "DIAGNOSTIC"},
     {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, debug, units)", "DIAGNOSTIC"},
     {"settings/Panel.lua", " (expected one of: bool, number, string, color)", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "onChange for ", "DIAGNOSTIC"},
 
     -- settings/Panel_Widgets.lua
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},

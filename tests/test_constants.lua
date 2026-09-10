@@ -56,7 +56,7 @@ test("Constants: every panel metric is a positive number", function()
     -- published PADDING_X and is deleted (options-ui-§8). The case below
     -- pins that it stays deleted.
     for _, key in ipairs({ "PANEL_HEADER_TOP",
-                           "PANEL_HEADER_HEIGHT", "PANEL_DEFAULTS_W" }) do
+                           "PANEL_HEADER_HEIGHT" }) do
         assertTrue(type(Const[key]) == "number" and Const[key] > 0,
             key .. " must be a positive number")
     end

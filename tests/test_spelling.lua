@@ -202,7 +202,7 @@ test("the spelling scan reaches this repository's authored text and skips the ve
                            "docs/smoke-tests.md", "docs/test-cases.md", ".luacheckrc" }) do
         assertTrue(seen[rel], "the spelling scan does not cover " .. rel)
     end
-    for _, rel in ipairs({ "libs/LibKa0s/LibKa0s.lua", "tests/_kit/framework.lua",
+    for _, rel in ipairs({ "libs/LibKa0s/Core.lua", "tests/_kit/framework.lua",
                            "tests/test_spelling.lua" }) do
         assertTrue(not seen[rel], "the spelling scan reaches " .. rel .. ", which it must not")
     end

@@ -82,10 +82,6 @@ Const.PANEL_HEADER_TOP    = 20
 -- block is repositioned vertically.
 Const.PANEL_HEADER_HEIGHT = 54
 
--- Width of the per-panel "Defaults" button in the header. Wide enough
--- to comfortably fit "Restore Defaults" in en-US without truncation.
-Const.PANEL_DEFAULTS_W    = 110
-
 -- ---------------------------------------------------------------------------
 -- Debug console: shipped monospace font
 -- ---------------------------------------------------------------------------

@@ -231,9 +231,6 @@ local function _printSchemaError(prefix, msg)
             (NS.PREFIX or "|cff00ffff[KCD]|r") .. " |cffff0000schema error|r: " .. prefix .. ": " .. msg)
     end
 end
--- Published for settings/Panel_Render.lua (RenderRows), which reports a
--- per-row render failure through the same schema-error channel.
-Helpers.PrintSchemaError = _printSchemaError
 
 --- Walk the assembled schema and surface any malformed row. Called from
 --- RegisterPanel after all settings/* files have loaded their rows.
@@ -378,19 +375,6 @@ end
 -- ---------------------------------------------------------------------
 
 
-
-local function fireOnChange(def, value)
-    if def.onChange then
-        local ok, err = pcall(def.onChange, value)
-        if not ok and NS.Util then
-            NS.Util.print("onChange for " .. tostring(def.path) .. " failed: " .. tostring(err))
-        end
-    end
-end
--- Published for settings/Panel_Widgets.lua (the widget makers) and
--- settings/Panel_Render.lua (RestoreDefaults / SetAndRefresh), which all
--- run a row's onChange after committing its value.
-Helpers.FireOnChange = fireOnChange
 
 -- ---------------------------------------------------------------------
 -- Section header — AceGUI Heading (full-width label flanked by side

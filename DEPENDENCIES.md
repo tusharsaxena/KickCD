@@ -17,13 +17,13 @@ Neither repeats the other (documentation-§7).
 
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
 - `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0`.
-  Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:17-29`,
+  Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:19-31`,
   `libs/AceAddon-3.0/`, `libs/LibStub/`, `libs/CallbackHandler-1.0/`, `libs/LibSharedMedia-3.0/`),
   so `OptionalDeps` only affects **load order** when the player happens to have a standalone copy —
   it is not an install instruction. `libs/LibKa0s/` and `libs/LibCustomGlow-1.0/` are vendored the
   same way and are deliberately absent from `OptionalDeps`, because no standalone copy of either
   exists to defer to.
-- Client version: `KickCD.toc:1` is `## Interface: 120007` — WoW 12.0.7 (Midnight).
+- Client version: `KickCD.toc:1` is `## Interface: 120100` — WoW 12.1.0 (Midnight).
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
 
@@ -43,7 +43,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.23.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:108` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:184` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
@@ -101,7 +101,7 @@ and open a PR with only the Development group installed.
 
 - **Packaging is a hosted service, not local software.** `.pkgmeta` is consumed by the
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
-  `ignore:` list (`.pkgmeta:1-17`) and declares **no externals**, because the libraries are
+  `ignore:` list (`.pkgmeta:1-34`) and declares **no externals**, because the libraries are
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.
