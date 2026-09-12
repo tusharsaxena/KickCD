@@ -272,6 +272,16 @@ test("neither the Spells page nor `/kcd spells` writes a stored spell list itsel
         -- `list` is what both callers named a stored list; a local array of
         -- another name (sortedKeys' `keys`) is not the registry.
         { "list%[#list%s*%+%s*1%]%s*=", "an append" },
+        -- Any indexed write into a fetched list, which is the old per-spec
+        -- slash reset's shape (`list[i] = nil` to wipe, then `list[i] = { … }`
+        -- to refill); the append above is one case of it.
+        { "list%[[^%]]+%]%s*=[^=]", "an indexed write into a list" },
+        -- Replacing a whole list outright, which is the old Defaults popup's
+        -- shape (`spells[selectedClass][selectedSpec] = Util.DeepCopy(source)`).
+        { "spells%s*%[[^%]]*%]%s*%[[^%]]*%]%s*=[^=]", "a list replaced outright" },
+        -- Rewriting an entry's identity, as that popup's normalizing loop did
+        -- (`e.spellID = e.spellID or e[1]`).
+        { "%.spellID%s*=[^=]",      "an entry's spellID" },
         { "%.enabled%s*=[^=]",      "an entry's enabled" },
         { "%.category%s*=[^=]",     "an entry's category" },
         { "EnsureSpellList",        "the lazy create" },
