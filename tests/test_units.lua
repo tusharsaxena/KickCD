@@ -519,3 +519,83 @@ test("the Units tab's tick writes the link through Helpers.SetAndRefresh", funct
     assertEqual(paths[1], "units.focus.link", "the tick must write through the helper")
     assertEqual(NS.db.profile.units.focus.link, false)
 end)
+
+--- The General page, shown on its Units tab, and the tick it draws there.
+local function generalUnitsTab(inst)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local ctx = H.__panelFor("general")
+    ctx.activeTab = NS.L["Units"]
+    ctx.panel:Show()
+    H.RefreshPanel(ctx, true)
+    local function tick()
+        for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
+            for _, w in ipairs(child.children or {}) do
+                if w.labelText == NS.L["Use same styling as Target"] then return w end
+            end
+        end
+    end
+    return ctx, tick
+end
+
+--- Count H.RefreshAllPanels calls made while `fn` runs.
+local function countRefreshes(H, fn)
+    local n, real = 0, H.RefreshAllPanels
+    H.RefreshAllPanels = function(...) n = n + 1; return real(...) end
+    local ok, err = pcall(fn)
+    H.RefreshAllPanels = real
+    if not ok then error(err, 0) end
+    return n
+end
+
+test("General's Defaults re-links Focus and survives the refresh raised inside the library's loop", function()
+    -- RestoreDefaults walks the page's rows and resets each through
+    -- SetAndRefresh. The link row's onChange is a STRUCTURAL refresh, so it
+    -- clears and re-renders this very page -- replacing ctx.refreshers -- while
+    -- the library is still in its row loop, and the loop then runs the page's
+    -- refreshers. Neither half may raise, and the page must come back whole.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local ctx, tick = generalUnitsTab(inst)
+    H.SetAndRefresh("units.focus.link", false)
+    assertEqual(NS.db.profile.units.focus.link, false, "setup: Focus unlinked")
+    T.assertTrue(type(ctx.panel.defaultsOnClick) == "function", "General parks a Defaults handler")
+
+    local refreshes = countRefreshes(H, function() ctx.panel.defaultsOnClick() end)
+
+    assertEqual(NS.db.profile.units.focus.link, true, "Defaults must re-link Focus")
+    T.assertTrue(refreshes >= 1, "flipping the link back repaints structurally")
+    T.assertTrue(tick() ~= nil, "the Units tab is drawn again after the refresh")
+    for i, fn in ipairs(ctx.refreshers or {}) do
+        local ok, err = pcall(fn)
+        T.assertTrue(ok, "refresher #" .. i .. " raised after the reset: " .. tostring(err))
+    end
+end)
+
+test("the link row repaints structurally only when the link actually changes", function()
+    -- red under: an onChange that rebuilds every page on every write, including
+    -- a Defaults or a `/kcd set` that leaves the link where it already was.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    generalUnitsTab(inst)
+    assertEqual(NS.db.profile.units.focus.link, true, "setup: Focus linked by default")
+    assertEqual(countRefreshes(H, function() H.SetAndRefresh("units.focus.link", true) end), 0,
+        "writing the value it already has repaints nothing")
+    assertEqual(countRefreshes(H, function() H.SetAndRefresh("units.focus.link", false) end), 1,
+        "unlinking repaints once")
+    assertEqual(countRefreshes(H, function() H.SetAndRefresh("units.focus.link", false) end), 0,
+        "and unlinking again repaints nothing")
+end)
+
+test("CopyStyling onto an already-unlinked Focus still refreshes the panels once", function()
+    -- The copy's structural refresh is the link row's onChange when the copy
+    -- flips the link. When Focus is unlinked already the link does not move, so
+    -- the copy must repaint by itself -- once, not zero times and not twice.
+    local NS = T.load(true).NS
+    local H = NS.Settings.Helpers
+    H.SetAndRefresh("units.focus.link", false)
+    assertEqual(countRefreshes(H, function() NS.Units.CopyStyling("target", "focus") end), 1,
+        "one structural refresh after a copy onto an unlinked Focus")
+end)

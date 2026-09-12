@@ -125,6 +125,12 @@ end
 -- the note), so every page that declared a renderer re-renders and the hidden
 -- ones repaint on their next show. The CONFIG_CHANGED `units` that IconGrid /
 -- Castbar reconcile on comes from Helpers.Set, through the row's section.
+--
+-- ONLY WHEN THE LINK MOVED. A write that leaves it where it was (a Defaults on
+-- an already-linked Focus, a repeated `/kcd set`) changes nothing any page
+-- draws, so it skips the rebuild of every rendered page. Copy styling relies on
+-- this row for its refresh, and repaints by itself when the link does not move
+-- (core/Units.lua).
 add{
     panel   = "general", section = "units", group = L["Units"],
     path    = "units.focus.link", type = "bool",
@@ -132,7 +138,9 @@ add{
     desc    = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
     default = NS.DEFAULT_PROFILE.units.focus.link,
     skipRender = true,
-    onChange = function() H.RefreshAllPanels() end,
+    onChange = function(value, old)
+        if value ~= old then H.RefreshAllPanels() end
+    end,
 }
 
 -- ---------------------------------------------------------------------

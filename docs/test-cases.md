@@ -173,7 +173,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (22)
+### test_units.lua (25)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -197,6 +197,9 @@ badge and any count quoted in the docs must agree with it.
 - units.focus.link is a General > Units row, drawn by the tab's own tick
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
 - the Units tab's tick writes the link through Helpers.SetAndRefresh
+- General's Defaults re-links Focus and survives the refresh raised inside the library's loop
+- the link row repaints structurally only when the link actually changes
+- CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
 ### test_schema.lua (36)
 
@@ -1101,7 +1104,7 @@ badge and any count quoted in the docs must agree with it.
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_locale.lua | 15 |
-| test_units.lua | 22 |
+| test_units.lua | 25 |
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
@@ -1151,4 +1154,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **909** |
+| **Total** | **912** |

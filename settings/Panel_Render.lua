@@ -253,11 +253,16 @@ end
 -- future onChange added to a row doesn't silently diverge between
 -- code paths.
 -- The write half every row write shares: Helpers.Set (the write, and the
--- CONFIG_CHANGED for the row's section), then the row's onChange.
+-- CONFIG_CHANGED for the row's section), then the row's onChange. onChange gets
+-- the value it was set to and the value it replaced, so a costly reaction (the
+-- link row's structural refresh) can skip a write that changed nothing. Every
+-- row write reaches onChange through here: panel widgets, `/kcd set`, both
+-- Defaults paths and SetRows. The library never calls a row's onChange itself.
 local function writeRow(def, value)
+    local old = def.onChange and Helpers.Get(def.path)
     Helpers.Set(def.path, def.section, value)
     if def.onChange then
-        local ok, err = pcall(def.onChange, value)
+        local ok, err = pcall(def.onChange, value, old)
         if not ok and NS.Util then
             NS.Util.print("onChange for " .. tostring(def.path)
                               .. " failed: " .. tostring(err))

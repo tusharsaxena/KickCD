@@ -121,9 +121,10 @@ end
 ---
 --- ONE structural refresh, not dozens of reactors. H.SetRows coalesces the bus,
 --- so each section is announced once, after the last row. The link row is
---- written last, and its own onChange is the structural refresh the Units tab
---- used to do by hand. A unit with no link row (Target) gets the same refresh
---- here instead.
+--- written last, and when the copy flips it, its own onChange is the structural
+--- refresh the Units tab used to do by hand. That onChange repaints only when the
+--- link moves, so a copy onto a unit that is already unlinked, or onto a unit
+--- with no link row (Target), gets the same one refresh here instead.
 ---
 --- ONE [Set] line, not one per row. The copy is a single act, so it hands
 --- SetRows a summary: the per-row lines are muted and the debug log shows
@@ -148,8 +149,10 @@ function Units.CopyStyling(fromUnit, toUnit)
         end
     end
     local linkRow = H.FindSchema(dst .. "link")
+    -- Whether the link row's onChange will repaint: only when the copy flips it.
+    local linkFlips = linkRow ~= nil and H.Get(linkRow.path) ~= false
     if linkRow then writes[#writes + 1] = { linkRow.path, false } end
     H.SetRows(writes, "copy " .. fromUnit .. "→" .. toUnit)
-    if not linkRow then H.RefreshAllPanels() end
+    if not linkFlips then H.RefreshAllPanels() end
     return true
 end
