@@ -131,44 +131,47 @@ emits `"failures": {}`, not `[]`. Non-empty lists encode as proper arrays.
 - **`interface`** is the **client's** build TOC number, from `GetBuildInfo`'s fourth return — not the
   addon's `## Interface` line. It used to read `0`: `GetAddOnMetadata` does not expose the `Interface`
   TOC field, so the old lookup returned nil and every record stamped 0. `LibKa0s-Perf-1.0` minor 5
-  fixed that, and `tests/test_perfsetup.lua:733` pins it, so an in-game record from the vendored copy
+  fixed that, and `tests/test_perfsetup.lua:903` pins it, so an in-game record from the vendored copy
   stamps a real build. **A capture reading `interface: 0` is either offline** (no client involved —
-  `tests/perf.lua:263` hardcodes 0) **or was taken against a lib older than Perf 5**, and that is
+  `tests/perf.lua:359` hardcodes 0) **or was taken against a lib older than Perf 5**, and that is
   worth saying in its `ANALYSIS.md`.
 - **Frame limiters are not recorded**, and a pinned client produces an unusable delta the record
   cannot flag. Judge that from the arms: two arms at the same frame time, or at a round one like
   8.33 ms, means the client was capped.
 
-### KickCD declares nesting but never observes it
+### KickCD observes three of its four nesting links
 
-Worth knowing **before** you read a KickCD report, because it changes what one of its lines means.
+Worth knowing **before** you read a KickCD report, because it changes what its nested lines mean.
 
 Containment is supplied at the recording call — `Perf.Note(key, ms, parentKey)` — and the library
-only reports a parent as *observed* when that third argument was passed. Every one of KickCD's eight
-bracketed buckets calls `Perf.Note(key, ms)` with **two** arguments and no `parentKey`:
+only reports a parent as *observed* when that third argument was passed. KickCD declares ten buckets
+(`core/PerfSetup.lua:103-114`). Four declare a parent, and three of those four pass it:
 
-| Bucket | Call site |
-|---|---|
-| `spellPoll` | `modules/Cooldowns.lua:517` |
-| `pollSpell` | `modules/Cooldowns.lua:201`, `:209` (both exits) |
-| `spellState` | `modules/IconGrid.lua:814` |
-| `visibility` | `modules/IconGrid.lua:933` |
-| `castEvent` | `modules/IconGrid.lua:947` |
-| `iconApply` | `modules/IconGrid_Render.lua:790` |
-| `cdText` | `modules/IconGrid_Render.lua:938`, `:946` (both exits) |
-| `castTick` | `modules/Castbar.lua:717`, `:738` (both exits) |
+| Bucket | Declared within | Call site | Parent passed |
+|---|---|---|---|
+| `spellPoll` | — | `modules/Cooldowns.lua:532` | — |
+| `pollSpell` | `spellPoll` | `modules/Cooldowns.lua:208`, `:216` (both exits) | When the caller hands one: `Cooldowns:Refresh` polls with `"spellPoll"` (`modules/Cooldowns.lua:434`), the rebuild poll with none (`:335`) |
+| `stateEmit` | `spellPoll` | `modules/Cooldowns.lua:452`, `:505` | Yes, `"spellPoll"` |
+| `spellState` | `stateEmit` | `modules/IconGrid.lua:814` | **No** |
+| `iconApply` | `spellState` | `modules/IconGrid_Render.lua:795` | When the caller hands one: `IconGrid:OnSpellState` passes `"spellState"` (`modules/IconGrid.lua:811`); the other two callers run under no bracket and pass none |
+| `cdText` | — | `modules/IconGrid_Render.lua:943`, `:951` (both exits) | — |
+| `castEvent` | — | `modules/IconGrid.lua:947` | — |
+| `glowGate` | — | `modules/IconGrid.lua:1074`, `:1086` | — |
+| `visibility` | — | `modules/IconGrid.lua:933` | — |
+| `castTick` | — | `modules/Castbar.lua:717`, `:738` (both exits) | — |
 
-So `observedWithin` is **never populated** in a KickCD record, and every KickCD report prints the
-*"`<bucket>` declares itself within `<parent>` — not observed"* form for its nested buckets.
+So `observedWithin` is populated for `pollSpell`, `stateEmit` and `iconApply`, and a KickCD report
+prints the *"`<bucket>` declares itself within `<parent>` — not observed"* form for one link only:
+`spellState` within `stateEmit`. That link is a reasoned claim, not an observation. The
+`SendMessage` dispatch is inline through CallbackHandler, so the spell-state handler should run inside
+the publish's bracket, but reasoning is not observation. An `ANALYSIS.md` **must say so** rather than
+presenting that link as measured containment, and must not subtract `spellState` from `stateEmit` as
+though the overlap were confirmed. Passing a `parentKey` from `IconGrid:OnSpellState`'s own
+`Perf.Note` is what would close it.
 
-The declared tree in `core/PerfSetup.lua:103-112` — `pollSpell` and `spellState` within `spellPoll`,
-`iconApply` within `spellState` — is therefore an **unverified claim**. It is a reasoned one (the
-`SendMessage` dispatch is inline through CallbackHandler, so the spell-state handler really should
-run inside `Cooldowns:Refresh`'s frame), but reasoning is not observation. An `ANALYSIS.md` **must
-say so** rather than presenting the declared tree as measured containment, and must not subtract a
-declared child from its declared parent as though the overlap were confirmed. Closing that gap —
-threading `parentKey` through the call sites — is a legitimate action for a capture's `ANALYSIS.md`
-to raise.
+The parent keys were threaded through in commit `70b17b1`, after the `20260909-014035` capture. A
+capture taken before it has no observed containment at all, and every nested line in its report
+reads *not observed*.
 
 ## How a capture is taken
 
