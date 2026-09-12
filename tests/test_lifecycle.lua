@@ -64,3 +64,25 @@ test("post-enable CONFIG_CHANGED re-layout runs end-to-end without error", funct
     inst.NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED")
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
 end)
+
+test("the enable cascade runs the addon's OnEnable first, then each module in creation order", function()
+    -- Characterization for #21: pinned before the harness moved onto the kit's
+    -- AceAddon, so the swap is proven not to reorder the cascade. Creation order
+    -- is TOC order: Cooldowns, IconGrid, Castbar, UnitLabel.
+    local inst = T.load(true, false)
+    local NS = inst.NS
+    local order = {}
+    local function spy(obj, label)
+        local orig = obj.OnEnable
+        obj.OnEnable = function(self, ...)
+            order[#order + 1] = label
+            if orig then return orig(self, ...) end
+        end
+    end
+    spy(NS, "KickCD")
+    for _, name in ipairs({ "Cooldowns", "IconGrid", "Castbar", "UnitLabel" }) do
+        spy(NS:GetModule(name), name)
+    end
+    NS:__enableAll()
+    assertEqual(table.concat(order, ","), "KickCD,Cooldowns,IconGrid,Castbar,UnitLabel")
+end)

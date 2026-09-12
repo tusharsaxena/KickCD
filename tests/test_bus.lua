@@ -67,3 +67,41 @@ test("NewBusTarget gives each receiver its own target — both fire (KCD-09)", f
     assertTrue(gotA, "receiver A (private target) must fire")
     assertTrue(gotB, "receiver B (private target) must ALSO fire")
 end)
+
+-- Characterization for #21: the dispatch shapes production relies on, pinned before
+-- the harness moved onto the kit's AceEvent, so the swap is proven not to change them.
+
+test("a string method is dispatched as target:Method(message, payload)", function()
+    local inst = T.load(false)
+    local t = inst.mocks.LibStub("AceEvent-3.0"):Embed({})
+    local got = {}
+    function t:OnThing(msg, payload) got.self, got.msg, got.payload = self, msg, payload end
+    t:RegisterMessage("Test_Str", "OnThing")
+    t:SendMessage("Test_Str", 7)
+    assertTrue(got.self == t, "the method must be called on its own target")
+    assertEqual(got.msg, "Test_Str")
+    assertEqual(got.payload, 7)
+end)
+
+test("a registration with no handler calls the method named after the message", function()
+    local inst = T.load(false)
+    local t = inst.mocks.LibStub("AceEvent-3.0"):Embed({})
+    local got
+    t.Test_Default = function(self, msg) got = (self == t) and msg end
+    t:RegisterMessage("Test_Default")
+    t:SendMessage("Test_Default")
+    assertEqual(got, "Test_Default")
+end)
+
+test("UnregisterMessage stops delivery to that target and no other", function()
+    local inst = T.load(false)
+    local AceEvent = inst.mocks.LibStub("AceEvent-3.0")
+    local a, b = AceEvent:Embed({}), AceEvent:Embed({})
+    local gotA, gotB = 0, 0
+    a:RegisterMessage("Test_Unreg", function() gotA = gotA + 1 end)
+    b:RegisterMessage("Test_Unreg", function() gotB = gotB + 1 end)
+    a:UnregisterMessage("Test_Unreg")
+    b:SendMessage("Test_Unreg")
+    assertEqual(gotA, 0, "the unregistered target must not hear it")
+    assertEqual(gotB, 1, "the other target still does")
+end)

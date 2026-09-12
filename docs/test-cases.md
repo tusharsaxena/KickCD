@@ -285,12 +285,15 @@ badge and any count quoted in the docs must agree with it.
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_bus.lua (4)
+### test_bus.lua (7)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
 - Addon SendMessage reaches a registered module target
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
+- a string method is dispatched as target:Method(message, payload)
+- a registration with no handler calls the method named after the message
+- UnregisterMessage stops delivery to that target and no other
 
 ### test_compat.lua (5)
 
@@ -550,12 +553,13 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
-### test_lifecycle.lua (4)
+### test_lifecycle.lua (5)
 
 - addon + all modules enable cleanly on the Ace3 login path
 - IconGrid:OnEnable installs its bus subscriptions
 - Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
 - post-enable CONFIG_CHANGED re-layout runs end-to-end without error
+- the enable cascade runs the addon's OnEnable first, then each module in creation order
 
 ### test_unitlabel.lua (4)
 
@@ -1090,7 +1094,7 @@ badge and any count quoted in the docs must agree with it.
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
-| test_bus.lua | 4 |
+| test_bus.lua | 7 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_compat_debug.lua | 11 |
@@ -1105,7 +1109,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 23 |
 | test_icongrid_glowgate.lua | 8 |
-| test_lifecycle.lua | 4 |
+| test_lifecycle.lua | 5 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
@@ -1136,4 +1140,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **894** |
+| **Total** | **898** |
