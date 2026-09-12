@@ -181,6 +181,14 @@ Each entry's `enabled` and `category` fields are player preferences, not members
 
   No other runtime code writes an anchor. Two paths also touch the anchors and are not writers the naming has to list. The load pass, `Database:FoldLegacyUnits`, merges a legacy top-level `anchors` table into `units.target.anchors`. The profile reset behind `/kcd resetall` and Profiles → Reset Profile replaces the profile wholesale.
 
+**Named non-setting state: the perf capture ring (`architecture-§5`).** Recorded data, written by a vendored library into the SavedVariables global the addon hands it. No control sets it and no row addresses it.
+
+- **Storage key.** `KickCDPerfDB`, the TOC's second SavedVariables: its `schema` stamp and the `runs` ring of capture records. It sits outside the AceDB tree on purpose, so a profile copy, reset or switch never touches it.
+- **Owner.** `core/PerfSetup.lua` (`NS.Perf`), which hands the library the key as the descriptor's `sv`.
+- **Writer, with the act that reaches it.** `LibKa0s-Perf-1.0`'s `P.Save` (`libs/LibKa0s/Perf.lua`), from `/kcd perf finish` and from the step panel's Finish step, which runs the same command. It appends the finished record, drops the oldest past the library's ring size, and discards a ring stored under an older record schema, logging that discard itself.
+
+  No addon code writes it, and there is no forget, purge or delete verb over it. `/kcd perf cancel` saves nothing.
+
 ## Event subscriptions
 
 Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):
