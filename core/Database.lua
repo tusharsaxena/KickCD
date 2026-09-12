@@ -78,13 +78,11 @@ end
 -- Spell-list traversal helpers
 -- ---------------------------------------------------------------------------
 --
--- Nearly every lookup of one spec's spell list goes through these two
--- helpers, so the `db.profile.spells[CLASS][specID]` walk lives in one
--- place. The exception is settings/Spells.lua's getProfileSpells, which
--- the per-spec reset popup uses to replace a list whole. The helpers only
--- find or create a list; they do not write it. The callers below append
--- to, splice and remove from the list themselves, and who writes the
--- spell lists is named in docs/ARCHITECTURE.md -> Settings schema.
+-- Every lookup of one spec's spell list goes through these two helpers, so
+-- the `db.profile.spells[CLASS][specID]` walk lives in one place. They only
+-- find or create a list. Every write to one is a verb further down this
+-- file ("The registry writer"), and docs/ARCHITECTURE.md -> Settings schema
+-- names this module as the one writer (architecture-§5).
 --
 -- The split between read-only and lazy-create matters: getActiveList in
 -- the panel fires on every dropdown browse, and lazy-creating an empty
@@ -95,13 +93,13 @@ end
 --
 -- Callers:
 --   * GetSpellList:    Cooldowns:Rebuild, IconGrid:BuildActiveList,
---                      Database:BuildSpells (the racial pass),
---                      core/KickCD.lua getSpellList (list / remove /
---                      enable / disable / category),
---                      settings/Spells.lua getActiveList.
---   * EnsureSpellList: Database:BuildSpells (the seed),
---                      core/KickCD.lua spellsAdd / spellsReset,
---                      settings/Spells.lua ensureActiveList (Add spell).
+--                      the racial pass and the writer's verbs below,
+--                      core/KickCD.lua getSpellList (list, and the
+--                      "no list" answers of remove / enable / disable /
+--                      category), settings/Spells.lua getActiveList.
+--   * EnsureSpellList: Database:BuildSpells (the seed), and the two
+--                      verbs that may create a list: AddSpell and
+--                      ResetSpellList. Nothing outside this file.
 
 --- Read-only spell-list lookup. Returns the entry array (or nil if no
 --- list exists for this class+spec). Never mutates the profile shape,
@@ -154,6 +152,53 @@ local function isEmpty(t)
     return next(t) == nil
 end
 
+-- THE SEED ROUTINE, shared by the load pass (BuildSpells), the every-list
+-- reset (ResetAllSpells, through BuildSpells) and the one-list reset
+-- (ResetSpellList). architecture-§5 lets a registry reset call the seed routine
+-- the load pass calls; sharing it is also what keeps the three from drifting,
+-- which is how the per-spec resets came to drop the racial (#16).
+--
+-- Rebuild `target` IN PLACE from one defaults list: wiping rather than
+-- replacing keeps any reference held downstream valid. The defaults file writes
+-- named fields; the `[1]` / `[2]` fallbacks still read the older positional
+-- { spellID, category } pairs. The profile keeps named fields so its entries
+-- are self-describing in the saved-variable file.
+local function seedList(target, source)
+    for i = #target, 1, -1 do target[i] = nil end
+    for _, entry in ipairs(source or {}) do
+        local id  = entry.spellID  or entry[1]
+        local cat = entry.category or entry[2]
+        if id then
+            target[#target + 1] = {
+                spellID  = id,
+                category = cat or "other",
+                enabled  = entry.enabled ~= false,
+            }
+        end
+    end
+end
+
+-- The player's racial cast-stopper and class file token, or nil when their
+-- race has none.
+local function playerRacial()
+    local racials = NS.RaceCastStoppers
+    if type(racials) ~= "table" then return nil end
+    local _, race = UnitRace("player")
+    local _, classFile = UnitClass("player")
+    local racialID = racials[race]
+    if not (racialID and classFile) then return nil end
+    return racialID, classFile
+end
+
+-- Append the racial to one list unless it is already there (defensive -- some
+-- default lists may already include it via PvE bias).
+local function appendRacial(list, racialID)
+    for _, e in ipairs(list) do
+        if e.spellID == racialID then return end
+    end
+    list[#list + 1] = { spellID = racialID, category = "racial", enabled = true }
+end
+
 --- Populate the active profile's spells from KickCD.DefaultSpells, and
 --- append the racial cast-stopper for the player's race. Idempotent for
 --- already-populated profiles — only runs once per profile.
@@ -196,59 +241,21 @@ function Database:BuildSpells()
         return
     end
 
-    -- Copy each default entry into a fresh profile-shaped record. The
-    -- defaults file writes named fields; the `[1]` / `[2]` fallbacks still
-    -- read the older positional { spellID, category } pairs. The profile
-    -- keeps named fields so its entries are self-describing in the
-    -- saved-variable file. EnsureSpellList lazy-
-    -- creates the per-class / per-spec containers before we overwrite the
-    -- list with the freshly-built copy.
+    -- EnsureSpellList lazy-creates the per-class / per-spec containers; the
+    -- seed routine then fills each one in place.
     for class, specs in pairs(source) do
         for spec, list in pairs(specs) do
-            local target = self:EnsureSpellList(class, spec)
-            -- Wipe in place rather than replacing the table — keeps any
-            -- references downstream stable across the build.
-            for i = #target, 1, -1 do target[i] = nil end
-            for _, entry in ipairs(list) do
-                local id  = entry.spellID  or entry[1]
-                local cat = entry.category or entry[2]
-                if id then
-                    target[#target + 1] = {
-                        spellID  = id,
-                        category = cat or "other",
-                        enabled  = entry.enabled ~= false,
-                    }
-                end
-            end
+            seedList(self:EnsureSpellList(class, spec), list)
         end
     end
 
     -- Append the racial cast-stopper into every spec list of the player's
     -- own class. Only on first creation — see method docstring.
-    local racials = NS.RaceCastStoppers
-    if type(racials) == "table" then
-        local _, race = UnitRace("player")
-        local _, classFile = UnitClass("player")
-        local racialID = racials[race]
-        if racialID and classFile and profile.spells[classFile] then
-            for spec in pairs(profile.spells[classFile]) do
-                local list = self:GetSpellList(classFile, spec)
-                if list then
-                    -- Avoid appending if it's already in the list (defensive —
-                    -- some default lists may already include it via PvE bias).
-                    local already = false
-                    for _, e in ipairs(list) do
-                        if e.spellID == racialID then already = true; break end
-                    end
-                    if not already then
-                        table.insert(list, {
-                            spellID  = racialID,
-                            category = "racial",
-                            enabled  = true,
-                        })
-                    end
-                end
-            end
+    local racialID, classFile = playerRacial()
+    if racialID and profile.spells[classFile] then
+        for spec in pairs(profile.spells[classFile]) do
+            local list = self:GetSpellList(classFile, spec)
+            if list then appendRacial(list, racialID) end
         end
     end
 end
@@ -266,6 +273,113 @@ function Database:ResetAllSpells()
     self.db.profile.spells = {}
     self:BuildSpells()
     fireProfileChanged((self.db.keys and self.db.keys.profile) or "Default")
+end
+
+-- ---------------------------------------------------------------------------
+-- The registry writer (architecture-§5)
+-- ---------------------------------------------------------------------------
+--
+-- Every runtime write to a stored spell list is one of these verbs, alongside
+-- ResetAllSpells above. The Spells page (settings/Spells.lua) and the
+-- `/kcd spells` handlers (core/KickCD.lua) call them and never append to,
+-- splice, remove from or edit an entry of a list themselves;
+-- tests/test_spell_registry.lua scans both files for exactly that.
+--
+-- Each verb writes and returns. Announcing the change stays the caller's, so
+-- the page keeps its throttled commit and the slash layer its immediate one.
+--
+-- The per-entry `enabled` and `category` writes are here too. They are player
+-- preferences rather than membership, and they stay bespoke controls with no
+-- schema row under an architecture-§5 register row in docs/ARCHITECTURE.md ->
+-- Documented deviations (#17); living here is what gives them one writer.
+
+local function findEntry(list, spellID)
+    if not (list and spellID) then return nil end
+    for i, e in ipairs(list) do
+        if e.spellID == spellID then return e, i end
+    end
+end
+
+--- Add a spell to one list, or re-enable it IN PLACE when it is already there:
+--- the list is the render order, and a second entry for one spellID would give
+--- the icon grid two buttons for one cooldown. Lazy-creates the list.
+-- @return "added" | "enabled", or nil when there is nowhere to write
+function Database:AddSpell(class, spec, spellID)
+    if not spellID then return nil end
+    local list = self:EnsureSpellList(class, spec)
+    if not list then return nil end
+    local existing = findEntry(list, spellID)
+    if existing then
+        existing.enabled = true
+        return "enabled"
+    end
+    list[#list + 1] = { spellID = spellID, category = "other", enabled = true }
+    return "added"
+end
+
+--- Remove a spell from one list. Never creates a list.
+-- @return true if an entry was removed
+function Database:RemoveSpell(class, spec, spellID)
+    local list = self:GetSpellList(class, spec)
+    local _, index = findEntry(list, spellID)
+    if not index then return false end
+    table.remove(list, index)
+    return true
+end
+
+--- Move the entry at `from` to `to` in one list -- the whole of what a drag
+--- writes, and one write. A SPLICE, deliberately not a run of adjacent swaps:
+--- a four-position move expressed as swaps is four mutations, and four
+--- re-renders pulling the page out from under a gesture still finishing. A
+--- stale drop after a rebuild can name an index the list no longer has, so
+--- anything out of range writes nothing.
+-- @return true if the list changed
+function Database:MoveSpell(class, spec, from, to)
+    local list = self:GetSpellList(class, spec)
+    if not list then return false end
+    if type(from) ~= "number" or type(to) ~= "number" then return false end
+    local n = #list
+    if from < 1 or from > n or to < 1 or to > n or from == to then return false end
+    table.insert(list, to, table.remove(list, from))
+    return true
+end
+
+--- Set one entry's `enabled` flag. Stores a real boolean: AceGUI hands back nil
+--- for an unchecked box on some widget versions, and a nil reads as ENABLED
+--- everywhere else in the addon (`entry.enabled ~= false`).
+-- @return true if the entry exists
+function Database:SetSpellEnabled(class, spec, spellID, enabled)
+    local entry = findEntry(self:GetSpellList(class, spec), spellID)
+    if not entry then return false end
+    entry.enabled = enabled and true or false
+    return true
+end
+
+--- Set one entry's `category`. The caller validates the value against the
+--- closed category set; the category is informational only.
+-- @return true if the entry exists
+function Database:SetSpellCategory(class, spec, spellID, category)
+    local entry = findEntry(self:GetSpellList(class, spec), spellID)
+    if not entry then return false end
+    entry.category = category
+    return true
+end
+
+--- Rebuild ONE (class, spec) list from KickCD.DefaultSpells, in place, through
+--- the seed routine the load pass uses -- and, for the player's own class,
+--- re-append their racial exactly as BuildSpells and `/kcd spells resetall` do.
+--- Backs the Spells page's Defaults popup and `/kcd spells reset`. Lazy-creates
+--- the list; a spec with no defaults comes back empty (plus the racial, for the
+--- player's own class).
+-- @return the list, or nil when the profile is not ready
+function Database:ResetSpellList(class, spec)
+    local list = self:EnsureSpellList(class, spec)
+    if not list then return nil end
+    local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
+    seedList(list, byClass and byClass[spec])
+    local racialID, classFile = playerRacial()
+    if racialID and classFile == class then appendRacial(list, racialID) end
+    return list
 end
 
 -- ---------------------------------------------------------------------------

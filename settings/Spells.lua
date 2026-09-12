@@ -198,35 +198,25 @@ function Spells:OnPlayerSpecChanged()
     end
 end
 
--- Top-level spells accessor. Its one caller is the KICKCD_RESET_SPELLS
--- popup, which writes through it to replace one (class, spec) list whole.
--- It is not read-only: it creates `db.profile.spells` when missing, though
--- never a per-class / per-spec entry. The getActiveList / ensureActiveList
--- pair (just below) is the entry point for individual lists.
-local function getProfileSpells()
-    if not (NS.db and NS.db.profile) then return nil end
-    NS.db.profile.spells = NS.db.profile.spells or {}
-    return NS.db.profile.spells
-end
-
 -- Read-only active-list lookup. Never lazy-creates the per-class /
 -- per-spec table — browsing the dropdown across 13 classes × 4 specs
 -- would otherwise pollute saved-vars with empty tables (CR-22).
--- The Add spell path calls ensureActiveList() below instead, which
--- lazy-creates by design; the Reset popup goes through getProfileSpells.
+--
+-- The page READS the list and never writes it. Every write -- add, remove,
+-- move, the per-spec reset, and an entry's enabled / category -- is a
+-- core/Database.lua verb, called through `writer` below for the selected
+-- (class, spec). Database is the spell lists' one writer (architecture-§5).
 local function getActiveList()
     if not (selectedClass and selectedSpec) then return nil end
     if not NS.Database then return nil end
     return NS.Database:GetSpellList(selectedClass, selectedSpec)
 end
 
--- Lazy-creating active-list lookup for mutators only. Used by
--- addOrEnableSpell (the Add spell popup) so a brand-new spec table comes
--- into being on the first add, but stays absent during read-only browsing.
-local function ensureActiveList()
-    if not (selectedClass and selectedSpec) then return nil end
-    if not NS.Database then return nil end
-    return NS.Database:EnsureSpellList(selectedClass, selectedSpec)
+-- Call a Database verb on the selected (class, spec) list. Returns whatever the
+-- verb returned, or nil when there is no selection or no Database.
+local function writer(verb, ...)
+    if not (selectedClass and selectedSpec and NS.Database) then return nil end
+    return NS.Database[verb](NS.Database, selectedClass, selectedSpec, ...)
 end
 
 local function getSpellName(id)
@@ -443,23 +433,11 @@ local function cooldownManagerRejects(id, resolvedName)
     return true
 end
 
--- Mutator path: lazy-create the per-spec table on first add so a spec the user
--- has never customized gains a fresh list rather than failing silently because
--- GetSpellList returned nil. A spell already in the list is re-enabled IN PLACE
--- rather than appended — the list is the render order, and a second entry for
--- one spellID would give IconGrid two buttons for one cooldown.
+-- Database:AddSpell lazy-creates the list on first add, so a spec the user has
+-- never customized gains one rather than failing silently, and re-enables a
+-- spell already in the list IN PLACE rather than appending a duplicate.
 local function addOrEnableSpell(id)
-    local list = ensureActiveList()
-    if not list then return end
-    for _, e in ipairs(list) do
-        if e.spellID == id then
-            e.enabled = true
-            commitSoon()
-            return
-        end
-    end
-    list[#list + 1] = { spellID = id, category = "other", enabled = true }
-    commitSoon()
+    if writer("AddSpell", id) then commitSoon() end
 end
 
 StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
@@ -501,27 +479,14 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
+    -- The same verb `/kcd spells reset` calls: the selected spec from the
+    -- defaults, plus the player's racial when it is their own class.
     OnAccept = function()
-        local spells = getProfileSpells()
-        if not (spells and selectedClass and selectedSpec) then return end
-        local source = NS.DefaultSpells
-                       and NS.DefaultSpells[selectedClass]
-                       and NS.DefaultSpells[selectedClass][selectedSpec]
-        spells[selectedClass] = spells[selectedClass] or {}
-        if source then
-            spells[selectedClass][selectedSpec] = Util.DeepCopy(source)
-            for _, e in ipairs(spells[selectedClass][selectedSpec]) do
-                e.spellID  = e.spellID  or e[1]
-                e.category = e.category or e[2] or "other"
-                if e.enabled == nil then e.enabled = true end
-            end
-        else
-            spells[selectedClass][selectedSpec] = {}
-        end
+        local list = writer("ResetSpellList")
+        if not list then return end
         if NS.State and NS.State.debug then
             NS.Debug("Spells", "reset %s/%s: %d spells",
-                tostring(selectedClass), tostring(selectedSpec),
-                #spells[selectedClass][selectedSpec])
+                tostring(selectedClass), tostring(selectedSpec), #list)
         end
         commitSoon()
     end,
@@ -622,7 +587,7 @@ local function rowEnableCheck(AceGUI, entry, icon)
     check:SetValue(entry.enabled ~= false)
     check:SetWidth(40)
     check:SetCallback("OnValueChanged", function(_, _, value)
-        entry.enabled = value and true or false
+        writer("SetSpellEnabled", entry.spellID, value)
         if NS.State and NS.State.debug then
             NS.Debug("Spells", "%s %s", value and "enable" or "disable", tostring(entry.spellID))
         end
@@ -707,8 +672,7 @@ local function rowCategoryDropdown(AceGUI, entry)
     dd:SetValue(entry.category or "other")
     dd:SetWidth(120)
     dd:SetCallback("OnValueChanged", function(_, _, value)
-        entry.category = value
-        commitSoon()
+        if writer("SetSpellCategory", entry.spellID, value) then commitSoon() end
     end)
     if dd.frame and dd.frame.HookScript then
         dd.frame:HookScript("OnEnter", function(self)
@@ -721,29 +685,12 @@ local function rowCategoryDropdown(AceGUI, entry)
     return dd
 end
 
--- Move to index — the WHOLE of what a drag writes, and one write.
---
 -- The paired up/down arrow buttons that used to live here are gone
 -- (options-ui-§18, anti-pattern #75): two clicks per position, no feedback about
 -- where an item is going, and a different set of arrows drawn in every addon
--- that had them. The list drags now, through LibKa0s-Widgets-1.0's ReorderList.
---
--- A SPLICE, deliberately not a run of adjacent swaps. The old arrow did
--- `list[i], list[o] = list[o], list[i]` and that is right for one step and wrong
--- for a drag: expressed as swaps, a four-position move is four mutations and
--- four commitSoon calls, each re-rendering the page out from under the gesture
--- that is still finishing.
---
--- Pure, and published as Spells.MoveTo so the suite drives it with no frame at
--- all.
-local function moveTo(list, from, to)
-    if type(list) ~= "table" then return false end
-    if type(from) ~= "number" or type(to) ~= "number" then return false end
-    local n = #list
-    if from < 1 or from > n or to < 1 or to > n or from == to then return false end
-    table.insert(list, to, table.remove(list, from))
-    return true
-end
+-- that had them. The list drags now, through LibKa0s-Widgets-1.0's ReorderList,
+-- and a finished drag is one Database:MoveSpell -- a splice to the index, not a
+-- run of swaps (the reasoning sits on the verb).
 
 --- Stop any drag in flight and give every pooled handle and row box back.
 ---
@@ -764,9 +711,12 @@ local function rowRemoveButton(AceGUI, list, index)
     return makeRowIconBtn(AceGUI, {
         atlas   = "transmog-icon-remove",
         tooltip = L["Remove"],
+        -- By the spellID the row showed, read at click time. `index` is only
+        -- valid until the next rebuild, so a stale click past the end of a list
+        -- that has since shrunk reads nil and removes nothing.
         onClick = function()
             local removedId = list[index] and list[index].spellID
-            table.remove(list, index)
+            if not writer("RemoveSpell", removedId) then return end
             if NS.State and NS.State.debug then
                 NS.Debug("Spells", "remove %s", tostring(removedId))
             end
@@ -1067,7 +1017,7 @@ local function fillRows(AceGUI, scroll, list)
             handleTooltip = L["Drag to reorder"],
             onMove        = function(from, to)
                 -- ONE write, ONE re-render, however far the row traveled.
-                if moveTo(list, from, to) then
+                if writer("MoveSpell", from, to) then
                     if NS.State and NS.State.debug then
                         NS.Debug("Spells", "move %d -> %d", from, to)
                     end
@@ -1306,7 +1256,6 @@ end
 -- published so the harness can reach them without building an AceGUI tree
 -- (same idiom as Castbar.AutoSizeLong).
 Spells.ValidateSpellInput = validateSpellInput
-Spells.MoveTo             = moveTo
 Spells.SpecOrder          = specOrder
 Spells.SortedKeys         = sortedKeys
 Spells.TitleCaseToken     = titleCaseToken

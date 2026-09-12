@@ -60,7 +60,7 @@ At the command line SPEC is still typed as a name: `Util.ResolveSpecID` accepts 
 | `remove <id> [CLASS SPEC]` | Drop a spell from the list. |
 | `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. |
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
-| `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`. Mirrors the Spells panel's Defaults popup; intentionally narrower than `/kcd spells resetall` (which wipes every spec via `Database:ResetAllSpells`). |
+| `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`, plus the player's racial cast-stopper when it is their own class, through `Database:ResetSpellList`, the same verb the Spells panel's Defaults popup calls. Intentionally narrower than `/kcd spells resetall` (which wipes every spec via `Database:ResetAllSpells`). |
 
 Every mutating subcommand fires `Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
 

@@ -801,7 +801,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (30)
+### test_settings_spells_editor.lua (27)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -818,9 +818,6 @@ badge and any count quoted in the docs must agree with it.
 - the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
 - the row checkbox writes the entry's enabled flag as a real boolean
 - a disabled row renders its spell icon and checkbox from the stored flag
-- a move is a SPLICE to the index, not a swap with the neighbor
-- a move backwards splices just as cleanly
-- a move that goes nowhere or off the ends writes nothing
 - no row carries a move button any more
 - Remove deletes exactly the row's entry
 - the category dropdown writes the entry's category
@@ -833,6 +830,27 @@ badge and any count quoted in the docs must agree with it.
 - the selection cascade falls back to the first sorted class the defaults know
 - a stale remove click after a rebuild cannot run off the end of the list
 - hiding the page cancels the reorder controller too
+
+### test_spell_registry.lua (18)
+
+- `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
+- `/kcd spells add` lazy-creates the list of a spec that has none
+- `/kcd spells remove` deletes exactly that spell, and a missing one writes nothing
+- `/kcd spells enable|disable` stores a real boolean on the entry
+- `/kcd spells category` writes the entry's category, and refuses an unknown one
+- `/kcd spells reset` rebuilds ONE spec from the defaults and leaves the others alone
+- the Spells page's Defaults popup rebuilds the selected spec from the defaults
+- the Defaults popup rebuilds a class the profile holds no table for
+- the page's Defaults popup and `/kcd spells reset` leave the same list
+- a finished drag on the Spells page splices the dragged row to its drop index
+- a per-spec reset of the player's own class keeps the racial, on both surfaces
+- neither the Spells page nor `/kcd spells` writes a stored spell list itself
+- Database:AddSpell appends, re-enables in place, and lazy-creates
+- Database:RemoveSpell removes by spellID and reports whether it did
+- Database:MoveSpell is a SPLICE to the index, not a swap
+- Database:MoveSpell writes nothing for a move that goes nowhere or off the ends
+- Database:SetSpellEnabled and :SetSpellCategory write one entry's field
+- Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
 
 ### test_settings_widgets.lua (20)
 
@@ -1091,7 +1109,8 @@ badge and any count quoted in the docs must agree with it.
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 6 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 30 |
+| test_settings_spells_editor.lua | 27 |
+| test_spell_registry.lua | 18 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 36 |
 | test_settings_refreshers.lua | 5 |
@@ -1109,4 +1128,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **871** |
+| **Total** | **886** |

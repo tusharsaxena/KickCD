@@ -287,6 +287,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
+- On a character whose race has a racial cast-stopper (Tauren, Highmountain Tauren, Pandaren, Kul Tiran, Nightborne), resetting one of **your own class's** specs, from the Defaults button or `/kcd spells reset`, keeps the racial as the list's last row. Resetting another class's spec never adds it.
 
 ### 11. Settings panel parity
 
