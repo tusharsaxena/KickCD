@@ -544,3 +544,23 @@ test("hiding the page cancels the reorder controller too", function()
     end
     assertEqual(canceled, 1, "the hide must reclaim the handles and boxes")
 end)
+
+-- ── kit reach: AceGUI:Release (#21) ─────────────────────────────────────────
+
+test("kit reach: a rebuild hands the previous header widgets back through AceGUI:Release", function()
+    -- settings/Spells.lua's releaseAceGUITree calls the guarded `w:Release()` on
+    -- the header widgets of the render it replaces. Before #21 the harness's own
+    -- AceGUI had no Release, so the guard skipped it and nothing here could see
+    -- a double release or a widget handed back still carrying its callbacks.
+    local inst, p = editorInstance()
+    local g = inst.mocks.__aceGUI
+    p:RefreshRows()
+    local before = #g.__released
+    p:RefreshRows()
+    assertTrue(#g.__released > before, "the second rebuild must release the first rebuild's header widgets")
+    for i = before + 1, #g.__released do
+        local w = g.__released[i]
+        assertTrue(w.__released, "each released widget is marked by the kit")
+        assertNil(next(w.callbacks), "a released widget carries no callbacks")
+    end
+end)

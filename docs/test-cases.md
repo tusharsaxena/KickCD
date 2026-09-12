@@ -553,13 +553,15 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
-### test_lifecycle.lua (5)
+### test_lifecycle.lua (7)
 
 - addon + all modules enable cleanly on the Ace3 login path
 - IconGrid:OnEnable installs its bus subscriptions
 - Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
 - post-enable CONFIG_CHANGED re-layout runs end-to-end without error
 - the enable cascade runs the addon's OnEnable first, then each module in creation order
+- kit reach: NS carries AceConsole's Printf, rendered under the addon's name
+- kit reach: module game events are recorded, validated and fireable
 
 ### test_unitlabel.lua (4)
 
@@ -811,7 +813,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (27)
+### test_settings_spells_editor.lua (28)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -840,6 +842,7 @@ badge and any count quoted in the docs must agree with it.
 - the selection cascade falls back to the first sorted class the defaults know
 - a stale remove click after a rebuild cannot run off the end of the list
 - hiding the page cancels the reorder controller too
+- kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
 ### test_spell_registry.lua (18)
 
@@ -1109,7 +1112,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 23 |
 | test_icongrid_glowgate.lua | 8 |
-| test_lifecycle.lua | 5 |
+| test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
@@ -1121,7 +1124,7 @@ badge and any count quoted in the docs must agree with it.
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 4 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 27 |
+| test_settings_spells_editor.lua | 28 |
 | test_spell_registry.lua | 18 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 36 |
@@ -1140,4 +1143,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **898** |
+| **Total** | **901** |

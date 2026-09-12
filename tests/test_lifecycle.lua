@@ -39,7 +39,7 @@ end)
 
 test("IconGrid:OnEnable installs its bus subscriptions", function()
     local inst = T.load(true, true)
-    local reg = inst.mocks.__busRegistry
+    local reg = inst.mocks.__msgRegistry
     local ig = inst.NS:GetModule("IconGrid")
     for _, msg in ipairs(ICONGRID_MESSAGES) do
         assertTrue(reg[msg] and reg[msg][ig] ~= nil,
@@ -49,7 +49,7 @@ end)
 
 test("Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable", function()
     local inst = T.load(true, true)
-    local reg = inst.mocks.__busRegistry["Ka0s_KickCD_CONFIG_CHANGED"]
+    local reg = inst.mocks.__msgRegistry["Ka0s_KickCD_CONFIG_CHANGED"]
     assertTrue(reg ~= nil, "CONFIG_CHANGED must have subscribers")
     assertTrue(reg[inst.NS:GetModule("Cooldowns")] ~= nil, "Cooldowns must subscribe to CONFIG_CHANGED")
     assertTrue(reg[inst.NS:GetModule("Castbar")] ~= nil, "Castbar must subscribe to CONFIG_CHANGED")
@@ -85,4 +85,31 @@ test("the enable cascade runs the addon's OnEnable first, then each module in cr
     end
     NS:__enableAll()
     assertEqual(table.concat(order, ","), "KickCD,Cooldowns,IconGrid,Castbar,UnitLabel")
+end)
+
+-- ── Kit revisions reach this suite (#21) ────────────────────────────────────
+--
+-- tests/wow_mock.lua used to replace the kit's LibStub and Ace layer wholesale,
+-- so kit revision 16's AceGUI:Release, recorded event half and Printf reached no
+-- case here. The harness now layers over the kit's fakes; each case below reads a
+-- surface only the kit provides, and was red on the old harness.
+
+test("kit reach: NS carries AceConsole's Printf, rendered under the addon's name", function()
+    local inst = T.load(true)
+    local lines = {}
+    local sink = { AddMessage = function(_, s) lines[#lines + 1] = s end }
+    assertTrue(type(inst.NS.Printf) == "function", "AceConsole must stamp Printf onto the addon")
+    inst.NS:Printf(sink, "%d spells", 3)
+    assertEqual(lines[1], "|cff33ff99KickCD|r: 3 spells")
+end)
+
+test("kit reach: module game events are recorded, validated and fireable", function()
+    local inst = T.load(true, true)
+    local ig = inst.NS:GetModule("IconGrid")
+    assertEqual(ig.__events["PLAYER_TARGET_CHANGED"], "OnTargetChanged",
+        "the event half must record what IconGrid:OnEnable registered")
+    assertEqual(inst.mocks.__fireEvent("PLAYER_TARGET_CHANGED"), 2,
+        "IconGrid and Castbar are the two registrants")
+    local ok = pcall(ig.RegisterEvent, ig, "PLAYER_LOGIN", "NoSuchHandler")
+    assertTrue(not ok, "a method the target does not carry must be refused, as CallbackHandler refuses it")
 end)

@@ -1,30 +1,36 @@
 -- tests/wow_mock.lua
 -- KickCD's half of the WoW-API mock, layered over the shared base in tests/_kit (testing-§1).
 --
--- Returns a builder: each call to build() produces a FRESH `mocks` table
--- (the fake WoW global namespace) plus a fresh LibStub with fake Ace3 libs,
--- so every test instance is fully isolated. The key correctness requirement
--- (architecture-§4 / AP-33) is that the AceEvent fake keys message callbacks by
--- (message, target) and fans SendMessage out to EVERY registered target —
--- a no-op bus mock would hide the last-registrant-wins clobber bug.
+-- Returns a builder: each call to build() produces a FRESH `mocks` table (the
+-- fake WoW global namespace), so every test instance is fully isolated.
 --
--- ── WHAT THE BASE CONTRIBUTES, AND WHAT THIS FILE OVERRIDES ────────────────
+-- ── WHAT THE KIT PROVIDES, AND WHAT THIS FILE LAYERS ON TOP ────────────────
 --
 -- build() starts from tests/_kit/mock_base.lua's builder and then overwrites,
--- per key, everything below. Plain per-key overwrite, per the kit's README: the
--- base hands back a fresh table on every call, so there is no merge machinery.
+-- per key, what is genuinely KickCD's. Plain per-key overwrite, per the kit's
+-- README: the base hands back a fresh table on every call.
 --
--- MEASURED, not assumed: of the base's 56 keys, this file reassigns 29 and
--- INHERITS 27 — GetNumGroupMembers, GetRealmName, GetZoneText, GetSubZoneText,
--- IsInGroup, IsInInstance, IsInRaid, UnitAffectingCombat, UnitLevel, the four
--- Stopwatch entry points, `format`, `time`, and the base's own `__` seams
--- (__context, __deepcopy, __fireTimers, __inCombat, __makeAceGUIWidget, __now,
--- __profileMs, __settingsClosed, __stopwatch, __stubFrame, __subcategories,
--- __unitExists). Not one of those 27 is referenced by any file under core/,
--- settings/, modules/, defaults/ or locales/, so layering the base in is
--- additive and inert here — which is exactly why the suite count did not move
--- when it landed. They are what a future window/group feature would otherwise
--- have to re-stub.
+-- LibStub and the Ace layer are the KIT'S (#21), so every kit revision to them
+-- reaches this suite. That covers the strict LibStub, whose NewLibrary registers
+-- the vendored LibKa0s files for real. It covers AceAddon, with NewAddon
+-- honoring its mixin list, NewModule / GetModule and the lifecycle. It covers
+-- AceEvent's two CallbackHandler registries, which carry the architecture-§4
+-- requirement: callbacks keyed by (message, target), SendMessage fanned out to
+-- every target, string methods, and the recorded, validated event half with
+-- mocks.__fireEvent. And it covers AceConsole (Print, Printf), AceTimer, and
+-- AceGUI with Release. mocks.__msgRegistry is the message registry.
+--
+-- What stays here is KickCD's own: its non-Ace library fakes (LibSharedMedia,
+-- LibCustomGlow, the AceConfig trio, AceDBOptions, CallbackHandler) and its
+-- AceDB, registered into mocks.__libs; the SetHighlight recorder, wrapped onto
+-- AceGUI:Create; __enableAll, one line over AceAddon:EnableAddon; the frame
+-- model below; and a C_Timer queue of plain functions drained by __flushTimers.
+-- Production embeds no AceTimer, so the kit's __fireTimers and its table-shaped
+-- entries are never used here.
+--
+-- MEASURED, not assumed: of the base's 60 keys, this file reassigns 27 and
+-- inherits 33, LibStub, __libs, __msgRegistry, __fireEvent and __badEvents
+-- among them.
 --
 -- The overrides are NOT the base being wrong. The base's own header states the
 -- policy — single-consumer fidelity lives in the consumer's extender — and
@@ -34,8 +40,8 @@
 -- are not one object and several suites assert on the difference. The rest of
 -- the overrides are the same story at a smaller scale: real state for
 -- visibility, geometry, scale, text, color and status-bar values (see the
--- FRAME_METHODS note below), the spec/cooldown/cast APIs this addon is built
--- on, and a LibStub whose Ace fakes model AceEvent's per-target fan-out.
+-- FRAME_METHODS note below), and the spec/cooldown/cast APIs this addon is
+-- built on.
 
 -- The repo root, forwarded by tests/run.lua's `loadfile(...)(root)` so the kit
 -- resolves the same way every other vendored path in the harness does, rather
@@ -431,19 +437,6 @@ function makeFrame(objectType, parent, name)
     })
 end
 
---- Resolve an AceEvent callback registration (function OR method-name string)
---- to a single callable of the form fn(message, ...), matching CallbackHandler.
-local function resolveCallback(target, method)
-    if type(method) == "function" then
-        return function(message, ...) return method(message, ...) end
-    elseif type(method) == "string" then
-        return function(message, ...)
-            local fn = target[method]
-            if fn then return fn(target, message, ...) end
-        end
-    end
-end
-
 --- The three AceDB sections the mock materializes, in the order the real lib
 --- would. Module-level so the fake New() allocates nothing extra per call.
 local DB_SECTIONS = { "profile", "global", "char" }
@@ -482,113 +475,6 @@ local function build()
         timers = mocks.__timers
         for _, cb in ipairs(pending) do cb() end
     end
-
-    -- -------------------------------------------------------------------
-    -- Shared message bus (the whole point of the mock — see header)
-    -- -------------------------------------------------------------------
-    -- registry[message][target] = resolvedCallback   (keyed by target!)
-    local registry = {}
-    mocks.__busRegistry = registry
-
-    local function embedAceEvent(t)
-        function t.RegisterMessage(self, message, method, arg)
-            registry[message] = registry[message] or {}
-            registry[message][self] = resolveCallback(self, method or message)
-            return arg
-        end
-        function t.UnregisterMessage(self, message)
-            if registry[message] then registry[message][self] = nil end
-        end
-        -- The sender is not read here: a message goes to every registrant, and the two
-        -- functions above are the ones that key the registry by sender. Spelt `_` rather
-        -- than dropped, so the arity still matches AceEvent-3.0's own SendMessage.
-        function t.SendMessage(_, message, ...)
-            local targets = registry[message]
-            if not targets then return end
-            for _, cb in pairs(targets) do cb(message, ...) end
-        end
-        -- Event side is a no-op for headless tests (no game events fire).
-        function t.RegisterEvent() end
-        function t.UnregisterEvent() end
-        function t.UnregisterAllEvents() end
-        return t
-    end
-    mocks.__embedAceEvent = embedAceEvent
-
-    local function embedAceTimer(t)
-        function t.ScheduleTimer(_, method, delay) return { method = method, delay = delay } end
-        function t.ScheduleRepeatingTimer(_, method, delay) return { method = method, delay = delay } end
-        function t.CancelTimer() end
-        function t.CancelAllTimers() end
-        return t
-    end
-
-    local function embedAceConsole(t)
-        function t.RegisterChatCommand() end
-        function t.UnregisterChatCommand() end
-        function t.Print() end
-        return t
-    end
-
-    -- -------------------------------------------------------------------
-    -- Fake AceAddon: addon object + module lifecycle
-    -- -------------------------------------------------------------------
-    local addons = {}
-
-    local function newModule(addon, name, ...)
-        local m = { moduleName = name }
-        embedAceEvent(m)
-        for i = 1, select("#", ...) do
-            local mixin = select(i, ...)
-            if mixin == "AceTimer-3.0" then embedAceTimer(m) end
-            if mixin == "AceConsole-3.0" then embedAceConsole(m) end
-        end
-        addon.__modules = addon.__modules or {}
-        addon.__moduleOrder = addon.__moduleOrder or {}
-        addon.__modules[name] = m
-        addon.__moduleOrder[#addon.__moduleOrder + 1] = name
-        return m
-    end
-
-    local AceAddon = {
-        NewAddon = function(_, objOrName, ...)
-            local obj, name, firstMixin
-            if type(objOrName) == "table" then
-                obj, name, firstMixin = objOrName, (select(1, ...)), 2
-            else
-                obj, name, firstMixin = {}, objOrName, 1
-            end
-            embedAceEvent(obj)
-            for i = firstMixin, select("#", ...) do
-                local mixin = select(i, ...)
-                if mixin == "AceTimer-3.0" then embedAceTimer(obj) end
-                if mixin == "AceConsole-3.0" then embedAceConsole(obj) end
-            end
-            function obj.NewModule(self, modName, ...) return newModule(self, modName, ...) end
-            function obj.GetModule(self, modName)
-                return self.__modules and self.__modules[modName]
-            end
-            function obj.EnableModule() end
-            -- Faithful stand-in for AceAddon's PLAYER_LOGIN EnableAddon cascade:
-            -- enable the addon, then every module in registration order, calling
-            -- OnEnable where defined. A load-only harness never reaches OnEnable,
-            -- so this is what lets headless tests exercise the module lifecycle
-            -- (the path where the IconGrid.Layout method/table clobber hid — KCD-05).
-            -- Errors propagate so the calling test's pcall reports the failure.
-            function obj.__enableAll(self)
-                self.enabledState = true
-                if self.OnEnable then self:OnEnable() end
-                for _, modName in ipairs(self.__moduleOrder or {}) do
-                    local m = self.__modules[modName]
-                    m.enabledState = true
-                    if m.OnEnable then m:OnEnable() end
-                end
-            end
-            addons[name] = obj
-            return obj
-        end,
-        GetAddon = function(_, name) return addons[name] end,
-    }
 
     -- -------------------------------------------------------------------
     -- Fake AceDB: static default merge is enough for headless assertions
@@ -709,108 +595,8 @@ local function build()
     function LSM.HashTable() return {} end
     function LSM.IsValid() return true end
 
-    -- AceGUI-3.0. The previous stub handed back a bare frame, so SetCallback was
-    -- a no-op and NOT ONE widget callback in the addon was reachable — the whole
-    -- schema -> widget -> write path was untestable, which is exactly why the
-    -- adoption prompt gates the Options milestone on this.
-    --
-    -- Widgets are inert data recorders rather than frames: they remember what
-    -- was set on them and expose __fire so a test can drive OnValueChanged /
-    -- OnMouseUp / OnValueConfirmed the way a real click would.
-    --
-    -- Deliberately a VERBATIM port of tests/_kit/mock_base.lua's builder, so
-    -- adopting the shared kit deletes this block rather than reconciling two
-    -- divergent widget fakes.
-    local function makeWidget(wtype)
-        local w = {
-            type      = wtype,
-            children  = {},
-            callbacks = {},
-            frame     = makeFrame(),
-        }
-        function w:SetLabel(v) self.labelText = v; return self end
-        function w:SetText(v) self.text = v; return self end
-        function w:SetValue(v) self.value = v; return self end
-        function w:GetValue() return self.value end
-        function w:SetList(items, order) self.list, self.order = items, order; return self end
-        function w:SetColor(r, g, b, a) self.color = { r = r, g = g, b = b, a = a }; return self end
-        function w:SetHasAlpha(v) self.hasAlpha = v; return self end
-        function w:SetDisabled(v) self.disabled = v and true or false; return self end
-        function w:SetSliderValues(mn, mx, st) self.min, self.max, self.step = mn, mx, st; return self end
-        function w:SetIsPercent(v) self.isPercent = v; return self end
-        function w:SetWidth(v) self.width = v; return self end
-        function w:SetHeight(v) self.height = v; return self end
-        function w:SetRelativeWidth(v) self.relativeWidth = v; return self end
-        function w:SetFullWidth(v) self.fullWidth = v and true or false; return self end
-        function w:SetLayout(v) self.layout = v; return self end
-        function w:SetAutoAdjustHeight(v) self.autoAdjustHeight = v; return self end
-        function w:SetImage(...) self.image = { ... }; return self end
-        function w:SetImageSize(...) self.imageSize = { ... }; return self end
-        function w:SetMaxLetters(v) self.maxLetters = v; return self end
-        -- RECORDED, not swallowed. AceGUI's InteractiveLabel forwards this to
-        -- Texture:SetTexture, whose four-number form is the deprecated color API
-        -- -- and the client answers it with a solid bright-green block across the
-        -- whole label on mouseover. A no-op here cannot tell "no highlight" from
-        -- "a highlight nobody meant", which is exactly what shipped.
-        function w:SetHighlight(...) self.__highlight = { ... }; return self end
-        function w:SetCallback(name, fn) self.callbacks[name] = fn; return self end
-        function w:AddChild(child) self.children[#self.children + 1] = child; return self end
-        function w:ReleaseChildren() self.children = {}; return self end
-        function w:DoLayout() self.layoutCount = (self.layoutCount or 0) + 1; return self end
-        -- AceGUI invokes a callback as fn(widget, eventName, ...); mirrored
-        -- exactly, because the makers destructure it as function(_, _, value).
-        function w:__fire(name, ...)
-            local fn = self.callbacks[name]
-            if fn then return fn(self, name, ...) end
-        end
-
-        if wtype == "ScrollFrame" then
-            -- The always-shown-scrollbar patch reaches into these three by name
-            -- and does real arithmetic with them.
-            w.scrollbar   = makeFrame()
-            w.scrollframe = makeFrame()
-            w.content     = makeFrame()
-            w.content.original_width = 400
-            w.localstatus = { offset = 0 }
-            function w:FixScroll() self.fixScrollCount = (self.fixScrollCount or 0) + 1 end
-            function w:MoveScroll(v) self.movedTo = v end
-            function w:SetScroll(v) self.scrolledTo = v end
-        end
-        return w
-    end
-
-    local function makeAceGUI()
-        local g = {
-            -- Empty by default, which models AceGUI-3.0-SharedMediaWidgets being
-            -- absent: a dropdown maker asks GetWidgetVersion about LSM30_* and
-            -- falls back to a plain Dropdown when it comes back nil.
-            WidgetRegistry   = {},
-            __widgetVersions = {},
-            -- Every widget handed out, in creation order. The only way a test can
-            -- reach a widget on a page whose ctx the toolkit keeps private.
-            __created        = {},
-        }
-        function g:Create(wtype)
-            local ctor = self.WidgetRegistry[wtype]
-            local w = ctor and ctor() or makeWidget(wtype)
-            self.__created[#self.__created + 1] = w
-            return w
-        end
-        function g:GetWidgetVersion(wtype) return self.__widgetVersions[wtype] end
-        function g:RegisterWidgetType(wtype, ctor, version)
-            self.WidgetRegistry[wtype]   = ctor
-            self.__widgetVersions[wtype] = version
-        end
-        return g
-    end
-
     local libs = {
-        ["AceAddon-3.0"]        = AceAddon,
         ["AceDB-3.0"]           = AceDB,
-        ["AceEvent-3.0"]        = { Embed = function(_, t) return embedAceEvent(t) end },
-        ["AceTimer-3.0"]        = { Embed = function(_, t) return embedAceTimer(t) end },
-        ["AceConsole-3.0"]      = { Embed = function(_, t) return embedAceConsole(t) end },
-        ["AceGUI-3.0"]          = makeAceGUI(),
         ["AceConfig-3.0"]         = noopLib(),
         ["AceConfigDialog-3.0"]   = noopLib(),
         ["AceConfigRegistry-3.0"] = noopLib(),
@@ -820,50 +606,44 @@ local function build()
         ["CallbackHandler-1.0"]   = noopLib(),
     }
 
-    -- Registered minors, for NewLibrary below. Ace fakes above are handed to us
-    -- pre-built and carry no minor, so they simply never participate.
-    local minors = {}
+    -- LibStub is the kit's (mocks.LibStub): strict about the silent flag, and its
+    -- NewLibrary registers the vendored LibKa0s files for real, so a file offered
+    -- at an equal or lower minor gets nil back. KickCD's fakes go into
+    -- mocks.__libs, the table the kit's LibStub reads.
+    for name, lib in pairs(libs) do mocks.__libs[name] = lib end
 
-    --- The real LibStub:NewLibrary contract, reproduced because the vendored
-    --- LibKa0s files are loaded as REAL SOURCE by tests/_kit/loader.lua rather than
-    --- faked (testing-§9: a suite that measures the degradation stub instead of
-    --- the library is green and tests nothing).
-    ---
-    --- Minor comparison is the whole mechanism: LibStub keeps the highest minor
-    --- it is offered and discards the rest, so a file re-registering at an equal
-    --- or lower minor must get nil back and `return` — which is exactly what the
-    --- paired-minor guards in OptionsWidgets/OptionsScroll/PerfPanel rely on.
-    local function newLibrary(_, major, minor)
-        minor = tonumber(minor)
-        if not minor then error("mock LibStub: NewLibrary needs a numeric minor", 2) end
-        local old = minors[major]
-        if old and old >= minor then return nil end
-        minors[major] = minor
-        libs[major] = libs[major] or {}
-        return libs[major], old
+    -- AceGUI is the kit's: its recording widgets, __created, Release,
+    -- WidgetVersions and layouts. KickCD adds one recorder on top. SetHighlight is
+    -- RECORDED, not swallowed: AceGUI's InteractiveLabel forwards it to
+    -- Texture:SetTexture, whose four-number form is the deprecated color API, and
+    -- the client answers that with a solid bright-green block across the whole
+    -- label on mouseover. A no-op cannot tell "no highlight" from "a highlight
+    -- nobody meant", which is exactly what shipped.
+    local AceGUI = mocks.__libs["AceGUI-3.0"]
+    local kitCreate = AceGUI.Create
+    function AceGUI.Create(self, wtype)
+        local w = kitCreate(self, wtype)
+        if w.SetHighlight == nil then
+            function w.SetHighlight(widget, ...) widget.__highlight = { ... }; return widget end
+        end
+        return w
     end
+    mocks.__aceGUI = AceGUI
 
-    mocks.LibStub = setmetatable({}, {
-        __call = function(_, name, silent)
-            local lib = libs[name]
-            if not lib and not silent then error("mock LibStub: missing lib " .. tostring(name)) end
-            return lib
-        end,
-        __index = {
-            GetLibrary = function(_, name, silent)
-                local lib = libs[name]
-                if not lib and not silent then
-                    error("mock LibStub: missing lib " .. tostring(name))
-                end
-                return lib
-            end,
-            NewLibrary = newLibrary,
-            minors = minors,
-        },
-    })
-    mocks.__aceGUI = libs["AceGUI-3.0"]
-    mocks.__libs = libs
-    mocks.__libMinors = minors
+    -- AceAddon is the kit's: NewAddon honoring its mixin list, NewModule /
+    -- GetModule, and the lifecycle. The one KickCD layer is __enableAll, the
+    -- enable cascade alone for a load-only harness (the path where the
+    -- IconGrid.Layout clobber hid, KCD-05): the addon's OnEnable, then each
+    -- module in creation order, through the real public member the client's
+    -- PLAYER_LOGIN pass calls per addon. The kit raises the first error once the
+    -- cascade has finished, so a throwing OnEnable still fails its case.
+    local AceAddon = mocks.__libs["AceAddon-3.0"]
+    local kitNewAddon = AceAddon.NewAddon
+    function AceAddon.NewAddon(self, ...)
+        local obj = kitNewAddon(self, ...)
+        function obj.__enableAll(addon) return AceAddon:EnableAddon(addon) end
+        return obj
+    end
 
     -- -------------------------------------------------------------------
     -- Frames / UI
