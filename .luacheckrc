@@ -116,7 +116,7 @@ files["tests/"] = {
 -- `deadArg` to `Castbar:GetCastbarFrame` goes red under both configs, and quoting that as the
 -- proof would have proved nothing. What the old config swallowed is the NAME it listed, in
 -- every file: `function NS.Util:DeadProbe()` appended to core/Util.lua reports
--- `core/Util.lua:429:17: (W212) unused argument 'self'` under this config and reports nothing
+-- `core/Util.lua:<its line>:17: (W212) unused argument 'self'` under this config and reports nothing
 -- under the old one. The twenty-nine `addonName` headers are the same fact at scale -- they
 -- were there all along, under a green 0/0.
 --
