@@ -333,8 +333,9 @@ NS.DefaultSpells = {
     },
 }
 
--- Race-specific cast-stoppers, appended to the per-spec list at first profile
--- creation by Database:BuildSpells() (see docs/schema.md).
+-- Race-specific cast-stoppers, appended to the player's own class's spec lists
+-- at first profile creation by Database:BuildSpells(), and again by either
+-- reset of one of those lists (see docs/schema.md).
 NS.RaceCastStoppers = {
     Tauren             = 20549,  -- War Stomp
     HighmountainTauren = 255654, -- Bull Rush

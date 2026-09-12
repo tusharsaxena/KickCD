@@ -416,6 +416,13 @@ local RESIDUE = {
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
 
+    -- A bulk act's one [Set] line (settings/Panel.lua logAct, for the bracket
+    -- and for SetRows alike) and the marker it carries when the act stopped on
+    -- an error: debug-console formats, never chat. core/Database.lua's
+    -- profile-event lines are outside this scan, which reads settings/ alone.
+    {"settings/Panel.lua", "%s: %d rows%s", "DIAGNOSTIC"},
+    {"settings/Panel.lua", " (stopped by an error)", "DIAGNOSTIC"},
+
     -- settings/Panel_Render.lua
     {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
 
@@ -432,7 +439,6 @@ local RESIDUE = {
     -- settings/Spells.lua
     {"settings/Spells.lua", "Editing %s/%s \226\137\160 player %s/%s; skipping cooldown-manager gate.", "DIAGNOSTIC"},
     {"settings/Spells.lua", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell ", "DIAGNOSTIC"},
-    {"settings/Spells.lua", "reset %s/%s: %d spells", "DIAGNOSTIC"},
     {"settings/Spells.lua", "Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization.", "NOT YET ROUTED"},
     {"settings/Spells.lua", "AceGUI not loaded", "NOT YET ROUTED"},
     {"settings/Spells.lua", "No spells tracked. Click ", "NOT YET ROUTED"},

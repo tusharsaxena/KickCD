@@ -209,9 +209,10 @@ end)
 --
 -- Counts are PER UNIT for the three unit-scoped pages, because that is what a
 -- reader sees: the page renders only the selected unit's rows. General has no
--- unit selector, so its Units tab shows both units' toggles and counts 2.
+-- unit selector, so its Units tab shows both units' toggles, plus the Focus
+-- `link` row, which the tab draws itself (`skipRender`): 3.
 local STRIP = {
-    general = { { "Master controls", 6 }, { "Units", 2 } },
+    general = { { "Master controls", 6 }, { "Units", 3 } },
     icons   = {
         { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
         { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 8 },
@@ -779,7 +780,8 @@ local TAB_SINGLE_SUBJECT = {
     general = {
         ["Master controls"] = "options-ui-§15's canonical block. One subject by definition -- the "
             .. "addon as a whole -- and the section forbids reordering or splitting it anyway.",
-        ["Units"] = "one enable toggle per tracked unit, and nothing else on the tab.",
+        ["Units"] = "which grids exist and whether Focus is its own thing: one enable toggle per "
+            .. "tracked unit, and the Focus styling link (drawn by the tab beside Copy styling).",
     },
     icons = {
         ["Sizing"] = "four pixel sizes for the grid's icons.",

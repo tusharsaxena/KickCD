@@ -173,7 +173,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (12)
+### test_units.lua (25)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -187,6 +187,19 @@ badge and any count quoted in the docs must agree with it.
 - LabelStyle resolves to target's style when focus is linked
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
+- CopyStyling carries every icons, castbar, label.style and label.show row onto focus
+- CopyStyling's copy is deep: focus gets its own color tables
+- CopyStyling writes every copied row, and the link, through Helpers.Set
+- CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
+- CopyStyling announces each section once and refreshes the panels structurally once
+- CopyStyling logs ONE [Set] summary line counting the rows it changed
+- CopyStyling still validates and runs onChange per row with the log muted
+- units.focus.link is a General > Units row, drawn by the tab's own tick
+- `/kcd set units.focus.link` writes it, announces units and repaints structurally
+- the Units tab's tick writes the link through Helpers.SetAndRefresh
+- General's Defaults re-links Focus and survives the refresh raised inside the library's loop
+- the link row repaints structurally only when the link actually changes
+- CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
 ### test_schema.lua (36)
 
@@ -277,12 +290,16 @@ badge and any count quoted in the docs must agree with it.
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_bus.lua (4)
+### test_bus.lua (8)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
 - Addon SendMessage reaches a registered module target
+- Coalesced holds a nil-section announcement and sends it once, as nil
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
+- a string method is dispatched as target:Method(message, payload)
+- a registration with no handler calls the method named after the message
+- UnregisterMessage stops delivery to that target and no other
 
 ### test_compat.lua (5)
 
@@ -542,12 +559,15 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
-### test_lifecycle.lua (4)
+### test_lifecycle.lua (7)
 
 - addon + all modules enable cleanly on the Ace3 login path
 - IconGrid:OnEnable installs its bus subscriptions
 - Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable
 - post-enable CONFIG_CHANGED re-layout runs end-to-end without error
+- the enable cascade runs the addon's OnEnable first, then each module in creation order
+- kit reach: NS carries AceConsole's Printf, rendered under the addon's name
+- kit reach: module game events are recorded, validated and fireable
 
 ### test_unitlabel.lua (4)
 
@@ -785,14 +805,28 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 
-### test_settings_log.lua (6)
+### test_settings_log.lua (20)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
-- ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
-- ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)
 - ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
+- the castbar page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the icons page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the label page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the general page's Defaults logs ONE [Set] reset line counting the rows it changed
+- a Defaults on a page already at its defaults logs 0 rows, and no per-row line
+- nested bulk acts log ONE line, the outermost's, with every level's rows
+- the per-row [Set] line comes back after a Defaults, even one whose row raised
+- Reset all logs ONE line in total, the profile handler's, counting the rows it changed
+- with LibKa0s absent, Reset all logs exactly one line, the profile handler's, with the rows it changed
+- with LibKa0s absent, a Reset all that reset no profile logs the bracket's own line
+- a profile reset driven straight at the db logs its one line with no count
+- a count taken for a reset that raised does not leak into the next reset
+- a profile copy logs one [Set] copied line and announces the profile that is active
+- the schema CLI's resetall, handed the same bracket, logs one [Set] reset all line
+- a write still pending when an act opens logs BEFORE the act's line, with its own value
+- a bulk copy that raises logs its one line once, marked, releases the mute and re-raises
 
 ### test_settings_spells.lua (4)
 
@@ -801,7 +835,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (30)
+### test_settings_spells_editor.lua (28)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -818,9 +852,6 @@ badge and any count quoted in the docs must agree with it.
 - the row's status glyph reflects Compat.IsSpellAvailable and does not gate the row
 - the row checkbox writes the entry's enabled flag as a real boolean
 - a disabled row renders its spell icon and checkbox from the stored flag
-- a move is a SPLICE to the index, not a swap with the neighbor
-- a move backwards splices just as cleanly
-- a move that goes nowhere or off the ends writes nothing
 - no row carries a move button any more
 - Remove deletes exactly the row's entry
 - the category dropdown writes the entry's category
@@ -833,6 +864,34 @@ badge and any count quoted in the docs must agree with it.
 - the selection cascade falls back to the first sorted class the defaults know
 - a stale remove click after a rebuild cannot run off the end of the list
 - hiding the page cancels the reorder controller too
+- kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
+
+### test_spell_registry.lua (24)
+
+- `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
+- `/kcd spells add` lazy-creates the list of a spec that has none
+- `/kcd spells remove` deletes exactly that spell, and a missing one writes nothing
+- `/kcd spells enable|disable` stores a real boolean on the entry
+- `/kcd spells category` writes the entry's category, and refuses an unknown one
+- `/kcd spells reset` rebuilds ONE spec from the defaults and leaves the others alone
+- the Spells page's Defaults popup rebuilds the selected spec from the defaults
+- the Defaults popup rebuilds a class the profile holds no table for
+- the page's Defaults popup and `/kcd spells reset` leave the same list
+- a finished drag on the Spells page splices the dragged row to its drop index
+- a per-spec reset of the player's own class keeps the racial, on both surfaces
+- neither the Spells page nor `/kcd spells` writes a stored spell list itself
+- Database:AddSpell appends, re-enables in place, and lazy-creates
+- Database:RemoveSpell removes by spellID and reports whether it did
+- Database:MoveSpell is a SPLICE to the index, not a swap
+- Database:MoveSpell writes nothing for a move that goes nowhere or off the ends
+- Database:SetSpellEnabled and :SetSpellCategory write one entry's field
+- `/kcd spells remove` traces one [Spells] line with debug on, none with it off
+- `/kcd spells reset` traces one [Spells] line with debug on, none with it off
+- `/kcd spells resetall` traces one [Spells] line for the bulk rewrite
+- each Database spell-list verb traces one [Spells] line
+- a verb that writes nothing traces nothing
+- the Spells page's actions trace once, from the writer, not again at the call site
+- Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
 
 ### test_settings_widgets.lua (20)
 
@@ -937,7 +996,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (27)
+### test_slash.lua (29)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -962,6 +1021,8 @@ badge and any count quoted in the docs must agree with it.
 - the spell-database rebuild survives, under its new verb
 - resetall keeps its four-part host semantics rather than becoming CliResetAll
 - with LibKa0s absent /kcd still answers and host verbs still work
+- /kcd lock with no `locked` row writes nothing and says the settings layer is not ready
+- with LibKa0s absent /kcd lock and /kcd toggle write nothing
 - the degraded stub carries no copy of the row formatter or the parser
 - every string the Slash CLI renders resolves to prose, not to its own key
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
@@ -1060,11 +1121,11 @@ badge and any count quoted in the docs must agree with it.
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_locale.lua | 15 |
-| test_units.lua | 12 |
+| test_units.lua | 25 |
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
-| test_bus.lua | 4 |
+| test_bus.lua | 8 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_compat_debug.lua | 11 |
@@ -1079,7 +1140,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 23 |
 | test_icongrid_glowgate.lua | 8 |
-| test_lifecycle.lua | 4 |
+| test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
@@ -1089,9 +1150,10 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
 | test_cooldowns_gates.lua | 22 |
-| test_settings_log.lua | 6 |
+| test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 30 |
+| test_settings_spells_editor.lua | 28 |
+| test_spell_registry.lua | 24 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 36 |
 | test_settings_refreshers.lua | 5 |
@@ -1100,7 +1162,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 1 |
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 27 |
+| test_slash.lua | 29 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_list_mode.lua | 5 |
@@ -1109,4 +1171,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **871** |
+| **Total** | **929** |

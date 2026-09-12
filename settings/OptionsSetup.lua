@@ -45,6 +45,15 @@ local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 
 local function helpers() return NS.Settings and NS.Settings.Helpers end
 
+-- Both Reset all paths reset the profile through here. settings/Panel.lua's
+-- ResetProfileCounted counts the rows the reset changes before it runs, for the
+-- one line Database:OnProfileChanged logs (debug-logging-§10); the bare call is
+-- only for a load where that file has not run.
+local function resetProfileCounted(db)
+    local H = helpers()
+    if H and H.ResetProfileCounted then H.ResetProfileCounted(db) else db:ResetProfile() end
+end
+
 -- ---------------------------------------------------------------------
 -- The descriptor
 -- ---------------------------------------------------------------------
@@ -93,10 +102,11 @@ local descriptor = {
 
     skipRestoreAll = vetoedFromResetAll,
 
-    -- Anchors, the per-unit `link` flag and the spell lists are NOT schema rows,
-    -- so applyDefault never reaches them — and none of them needs a hook of its
-    -- own any more, because RESET ALL IS A PROFILE RESET (options-ui-§12) and all
-    -- three live IN the profile. The library calls `resetProfile` below.
+    -- Anchors and the spell lists are NOT schema rows, so applyDefault never
+    -- reaches them — and neither needs a hook of its own any more, because RESET
+    -- ALL IS A PROFILE RESET (options-ui-§12) and both live IN the profile. (The
+    -- Focus `link` flag is a row now, and lives in the profile too.) The library
+    -- calls `resetProfile` below.
     --
     -- One call, and the same act as the Profiles page's Reset Profile. AceDB
     -- empties the ACTIVE profile — only that one; the profile LIST is untouched,
@@ -106,8 +116,9 @@ local descriptor = {
     -- folds legacy units, migrates spec keys, RE-SEEDS THE SPELL LISTS and
     -- refreshes — exactly what it does for a profile switch.
     --
-    -- ResetAllPositions and RestoreUnitLinks leave this path and keep their other
-    -- callers; the spell wipe leaves Helpers.ResetAll for the same reason.
+    -- ResetAllPositions and RestoreUnitLinks, which used to sit beside this
+    -- call, are both gone; the spell wipe left Helpers.ResetAll for the same
+    -- reason.
     -- It runs BEFORE the refresh, which is load-bearing: a refresh first would
     -- paint the pre-hook values.
     -- `resetProfile` rather than a hand-written afterRestoreAll: LibKa0s-Options-1.0
@@ -117,7 +128,21 @@ local descriptor = {
     -- that braces on the live path and the whole policy on the degraded one.
     resetProfile = function()
         local db = NS.db
-        if db and db.ResetProfile then db:ResetProfile() end
+        if db and db.ResetProfile then resetProfileCounted(db) end
+    end,
+
+    -- The bulk bracket (LibKa0s-Options-1.0 minor 16) around RestoreDefaults and
+    -- RestoreAllDefaults. A page's Defaults logs ONE `[Set] reset <page>: N rows`
+    -- line rather than one per row, and Reset all logs only the profile handler's
+    -- line, because the library reports that the act reset the profile
+    -- (debug-logging-§10). settings/Panel.lua owns the mute and the line.
+    bulkBegin = function(act, scope)
+        local H = helpers()
+        if H and H.BulkBegin then H.BulkBegin(act, scope) end
+    end,
+    bulkEnd = function(act, scope, count, err, info)
+        local H = helpers()
+        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
     end,
 
     -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
@@ -210,22 +235,43 @@ if not lib then
     -- Kept real even though it is call-time: the user whose panel will not open
     -- is exactly the user who needs "reset everything", and the schema loaded
     -- fine, so the reset still works with no panel at all.
-    Helpers.RestoreAllDefaults = function()
-        -- The sessionOnly rows first -- they are the ONLY ones the veto lets
-        -- through, and the only ones a profile reset cannot reach, because their
-        -- storage is their own set() rather than the db (options-ui-§12).
+    -- The sessionOnly rows -- they are the ONLY ones the veto lets through, and
+    -- the only ones a profile reset cannot reach, because their storage is their
+    -- own set() rather than the db (options-ui-§12).
+    local function restoreSessionRows()
         for _, row in ipairs(NS.Settings.Schema or {}) do
             if not vetoedFromResetAll(row) and Helpers.SetAndRefresh then
                 local d = row.default
                 Helpers.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
             end
         end
-        -- Then the profile itself, which is the reset. The same one call the live
-        -- descriptor's resetProfile makes -- this stub exists because the
-        -- LIBRARY is missing, not the db, and the user whose panel will not open
-        -- is exactly the user who needs "reset everything".
-        local db = NS.db
-        if db and db.ResetProfile then db:ResetProfile() end
+    end
+
+    Helpers.RestoreAllDefaults = function()
+        -- The library's bracket, driven by hand, as the live path runs under it:
+        -- the sessionOnly rows written first add no [Set] line of their own, and a
+        -- profile reset is logged ONCE, by Database:OnProfileChanged
+        -- (debug-logging-§10). settings/Panel.lua has defined the pair by now.
+        --
+        -- `reset` is set only once the reset RETURNS, as the library does: with no
+        -- db, or a reset that raised, the handler may never have run, and then the
+        -- bracket's own `[Set] reset all: N rows` line is the only record.
+        if Helpers.BulkBegin then Helpers.BulkBegin("reset", "all") end
+        local reset = false
+        local ok, err = pcall(function()
+            restoreSessionRows()
+            -- Then the profile itself, which is the reset. The same one call the
+            -- live descriptor's resetProfile makes -- this stub exists because the
+            -- LIBRARY is missing, not the db, and the user whose panel will not
+            -- open is exactly the user who needs "reset everything".
+            local db = NS.db
+            if db and db.ResetProfile then
+                resetProfileCounted(db)
+                reset = true
+            end
+        end)
+        if Helpers.BulkEnd then Helpers.BulkEnd("reset", "all", nil, err, { profileReset = reset }) end
+        if not ok then error(err, 0) end
     end
 
     -- Reached only from a builder or a user action, so a no-op is honest.

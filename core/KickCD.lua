@@ -120,11 +120,15 @@ end
 -- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
 -- true` and the General > "Lock frame" checkbox do, so an open
 -- settings panel re-syncs and any future onChange wired onto the
--- `locked` schema row fires here too. Falls back to a direct write
--- when the settings layer isn't loaded yet (early-boot edge), and also
--- when SetAndRefresh finds no `locked` row: that row is composed by
--- LibKa0s-Options-1.0's Master controls block, so a load without the
--- library has none.
+-- `locked` schema row fires here too.
+--
+-- The helper or nothing (architecture-§5, #20). When SetAndRefresh cannot
+-- take the write -- the settings layer is not loaded yet, or it finds no
+-- `locked` row because that row is composed by LibKa0s-Options-1.0's Master
+-- controls block and a load without the library has none -- this says so, the
+-- way runResetPosition does, and writes nothing. It used to fall back to
+-- `db.profile.locked = v`, which kept one composed setting writable around
+-- the helper on the very load options-ui-§1 expects to lose it.
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "db not initialized yet")
@@ -132,11 +136,7 @@ local function setLocked(self, value)
     local v = value and true or false
     local H = self.Settings and self.Settings.Helpers
     if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
-        self.db.profile.locked = v
-        -- Announce through the one sender (settings/Panel.lua's
-        -- Helpers.FireConfigChanged), never with a second SendMessage of our
-        -- own: architecture-§4 wants one emitter per message.
-        if H and H.FireConfigChanged then H.FireConfigChanged("general") end
+        return p(self, "Settings layer not ready yet")
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
@@ -441,23 +441,15 @@ local function resolveClassSpec(args, idx)
     return class or pClass, spec
 end
 
--- Spell-list lookup funnels through Database:GetSpellList /
--- :EnsureSpellList so the slash-command layer matches the read/lazy-
--- create policy used by Cooldowns / IconGrid / settings/Spells.lua.
--- Handlers that must not create a list (list/remove/enable/disable/
--- category) use GetSpellList; add and reset, which should create a
--- fresh list when none exists, use EnsureSpellList. Either way the
--- handler then writes the list itself: see the Writer line under
--- docs/ARCHITECTURE.md -> Settings schema.
+-- These handlers READ a list through Database:GetSpellList, which never
+-- creates one, and write it only through core/Database.lua's verbs (AddSpell,
+-- RemoveSpell, SetSpellEnabled, SetSpellCategory, ResetSpellList,
+-- ResetAllSpells). Database is the spell lists' one writer: see the Writer line
+-- under docs/ARCHITECTURE.md -> Settings schema (architecture-§5).
 
 local function getSpellList(class, spec)
     if not NS.Database then return nil end
     return NS.Database:GetSpellList(class, spec)
-end
-
-local function ensureSpellList(class, spec)
-    if not NS.Database then return nil end
-    return NS.Database:EnsureSpellList(class, spec)
 end
 
 -- Mutation commit: fire the closed message; the Spells panel now
@@ -484,13 +476,6 @@ local function resolveSpellInput(input)
         if name and resolvedID then return resolvedID, name end
     end
     return nil
-end
-
-local function findSpellEntry(list, id)
-    if not list then return nil end
-    for i, e in ipairs(list) do
-        if e.spellID == id then return e, i end
-    end
 end
 
 local CATEGORIES = {
@@ -537,17 +522,13 @@ local function spellsAdd(self, rest)
     if not (class and spec) then
         return p(self, "Could not determine class+spec")
     end
-    local list = ensureSpellList(class, spec)
-    if not list then return p(self, "db not ready") end
-    local existing = findSpellEntry(list, id)
-    if existing then
-        existing.enabled = true
-        commitSpellsChange()
+    local result = self.Database and self.Database:AddSpell(class, spec, id)
+    if not result then return p(self, "db not ready") end
+    commitSpellsChange()
+    if result == "enabled" then
         return p(self, ("%s (#%d) already in %s/%s, re-enabled")
                   :format(name or "?", id, class, sd(spec)))
     end
-    list[#list + 1] = { spellID = id, category = "other", enabled = true }
-    commitSpellsChange()
     p(self, ("added %s (#%d) to %s/%s")
         :format(name or "?", id, class, sd(spec)))
 end
@@ -564,11 +545,9 @@ local function spellsRemove(self, rest)
         return p(self, ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
-    local _, idx = findSpellEntry(list, id)
-    if not idx then
+    if not self.Database:RemoveSpell(class, spec, id) then
         return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
-    table.remove(list, idx)
     commitSpellsChange()
     p(self, ("removed #%d from %s/%s"):format(id, class, sd(spec)))
 end
@@ -586,11 +565,9 @@ local function spellsSetEnabled(self, rest, enabled)
         return p(self, ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
-    local entry = findSpellEntry(list, id)
-    if not entry then
+    if not self.Database:SetSpellEnabled(class, spec, id, enabled) then
         return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
-    entry.enabled = enabled and true or false
     commitSpellsChange()
     p(self, ("#%d %s in %s/%s"):format(
         id, enabled and "enabled" or "disabled", class, sd(spec)))
@@ -615,44 +592,27 @@ local function spellsSetCategory(self, rest)
         return p(self, ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
-    local entry = findSpellEntry(list, id)
-    if not entry then
+    if not self.Database:SetSpellCategory(class, spec, id, cat) then
         return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
     end
-    entry.category = cat
     commitSpellsChange()
     p(self, ("#%d category = %s in %s/%s"):format(
         id, cat, class, sd(spec)))
 end
 
--- Per-spec reset: rebuild this single (class, spec) list from
--- KickCD.DefaultSpells. The counterpart of the Spells panel's Defaults
--- popup (KICKCD_RESET_SPELLS), which reaches the same list by its own
--- code path. Both are intentionally narrower than `/kcd spells resetall`
--- (Database:ResetAllSpells, which wipes every class+spec and also
--- re-appends the player's racial).
+-- Per-spec reset: rebuild this single (class, spec) list through
+-- Database:ResetSpellList, the same verb the Spells panel's Defaults popup
+-- (KICKCD_RESET_SPELLS) calls. Narrower than `/kcd spells resetall`
+-- (Database:ResetAllSpells, which wipes every class+spec); both re-append the
+-- player's racial on their own class.
 local function spellsReset(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)
     if not (class and spec) then
         return p(self, "Could not determine class+spec")
     end
-    local list = ensureSpellList(class, spec)
-    if not list then return p(self, "db not ready") end
-    -- Wipe in place rather than reassigning so any reference held by
-    -- BuildSpells / consumers stays valid.
-    for i = #list, 1, -1 do list[i] = nil end
-    local source = self.DefaultSpells
-                   and self.DefaultSpells[class]
-                   and self.DefaultSpells[class][spec]
-    if source then
-        for i, e in ipairs(source) do
-            list[i] = {
-                spellID  = e.spellID  or e[1],
-                category = e.category or e[2] or "other",
-                enabled  = e.enabled ~= false,
-            }
-        end
+    if not (self.Database and self.Database:ResetSpellList(class, spec)) then
+        return p(self, "db not ready")
     end
     commitSpellsChange()
     p(self, ("reset %s/%s to defaults"):format(class, sd(spec)))

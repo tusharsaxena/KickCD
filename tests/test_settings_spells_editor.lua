@@ -322,52 +322,9 @@ end)
 
 -- ── the drag reorder (options-ui-§18) ───────────────────────────────────────
 --
--- The arrows are gone, so what used to be four button cases is two: the SPLICE
--- the drag writes, and the fact that it is exactly one write. The gesture itself
--- is the library's and is tested there; what is this addon's is the mutator it
--- calls back into.
-
-test("a move is a SPLICE to the index, not a swap with the neighbor", function()
-    -- red under: reverting moveTo to `list[from], list[to] = list[to], list[from]`,
-    -- which leaves the two rows BETWEEN the ends in the wrong order.
-    local inst, p = editorInstance()
-    local list = activeList(inst)
-    assertTrue(#list >= 4, "the fixture needs at least four rows")
-    local a, b, c, d = list[1].spellID, list[2].spellID, list[3].spellID, list[4].spellID
-
-    assertEqual(p.MoveTo(list, 1, 4), true, "a legal move reports the write")
-    assertEqual(list[1].spellID, b, "row 2 shifted up")
-    assertEqual(list[2].spellID, c, "row 3 shifted up")
-    assertEqual(list[3].spellID, d, "row 4 shifted up")
-    assertEqual(list[4].spellID, a, "the dragged row landed at 4")
-end)
-
-test("a move backwards splices just as cleanly", function()
-    local inst, p = editorInstance()
-    local list = activeList(inst)
-    local a, b, c = list[1].spellID, list[2].spellID, list[3].spellID
-    assertEqual(p.MoveTo(list, 3, 1), true)
-    assertEqual(list[1].spellID, c)
-    assertEqual(list[2].spellID, a)
-    assertEqual(list[3].spellID, b)
-end)
-
-test("a move that goes nowhere or off the ends writes nothing", function()
-    -- The controller clamps, but a stale drop after a rebuild can still name an
-    -- index the list no longer has -- the same class of bug the arrows' bounds
-    -- checks existed for.
-    -- red under: dropping the range guards in moveTo
-    local inst, p = editorInstance()
-    local list = activeList(inst)
-    local n = #list
-    local first = list[1].spellID
-    assertEqual(p.MoveTo(list, 2, 2), false, "a move to its own index is not a write")
-    assertEqual(p.MoveTo(list, 0, 1), false, "an index below the list is refused")
-    assertEqual(p.MoveTo(list, 1, n + 1), false, "an index past the list is refused")
-    assertEqual(p.MoveTo(nil, 1, 2), false, "no list is not a crash")
-    assertEqual(#list, n, "nothing was added or removed")
-    assertEqual(list[1].spellID, first, "nothing moved")
-end)
+-- The gesture itself is the library's and is tested there. What a finished drag
+-- WRITES is Database:MoveSpell's splice, pinned with its range guards and the
+-- page's real onMove in tests/test_spell_registry.lua.
 
 test("no row carries a move button any more", function()
     -- red under: re-adding the arrow pair as a degraded-path fallback, which
@@ -586,4 +543,24 @@ test("hiding the page cancels the reorder controller too", function()
         if c.pageKey == "spells" then c.panel:Hide() end
     end
     assertEqual(canceled, 1, "the hide must reclaim the handles and boxes")
+end)
+
+-- ── kit reach: AceGUI:Release (#21) ─────────────────────────────────────────
+
+test("kit reach: a rebuild hands the previous header widgets back through AceGUI:Release", function()
+    -- settings/Spells.lua's releaseAceGUITree calls the guarded `w:Release()` on
+    -- the header widgets of the render it replaces. Before #21 the harness's own
+    -- AceGUI had no Release, so the guard skipped it and nothing here could see
+    -- a double release or a widget handed back still carrying its callbacks.
+    local inst, p = editorInstance()
+    local g = inst.mocks.__aceGUI
+    p:RefreshRows()
+    local before = #g.__released
+    p:RefreshRows()
+    assertTrue(#g.__released > before, "the second rebuild must release the first rebuild's header widgets")
+    for i = before + 1, #g.__released do
+        local w = g.__released[i]
+        assertTrue(w.__released, "each released widget is marked by the kit")
+        assertNil(next(w.callbacks), "a released widget carries no callbacks")
+    end
 end)

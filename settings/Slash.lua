@@ -329,6 +329,19 @@ NS.Slash.cli = SlashLib:New({
         H.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
     end,
 
+    -- The bulk bracket (LibKa0s-Slash-1.0 minor 8) around Sl:CliResetAll, the
+    -- same pair the Options descriptor takes (debug-logging-§10). Nothing here
+    -- routes to CliResetAll today -- `/kcd resetall` is a host verb that reaches
+    -- the Options walk -- so this keeps a future route to one line, not one per row.
+    bulkBegin = function(act, scope)
+        local H = helpers()
+        if H and H.BulkBegin then H.BulkBegin(act, scope) end
+    end,
+    bulkEnd = function(act, scope, count, err, info)
+        local H = helpers()
+        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
+    end,
+
     allRows  = allRows,
     parse    = parseForHost,
 

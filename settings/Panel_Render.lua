@@ -252,27 +252,80 @@ end
 -- path with `/kcd set <path> <value>` and the panel widgets — so a
 -- future onChange added to a row doesn't silently diverge between
 -- code paths.
-function Helpers.SetAndRefresh(path, value)
-    local def = Helpers.FindSchema(path)
-    if not def then return false end
+-- The write half every row write shares: Helpers.Set (the write, and the
+-- CONFIG_CHANGED for the row's section), then the row's onChange. onChange gets
+-- the value it was set to and the value it replaced, so a costly reaction (the
+-- link row's structural refresh) can skip a write that changed nothing. Every
+-- row write reaches onChange through here: panel widgets, `/kcd set`, both
+-- Defaults paths and SetRows. The library never calls a row's onChange itself.
+local function writeRow(def, value)
+    local old = def.onChange and Helpers.Get(def.path)
     Helpers.Set(def.path, def.section, value)
     if def.onChange then
-        local ok, err = pcall(def.onChange, value)
+        local ok, err = pcall(def.onChange, value, old)
         if not ok and NS.Util then
             NS.Util.print("onChange for " .. tostring(def.path)
                               .. " failed: " .. tostring(err))
         end
     end
+end
+
+function Helpers.SetAndRefresh(path, value)
+    local def = Helpers.FindSchema(path)
+    if not def then return false end
+    writeRow(def, value)
     -- SCALAR, never structural. A value write changes what a widget SHOWS; it
     -- does not make a row appear or vanish. A structural sweep here would clear
     -- and rebuild every rendered page on each committed change -- including the
     -- page holding the slider or the color swatch the user is still dragging,
     -- which is released back to AceGUI's pool mid-gesture. Structural refreshes
     -- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
-    -- the Units tab's link toggle, which really does change what the unit pages
-    -- draw.
+    -- the `units.focus.link` row's onChange (settings/General.lua), because the
+    -- link really does change what the unit pages draw.
     Helpers.RefreshScalars()
     return true
+end
+
+--- Write several schema rows as ONE act, through the same seam as
+--- SetAndRefresh: each row is Helpers.Set's write plus its onChange, in the
+--- order given. Two differences, and both are why this exists. The bus is
+--- COALESCED (Helpers.Coalesced), so each section is announced once, after the
+--- last write, rather than once per row; and there is no panel refresh here --
+--- the caller decides whether the batch is scalar or structural and does it once.
+---
+--- Its one caller is NS.Units.CopyStyling, whose hundred-odd rows would
+--- otherwise fan out a hundred-odd CONFIG_CHANGED re-applies and scalar sweeps.
+---
+--- Handed a `summary`, the LOG is coalesced too: each row's [Set] line is
+--- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
+--- (marked ` (stopped by an error)` if a row raised)
+--- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
+--- bury the log and evict older lines from its capped buffer
+--- (debug-logging-§10). N is the rows whose value the batch changed, not the
+--- rows it walked. Only the log is muted: every row still writes through
+--- Helpers.Set and runs its onChange, in order.
+---
+--- @param writes  table   { { path, value }, ... }; a path with no row is skipped
+--- @param summary string? names the batch in its one [Set] line
+--- @return number  how many rows were written
+function Helpers.SetRows(writes, summary)
+    local n = 0
+    local function writeAll()
+        for _, w in ipairs(writes) do
+            local def = Helpers.FindSchema(w[1])
+            if def then
+                writeRow(def, w[2])
+                n = n + 1
+            end
+        end
+    end
+    -- MuteSetLog logs the one line itself, so a row that raises still leaves the
+    -- line (marked) before the error reaches the caller. Nothing when this batch
+    -- ran inside another bulk act, which logs the sum.
+    Helpers.Coalesced(function()
+        if summary then Helpers.MuteSetLog(writeAll, summary) else writeAll() end
+    end)
+    return n
 end
 
 -- Restore the TARGET icon grid to its default screen position and notify
@@ -296,8 +349,12 @@ end
 -- branch needs defaults/Profile.lua to have failed to load, which the TOC
 -- rules out, so nothing was ever going to notice the wrong number. Doing
 -- nothing is also the honest answer: with no default to restore, the least
--- surprising outcome is to leave the grid where the user dragged it, which
--- is what the sibling Helpers.ResetAllPositions has always done.
+-- surprising outcome is to leave the grid where the user dragged it.
+--
+-- The anchor is named non-setting state owned by NS.Units (architecture-§5).
+-- This writes it directly rather than through NS.Units.SetAnchor, and
+-- docs/ARCHITECTURE.md -> Settings schema lists it as one of that state's
+-- writers, which is what makes the direct write compliant.
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
     local d = NS.DEFAULT_PROFILE
@@ -319,57 +376,16 @@ function Helpers.ResetIconPosition()
     Helpers.FireConfigChanged("general")
 end
 
--- Reset every unit's icon-grid AND cast-bar anchor to its DEFAULT_PROFILE
--- screen position. Anchors aren't schema rows, so RestoreAllDefaults skips
--- them — this is why /kcd resetall (and the "Reset all settings" popup)
--- historically left the grids where the user dragged them. ResetAll calls
--- this so a full reset restores positions too. Fires "general" (for icon grids
--- and PRIMARY-mode cast bars) then "castbar" (for FREE-mode cast bars) so
--- every unit's anchor re-applies and every frame snaps to its default position.
-function Helpers.ResetAllPositions()
-    if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units) then return end
-    NS.db.profile.units = NS.db.profile.units or {}
-    for _, unit in ipairs({ "target", "focus" }) do
-        local du = NS.DEFAULT_PROFILE.units[unit]
-        if du and du.anchors then
-            local pu = NS.db.profile.units[unit] or {}
-            NS.db.profile.units[unit] = pu
-            pu.anchors = pu.anchors or {}
-            for _, which in ipairs({ "icons", "castbar" }) do
-                local a = du.anchors[which]
-                if a then
-                    pu.anchors[which] = { point = a.point, relativePoint = a.relativePoint, x = a.x, y = a.y }
-                end
-            end
-        end
-    end
-    Helpers.FireConfigChanged("general")
-    Helpers.FireConfigChanged("castbar")
-end
-
--- Restore every unit's `link` flag to its DEFAULT_PROFILE value (target=false,
--- focus=true). `link` is NOT a schema row — it's driven by the bespoke checkbox
--- in RenderUnitPanel — so RestoreAllDefaults can't reach it. Without this, an
--- unlinked Focus (link=false) survives a full reset: its appearance tables get
--- reset to defaults so it LOOKS default, but it silently loses the mirror-Target
--- relationship, diverging from AceDB's Reset Profile (which restores the whole
--- DEFAULT_PROFILE, link included). Fires "units" so IconGrid/Castbar reconcile.
-function Helpers.RestoreUnitLinks()
-    if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE
-            and NS.DEFAULT_PROFILE.units and NS.Units) then
-        return
-    end
-    local p = NS.db.profile
-    p.units = p.units or {}
-    for _, unit in ipairs(NS.Units.LIST) do
-        local du = NS.DEFAULT_PROFILE.units[unit]
-        if du then
-            p.units[unit] = p.units[unit] or {}
-            p.units[unit].link = du.link and true or false
-        end
-    end
-    Helpers.FireConfigChanged("units")
-end
+-- (Helpers.ResetAllPositions is gone. It put every unit's icon-grid and
+-- cast-bar anchor back to DEFAULT_PROFILE, and nothing had called it since
+-- Reset all became a profile reset, which restores the anchors with the rest
+-- of the profile.)
+--
+-- (Helpers.RestoreUnitLinks is gone. It restored each unit's `link` flag
+-- because `link` had no schema row, and nothing had called it since Reset all
+-- became a profile reset. `units.focus.link` is a row now (settings/General.lua),
+-- so the General page's Defaults and `/kcd reset` restore it like any other, and
+-- the profile reset restores it with the rest of the profile.)
 
 -- Reset every schema-driven panel AND every spec's spell list to addon
 -- defaults. The active profile is the only one affected. Used by the
@@ -377,8 +393,8 @@ end
 -- slash command — both go through this single helper so the two paths
 -- never diverge.
 --
--- ResetAllPositions and RestoreUnitLinks are NOT called here. They used to be,
--- and RestoreAllDefaults had already run both by the time it returned: the
+-- The old ResetAllPositions and RestoreUnitLinks (both gone) are NOT called here.
+-- They used to be, and RestoreAllDefaults had already done both by the time it returned: the
 -- descriptor's `resetProfile` hook (settings/OptionsSetup.lua) empties the
 -- active profile and merges NS.DEFAULT_PROFILE back over it, anchors and every
 -- unit's `link` flag included, and libs/LibKa0s/Options.lua's

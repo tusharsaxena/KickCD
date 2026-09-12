@@ -50,6 +50,38 @@ test("Addon SendMessage reaches a registered module target", function()
     assertTrue(got, "a private target must receive the addon's broadcast")
 end)
 
+test("Coalesced holds a nil-section announcement and sends it once, as nil", function()
+    -- Coalescing moves the TIMING of CONFIG_CHANGED and nothing else, so a
+    -- batch must send what an unbatched call sends. red under: the old batch,
+    -- which marked a nil section seen and then appended nil to its order list
+    -- (a no-op), so the announcement was silently dropped.
+    local inst = T.load(true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local sent = {}
+    local realSend = NS.SendMessage
+    NS.SendMessage = function(self, msg, payload)
+        if msg == "Ka0s_KickCD_CONFIG_CHANGED" then
+            sent[#sent + 1] = payload.section == nil and "<nil>" or payload.section
+        end
+        return realSend(self, msg, payload)
+    end
+    local ok, err = pcall(function()
+        H.FireConfigChanged(nil)           -- unbatched: sent as it is
+        H.Coalesced(function()
+            H.FireConfigChanged(nil)
+            H.FireConfigChanged("icons")
+            H.FireConfigChanged(nil)       -- a repeat, held once like any section
+        end)
+    end)
+    NS.SendMessage = realSend
+    if not ok then error(err, 0) end
+    assertEqual(#sent, 3, "one unbatched nil, then the batch's nil and icons: " .. table.concat(sent, ", "))
+    assertEqual(sent[1], "<nil>", "the unbatched call")
+    assertEqual(sent[2], "<nil>", "the batch sends its nil, in first-announced order")
+    assertEqual(sent[3], "icons")
+end)
+
 test("NewBusTarget gives each receiver its own target — both fire (KCD-09)", function()
     local inst = T.load(true)
     local NS = inst.NS
@@ -66,4 +98,42 @@ test("NewBusTarget gives each receiver its own target — both fire (KCD-09)", f
     NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = "Default" })
     assertTrue(gotA, "receiver A (private target) must fire")
     assertTrue(gotB, "receiver B (private target) must ALSO fire")
+end)
+
+-- Characterization for #21: the dispatch shapes production relies on, pinned before
+-- the harness moved onto the kit's AceEvent, so the swap is proven not to change them.
+
+test("a string method is dispatched as target:Method(message, payload)", function()
+    local inst = T.load(false)
+    local t = inst.mocks.LibStub("AceEvent-3.0"):Embed({})
+    local got = {}
+    function t:OnThing(msg, payload) got.self, got.msg, got.payload = self, msg, payload end
+    t:RegisterMessage("Test_Str", "OnThing")
+    t:SendMessage("Test_Str", 7)
+    assertTrue(got.self == t, "the method must be called on its own target")
+    assertEqual(got.msg, "Test_Str")
+    assertEqual(got.payload, 7)
+end)
+
+test("a registration with no handler calls the method named after the message", function()
+    local inst = T.load(false)
+    local t = inst.mocks.LibStub("AceEvent-3.0"):Embed({})
+    local got
+    t.Test_Default = function(self, msg) got = (self == t) and msg end
+    t:RegisterMessage("Test_Default")
+    t:SendMessage("Test_Default")
+    assertEqual(got, "Test_Default")
+end)
+
+test("UnregisterMessage stops delivery to that target and no other", function()
+    local inst = T.load(false)
+    local AceEvent = inst.mocks.LibStub("AceEvent-3.0")
+    local a, b = AceEvent:Embed({}), AceEvent:Embed({})
+    local gotA, gotB = 0, 0
+    a:RegisterMessage("Test_Unreg", function() gotA = gotA + 1 end)
+    b:RegisterMessage("Test_Unreg", function() gotB = gotB + 1 end)
+    a:UnregisterMessage("Test_Unreg")
+    b:SendMessage("Test_Unreg")
+    assertEqual(gotA, 0, "the unregistered target must not hear it")
+    assertEqual(gotB, 1, "the other target still does")
 end)

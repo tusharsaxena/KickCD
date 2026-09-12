@@ -164,6 +164,7 @@ local SUITES = {
     "test_settings_log",
     "test_settings_spells",
     "test_settings_spells_editor",
+    "test_spell_registry",
     "test_settings_widgets",
     "test_options_panel",
     "test_settings_refreshers",

@@ -287,6 +287,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
+- On a character whose race has a racial cast-stopper (Tauren, Highmountain Tauren, Pandaren, Kul Tiran, Nightborne), resetting one of **your own class's** specs, from the Defaults button or `/kcd spells reset`, keeps the racial as the list's last row. Resetting another class's spec never adds it.
 
 ### 11. Settings panel parity
 
@@ -326,9 +327,9 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd reset units.target.icons.primarySize` | That one row returns to its `default`; every other row, and the spell list, untouched. |
 | `/kcd reset units.target.icons.cooldownTint` | A color row resets to a *copy* of its default — reset the same row on two profiles and confirm editing one doesn't move the other. |
 | `/kcd reset general` (and `icons` / `castbar` / `label` / `spells`) | Retired. Each prints a line naming where the capability went — the panel's **Defaults** button, `/kcd reset <path>`, or `/kcd spells resetall` — never "Setting not found". |
-| Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
+| Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. With `/kcd debug on`, the console shows one `[Set] reset <page>: N rows` line (N = the rows that were off their default), and no per-row `[Set]` line. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
-| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated `Helpers.ResetAllPositions()` pass it used to run is off this path). Profiles untouched. No CLI confirmation prompt. |
+| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated positions pass it used to run is gone). Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
@@ -446,10 +447,11 @@ Debug output is not chat: one gated, secret-safe line per key functional-flow tr
 
 **Steps + pass.**
 - **Combat.** Enter combat (auto-attack a dummy), then leave combat. One `[Combat] entered` line appears when combat starts, one `[Combat] left` line when it ends — nothing at `PLAYER_LOGIN`, nothing per-tick during sustained combat.
-- **Profile.** Settings → Profiles → switch to a different profile (or create one). One `[Profile] switched to '<name>'` line appears naming the new profile key.
+- **Profile.** Settings → Profiles → switch to a different profile (or create one). One `[Profile] switched to '<name>'` line appears naming the new profile key. Then **Copy From** another profile: one `[Set] copied profile '<source>' → '<active>'` line, and no `[Profile] switched` line.
+- **Resets.** Move two Cast bar settings off their defaults, then press the Cast bar page's **Defaults**: one `[Set] reset castbar: 2 rows` line, and no per-row `[Set] units.…` line. Press **Defaults** again: `[Set] reset castbar: 0 rows`. Then move three settings off their defaults (on any pages) and press **Reset all settings** (or `/kcd resetall`): exactly **one** `[Set]` line, `[Set] reset profile '<name>' to defaults (3 rows)`, with no `[Set] reset all` line beside it and no `[Profile] switched` line. Press **Reset all settings** again at once: `[Set] reset profile '<name>' to defaults (0 rows)`, never the schema's size. Then Settings → Profiles → **Reset Profile**: `[Set] reset profile '<name>' to defaults` with no count. A single `/kcd set locked true` afterwards logs its own `[Set] locked = true`, so the mute did not stick. Finally `/kcd set locked false` and press the General page's **Defaults** within a third of a second: `[Set] locked = false` prints **before** `[Set] reset general: …`, not after it.
 - **Cast / IconGrid.** Set Visibility to `target_casting_interruptible`, then have a hostile target start and stop an interruptible cast. One `[Cast] target cast gate: interruptible on/off` line appears when the gate flips, and one `[IconGrid] visibility …: shown/hidden` line appears when the grid's shown state actually changes — no line on refreshes where neither moved.
 - **Open.** `/kcd config` (or the minimap/options button) while out of combat. One `[Open] settings panel` line appears per successful open.
-- **Spells.** In the Spells editor: toggle a row's enabled checkbox (`[Spells] enable/disable <spellID>`), remove a row (`[Spells] remove <spellID>`), and click "Reset to defaults" for a spec (`[Spells] reset <CLASS>/<SPEC>: N spells`).
+- **Spells.** Every spell-list write is traced once, by its one writer (`core/Database.lua`), so the Spells editor and `/kcd spells` log the same line. In the Spells editor: add a spell (`[Spells] add <spellID> to <CLASS>/<SPEC>: N spells`), toggle a row's enabled checkbox (`[Spells] enable/disable <spellID> in <CLASS>/<SPEC>`), change its category (`[Spells] category <spellID> = <cat> in …`), drag a row (`[Spells] move <from> -> <to> in …`), remove a row (`[Spells] remove <spellID> from <CLASS>/<SPEC>: N spells`), and click "Reset to defaults" for a spec (`[Spells] reset <CLASS>/<SPEC>: N spells`). Each act logs **exactly one** line, not two. Then `/kcd spells remove <id>` and `/kcd spells reset` log the same lines, and `/kcd spells resetall` logs one `[Spells] resetall: N lists, M spells`.
 - **Set.** Change any setting on any panel (e.g. Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
 - **No spam.** Across all of the above, stay in combat for 30+ seconds with no target-cast activity: no additional `[Combat]`/`[Cast]`/`[IconGrid]` lines appear beyond the transition(s) already logged.
 
@@ -488,7 +490,8 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
 - Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and the Icons page collapses back to the note under its now-inert strip; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
 - On **General → Units**, the tick and the button are **one line**: `[Use same styling as Target] [Copy styling from Target]`, the button in the right half. A button on a line of its own reads as belonging to whatever follows it rather than to the tick above.
-- Untick again, then click **"Copy styling from Target"** (also on General → Units) — Focus's `icons`/`castbar` tables are deep-copied from Target's current values and `link` flips to `false` (button also unlinks if still linked).
+- Untick again, then click **"Copy styling from Target"** (also on General → Units). Every Focus `icons` / `castbar` / `label.style` row and `label.show` takes Target's current value, row by row through the settings helper, and `link` flips to `false` (the button also unlinks if still linked). Before clicking, give Target a **vertical** cast bar growing **Down**; after, Focus's bar is vertical and still grows Down (orientation's own reset to Up must not win). With `/kcd debug on`, the console shows **one** `[Set] copy target→focus: N rows` summary line for the whole copy (N is the rows the copy changed: the Target rows you moved off their defaults, plus the link), **no** per-row `[Set] units.focus.…` lines, and no Lua error.
+- `/kcd set units.focus.link false` unlinks exactly as the tick does: the tick unticks on an open General page, and the three unit pages grow their rows back. `/kcd set units.focus.link true` collapses them to the note again. With Focus unlinked, the General page's **Defaults** button re-links it.
 
 **Pass.**
 - While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
@@ -513,7 +516,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 #### 20d. Unlinked focus honors its own alpha / tint
 
-The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → General → Units only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
+Unlink **first**: untick **"Use same styling as Target"** on Settings → General → Units, or `/kcd set units.focus.link false` (the link is a schema row, `units.focus.link`; there is no `units.target.link`, since Target is never linked). Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
 
 This is also the reason to unlink **first** and set values **second**.
 
@@ -761,8 +764,8 @@ can settle. Nothing here may be reported as passing until someone has actually l
 click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
 `OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
 pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
-the shared mock answers `GetHeight` with 0 for every frame, and kit 16 (LibKa0s v1.30.0) did not
-flip that: the flip ships alone, at kit 17 at the earliest, not here. **So a
+the shared mock answers `GetHeight` with 0 for every frame, and kit 17 (LibKa0s v1.31.0, unchanged at v1.32.0) did not
+flip that either: the flip ships alone, at kit 18 at the earliest, not here. **So a
 stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
 every automated check in this repo.**
 
