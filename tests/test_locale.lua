@@ -432,7 +432,6 @@ local RESIDUE = {
     -- settings/Spells.lua
     {"settings/Spells.lua", "Editing %s/%s \226\137\160 player %s/%s; skipping cooldown-manager gate.", "DIAGNOSTIC"},
     {"settings/Spells.lua", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell ", "DIAGNOSTIC"},
-    {"settings/Spells.lua", "reset %s/%s: %d spells", "DIAGNOSTIC"},
     {"settings/Spells.lua", "Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization.", "NOT YET ROUTED"},
     {"settings/Spells.lua", "AceGUI not loaded", "NOT YET ROUTED"},
     {"settings/Spells.lua", "No spells tracked. Click ", "NOT YET ROUTED"},

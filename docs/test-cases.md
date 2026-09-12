@@ -844,7 +844,7 @@ badge and any count quoted in the docs must agree with it.
 - hiding the page cancels the reorder controller too
 - kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
-### test_spell_registry.lua (18)
+### test_spell_registry.lua (24)
 
 - `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
 - `/kcd spells add` lazy-creates the list of a spec that has none
@@ -863,6 +863,12 @@ badge and any count quoted in the docs must agree with it.
 - Database:MoveSpell is a SPLICE to the index, not a swap
 - Database:MoveSpell writes nothing for a move that goes nowhere or off the ends
 - Database:SetSpellEnabled and :SetSpellCategory write one entry's field
+- `/kcd spells remove` traces one [Spells] line with debug on, none with it off
+- `/kcd spells reset` traces one [Spells] line with debug on, none with it off
+- `/kcd spells resetall` traces one [Spells] line for the bulk rewrite
+- each Database spell-list verb traces one [Spells] line
+- a verb that writes nothing traces nothing
+- the Spells page's actions trace once, from the writer, not again at the call site
 - Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
 
 ### test_settings_widgets.lua (20)
@@ -1125,7 +1131,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_log.lua | 4 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 28 |
-| test_spell_registry.lua | 18 |
+| test_spell_registry.lua | 24 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 36 |
 | test_settings_refreshers.lua | 5 |
@@ -1143,4 +1149,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **901** |
+| **Total** | **907** |

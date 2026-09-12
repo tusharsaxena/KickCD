@@ -365,6 +365,116 @@ test("Database:SetSpellEnabled and :SetSpellCategory write one entry's field", f
     assertEqual(D:SetSpellCategory("SHAMAN", 999, id, "root"), false, "a missing list")
 end)
 
+-- ── the writer traces its own writes (debug-logging-§8, §10) ───────────────
+--
+-- A registry's create or delete is a functional flow, traced once by the
+-- registry writer. The trace lives in Database, so the Spells page and
+-- `/kcd spells` log the same line, and neither logs it a second time.
+
+-- The writer's verbs, as the first word after the tag. The Spells page's
+-- reorder controller logs under the same tag (`released …`, `painted …` on each
+-- rebuild), and those are the library's lines about its own widgets, not writes.
+local WRITE_VERBS = {
+    add = true, remove = true, move = true, enable = true, disable = true,
+    category = true, reset = true, ["resetall:"] = true,
+}
+
+--- Every [Spells] WRITE line in the console buffer.
+local function spellsLines(NS)
+    local out = {}
+    for line in (NS.DebugLog:CopyText() .. "\n"):gmatch("([^\n]*)\n") do
+        local verb = line:match("%[Spells%]%s+(%S+)")
+        if verb and WRITE_VERBS[verb] then out[#out + 1] = line end
+    end
+    return out
+end
+
+--- Run `fn` with the debug flag set to `on` and a cleared console; hand back
+--- the [Spells] lines it logged.
+local function traced(inst, on, fn)
+    local NS = inst.NS
+    inst.mocks.__flushTimers()
+    NS.State.debug = on
+    NS.DebugLog:Clear()
+    local ok, err = pcall(fn)
+    local lines = spellsLines(NS)
+    NS.State.debug = false
+    if not ok then error(err, 0) end
+    return lines
+end
+
+test("`/kcd spells remove` traces one [Spells] line with debug on, none with it off", function()
+    local inst = instance()
+    local l = list(inst, "SHAMAN", ELEMENTAL)
+    local a, b = l[1].spellID, l[2].spellID
+    local on = traced(inst, true, function() slash(inst, "spells remove " .. a .. " SHAMAN ELEMENTAL") end)
+    assertEqual(#on, 1, "one line: " .. table.concat(on, " | "))
+    assertTrue(on[1]:find("remove " .. a, 1, true) ~= nil, "it names the spell: " .. on[1])
+    local off = traced(inst, false, function() slash(inst, "spells remove " .. b .. " SHAMAN ELEMENTAL") end)
+    assertEqual(#off, 0, "debug off logs nothing")
+    assertNil(indexOf(l, b), "and the remove still happened")
+end)
+
+test("`/kcd spells reset` traces one [Spells] line with debug on, none with it off", function()
+    local inst = instance()
+    local on = traced(inst, true, function() slash(inst, "spells reset SHAMAN ELEMENTAL") end)
+    assertEqual(#on, 1, "one line: " .. table.concat(on, " | "))
+    assertTrue(on[1]:find("reset SHAMAN/", 1, true) ~= nil, "it names the list: " .. on[1])
+    local off = traced(inst, false, function() slash(inst, "spells reset SHAMAN ELEMENTAL") end)
+    assertEqual(#off, 0, "debug off logs nothing")
+end)
+
+test("`/kcd spells resetall` traces one [Spells] line for the bulk rewrite", function()
+    local inst = instance()
+    local on = traced(inst, true, function() slash(inst, "spells resetall") end)
+    assertEqual(#on, 1, "one line: " .. table.concat(on, " | "))
+    assertTrue(on[1]:find("resetall", 1, true) ~= nil, on[1])
+end)
+
+test("each Database spell-list verb traces one [Spells] line", function()
+    local inst = instance()
+    local D = inst.NS.Database
+    local l = list(inst, "SHAMAN", ELEMENTAL)
+    local id = l[1].spellID
+    for _, case in ipairs({
+        { "add",      function() D:AddSpell("SHAMAN", ELEMENTAL, 12345) end },
+        { "enable",   function() D:AddSpell("SHAMAN", ELEMENTAL, 12345) end },
+        { "move",     function() D:MoveSpell("SHAMAN", ELEMENTAL, 1, 2) end },
+        { "disable",  function() D:SetSpellEnabled("SHAMAN", ELEMENTAL, id, false) end },
+        { "category", function() D:SetSpellCategory("SHAMAN", ELEMENTAL, id, "root") end },
+        { "remove",   function() D:RemoveSpell("SHAMAN", ELEMENTAL, 12345) end },
+        { "reset",    function() D:ResetSpellList("SHAMAN", ELEMENTAL) end },
+    }) do
+        local lines = traced(inst, true, case[2])
+        assertEqual(#lines, 1, case[1] .. ": one line: " .. table.concat(lines, " | "))
+        assertTrue(lines[1]:find(case[1], 1, true) ~= nil, case[1] .. ": " .. lines[1])
+    end
+end)
+
+test("a verb that writes nothing traces nothing", function()
+    local inst = instance()
+    local D = inst.NS.Database
+    local lines = traced(inst, true, function()
+        D:RemoveSpell("SHAMAN", ELEMENTAL, 999999)
+        D:MoveSpell("SHAMAN", ELEMENTAL, 2, 2)
+        D:SetSpellEnabled("SHAMAN", ELEMENTAL, 999999, false)
+    end)
+    assertEqual(#lines, 0, "no write, no line: " .. table.concat(lines, " | "))
+end)
+
+test("the Spells page's actions trace once, from the writer, not again at the call site", function()
+    -- red under: the page's own NS.Debug beside the writer's, which logs the
+    -- remove, the toggle, the drag and the Defaults popup twice each.
+    local inst, p = instance()
+    local l = list(inst, "SHAMAN", ELEMENTAL)
+    local popup = traced(inst, true, function() panelReset(inst) end)
+    assertEqual(#popup, 1, "Defaults popup: " .. table.concat(popup, " | "))
+    local onMove = panelOnMove(inst, p)
+    local drag = traced(inst, true, function() onMove(1, 3) end)
+    assertEqual(#drag, 1, "drag: " .. table.concat(drag, " | "))
+    assertTrue(#l >= 3, "the fixture needs at least three rows")
+end)
+
 test("Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid", function()
     local inst = instance()
     local held = list(inst, "SHAMAN", ELEMENTAL)

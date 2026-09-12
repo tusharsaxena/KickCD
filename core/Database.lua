@@ -272,6 +272,15 @@ function Database:ResetAllSpells()
     if not (self.db and self.db.profile) then return end
     self.db.profile.spells = {}
     self:BuildSpells()
+    -- The bulk rewrite, traced once (debug-logging-§8), with the counts in the
+    -- one line rather than a line per list (§9). Counted only with the flag on.
+    if NS.State and NS.State.debug and NS.Debug then
+        local lists, spells = 0, 0
+        for _, specs in pairs(self.db.profile.spells) do
+            for _, l in pairs(specs) do lists = lists + 1; spells = spells + #l end
+        end
+        NS.Debug("Spells", "resetall: %d lists, %d spells", lists, spells)
+    end
     fireProfileChanged((self.db.keys and self.db.keys.profile) or "Default")
 end
 
@@ -293,6 +302,23 @@ end
 -- schema row under an architecture-§5 register row in docs/ARCHITECTURE.md ->
 -- Documented deviations (#17); living here is what gives them one writer.
 
+-- ONE gated [Spells] line per write, emitted HERE and nowhere else
+-- (debug-logging-§10: a structural registry's create or delete is a functional
+-- flow, traced once by the registry writer under §8; a bulk rewrite is a §8 data
+-- mutation). Because the trace lives in the writer, the Spells page and
+-- `/kcd spells` log the same line for the same act, and neither caller logs it
+-- again. The per-entry writes are traced too: they produce no [Set] line, so this
+-- is the only place they can show up in the log. Nothing is formatted with the
+-- flag off, and a verb that writes nothing logs nothing.
+local function trace(fmt, ...)
+    if NS.State and NS.State.debug and NS.Debug then NS.Debug("Spells", fmt, ...) end
+end
+
+local function where(class, spec)
+    local sd = NS.Util and NS.Util.SpecDisplay
+    return tostring(class) .. "/" .. (sd and sd(spec) or tostring(spec))
+end
+
 local function findEntry(list, spellID)
     if not (list and spellID) then return nil end
     for i, e in ipairs(list) do
@@ -311,9 +337,15 @@ function Database:AddSpell(class, spec, spellID)
     local existing = findEntry(list, spellID)
     if existing then
         existing.enabled = true
+        if NS.State and NS.State.debug then
+            trace("add %s to %s: already there, enable in place", tostring(spellID), where(class, spec))
+        end
         return "enabled"
     end
     list[#list + 1] = { spellID = spellID, category = "other", enabled = true }
+    if NS.State and NS.State.debug then
+        trace("add %s to %s: %d spells", tostring(spellID), where(class, spec), #list)
+    end
     return "added"
 end
 
@@ -324,6 +356,9 @@ function Database:RemoveSpell(class, spec, spellID)
     local _, index = findEntry(list, spellID)
     if not index then return false end
     table.remove(list, index)
+    if NS.State and NS.State.debug then
+        trace("remove %s from %s: %d spells", tostring(spellID), where(class, spec), #list)
+    end
     return true
 end
 
@@ -341,6 +376,9 @@ function Database:MoveSpell(class, spec, from, to)
     local n = #list
     if from < 1 or from > n or to < 1 or to > n or from == to then return false end
     table.insert(list, to, table.remove(list, from))
+    if NS.State and NS.State.debug then
+        trace("move %d -> %d in %s", from, to, where(class, spec))
+    end
     return true
 end
 
@@ -352,6 +390,9 @@ function Database:SetSpellEnabled(class, spec, spellID, enabled)
     local entry = findEntry(self:GetSpellList(class, spec), spellID)
     if not entry then return false end
     entry.enabled = enabled and true or false
+    if NS.State and NS.State.debug then
+        trace("%s %s in %s", entry.enabled and "enable" or "disable", tostring(spellID), where(class, spec))
+    end
     return true
 end
 
@@ -362,6 +403,9 @@ function Database:SetSpellCategory(class, spec, spellID, category)
     local entry = findEntry(self:GetSpellList(class, spec), spellID)
     if not entry then return false end
     entry.category = category
+    if NS.State and NS.State.debug then
+        trace("category %s = %s in %s", tostring(spellID), tostring(category), where(class, spec))
+    end
     return true
 end
 
@@ -379,6 +423,9 @@ function Database:ResetSpellList(class, spec)
     seedList(list, byClass and byClass[spec])
     local racialID, classFile = playerRacial()
     if racialID and classFile == class then appendRacial(list, racialID) end
+    if NS.State and NS.State.debug then
+        trace("reset %s: %d spells", where(class, spec), #list)
+    end
     return list
 end
 

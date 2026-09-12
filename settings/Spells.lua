@@ -480,15 +480,10 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
     whileDead    = true,
     hideOnEscape = true,
     -- The same verb `/kcd spells reset` calls: the selected spec from the
-    -- defaults, plus the player's racial when it is their own class.
+    -- defaults, plus the player's racial when it is their own class. The
+    -- [Spells] trace is the writer's (core/Database.lua), not this handler's.
     OnAccept = function()
-        local list = writer("ResetSpellList")
-        if not list then return end
-        if NS.State and NS.State.debug then
-            NS.Debug("Spells", "reset %s/%s: %d spells",
-                tostring(selectedClass), tostring(selectedSpec), #list)
-        end
-        commitSoon()
+        if writer("ResetSpellList") then commitSoon() end
     end,
 }
 
@@ -588,9 +583,6 @@ local function rowEnableCheck(AceGUI, entry, icon)
     check:SetWidth(40)
     check:SetCallback("OnValueChanged", function(_, _, value)
         writer("SetSpellEnabled", entry.spellID, value)
-        if NS.State and NS.State.debug then
-            NS.Debug("Spells", "%s %s", value and "enable" or "disable", tostring(entry.spellID))
-        end
         if icon.image and icon.image.SetDesaturated then
             icon.image:SetDesaturated(not value)
         end
@@ -716,11 +708,7 @@ local function rowRemoveButton(AceGUI, list, index)
         -- that has since shrunk reads nil and removes nothing.
         onClick = function()
             local removedId = list[index] and list[index].spellID
-            if not writer("RemoveSpell", removedId) then return end
-            if NS.State and NS.State.debug then
-                NS.Debug("Spells", "remove %s", tostring(removedId))
-            end
-            commitSoon()
+            if writer("RemoveSpell", removedId) then commitSoon() end
         end,
     })
 end
@@ -1017,12 +1005,8 @@ local function fillRows(AceGUI, scroll, list)
             handleTooltip = L["Drag to reorder"],
             onMove        = function(from, to)
                 -- ONE write, ONE re-render, however far the row traveled.
-                if writer("MoveSpell", from, to) then
-                    if NS.State and NS.State.debug then
-                        NS.Debug("Spells", "move %d -> %d", from, to)
-                    end
-                    commitSoon()
-                end
+                -- The [Spells] move line is the writer's (core/Database.lua).
+                if writer("MoveSpell", from, to) then commitSoon() end
             end,
             debug = function(fmt, ...)
                 if NS.State and NS.State.debug then NS.Debug("Spells", fmt, ...) end
