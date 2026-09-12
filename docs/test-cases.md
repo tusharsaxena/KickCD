@@ -173,7 +173,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (20)
+### test_units.lua (22)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -192,6 +192,8 @@ badge and any count quoted in the docs must agree with it.
 - CopyStyling writes every copied row, and the link, through Helpers.Set
 - CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
 - CopyStyling announces each section once and refreshes the panels structurally once
+- CopyStyling logs ONE [Set] summary line, not one per copied row
+- CopyStyling still validates and runs onChange per row with the log muted
 - units.focus.link is a General > Units row, drawn by the tab's own tick
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
 - the Units tab's tick writes the link through Helpers.SetAndRefresh
@@ -1099,7 +1101,7 @@ badge and any count quoted in the docs must agree with it.
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_locale.lua | 15 |
-| test_units.lua | 20 |
+| test_units.lua | 22 |
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
@@ -1149,4 +1151,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **907** |
+| **Total** | **909** |

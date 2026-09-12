@@ -291,11 +291,19 @@ end
 --- Its one caller is NS.Units.CopyStyling, whose hundred-odd rows would
 --- otherwise fan out a hundred-odd CONFIG_CHANGED re-applies and scalar sweeps.
 ---
---- @param writes table  { { path, value }, ... }; a path with no row is skipped
+--- Handed a `summary`, the LOG is coalesced too: each row's [Set] line is
+--- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
+--- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
+--- bury the log and evict older lines from its capped buffer
+--- (debug-logging-§9). Only the log is muted: every row still writes through
+--- Helpers.Set and runs its onChange, in order.
+---
+--- @param writes  table   { { path, value }, ... }; a path with no row is skipped
+--- @param summary string? names the batch in its one [Set] line
 --- @return number  how many rows were written
-function Helpers.SetRows(writes)
+function Helpers.SetRows(writes, summary)
     local n = 0
-    Helpers.Coalesced(function()
+    local function writeAll()
         for _, w in ipairs(writes) do
             local def = Helpers.FindSchema(w[1])
             if def then
@@ -303,7 +311,13 @@ function Helpers.SetRows(writes)
                 n = n + 1
             end
         end
+    end
+    Helpers.Coalesced(function()
+        if summary then Helpers.MuteSetLog(writeAll) else writeAll() end
     end)
+    if summary and NS.State and NS.State.debug and NS.Debug then
+        NS.Debug("Set", "%s: %d rows", tostring(summary), n)
+    end
     return n
 end
 

@@ -418,6 +418,8 @@ local RESIDUE = {
 
     -- settings/Panel_Render.lua
     {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
+    -- SetRows' one [Set] summary line (a debug-console format, never chat).
+    {"settings/Panel_Render.lua", "%s: %d rows", "DIAGNOSTIC"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.

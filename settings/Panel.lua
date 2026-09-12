@@ -138,6 +138,21 @@ end
 local SET_LOG_DEBOUNCE = 0.3
 local pendingSet, setGen = {}, {}
 
+-- While above zero, logSet stays quiet: a batch writer logs ONE line for the
+-- whole batch instead of one per row (debug-logging-§9). Only the log is muted.
+-- Every row still writes, validates and runs its onChange. A counter rather than
+-- a flag, so a nested batch cannot unmute the outer one.
+local setLogMuted = 0
+
+--- Run `fn` with the per-row [Set] line muted, then restore it even if `fn`
+--- raised. Helpers.SetRows is the caller, when it is handed a summary.
+function Helpers.MuteSetLog(fn)
+    setLogMuted = setLogMuted + 1
+    local ok, err = pcall(fn)
+    setLogMuted = setLogMuted - 1
+    if not ok then error(err, 0) end
+end
+
 local function fmtSetValue(v)
     if type(v) ~= "table" then return tostring(v) end
     local parts = {}
@@ -147,6 +162,7 @@ end
 
 local function logSet(path, value)
     if not (NS.State and NS.State.debug) then return end   -- gate first
+    if setLogMuted > 0 then return end   -- a batch logs its own summary
     pendingSet[path] = value
     local gen = (setGen[path] or 0) + 1
     setGen[path] = gen

@@ -401,6 +401,59 @@ test("CopyStyling announces each section once and refreshes the panels structura
     assertEqual(refreshes, 1, "one structural refresh, after the copy")
 end)
 
+test("CopyStyling logs ONE [Set] summary line, not one per copied row", function()
+    -- The owner's call: a copy is one act of ~111 rows, and ~111 [Set] lines
+    -- bury the log and evict older lines from the 500-line buffer
+    -- (debug-logging-§9). red under: SetRows letting each row's Helpers.Set log.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    inst.mocks.__flushTimers()
+    NS.State.debug = true
+    NS.DebugLog:Clear()
+    local ok, err = pcall(NS.Units.CopyStyling, "target", "focus")
+    inst.mocks.__flushTimers()   -- a per-row line would be a debounced one
+    local lines = {}
+    for line in (NS.DebugLog:CopyText() .. "\n"):gmatch("([^\n]*)\n") do
+        if line:find("[Set]", 1, true) then lines[#lines + 1] = line end
+    end
+    NS.State.debug = false
+    if not ok then error(err, 0) end
+    assertEqual(#lines, 1, "one summary line: " .. table.concat(lines, " | "))
+    local rows = #copiedRows(NS) + 1   -- every copied row, and the link
+    T.assertTrue(lines[1]:find("copy target", 1, true) ~= nil, "it names the copy: " .. lines[1])
+    T.assertTrue(lines[1]:find(": " .. rows .. " rows", 1, true) ~= nil,
+        "it carries the row count (" .. rows .. "): " .. lines[1])
+    T.assertNil(lines[1]:find("units.focus.", 1, true), "and no per-row path")
+end)
+
+test("CopyStyling still validates and runs onChange per row with the log muted", function()
+    -- The mute is the log's alone: a row's write, its onChange and the helper's
+    -- schema lookup all still happen per row.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    NS.State.debug = true
+    local def = H.FindSchema("units.focus.castbar.orientation")
+    local realChange, ran = def.onChange, 0
+    def.onChange = function(...) ran = ran + 1; return realChange(...) end
+    local sets, realSet = 0, H.Set
+    H.Set = function(...) sets = sets + 1; return realSet(...) end
+    local ok, err = pcall(NS.Units.CopyStyling, "target", "focus")
+    def.onChange, H.Set = realChange, realSet
+    NS.State.debug = false
+    if not ok then error(err, 0) end
+    assertEqual(ran, 1, "orientation's onChange ran once")
+    T.assertTrue(sets >= #copiedRows(NS) + 1, "every row still went through Helpers.Set")
+    -- And a later single write logs its own [Set] line again: the mute is over.
+    inst.mocks.__flushTimers()
+    NS.State.debug = true
+    NS.DebugLog:Clear()
+    H.Set("locked", "general", true)
+    inst.mocks.__flushTimers()
+    NS.State.debug = false
+    T.assertTrue(NS.DebugLog:FindLine("[Set] locked = true"), "the per-row log is back after the copy")
+end)
+
 test("units.focus.link is a General > Units row, drawn by the tab's own tick", function()
     -- red under: `link` going back to a plain profile field with no row, which
     -- leaves it outside /kcd get|set|list|reset and the page's Defaults.

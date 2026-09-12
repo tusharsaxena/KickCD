@@ -124,6 +124,10 @@ end
 --- written last, and its own onChange is the structural refresh the Units tab
 --- used to do by hand. A unit with no link row (Target) gets the same refresh
 --- here instead.
+---
+--- ONE [Set] line, not one per row. The copy is a single act, so it hands
+--- SetRows a summary: the per-row lines are muted and the debug log shows
+--- `[Set] copy target→focus: N rows`. Validation and onChange stay per row.
 --- @return boolean  whether the copy ran (false before the settings layer loads)
 function Units.CopyStyling(fromUnit, toUnit)
     local H = NS.Settings and NS.Settings.Helpers
@@ -145,7 +149,7 @@ function Units.CopyStyling(fromUnit, toUnit)
     end
     local linkRow = H.FindSchema(dst .. "link")
     if linkRow then writes[#writes + 1] = { linkRow.path, false } end
-    H.SetRows(writes)
+    H.SetRows(writes, "copy " .. fromUnit .. "→" .. toUnit)
     if not linkRow then H.RefreshAllPanels() end
     return true
 end
