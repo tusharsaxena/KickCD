@@ -290,11 +290,12 @@ badge and any count quoted in the docs must agree with it.
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_bus.lua (7)
+### test_bus.lua (8)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
 - Addon SendMessage reaches a registered module target
+- Coalesced holds a nil-section announcement and sends it once, as nil
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
 - a string method is dispatched as target:Method(message, payload)
 - a registration with no handler calls the method named after the message
@@ -1108,7 +1109,7 @@ badge and any count quoted in the docs must agree with it.
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
-| test_bus.lua | 7 |
+| test_bus.lua | 8 |
 | test_compat.lua | 5 |
 | test_compat_api.lua | 46 |
 | test_compat_debug.lua | 11 |
@@ -1154,4 +1155,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **912** |
+| **Total** | **913** |

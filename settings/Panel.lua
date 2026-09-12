@@ -97,12 +97,19 @@ end
 -- section when it returns. nil outside a batch.
 local pending
 
+-- A nil section is still an announcement: unbatched, it goes out as
+-- { section = nil }. A batch holds it under this sentinel, because a bare nil
+-- cannot sit in the order list (`order[#order + 1] = nil` appends nothing, which
+-- used to drop it silently), and sends it as nil again when it flushes. So
+-- batching moves the timing of a nil announcement and nothing else.
+local NIL_SECTION = {}
+
 function Helpers.FireConfigChanged(section)
     if pending then
-        local key = section == nil and pending or section
+        local key = section == nil and NIL_SECTION or section
         if not pending.seen[key] then
             pending.seen[key] = true
-            pending.order[#pending.order + 1] = section
+            pending.order[#pending.order + 1] = key
         end
         return
     end
@@ -122,7 +129,13 @@ function Helpers.Coalesced(fn)
     local ok, err = pcall(fn)
     local order = pending.order
     pending = nil
-    for _, section in ipairs(order) do Helpers.FireConfigChanged(section) end
+    for _, key in ipairs(order) do
+        if key == NIL_SECTION then
+            Helpers.FireConfigChanged(nil)
+        else
+            Helpers.FireConfigChanged(key)
+        end
+    end
     if not ok then error(err, 0) end
 end
 
