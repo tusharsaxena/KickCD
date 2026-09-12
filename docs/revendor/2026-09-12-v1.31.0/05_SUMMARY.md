@@ -60,3 +60,34 @@ a registry record. It was not filed, because the orchestrator asked for no filin
 ## Not pushed
 
 Committed only. Pushing is `/wow-addon:finalize`'s.
+
+## Addendum, 2026-09-12: the v1.31.0 tag was re-cut before release
+
+This bundle was written against the first cut of the `v1.31.0` tag (commit `30db4ed`), and the "To"
+row above still names it. Before anything was pushed, a review of that release found defects in the
+kit-17 fakes, and LibKa0s re-cut the tag on the fixed tree: **`v1.31.0` now points at `e7e1962`**.
+The re-vendor commit that follows this bundle, **`4a27fdb`**, copied both payloads whole from the
+re-cut tag, and the vendor-sync cases pass against it.
+
+What the re-cut changed, relative to the tables above:
+
+| File | First cut | Re-cut |
+|---|---|---|
+| `Perf.lua` | minor 10 (unchanged) | **minor 11**: `P.Save` traces the ring trim once past its cap (debug-logging-§8) |
+| `OptionsWidgets.lua` | minor 15 | minor 15 (review fixes land inside the unreleased minor: `pairWith` keyed by `row.path or row.field`; a bound row's `disabledIf` reads through `row.get`) |
+| `OptionsCompose.lua` | minor 4 | minor 4 (unchanged surface) |
+| kit (`tests/_kit/`) | revision 17 | revision 17 (review fixes: repeating-timer delay no longer drifts; the nameless `NewAddon` path is exactly one table argument; the timer handle field is AceTimer's own `cancelled`, and `NewTimer` handles answer `IsCancelled()`; dispatch survives a handler error; `ADDON_LOADED` after login enables a load-on-demand addon; the AceEvent library object carries the message API) |
+
+So three files in `LibKa0s/` move in this release, not two, and the "Files under `LibKa0s/` that
+moved" row above is short by `Perf.lua` (`MINOR` 10 → 11). **The Perf ring trim is now traced
+upstream** by Perf minor 11, so any "the ring trim is not traced" finding against this release is
+resolved in the library, and this addon needed no change of its own for it.
+
+The gate was re-run on the re-cut payload, as a fourth column beside the table above:
+
+| Gate | After the re-cut (`4a27fdb`) |
+|---|---|
+| `luacheck .` | 0 / 0 in 95 files |
+| `lua tests/run.lua` | **901 passed, 0 failed** |
+| `tests/test_vendor_sync.lua` | green against v1.31.0 at `e7e1962` |
+| `lizard -C 15` | no function over 15 |

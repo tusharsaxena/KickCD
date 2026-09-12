@@ -75,3 +75,37 @@ grep -n 'Kit.VERSION' <tag>/testkit/framework.lua KickCD/tests/_kit/framework.lu
 provenance line (`ca6e0d5`). That is the pairing rule: from revision 11 on, `vendor_sync.lua`
 stopped treating `media` as a file and stopped normalizing line endings across binaries, so the
 two payloads always move together.
+
+## Addendum, 2026-09-12: the v1.31.0 tag was re-cut before release
+
+This bundle was written against the first cut of the `v1.31.0` tag (commit `30db4ed`). Before
+anything was pushed, a review of that release found defects in the kit-17 fakes, and LibKa0s re-cut
+the tag on the fixed tree: **`v1.31.0` now points at `e7e1962`**
+(`git -C ../LibKa0s rev-parse --short 'v1.31.0^{commit}'` → `e7e1962`). The re-vendor commit that
+follows this bundle, **`4a27fdb`** ("Re-vendor the reviewed LibKa0s v1.31.0 (tag moved to
+e7e1962)"), copied both payloads whole from the re-cut tag, and the vendor-sync cases pass against
+it.
+
+What the re-cut changed, relative to the tables above:
+
+| File | First cut | Re-cut |
+|---|---|---|
+| `Perf.lua` | minor 10 (unchanged) | **minor 11**: `P.Save` traces the ring trim once past its cap (debug-logging-§8) |
+| `OptionsWidgets.lua` | minor 15 | minor 15 (review fixes land inside the unreleased minor: `pairWith` keyed by `row.path or row.field`; a bound row's `disabledIf` reads through `row.get`) |
+| `OptionsCompose.lua` | minor 4 | minor 4 (unchanged surface) |
+| kit (`tests/_kit/`) | revision 17 | revision 17 (review fixes: repeating-timer delay no longer drifts; the nameless `NewAddon` path is exactly one table argument; the timer handle field is AceTimer's own `cancelled`, and `NewTimer` handles answer `IsCancelled()`; dispatch survives a handler error; `ADDON_LOADED` after login enables a load-on-demand addon; the AceEvent library object carries the message API) |
+
+`4a27fdb` touched exactly those files: `libs/LibKa0s/OptionsCompose.lua`,
+`libs/LibKa0s/OptionsWidgets.lua`, `libs/LibKa0s/Perf.lua`, `tests/_kit/README.md` and
+`tests/_kit/mock_base.lua`.
+
+So three files in `LibKa0s/` move in this release, not two. 3c's "every other shipped file —
+unchanged" no longer holds for `Perf.lua`, which is now at minor 11 in `libs/LibKa0s/Perf.lua`.
+**The Perf ring trim is now traced upstream**: Perf minor 11's `P.Save` logs the trim once when the
+ring passes its cap (debug-logging-§8), so any "the ring trim is not traced" finding against this
+release is resolved in the library. This addon consumes `LibKa0s-Perf-1.0` (three lookup sites, 3e)
+and needed no change of its own to pick the trace up.
+
+**Gate on the re-cut payload, at `4a27fdb`:** `lua tests/run.lua` 901 passed, 0 failed, the
+vendor-sync cases green against `e7e1962`; `luacheck .` 0 / 0 in 95 files; `lizard -C 15` no
+function over 15.
