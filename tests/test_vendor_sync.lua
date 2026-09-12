@@ -24,6 +24,10 @@
 -- The case names below are the consumer's, not the kit's, which is why
 -- `register` is a factory rather than auto-registration: swapping the
 -- hand-copied gate for this one must not move docs/test-cases.md's counts.
+-- From kit revision 16 (LibKa0s v1.30.0) `register` adds one case of its own,
+-- `the automated-test runner is recorded executable (100755)`
+-- (automated-tests-§2). That one did move the count, 870 -> 871, and its
+-- name is the kit's.
 
 local T = _G.KICKCD_TEST
 local ROOT = T.root or "."

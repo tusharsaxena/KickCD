@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-870%2F870_passing-green)
+![Tests](https://img.shields.io/badge/Tests-871%2F871_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
 
