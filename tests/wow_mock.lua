@@ -542,15 +542,17 @@ local function build()
                 callbacks[event][#callbacks[event] + 1] = { target = target, handler = handler }
             end
 
-            local function fire(event)
+            -- Hands a handler exactly what the caller passes after the event,
+            -- nothing substituted, so each event carries AceDB-3.0's own shape.
+            local function fire(event, ...)
                 for _, entry in ipairs(callbacks[event] or {}) do
                     local target, handler = entry.target, entry.handler
                     if type(handler) == "function" then
-                        handler(event, db, db.keys.profile)
+                        handler(event, db, ...)
                     elseif type(handler) == "string" and type(target) == "table"
                         and type(target[handler]) == "function"
                     then
-                        target[handler](target, event, db, db.keys.profile)
+                        target[handler](target, event, db, ...)
                     end
                 end
             end
@@ -559,9 +561,9 @@ local function build()
                 local profile = db.profile
                 for k in pairs(profile) do profile[k] = nil end
                 copyDefaults(profile, dbSection(defaults, "profile"))
-                -- The real library passes nil for the third argument on a reset;
-                -- `fire` substitutes the active key, which is what the host's
-                -- OnProfileChanged does for itself anyway.
+                -- AceDB-3.0 ends ResetProfile with
+                -- `self.callbacks:Fire("OnProfileReset", self)`: the database and no
+                -- key. Database:OnProfileChanged names the active profile itself.
                 fire("OnProfileReset")
             end
 
