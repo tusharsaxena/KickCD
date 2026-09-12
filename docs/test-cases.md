@@ -916,7 +916,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (36)
+### test_options_panel.lua (37)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -940,6 +940,7 @@ badge and any count quoted in the docs must agree with it.
 - SessionToggle adapts this addon's argument order onto the library's
 - a session toggle never becomes a saved setting
 - the Profiles page is vetoed from a global reset
+- the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach it otherwise has
@@ -1155,7 +1156,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_editor.lua | 28 |
 | test_spell_registry.lua | 24 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 36 |
+| test_options_panel.lua | 37 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1171,4 +1172,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **929** |
+| **Total** | **930** |

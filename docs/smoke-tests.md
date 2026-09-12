@@ -357,6 +357,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/reload` after each step.
 
 **Pass.**
+- **The page draws.** Open another addon's options page first, then Ka0s KickCD → Profiles → the AceDBOptions controls render (current profile, New, Copy From, Delete, Reset Profile): never a blank page under the header.
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
 - `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.

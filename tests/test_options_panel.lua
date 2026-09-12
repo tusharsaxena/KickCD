@@ -365,6 +365,45 @@ test("the Profiles page is vetoed from a global reset", function()
         "the veto must be declared once and shared with the stub")
 end)
 
+-- ── the Profiles page draws ─────────────────────────────────────────────────
+
+test("the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one", function()
+    -- AceGUI:Release hides a widget's frame before pooling it, and neither
+    -- AceGUI:Create nor AceConfigDialog:Open shows it again. settings/Profiles.lua
+    -- creates its SimpleGroup at build time, when AceGUI's pool is usually still
+    -- empty -- but any addon or page that released a SimpleGroup first hands it
+    -- a pooled, hidden one, AceConfigDialog fills that hidden frame, and the page
+    -- reads as blank under its header. The Create wrap below hands out every
+    -- SimpleGroup hidden, which is exactly the pooled case.
+    --
+    -- The harness's AceConfigDialog is a no-op lib, so Open is replaced with a
+    -- recorder in the `mutate` hook, before any source loads.
+    -- red under: the renderer not calling container.frame:Show().
+    local opened = {}
+    local inst = T.load(true, true, function(m)
+        m.__libs["AceConfigDialog-3.0"].Open = function(_, app, container)
+            opened[#opened + 1] = { app = app, container = container }
+        end
+        local AceGUI = m.__libs["AceGUI-3.0"]
+        local create = AceGUI.Create
+        AceGUI.Create = function(self, wtype)
+            local w = create(self, wtype)
+            if wtype == "SimpleGroup" then w.frame:Hide() end
+            return w
+        end
+    end)
+
+    local ctx = inst.NS.Settings.Helpers.__panelFor("profiles")
+    assertTrue(ctx ~= nil, "the Profiles page registered")
+    ctx.panel:Hide()
+    ctx.panel:Show()
+    assertEqual(#opened, 1, "the first show opens the AceDBOptions table once")
+    assertEqual(opened[1].app, "KickCD-Profiles")
+    local frame = opened[1].container and opened[1].container.frame
+    assertTrue(frame ~= nil, "AceConfigDialog is handed an AceGUI container")
+    assertTrue(frame:IsShown(), "the container AceConfigDialog fills is shown")
+end)
+
 test("a global reset also clears the state no schema row owns", function()
     -- Anchors, the per-unit `link` flag and the spell lists are not schema rows,
     -- so applyDefault never reaches them. afterRestoreAll is how the library's
