@@ -171,6 +171,16 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 
 Each entry's `enabled` and `category` fields are player preferences, not membership, so the writer's closed list does not cover them. They stay bespoke controls with no schema row: the Spells page's row checkbox and category dropdown, `/kcd spells enable|disable|category`, and the re-enable when a spell already listed is added again. Every one of those writes goes through `Database` (`SetSpellEnabled`, `SetSpellCategory`, `AddSpell`). That is a ratified `architecture-§5` deviation, recorded with its re-check trigger in [Documented deviations](#documented-deviations).
 
+**Named non-setting state: the frame anchors (`architecture-§5`).** Each unit's icon-grid and cast-bar screen position is geometry that only a drag determines. No control sets it and no row addresses it, so it is named state rather than a setting. Naming it here is the compliance, and it carries no register row.
+
+- **Storage key.** `db.profile.units.<unit>.anchors.icons` and `.anchors.castbar`, each a `{ point, relativePoint, x, y }` snapshot relative to `UIParent` (`Util.SaveAnchor`). It is kept per unit and never link-resolved.
+- **Owner.** `core/Units.lua` (`NS.Units`). `Units.SetAnchor(unit, which, a)` writes it and `Units.Anchor(unit, which)` reads it.
+- **Writers, with the act that reaches each.**
+  - `Units.SetAnchor`, from the icon grid's drag-stop (`modules/IconGrid.lua` `onDragStop`, `"icons"`) and the cast bar's drag-stop (`modules/Castbar.lua` `onDragStop`, `"castbar"`; the bar only drags in `FREE` anchor mode).
+  - `Helpers.ResetIconPosition` (`settings/Panel_Render.lua`), from Master controls → *Reset position* (`settings/General.lua`) and `/kcd resetposition` (`core/KickCD.lua`). It writes the target grid's `anchors.icons` directly rather than through `Units`, putting back the `DEFAULT_PROFILE` coordinate. A reset to the shipped default chooses nothing, so this is a listed writer and not a finding.
+
+  No other runtime code writes an anchor. Two paths also touch the anchors and are not writers the naming has to list. The load pass, `Database:FoldLegacyUnits`, merges a legacy top-level `anchors` table into `units.target.anchors`. The profile reset behind `/kcd resetall` and Profiles → Reset Profile replaces the profile wholesale.
+
 ## Event subscriptions
 
 Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):

@@ -58,35 +58,6 @@ test("ResetIconPosition restores units.target.anchors.icons to the default (Task
     assertEqual(a.y, d.y, "y restored to default")
 end)
 
-test("ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)", function()
-    local inst = T.load(true)
-    local NS = inst.NS
-    local Helpers = NS.Settings.Helpers
-
-    -- Simulate the user having dragged every grid away from default, for
-    -- both units and both anchor kinds.
-    local garbage = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 999, y = -999 }
-    NS.db.profile.units.target.anchors.icons   = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
-    NS.db.profile.units.target.anchors.castbar = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
-    NS.db.profile.units.focus.anchors.icons    = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
-    NS.db.profile.units.focus.anchors.castbar  = { point = garbage.point, relativePoint = garbage.relativePoint, x = garbage.x, y = garbage.y }
-
-    -- Unit under test: ResetAllPositions directly (ResetAll also resets
-    -- spells, which is heavier than this test needs).
-    Helpers.ResetAllPositions()
-
-    for _, unit in ipairs({ "target", "focus" }) do
-        for _, which in ipairs({ "icons", "castbar" }) do
-            local d = NS.DEFAULT_PROFILE.units[unit].anchors[which]
-            local a = NS.db.profile.units[unit].anchors[which]
-            assertEqual(a.point, d.point, unit .. "." .. which .. " point restored to default")
-            assertEqual(a.relativePoint, d.relativePoint, unit .. "." .. which .. " relativePoint restored to default")
-            assertEqual(a.x, d.x, unit .. "." .. which .. " x restored to default")
-            assertEqual(a.y, d.y, unit .. "." .. which .. " y restored to default")
-        end
-    end
-end)
-
 test("ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)", function()
     -- RED before M4-18. Helpers.ResetIconPosition's header promises the default
     -- coordinate lives in exactly one place, DEFAULT_PROFILE.units.target.anchors
@@ -101,8 +72,7 @@ test("ResetIconPosition writes nothing when the defaults tree is absent (M4-18 /
     -- why nothing caught the wrong number for as long as it sat there. Taking the
     -- table away by hand is the only way to pin the contract. The right answer for
     -- a reset with no defaults to reset TO is to do nothing at all: leave the
-    -- stored anchor where the user dragged it and publish nothing, which is what
-    -- the sibling Helpers.ResetAllPositions has always done.
+    -- stored anchor where the user dragged it and publish nothing.
     local inst = T.load(true)
     local NS = inst.NS
     local Helpers = NS.Settings.Helpers

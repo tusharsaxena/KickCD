@@ -81,8 +81,7 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
     end
     -- ...and the host's own decorations sit on the SAME table.
     for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
-                         "RenderUnitPanel", "PartitionUnitRows", "ResetAllPositions",
-                         "SetRows", "Coalesced", "AnchorValues", "AnchorOrder",
+                         "RenderUnitPanel", "PartitionUnitRows", "SetRows", "Coalesced", "AnchorValues", "AnchorOrder",
                          "BuildMainContent", "ValidateSchema", "SchemaForPanel" }) do
         assertEqual(type(H[m]), "function", "host decoration missing: " .. m)
     end

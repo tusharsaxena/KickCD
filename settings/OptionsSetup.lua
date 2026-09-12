@@ -107,8 +107,8 @@ local descriptor = {
     -- folds legacy units, migrates spec keys, RE-SEEDS THE SPELL LISTS and
     -- refreshes — exactly what it does for a profile switch.
     --
-    -- ResetAllPositions leaves this path (RestoreUnitLinks, which used to sit
-    -- beside it, is gone); the spell wipe leaves Helpers.ResetAll for the same
+    -- ResetAllPositions and RestoreUnitLinks, which used to sit beside this
+    -- call, are both gone; the spell wipe left Helpers.ResetAll for the same
     -- reason.
     -- It runs BEFORE the refresh, which is load-bearing: a refresh first would
     -- paint the pre-hook values.

@@ -328,8 +328,12 @@ end
 -- branch needs defaults/Profile.lua to have failed to load, which the TOC
 -- rules out, so nothing was ever going to notice the wrong number. Doing
 -- nothing is also the honest answer: with no default to restore, the least
--- surprising outcome is to leave the grid where the user dragged it, which
--- is what the sibling Helpers.ResetAllPositions has always done.
+-- surprising outcome is to leave the grid where the user dragged it.
+--
+-- The anchor is named non-setting state owned by NS.Units (architecture-§5).
+-- This writes it directly rather than through NS.Units.SetAnchor, and
+-- docs/ARCHITECTURE.md -> Settings schema lists it as one of that state's
+-- writers, which is what makes the direct write compliant.
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
     local d = NS.DEFAULT_PROFILE
@@ -351,34 +355,11 @@ function Helpers.ResetIconPosition()
     Helpers.FireConfigChanged("general")
 end
 
--- Reset every unit's icon-grid AND cast-bar anchor to its DEFAULT_PROFILE
--- screen position. Anchors aren't schema rows, so RestoreAllDefaults skips
--- them — this is why /kcd resetall (and the "Reset all settings" popup)
--- historically left the grids where the user dragged them. ResetAll calls
--- this so a full reset restores positions too. Fires "general" (for icon grids
--- and PRIMARY-mode cast bars) then "castbar" (for FREE-mode cast bars) so
--- every unit's anchor re-applies and every frame snaps to its default position.
-function Helpers.ResetAllPositions()
-    if not (NS.db and NS.db.profile and NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units) then return end
-    NS.db.profile.units = NS.db.profile.units or {}
-    for _, unit in ipairs({ "target", "focus" }) do
-        local du = NS.DEFAULT_PROFILE.units[unit]
-        if du and du.anchors then
-            local pu = NS.db.profile.units[unit] or {}
-            NS.db.profile.units[unit] = pu
-            pu.anchors = pu.anchors or {}
-            for _, which in ipairs({ "icons", "castbar" }) do
-                local a = du.anchors[which]
-                if a then
-                    pu.anchors[which] = { point = a.point, relativePoint = a.relativePoint, x = a.x, y = a.y }
-                end
-            end
-        end
-    end
-    Helpers.FireConfigChanged("general")
-    Helpers.FireConfigChanged("castbar")
-end
-
+-- (Helpers.ResetAllPositions is gone. It put every unit's icon-grid and
+-- cast-bar anchor back to DEFAULT_PROFILE, and nothing had called it since
+-- Reset all became a profile reset, which restores the anchors with the rest
+-- of the profile.)
+--
 -- (Helpers.RestoreUnitLinks is gone. It restored each unit's `link` flag
 -- because `link` had no schema row, and nothing had called it since Reset all
 -- became a profile reset. `units.focus.link` is a row now (settings/General.lua),
@@ -391,8 +372,8 @@ end
 -- slash command — both go through this single helper so the two paths
 -- never diverge.
 --
--- ResetAllPositions and the old RestoreUnitLinks are NOT called here. They used
--- to be, and RestoreAllDefaults had already run both by the time it returned: the
+-- The old ResetAllPositions and RestoreUnitLinks (both gone) are NOT called here.
+-- They used to be, and RestoreAllDefaults had already done both by the time it returned: the
 -- descriptor's `resetProfile` hook (settings/OptionsSetup.lua) empties the
 -- active profile and merges NS.DEFAULT_PROFILE back over it, anchors and every
 -- unit's `link` flag included, and libs/LibKa0s/Options.lua's

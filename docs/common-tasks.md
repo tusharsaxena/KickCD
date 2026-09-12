@@ -146,7 +146,9 @@ drifts from the code is worse than one that names none.
 - Settings reads/writes originating outside the settings panel files (`settings/Panel*.lua`) — slash
   commands, keybinds — route through `Helpers.SetAndRefresh(path, value)` so they share the panel
   widgets' write-notify-refresh code path. Direct `db.profile` writes are reserved for places where no
-  schema row exists (drag-stop anchor save, profile bootstrap).
+  schema row exists: the frame anchors, named state whose owner (`Units`) and every writer
+  [ARCHITECTURE.md](ARCHITECTURE.md#settings-schema) lists, and the profile bootstrap. A new anchor
+  writer gets a line in that list.
 - New schema rows automatically gain `/kcd get|set|list` coverage, the per-panel Defaults reset, and
   the General → "Reset all settings" reset. Don't add a parallel mutator for a field that already has
   a schema row.
