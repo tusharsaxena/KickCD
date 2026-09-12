@@ -93,10 +93,37 @@ function Helpers.Get(path)
     return parent[key]
 end
 
+-- While Helpers.Coalesced runs, announcements are held here and sent once per
+-- section when it returns. nil outside a batch.
+local pending
+
 function Helpers.FireConfigChanged(section)
+    if pending then
+        local key = section == nil and pending or section
+        if not pending.seen[key] then
+            pending.seen[key] = true
+            pending.order[#pending.order + 1] = section
+        end
+        return
+    end
     if NS and NS.SendMessage then
         NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = section })
     end
+end
+
+--- Run `fn` with CONFIG_CHANGED coalesced: every section it announces is sent
+--- ONCE, in first-announced order, after `fn` returns (or raises -- the held
+--- sections still go out, then the error is re-raised). Still this function's
+--- one SendMessage site (architecture-§4); only the timing moves. A nested call
+--- joins the outer batch. Helpers.SetRows is the caller.
+function Helpers.Coalesced(fn)
+    if pending then return fn() end
+    pending = { seen = {}, order = {} }
+    local ok, err = pcall(fn)
+    local order = pending.order
+    pending = nil
+    for _, section in ipairs(order) do Helpers.FireConfigChanged(section) end
+    if not ok then error(err, 0) end
 end
 
 -- Settings-change logging (standard §10): one [Set] line per settled change,

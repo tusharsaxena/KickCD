@@ -95,17 +95,57 @@ function Units.LabelStyle(unit)
     return (c and c.label and c.label.style) or {}
 end
 
+-- What a copy carries, relative to `units.<unit>.`: every row under these.
+-- Every leaf under the three subtrees IS a schema row (tests/test_units.lua's
+-- characterization walks them), so a walk of rows is the whole copy. label.show
+-- is in because it follows the link (spec 2b): a one-shot snapshot must capture
+-- it, or unlinking would revive focus's stale independent show. label.text is
+-- deliberately OUT: the text stays per-unit (spec 2a).
+local COPIED = { "icons.", "castbar.", "label.style.", "label.show" }
+
+local function copied(rel)
+    for _, prefix in ipairs(COPIED) do
+        if rel:sub(1, #prefix) == prefix then return true end
+    end
+    return false
+end
+
+--- Copy `fromUnit`'s appearance onto `toUnit` once, then unlink `toUnit`.
+---
+--- Row by row through the settings helper (architecture-§5: a copy-from that
+--- touches rows is a helper write), via H.SetRows, so every row's write is
+--- Helpers.Set's and its onChange runs. The walk is in schema declaration order,
+--- and that is load-bearing for the cast bar: orientation's onChange resets
+--- growDirection to that axis's default, and growDirection is declared after it,
+--- so the copied value lands last and wins.
+---
+--- ONE structural refresh, not dozens of reactors. H.SetRows coalesces the bus,
+--- so each section is announced once, after the last row. The link row is
+--- written last, and its own onChange is the structural refresh the Units tab
+--- used to do by hand. A unit with no link row (Target) gets the same refresh
+--- here instead.
+--- @return boolean  whether the copy ran (false before the settings layer loads)
 function Units.CopyStyling(fromUnit, toUnit)
-    local src = Units.Config(fromUnit)
-    local dst = Units.Config(toUnit)
-    if not (src and dst) then return end
-    dst.icons   = NS.Util.DeepCopy(src.icons)
-    dst.castbar = NS.Util.DeepCopy(src.castbar)
-    dst.label = dst.label or {}
-    dst.label.style = NS.Util.DeepCopy(src.label and src.label.style)
-    -- show follows the link (spec 2b), so a one-shot snapshot must capture it
-    -- too — otherwise unlinking would revive focus's stale independent show.
-    -- Text stays per-unit (spec 2a) and is deliberately NOT copied.
-    dst.label.show  = (src.label and src.label.show) and true or false
-    dst.link    = false
+    local H = NS.Settings and NS.Settings.Helpers
+    if not (H and H.SetRows and Units.Config(fromUnit) and Units.Config(toUnit)) then
+        return false
+    end
+    local src, dst = "units." .. fromUnit .. ".", "units." .. toUnit .. "."
+    local writes = {}
+    for _, def in ipairs(NS.Settings.Schema) do
+        local path = def.path
+        if type(path) == "string" and path:sub(1, #src) == src then
+            local rel = path:sub(#src + 1)
+            if copied(rel) then
+                local v = H.Get(path)
+                -- A color is a table; the copy must own its own.
+                writes[#writes + 1] = { dst .. rel, type(v) == "table" and NS.Util.DeepCopy(v) or v }
+            end
+        end
+    end
+    local linkRow = H.FindSchema(dst .. "link")
+    if linkRow then writes[#writes + 1] = { linkRow.path, false } end
+    H.SetRows(writes)
+    if not linkRow then H.RefreshAllPanels() end
+    return true
 end

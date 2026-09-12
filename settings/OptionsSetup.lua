@@ -93,10 +93,11 @@ local descriptor = {
 
     skipRestoreAll = vetoedFromResetAll,
 
-    -- Anchors, the per-unit `link` flag and the spell lists are NOT schema rows,
-    -- so applyDefault never reaches them — and none of them needs a hook of its
-    -- own any more, because RESET ALL IS A PROFILE RESET (options-ui-§12) and all
-    -- three live IN the profile. The library calls `resetProfile` below.
+    -- Anchors and the spell lists are NOT schema rows, so applyDefault never
+    -- reaches them — and neither needs a hook of its own any more, because RESET
+    -- ALL IS A PROFILE RESET (options-ui-§12) and both live IN the profile. (The
+    -- Focus `link` flag is a row now, and lives in the profile too.) The library
+    -- calls `resetProfile` below.
     --
     -- One call, and the same act as the Profiles page's Reset Profile. AceDB
     -- empties the ACTIVE profile — only that one; the profile LIST is untouched,
@@ -106,8 +107,9 @@ local descriptor = {
     -- folds legacy units, migrates spec keys, RE-SEEDS THE SPELL LISTS and
     -- refreshes — exactly what it does for a profile switch.
     --
-    -- ResetAllPositions and RestoreUnitLinks leave this path and keep their other
-    -- callers; the spell wipe leaves Helpers.ResetAll for the same reason.
+    -- ResetAllPositions leaves this path (RestoreUnitLinks, which used to sit
+    -- beside it, is gone); the spell wipe leaves Helpers.ResetAll for the same
+    -- reason.
     -- It runs BEFORE the refresh, which is load-bearing: a refresh first would
     -- paint the pre-hook values.
     -- `resetProfile` rather than a hand-written afterRestoreAll: LibKa0s-Options-1.0

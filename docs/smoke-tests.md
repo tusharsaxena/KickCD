@@ -489,7 +489,8 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 - Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
 - Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and the Icons page collapses back to the note under its now-inert strip; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
 - On **General → Units**, the tick and the button are **one line**: `[Use same styling as Target] [Copy styling from Target]`, the button in the right half. A button on a line of its own reads as belonging to whatever follows it rather than to the tick above.
-- Untick again, then click **"Copy styling from Target"** (also on General → Units) — Focus's `icons`/`castbar` tables are deep-copied from Target's current values and `link` flips to `false` (button also unlinks if still linked).
+- Untick again, then click **"Copy styling from Target"** (also on General → Units). Every Focus `icons` / `castbar` / `label.style` row and `label.show` takes Target's current value, row by row through the settings helper, and `link` flips to `false` (the button also unlinks if still linked). Before clicking, give Target a **vertical** cast bar growing **Down**; after, Focus's bar is vertical and still grows Down (orientation's own reset to Up must not win). With `/kcd debug on`, the console shows one `[Set]` line per copied row and no Lua error.
+- `/kcd set units.focus.link false` unlinks exactly as the tick does: the tick unticks on an open General page, and the three unit pages grow their rows back. `/kcd set units.focus.link true` collapses them to the note again. With Focus unlinked, the General page's **Defaults** button re-links it.
 
 **Pass.**
 - While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
@@ -514,7 +515,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 #### 20d. Unlinked focus honors its own alpha / tint
 
-The link flag is **not a schema row** — there is no `units.<unit>.link` path, so `/kcd set units.focus.link false` is rejected with "Setting not found". Unlinking is the **"Use same styling as Target" checkbox** on Settings → General → Units only. Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
+Unlink **first**: untick **"Use same styling as Target"** on Settings → General → Units, or `/kcd set units.focus.link false` (the link is a schema row, `units.focus.link`; there is no `units.target.link`, since Target is never linked). Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
 
 This is also the reason to unlink **first** and set values **second**.
 

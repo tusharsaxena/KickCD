@@ -110,6 +110,31 @@ for _, u in ipairs(NS.Units.LIST) do
     }
 end
 
+-- The Focus styling link. A real row, so `/kcd get|set|list|reset` reach it and
+-- the page's Defaults restores it (architecture-§5: a toggle the player sets is
+-- a setting, and a setting with no row is a missing row). Only Focus has one;
+-- Target is never linked.
+--
+-- `skipRender`: the row stays in the schema but the library does not draw it.
+-- The Units tab's afterGroup below draws the tick instead, PAIRED with the Copy
+-- styling button on one line, and the tick writes through H.SetAndRefresh like
+-- any row widget would.
+--
+-- The onChange is STRUCTURAL, which no other row's is. Flipping the link changes
+-- what the Icons / Cast bar / Text Label pages DRAW (a linked Focus page is just
+-- the note), so every page that declared a renderer re-renders and the hidden
+-- ones repaint on their next show. The CONFIG_CHANGED `units` that IconGrid /
+-- Castbar reconcile on comes from Helpers.Set, through the row's section.
+add{
+    panel   = "general", section = "units", group = L["Units"],
+    path    = "units.focus.link", type = "bool",
+    label   = L["Use same styling as Target"],
+    desc    = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
+    default = NS.DEFAULT_PROFILE.units.focus.link,
+    skipRender = true,
+    onChange = function() H.RefreshAllPanels() end,
+}
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------
@@ -150,10 +175,11 @@ local function copyStylingButton(parent, relativeWidth)
     local btn = AceGUI:Create("Button")
     btn:SetText(L["Copy styling from Target"])
     btn:SetRelativeWidth(relativeWidth or 0.5)
+    -- CopyStyling is the whole act: every row through the helper, the bus
+    -- announced once per section, and the one structural refresh from the link
+    -- row it writes last.
     btn:SetCallback("OnClick", function()
         NS.Units.CopyStyling("target", "focus")
-        H.FireConfigChanged("units")
-        H.RefreshAllPanels()
     end)
     H.AttachTooltip(btn, L["Copy styling from Target"],
         L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
@@ -193,15 +219,15 @@ local function Build(mainCategory)
             -- The Focus styling link. It used to be drawn three times over, once
             -- in each unit page's hand-built header, and there is exactly one of
             -- it: whether Focus keeps its own appearance or mirrors Target's.
-            -- Neither control is a schema row — `link` is a plain profile field
-            -- with no path in the schema, and the copy is an action — so both
-            -- hang off the Units group rather than becoming rows.
+            -- The tick is the `units.focus.link` row, drawn here rather than by
+            -- the library (the row is `skipRender`), and the copy is an action,
+            -- so both hang off the Units group.
             --
             -- The write is STRUCTURAL, and that is the whole reason it can live
-            -- on another page at all: H.RefreshAllPanels re-renders every page
-            -- that declared a renderer, and marks the hidden ones dirty so they
-            -- repaint on their next OnShow. Ticking this here really does change
-            -- what Icons / Cast bar / Text Label draw.
+            -- on another page at all: the row's onChange runs H.RefreshAllPanels,
+            -- which re-renders every page that declared a renderer and marks the
+            -- hidden ones dirty so they repaint on their next OnShow. Ticking
+            -- this here really does change what Icons / Cast bar / Text Label draw.
             -- THE TWO ARE ONE LINE, [tick][button], through the flow engine's
             -- caller-driven sibling. They were two lines -- a half-width tick,
             -- then a button pair holding one button -- which read as a button
@@ -223,10 +249,7 @@ local function Build(mainCategory)
                                 return cfg ~= nil and cfg.link == true
                             end,
                             set   = function(on)
-                                local cfg = NS.Units.Config("focus")
-                                if cfg then cfg.link = on and true or false end
-                                H.FireConfigChanged("units")
-                                H.RefreshAllPanels()
+                                H.SetAndRefresh("units.focus.link", on and true or false)
                             end,
                         }, parent, relWidth)
                     end },

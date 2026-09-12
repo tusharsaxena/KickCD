@@ -173,7 +173,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (12)
+### test_units.lua (20)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -187,6 +187,14 @@ badge and any count quoted in the docs must agree with it.
 - LabelStyle resolves to target's style when focus is linked
 - LabelShow follows the link: a linked focus mirrors target's show (spec 2b)
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
+- CopyStyling carries every icons, castbar, label.style and label.show row onto focus
+- CopyStyling's copy is deep: focus gets its own color tables
+- CopyStyling writes every copied row, and the link, through Helpers.Set
+- CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
+- CopyStyling announces each section once and refreshes the panels structurally once
+- units.focus.link is a General > Units row, drawn by the tab's own tick
+- `/kcd set units.focus.link` writes it, announces units and repaints structurally
+- the Units tab's tick writes the link through Helpers.SetAndRefresh
 
 ### test_schema.lua (36)
 
@@ -785,13 +793,12 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 
-### test_settings_log.lua (6)
+### test_settings_log.lua (5)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetAll (via ResetAllPositions) restores both units' icons+castbar anchors to default (resetall bug fix)
-- ResetAll (via RestoreUnitLinks) restores each unit's link flag to default (link reset bug fix)
 - ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
 
 ### test_settings_spells.lua (4)
@@ -1080,7 +1087,7 @@ badge and any count quoted in the docs must agree with it.
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_locale.lua | 15 |
-| test_units.lua | 12 |
+| test_units.lua | 20 |
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
@@ -1109,7 +1116,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
 | test_cooldowns_gates.lua | 22 |
-| test_settings_log.lua | 6 |
+| test_settings_log.lua | 5 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 27 |
 | test_spell_registry.lua | 18 |
@@ -1130,4 +1137,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **888** |
+| **Total** | **895** |
