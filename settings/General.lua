@@ -12,7 +12,7 @@
 -- button pair, so "the eight canonical rows, plus the button-pair hook" counts
 -- those two twice. What the composer emits is `enabled`, `visibility`, `scale`,
 -- `alpha`, `locked` and `state.debugConsole`
--- (libs/LibKa0s/OptionsCompose.lua:350-380). The two resets are actions rather
+-- (libs/LibKa0s/OptionsCompose.lua:355-397). The two resets are actions rather
 -- than settings -- an anchor is not a key=value the schema covers -- which is
 -- why they are a button pair and not rows.
 --
