@@ -763,8 +763,8 @@ can settle. Nothing here may be reported as passing until someone has actually l
 click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
 `OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
 pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
-the shared mock answers `GetHeight` with 0 for every frame, and kit 16 (LibKa0s v1.30.0) did not
-flip that: the flip ships alone, at kit 17 at the earliest, not here. **So a
+the shared mock answers `GetHeight` with 0 for every frame, and kit 17 (LibKa0s v1.31.0) did not
+flip that either: the flip ships alone, at kit 18 at the earliest, not here. **So a
 stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
 every automated check in this repo.**
 
