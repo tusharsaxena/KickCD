@@ -120,11 +120,15 @@ end
 -- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
 -- true` and the General > "Lock frame" checkbox do, so an open
 -- settings panel re-syncs and any future onChange wired onto the
--- `locked` schema row fires here too. Falls back to a direct write
--- when the settings layer isn't loaded yet (early-boot edge), and also
--- when SetAndRefresh finds no `locked` row: that row is composed by
--- LibKa0s-Options-1.0's Master controls block, so a load without the
--- library has none.
+-- `locked` schema row fires here too.
+--
+-- The helper or nothing (architecture-§5, #20). When SetAndRefresh cannot
+-- take the write -- the settings layer is not loaded yet, or it finds no
+-- `locked` row because that row is composed by LibKa0s-Options-1.0's Master
+-- controls block and a load without the library has none -- this says so, the
+-- way runResetPosition does, and writes nothing. It used to fall back to
+-- `db.profile.locked = v`, which kept one composed setting writable around
+-- the helper on the very load options-ui-§1 expects to lose it.
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "db not initialized yet")
@@ -132,11 +136,7 @@ local function setLocked(self, value)
     local v = value and true or false
     local H = self.Settings and self.Settings.Helpers
     if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
-        self.db.profile.locked = v
-        -- Announce through the one sender (settings/Panel.lua's
-        -- Helpers.FireConfigChanged), never with a second SendMessage of our
-        -- own: architecture-§4 wants one emitter per message.
-        if H and H.FireConfigChanged then H.FireConfigChanged("general") end
+        return p(self, "Settings layer not ready yet")
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end

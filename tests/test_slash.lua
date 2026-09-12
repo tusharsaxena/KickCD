@@ -286,6 +286,62 @@ test("with LibKa0s absent /kcd still answers and host verbs still work", functio
     assertTrue(#lines > 0, "/kcd must still answer with no library")
 end)
 
+-- `/kcd lock` writes `locked` through the helper or not at all (#20). It used to
+-- fall back to `db.profile.locked = v` whenever SetAndRefresh could not take the
+-- write, which put a schema-row path (or, with no row, persistent state with no
+-- register row) around the helper. Now it prints the refusal runResetPosition uses.
+
+--- Run one COMMANDS verb's handler directly and return what it printed. Direct,
+--- because a LibKa0s-absent load has no dispatcher to route `/kcd lock` through.
+local function runHandler(inst, verb)
+    local lines = {}
+    local frame = inst.mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    local ok, err
+    for _, e in ipairs(inst.NS.COMMANDS) do
+        if e[1] == verb then ok, err = pcall(e[3], "") end
+    end
+    frame.AddMessage = orig
+    if ok == false then error(err, 0) end
+    return joined(lines)
+end
+
+test("/kcd lock with no `locked` row writes nothing and says the settings layer is not ready", function()
+    -- red under: restoring the `self.db.profile.locked = v` fallback in setLocked
+    local inst = T.load(true)
+    local ns = inst.NS
+    local schema = ns.Settings.Schema
+    for i = #schema, 1, -1 do
+        if schema[i].path == "locked" then table.remove(schema, i) end
+    end
+    ns.db.profile.locked = false
+    local fired = 0
+    local H = ns.Settings.Helpers
+    local realFire = H.FireConfigChanged
+    H.FireConfigChanged = function(...) fired = fired + 1; return realFire(...) end
+    local ok, out = pcall(runHandler, inst, "lock")
+    H.FireConfigChanged = realFire
+    if not ok then error(out, 0) end
+
+    assertEqual(ns.db.profile.locked, false, "no row, no write")
+    assertEqual(fired, 0, "and nothing is announced")
+    assertTrue(out:find("Settings layer not ready yet", 1, true) ~= nil,
+        "the refusal must say why; got: " .. out)
+    assertNil(out:find("icon grid locked", 1, true), "it must not claim the grid locked")
+end)
+
+test("with LibKa0s absent /kcd lock and /kcd toggle write nothing", function()
+    -- The real no-row case: `locked` is composed by LibKa0s-Options-1.0's Master
+    -- controls block, so a library-less load has no such row.
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    inst.NS.db.profile.locked = false
+    runHandler(inst, "lock")
+    assertEqual(inst.NS.db.profile.locked, false, "lock wrote around the helper")
+    runHandler(inst, "toggle")
+    assertEqual(inst.NS.db.profile.locked, false, "toggle wrote around the helper")
+end)
+
 test("the degraded stub carries no copy of the row formatter or the parser", function()
     -- slash-commands-§1: "The stub MUST NOT re-implement the library's
     -- rendering — no copied row formatter, no copied parser, no copied
