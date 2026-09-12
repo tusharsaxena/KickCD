@@ -163,6 +163,14 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 
 `NS.Settings.Schema` is the single source of truth for every option. Each row wires automatically into its UI widget, `/kcd get|set|list` coverage, and the per-panel `Defaults` reset (plus the General → "Reset all settings" reset) — so adding a setting is one schema row, never a parallel mutator. Every row also carries a `group`, which **is the tab**: each schema page partitions its rows by `group` in declaration order and draws a strip from them (`options-ui-§13`), so a group's rows must stay contiguous. The font, border, bar and color blocks are **composed** by `LibKa0s-Options-1.0` rather than written out (`options-ui-§16`), and every color swatch carries a `Use class color` companion immediately to its right (`options-ui-§17`). Detail in [settings-panel.md](settings-panel.md). `Helpers.ValidateSchema` returns the count of malformed rows (0 when healthy), runs at panel-register time, and is unit-tested.
 
+**The one structural registry: the spell lists (`architecture-§5`).** The per-class, per-spec tracked-spell lists are a collection the player adds to and removes from, and no schema row addresses a member, so they are a registry rather than a setting.
+
+- **Storage keys.** `db.profile.spells[CLASS][specID]` is an ordered array of `{ spellID, category, enabled }` entries, keyed by `UnitClass()`'s file token and the numeric spec ID, whose array order is the icon grid's render priority (declared as `spells = {}` in `defaults/Profile.lua`).
+- **Writer.** `core/Database.lua` (`NS.Database`) is the intended single writer but is not yet the only one: it owns the empty-container create (`EnsureSpellList`), the seed routine (`BuildSpells`) and the every-list reset verb (`ResetAllSpells`, behind `/kcd spells resetall`, which reuses the seed routine), while add, remove, reorder and the per-spec reset are still written directly in both `settings/Spells.lua` and the `/kcd spells` handlers in `core/KickCD.lua`, and moving them into `Database` is tracked as a GitHub issue (see the issue store).
+- **Load pass.** `Database:MigrateSpecKeys` (re-keys legacy spec names to spec IDs) then `Database:BuildSpells` (seeds a never-populated profile and appends the player's racial), run from `Database:Init` and again from `Database:OnProfileChanged` on every profile switch, copy and reset.
+
+Each entry's `enabled` and `category` fields are player preferences, not membership: they have no schema row, and the Spells page's checkbox and dropdown and `/kcd spells enable|disable|category` write them directly. Whether they get rows or a register row is an open owner decision, also tracked in the issue store.
+
 ## Event subscriptions
 
 Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):
