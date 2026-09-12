@@ -97,6 +97,21 @@ test("the TOC-derived addon list leaks no libs/ entry", function()
     end
 end)
 
+test("the TOC loads AceGUI-3.0 before AceConfig-3.0", function()
+    -- AceConfigDialog-3.0 runs `local gui = LibStub("AceGUI-3.0")` at file load, without the silent
+    -- flag, so it raises unless AceGUI is already registered. Listed first, AceConfig only loaded
+    -- when some earlier addon in the client had happened to load AceGUI already.
+    -- red under: KickCD.toc listing libs\AceConfig-3.0\AceConfig-3.0.xml above
+    -- libs\AceGUI-3.0\AceGUI-3.0.xml.
+    local toc = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local src = toc:read("*a")
+    toc:close()
+    local gui = src:find("libs\\AceGUI-3.0\\AceGUI-3.0.xml", 1, true)
+    local cfg = src:find("libs\\AceConfig-3.0\\AceConfig-3.0.xml", 1, true)
+    assertTrue(gui ~= nil and cfg ~= nil, "the TOC names both AceGUI-3.0 and AceConfig-3.0")
+    assertTrue(gui < cfg, "AceGUI-3.0 must load before AceConfig-3.0: AceConfigDialog needs it at load")
+end)
+
 test("the suite list and tests/test_*.lua on disk agree in both directions", function()
     -- Kit.run asserts this before it loads a single case, so a drifting list
     -- takes the whole run down rather than quietly running fewer cases. Called

@@ -22,12 +22,13 @@ badge and any count quoted in the docs must agree with it.
 - Util.Throttle coalesces a burst to one trailing-args call
 - RegisterUnitCastEvent registers the dispatch frame for the named unit
 
-### test_coresetup.lua (25)
+### test_coresetup.lua (26)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner FEEDS the derived library list, and it is not empty
 - every file the runner loads for LibKa0s exists on disk
 - the TOC-derived addon list leaks no libs/ entry
+- the TOC loads AceGUI-3.0 before AceConfig-3.0
 - the suite list and tests/test_*.lua on disk agree in both directions
 - NS.SafeToString renders ordinary values through tostring
 - NS.SafeToString answers nil and booleans up front, never masking them
@@ -1115,7 +1116,7 @@ badge and any count quoted in the docs must agree with it.
 | Suite | Cases |
 |-------|------:|
 | test_util.lua | 13 |
-| test_coresetup.lua | 25 |
+| test_coresetup.lua | 26 |
 | test_mediasetup.lua | 8 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 26 |
@@ -1172,4 +1173,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **930** |
+| **Total** | **931** |
