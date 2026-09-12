@@ -300,7 +300,8 @@ end
 --- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
 --- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
 --- bury the log and evict older lines from its capped buffer
---- (debug-logging-§9). Only the log is muted: every row still writes through
+--- (debug-logging-§10). N is the rows whose value the batch changed, not the
+--- rows it walked. Only the log is muted: every row still writes through
 --- Helpers.Set and runs its onChange, in order.
 ---
 --- @param writes  table   { { path, value }, ... }; a path with no row is skipped
@@ -317,11 +318,13 @@ function Helpers.SetRows(writes, summary)
             end
         end
     end
+    local changed
     Helpers.Coalesced(function()
-        if summary then Helpers.MuteSetLog(writeAll) else writeAll() end
+        if summary then changed = Helpers.MuteSetLog(writeAll) else writeAll() end
     end)
-    if summary and NS.State and NS.State.debug and NS.Debug then
-        NS.Debug("Set", "%s: %d rows", tostring(summary), n)
+    -- nil when this batch ran inside another bulk act, which logs the sum.
+    if changed and NS.State and NS.State.debug and NS.Debug then
+        NS.Debug("Set", "%s: %d rows", tostring(summary), changed)
     end
     return n
 end

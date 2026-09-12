@@ -151,19 +151,83 @@ end
 local SET_LOG_DEBOUNCE = 0.3
 local pendingSet, setGen = {}, {}
 
--- While above zero, logSet stays quiet: a batch writer logs ONE line for the
--- whole batch instead of one per row (debug-logging-§9). Only the log is muted.
--- Every row still writes, validates and runs its onChange. A counter rather than
--- a flag, so a nested batch cannot unmute the outer one.
-local setLogMuted = 0
+-- A bulk copy or reset logs ONE `[Set] <act> <scope>: N rows` line instead of
+-- one per row (debug-logging-§10). While one is open, logSet stays quiet and
+-- Helpers.Set records each row's value from before the act's first write to it.
+-- N is the rows whose value differs from that record at the end, so a row
+-- already at its default is not counted, and a row an onChange rewrites mid-act
+-- counts once. Only the log is muted: every row still writes, validates and
+-- runs its onChange.
+--
+-- Acts nest (a host act around a library reset, a reset inside a reset). The
+-- depth counter keeps ONE record across the levels, and only the outermost
+-- level logs, once, with every level's rows. A level that reset the whole
+-- profile silences the act, because Database:OnProfileChanged logs that.
+local bulkDepth, bulkProfileReset, bulkBefore = 0, false, nil
 
---- Run `fn` with the per-row [Set] line muted, then restore it even if `fn`
---- raised. Helpers.SetRows is the caller, when it is handed a summary.
-function Helpers.MuteSetLog(fn)
-    setLogMuted = setLogMuted + 1
+local function sameValue(a, b)
+    if a == b then return true end
+    if type(a) ~= "table" or type(b) ~= "table" then return false end
+    for k, v in pairs(a) do
+        if not sameValue(v, b[k]) then return false end
+    end
+    for k in pairs(b) do
+        if a[k] == nil then return false end
+    end
+    return true
+end
+
+local function bulkEnter()
+    if bulkDepth == 0 then bulkBefore, bulkProfileReset = {}, false end
+    bulkDepth = bulkDepth + 1
+end
+
+--- Close one level. Returns the rows the whole act changed when this closed the
+--- outermost level and no level reset the profile, and nil otherwise.
+local function bulkLeave(profileReset)
+    if bulkDepth == 0 then return nil end   -- an end with no begin
+    if profileReset then bulkProfileReset = true end
+    bulkDepth = bulkDepth - 1
+    if bulkDepth > 0 then return nil end
+    local before = bulkBefore
+    bulkBefore = nil
+    if bulkProfileReset then return nil end
+    local n = 0
+    for path, box in pairs(before) do
+        if not sameValue(box[1], Helpers.Get(path)) then n = n + 1 end
+    end
+    return n
+end
+
+--- Run `fn` as one bulk act, with the per-row [Set] line muted, and close it
+--- even if `fn` raised. Returns the rows it changed when it was the outermost
+--- act, for the caller's one line, and nil when it was nested (the outer act
+--- logs) or when `profileReset` says it reset the profile (the handler logs).
+--- Helpers.SetRows is one caller, when it is handed a summary; the degraded
+--- Reset all in settings/OptionsSetup.lua is the other.
+function Helpers.MuteSetLog(fn, profileReset)
+    bulkEnter()
     local ok, err = pcall(fn)
-    setLogMuted = setLogMuted - 1
+    local n = bulkLeave(profileReset)
     if not ok then error(err, 0) end
+    return n
+end
+
+--- LibKa0s' bulk bracket (Options minor 16, Slash minor 8), on the same record.
+--- The library calls BulkBegin before a reset walk writes its first row and
+--- BulkEnd once after it, always, even when a row raised, so the mute cannot
+--- stick. The library's own `count` (the third argument) is every row
+--- applyDefault returned, rows already at their default included, so it is not
+--- the §10 N and is not what the line carries.
+function Helpers.BulkBegin()
+    bulkEnter()
+end
+
+function Helpers.BulkEnd(act, scope, _, _, info)
+    local n = bulkLeave(info and info.profileReset)
+    if n and NS.State and NS.State.debug and NS.Debug then
+        NS.Debug("Set", "%s %s: %d rows", tostring(act), tostring(scope), n)
+    end
 end
 
 local function fmtSetValue(v)
@@ -175,7 +239,7 @@ end
 
 local function logSet(path, value)
     if not (NS.State and NS.State.debug) then return end   -- gate first
-    if setLogMuted > 0 then return end   -- a batch logs its own summary
+    if bulkBefore then return end   -- a bulk act logs its own one line
     pendingSet[path] = value
     local gen = (setGen[path] or 0) + 1
     setGen[path] = gen
@@ -196,12 +260,14 @@ function Helpers.Set(path, section, value)
         -- No FireConfigChanged: nothing on the bus renders session state, and a
         -- CONFIG_CHANGED here would fan a full re-apply out over a window that
         -- opened.
+        if bulkBefore and bulkBefore[path] == nil then bulkBefore[path] = { session.get() } end
         session.set(value)
         logSet(path, value)
         return
     end
     local parent, key = Resolve(path)
     if not parent then return end
+    if bulkBefore and bulkBefore[path] == nil then bulkBefore[path] = { parent[key] } end
     parent[key] = value
     logSet(path, value)
     Helpers.FireConfigChanged(section)

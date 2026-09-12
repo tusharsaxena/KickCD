@@ -401,12 +401,36 @@ test("CopyStyling announces each section once and refreshes the panels structura
     assertEqual(refreshes, 1, "one structural refresh, after the copy")
 end)
 
-test("CopyStyling logs ONE [Set] summary line, not one per copied row", function()
+local function sameValue(a, b)
+    if a == b then return true end
+    if type(a) ~= "table" or type(b) ~= "table" then return false end
+    for k, v in pairs(a) do
+        if not sameValue(v, b[k]) then return false end
+    end
+    for k in pairs(b) do
+        if a[k] == nil then return false end
+    end
+    return true
+end
+
+test("CopyStyling logs ONE [Set] summary line counting the rows it changed", function()
     -- The owner's call: a copy is one act of ~111 rows, and ~111 [Set] lines
-    -- bury the log and evict older lines from the 500-line buffer
-    -- (debug-logging-§9). red under: SetRows letting each row's Helpers.Set log.
+    -- bury the log and evict older lines from the 500-line buffer. Its N is the
+    -- rows whose value the copy changed, not the rows it walked
+    -- (debug-logging-§10). red under: SetRows letting each row's Helpers.Set
+    -- log, or a summary carrying the walk's count.
     local inst = T.load(true, true)
     local NS = inst.NS
+    local H = NS.Settings.Helpers
+    seedTarget(NS)
+    local want = NS.db.profile.units.focus.link ~= false and 1 or 0   -- the link, when it flips
+    for _, rel in ipairs(copiedRows(NS)) do
+        if not sameValue(H.Get("units.target." .. rel), H.Get("units.focus." .. rel)) then
+            want = want + 1
+        end
+    end
+    T.assertTrue(want > 1 and want < #copiedRows(NS),
+        "sanity: the copy changes some rows and leaves the rest (" .. want .. ")")
     inst.mocks.__flushTimers()
     NS.State.debug = true
     NS.DebugLog:Clear()
@@ -419,10 +443,9 @@ test("CopyStyling logs ONE [Set] summary line, not one per copied row", function
     NS.State.debug = false
     if not ok then error(err, 0) end
     assertEqual(#lines, 1, "one summary line: " .. table.concat(lines, " | "))
-    local rows = #copiedRows(NS) + 1   -- every copied row, and the link
     T.assertTrue(lines[1]:find("copy target", 1, true) ~= nil, "it names the copy: " .. lines[1])
-    T.assertTrue(lines[1]:find(": " .. rows .. " rows", 1, true) ~= nil,
-        "it carries the row count (" .. rows .. "): " .. lines[1])
+    T.assertTrue(lines[1]:find(": " .. want .. " rows", 1, true) ~= nil,
+        "it carries the rows it changed (" .. want .. "): " .. lines[1])
     T.assertNil(lines[1]:find("units.focus.", 1, true), "and no per-row path")
 end)
 

@@ -55,10 +55,26 @@ db.RegisterCallback(self, "OnProfileCopied",  "OnProfileChanged")
 db.RegisterCallback(self, "OnProfileReset",   "OnProfileChanged")
 ```
 
-`Database:OnProfileChanged` handles all three because the required response is identical. One
-signature detail matters: AceDB hands `(event, db, newProfileKey)` for *Changed* and *Copied*, but
-the third argument is **`nil`** for *Reset* — so the handler substitutes the active key rather than
-trusting the parameter. A handler that reads it blindly logs a `nil` profile name on every reset.
+`Database:OnProfileChanged` handles all three because the required response is identical. The
+signatures are not: AceDB hands `(event, db, newProfileKey)` for *Changed*,
+`(event, db, sourceProfileKey)` for *Copied* and `(event, db)` for *Reset*. Only a switch names the
+profile that is now active. A copy and a reset leave the active profile where it was, so for both
+the handler announces the active key (`db.keys.profile`). Reading the third argument blindly
+would announce the copy's *source* as the new profile, and a `nil` on every reset.
+
+**The debug line is worded by the event** (`debug-logging-§10`). A reset and a copy replace the
+profile's rows wholesale, so each logs one `[Set]` line; a switch rewrites no row and keeps its
+`[Profile]` trace:
+
+| Event | Line |
+|---|---|
+| *Reset* | `[Set] reset profile '<name>' to defaults (N rows)`, N being every row the profile stores (the schema less its `sessionOnly` rows) |
+| *Copied* | `[Set] copied profile '<source>' → '<active>'` |
+| *Changed* | `[Profile] switched to '<name>'` |
+
+That handler line is the only line a Reset all logs. The library's bulk bracket reports that the act
+reset the profile, so `Helpers.BulkEnd` adds nothing, and the `sessionOnly` row the library writes
+first is muted ([settings-panel.md](settings-panel.md#bulk-resets-log-one-line)).
 
 ## Profiles and per-unit appearance
 

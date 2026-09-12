@@ -121,6 +121,9 @@ implementation** — a hand-copied line format or ack string. That is
 the fully-loaded environment — the only thing standing between the options stub
 and a silent half-load — and exercises a **write** through the degraded settings
 path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.
+`tests/test_settings_log.lua` runs that degraded `RestoreAllDefaults` with debug
+on and pins that it logs exactly one `[Set]` line, the profile handler's
+(`debug-logging-§10`), as the live path does.
 
 ## Verifying the vendored copies
 

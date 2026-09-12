@@ -122,6 +122,20 @@ local descriptor = {
         if db and db.ResetProfile then db:ResetProfile() end
     end,
 
+    -- The bulk bracket (LibKa0s-Options-1.0 minor 16) around RestoreDefaults and
+    -- RestoreAllDefaults. A page's Defaults logs ONE `[Set] reset <page>: N rows`
+    -- line rather than one per row, and Reset all logs only the profile handler's
+    -- line, because the library reports that the act reset the profile
+    -- (debug-logging-§10). settings/Panel.lua owns the mute and the line.
+    bulkBegin = function(act, scope)
+        local H = helpers()
+        if H and H.BulkBegin then H.BulkBegin(act, scope) end
+    end,
+    bulkEnd = function(act, scope, count, err, info)
+        local H = helpers()
+        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
+    end,
+
     -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
     -- than an AceTimer embed, because embedding would be the library's second
     -- dependency-budget breach.
@@ -213,21 +227,28 @@ if not lib then
     -- is exactly the user who needs "reset everything", and the schema loaded
     -- fine, so the reset still works with no panel at all.
     Helpers.RestoreAllDefaults = function()
-        -- The sessionOnly rows first -- they are the ONLY ones the veto lets
-        -- through, and the only ones a profile reset cannot reach, because their
-        -- storage is their own set() rather than the db (options-ui-§12).
-        for _, row in ipairs(NS.Settings.Schema or {}) do
-            if not vetoedFromResetAll(row) and Helpers.SetAndRefresh then
-                local d = row.default
-                Helpers.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
+        -- Under the per-row log's mute, as the live path runs under the library's
+        -- bracket: a profile reset is logged ONCE, by Database:OnProfileChanged,
+        -- so the sessionOnly rows written first add no [Set] line of their own
+        -- (debug-logging-§10). settings/Panel.lua has defined the mute by now.
+        local mute = Helpers.MuteSetLog or function(fn) fn() end
+        mute(function()
+            -- The sessionOnly rows first -- they are the ONLY ones the veto lets
+            -- through, and the only ones a profile reset cannot reach, because
+            -- their storage is their own set() rather than the db (options-ui-§12).
+            for _, row in ipairs(NS.Settings.Schema or {}) do
+                if not vetoedFromResetAll(row) and Helpers.SetAndRefresh then
+                    local d = row.default
+                    Helpers.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
+                end
             end
-        end
-        -- Then the profile itself, which is the reset. The same one call the live
-        -- descriptor's resetProfile makes -- this stub exists because the
-        -- LIBRARY is missing, not the db, and the user whose panel will not open
-        -- is exactly the user who needs "reset everything".
-        local db = NS.db
-        if db and db.ResetProfile then db:ResetProfile() end
+            -- Then the profile itself, which is the reset. The same one call the
+            -- live descriptor's resetProfile makes -- this stub exists because the
+            -- LIBRARY is missing, not the db, and the user whose panel will not
+            -- open is exactly the user who needs "reset everything".
+            local db = NS.db
+            if db and db.ResetProfile then db:ResetProfile() end
+        end, true)
     end
 
     -- Reached only from a builder or a user action, so a no-op is honest.

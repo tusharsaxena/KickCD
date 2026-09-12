@@ -192,7 +192,7 @@ badge and any count quoted in the docs must agree with it.
 - CopyStyling writes every copied row, and the link, through Helpers.Set
 - CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
 - CopyStyling announces each section once and refreshes the panels structurally once
-- CopyStyling logs ONE [Set] summary line, not one per copied row
+- CopyStyling logs ONE [Set] summary line counting the rows it changed
 - CopyStyling still validates and runs onChange per row with the log muted
 - units.focus.link is a General > Units row, drawn by the tab's own tick
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
@@ -805,12 +805,23 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 
-### test_settings_log.lua (4)
+### test_settings_log.lua (15)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
+- the castbar page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the icons page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the label page's Defaults logs ONE [Set] reset line counting the rows it changed
+- the general page's Defaults logs ONE [Set] reset line counting the rows it changed
+- a Defaults on a page already at its defaults logs 0 rows, and no per-row line
+- nested bulk acts log ONE line, the outermost's, with every level's rows
+- the per-row [Set] line comes back after a Defaults, even one whose row raised
+- Reset all logs ONE line in total: the profile handler's, and nothing from the bracket
+- with LibKa0s absent, Reset all still logs exactly one line, the profile handler's
+- a profile copy logs one [Set] copied line and announces the profile that is active
+- the schema CLI's resetall, handed the same bracket, logs one [Set] reset all line
 
 ### test_settings_spells.lua (4)
 
@@ -1134,7 +1145,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
 | test_cooldowns_gates.lua | 22 |
-| test_settings_log.lua | 4 |
+| test_settings_log.lua | 15 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 28 |
 | test_spell_registry.lua | 24 |
@@ -1155,4 +1166,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **913** |
+| **Total** | **924** |

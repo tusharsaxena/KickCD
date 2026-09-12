@@ -416,6 +416,11 @@ local RESIDUE = {
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
 
+    -- The bulk bracket's one [Set] line (settings/Panel.lua Helpers.BulkEnd), a
+    -- debug-console format, never chat. core/Database.lua's profile-event lines
+    -- are outside this scan, which reads settings/ alone.
+    {"settings/Panel.lua", "%s %s: %d rows", "DIAGNOSTIC"},
+
     -- settings/Panel_Render.lua
     {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
     -- SetRows' one [Set] summary line (a debug-console format, never chat).

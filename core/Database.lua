@@ -753,14 +753,40 @@ end
 -- Profile callbacks
 -- ---------------------------------------------------------------------------
 
-function Database:OnProfileChanged(_, db, newProfileKey)
-    -- AceDB hands us (event, db, newProfileKey) for OnProfileChanged/Copied.
-    -- For OnProfileReset the third arg is nil; substitute the active key.
-    local key = newProfileKey or (db and db.keys and db.keys.profile) or "Default"
+-- The rows a profile reset restores: every row the profile stores. The
+-- sessionOnly rows live outside the db, and the profiles page is AceDBOptions'.
+local function profileRowCount()
+    local n = 0
+    for _, row in ipairs(NS.Settings and NS.Settings.Schema or {}) do
+        if not row.sessionOnly and row.panel ~= "profiles" then n = n + 1 end
+    end
+    return n
+end
 
-    if NS.State and NS.State.debug then
+-- The one line a profile event logs, worded by the event (debug-logging-§10). A
+-- reset and a copy replace the profile's rows wholesale, so each is one [Set]
+-- line and no bulk bracket adds a second; a switch rewrites no row and keeps
+-- the [Profile] trace it always had.
+local function traceProfileEvent(event, key, source)
+    if not (NS.State and NS.State.debug) then return end
+    if event == "OnProfileReset" then
+        NS.Debug("Set", "reset profile '%s' to defaults (%d rows)", tostring(key), profileRowCount())
+    elseif event == "OnProfileCopied" then
+        NS.Debug("Set", "copied profile '%s' → '%s'", tostring(source), tostring(key))
+    else
         NS.Debug("Profile", "switched to '%s'", tostring(key))
     end
+end
+
+function Database:OnProfileChanged(event, db, arg)
+    -- AceDB hands (event, db, newProfileKey) for OnProfileChanged,
+    -- (event, db, sourceProfileKey) for OnProfileCopied and (event, db) for
+    -- OnProfileReset. Only a switch names the profile that is now active: a copy
+    -- and a reset leave it where it was, so both announce the active key.
+    local active = (db and db.keys and db.keys.profile) or "Default"
+    local key = active
+    if event ~= "OnProfileCopied" and event ~= "OnProfileReset" then key = arg or active end
+    traceProfileEvent(event, key, arg)
 
     -- A reset wipes the profile back to defaults (which leaves spells = {}).
     -- Re-seed spells so the user gets a working list immediately, just like
