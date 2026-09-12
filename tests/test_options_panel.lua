@@ -365,6 +365,45 @@ test("the Profiles page is vetoed from a global reset", function()
         "the veto must be declared once and shared with the stub")
 end)
 
+-- ── the Profiles page draws ─────────────────────────────────────────────────
+
+test("the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one", function()
+    -- AceGUI:Release hides a widget's frame before pooling it, and neither
+    -- AceGUI:Create nor AceConfigDialog:Open shows it again. settings/Profiles.lua
+    -- creates its SimpleGroup at build time, when AceGUI's pool is usually still
+    -- empty -- but any addon or page that released a SimpleGroup first hands it
+    -- a pooled, hidden one, AceConfigDialog fills that hidden frame, and the page
+    -- reads as blank under its header. The Create wrap below hands out every
+    -- SimpleGroup hidden, which is exactly the pooled case.
+    --
+    -- The harness's AceConfigDialog is a no-op lib, so Open is replaced with a
+    -- recorder in the `mutate` hook, before any source loads.
+    -- red under: the renderer not calling container.frame:Show().
+    local opened = {}
+    local inst = T.load(true, true, function(m)
+        m.__libs["AceConfigDialog-3.0"].Open = function(_, app, container)
+            opened[#opened + 1] = { app = app, container = container }
+        end
+        local AceGUI = m.__libs["AceGUI-3.0"]
+        local create = AceGUI.Create
+        AceGUI.Create = function(self, wtype)
+            local w = create(self, wtype)
+            if wtype == "SimpleGroup" then w.frame:Hide() end
+            return w
+        end
+    end)
+
+    local ctx = inst.NS.Settings.Helpers.__panelFor("profiles")
+    assertTrue(ctx ~= nil, "the Profiles page registered")
+    ctx.panel:Hide()
+    ctx.panel:Show()
+    assertEqual(#opened, 1, "the first show opens the AceDBOptions table once")
+    assertEqual(opened[1].app, "KickCD-Profiles")
+    local frame = opened[1].container and opened[1].container.frame
+    assertTrue(frame ~= nil, "AceConfigDialog is handed an AceGUI container")
+    assertTrue(frame:IsShown(), "the container AceConfigDialog fills is shown")
+end)
+
 test("a global reset also clears the state no schema row owns", function()
     -- Anchors, the per-unit `link` flag and the spell lists are not schema rows,
     -- so applyDefault never reaches them. afterRestoreAll is how the library's
@@ -833,4 +872,50 @@ test("the live wiring patches LSM30_Border through the library, not a private co
     assertFalse(lib.__PatchLSM30Border(), "a second call must be a no-op")
     assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
         "and must leave the one registration alone")
+end)
+
+-- The Reset all settings tooltip names Profiles → Reset Profile.
+--
+-- options-ui-§12: the global reset IS a profile reset here (the descriptor
+-- supplies resetProfile) and this addon ships a Profiles page, so the button's
+-- tooltip SHOULD name the equivalence. The composer is the only writer of that
+-- text; it picks the wording from the descriptor (LibKa0s-Options-1.0 minor 18),
+-- and `profilesPage = true` is how the host says the page exists. Read the way
+-- AttachTooltip shows it: the real button's OnEnter, GameTooltip:AddLine spied.
+--
+-- red under: dropping `profilesPage = true` from settings/OptionsSetup.lua.
+local RESET_ALL_TIP = "Reset the current profile to its defaults \226\128\148 the same thing "
+    .. "Profiles \226\134\146 Reset Profile does. Your other profiles are not affected."
+
+local function findButton(w, text, depth)
+    depth = depth or 0
+    if type(w) ~= "table" or depth > 8 then return nil end
+    if w.text == text and w.callbacks then return w end
+    for _, child in ipairs(w.children or {}) do
+        local hit = findButton(child, text, depth + 1)
+        if hit then return hit end
+    end
+    return nil
+end
+
+test("General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile", function()
+    local inst = T.load(true, true)
+    local iH = inst.NS.Settings.Helpers
+    local ctx = iH.__panelFor("general")
+    assertTrue(ctx ~= nil, "the General page must be registered")
+    ctx.activeTab = iH.MASTER_GROUP
+    ctx.panel:Show()
+    iH.RefreshPanel(ctx, true)
+    local btn = findButton(ctx.scroll, "Reset all settings")
+    assertTrue(btn ~= nil, "the Master controls tab draws a Reset all settings button")
+    assertTrue(btn.callbacks.OnEnter ~= nil, "the button carries a tooltip")
+
+    local tip, lines = inst.mocks.GameTooltip, {}
+    local saved = rawget(tip, "AddLine")
+    rawset(tip, "AddLine", function(_, text) lines[#lines + 1] = text end)
+    local ok, err = pcall(btn.callbacks.OnEnter)
+    rawset(tip, "AddLine", saved)
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one tooltip body line")
+    assertEqual(lines[1], RESET_ALL_TIP)
 end)

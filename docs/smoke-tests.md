@@ -331,7 +331,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated positions pass it used to run is gone). Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
-| Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
+| Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. Hovering it first shows the tooltip *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."* |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
 | Per-panel **Defaults** button (General / Icons / Cast bar) | That panel only; mirrors `/kcd reset <panel>`. |
 | Spells panel header **Defaults** button | Currently-selected spec only; mirrors `/kcd spells reset CLASS SPEC`. |
@@ -357,6 +357,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/reload` after each step.
 
 **Pass.**
+- **The page draws.** Open another addon's options page first, then Ka0s KickCD → Profiles → the AceDBOptions controls render (current profile, New, Copy From, Delete, Reset Profile): never a blank page under the header.
 - Switching profiles fires `Ka0s_KickCD_PROFILE_CHANGED`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
 - `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
@@ -376,7 +377,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
 - Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
 - Out of combat `/kcd config` opens the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
-- Mid-combat, **every one of the six pages opened from the Blizzard AddOns sidebar** prints the library's refusal line and closes the Settings window. This is a **different path** from the `/kcd config` check above and it fails for different reasons: the sidebar reaches a canvas panel without going through `OpenOptionsPanel`, so the only guard on it is the one `Helpers.SetRenderer` installs (`libs/LibKa0s/Options.lua:796-815`). Spells and Profiles parked their own `OnShow` until `CX03` and had no guard at all on this path, so a green here before that change proved nothing about them — run all six, not a sample, after anything that touches a page builder's render wiring.
+- Mid-combat, **every one of the six pages opened from the Blizzard AddOns sidebar** prints the library's refusal line and closes the Settings window. This is a **different path** from the `/kcd config` check above and it fails for different reasons: the sidebar reaches a canvas panel without going through `OpenOptionsPanel`, so the only guard on it is the one `Helpers.SetRenderer` installs (`libs/LibKa0s/Options.lua:1035-1051`). Spells and Profiles parked their own `OnShow` until `CX03` and had no guard at all on this path, so a green here before that change proved nothing about them — run all six, not a sample, after anything that touches a page builder's render wiring.
 - Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
 
 ### 15. Debug commands
@@ -764,8 +765,8 @@ can settle. Nothing here may be reported as passing until someone has actually l
 click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
 `OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
 pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
-the shared mock answers `GetHeight` with 0 for every frame, and kit 17 (LibKa0s v1.31.0, unchanged at v1.32.0) did not
-flip that either: the flip ships alone, at kit 18 at the earliest, not here. **So a
+the shared mock answers `GetHeight` with 0 for every frame, and kit 19 (LibKa0s v1.34.0) did not
+flip that either: the flip ships alone, at kit 20 at the earliest, not here. **So a
 stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
 every automated check in this repo.**
 

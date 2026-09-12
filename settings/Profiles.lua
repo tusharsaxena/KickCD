@@ -74,6 +74,12 @@ local function Build(mainCategory)
     -- publishes the message bus and stops -- so the OnHide is what actually
     -- keeps the promise in the paragraph above.
     H.SetRenderer(ctx, function()
+        -- SHOWN EXPLICITLY, every render. AceGUI:Release hides a frame before
+        -- pooling it, and neither AceGUI:Create nor AceConfigDialog:Open shows
+        -- it again. Built at load, this group is usually fresh and shown -- but
+        -- if any addon or page released a SimpleGroup first, the pool hands us a
+        -- hidden one, AceConfigDialog fills a hidden frame, and the page is blank.
+        container.frame:Show()
         AceConfigDialog:Open("KickCD-Profiles", container)
     end)
     ctx.panel:SetScript("OnHide", function()

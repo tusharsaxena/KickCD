@@ -54,7 +54,7 @@ so **do not** write a parallel mutator for a field that already has a row.
    preserved. It does **not** take `self`: `LibKa0s-Slash-1.0`'s dispatcher calls it with the
    remainder alone, and a handler still expecting `self` silently reads the rest of the line as its
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
-3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:196` and is the single source
+3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:199` and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
    in the UI.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered
