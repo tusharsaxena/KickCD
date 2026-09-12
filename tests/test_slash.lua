@@ -461,3 +461,19 @@ test("the vendored Slash major falls THROUGH a key-returning locale table", func
             "'" .. key .. "' must fall through to the library's own string")
     end
 end)
+
+-- ── a free-text value keeps every word ──────────────────────────────────────
+
+test("set stores a multi-word label text whole", function()
+    -- LibKa0s-Slash-1.0 minor 10 hands a string row the whole remainder,
+    -- trimmed. Through minor 9 it took the first word, so `/kcd set
+    -- units.target.label.text Kick Them Now` stored "Kick". parseForHost
+    -- (settings/Slash.lua) only adds a hint to a refusal, so it passes the
+    -- library's value through untouched.
+    -- red under: Slash.lua minor 9 (the parse splitting a string row's value).
+    local path = "units.target.label.text"
+    local before = NS.Settings.Helpers.Get(path)
+    local out = runVerb("set " .. path .. "  Kick Them Now ")
+    assertEqual(NS.Settings.Helpers.Get(path), "Kick Them Now", joined(out))
+    NS.Settings.Helpers.SetAndRefresh(path, before)
+end)

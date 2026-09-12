@@ -917,7 +917,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (37)
+### test_options_panel.lua (38)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -956,6 +956,7 @@ badge and any count quoted in the docs must agree with it.
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
 - the live wiring patches LSM30_Border through the library, not a private copy
+- General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 
 ### test_settings_refreshers.lua (5)
 
@@ -998,7 +999,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (29)
+### test_slash.lua (30)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1029,6 +1030,7 @@ badge and any count quoted in the docs must agree with it.
 - every string the Slash CLI renders resolves to prose, not to its own key
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
+- set stores a multi-word label text whole
 
 ### test_opensettings.lua (6)
 
@@ -1157,14 +1159,14 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_editor.lua | 28 |
 | test_spell_registry.lua | 24 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 37 |
+| test_options_panel.lua | 38 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_source_style.lua | 1 |
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 29 |
+| test_slash.lua | 30 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_list_mode.lua | 5 |
@@ -1173,4 +1175,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **931** |
+| **Total** | **933** |

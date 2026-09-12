@@ -76,7 +76,7 @@ It is **composed, not written out**. `H.MasterControls` (`libs/LibKa0s/OptionsCo
 | Lock frame | Debug console |
 | Reset position | Reset all settings |
 
-The two resets are a **button pair**, not rows: they are acts rather than settings, so they belong in neither the CLI nor the reset sweep. The pair is wired as `H.RenderTabbedSchema(ctx, "general", { [H.MASTER_GROUP] = masterTail }, …)` — and because **the group name is the hook key**, renaming the group detaches the hook and nothing says so.
+The two resets are a **button pair**, not rows: they are acts rather than settings, so they belong in neither the CLI nor the reset sweep. The pair is wired as `H.RenderTabbedSchema(ctx, "general", { [H.MASTER_GROUP] = masterTail }, …)` — and because **the group name is the hook key**, renaming the group detaches the hook and nothing says so. The *Reset all settings* tooltip is the composer's too, chosen by the descriptor: with `resetProfile` and `profilesPage = true` it reads *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."*
 
 Two things about this tab are this addon's rather than the composer's:
 

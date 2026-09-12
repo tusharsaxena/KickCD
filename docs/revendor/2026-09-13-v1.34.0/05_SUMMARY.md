@@ -37,6 +37,13 @@ The re-vendor is one commit on top of `cae55d2`. In the same commit:
 |---|---|---|---|
 | Baseline, `cae55d2` | 931 passed, 0 failed, 0 skipped | 0 / 0 in 95 files | clean |
 | Re-vendor (this bundle's commit) | 931 passed, 0 failed, 0 skipped | 0 / 0 in 95 files | clean |
+| Adoption (B1 + the slash pin) | 933 passed, 0 failed, 0 skipped | 0 / 0 in 95 files | clean |
+
+The adoption commit adds two cases. `tests/test_options_panel.lua`'s tooltip case fires the General
+page's real *Reset all settings* button and reads the `GameTooltip:AddLine` body; it was red before
+`profilesPage = true` (it read the `RESET_ALL_TIP_PROFILE` wording). `tests/test_slash.lua`'s case
+sets `units.target.label.text` to `Kick Them Now` through `/kcd set`; it was red with v1.33.0's
+`Slash.lua` swapped in (stored `"Kick"`) and green on minor 10.
 
 `tests/test_vendor_sync.lua` compared both payloads against the tag and skipped none. Every changed
 file is CRLF, with CR equal to LF. Nothing was pushed.
