@@ -298,6 +298,7 @@ end
 ---
 --- Handed a `summary`, the LOG is coalesced too: each row's [Set] line is
 --- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
+--- (marked ` (stopped by an error)` if a row raised)
 --- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
 --- bury the log and evict older lines from its capped buffer
 --- (debug-logging-§10). N is the rows whose value the batch changed, not the
@@ -318,14 +319,12 @@ function Helpers.SetRows(writes, summary)
             end
         end
     end
-    local changed
+    -- MuteSetLog logs the one line itself, so a row that raises still leaves the
+    -- line (marked) before the error reaches the caller. Nothing when this batch
+    -- ran inside another bulk act, which logs the sum.
     Helpers.Coalesced(function()
-        if summary then changed = Helpers.MuteSetLog(writeAll) else writeAll() end
+        if summary then Helpers.MuteSetLog(writeAll, summary) else writeAll() end
     end)
-    -- nil when this batch ran inside another bulk act, which logs the sum.
-    if changed and NS.State and NS.State.debug and NS.Debug then
-        NS.Debug("Set", "%s: %d rows", tostring(summary), changed)
-    end
     return n
 end
 

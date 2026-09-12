@@ -149,7 +149,36 @@ end
 -- than each producing their own line. String-building stays behind the debug
 -- gate (§4 zero-alloc); the extra per-tick timers only exist while debug is on.
 local SET_LOG_DEBOUNCE = 0.3
-local pendingSet, setGen = {}, {}
+-- pendingSet[path] = { value, seq }: the value the timer will log, and when it
+-- was written, so a flush can put several pending lines back in write order.
+local pendingSet, setGen, setSeq = {}, {}, 0
+
+local function fmtSetValue(v)
+    if type(v) ~= "table" then return tostring(v) end
+    local parts = {}
+    for i = 1, #v do parts[i] = tostring(v[i]) end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
+--- Log every debounced [Set] line still waiting, now, in the order they were
+--- written, and retire their timers. A bulk act calls this as it opens: its own
+--- line is synchronous, so a line left pending from a write just before it would
+--- otherwise print AFTER the act, carrying a value the act has since replaced.
+--- Each path's generation is bumped rather than cleared, so the retired timer
+--- cannot match a later write that starts counting again.
+local function flushPendingSets()
+    if next(pendingSet) == nil then return end
+    local order = {}
+    for path, p in pairs(pendingSet) do order[#order + 1] = { path = path, value = p[1], seq = p[2] } end
+    table.sort(order, function(a, b) return a.seq < b.seq end)
+    for _, e in ipairs(order) do
+        pendingSet[e.path] = nil
+        setGen[e.path] = (setGen[e.path] or 0) + 1
+        if NS.State and NS.State.debug and NS.Debug then
+            NS.Debug("Set", "%s = %s", tostring(e.path), fmtSetValue(e.value))
+        end
+    end
+end
 
 -- A bulk copy or reset logs ONE `[Set] <act> <scope>: N rows` line instead of
 -- one per row (debug-logging-§10). While one is open, logSet stays quiet and
@@ -162,8 +191,13 @@ local pendingSet, setGen = {}, {}
 -- Acts nest (a host act around a library reset, a reset inside a reset). The
 -- depth counter keeps ONE record across the levels, and only the outermost
 -- level logs, once, with every level's rows. A level that reset the whole
--- profile silences the act, because Database:OnProfileChanged logs that.
-local bulkDepth, bulkProfileReset, bulkBefore = 0, false, nil
+-- profile silences the act, because Database:OnProfileChanged logs that. A
+-- level that ended with an error marks the act's line (see logAct).
+local bulkDepth, bulkProfileReset, bulkFailed, bulkBefore = 0, false, false, nil
+
+-- Appended to an act's one line when the act ended with an error: the line
+-- still goes out, once, and counts what was written before the raise.
+local STOPPED = " (stopped by an error)"
 
 local function sameValue(a, b)
     if a == b then return true end
@@ -178,15 +212,20 @@ local function sameValue(a, b)
 end
 
 local function bulkEnter()
-    if bulkDepth == 0 then bulkBefore, bulkProfileReset = {}, false end
+    if bulkDepth == 0 then
+        bulkBefore, bulkProfileReset, bulkFailed = {}, false, false
+        flushPendingSets()
+    end
     bulkDepth = bulkDepth + 1
 end
 
---- Close one level. Returns the rows the whole act changed when this closed the
---- outermost level and no level reset the profile, and nil otherwise.
-local function bulkLeave(profileReset)
+--- Close one level. Returns the rows the whole act changed, and whether any
+--- level ended with an error, when this closed the outermost level and no level
+--- reset the profile; nil otherwise.
+local function bulkLeave(profileReset, failed)
     if bulkDepth == 0 then return nil end   -- an end with no begin
     if profileReset then bulkProfileReset = true end
+    if failed then bulkFailed = true end
     bulkDepth = bulkDepth - 1
     if bulkDepth > 0 then return nil end
     local before = bulkBefore
@@ -196,60 +235,107 @@ local function bulkLeave(profileReset)
     for path, box in pairs(before) do
         if not sameValue(box[1], Helpers.Get(path)) then n = n + 1 end
     end
-    return n
+    return n, bulkFailed
 end
 
---- Run `fn` as one bulk act, with the per-row [Set] line muted, and close it
---- even if `fn` raised. Returns the rows it changed when it was the outermost
---- act, for the caller's one line, and nil when it was nested (the outer act
---- logs) or when `profileReset` says it reset the profile (the handler logs).
---- Helpers.SetRows is one caller, when it is handed a summary; the degraded
---- Reset all in settings/OptionsSetup.lua is the other.
-function Helpers.MuteSetLog(fn, profileReset)
+--- The act's one line: `[Set] <act> <scope>: N rows`, or `[Set] <label>: N rows`
+--- when there is no scope, marked when the act stopped on an error. Nothing
+--- when bulkLeave returned nil (nested, or the profile handler logs).
+local function logAct(n, failed, act, scope)
+    if not (n and NS.State and NS.State.debug and NS.Debug) then return end
+    local label = scope ~= nil and (tostring(act) .. " " .. tostring(scope)) or tostring(act)
+    NS.Debug("Set", "%s: %d rows%s", label, n, failed and STOPPED or "")
+end
+
+--- Run `fn` as one bulk act named `label`, with the per-row [Set] line muted,
+--- and close it even if `fn` raised: the act's one line still goes out, marked,
+--- and then the error is re-raised unchanged. Returns the rows it changed when
+--- it was the outermost act, and nil when it was nested (the outer act logs).
+--- Helpers.SetRows is the caller, when it is handed a summary.
+function Helpers.MuteSetLog(fn, label)
     bulkEnter()
     local ok, err = pcall(fn)
-    local n = bulkLeave(profileReset)
+    local n, failed = bulkLeave(false, not ok)
+    logAct(n, failed, label)
     if not ok then error(err, 0) end
     return n
 end
 
 --- LibKa0s' bulk bracket (Options minor 16, Slash minor 8), on the same record.
 --- The library calls BulkBegin before a reset walk writes its first row and
---- BulkEnd once after it, always, even when a row raised, so the mute cannot
---- stick. The library's own `count` (the third argument) is every row
---- applyDefault returned, rows already at their default included, so it is not
---- the §10 N and is not what the line carries.
+--- BulkEnd once after it, always, even when a row raised (the raised value is
+--- the fourth argument), so the mute cannot stick. The library's own `count`
+--- (the third argument) is every row applyDefault returned, rows already at
+--- their default included, so it is not the §10 N and is not what the line
+--- carries. The degraded Reset all in settings/OptionsSetup.lua drives the same
+--- pair by hand.
 function Helpers.BulkBegin()
     bulkEnter()
 end
 
-function Helpers.BulkEnd(act, scope, _, _, info)
-    local n = bulkLeave(info and info.profileReset)
-    if n and NS.State and NS.State.debug and NS.Debug then
-        NS.Debug("Set", "%s %s: %d rows", tostring(act), tostring(scope), n)
-    end
+function Helpers.BulkEnd(act, scope, _, err, info)
+    local n, failed = bulkLeave(info and info.profileReset, err ~= nil)
+    logAct(n, failed, act, scope)
 end
 
-local function fmtSetValue(v)
-    if type(v) ~= "table" then return tostring(v) end
-    local parts = {}
-    for i = 1, #v do parts[i] = tostring(v[i]) end
-    return "{" .. table.concat(parts, ",") .. "}"
+-- ---------------------------------------------------------------------
+-- The profile reset's count
+-- ---------------------------------------------------------------------
+--
+-- A profile reset is logged ONCE, by Database:OnProfileChanged, as
+-- `[Set] reset profile '<name>' to defaults (N rows)` (debug-logging-§10). N is
+-- the rows the reset actually changes, and only a caller that runs BEFORE the
+-- reset can count them: the profile rows (not sessionOnly, not the AceDBOptions
+-- page) whose stored value differs from the row's default. Both Reset all paths
+-- in settings/OptionsSetup.lua reset through ResetProfileCounted, which stashes
+-- the count for the handler to take once. A reset driven straight at the db
+-- (AceDBOptions' Reset Profile, a `/run`) stashes nothing, and the handler logs
+-- the line with no count rather than a wrong one.
+local pendingResetCount
+
+--- The handler's count, taken once. nil when the reset did not come through
+--- ResetProfileCounted.
+function NS.Settings.ConsumeResetCount()
+    local n = pendingResetCount
+    pendingResetCount = nil
+    return n
+end
+
+local function countChangedProfileRows()
+    local n = 0
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.path and not def.sessionOnly and def.panel ~= "profiles"
+            and not sameValue(Helpers.Get(def.path), def.default) then
+            n = n + 1
+        end
+    end
+    return n
+end
+
+--- Reset `db`'s active profile, with the count of rows it changes stashed for
+--- the profile handler. The stash is cleared when the reset returns or raises,
+--- so a count the handler never took cannot be claimed by a later reset.
+function Helpers.ResetProfileCounted(db)
+    pendingResetCount = countChangedProfileRows()
+    local ok, err = pcall(db.ResetProfile, db)
+    pendingResetCount = nil
+    if not ok then error(err, 0) end
 end
 
 local function logSet(path, value)
     if not (NS.State and NS.State.debug) then return end   -- gate first
     if bulkBefore then return end   -- a bulk act logs its own one line
-    pendingSet[path] = value
+    setSeq = setSeq + 1
+    pendingSet[path] = { value, setSeq }
     local gen = (setGen[path] or 0) + 1
     setGen[path] = gen
     _G.C_Timer.After(SET_LOG_DEBOUNCE, function()
         if setGen[path] ~= gen then return end   -- superseded by a later write
-        local v = pendingSet[path]
+        local p = pendingSet[path]
         pendingSet[path] = nil
         setGen[path] = nil
-        if NS.State and NS.State.debug then
-            NS.Debug("Set", "%s = %s", tostring(path), fmtSetValue(v))
+        if p and NS.State and NS.State.debug then
+            NS.Debug("Set", "%s = %s", tostring(path), fmtSetValue(p[1]))
         end
     end)
 end

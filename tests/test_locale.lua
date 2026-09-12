@@ -416,15 +416,15 @@ local RESIDUE = {
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
 
-    -- The bulk bracket's one [Set] line (settings/Panel.lua Helpers.BulkEnd), a
-    -- debug-console format, never chat. core/Database.lua's profile-event lines
-    -- are outside this scan, which reads settings/ alone.
-    {"settings/Panel.lua", "%s %s: %d rows", "DIAGNOSTIC"},
+    -- A bulk act's one [Set] line (settings/Panel.lua logAct, for the bracket
+    -- and for SetRows alike) and the marker it carries when the act stopped on
+    -- an error: debug-console formats, never chat. core/Database.lua's
+    -- profile-event lines are outside this scan, which reads settings/ alone.
+    {"settings/Panel.lua", "%s: %d rows%s", "DIAGNOSTIC"},
+    {"settings/Panel.lua", " (stopped by an error)", "DIAGNOSTIC"},
 
     -- settings/Panel_Render.lua
     {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
-    -- SetRows' one [Set] summary line (a debug-console format, never chat).
-    {"settings/Panel_Render.lua", "%s: %d rows", "DIAGNOSTIC"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.

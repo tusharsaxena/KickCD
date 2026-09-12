@@ -753,14 +753,15 @@ end
 -- Profile callbacks
 -- ---------------------------------------------------------------------------
 
--- The rows a profile reset restores: every row the profile stores. The
--- sessionOnly rows live outside the db, and the profiles page is AceDBOptions'.
-local function profileRowCount()
-    local n = 0
-    for _, row in ipairs(NS.Settings and NS.Settings.Schema or {}) do
-        if not row.sessionOnly and row.panel ~= "profiles" then n = n + 1 end
-    end
-    return n
+-- The rows a profile reset changed, counted before it ran by the Reset all path
+-- that drove it (settings/Panel.lua Helpers.ResetProfileCounted), and taken once.
+-- nil for a reset driven straight at the db -- AceDBOptions' Reset Profile, a
+-- `/run` -- which nothing counted: the line then carries no count rather than a
+-- wrong one (debug-logging-§10). Never the schema's size: that is every row the
+-- profile stores, not the rows the reset changed.
+local function consumeResetCount()
+    local S = NS.Settings
+    return S and S.ConsumeResetCount and S.ConsumeResetCount() or nil
 end
 
 -- The one line a profile event logs, worded by the event (debug-logging-§10). A
@@ -768,9 +769,13 @@ end
 -- line and no bulk bracket adds a second; a switch rewrites no row and keeps
 -- the [Profile] trace it always had.
 local function traceProfileEvent(event, key, source)
+    -- Taken whatever the debug state, so a count never outlives its reset.
+    local count = event == "OnProfileReset" and consumeResetCount() or nil
     if not (NS.State and NS.State.debug) then return end
-    if event == "OnProfileReset" then
-        NS.Debug("Set", "reset profile '%s' to defaults (%d rows)", tostring(key), profileRowCount())
+    if event == "OnProfileReset" and count then
+        NS.Debug("Set", "reset profile '%s' to defaults (%d rows)", tostring(key), count)
+    elseif event == "OnProfileReset" then
+        NS.Debug("Set", "reset profile '%s' to defaults", tostring(key))
     elseif event == "OnProfileCopied" then
         NS.Debug("Set", "copied profile '%s' → '%s'", tostring(source), tostring(key))
     else

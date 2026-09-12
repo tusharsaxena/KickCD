@@ -115,14 +115,28 @@ local function debugOn(inst)
     inst.NS.DebugLog:Clear()
 end
 
---- The rows a profile reset restores: every row the profile stores. The
---- sessionOnly rows live outside the db, and the profiles page is AceDBOptions'.
-local function profileRows(NS)
-    local n = 0
-    for _, row in ipairs(NS.Settings.Schema) do
-        if not row.sessionOnly and row.panel ~= "profiles" then n = n + 1 end
+--- Move exactly `n` of the profile's boolean rows off their default through the
+--- raw seam, before the console is watched. A profile reset's count is the rows
+--- whose stored value it changes, so these are the rows it should report.
+local function dirtyRows(NS, n)
+    local k = 0
+    for _, def in ipairs(NS.Settings.Schema) do
+        if k < n and def.type == "bool" and def.path and not def.sessionOnly and def.panel ~= "profiles" then
+            NS.Settings.Helpers.Set(def.path, def.section, not def.default)
+            k = k + 1
+        end
     end
-    return n
+    assertEqual(k, n, "sanity: the schema has " .. n .. " boolean profile rows to move")
+end
+
+--- Every [Set] line a degraded load logs: it has no console, so NS.Debug is
+--- replaced and read directly.
+local function captureSet(NS)
+    local set = {}
+    NS.Debug = function(tag, fmt, ...)
+        if tag == "Set" then set[#set + 1] = string.format(fmt, ...) end
+    end
+    return set
 end
 
 --- Move up to two of `page`'s boolean rows off their default through the raw
@@ -230,14 +244,16 @@ test("the per-row [Set] line comes back after a Defaults, even one whose row rai
     lines = setLines(inst)
     NS.State.debug = false
     assertEqual(#lines, 2, "the aborted reset's line, then the write's: " .. table.concat(lines, " | "))
-    assertTrue(lines[1]:find("[Set] reset general: 0 rows", 1, true) ~= nil,
-        "the aborted reset counts only what it wrote: " .. lines[1])
+    assertTrue(lines[1]:find("[Set] reset general: 0 rows (stopped by an error)", 1, true) ~= nil,
+        "the aborted reset counts only what it wrote, and says it stopped: " .. lines[1])
     assertTrue(lines[2]:find("[Set] locked = true", 1, true) ~= nil, "and the mute did not stick: " .. lines[2])
 end)
 
-test("Reset all logs ONE line in total: the profile handler's, and nothing from the bracket", function()
+test("Reset all logs ONE line in total, the profile handler's, counting the rows it changed", function()
     -- red under: OnProfileReset worded as a switch, a sessionOnly row's own
-    -- [Set] line, or a bulkEnd that adds "[Set] reset all: N rows" beside it.
+    -- [Set] line, a bulkEnd that adds "[Set] reset all: N rows" beside it, or a
+    -- count that is the schema's size (every row the profile stores) rather than
+    -- the rows not at their default just before the reset.
     local inst = T.load(true, true)
     local NS = inst.NS
     local H = NS.Settings.Helpers
@@ -245,9 +261,17 @@ test("Reset all logs ONE line in total: the profile handler's, and nothing from 
     H.ResetAll()
     local lines = setLines(inst)
     assertEqual(#lines, 1, "one line for the whole reset: " .. table.concat(lines, " | "))
-    local want = "[Set] reset profile 'Default' to defaults (" .. profileRows(NS) .. " rows)"
-    assertTrue(lines[1]:find(want, 1, true) ~= nil, "worded by the event, with the rows: " .. lines[1])
+    assertTrue(lines[1]:find("[Set] reset profile 'Default' to defaults (0 rows)", 1, true) ~= nil,
+        "a profile already at its defaults changes no row: " .. lines[1])
     assertTrue(not NS.DebugLog:FindLine("[Profile] switched"), "a reset is not reported as a switch")
+
+    dirtyRows(NS, 3)
+    debugOn(inst)
+    H.ResetAll()
+    lines = setLines(inst)
+    assertEqual(#lines, 1, "one line for the whole reset: " .. table.concat(lines, " | "))
+    assertTrue(lines[1]:find("[Set] reset profile 'Default' to defaults (3 rows)", 1, true) ~= nil,
+        "three rows off their default, three rows reset: " .. lines[1])
 
     H.Set("locked", "general", false)
     lines = setLines(inst)
@@ -255,30 +279,99 @@ test("Reset all logs ONE line in total: the profile handler's, and nothing from 
     assertEqual(#lines, 2, "and the mute is released afterwards: " .. table.concat(lines, " | "))
 end)
 
-test("with LibKa0s absent, Reset all still logs exactly one line, the profile handler's", function()
+test("with LibKa0s absent, Reset all logs exactly one line, the profile handler's, with the rows it changed",
+function()
     -- The degraded stub walks the sessionOnly rows itself and then resets the
-    -- profile. red under: that walk logging its rows, or the handler's line
-    -- worded as a switch. There is no console on this load, so NS.Debug is read
-    -- directly.
+    -- profile. red under: that walk logging its rows, the handler's line worded
+    -- as a switch, or a count that is the degraded schema's size.
     local inst = T.load(true, false, nil, { libFiles = {} })
     local NS = inst.NS
-    local calls = {}
-    NS.Debug = function(tag, fmt, ...) calls[#calls + 1] = { tag = tag, text = string.format(fmt, ...) } end
+    local set = captureSet(NS)
     inst.mocks.__flushTimers()
+    dirtyRows(NS, 3)
     NS.State.debug = true
     NS.Settings.Helpers.RestoreAllDefaults()
     inst.mocks.__flushTimers()
     NS.Settings.Helpers.Set("locked", "general", false)
     inst.mocks.__flushTimers()
     NS.State.debug = false
-    local set = {}
-    for _, c in ipairs(calls) do
-        if c.tag == "Set" then set[#set + 1] = c.text end
-    end
     assertEqual(#set, 2, "the handler's line, then the write after it: " .. table.concat(set, " | "))
-    assertEqual(set[1], "reset profile 'Default' to defaults (" .. profileRows(NS) .. " rows)",
-        "worded by the event, with the rows")
+    assertEqual(set[1], "reset profile 'Default' to defaults (3 rows)", "worded by the event, with the rows")
     assertEqual(set[2], "locked = false", "and the mute is released afterwards")
+end)
+
+test("with LibKa0s absent, a Reset all that reset no profile logs the bracket's own line", function()
+    -- red under: the stub telling the bracket it reset the profile before it
+    -- knew, so a missing db (or a reset that raised) left no line at all.
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local set = captureSet(NS)
+    inst.mocks.__flushTimers()
+    NS.State.debug = true
+    local real = NS.db.ResetProfile
+    NS.db.ResetProfile = nil
+    H.RestoreAllDefaults()
+    inst.mocks.__flushTimers()
+    assertEqual(#set, 1, "one line, since no handler ran: " .. table.concat(set, " | "))
+    assertEqual(set[1], "reset all: 0 rows", "the act's own line")
+
+    -- A reset that raised: the same line, marked, once; the error reaches the
+    -- caller; and the mute is released.
+    set[1] = nil
+    NS.db.ResetProfile = function() error("boom", 0) end
+    local ok, err = pcall(H.RestoreAllDefaults)
+    NS.db.ResetProfile = real
+    assertTrue(not ok and err == "boom", "the reset's error reaches the caller unchanged: " .. tostring(err))
+    H.Set("locked", "general", false)
+    inst.mocks.__flushTimers()
+    NS.State.debug = false
+    assertEqual(#set, 2, "the marked line, then the write after it: " .. table.concat(set, " | "))
+    assertEqual(set[1], "reset all: 0 rows (stopped by an error)", "the act says it stopped")
+    assertEqual(set[2], "locked = false", "and the mute is released afterwards")
+end)
+
+test("a profile reset driven straight at the db logs its one line with no count", function()
+    -- AceDBOptions' Reset Profile button and a `/run` call db:ResetProfile()
+    -- directly, so nothing counted the rows before the profile was replaced.
+    -- red under: the handler printing the schema's size as the count.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    dirtyRows(NS, 3)
+    debugOn(inst)
+    NS.db:ResetProfile()
+    local lines = setLines(inst)
+    NS.State.debug = false
+    assertEqual(#lines, 1, "one line for the reset: " .. table.concat(lines, " | "))
+    assertTrue(lines[1]:find("[Set] reset profile 'Default' to defaults", 1, true) ~= nil,
+        "worded by the event: " .. lines[1])
+    assertTrue(not lines[1]:find("rows", 1, true), "and no count, since none was taken: " .. lines[1])
+end)
+
+test("a count taken for a reset that raised does not leak into the next reset", function()
+    -- red under: a stash cleared only by the handler, which a reset that raised
+    -- before firing OnProfileReset never reached.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    dirtyRows(NS, 3)
+    debugOn(inst)
+    local real = NS.db.ResetProfile
+    NS.db.ResetProfile = function() error("boom", 0) end
+    local ok, err = pcall(H.ResetAll)
+    NS.db.ResetProfile = real
+    assertTrue(not ok and err == "boom", "the reset's error reaches the caller unchanged: " .. tostring(err))
+    local lines = setLines(inst)
+    assertEqual(#lines, 1, "the failed act logs once: " .. table.concat(lines, " | "))
+    assertTrue(lines[1]:find("[Set] reset all: 0 rows (stopped by an error)", 1, true) ~= nil,
+        "no handler ran, so the bracket logs, marked: " .. lines[1])
+
+    NS.DebugLog:Clear()
+    NS.db:ResetProfile()
+    lines = setLines(inst)
+    NS.State.debug = false
+    assertEqual(#lines, 1, "one line for the direct reset: " .. table.concat(lines, " | "))
+    assertTrue(not lines[1]:find("rows", 1, true), "the failed reset's count is gone: " .. lines[1])
 end)
 
 test("a profile copy logs one [Set] copied line and announces the profile that is active", function()
@@ -319,4 +412,49 @@ test("the schema CLI's resetall, handed the same bracket, logs one [Set] reset a
     assertEqual(#lines, 1, "one line for the whole walk: " .. table.concat(lines, " | "))
     assertTrue(lines[1]:find("[Set] reset all: 1 rows", 1, true) ~= nil,
         "act, scope and the one row it changed: " .. lines[1])
+end)
+
+test("a write still pending when an act opens logs BEFORE the act's line, with its own value", function()
+    -- red under: the debounced line firing after the act's synchronous one, so
+    -- the log reads the act first and then a value the act already replaced.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local def = H.FindSchema("locked")
+    debugOn(inst)
+    H.Set("locked", "general", not def.default)
+    H.RestoreDefaults("general")
+    local lines = setLines(inst)
+    NS.State.debug = false
+    assertEqual(#lines, 2, "the write's line, then the act's: " .. table.concat(lines, " | "))
+    assertTrue(lines[1]:find("[Set] locked = " .. tostring(not def.default), 1, true) ~= nil,
+        "the write comes first, with the value it wrote: " .. lines[1])
+    assertTrue(lines[2]:find("[Set] reset general: 1 rows", 1, true) ~= nil,
+        "then the act, which changed that row back: " .. lines[2])
+end)
+
+test("a bulk copy that raises logs its one line once, marked, releases the mute and re-raises", function()
+    -- red under: SetRows logging only after MuteSetLog returned, so a raising
+    -- row lost the act's line entirely.
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local def = H.FindSchema("locked")
+    debugOn(inst)
+    local real = H.Set
+    H.Set = function(path, ...)
+        if path ~= "locked" then error("boom", 0) end
+        return real(path, ...)
+    end
+    local ok, err = pcall(H.SetRows, { { "locked", not def.default }, { "enabled", false } }, "copy test")
+    H.Set = real
+    assertTrue(not ok and err == "boom", "the row's error reaches the caller unchanged: " .. tostring(err))
+    H.Set("locked", "general", def.default)
+    local lines = setLines(inst)
+    NS.State.debug = false
+    assertEqual(#lines, 2, "the act's line, then the write's: " .. table.concat(lines, " | "))
+    assertTrue(lines[1]:find("[Set] copy test: 1 rows (stopped by an error)", 1, true) ~= nil,
+        "the one row it wrote, and that it stopped: " .. lines[1])
+    assertTrue(lines[2]:find("[Set] locked = " .. tostring(def.default), 1, true) ~= nil,
+        "and the mute did not stick: " .. lines[2])
 end)

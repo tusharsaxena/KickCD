@@ -805,7 +805,7 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 
-### test_settings_log.lua (15)
+### test_settings_log.lua (20)
 
 - Helpers.Set logs one debounced [Set] line with the settled value
 - Helpers.Set formats an RGBA table compactly
@@ -818,10 +818,15 @@ badge and any count quoted in the docs must agree with it.
 - a Defaults on a page already at its defaults logs 0 rows, and no per-row line
 - nested bulk acts log ONE line, the outermost's, with every level's rows
 - the per-row [Set] line comes back after a Defaults, even one whose row raised
-- Reset all logs ONE line in total: the profile handler's, and nothing from the bracket
-- with LibKa0s absent, Reset all still logs exactly one line, the profile handler's
+- Reset all logs ONE line in total, the profile handler's, counting the rows it changed
+- with LibKa0s absent, Reset all logs exactly one line, the profile handler's, with the rows it changed
+- with LibKa0s absent, a Reset all that reset no profile logs the bracket's own line
+- a profile reset driven straight at the db logs its one line with no count
+- a count taken for a reset that raised does not leak into the next reset
 - a profile copy logs one [Set] copied line and announces the profile that is active
 - the schema CLI's resetall, handed the same bracket, logs one [Set] reset all line
+- a write still pending when an act opens logs BEFORE the act's line, with its own value
+- a bulk copy that raises logs its one line once, marked, releases the mute and re-raises
 
 ### test_settings_spells.lua (4)
 
@@ -1145,7 +1150,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
 | test_cooldowns_gates.lua | 22 |
-| test_settings_log.lua | 15 |
+| test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 28 |
 | test_spell_registry.lua | 24 |
@@ -1166,4 +1171,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **924** |
+| **Total** | **929** |
