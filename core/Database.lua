@@ -78,27 +78,36 @@ end
 -- Spell-list traversal helpers
 -- ---------------------------------------------------------------------------
 --
--- Every consumer that needs to read or mutate a spec's spell list goes
--- through these two helpers so the `db.profile.spells[CLASS][SPEC]`
--- walk lives in exactly one place. The split between read-only and
--- lazy-create matters: getActiveList in the panel fires on every
--- dropdown browse, and lazy-creating an empty per-spec table on every
--- browse pollutes the saved-vars file with 13 classes × 4 specs of
--- empty tables. The read-only helper returns nil for missing entries
--- so consumers can short-circuit without touching the profile shape.
+-- Nearly every lookup of one spec's spell list goes through these two
+-- helpers, so the `db.profile.spells[CLASS][specID]` walk lives in one
+-- place. The exception is settings/Spells.lua's getProfileSpells, which
+-- the per-spec reset popup uses to replace a list whole. The helpers only
+-- find or create a list; they do not write it. The callers below append
+-- to, splice and remove from the list themselves, and who writes the
+-- spell lists is named in docs/ARCHITECTURE.md -> Settings schema.
+--
+-- The split between read-only and lazy-create matters: getActiveList in
+-- the panel fires on every dropdown browse, and lazy-creating an empty
+-- per-spec table on every browse pollutes the saved-vars file with
+-- 13 classes × 4 specs of empty tables. The read-only helper returns nil
+-- for missing entries so consumers can short-circuit without touching
+-- the profile shape.
 --
 -- Callers:
 --   * GetSpellList:    Cooldowns:Rebuild, IconGrid:BuildActiveList,
---                      core/KickCD.lua slash-command read paths,
+--                      Database:BuildSpells (the racial pass),
+--                      core/KickCD.lua getSpellList (list / remove /
+--                      enable / disable / category),
 --                      settings/Spells.lua getActiveList.
---   * EnsureSpellList: core/KickCD.lua spellsAdd / spellsReset,
---                      settings/Spells.lua mutating popups.
+--   * EnsureSpellList: Database:BuildSpells (the seed),
+--                      core/KickCD.lua spellsAdd / spellsReset,
+--                      settings/Spells.lua ensureActiveList (Add spell).
 
 --- Read-only spell-list lookup. Returns the entry array (or nil if no
 --- list exists for this class+spec). Never mutates the profile shape,
 --- so safe to call from browse paths that flip class/spec dropdowns.
 -- @param class string normalized class file token (e.g. "HUNTER")
--- @param spec  string normalized spec token (e.g. "BEASTMASTERY")
+-- @param spec  number numeric spec ID, the list's storage key (e.g. 253)
 -- @return table|nil — the list or nil
 function Database:GetSpellList(class, spec)
     if not (class and spec and self.db and self.db.profile) then return nil end
@@ -112,12 +121,13 @@ function Database:GetSpellList(class, spec)
 end
 
 --- Lazy-create spell-list lookup. Creates the per-class and per-spec
---- tables if missing, then returns the list. Use this only from
---- mutators (Add / Reset / Reorder) where an empty list IS the right
---- post-condition for an unseeded spec. Browse-only consumers should
---- use GetSpellList instead.
+--- tables if missing, then returns the list. Use this only on a path
+--- that is about to write the list (add, the per-spec reset, the seed),
+--- where an empty list IS the right post-condition for an unseeded spec.
+--- It creates empty containers and writes no entry itself. Browse-only
+--- consumers should use GetSpellList instead.
 -- @param class string normalized class file token (e.g. "HUNTER")
--- @param spec  string normalized spec token (e.g. "BEASTMASTERY")
+-- @param spec  number numeric spec ID, the list's storage key (e.g. 253)
 -- @return table|nil — the list, or nil if the profile isn't ready
 function Database:EnsureSpellList(class, spec)
     if not (class and spec and self.db and self.db.profile) then return nil end
@@ -156,7 +166,7 @@ end
 --- spec list is left alone, including ones the user hasn't touched.
 ---
 --- Recovery path for users who DO want defaults back:
----   * `/kcd reset spells`              — wipe all class+spec lists and
+---   * `/kcd spells resetall`           — wipe all class+spec lists and
 ---                                        re-seed from defaults +
 ---                                        racial. Fires through
 ---                                        Database:ResetAllSpells.
@@ -186,10 +196,11 @@ function Database:BuildSpells()
         return
     end
 
-    -- Deep-copy each {spellID, category} entry into a profile-shaped record
-    -- with enabled=true. The defaults file uses positional pairs to stay
-    -- compact; the profile uses named fields so user edits in the UI are
-    -- self-describing in the saved-variable file. EnsureSpellList lazy-
+    -- Copy each default entry into a fresh profile-shaped record. The
+    -- defaults file writes named fields; the `[1]` / `[2]` fallbacks still
+    -- read the older positional { spellID, category } pairs. The profile
+    -- keeps named fields so its entries are self-describing in the
+    -- saved-variable file. EnsureSpellList lazy-
     -- creates the per-class / per-spec containers before we overwrite the
     -- list with the freshly-built copy.
     for class, specs in pairs(source) do
@@ -243,10 +254,13 @@ function Database:BuildSpells()
 end
 
 --- Wipe the active profile's spells and re-seed from KickCD.DefaultSpells +
---- racial. Used by the General > "Reset all settings" action so the user
---- gets the current addon defaults across every class and spec, not just
---- the one currently selected in the Spells editor. BuildSpells() is
---- idempotent on populated profiles, so we have to clear first.
+--- racial through BuildSpells, the seed routine the load pass also runs.
+--- Backs `/kcd spells resetall` (core/KickCD.lua), so the player gets the
+--- current addon defaults across every class and spec, not just the one
+--- selected in the Spells editor. The General > "Reset all settings"
+--- action no longer calls it: that is a profile reset, and
+--- OnProfileChanged re-seeds from there. BuildSpells() is idempotent on
+--- populated profiles, so we have to clear first.
 function Database:ResetAllSpells()
     if not (self.db and self.db.profile) then return end
     self.db.profile.spells = {}
