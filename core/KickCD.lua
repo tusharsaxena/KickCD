@@ -121,7 +121,10 @@ end
 -- true` and the General > "Lock frame" checkbox do, so an open
 -- settings panel re-syncs and any future onChange wired onto the
 -- `locked` schema row fires here too. Falls back to a direct write
--- only if the settings layer isn't loaded yet (early-boot edge).
+-- when the settings layer isn't loaded yet (early-boot edge), and also
+-- when SetAndRefresh finds no `locked` row: that row is composed by
+-- LibKa0s-Options-1.0's Master controls block, so a load without the
+-- library has none.
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "db not initialized yet")
@@ -132,7 +135,7 @@ local function setLocked(self, value)
         self.db.profile.locked = v
         -- Announce through the one sender (settings/Panel.lua's
         -- Helpers.FireConfigChanged), never with a second SendMessage of our
-        -- own: architecture-Â§4 wants one emitter per message.
+        -- own: architecture-§4 wants one emitter per message.
         if H and H.FireConfigChanged then H.FireConfigChanged("general") end
     end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
@@ -438,12 +441,14 @@ local function resolveClassSpec(args, idx)
     return class or pClass, spec
 end
 
--- Spell-list traversal funnels through Database:GetSpellList /
+-- Spell-list lookup funnels through Database:GetSpellList /
 -- :EnsureSpellList so the slash-command layer matches the read/lazy-
 -- create policy used by Cooldowns / IconGrid / settings/Spells.lua.
--- Read-only callers (list/remove/enable/disable/category) use
--- GetSpellList; mutators that should create a fresh list when none
--- exists (add / reset) use EnsureSpellList.
+-- Handlers that must not create a list (list/remove/enable/disable/
+-- category) use GetSpellList; add and reset, which should create a
+-- fresh list when none exists, use EnsureSpellList. Either way the
+-- handler then writes the list itself: see the Writer line under
+-- docs/ARCHITECTURE.md -> Settings schema.
 
 local function getSpellList(class, spec)
     if not NS.Database then return nil end
@@ -621,10 +626,11 @@ local function spellsSetCategory(self, rest)
 end
 
 -- Per-spec reset: rebuild this single (class, spec) list from
--- KickCD.DefaultSpells. Mirrors the Spells panel's Defaults popup
--- (KICKCD_RESET_SPELLS) — which is intentionally narrower than
--- `/kcd reset spells` (the latter calls Database:ResetAllSpells and
--- wipes every class+spec).
+-- KickCD.DefaultSpells. The counterpart of the Spells panel's Defaults
+-- popup (KICKCD_RESET_SPELLS), which reaches the same list by its own
+-- code path. Both are intentionally narrower than `/kcd spells resetall`
+-- (Database:ResetAllSpells, which wipes every class+spec and also
+-- re-appends the player's racial).
 local function spellsReset(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)

@@ -328,7 +328,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd reset general` (and `icons` / `castbar` / `label` / `spells`) | Retired. Each prints a line naming where the capability went — the panel's **Defaults** button, `/kcd reset <path>`, or `/kcd spells resetall` — never "Setting not found". |
 | Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
-| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows, so this is a dedicated `Helpers.ResetAllPositions()` pass — previously `resetall` silently left dragged grids in place). Profiles untouched. No CLI confirmation prompt. |
+| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated `Helpers.ResetAllPositions()` pass it used to run is off this path). Profiles untouched. No CLI confirmation prompt. |
 | `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
@@ -761,7 +761,8 @@ can settle. Nothing here may be reported as passing until someone has actually l
 click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
 `OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
 pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
-the shared mock answers `GetHeight` with 0 for every frame and that flips at kit 16, not here. **So a
+the shared mock answers `GetHeight` with 0 for every frame, and kit 16 (LibKa0s v1.30.0) did not
+flip that: the flip ships alone, at kit 17 at the earliest, not here. **So a
 stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
 every automated check in this repo.**
 

@@ -19,8 +19,9 @@
 -- The "Defaults" button in the header runs the existing reset-to-defaults
 -- StaticPopup for the currently selected class+spec.
 --
--- Writes go through a 50ms debounced setter that mutates the profile,
--- re-renders the rows, and fires Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
+-- The page and its popups write the stored list in place, then call
+-- commitSoon, a 50 ms throttle that re-renders the rows and fires
+-- Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
 
 local _, NS = ...
 
@@ -197,11 +198,11 @@ function Spells:OnPlayerSpecChanged()
     end
 end
 
--- Profile-spells accessor for the few read-only sites that still need
--- the top-level table (e.g. the legacy KICKCD_RESET_SPELLS popup which
--- WS-D will rework). Always returns the live table without lazy-creating
--- per-class / per-spec entries; the panel's getActiveList / ensureSpellList
--- pair (just below) is the preferred entry point for individual lists.
+-- Top-level spells accessor. Its one caller is the KICKCD_RESET_SPELLS
+-- popup, which writes through it to replace one (class, spec) list whole.
+-- It is not read-only: it creates `db.profile.spells` when missing, though
+-- never a per-class / per-spec entry. The getActiveList / ensureActiveList
+-- pair (just below) is the entry point for individual lists.
 local function getProfileSpells()
     if not (NS.db and NS.db.profile) then return nil end
     NS.db.profile.spells = NS.db.profile.spells or {}
@@ -211,17 +212,17 @@ end
 -- Read-only active-list lookup. Never lazy-creates the per-class /
 -- per-spec table — browsing the dropdown across 13 classes × 4 specs
 -- would otherwise pollute saved-vars with empty tables (CR-22).
--- Mutator paths (Add spell OnAccept, Reset to defaults OnAccept) call
--- ensureSpellList(...) below instead, which lazy-creates by design.
+-- The Add spell path calls ensureActiveList() below instead, which
+-- lazy-creates by design; the Reset popup goes through getProfileSpells.
 local function getActiveList()
     if not (selectedClass and selectedSpec) then return nil end
     if not NS.Database then return nil end
     return NS.Database:GetSpellList(selectedClass, selectedSpec)
 end
 
--- Lazy-creating active-list lookup for mutators only. Used by the Add
--- spell and Reset popups so a brand-new spec table comes into being on
--- the first edit, but stays absent during read-only browsing.
+-- Lazy-creating active-list lookup for mutators only. Used by
+-- addOrEnableSpell (the Add spell popup) so a brand-new spec table comes
+-- into being on the first add, but stays absent during read-only browsing.
 local function ensureActiveList()
     if not (selectedClass and selectedSpec) then return nil end
     if not NS.Database then return nil end
