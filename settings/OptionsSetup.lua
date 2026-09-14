@@ -296,6 +296,12 @@ if not lib then
     -- stubbed anyway. That exemption is how AbsorbTracker's stub came to omit the member outright
     -- with every suite green, and it is now called by all six of this addon's pages rather than
     -- four. A member the host calls is a member the stub owes.
+    --
+    -- The last five arrived with LibKa0s v1.35.0 (OptionsWidgets 16): the ChoiceGrid radio grid,
+    -- the IdInput / IdList spell-item-currency id editor, and the ResolveId / UnnamedCandidates
+    -- lookups behind it. This addon adopts none of them yet, and every one is render-time -- a
+    -- renderer or a user action reaches it, never a file load -- so the same inert no-op answers.
+    -- ResolveId and UnnamedCandidates answer nil, which is what an unresolved id answers live.
     for _, name in ipairs({
         "CreatePanel", "SetRenderer",
         "EnsureDefaultsButton", "EnsureScroll", "ClearScroll", "Section",
@@ -306,9 +312,15 @@ if not lib then
         "PatchAlwaysShowScrollbar",
         "SetChromeHeight", "TabStrip", "PageBanner", "PageHeader", "SubTabStrip",
         "RenderTabbedSchema",
+        "ChoiceGrid", "IdInput", "IdList", "ResolveId", "UnnamedCandidates",
     }) do
         Helpers[name] = function() end
     end
+    -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
+    -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
+    -- host copy of library content exactly as it forbids a copy of a layout constant. A reader
+    -- indexing it on the degraded path gets nil, as it would for a kind the library lacks.
+    Helpers.ID_NAME_HINT = {}
 
     -- The SCHEMA COMPOSERS (libs/LibKa0s/OptionsCompose.lua), and the one place
     -- in this stub that is load-completing for a NEW reason. Every page file
