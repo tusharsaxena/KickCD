@@ -200,7 +200,7 @@ end
 --                     — Lua can't make the boolean call but the C-side
 --                     SetAlphaFromBoolean accepts the secret directly. Friendly /
 --                     self casts are excluded by IsHostileUnitCasting.
--- While previewing (unlocked, or test mode on) the visibility mode is ignored.
+-- While unlocked the visibility mode is ignored — the user is moving the bar.
 local function isVisible(inst)
     -- Step 0: a suspended addon shows nothing. At the SOURCE rather than by
     -- hiding frames from Perf's suspend, because a hidden frame comes back on
@@ -209,7 +209,7 @@ local function isVisible(inst)
     if NS.Perf and NS.Perf.suspended then return false end
     local profile = NS.db and NS.db.profile
     if not (NS.Units.IsEnabled(inst.unit) and cfg(inst).enabled ~= false) then return false end
-    if NS.State.IsPreviewing() then return true end
+    if profile and profile.locked == false then return true end
     local mode = (profile and profile.visibility) or "always"
     if mode == "in_combat" then
         return NS.State.inCombat
@@ -225,14 +225,15 @@ end
 --- For "target_casting_interruptible" mode + active hostile cast, the
 --- frame's alpha is driven by SetAlphaFromBoolean(notInterruptible, 0, 1)
 --- — a C-side method that accepts the 12.0-secret notInterruptible flag
---- without needing Lua-side comparison. Other modes / no-cast / previewing
---- (unlocked or test mode, so the bar shows regardless of cast state) → alpha 1.
+--- without needing Lua-side comparison. Other modes / no-cast / unlocked
+--- (so the user can drag the bar regardless of cast state) → alpha 1.
 --- Called whenever the bar shows OR the interruptibility flag flips.
 local function ApplyVisibilityMask(barFrame, unit)
     if not barFrame then return end
     local profile = NS.db and NS.db.profile
+    local unlocked = profile and profile.locked == false
     local mode = (profile and profile.visibility) or "always"
-    if not NS.State.IsPreviewing()
+    if not unlocked
        and mode == "target_casting_interruptible"
        and NS.State.ApplyInterruptibleAlpha
        and NS.State.ApplyInterruptibleAlpha(barFrame, unit, 1) then
@@ -438,12 +439,11 @@ function Castbar:ApplyLock(inst)
     end
 
     -- Visibility for the empty (no-cast) state:
-    --   * previewing (unlocked, or test mode) + sub-module visible → show
-    --     preview (so the user can see where the bar will appear, even in
-    --     PRIMARY anchor mode, and even locked in test mode).
-    --   * otherwise → hide the empty bar; only show during real casts.
+    --   * UI unlocked + sub-module visible → show preview (so the user can
+    --     see where the bar will appear, even in PRIMARY anchor mode).
+    --   * UI locked → hide the empty bar; only show during real casts.
     if not inst.current then
-        if NS.State.IsPreviewing() and isVisible(inst) then
+        if (not profileLocked) and isVisible(inst) then
             self:ShowPreview(inst)
         else
             frame:Hide()
@@ -867,18 +867,19 @@ function Castbar:Stop(inst)
     frame.bar.interruptible:SetValue(0)
     frame.bar.uninterruptible:SetValue(0)
 
-    -- Keep the preview visible while previewing (unlocked, so the user can
-    -- still drag the empty bar around, or test mode). Otherwise hide it.
-    if NS.State.IsPreviewing() and isVisible(inst) then
+    -- Keep the preview visible while unlocked so the user can still drag
+    -- the empty bar around. Otherwise hide it.
+    local locked = NS.db and NS.db.profile and NS.db.profile.locked
+    if (not locked) and isVisible(inst) then
         self:ShowPreview(inst)
     else
         frame:Hide()
     end
 end
 
---- Show a placeholder bar so the user has something to see and grab. Used
---- while previewing (unlocked, or test mode) and no target is currently
---- casting.
+--- Show a placeholder bar so the user has something to grab while
+--- repositioning. Used while the cast bar is unlocked and no target is
+--- currently casting.
 ---
 --- CR-17: depends on config (orientation, fonts, sizes, anchors,
 --- per-state colors), so we run a full Reskin and then layer a minimal
@@ -911,7 +912,7 @@ function Castbar:ShowPreview(inst)
     frame.bar.uninterruptible:SetMinMaxValues(0, 1)
     frame.bar.uninterruptible:SetValue(0.5)
     frame:Show()
-    -- Preview is only shown while previewing (caller's invariant), so the
+    -- Preview is only shown while unlocked (caller's invariant), so the
     -- visibility mode is ignored — leave alpha at 1.
     frame:SetAlpha(1)
 end

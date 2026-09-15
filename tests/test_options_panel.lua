@@ -488,7 +488,7 @@ function()
     --      core/Database.lua's aceDBDefaults, and never read off the schema. A
     --      composed setting a player already made keeps being honored.
     --
-    -- What the deviation does cost is #NS.Settings.Schema being short by 117 rows
+    -- What the deviation does cost is #NS.Settings.Schema being short by 116 rows
     -- on a load where the only three things that read it -- the CLI, the panel and
     -- RestoreAllDefaults' sessionOnly walk -- are respectively absent, absent, and
     -- looking for `state.debugConsole`, whose console window is unavailable on

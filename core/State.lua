@@ -36,40 +36,13 @@ local _, NS = ...
 -- happens to be looking, not something they configured. Persisting it would mean
 -- a fresh login opening on whichever unit was selected weeks ago, with nothing on
 -- screen explaining why. Re-seeded to "target" by this file on every load.
--- `testMode` is the test mode (options-ui-§15, preview-mode): the grids and cast
--- bars show their placeholder view while still locked. Session-only like `debug`,
--- re-seeded off on every load. Its one write path is the `state.testMode` row
--- (settings/Panel.lua's SESSION_PATHS); this file only ends it at combat.
-local State = { inCombat = false, debug = false, viewedUnit = "target", testMode = false }
+local State = { inCombat = false, debug = false, viewedUnit = "target" }
 NS.State = State
 
 --- Set the live combat flag. Called only from the bootstrap event
 --- listener below; modules read State.inCombat but never mutate it.
 function State.SetInCombat(v)
     State.inCombat = v and true or false
-end
-
---- Whether the grids and cast bars show their placeholder view: test mode is
---- on, or the frames are unlocked for dragging. It decides what is SHOWN only.
---- Whether a frame can be DRAGGED stays on db.profile.locked alone.
-function State.IsPreviewing()
-    if State.testMode then return true end
-    local profile = NS.db and NS.db.profile
-    return profile ~= nil and profile.locked == false
-end
-
--- Combat ends test mode (options-ui-§15), at PLAYER_REGEN_DISABLED, so no
--- placeholder sits over the live grid in a fight. Through the row's write seam
--- rather than a bare flag write, so the bus repaints the frames and an open
--- panel unticks the box. The row can only be turned on through that seam, so
--- if it is missing (a LibKa0s-less load composes no row) test mode is off already.
-local function endTestModeForCombat()
-    if not State.testMode then return end
-    local H = NS.Settings and NS.Settings.Helpers
-    if not (H and H.SetAndRefresh and H.SetAndRefresh("state.testMode", false)) then return end
-    if NS.Util and NS.Util.print then
-        NS.Util.print(NS.L["Test mode off \226\128\148 combat started"])
-    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -175,7 +148,6 @@ boot:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_REGEN_DISABLED" then
         State.SetInCombat(true)
         if State.debug and NS and NS.Debug then NS.Debug("Combat", "entered") end
-        endTestModeForCombat()
     elseif event == "PLAYER_REGEN_ENABLED" then
         State.SetInCombat(false)
         if State.debug and NS and NS.Debug then NS.Debug("Combat", "left") end

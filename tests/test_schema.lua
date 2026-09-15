@@ -193,75 +193,6 @@ test("debug console stays session-only: it is a row, and it never reaches the db
     assertEqual(NS.db.profile.state, before, "the console write reached the profile")
 end)
 
-test("test mode is the composer's session-only row, right after the debug console", function()
-    -- options-ui-§15 (standard v2.47.0): every addon with a positionable display
-    -- ships a test mode whose only panel switch is a session-only `Test mode`
-    -- checkbox on its own line below Lock frame / Debug console, composed from
-    -- `testModePath`. `default = false` is what lets Reset all settings end it.
-    -- red under: dropping `testModePath` from settings/General.lua's spec, or
-    -- dropping `testMode = false` from its defaults
-    local H = NS.Settings.Helpers
-    local row = H.FindSchema("state.testMode")
-    assertTrue(row ~= nil, "the Master controls tab must declare the test mode row")
-    assertEqual(row.type, "bool")
-    assertEqual(row.label, "Test mode")
-    assertEqual(row.sessionOnly, true, "the row must be marked session-only")
-    assertEqual(row.startsLine, true, "the row opens its own line")
-    assertEqual(row.default, false, "with no default, Reset all settings cannot end it")
-    assertEqual(row.group, H.MASTER_GROUP, "and it belongs to the Master controls tab")
-    assertTrue(type(row.tooltip) == "string" and row.tooltip:find("/kcd test", 1, true) ~= nil,
-        "the tooltip is KickCD's own and names the verb; got: " .. tostring(row.tooltip))
-
-    local rows = H.SchemaForPanel("general", nil)
-    local at
-    for i, def in ipairs(rows) do if def.path == "state.testMode" then at = i end end
-    assertEqual(rows[at - 1].path, "state.debugConsole", "the row directly follows Debug console")
-end)
-
-test("test mode never reaches the db, and a write repaints through the bus", function()
-    -- Session-only like the console, but unlike the console something on the
-    -- bus RENDERS it: the grids and bars read NS.State.testMode, so the write
-    -- must announce "general" or nothing repaints until the next cast.
-    -- red under: leaving FireConfigChanged out of SESSION_PATHS' testMode set
-    local inst = T.load(true, true)
-    local ns, H = inst.NS, inst.NS.Settings.Helpers
-    local sections = {}
-    local realFire = H.FireConfigChanged
-    H.FireConfigChanged = function(section, ...)
-        sections[#sections + 1] = section
-        return realFire(section, ...)
-    end
-    local before = ns.db.profile.state
-    local ok, err = pcall(function()
-        H.SetAndRefresh("state.testMode", true)
-        assertEqual(ns.State.testMode, true, "the write reaches NS.State")
-        assertEqual(H.Get("state.testMode"), true, "and Get reads it back")
-        assertEqual(ns.db.profile.state, before, "the test mode write reached the profile")
-        assertNil(ns.db.profile.testMode, "the test mode write reached the profile")
-        assertEqual(sections[#sections], "general", "the write announces the general section")
-        local n = #sections
-        H.SetAndRefresh("state.testMode", true)
-        assertEqual(#sections, n, "a write that changes nothing announces nothing")
-        H.SetAndRefresh("state.testMode", false)
-        assertEqual(ns.State.testMode, false)
-        assertEqual(sections[#sections], "general")
-    end)
-    H.FireConfigChanged = realFire
-    if not ok then error(err, 0) end
-end)
-
-test("Reset all settings ends test mode", function()
-    -- The sessionOnly walk restores the row to its default; the profile reset
-    -- cannot reach it, because its storage is not the profile.
-    -- red under: the row losing `default = false`
-    local inst = T.load(true, true)
-    local H = inst.NS.Settings.Helpers
-    H.SetAndRefresh("state.testMode", true)
-    assertEqual(inst.NS.State.testMode, true, "precondition")
-    H.ResetAll()
-    assertEqual(inst.NS.State.testMode, false, "reset all left test mode on")
-end)
-
 -- ── the tab strip: page -> tab -> row count ────────────────────────────────
 --
 -- H.RenderTabbedSchema partitions a page's rows by `group`, IN DECLARATION
@@ -281,7 +212,7 @@ end)
 -- unit selector, so its Units tab shows both units' toggles, plus the Focus
 -- `link` row, which the tab draws itself (`skipRender`): 3.
 local STRIP = {
-    general = { { "Master controls", 7 }, { "Units", 3 } },
+    general = { { "Master controls", 6 }, { "Units", 3 } },
     icons   = {
         { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
         { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 8 },
@@ -725,7 +656,6 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         { "alpha",                "number" },
         { "locked",               "bool"   },
         { "state.debugConsole",   "bool"   },
-        { "state.testMode",       "bool"   },
     }
     local got = {}
     for _, def in ipairs(H.SchemaForPanel("general", nil)) do
@@ -741,7 +671,6 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
     assertEqual(got[1].startsLine, true, "Enable must open its line")
     assertEqual(got[3].startsLine, true, "Master scale must open its line")
     assertEqual(got[5].startsLine, true, "Lock frame must open its line")
-    assertEqual(got[7].startsLine, true, "Test mode must open its own line")
 end)
 
 test("every canonical Master control is declared exactly ONCE in the repo", function()
@@ -751,12 +680,12 @@ test("every canonical Master control is declared exactly ONCE in the repo", func
     local seen = {}
     for _, def in ipairs(T.NS.Settings.Schema) do
         for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
-                                "locked", "state.debugConsole", "state.testMode" }) do
+                                "locked", "state.debugConsole" }) do
             if def.path == path then seen[path] = (seen[path] or 0) + 1 end
         end
     end
     for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
-                            "locked", "state.debugConsole", "state.testMode" }) do
+                            "locked", "state.debugConsole" }) do
         assertEqual(seen[path], 1,
             path .. " is declared " .. tostring(seen[path]) .. " times, not once")
     end

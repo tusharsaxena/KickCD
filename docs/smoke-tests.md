@@ -49,7 +49,6 @@ Companion docs:
 | 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
 | 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
 | 27 | Composed media rows | `LibKa0s-OptionsCompose` minor 3, the `Helpers.LSMValues` shadow | [Composed media dropdowns after the v1.26.0 re-vendor](#27-composed-media-dropdowns-after-the-v1260-re-vendor) |
-| 33 | Test mode | `state.testMode`, `State.IsPreviewing`, the combat stop | [Test mode](#33-test-mode) |
 
 ---
 
@@ -109,7 +108,7 @@ Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
 
 A single visibility selector governs **both** the icon grid and the cast bar.
 
-> **Run this section LOCKED.** While the frame is unlocked — now the default on a fresh profile (`locked = false`) — both pieces deliberately bypass the visibility mode (and the interruptibility alpha-mask) and always show at full alpha so you can reposition them. `/kcd lock` before exercising the modes below, or every row will read as "always visible". Test mode does the same while locked, so check the General → "Test mode" box is unticked too (`/kcd test off`). (Known follow-up, tracked separately: even while locked, a non-interruptible cast can intermittently leak through `target_casting_interruptible` because WoW's `notInterruptible` is unreliable at cast-start — see the repo issue tracker.)
+> **Run this section LOCKED.** While the frame is unlocked — now the default on a fresh profile (`locked = false`) — both pieces deliberately bypass the visibility mode (and the interruptibility alpha-mask) and always show at full alpha so you can reposition them. `/kcd lock` before exercising the modes below, or every row will read as "always visible". (Known follow-up, tracked separately: even while locked, a non-interruptible cast can intermittently leak through `target_casting_interruptible` because WoW's `notInterruptible` is unreliable at cast-start — see the repo issue tracker.)
 
 | `visibility` | Setup | Expected |
 |---|---|---|
@@ -140,7 +139,6 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - After `/reload`, both retain their dragged positions.
 - Switch `units.target.castbar.anchorMode` back to `PRIMARY`: the cast bar is no longer draggable (it's parented to the primary icon) even when unlocked, and it follows the icon grid when the grid is dragged.
 - `/kcd toggle` flips the lock state; the General → "Lock frame" checkbox updates to match in real time when the panel is open.
-- Locked, tick General → "Test mode": both pieces show, but neither drags. Untick it again. Section 33 covers test mode in full.
 
 ### 6. Icon grid layout
 
@@ -933,28 +931,6 @@ casting mobs is the easiest arrangement.
   instance `EnsureFrame` had not reached, which no headless load reproduces.
 
 ---
-### 33. Test mode
-
-**Setup.** `/kcd lock`, `/kcd set visibility target_casting_interruptible`, clear your target and focus. Both the grids and the cast bars are hidden. Open Settings → Ka0s KickCD → General → Master controls.
-
-**Steps.**
-- Tick **Test mode** (its own line, under Lock frame / Debug console).
-- Try to drag an icon grid and a cast bar.
-- Untick **Test mode**. Then run `/kcd test`, then `/kcd test off`, with the panel still open.
-- `/kcd test on`, then pull a target dummy.
-- In combat, tick **Test mode** and run `/kcd test on`.
-- Out of combat, tick **Test mode** and `/reload`.
-- Tick **Test mode**, then press **Reset all settings** and accept.
-
-**Pass.**
-- Ticking shows every enabled unit's icon grid and a placeholder cast bar (question-mark icon, "KickCD castbar", `0.0 / 0.0`, bar at mid) at full alpha, while still locked. The unit labels follow their grids.
-- Neither piece drags and the cast bar shows no drag hint. `/kcd get locked` still prints `true`.
-- Unticking hides both. `/kcd test` and `/kcd test off` print `test mode on` / `test mode off`, and the checkbox follows each.
-- Entering combat prints one `[KCD] Test mode off — combat started` line, the placeholders go, and the checkbox unticks. The real behavior runs for the fight.
-- In combat both starts print `cannot start test mode during combat` and the box stays unticked.
-- After `/reload` the box is unticked, and `KickCDDB` has no `testMode` key.
-- Reset all settings unticks it.
-
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
@@ -963,7 +939,6 @@ casting mobs is the easiest arrangement.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
 - **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
-- **Lock, visibility or preview edits** (`State.IsPreviewing`, the Test mode row, `ApplyLock`, `ShowPreview`): 4, 5 and **33**. 33 is the only step that checks test mode shows while locked, stays undraggable, and ends at combat.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
 - **`NS.Util.print` call-site edits, or anything under `core/CoreSetup.lua`'s printer:** **31**, then 15. 31 is the only step that runs a call site on the library-less load.
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).

@@ -27,8 +27,8 @@
 --                          (C-side, secret-safe) so uninterruptible casts
 --                          read as alpha=0. Friendly / self casts are
 --                          excluded by the IsHostileUnitCasting gate.
--- While previewing (unlocked, or test mode on -- State.IsPreviewing), the
--- visibility mode is bypassed so the user can see and place the grid. Combat / target / cast events drive
+-- While unlocked, the visibility mode is bypassed so the user can drag
+-- the grid into position. Combat / target / cast events drive
 -- RefreshVisibility. Listens to:
 --
 --   Ka0s_KickCD_SPELL_STATE       -> route to the matching active icon's :Apply
@@ -171,9 +171,9 @@ end
 
 -- Decide whether `inst`'s grid should be visible right now. Master enable is
 -- the gate; visibility mode then narrows that to a subset of states.
--- While previewing (unlocked, or test mode on) we ignore the visibility
+-- While unlocked the user is repositioning, so we ignore the visibility
 -- mode and always show — otherwise the grid would be invisible exactly
--- when the user needs to see or drag it.
+-- when they need to drag it.
 local function shouldBeVisible(inst)
     -- Step 0, above everything: a suspended addon shows nothing.
     --
@@ -185,7 +185,8 @@ local function shouldBeVisible(inst)
     -- suspended window.
     if NS.Perf and NS.Perf.suspended then return false end
     if not isEnabled() then return false end
-    if NS.State.IsPreviewing() then return true end
+    local profile = NS.db and NS.db.profile
+    if profile and profile.locked == false then return true end
     local mode = visibilityMode()
     if mode == "in_combat" then
         return NS.State.inCombat
@@ -205,14 +206,16 @@ end
 -- in-progress cast on the unit only shows the icons when the cast is
 -- interruptible. The flag is the 12.0 secret-tainted notInterruptible,
 -- handed verbatim to a C-side method that accepts secrets — never read
--- in Lua. For all other modes (and while previewing, where the user needs
--- to see the grid regardless) the grid runs at alpha=1 (children carry
--- their own alphas).
+-- in Lua. For all other modes (and while unlocked, where the user is
+-- repositioning and needs to see the grid regardless) the grid runs at
+-- alpha=1 (children carry their own alphas).
 local function ApplyInterruptibilityMask(inst)
     local grid = inst.grid
     if not grid then return end
+    local profile = NS.db and NS.db.profile
+    local unlocked = profile and profile.locked == false
     local mode = visibilityMode()
-    if not NS.State.IsPreviewing()
+    if not unlocked
        and mode == "target_casting_interruptible"
        and NS.State.ApplyInterruptibleAlpha
        and NS.State.ApplyInterruptibleAlpha(grid, inst.unit, 1) then

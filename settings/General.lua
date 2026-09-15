@@ -5,16 +5,21 @@
 --
 -- The first tab is the collection's canonical Master controls block
 -- (options-ui-§15) and it is COMPOSED, not written out: H.MasterControls emits
--- SEVEN canonical rows from one declaration, and the afterGroup it returns draws
+-- SIX canonical rows from one declaration, and the afterGroup it returns draws
 -- the closing Reset position / Reset all settings button pair.
 --
--- SEVEN, not nine. §15's canonical table has NINE cells and its last line IS the
--- button pair, so "the nine canonical rows, plus the button-pair hook" counts
+-- SIX, not eight. §15's canonical table has EIGHT cells and its last line IS the
+-- button pair, so "the eight canonical rows, plus the button-pair hook" counts
 -- those two twice. What the composer emits is `enabled`, `visibility`, `scale`,
--- `alpha`, `locked`, `state.debugConsole` and `state.testMode`
--- (libs/LibKa0s/OptionsCompose.lua:460-498). The two resets are actions rather
+-- `alpha`, `locked` and `state.debugConsole`
+-- (libs/LibKa0s/OptionsCompose.lua:460-487). The two resets are actions rather
 -- than settings -- an anchor is not a key=value the schema covers -- which is
 -- why they are a button pair and not rows.
+--
+-- NO TEST MODE ROW, by the standard's own exemption (options-ui-§15, v2.49.0):
+-- unlocking already shows the grids and the cast bar's placeholder, so Lock
+-- frame is the switch, and a Test mode checkbox would be a second switch for
+-- the same state. Hence no `testModePath` here and no `/kcd test` verb.
 --
 -- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
 -- holding master scale and master alpha. Two rows whose LABELS both say Master
@@ -40,15 +45,8 @@ local function add(t) Schema[#Schema + 1] = t end
 --     [Enable KickCD]   | [General visibility]
 --     [Master scale]    | [Master alpha]
 --     [Lock frame]      | [Debug console]
---     [Test mode]
 -- and hands back the afterGroup that closes the tab with its button pair:
 --     [Reset position]  | [Reset all settings]
---
--- Test mode is the composer's other SESSION-ONLY row (options-ui-§15, standard
--- v2.47.0), emitted from `testModePath` and bound exactly like the console:
--- SESSION_PATHS answers `state.testMode` off NS.State.testMode. Its `default` is
--- passed below because the composer emits none, and without one Reset all
--- settings could not end it.
 --
 -- The Debug console is the composer's SESSION-ONLY row now, not the bespoke
 -- SessionToggle this page used to draw beside Lock frame. It still shows/hides
@@ -64,7 +62,6 @@ local masterRows, masterTail = H.MasterControls{
     page             = "general",
     addonName        = "KickCD",
     debugConsolePath = "state.debugConsole",
-    testModePath     = "state.testMode",
     -- The two stored values this addon does not share with the canonical block.
     -- PASSED, never edited into the composer: the composer must not change what
     -- is stored, and `visibility` has shipped as
@@ -72,18 +69,11 @@ local masterRows, masterTail = H.MasterControls{
     defaults         = {
         visibility   = "target_casting_interruptible",
         debugConsole = false,
-        testMode     = false,
     },
     onResetPosition  = function() H.ResetIconPosition() end,
     onResetAll       = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
 }
 H.AddComposed(masterRows, { panel = "general", section = "general" })
-
--- The composer's Test mode tooltip is generic; this one says what KickCD shows.
-local testModeRow = H.FindSchema("state.testMode")
-if testModeRow then
-    testModeRow.tooltip = L["Show the icon grids and cast bars with placeholder content while they stay locked, so you can see where they sit without waiting for a cast. Dragging still needs Lock frame off. Session only, and combat ends it. The same as /kcd test."]
-end
 
 -- THE ONE OVERRIDE, and it is a ratified deviation from options-ui-§15's value
 -- list — see docs/ARCHITECTURE.md's `## Documented deviations`. KickCD's

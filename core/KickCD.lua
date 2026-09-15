@@ -141,30 +141,6 @@ local function setLocked(self, value)
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
 
--- `/kcd test [on|off]`: the Test mode row (options-ui-§15) from chat, through
--- the same seam and with the same no-row refusal as setLocked. A bare verb
--- toggles. A refused start (combat) is reported by the row's own set(), so this
--- stays quiet when the state did not move.
-local function setTestMode(self, rest)
-    local arg = ((rest or ""):match("^%s*(%S*)") or ""):lower()
-    local want
-    if arg == "on" then
-        want = true
-    elseif arg == "off" then
-        want = false
-    elseif arg == "" then
-        want = not (self.State and self.State.testMode)
-    else
-        return p(self, "usage: /kcd test [on|off]")
-    end
-    local H = self.Settings and self.Settings.Helpers
-    if not (H and H.SetAndRefresh and H.SetAndRefresh("state.testMode", want)) then
-        return p(self, "Settings layer not ready yet")
-    end
-    if self.State.testMode ~= want then return end
-    p(self, "test mode " .. (want and "on" or "off"))
-end
-
 -- Forward declarations so command tables and dispatchers can reference each
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting
@@ -196,8 +172,6 @@ local COMMANDS = {
             local cur = NS.db and NS.db.profile and NS.db.profile.locked
             setLocked(NS, not cur)
         end},
-    {"test",          "Show placeholder grids and cast bars while locked — `/kcd test [on|off]`",
-        function(rest) setTestMode(NS, rest) end},
     {"list",          "List every setting and its current value",
         function() listSettings(NS) end},
     {"get",           "Print a setting's current value — `/kcd get <path>`",

@@ -341,7 +341,7 @@ if not lib then
     -- them is exactly the drift the composers were extracted to end
     -- (options-ui-§16, anti-pattern #73) -- the same argument options-ui-§1 makes
     -- against copying a widget maker or a layout constant here. So the degraded
-    -- load registers 112 of the addon's 229 rows.
+    -- load registers 112 of the addon's 228 rows.
     --
     -- WHAT THAT COSTS, MEASURED. §1's stated harm is `list`, `get`, `set`,
     -- `reset` and the profile defaults breaking silently, and neither half is

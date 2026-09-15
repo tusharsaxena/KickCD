@@ -154,7 +154,7 @@ end
 
 -- The four schema pages whose Defaults button is LibKa0s' RestoreDefaults, and
 -- the rows each one walks.
-for _, case in ipairs({ { "castbar", 110 }, { "icons", 78 }, { "label", 32 }, { "general", 10 } }) do
+for _, case in ipairs({ { "castbar", 110 }, { "icons", 78 }, { "label", 32 }, { "general", 9 } }) do
     local page, rows = case[1], case[2]
     test("the " .. page .. " page's Defaults logs ONE [Set] reset line counting the rows it changed",
     function()

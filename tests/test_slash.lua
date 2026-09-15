@@ -477,37 +477,3 @@ test("set stores a multi-word label text whole", function()
     assertEqual(NS.Settings.Helpers.Get(path), "Kick Them Now", joined(out))
     NS.Settings.Helpers.SetAndRefresh(path, before)
 end)
-
--- ── /kcd test ───────────────────────────────────────────────────────────────
-
-test("/kcd test [on|off] drives the same session row the checkbox does", function()
-    -- The verb is a second way to reach the Test mode row (options-ui-§15 allows
-    -- one), through the same write seam, so the checkbox follows it.
-    local H = NS.Settings.Helpers
-    local ok, err = pcall(function()
-        local out = joined(runVerb("test on"))
-        assertEqual(NS.State.testMode, true, "test on")
-        assertTrue(out:find("test mode on", 1, true) ~= nil, "got: " .. out)
-        assertEqual(H.Get("state.testMode"), true, "the checkbox reads it on")
-        runVerb("test off")
-        assertEqual(NS.State.testMode, false, "test off")
-        runVerb("test")
-        assertEqual(NS.State.testMode, true, "a bare verb toggles on")
-        runVerb("test")
-        assertEqual(NS.State.testMode, false, "and off again")
-        out = joined(runVerb("test sideways"))
-        assertEqual(NS.State.testMode, false, "an unknown argument writes nothing")
-        assertTrue(out:find("/kcd test [on|off]", 1, true) ~= nil, "usage; got: " .. out)
-    end)
-    H.SetAndRefresh("state.testMode", false)
-    if not ok then error(err, 0) end
-end)
-
-test("with LibKa0s absent /kcd test writes nothing and says why", function()
-    -- The row is composed, so a library-less load has none, and the verb writes
-    -- around nothing -- the same refusal /kcd lock gives.
-    local inst = T.load(true, false, nil, { libFiles = {} })
-    local out = runHandler(inst, "test")
-    assertEqual(inst.NS.State.testMode, false, "test wrote around the helper")
-    assertTrue(out:find("Settings layer not ready yet", 1, true) ~= nil, "got: " .. out)
-end)
