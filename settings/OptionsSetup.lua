@@ -313,6 +313,9 @@ if not lib then
         "SetChromeHeight", "TabStrip", "PageBanner", "PageHeader", "SubTabStrip",
         "RenderTabbedSchema",
         "ChoiceGrid", "IdInput", "IdList", "ResolveId", "UnnamedCandidates",
+        -- SelectTab, new at LibKa0s v1.36.0: reached only from a tab click on an already-rendered
+        -- page. This addon does not adopt tab-scoped refresh, so the same inert no-op applies.
+        "SelectTab",
     }) do
         Helpers[name] = function() end
     end
