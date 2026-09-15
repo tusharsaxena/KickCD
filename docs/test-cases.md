@@ -130,7 +130,7 @@ badge and any count quoted in the docs must agree with it.
 - Constants: every spec ID in Const.SPEC has a shipped default list
 - Constants: defaults ship one class table per class, all UPPER-case tokens
 
-### test_state.lua (23)
+### test_state.lua (27)
 
 - State: the combat flag starts false and holds `debug` session-only
 - State.SetInCombat coerces any truthy value to a real boolean
@@ -155,6 +155,10 @@ badge and any count quoted in the docs must agree with it.
 - ApplyInterruptibleAlpha reads the CHANNEL flag from position 7, not 8
 - ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
 - ApplyInterruptibleAlpha never inspects the cast name it gates on
+- State: test mode starts off, and IsPreviewing is test mode OR unlocked
+- State: combat ends test mode, says so once, and the checkbox follows
+- State: combat with test mode already off says nothing about it
+- State: test mode refuses to start in combat, and the box stays unticked
 
 ### test_locale.lua (15)
 
@@ -202,7 +206,7 @@ badge and any count quoted in the docs must agree with it.
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (36)
+### test_schema.lua (39)
 
 - Settings.Schema is assembled from the settings/* files
 - Helpers.ValidateSchema reports zero malformed rows
@@ -215,6 +219,9 @@ badge and any count quoted in the docs must agree with it.
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: it is a row, and it never reaches the db
+- test mode is the composer's session-only row, right after the debug console
+- test mode never reaches the db, and a write repaints through the bus
+- Reset all settings ends test mode
 - every page partitions into the designed tab strip, in strip order
 - no page draws a tab twice: every group's rows are contiguous
 - every schema page names at least one tab, so every one draws a strip
@@ -442,7 +449,7 @@ badge and any count quoted in the docs must agree with it.
 - toggling the cooldown tint's companion rebuilds the alpha/tint curves
 - master scale and master alpha reach the grid frame
 
-### test_icongrid_visibility.lua (22)
+### test_icongrid_visibility.lua (25)
 
 - the visibility deciders are published for testing
 - visibilityMode reads the addon-wide setting
@@ -466,6 +473,9 @@ badge and any count quoted in the docs must agree with it.
 - each unit's decision is made against its OWN unit token
 - instanceCasting truth-tests the cast name without ever reading it
 - instanceCasting is false for a unit that doesn't exist
+- test mode shows the grid while LOCKED, in a mode that would hide it
+- test mode does not outrank the master enable or a perf suspend
+- test mode shows the grid at full alpha and leaves it undraggable while locked
 
 ### test_icongrid_render.lua (21)
 
@@ -648,7 +658,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (38)
+### test_castbar_frame.lua (42)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -688,6 +698,10 @@ badge and any count quoted in the docs must agree with it.
 - an interruptible cast in that mode stays fully visible
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
+- test mode puts the PREVIEW on screen while locked, with no cast
+- Stop leaves the PREVIEW on screen in test mode while locked
+- test mode does not make a FREE cast bar draggable while locked
+- ticking Test mode repaints the grid and the bar, and unticking clears them
 
 ### test_castbar_skin.lua (49)
 
@@ -999,7 +1013,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (30)
+### test_slash.lua (32)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1031,6 +1045,8 @@ badge and any count quoted in the docs must agree with it.
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 - set stores a multi-word label text whole
+- /kcd test [on|off] drives the same session row the checkbox does
+- with LibKa0s absent /kcd test writes nothing and says why
 
 ### test_opensettings.lua (6)
 
@@ -1123,10 +1139,10 @@ badge and any count quoted in the docs must agree with it.
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
-| test_state.lua | 23 |
+| test_state.lua | 27 |
 | test_locale.lua | 15 |
 | test_units.lua | 25 |
-| test_schema.lua | 36 |
+| test_schema.lua | 39 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 8 |
@@ -1137,7 +1153,7 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
-| test_icongrid_visibility.lua | 22 |
+| test_icongrid_visibility.lua | 25 |
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
@@ -1149,7 +1165,7 @@ badge and any count quoted in the docs must agree with it.
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 38 |
+| test_castbar_frame.lua | 42 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
@@ -1166,7 +1182,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 1 |
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 30 |
+| test_slash.lua | 32 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_list_mode.lua | 5 |
@@ -1175,4 +1191,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **933** |
+| **Total** | **949** |

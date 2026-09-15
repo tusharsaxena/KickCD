@@ -83,6 +83,25 @@ local SESSION_PATHS = {
             if on then NS.DebugLog:Show() else NS.DebugLog:Hide() end
         end,
     },
+    -- Test mode (options-ui-§15): NS.State.testMode, which the grids and cast
+    -- bars read through State.IsPreviewing. Unlike the console, the bus RENDERS
+    -- it, so a change announces "general" -- the section IconGrid and Castbar
+    -- re-apply visibility, the preview and the lock from. A start in combat is
+    -- refused (combat ends it, core/State.lua), and the caller's refresh then
+    -- redraws the box unticked.
+    ["state.testMode"] = {
+        get = function() return NS.State.testMode == true end,
+        set = function(on)
+            on = on and true or false
+            if on == NS.State.testMode then return end
+            if on and NS.State.inCombat then
+                NS.Util.print(L["cannot start test mode during combat"])
+                return
+            end
+            NS.State.testMode = on
+            Helpers.FireConfigChanged("general")
+        end,
+    },
 }
 
 function Helpers.Get(path)
@@ -343,9 +362,10 @@ end
 function Helpers.Set(path, section, value)
     local session = SESSION_PATHS[path]
     if session then
-        -- No FireConfigChanged: nothing on the bus renders session state, and a
-        -- CONFIG_CHANGED here would fan a full re-apply out over a window that
-        -- opened.
+        -- No FireConfigChanged here: a session row that something on the bus
+        -- renders announces it from its own set() (test mode does), and one that
+        -- nothing renders (the console window) must not fan a full re-apply out
+        -- over a window that opened.
         if bulkBefore and bulkBefore[path] == nil then bulkBefore[path] = { session.get() } end
         session.set(value)
         logSet(path, value)

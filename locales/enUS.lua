@@ -52,6 +52,11 @@ L["Lock frame"]                  = "Lock frame"
 L["When unlocked, you can drag the icon grid to reposition it."] =
     "When unlocked, you can drag the icon grid to reposition it."
 L["Debug console"]               = "Debug console"
+-- Test mode (options-ui-§15): the row's tooltip, the combat stop and the refusal.
+L["Show the icon grids and cast bars with placeholder content while they stay locked, so you can see where they sit without waiting for a cast. Dragging still needs Lock frame off. Session only, and combat ends it. The same as /kcd test."] =
+    "Show the icon grids and cast bars with placeholder content while they stay locked, so you can see where they sit without waiting for a cast. Dragging still needs Lock frame off. Session only, and combat ends it. The same as /kcd test."
+L["Test mode off \226\128\148 combat started"] = "Test mode off \226\128\148 combat started"
+L["cannot start test mode during combat"] = "cannot start test mode during combat"
 L["Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."] =
     "Show or hide the on-screen debug console window. Session-only; does not change debug logging on/off."
 L["Master scale"]                = "Master scale"

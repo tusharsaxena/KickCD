@@ -19,8 +19,8 @@ local H  = NS.Settings.Helpers
 -- OnDefault from its own FOOTER control — a different widget from the header
 -- Defaults button this addon builds, and not per-page. LibKa0s stamps all three
 -- in CreatePanel as of minor 5, so all five of this addon's pages
--- (settings/General.lua:129, Icons.lua:393, Castbar.lua:537, Label.lua:178,
--- Spells.lua:941) gained a working footer control without a line of their own
+-- (settings/General.lua:226, Icons.lua:448, Castbar.lua:561, Label.lua:216,
+-- Spells.lua:1113) gained a working footer control without a line of their own
 -- changing. Nothing in this repo would notice losing it again: the header
 -- Defaults button keeps working and looks equivalent to the user.
 --
@@ -488,7 +488,7 @@ function()
     --      core/Database.lua's aceDBDefaults, and never read off the schema. A
     --      composed setting a player already made keeps being honored.
     --
-    -- What the deviation does cost is #NS.Settings.Schema being short by 116 rows
+    -- What the deviation does cost is #NS.Settings.Schema being short by 117 rows
     -- on a load where the only three things that read it -- the CLI, the panel and
     -- RestoreAllDefaults' sessionOnly walk -- are respectively absent, absent, and
     -- looking for `state.debugConsole`, whose console window is unavailable on

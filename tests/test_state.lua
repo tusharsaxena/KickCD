@@ -314,3 +314,79 @@ test("ApplyInterruptibleAlpha never inspects the cast name it gates on", functio
     assertTrue(State.ApplyInterruptibleAlpha(probe, "target", 1))
     assertNil(probe.calls[2])
 end)
+
+-- ── Test mode ───────────────────────────────────────────────────────────────
+
+--- Capture what the chat frame printed while `fn` ran.
+local function capture(mocks, fn)
+    local lines = {}
+    local frame = mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    local ok, err = pcall(fn)
+    frame.AddMessage = orig
+    if not ok then error(err, 0) end
+    return lines
+end
+
+test("State: test mode starts off, and IsPreviewing is test mode OR unlocked", function()
+    -- Test mode is session-only (options-ui-§15): a fresh load re-seeds it off.
+    local inst = T.load(true)
+    local NS, State = inst.NS, inst.NS.State
+    assertEqual(State.testMode, false, "test mode must start off")
+    NS.db.profile.locked = true
+    assertFalse(State.IsPreviewing(), "locked with test mode off is the live view")
+    State.testMode = true
+    assertTrue(State.IsPreviewing(), "test mode previews while locked")
+    State.testMode = false
+    NS.db.profile.locked = false
+    assertTrue(State.IsPreviewing(), "unlocking still previews")
+end)
+
+test("State: combat ends test mode, says so once, and the checkbox follows", function()
+    -- options-ui-§15: it ends when combat starts, so no placeholder covers real
+    -- data in a fight. Through the row's write seam, so the bus repaints and an
+    -- open panel re-syncs the box.
+    -- red under: deleting the test-mode arm from the PLAYER_REGEN_DISABLED branch
+    local inst = T.load(true, true)
+    local NS, H = inst.NS, inst.NS.Settings.Helpers
+    H.SetAndRefresh("state.testMode", true)
+    assertTrue(NS.State.testMode, "precondition: test mode is on")
+    local refreshed = 0
+    local realRefresh = H.RefreshScalars
+    H.RefreshScalars = function(...) refreshed = refreshed + 1; return realRefresh(...) end
+    local boot = inst.mocks.__findFrame("PLAYER_REGEN_DISABLED")
+    local ok, lines = pcall(capture, inst.mocks, function() boot:_fire("PLAYER_REGEN_DISABLED") end)
+    H.RefreshScalars = realRefresh
+    if not ok then error(lines, 0) end
+    assertEqual(NS.State.inCombat, true)
+    assertEqual(NS.State.testMode, false, "combat left test mode on")
+    assertEqual(H.Get("state.testMode"), false, "the checkbox reads it off")
+    assertTrue(refreshed > 0, "an open panel must re-sync the checkbox")
+    assertEqual(#lines, 1, "one line, not " .. #lines)
+    assertTrue(lines[1]:find("Test mode off", 1, true) ~= nil
+        and lines[1]:find("combat started", 1, true) ~= nil, "got: " .. tostring(lines[1]))
+end)
+
+test("State: combat with test mode already off says nothing about it", function()
+    local inst = T.load(true, true)
+    local boot = inst.mocks.__findFrame("PLAYER_REGEN_DISABLED")
+    local lines = capture(inst.mocks, function() boot:_fire("PLAYER_REGEN_DISABLED") end)
+    assertEqual(#lines, 0, "combat printed: " .. table.concat(lines, " | "))
+end)
+
+test("State: test mode refuses to start in combat, and the box stays unticked", function()
+    -- Combat ends it, so starting it mid-fight would put placeholders over the
+    -- live grid for exactly the stretch the rule exists to keep clear.
+    local inst = T.load(true, true)
+    local NS, H = inst.NS, inst.NS.Settings.Helpers
+    inst.mocks.__findFrame("PLAYER_REGEN_DISABLED"):_fire("PLAYER_REGEN_DISABLED")
+    local lines = capture(inst.mocks, function() H.SetAndRefresh("state.testMode", true) end)
+    assertEqual(NS.State.testMode, false, "test mode started in combat")
+    assertEqual(H.Get("state.testMode"), false, "the box must read unticked")
+    assertTrue(table.concat(lines, "\n"):find("cannot start test mode", 1, true) ~= nil,
+        "the refusal must say why; got: " .. table.concat(lines, " | "))
+    inst.mocks.__findFrame("PLAYER_REGEN_DISABLED"):_fire("PLAYER_REGEN_ENABLED")
+    H.SetAndRefresh("state.testMode", true)
+    assertEqual(NS.State.testMode, true, "out of combat it starts")
+end)

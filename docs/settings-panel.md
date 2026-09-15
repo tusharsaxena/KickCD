@@ -6,7 +6,7 @@ Six pages sit under **Ka0s KickCD** in the game's own settings. This is the page
 
 | Page | Covers |
 |---|---|
-| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
+| **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session, and a "Test mode" checkbox that puts the grids and cast bars on screen with placeholder content while they stay locked, until you untick it or combat starts. |
 | **Icons** | Icon size, grid layout, how ready and not-ready icons look, borders, cooldown text and charges, tooltips, and the ready glow. A **Target / Focus** switch at the top picks which unit you're editing. |
 | **Cast bar** | Turn the cast bar on, place it, size it, choose its direction, pick a font, and set separate colors for casts you can and can't interrupt — per unit, via the same Target / Focus switch. |
 | **Text Label** | Show a custom identity label on a unit's icon grid or cast bar — its text, where it attaches, its offset, alignment, rotation, and font. Each unit has its own label. |
@@ -25,7 +25,7 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 
 | Page | Tabs, in strip order (rows per tab) | Rows |
 |---|---|---|
-| **General** | Master controls (6) \| Units (3: two enables, and the Focus `link` row the tab draws itself) | 9 |
+| **General** | Master controls (7) \| Units (3: two enables, and the Focus `link` row the tab draws itself) | 10 |
 | **Icons** | Sizing (4) \| Layout (6) \| Visual states (5) \| Border (5) \| Annotations (11) \| Ready glow (8) | 39 per unit |
 | **Cast bar** | General (5) \| Size and position (7) \| Icon (2) \| Font (6) \| Spell name (5) \| Cast time (4) \| Interruptible (13) \| Non-interruptible (13) | 55 per unit |
 | **Text Label** | General (2) \| Placement (8) \| Font (6) | 16 per unit |
@@ -74,6 +74,7 @@ It is **composed, not written out**. `H.MasterControls` (`libs/LibKa0s/OptionsCo
 | Enable KickCD | General visibility |
 | Master scale | Master alpha |
 | Lock frame | Debug console |
+| Test mode | |
 | Reset position | Reset all settings |
 
 The two resets are a **button pair**, not rows: they are acts rather than settings, so they belong in neither the CLI nor the reset sweep. The pair is wired as `H.RenderTabbedSchema(ctx, "general", { [H.MASTER_GROUP] = masterTail }, …)` — and because **the group name is the hook key**, renaming the group detaches the hook and nothing says so. The *Reset all settings* tooltip is the composer's too, chosen by the descriptor: with `resetProfile` and `profilesPage = true` it reads *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."*
@@ -82,6 +83,7 @@ Two things about this tab are this addon's rather than the composer's:
 
 * **`visibility` keeps its own four values.** KickCD's visibility is cast-state driven — *when target is casting an interruptible spell* is the mode the whole addon exists for — and the canonical `Always / Only in combat / Only out of combat / Never` cannot express it. Only the option list and its prose differ; the stored keys are untouched, so nothing migrates. Recorded as a ratified deviation in [ARCHITECTURE.md](ARCHITECTURE.md#documented-deviations).
 * **`state.debugConsole` resolves outside the profile.** It is the composer's session-only row, and its path names a live object rather than a saved key, so `settings/Panel.lua`'s `SESSION_PATHS` table answers it off `NS.DebugLog` inside `Helpers.Get`/`Set`. `debug-logging-§5` still holds — nothing about the console ever reaches SavedVariables — and `/kcd get|set|list state.debugConsole` now works, which the bespoke `SessionToggle` it replaced never allowed.
+* **`state.testMode` resolves outside the profile too.** It is the composer's second session-only row (standard v2.47.0), emitted from `testModePath` on its own line and bound the same way: `SESSION_PATHS` answers it off `NS.State.testMode`. While it is on, the grids and cast bars show as they do unlocked (the visibility mode and the interruptibility mask are bypassed, and the cast bar puts up its placeholder), but only *Lock frame* makes them draggable. Unlike the console, its `set()` announces `general`, because the grid and the bar render it. It refuses to start in combat, `core/State.lua` ends it when combat starts, `/kcd test [on|off]` drives the same row, and the `default = false` passed in the spec is what lets *Reset all settings* end it. The tooltip is this addon's own, replacing the composer's generic one.
 
 ## The composed control groups (`options-ui-§16`)
 
@@ -93,7 +95,7 @@ Font, border and bar blocks are **emitted by the library**, never typed out — 
 | `H.BorderGroup` | *(Show border)* · Border style · Border thickness (px) · Border color · Use class color | Icons → Border, Cast bar → Interruptible / Non-interruptible |
 | `H.BarGroup` | Bar texture · Bar opacity · Bar color · Use class color | Cast bar → Interruptible / Non-interruptible |
 | `H.ColorPair` | a swatch and its companion, and nothing else | the cooldown tint, the two glow colors, both background swatches, both spell-name swatches |
-| `H.MasterControls` | the **six** canonical rows above, plus the button-pair hook that draws the other two | General → Master controls |
+| `H.MasterControls` | the **seven** canonical rows above, plus the button-pair hook that draws the other two | General → Master controls |
 
 **`keys` and `defaults` are what keep the stored shape this addon's.** Every composer call passes the leaf names this addon already shipped — `borderStyle` → `borderTexture`, `fontSize` → `size` on the label, `fontColor` → `textColor` on the cast bar — so the composer changes what is *declared* and how it is *laid out*, never what is *stored*.
 

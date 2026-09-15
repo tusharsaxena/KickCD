@@ -49,7 +49,7 @@ Two consequences shaped the downstream code:
 
 ## Settings input → bus
 
-Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
+Most user input (settings panel widget, slash `/kcd set`, slash `/kcd lock|unlock|toggle`) flows through `Helpers.Set(path, section, value)` in `settings/Panel.lua`, which writes `db.profile.<path>` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = ... }`. IconGrid and Castbar handle each section appropriately. The one session row the bus renders is `state.testMode`: `Helpers.Set` hands it to `SESSION_PATHS`, whose `set()` writes `NS.State.testMode` and fires `Ka0s_KickCD_CONFIG_CHANGED { section = "general" }` itself so the grids and bars repaint, and `core/State.lua` ends it at `PLAYER_REGEN_DISABLED` through the same `Helpers.SetAndRefresh`. AceDB callbacks fire `Ka0s_KickCD_PROFILE_CHANGED` on profile change / copy / reset.
 
 The debug enabled-flag is outside this path: `/kcd debug on|off|toggle` sets the session-only `NS.State.debug` through `DebugLog:SetEnabled(on)` (default off, never in SavedVariables, resets each `/reload`). Continuous `NS.Debug(tag, fmt, ...)` output routes to the on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`), not the chat frame.
 
@@ -131,3 +131,4 @@ Lock state lives in `db.profile.locked` and is shared addon-wide — one unlock/
 - `IconGrid:OnConfigChanged` and `Castbar:OnConfigChanged` react to section `"general"` by calling `ApplyLock`.
 - `IconGrid:ApplyLock` additionally toggles per-icon `EnableMouse` based on `(locked AND icons.showTooltip)` so the hover-tooltip path lights up only while the grid frame isn't claiming the mouse for drag.
 - `Castbar:ApplyLock` additionally forces drag off whenever `castbar.anchorMode == "PRIMARY"`, regardless of the global lock — under that mode the bar's position is determined by the icon-grid anchor + offsets, not by dragging.
+- Test mode shows; only the lock drags. Visibility, the interruptibility mask and the cast bar's placeholder read `NS.State.IsPreviewing()` (test mode on, or `locked == false`), while `EnableMouse` / `RegisterForDrag` read `db.profile.locked` alone. A locked grid in test mode is visible and still fixed in place.

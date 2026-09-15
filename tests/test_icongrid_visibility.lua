@@ -276,3 +276,86 @@ test("instanceCasting is false for a unit that doesn't exist", function()
     clearCasting()
     assertFalse(IconGrid.InstanceCasting(TARGET))
 end)
+
+-- ── Test mode ───────────────────────────────────────────────────────────────
+--
+-- Test mode (options-ui-§15) SHOWS the display while it stays locked: the same
+-- bypass unlocking gets, without the drag. It never outranks the master enable
+-- or a perf suspend.
+
+--- Run `fn` with NS.State.testMode on, then turn it back off.
+local function withTestMode(fn)
+    NS.State.testMode = true
+    local ok, err = pcall(fn)
+    NS.State.testMode = false
+    if not ok then error(err, 0) end
+end
+
+test("test mode shows the grid while LOCKED, in a mode that would hide it", function()
+    -- red under: shouldBeVisible reading `locked` instead of State.IsPreviewing
+    clearCasting()
+    NS.State.SetInCombat(false)
+    withTestMode(function()
+        for _, mode in ipairs({ "in_combat", "target_casting",
+                                "target_casting_interruptible" }) do
+            withProfile({ enabled = true, visibility = mode, locked = true }, function()
+                assertTrue(IconGrid.ShouldBeVisible(TARGET), "target, mode " .. mode)
+                assertTrue(IconGrid.ShouldBeVisible(FOCUS), "focus, mode " .. mode)
+            end)
+        end
+    end)
+    withProfile({ enabled = true, visibility = "in_combat", locked = true }, function()
+        assertFalse(IconGrid.ShouldBeVisible(TARGET), "and off again, the mode decides")
+    end)
+end)
+
+test("test mode does not outrank the master enable or a perf suspend", function()
+    withTestMode(function()
+        withProfile({ enabled = false, locked = true }, function()
+            assertFalse(IconGrid.ShouldBeVisible(TARGET), "a disabled addon shows nothing")
+        end)
+        withProfile({ enabled = true, visibility = "always", locked = true }, function()
+            local was = NS.Perf.suspended
+            NS.Perf.suspended = true
+            local ok, err = pcall(function()
+                assertFalse(IconGrid.ShouldBeVisible(TARGET), "a suspended addon shows nothing")
+            end)
+            NS.Perf.suspended = was
+            if not ok then error(err, 0) end
+        end)
+    end)
+end)
+
+test("test mode shows the grid at full alpha and leaves it undraggable while locked", function()
+    -- The interruptibility mask is bypassed, as it is while unlocked: an
+    -- uninterruptible cast must not blank the placeholder view. Dragging still
+    -- needs Lock frame off -- test mode shows things, it does not move them.
+    -- red under: ApplyLock reading State.IsPreviewing, or the mask reading `locked`
+    local e = T.load(true, true)
+    local ns, grid = e.NS, e.NS:GetModule("IconGrid")
+    ns.db.profile.locked = true
+    ns.db.profile.visibility = "target_casting_interruptible"
+    e.mocks.UnitExists = function() return true end
+    e.mocks.UnitCanAttack = function() return true end
+    e.mocks.UnitCastingInfo = function()
+        return "Chaos Bolt", nil, nil, nil, nil, nil, nil, true   -- uninterruptible
+    end
+    e.mocks.UnitChannelInfo = function() return nil end
+    local gInst = grid:GetInstance("target")
+    assertTrue(gInst.grid ~= nil, "precondition: the target grid is built")
+    local masked, mouse = 0, {}
+    rawset(gInst.grid, "SetAlphaFromBoolean", function() masked = masked + 1 end)
+    rawset(gInst.grid, "EnableMouse", function(_, on) mouse[#mouse + 1] = on end)
+
+    ns.State.testMode = true
+    grid:RefreshVisibility(gInst)
+    grid:ApplyLock(gInst)
+    assertTrue(gInst.grid:IsShown(), "test mode must show the locked grid")
+    assertEqual(masked, 0, "the interruptibility mask must be bypassed in test mode")
+    assertEqual(gInst.grid:GetAlpha(), 1)
+    assertEqual(mouse[#mouse], false, "test mode must not make the locked grid draggable")
+
+    ns.db.profile.locked = false
+    grid:ApplyLock(gInst)
+    assertEqual(mouse[#mouse], true, "unlocking still makes it draggable")
+end)
