@@ -137,7 +137,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 
 ## Slash commands
 
-`/kcd` and `/kickcd` are aliases. The dispatch table (`NS.COMMANDS` in `core/KickCD.lua`) is sender-authoritative for the top-level verbs:
+`/kcd` and `/kickcd` are aliases. Bare `/kcd` runs `config` and opens the settings panel on its landing page; `/kcd help` prints the command list (slash-commands-§4). The dispatch table (`NS.COMMANDS` in `core/KickCD.lua`) is sender-authoritative for the top-level verbs:
 
 | Command | What it does |
 |---|---|

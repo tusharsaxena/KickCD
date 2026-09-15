@@ -245,15 +245,26 @@ if not SlashLib then
             out("v" .. tostring(d.version and d.version() or "?") .. " slash commands")
             for _, r in ipairs(stub.HelpRows()) do out(r) end
         end
+        local function find(cmd)
+            for _, e in ipairs(d.commands or {}) do
+                if e[1] == cmd then return e end
+            end
+        end
         stub.OnSlash = function(_, msg)
             local raw = (msg or ""):match("^%s*(.-)%s*$") or ""
-            if raw == "" then return stub.PrintHelp() end
+            if raw == "" then
+                -- Bare `/kcd` runs `config` when the host registered one and
+                -- prints help otherwise, as the library's OnSlash does
+                -- (slash-commands-§4). `/kcd help` is the list.
+                local config = find("config")
+                if config then return config[3]("") end
+                return stub.PrintHelp()
+            end
             local cmd, rest = raw:match("^(%S+)%s*(.*)$")
             cmd = (cmd or ""):lower()
             cmd = (d.aliases or {})[cmd] or cmd
-            for _, e in ipairs(d.commands or {}) do
-                if e[1] == cmd then return e[3](rest or "") end
-            end
+            local e = find(cmd)
+            if e then return e[3](rest or "") end
             out("unknown command '" .. cmd .. "'")
             stub.PrintHelp()
         end

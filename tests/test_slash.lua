@@ -286,6 +286,73 @@ test("with LibKa0s absent /kcd still answers and host verbs still work", functio
     assertTrue(#lines > 0, "/kcd must still answer with no library")
 end)
 
+-- ── bare /kcd is `config` (slash-commands-§4) ───────────────────────────────
+--
+-- LibKa0s-Slash-1.0 minor 11: empty or whitespace-only input runs the host's
+-- `config` handler with "", and `/kcd help` is the only route to the list.
+-- The stub in settings/Slash.lua mirrors it, so both halves are pinned.
+
+--- True when any captured line is the help header ("v<x> — slash commands").
+local function printedHelp(lines)
+    for _, l in ipairs(lines) do
+        if l:find("slash commands", 1, true) then return true end
+    end
+    return false
+end
+
+test("bare /kcd opens the settings landing page through `config`", function()
+    -- Enabled, so OnEnable has registered the category the open is handed.
+    -- red under: `if raw == "" then return self:PrintHelp() end` in the library
+    local opened = {}
+    local inst = T.load(true, true, function(m)
+        m.Settings.OpenToCategory = function(id) opened[#opened + 1] = id end
+    end)
+    local lines = {}
+    inst.mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) lines[#lines + 1] = m end }
+
+    inst.NS:OnSlashCommand("")
+    assertEqual(#opened, 1, "bare /kcd must open the settings panel")
+    assertTrue(opened[1] ~= nil, "the open must be handed a registered category")
+    assertTrue(not printedHelp(lines), "bare /kcd must not print the help list")
+
+    -- The same page `/kcd config` lands on, which is the parent category.
+    inst.NS:OnSlashCommand("config")
+    assertEqual(opened[2], opened[1], "bare /kcd and /kcd config must open the same page")
+
+    -- ...and `help` still prints the list without opening anything.
+    inst.NS:OnSlashCommand("help")
+    assertEqual(#opened, 2, "/kcd help must not open the settings panel")
+    assertTrue(printedHelp(lines), "/kcd help must print the list")
+end)
+
+test("whitespace-only /kcd is bare and reaches `config` too", function()
+    local calls = 0
+    local real = NS.OpenSettings
+    NS.OpenSettings = function() calls = calls + 1 end
+    local out1 = runVerb("   ")
+    local out2 = runVerb("\t ")
+    NS.OpenSettings = real
+    assertEqual(calls, 2, "whitespace-only input must run `config`")
+    assertTrue(not printedHelp(out1) and not printedHelp(out2),
+        "whitespace-only input must not print the help list")
+end)
+
+test("with LibKa0s absent bare /kcd still reaches `config`", function()
+    -- red under: `if raw == "" then return stub.PrintHelp() end` in the stub
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    local calls = 0
+    inst.NS.OpenSettings = function() calls = calls + 1 end
+    local lines = {}
+    local frame = inst.mocks.DEFAULT_CHAT_FRAME
+    local orig = frame.AddMessage
+    frame.AddMessage = function(_, m) lines[#lines + 1] = m end
+    inst.NS:OnSlashCommand("")
+    inst.NS:OnSlashCommand("  ")
+    frame.AddMessage = orig
+    assertEqual(calls, 2, "the stub must run `config` on bare and whitespace-only input")
+    assertTrue(not printedHelp(lines), "the stub must not print the help list on bare input")
+end)
+
 -- `/kcd lock` writes `locked` through the helper or not at all (#20). It used to
 -- fall back to `db.profile.locked = v` whenever SetAndRefresh could not take the
 -- write, which put a schema-row path (or, with no row, persistent state with no

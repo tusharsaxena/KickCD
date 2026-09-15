@@ -58,12 +58,13 @@ Companion docs:
 
 **Steps.**
 - Log in to a fresh character.
-- Run `/kcd`.
+- Run `/kcd help`, then `/kcd` on its own.
 
 **Pass.**
 - Login completes with no Lua errors.
 - The icon grid renders with the current spec's default spells (filtered to spells the player can actually cast).
-- `/kcd` prints the help index — every row carries the cyan `[KCD]` banner, command names are yellow, descriptions are white, no `schema error:` line appears.
+- `/kcd` on its own opens the settings panel on the Ka0s KickCD landing page and prints no help list.
+- `/kcd help` prints the help index — every row carries the cyan `[KCD]` banner, command names are yellow, descriptions are white, no `schema error:` line appears.
 - Settings → AddOns shows a **Ka0s KickCD** parent category with the six subcategories **General / Icons / Cast bar / Text Label / Spells / Profiles**.
 - `KickCDDB` is now present on disk after `/reload` with `profileKeys`, `profiles.Default`, and the seeded `spells[CLASS][specID]` block for the current spec — the spec key is a **number** (e.g. `[262]`), never a spec name.
 - Switch to a different class+spec character (alt) and log in: their spec's spells are seeded on first profile creation without errors.
@@ -376,7 +377,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 **Pass.**
 - Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
 - Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
-- Out of combat `/kcd config` opens the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
+- Out of combat `/kcd config`, and bare `/kcd`, open the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
 - Mid-combat, **every one of the six pages opened from the Blizzard AddOns sidebar** prints the library's refusal line and closes the Settings window. This is a **different path** from the `/kcd config` check above and it fails for different reasons: the sidebar reaches a canvas panel without going through `OpenOptionsPanel`, so the only guard on it is the one `Helpers.SetRenderer` installs (`libs/LibKa0s/Options.lua:1035-1051`). Spells and Profiles parked their own `OnShow` until `CX03` and had no guard at all on this path, so a green here before that change proved nothing about them — run all six, not a sample, after anything that touches a page builder's render wiring.
 - Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
 

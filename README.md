@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-933%2F933_passing-green)
+![Tests](https://img.shields.io/badge/Tests-936%2F936_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
 
@@ -33,7 +33,7 @@ The grid tracks the spells your current class and spec can cast *right now*, whi
 
 Focus copies your target set's styling until you say otherwise. Untick "Use same styling as Target" on General → Units and the Icons, Cast bar and Text Label pages will build it separately — switch which unit you're editing with the Target / Focus picker above the tabs. Position and label text stay independent either way. That label is the "Target" or "Focus" tag you may have spotted beside a grid, and the Text Label page renames it, restyles it, moves it onto the cast bar or turns it off.
 
-Everything else is configuration, and it lives in two places: the addon's own page under Settings → AddOns in game, and `/kcd` (or `/kickcd`), which prints the full command list.
+Everything else is configuration, and it lives in two places: the addon's own page under Settings → AddOns in game, and `/kcd` (or `/kickcd`). On its own, `/kcd` opens that settings page; `/kcd help` prints the full command list.
 
 ## How interrupt tracking works
 

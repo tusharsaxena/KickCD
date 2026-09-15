@@ -68,7 +68,7 @@ function NS:OnInitialize()
     -- seeding here on purpose.
 
     -- Slash commands. Both /kickcd and /kcd dispatch to OnSlashCommand,
-    -- which prints the help index when called bare and routes to the
+    -- which runs `config` when called bare and routes to the
     -- COMMANDS / DEBUG_COMMANDS dispatch tables otherwise.
     self:RegisterChatCommand("kickcd", "OnSlashCommand")
     self:RegisterChatCommand("kcd",    "OnSlashCommand")
@@ -96,8 +96,8 @@ end
 --
 -- Two ordered tables drive the entire slash UX: COMMANDS for top-level
 -- subcommands and DEBUG_COMMANDS for /kcd debug ... Each entry is
--- {name, description, fn}. The dispatcher (a) prints the help index when
--- invoked with no args, (b) looks up by name, (c) re-prints help on an
+-- {name, description, fn}. The dispatcher (a) runs `config` (the settings
+-- landing page) when invoked with no args, (b) looks up by name, (c) prints help on an
 -- unknown name. Help text is generated from the same tables, so adding a
 -- command means adding a single row.
 
@@ -282,8 +282,8 @@ end
 --- The entry point AceConsole's RegisterChatCommand resolves by name, kept here
 --- so the registration in OnInitialize is unaffected by the dispatcher moving.
 ---
---- Dispatch itself is LibKa0s-Slash-1.0's (settings/Slash.lua): the empty-line
---- help, the verb lowercasing that deliberately does NOT touch `rest` (schema
+--- Dispatch itself is LibKa0s-Slash-1.0's (settings/Slash.lua): bare input
+--- running `config`, the verb lowercasing that deliberately does NOT touch `rest` (schema
 --- paths are case-sensitive and a color is several tokens), the `options` ->
 --- `config` alias, and the unknown-verb line followed by the help index. NS.Slash
 --- is reached at CALL time, so settings/ loading after core/ costs nothing.

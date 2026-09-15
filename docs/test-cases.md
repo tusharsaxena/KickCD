@@ -989,7 +989,7 @@ badge and any count quoted in the docs must agree with it.
 ### test_slash_style.lua (10)
 
 - /kcd help emits no line ending in ':' (slash-commands-§4)
-- bare /kcd emits no line ending in ':'
+- padded /kcd help emits no line ending in ':'
 - /kcd debug sub-header emits no line ending in ':'
 - /kcd spells sub-header emits no line ending in ':'
 - every COMMANDS verb description is free of a trailing ':'
@@ -999,7 +999,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (30)
+### test_slash.lua (33)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1024,6 +1024,9 @@ badge and any count quoted in the docs must agree with it.
 - the spell-database rebuild survives, under its new verb
 - resetall keeps its four-part host semantics rather than becoming CliResetAll
 - with LibKa0s absent /kcd still answers and host verbs still work
+- bare /kcd opens the settings landing page through `config`
+- whitespace-only /kcd is bare and reaches `config` too
+- with LibKa0s absent bare /kcd still reaches `config`
 - /kcd lock with no `locked` row writes nothing and says the settings layer is not ready
 - with LibKa0s absent /kcd lock and /kcd toggle write nothing
 - the degraded stub carries no copy of the row formatter or the parser
@@ -1166,7 +1169,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 1 |
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 30 |
+| test_slash.lua | 33 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_list_mode.lua | 5 |
@@ -1175,4 +1178,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **933** |
+| **Total** | **936** |

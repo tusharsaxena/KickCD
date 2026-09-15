@@ -10,7 +10,8 @@ Three ordered tables in `core/KickCD.lua` drive the entire slash UX:
 
 Each row is `{ name, description, fn }`. The dispatcher:
 
-- Bare `/kcd` → `printHelp` (iterates `COMMANDS`).
+- Bare `/kcd` (empty or whitespace-only) → runs the `config` row, which opens the settings panel on its landing page (slash-commands-§4). The library-absent stub in `settings/Slash.lua` does the same.
+- `/kcd help` → `printHelp` (iterates `COMMANDS`).
 - `/kcd <known>` → executes that row's `fn`.
 - `/kcd debug` → `runDebug("")` toggles the on-screen debug console window (`DebugLog:Toggle`) **and** prints the verb list for `DEBUG_COMMANDS`.
 - `/kcd debug <known>` → executes that row's `fn`.

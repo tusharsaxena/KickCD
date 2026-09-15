@@ -62,10 +62,12 @@ test("/kcd help emits no line ending in ':' (slash-commands-§4)", function()
     assertNoTrailingColon(runVerb("help"), "/kcd help")
 end)
 
-test("bare /kcd emits no line ending in ':'", function()
-    -- No verb falls through to the same help path; pinned separately because
-    -- it is the line most players see first.
-    assertNoTrailingColon(runVerb(""), "bare /kcd")
+test("padded /kcd help emits no line ending in ':'", function()
+    -- This case drove bare /kcd until LibKa0s-Slash-1.0 minor 11, when bare
+    -- input started running `config` (slash-commands-§4). The help list is now
+    -- only reached by name, so it drives `help` the way a player might type
+    -- it, padded and capitalized, through the dispatcher's trim and lowercase.
+    assertNoTrailingColon(runVerb("  Help  "), "padded /kcd help")
 end)
 
 test("/kcd debug sub-header emits no line ending in ':'", function()
