@@ -1076,7 +1076,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (17)
+### test_launcher.lua (22)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the TOC's ## IconTexture and the launcher's icon are the SAME file
@@ -1091,6 +1091,11 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd set global.minimap.hide` takes exactly the path the checkbox takes
 - `Reset all settings` does NOT un-hide a button the player hid
 - a profile switch does not move the player's button
+- `/kcd enable` and `/kcd disable` write the Enable row's own stored path
+- the verbs hold NO state of their own — the checkbox and the CLI cannot disagree
+- the disable confirmation reports FALSE, not `nil`
+- the dispatcher answers while the addon is DISABLED, so the pair is never one-way
+- both verbs are registered on the COMMANDS table, so `/kcd help` lists them
 - a host with NEITHER broker library loads, and says so instead of raising
 - a host with the broker but no LibDBIcon still gets the plugin, and reports false
 - with LibKa0s absent the seam still answers, and the store still records the choice
@@ -1192,11 +1197,11 @@ badge and any count quoted in the docs must agree with it.
 | test_slash.lua | 33 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
-| test_launcher.lua | 17 |
+| test_launcher.lua | 22 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **953** |
+| **Total** | **958** |

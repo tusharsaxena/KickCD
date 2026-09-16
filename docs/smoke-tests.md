@@ -968,6 +968,9 @@ which is the whole reason this step exists.
   installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
   right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
   source.
+- **`/kcd disable` then `/kcd enable`.** With the addon disabled, `/kcd`, `/kcd help` and
+  `/kcd version` still answer, and `/kcd enable` turns it back on. A dispatcher that went quiet here
+  is a one-way switch (`slash-commands-§2`) and is the finding.
 
 ---
 ## When to run which subset

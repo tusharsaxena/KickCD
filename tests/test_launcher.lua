@@ -242,6 +242,85 @@ test("a profile switch does not move the player's button", function()
     assertEqual(inst.NS.db.global.minimap.hide, true)
 end)
 
+-- ── the reserved verbs (slash-commands-§2) ──────────────────────────────────
+
+test("`/kcd enable` and `/kcd disable` write the Enable row's own stored path", function()
+    -- ALIASES, not a second switch: the same stored path through the same single
+    -- write seam the checkbox writes through.
+    -- red under: either verb writing a key of its own
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    captured(inst, function() NS:OnSlashCommand("disable") end)
+    assertEqual(NS.db.profile.enabled, false)
+    captured(inst, function() NS:OnSlashCommand("enable") end)
+    assertEqual(NS.db.profile.enabled, true)
+end)
+
+test("the verbs hold NO state of their own — the checkbox and the CLI cannot disagree",
+function()
+    -- red under: an NS.enabled local, a session flag, or a second key beside the row
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local seen, real = {}, H.SetAndRefresh
+    H.SetAndRefresh = function(path, value)
+        seen[#seen + 1] = path
+        return real(path, value)
+    end
+    captured(inst, function() NS:OnSlashCommand("disable") end)
+    H.SetAndRefresh = real
+    assertEqual(#seen, 1, "one write, not two")
+    assertEqual(seen[1], "enabled", "and it is the Master-controls row's path")
+    -- The panel reads the same answer back through the same seam.
+    assertEqual(H.Get("enabled"), false)
+end)
+
+test("the disable confirmation reports FALSE, not `nil`", function()
+    -- The host `get` used to be `H and H.Get and H.Get(path) or nil`, which
+    -- folds a stored false to nil, and the library prints nil as the literal
+    -- "nil" — so the one line telling the player the addon is off said the
+    -- setting was unset.
+    -- red under: restoring the `and ... or nil` idiom in either descriptor
+    local inst = T.load(true, true)
+    local lines = captured(inst, function() inst.NS:OnSlashCommand("disable") end)
+    assertEqual(#lines, 1, "one tagged line")
+    assertTrue(lines[1]:find("false", 1, true) ~= nil, "it must say false: " .. lines[1])
+    assertNil(lines[1]:find("nil", 1, true), "and must not say nil: " .. lines[1])
+end)
+
+test("the dispatcher answers while the addon is DISABLED, so the pair is never one-way",
+function()
+    -- Disabled means the addon stands its FEATURES down. The chat command, the
+    -- COMMANDS table and the dispatcher are SETUP: they come up in either state
+    -- and stay up, or the player turns the addon off and the verb that turns it
+    -- back on is gone (slash-commands-§2).
+    -- red under: gating RegisterChatCommand, COMMANDS or OnSlashCommand on `enabled`
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    captured(inst, function() NS:OnSlashCommand("disable") end)
+    assertEqual(NS.db.profile.enabled, false, "sanity: the addon is off")
+    for _, verb in ipairs({ "help", "version", "config", "" }) do
+        local lines = captured(inst, function() NS:OnSlashCommand(verb) end)
+        assertTrue(#lines > 0 or verb == "config" or verb == "",
+            "`/kcd " .. verb .. "` must still answer while disabled")
+    end
+    captured(inst, function() NS:OnSlashCommand("enable") end)
+    assertEqual(NS.db.profile.enabled, true, "`enable` above all must still work")
+end)
+
+test("both verbs are registered on the COMMANDS table, so `/kcd help` lists them", function()
+    -- Reserved verbs are registered by the ADDON through its own COMMANDS table
+    -- (slash-commands-§2/§3), which is also what makes them discoverable.
+    -- red under: wiring them straight into the dispatcher
+    local want = { enable = false, disable = false }
+    for _, entry in ipairs(T.NS.COMMANDS) do
+        if want[entry[1]] ~= nil then want[entry[1]] = true end
+    end
+    for verb, found in pairs(want) do
+        assertTrue(found, "`" .. verb .. "` must be a COMMANDS row")
+    end
+end)
+
 -- ── degradation (testing-§8) ────────────────────────────────────────────────
 
 test("a host with NEITHER broker library loads, and says so instead of raising", function()

@@ -185,6 +185,28 @@ local COMMANDS = {
         function() p(NS, "v" .. NS.Version()) end},
     {"config",        "Open the settings panel",
         function() NS:OpenSettings() end},
+    -- RESERVED verbs (slash-commands-§2), and ALIASES rather than a switch of
+    -- their own. Every addon already carries the addon-wide `Enable KickCD`
+    -- checkbox as the first row of General > Master controls (options-ui-§15);
+    -- what was missing was the CLI route to it, so the answer to "turn this off
+    -- without opening anything" was "find the panel first".
+    --
+    -- They dispatch into setSetting, which IS `/kcd set` -- same stored path,
+    -- same single write seam (options-ui-§1), same onChange, and the §5 `set`
+    -- confirmation line for free. So they hold NO state of their own: no second
+    -- key, no session flag, no NS.enabled, and the checkbox and the verbs cannot
+    -- show the player two different answers.
+    --
+    -- `/kcd` and these two keep working while the addon is DISABLED, and that is
+    -- what stops the pair being one-way. The registration is in OnInitialize and
+    -- is unconditional, and nothing in this addon tears down the chat command,
+    -- this table or the dispatcher when `enabled` goes false -- the modules stand
+    -- their DRAWING down and nothing else. Setup, not a feature
+    -- (slash-commands-§2), and tests/test_slash.lua pins it.
+    {"enable",        "Enable KickCD",
+        function() setSetting(NS, "enabled true") end},
+    {"disable",       "Disable KickCD — `/kcd enable` turns it back on",
+        function() setSetting(NS, "enabled false") end},
     {"lock",          "Lock the icon grid in place",
         function() setLocked(NS, true) end},
     {"unlock",        "Unlock the icon grid for dragging",

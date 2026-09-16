@@ -146,6 +146,8 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `help` | List available commands |
 | `version` | Print the addon version |
 | `config` | Open the settings panel |
+| `enable` | Turn the addon on. A **reserved alias** (`slash-commands-§2`): it writes the Master-controls `enabled` row's own stored path through the same single write seam the checkbox writes through, and holds no state of its own |
+| `disable` | Turn the addon off. The same alias in reverse. `/kcd`, `help`, `config`, `version` and `enable` above all keep working while the addon is disabled — the dispatcher is **setup, not a feature** — so the pair is never one-way |
 | `lock` | Lock the icon grid in place |
 | `unlock` | Unlock the icon grid for dragging |
 | `toggle` | Toggle the icon grid lock state |

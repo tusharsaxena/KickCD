@@ -312,9 +312,16 @@ NS.Slash.cli = SlashLib:New({
 
     -- The plain host reader. No translation: colors are stored in the keyed
     -- shape the library already parses into and renders from.
+    --
+    -- NOT `H and H.Get and H.Get(path) or nil`: that idiom folds a stored FALSE
+    -- to nil, and the library prints nil as the literal "nil". Every bool row
+    -- sitting at false -- `/kcd get locked`, `/kcd list`, and now the `enable` /
+    -- `disable` pair's own confirmation line -- reported a value the addon does
+    -- not hold. tests/test_launcher.lua pins it.
     get = function(path)
         local H = helpers()
-        return H and H.Get and H.Get(path) or nil
+        if not (H and H.Get) then return nil end
+        return H.Get(path)
     end,
 
     -- The single write seam. SetAndRefresh — not the 3-arg Helpers.Set — because

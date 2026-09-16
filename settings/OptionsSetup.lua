@@ -74,9 +74,15 @@ local descriptor = {
     -- row's section, runs the row's onChange and refreshes any open panel. A
     -- panel checkbox then takes exactly the path `/kcd set` takes, which is the
     -- whole point of the rule (options-ui-§1).
+    -- NOT `H and H.Get and H.Get(path) or nil`: that idiom folds a stored FALSE
+    -- to nil. A checkbox draws the same either way, so it was invisible here --
+    -- but the same shape in settings/Slash.lua made `/kcd get` print "nil" for
+    -- every unticked bool, and one spelling of the reader in two files is how a
+    -- fix in one of them stays a bug in the other.
     get = function(path)
         local H = helpers()
-        return H and H.Get and H.Get(path) or nil
+        if not (H and H.Get) then return nil end
+        return H.Get(path)
     end,
     set = function(path, value)
         local H = helpers()
