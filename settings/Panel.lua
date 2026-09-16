@@ -85,8 +85,45 @@ local SESSION_PATHS = {
     },
 }
 
+-- The GLOBAL store's one schema row, and the inversion is OURS rather than the
+-- library's (launcher-§3). Two things put it here beside SESSION_PATHS rather
+-- than in Resolve:
+--
+--   * SCOPE. Resolve walks db.PROFILE. LibDBIcon's table is `db.global.minimap`
+--     and the standard fixes it there for two stated reasons -- a profile switch
+--     must not move a player's buttons, and options-ui-§12's `Reset all
+--     settings`, a profile reset by definition, must not un-hide a button the
+--     player deliberately hid. The composer passes the path VERBATIM for exactly
+--     that: it is outside the block's profile prefix.
+--   * SENSE. The row's label says SHOWN and LibDBIcon's key says HIDDEN. There
+--     is ONE boolean -- the library writes it too, from its own right-click menu
+--     -- so a second `minimap.show` beside it would be a copy free to disagree
+--     the first time either surface was used (anti-pattern #81). The cost of
+--     storing the library's key is this `not`, and it is cheaper than the copy.
+--
+-- STORED, not session: `vetoedFromResetAll` (settings/OptionsSetup.lua) keeps it
+-- out of `Reset all settings` because it is not sessionOnly, which is the
+-- behavior the global scope exists to produce.
+--
+-- The set calls NS.Launcher:SetShown so the button follows the checkbox
+-- immediately rather than at the next reload. SetShown writes `hide` again with
+-- the same value, which is deliberate on the library's side and harmless here.
+local GLOBAL_PATHS = {
+    ["global.minimap.hide"] = {
+        get = function()
+            local t = NS.db and NS.db.global and NS.db.global.minimap
+            return not (t and t.hide)
+        end,
+        set = function(shown)
+            local t = NS.db and NS.db.global and NS.db.global.minimap
+            if t then t.hide = not shown end
+            if NS.Launcher then NS.Launcher:SetShown(shown) end
+        end,
+    },
+}
+
 function Helpers.Get(path)
-    local session = SESSION_PATHS[path]
+    local session = SESSION_PATHS[path] or GLOBAL_PATHS[path]
     if session then return session.get() end
     local parent, key = Resolve(path)
     if not parent then return nil end
@@ -341,7 +378,12 @@ local function logSet(path, value)
 end
 
 function Helpers.Set(path, section, value)
-    local session = SESSION_PATHS[path]
+    -- GLOBAL_PATHS joins the session branch rather than getting one of its own:
+    -- both store outside db.profile, both answer through their own get/set, and
+    -- neither has a reader on the bus -- nothing renders the minimap button from
+    -- a CONFIG_CHANGED, and firing one would fan a full re-apply out over a
+    -- checkbox tick.
+    local session = SESSION_PATHS[path] or GLOBAL_PATHS[path]
     if session then
         -- No FireConfigChanged: nothing on the bus renders session state, and a
         -- CONFIG_CHANGED here would fan a full re-apply out over a window that

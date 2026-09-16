@@ -106,16 +106,30 @@ and open a PR with only the Development group installed.
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.
-- **Asset tooling: none.** `media/logos/` and `media/screenshots/` hold committed binaries (the
-  logo, the screenshots). They are **shipped assets, not build outputs** — nothing in this repo
-  regenerates them, so no image or font toolchain is a dependency of this addon. Do not install
-  one on this file's account. The monospace face and the shared icon set are **not this addon's
-  assets at all**: they arrive inside the vendored LibKa0s payload at `libs/LibKa0s/media/`, with
-  the OFL license beside the font, and the tool that produces them lives in the LibKa0s repo. One
-  copy for the collection, one license to track — `media/fonts/` used to hold a duplicate here and
-  no longer exists.
-- **No Python, no Node, no image libraries.** Stated positively so nobody goes looking. The only
-  Python-adjacent thing in the toolchain is `lizard`, which is in Development above and is optional.
+- **Asset tooling: Pillow, and only to REGENERATE one file.** `media/logos/` and
+  `media/screenshots/` hold committed binaries, and they are **shipped assets, not build outputs** —
+  nothing regenerates them during a build, a run or a test, so no image toolchain is a dependency of
+  the addon. One of them has a **recipe** rather than a provenance story:
+  `media/logos/kickcd.logo.128.tga` is generated from the 2000×2000 `.png` beside it by the fixed
+  two-line recipe `layout-§4` states, so it is reproducible rather than an export whose settings
+  somebody has to remember:
+
+  ```bash
+  python3 -c "from PIL import Image; Image.open('media/logos/kickcd.logo.png').convert('RGBA').resize((128, 128), Image.LANCZOS).save('media/logos/kickcd.logo.128.tga', format='TGA')"
+  ```
+
+  `convert("RGBA")` is what makes it 32 bpp and Pillow's TGA writer emits image type 2
+  (uncompressed) for this call — both are MUSTs, because an `IconTexture` in the wrong format draws
+  nothing and raises nothing (anti-pattern #82). `tests/test_launcher.lua` reads the header bytes
+  and fails on either. Install with `pip install Pillow` (10.x here) **only if you are regenerating
+  the logo**; the committed file is what ships, and the green gate never touches Pillow.
+
+  The monospace face and the shared icon set are **not this addon's assets at all**: they arrive
+  inside the vendored LibKa0s payload at `libs/LibKa0s/media/`, with the OFL license beside the
+  font, and the tool that produces them lives in the LibKa0s repo. One copy for the collection, one
+  license to track — `media/fonts/` used to hold a duplicate here and no longer exists.
+- **No Node.** Stated positively so nobody goes looking. Python appears twice and both are optional:
+  `lizard` in Development above, and Pillow for the logo recipe just above.
 - **The LibKa0s sibling checkout** (`../LibKa0s`) is not software you install, but the vendored-copy
   gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) cannot run without it, and
   `tests/_kit/vendor_sync.lua` degrades to a skip when it is absent. Clone it next to this repo if you touch `libs/LibKa0s/`.

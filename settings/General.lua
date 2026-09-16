@@ -5,21 +5,24 @@
 --
 -- The first tab is the collection's canonical Master controls block
 -- (options-ui-§15) and it is COMPOSED, not written out: H.MasterControls emits
--- SIX canonical rows from one declaration, and the afterGroup it returns draws
+-- SEVEN canonical rows from one declaration, and the afterGroup it returns draws
 -- the closing Reset position / Reset all settings button pair.
 --
--- SIX, not eight. §15's canonical table has EIGHT cells and its last line IS the
--- button pair, so "the eight canonical rows, plus the button-pair hook" counts
--- those two twice. What the composer emits is `enabled`, `visibility`, `scale`,
--- `alpha`, `locked` and `state.debugConsole`
--- (libs/LibKa0s/OptionsCompose.lua:460-487). The two resets are actions rather
--- than settings -- an anchor is not a key=value the schema covers -- which is
--- why they are a button pair and not rows.
+-- SEVEN, not nine. §15's canonical table's last line IS the button pair, so
+-- counting "the canonical rows, plus the button-pair hook" counts those two
+-- twice. What the composer emits is `enabled`, `visibility`, `scale`, `alpha`,
+-- `locked`, `state.debugConsole` and -- since compose minor 7 -- the minimap
+-- button's `global.minimap.hide`. The two resets are actions rather than
+-- settings -- an anchor is not a key=value the schema covers -- which is why
+-- they are a button pair and not rows.
 --
 -- NO TEST MODE ROW, by the standard's own exemption (options-ui-§15, v2.49.0):
 -- unlocking already shows the grids and the cast bar's placeholder, so Lock
 -- frame is the switch, and a Test mode checkbox would be a second switch for
--- the same state. Hence no `testModePath` here and no `/kcd test` verb.
+-- the same state. Hence no `testModePath` here and no `/kcd test` verb -- which
+-- is also why the Minimap button row sits alone on its line rather than paired
+-- with one: the composer drops its `startsLine` only when a test mode is there
+-- to pair with.
 --
 -- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
 -- holding master scale and master alpha. Two rows whose LABELS both say Master
@@ -45,6 +48,7 @@ local function add(t) Schema[#Schema + 1] = t end
 --     [Enable KickCD]   | [General visibility]
 --     [Master scale]    | [Master alpha]
 --     [Lock frame]      | [Debug console]
+--     [Minimap button]
 -- and hands back the afterGroup that closes the tab with its button pair:
 --     [Reset position]  | [Reset all settings]
 --
@@ -62,6 +66,14 @@ local masterRows, masterTail = H.MasterControls{
     page             = "general",
     addonName        = "KickCD",
     debugConsolePath = "state.debugConsole",
+    -- The minimap button's visibility (launcher-§3), composed since compose
+    -- minor 7. VERBATIM and unprefixed like the console path, and for the same
+    -- reason in a different store: LibDBIcon's table lives in db.GLOBAL, outside
+    -- this block's profile prefix. STORED, not session -- a button the player
+    -- hid stays hidden across a reload. The row's boolean says SHOWN while
+    -- LibDBIcon's key says hidden, so the inversion is ours and lives in the one
+    -- write seam (settings/Panel.lua's GLOBAL_PATHS), never in the composer.
+    minimapPath      = "global.minimap.hide",
     -- The two stored values this addon does not share with the canonical block.
     -- PASSED, never edited into the composer: the composer must not change what
     -- is stored, and `visibility` has shipped as

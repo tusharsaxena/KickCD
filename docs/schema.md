@@ -29,8 +29,23 @@ db.global = {
                                  -- below). v4 -> v5 (migrations[4]) runs
                                  -- Database:MigrateFontFlags then bumps to 5 (see the
                                  -- font-flag migration below).
+    minimap = {                  -- LibDBIcon-1.0's OWN table (launcher-§3). The
+        hide = false,            -- `hide` boolean is the `Minimap button` row's;
+    },                           -- `minimapPos` is the library's, written when the
+                                 -- player drags the button, and carries no row.
+                                 -- GLOBAL rather than profile so a profile switch
+                                 -- does not move a player's buttons and
+                                 -- `Reset all settings` -- a profile reset by
+                                 -- definition -- cannot un-hide one they hid.
 }
 ```
+
+**`minimap` moved no stored path and bumped no `schemaVersion`.** This addon has never stored a
+minimap table, so the declared default above is simply what materializes it (`architecture-§5`) --
+nothing seeds or backfills it by hand. (The collection's one `profile` -> `global` move is Multi
+Meters'.) The row's label says *shown* while the stored boolean says *hidden*, so the inversion
+lives in `settings/Panel.lua`'s `GLOBAL_PATHS`, inside the addon's single write seam; see
+[settings-panel.md](settings-panel.md).
 
 Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C` / `NS.DEFAULT_PROFILE`):
 

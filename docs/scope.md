@@ -31,7 +31,8 @@ These have been considered and explicitly declined.
   This is **not** a license to be locale-*dependent*, which is a different thing and was a real bug (issue #8): persisted keys and lookups must never be derived from a localized string. Spell-list keys are the numeric specID (`Const.SPEC`), class keys are `UnitClass()`'s file token. Localized spec names are accepted as slash-command *input* and shown as dropdown *labels*, but never stored or compared as identity.
 - **A separate test mode.** The unlocked view is the preview: while unlocked, every grid and cast bar ignores the visibility mode and the cast bar shows a static placeholder, so *Lock frame* (and `/kcd lock|unlock|toggle`) is the switch. The standard exempts exactly this case from the Test mode row and the `test` verb (`options-ui-§15`, `preview-mode`, v2.49.0). The original TestMode module was removed at commit `59fb5c0`.
 - **Generic raid-frame / unit-frame replacement.** KickCD is scoped to the player's own interrupt rotation; mirroring party / arena cooldowns is out.
-- **LDB / minimap icon.**
+
+  *(**LDB / minimap icon** used to sit on this list and no longer does: `launcher-§1` makes a launcher mandatory for every addon in the collection, and KickCD ships one — `core/LauncherSetup.lua`, one LibDataBroker-1.1 object registered with LibDBIcon-1.0. Left click toggles the lock, right click opens the settings panel.)*
 - **Per-encounter / per-boss visibility profiles.**
 
 ## Default spell coverage

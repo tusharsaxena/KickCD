@@ -931,6 +931,44 @@ casting mobs is the easiest arrangement.
 - No Lua error naming `Castbar.lua` and a nil `onUpdateScript` — that would mean Start ran on an
   instance `EnsureFrame` had not reached, which no headless load reproduces.
 
+### 33. The launcher — the minimap button and the broker plugin
+
+One LibDataBroker-1.1 object registered twice (`launcher-§1`), so the button and any broker display
+answer the same click. **Nothing here is headless-testable past the arguments**: the suite pins what
+is passed and which seam the click lands on, and only the client can say whether the icon actually
+DRAWS — an `IconTexture` in the wrong TGA format draws nothing and raises nothing (anti-pattern #82),
+which is the whole reason this step exists.
+
+**Setup.** A clean `/reload` out of combat.
+
+**Steps + pass.**
+- **It draws.** A round button sits on the minimap ring wearing **the KickCD logo**, not a Blizzard
+  ability icon and not an empty square. An empty or black button is the format failure, not a
+  missing registration — check `media/logos/kickcd.logo.128.tga` is TGA image type 2 at 32 bpp.
+- **The AddOns list agrees.** ESC → AddOns (or the character-select AddOns list) shows the **same**
+  logo beside *Ka0s KickCD*. One file, three places.
+- **Left click toggles the lock.** Unlock with the button: the grids and the cast bar's placeholder
+  appear and the grid drags. Click again: they lock. `/kcd get locked` agrees, and so does
+  General → Master controls → **Lock frame** — open the panel and watch the tick follow the button.
+- **Right click opens the settings panel**, on its landing page, and does **not** touch the lock.
+- **Drag it.** Drag the button a quarter of the way round the ring, `/reload`, and it comes back
+  where you left it. It moved because LibDBIcon wrote `minimapPos` into the same table the checkbox
+  writes `hide` into.
+- **The checkbox hides it.** Untick General → Master controls → **Minimap button**: the button goes
+  at once, not at the next reload. `/reload` — still gone. Tick it again: back.
+- **The button's own menu agrees with the checkbox.** Right-click the button's LibDBIcon menu entry
+  where the display offers one, or hide it from a broker display's plugin list, and the
+  **Minimap button** tick follows. There is one boolean and the library writes it too.
+- **A profile switch does not move it.** Hide the button, then Settings → Profiles → switch profile.
+  It stays hidden. Switch back: still hidden.
+- **`Reset all settings` does not un-hide it.** With the button hidden, press General →
+  **Reset all settings** and confirm. Every profile setting comes back; the button stays hidden.
+  That is what the GLOBAL scope is for (`launcher-§3`).
+- **A broker display shows the same addon.** With Titan Panel, Bazooka or ElvUI's data texts
+  installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
+  right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
+  source.
+
 ---
 ## When to run which subset
 
@@ -945,6 +983,7 @@ casting mobs is the easiest arrangement.
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
 - **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
-- **Pre-release / TOC bump:** the entire suite. The 26 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
+- **Launcher / logo / `## IconTexture` edits, and any LibKa0s re-vendor that moves `Launcher.lua`:** **33**. It is the only place the icon is checked against what the client actually draws — a wrong TGA format draws nothing and raises nothing, so no gate reports it.
+- **Pre-release / TOC bump:** the entire suite. The 33 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).

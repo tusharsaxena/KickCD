@@ -212,7 +212,7 @@ end)
 -- unit selector, so its Units tab shows both units' toggles, plus the Focus
 -- `link` row, which the tab draws itself (`skipRender`): 3.
 local STRIP = {
-    general = { { "Master controls", 6 }, { "Units", 3 } },
+    general = { { "Master controls", 7 }, { "Units", 3 } },
     icons   = {
         { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
         { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 8 },
@@ -656,6 +656,16 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         { "alpha",                "number" },
         { "locked",               "bool"   },
         { "state.debugConsole",   "bool"   },
+        -- The minimap button (launcher-§3), composed since compose minor 7. It
+        -- is the FIRST column of the line below Lock frame / Debug console, and
+        -- the asymmetry is the reason: every addon has a minimap button and only
+        -- some have a test mode, so the always-present row takes column 1. This
+        -- addon has no test mode (options-ui-§15's preview exemption), so the row
+        -- sits alone on its line.
+        --
+        -- The path is VERBATIM and points at db.GLOBAL, outside the block's
+        -- profile prefix: it is LibDBIcon's own table.
+        { "global.minimap.hide",  "bool"   },
     }
     local got = {}
     for _, def in ipairs(H.SchemaForPanel("general", nil)) do
@@ -671,6 +681,13 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
     assertEqual(got[1].startsLine, true, "Enable must open its line")
     assertEqual(got[3].startsLine, true, "Master scale must open its line")
     assertEqual(got[5].startsLine, true, "Lock frame must open its line")
+    assertEqual(got[7].startsLine, true, "Minimap button must open its line")
+    -- STORED, never session-only, and that is what keeps `Reset all settings`
+    -- off it: settings/OptionsSetup.lua's vetoedFromResetAll lets only the
+    -- sessionOnly rows through, so a button the player hid stays hidden through
+    -- a profile reset (launcher-§3).
+    assertEqual(got[7].sessionOnly, nil, "the minimap row must be STORED, not session-only")
+    assertEqual(got[7].default, true, "and default to SHOWN")
 end)
 
 test("every canonical Master control is declared exactly ONCE in the repo", function()
@@ -680,12 +697,14 @@ test("every canonical Master control is declared exactly ONCE in the repo", func
     local seen = {}
     for _, def in ipairs(T.NS.Settings.Schema) do
         for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
-                                "locked", "state.debugConsole" }) do
+                                "locked", "state.debugConsole",
+                                "global.minimap.hide" }) do
             if def.path == path then seen[path] = (seen[path] or 0) + 1 end
         end
     end
     for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
-                            "locked", "state.debugConsole" }) do
+                            "locked", "state.debugConsole",
+                            "global.minimap.hide" }) do
         assertEqual(seen[path], 1,
             path .. " is declared " .. tostring(seen[path]) .. " times, not once")
     end

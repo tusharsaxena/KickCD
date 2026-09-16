@@ -88,6 +88,12 @@ function NS:OnEnable()
     -- IS PLAYER_LOGIN. The call is idempotent (the library refuses to register
     -- a second Blizzard category), so a re-enable is harmless.
     if NS.CreateOptionsPanel then NS.CreateOptionsPanel() end
+
+    -- The launcher (core/LauncherSetup.lua): one LibDataBroker object, handed to
+    -- LibDBIcon (launcher-§1). HERE rather than in OnInitialize because Register
+    -- resolves `db.global.minimap` and OnInitialize is what builds the db. It is
+    -- idempotent, so a re-enable costs nothing.
+    if NS.Launcher then NS.Launcher:Register() end
 end
 
 -- ---------------------------------------------------------------------------
@@ -141,6 +147,22 @@ local function setLocked(self, value)
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
 
+--- Flip the lock, through the one writer above.
+---
+--- Published because it has TWO callers now and they must not be two
+--- implementations: `/kcd toggle` below, and the minimap button's left click
+--- (core/LauncherSetup.lua). launcher-§2 puts this addon on rung (b) -- no
+--- primary window, and Lock frame is the preview switch since unlocking IS the
+--- preview -- and says in as many words that the launcher drives the addon's
+--- EXISTING switch through the same seam rather than holding a copy of it. This
+--- is that seam, and it holds no state: it reads db.profile.locked and hands the
+--- negation to setLocked, which writes through Helpers.SetAndRefresh like the
+--- `Lock frame` checkbox and `/kcd set locked` do.
+function NS.ToggleLock()
+    local cur = NS.db and NS.db.profile and NS.db.profile.locked
+    setLocked(NS, not cur)
+end
+
 -- Forward declarations so command tables and dispatchers can reference each
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting
@@ -168,10 +190,7 @@ local COMMANDS = {
     {"unlock",        "Unlock the icon grid for dragging",
         function() setLocked(NS, false) end},
     {"toggle",        "Toggle the icon grid lock state",
-        function()
-            local cur = NS.db and NS.db.profile and NS.db.profile.locked
-            setLocked(NS, not cur)
-        end},
+        function() NS.ToggleLock() end},
     {"list",          "List every setting and its current value",
         function() listSettings(NS) end},
     {"get",           "Print a setting's current value — `/kcd get <path>`",

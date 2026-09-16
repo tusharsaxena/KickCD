@@ -1076,6 +1076,26 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
+### test_launcher.lua (17)
+
+- the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
+- the TOC's ## IconTexture and the launcher's icon are the SAME file
+- the 128 logo is on disk, uncompressed 32-bit TGA at 128x128
+- it registers under the addon's FOLDER name, with the table the settings row writes
+- Register is idempotent: a second call builds no second button
+- LEFT click toggles the lock — rung (b), through the addon's own switch
+- the left click goes through the SAME write seam the Lock frame checkbox does
+- RIGHT click opens the settings panel, whatever the left button does
+- the row's get INVERTS LibDBIcon's `hide`, so the label can say shown
+- the row's set inverts AND moves the button, in the one write seam
+- `/kcd set global.minimap.hide` takes exactly the path the checkbox takes
+- `Reset all settings` does NOT un-hide a button the player hid
+- a profile switch does not move the player's button
+- a host with NEITHER broker library loads, and says so instead of raising
+- a host with the broker but no LibDBIcon still gets the plugin, and reports false
+- with LibKa0s absent the seam still answers, and the store still records the choice
+- the degraded stub carries every member the addon calls on the launcher
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -1172,10 +1192,11 @@ badge and any count quoted in the docs must agree with it.
 | test_slash.lua | 33 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
+| test_launcher.lua | 17 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **936** |
+| **Total** | **953** |

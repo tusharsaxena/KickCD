@@ -805,9 +805,14 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- red under: adding `local strings = type(d.L) == "table" and d.L or nil`
     -- to libs/LibKa0s/Options.lua
     --
-    -- All THREE files of the major, not just the shell. OptionsWidgets.lua is
-    -- where the rendered labels actually come from, so an `L` hook growing there
-    -- is the more likely of the two and the one that would show on screen first.
+    -- EVERY file of the major, not just the shell, and the list is DERIVED from
+    -- the vendored XML rather than typed (testing-§9). It was typed once --
+    -- Options.lua, OptionsWidgets.lua, OptionsScroll.lua -- and the major grew
+    -- two more files underneath it: OptionsCompose.lua, and OptionsTabs.lua at
+    -- LibKa0s v1.39.0. A typed list does not redden when a file joins the major,
+    -- it just stops covering it. OptionsWidgets.lua is still where the rendered
+    -- labels come from, so an `L` hook growing there is the likeliest and the one
+    -- that would show on screen first.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
         "Options owning its own strings is why this tripwire is not shaped like "
@@ -816,13 +821,20 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     assertTrue(type(rawget(lib, "LAYOUT")) == "table",
         "and `local L = lib.LAYOUT` inside Options.lua is geometry, not a locale table")
 
-    for _, rel in ipairs({ "Options.lua", "OptionsWidgets.lua", "OptionsScroll.lua" }) do
-        local fh0 = assert(io.open(T.root .. "/libs/LibKa0s/" .. rel, "r"))
-        local src0 = fh0:read("*a")
-        fh0:close()
-        assertNil(src0:match("d%.L%b()"), rel .. " now reads a descriptor L")
-        assertNil(src0:match("d%.L[^%w_]"), rel .. " now reads a descriptor L")
+    local scanned = 0
+    for _, rel in ipairs(T.libFiles) do
+        if rel:match("/Options[%w]*%.lua$") then
+            local fh0 = assert(io.open(rel, "r"))
+            local src0 = fh0:read("*a")
+            fh0:close()
+            assertNil(src0:match("d%.L%b()"), rel .. " now reads a descriptor L")
+            assertNil(src0:match("d%.L[^%w_]"), rel .. " now reads a descriptor L")
+            scanned = scanned + 1
+        end
     end
+    assertEqual(scanned, 5,
+        "the major is five files at LibKa0s v1.39.0 -- a count that moved means a file "
+        .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.
     local fh2 = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))

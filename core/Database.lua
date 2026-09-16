@@ -70,6 +70,23 @@ local function aceDBDefaults()
         -- of a legacy per-profile dbVersion.
         global = {
             schemaVersion = CURRENT_DB_VERSION,
+            -- LibDBIcon-1.0's OWN table, and the declared default is what
+            -- materializes it (architecture-§5) -- nothing seeds or backfills it
+            -- by hand, here or anywhere, because it is a path a schema row
+            -- addresses. `hide` is the row's; `minimapPos` is the library's,
+            -- written when the player drags the button, and needs no row.
+            --
+            -- GLOBAL rather than profile, and that is launcher-§3's decision
+            -- rather than an accident of where the other rows live: a minimap
+            -- button belongs to the INSTALLATION, so a profile switch must not
+            -- move a player's buttons and options-ui-§12's `Reset all settings`
+            -- -- a profile reset by definition -- must not un-hide one they
+            -- deliberately hid.
+            --
+            -- NO MIGRATION and no schemaVersion bump: this addon has never
+            -- stored a minimap table, so there is no stored path moving. (The
+            -- collection's one profile -> global move is Multi Meters'.)
+            minimap = { hide = false },
         },
     }
 end

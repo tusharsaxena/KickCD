@@ -597,8 +597,41 @@ local function build()
     function LSM.HashTable() return {} end
     function LSM.IsValid() return true end
 
+    -- ── the launcher's two libraries (launcher-§1) ──────────────────────────
+    --
+    -- RECORDING fakes rather than noopLib, and rather than the real vendored
+    -- files. The real ones are skipped by the harness on purpose --
+    -- Loader.tocFiles drops every `libs\` entry -- and LibDBIcon's own code
+    -- builds a live minimap button out of CreateFrame, Minimap, and a drag
+    -- handler measuring the ring in screen coordinates, none of which this mock
+    -- client has. What the suites actually need to see is the three facts
+    -- launcher-§1/§3 bind: that there is exactly ONE object, that it is
+    -- registered under the addon's FOLDER name with the SAME table the settings
+    -- row writes, and that Show/Hide follow the checkbox. A noopLib would answer
+    -- every one of those with a shrug.
+    local LDB = { __objects = {} }
+    --- nil for a name already taken, as the real one does -- which is the branch
+    --- LibKa0s-Launcher-1.0 falls back to GetDataObjectByName on.
+    function LDB.NewDataObject(_, name, obj)
+        if LDB.__objects[name] then return nil end
+        LDB.__objects[name] = obj
+        return obj
+    end
+    function LDB.GetDataObjectByName(_, name) return LDB.__objects[name] end
+
+    local DBIcon = { __registered = {}, __shown = {} }
+    function DBIcon.Register(_, name, obj, db)
+        DBIcon.__registered[name] = { object = obj, db = db }
+        DBIcon.__shown[name] = not (db and db.hide)
+    end
+    function DBIcon.Show(_, name) DBIcon.__shown[name] = true  end
+    function DBIcon.Hide(_, name) DBIcon.__shown[name] = false end
+    function DBIcon.IsRegistered(_, name) return DBIcon.__registered[name] ~= nil end
+
     local libs = {
         ["AceDB-3.0"]           = AceDB,
+        ["LibDataBroker-1.1"]     = LDB,
+        ["LibDBIcon-1.0"]         = DBIcon,
         ["AceConfig-3.0"]         = noopLib(),
         ["AceConfigDialog-3.0"]   = noopLib(),
         ["AceConfigRegistry-3.0"] = noopLib(),

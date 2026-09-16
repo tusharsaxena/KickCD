@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-936%2F936_passing-green)
+![Tests](https://img.shields.io/badge/Tests-953%2F953_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your **target** and your **focus**. Each one gets a grid of your own interrupts and cast-stopping crowd control, every icon running its cooldown timer with a clear ready / not-ready look, plus a cast bar showing what that unit is casting — the spell's icon, its name, the time left — colored by whether the cast can be interrupted at all. The grid arrives already filled in for your class and spec, so it is useful before you have opened a single settings page.
 
@@ -32,6 +32,8 @@ So the first job is positioning. Drag the grids and bars where you want them, th
 The grid tracks the spells your current class and spec can cast *right now*, which is why it changes when you respec: talents you didn't take, abilities you haven't learned and pet spells with no pet out are all filtered away. Each spec starts from its own list, built the first time you play that character. Settings → Spells is where you add to it, disable rows you never use, or drag a row by its handle to change the order icons sit in. Enable more than the grid has room for and the extras are quietly left off, with a single warning in chat.
 
 Focus copies your target set's styling until you say otherwise. Untick "Use same styling as Target" on General → Units and the Icons, Cast bar and Text Label pages will build it separately — switch which unit you're editing with the Target / Focus picker above the tabs. Position and label text stay independent either way. That label is the "Target" or "Focus" tag you may have spotted beside a grid, and the Text Label page renames it, restyles it, moves it onto the cast bar or turns it off.
+
+There is a button on your minimap wearing the addon's logo. Left-click it to lock or unlock — the same switch `/kcd lock` throws — and right-click it for the settings page. If you use a broker display like Titan Panel or ElvUI's data texts, the same addon shows up there and answers clicks the same way. To put the button away, untick **Minimap button** on General → Master controls; it stays put across profile switches and a *Reset all settings*, because it belongs to the installation rather than to a profile.
 
 Everything else is configuration, and it lives in two places: the addon's own page under Settings → AddOns in game, and `/kcd` (or `/kickcd`). On its own, `/kcd` opens that settings page; `/kcd help` prints the full command list. If you'd rather read the settings than click through them, `/kcd list` prints every setting with its current value, and `/kcd get <setting>` answers for one. `/kcd perf` is the odd one out — it records a performance capture, and it's there for when a maintainer asks you for one rather than for everyday use.
 

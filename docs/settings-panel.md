@@ -25,7 +25,7 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 
 | Page | Tabs, in strip order (rows per tab) | Rows |
 |---|---|---|
-| **General** | Master controls (6) \| Units (3: two enables, and the Focus `link` row the tab draws itself) | 9 |
+| **General** | Master controls (7) \| Units (3: two enables, and the Focus `link` row the tab draws itself) | 10 |
 | **Icons** | Sizing (4) \| Layout (6) \| Visual states (5) \| Border (5) \| Annotations (11) \| Ready glow (8) | 39 per unit |
 | **Cast bar** | General (5) \| Size and position (7) \| Icon (2) \| Font (6) \| Spell name (5) \| Cast time (4) \| Interruptible (13) \| Non-interruptible (13) | 55 per unit |
 | **Text Label** | General (2) \| Placement (8) \| Font (6) | 16 per unit |
@@ -74,6 +74,7 @@ It is **composed, not written out**. `H.MasterControls` (`libs/LibKa0s/OptionsCo
 | Enable KickCD | General visibility |
 | Master scale | Master alpha |
 | Lock frame | Debug console |
+| Minimap button | |
 | Reset position | Reset all settings |
 
 The two resets are a **button pair**, not rows: they are acts rather than settings, so they belong in neither the CLI nor the reset sweep. The pair is wired as `H.RenderTabbedSchema(ctx, "general", { [H.MASTER_GROUP] = masterTail }, …)` — and because **the group name is the hook key**, renaming the group detaches the hook and nothing says so. The *Reset all settings* tooltip is the composer's too, chosen by the descriptor: with `resetProfile` and `profilesPage = true` it reads *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."*
@@ -82,7 +83,10 @@ Two things about this tab are this addon's rather than the composer's:
 
 * **`visibility` keeps its own four values.** KickCD's visibility is cast-state driven — *when target is casting an interruptible spell* is the mode the whole addon exists for — and the canonical `Always / Only in combat / Only out of combat / Never` cannot express it. Only the option list and its prose differ; the stored keys are untouched, so nothing migrates. Recorded as a ratified deviation in [ARCHITECTURE.md](ARCHITECTURE.md#documented-deviations).
 * **`state.debugConsole` resolves outside the profile.** It is the composer's session-only row, and its path names a live object rather than a saved key, so `settings/Panel.lua`'s `SESSION_PATHS` table answers it off `NS.DebugLog` inside `Helpers.Get`/`Set`. `debug-logging-§5` still holds — nothing about the console ever reaches SavedVariables — and `/kcd get|set|list state.debugConsole` now works, which the bespoke `SessionToggle` it replaced never allowed.
-* **No `Test mode` row.** `options-ui-§15` (v2.49.0) exempts an addon whose unlocked view already shows its placeholder preview, and KickCD's does: unlocked, the grids ignore the visibility mode and the cast bar shows its placeholder. *Lock frame* is the switch, so the spec passes no `testModePath` and there is no `/kcd test` verb.
+* **No `Test mode` row.** `options-ui-§15` (v2.49.0) exempts an addon whose unlocked view already shows its placeholder preview, and KickCD's does: unlocked, the grids ignore the visibility mode and the cast bar shows its placeholder. *Lock frame* is the switch, so the spec passes no `testModePath` and there is no `/kcd test` verb. It is also why **Minimap button** sits alone on its line: the composer drops that row's `startsLine` only when a test mode is there to pair beside it.
+* **`Minimap button` inverts, and stores in the GLOBAL tree.** The row is the composer's (`minimapPath`, compose minor 7) and its path is `global.minimap.hide`, taken verbatim — it addresses **LibDBIcon-1.0's own table**, `db.global.minimap`, which is outside the block's profile prefix. The label says *shown* and the stored boolean says *hidden*, so the row's get/set **invert** in `settings/Panel.lua`'s `GLOBAL_PATHS`, beside `SESSION_PATHS` and inside the same `Helpers.Get`/`Set` — the addon's single write seam (`options-ui-§1`). The `set` also calls `NS.Launcher:SetShown`, so the button follows the checkbox immediately rather than at the next reload.
+
+  There is **one** boolean, and LibDBIcon writes it too from the button's own right-click menu; a second `minimap.show` beside it would be a copy free to disagree (anti-pattern #81). The **global** scope is `launcher-§3`'s decision rather than an accident: a minimap button belongs to the installation, so a profile switch must not move a player's buttons and *Reset all settings* — a profile reset by definition (`options-ui-§12`) — must not un-hide one they deliberately hid. The row is **stored**, never `sessionOnly`, which is what keeps `vetoedFromResetAll` off it. The object behind it is `core/LauncherSetup.lua`; see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## The composed control groups (`options-ui-§16`)
 
@@ -94,7 +98,7 @@ Font, border and bar blocks are **emitted by the library**, never typed out — 
 | `H.BorderGroup` | *(Show border)* · Border style · Border thickness (px) · Border color · Use class color | Icons → Border, Cast bar → Interruptible / Non-interruptible |
 | `H.BarGroup` | Bar texture · Bar opacity · Bar color · Use class color | Cast bar → Interruptible / Non-interruptible |
 | `H.ColorPair` | a swatch and its companion, and nothing else | the cooldown tint, the two glow colors, both background swatches, both spell-name swatches |
-| `H.MasterControls` | the **six** canonical rows above, plus the button-pair hook that draws the other two | General → Master controls |
+| `H.MasterControls` | the **seven** canonical rows above, plus the button-pair hook that draws the two resets | General → Master controls |
 
 **`keys` and `defaults` are what keep the stored shape this addon's.** Every composer call passes the leaf names this addon already shipped — `borderStyle` → `borderTexture`, `fontSize` → `size` on the label, `fontColor` → `textColor` on the cast bar — so the composer changes what is *declared* and how it is *laid out*, never what is *stored*.
 
