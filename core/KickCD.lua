@@ -237,6 +237,97 @@ local COMMANDS = {
             for _, line in ipairs(NS.Perf.OnCommand(rest or "")) do p(NS, line) end
         end},
 }
+
+-- ---------------------------------------------------------------------------
+-- The disabled state, gated ONCE, on the table every verb comes out of
+-- ---------------------------------------------------------------------------
+--
+-- slash-commands-§2 (standard v2.54.0) turned a trailing SHOULD into something
+-- implementable: while `enabled` is false, a verb that DRIVES THE ADDON'S
+-- FEATURES answers on ONE tagged line naming `/kcd enable` and does nothing
+-- else. Acting is the wrong answer twice over -- the player asked for something
+-- the addon is standing down from doing, and a silent no-op leaves them with no
+-- clue why nothing happened.
+--
+-- ONE PLACE, AND IT IS THE VERB TABLE. A guard pasted into each handler is a
+-- dozen places to forget, and the thirteenth verb forgets it by default. The
+-- dispatcher itself is LibKa0s-Slash-1.0's and is not ours to edit, and
+-- NS:OnSlashCommand sees only the raw line -- gating there would mean re-parsing
+-- the verb, re-lowercasing it and re-applying the `options` alias, which is the
+-- library's dispatch written a second time. So the gate goes on the DATA the
+-- dispatcher dispatches on: every entry is wrapped here, once, before the table
+-- is published. A verb added tomorrow is gated by default and has to opt OUT,
+-- which is the direction that fails safe.
+--
+-- THE LIVE SET IS NAMED ONCE, AS DATA. slash-commands-§2 fixes twelve of these
+-- and the reasoning is that a player must be able to READ AND REPAIR SETTINGS,
+-- and reach the panel, while the addon is off -- which is precisely when they
+-- are most likely to need to -- and `enable` above all, or the pair is one-way
+-- again. `debug` and `perf` are diagnostics rather than features: the usual
+-- reason to reach for either is that the addon is misbehaving.
+--
+-- `spells` IS THE THIRTEENTH, and it is this addon's own judgment rather than
+-- the standard's list. The per-spec spell lists are stored ARRAYS, and an array
+-- is addressable as a whole while its members deliberately are not -- so no
+-- schema row covers them and `/kcd get|set|list|reset` cannot reach them at all.
+-- `/kcd spells` is their ONLY CLI route, which makes it the schema CLI for that
+-- data rather than a feature verb: refusing it would put "read and repair your
+-- settings while the addon is off" out of reach for the one part of the
+-- configuration that needs it most, which is the exact thing the live set
+-- exists to protect. It configures; it does not drive.
+--
+-- WHAT IS LEFT IS FOUR, and each really does drive the display. `lock`,
+-- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- launcher-§2 puts
+-- KickCD on rung (b) precisely because unlocking IS this addon's preview -- and
+-- with the addon off there is no grid and no placeholder to unlock. And
+-- `resetposition` re-anchors the icon grid and fires CONFIG_CHANGED so the live
+-- grids move, then echoes "icon grid position reset" at a player who can see no
+-- grid: an acknowledgment of something that visibly did not happen.
+--
+-- It stays a SHOULD in the standard, so this is a courtesy rather than a
+-- correctness property. What it MUST NOT do is refuse anything on the live list.
+local LIVE_WHILE_DISABLED = {
+    -- slash-commands-§2's twelve, verbatim.
+    help     = true, config   = true, version  = true,
+    enable   = true, disable  = true, debug    = true, perf = true,
+    get      = true, set      = true, list     = true,
+    reset    = true, resetall = true,
+    -- ...and this addon's one addition, argued above.
+    spells   = true,
+}
+
+--- True when the master enable flag is set. Defaults to true on a fresh or
+--- missing profile, exactly as modules/IconGrid.lua and modules/Cooldowns.lua
+--- read it, so a load that has not reached OnInitialize refuses nothing.
+---
+--- Read straight off the profile rather than through Helpers.Get, deliberately:
+--- the `enabled` row is COMPOSED by LibKa0s-Options-1.0's Master controls block,
+--- so a load without the library has no row to resolve -- and a gate that
+--- silently refused every feature verb on that load would be a far worse failure
+--- than the one it guards against. Reading the store cannot fail that way.
+local function masterEnabled()
+    local profile = NS.db and NS.db.profile
+    if not profile then return true end
+    return profile.enabled ~= false
+end
+NS.MasterEnabled = masterEnabled
+
+for _, entry in ipairs(COMMANDS) do
+    if not LIVE_WHILE_DISABLED[entry[1]] then
+        local act = entry[3]
+        entry[3] = function(rest)
+            if not masterEnabled() then
+                -- ONE line, and then nothing. No partial work, no side effect,
+                -- no second line explaining the state to a player who is about
+                -- to re-run the command anyway.
+                return p(NS, NS.L["KickCD is disabled. %s turns it back on."]
+                    :format("|cFFFFFF00/kcd enable|r"))
+            end
+            return act(rest)
+        end
+    end
+end
+
 NS.COMMANDS = COMMANDS
 
 local DEBUG_COMMANDS = {

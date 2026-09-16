@@ -30,6 +30,12 @@ L["Tracks interrupt and CC cooldowns on a movable icon grid."] =
     "Tracks interrupt and CC cooldowns on a movable icon grid."
 L["Slash Commands"]              = "Slash Commands"
 
+-- The one line a feature verb answers with while the addon is disabled
+-- (slash-commands-§2). `%s` is `/kcd enable`, colored at the call site in
+-- core/KickCD.lua so the locale string carries no escape sequence.
+L["KickCD is disabled. %s turns it back on."] =
+    "KickCD is disabled. %s turns it back on."
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

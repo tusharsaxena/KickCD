@@ -999,7 +999,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (33)
+### test_slash.lua (40)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1034,6 +1034,13 @@ badge and any count quoted in the docs must agree with it.
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 - set stores a multi-word label text whole
+- a disabled feature verb says so on ONE line, and does NOT act
+- every feature verb refuses, and NONE of them reaches the write seam
+- the live verbs still answer while disabled, and none of them refuses
+- `/kcd set` still writes while disabled — repair, not just read
+- `/kcd enable` above all — the switch is never one-way
+- nothing refuses while the addon is ENABLED
+- the refusal line is routed through NS.L, not written at the call site
 
 ### test_opensettings.lua (6)
 
@@ -1200,7 +1207,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 1 |
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 33 |
+| test_slash.lua | 40 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
@@ -1210,4 +1217,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **964** |
+| **Total** | **971** |

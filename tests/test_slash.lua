@@ -544,3 +544,158 @@ test("set stores a multi-word label text whole", function()
     assertEqual(NS.Settings.Helpers.Get(path), "Kick Them Now", joined(out))
     NS.Settings.Helpers.SetAndRefresh(path, before)
 end)
+
+-- ── the disabled state (slash-commands-§2) ──────────────────────────────────
+--
+-- The rule: while `enabled` is false, a verb that DRIVES THE ADDON'S FEATURES
+-- answers on ONE tagged line naming `/kcd enable` and DOES NOTHING ELSE. Every
+-- case below asserts both halves, because a case that only reads the message
+-- passes happily over a verb that printed the line and then acted anyway.
+--
+-- Each runs on its own instance: disabling is a stored write, and the shared
+-- instance the rest of this suite uses would carry it into every later case.
+
+--- A fresh instance with the addon turned OFF through its own verb, so the state
+--- under test is the one a player reaches rather than a hand-written key.
+local function disabled()
+    local inst = T.load(true, true)
+    local real = inst.NS.Util.print
+    inst.NS.Util.print = function() end
+    inst.NS:OnSlashCommand("disable")
+    inst.NS.Util.print = real
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: the addon is off")
+    return inst
+end
+
+--- Everything NS.Util.print emits while `fn` runs, on `inst`.
+local function say(inst, fn)
+    local lines, real = {}, inst.NS.Util.print
+    inst.NS.Util.print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
+        lines[#lines + 1] = table.concat(parts, " ")
+    end
+    local ok, err = pcall(fn)
+    inst.NS.Util.print = real
+    if not ok then error(err, 0) end
+    return lines
+end
+
+-- The live set, slash-commands-§2's twelve plus this addon's `spells` (the spell
+-- lists are stored ARRAYS no schema row can address, so `/kcd spells` is their
+-- only CLI route — see core/KickCD.lua). Typed here rather than read off the
+-- addon, so that the two lists have to be changed together: a verb added to the
+-- addon's live set and not to this one goes red, while a NEW feature verb is
+-- gated by default and passes without a word.
+local LIVE = {
+    "help", "config", "version", "enable", "disable", "debug", "perf",
+    "get", "set", "list", "reset", "resetall", "spells",
+}
+
+test("a disabled feature verb says so on ONE line, and does NOT act", function()
+    -- The headline case, on the verb that would be loudest if it acted: `/kcd
+    -- toggle` flips the lock, which is this addon's preview switch (launcher-§2
+    -- rung (b)). A refusal that still flipped it would leave the player with a
+    -- message saying nothing happened and a stored value saying it did.
+    -- red under: the gate printing and then falling through to the handler
+    local inst = disabled()
+    local before = inst.NS.db.profile.locked
+    local lines = say(inst, function() inst.NS:OnSlashCommand("toggle") end)
+    assertEqual(#lines, 1, "one line, and one only: " .. table.concat(lines, " / "))
+    assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil,
+        "the line must name the verb that turns it back on: " .. lines[1])
+    assertEqual(inst.NS.db.profile.locked, before, "and the lock must not have moved")
+end)
+
+test("every feature verb refuses, and NONE of them reaches the write seam", function()
+    -- Driven off NS.COMMANDS rather than a typed list of feature verbs, so the
+    -- next verb added to the addon is covered here the day it lands. "Did it
+    -- act" is measured at the addon's single write seam and at the one act that
+    -- does not go through it, rather than by re-reading each verb's own state.
+    -- red under: a per-verb guard that one verb was added without
+    local live = {}
+    for _, v in ipairs(LIVE) do live[v] = true end
+    for _, entry in ipairs(T.NS.COMMANDS) do
+        local verb = entry[1]
+        if not live[verb] then
+            local inst = disabled()
+            local H = inst.NS.Settings.Helpers
+            local writes, realSet = 0, H.SetAndRefresh
+            local anchors, realAnchor = 0, H.ResetIconPosition
+            H.SetAndRefresh = function(...) writes = writes + 1; return realSet(...) end
+            H.ResetIconPosition = function(...) anchors = anchors + 1; return realAnchor(...) end
+            local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
+            H.SetAndRefresh, H.ResetIconPosition = realSet, realAnchor
+            assertEqual(#lines, 1, "`/kcd " .. verb .. "` must answer on exactly one line")
+            assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil,
+                "`/kcd " .. verb .. "` must name `/kcd enable`: " .. lines[1])
+            assertEqual(writes, 0, "`/kcd " .. verb .. "` wrote while disabled")
+            assertEqual(anchors, 0, "`/kcd " .. verb .. "` moved the grid while disabled")
+        end
+    end
+end)
+
+test("the live verbs still answer while disabled, and none of them refuses", function()
+    -- The other half of the same rule, and the half that matters more: "refuse
+    -- while disabled", read literally, takes the whole command surface down with
+    -- it. A player must be able to read and repair settings, and reach the
+    -- panel, while the addon is off — which is precisely when they need to.
+    -- red under: gating by anything other than an explicit live set
+    for _, verb in ipairs(LIVE) do
+        local inst = disabled()
+        local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
+        for _, line in ipairs(lines) do
+            assertNil(line:find("is disabled", 1, true),
+                "`/kcd " .. verb .. "` must not refuse: " .. line)
+        end
+    end
+end)
+
+test("`/kcd set` still writes while disabled — repair, not just read", function()
+    -- The live set's whole reasoning. `set` is on it because a player whose
+    -- settings are wrong turns the addon off first and fixes them second.
+    -- red under: gating `set` as a feature verb because it changes something
+    local inst = disabled()
+    say(inst, function() inst.NS:OnSlashCommand("set locked true") end)
+    assertEqual(inst.NS.Settings.Helpers.Get("locked"), true,
+        "the write must have landed")
+end)
+
+test("`/kcd enable` above all — the switch is never one-way", function()
+    -- red under: `enable` slipping off the live set
+    local inst = disabled()
+    say(inst, function() inst.NS:OnSlashCommand("enable") end)
+    assertEqual(inst.NS.db.profile.enabled, true)
+    -- and the feature verbs come straight back
+    local before = inst.NS.db.profile.locked
+    say(inst, function() inst.NS:OnSlashCommand("toggle") end)
+    assertEqual(inst.NS.db.profile.locked, not before, "the lock moves again once enabled")
+end)
+
+test("nothing refuses while the addon is ENABLED", function()
+    -- The gate reads the store at CALL time, so an addon that is on must behave
+    -- exactly as it did before this landed.
+    -- red under: a gate that latched at load, or read the wrong sense
+    local inst = T.load(true, true)
+    for _, entry in ipairs(T.NS.COMMANDS) do
+        -- Re-armed before each verb, because `disable` is itself on the list and
+        -- every verb after it would otherwise be measuring the disabled state.
+        say(inst, function() inst.NS:OnSlashCommand("enable") end)
+        local lines = say(inst, function() inst.NS:OnSlashCommand(entry[1]) end)
+        for _, line in ipairs(lines) do
+            assertNil(line:find("is disabled", 1, true),
+                "`/kcd " .. entry[1] .. "` refused while enabled: " .. line)
+        end
+    end
+end)
+
+test("the refusal line is routed through NS.L, not written at the call site", function()
+    -- localization-§1: every player-facing string reaches the locale seam. The
+    -- key is the English sentence and `%s` is the colored verb, so a translation
+    -- can move the verb without re-spelling the color code.
+    -- red under: a bare literal in core/KickCD.lua
+    local L = T.NS.L
+    local key = "KickCD is disabled. %s turns it back on."
+    assertEqual(rawget(L, key), key, "the key must be DEFINED in locales/enUS.lua")
+    assertNil(key:find("|", 1, true), "the locale string carries no escape sequence")
+end)

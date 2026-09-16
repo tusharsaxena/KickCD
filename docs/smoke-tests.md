@@ -961,9 +961,12 @@ which is the whole reason this step exists.
   **Minimap button** tick follows. There is one boolean and the library writes it too.
 - **A profile switch does not move it.** Hide the button, then Settings → Profiles → switch profile.
   It stays hidden. Switch back: still hidden.
-- **`Reset all settings` does not un-hide it.** With the button hidden, press General →
-  **Reset all settings** and confirm. Every profile setting comes back; the button stays hidden.
-  That is what the GLOBAL scope is for (`launcher-§3`).
+- **Neither reset un-hides it.** With the button hidden, press General → **Reset all settings**
+  and confirm: every profile setting comes back and the button stays hidden. Then press the
+  General page's own **Defaults** button: *Lock frame*, *General visibility* and the rest go back
+  to their defaults and the button **still** stays hidden. The second half is the one that was
+  broken — a player's minimap-button choice is a per-installation display preference, like the
+  angle they dragged it to, and no reset touches either (`launcher-§3`).
 - **A broker display shows the same addon.** With Titan Panel, Bazooka or ElvUI's data texts
   installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
   right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
@@ -971,6 +974,13 @@ which is the whole reason this step exists.
 - **`/kcd disable` then `/kcd enable`.** With the addon disabled, `/kcd`, `/kcd help` and
   `/kcd version` still answer, and `/kcd enable` turns it back on. A dispatcher that went quiet here
   is a one-way switch (`slash-commands-§2`) and is the finding.
+- **A feature verb refuses while it is off.** Still disabled, run `/kcd toggle`. One tagged line
+  comes back naming `/kcd enable`, and nothing else — `/kcd get locked` reports the same value it
+  did before. Same for `/kcd lock`, `/kcd unlock` and `/kcd resetposition`. Then check the live
+  ones still work while off: `/kcd list`, `/kcd get locked`, `/kcd set locked true`,
+  `/kcd spells list`, `/kcd config` and `/kcd debug` all answer normally. A refusal on any of
+  those is the finding — the addon being off is exactly when a player needs to read and repair
+  their settings (`slash-commands-§2`).
 
 ---
 ## When to run which subset
