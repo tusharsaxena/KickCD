@@ -310,7 +310,6 @@ local function masterEnabled()
     if not profile then return true end
     return profile.enabled ~= false
 end
-NS.MasterEnabled = masterEnabled
 
 for _, entry in ipairs(COMMANDS) do
     if not LIVE_WHILE_DISABLED[entry[1]] then

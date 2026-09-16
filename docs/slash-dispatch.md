@@ -41,7 +41,7 @@ The **live set** is `LIVE_WHILE_DISABLED`, named once as data:
 
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no grid to unlock — and **`resetposition`**, which re-anchors the grid, fires `CONFIG_CHANGED` so the live grids move, and then echoes *icon grid position reset* at a player who can see no grid.
 
-The flag is read off `db.profile.enabled` (default true on a missing profile, exactly as `modules/IconGrid.lua` and `modules/Cooldowns.lua` read it) rather than through `Helpers.Get`: the `enabled` row is **composed**, so a load without LibKa0s has no row to resolve, and a gate that silently refused every feature verb on that load would be worse than the failure it guards against. The reader is published as `NS.MasterEnabled`. Pinned in `tests/test_slash.lua`, which asserts for every gated verb both that it *said so* and that it *did not reach the write seam*.
+The flag is read off `db.profile.enabled` (default true on a missing profile, exactly as `modules/IconGrid.lua` and `modules/Cooldowns.lua` read it) rather than through `Helpers.Get`: the `enabled` row is **composed**, so a load without LibKa0s has no row to resolve, and a gate that silently refused every feature verb on that load would be worse than the failure it guards against. The reader is a file-local: the gate is the only thing that consults it, and the harness reaches the gate through the verbs rather than through the predicate, so there is nothing for an export to serve. Pinned in `tests/test_slash.lua`, which asserts for every gated verb both that it *said so* and that it *did not reach the write seam*.
 
 ## Top-level commands
 
