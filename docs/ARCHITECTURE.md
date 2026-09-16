@@ -116,6 +116,7 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - LibSharedMedia-3.0
 - AceGUI-3.0-SharedMediaWidgets (vendored upstream r65; provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Cast bar / Icons panels). The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is **`lib.__PatchLSM30Border()`, a LibKa0s-Options-1.0 member** (minor 15), called from `settings/OptionsSetup.lua`'s live wiring. It used to be `core/LSMPatch.lua` here and in four sibling addons; AceGUI's widget registry is process-global, so five private registrations in one client meant the last addon loaded owned everyone's Border dropdown. One idempotent library member behind `lib.__lsmBorderPatched` is one registration however many copies of the library are vendored.
 - LibCustomGlow-1.0
+- LibDataBroker-1.1 and LibDBIcon-1.0 — the launcher's two libraries (`launcher-§1`), vendored here rather than arriving inside the LibKa0s payload. `LibKa0s-Launcher-1.0` resolves both with `LibStub(..., true)` at **Register** time, not at load, and degrades by name: a host with neither gets a launcher that reports itself absent, and one with the broker but no LibDBIcon still gets the plugin row in a broker display. Call time rather than load time is deliberate — nothing fixes the relative order of `LibKa0s.xml` and these two inside the TOC's `# Libraries` block.
 
 Seven unused Ace modules (AceBucket, AceComm, AceHook, AceLocale, AceSerializer, AceTab, AceTimer) were deleted from `libs/`. AceTimer-3.0 went last (KCD-29): `library-stack-§1` lists it among the mandatory Ace3 libs, but `library-stack-§3` says vendor only what the addon actually `LibStub`s — and scheduling here is `C_Timer.After` throughout, so nothing ever loaded it. §3 won.
 
@@ -317,7 +318,7 @@ deviations, and there is nothing to record beyond this sentence.
 
 `KickCD.toc` is the source of truth. Order is dependency, not alphabetical:
 
-1. `libs/` — vendored Ace3 + LibSharedMedia + LibCustomGlow
+1. `libs/` — vendored Ace3 + LibSharedMedia + LibCustomGlow + LibDataBroker-1.1 + LibDBIcon-1.0 (the last two after `CallbackHandler-1.0`, which both need; nothing fixes their order relative to `LibKa0s.xml`, which is why `LibKa0s-Launcher-1.0` resolves them at Register time rather than at load)
 2. `locales/enUS.lua`
 3. `core/Compat.lua` (hangs `NS.Compat` on the shared private `NS` table — WoW's addon vararg; `NS` is not `_G.KickCD`)
 4. `core/EnvSetup.lua` (`LibKa0s-Env-1.0` seam — publishes `NS.Meta(field)` and `NS.Version()`: this addon's own TOC manifest, read in one place instead of three. Position is conventional rather than load-bearing — nothing here resolves at load, and both callers that resolve a version AT load sit far below it)

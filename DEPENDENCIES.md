@@ -16,7 +16,8 @@ Neither repeats the other (documentation-§7).
 **World of Warcraft (Retail). Nothing else.**
 
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
-- `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0`.
+- `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
+  LibDataBroker-1.1, LibDBIcon-1.0`.
   Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:19-31`,
   `libs/AceAddon-3.0/`, `libs/LibStub/`, `libs/CallbackHandler-1.0/`, `libs/LibSharedMedia-3.0/`),
   so `OptionalDeps` only affects **load order** when the player happens to have a standalone copy —
