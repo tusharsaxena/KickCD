@@ -101,8 +101,24 @@ NS.Launcher = Launcher:New({
     -- the first vararg every TOC-loaded file gets, which is the only spelling
     -- that cannot drift from what the client loads.
     name  = addonName,
-    -- The `## Title`, which is a different question from the folder name even
-    -- where a broker display is the only reader of the answer.
+    -- THE BRAND NAME IN PLAIN TEXT, `Ka0s <Name>` (launcher-§1, standard
+    -- v2.54.0). `label` is the string a broker display prints in its own row,
+    -- and it prints it BESIDE THE OTHER TEN, so it is the single field that
+    -- decides whether the collection reads as one collection in Titan Panel or
+    -- as eleven unrelated addons that happen to be installed together. Across
+    -- the eleven adoptions it came out three ways because nothing said what it
+    -- was; this is the spelling that is now stated.
+    --
+    -- It is NOT the TOC's `## Title`, and the two must not be wired to each
+    -- other even here, where they happen to read the same. A Title MAY carry
+    -- color escapes and one in the collection does -- Ka0s Pretty Chat's is
+    -- `Ka0s |cffff0000P|cffff9900r|cffffff00e|...` -- and handed to a display
+    -- that draws the string raw that addon's row splatters across a list in
+    -- which every other row is plain text. So: no escape sequence of any kind.
+    --
+    -- It is not the FOLDER name either. That is `name` above, which LibDBIcon
+    -- keys the saved position by and which a player reads nowhere as prose:
+    -- `KickCD` is an identifier, `Ka0s KickCD` is a name. Two fields, two jobs.
     label = "Ka0s KickCD",
     -- The same file KickCD.toc's `## IconTexture` names (launcher-§4). Not the
     -- landing page's logo, which is a larger asset drawn at 300x300

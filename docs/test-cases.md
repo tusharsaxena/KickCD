@@ -1076,9 +1076,11 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (26)
+### test_launcher.lua (28)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
+- the broker label is the BRAND NAME in plain text, `Ka0s KickCD`
+- `label` and the TOC's ## Title are NOT wired to each other
 - the TOC's ## IconTexture and the launcher's icon are the SAME file
 - the 128 logo is on disk, uncompressed 32-bit TGA at 128x128
 - it registers under the addon's FOLDER name, with the table the settings row writes
@@ -1201,11 +1203,11 @@ badge and any count quoted in the docs must agree with it.
 | test_slash.lua | 33 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
-| test_launcher.lua | 26 |
+| test_launcher.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **962** |
+| **Total** | **964** |

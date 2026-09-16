@@ -65,6 +65,38 @@ function()
     assertEqual(type(obj.OnClick), "function", "one click implementation, and it is the library's")
 end)
 
+test("the broker label is the BRAND NAME in plain text, `Ka0s KickCD`", function()
+    -- launcher-§1 (v2.54.0). `label` is what a broker display prints in its own
+    -- row, beside the other ten Ka0s addons, so it is the one field that decides
+    -- whether the collection reads as one collection in Titan Panel. Across eleven
+    -- adoptions it came out three ways -- "Absorb Tracker", "Ka0s KickCD",
+    -- "Ka0s Pretty Chat" -- and a display sorting alphabetically files the odd one
+    -- under A while the rest sit together under K.
+    -- red under: the folder name, an ad-hoc spelling, or anything wired to the Title
+    local obj = T.load(true, true).NS.Launcher:Object()
+    assertEqual(obj.label, "Ka0s KickCD")
+    assertNil(obj.label:find("|", 1, true),
+        "no escape sequence of any kind -- a Title carrying one splatters across a broker row")
+    assertTrue(obj.label ~= FOLDER, "the folder name is `name`, not `label` (anti-pattern #84)")
+end)
+
+test("`label` and the TOC's ## Title are NOT wired to each other", function()
+    -- They read the same here, which is exactly when a host is tempted to derive
+    -- one from the other. launcher-§1 forbids it because a Title MAY carry color
+    -- escapes: Ka0s Pretty Chat's does, and the day this addon's Title grows one
+    -- the broker row would inherit it silently.
+    -- red under: label = GetAddOnMetadata(name, "Title"), or a shared constant
+    local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local toc = fh:read("*a"); fh:close()
+    assertTrue(toc:match("##%s*Title:%s*([^\r\n]+)") ~= nil, "the TOC must declare a Title")
+    local src = assert(io.open(T.root .. "/core/LauncherSetup.lua", "r"))
+    local body = src:read("*a"); src:close()
+    assertTrue(body:find('label = "Ka0s KickCD"', 1, true) ~= nil,
+        "the label must be a plain literal in the descriptor")
+    assertNil(body:match('label%s*=%s*[^"\r\n]*Metadata'),
+        "the label must not be read off the TOC")
+end)
+
 test("the TOC's ## IconTexture and the launcher's icon are the SAME file", function()
     -- One file is the addon's face in three places — the AddOns list, the
     -- minimap button and a broker display — so a player who has seen the addon
