@@ -23,6 +23,7 @@ The **Tests** cell reads `passed/skipped/total`.
 
 | Run | Version | Lint w/e | Files | Tests | Perf | NLOC | Funcs | Avg NLOC | Avg CCN | Max CCN | CCN warn | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
+| [`20260916-184417`](20260916-184417/) | 1.3.0 | 0/0 | 97 | 973/0/973 | pass | 19884 | 2494 | 6.7 | 2.1 | 15 | 0 | **green** |
 | [`20260916-094252`](20260916-094252/) | 1.3.0 | 0/0 | 95 | 936/0/936 | pass | 19345 | 2390 | 6.8 | 2.1 | 15 | 0 | **green** |
 | [`20260910-234511`](20260910-234511/) | 1.2.1 → 1.3.0 | 0/0 | 94 | 870/0/870 | pass | 18164 | 2288 | 6.7 | 2.1 | 15 | 0 | **green** |
 | [`20260908-181321`](20260908-181321/) | 1.2.1 | 0/0 | 93 | 860/0/860 | pass | 17805 | 2268 | 6.6 | 2.1 | 15 | 0 | **green** |
@@ -36,18 +37,18 @@ The **Tests** cell reads `passed/skipped/total`.
 
 ## Test suite
 
-**936 cases** — 936 passed, 0 failed, 0 skipped. The generated inventory
-[`20260916-094252/test-cases.md`](20260916-094252/test-cases.md) is the authority on which cases existed at this run;
+**973 cases** — 973 passed, 0 failed, 0 skipped. The generated inventory
+[`20260916-184417/test-cases.md`](20260916-184417/test-cases.md) is the authority on which cases existed at this run;
 `docs/test-cases.md` is that same list at HEAD.
 
-Moved **870 → 936** since the previous run.
+Moved **936 → 973** since the previous run.
 
 No case reported a `skip`, so passed and total agree and nothing in this row claims coverage
 that was not exercised.
 
 ## Lint
 
-**0 warnings / 0 errors over 95 files** (`luacheck .`).
+**0 warnings / 0 errors over 97 files** (`luacheck .`).
 
 Read that figure with its scope attached: `.luacheckrc` sets `exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews/" }`, so those paths
 are not in it. A `0/0` that never moves is partly a statement about what was never looked at, which
@@ -56,14 +57,14 @@ is why the exclusion is restated on every run.
 ## Perf
 
 **6 scenarios** from `tests/perf.lua`; the measurements are in
-[`20260916-094252/perf.json`](20260916-094252/perf.json).
+[`20260916-184417/perf.json`](20260916-184417/perf.json).
 
 `perf` never fails a run and never blocks a commit — it is recorded, read and compared, not
 thresholded (`performance-§9`). It does gate the **tag** (`automated-tests-§3`).
 
 ## Complexity watch list
 
-Current as of [`20260916-094252`](20260916-094252/) — **this run's measurement, not its diff.** Max CCN **15** across 2390
+Current as of [`20260916-184417`](20260916-184417/) — **this run's measurement, not its diff.** Max CCN **15** across 2494
 functions, **0** of them warned on; 4 file(s) in the 1000–1500 band and 0 over the 1500 cap
 (`layout-§1`).
 
@@ -82,8 +83,8 @@ None.
 |---|---|---|---|
 | 1000–1500 (on notice) | `modules/Castbar.lua` | 1345 | **Already tracked as `A-2`.** Flat this cycle — 1345 at the previous run too. 155 lines of headroom before `layout-§1`'s cap. Watch, no action, and re-check at 1450 rather than at the cap. |
 | 1000–1500 (on notice) | `modules/IconGrid.lua` | 1163 | **Already tracked as `A-2`.** Flat this cycle — 1163 at the previous run too. The layout pass already lives in a sibling file, `modules/IconGrid_Layout.lua`, so the peel this file would take has been taken. Watch, no action. |
-| 1000–1500 (on notice) | `settings/Spells.lua` | 1246 | **Already tracked as `A-2`.** Down for the first time: 1312 at the previous run, **-66** this cycle, as the test-mode surface came out in `861d5a4`. The in-file peel is still spent, so the next real reduction has to be a file split rather than more trimming. Re-check at 1400, not at the cap. |
-| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1027 | **Already tracked as `KCD-30`.** 1245 at the previous run, **-218** this cycle — the largest single drop in this record, and the mock is now the smallest of the four band entries. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix still rebuilds the mock as a thin extender rather than trimming it further. Watch, no action. |
+| 1000–1500 (on notice) | `settings/Spells.lua` | 1246 | **Already tracked as `A-2`.** Flat this cycle — 1246 at the previous run too, holding the **-66** the test-mode removal in `861d5a4` bought. The in-file peel is still spent, so the next real reduction has to be a file split rather than more trimming. Re-check at 1400, not at the cap. |
+| 1000–1500 (on notice) | `tests/wow_mock.lua` | 1060 | **Already tracked as `KCD-30`.** Up 1027 → 1060, **+33** this cycle, as the launcher work gave the mock a LibDataBroker/LibDBIcon surface to answer for. Still the smallest of the four band entries and 440 lines below the cap. Not covered by `A-2`, which lists source files only; the whole file is the deviation, and the tracked fix still rebuilds the mock as a thin extender rather than trimming it further. Watch, no action. |
 
 `lizard` counts every `and`/`or` short-circuit as a decision, so in Lua a run of
 `t.k = rec.k or D.k` defaulting lines scores high with no visible branching at all: a large CCN
