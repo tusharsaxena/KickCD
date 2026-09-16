@@ -91,6 +91,41 @@ local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 
 local function helpers() return NS.Settings and NS.Settings.Helpers end
 
+-- ---------------------------------------------------------------------
+-- The panel's schema reader, PUBLISHED because nothing else can see it
+-- ---------------------------------------------------------------------
+--
+-- This is the descriptor's `get`, lifted out of the table and given a name so a
+-- test can call it. That is unusual here and the reason is specific: the ONE
+-- defect this reader has ever had is invisible to every caller the library has.
+--
+-- Both host descriptors used to read a value as `H and H.Get and H.Get(path) or
+-- nil`, which folds a stored FALSE to nil. In settings/Slash.lua that was loud --
+-- the library prints nil as the literal "nil", so `/kcd get locked` reported a
+-- value the addon does not hold. Here it was SILENT, and still would be: every
+-- consumer of `d.get` in libs/LibKa0s/OptionsWidgets.lua folds the answer to a
+-- boolean before anything can see it (`read(row) and true or false` for a
+-- checkbox, a truthiness test for `disabledIf`), so false and nil draw the same
+-- tick. No input a case can pass through the panel distinguishes them.
+--
+-- So the fix in this file had nothing pinning it while the one in settings/Slash.lua
+-- did, which is the asymmetry that let one spelling of the reader live in two
+-- files in the first place. Naming it makes the behavior reachable, and
+-- tests/test_options_panel.lua calls it with a stored false. The descriptor below
+-- takes this FUNCTION VALUE rather than wrapping it, so there is one reader and
+-- the case cannot be pinning a parallel copy.
+NS.Settings = NS.Settings or {}
+
+--- Read a schema path for the options surface.
+---
+--- NOT `H and H.Get and H.Get(path) or nil`: the trailing `or nil` folds a
+--- stored FALSE to nil. The guard has to be a statement, not an expression.
+function NS.Settings.ReadForPanel(path)
+    local H = helpers()
+    if not (H and H.Get) then return nil end
+    return H.Get(path)
+end
+
 -- Both Reset all paths reset the profile through here. settings/Panel.lua's
 -- ResetProfileCounted counts the rows the reset changes before it runs, for the
 -- one line Database:OnProfileChanged logs (debug-logging-§10); the bare call is
@@ -120,16 +155,10 @@ local descriptor = {
     -- row's section, runs the row's onChange and refreshes any open panel. A
     -- panel checkbox then takes exactly the path `/kcd set` takes, which is the
     -- whole point of the rule (options-ui-§1).
-    -- NOT `H and H.Get and H.Get(path) or nil`: that idiom folds a stored FALSE
-    -- to nil. A checkbox draws the same either way, so it was invisible here --
-    -- but the same shape in settings/Slash.lua made `/kcd get` print "nil" for
-    -- every unticked bool, and one spelling of the reader in two files is how a
-    -- fix in one of them stays a bug in the other.
-    get = function(path)
-        local H = helpers()
-        if not (H and H.Get) then return nil end
-        return H.Get(path)
-    end,
+    -- The reader above, BY REFERENCE. Not a wrapper: a wrapper would be a second
+    -- place the `or nil` fold could come back, and the case that pins the named
+    -- one would go on passing. See its header for why it is named at all.
+    get = NS.Settings.ReadForPanel,
     set = function(path, value)
         local H = helpers()
         if H and H.SetAndRefresh then H.SetAndRefresh(path, value) end

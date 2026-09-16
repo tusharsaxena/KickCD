@@ -699,3 +699,23 @@ test("the refusal line is routed through NS.L, not written at the call site", fu
     assertEqual(rawget(L, key), key, "the key must be DEFINED in locales/enUS.lua")
     assertNil(key:find("|", 1, true), "the locale string carries no escape sequence")
 end)
+
+test("`/kcd get` on a bool stored FALSE prints false, not the literal `nil`", function()
+    -- THE PIN FOR settings/Slash.lua's HALF of the same fix. The host reader read
+    -- `H and H.Get and H.Get(path) or nil`, whose trailing `or nil` folds a stored
+    -- false to nil, and the library formats nil as the literal string "nil" — so
+    -- every unticked bool in `/kcd get` and `/kcd list` reported a value the addon
+    -- does not hold. The identical spelling lived in settings/OptionsSetup.lua,
+    -- where it is invisible (a checkbox draws the same either way), which is why
+    -- tests/test_options_panel.lua carries the other half of this pair: a fix in
+    -- one file with a case in only one file is a fix half-guarded.
+    -- red under: restoring `H and H.Get and H.Get(path) or nil` in Slash.lua
+    local inst = T.load(true, true)
+    inst.NS.Settings.Helpers.SetAndRefresh("locked", false)
+    local lines = say(inst, function() inst.NS:OnSlashCommand("get locked") end)
+    assertEqual(#lines, 1, "one line: " .. table.concat(lines, " / "))
+    assertTrue(lines[1]:find("false", 1, true) ~= nil,
+        "`/kcd get locked` must report false: " .. lines[1])
+    assertNil(lines[1]:find("nil", 1, true),
+        "and must never report the literal nil: " .. lines[1])
+end)

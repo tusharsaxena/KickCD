@@ -931,3 +931,33 @@ test("General's Reset all settings tooltip says it is the same act as Profiles -
     assertEqual(#lines, 1, "one tooltip body line")
     assertEqual(lines[1], RESET_ALL_TIP)
 end)
+
+-- ── the reader, and the stored FALSE it must not fold away ──────────────────
+
+test("the panel's schema reader hands back a stored FALSE as false, not nil", function()
+    -- THE PIN FOR THIS FILE'S HALF of a fix that shipped in two files at once.
+    -- Both host descriptors read a value as `H and H.Get and H.Get(path) or nil`,
+    -- and the trailing `or nil` folds a stored false to nil. settings/Slash.lua's
+    -- copy was loud — the library prints nil as the literal "nil", so `/kcd get`
+    -- reported a value the addon does not hold — and tests/test_slash.lua pins
+    -- that one. THIS copy was silent and would be silent still: every consumer of
+    -- the descriptor's `get` inside libs/LibKa0s/OptionsWidgets.lua folds the
+    -- answer to a boolean before anything can observe it (`read(row) and true or
+    -- false` for a checkbox, a truthiness test for `disabledIf`), so false and
+    -- nil draw the same tick and no input through the panel can tell them apart.
+    -- That is exactly how one wrong spelling came to live in two files, and why
+    -- one case is not enough.
+    --
+    -- Called on the NAMED reader, which settings/OptionsSetup.lua hands to the
+    -- descriptor by reference, so this is the function the panel actually reads
+    -- through rather than a parallel copy of it.
+    -- red under: restoring `H and H.Get and H.Get(path) or nil` in OptionsSetup.lua
+    local read = NS.Settings.ReadForPanel
+    assertEqual(type(read), "function", "the reader must be published to be pinnable")
+    local before = H.Get("locked")
+    H.SetAndRefresh("locked", false)
+    local v = read("locked")
+    H.SetAndRefresh("locked", before)
+    assertTrue(v ~= nil, "a stored false must not read back as nil")
+    assertEqual(v, false, "and it must be the boolean false, not a coerced truthy value")
+end)
