@@ -33,7 +33,7 @@ The grid tracks the spells your current class and spec can cast *right now*, whi
 
 Focus copies your target set's styling until you say otherwise. Untick "Use same styling as Target" on General → Units and the Icons, Cast bar and Text Label pages will build it separately — switch which unit you're editing with the Target / Focus picker above the tabs. Position and label text stay independent either way. That label is the "Target" or "Focus" tag you may have spotted beside a grid, and the Text Label page renames it, restyles it, moves it onto the cast bar or turns it off.
 
-Everything else is configuration, and it lives in two places: the addon's own page under Settings → AddOns in game, and `/kcd` (or `/kickcd`). On its own, `/kcd` opens that settings page; `/kcd help` prints the full command list.
+Everything else is configuration, and it lives in two places: the addon's own page under Settings → AddOns in game, and `/kcd` (or `/kickcd`). On its own, `/kcd` opens that settings page; `/kcd help` prints the full command list. If you'd rather read the settings than click through them, `/kcd list` prints every setting with its current value, and `/kcd get <setting>` answers for one. `/kcd perf` is the odd one out — it records a performance capture, and it's there for when a maintainer asks you for one rather than for everyday use.
 
 ## How interrupt tracking works
 
