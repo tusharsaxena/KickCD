@@ -249,7 +249,7 @@ generated directories are named once each and never enumerated per run: `docs/au
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 15 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
+| `slash-dispatch.md` | Present | 17 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` is 496 lines of addon-specific shimming beyond LibKa0s |
 | `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |

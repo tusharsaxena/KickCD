@@ -241,7 +241,7 @@ Suppressions come in two forms, and the choice between them is about scope:
   reaches with the colon — the AceAddon modules, the AceEvent handler registered by name, the
   `LibKa0s-Slash-1.0` degradation stub — and each carries a comment naming the obligation that
   forces the receiver. An argument that falls out of use under any other name, in those nine files
-  or in the other 84, still reports. `libs/`,
+  or in the other 88, still reports. `libs/`,
   `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
   **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua` and `wow_mock.lua` are this
   addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
