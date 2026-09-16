@@ -41,6 +41,52 @@ local function vetoedFromResetAll(row)
     return not row.sessionOnly
 end
 
+-- ---------------------------------------------------------------------
+-- The one row NO reset may touch
+-- ---------------------------------------------------------------------
+--
+-- launcher-§3 (standard v2.54.0) states this as a PROPERTY of the setting rather
+-- than deriving it from where the setting is stored: whether the minimap button
+-- is shown is a PER-INSTALLATION DISPLAY PREFERENCE, in the same class as the
+-- POSITION the player dragged it to, which LibDBIcon keeps in the very same
+-- table and which no reset in this collection touches. So it survives BOTH
+-- options-ui-§12's `Reset all settings` AND a page-scoped `Defaults` button,
+-- and neither may un-hide a hidden button or re-hide a shown one.
+--
+-- WHY THAT NEEDED A CHANGE HERE, measured rather than assumed. The two resets
+-- reach this row by completely different routes and only one of them was safe:
+--
+--   * `Reset all settings` never reached it, and still does not, for TWO
+--     independent reasons. libs/LibKa0s/Options.lua's O.RestoreAllDefaults
+--     narrows its row walk to the `sessionOnly` rows when `resetProfile` is
+--     supplied (it is, below) and the composed Minimap button row is deliberately
+--     STORED, not session; and `vetoedFromResetAll` above answers true for it
+--     anyway, since it is not sessionOnly. The reset itself is then
+--     `db:ResetProfile()`, which empties db.PROFILE, while this row's table is
+--     `db.global.minimap`. Three separate things would have to break together.
+--   * The General page's `Defaults` button DID reach it, and put the button back
+--     on the ring at LibDBIcon's default angle. O.RestoreDefaults walks
+--     `rowsForPage("general")` -- which is exactly where the composed Minimap
+--     button row lives -- and consults NO veto: `skipRestoreAll` is read by
+--     RestoreAllDefaults and by nothing else. That is the bug this exemption
+--     fixes, and it is the shape launcher-§3's old derivation could not see,
+--     because the old argument was only ever about the other button.
+--
+-- THE VETO GOES IN `applyDefault` because that is the ONE funnel both of the
+-- library's resets write through (libs/LibKa0s/Options.lua's runBulk calls
+-- `d.applyDefault(row)` for every row either walk keeps), so the row is exempt
+-- from both from one place rather than from two. It is deliberately NOT in
+-- settings/Slash.lua's own applyDefault: `/kcd reset global.minimap.hide` is a
+-- single row the player named out loud, which is neither of the two resets
+-- launcher-§3 is about, and refusing it would be refusing the CLI route to a
+-- setting the schema CLI is supposed to reach.
+local MINIMAP_HIDE_PATH = "global.minimap.hide"
+
+--- True for the one row every reset leaves alone (launcher-§3).
+local function survivesEveryReset(row)
+    return row ~= nil and row.path == MINIMAP_HIDE_PATH
+end
+
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 
 local function helpers() return NS.Settings and NS.Settings.Helpers end
@@ -89,6 +135,10 @@ local descriptor = {
         if H and H.SetAndRefresh then H.SetAndRefresh(path, value) end
     end,
     applyDefault = function(row)
+        -- The one carve-out, and it is BOTH resets' (launcher-§3 -- see the block
+        -- above this descriptor). Returning before the write rather than before
+        -- the walk, because this is the only place both walks pass through.
+        if survivesEveryReset(row) then return end
         local H = helpers()
         if not (H and H.SetAndRefresh) then return end
         -- DeepCopy, because a default that is a table (an RGBA color) would

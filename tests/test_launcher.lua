@@ -221,15 +221,86 @@ test("`/kcd set global.minimap.hide` takes exactly the path the checkbox takes",
 end)
 
 test("`Reset all settings` does NOT un-hide a button the player hid", function()
-    -- It is a PROFILE reset by definition (options-ui-§12), and the minimap
-    -- table is GLOBAL precisely so the reset cannot reach past the settings it
-    -- warned about into the frame furniture (launcher-§3).
+    -- launcher-§3 makes this a PROPERTY of the setting -- a per-installation
+    -- display preference, like the position LibDBIcon keeps in the same table --
+    -- rather than something derived from the store it sits in. Here the property
+    -- happens to hold three times over, and the case is written so that losing any
+    -- one of them is still red: the walk narrows to `sessionOnly` and this row is
+    -- STORED, `vetoedFromResetAll` answers true for it, and the reset itself is
+    -- db:ResetProfile() while the table is db.GLOBAL. The page-scoped Defaults
+    -- button is a different route entirely and has its own case below.
     -- red under: storing the table under db.profile, or marking the row sessionOnly
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
     H.SetAndRefresh("global.minimap.hide", false)
     captured(inst, function() H.RestoreAllDefaults() end)
     assertEqual(inst.NS.db.global.minimap.hide, true, "the button stays hidden")
+end)
+
+test("the General page's DEFAULTS button does NOT un-hide a button the player hid", function()
+    -- THE ONE launcher-§3 (v2.54.0) made a PROPERTY rather than a derivation, and
+    -- the one this addon was actually failing. The old sentence argued that
+    -- `Reset all settings` is a profile reset and the table is global, so no reset
+    -- can reach the row -- but that argument was only ever about THAT button. The
+    -- page-scoped Defaults walks `rowsForPage("general")`, which is where the
+    -- composed `Minimap button` row LIVES, and libs/LibKa0s/Options.lua's
+    -- O.RestoreDefaults consults no veto at all: `skipRestoreAll` is read by
+    -- RestoreAllDefaults and by nothing else. So one press of Defaults on General
+    -- put the button back, at LibDBIcon's default angle, for a player who had
+    -- deliberately removed it.
+    -- red under: dropping settings/OptionsSetup.lua's applyDefault exemption
+    local inst = T.load(true, true)
+    local H = inst.NS.Settings.Helpers
+    H.SetAndRefresh("global.minimap.hide", false)
+    assertEqual(inst.NS.db.global.minimap.hide, true, "sanity: the player hid it")
+    captured(inst, function() H.RestoreDefaults("general") end)
+    assertEqual(inst.NS.db.global.minimap.hide, true,
+        "the page's Defaults must leave the hidden button hidden")
+    assertFalse(dbicon(inst).__shown[FOLDER], "and must not put it back on the ring")
+end)
+
+test("nor does it RE-HIDE a button the player is happy with", function()
+    -- The rule runs both ways: neither reset may un-hide a hidden button, and
+    -- neither may hide a shown one (launcher-§3). The default is SHOWN, so this
+    -- direction cannot fail by writing the default -- it fails if the exemption is
+    -- ever written as "force hide" rather than "do not touch".
+    -- red under: an exemption that writes anything at all
+    local inst = T.load(true, true)
+    local H = inst.NS.Settings.Helpers
+    assertEqual(inst.NS.db.global.minimap.hide, false, "sanity: shown by default")
+    captured(inst, function() H.RestoreDefaults("general") end)
+    assertEqual(inst.NS.db.global.minimap.hide, false)
+    assertTrue(dbicon(inst).__shown[FOLDER])
+end)
+
+test("the exemption is ONE row — the page's Defaults still resets everything else", function()
+    -- An exemption that quietly widened would be a Defaults button that stopped
+    -- working, which is a worse bug than the one it fixed and would go unnoticed
+    -- for exactly as long.
+    -- red under: vetoing by page, by section, or by "every global path"
+    local inst = T.load(true, true)
+    local H = inst.NS.Settings.Helpers
+    H.SetAndRefresh("global.minimap.hide", false)
+    H.SetAndRefresh("locked", not H.FindSchema("locked").default)
+    H.SetAndRefresh("visibility", "always")
+    captured(inst, function() H.RestoreDefaults("general") end)
+    assertEqual(H.Get("locked"), H.FindSchema("locked").default,
+        "`locked` is a General row and must be back at its default")
+    assertEqual(H.Get("visibility"), "target_casting_interruptible",
+        "and so is `visibility`")
+    assertEqual(inst.NS.db.global.minimap.hide, true, "only the one row is exempt")
+end)
+
+test("`/kcd resetall` does not un-hide it either — the SECOND reset, by its own route", function()
+    -- `/kcd resetall` is a host verb that reaches Helpers.ResetAll rather than the
+    -- library's walk directly, so the case above proves nothing about it. Exercised
+    -- through the slash surface because that is the route a player takes.
+    -- red under: a resetall path of its own that writes the row's default
+    local inst = T.load(true, true)
+    inst.NS.Settings.Helpers.SetAndRefresh("global.minimap.hide", false)
+    captured(inst, function() inst.NS:OnSlashCommand("resetall") end)
+    assertEqual(inst.NS.db.global.minimap.hide, true, "the button stays hidden")
+    assertFalse(dbicon(inst).__shown[FOLDER])
 end)
 
 test("a profile switch does not move the player's button", function()

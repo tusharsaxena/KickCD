@@ -1076,7 +1076,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (22)
+### test_launcher.lua (26)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the TOC's ## IconTexture and the launcher's icon are the SAME file
@@ -1090,6 +1090,10 @@ badge and any count quoted in the docs must agree with it.
 - the row's set inverts AND moves the button, in the one write seam
 - `/kcd set global.minimap.hide` takes exactly the path the checkbox takes
 - `Reset all settings` does NOT un-hide a button the player hid
+- the General page's DEFAULTS button does NOT un-hide a button the player hid
+- nor does it RE-HIDE a button the player is happy with
+- the exemption is ONE row — the page's Defaults still resets everything else
+- `/kcd resetall` does not un-hide it either — the SECOND reset, by its own route
 - a profile switch does not move the player's button
 - `/kcd enable` and `/kcd disable` write the Enable row's own stored path
 - the verbs hold NO state of their own — the checkbox and the CLI cannot disagree
@@ -1197,11 +1201,11 @@ badge and any count quoted in the docs must agree with it.
 | test_slash.lua | 33 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
-| test_launcher.lua | 22 |
+| test_launcher.lua | 26 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 6 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **958** |
+| **Total** | **962** |
