@@ -13,7 +13,7 @@ exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews
 -- NO TOP-LEVEL `ignore`, and none is coming back (lint.md, `M4-11`). This file carried
 -- `ignore = { "212/self", "212/event", "211/addonName" }` until `M4c-06`. Every entry was already
 -- in the `<code>/<variable>` form, which reads like the narrow spelling and is not: at the TOP
--- level it still reaches all 93 files, so those three names were silenced in every file that has
+-- level it still reaches all 97 files, so those three names were silenced in every file that has
 -- no business producing them as much as in the handful that earn them. That is exactly what the
 -- rule calls an ignore that silences the wall -- it reads as coverage and provides none.
 --
@@ -109,7 +109,7 @@ files["tests/"] = {
 -- Every stanza below names ONE file and the code AND the variable, in luacheck's
 -- `<code>/<variable>` form. That is the whole difference from the blanket it replaced: an
 -- argument that falls out of use under any other name, in any of these nine files or in any of
--- the other 84, still reports.
+-- the other 88, still reports.
 --
 -- Measured rather than assumed, and measured for the RIGHT thing. A dead argument under a new
 -- name always reported here -- the old entries were already `<code>/<variable>`, so adding a
