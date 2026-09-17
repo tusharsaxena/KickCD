@@ -94,6 +94,19 @@ function NS:OnEnable()
     -- resolves `db.global.minimap` and OnInitialize is what builds the db. It is
     -- idempotent, so a re-enable costs nothing.
     if NS.Launcher then NS.Launcher:Register() end
+
+    -- THE STORED MASTER SWITCH, TAKEN FOR THE FIRST TIME THIS SESSION
+    -- (slash-commands-§7). The `disabled` hold persists by being re-taken at
+    -- load from the store, which is the whole of how a disabled addon stays
+    -- disabled across a /reload -- the latch itself persists nothing.
+    --
+    -- HERE, and it has to be here rather than in OnInitialize: AceAddon runs this
+    -- function and THEN enables the modules, so the hold is taken before a single
+    -- module's OnEnable runs and each of them finds NS.IsDown() already true and
+    -- registers nothing. Taken in OnInitialize it would be a hold over an addon
+    -- whose db had just been built and whose modules had not run at all; taken
+    -- after the cascade there is no such moment to take it in.
+    if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
 end
 
 -- ---------------------------------------------------------------------------
@@ -239,32 +252,34 @@ local COMMANDS = {
 }
 
 -- ---------------------------------------------------------------------------
--- The disabled state, gated ONCE, on the table every verb comes out of
+-- The disabled state: the gate is the LIBRARY's, the judgment is ours
 -- ---------------------------------------------------------------------------
 --
--- slash-commands-§2 (standard v2.54.0) turned a trailing SHOULD into something
--- implementable: while `enabled` is false, a verb that DRIVES THE ADDON'S
--- FEATURES answers on ONE tagged line naming `/kcd enable` and does nothing
--- else. Acting is the wrong answer twice over -- the player asked for something
--- the addon is standing down from doing, and a silent no-op leaves them with no
--- clue why nothing happened.
+-- While `enabled` is false, a verb that DRIVES THE ADDON'S FEATURES answers on
+-- ONE tagged line naming `/kcd enable` and does nothing else (slash-commands-§2's
+-- SHOULD). Acting is the wrong answer twice over -- the player asked for
+-- something the addon is standing down from doing, and a silent no-op leaves
+-- them with no clue why nothing happened.
 --
--- ONE PLACE, AND IT IS THE VERB TABLE. A guard pasted into each handler is a
--- dozen places to forget, and the thirteenth verb forgets it by default. The
--- dispatcher itself is LibKa0s-Slash-1.0's and is not ours to edit, and
--- NS:OnSlashCommand sees only the raw line -- gating there would mean re-parsing
--- the verb, re-lowercasing it and re-applying the `options` alias, which is the
--- library's dispatch written a second time. So the gate goes on the DATA the
--- dispatcher dispatches on: every entry is wrapped here, once, before the table
--- is published. A verb added tomorrow is gated by default and has to opt OUT,
--- which is the direction that fails safe.
+-- THE GATE ITSELF IS NO LONGER HERE. This file used to wrap every entry in the
+-- table below in a closure that checked the stored flag, because
+-- LibKa0s-Slash-1.0 had no gate to hand it to. It has one now (minor 14 at v1.42.0):
+-- settings/Slash.lua passes `isEnabled` and `brandName`, and the dispatcher
+-- refuses the host's own feature verbs after the COMMANDS lookup -- which is one
+-- behavior the host wrapper never got right, since a wrapper on the table cannot
+-- tell a TYPO from a verb (a misspelling deserves `unknown command`, not "the
+-- addon is disabled", which tells a player who mistyped that their spelling was
+-- fine). The refusal LINE is the library's too, and deliberately: it is one
+-- sentence, the collection spells it once, and eleven addons each wording it
+-- their own way is exactly the drift the shared printer exists to end. So there
+-- is no locale key for it here any more either.
 --
--- THE LIVE SET IS NAMED ONCE, AS DATA. slash-commands-§2 fixes twelve of these
--- and the reasoning is that a player must be able to READ AND REPAIR SETTINGS,
--- and reach the panel, while the addon is off -- which is precisely when they
--- are most likely to need to -- and `enable` above all, or the pair is one-way
--- again. `debug` and `perf` are diagnostics rather than features: the usual
--- reason to reach for either is that the addon is misbehaving.
+-- WHAT STAYS OURS IS WHICH VERBS ARE LIVE. The library ships the standard's
+-- twelve reserved verbs (`help`, `config`, `version`, `enable`, `disable`,
+-- `debug`, `perf`, `get`, `set`, `list`, `reset`, `resetall`) and the bare `/kcd`
+-- opens the panel in either state. The set below is what THIS addon adds to that
+-- twelve, and settings/Slash.lua unions the two rather than re-typing them --
+-- a narrowed copy of the library's list is the one thing a host MUST NOT pass.
 --
 -- `spells` IS THE THIRTEENTH, and it is this addon's own judgment rather than
 -- the standard's list. The per-spec spell lists are stored ARRAYS, and an array
@@ -273,59 +288,18 @@ local COMMANDS = {
 -- `/kcd spells` is their ONLY CLI route, which makes it the schema CLI for that
 -- data rather than a feature verb: refusing it would put "read and repair your
 -- settings while the addon is off" out of reach for the one part of the
--- configuration that needs it most, which is the exact thing the live set
--- exists to protect. It configures; it does not drive.
+-- configuration that needs it most, which is the exact thing the live set exists
+-- to protect. It configures; it does not drive.
 --
--- WHAT IS LEFT IS FOUR, and each really does drive the display. `lock`,
+-- WHAT IS LEFT REFUSED IS FOUR, and each really does drive the display. `lock`,
 -- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- launcher-§2 puts
 -- KickCD on rung (b) precisely because unlocking IS this addon's preview -- and
--- with the addon off there is no grid and no placeholder to unlock. And
--- `resetposition` re-anchors the icon grid and fires CONFIG_CHANGED so the live
--- grids move, then echoes "icon grid position reset" at a player who can see no
--- grid: an acknowledgment of something that visibly did not happen.
---
--- It stays a SHOULD in the standard, so this is a courtesy rather than a
--- correctness property. What it MUST NOT do is refuse anything on the live list.
-local LIVE_WHILE_DISABLED = {
-    -- slash-commands-§2's twelve, verbatim.
-    help     = true, config   = true, version  = true,
-    enable   = true, disable  = true, debug    = true, perf = true,
-    get      = true, set      = true, list     = true,
-    reset    = true, resetall = true,
-    -- ...and this addon's one addition, argued above.
-    spells   = true,
-}
-
---- True when the master enable flag is set. Defaults to true on a fresh or
---- missing profile, exactly as modules/IconGrid.lua and modules/Cooldowns.lua
---- read it, so a load that has not reached OnInitialize refuses nothing.
----
---- Read straight off the profile rather than through Helpers.Get, deliberately:
---- the `enabled` row is COMPOSED by LibKa0s-Options-1.0's Master controls block,
---- so a load without the library has no row to resolve -- and a gate that
---- silently refused every feature verb on that load would be a far worse failure
---- than the one it guards against. Reading the store cannot fail that way.
-local function masterEnabled()
-    local profile = NS.db and NS.db.profile
-    if not profile then return true end
-    return profile.enabled ~= false
-end
-
-for _, entry in ipairs(COMMANDS) do
-    if not LIVE_WHILE_DISABLED[entry[1]] then
-        local act = entry[3]
-        entry[3] = function(rest)
-            if not masterEnabled() then
-                -- ONE line, and then nothing. No partial work, no side effect,
-                -- no second line explaining the state to a player who is about
-                -- to re-run the command anyway.
-                return p(NS, NS.L["KickCD is disabled. %s turns it back on."]
-                    :format("|cFFFFFF00/kcd enable|r"))
-            end
-            return act(rest)
-        end
-    end
-end
+-- with the addon off there is no grid and no placeholder to unlock
+-- (slash-commands-§8 says so in as many words). And `resetposition` re-anchors
+-- the icon grid and fires CONFIG_CHANGED so the live grids move, then echoes
+-- "icon grid position reset" at a player who can see no grid: an acknowledgment
+-- of something that visibly did not happen.
+NS.EXTRA_LIVE_VERBS = { "spells" }
 
 NS.COMMANDS = COMMANDS
 

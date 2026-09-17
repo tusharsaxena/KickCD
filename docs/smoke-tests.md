@@ -103,6 +103,18 @@ Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
 **Pass.**
 - `false` hides both the icon grid and the cast bar regardless of visibility mode or current target.
 - `true` immediately restores both per the active visibility rules.
+
+**And it is TOTAL, not a draw gate** (`slash-commands-§7`). The in-client check for the part the eye
+cannot see, with the addon disabled:
+
+- `/dump C_AddOns.IsAddOnLoaded("KickCD")` still answers true — the addon is loaded, it is standing
+  down, not unloaded.
+- Enter and leave combat on a dummy, swap target, swap spec. **Nothing appears**, nothing is printed,
+  and `/kcd get locked` reports the value it did before — no game event writes the stored tree.
+- Turn debug on first (`/kcd debug on`) and repeat: the console gets **no** `[Combat] entered` line,
+  because the listener that used to print it is unregistered rather than gated.
+- `/kcd enable` brings all of it back in the same turn, including a unit you enabled *while it was
+  off*, which is what "rebuilds from current state" means.
 - The General → "Enable KickCD" checkbox in the panel reflects the slash write live (open the panel before flipping; the box state changes when `/kcd set enabled …` is run).
 
 ### 4. Visibility mode matrix
@@ -971,9 +983,16 @@ which is the whole reason this step exists.
   installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
   right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
   source.
-- **`/kcd disable` then `/kcd enable`.** With the addon disabled, `/kcd`, `/kcd help` and
-  `/kcd version` still answer, and `/kcd enable` turns it back on. A dispatcher that went quiet here
-  is a one-way switch (`slash-commands-§2`) and is the finding.
+- **`/kcd disable` then `/kcd enable`.** With the addon disabled, the bare `/kcd` **opens the
+  settings panel**, `/kcd help` and `/kcd version` still answer, and `/kcd enable` turns it back on.
+  A dispatcher that went quiet here is a one-way switch (`slash-commands-§2`) and is the finding;
+  so is a bare `/kcd` that answers with a refusal instead of the panel, which is the case that
+  settled the standard's v2.57.0 reversal.
+- **The minimap button while it is off.** Still disabled, LEFT-click it: one tagged line naming
+  `/kcd enable`, and the lock does not move (`/kcd get locked` is unchanged). RIGHT-click it: the
+  settings panel opens, exactly as it does when the addon is on (`launcher-§2`). A left click that
+  silently toggles the lock is writing the stored tree of an addon the player switched off, and is
+  the finding.
 - **A feature verb refuses while it is off.** Still disabled, run `/kcd toggle`. One tagged line
   comes back naming `/kcd enable`, and nothing else — `/kcd get locked` reports the same value it
   did before. Same for `/kcd lock`, `/kcd unlock` and `/kcd resetposition`. Then check the live

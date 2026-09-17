@@ -174,6 +174,7 @@ local SUITES = {
     "test_spelling",
     "test_slash_style",
     "test_slash",
+    "test_disabled",
     "test_opensettings",
     "test_perfsetup",
     "test_launcher",

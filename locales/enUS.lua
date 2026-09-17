@@ -30,11 +30,13 @@ L["Tracks interrupt and CC cooldowns on a movable icon grid."] =
     "Tracks interrupt and CC cooldowns on a movable icon grid."
 L["Slash Commands"]              = "Slash Commands"
 
--- The one line a feature verb answers with while the addon is disabled
--- (slash-commands-§2). `%s` is `/kcd enable`, colored at the call site in
--- core/KickCD.lua so the locale string carries no escape sequence.
-L["KickCD is disabled. %s turns it back on."] =
-    "KickCD is disabled. %s turns it back on."
+-- THERE IS NO KEY HERE FOR THE DISABLED REFUSAL LINE, and its absence is the
+-- rule rather than an omission. That one line is the COLLECTION's wording, not
+-- this addon's: LibKa0s-Slash-1.0 owns the format string and builds the line, and
+-- `slash-commands-§7` says in as many words that it MUST NOT be re-spelled per
+-- addon, per verb or per call site. A `L` override does not reach it either --
+-- the library refuses a descriptor `L` for this string on purpose. Eleven addons
+-- each wording it their own way is the drift the shared printer exists to end.
 
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"

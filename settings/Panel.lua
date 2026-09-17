@@ -398,6 +398,17 @@ function Helpers.Set(path, section, value)
     if bulkBefore and bulkBefore[path] == nil then bulkBefore[path] = { parent[key] } end
     parent[key] = value
     logSet(path, value)
+    -- THE MASTER SWITCH, TAKEN IN THE SAME TURN AS THE WRITE (slash-commands-§7).
+    --
+    -- Here, and not in the checkbox or in the `enable` / `disable` verbs, because
+    -- this is the single write seam all three land on -- along with
+    -- `/kcd set enabled false` and a Defaults reset that happens to clear the row.
+    -- A hook on any of those surfaces would be a hook the next surface forgets.
+    --
+    -- BEFORE FireConfigChanged, deliberately. The announcement is what the
+    -- modules re-render from, and a module that re-rendered first and stood down
+    -- second would draw one frame of an addon that is already off.
+    if path == "enabled" and NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
     Helpers.FireConfigChanged(section)
 end
 

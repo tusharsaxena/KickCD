@@ -825,6 +825,22 @@ function Database:OnProfileChanged(event, db, arg)
     self:BuildSpells()
     self:MigrateProfile()
 
+    -- THE MASTER SWITCH CAN HAVE MOVED WITH THE PROFILE (slash-commands-§7).
+    --
+    -- `enabled` is a stored setting like any other, so a switch, a copy or a
+    -- reset can flip it with no checkbox ticked and no verb typed. A player
+    -- switching to a profile where the addon is enabled expects it to come up,
+    -- and one switching to a profile where it is off expects it to go inert --
+    -- which is why AceDB's three profile callbacks are on §7's list of things a
+    -- disabled addon MUST keep. Re-read the path and settle the latch; it fires a
+    -- callback only on an actual edge, so a profile that agrees with the last one
+    -- costs nothing.
+    --
+    -- BEFORE the bus announcement, for the reason settings/Panel.lua's write seam
+    -- gives: the modules re-render off that message, and re-rendering an addon
+    -- that is about to stand down draws a frame of something that is already off.
+    if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
+
     -- Fire the closed internal message — see docs/message-bus.md, through
     -- the file's single fireProfileChanged emitter.
     fireProfileChanged(key)

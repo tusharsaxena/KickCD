@@ -962,6 +962,22 @@ function IconGrid:_RegisterTextIcon(icon)
     end
 end
 
+--- Cancel the shared ticker and forget every icon registered on it.
+---
+--- The stand-down's half of the pair (slash-commands-§7, modules/IconGrid.lua's
+--- Suspend). The lazy self-cancel below is fine while the addon is running — the
+--- ticker notices the empty set on its next fire — but "on its next fire" is one
+--- more wake-up than a stood-down addon is allowed, and the set does not empty
+--- itself on the way down: Suspend hides the grids, it does not release the
+--- icons. So this cancels eagerly and clears the set. The ticker re-arms on the
+--- first StartCooldownText after the addon stands back up, which is the same
+--- lazy start a fresh login takes.
+function IconGrid:_StopTextTicker()
+    if _textTicker and _textTicker.Cancel then _textTicker:Cancel() end
+    _textTicker = nil
+    for icon in pairs(_textIcons) do _textIcons[icon] = nil end
+end
+
 function IconGrid:_UnregisterTextIcon(icon)
     if not icon then return end
     if not _textIcons[icon] then return end

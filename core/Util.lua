@@ -107,28 +107,56 @@ end
 --- per sec while typing continues).
 --- @param ms number of milliseconds per window
 --- @param fn function to invoke
---- @return wrapped function
+--- @return function wrapped
+--- @return function cancel  drop the pending call, if any
+---
+--- THE SECOND RETURN IS THE STAND-DOWN'S (slash-commands-§7). A coalescing
+--- timer that keeps its appointment after the addon has been switched off is the
+--- single most expensive survivor the rule names: it wakes up, finds nothing to
+--- do, and re-arms. Callers that own one through a lifecycle -- Cooldowns'
+--- per-frame refresh coalescer -- keep the canceller and call it from Suspend;
+--- callers whose throttle is panel-local ignore it, which is why it is a second
+--- return rather than a shape change.
+---
+--- C_Timer.NewTimer, not C_Timer.After, for the same reason: `After` hands back
+--- no handle, so a scheduled call cannot be withdrawn. The fallback to `After`
+--- exists only for a client without NewTimer; there, cancel drops the ARGS and
+--- the callback fires into a no-op.
 function Util.Throttle(ms, fn)
     local delay = (ms or 0) / 1000
     -- Closure state: pendingArgs is a fresh table per "burst" so the
-    -- captured C_Timer.After callback works on the args from *that* burst,
+    -- captured timer callback works on the args from *that* burst,
     -- not whatever happens to be in the slot when it fires.
     local scheduled = false
     local pendingArgs
+    local handle
 
-    return function(...)
+    local function wrapped(...)
         pendingArgs = { n = select("#", ...), ... }
         if scheduled then return end
         scheduled = true
-        _G.C_Timer.After(delay, function()
-            scheduled = false
+        local function fire()
+            scheduled, handle = false, nil
             local args = pendingArgs
             pendingArgs = nil
             if args then
                 fn(unpack(args, 1, args.n))
             end
-        end)
+        end
+        local C = _G.C_Timer
+        if C.NewTimer then
+            handle = C.NewTimer(delay, fire)
+        else
+            C.After(delay, fire)
+        end
     end
+
+    local function cancel()
+        if handle and handle.Cancel then handle:Cancel() end
+        scheduled, pendingArgs, handle = false, nil, nil
+    end
+
+    return wrapped, cancel
 end
 
 -- ---------------------------------------------------------------------------

@@ -28,20 +28,65 @@ Each row is `{ name, description, fn }`. The dispatcher:
 
 Every chat line emitted by the addon flows through `Util.print` — `LibKa0s-Core-1.0`'s secret-safe printer, published at `NS.Util.print` by `core/CoreSetup.lua` — which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
 
-## The disabled state, and the one place it is enforced
+## The disabled state: the gate is the library's, the judgment is ours
 
-`slash-commands-§2` (standard v2.54.0): while `enabled` is false, a verb that **drives the addon's features** answers on **one** tagged line naming `/kcd enable` and **does nothing else**. It is a SHOULD — a courtesy rather than a correctness property — and this addon takes it.
+`slash-commands-§7` makes *disabled* **total** — every registration actually unregistered, every
+timer canceled, every frame hidden at the source, nothing written from a game event. That half is
+[ARCHITECTURE.md → The stand-down](ARCHITECTURE.md#the-stand-down-disabled-is-total). This section is
+the other half: what the **command surface** does while the addon is off.
 
-It is implemented **once**, in `core/KickCD.lua`, as a wrapper applied to every entry of `COMMANDS` in a single loop before the table is published. A guard pasted into each handler would be a dozen places to forget, and the next verb added would forget it by default; here a new verb is **gated by default** and has to opt out. The gate cannot live in the dispatcher itself (that is `LibKa0s-Slash-1.0`'s) and must not live in `NS:OnSlashCommand`, which sees only the raw line — gating there would mean re-parsing the verb, re-lowercasing it and re-applying the `options` alias, which is the library's dispatch written a second time.
+**It does not narrow.** Every reserved verb answers normally — `help`, `config`, `version`,
+`enable`, `disable`, `debug`, `perf` and the whole schema CLI `get` / `set` / `list` / `reset` /
+`resetall` — and the bare `/kcd` opens the settings panel exactly as it does when the addon is
+running. A player must be able to read and repair settings, and reach the panel, while the addon is
+off, which is precisely when they are most likely to need to; and `enable` above all, or the switch
+only goes one way. The dispatcher and the settings registration are **setup, not features**: they
+come up on load in either state.
 
-The **live set** is `LIVE_WHILE_DISABLED`, named once as data:
+> The standard narrowed this surface to `enable` and `help` at v2.56.0 and **reversed it at
+> v2.57.0**, the same day. It failed on the first thing anyone tried: `/kcd` on a disabled addon
+> answered with a refusal instead of opening the panel — the one surface a player uses to switch it
+> back on by hand. The round trip is recorded rather than erased, upstream and here.
 
-* `slash-commands-§2`'s twelve — `help`, `config`, `version`, `enable`, `disable`, `debug`, `perf`, and the schema CLI `get` / `set` / `list` / `reset` / `resetall`. A player must be able to read and repair settings, and reach the panel, while the addon is off — which is precisely when they are most likely to need to — and `enable` above all, or the pair is one-way. `debug` and `perf` are diagnostics rather than features.
-* **plus `spells`, which is this addon's own call.** The per-spec spell lists are stored **arrays**: an array is addressable as a whole while its members deliberately are not, so no schema row covers them and `get` / `set` / `list` / `reset` cannot reach them at all. `/kcd spells` is their only CLI route, which makes it the schema CLI for that data rather than a feature verb. It configures; it does not drive.
+**The one refusal is `slash-commands-§2`'s SHOULD**, and this addon takes it: a verb that *drives
+the addon's features* answers on **one** tagged line naming `/kcd enable` and does nothing else.
 
-What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no grid to unlock — and **`resetposition`**, which re-anchors the grid, fires `CONFIG_CHANGED` so the live grids move, and then echoes *icon grid position reset* at a player who can see no grid.
+**The gate is no longer this addon's code.** `LibKa0s-Slash-1.0` carries it (minor 14, vendored at v1.42.0):
+`settings/Slash.lua` passes `isEnabled` (asked at dispatch time, never cached, so the command after
+an `enable` works) and `brandName`, and the dispatcher refuses the host's own feature verbs *after*
+the `COMMANDS` lookup. That ordering is a behavior the host-side wrapper this replaced never got
+right: a **typo** is not a refusal — nothing was refused, the addon genuinely did not understand —
+so a misspelling still gets `unknown command '<verb>'` and the index.
 
-The flag is read off `db.profile.enabled` (default true on a missing profile, exactly as `modules/IconGrid.lua` and `modules/Cooldowns.lua` read it) rather than through `Helpers.Get`: the `enabled` row is **composed**, so a load without LibKa0s has no row to resolve, and a gate that silently refused every feature verb on that load would be worse than the failure it guards against. The reader is a file-local: the gate is the only thing that consults it, and the harness reaches the gate through the verbs rather than through the predicate, so there is nothing for an export to serve. Pinned in `tests/test_slash.lua`, which asserts for every gated verb both that it *said so* and that it *did not reach the write seam*.
+The **refusal line is the collection's, not this addon's**: one sentence, built by the library from
+`lib.DISABLED_LINE_FORMAT`, the brand name and the slash. There is no locale key for it here and a
+descriptor `L` override deliberately does not reach it. The launcher's refused left click prints
+**that same line**, through `NS.Slash.PrintDisabledLine`, rather than a second copy of it.
+
+The **live set** is a union, built in `settings/Slash.lua` and never a typed copy:
+
+* the library's twelve, which are the standard's reserved verbs. A host MUST NOT refuse any of them,
+  and building from `lib.LIVE_VERBS` means a thirteenth arriving in a future LibKa0s tag is live the
+  day it is vendored rather than silently refused;
+* **plus `spells`, which is this addon's own call** (`NS.EXTRA_LIVE_VERBS`, `core/KickCD.lua`). The
+  per-spec spell lists are stored **arrays**: an array is addressable as a whole while its members
+  deliberately are not, so no schema row covers them and `get` / `set` / `list` / `reset` cannot
+  reach them at all. `/kcd spells` is their only CLI route, which makes it the schema CLI for that
+  data rather than a feature verb. It configures; it does not drive.
+
+What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
+KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no
+grid to unlock — and **`resetposition`**, which re-anchors the grid, fires `CONFIG_CHANGED` so the
+live grids move, and then echoes *icon grid position reset* at a player who can see no grid.
+
+`isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
+reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
+gate and the teardown can never disagree about whether the addon is on. It defaults to true on a
+missing profile, because the `enabled` row is **composed** and a load without LibKa0s has no row to
+resolve; a gate that silently refused every feature verb on that load would be worse than the
+failure it guards against.
+
+Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
 ## Top-level commands
 

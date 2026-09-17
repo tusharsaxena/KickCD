@@ -555,7 +555,17 @@ function Cooldowns:RegisterLifecycleEvents()
     self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
 end
 
-function Cooldowns:OnEnable()
+--- ONE WAY UP, and OnEnable is not it — Resume is (slash-commands-§7).
+---
+--- The module's whole start-up lives here so that the login path and the
+--- stand-up path cannot drift: a registration added to one and forgotten in the
+--- other is how an addon comes back from `disable` half alive. OnEnable below is
+--- a two-line front door onto this, and the latch's standUp calls it directly.
+---
+--- Rebuilt FROM CURRENT STATE: the watched table is derived fresh from the
+--- profile's spell list as it is NOW, so a spell enabled while the addon was off
+--- is watched the moment it comes back (performance-§6).
+function Cooldowns:Resume()
     self.watched = {}
 
     -- Game events that signal cooldown / usability / charge changes.
@@ -565,7 +575,13 @@ function Cooldowns:OnEnable()
     -- one Refresh on the next frame via a zero-delay throttle. Refresh ignores
     -- its args (it re-polls the watched table fresh), so the throttle's
     -- trailing-args semantics are irrelevant here.
-    self._refreshCoalesced = NS.Util.Throttle(0, function() self:Refresh() end)
+    --
+    -- The canceller is kept, and it is not optional: this is the addon's one
+    -- coalescing timer, and a coalescing timer that wakes up on a stood-down
+    -- addon to find nothing to poll is the shape §7 names as the most expensive
+    -- survivor of the lot.
+    self._refreshCoalesced, self._cancelRefresh =
+        NS.Util.Throttle(0, function() self:Refresh() end)
     self:RegisterLifecycleEvents()
 
     -- Internal messages (closed list).
@@ -578,6 +594,30 @@ function Cooldowns:OnEnable()
     if _G.IsLoggedIn and _G.IsLoggedIn() then
         self:Rebuild()
     end
+end
+
+--- Stand this module down: every game event AND every message registration
+--- released, the coalescer's pending timer canceled, the watched table dropped.
+---
+--- MESSAGES GO TOO, which they did not when this was a perf-only suspend. A
+--- subscription is a registration, §7 does not carve the addon's own bus out of
+--- "actually UNREGISTERED", and Resume above no longer needs the module to hear a
+--- republish — the latch calls it directly.
+function Cooldowns:Suspend()
+    self:UnregisterAllEvents()
+    self:UnregisterAllMessages()
+    if self._cancelRefresh then self._cancelRefresh() end
+    self._refreshCoalesced, self._cancelRefresh = nil, nil
+    self.watched = {}
+end
+
+function Cooldowns:OnEnable()
+    -- The latch may ALREADY be down when AceAddon gets here: NS:OnEnable takes
+    -- the stored `disabled` hold, and AceAddon enables the addon before its
+    -- modules. Registering here and being torn down a moment later would be a
+    -- brief, invisible window in which a disabled addon watched the client.
+    if NS.IsDown and NS.IsDown() then return end
+    self:Resume()
 end
 
 --- AceEvent handler for the chatty SPELL_UPDATE_* family. Forwards into the

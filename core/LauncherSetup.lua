@@ -133,7 +133,29 @@ NS.Launcher = Launcher:New({
     -- THE RUNG. Its presence is the whole declaration (launcher-§2): a rung-(c)
     -- addon passes nothing rather than passing openSettings, so a skipped rule
     -- cannot look like a choice.
-    onClick = function() if NS.ToggleLock then NS.ToggleLock() end end,
+    --
+    -- REFUSED WHILE THE ADDON IS DISABLED (launcher-§2, slash-commands-§7). Rung
+    -- (b) drives a preview switch and a preview switch is a FEATURE, so the left
+    -- button prints the collection's one refusal line and does nothing else --
+    -- and in particular does not write SavedVariables, which is what a minimap
+    -- button with no disabled gate does every single time it is clicked. The line
+    -- comes from the library through NS.Slash.PrintDisabledLine, never re-spelled
+    -- here.
+    --
+    -- THE RUNG-(c) CARVE-OUT DOES NOT REACH THIS ADDON, and it is worth saying
+    -- why rather than leaving a reader to wonder: a rung-(c) left click opens the
+    -- settings panel, which §7 keeps standing, so refusing it would decline one
+    -- button for doing exactly what the button beside it must keep doing. KickCD
+    -- is rung (b) -- this click toggles the lock, not the panel -- so the refusal
+    -- applies. RIGHT-click is the library's and opens the panel in either state,
+    -- which is what keeps the panel one click away from a disabled addon.
+    onClick = function()
+        if NS.MasterEnabled and not NS.MasterEnabled() then
+            if NS.Slash and NS.Slash.PrintDisabledLine then NS.Slash.PrintDisabledLine() end
+            return
+        end
+        if NS.ToggleLock then NS.ToggleLock() end
+    end,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
     debug = function(tag, message) if NS.Debug then NS.Debug(tag, "%s", message) end end,

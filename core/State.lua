@@ -158,6 +158,7 @@ boot:SetScript("OnEvent", function(self, event)
         -- other example of the pattern; that file is gone -- its wrapper is
         -- lib.__PatchLSM30Border in LibKa0s now -- so this is the only
         -- one-shot PLAYER_LOGIN listener left in the addon.)
+        State.__seeded = true
         self:UnregisterEvent("PLAYER_LOGIN")
     end
     -- Fan out the freshly-written flag so subscribers (IconGrid,
@@ -170,3 +171,45 @@ boot:SetScript("OnEvent", function(self, event)
         NS:SendMessage("Ka0s_KickCD_COMBAT_STATE", { inCombat = State.inCombat })
     end
 end)
+
+-- ---------------------------------------------------------------------------
+-- The bootstrap listener under the stand-down latch (slash-commands-§7)
+-- ---------------------------------------------------------------------------
+--
+-- This frame is the addon's ONLY raw registration, and a raw registration is
+-- exactly what the draw gate used to leave behind: a disabled addon whose
+-- PLAYER_REGEN_* subscription still fires, still enters Lua, still publishes
+-- COMBAT_STATE onto a bus nobody is listening to, and -- with debug on -- still
+-- prints "entered" at a player who thinks the addon is off. Gone, not gated:
+-- §7 is explicit that a handler which merely early-returns has not stopped
+-- watching, it has stopped reacting, and it still pays the dispatch.
+--
+-- NOTHING IS HELD PENDING HERE. §7 permits a disabled addon to keep exactly one
+-- registration -- a secure or attribute teardown that combat lockdown refused,
+-- finished on PLAYER_REGEN_ENABLED. KickCD owns no secure frame, no attribute
+-- driver and no state driver, so it has nothing to hold pending and keeps
+-- nothing: the disabled registration set is EMPTY, and tests/test_disabled.lua
+-- asserts that by count.
+
+--- Release the bootstrap subscription. Called by the latch's standDown.
+function State.StandDown()
+    boot:UnregisterAllEvents()
+end
+
+--- Re-arm it, and re-seed the combat flag FROM CURRENT STATE rather than from
+--- whatever it held when the addon went down: a fight can start and finish while
+--- the addon is switched off, and the events that would have corrected the flag
+--- were not being watched. PLAYER_LOGIN is deliberately not re-registered -- it
+--- fires once per session and the seed below is what it was for.
+function State.StandUp()
+    boot:RegisterEvent("PLAYER_REGEN_DISABLED")
+    boot:RegisterEvent("PLAYER_REGEN_ENABLED")
+    -- PLAYER_LOGIN comes back only if it has not fired yet. It is a one-shot --
+    -- the handler releases it once it has seeded the flag -- so restoring it
+    -- unconditionally would leave a dead subscription on every stand-up, and NOT
+    -- restoring it at all would silently drop the seed for an addon that was
+    -- disabled at load and enabled again before login. `__seeded` is the one
+    -- thing that tells the two cases apart.
+    if not State.__seeded then boot:RegisterEvent("PLAYER_LOGIN") end
+    State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
+end

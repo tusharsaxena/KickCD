@@ -1041,8 +1041,26 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd set` still writes while disabled — repair, not just read
 - `/kcd enable` above all — the switch is never one-way
 - nothing refuses while the addon is ENABLED
-- the refusal line is routed through NS.L, not written at the call site
+- the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
+
+### test_disabled.lua (15)
+
+- baseline: an ENABLED addon registers something worth standing down
+- DISABLED: the registration set is EMPTY, by count and by name
+- DISABLED: nothing is left armed to wake up
+- DISABLED: every frame that was on screen is off it
+- DISABLED: firing every event it USED to watch changes nothing
+- DISABLED: a settings change does not bring it back
+- DISABLED: every reserved verb still answers, and the bare /kcd opens the panel
+- DISABLED: a feature verb refuses on ONE line and reaches no write seam
+- DISABLED: the launcher's LEFT click is refused and writes nothing
+- DISABLED: the launcher's RIGHT click still opens the panel
+- RE-ENABLED: the registration set comes back, exactly
+- RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot
+- LATCH: releasing the perf hold does NOT resurrect a disabled addon
+- LATCH: the holds are order-independent
+- LATCH: a profile switch that flips `enabled` is honored
 
 ### test_opensettings.lua (6)
 
@@ -1064,7 +1082,7 @@ badge and any count quoted in the docs must agree with it.
 - nesting is declared for every bucket that runs inside another
 - the nesting the descriptor declares is the nesting a run OBSERVES
 - instrumentation is inert when capture is off
-- the show decisions consult Perf.suspended as step 0, at the source
+- the show decisions consult the LATCH as step 0, at the source
 - suspend releases the per-unit dispatch frames AceEvent cannot reach
 - enabling a unit while suspended does not re-register its frames mid-capture
 - resume restores from CURRENT state, not from a snapshot
@@ -1210,6 +1228,7 @@ badge and any count quoted in the docs must agree with it.
 | test_spelling.lua | 3 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 41 |
+| test_disabled.lua | 15 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
@@ -1219,4 +1238,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **973** |
+| **Total** | **988** |

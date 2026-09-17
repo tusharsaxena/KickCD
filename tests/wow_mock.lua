@@ -464,16 +464,87 @@ local DB_STUBS = {
 local function build()
     local mocks = kitMockBase()
 
-    -- Deferred-timer queue so Throttle / C_Timer.After can be flushed on demand.
-    local timers = {}
-    mocks.__timers = timers
-    mocks.__flushTimers = function()
-        -- Copy-and-clear so a callback that schedules another timer doesn't
-        -- mutate the list mid-iteration.
-        local pending = timers
-        mocks.__timers = {}
-        timers = mocks.__timers
-        for _, cb in ipairs(pending) do cb() end
+    -- ── Timers: the KIT's queue, not a second one ──────────────────────────
+    --
+    -- This file used to replace C_Timer wholesale with a plain array of
+    -- callbacks and drain it from __flushTimers. Kit revision 22 made the queue
+    -- CALLABLE -- `mocks.__timers()` answers the LIVE set: every un-canceled
+    -- timer and ticker and every frame still carrying an OnUpdate -- and that
+    -- is the surface tests/test_disabled.lua asks "is anything still going to
+    -- wake up?" through (slash-commands-§7 step 4). A local array here would
+    -- answer that question over a table the addon's own timers never reach, and
+    -- a stand-down suite that measures the wrong queue passes over a live one.
+    --
+    -- So After and NewTimer are the kit's now, cancellation and all, and
+    -- __flushTimers is the kit's __fireTimers under the name every existing
+    -- suite already calls.
+    mocks.__flushTimers = mocks.__fireTimers
+
+    -- NewTicker is KickCD's to add: the kit models one-shots and AceTimer, and
+    -- this addon's cooldown-text countdown is a REPEATING C_Timer ticker
+    -- (modules/IconGrid_Render.lua). Modeled as a queue entry that re-arms
+    -- itself after each fire and carries the handle, so the live set reports it
+    -- for as long as it is armed and stops the moment it is canceled. Until
+    -- now this returned a bare frame stub: a ticker that never fired, never
+    -- appeared in any queue, and could not be told apart from a canceled one --
+    -- which is exactly the survivor the stand-down rule is about.
+    local function newTicker(delay, fn)
+        local handle = {}
+        -- `cancelled` with two Ls is the KIT's field name, not this file's
+        -- prose: tests/_kit/mock_record.lua's live-set survey reads
+        -- `t.timer.cancelled`, and AceTimer-3.0 spells it that way too. A US
+        -- spelling here would be a handle the survey cannot see as cancelled.
+        handle.Cancel      = function() handle.cancelled = true end
+        handle.IsCancelled = function() return handle.cancelled == true end
+        local function arm()
+            mocks.__timers[#mocks.__timers + 1] = {
+                delay = delay,
+                timer = handle,
+                fn    = function()
+                    if handle.cancelled then return end
+                    fn(handle)
+                    arm()
+                end,
+            }
+        end
+        arm()
+        return handle
+    end
+    mocks.C_Timer.NewTicker = newTicker
+
+    -- ── The registration set, in ONE place ─────────────────────────────────
+    --
+    -- The kit's `__registrations()` surveys the AceEvent halves -- events,
+    -- messages, buckets -- and the frames the KIT built. This addon's frames are
+    -- this file's own model (see the header: CreateTexture returns a distinct
+    -- object, which the kit deliberately does not adopt), so the kit's survey
+    -- cannot see the two kinds that matter most here: core/State.lua's raw
+    -- PLAYER_REGEN_* listener and the per-unit UNIT_SPELLCAST_* dispatch frames.
+    --
+    -- This is the union, in the kit's own row shape, so a suite asks ONE
+    -- question. It removes on unregister in both halves -- the kit's registry
+    -- does, and UnregisterEvent / UnregisterAllEvents above clear `__events` --
+    -- which is the half that makes "the registration set is empty" falsifiable.
+    mocks.__registrationSet = function()
+        local out = {}
+        for _, reg in ipairs(mocks.__registrations()) do out[#out + 1] = reg end
+        for _, f in ipairs(mocks.__frames or {}) do
+            for event, unit in pairs(f.__events or {}) do
+                out[#out + 1] = {
+                    target = f,
+                    kind   = unit == true and "frame" or "unit",
+                    event  = event,
+                    unit   = unit ~= true and unit or nil,
+                }
+            end
+        end
+        table.sort(out, function(a, b)
+            local ka, kb = tostring(a.kind), tostring(b.kind)
+            if ka ~= kb then return ka < kb end
+            if a.event ~= b.event then return tostring(a.event) < tostring(b.event) end
+            return tostring(a.unit) < tostring(b.unit)
+        end)
+        return out
     end
 
     -- -------------------------------------------------------------------
@@ -809,11 +880,9 @@ local function build()
     -- needs to.
     mocks.date = function(fmt) return os.date(fmt or "%H:%M:%S", 0) end
     mocks.GetTimePreciseSec = function() return 0 end
-    mocks.C_Timer = {
-        After = function(_, fn) timers[#timers + 1] = fn end,
-        NewTimer = function(_, fn) timers[#timers + 1] = fn; return makeFrame() end,
-        NewTicker = function() return makeFrame() end,
-    }
+    -- C_Timer is the KIT's -- see "Timers: the KIT's queue, not a second one"
+    -- above, where NewTicker is layered onto it. Not re-declared here: a second
+    -- table would drop the recording half on the floor.
 
     -- -------------------------------------------------------------------
     -- Spell / unit / combat APIs (safe inert returns)

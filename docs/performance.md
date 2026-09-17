@@ -136,26 +136,47 @@ free when idle; a perf run is explicit user action and none of it executes unles
 `/kcd perf start`. Gating it once meant a user who started a run without first enabling debug logging
 watched an empty console while a capture plainly ran.
 
-### Suspend
+### Suspend — one of two holds on the stand-down latch
 
 The A/B's B-arm makes the addon inert **without a `/reload`**. Reloading, or disabling the addon
 through the AddOns list, shifts shared-frame ownership — the exact confound that makes the built-in
 profiler untrustworthy. So the flip happens in place, live, mid-session.
 
-Two halves, and both are needed:
+**It is no longer this file's own teardown.** Since the LibKa0s v1.42.0 re-vendor the suspended arm takes the
+`perf` **hold** on `LibKa0s-Lifecycle-1.0`, the same latch `/kcd disable` takes the `disabled` hold
+on, and the host's own `standDown` / `standUp` (`core/LifecycleSetup.lua`) are what run on the edge.
+`core/PerfSetup.lua` passes `lifecycle = NS.Lifecycle` and no longer carries `suspend` / `resume`
+callbacks at all. The full picture is
+[ARCHITECTURE.md → The stand-down](ARCHITECTURE.md#the-stand-down-disabled-is-total); what matters
+here is the part that is about captures:
 
-1. **The show decisions consult `NS.Perf.suspended` as step 0** of their ladder — `IconGrid`'s
-   `shouldBeVisible` and `Castbar`'s `isVisible`. Nothing (a combat transition, a target swap, a
-   settings change) can re-show a grid behind suspend's back. Suspend does **not** work by hiding
-   frames from the setup file.
-2. **Each module's `Suspend()` releases the work** — its game events *and* its private per-unit
-   dispatch frames, which AceEvent's `UnregisterAllEvents` cannot reach. `Cooldowns` has no per-unit
-   frames but may have a poll already queued, so its events are unregistered too.
+- **The addon is down while ANY hold is taken and comes back only when the LAST one is released.**
+  `/kcd disable` is a live verb, so a player really can switch the addon off mid-capture — and
+  `/kcd enable` there too. A `resume` that stood the addon up directly would resurrect it under a
+  player who had just turned it off; a `disable` that stood it down on its way out would ruin the
+  run. Both go through release-and-re-evaluate.
+- **`NS.Perf.suspended` still answers and still means the same thing.** It is a **view** of the
+  `perf` hold rather than a boolean beside it, and assigning to it raises — the second copy is
+  precisely what made the bug above reachable.
+- **The two holds have different lifetimes.** `perf` is session-only and is never persisted;
+  `disabled` is the stored `enabled` path and surviving a `/reload` is the whole point of it.
+- **`finish` releases its OWN hold rather than standing the addon up** (`performance-§6`). An addon
+  the player left disabled at the end of a run stays disabled.
 
-`resume` rebuilds from **current** state, not from a snapshot: a unit toggled while suspended comes
-back correctly (`performance-§6`). No `CONFIG_CHANGED` is published from the setup file — the
-modules' own resume paths re-anchor and re-render, so `core/PerfSetup.lua` never becomes a sixth
-sender of a message [message-bus.md](message-bus.md) governs.
+The two halves the teardown itself needs are unchanged, and both are still needed:
+
+1. **The show decisions consult the latch as step 0** of their ladder — `IconGrid`'s
+   `shouldBeVisible` and `Castbar`'s `isVisible` ask `NS.IsDown()`. Nothing (a combat transition, a
+   target swap, a settings change) can re-show a grid behind the latch's back. It does **not** work
+   by hiding frames from a setup file.
+2. **Each module's `Suspend()` releases the work** — its game events, its bus subscriptions *and*
+   its private per-unit dispatch frames, which AceEvent's `UnregisterAllEvents` cannot reach — and
+   every timer it owns is canceled.
+
+`standUp` rebuilds from **current** state, not from a snapshot: a unit toggled while suspended comes
+back correctly (`performance-§6`). No `CONFIG_CHANGED` is published from the latch — the modules'
+own resume paths re-anchor and re-render, so neither setup file becomes a sixth sender of a message
+[message-bus.md](message-bus.md) governs.
 
 ### The A/B protocol
 

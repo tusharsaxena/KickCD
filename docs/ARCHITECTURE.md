@@ -60,6 +60,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GRID_LAYOUT { uni
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [smoke-tests.md](smoke-tests.md) |
 | Slash-command + debug coverage matrices (what each command produces) | — | [testing.md](testing.md) |
 | Performance instrumentation: the buckets, the offline scenarios, the in-game A/B and suspend | `core/PerfSetup.lua`, `tests/perf.lua` | [performance.md](performance.md), [perf-analysis/README.md](perf-analysis/README.md) |
+| The stand-down latch: one teardown, two named holds (`disabled`, `perf`) | `core/LifecycleSetup.lua`, each module's `Suspend` / `Resume` | [The stand-down](#the-stand-down-disabled-is-total) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
 
@@ -147,7 +148,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `version` | Print the addon version |
 | `config` | Open the settings panel |
 | `enable` | Turn the addon on. A **reserved alias** (`slash-commands-§2`): it writes the Master-controls `enabled` row's own stored path through the same single write seam the checkbox writes through, and holds no state of its own |
-| `disable` | Turn the addon off. The same alias in reverse. `/kcd`, `help`, `config`, `version` and `enable` above all keep working while the addon is disabled — the dispatcher is **setup, not a feature** — so the pair is never one-way |
+| `disable` | Turn the addon off — **totally**: every registration released, every timer canceled, nothing drawn and nothing written from a game event ([The stand-down](#the-stand-down-disabled-is-total)). The same alias in reverse. Every reserved verb keeps answering while it is off, and the bare `/kcd` still opens the panel — the dispatcher and the settings registration are **setup, not features** — so the pair is never one-way |
 | `lock` | Lock the icon grid in place |
 | `unlock` | Unlock the icon grid for dragging |
 | `toggle` | Toggle the icon grid lock state |
@@ -211,11 +212,100 @@ Each entry's `enabled` and `category` fields are player preferences, not members
 
 Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):
 
+Every registration below is released on the stand-down and rebuilt on the stand-up — see
+[The stand-down](#the-stand-down-disabled-is-total). A disabled KickCD is registered for **nothing**.
+
 - **`core/State.lua` bootstrap frame** — the only registration of `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED` / `PLAYER_LOGIN`; owns the `NS.State.inCombat` flag and fans transitions out via `Ka0s_KickCD_COMBAT_STATE`.
 - **`Cooldowns`** — `SPELL_UPDATE_COOLDOWN` / `_USABLE` / `_CHARGES` (coalesced through a `Util.Throttle(0)` so a same-frame burst yields one `Refresh`/frame), `PLAYER_ENTERING_WORLD`, `PLAYER_SPECIALIZATION_CHANGED`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`.
 - **`IconGrid`** — `PLAYER_SPECIALIZATION_CHANGED`, `PLAYER_ENTERING_WORLD`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`, `PLAYER_TARGET_CHANGED`, `PLAYER_FOCUS_CHANGED`, and the cast-event family (`UNIT_SPELLCAST_START` / `_STOP` / `_FAILED` / `_INTERRUPTED` / `_CHANNEL_START` / `_CHANNEL_STOP` / `_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE`) registered through `Util.RegisterUnitCastEvent` (dispatches only when the event's unit matches the instance's unit), plus the four inbound `Ka0s_KickCD_*` messages. Registration is enable-gated per instance: a disabled unit's instance is not built and does not register anything.
 - **`Castbar`** — the `UNIT_SPELLCAST_*` family registered per instance through `Util.RegisterUnitCastEvent` (unit-filtered dispatch: a focus instance only reacts to focus casts), plus `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` and its inbound messages.
 - **`UnitLabel`** — `PLAYER_ENTERING_WORLD` plus its three inbound `Ka0s_KickCD_*` messages (`CONFIG_CHANGED` / `PROFILE_CHANGED` / `GRID_LAYOUT`). No cast-event or combat registration — the label has no state of its own beyond what those messages already trigger a re-`Apply` for.
+
+## The stand-down: disabled is total
+
+**`slash-commands-§7`: *disabled* does not mean hidden, quiet, or skipping a repaint — it means NOT
+RUNNING.** A player who unticks *Enable KickCD* has asked for the same outcome they would get by
+unticking the addon in Blizzard's own AddOns list, minus the `/reload`.
+
+This addon implemented it as a **draw gate** until it re-vendored LibKa0s v1.42.0: `enabled = false`
+hid the grid and the bar, and every registration stayed — so the client went on walking KickCD's
+registration list on every `SPELL_UPDATE_COOLDOWN`, building the argument frame, entering Lua, and
+running the comparison that decided to leave. It had not stopped watching; it had stopped
+**reacting**. From outside, the two look identical, which is how the shape survived several audits
+(`anti-patterns` #85).
+
+### Two holds, one latch
+
+The capability to go inert already existed here: `core/PerfSetup.lua`'s suspend/resume arm, built for
+a capture's Experiment B. Writing a second teardown beside it for *disable* is the anti-pattern
+rather than an implementation detail — two mechanisms that both mean "be inert" drift, and the day
+they disagree the addon is half down. So both reasons are **named holds on one latch**,
+`LibKa0s-Lifecycle-1.0`, wired in **`core/LifecycleSetup.lua`**:
+
+| Hold | Taken by | Lifetime |
+|---|---|---|
+| `disabled` | the stored `enabled` path, through `NS.RefreshEnabledHold()` | **persisted**, by being re-taken at load |
+| `perf` | `LibKa0s-Perf-1.0`'s suspended arm — the host never spells this one | **session-only** |
+
+The addon is **stood down whenever at least one hold is taken, and stands up only when the last one
+is released**. There is no `:StandUp()` to call: releasing a hold is the only route out, which is
+what stops a perf run that ends mid-`disable` from resurrecting an addon the player switched off, and
+a `/kcd enable` typed mid-capture from un-suspending the run. `NS.Perf.suspended` still answers and
+still means the same thing — it is a **view** of the `perf` hold now rather than a boolean beside it,
+and assigning to it raises.
+
+`NS.RefreshEnabledHold()` is called from exactly three places, and between them they cover every way
+the stored value can change: **`settings/Panel.lua`'s `Helpers.Set`** (the single write seam the
+checkbox, `/kcd set enabled`, and the `enable` / `disable` verbs all land on), **`core/Database.lua`'s
+profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
+§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
+for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
+module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
+
+### What stands down
+
+`standDown` releases, and `standUp` rebuilds **from current state** (never from a snapshot — a
+setting changed while the addon was off has to come back as it is now):
+
+- **`core/State.lua`'s bootstrap frame** — the addon's only raw registration. Gone, not gated.
+  `PLAYER_LOGIN` comes back on stand-up only if it has not fired yet.
+- **`Cooldowns`, `IconGrid`, `Castbar`, `UnitLabel`** — each module's `Suspend` drops its game
+  events, its **bus subscriptions**, and its private per-unit `UNIT_SPELLCAST_*` dispatch frames.
+  Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
+  the login path and the stand-up path cannot drift.
+- **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
+  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
+  true 60 Hz handler.
+- **`settings/Spells.lua`'s five subscriptions** — the editor's refreshers and the cooldown-manager
+  cache invalidator. The **page** survives; its reaction to game events does not.
+- **Visibility is enforced at the source.** The show ladders' first rung is `NS.IsDown()`, so nothing
+  — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
+  back. Frames are not hidden imperatively, because a hidden frame comes back.
+
+**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
+one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
+frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
+disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
+name. An addon that grows a secure frame must hold its teardown pending rather than extend
+`standDown`.
+
+### What survives, because it is setup
+
+The chat command, the dispatcher and `COMMANDS`; the settings-category registration and the panel
+body; the AceDB handle, the single write seam and AceDB's three profile callbacks; the launcher's
+registration. None of it is a feature, all of it is how the player gets the addon back. What the
+**slash surface** does while disabled is [slash-dispatch.md](slash-dispatch.md#the-disabled-state-the-gate-is-the-librarys-the-judgment-is-ours);
+what the **launcher click** does is below.
+
+### The launcher while disabled
+
+The button stays on the minimap and the broker row stays in the display — `minimap.hide` is a
+per-installation display preference and says nothing about whether the addon is running. **Left-click
+is refused**: KickCD is `launcher-§2` rung (b), the left button drives the lock, and the lock is this
+addon's preview switch — a feature. It prints the collection's one refusal line and does nothing
+else, and in particular writes no SavedVariables. **Right-click still opens the settings panel**, in
+either state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two
+routes §7 nominates for reaching the panel of an addon that is off.
 
 ## Taint notes
 
@@ -350,10 +440,11 @@ deviations, and there is nothing to record beyond this sentence.
 13. `core/Database.lua` (defines the Database class and the migration runner; the `units.target`/`units.focus` tree it assembles into AceDB's defaults is `defaults/Profile.lua`, read at call time because `# Defaults` loads after `# Core`; doesn't init the DB at file-load time)
 14. `core/KickCD.lua` (`AceAddon-3.0:NewAddon(NS, "KickCD", ...)` promotes the private `NS` table in place — no `_G.KickCD` rebind)
 15. `core/LauncherSetup.lua` (`LibKa0s-Launcher-1.0` descriptor — publishes `NS.Launcher`, the one LibDataBroker object behind the minimap button and the broker plugin. Position is conventional: nothing here resolves at load beyond `LibStub`, and both click handlers reach `NS.ToggleLock` and `NS:OpenSettings` at call time. It sits below `core/KickCD.lua` only so a reader meets the lock switch before the button that drives it; `NS:OnEnable` is what calls `Register()`)
-16. `core/PerfSetup.lua` (`LibKa0s-Perf-1.0` descriptor — publishes `NS.Perf`, backing `/kcd perf`. **Last** in the core block: it needs `NS.Util.print`, the debug-log sink, and `NS.VERSION`, and it must precede every module that takes `local Perf = NS.Perf` as a load-time upvalue)
-17. `defaults/Profile.lua` (sets `NS.C` / `NS.DEFAULT_PROFILE` — the profile defaults tree, and the only place a profile default is hardcoded, `savedvariables-§2`)
-18. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
-19. `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua` (per-unit instance manager) → `modules/Castbar_Skin.lua` (peeled: the config-driven `Castbar:Reskin` — sizing, orientation, insets, spark, fonts, text anchors, per-state textures/colors/borders) → `modules/Castbar_Debug.lua` (peeled: the `Castbar:DebugDump(unit)` diagnostic behind `/kcd debug castbar`, re-opening the already-registered module) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame). `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`), and both `Reskin` and `DebugDump` peeled off `Castbar.lua`, to stay under the 1500-LOC cap.
-20. `settings/Slash.lua` (`LibKa0s-Slash-1.0` descriptor — the `/kcd` dispatcher and schema CLI; loads after `core/KickCD.lua` has defined `NS.COMMANDS`, which is passed in) → `settings/OptionsSetup.lua` (`LibKa0s-Options-1.0` descriptor — **is** `NS.Settings.Helpers`, decorated in place by the three `Panel*` files; must precede every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load) → `settings/Panel.lua` → `settings/Panel_Widgets.lua` → `settings/Panel_Render.lua` → `settings/{General, Icons, Castbar, Label, Spells, Profiles}.lua` (the two `Panel_*` siblings were peeled from `Panel.lua` to stay under the 1500-LOC cap — KCD-24; they must load before the per-tab files that call the makers / renderers)
+16. `core/LifecycleSetup.lua` (`LibKa0s-Lifecycle-1.0` descriptor — publishes `NS.Lifecycle`, `NS.IsDown`, `NS.MasterEnabled` and `NS.RefreshEnabledHold`, the stand-down latch both `disable` and the perf harness take a hold on. **Above `core/PerfSetup.lua`**, which passes the latch into its descriptor at load and raises at `:New` without it, and below `core/CoreSetup.lua` for the printer. Everything else it touches — the modules it stands down — it resolves at call time)
+17. `core/PerfSetup.lua` (`LibKa0s-Perf-1.0` descriptor — publishes `NS.Perf`, backing `/kcd perf`. **Last** in the core block: it needs `NS.Util.print`, the debug-log sink, and `NS.VERSION`, and it must precede every module that takes `local Perf = NS.Perf` as a load-time upvalue)
+18. `defaults/Profile.lua` (sets `NS.C` / `NS.DEFAULT_PROFILE` — the profile defaults tree, and the only place a profile default is hardcoded, `savedvariables-§2`)
+19. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
+20. `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua` (per-unit instance manager) → `modules/Castbar_Skin.lua` (peeled: the config-driven `Castbar:Reskin` — sizing, orientation, insets, spark, fonts, text anchors, per-state textures/colors/borders) → `modules/Castbar_Debug.lua` (peeled: the `Castbar:DebugDump(unit)` diagnostic behind `/kcd debug castbar`, re-opening the already-registered module) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame). `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`), and both `Reskin` and `DebugDump` peeled off `Castbar.lua`, to stay under the 1500-LOC cap.
+21. `settings/Slash.lua` (`LibKa0s-Slash-1.0` descriptor — the `/kcd` dispatcher and schema CLI; loads after `core/KickCD.lua` has defined `NS.COMMANDS`, which is passed in) → `settings/OptionsSetup.lua` (`LibKa0s-Options-1.0` descriptor — **is** `NS.Settings.Helpers`, decorated in place by the three `Panel*` files; must precede every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load) → `settings/Panel.lua` → `settings/Panel_Widgets.lua` → `settings/Panel_Render.lua` → `settings/{General, Icons, Castbar, Label, Spells, Profiles}.lua` (the two `Panel_*` siblings were peeled from `Panel.lua` to stay under the 1500-LOC cap — KCD-24; they must load before the per-tab files that call the makers / renderers)
 
 `NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the three shape-driven migrators unconditionally (`Database:FoldLegacyUnits` → `Database:BackfillLabelStyle` → `Database:MigrateSpecKeys`) then the version-gated scaffold `Database:MigrateProfile` (`CURRENT_DB_VERSION = 5`; registered steps v1→v2 `FoldLegacyUnits`, v2→v3 `MigrateSpecKeys`, v3→v4 `MigrateColorShape`, v4→v5 `MigrateFontFlags`), and seeds spells on first profile creation. `<Module>:OnEnable` calls `ReconcileUnits()`, which registers messages and game events **per currently-enabled unit** (target by default; focus only if `units.focus.enabled`). `NS:OnEnable` — which AceAddon fires at `PLAYER_LOGIN` — calls `NS.CreateOptionsPanel()` once, which is where the library registers the Blizzard category and drains its page-builder queue, so per-tab builders run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

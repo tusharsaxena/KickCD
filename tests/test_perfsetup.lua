@@ -366,7 +366,7 @@ end)
 
 -- ── suspend / resume ────────────────────────────────────────────────────────
 
-test("the show decisions consult Perf.suspended as step 0, at the source", function()
+test("the show decisions consult the LATCH as step 0, at the source", function()
     -- performance-§6: visibility MUST be enforced by the addon's own
     -- show-decision, never by suspend reaching in and hiding frames. A hidden
     -- frame comes back on the next combat transition or target swap, and the
@@ -378,12 +378,16 @@ test("the show decisions consult Perf.suspended as step 0, at the source", funct
     assertTrue(IconGrid ~= nil)
     assertTrue(IconGrid.ShouldBeVisible ~= nil, "IconGrid.ShouldBeVisible must be published")
 
+    -- DRIVEN THROUGH THE LATCH, not by assigning `Perf.suspended`. That field is
+    -- a VIEW of the latch's `perf` hold since LibKa0s-Perf-1.0 minor 12 -- a
+    -- write to it raises, deliberately, because a boolean beside the latch is
+    -- exactly the second copy that let a resume resurrect an addon the player had
+    -- disabled mid-capture (slash-commands-§7).
     local fakeInst = { unit = "target" }
-    NS2.Perf.suspended = false
     local beforeCall = IconGrid.ShouldBeVisible(fakeInst)
-    NS2.Perf.suspended = true
+    NS2.Perf.Suspend()
     local whileSuspended = IconGrid.ShouldBeVisible(fakeInst)
-    NS2.Perf.suspended = false
+    NS2.Perf.Resume()
 
     assertEqual(whileSuspended, false, "the grid must refuse to show while suspended")
     assertTrue(beforeCall ~= nil, "sanity: the ladder answered before suspending")
@@ -420,7 +424,7 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
     -- a unit toggled ON — because ReconcileUnits would then call EnableUnit and
     -- rebuild all 8 dispatch frames per unit in the middle of a capture.
     --
-    -- red under: deleting `if NS.Perf and NS.Perf.suspended then return end`
+    -- red under: deleting `if NS.IsDown and NS.IsDown() then return end`
     -- from IconGrid:ReconcileUnits
     local inst = T.load(true, true)
     local NS2 = inst.NS
@@ -651,9 +655,20 @@ test("the VENDORED library ignores a fallback-synthesized locale entry", functio
     local lib = T.mocks.LibStub("LibKa0s-Perf-1.0", true)
     assertTrue(lib ~= nil, "the vendored Perf major must be registered")
 
+    -- `lifecycle` is REQUIRED since minor 12 and `suspend` / `resume` are gone:
+    -- the suspended arm takes the `perf` hold on the host's latch rather than
+    -- calling two callbacks of its own (slash-commands-§7). A throwaway latch is
+    -- enough here -- this case is about the locale resolver -- but it has to be a
+    -- real one, because :New refuses a descriptor without it.
+    local Lifecycle = T.mocks.LibStub("LibKa0s-Lifecycle-1.0", true)
+    assertTrue(Lifecycle ~= nil, "the vendored Lifecycle major must be registered")
     local P = lib:New({
         name = "TrapProbe", sv = "TrapProbeDB",
-        suspend = function() end, resume = function() end,
+        lifecycle = Lifecycle:New({
+            name      = "TrapProbe",
+            standDown = function() end,
+            standUp   = function() end,
+        }),
         -- The exact shape every Ka0s host's locale table has.
         L = setmetatable({}, { __index = function(_, k) return k end }),
     })

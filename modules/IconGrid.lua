@@ -175,15 +175,18 @@ end
 -- mode and always show — otherwise the grid would be invisible exactly
 -- when they need to drag it.
 local function shouldBeVisible(inst)
-    -- Step 0, above everything: a suspended addon shows nothing.
+    -- Step 0, above everything: a STOOD-DOWN addon shows nothing, for either
+    -- reason it can be down — the player disabled it, or the perf harness
+    -- suspended it. One question, asked of the latch (core/LifecycleSetup.lua),
+    -- rather than two flags that can disagree.
     --
-    -- Enforced HERE rather than by having Perf's suspend reach in and hide the
+    -- Enforced HERE rather than by having the stand-down reach in and hide the
     -- grids, because imperative hiding is a snapshot — the next combat
-    -- transition, target swap or settings change re-shows the grid behind
-    -- suspend's back, and the suspended arm then measures the addon still
-    -- working (performance-§6). A check at the source holds for the whole
-    -- suspended window.
-    if NS.Perf and NS.Perf.suspended then return false end
+    -- transition, target swap or settings change re-shows the grid behind the
+    -- latch's back, and the addon is then visibly running while it claims to be
+    -- off (slash-commands-§7, performance-§6). A check at the source holds for
+    -- the whole window.
+    if NS.IsDown and NS.IsDown() then return false end
     if not isEnabled() then return false end
     local profile = NS.db and NS.db.profile
     if profile and profile.locked == false then return true end
@@ -668,20 +671,25 @@ function IconGrid:DisableUnit(unit)
     inst.enabled = false
 end
 
---- Make this module inert for a performance capture, WITHOUT a /reload and
---- without touching `inst.enabled`.
+--- Make this module INERT -- for either reason the latch can be down: a perf
+--- capture's second arm, or a player who switched the addon off
+--- (slash-commands-§7). One teardown, because two would drift.
 ---
 --- The enabled flag is deliberately left alone: it is the user's setting, and
---- Resume rebuilds from the CURRENT enabled set so a unit toggled while
---- suspended comes back correctly (performance-§6). What goes away is the work —
---- the module's own game events and the private per-unit dispatch frames, which
---- AceEvent's UnregisterAllEvents cannot reach because it only knows its own
---- table.
+--- Resume rebuilds from the CURRENT enabled set so a unit toggled while the
+--- addon was down comes back correctly (performance-§6). What goes away is
+--- everything that costs anything — the module's own game events, its bus
+--- subscriptions, the private per-unit dispatch frames (which AceEvent's
+--- UnregisterAllEvents cannot reach because it only knows its own table), and
+--- the shared cooldown-text ticker.
 ---
---- Messages are NOT unregistered. Resume republishes on the bus, and a module
---- that had torn down its subscriptions would never hear it.
+--- MESSAGES GO TOO, which they did not while this was a perf-only suspend. A
+--- subscription is a registration and §7 carves nothing out for the addon's own
+--- bus; Resume is called directly by the latch now, so nothing depends on this
+--- module hearing a republish it was never going to hear anyway.
 function IconGrid:Suspend()
     self:UnregisterAllEvents()
+    self:UnregisterAllMessages()
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         if inst and inst.eventFrames then
@@ -690,12 +698,30 @@ function IconGrid:Suspend()
         end
         if inst and inst.grid then inst.grid:Hide() end
     end
+    -- The 0.1s cooldown-text ticker is module-level and outlives any single
+    -- icon, so nothing in the loop above reaches it. Left armed it would wake up
+    -- ten times a second on a stood-down addon, which is the survivor §7 calls
+    -- the most expensive of the lot.
+    self:_StopTextTicker()
 end
 
---- Restore everything Suspend took away, from current state rather than from a
---- snapshot: RegisterLifecycleEvents re-arms the game events and ReconcileUnits
---- re-creates the dispatch frames for whichever units are enabled NOW.
+--- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
+--- module's whole start-up lives here so the login path and the stand-up path
+--- cannot drift, and everything it reads it reads FROM CURRENT STATE rather than
+--- from a snapshot taken on the way down (performance-§6).
 function IconGrid:Resume()
+    IconGrid.BuildCurves()
+
+    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
+    -- is fired from IconGrid:Layout itself, not via a SendMessage here.
+    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
+    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    -- Combat-state fan-out from core/State.lua. We no longer hook
+    -- PLAYER_REGEN_* directly -- State owns the only registration so the
+    -- flag write and the visibility refresh stay ordered by construction.
+    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+
     self:RegisterLifecycleEvents()
     -- Every instance was left flagged enabled, so ReconcileUnits would consider
     -- them already reconciled and never re-create the frames Suspend released.
@@ -718,10 +744,11 @@ end
 --- enable loop). Idempotent: EnableUnit/DisableUnit are only invoked on
 --- an actual want-vs-live mismatch.
 function IconGrid:ReconcileUnits()
-    -- While suspended, the desired state is "nothing runs". Without this the
-    -- next `general`/`units` CONFIG_CHANGED would call EnableUnit and re-create
-    -- all 8 dispatch frames per unit while the capture was still running.
-    if NS.Perf and NS.Perf.suspended then return end
+    -- While the latch is down the desired state is "nothing runs". Without this
+    -- the next `general`/`units` CONFIG_CHANGED would call EnableUnit and
+    -- re-create all 8 dispatch frames per unit on an addon the player switched
+    -- off -- and a settings change is exactly what a player does while it is off.
+    if NS.IsDown and NS.IsDown() then return end
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         local want = NS.Units.IsEnabled(u)
@@ -762,23 +789,13 @@ end
 function IconGrid:OnEnable()
     -- Combat flag is owned by core/State.lua's bootstrap listener, so
     -- this module no longer seeds it on enable.
-    IconGrid.BuildCurves()
-
-    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
-    -- is fired from IconGrid:Layout itself, not via a SendMessage in OnEnable.
-    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    -- Combat-state fan-out from core/State.lua. We no longer hook
-    -- PLAYER_REGEN_* directly — State owns the only registration so the
-    -- flag write and the visibility refresh stay ordered by construction.
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
-
-    self:RegisterLifecycleEvents()
-
-    -- Bring every enabled unit online. Focus defaults disabled, so only the
-    -- target instance enables here and behavior matches the former singleton.
-    self:ReconcileUnits()
+    --
+    -- The latch may ALREADY be down when AceAddon gets here: NS:OnEnable takes
+    -- the stored `disabled` hold, and AceAddon enables the addon before its
+    -- modules. Registering here and being torn down a moment later would be a
+    -- brief, invisible window in which a disabled addon watched the client.
+    if NS.IsDown and NS.IsDown() then return end
+    self:Resume()
 end
 
 function IconGrid:OnDisable()

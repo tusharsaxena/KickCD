@@ -336,12 +336,17 @@ end
 -- correct even when the user never opens the Spells panel — we don't
 -- want a panel-open after a spec change to read stale data because the
 -- listener was lazy-registered.
-do
-    local cacheEvents = CreateFrame("Frame")
+local cacheEvents = CreateFrame("Frame")
+cacheEvents:SetScript("OnEvent", invalidateCmCache)
+
+--- Arm the cache invalidator. Split out of the bootstrap so the stand-down can
+--- release it and the stand-up can put it back (slash-commands-§7).
+local function armCacheEvents()
     cacheEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
     cacheEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-    cacheEvents:SetScript("OnEvent", invalidateCmCache)
 end
+
+armCacheEvents()
 
 -- ---------------------------------------------------------------------------
 -- Throttled commit pipeline
@@ -1170,11 +1175,22 @@ local function ensurePanel()
         H.RefreshPanel(ctx, true)
     end)
 
-    -- The Spells panel is a plain-table module, not an AceAddon submodule, so
-    -- it owns a PRIVATE AceEvent target (architecture-§4 / KCD-09). Registering these
-    -- receivers on the shared KickCD addon object would risk clobbering a
-    -- future receiver of the same message. ensurePanel short-circuits on
-    -- subsequent calls, so this registers exactly once.
+    Spells.RegisterPanelEvents()
+
+    return panel
+end
+
+--- The page's own subscriptions, split out of ensurePanel so that the latch can
+--- put them back after a stand-down (slash-commands-§7, Spells.StandUp). Every
+--- registration is idempotent -- AceEvent keys on (event, target) -- so calling
+--- this twice is harmless, which is what lets ensurePanel and the stand-up both
+--- reach it.
+---
+--- The Spells panel is a plain-table module, not an AceAddon submodule, so it
+--- owns a PRIVATE AceEvent target (architecture-§4 / KCD-09). Registering these
+--- receivers on the shared KickCD addon object would risk clobbering a future
+--- receiver of the same message.
+function Spells.RegisterPanelEvents()
     Spells.__ev = Spells.__ev or (NS.NewBusTarget and NS.NewBusTarget())
     local ev = Spells.__ev
     if ev then
@@ -1210,8 +1226,6 @@ local function ensurePanel()
             Spells:OnPlayerSpecChanged()
         end)
     end
-
-    return panel
 end
 
 local function Build(mainCategory)
@@ -1239,6 +1253,50 @@ end
 -- Pure helpers behind the editor's input handling and spec ordering,
 -- published so the harness can reach them without building an AceGUI tree
 -- (same idiom as Castbar.AutoSizeLong).
+-- ---------------------------------------------------------------------------
+-- The stand-down (slash-commands-§7)
+-- ---------------------------------------------------------------------------
+--
+-- THE PANEL SURVIVES; ITS SUBSCRIPTIONS DO NOT, and the line between the two is
+-- worth stating because both halves are in §7. What survives is the settings
+-- registration and the panel BODY: a disabled addon stays in Blizzard's AddOns
+-- tree, this page still opens, still draws every row, and still writes every
+-- edit -- which is the whole reason the disabled slash surface keeps `get`,
+-- `set` and `/kcd spells`. What does not survive is a REGISTRATION: these five
+-- exist to react to GAME events (a spec swap, a talent change) and §7's
+-- "actually UNREGISTERED" is unqualified. A handler that early-returns on
+-- `panel:IsShown()` is the draw gate in miniature -- the addon did not stop
+-- watching, it stopped reacting, and the client still walks the list.
+--
+-- The cost is precisely one thing: a spec change made WHILE the addon is off and
+-- WHILE this page is open does not re-render the rows under the player's cursor.
+-- Reopening the page does, because the cache is invalidated on the way back up.
+--
+-- `commitSoon` is deliberately NOT canceled here. It is armed by the player
+-- typing in this editor, never by a game event, and a stand-down that threw away
+-- an edit in flight would lose data the player just entered -- "no SavedVariables
+-- write FROM A GAME EVENT" does not reach a write the player is in the middle of
+-- making.
+
+--- Release the page's game-event subscriptions. Called by the latch's standDown.
+function Spells.StandDown()
+    cacheEvents:UnregisterAllEvents()
+    local ev = Spells.__ev
+    if ev then
+        if ev.UnregisterAllEvents   then ev:UnregisterAllEvents()   end
+        if ev.UnregisterAllMessages then ev:UnregisterAllMessages() end
+    end
+end
+
+--- Re-arm them, and drop the cooldown-manager cache on the way: the spec or the
+--- talent build can have changed while nothing was listening, so the next panel
+--- open must read the client rather than a set cached before the addon went down.
+function Spells.StandUp()
+    _cmCache = nil
+    armCacheEvents()
+    Spells.RegisterPanelEvents()
+end
+
 Spells.ValidateSpellInput = validateSpellInput
 Spells.SpecOrder          = specOrder
 Spells.SortedKeys         = sortedKeys

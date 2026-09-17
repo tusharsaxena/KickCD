@@ -54,16 +54,10 @@ if not lib then
     return
 end
 
---- The two modules that own runtime work. Resolved at CALL time, never hoisted:
---- this file loads before modules/, so a load-time GetModule would answer nil.
-local function runtimeModules()
-    local out = {}
-    for _, name in ipairs({ "IconGrid", "Castbar" }) do
-        local m = NS.GetModule and NS:GetModule(name, true)
-        if m then out[#out + 1] = m end
-    end
-    return out
-end
+-- There is no `runtimeModules()` helper here any more, and its absence is the
+-- point: which modules go inert, and in which order, is core/LifecycleSetup.lua's
+-- answer now, given once for both reasons to be inert rather than once here and
+-- again wherever `disable` was implemented.
 
 NS.Perf = lib:New({
     name    = addonName,
@@ -173,44 +167,30 @@ NS.Perf = lib:New({
     -- why the report's roots must not be summed, and why neither claims a
     -- parent it cannot keep.
 
-    --- Make the addon inert without a /reload.
-    ---
-    --- Reloading, or disabling the addon through the AddOns list, shifts
-    --- shared-frame ownership — the exact confound that makes the built-in
-    --- profiler untrustworthy for this question. So the flip has to happen in
-    --- place, live, mid-session.
-    ---
-    --- Visibility is NOT enforced by hiding frames from here. IconGrid's
-    --- shouldBeVisible and Castbar's isVisible each check NS.Perf.suspended as
-    --- step 0 of their ladder, so nothing — a combat transition, a target swap,
-    --- a settings change — can re-show a grid behind suspend's back. The
-    --- per-module Suspend() then releases the work: the module's game events and
-    --- its private per-unit dispatch frames, which AceEvent's
-    --- UnregisterAllEvents cannot reach.
-    suspend = function()
-        for _, m in ipairs(runtimeModules()) do
-            if m.Suspend then m:Suspend() end
-        end
-        -- Cooldowns has no per-unit frames, but its throttle may have a poll
-        -- already queued; the gate below makes the callback a no-op.
-        local cd = NS.GetModule and NS:GetModule("Cooldowns", true)
-        if cd and cd.UnregisterAllEvents then cd:UnregisterAllEvents() end
-    end,
-
-    --- Restore everything suspend took away, from CURRENT state: each module's
-    --- Resume rebuilds its registrations from the units enabled NOW, so a unit
-    --- toggled while suspended comes back correctly (performance-§6).
-    ---
-    --- No CONFIG_CHANGED is published from here. The modules' own Resume paths
-    --- re-anchor and re-render, so this file does not become a sixth sender of a
-    --- message docs/message-bus.md governs.
-    resume = function()
-        local cd = NS.GetModule and NS:GetModule("Cooldowns", true)
-        if cd and cd.RegisterLifecycleEvents then cd:RegisterLifecycleEvents() end
-        for _, m in ipairs(runtimeModules()) do
-            if m.Resume then m:Resume() end
-        end
-    end,
+    -- THE LATCH, NOT A PAIR OF CALLBACKS (LibKa0s-Perf-1.0 minor 12,
+    -- slash-commands-§7). This descriptor used to carry `suspend` and `resume`,
+    -- and the library called them directly. It no longer does: the suspended arm
+    -- takes the `perf` HOLD on the latch below, and the host's own standDown /
+    -- standUp -- core/LifecycleSetup.lua's, the same two functions `disable`
+    -- reaches -- are what run on the edge.
+    --
+    -- That is the whole of the anti-pattern this closes (#85). A second teardown
+    -- written beside this one for `disable` would be two mechanisms that both
+    -- mean "be inert", and they drift on the first module added after the second
+    -- was written. There is now ONE, and this file no longer owns it.
+    --
+    -- The other half is the four-state problem a boolean cannot hold: a player
+    -- can `/kcd disable` DURING a suspended arm, and `/kcd enable` there too.
+    -- With a boolean, the run's resume brings the addon back under a player who
+    -- switched it off. With two holds, releasing `perf` leaves `disabled` taken
+    -- and nothing is rebuilt.
+    --
+    -- `NS.Perf.suspended` still answers, and still means exactly what it meant --
+    -- it is a VIEW of the latch's `perf` hold now rather than a boolean beside
+    -- it. Visibility is still enforced at the SOURCE: the show ladders ask
+    -- NS.IsDown(), which is the latch, so nothing -- a combat transition, a
+    -- target swap, a settings change -- can re-show a grid behind it.
+    lifecycle = NS.Lifecycle,
 
     -- Perf output is deliberately NOT gated on NS.State.debug, unlike NS.Debug.
     -- That gate keeps the addon free when idle; a perf run is explicit user

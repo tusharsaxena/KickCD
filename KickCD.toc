@@ -71,6 +71,12 @@ core\KickCD.lua
 # NS:OpenSettings at CALL time. Here, below core\KickCD.lua, only so a reader
 # meets the switch the left button drives before the button that drives it.
 core\LauncherSetup.lua
+# The LibKa0s-Lifecycle-1.0 seam: the stand-down latch both `disable` and the
+# perf harness take a hold on (slash-commands-§7). ABOVE core\PerfSetup.lua,
+# which passes NS.Lifecycle into its descriptor at LOAD time and raises at :New
+# without it, and below core\CoreSetup.lua for NS.Util.print. Everything else it
+# touches -- the modules it stands down -- it resolves at call time.
+core\LifecycleSetup.lua
 # LOAD-BEARING POSITION: modules/Cooldowns.lua, modules/IconGrid.lua,
 # modules/IconGrid_Render.lua and modules/Castbar.lua each take
 # `local Perf = NS.Perf` at file scope, so this seam must have published NS.Perf

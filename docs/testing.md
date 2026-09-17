@@ -18,6 +18,43 @@ The kit **collects, then runs**: `test()` records a case and nothing executes un
 
 One thing the kit's loader does not serve, and `tests/run.lua` supplies: almost every WoW-API read in this addon is written `_G.SomeAPI` (architecture-§1 forbids the deprecated bare globals, and the `_G.` prefix is what makes a Compat-bypassing read visible in review). The kit's per-chunk environment falls through to the process's real `_G`, which holds no client API — so `run.lua` publishes one kit-built environment as `mocks._G`, per instance, and `_G.X` resolves through the same mock table a bare `X` does.
 
+## The stand-down suite: `tests/test_disabled.lua`
+
+`slash-commands-§7` ships its own conformance suite, and every Ka0s addon MUST carry it. It drives
+this addon through `slash-commands-§7`'s ten steps in order — baseline, disable through the single
+write seam, the registration set, the timers, the frames, firing everything at it anyway, the slash
+surface, the launcher, re-enable, and the latch's two holds — and the reason it exists is worth
+knowing before you edit it.
+
+**It asserts on the REGISTRATION SET, never on a handler's return value.** A case written as "call
+the handler and assert it returned early" would certify the draw gate it exists to catch: an early
+return is exactly what a draw gate does. `mocks.__registrationSet()` (`tests/wow_mock.lua`) is the
+union of the kit's `__registrations()` — the AceEvent events, the bus messages and the buckets — and
+this addon's own frame registry, because KickCD's frame model is the host mock's rather than the
+kit's and the two kinds that matter most here are frames: `core/State.lua`'s raw `PLAYER_REGEN_*`
+listener and the per-unit `UNIT_SPELLCAST_*` dispatch frames. Both halves **remove on unregister**,
+which is what makes "the set is empty" falsifiable in the useful direction.
+
+**Two things in it are easy to write unfalsifiably**, and both are commented in the file:
+
+- **`__fire` versus firing at a target directly.** `mocks.__fire(event)` reaches the LIVE registration
+  set, so over an empty registry it runs nothing — "no write, no line, no frame shown" would then be
+  a statement about the harness rather than about the addon. Step 6 therefore fires at the RECORDED
+  targets whether or not they are still registered, which is what proves a survivor would have been
+  caught.
+- **The timer step arms one first.** An addon idling in a headless harness has nothing scheduled, so
+  "no timer is armed after disabling" is true of a stand-down that cancels nothing at all. A
+  `SPELL_UPDATE_COOLDOWN` arms Cooldowns' coalescing throttle, and the case deliberately does not
+  flush the queue before asserting — a flush would fire the pending timer and empty the queue either
+  way.
+
+**It was proved red before it was relied on**, one mutation at a time: making `NS.RefreshEnabledHold`
+a no-op (which is exactly the draw gate this addon shipped before its LibKa0s v1.42.0 re-vendor) reddens steps 3, 4, 6 and
+both latch cases; dropping `NS.State.StandDown` reddens the registration set with the combat listener
+named; dropping Cooldowns' `_cancelRefresh` reddens the timer step; dropping the launcher's gate
+reddens step 8 with `profile.locked` named as the write; passing any `liveVerbs` list at all
+reddens step 7 on `/kcd config`; and not hiding the grids reddens step 5.
+
 ## Parking shared state: `T.withFocusLink` / `T.withViewedUnit`
 
 Most suites run against **one shared instance**, so a case that changes session
@@ -144,7 +181,7 @@ than the tag this addon has taken.
 Between a library release and the re-vendor that carries it they disagree, and that disagreement is
 the normal state rather than a defect. Re-vendoring to quiet them would be the actual mistake — it
 would pull an untested library release for the sake of a clean diff. As this is written the two
-agree: `../LibKa0s` sits on **v1.37.0**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
+agree: `../LibKa0s` sits on **v1.42.0**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
 four commands above report nothing. That is the state immediately after a re-vendor and before the
 library's next tag — a coincidence of timing, not the stronger guarantee the block below states.
 
@@ -292,7 +329,7 @@ For end-to-end test scenarios — fresh install, visibility modes, lock/drag, ca
 - `/kcd version` — print the addon version on its own line (`v<X.Y.Z>`), read from the TOC manifest with the in-code `NS.VERSION` stamp as fallback. Covered headlessly by `test_version`.
 - `/kcd config` — open the settings panel. Refuses during combat (the Blizzard category-switch is protected); user gets a one-line print instead. `/kcd options` is an alias.
 - `/kcd enable` / `/kcd disable` — the addon-wide switch, as **reserved aliases** (`slash-commands-§2`). Both dispatch into `setSetting(NS, "enabled <bool>")`, which IS `/kcd set`: same stored path, same single write seam, same `onChange`, and §5's `set` confirmation line. They hold no state of their own. `/kcd`, `help`, `config`, `version` and `enable` keep answering while the addon is disabled — the dispatcher is setup, not a feature — so the pair is never one-way. Covered headlessly in `test_launcher`.
-- `/kcd lock` / `/kcd unlock` / `/kcd toggle` — exercise the shared icon grid + cast bar lock state. They **refuse on one line naming `/kcd enable` while the addon is disabled** (`slash-commands-§2`), so turn it on first. `toggle` is published as `NS.ToggleLock`, because the minimap button's left click is its second caller (`launcher-§2` rung (b)). Routes through `Helpers.SetAndRefresh("locked", ...)` so the General → "Lock frame" checkbox refreshes. With no `locked` row to write through, it prints "Settings layer not ready yet" and changes nothing (covered headlessly in `test_slash`).
+- `/kcd lock` / `/kcd unlock` / `/kcd toggle` — exercise the shared icon grid + cast bar lock state. They **refuse on one line naming `/kcd enable` while the addon is disabled** (`slash-commands-§2`, and the line is the library's — see [slash-dispatch.md](slash-dispatch.md#the-disabled-state-the-gate-is-the-librarys-the-judgment-is-ours)), so turn it on first. `toggle` is published as `NS.ToggleLock`, because the minimap button's left click is its second caller (`launcher-§2` rung (b)). Routes through `Helpers.SetAndRefresh("locked", ...)` so the General → "Lock frame" checkbox refreshes. With no `locked` row to write through, it prints "Settings layer not ready yet" and changes nothing (covered headlessly in `test_slash`).
 - `/kcd list` — dump every schema-driven setting grouped by panel, with current values. Useful for "did the panel/slash share state?" spot checks.
 - `/kcd get <path>` / `/kcd set <path> <value>` — type-aware CLI for every schema row. `path` is the dotted `db.profile` path (`enabled`, `units.target.icons.primarySize`, `units.target.icons.cooldownTint` …). `set` parses by `def.type`: bool accepts `true/false/on/off/1/0`; number is clamped to `[min, max]`; string must match a `values[i].value` (rejection prints the option list, plus `(depends on <gate> = ...)` when the row carries a `valueGate`); color takes 3–4 floats (`r g b [a]`, each clamped to `[0, 1]`). On success, any open panel re-syncs its widgets via `Helpers.RefreshScalars()` — a value write changes what a widget *shows*, so it must never rebuild the page under a slider or swatch mid-drag; `RefreshAllPanels` is reserved for structural changes (a profile switch, and the `units.focus.link` row's `onChange` when the link actually moves).
 - `/kcd reset <path>` — reset **one setting** to its default, through the same `Helpers.SetAndRefresh` write seam `set` uses (a table default is `DeepCopy`'d, so two profiles resetting to the same RGBA don't share a table). Page-scoped reset lives only on each panel's **Defaults** button now; the five retired page names (`general` / `icons` / `castbar` / `label` / `spells`) each answer with a line naming where their capability went rather than a bare "Setting not found".

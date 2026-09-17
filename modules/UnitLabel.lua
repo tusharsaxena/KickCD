@@ -203,12 +203,42 @@ function UnitLabel:OnProfileChanged() self:ApplyAll() end
 function UnitLabel:OnGridLayout() self:ApplyAll() end
 function UnitLabel:OnPlayerEnteringWorld() self:ApplyAll() end
 
-function UnitLabel:OnEnable()
+--- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
+--- login path and the stand-up path are the same three subscriptions and the
+--- same re-apply, written once, and ApplyAll reads the labels FROM CURRENT
+--- STATE, so text edited while the addon was off comes back as edited.
+function UnitLabel:Resume()
     self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
     self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
     self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
     self:ApplyAll()
+end
+
+--- Stand this module down. It owns no timer and no per-unit dispatch frame, so
+--- this is the whole of it: three message subscriptions, one game event, and the
+--- label frames hidden.
+---
+--- Hiding here rather than through a show ladder is the one place this addon
+--- does so, and it is not the imperative hide slash-commands-§7 warns about: a
+--- label has no visibility RULE of its own -- it follows the grid it is anchored
+--- to, and Apply only ever runs from a handler this function just unregistered.
+--- Nothing can re-show it behind the latch's back, which is what that rule is
+--- protecting.
+function UnitLabel:Suspend()
+    self:UnregisterAllMessages()
+    self:UnregisterAllEvents()
+    for _, inst in pairs(instances) do
+        if inst.frame then inst.frame:Hide() end
+    end
+end
+
+function UnitLabel:OnEnable()
+    -- The latch may ALREADY be down when AceAddon gets here: NS:OnEnable takes
+    -- the stored `disabled` hold, and AceAddon enables the addon before its
+    -- modules.
+    if NS.IsDown and NS.IsDown() then return end
+    self:Resume()
 end
 
 function UnitLabel:OnDisable()

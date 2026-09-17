@@ -119,8 +119,17 @@ local EXCLUDED_FILE = { ["tests/test_spelling.lua"] = true }
 -- reader that a double L in the client means the string did NOT come from the vendored payload.
 -- Correcting the quote deletes the check. `M4-13` made the same call and said so; this records it
 -- somewhere a gate can read instead of somewhere only a commit message can.
+--- The second waiver is a FIELD NAME rather than prose: tests/wow_mock.lua's
+--- C_Timer.NewTicker handle carries `cancelled`, which is what
+--- tests/_kit/mock_record.lua's live-timer survey reads off it and what
+--- AceTimer-3.0 calls the same flag. A US respelling there would not be a
+--- correction, it would be a handle the kit's survey can never see as cancelled
+--- -- and a stand-down suite whose timer assertion is unfalsifiable is exactly
+--- what slash-commands-§7 says a conformance suite must not be. Waived per word,
+--- like the one above, so every other British spelling in that file still reddens.
 local WAIVED = {
     ["docs/smoke-tests.md"] = { cancelled = true, labelled = true },
+    ["tests/wow_mock.lua"]  = { cancelled = true },
 }
 
 --- Every path git tracks, as repo-relative strings.

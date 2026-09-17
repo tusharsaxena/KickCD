@@ -202,11 +202,13 @@ end
 --                     self casts are excluded by IsHostileUnitCasting.
 -- While unlocked the visibility mode is ignored — the user is moving the bar.
 local function isVisible(inst)
-    -- Step 0: a suspended addon shows nothing. At the SOURCE rather than by
-    -- hiding frames from Perf's suspend, because a hidden frame comes back on
-    -- the next combat transition or target swap and the suspended arm then
-    -- measures the addon still working (performance-§6).
-    if NS.Perf and NS.Perf.suspended then return false end
+    -- Step 0: a STOOD-DOWN addon shows nothing, for either reason it can be
+    -- down -- the player disabled it, or the perf harness suspended it. At the
+    -- SOURCE rather than by hiding frames from the stand-down, because a hidden
+    -- frame comes back on the next combat transition or target swap and the
+    -- addon is then visibly running while it claims to be off
+    -- (slash-commands-§7, performance-§6).
+    if NS.IsDown and NS.IsDown() then return false end
     local profile = NS.db and NS.db.profile
     if not (NS.Units.IsEnabled(inst.unit) and cfg(inst).enabled ~= false) then return false end
     if profile and profile.locked == false then return true end
@@ -998,9 +1000,11 @@ end
 --- Idempotent: Enable/DisableUnit only run on an actual want-vs-live
 --- mismatch.
 function Castbar:ReconcileUnits()
-    -- While suspended the desired state is "nothing runs"; without this the next
-    -- CONFIG_CHANGED would re-create all 10 dispatch frames per unit mid-capture.
-    if NS.Perf and NS.Perf.suspended then return end
+    -- While the latch is down the desired state is "nothing runs"; without this
+    -- the next CONFIG_CHANGED would re-create all 10 dispatch frames per unit on
+    -- an addon that is off -- and a settings change is exactly what a player does
+    -- while it is off.
+    if NS.IsDown and NS.IsDown() then return end
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         local want = NS.Units.IsEnabled(u)
@@ -1025,16 +1029,22 @@ function Castbar:RegisterLifecycleEvents()
     self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
 end
 
---- Make this module inert for a performance capture, without a /reload and
---- without touching `inst.enabled` (the user's setting). Drops the module's game
---- events and the private per-unit dispatch frames, and stops any in-flight cast
---- animation — Stop() nils the per-frame OnUpdate, which is this addon's only
---- true 60 Hz handler and therefore the thing most worth silencing.
+--- Make this module INERT -- for either reason the latch can be down: a perf
+--- capture's second arm, or a player who switched the addon off
+--- (slash-commands-§7). One teardown, because two would drift.
 ---
---- Messages stay registered: Resume republishes on the bus and a module that had
---- dropped its subscriptions would never hear it.
+--- `inst.enabled` is left alone (it is the user's setting) and Resume rebuilds
+--- from the CURRENT set. Everything that costs anything goes: the module's game
+--- events, its bus subscriptions, the private per-unit dispatch frames, and any
+--- in-flight cast animation -- Stop() nils the per-frame OnUpdate, which is this
+--- addon's only true 60 Hz handler and therefore the thing most worth silencing.
+---
+--- MESSAGES GO TOO, which they did not while this was a perf-only suspend: a
+--- subscription is a registration, and Resume is called by the latch directly
+--- rather than reached through a republish on the bus.
 function Castbar:Suspend()
     self:UnregisterAllEvents()
+    self:UnregisterAllMessages()
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         if inst then
@@ -1046,9 +1056,20 @@ function Castbar:Suspend()
     end
 end
 
---- Restore from CURRENT state, not from a snapshot taken at suspend time, so a
---- unit toggled while suspended comes back correctly.
+--- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
+--- module's whole start-up lives here so the login path and the stand-up path
+--- cannot drift, and it restores from CURRENT state rather than from a snapshot
+--- taken on the way down, so a unit toggled while the addon was off comes back
+--- correctly (performance-§6).
 function Castbar:Resume()
+    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
+    -- owns the only PLAYER_REGEN_* registration, so the flag write and the
+    -- visibility refresh stay ordered by construction), not raw events here.
+    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
+    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+
     self:RegisterLifecycleEvents()
     -- Suspend left `enabled` true while releasing the frames, so ReconcileUnits
     -- would consider each instance already reconciled and never rebuild them.
@@ -1062,19 +1083,12 @@ function Castbar:Resume()
 end
 
 function Castbar:OnEnable()
-    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
-    -- owns the only PLAYER_REGEN_* registration, so the flag write and the
-    -- visibility refresh stay ordered by construction), not raw events here.
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
-
-    self:RegisterLifecycleEvents()
-
-    -- Bring every enabled unit online. Focus is enabled by default; a disabled/absent
-    -- focus instance is a cheap no-op here.
-    self:ReconcileUnits()
+    -- The latch may ALREADY be down when AceAddon gets here: NS:OnEnable takes
+    -- the stored `disabled` hold, and AceAddon enables the addon before its
+    -- modules. Registering here and being torn down a moment later would be a
+    -- brief, invisible window in which a disabled addon watched the client.
+    if NS.IsDown and NS.IsDown() then return end
+    self:Resume()
 end
 
 function Castbar:OnDisable()

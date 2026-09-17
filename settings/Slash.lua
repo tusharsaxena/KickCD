@@ -229,6 +229,16 @@ if not SlashLib then
             stub["Cli" .. verb] = absent(verb:lower())
         end
         stub.CliVersion = function() out("v" .. tostring(d.version and d.version() or "?")) end
+        -- ANSWERS NIL, and that is the only honest answer here. The refusal
+        -- line's wording is the collection's and lives in exactly one place --
+        -- lib.DISABLED_LINE_FORMAT -- so a stub that spelled it again would be
+        -- the twelfth copy the extraction exists to prevent. This arm has no gate
+        -- either: without the library there is no dispatcher to refuse anything,
+        -- so there is nothing for the line to accompany. Present because the
+        -- surface-parity gate asks the stub to answer everything the live
+        -- instance answers, and NS.Slash.PrintDisabledLine treats a nil as
+        -- "nothing to say" rather than printing an empty line.
+        stub.DisabledLine = function() return nil end
         stub.LandingRows = function()
             local rows = {}
             for _, e in ipairs(d.commands or {}) do
@@ -301,11 +311,48 @@ local function allRows()
     return outRows
 end
 
+-- ---------------------------------------------------------------------
+-- The disabled gate's three fields
+-- ---------------------------------------------------------------------
+--
+-- `isEnabled` closes the gate, `brandName` is what the one refusal line names,
+-- and `liveVerbs` is the set that still answers. The dispatcher, the help
+-- renderer and the settings registration keep working in either state -- they
+-- are SETUP, not features (slash-commands-§7) -- and so does the bare `/kcd`,
+-- which opens the panel: the one surface a player uses to switch the addon back
+-- on by hand.
+--
+-- THE LIST IS A UNION, NEVER A COPY. The library's twelve are the standard's
+-- reserved verbs and a host MUST NOT refuse any of them; this addon adds
+-- `spells` to them (core/KickCD.lua argues why). Built here by concatenation so
+-- that a thirteenth reserved verb arriving in a future LibKa0s tag is live the
+-- day it is vendored, rather than silently refused because a copy of the twelve
+-- was typed into this file.
+local function liveVerbs()
+    local verbs = {}
+    for _, verb in ipairs(SlashLib.LIVE_VERBS or {}) do verbs[#verbs + 1] = verb end
+    for _, verb in ipairs(NS.EXTRA_LIVE_VERBS or {}) do verbs[#verbs + 1] = verb end
+    return verbs
+end
+
 NS.Slash.cli = SlashLib:New({
     slash        = "/kcd",
     slashAliases = { "/kickcd" },
     commands     = NS.COMMANDS,
     aliases      = { options = "config" },   -- back-compat: `/kcd options` -> `config`
+
+    -- Asked at DISPATCH time, never cached, so the command after a `/kcd enable`
+    -- works. NS.MasterEnabled (core/LifecycleSetup.lua) is the addon's one reader
+    -- of the stored path -- the same function the latch takes its hold from, so
+    -- the gate and the stand-down can never disagree about whether the addon is
+    -- on.
+    isEnabled = function() return NS.MasterEnabled() end,
+    -- THE BRAND NAME IN PLAIN TEXT, the same string core/LauncherSetup.lua gives
+    -- the LDB object as its `label` (launcher-§1 forbids escape sequences there,
+    -- which is what makes it safe to drop into a colored line). Never the TOC
+    -- `## Title`, which MAY carry color escapes.
+    brandName = "Ka0s KickCD",
+    liveVerbs = liveVerbs(),
 
     print   = function(line) out(line) end,
     version = NS.Version,
@@ -382,6 +429,24 @@ NS.Slash.cli = SlashLib:New({
 function NS.Slash:LandingRows() return NS.Slash.cli:LandingRows() end
 
 function NS.Slash:OnSlash(msg) return NS.Slash.cli:OnSlash(msg) end
+
+--- Print the collection's one refusal line, through this addon's tagged printer.
+---
+--- The launcher's left click is the second call site the standard names
+--- (slash-commands-§7, launcher-§2): a refused click prints the SAME line a
+--- refused feature verb prints, and it prints it by asking the library for it
+--- rather than by spelling it again here. One sentence, one place.
+---
+--- Degrades to nothing when LibKa0s is missing: the stub above has no gate, so
+--- there is no line to print and no second copy of it to invent.
+function NS.Slash.PrintDisabledLine()
+    local cli = NS.Slash.cli
+    if not (cli and cli.DisabledLine) then return false end
+    local line = cli:DisabledLine()
+    if type(line) ~= "string" or line == "" then return false end
+    out(line)
+    return true
+end
 
 -- There is no `NS.Slash:PrintHelp` forwarder beside these two, and its absence is deliberate:
 -- `M4c-06` deleted one. `core/KickCD.lua`'s `printHelp` reaches `NS.Slash.cli:PrintHelp()`

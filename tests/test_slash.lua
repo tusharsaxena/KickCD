@@ -644,9 +644,20 @@ test("the live verbs still answer while disabled, and none of them refuses", fun
     for _, verb in ipairs(LIVE) do
         local inst = disabled()
         local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
-        for _, line in ipairs(lines) do
-            assertNil(line:find("is disabled", 1, true),
-                "`/kcd " .. verb .. "` must not refuse: " .. line)
+        -- `help` is the one live verb that CARRIES the line, and carrying it is
+        -- not refusing it: the index prints in full -- the player has to be able
+        -- to SEE `enable` in the list -- with the line under the header as a
+        -- statement about the rows below it, some of which are feature verbs that
+        -- really are refused (LibKa0s-Slash-1.0 minor 12). So it is measured
+        -- differently: the index must still be there.
+        if verb == "help" then
+            assertTrue(#lines > 5,
+                "`/kcd help` must still print the whole index while disabled")
+        else
+            for _, line in ipairs(lines) do
+                assertNil(line:find("is disabled", 1, true),
+                    "`/kcd " .. verb .. "` must not refuse: " .. line)
+            end
         end
     end
 end)
@@ -689,15 +700,27 @@ test("nothing refuses while the addon is ENABLED", function()
     end
 end)
 
-test("the refusal line is routed through NS.L, not written at the call site", function()
-    -- localization-§1: every player-facing string reaches the locale seam. The
-    -- key is the English sentence and `%s` is the colored verb, so a translation
-    -- can move the verb without re-spelling the color code.
-    -- red under: a bare literal in core/KickCD.lua
-    local L = T.NS.L
-    local key = "KickCD is disabled. %s turns it back on."
-    assertEqual(rawget(L, key), key, "the key must be DEFINED in locales/enUS.lua")
-    assertNil(key:find("|", 1, true), "the locale string carries no escape sequence")
+test("the refusal line is the LIBRARY's, and this addon does not re-spell it", function()
+    -- THIS CASE REPLACES ITS OWN OPPOSITE, and the reversal is the point. It used
+    -- to assert that the line came out of NS.L with a key defined in
+    -- locales/enUS.lua. slash-commands-§7 settled it the other way: the wording is
+    -- the COLLECTION's, one sentence, spelled once in
+    -- LibKa0s-Slash-1.0's DISABLED_LINE_FORMAT, and it MUST NOT be re-spelled per
+    -- addon -- a `L` override deliberately does not reach it. Eleven addons each
+    -- wording it their own way is the drift the shared printer exists to end.
+    -- red under: a host-side copy of the sentence, in a locale key or a literal
+    assertNil(rawget(T.NS.L, "KickCD is disabled. %s turns it back on."),
+        "the old host-side key must be GONE from locales/enUS.lua")
+
+    -- And the line the addon actually emits is the one the library builds from
+    -- that format, brand name and slash included -- not a lookalike.
+    local inst = disabled()
+    local Sl = inst.mocks.LibStub("LibKa0s-Slash-1.0", true)
+    assertTrue(type(Sl.DISABLED_LINE_FORMAT) == "string",
+        "the library owns the format string")
+    local expected = Sl.DISABLED_LINE_FORMAT:format("Ka0s KickCD", "/kcd enable")
+    local lines = say(inst, function() inst.NS:OnSlashCommand("toggle") end)
+    assertEqual(lines[1], expected, "the refusal line must be the library's, byte for byte")
 end)
 
 test("`/kcd get` on a bool stored FALSE prints false, not the literal `nil`", function()

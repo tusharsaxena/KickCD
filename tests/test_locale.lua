@@ -397,6 +397,13 @@ local RESIDUE = {
     {"settings/Slash.lua", "the LibKa0s library is missing", "VALIDATOR"},
     {"settings/Slash.lua", " slash commands", "FRAGMENT"},
     {"settings/Slash.lua", "unknown command '", "FRAGMENT"},
+    -- The gated dispatcher's `brandName` (LibKa0s-Slash-1.0 minor 12). The same
+    -- plain-text brand name core/LauncherSetup.lua gives the LDB object as its
+    -- label, and the same reason it is not routed: it crosses into a library
+    -- descriptor, and the library refuses to read a key-returning locale table.
+    -- The refusal line it lands in is the COLLECTION's wording, not this addon's
+    -- (slash-commands-§7), so there is no key here to translate either.
+    {"settings/Slash.lua", "Ka0s KickCD", "LIB DESCRIPTOR"},
 
     -- settings/OptionsSetup.lua
     {"settings/OptionsSetup.lua", "Ka0s KickCD", "LIB DESCRIPTOR"},
