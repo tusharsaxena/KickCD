@@ -14,7 +14,7 @@ local addonName, NS = ...
 -- to stop paying, and it is invisible from every surface they can see.
 --
 -- slash-commands-§7 makes the disabled state TOTAL: every registration actually
--- unregistered, every timer cancelled, every frame hidden at the source, and no
+-- unregistered, every timer canceled, every frame hidden at the source, and no
 -- SavedVariables write from any game event. What SURVIVES is setup rather than
 -- feature — the chat command and its dispatcher, the settings registration and
 -- the panel, the AceDB handle and its profile callbacks, and the launcher's
@@ -95,7 +95,7 @@ local function eachModule(reverse, fn)
 end
 
 --- Stand the addon down: every event, message and per-unit dispatch frame it
---- owns actually UNREGISTERED, every timer and ticker cancelled, every frame
+--- owns actually UNREGISTERED, every timer and ticker canceled, every frame
 --- hidden through the show ladder rather than imperatively.
 ---
 --- NOTHING HERE IS COMBAT-UNSAFE, and that is a property of this addon rather

@@ -191,7 +191,7 @@ test("DISABLED: the registration set is EMPTY, by count and by name", function()
 end)
 
 test("DISABLED: nothing is left armed to wake up", function()
-    -- Step 4. `mocks.__timers()` CALLED is the live set -- every un-cancelled timer and ticker and
+    -- Step 4. `mocks.__timers()` CALLED is the live set -- every un-canceled timer and ticker and
     -- every frame still carrying an OnUpdate -- rather than the pending queue, because a repeating
     -- ticker that has just fired is absent from the queue for a moment and is still very much alive.
     --
