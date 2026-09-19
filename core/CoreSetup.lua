@@ -155,7 +155,7 @@ NS.ResolveColor = lib.ResolveColor
 -- instead of each call site remembering. A passthrough that dropped the third
 -- argument would be green in every suite and wrong on screen: the library falls
 -- back to a multiplication sign, which is what a degraded install should get and
--- not what a working one should (anti-patterns-§64).
+-- not what a working one should (anti-pattern #64).
 --
 -- NO CALL SITE TODAY, recorded here rather than left to be rediscovered.
 -- core/PerfSetup.lua's `decorate` hook was the last one and M4-16 deleted it: the

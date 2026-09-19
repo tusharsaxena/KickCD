@@ -251,7 +251,7 @@ NS.Perf = lib:New({
     -- liability: the two arms are EXCLUSIVE, so for as long as `decorate` sat
     -- here the library's own control never ran once, in any client, and nothing
     -- would have said so the day the two drifted (performance-§4,
-    -- anti-patterns-§64). tests/test_perfsetup.lua pins BOTH directions -- the
+    -- anti-pattern #64). tests/test_perfsetup.lua pins BOTH directions -- the
     -- folder name present, the hook absent -- and then shows the real panel
     -- against a spy on the library's factory, because a descriptor's shape says
     -- nothing about what reaches the screen.

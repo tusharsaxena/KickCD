@@ -468,7 +468,7 @@ test("CoreSetup: the close button is the library's, told which addon folder is a
     -- THE ARGUMENT IS WHAT IS TESTED, not the appearance. A two-argument passthrough
     -- onto a three-argument library function compiles, runs and passes every other
     -- case here while the panel quietly keeps its multiplication sign
-    -- (anti-patterns-§64).
+    -- (anti-pattern #64).
     -- red under: NS.MakeCloseButton = lib.MakeCloseButton, or dropping addonName.
     local seen, sawFrame, sawClick
     local lib = mocks.LibStub("LibKa0s-Core-1.0", true)
