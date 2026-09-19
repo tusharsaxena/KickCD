@@ -97,6 +97,16 @@ drifts from the code is worse than one that names none.
 
 ## House rules
 
+### Working style
+
+- Terse: state the change, not the deliberation, and don't summarize what the diff already says.
+  Point at code with `file_path:line_number`.
+- Ship functional, defer polish — when core functionality lands, move on; polish is a later
+  dedicated pass.
+- Comment only the non-obvious *why* (subtle invariant, Blizzard quirk, hidden constraint), never
+  what well-named code already says.
+- Don't create docs or planning files unless asked.
+
 ### Module file structure
 
 - Module files open with a one-paragraph header explaining the module's job and its message contract.

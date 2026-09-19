@@ -323,6 +323,12 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 Every `.md` under `docs/` appears in exactly one table below (`documentation-§3`). Frozen and
 generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-analysis/`, `docs/revendor/`.
 
+Those frozen bundles are history, not requirements. The older ones predate standard v2.17.0 and
+still name `docs/agent-context.md` or describe an earlier doc set; that file does not exist here and
+MUST NOT be restored (documentation-§3) — root `CLAUDE.md` is the only agent brief. The current
+compliance baseline is the newest `docs/audits/<date>/` bundle; re-run `/wow-addon:standards-audit`
+when in doubt, which fetches the living standard and writes a fresh one.
+
 ### Required (documentation-§3, Tier 1)
 
 | Doc | Covers |

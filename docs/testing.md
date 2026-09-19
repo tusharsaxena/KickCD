@@ -203,6 +203,11 @@ block above is only the by-eye version for when you want to see the hunks. Which
 working-tree diffs above answering a real but different question: *how far behind the library is
 this addon?* That is release planning, not a gate.
 
+The tag lives in root `CLAUDE.md`'s provenance line (`Bundles [LibKa0s](…) vX.Y.Z (MIT).`,
+documentation-§2) and nowhere else: there is no fallback to `README.md`, so a stale line is a red
+suite rather than a silent one. **That line moves in the same commit as the vendored bytes**, never
+as a follow-up.
+
 
 The payload carries **art as well as code** now: `libs/LibKa0s/media/` holds the shared
 icon set and the JetBrains Mono face (this addon shipped its own copy of that face under
@@ -320,6 +325,10 @@ Reach for this shape when a rule must hold in code the harness cannot enter — 
 ## Keeping the inventory & badge in sync
 
 `docs/test-cases.md` and the README `Tests` badge are hand-maintained-in-lockstep coverage artifacts (Ka0s WoW Addon Standard, testing-§5). Whenever the suite changes — a case is added, removed, or renamed, or the pass count moves (i.e. whenever a failing test is resolved) — regenerate the inventory via `lua tests/run.lua --list > docs/test-cases.md` **and** update the README `Tests-X/Y_passing` badge count in the **same change**, never as a deferred follow-up. Verify the inventory is in sync with `diff <(lua tests/run.lua --list) docs/test-cases.md` (no output = clean).
+
+The README's other static badge follows the same rule (documentation-§1): `[WoW]` moves with
+`KickCD.toc`'s `## Interface:` on every patch bump, in the same change, and both MUST show the same
+client version.
 
 For end-to-end test scenarios — fresh install, visibility modes, lock/drag, cast bar auto-size, spec/talent/pet rebuilds, profile lifecycle, secret-value safety, etc. — see [smoke-tests.md](smoke-tests.md). The matrices below catalog what each slash and debug command produces; they're the reference the smoke tests lean on.
 
