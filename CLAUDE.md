@@ -39,4 +39,4 @@ Start here, then read the docs:
 
 Green gate before every commit: `lua tests/run.lua` and `luacheck .` (0/0). Never auto-stage/commit/push and never bump the version without an explicit instruction.
 
-Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.46.1 (MIT).
+Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.47.0 (MIT).
