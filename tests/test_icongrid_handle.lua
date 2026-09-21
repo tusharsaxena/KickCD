@@ -127,3 +127,66 @@ test("the strip refuses to move a LOCKED grid", function()
     inst.handle:GetScript("OnDragStart")(inst.handle)
     assertEqual(started, 0, "a locked grid must not move, whoever asks")
 end)
+
+-- ── the strip clears the unit label (owner, in the client, 2026-09-21) ──────────────────────
+--
+-- The strip hangs off the grid's TOP and so does the unit label, by default, so the two drew on
+-- top of each other -- "Ka0s KickCD — Target" and "Target" in the same place. The label is what a
+-- player reads to tell two grids apart, so the strip is what moves.
+--
+-- The decision is UnitLabel's (FrameAbove), read off the CONFIG rather than off the label frame's
+-- shown state, because both modules answer the same CONFIG_CHANGED and nothing orders them.
+-- `__anchorTo` is what IconGrid recorded, for a fake frame that keeps no points.
+
+--- Seed the label's APPEARANCE and its show flag where the resolvers actually read them:
+--- `label.style.*` for Units.LabelStyle and `label.show` for Units.LabelShow (core/Units.lua).
+--- Writing `label.attach` directly would set a key nothing reads, and every case here would
+--- pass on the default rather than on what it asked for.
+local function labelStyle(NS, unit, show, style)
+    local u = NS.db.profile.units[unit]
+    u.label = u.label or {}
+    u.label.show = show
+    u.label.style = u.label.style or {}
+    for k, v in pairs(style) do u.label.style[k] = v end
+end
+
+test("the strip hangs above the unit LABEL when one is parked on the grid", function()
+    local NS, IconGrid, inst = fresh()
+    labelStyle(NS, "target", true, { attach = "icons", relPoint = "TOP" })
+    local lbl = NS:GetModule("UnitLabel")
+    lbl:Apply(lbl:GetInstance("target"))
+    setLocked(NS, IconGrid, inst, false)
+    local labelFrame = lbl:FrameAbove("target", "icons")
+    assertTrue(labelFrame ~= nil, "the label reports itself as being above the grid")
+    -- red under the old anchor, which was always the grid frame
+    assertEqual(inst.handle.__anchorTo, labelFrame, "the strip clears the label")
+end)
+
+test("the strip keeps its old place when no label is above the grid", function()
+    local NS, IconGrid, inst = fresh()
+    labelStyle(NS, "target", false, { attach = "icons", relPoint = "TOP" })
+    local lbl = NS:GetModule("UnitLabel")
+    lbl:Apply(lbl:GetInstance("target"))
+    setLocked(NS, IconGrid, inst, false)
+    assertEqual(inst.handle.__anchorTo, inst.grid, "with the label off, the grid is the anchor")
+end)
+
+test("a label parked on the CAST BAR is not in the grid strip's way", function()
+    local NS, IconGrid, inst = fresh()
+    labelStyle(NS, "target", true, { attach = "castbar", relPoint = "TOP" })
+    local lbl = NS:GetModule("UnitLabel")
+    lbl:Apply(lbl:GetInstance("target"))
+    setLocked(NS, IconGrid, inst, false)
+    assertTrue(lbl:FrameAbove("target", "icons") == nil, "it is above the cast bar, not the grid")
+    assertEqual(inst.handle.__anchorTo, inst.grid, "so the strip stays on the grid")
+end)
+
+test("a label anchored UNDER the grid is not in the strip's way either", function()
+    local NS, IconGrid, inst = fresh()
+    labelStyle(NS, "target", true, { attach = "icons", relPoint = "BOTTOM" })
+    local lbl = NS:GetModule("UnitLabel")
+    lbl:Apply(lbl:GetInstance("target"))
+    setLocked(NS, IconGrid, inst, false)
+    assertTrue(lbl:FrameAbove("target", "icons") == nil, "the point is configurable; BOTTOM is not above")
+    assertEqual(inst.handle.__anchorTo, inst.grid)
+end)

@@ -188,6 +188,38 @@ function UnitLabel:Apply(inst)
     f:SetShown(inst.enabled and NS.Units.LabelShow(inst.unit) and anchorFrame ~= nil)
 end
 
+--- The label frame a sibling widget has to clear above `attach`, or nil.
+---
+--- Asked by IconGrid and by Castbar_Handle, each of which hangs its drag strip off its own
+--- frame's TOP -- the same place this label lands by default, so without this the two draw on
+--- top of each other (owner, in the client, 2026-09-21). `attach` is the caller's own target,
+--- "icons" or "castbar": the label can be parked on either, and it is only in the way of the
+--- one it is actually parked on.
+---
+--- READ OFF THE CONFIG, NOT OFF THE FRAME, and that is the whole reason this is a function
+--- rather than an `inst.frame:IsShown()` at the call site. Both modules answer the same
+--- CONFIG_CHANGED, and nothing orders them: an IconGrid handler that ran first would read a
+--- shown state this module had not updated yet and anchor the strip against the label's
+--- previous answer. The inputs below are exactly the ones Apply uses to decide `SetShown`
+--- and where to put the frame, so the two agree whichever runs first.
+---
+--- Three things all have to hold, and each is a real case:
+---   * the label is ATTACHED to the caller's own frame -- a label parked on the cast bar is
+---     not above the icon grid, and vice versa;
+---   * it is enabled and its link-resolved show is on -- a hidden label occupies nothing;
+---   * it hangs off a TOP edge of its anchor. The point is configurable, so a label anchored
+---     under the grid, or centered on it, is not in the strip's way either.
+--- Anything else answers nil, and IconGrid keeps the position it had before this existed.
+function UnitLabel:FrameAbove(unit, attach)
+    local inst = instances[unit]
+    if not (inst and inst.frame) then return nil end
+    local style = NS.Units.LabelStyle(unit)
+    if sv(style, "attach") ~= attach then return nil end
+    if not (NS.Units.IsEnabled(unit) and NS.Units.LabelShow(unit)) then return nil end
+    if not tostring(sv(style, "relPoint")):find("TOP", 1, true) then return nil end
+    return inst.frame
+end
+
 function UnitLabel:ApplyAll()
     for _, u in ipairs(NS.Units.LIST) do
         self:Apply(self:GetInstance(u))

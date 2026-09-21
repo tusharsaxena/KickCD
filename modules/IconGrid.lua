@@ -631,6 +631,35 @@ end
 --- THE TOOLTIP IS OWNED BY THE HOVERED FRAME (the widget's default), again because nothing here is
 --- restricted -- AuraMaster has to own by UIParent at the cursor and this addon does not.
 --- @return table|nil
+--- Hang the strip above the unit LABEL when there is one above this grid, else above the
+--- grid itself.
+---
+--- The strip's natural home is the grid's TOP edge -- and so is the label's, by default, so
+--- the two drew on top of each other (owner, in the client, 2026-09-21). The label is the
+--- thing a player reads to tell two grids apart, so the strip is what moves.
+---
+--- UnitLabel answers whether its frame is up there, because the label's attach point, its
+--- link-resolved show and its anchor point are all its own config to resolve -- see
+--- UnitLabel:FrameAbove, which also says why that answer is read off the CONFIG rather
+--- than off the frame's shown state. A nil answer, a UnitLabel module that is not loaded, or
+--- a label parked on the cast bar all leave the strip exactly where it was before any of
+--- this: BOTTOM to the grid's TOP, one DRAG.GAP clear.
+---
+--- Re-run on every ApplyLock rather than only at build, because the label can be turned on,
+--- moved to the cast bar or re-anchored long after the strip was made, and ApplyLock is
+--- already the path every one of those config changes reaches this module through.
+local function anchorHandle(inst, grid, handle)
+    handle = handle or inst.handle
+    if not handle then return end
+    local lbl = NS:GetModule("UnitLabel", true)
+    local above = lbl and lbl.FrameAbove and lbl:FrameAbove(inst.unit, "icons") or nil
+    handle:ClearAllPoints()
+    handle:SetPoint("BOTTOM", above or grid, "TOP", 0, DRAG.GAP)
+    -- What it was anchored TO, for a harness whose fake frame records no points -- the same
+    -- reason the widget records `__label`. A test can read the decision without a real UI.
+    handle.__anchorTo = above or grid
+end
+
 local function buildHandle(inst, grid)
     if not (KW and KW.DragHandle) then return nil end
     local label = handleText(inst.unit)
@@ -649,7 +678,7 @@ local function buildHandle(inst, grid)
         },
     })
     if not handle then return nil end
-    handle:SetPoint("BOTTOM", grid, "TOP", 0, DRAG.GAP)
+    anchorHandle(inst, grid, handle)
     return handle
 end
 
@@ -684,6 +713,12 @@ function IconGrid:ApplyLock(inst)
         -- call sites for a cosmetic gain. A width that depends only on a label that never changes
         -- after birth cannot go stale, which is the property worth having here.
         if inst.handle then
+            -- RE-ANCHORED ON EVERY UNLOCK, not only at build. The unit label can be turned on,
+            -- moved between the grid and the cast bar, or re-anchored long after the strip was
+            -- made, and every one of those config changes reaches this module through ApplyLock.
+            -- Re-asking is cheap -- one config read and one SetPoint -- and it is the difference
+            -- between a strip that clears the label and one that sits on top of it.
+            anchorHandle(inst, grid, inst.handle)
             inst.handle:ApplyWidth(0)
             inst.handle:Show()
         end

@@ -1007,6 +1007,13 @@ The bar used to be dragged by its body, with a line of hint text above it while 
 carries the library's labeled strip, the same widget Aura Master and Consumable Master wear. Only
 the client can show this.
 
+0. **The strip clears the unit label.** `/kcd unlock` with the **Target** / **Focus** label turned
+   on and attached to the icons → the strip sits **above** the label text, not on top of it. Turn
+   the label off → the strip drops back to the grid's own top edge. Move the label's attach to the
+   **cast bar**, or anchor it to the grid's BOTTOM → the grid strip goes back to the grid's top, and
+   a label on the cast bar is cleared by the CAST BAR's strip instead. (This is the fix for the
+   overlap seen on 2026-09-21; the decision is read off the config, so it holds whichever of the two
+   modules redraws first.)
 1. `/kcd unlock`, with a target cast bar on screen in **Free** anchor mode → a dark strip with a
    gold label sits directly above the bar, reading **Target castbar** (and **Focus castbar** on the
    focus bar, if both are up). The label names the UNIT, not the addon: two strips in the same gold

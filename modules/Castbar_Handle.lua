@@ -106,7 +106,15 @@ local function buildHandle(inst, frame)
     -- The hint's own place and the hint's own gap, except the 2 is now read off
     -- the widget (lib.DRAG_HANDLE.GAP) instead of typed here, so the strip and
     -- every sibling addon's strip keep the same standoff from what they move.
-    handle:SetPoint("BOTTOM", frame, "TOP", 0, KW.DRAG_HANDLE.GAP)
+    -- ABOVE THE UNIT LABEL when one is parked on this bar, else above the bar itself. The
+    -- strip's natural home is the frame's TOP edge and so is the label's, so the two drew on top
+    -- of each other on the grid (owner, in the client, 2026-09-21) and would do the same here the
+    -- moment a player set the label's attach to the cast bar. UnitLabel:FrameAbove resolves its
+    -- own attach, show and anchor config and answers nil for every case that is not in the way --
+    -- see there for why that is read off the config rather than off the frame's shown state.
+    local lbl = NS:GetModule("UnitLabel", true)
+    local above = lbl and lbl.FrameAbove and lbl:FrameAbove(inst.unit, "castbar") or nil
+    handle:SetPoint("BOTTOM", above or frame, "TOP", 0, KW.DRAG_HANDLE.GAP)
     return handle
 end
 
