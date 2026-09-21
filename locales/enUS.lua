@@ -422,8 +422,20 @@ L["RGBA border color for non-interruptible casts."] =
 
 -- Cast bar runtime labels
 L["KickCD castbar"]              = "KickCD castbar"
-L["KickCD castbar — drag to move"] =
-    "KickCD castbar — drag to move"
+-- The drag strip's label, one key per unit. Two bars can be unlocked at once and
+-- a strip that read the same on both would not say which bar it moves. Two whole
+-- keys rather than a composed "%s castbar": localization-§1/§2 make the key the
+-- English source string, and a sentence assembled at runtime is not one.
+--
+-- "KickCD castbar — drag to move" left with the FontString it was written for
+-- (modules/Castbar.lua's old frame.dragHint). Its identity half survives as the
+-- key above, which the strip's tooltip title and RenderCast's preview both use;
+-- its instruction half is now the body line below, where the strip's "?" shows
+-- it. A key nothing renders is a line every future translation file inherits.
+L["Target castbar"]              = "Target castbar"
+L["Focus castbar"]               = "Focus castbar"
+L["Drag to move. Right-click for settings."] =
+    "Drag to move. Right-click for settings."
 
 -- Text Label tab. Its first tab is "General" (already keyed above), not
 -- "Label": on a page called Text Label the word was the page's, not the tab's.

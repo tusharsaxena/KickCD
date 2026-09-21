@@ -1001,11 +1001,39 @@ which is the whole reason this step exists.
   those is the finding — the addon being off is exactly when a player needs to read and repair
   their settings (`slash-commands-§2`).
 
+### 34. The cast bar's drag strip (LibKa0s v1.48.0)
+
+The bar used to be dragged by its body, with a line of hint text above it while unlocked. It now
+carries the library's labeled strip, the same widget Aura Master and Consumable Master wear. Only
+the client can show this.
+
+1. `/kcd unlock`, with a target cast bar on screen in **Free** anchor mode → a dark strip with a
+   gold label sits directly above the bar, reading **Target castbar** (and **Focus castbar** on the
+   focus bar, if both are up). The label names the UNIT, not the addon: two strips in the same gold
+   saying the same thing would not tell you which bar you are about to move.
+2. **Drag the strip** → the bar moves with it. Release → the position sticks across `/reload`.
+3. **Drag the "?" mark** on the strip → the bar moves too. The mark is a second drag target, not
+   just a tooltip.
+4. **Hover the strip, then the "?"** → both show a tooltip; the "?" brightens under the cursor and
+   the strip's own title is the addon's name. Check the tooltip text reads as prose, not as a
+   locale key.
+5. **Right-click the strip** → the settings panel opens. In combat → the gray refusal line, and no
+   panel.
+6. Set the bar's anchor mode to **Primary** → the strip disappears, and the bar cannot be dragged
+   by the strip, the mark or its own body. Primary means the icon grid places it.
+7. Set it back to **Free** without leaving the panel → the strip comes back. (The one path worth
+   checking twice: `ApplyLock` does not run on every route that changes `anchorMode`, which is why
+   `canDrag` gates the act as well as the strip being hidden.)
+8. `/kcd lock` → the strip goes away on both bars and neither can be dragged.
+9. **With `libs/LibKa0s` removed** → the bar draws NO strip and is dragged by its body, exactly as
+   it was before the adoption. No error.
+
+---
 ---
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
-- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28** and **31**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28**, **31** and **34**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass. Anything touching the cast bar's `OnUpdate` install or teardown — `EnsureFrame`, `Start`, `Stop` — also needs **32**, which is the only step that drives two units at once.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).

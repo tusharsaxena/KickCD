@@ -139,6 +139,7 @@ end
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
+
 -- ---------------------------------------------------------------------------
 -- Helpers
 -- ---------------------------------------------------------------------------
@@ -331,15 +332,52 @@ end
 --               position is determined by the icon position and the user-
 --               configured (anchorPoint, castbarPoint, offset) tuple.
 
+--- May a drag move this bar at this moment?
+---
+--- ONE PREDICATE, TWO CONSUMERS, and that is the whole reason it was lifted out
+--- of ApplyLock (which is its only caller before this change, below): the strip's
+--- VISIBILITY and the widget's own `canDrag` GATE have to answer the same
+--- question, or the bar grows a box that advertises a drag it then refuses.
+---
+--- They are not one mechanism wearing two names. Hiding the strip removes the
+--- affordance; `canDrag` refuses the act (libs/LibKa0s/WidgetsDragHandle.lua,
+--- dhSetDragScripts -- a false answer returns before StartMoving and before
+--- __dragging is set, so the matching OnDragStop also returns and nothing is
+--- persisted).
+---
+--- BOTH are wired because hiding alone does not cover the whole affordance.
+--- dhBuildHelp copies the strip's drag scripts onto the "?" Button, so the mark is
+--- a second thing that can start a move, and `canDrag` is the one gate that sits in
+--- front of both. Hiding is what stops the bar ADVERTISING a drag it would refuse;
+--- `canDrag` is what makes the refusal true wherever the drag is started from.
+---
+--- PRIMARY anchor mode forces drag-disabled -- the bar's position is determined
+--- by the icon-grid anchor + offsets, not by dragging (defaults/Profile.lua's
+--- `anchorMode` comment says the same thing from the schema's side, and PRIMARY
+--- is the shipped default). `cfg(inst)` is indexed unguarded here because it was
+--- indexed unguarded in ApplyLock before this: behavior is unchanged, not widened.
+local function dragAllowed(inst)
+    local profileLocked = NS.db and NS.db.profile and NS.db.profile.locked
+    return (not profileLocked) and (cfg(inst).anchorMode ~= "PRIMARY")
+end
+
 local function onDragStart(_inst, self)
     if NS.db and NS.db.profile and NS.db.profile.locked then return end
     self:StartMoving()
 end
 
-local function onDragStop(inst, self)
-    self:StopMovingOrSizing()
+--- Persist where the bar ended up, and say so on the bus.
+---
+--- SPLIT OUT OF onDragStop because there are now TWO ways a drag of this bar can
+--- finish and only one of them owns the StopMovingOrSizing. The bar's own
+--- OnDragStop (below) is handed the frame and stops the move itself; the strip's
+--- stop is the widget's, which has already called StopMovingOrSizing on
+--- `moveFrame` by the time it calls this back (libs/LibKa0s/WidgetsDragHandle.lua,
+--- dhSetDragScripts). Handing the widget the old onDragStop would have stopped
+--- one move twice.
+local function saveAnchor(inst, frame)
     if NS.db and NS.db.profile then
-        NS.Units.SetAnchor(inst.unit, "castbar", NS.Util.SaveAnchor(self))
+        NS.Units.SetAnchor(inst.unit, "castbar", NS.Util.SaveAnchor(frame))
     end
     -- CR-34: complete the bus contract by announcing the anchor write.
     -- No subscriber listens for "castbar" anchor changes today (the bar
@@ -351,6 +389,12 @@ local function onDragStop(inst, self)
     local H = NS.Settings and NS.Settings.Helpers
     if H and H.FireConfigChanged then H.FireConfigChanged("castbar") end
 end
+
+local function onDragStop(inst, self)
+    self:StopMovingOrSizing()
+    saveAnchor(inst, self)
+end
+
 
 -- Translate a 13-point anchor token (the new `<SIDE>_<ALIGN>` /
 -- `CENTER` set shared with the Icons grid dropdown) into a name
@@ -423,21 +467,27 @@ end
 function Castbar:ApplyLock(inst)
     local frame = inst.frame
     if not frame then return end
-    local c              = cfg(inst)
-    local primaryAnchor  = (c.anchorMode == "PRIMARY")
     local profileLocked  = NS.db and NS.db.profile and NS.db.profile.locked
-    -- PRIMARY anchor mode forces drag-disabled — the bar's position is
-    -- determined by the icon-grid anchor + offsets, not by dragging.
-    local dragAllowed    = (not profileLocked) and (not primaryAnchor)
+    -- The lock question and the PRIMARY question now live in one place
+    -- (dragAllowed, up beside the drag scripts), because the strip's `canDrag`
+    -- has to ask the same one -- see that function's comment for why both the
+    -- hiding and the gate are wired rather than either alone. The local is
+    -- renamed only because the predicate took the old name.
+    local allowed        = dragAllowed(inst)
 
-    if dragAllowed then
+    -- THE BAR BODY KEEPS ITS OWN DRAG. The strip is an ADDITIONAL grip, not a
+    -- replacement: every player who has ever moved this bar did it by grabbing
+    -- the bar, and nothing about adopting the widget requires taking that away.
+    -- What is swapped here is only which thing is shown alongside it -- the
+    -- library's strip where a one-line FontString hint used to be.
+    if allowed then
         frame:EnableMouse(true)
         frame:RegisterForDrag("LeftButton")
-        if frame.dragHint then frame.dragHint:Show() end
+        if frame.dragHandle then frame.dragHandle:Show() end
     else
         frame:EnableMouse(false)
         frame:RegisterForDrag()
-        if frame.dragHint then frame.dragHint:Hide() end
+        if frame.dragHandle then frame.dragHandle:Hide() end
     end
 
     -- Visibility for the empty (no-cast) state:
@@ -555,11 +605,19 @@ function Castbar:EnsureFrame(inst)
     frame.borderInterruptible:SetFrameLevel(barLevel + 2)
     frame.borderUninterruptible:SetFrameLevel(barLevel + 2)
 
-    -- Subtle "drag me" hint, shown only while unlocked.
-    frame.dragHint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    frame.dragHint:SetText(L["KickCD castbar — drag to move"])
-    frame.dragHint:SetPoint("BOTTOM", frame, "TOP", 0, 2)
-    frame.dragHint:Hide()
+    -- The drag strip, shown only where a drag would actually move the bar
+    -- (ApplyLock). It REPLACES the plain "KickCD castbar — drag to move"
+    -- FontString this file drew here: the same place (BOTTOM to the bar's TOP),
+    -- the same 2px gap -- which is the widget's own lib.DRAG_HANDLE.GAP now,
+    -- read rather than re-typed -- and the same hidden-at-birth state, which the
+    -- widget does itself (libs/LibKa0s/WidgetsDragHandle.lua closes lib.DragHandle
+    -- on handle:Hide(), because a strip born visible would flash at zero width).
+    --
+    -- What the strip adds over the hint is a hit target, a tooltip and a
+    -- right-click into the settings panel. What it costs is a box of chrome above
+    -- an unlocked bar where there used to be one line of gray text: a UX change,
+    -- accepted as one.
+    frame.dragHandle = Castbar.BuildHandle(inst, frame)
 
     -- Built ONCE per instance, here, because this is the only code that runs
     -- once per unit for the life of the session: inst.frame is never cleared,
@@ -1342,6 +1400,12 @@ end
 -- module is the established idiom for making that logic reachable from the
 -- headless harness (AutoSizeLong set the precedent); nothing inside the addon
 -- calls them through these fields.
+-- For modules/Castbar_Handle.lua, which builds the drag strip and needs the two
+-- answers that stay here: whether this bar may be dragged at all (the PRIMARY
+-- anchor mode says no) and where to write the anchor once a drag stops. Same
+-- pattern as the helpers Castbar_Skin.lua takes off this table below.
+Castbar.DragAllowed   = dragAllowed
+Castbar.SaveAnchor    = saveAnchor
 Castbar.AutoSizeLong  = autoSizeLong
 Castbar.UnpackColor   = unpackColor
 Castbar.TruncateName  = truncateName

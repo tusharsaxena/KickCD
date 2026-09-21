@@ -542,3 +542,90 @@ test("re-anchoring never stacks a second point on the frame", function()
     Castbar:ApplyAnchor(inst)
     assertEqual(inst.frame:GetNumPoints(), 1)
 end)
+
+-- ── The drag strip (LibKa0s-Widgets-1.0) ────────────────────────────────────
+--
+-- The bar used to draw its own one-line "drag to move" hint; it now carries the
+-- library's strip (libs/LibKa0s/WidgetsDragHandle.lua). These cases pin the four
+-- things a swap like this gets wrong: that the hint is GONE rather than shipped
+-- twice, that the label names the unit rather than the addon, that the strip
+-- appears exactly where a drag would work, and that the two halves of the PRIMARY
+-- rule agree -- a strip that survives a mode change must still refuse the drag
+-- and persist nothing. The refusal is observed through the ANCHOR rather than
+-- through StartMoving, because the mock's StartMoving is an inert no-op while
+-- units.<unit>.anchors.castbar is real state the suite can read back.
+
+test("EnsureFrame builds the library's drag strip in place of the hint text", function()
+    local _, _, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    assertTrue(frame.dragHandle ~= nil, "the bar must carry LibKa0s-Widgets-1.0's strip")
+    assertTrue(frame.dragHint == nil, "the hint FontString the strip replaces must be gone")
+    assertTrue(frame.dragHandle.help ~= nil, "the strip carries the widget's help mark")
+    assertEqual(frame.dragHandle.label:GetText(), "Target castbar",
+        "the label names the unit -- two unlocked bars would otherwise read alike")
+end)
+
+test("the focus bar's strip is labeled for ITS unit", function()
+    local _, _, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("focus"))
+    assertEqual(frame.dragHandle.label:GetText(), "Focus castbar")
+end)
+
+test("ApplyLock shows the strip exactly where a drag would move the bar", function()
+    local NS, _, Castbar = enabled()
+    local inst  = Castbar:GetInstance("target")
+    local frame = Castbar:EnsureFrame(inst)
+    local c     = NS.Units.Castbar("target")
+
+    NS.db.profile.locked = false
+    c.anchorMode = "FREE"
+    Castbar:ApplyLock(inst)
+    assertTrue(frame.dragHandle:IsShown(), "unlocked + FREE: the bar is draggable")
+
+    c.anchorMode = "PRIMARY"
+    Castbar:ApplyLock(inst)
+    assertFalse(frame.dragHandle:IsShown(),
+        "PRIMARY pins the bar to the grid, so a strip would advertise nothing")
+
+    c.anchorMode = "FREE"
+    NS.db.profile.locked = true
+    Castbar:ApplyLock(inst)
+    assertFalse(frame.dragHandle:IsShown(), "locked: no strip on any bar")
+end)
+
+test("a drag finished on the strip persists the bar's new position", function()
+    local NS, mocks, Castbar = enabled()
+    local inst  = Castbar:GetInstance("target")
+    local frame = Castbar:EnsureFrame(inst)
+    NS.db.profile.locked = false
+    NS.Units.Castbar("target").anchorMode = "FREE"
+    -- Stand in for the move itself: StartMoving is inert in the mock, so the
+    -- point the drag "ended" at is set directly and the strip's OnDragStop is
+    -- what has to read it back out through Util.SaveAnchor.
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", mocks.UIParent, "TOPLEFT", 11, -22)
+    frame.dragHandle:_run("OnDragStart")
+    frame.dragHandle:_run("OnDragStop")
+    local saved = NS.Units.Anchor("target", "castbar")
+    assertEqual(saved.point, "TOPLEFT")
+    assertEqual(saved.x, 11)
+    assertEqual(saved.y, -22)
+end)
+
+test("the strip refuses a drag in PRIMARY mode and persists nothing", function()
+    -- The strip is hidden in PRIMARY, but ApplyLock does not run on every path
+    -- that can flip anchorMode, so a shown strip can outlive its mode. The
+    -- widget's canDrag gate is what makes that survivor harmless.
+    local NS, mocks, Castbar = enabled()
+    local inst  = Castbar:GetInstance("target")
+    local frame = Castbar:EnsureFrame(inst)
+    NS.db.profile.locked = false
+    NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    local before = NS.Units.Anchor("target", "castbar")
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", mocks.UIParent, "TOPLEFT", 99, -99)
+    frame.dragHandle:_run("OnDragStart")
+    frame.dragHandle:_run("OnDragStop")
+    assertTrue(rawequal(NS.Units.Anchor("target", "castbar"), before),
+        "a refused drag must not write an anchor at all")
+end)
