@@ -19,8 +19,16 @@ It runs on **both** the `"icons"` and the `"units"` config sections. `"units"` i
 The block's bounding box is computed against `usedRows` / `usedCols` — the rectangular extent of the *visible* icons — not the configured `secondaryRows * secondaryCols` capacity. Wrap math inside the per-icon loop still uses the configured `cols` / `rows` so a multi-row layout wraps at the user's chosen column count, but the grid frame's footprint hugs the live icons. This makes:
 
 - the cast bar's "Auto-size to icon grid" track the actual visible width / height (commit `7f016f7`),
-- the drag handle exclude phantom empty slots beyond the rendered icons,
+- the grid's own grab area exclude phantom empty slots beyond the rendered icons,
 - a primary-only grid collapse to `primarySize × primarySize` (no leftover gap or block padding).
+
+## The drag strip
+
+While the addon is unlocked each grid carries a **drag strip** — an 18px dark strip with a 1px gold edge, a centered gold label naming the addon and the unit (`Ka0s KickCD — Target` / `— Focus`), and a help mark at its right end. It sits `2px` above the grid's top edge, outside the icons' bounding box, so nothing inside the grid moves to make room for it. Left-drag moves the grid and saves through the same `onDragStop` the grid frame's own script uses; right-click opens the settings panel (refused with the standard gray line in combat).
+
+The strip is **not this addon's widget**: it is `LibKa0s-Widgets-1.0`'s `lib.DragHandle` (`libs/LibKa0s/WidgetsDragHandle.lua`), shared with AuraMaster's container handles and ConsumableMaster's macro bar. It is built once in `EnsureGrid`, parented to the grid — so it inherits the master scale and alpha and hides with the grid for free — and it is **shown and hidden by `ApplyLock`**, the same call that registers and unregisters the drag, so the affordance and the ability can never disagree. Without LibKa0s the strip is simply absent and the grid drags exactly as it did before.
+
+Its width is its own label plus what the widget keeps clear on each side; it is deliberately *not* floored at the grid's width, because `ApplyLock` is not re-run after every pass that can change the grid's footprint and a grid-derived width would go stale.
 
 ## CENTER / MIDDLE alias
 
