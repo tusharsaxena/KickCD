@@ -156,10 +156,16 @@ test("the strip hangs above the unit LABEL when one is parked on the grid", func
     local lbl = NS:GetModule("UnitLabel")
     lbl:Apply(lbl:GetInstance("target"))
     setLocked(NS, IconGrid, inst, false)
-    local labelFrame = lbl:FrameAbove("target", "icons")
-    assertTrue(labelFrame ~= nil, "the label reports itself as being above the grid")
+    local labelRegion = lbl:FrameAbove("target", "icons")
+    assertTrue(labelRegion ~= nil, "the label reports itself as being above the grid")
     -- red under the old anchor, which was always the grid frame
-    assertEqual(inst.handle.__anchorTo, labelFrame, "the strip clears the label")
+    assertEqual(inst.handle.__anchorTo, labelRegion, "the strip clears the label")
+    -- AND it is the FONTSTRING, not the 1x1 frame the text is centered on. Anchoring to that
+    -- frame put the strip on the top half of the label -- the first attempt did exactly that and
+    -- the overlap was still visible in the client.
+    local li = lbl:GetInstance("target")
+    assertEqual(labelRegion, li.text, "the region to clear is the text, which has real extents")
+    assertTrue(labelRegion ~= li.frame, "not the 1x1 frame, whose TOP is the text's middle")
 end)
 
 test("the strip keeps its old place when no label is above the grid", function()

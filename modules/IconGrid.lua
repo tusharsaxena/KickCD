@@ -645,6 +645,9 @@ end
 --- a label parked on the cast bar all leave the strip exactly where it was before any of
 --- this: BOTTOM to the grid's TOP, one DRAG.GAP clear.
 ---
+--- What comes back is the label's FONTSTRING, not its frame -- the frame is 1x1 with the text
+--- centered on it, so its TOP is the middle of the label. See UnitLabel:FrameAbove.
+---
 --- Re-run on every ApplyLock rather than only at build, because the label can be turned on,
 --- moved to the cast bar or re-anchored long after the strip was made, and ApplyLock is
 --- already the path every one of those config changes reaches this module through.

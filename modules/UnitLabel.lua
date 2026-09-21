@@ -188,7 +188,14 @@ function UnitLabel:Apply(inst)
     f:SetShown(inst.enabled and NS.Units.LabelShow(inst.unit) and anchorFrame ~= nil)
 end
 
---- The label frame a sibling widget has to clear above `attach`, or nil.
+--- The label REGION a sibling widget has to clear above `attach`, or nil.
+---
+--- IT IS THE FONTSTRING, NOT THE FRAME, and the difference is a visible overlap. EnsureFrame
+--- builds a 1x1 frame and anchors the text CENTER on it, so the frame's TOP edge sits half a
+--- pixel above the text's own CENTER -- anchor anything to it and you land on the top half of
+--- the label. The FontString is the only region here with the text's real extents, and a
+--- SetPoint against one is as good as against a frame. Returning `inst.frame` is what the first
+--- attempt did, and the strip still clipped the label (owner, in the client, 2026-09-21).
 ---
 --- Asked by IconGrid and by Castbar_Handle, each of which hangs its drag strip off its own
 --- frame's TOP -- the same place this label lands by default, so without this the two draw on
@@ -217,7 +224,7 @@ function UnitLabel:FrameAbove(unit, attach)
     if sv(style, "attach") ~= attach then return nil end
     if not (NS.Units.IsEnabled(unit) and NS.Units.LabelShow(unit)) then return nil end
     if not tostring(sv(style, "relPoint")):find("TOP", 1, true) then return nil end
-    return inst.frame
+    return inst.text or inst.frame
 end
 
 function UnitLabel:ApplyAll()
