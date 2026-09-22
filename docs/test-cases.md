@@ -854,12 +854,13 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (28)
+### test_settings_spells_editor.lua (29)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
 - re-adding a spell already in the list re-enables it in place
 - adding to a spec the user has never customized lazy-creates its list
+- a spell the Cooldown Manager does not track is tagged before the click
 - a spell the Cooldown Manager does not track for the player's own spec is refused
 - a spell the Cooldown Manager does track passes the gate
 - the gate is DROPPED when the editor is not on the player's live spec
@@ -1236,7 +1237,7 @@ badge and any count quoted in the docs must agree with it.
 | test_cooldowns_gates.lua | 22 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 28 |
+| test_settings_spells_editor.lua | 29 |
 | test_spell_registry.lua | 24 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 39 |
@@ -1257,4 +1258,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **1003** |
+| **Total** | **1004** |

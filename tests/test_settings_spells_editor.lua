@@ -201,6 +201,39 @@ local function stubCooldownViewer(inst, ids)
     return function() return calls end
 end
 
+-- The suggestion row's own warning (LibKa0s v1.51.0's `kind.suggestTag`). The refusal below fires
+-- at the ADD, in chat -- correct, but after the player has chosen. This marks the row while they
+-- are still choosing, and it is effective on THIS page precisely because the spells in question
+-- are in the spellbook, so they reach the suggestion index at all.
+--
+-- It lives with the gate's other cases because it needs the same stub: without C_CooldownViewer
+-- the tag answers nil for everything, and a case that did not stub it would pass for the wrong
+-- reason on every assertion.
+test("a spell the Cooldown Manager does not track is tagged before the click", function()
+    local inst = editorInstance()
+    stubCooldownViewer(inst, { 111 })
+    -- AND IT IS WIRED, not merely published. Calling the function alone passed even with the
+    -- `suggestTag` line deleted from the H.IdInput spec, which is a test proving nothing -- so the
+    -- spec the control was actually handed is captured and asserted first.
+    local H = inst.NS.Settings.Helpers
+    local realIdInput, handed = H.IdInput, nil
+    H.IdInput = function(ctx, parent, spec)
+        handed = spec
+        return realIdInput(ctx, parent, spec)
+    end
+    local ok, err = pcall(function() inst.NS.Settings.SpellsPanel:RefreshRows() end)
+    H.IdInput = realIdInput
+    if not ok then error(err, 0) end
+    local tag = inst.NS.Settings.SpellsPanel.SuggestTag
+    assertTrue(type(tag) == "function", "the page publishes its tag")
+    assertEqual(handed and handed.suggestTag, tag, "and hands it to the add control")
+    -- red under a tag that answers for everything: a correct list would wear a warning per row.
+    assertNil(tag(111), "a spell the Cooldown Manager tracks wears nothing")
+    local untracked = tag(12345)
+    assertTrue(untracked ~= nil and untracked:find("not tracked", 1, true) ~= nil,
+        "one it does not track is marked: " .. tostring(untracked))
+end)
+
 test("a spell the Cooldown Manager does not track for the player's own spec is refused", function()
     local inst = editorInstance()
     stubCooldownViewer(inst, { 111 })

@@ -462,6 +462,11 @@ end
 --- so a localized build would show them untranslated beside this page's own strings.
 local ADD_STRINGS = {
     add       = L["Add"],
+    -- WHERE A NAME CAN COME FROM, routed. The library has its own sentence for a spell kind and
+    -- ends its refusal with it -- but as an English LITERAL, so a localized build would show it
+    -- untranslated beside this page's own strings. Aura Master localizes the same sentence for the
+    -- same reason (its NAME_HINT); this is that, for the one kind this page uses.
+    nameHint  = L["Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."],
     empty     = L["Type a spell id, a spell link or a spell name."],
     notFound  = L["No spell named '{text}' in your spellbook."],
     ambiguous = L["Several spells are named '{text}' — pick one from the list, or use the id."],
@@ -483,6 +488,22 @@ local function currentSpellIds()
         if type(id) == "number" then out[#out + 1] = id end
     end
     return out
+end
+
+--- The word a suggestion row wears when the Cooldown Manager does not track that spell for the
+--- spec being edited.
+---
+--- LIFTED OUT AND PUBLISHED, for the reason this file's header already gives about the popup's
+--- handler: written inline as a table field it could not be reached by a reader or by the harness.
+---
+--- Nil in every case but the one it is for: another spec's list (the refusal below only fires for
+--- the active spec, so a tag on a list the player is only editing would claim something this
+--- addon does not check), a client with no C_CooldownViewer, and a spell the set holds.
+function Spells.SuggestTag(id)
+    if not editorIsActiveSpec() then return nil end
+    local cmSet = getCooldownManagerSpellSet()
+    if not cmSet or cmSet[id] then return nil end
+    return "|cffff8000" .. L["not tracked"] .. "|r"
 end
 
 --- The add box's accept path: the same two steps the StaticPopup ran, minus the parsing the
@@ -974,7 +995,18 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     headerWidgets[#headerWidgets + 1] = addHost
 
     H.IdInput(headerCtx, addHost, {
+        -- THE LIBRARY'S OWN SPELL KIND, by name rather than a host table. A named kind needs no
+        -- `base` because it IS the base: it comes with the spellbook as its suggestion source, the
+        -- rank rows that tell two spells of one name apart, the client tooltip, and the name
+        -- lookup. A host table would have to declare `base = "spell"` to get any of that back, and
+        -- this page needs nothing a host table is for.
         kind       = "spell",
+        -- WARN BEFORE THE CLICK. The Cooldown Manager refusal below fires at the ADD, in chat --
+        -- correct, but after the player has chosen. This marks the row while they are still
+        -- choosing. It works here precisely because the spells in question ARE in the spellbook,
+        -- so they appear as suggestions; the same tag on a page whose ids are typed as digits
+        -- would cover almost nothing.
+        suggestTag = Spells.SuggestTag,
         label      = L["Add a spell"],
         tooltip    = L["Type a spell id or a name and pick from the list, or shift-click a spell link into the box, then press Enter or Add."],
         strings    = ADD_STRINGS,
