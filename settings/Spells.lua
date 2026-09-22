@@ -51,28 +51,47 @@ local CATEGORIES = {
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
--- The height of the page-wide chrome block (options-ui-§14): one labeled AceGUI
--- Dropdown, which renders its label above the control, plus the Add-spell button
--- beside it. The library owns the band arithmetic around it -- the divider, the
--- gaps and the scroll's top edge -- so this is the block's own height and
--- nothing else.
--- The chrome band's height. 44 held a labeled dropdown and a button on one row; the add
--- control that replaced the button is an EditBox with its own label AND a status line under it,
--- which is where the library writes a refusal ("no spell named ...").
+-- ---------------------------------------------------------------------------
+-- The chrome band's height (options-ui-§14)
+-- ---------------------------------------------------------------------------
 --
--- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is options-ui-14's call, not a
--- preference: "Controls that apply to every tab MUST sit in that band too, above the strip --
--- never in the scroll below it", and the band "MUST carry the identity controls -- the picker,
--- and the create control where the page has one". Adding a spell is this page's create control.
+-- ADDED UP FROM ITS PARTS RATHER THAN TUNED. It was a hand-picked 44, then 72, then 96, and the
+-- third one was nine pixels short of its own content without anything saying so -- a written
+-- status line drew straight over the library's divider and into the tab strip, because
+-- SimpleGroup does not clip. A number nobody can check is a number that goes wrong quietly, so
+-- each term below names the widget it pays for and where that widget's height comes from.
 --
--- The cost is real and is the one that section warns about: every row below moves down by the
--- difference, permanently, for a control a player touches occasionally. It is paid because the
--- alternative the section names -- moving page-wide acts to a `General` first tab -- is for the
--- ACTS (rename, copy, reset, delete), and explicitly not for the picker and the create control.
+-- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is §14's call, not a preference:
+-- "Controls that apply to every tab MUST sit in that band too, above the strip -- never in the
+-- scroll below it", and the band "MUST carry the identity controls -- the picker, and the create
+-- control where the page has one". Adding a spell is this page's create control. The cost is the
+-- one that section warns about -- every row below sits permanently lower -- and the escape §14
+-- offers is for the ACTS (rename, copy, reset, delete), explicitly not for these two.
+--
+-- THE BAND IS TWO ROWS, WHICH §14 SAYS IT SHOULD NOT BE. Filed as an accepted deviation in
+-- docs/ARCHITECTURE.md -> Documented deviations, with its re-check trigger.
+
+-- AceGUI's labeled Dropdown sets its own frame to 40 (AceGUIWidget-DropDown.lua's SetLabel:
+-- `self:SetHeight(40)`; 26 without a label). Read, not chosen.
+local HEADER_PICKER_H  = 40
 -- The gap between the band's two rows. Small enough that they read as one block of chrome and
--- not as two, which is the thing options-ui-14 warns a growing band turns into.
-local HEADER_ROW_GAP = 6
-local HEADER_BLOCK_H = 96
+-- not as two, which is the thing §14 warns a growing band turns into.
+local HEADER_ROW_GAP   = 6
+-- AceGUI's labeled EditBox sets its frame to 44 (AceGUIWidget-EditBox.lua's SetLabel), of which
+-- 18 is the caption, 19 the box, and 7 is the widget's own bottom padding. The Add button beside
+-- it is 24 and does not raise the row.
+local HEADER_ADD_ROW_H = 44
+-- AceGUI's Flow layout puts exactly 3 between one row and the next (`height + rowheight + 3`).
+-- The status line is full width, so it always wraps to a row of its own.
+local HEADER_FLOW_GAP  = 3
+-- What the status line needs when it SAYS something. Empty, AceGUI floors a Label at 1px, so
+-- reserving nothing looked fine in every screenshot and broke on the one frame that mattered:
+-- the refusal ("no spell named ...") the add box writes when a name resolves to nothing. One
+-- line of GameFontHighlightSmall, which the Label takes by default.
+local HEADER_STATUS_H  = 12
+
+local HEADER_BLOCK_H = HEADER_PICKER_H + HEADER_ROW_GAP
+    + HEADER_ADD_ROW_H + HEADER_FLOW_GAP + HEADER_STATUS_H
 
 -- ---------------------------------------------------------------------------
 -- Module-private state

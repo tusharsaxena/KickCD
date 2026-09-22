@@ -235,6 +235,60 @@ test("the band stacks the picker over the add box, each on its own row", functio
     end
 end)
 
+--- The whole of `libs/AceGUI-3.0/<rel>`, so a case can assert against the vendored source rather
+--- than against a number copied out of it once.
+local function aceSource(rel)
+    local root = _G.KICKCD_TEST_ROOT or "."
+    local f = assert(io.open(root .. "/libs/AceGUI-3.0/" .. rel, "r"),
+        "vendored AceGUI is missing: " .. rel)
+    local src = f:read("*a")
+    f:close()
+    return src
+end
+
+test("the chrome band reserves room for the status line it writes refusals on", function()
+    -- THE BUG THIS PINS. The band was a hand-picked 96 while its content adds up to 105, and the
+    -- nine missing pixels were invisible in every screenshot because an EMPTY AceGUI Label is
+    -- floored at 1px. The frame that mattered was the one after a bad name: the library writes
+    -- "no spell named ..." on that Label, it grows to a line of GameFontHighlightSmall, and
+    -- SimpleGroup does not clip -- so the refusal drew over the library's divider and into the tab
+    -- strip. A height nobody can check is a height that goes wrong quietly.
+    --
+    -- red under HEADER_BLOCK_H going back to any hand-picked number, and red under a vendored
+    -- AceGUI bump that changes a widget height the sum is built from.
+    local inst, p = editorInstance()
+    local H = inst.NS.Settings.Helpers
+    local asked
+    local real = H.PageHeader
+    H.PageHeader = function(ctx, spec)
+        asked = spec and spec.height
+        return real(ctx, spec)
+    end
+    p:RefreshRows()
+    H.PageHeader = real
+    assertTrue(type(asked) == "number", "the page reserved a chrome band")
+
+    -- Each term read out of the vendored widget that charges it, so this dies on a bump rather
+    -- than drifting quietly past one.
+    local dropdown = aceSource("widgets/AceGUIWidget-DropDown.lua")
+    local editbox  = aceSource("widgets/AceGUIWidget-EditBox.lua")
+    local core     = aceSource("AceGUI-3.0.lua")
+    assertTrue(dropdown:find("self:SetHeight(40)", 1, true) ~= nil,
+        "AceGUI's labeled Dropdown is still 40 tall")
+    assertTrue(editbox:find("self:SetHeight(44)", 1, true) ~= nil,
+        "AceGUI's labeled EditBox is still 44 tall")
+    assertTrue(core:find("height = height + rowheight + 3", 1, true) ~= nil,
+        "AceGUI's Flow still puts 3 between one row and the next")
+
+    -- 40 picker + 6 inter-row gap + 44 add row + 3 Flow gap + 12 status line.
+    assertEqual(asked, 105, "the band is the sum of what it holds, with the status line paid for")
+
+    -- The part that is actually load-bearing, stated without the arithmetic: whatever the terms
+    -- become, a written status line must still fit under the add row. 40 + 6 + 44 + 3 = 93.
+    assertTrue(asked - 93 >= 12,
+        "a one-line refusal fits under the add box instead of over the divider")
+end)
+
 test("an Icon in a row lines its ART up with the checkbox, not its frame", function()
     local inst, p = editorInstance()
     p:RefreshRows()
