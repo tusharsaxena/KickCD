@@ -172,7 +172,7 @@ local SUITES = {
     "test_flow_traces",
     "test_version",
     "test_source_style",
-    "test_spelling",
+    { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",
     "test_disabled",
