@@ -199,7 +199,15 @@ L["Cannot open settings during combat."] = "cannot open settings during combat �
 
 -- Spells editor
 L["Specialization"]              = "Specialization"
-L["Add spell..."]                = "Add spell..."
+L["Add a spell"] = "Add a spell"
+L["No spells tracked. Type one into Add a spell above, or press Defaults."] = "No spells tracked. Type one into Add a spell above, or press Defaults."
+L["Type a spell id or a name and pick from the list, or shift-click a spell link into the box, then press Enter or Add."] = "Type a spell id or a name and pick from the list, or shift-click a spell link into the box, then press Enter or Add."
+L["Add"] = "Add"
+L["Type a spell id, a spell link or a spell name."] = "Type a spell id, a spell link or a spell name."
+L["No spell named '{text}' in your spellbook."] = "No spell named '{text}' in your spellbook."
+L["Several spells are named '{text}' — pick one from the list, or use the id."] = "Several spells are named '{text}' — pick one from the list, or use the id."
+L["Unknown spell {id}"] = "Unknown spell {id}"
+L["Looking up spells..."] = "Looking up spells..."
 L["Remove"]                      = "Remove"
 L["Move up"]                     = "Move up"
 L["Move down"]                   = "Move down"

@@ -560,6 +560,19 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
+### test_icongrid_handle.lua (10)
+
+- the grid carries a drag strip once its frame exists
+- the strip's label names the addon and which grid it moves
+- ApplyLock shows the strip when it registers the drag and hides it when it clears it
+- the strip is sized to its label plus the widget's reserve
+- dragging the strip moves the GRID and saves its anchor
+- the strip refuses to move a LOCKED grid
+- the strip hangs above the unit LABEL when one is parked on the grid
+- the strip keeps its old place when no label is above the grid
+- a label parked on the CAST BAR is not in the grid strip's way
+- a label anchored UNDER the grid is not in the strip's way either
+
 ### test_lifecycle.lua (7)
 
 - addon + all modules enable cleanly on the Ace3 login path
@@ -648,7 +661,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (38)
+### test_castbar_frame.lua (43)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -688,6 +701,11 @@ badge and any count quoted in the docs must agree with it.
 - an interruptible cast in that mode stays fully visible
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
+- EnsureFrame builds the library's drag strip in place of the hint text
+- the focus bar's strip is labeled for ITS unit
+- ApplyLock shows the strip exactly where a drag would move the bar
+- a drag finished on the strip persists the bar's new position
+- the strip refuses a drag in PRIMARY mode and persists nothing
 
 ### test_castbar_skin.lua (49)
 
@@ -1205,12 +1223,13 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 23 |
 | test_icongrid_glowgate.lua | 8 |
+| test_icongrid_handle.lua | 10 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 7 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 38 |
+| test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
@@ -1238,4 +1257,4 @@ badge and any count quoted in the docs must agree with it.
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 1 |
-| **Total** | **988** |
+| **Total** | **1003** |

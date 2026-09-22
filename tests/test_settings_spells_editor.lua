@@ -42,10 +42,21 @@ local function activeList(inst)
     return inst.NS.Database:GetSpellList(class, spec)
 end
 
---- Drive the registered Add-spell popup exactly as the OK button does.
+--- Add through the chrome band's add box, exactly as pressing Enter in it does.
+---
+--- WAS THE STATIC POPUP's OnAccept until the box replaced it. Every case below calls this and none
+--- of them changed: what they assert about an add -- the validation, the Cooldown Manager refusal,
+--- the duplicate handling -- is the same question through a different door. What the POPUP owned
+--- and the box does not is the parsing: the library resolves a name, a link or an id to a number
+--- before `onAdd` is reached, so the cases that typed nonsense now exercise the library's refusal
+--- rather than this addon's.
 local function addSpell(inst, input)
-    local dlg = inst.mocks.StaticPopupDialogs["KICKCD_ADD_SPELL"]
-    dlg.OnAccept({ editBox = { GetText = function() return input end } })
+    local eb
+    for _, w in ipairs(inst.mocks.__aceGUI.__created) do
+        if w.type == "EditBox" and w.labelText == inst.NS.L["Add a spell"] then eb = w end
+    end
+    assert(eb, "the add box was not drawn")
+    eb:__fire("OnEnterPressed", tostring(input))
 end
 
 local function capture(inst, fn)
@@ -72,7 +83,32 @@ local function hasSpell(list, id)
     return n
 end
 
---- Rebuild the panel and hand back the row groups created by that rebuild.
+--- Rebuild the panel and hand back the ROW groups created by that rebuild.
+---
+--- NOT EVERY SimpleGroup A REBUILD MAKES IS A ROW, since the add control moved into the chrome
+--- band: `RefreshRows` builds the band first (the case below pins that order), and the band holds
+--- a SimpleGroup of its own to give O.IdInput an AceGUI container to AddChild into. Taking every
+--- group would count it as a row, which shifts every index by one and makes an empty list look
+--- like a list of one.
+---
+--- Told apart by what a ROW carries: a row's first child is the reorder handle or the spell icon,
+--- never an EditBox. The add host's is the library's box.
+--- TWO groups, not one: this page parents a SimpleGroup into the band to give O.IdInput an AceGUI
+--- container, and O.IdInput then builds its OWN row group inside it (`startRow`, then
+--- `parent:AddChild(group)`). So the EditBox sits one level below the host, and a check that only
+--- looked at direct children would catch the inner group and count the outer one as a row.
+local function holdsEditBox(w, depth)
+    for _, kid in ipairs(w.children or {}) do
+        if kid.type == "EditBox" then return true end
+        if depth > 0 and kid.children and holdsEditBox(kid, depth - 1) then return true end
+    end
+    return false
+end
+
+local function isAddHost(w)
+    return holdsEditBox(w, 1)
+end
+
 local function rebuildRows(inst, p)
     local g = inst.mocks.__aceGUI
     local mark = #g.__created
@@ -80,7 +116,7 @@ local function rebuildRows(inst, p)
     local rows = {}
     for i = mark + 1, #g.__created do
         local w = g.__created[i]
-        if w.type == "SimpleGroup" then rows[#rows + 1] = w end
+        if w.type == "SimpleGroup" and not isAddHost(w) then rows[#rows + 1] = w end
     end
     return rows
 end
@@ -103,9 +139,13 @@ test("input the spell DB does not resolve is refused and nothing is added", func
     local inst = editorInstance()
     local list = activeList(inst)
     local before = #list
+    -- THE REFUSAL MOVED, and that is the point of the control. It used to be a chat line printed
+    -- behind a modal the player had to dismiss first; it is now the library's status line under
+    -- the box, where the text that caused it is still on screen. So this asserts the list is
+    -- untouched -- which is the behavior -- and that nothing reached chat.
     local lines = capture(inst, function() addSpell(inst, "") end)
     assertEqual(#list, before, "a rejected input must not touch the list")
-    assertTrue(found(lines, "Invalid spell: "), "the refusal must name the input")
+    assertEqual(#lines, 0, "and the refusal is on the box's status line, not in chat")
 end)
 
 test("re-adding a spell already in the list re-enables it in place", function()
@@ -377,10 +417,21 @@ test("RefreshRows builds the chrome block, then the rows, in that order", functi
     local types = {}
     for i = mark + 1, #g.__created do types[#types + 1] = g.__created[i].type end
     assertEqual(types[1], "Dropdown", "the spec dropdown leads the chrome block")
-    assertEqual(types[2], "Button", "then the Add spell button")
-    local rows = 0
-    for _, ty in ipairs(types) do if ty == "SimpleGroup" then rows = rows + 1 end end
-    assertEqual(rows, #list, "one row group per list entry")
+    -- The add control is the library's IdInput now, not a Button: a SimpleGroup holding the box,
+    -- its Add button and its status line. Its HOST group comes first, then the row the library
+    -- builds inside it.
+    assertEqual(types[2], "SimpleGroup", "then the add control's host group")
+    assertEqual(types[3], "SimpleGroup", "and the row O.IdInput builds inside it")
+    assertEqual(types[4], "EditBox", "whose first child is the box itself")
+    -- Counted from the third SimpleGroup on: the first two are the add control's host and the row
+    -- the library builds inside it, neither of which is a list row. `rebuildRows` tells them apart
+    -- properly (by the EditBox they carry); this case is about ORDER, so it counts positionally
+    -- and says why the offset is two.
+    local groups = 0
+    for _, ty in ipairs(types) do
+        if ty == "SimpleGroup" then groups = groups + 1 end
+    end
+    assertEqual(groups - 2, #list, "one row group per list entry, after the add control's two")
 end)
 
 test("the page draws its strip, and the rows land in the LIBRARY's scroll", function()

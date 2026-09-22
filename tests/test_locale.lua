@@ -448,7 +448,6 @@ local RESIDUE = {
     {"settings/Spells.lua", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell ", "DIAGNOSTIC"},
     {"settings/Spells.lua", "Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization.", "NOT YET ROUTED"},
     {"settings/Spells.lua", "AceGUI not loaded", "NOT YET ROUTED"},
-    {"settings/Spells.lua", "No spells tracked. Click ", "NOT YET ROUTED"},
     -- classDisplayName consults these BEFORE LOCALIZED_CLASS_NAMES_MALE, so on a
     -- French client these two classes read English while the other eleven do not.
     -- Routing them would put that inconsistency in a locale file instead of

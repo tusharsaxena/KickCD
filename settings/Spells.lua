@@ -56,7 +56,20 @@ local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 -- beside it. The library owns the band arithmetic around it -- the divider, the
 -- gaps and the scroll's top edge -- so this is the block's own height and
 -- nothing else.
-local HEADER_BLOCK_H = 44
+-- The chrome band's height. 44 held a labeled dropdown and a button on one row; the add
+-- control that replaced the button is an EditBox with its own label AND a status line under it,
+-- which is where the library writes a refusal ("no spell named ...").
+--
+-- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is options-ui-14's call, not a
+-- preference: "Controls that apply to every tab MUST sit in that band too, above the strip --
+-- never in the scroll below it", and the band "MUST carry the identity controls -- the picker,
+-- and the create control where the page has one". Adding a spell is this page's create control.
+--
+-- The cost is real and is the one that section warns about: every row below moves down by the
+-- difference, permanently, for a control a player touches occasionally. It is paid because the
+-- alternative the section names -- moving page-wide acts to a `General` first tab -- is for the
+-- ACTS (rename, copy, reset, delete), and explicitly not for the picker and the create control.
+local HEADER_BLOCK_H = 72
 
 -- ---------------------------------------------------------------------------
 -- Module-private state
@@ -445,37 +458,45 @@ local function addOrEnableSpell(id)
     if writer("AddSpell", id) then commitSoon() end
 end
 
-StaticPopupDialogs["KICKCD_ADD_SPELL"] = {
-    text         = L["Spell ID or name"],
-    button1      = L["OK"],
-    button2      = L["Cancel"],
-    hasEditBox   = true,
-    maxLetters   = 64,
-    timeout      = 0,
-    whileDead    = true,
-    hideOnEscape = true,
-    OnShow = function(self)
-        local edit = self.EditBox or self.editBox
-        edit:SetText("")
-        edit:SetFocus()
-    end,
-    OnAccept = function(self)
-        local edit = self.EditBox or self.editBox
-        local input = edit:GetText()
-        local id, resolvedName = validateSpellInput(input)
-        if not id then
-            notify(L["Invalid spell"] .. ": " .. tostring(input))
-            return
-        end
-        if editorIsActiveSpec() and cooldownManagerRejects(id, resolvedName) then return end
-        addOrEnableSpell(id)
-    end,
-    EditBoxOnEnterPressed = function(self)
-        local parent = self:GetParent()
-        if parent and parent.button1 then parent.button1:Click() end
-    end,
-    EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+--- The add control's own words, through the locale. The library's defaults are English literals,
+--- so a localized build would show them untranslated beside this page's own strings.
+local ADD_STRINGS = {
+    add       = L["Add"],
+    empty     = L["Type a spell id, a spell link or a spell name."],
+    notFound  = L["No spell named '{text}' in your spellbook."],
+    ambiguous = L["Several spells are named '{text}' — pick one from the list, or use the id."],
+    unknown   = L["Unknown spell {id}"],
+    looking   = L["Looking up spells..."],
 }
+
+--- The ids this spec already lists, for the add box's suggestions.
+---
+--- The SPELLBOOK comes with `kind = "spell"` and is not repeated here. What this adds is the
+--- spells already on the list -- so a player retyping one they disabled sees it offered instead of
+--- hunting the id -- and it is exactly the set the list is drawn from, so it cannot drift from it.
+local function currentSpellIds()
+    local out = {}
+    local list = getActiveList()
+    if type(list) ~= "table" then return out end
+    for _, e in ipairs(list) do
+        local id = type(e) == "table" and e.spellID or e
+        if type(id) == "number" then out[#out + 1] = id end
+    end
+    return out
+end
+
+--- The add box's accept path: the same two steps the StaticPopup ran, minus the parsing the
+--- library now owns.
+---
+--- The library has already resolved a name, a link or an id to a NUMBER by the time this is
+--- called, so `validateSpellInput` has nothing left to do -- what stays is this addon's own
+--- question, which the library cannot ask: does the Blizzard Cooldown Manager track this spell for
+--- the spec being edited. That refusal still speaks in chat rather than on the box's status line,
+--- because it is about the game's state and not about what was typed.
+local function addFromBox(id)
+    if editorIsActiveSpec() and cooldownManagerRejects(id) then return end
+    addOrEnableSpell(id)
+end
 
 StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
     text         = L["Reset all spells for this spec to addon defaults?"],
@@ -890,7 +911,8 @@ end
 --- reads as belonging to that tab and vanishes the moment the reader clicks a
 --- different one. `parent` is the frame H.PageHeader hands over; the block owns
 --- everything inside it and the library owns the band it occupies.
-local function buildSpellsHeader(AceGUI, parent)
+local function buildSpellsHeader(AceGUI, headerCtx, parent)
+    local H = NS.Settings and NS.Settings.Helpers
     headerWidgets = {}
 
     local entries = buildSpecEntries()
@@ -921,14 +943,20 @@ local function buildSpellsHeader(AceGUI, parent)
     specDD.frame:Show()
     headerWidgets[#headerWidgets + 1] = specDD
 
-    local addBtn = AceGUI:Create("Button")
-    addBtn:SetText(L["Add spell..."])
-    addBtn:SetWidth(140)
-    addBtn:SetCallback("OnClick", function()
-        StaticPopup_Show("KICKCD_ADD_SPELL")
-    end)
-    addBtn.frame:SetParent(parent)
-    addBtn.frame:ClearAllPoints()
+    -- THE LIBRARY'S ADD CONTROL, where a Button and a StaticPopup used to be. What the popup
+    -- could not do, and this does: resolve a typed NAME through the client, take a shift-clicked
+    -- spell link, suggest as the player types (the spellbook, plus the ids this spec already
+    -- lists), tell two spells of one name apart by rank, and answer a bad entry on a status line
+    -- under the box instead of a chat line behind the dialog.
+    --
+    -- IT NEEDS AN AceGUI CONTAINER, because O.IdInput ends in `parent:AddChild(group)` -- the
+    -- band hands over a raw frame, so a SimpleGroup bridges the two. Anchored LEFT..RIGHT so the
+    -- box takes whatever the picker leaves, rather than a fixed width that would be wrong at two
+    -- canvas widths.
+    local addHost = AceGUI:Create("SimpleGroup")
+    addHost:SetLayout("Flow")
+    addHost.frame:SetParent(parent)
+    addHost.frame:ClearAllPoints()
     -- Anchor LEFT…RIGHT against specDD.dropdown (the inner UIDropDownMenu
     -- frame) instead of specDD.frame (the outer AceGUI frame that
     -- includes the "Specialization" label above the dropdown control).
@@ -940,9 +968,22 @@ local function buildSpellsHeader(AceGUI, parent)
     -- restores the original ~12 px gap from the frame's right edge:
     -- the inner dropdown extends +17 px past the outer frame's right
     -- (decorative texture overhang), so -5 nets back to +12.
-    addBtn.frame:SetPoint("LEFT", specDD.dropdown, "RIGHT", -5, 0)
-    addBtn.frame:Show()
-    headerWidgets[#headerWidgets + 1] = addBtn
+    addHost.frame:SetPoint("TOPLEFT", specDD.dropdown, "TOPRIGHT", -5, 0)
+    addHost.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    addHost.frame:Show()
+    headerWidgets[#headerWidgets + 1] = addHost
+
+    H.IdInput(headerCtx, addHost, {
+        kind       = "spell",
+        label      = L["Add a spell"],
+        tooltip    = L["Type a spell id or a name and pick from the list, or shift-click a spell link into the box, then press Enter or Add."],
+        strings    = ADD_STRINGS,
+        -- What this spec already lists, so a player retyping a spell they disabled sees it
+        -- offered rather than hunting the id. The spellbook comes with `kind = "spell"` and is
+        -- not repeated here.
+        candidates = currentSpellIds,
+        onAdd      = addFromBox,
+    })
 end
 
 -- The AceGUI-is-absent arm: a plain FontString saying so, built once and
@@ -992,7 +1033,9 @@ end
 local function fillRows(AceGUI, scroll, list)
     if not list or #list == 0 then
         local lbl = AceGUI:Create("Label")
-        lbl:SetText("No spells tracked. Click " .. L["Add spell..."] .. " or " .. L["Defaults"] .. ".")
+        -- Names the control that is actually there. It read "Click Add spell..." until the
+        -- button became the band's add box, which would have sent a player looking for a button.
+        lbl:SetText(L["No spells tracked. Type one into Add a spell above, or press Defaults."])
         lbl:SetFullWidth(true)
         scroll:AddChild(lbl)
         return
@@ -1072,7 +1115,7 @@ function Spells:RefreshRows()
     -- they go ABOVE the strip rather than into the scroll.
     H.PageHeader(ctx, {
         height = HEADER_BLOCK_H,
-        build  = function(_, frame) buildSpellsHeader(AceGUI, frame) end,
+        build  = function(headerCtx, frame) buildSpellsHeader(AceGUI, headerCtx, frame) end,
     })
 
     -- ONE TAB, and it draws a strip anyway (options-ui-§13). "A single tab is
