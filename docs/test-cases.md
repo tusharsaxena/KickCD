@@ -860,7 +860,7 @@ badge and any count quoted in the docs must agree with it.
 - input the spell DB does not resolve is refused and nothing is added
 - re-adding a spell already in the list re-enables it in place
 - adding to a spec the user has never customized lazy-creates its list
-- the band aligns the add box with the picker, frame to frame
+- the band stacks the picker over the add box, each on its own row
 - an Icon in a row lines its ART up with the checkbox, not its frame
 - a spell the Cooldown Manager does not track is tagged before the click
 - a spell the Cooldown Manager does not track for the player's own spec is refused

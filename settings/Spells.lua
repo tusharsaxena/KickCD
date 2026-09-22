@@ -69,7 +69,10 @@ local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 -- difference, permanently, for a control a player touches occasionally. It is paid because the
 -- alternative the section names -- moving page-wide acts to a `General` first tab -- is for the
 -- ACTS (rename, copy, reset, delete), and explicitly not for the picker and the create control.
-local HEADER_BLOCK_H = 72
+-- The gap between the band's two rows. Small enough that they read as one block of chrome and
+-- not as two, which is the thing options-ui-14 warns a growing band turns into.
+local HEADER_ROW_GAP = 6
+local HEADER_BLOCK_H = 96
 
 -- ---------------------------------------------------------------------------
 -- Module-private state
@@ -974,7 +977,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     if selectedClass and selectedSpec then
         specDD:SetValue(selectedClass .. "/" .. selectedSpec)
     end
-    specDD:SetWidth(280)
+    -- Width comes from the anchors below, not from here: the picker owns its whole row.
     specDD:SetCallback("OnValueChanged", function(_, _, value)
         local classFile, specID = value:match("^([^/]+)/(%d+)$")
         if classFile and specID then
@@ -986,6 +989,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     specDD.frame:SetParent(parent)
     specDD.frame:ClearAllPoints()
     specDD.frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, 0)
+    specDD.frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, 0)
     specDD.frame:Show()
     headerWidgets[#headerWidgets + 1] = specDD
 
@@ -996,9 +1000,14 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     -- under the box instead of a chat line behind the dialog.
     --
     -- IT NEEDS AN AceGUI CONTAINER, because O.IdInput ends in `parent:AddChild(group)` -- the
-    -- band hands over a raw frame, so a SimpleGroup bridges the two. Anchored LEFT..RIGHT so the
-    -- box takes whatever the picker leaves, rather than a fixed width that would be wrong at two
-    -- canvas widths.
+    -- band hands over a raw frame, so a SimpleGroup bridges the two.
+    --
+    -- STACKED UNDER THE PICKER, NOT BESIDE IT (owner, from the live panel, 2026-09-22). Side by
+    -- side, the two blocks could not be made to line up: each is a caption over a control, and the
+    -- two controls are different heights, so aligning the captions left the controls off and
+    -- aligning the controls left the captions off. Stacking removes the question -- each block
+    -- owns a full row and has nothing to line up with -- and it gives the box the whole width,
+    -- which is what a box for typing names wants anyway. The band pays one more row for it.
     local addHost = AceGUI:Create("SimpleGroup")
     addHost:SetLayout("Flow")
     addHost.frame:SetParent(parent)
@@ -1021,8 +1030,13 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     -- dropdown beside it. Aligned frame to frame, the two captions share a line and the two
     -- controls share a line. The +12 is the gap the old -5 was computing the long way round: the
     -- inner dropdown overhangs the outer frame's right by 17px of decorative texture.
-    addHost.frame:SetPoint("TOPLEFT", specDD.frame, "TOPRIGHT", 12, 0)
+    addHost.frame:SetPoint("TOPLEFT", specDD.frame, "BOTTOMLEFT", 0, -HEADER_ROW_GAP)
     addHost.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+    -- Which block it hangs off, and on which edge, for a harness that cannot read frame points:
+    -- the AceGUI fake builds its widget frames itself rather than through the mocked CreateFrame,
+    -- so `__points` is empty on them however the real client would have recorded it. Same reason
+    -- the library records `__helpTint` on its help mark.
+    addHost.__stackedUnder = "BOTTOMLEFT"
     addHost.frame:Show()
     headerWidgets[#headerWidgets + 1] = addHost
 

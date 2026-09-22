@@ -211,21 +211,27 @@ end
 -- reason on every assertion.
 -- Both alignments the owner reported from the live panel (2026-09-22). Neither is visible to the
 -- suite as a PIXEL -- the fake draws nothing -- so each is pinned at the number that decides it.
-test("the band aligns the add box with the picker, frame to frame", function()
+test("the band stacks the picker over the add box, each on its own row", function()
     local inst, p = editorInstance()
     p:RefreshRows()
-    local host
+    -- EVERY host across every render, not the first one found: a case runs more than one render
+    -- and a `host or w` took the earliest, which belongs to a render this case is not about.
+    local anchors = {}
     for _, w in ipairs(inst.mocks.__aceGUI.__created) do
-        if w.type == "SimpleGroup" and isAddHost(w) then host = host or w end
+        if w.type == "SimpleGroup" and w.__stackedUnder then
+            anchors[#anchors + 1] = tostring(w.__stackedUnder)
+        end
     end
-    assertTrue(host ~= nil, "the add control has a host group")
-    -- red under the first cut, which anchored to specDD.dropdown -- the control BELOW the
-    -- "Specialization" caption -- so the add box's own caption started where that control did and
-    -- its box fell a whole caption lower than the dropdown beside it.
-    local rel = host.frame.__points and host.frame.__points[1]
-    if rel then
-        assertTrue(tostring(rel.relativeTo or ""):find("dropdown", 1, true) == nil,
-            "anchored to the picker's outer frame, not its inner control")
+    -- red under the marker being dropped, which is how a rewrite would silently stop saying where
+    -- the box hangs at all.
+    assertTrue(#anchors > 0, "the add control records which edge it hangs off")
+    -- SIDE BY SIDE COULD NOT BE ALIGNED, which is why they are stacked: each block is a caption
+    -- over a control and the two controls are different heights, so aligning the captions left the
+    -- controls off and aligning the controls left the captions off. Stacked, neither has anything
+    -- to line up with. red under TOPRIGHT, which is both shapes that failed.
+    for _, rel in ipairs(anchors) do
+        assertTrue(rel:find("BOTTOM", 1, true) ~= nil,
+            "the add box hangs BELOW the picker, not beside it: " .. rel)
     end
 end)
 
