@@ -543,8 +543,31 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
 -- old "Up" / "Dn" / "X" text labels. opts.image is a texture path; opts.atlas
 -- swaps in a Blizzard atlas via the inner texture's SetAtlas — needed for
 -- transmog-icon-remove (the red "no entry" glyph) which has no plain path.
+--- Line an Icon's ART up with the other controls in its row, not its FRAME.
+---
+--- AceGUI's Flow stacks a row's children on one alignment line: each child is placed so that
+--- `child.alignoffset` -- or half its frame height when it names none -- lands on that line
+--- (AceGUI-3.0.lua's Flow layout). For a CheckBox that is the right answer, because its art fills
+--- its frame from the top (`checkbg:SetPoint("TOPLEFT")` at the frame's own height), so half the
+--- frame IS the middle of the art.
+---
+--- An Icon is different, and it is the difference that made these rows look crooked: its texture is
+--- hung 5px below the frame's top (`image:SetPoint("TOP", 0, -5)`, widgets/AceGUIWidget-Icon.lua)
+--- and is SMALLER than the frame, so the art's middle sits at `5 + art/2` -- 15 in a 24px frame
+--- carrying 20px of art, where the frame's own middle is 12. Every Icon in the row therefore rode
+--- three pixels lower than the checkbox and the dropdown beside it.
+---
+--- Naming that point as the alignoffset puts the ART on the line instead of the frame. It changes
+--- no size, so nothing has to fit a taller row: the library's own rule for this is a frame of
+--- art + 10, which would want 30px in a 28px row.
+local function alignIconArt(widget, artHeight)
+    widget.alignoffset = 5 + artHeight / 2
+    return widget
+end
+
 local function makeRowIconBtn(AceGUI, opts)
     local btn = AceGUI:Create("Icon")
+    alignIconArt(btn, 22)
     btn:SetImageSize(22, 22)
     btn:SetWidth(30)
     btn:SetHeight(26)
@@ -585,6 +608,7 @@ end
 local function rowSpellIcon(AceGUI, entry)
     local icon = AceGUI:Create("Icon")
     icon:SetImage(getSpellIcon(entry.spellID) or 134400)
+    alignIconArt(icon, 20)
     icon:SetImageSize(20, 20)
     icon:SetWidth(28)
     icon:SetHeight(24)
@@ -654,6 +678,7 @@ local function rowKnownGlyph(AceGUI, entry)
         and Compat.IsSpellAvailable(entry.spellID) or false
     local statusIcon = AceGUI:Create("Icon")
     statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
+    alignIconArt(statusIcon, 20)
     statusIcon:SetImageSize(20, 20)
     -- Box width hugs the 20 px image (1 px padding each side instead of 4).
     -- AceGUI's Icon widget anchors the texture to TOP center, so a narrower
@@ -989,7 +1014,14 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     -- restores the original ~12 px gap from the frame's right edge:
     -- the inner dropdown extends +17 px past the outer frame's right
     -- (decorative texture overhang), so -5 nets back to +12.
-    addHost.frame:SetPoint("TOPLEFT", specDD.dropdown, "TOPRIGHT", -5, 0)
+    -- AGAINST THE OUTER FRAME, NOT THE INNER DROPDOWN. The button this replaced had no label, so
+    -- it anchored to specDD.dropdown -- the control below the "Specialization" caption -- to sit on
+    -- the control's own vertical center. The add box HAS a label, so anchoring it there started its
+    -- caption where the dropdown control starts and pushed its box a whole caption lower than the
+    -- dropdown beside it. Aligned frame to frame, the two captions share a line and the two
+    -- controls share a line. The +12 is the gap the old -5 was computing the long way round: the
+    -- inner dropdown overhangs the outer frame's right by 17px of decorative texture.
+    addHost.frame:SetPoint("TOPLEFT", specDD.frame, "TOPRIGHT", 12, 0)
     addHost.frame:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
     addHost.frame:Show()
     headerWidgets[#headerWidgets + 1] = addHost

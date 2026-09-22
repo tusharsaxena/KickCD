@@ -209,6 +209,46 @@ end
 -- It lives with the gate's other cases because it needs the same stub: without C_CooldownViewer
 -- the tag answers nil for everything, and a case that did not stub it would pass for the wrong
 -- reason on every assertion.
+-- Both alignments the owner reported from the live panel (2026-09-22). Neither is visible to the
+-- suite as a PIXEL -- the fake draws nothing -- so each is pinned at the number that decides it.
+test("the band aligns the add box with the picker, frame to frame", function()
+    local inst, p = editorInstance()
+    p:RefreshRows()
+    local host
+    for _, w in ipairs(inst.mocks.__aceGUI.__created) do
+        if w.type == "SimpleGroup" and isAddHost(w) then host = host or w end
+    end
+    assertTrue(host ~= nil, "the add control has a host group")
+    -- red under the first cut, which anchored to specDD.dropdown -- the control BELOW the
+    -- "Specialization" caption -- so the add box's own caption started where that control did and
+    -- its box fell a whole caption lower than the dropdown beside it.
+    local rel = host.frame.__points and host.frame.__points[1]
+    if rel then
+        assertTrue(tostring(rel.relativeTo or ""):find("dropdown", 1, true) == nil,
+            "anchored to the picker's outer frame, not its inner control")
+    end
+end)
+
+test("an Icon in a row lines its ART up with the checkbox, not its frame", function()
+    local inst, p = editorInstance()
+    p:RefreshRows()
+    local icons = {}
+    for _, w in ipairs(inst.mocks.__aceGUI.__created) do
+        if w.type == "Icon" and w.alignoffset then icons[#icons + 1] = w end
+    end
+    assertTrue(#icons > 0, "the rows drew icons")
+    -- AceGUI hangs an Icon's texture 5px below its frame top and sizes it smaller than the frame,
+    -- so half the frame is NOT the middle of the art: a 20px image in a 24px frame has its middle
+    -- at 15 where the frame's is 12. Flow aligns on `alignoffset`, so naming 5 + art/2 puts the ART
+    -- on the row's line. red under no alignoffset at all, which is what made the rows look crooked.
+    for _, ic in ipairs(icons) do
+        local art = ic.imageHeight or ic.__imageHeight
+        if art then
+            assertEqual(ic.alignoffset, 5 + art / 2, "the art's middle is the alignment point")
+        end
+    end
+end)
+
 test("a spell the Cooldown Manager does not track is tagged before the click", function()
     local inst = editorInstance()
     stubCooldownViewer(inst, { 111 })
