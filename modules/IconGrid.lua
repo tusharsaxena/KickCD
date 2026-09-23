@@ -331,7 +331,7 @@ end
 --- rather than erroring out of BuildActiveList partway.
 local function applySpellTexture(btn, spellID)
     local tex = NS.Compat.GetSpellTexture(spellID)
-    local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
+    local texSecret = tex ~= nil and NS.Compat.IsSecret(tex)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
 
@@ -1183,7 +1183,7 @@ local function resolveInterruptible(unit, hostileCasting)
         local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
         notInterruptible = ni
     end
-    if _G.issecretvalue and _G.issecretvalue(notInterruptible) then
+    if NS.Compat.IsSecret(notInterruptible) then
         return SECRET_GATE
     end
     return not notInterruptible

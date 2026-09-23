@@ -1,13 +1,15 @@
 -- tests/test_surface_parity.lua — one stub-surface parity case per adopted LibKa0s seam
 -- (testing-§8, anti-pattern #56).
 --
--- KickCD adopts eight LibKa0s majors; these five have a degradation stub in their setup file:
+-- KickCD adopts twelve LibKa0s majors (docs/ARCHITECTURE.md, External dependencies); these six
+-- have a degradation stub this file holds to the live surface:
 --
 --   Core      core/CoreSetup.lua        NS.IsConcatSafe / NS.SafeToString / NS.Util.print
 --   DebugLog  core/DebugLogSetup.lua    NS.DebugLog
 --   Slash     settings/Slash.lua        NS.Slash.cli
 --   Options   settings/OptionsSetup.lua NS.Settings.Helpers
 --   Perf      core/PerfSetup.lua        NS.Perf
+--   Compat    core/Compat.lua           NS.Compat (reader and guard arms, member by member)
 --
 -- WHY THIS FILE EXISTS. Three of the collection's surviving High findings are one omitted stub
 -- member: a stub returns without assigning a function the addon calls, and the command raises on
@@ -64,7 +66,8 @@ test("sanity: the degraded arm really has no LibKa0s", function()
     -- Without this, every case below could be comparing two live loads and passing for the most
     -- boring possible reason.
     for _, major in ipairs({ "LibKa0s-Core-1.0", "LibKa0s-DebugLog-1.0", "LibKa0s-Slash-1.0",
-                             "LibKa0s-Options-1.0", "LibKa0s-Perf-1.0" }) do
+                             "LibKa0s-Options-1.0", "LibKa0s-Perf-1.0",
+                             "LibKa0s-Compat-1.0" }) do
         assertTrue(live.mocks.LibStub(major, true) ~= nil, major .. " must be live in the live arm")
         assertTrue(degraded.mocks.LibStub(major, true) == nil,
             major .. " is registered in the DEGRADED arm — the partial file list did not take")
@@ -243,4 +246,26 @@ test("the Options stub carries every member the host calls", function()
     -- red under: deleting `Helpers.__panelFor` from settings/OptionsSetup.lua's stub
     assertTrue(type(degraded.NS.Settings.Helpers.__panelFor) == "function",
         "the stub owes __panelFor: settings/Panel_Widgets.lua:138 calls it")
+end)
+
+-- ── Compat ──────────────────────────────────────────────────────────────────
+--
+-- LibKa0s-Compat-1.0 is stateless: the live half is the LIBRARY table, which tests/run.lua
+-- registers under the major's name. core/Compat.lua wires members onto NS.Compat one by one, the
+-- reader arm answering the absent value and the IsSecret guard re-implementing its body, so the
+-- degraded NS.Compat has to carry every member the host wires. The ignore list is the members this
+-- host deliberately does NOT wire, each for a stated reason; a member the major gains later is on
+-- neither list and fails here until the host decides (the pressure the Compat API document asks
+-- for).
+
+test("the Compat stub carries every LibKa0s-Compat-1.0 member the host wires", function()
+    -- red under: deleting the `or function() return nil end` arm of Compat.GetSpellTexture
+    assertSurfaceParity(degraded.NS.Compat, "LibKa0s-Compat-1.0", {
+        -- The other two guards. KickCD has no caller for either: every secret question it asks
+        -- is "is this secret", and 3b-specs/compat.md 8.2 wires only IsSecret here.
+        "CanAccess", "IsSafeKey",
+        -- A name reader. KickCD reads the name off GetSpellInfo's first return, which the host
+        -- does route; no call site asks for the name alone.
+        "GetSpellName",
+    })
 end)

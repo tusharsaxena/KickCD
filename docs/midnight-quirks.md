@@ -15,7 +15,7 @@ WoW 12.0 introduced "secret values" on certain protected API returns — notably
 | `:format("%.1f", secret)` | Errors. |
 | Blizzard C methods (`Cooldown:SetCooldown`, `Texture:SetTexture`) with secret args | **Also rejects** — the error message says "Secret values are only allowed during untainted execution for this argument." |
 
-**The rule:** never compare, do arithmetic on, format, or pass to most Blizzard C methods a value that might be secret. Either use a sibling field that is plain (e.g. `info.isActive` and `info.isEnabled` come back plain), or gate the operation with `issecretvalue(v)` and degrade gracefully (skip the op, hide the visual, etc.).
+**The rule:** never compare, do arithmetic on, format, or pass to most Blizzard C methods a value that might be secret. Either use a sibling field that is plain (e.g. `info.isActive` and `info.isEnabled` come back plain), or gate the operation with `NS.Compat.IsSecret(v)` and degrade gracefully (skip the op, hide the visual, etc.). `Compat.IsSecret` is `LibKa0s-Compat-1.0`'s guard over the client's `issecretvalue`, and it is the one place the addon asks: no feature module reads the global itself (see [compat-layer.md](compat-layer.md)).
 
 **Preferred workaround for cooldown timing:** use `C_Spell.GetSpellCooldownDuration(spellID)` (wrapped as `NS.Compat.GetSpellCooldownDuration`). It returns a `CooldownDuration` object that can be:
 

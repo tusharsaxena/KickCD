@@ -134,6 +134,20 @@ test("GetSpellCooldown's legacy path reports a zero duration as off cooldown", f
     assertEqual(active, false)
 end)
 
+test("GetSpellCooldown's legacy path reads an isEnabled of 0 as DISABLED, nil as enabled", function()
+    -- The deprecated global historically answered 1/0. `e ~= false` read 0 as enabled; the
+    -- library takes the other copy's reading (LibKa0s docs/api/Compat/version-1-docs.md).
+    -- red under: returning `e ~= false` from the legacy rung
+    local Compat, mocks = fresh()
+    mocks.C_Spell = {}
+    mocks.GetSpellCooldown = function() return 5, 12, 0, 1 end
+    local _, _, e = Compat.GetSpellCooldown(1)
+    assertEqual(e, false)
+    mocks.GetSpellCooldown = function() return 5, 12, nil, 1 end
+    _, _, e = Compat.GetSpellCooldown(1)
+    assertEqual(e, true)
+end)
+
 test("GetSpellCooldown's legacy path refuses to compare a secret duration", function()
     -- `d > 0` on a secret errors. The guard must skip the derivation and
     -- report inactive rather than throw.
@@ -154,6 +168,21 @@ test("GetSpellCooldown returns the inert tuple when NO cooldown API exists", fun
     local s, d, e, m, active = Compat.GetSpellCooldown(1)
     assertEqual(s, 0); assertEqual(d, 0); assertEqual(e, false)
     assertEqual(m, 1); assertEqual(active, false)
+end)
+
+test("GetSpellCooldown answers exactly five values on every branch", function()
+    -- Callers destructure five and modules/Cooldowns.lua reads position 5; the count is the
+    -- contract whichever rung answered. Pinned before the ladder moved to LibKa0s-Compat-1.0.
+    local Compat, mocks = fresh()
+    mocks.C_Spell.GetSpellCooldown = function() return { isActive = true } end
+    assertEqual(select("#", Compat.GetSpellCooldown(1)), 5, "modern rung")
+    mocks.C_Spell.GetSpellCooldown = function() return nil end
+    assertEqual(select("#", Compat.GetSpellCooldown(1)), 5, "modern rung, no info")
+    mocks.C_Spell = {}
+    mocks.GetSpellCooldown = function() return 5, 12, true, 1 end
+    assertEqual(select("#", Compat.GetSpellCooldown(1)), 5, "legacy rung")
+    mocks.GetSpellCooldown = nil
+    assertEqual(select("#", Compat.GetSpellCooldown(1)), 5, "no rung")
 end)
 
 -- ── GetSpellCooldownDuration ────────────────────────────────────────────────
@@ -206,6 +235,21 @@ test("GetSpellInfo flattens the modern info table into the legacy tuple order", 
     assertEqual(minR, 0); assertEqual(maxR, 5); assertEqual(id, 1766)
 end)
 
+test("GetSpellInfo resolves a typed NAME and hands back the spellID at position 6", function()
+    -- settings/Spells.lua and core/KickCD.lua resolve a name the player typed through
+    -- GetSpellInfo(input) and read the ID off position 6, so a string identifier has to reach the
+    -- client and the sixth return has to be the spellID.
+    local Compat, mocks = fresh()
+    local seen
+    mocks.C_Spell.GetSpellInfo = function(id)
+        seen = id
+        return { name = "Kick", iconID = 7, castTime = 0, minRange = 0, maxRange = 5, spellID = 1766 }
+    end
+    local id = select(6, Compat.GetSpellInfo("Kick"))
+    assertEqual(seen, "Kick", "the typed name must reach the client unchanged")
+    assertEqual(id, 1766)
+end)
+
 test("GetSpellInfo is nil for an unknown spell, without falling through", function()
     -- Once C_Spell exists it is authoritative: a nil result means "no such
     -- spell", not "try the deprecated API".
@@ -216,11 +260,75 @@ test("GetSpellInfo is nil for an unknown spell, without falling through", functi
 end)
 
 test("GetSpellInfo falls back to the deprecated global's multi-return", function()
+    -- The global's REAL shape is name, rank, icon, castTime, ... -- this fixture used to encode
+    -- `"Legacy", 9, 1.5`, rank-as-icon, which is the drift LibKa0s-Compat-1.0 resolved. The rank
+    -- slot is nil here and the assertions are the ones the old fixture made.
+    -- red under: passing the legacy multi-return through without dropping the rank
     local Compat, mocks = fresh()
     mocks.C_Spell = {}
-    mocks.GetSpellInfo = function() return "Legacy", 9, 1.5 end
+    mocks.GetSpellInfo = function() return "Legacy", nil, 9, 1.5 end
     local name, icon, castTime = Compat.GetSpellInfo(1)
     assertEqual(name, "Legacy"); assertEqual(icon, 9); assertEqual(castTime, 1.5)
+end)
+
+test("GetSpellInfo's legacy rung drops a real rank rather than reporting it as the icon", function()
+    local Compat, mocks = fresh()
+    mocks.C_Spell = {}
+    mocks.GetSpellInfo = function() return "Legacy", "Rank 3", 9, 1.5, 0, 5, 1766 end
+    local name, icon, castTime, minR, maxR, id = Compat.GetSpellInfo(1)
+    assertEqual(name, "Legacy"); assertEqual(icon, 9); assertEqual(castTime, 1.5)
+    assertEqual(minR, 0); assertEqual(maxR, 5); assertEqual(id, 1766)
+end)
+
+test("GetSpellTexture answers exactly one value when the client answers two", function()
+    -- C_Spell.GetSpellTexture's second return is the original icon. A caller that spreads the
+    -- result into the last argument of a C call must never forward it.
+    local Compat, mocks = fresh()
+    mocks.C_Spell.GetSpellTexture = function() return 111, 222 end
+    assertEqual(select("#", Compat.GetSpellTexture(1)), 1)
+    assertEqual(Compat.GetSpellTexture(1), 111)
+end)
+
+-- ── The secret seam ─────────────────────────────────────────────────────────
+
+test("IsSecret is LibKa0s-Compat-1.0's member when the payload is present", function()
+    local inst = T.load(false)
+    local lib = inst.mocks.LibStub("LibKa0s-Compat-1.0", true)
+    assertTrue(lib ~= nil, "the live load must register LibKa0s-Compat-1.0")
+    assertTrue(rawequal(inst.NS.Compat.IsSecret, lib.IsSecret))
+end)
+
+test("IsSecret answers a strict boolean, and false on a client without secrets", function()
+    local Compat, mocks = fresh()
+    local secret = {}
+    mocks.issecretvalue = function(v) if rawequal(v, secret) then return 1 end end
+    assertEqual(Compat.IsSecret(secret), true)
+    assertEqual(Compat.IsSecret(42), false)
+    assertEqual(Compat.IsSecret(nil), false)
+    mocks.issecretvalue = nil
+    assertEqual(Compat.IsSecret(secret), false)
+end)
+
+test("no authored file outside core/Compat.lua reads issecretvalue itself", function()
+    -- compat: Compat.IsSecret is the seam. A module that asks the global directly is a read
+    -- that bypasses it, which is what the twelve inline calls this replaced were.
+    -- red under: restoring `_G.issecretvalue and _G.issecretvalue(cur)` in modules/Cooldowns.lua
+    local offenders = {}
+    for _, rel in ipairs(T.tocFiles) do
+        if not rel:match("^libs[/\\]") and rel ~= "core/Compat.lua" and rel:match("%.lua$") then
+            local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+            local n = 0
+            for line in fh:lines() do
+                n = n + 1
+                local code = line:gsub("%-%-.*$", "")
+                if code:find("issecretvalue", 1, true) then
+                    offenders[#offenders + 1] = rel .. ":" .. n
+                end
+            end
+            fh:close()
+        end
+    end
+    assertEqual(#offenders, 0, "issecretvalue read outside the seam: " .. table.concat(offenders, ", "))
 end)
 
 -- ── GetSpellCharges ─────────────────────────────────────────────────────────

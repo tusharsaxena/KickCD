@@ -119,7 +119,7 @@ end
 --- ready when it isn't than to spam errors.
 local function chargesAvailable(cur)
     if cur == nil then return true end
-    if _G.issecretvalue and _G.issecretvalue(cur) then return true end
+    if NS.Compat.IsSecret(cur) then return true end
     return cur > 0
 end
 
@@ -248,8 +248,8 @@ local function MaterialChange(prev, next_)
 
     local a, b = prev.charges, next_.charges
     if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
-    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
+    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
+    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
     -- Secret charges CANNOT be compared (§ secret values), so we genuinely
     -- cannot tell whether they moved. StateChanged resolves that ambiguity by
     -- emitting conservatively — correct there, since a redundant render is
@@ -286,8 +286,8 @@ local function StateChanged(prev, next_)
     -- budget (a SetFormattedText call per SPELL_UPDATE_*).
     local a, b = prev.charges, next_.charges
     if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
-    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
+    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
+    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
     if aSecret or bSecret then return true end
     if a ~= b then return true end
     return false
@@ -683,7 +683,7 @@ function Cooldowns:DebugDump()
     -- than `issecretvalue`, which tests the operation that actually rejects a
     -- secret instead of asking the API whether it thinks it has one.
     --
-    -- NB: only the STRINGIFIER moves. The issecretvalue calls in StateChanged
+    -- NB: only the STRINGIFIER moves. The Compat.IsSecret calls in StateChanged
     -- and MaterialChange above are control flow over an incomparable value, not
     -- rendering, and must stay exactly as they are.
     local safeStr = NS.SafeToString

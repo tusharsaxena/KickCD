@@ -289,7 +289,7 @@ end
 -- Secret-value handling: `rec.name` from Compat.GetCastingInfo can
 -- be secret-tainted in combat for protected casts (per the module
 -- header). `string.sub` / `#` on a secret may error in tainted
--- scope, so we short-circuit with `issecretvalue` and pass the raw
+-- scope, so we short-circuit with `Compat.IsSecret` and pass the raw
 -- secret straight through to SetText (which accepts secret args
 -- via its C-side argument path) — losing the truncation for that
 -- one frame is preferable to throwing a Lua error.
@@ -300,7 +300,7 @@ end
 local function truncateName(name, maxChars)
     if not name then return "" end
     if not maxChars or maxChars <= 0 then return name end
-    if _G.issecretvalue and _G.issecretvalue(name) then return name end
+    if NS.Compat.IsSecret(name) then return name end
     if #name <= maxChars then return name end
     return string.sub(name, 1, maxChars) .. "…"
 end

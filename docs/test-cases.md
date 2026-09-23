@@ -302,15 +302,18 @@ badge and any count quoted in the docs must agree with it.
 - a registration with no handler calls the method named after the message
 - UnregisterMessage stops delivery to that target and no other
 
-### test_compat.lua (5)
+### test_compat.lua (8)
 
 - Compat exposes the spec shims
 - GetSpecialization prefers C_SpecializationInfo
 - GetSpecializationInfo passes the multi-return through
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
+- GetSpecializationInfo(nil) answers nil without calling the client
+- with LibKa0s absent, every routed reader answers the major's absent value
+- with LibKa0s absent, the IsSecret guard answers what the library answers
 
-### test_compat_api.lua (46)
+### test_compat_api.lua (54)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
 - Compat._firstReturn collapses a multi-return to position 1
@@ -323,15 +326,23 @@ badge and any count quoted in the docs must agree with it.
 - GetSpellCooldown passes SECRET timings through without touching them
 - GetSpellCooldown falls back to the deprecated global on a pre-12.0 client
 - GetSpellCooldown's legacy path reports a zero duration as off cooldown
+- GetSpellCooldown's legacy path reads an isEnabled of 0 as DISABLED, nil as enabled
 - GetSpellCooldown's legacy path refuses to compare a secret duration
 - GetSpellCooldown returns the inert tuple when NO cooldown API exists
+- GetSpellCooldown answers exactly five values on every branch
 - GetSpellCooldownDuration hands back the opaque handle unchanged
 - GetSpellCooldownDuration is nil on a client without the 12.0 API
 - GetSpellTexture prefers C_Spell and falls back to the global
 - GetSpellTexture is nil when neither API exists
 - GetSpellInfo flattens the modern info table into the legacy tuple order
+- GetSpellInfo resolves a typed NAME and hands back the spellID at position 6
 - GetSpellInfo is nil for an unknown spell, without falling through
 - GetSpellInfo falls back to the deprecated global's multi-return
+- GetSpellInfo's legacy rung drops a real rank rather than reporting it as the icon
+- GetSpellTexture answers exactly one value when the client answers two
+- IsSecret is LibKa0s-Compat-1.0's member when the payload is present
+- IsSecret answers a strict boolean, and false on a client without secrets
+- no authored file outside core/Compat.lua reads issecretvalue itself
 - GetSpellCharges flattens the modern charge table
 - GetSpellCharges is nil for a spell without charges
 - GetSpellCharges passes a SECRET charge count through untouched
@@ -1176,7 +1187,7 @@ badge and any count quoted in the docs must agree with it.
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
-### test_surface_parity.lua (6)
+### test_surface_parity.lua (7)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1184,6 +1195,7 @@ badge and any count quoted in the docs must agree with it.
 - the DebugLog stub carries the whole live surface
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
+- the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 
 ### test_doc_structure.lua (3)
 
@@ -1242,8 +1254,8 @@ badge and any count quoted in the docs must agree with it.
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 8 |
-| test_compat.lua | 5 |
-| test_compat_api.lua | 46 |
+| test_compat.lua | 8 |
+| test_compat_api.lua | 54 |
 | test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 23 |
@@ -1285,10 +1297,10 @@ badge and any count quoted in the docs must agree with it.
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 6 |
+| test_surface_parity.lua | 7 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1033** |
+| **Total** | **1045** |
