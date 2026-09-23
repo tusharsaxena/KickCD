@@ -168,7 +168,7 @@ boot:SetScript("OnEvent", function(self, event)
     -- (KickCD has SendMessage by PLAYER_LOGIN time, but the guard makes
     -- the dependency explicit). See docs/message-bus.md.
     if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_COMBAT_STATE", { inCombat = State.inCombat })
+        NS:SendMessage(NS.MSG.COMBAT_STATE, { inCombat = State.inCombat })
     end
 end)
 

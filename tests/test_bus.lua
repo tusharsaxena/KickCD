@@ -45,8 +45,8 @@ test("Addon SendMessage reaches a registered module target", function()
     local NS = inst.NS
     local target = assert(NS.NewBusTarget, "NS.NewBusTarget must exist (core/KickCD.lua)")()
     local got = false
-    target:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function() got = true end)
-    NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "test" })
+    target:RegisterMessage(T.NS.MSG.CONFIG_CHANGED, function() got = true end)
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "test" })
     assertTrue(got, "a private target must receive the addon's broadcast")
 end)
 
@@ -61,7 +61,7 @@ test("Coalesced holds a nil-section announcement and sends it once, as nil", fun
     local sent = {}
     local realSend = NS.SendMessage
     NS.SendMessage = function(self, msg, payload)
-        if msg == "Ka0s_KickCD_CONFIG_CHANGED" then
+        if msg == T.NS.MSG.CONFIG_CHANGED then
             sent[#sent + 1] = payload.section == nil and "<nil>" or payload.section
         end
         return realSend(self, msg, payload)
@@ -93,9 +93,9 @@ test("NewBusTarget gives each receiver its own target — both fire (KCD-09)", f
     local b = NS.NewBusTarget()
     assertTrue(a ~= b, "each NewBusTarget must be a distinct table")
     local gotA, gotB = false, false
-    a:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", function() gotA = true end)
-    b:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", function() gotB = true end)
-    NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = "Default" })
+    a:RegisterMessage(T.NS.MSG.PROFILE_CHANGED, function() gotA = true end)
+    b:RegisterMessage(T.NS.MSG.PROFILE_CHANGED, function() gotB = true end)
+    NS:SendMessage(T.NS.MSG.PROFILE_CHANGED, { newProfileKey = "Default" })
     assertTrue(gotA, "receiver A (private target) must fire")
     assertTrue(gotB, "receiver B (private target) must ALSO fire")
 end)
@@ -136,4 +136,80 @@ test("UnregisterMessage stops delivery to that target and no other", function()
     b:SendMessage("Test_Unreg")
     assertEqual(gotA, 0, "the unregistered target must not hear it")
     assertEqual(gotB, 1, "the other target still does")
+end)
+
+-- ── The subscription map (characterization for the declare-once sweep) ──────
+--
+-- Pinned on the literal-typed tree BEFORE the call sites moved onto NS.MSG, so the sweep is
+-- proven to register every receiver for exactly the wire names it registered before. The wire
+-- names are spelled out here on purpose: this case is the one that says what goes over the wire.
+
+--- Sorted wire names `target` is registered for, read off the live message registry.
+local function registeredFor(reg, target)
+    local out = {}
+    for msg, targets in pairs(reg) do
+        if type(targets) == "table" and targets[target] ~= nil then out[#out + 1] = msg end
+    end
+    table.sort(out)
+    return table.concat(out, ",")
+end
+
+test("after enable, each module is subscribed to exactly the wire names it was before", function()
+    local inst = T.load(true, true)
+    local reg = inst.mocks.__msgRegistry
+    local EXPECTED = {
+        IconGrid  = "Ka0s_KickCD_COMBAT_STATE,Ka0s_KickCD_CONFIG_CHANGED,"
+                 .. "Ka0s_KickCD_PROFILE_CHANGED,Ka0s_KickCD_SPELL_STATE",
+        Cooldowns = "Ka0s_KickCD_CONFIG_CHANGED,Ka0s_KickCD_PROFILE_CHANGED",
+        Castbar   = "Ka0s_KickCD_COMBAT_STATE,Ka0s_KickCD_CONFIG_CHANGED,"
+                 .. "Ka0s_KickCD_GRID_LAYOUT,Ka0s_KickCD_PROFILE_CHANGED",
+        UnitLabel = "Ka0s_KickCD_CONFIG_CHANGED,Ka0s_KickCD_GRID_LAYOUT,Ka0s_KickCD_PROFILE_CHANGED",
+    }
+    for name, want in pairs(EXPECTED) do
+        assertEqual(registeredFor(reg, inst.NS:GetModule(name)), want, name)
+    end
+end)
+
+-- ── The catalog: declared once, typed nowhere else (architecture-§4) ───────
+
+test("NS.MSG declares the five bus messages with the wire names the modules use", function()
+    -- The subscription-map case above spells the wire; this one ties each key to it, so a
+    -- constant that drifted from the wire would fail here rather than in-game.
+    local want = {
+        SPELL_STATE     = "Ka0s_KickCD_SPELL_STATE",
+        CONFIG_CHANGED  = "Ka0s_KickCD_CONFIG_CHANGED",
+        PROFILE_CHANGED = "Ka0s_KickCD_PROFILE_CHANGED",
+        GRID_LAYOUT     = "Ka0s_KickCD_GRID_LAYOUT",
+        COMBAT_STATE    = "Ka0s_KickCD_COMBAT_STATE",
+    }
+    local n = 0
+    for k, v in pairs(T.NS.MSG) do
+        n = n + 1
+        assertEqual(v, want[k], "NS.MSG." .. tostring(k))
+    end
+    assertEqual(n, 5, "NS.MSG must declare exactly the five messages")
+end)
+
+test("no authored file types a bus message literal outside the catalog", function()
+    -- A literal at a call site is the typo nothing reports: a publisher sends to nobody, a
+    -- subscriber waits for nothing. The catalog in core/Constants.lua is the one place.
+    -- red under: restoring NS:SendMessage("Ka0s_KickCD_COMBAT_STATE", ...) in core/State.lua
+    local seen, offenders = 0, {}
+    for _, rel in ipairs(T.tocFiles) do
+        if not rel:match("^libs[/\\]") and rel:match("%.lua$") then
+            local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+            local n = 0
+            for line in fh:lines() do
+                n = n + 1
+                local code = line:gsub("%-%-.*$", "")
+                for _ in code:gmatch("[\"']Ka0s_KickCD_") do
+                    if rel == "core/Constants.lua" then seen = seen + 1
+                    else offenders[#offenders + 1] = rel .. ":" .. n end
+                end
+            end
+            fh:close()
+        end
+    end
+    assertEqual(#offenders, 0, "bus literal outside the catalog: " .. table.concat(offenders, ", "))
+    assertEqual(seen, 5, "core/Constants.lua must type each of the five names exactly once")
 end)

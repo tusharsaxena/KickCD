@@ -83,9 +83,9 @@ test("ResetIconPosition writes nothing when the defaults tree is absent (M4-18 /
 
     local fired = false
     local busTarget = NS.NewBusTarget()
-    busTarget:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function() fired = true end)
+    busTarget:RegisterMessage(T.NS.MSG.CONFIG_CHANGED, function() fired = true end)
     Helpers.ResetIconPosition()
-    busTarget:UnregisterMessage("Ka0s_KickCD_CONFIG_CHANGED")
+    busTarget:UnregisterMessage(T.NS.MSG.CONFIG_CHANGED)
 
     local a = NS.db.profile.units.target.anchors.icons
     assertEqual(a.point, "TOPLEFT", "no defaults tree, no write: the dragged point survives")
@@ -383,11 +383,11 @@ test("a profile copy logs one [Set] copied line and announces the profile that i
     debugOn(inst)
     local announced
     local bus = NS.NewBusTarget()
-    bus:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", function(_, payload)
+    bus:RegisterMessage(T.NS.MSG.PROFILE_CHANGED, function(_, payload)
         announced = payload and payload.newProfileKey
     end)
     NS.Database:OnProfileChanged("OnProfileCopied", NS.db, "Main")
-    bus:UnregisterMessage("Ka0s_KickCD_PROFILE_CHANGED")
+    bus:UnregisterMessage(T.NS.MSG.PROFILE_CHANGED)
     local lines = setLines(inst)
     NS.State.debug = false
     assertEqual(#lines, 1, "one line for the copy: " .. table.concat(lines, " | "))

@@ -4,6 +4,8 @@ All inter-module communication uses `AceEvent`-style messages with a fixed name 
 
 ## The five messages
 
+Declared once, in `NS.MSG` (`core/Constants.lua`): the key is the SCREAMING_SNAKE suffix below (`NS.MSG.SPELL_STATE`, …), and every call site reads the constant rather than typing the name.
+
 | Message | Sender | Listeners | Payload |
 |---|---|---|---|
 | `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `Refresh` | `IconGrid` | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |

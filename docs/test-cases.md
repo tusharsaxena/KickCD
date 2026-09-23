@@ -291,7 +291,7 @@ badge and any count quoted in the docs must agree with it.
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_bus.lua (8)
+### test_bus.lua (11)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
@@ -301,6 +301,9 @@ badge and any count quoted in the docs must agree with it.
 - a string method is dispatched as target:Method(message, payload)
 - a registration with no handler calls the method named after the message
 - UnregisterMessage stops delivery to that target and no other
+- after enable, each module is subscribed to exactly the wire names it was before
+- NS.MSG declares the five bus messages with the wire names the modules use
+- no authored file types a bus message literal outside the catalog
 
 ### test_compat.lua (8)
 
@@ -1253,7 +1256,7 @@ badge and any count quoted in the docs must agree with it.
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
-| test_bus.lua | 8 |
+| test_bus.lua | 11 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 11 |
@@ -1303,4 +1306,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1045** |
+| **Total** | **1048** |

@@ -128,6 +128,8 @@ Seven unused Ace modules (AceBucket, AceComm, AceHook, AceLocale, AceSerializer,
 
 Five `AceEvent` messages are the only inter-module communication channel — modules never call each other directly across boundaries. Full payload semantics in [message-bus.md](message-bus.md).
 
+Each name is declared **once**, in `NS.MSG` (`core/Constants.lua`, keyed by the SCREAMING_SNAKE constant with its one sender named beside it), and every `SendMessage` / `RegisterMessage` call site reads `NS.MSG.<KEY>` — no call site types the literal (`architecture-§4`). `tests/test_bus.lua` scans the authored files for a stray literal and pins each key to its wire name.
+
 | Message | Sender(s) | Consumers | Payload |
 |---|---|---|---|
 | `Ka0s_KickCD_SPELL_STATE` | `Cooldowns:Rebuild` / `:Refresh` | `IconGrid` (every enabled unit instance) | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |

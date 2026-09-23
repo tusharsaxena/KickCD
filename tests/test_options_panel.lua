@@ -248,13 +248,13 @@ test("a checkbox write fires CONFIG_CHANGED with the row's section", function()
     -- modules never repaint, so the setting "works" and nothing moves on screen.
     local seen
     local target = NS.NewBusTarget()
-    target:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function(_, payload)
+    target:RegisterMessage(T.NS.MSG.CONFIG_CHANGED, function(_, payload)
         seen = payload and payload.section
     end)
     local before = H.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
-    target:UnregisterMessage("Ka0s_KickCD_CONFIG_CHANGED")
+    target:UnregisterMessage(T.NS.MSG.CONFIG_CHANGED)
     H.SetAndRefresh("locked", before)
     assertEqual(seen, H.FindSchema("locked").section,
         "the panel write must publish the row's own section")

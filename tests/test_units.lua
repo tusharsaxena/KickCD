@@ -190,7 +190,7 @@ test("master-enable off then on disables then revives both units without a reloa
 
     ns.db.profile.enabled = false
 
-    ns:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+    ns:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "general" })
 
     assertEqual(ns.Units.IsEnabled("target"), false, "master off disables the unit")
 
@@ -200,7 +200,7 @@ test("master-enable off then on disables then revives both units without a reloa
 
     ns.db.profile.enabled = true
 
-    ns:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "general" })
+    ns:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "general" })
 
     assertEqual(ns.Units.IsEnabled("target"), true, "master back on re-enables the unit")
 
@@ -386,7 +386,7 @@ test("CopyStyling announces each section once and refreshes the panels structura
     local sent, refreshes = {}, 0
     local realSend, realRefresh = NS.SendMessage, H.RefreshAllPanels
     NS.SendMessage = function(self, msg, payload)
-        if msg == "Ka0s_KickCD_CONFIG_CHANGED" then
+        if msg == T.NS.MSG.CONFIG_CHANGED then
             sent[payload.section] = (sent[payload.section] or 0) + 1
         end
         return realSend(self, msg, payload)
@@ -501,7 +501,7 @@ test("`/kcd set units.focus.link` writes it, announces units and repaints struct
     local sent, refreshes = {}, 0
     local realSend, realRefresh = NS.SendMessage, H.RefreshAllPanels
     NS.SendMessage = function(self, msg, payload)
-        if msg == "Ka0s_KickCD_CONFIG_CHANGED" then sent[#sent + 1] = payload.section end
+        if msg == T.NS.MSG.CONFIG_CHANGED then sent[#sent + 1] = payload.section end
         return realSend(self, msg, payload)
     end
     H.RefreshAllPanels = function(...) refreshes = refreshes + 1; return realRefresh(...) end

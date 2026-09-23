@@ -460,7 +460,7 @@ function IconGrid:Layout(inst)
         if NS.SendMessage then
             -- primaryIcon is nil here (no spells in the active list) —
             -- subscribers fall back to the public accessor or just skip.
-            NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+            NS:SendMessage(NS.MSG.GRID_LAYOUT, {
                 unit        = inst.unit,
                 gridFrame   = grid,
                 primaryIcon = nil,
@@ -510,7 +510,7 @@ function IconGrid:Layout(inst)
     -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
     -- that haven't yet adopted the payload form.
     if NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+        NS:SendMessage(NS.MSG.GRID_LAYOUT, {
             unit        = inst.unit,
             gridFrame   = grid,
             primaryIcon = primary,
@@ -877,13 +877,13 @@ function IconGrid:Resume()
 
     -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
     -- is fired from IconGrid:Layout itself, not via a SendMessage here.
-    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.SPELL_STATE,     "OnSpellState")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
     -- Combat-state fan-out from core/State.lua. We no longer hook
     -- PLAYER_REGEN_* directly -- State owns the only registration so the
     -- flag write and the visibility refresh stay ordered by construction.
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+    self:RegisterMessage(NS.MSG.COMBAT_STATE,    "OnCombatStateChanged")
 
     self:RegisterLifecycleEvents()
     -- Every instance was left flagged enabled, so ReconcileUnits would consider

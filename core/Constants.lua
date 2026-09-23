@@ -28,6 +28,28 @@ NS.PREFIX = "|cff00ffff[KCD]|r"
 NS.GRAY = "|cff9d9d9d"
 
 -- ---------------------------------------------------------------------------
+-- The message bus catalog (architecture-§4)
+-- ---------------------------------------------------------------------------
+--
+-- Every bus message name, declared ONCE. Every SendMessage / RegisterMessage call site reads
+-- NS.MSG.<KEY> and never types the literal: a misspelled literal is not an error anywhere, while a
+-- misspelled key is a nil name at the call site. The one sender of each is named beside it (the
+-- MAY in architecture-§4); docs/ARCHITECTURE.md's `## Message bus` table carries the payloads and
+-- every consumer.
+NS.MSG = {
+    -- Sender: modules/Cooldowns.lua (Rebuild / Refresh), one per spell whose state moved.
+    SPELL_STATE     = "Ka0s_KickCD_SPELL_STATE",
+    -- Sender: settings/Panel.lua Helpers.FireConfigChanged, the one funnel every writer calls.
+    CONFIG_CHANGED  = "Ka0s_KickCD_CONFIG_CHANGED",
+    -- Sender: core/Database.lua fireProfileChanged (profile swap / copy / reset, ResetAllSpells).
+    PROFILE_CHANGED = "Ka0s_KickCD_PROFILE_CHANGED",
+    -- Sender: modules/IconGrid.lua IconGrid:Layout, once per unit instance.
+    GRID_LAYOUT     = "Ka0s_KickCD_GRID_LAYOUT",
+    -- Sender: core/State.lua's bootstrap frame, after each combat-flag write.
+    COMBAT_STATE    = "Ka0s_KickCD_COMBAT_STATE",
+}
+
+-- ---------------------------------------------------------------------------
 -- IconGrid: cooldown curve threshold
 -- ---------------------------------------------------------------------------
 

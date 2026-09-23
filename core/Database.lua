@@ -41,7 +41,7 @@ local CURRENT_DB_VERSION = 5
 -- docs/ARCHITECTURE.md names one site and stays true.
 local function fireProfileChanged(key)
     if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED", { newProfileKey = key })
+        NS:SendMessage(NS.MSG.PROFILE_CHANGED, { newProfileKey = key })
     end
 end
 

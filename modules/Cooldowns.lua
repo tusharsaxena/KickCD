@@ -336,7 +336,7 @@ function Cooldowns:Rebuild()
             if state then
                 self.watched[id] = state
                 watchedIDs[#watchedIDs + 1] = id
-                NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+                NS:SendMessage(NS.MSG.SPELL_STATE, {
                     spellID        = state.spellID,
                     ready          = state.ready,
                     isActive       = state.isActive,
@@ -445,7 +445,7 @@ function Cooldowns:Refresh()
             -- emitting spell and is the half of this statement that a
             -- collection can be charged to. See core/PerfSetup.lua.
             local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+            NS:SendMessage(NS.MSG.SPELL_STATE, {
                 spellID = id, ready = false, isActive = false,
                 cdObject = nil, chargeCdObject = nil, charges = nil,
             })
@@ -497,7 +497,7 @@ function Cooldowns:Refresh()
             end
             self.watched[id] = next_
             local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+            NS:SendMessage(NS.MSG.SPELL_STATE, {
                 spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
                 cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
                 charges = next_.charges,
@@ -585,8 +585,8 @@ function Cooldowns:Resume()
     self:RegisterLifecycleEvents()
 
     -- Internal messages (closed list).
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
 
     -- Initial build deferred to PLAYER_ENTERING_WORLD when the spec / spellbook
     -- are guaranteed to be populated. If the addon enables late, also try a

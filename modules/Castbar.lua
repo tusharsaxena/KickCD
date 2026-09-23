@@ -1123,10 +1123,10 @@ function Castbar:Resume()
     -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
     -- owns the only PLAYER_REGEN_* registration, so the flag write and the
     -- visibility refresh stay ordered by construction), not raw events here.
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.GRID_LAYOUT,     "OnGridLayout")
+    self:RegisterMessage(NS.MSG.COMBAT_STATE,    "OnCombatStateChanged")
 
     self:RegisterLifecycleEvents()
     -- Suspend left `enabled` true while releasing the frames, so ReconcileUnits
