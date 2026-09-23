@@ -188,8 +188,13 @@ local SUITES = {
     -- line-ending gate, over every path `git ls-files` reports. It lives where the rest of the
     -- kit lives rather than being re-typed into nine repositories, so it is declared with its
     -- own `dir`. Kit.assertSuiteInventory fails the run until it is declared, so it cannot
-    -- arrive with a re-vendor and then quietly run nothing.
-    { name = "test_eol", dir = root .. "/tests/_kit/" },
+    -- arrive with a re-vendor and then quietly run nothing. Every kit suite is spelled with the
+    -- literal `"tests/_kit/"` testing-§9 prescribes; the kit reads it against Kit.run's `dir`, so
+    -- the pair still resolves when this runner is invoked by path from another directory.
+    { name = "test_eol", dir = "tests/_kit/" },
+    -- Kit revision 25's cap gate (layout-§1): the census under `## Documented deviations` in
+    -- docs/ARCHITECTURE.md, held against every authored `.lua` the repo tracks.
+    { name = "test_layout_cap", dir = "tests/_kit/" },
 }
 
 -- ---------------------------------------------------------------------------
