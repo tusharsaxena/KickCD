@@ -1,7 +1,7 @@
 -- tests/test_cooldowns_gates.lua — the two change-detection gates in
 -- modules/Cooldowns.lua.
 --
--- StateChanged decides whether a poll EMITS a Ka0s_KickCD_SPELL_STATE;
+-- StateChanged decides whether a poll EMITS a Ka0s_KickCD_SpellState;
 -- MaterialChange decides whether that poll gets LOGGED. They look almost
 -- identical and are deliberately not: on a secret `charges` StateChanged
 -- emits (a redundant render is harmless, a missed charge transition strands

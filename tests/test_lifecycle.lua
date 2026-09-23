@@ -19,10 +19,10 @@ local LIFECYCLE_MODULES = { "IconGrid", "Cooldowns", "Castbar" }
 -- reaching these RegisterMessage calls, so their presence double-proves OnEnable
 -- ran to completion.
 local ICONGRID_MESSAGES = {
-    "Ka0s_KickCD_SPELL_STATE",
-    "Ka0s_KickCD_CONFIG_CHANGED",
-    "Ka0s_KickCD_PROFILE_CHANGED",
-    "Ka0s_KickCD_COMBAT_STATE",
+    T.NS.MSG.SPELL_STATE,
+    T.NS.MSG.CONFIG_CHANGED,
+    T.NS.MSG.PROFILE_CHANGED,
+    T.NS.MSG.COMBAT_STATE,
 }
 
 test("addon + all modules enable cleanly on the Ace3 login path", function()
@@ -49,7 +49,7 @@ end)
 
 test("Cooldowns and Castbar subscribe to CONFIG_CHANGED after enable", function()
     local inst = T.load(true, true)
-    local reg = inst.mocks.__msgRegistry["Ka0s_KickCD_CONFIG_CHANGED"]
+    local reg = inst.mocks.__msgRegistry[T.NS.MSG.CONFIG_CHANGED]
     assertTrue(reg ~= nil, "CONFIG_CHANGED must have subscribers")
     assertTrue(reg[inst.NS:GetModule("Cooldowns")] ~= nil, "Cooldowns must subscribe to CONFIG_CHANGED")
     assertTrue(reg[inst.NS:GetModule("Castbar")] ~= nil, "Castbar must subscribe to CONFIG_CHANGED")
@@ -60,8 +60,8 @@ test("post-enable CONFIG_CHANGED re-layout runs end-to-end without error", funct
     -- Castbar:Reskin against the live (mock) frames — the same self:Layout()
     -- call sites (IconGrid.lua:627/633/661) the crash hid behind.
     local inst = T.load(true, true)
-    inst.NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "icons" })
-    inst.NS:SendMessage("Ka0s_KickCD_PROFILE_CHANGED")
+    inst.NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "icons" })
+    inst.NS:SendMessage(T.NS.MSG.PROFILE_CHANGED)
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
 end)
 

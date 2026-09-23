@@ -21,7 +21,7 @@
 --
 -- The page and its popups write the stored list in place, then call
 -- commitSoon, a 50 ms throttle that re-renders the rows and fires
--- Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
+-- Ka0s_KickCD_ConfigChanged { section = "spells" }.
 
 local _, NS = ...
 
@@ -1334,15 +1334,15 @@ function Spells.RegisterPanelEvents()
     Spells.__ev = Spells.__ev or (NS.NewBusTarget and NS.NewBusTarget())
     local ev = Spells.__ev
     if ev then
-        ev:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", function()
+        ev:RegisterMessage(NS.MSG.PROFILE_CHANGED, function()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end)
         -- Slash-command mutations (`/kcd spells add/remove/...`) and the
-        -- panel's own commitSoon both fire Ka0s_KickCD_CONFIG_CHANGED with
+        -- panel's own commitSoon both fire Ka0s_KickCD_ConfigChanged with
         -- section="spells". Subscribing here is what closes the bus
         -- contract — the slash layer no longer reaches across to call
         -- our RefreshRows directly (CR-7).
-        ev:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED", function(_, payload)
+        ev:RegisterMessage(NS.MSG.CONFIG_CHANGED, function(_, payload)
             if payload and payload.section == "spells"
                and panel and panel:IsShown() then
                 Spells:RefreshRows()

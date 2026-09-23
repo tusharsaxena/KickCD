@@ -31,17 +31,17 @@
 -- the grid into position. Combat / target / cast events drive
 -- RefreshVisibility. Listens to:
 --
---   Ka0s_KickCD_SPELL_STATE       -> route to the matching active icon's :Apply
---   Ka0s_KickCD_CONFIG_CHANGED    -> "icons" relayouts (zoom/border/font/grid);
+--   Ka0s_KickCD_SpellState       -> route to the matching active icon's :Apply
+--   Ka0s_KickCD_ConfigChanged    -> "icons" relayouts (zoom/border/font/grid);
 --                                "spells" rebuilds;
 --                                "general" re-applies lock, scale, alpha,
 --                                  master-enable visibility, anchor.
---   Ka0s_KickCD_PROFILE_CHANGED   -> rebuild + re-anchor + reapply general
---   Ka0s_KickCD_COMBAT_STATE      -> RefreshVisibility (drives "in_combat" mode)
+--   Ka0s_KickCD_ProfileChanged   -> rebuild + re-anchor + reapply general
+--   Ka0s_KickCD_CombatState      -> RefreshVisibility (drives "in_combat" mode)
 --   PLAYER_SPECIALIZATION_CHANGED / PLAYER_ENTERING_WORLD -> rebuild
 --
 -- Emits:
---   Ka0s_KickCD_GRID_LAYOUT       -> fired at the end of every IconGrid:Layout()
+--   Ka0s_KickCD_GridLayout       -> fired at the end of every IconGrid:Layout()
 --                               so dependent modules (notably modules/Castbar.lua,
 --                               which can anchor relative to the primary icon
 --                               and/or auto-size to the grid) can sync after
@@ -69,7 +69,7 @@ local Perf = NS.Perf
 -- were file-local singletons (`pool`, `ordered`, `grid`); the instance model
 -- lets a second unit coexist without any shared mutable state.
 --
---   inst.pool.active   — keyed by spellID so Ka0s_KickCD_SPELL_STATE can look
+--   inst.pool.active   — keyed by spellID so Ka0s_KickCD_SpellState can look
 --                        up its icon in O(1).
 --   inst.pool.free     — a stack of released widgets ready to re-acquire.
 --   inst.ordered       — ordered list of laid-out icons (primary at [1]).
@@ -163,7 +163,7 @@ end
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a
 -- shared, single-owner flag driven off PLAYER_REGEN_DISABLED /
 -- PLAYER_REGEN_ENABLED in one place, fanned out via the
--- Ka0s_KickCD_COMBAT_STATE message that this module subscribes to. We
+-- Ka0s_KickCD_CombatState message that this module subscribes to. We
 -- deliberately do NOT consult InCombatLockdown() inside shouldBeVisible
 -- — that function reports protected-frame lockdown state, which can lag
 -- the regen events by a frame. The event-driven flag is the source of
@@ -331,7 +331,7 @@ end
 --- rather than erroring out of BuildActiveList partway.
 local function applySpellTexture(btn, spellID)
     local tex = NS.Compat.GetSpellTexture(spellID)
-    local texSecret = tex ~= nil and _G.issecretvalue and _G.issecretvalue(tex)
+    local texSecret = tex ~= nil and NS.Compat.IsSecret(tex)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
 
@@ -342,7 +342,7 @@ local function seedIcon(grid, inst, spellID)
     applySpellTexture(btn, spellID)
     btn:ApplyTextConfig(inst.cfg)
     -- Initial state: assume ready until Cooldowns sends a real
-    -- Ka0s_KickCD_SPELL_STATE. Apply{} (no payload) treats the icon
+    -- Ka0s_KickCD_SpellState. Apply{} (no payload) treats the icon
     -- as "not ready" because state.ready is nil-falsy, so pass
     -- a synthetic ready frame to render correctly until the
     -- first real state arrives.
@@ -460,7 +460,7 @@ function IconGrid:Layout(inst)
         if NS.SendMessage then
             -- primaryIcon is nil here (no spells in the active list) —
             -- subscribers fall back to the public accessor or just skip.
-            NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+            NS:SendMessage(NS.MSG.GRID_LAYOUT, {
                 unit        = inst.unit,
                 gridFrame   = grid,
                 primaryIcon = nil,
@@ -510,7 +510,7 @@ function IconGrid:Layout(inst)
     -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
     -- that haven't yet adopted the payload form.
     if NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_GRID_LAYOUT", {
+        NS:SendMessage(NS.MSG.GRID_LAYOUT, {
             unit        = inst.unit,
             gridFrame   = grid,
             primaryIcon = primary,
@@ -875,15 +875,15 @@ end
 function IconGrid:Resume()
     IconGrid.BuildCurves()
 
-    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GRID_LAYOUT
+    -- Internal-message subscriptions. The grid never sends; Ka0s_KickCD_GridLayout
     -- is fired from IconGrid:Layout itself, not via a SendMessage here.
-    self:RegisterMessage("Ka0s_KickCD_SPELL_STATE",     "OnSpellState")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.SPELL_STATE,     "OnSpellState")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
     -- Combat-state fan-out from core/State.lua. We no longer hook
     -- PLAYER_REGEN_* directly -- State owns the only registration so the
     -- flag write and the visibility refresh stay ordered by construction.
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+    self:RegisterMessage(NS.MSG.COMBAT_STATE,    "OnCombatStateChanged")
 
     self:RegisterLifecycleEvents()
     -- Every instance was left flagged enabled, so ReconcileUnits would consider
@@ -1183,7 +1183,7 @@ local function resolveInterruptible(unit, hostileCasting)
         local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
         notInterruptible = ni
     end
-    if _G.issecretvalue and _G.issecretvalue(notInterruptible) then
+    if NS.Compat.IsSecret(notInterruptible) then
         return SECRET_GATE
     end
     return not notInterruptible

@@ -34,14 +34,14 @@
 --   PLAYER_TARGET_CHANGED        -> re-evaluate the target bar
 --   PLAYER_FOCUS_CHANGED         -> re-evaluate the focus bar
 --
---   Ka0s_KickCD_CONFIG_CHANGED  -> "castbar" reskins/relays the bar; "general"
+--   Ka0s_KickCD_ConfigChanged  -> "castbar" reskins/relays the bar; "general"
 --                             re-applies lock + anchor; other sections ignored.
---   Ka0s_KickCD_PROFILE_CHANGED -> re-anchor + reskin + re-evaluate.
---   Ka0s_KickCD_GRID_LAYOUT     -> re-anchor (in PRIMARY anchor mode the primary
+--   Ka0s_KickCD_ProfileChanged -> re-anchor + reskin + re-evaluate.
+--   Ka0s_KickCD_GridLayout     -> re-anchor (in PRIMARY anchor mode the primary
 --                             icon button reference may have changed) and
 --                             re-apply auto-size (the grid frame may have
 --                             resized).
---   Ka0s_KickCD_COMBAT_STATE    -> re-evaluate / Stop (drives "in_combat" mode).
+--   Ka0s_KickCD_CombatState    -> re-evaluate / Stop (drives "in_combat" mode).
 --
 -- This file fires no messages. The bar is a strict subscriber.
 --
@@ -88,7 +88,7 @@ local L       = NS.L
 --                         (the field may be secret-tainted in 12.0). See the
 --                         "plain-after-flip invariant" comment near
 --                         OnInterruptibilityChanged and docs/midnight-quirks.md.
---   inst.lastGridLayout — cached Ka0s_KickCD_GRID_LAYOUT refs for THIS unit's
+--   inst.lastGridLayout — cached Ka0s_KickCD_GridLayout refs for THIS unit's
 --                         grid (gridFrame/primaryIcon); ApplyAnchor / Reskin
 --                         prefer these over the public accessors. Fallback to
 --                         IconGrid:GetGridFrame(unit) / :GetPrimaryIcon(unit)
@@ -133,7 +133,7 @@ end
 
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a shared,
 -- single-owner flag driven off PLAYER_REGEN_* in one place, fanned out via the
--- Ka0s_KickCD_COMBAT_STATE message this module subscribes to. (InCombatLockdown()
+-- Ka0s_KickCD_CombatState message this module subscribes to. (InCombatLockdown()
 -- lags the regen events by a frame, so the event-driven flag is the source of
 -- truth.) This module just reads the shared one.
 
@@ -167,7 +167,7 @@ local function forEachEnabled(fn)
 end
 
 -- Resolve `inst`'s icon-grid parent grid frame. Prefers the ref cached from
--- this unit's most recent Ka0s_KickCD_GRID_LAYOUT (CR-29); falls back to
+-- this unit's most recent Ka0s_KickCD_GridLayout (CR-29); falls back to
 -- IconGrid:GetGridFrame(inst.unit) for the first tick after enable / empty
 -- payloads. Passing inst.unit means a focus bar resolves the focus grid.
 -- GetModule(name, true) is the AceAddon optional-accessor idiom — silent on
@@ -289,7 +289,7 @@ end
 -- Secret-value handling: `rec.name` from Compat.GetCastingInfo can
 -- be secret-tainted in combat for protected casts (per the module
 -- header). `string.sub` / `#` on a secret may error in tainted
--- scope, so we short-circuit with `issecretvalue` and pass the raw
+-- scope, so we short-circuit with `Compat.IsSecret` and pass the raw
 -- secret straight through to SetText (which accepts secret args
 -- via its C-side argument path) — losing the truncation for that
 -- one frame is preferable to throwing a Lua error.
@@ -300,7 +300,7 @@ end
 local function truncateName(name, maxChars)
     if not name then return "" end
     if not maxChars or maxChars <= 0 then return name end
-    if _G.issecretvalue and _G.issecretvalue(name) then return name end
+    if NS.Compat.IsSecret(name) then return name end
     if #name <= maxChars then return name end
     return string.sub(name, 1, maxChars) .. "…"
 end
@@ -751,7 +751,7 @@ end
 
 -- Hot path. Runs every frame while a cast is active. Constraints:
 --   * No table lookups for config — `current.showTime` is cached on cast
---     start (see Castbar:Start) and re-cached on Ka0s_KickCD_CONFIG_CHANGED.
+--     start (see Castbar:Start) and re-cached on Ka0s_KickCD_ConfigChanged.
 --   * No SetMinMaxValues — the duration object's total only changes at
 --     cast start / on UNIT_SPELLCAST_DELAYED / UNIT_SPELLCAST_CHANNEL_UPDATE.
 --     Both transitions go through Castbar:Start (initial) or
@@ -902,7 +902,7 @@ function Castbar:Start(inst, rec)
     self:EnsureFrame(inst)
     inst.current = rec
     -- Cache showTime on the cast record so onUpdate doesn't have to hit
-    -- the cfg() table every frame. Refreshed on Ka0s_KickCD_CONFIG_CHANGED via
+    -- the cfg() table every frame. Refreshed on Ka0s_KickCD_ConfigChanged via
     -- OnConfigChanged when the section is "castbar".
     inst.current.showTime = (cfg(inst).showTime ~= false)
 
@@ -1120,13 +1120,13 @@ end
 --- taken on the way down, so a unit toggled while the addon was off comes back
 --- correctly (performance-§6).
 function Castbar:Resume()
-    -- Combat transitions arrive via the Ka0s_KickCD_COMBAT_STATE message (State
+    -- Combat transitions arrive via the Ka0s_KickCD_CombatState message (State
     -- owns the only PLAYER_REGEN_* registration, so the flag write and the
     -- visibility refresh stay ordered by construction), not raw events here.
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
-    self:RegisterMessage("Ka0s_KickCD_COMBAT_STATE",    "OnCombatStateChanged")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.GRID_LAYOUT,     "OnGridLayout")
+    self:RegisterMessage(NS.MSG.COMBAT_STATE,    "OnCombatStateChanged")
 
     self:RegisterLifecycleEvents()
     -- Suspend left `enabled` true while releasing the frames, so ReconcileUnits

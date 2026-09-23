@@ -247,9 +247,9 @@ function UnitLabel:OnPlayerEnteringWorld() self:ApplyAll() end
 --- same re-apply, written once, and ApplyAll reads the labels FROM CURRENT
 --- STATE, so text edited while the addon was off comes back as edited.
 function UnitLabel:Resume()
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_GRID_LAYOUT",     "OnGridLayout")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.GRID_LAYOUT,     "OnGridLayout")
     self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
     self:ApplyAll()
 end

@@ -72,7 +72,7 @@ end
 --- Driving the handler is the whole point: the bug was a missing call inside
 --- it, which a direct BuildCurves() invocation would have hidden.
 local function fireConfigChanged(NS, section)
-    NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = section })
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = section })
 end
 
 test("the mock's curve evaluation actually reads control points", function()

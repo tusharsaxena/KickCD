@@ -76,7 +76,7 @@ end
 --
 -- The modules own what "inert" means for their own registrations; this file
 -- owns the ORDER, and the order is not cosmetic. Cooldowns is the publisher on
--- the message bus (Ka0s_KickCD_SPELL_STATE) and IconGrid is its subscriber, so
+-- the message bus (Ka0s_KickCD_SpellState) and IconGrid is its subscriber, so
 -- the rebuild brings the subscribers up FIRST and the publisher last —
 -- otherwise Cooldowns:Rebuild's initial fan-out lands on a bus nobody has
 -- re-subscribed to yet and the grid comes back empty until the next poll. The

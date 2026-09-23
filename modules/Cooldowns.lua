@@ -3,7 +3,7 @@
 -- Per-spell cooldown observer. Owns a `watched` table keyed by spellID
 -- derived from the active spec's spell list in the current profile, polls
 -- state via KickCD.Compat.* on every relevant event, and emits
--- Ka0s_KickCD_SPELL_STATE only for those spells whose state actually changed
+-- Ka0s_KickCD_SpellState only for those spells whose state actually changed
 -- since the last emission. This avoids spamming the IconGrid on every
 -- SPELL_UPDATE_COOLDOWN tick.
 --
@@ -33,12 +33,12 @@
 --     GCD and shows the spell ready before it is.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
--- false (master disable); a "general" Ka0s_KickCD_CONFIG_CHANGED triggers a
+-- false (master disable); a "general" Ka0s_KickCD_ConfigChanged triggers a
 -- full Rebuild so the watched-list comes back online when the user
 -- re-enables.
 --
 -- Message contract (closed):
---   FIRE:    Ka0s_KickCD_SPELL_STATE
+--   FIRE:    Ka0s_KickCD_SpellState
 --              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --            charges is the raw currentCharges from
 --            C_Spell.GetSpellCharges (or nil for uncharged spells). A
@@ -55,8 +55,8 @@
 --            countdown text but does NOT apply the cooldown alpha/tint —
 --            the spell IS castable (state.ready stays true), it just
 --            has fewer charges available than max.
---   LISTEN:  Ka0s_KickCD_PROFILE_CHANGED,
---            Ka0s_KickCD_CONFIG_CHANGED (section=="spells" or "general")
+--   LISTEN:  Ka0s_KickCD_ProfileChanged,
+--            Ka0s_KickCD_ConfigChanged (section=="spells" or "general")
 
 local _, NS = ...
 local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
@@ -119,7 +119,7 @@ end
 --- ready when it isn't than to spam errors.
 local function chargesAvailable(cur)
     if cur == nil then return true end
-    if _G.issecretvalue and _G.issecretvalue(cur) then return true end
+    if NS.Compat.IsSecret(cur) then return true end
     return cur > 0
 end
 
@@ -218,7 +218,7 @@ function Cooldowns:PollSpell(spellID, parentKey)
 end
 
 --- Determine whether two state snapshots differ enough to merit emitting
---- Ka0s_KickCD_SPELL_STATE. The IconGrid drives its swipe and countdown text
+--- Ka0s_KickCD_SpellState. The IconGrid drives its swipe and countdown text
 --- via the cdObject reference once it's handed over, so per-tick re-
 --- emission isn't needed — only state transitions matter (ready ↔ on-CD,
 --- charges available ↔ none).
@@ -248,8 +248,8 @@ local function MaterialChange(prev, next_)
 
     local a, b = prev.charges, next_.charges
     if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
-    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
+    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
+    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
     -- Secret charges CANNOT be compared (§ secret values), so we genuinely
     -- cannot tell whether they moved. StateChanged resolves that ambiguity by
     -- emitting conservatively — correct there, since a redundant render is
@@ -286,8 +286,8 @@ local function StateChanged(prev, next_)
     -- budget (a SetFormattedText call per SPELL_UPDATE_*).
     local a, b = prev.charges, next_.charges
     if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and _G.issecretvalue and _G.issecretvalue(a)
-    local bSecret = b ~= nil and _G.issecretvalue and _G.issecretvalue(b)
+    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
+    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
     if aSecret or bSecret then return true end
     if a ~= b then return true end
     return false
@@ -302,7 +302,7 @@ local function isEnabled()
 end
 
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
---- one initial Ka0s_KickCD_SPELL_STATE per surviving spell. Skips spells the
+--- one initial Ka0s_KickCD_SpellState per surviving spell. Skips spells the
 --- player doesn't know. Short-circuits to an empty watched-list when the
 --- master enable is off.
 function Cooldowns:Rebuild()
@@ -336,7 +336,7 @@ function Cooldowns:Rebuild()
             if state then
                 self.watched[id] = state
                 watchedIDs[#watchedIDs + 1] = id
-                NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+                NS:SendMessage(NS.MSG.SPELL_STATE, {
                     spellID        = state.spellID,
                     ready          = state.ready,
                     isActive       = state.isActive,
@@ -393,7 +393,7 @@ function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
         #skippedIDs, skippedList)
 end
 
---- Re-poll all watched spells, fire Ka0s_KickCD_SPELL_STATE only for those whose
+--- Re-poll all watched spells, fire Ka0s_KickCD_SpellState only for those whose
 --- state changed since last poll. When a previously-watched spell becomes
 --- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
 --- swapped to the other branch of a choice node, encounter mechanic
@@ -445,7 +445,7 @@ function Cooldowns:Refresh()
             -- emitting spell and is the half of this statement that a
             -- collection can be charged to. See core/PerfSetup.lua.
             local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+            NS:SendMessage(NS.MSG.SPELL_STATE, {
                 spellID = id, ready = false, isActive = false,
                 cdObject = nil, chargeCdObject = nil, charges = nil,
             })
@@ -497,7 +497,7 @@ function Cooldowns:Refresh()
             end
             self.watched[id] = next_
             local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage("Ka0s_KickCD_SPELL_STATE", {
+            NS:SendMessage(NS.MSG.SPELL_STATE, {
                 spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
                 cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
                 charges = next_.charges,
@@ -585,8 +585,8 @@ function Cooldowns:Resume()
     self:RegisterLifecycleEvents()
 
     -- Internal messages (closed list).
-    self:RegisterMessage("Ka0s_KickCD_PROFILE_CHANGED", "OnProfileChanged")
-    self:RegisterMessage("Ka0s_KickCD_CONFIG_CHANGED",  "OnConfigChanged")
+    self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
+    self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
 
     -- Initial build deferred to PLAYER_ENTERING_WORLD when the spec / spellbook
     -- are guaranteed to be populated. If the addon enables late, also try a
@@ -683,7 +683,7 @@ function Cooldowns:DebugDump()
     -- than `issecretvalue`, which tests the operation that actually rejects a
     -- secret instead of asking the API whether it thinks it has one.
     --
-    -- NB: only the STRINGIFIER moves. The issecretvalue calls in StateChanged
+    -- NB: only the STRINGIFIER moves. The Compat.IsSecret calls in StateChanged
     -- and MaterialChange above are control flow over an incomparable value, not
     -- rendering, and must stay exactly as they are.
     local safeStr = NS.SafeToString

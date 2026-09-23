@@ -24,7 +24,7 @@
 -- ---------------------------------------------------------------------------
 --
 -- Reskin used to be one ~40-widget-call pass that ran on EVERY
--- Ka0s_KickCD_CONFIG_CHANGED for section "castbar". Dragging a color picker
+-- Ka0s_KickCD_ConfigChanged for section "castbar". Dragging a color picker
 -- commits at 50 ms intervals, so a two-second drag re-ran frame sizing, icon
 -- insets, spark rotation, font loading and text anchoring ~40 times over — none
 -- of which a color can change.
@@ -39,14 +39,14 @@
 --     colors, border colors, the shared time-text color. Always runs.
 --
 -- The guard is a signature rather than a bus payload change on purpose. The
--- alternative — adding the written path to Ka0s_KickCD_CONFIG_CHANGED so
+-- alternative — adding the written path to Ka0s_KickCD_ConfigChanged so
 -- subscribers could tell a color edit from a layout edit — would widen the
 -- closed five-message bus for one subscriber's benefit. The signature keeps the
 -- knowledge of "which fields are structural" in the one file that reads them.
 --
 -- The resolved bar dimensions are folded INTO the signature, not just the raw
 -- config: with castbar.autoSize on, the bar's long axis tracks the icon grid's
--- footprint, which moves on Ka0s_KickCD_GRID_LAYOUT while the config table sits
+-- footprint, which moves on Ka0s_KickCD_GridLayout while the config table sits
 -- perfectly still. Signing the resolved size is what keeps auto-size working.
 
 local _, NS = ...
@@ -122,7 +122,7 @@ end
 ---
 --- Auto-size matches the bar's long axis to the icon grid's corresponding
 --- screen-axis extent; thickness stays user-configured. Re-runs on every
---- Ka0s_KickCD_GRID_LAYOUT so the bar tracks the grid as icons are added /
+--- Ka0s_KickCD_GridLayout so the bar tracks the grid as icons are added /
 --- removed / resized.
 ---
 --- @return number barLong, number barThick

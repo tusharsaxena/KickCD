@@ -101,7 +101,7 @@ test("State: every combat transition fans out COMBAT_STATE with the new flag", f
     local seen = {}
     local target = {}
     inst.mocks.LibStub("AceEvent-3.0"):Embed(target)
-    target:RegisterMessage("Ka0s_KickCD_COMBAT_STATE", function(_, payload)
+    target:RegisterMessage(T.NS.MSG.COMBAT_STATE, function(_, payload)
         seen[#seen + 1] = payload.inCombat
     end)
     local boot = inst.mocks.__findFrame("PLAYER_REGEN_DISABLED")

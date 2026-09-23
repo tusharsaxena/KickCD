@@ -151,7 +151,7 @@ function Helpers.FireConfigChanged(section)
         return
     end
     if NS and NS.SendMessage then
-        NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = section })
+        NS:SendMessage(NS.MSG.CONFIG_CHANGED, { section = section })
     end
 end
 

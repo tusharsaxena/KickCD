@@ -208,7 +208,7 @@ test("every declared bucket is reached by a real bracket", function()
     -- only that Note appends.
     local firstSpell = firstWatchedSpell(Cooldowns)
     if firstSpell then
-        NS2:SendMessage("Ka0s_KickCD_SPELL_STATE",
+        NS2:SendMessage(T.NS.MSG.SPELL_STATE,
             { spellID = firstSpell, ready = true, isActive = false })
     end
     -- castEvent -> visibility.

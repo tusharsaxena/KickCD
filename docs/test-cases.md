@@ -291,7 +291,7 @@ badge and any count quoted in the docs must agree with it.
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
 
-### test_bus.lua (8)
+### test_bus.lua (13)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
@@ -301,16 +301,24 @@ badge and any count quoted in the docs must agree with it.
 - a string method is dispatched as target:Method(message, payload)
 - a registration with no handler calls the method named after the message
 - UnregisterMessage stops delivery to that target and no other
+- after enable, each module is subscribed to exactly its own set of wire names
+- NS.MSG declares the five bus messages with the wire names the modules use
+- no authored file types a bus message literal outside the catalog
+- with LibKa0s present, reading an undeclared NS.MSG key raises at the call site
+- with LibKa0s absent, NS.MSG is the plain table with the same keys and wire names
 
-### test_compat.lua (5)
+### test_compat.lua (8)
 
 - Compat exposes the spec shims
 - GetSpecialization prefers C_SpecializationInfo
 - GetSpecializationInfo passes the multi-return through
 - GetSpecialization falls back to the deprecated global when C_ is absent
 - GetSpecializationInfo falls back to the deprecated global when C_ is absent
+- GetSpecializationInfo(nil) answers nil without calling the client
+- with LibKa0s absent, every routed reader answers the major's absent value
+- with LibKa0s absent, the IsSecret guard answers what the library answers
 
-### test_compat_api.lua (46)
+### test_compat_api.lua (54)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
 - Compat._firstReturn collapses a multi-return to position 1
@@ -323,15 +331,23 @@ badge and any count quoted in the docs must agree with it.
 - GetSpellCooldown passes SECRET timings through without touching them
 - GetSpellCooldown falls back to the deprecated global on a pre-12.0 client
 - GetSpellCooldown's legacy path reports a zero duration as off cooldown
+- GetSpellCooldown's legacy path reads an isEnabled of 0 as DISABLED, nil as enabled
 - GetSpellCooldown's legacy path refuses to compare a secret duration
 - GetSpellCooldown returns the inert tuple when NO cooldown API exists
+- GetSpellCooldown answers exactly five values on every branch
 - GetSpellCooldownDuration hands back the opaque handle unchanged
 - GetSpellCooldownDuration is nil on a client without the 12.0 API
 - GetSpellTexture prefers C_Spell and falls back to the global
 - GetSpellTexture is nil when neither API exists
 - GetSpellInfo flattens the modern info table into the legacy tuple order
+- GetSpellInfo resolves a typed NAME and hands back the spellID at position 6
 - GetSpellInfo is nil for an unknown spell, without falling through
 - GetSpellInfo falls back to the deprecated global's multi-return
+- GetSpellInfo's legacy rung drops a real rank rather than reporting it as the icon
+- GetSpellTexture answers exactly one value when the client answers two
+- IsSecret is LibKa0s-Compat-1.0's member when the payload is present
+- IsSecret answers a strict boolean, and false on a client without secrets
+- no authored file outside core/Compat.lua reads issecretvalue itself
 - GetSpellCharges flattens the modern charge table
 - GetSpellCharges is nil for a spell without charges
 - GetSpellCharges passes a SECRET charge count through untouched
@@ -1003,11 +1019,23 @@ badge and any count quoted in the docs must agree with it.
 
 - a WoW global on the standing _G. list is never read bare
 
-### test_spelling.lua (3)
+### test_prose.lua (15)
 
-- the spelling scan reaches this repository's authored text and skips the vendored and frozen
-- the spelling matcher catches the published British forms and spares the US words ALLOWED names
-- authored English is US English
+- prose: no authored file carries a British spelling from localization-5's published list
+- prose: the gate carries localization-5's two lists whole, and nothing of its own
+- prose self-test: the carve-out suppresses the named generated folder, and only it
+- prose self-test: a path the carve-out does not name is not covered by one that looks like it
+- prose self-test: a carve-out that is not a set of path strings is a failure, not a silence
+- prose self-test: a TOC's file lines are read as paths, and its directives and comments are not
+- prose self-test: a .pkgmeta's ignore block is read, and the keys around it are not
+- prose self-test: an ignore entry covers a path exactly, by folder, and by wildcard
+- prose self-test: the carve-out admits a generated dump and refuses a file the TOC loads
+- prose self-test: a waiver-file exclusion meets the same two refusals as the carve-out
+- prose self-test: each list is refused on the matching rule its own scan uses
+- prose self-test: the scan and the refusals read the added exclusions through one reader
+- prose self-test: a narrowing is refused by what it suppresses, not by how it is written
+- prose self-test: the disclosure names what each entry suppressed, and says when it is bounded
+- prose self-test: a malformed waived is a failure, not a silence
 
 ### test_slash_style.lua (10)
 
@@ -1164,7 +1192,7 @@ badge and any count quoted in the docs must agree with it.
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
-### test_surface_parity.lua (6)
+### test_surface_parity.lua (7)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1172,6 +1200,7 @@ badge and any count quoted in the docs must agree with it.
 - the DebugLog stub carries the whole live surface
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
+- the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 
 ### test_doc_structure.lua (3)
 
@@ -1192,9 +1221,26 @@ badge and any count quoted in the docs must agree with it.
 - tests/_kit is the test kit that shipped with that release
 - the automated-test runner is recorded executable (100755)
 
-### test_eol.lua (1)
+### test_eol.lua (2)
 
 - eol: every tracked file carries the terminator .gitattributes declares for it
+- eol: .gitattributes is line-endings-5's canonical body for this repo kind
+
+### test_layout_cap.lua (13)
+
+- layoutcap: every authored file over the 1500-line cap is named in the census
+- layoutcap: no census row outlives the breach it records
+- layoutcap: every over-cap census row carries one of layout-1's three terminal states
+- layoutcap: the census and the exempt set agree about which paths were exempted
+- layoutcap: an empty census is written as a result rather than left standing empty
+- layoutcap self-test: the parser reads the census nested under the register, and stops there
+- layoutcap self-test: a census outside its register, or at the wrong level, is not read
+- layoutcap self-test: an over-cap file missing from the census is reported, and an exempt one is not
+- layoutcap self-test: a census row that outlives its breach is reported
+- layoutcap self-test: an over-cap row that names no terminal state is reported
+- layoutcap self-test: the census and the exempt set are held to naming the same paths
+- layoutcap self-test: a census that states nothing is told apart from one that states none
+- layoutcap self-test: the exempt set takes folders as well as paths
 
 ## Totals
 
@@ -1212,9 +1258,9 @@ badge and any count quoted in the docs must agree with it.
 | test_schema.lua | 36 |
 | test_database.lua | 23 |
 | test_color_shape.lua | 21 |
-| test_bus.lua | 8 |
-| test_compat.lua | 5 |
-| test_compat_api.lua | 46 |
+| test_bus.lua | 13 |
+| test_compat.lua | 8 |
+| test_compat_api.lua | 54 |
 | test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 23 |
@@ -1248,7 +1294,7 @@ badge and any count quoted in the docs must agree with it.
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
 | test_source_style.lua | 1 |
-| test_spelling.lua | 3 |
+| test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 41 |
 | test_disabled.lua | 15 |
@@ -1256,9 +1302,10 @@ badge and any count quoted in the docs must agree with it.
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 6 |
+| test_surface_parity.lua | 7 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
-| test_eol.lua | 1 |
-| **Total** | **1007** |
+| test_eol.lua | 2 |
+| test_layout_cap.lua | 13 |
+| **Total** | **1050** |

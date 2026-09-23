@@ -92,7 +92,7 @@ local function dumpCastRecord(emit, inst)
 
     local nintType = type(current.notInterruptible)
     emit("  current.notInterruptible: type=" .. nintType
-        .. ", isSecret=" .. tostring(_G.issecretvalue and _G.issecretvalue(current.notInterruptible) or false))
+        .. ", isSecret=" .. tostring(NS.Compat.IsSecret(current.notInterruptible)))
     local report = NINT_REPORT[nintType] or reportSecretNint
     report(emit, current.notInterruptible)
 

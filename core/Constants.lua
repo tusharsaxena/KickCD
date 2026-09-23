@@ -11,7 +11,7 @@
 -- early has no side effects. Add a constant here only if it is used
 -- across modules or a comment at the use site has to explain it.
 
-local _, NS = ...
+local addonName, NS = ...
 local Const = {}
 NS.Const = Const
 
@@ -26,6 +26,42 @@ NS.PREFIX = "|cff00ffff[KCD]|r"
 -- combat). Wrap the message BODY only (`GRAY .. text .. "|r"`); the cyan
 -- [KCD] tag stays full-color. Canonical Ka0s notice styling (options-ui-§2).
 NS.GRAY = "|cff9d9d9d"
+
+-- ---------------------------------------------------------------------------
+-- The message bus catalog (architecture-§4)
+-- ---------------------------------------------------------------------------
+--
+-- Every bus message name, declared ONCE. Every SendMessage / RegisterMessage call site reads
+-- NS.MSG.<KEY> and never types the literal: a misspelled literal is not an error anywhere, while a
+-- misspelled key is caught at the call site. The one sender of each is named beside it (the MAY in
+-- architecture-§4); docs/ARCHITECTURE.md's `## Message bus` table carries the payloads and every
+-- consumer. The KEY is SCREAMING_SNAKE and the wire name's <Event> is PascalCase
+-- (naming-cheatsheet): the casing of the key belongs to the key alone.
+local MSG = {
+    -- Sender: modules/Cooldowns.lua (Rebuild / Refresh), one per spell whose state moved.
+    SPELL_STATE     = "Ka0s_KickCD_SpellState",
+    -- Sender: settings/Panel.lua Helpers.FireConfigChanged, the one funnel every writer calls.
+    CONFIG_CHANGED  = "Ka0s_KickCD_ConfigChanged",
+    -- Sender: core/Database.lua fireProfileChanged (profile swap / copy / reset, ResetAllSpells).
+    PROFILE_CHANGED = "Ka0s_KickCD_ProfileChanged",
+    -- Sender: modules/IconGrid.lua IconGrid:Layout, once per unit instance.
+    GRID_LAYOUT     = "Ka0s_KickCD_GridLayout",
+    -- Sender: core/State.lua's bootstrap frame, after each combat-flag write.
+    COMBAT_STATE    = "Ka0s_KickCD_CombatState",
+}
+
+-- LibKa0s-Bus-1.0's Catalog validates the table once, here at load (the prefix, the key and
+-- <Event> casing, no two keys on one wire name), and answers a STRICT copy: reading an undeclared
+-- key raises "KickCD: no bus message named <KEY>" at the call site, for a publisher as well as a
+-- subscriber. That closes the half the constant alone does not: CallbackHandler sends a nil
+-- message name to nobody, silently. Only the catalog is taken from the major. Receivers keep
+-- NS.NewBusTarget (core/KickCD.lua) and their AceAddon module targets, untracked.
+--
+-- Library absent: the plain table, the same keys and wire names, without the strict read. That is
+-- the untracked-target stub's Catalog arm (options-ui-§1), reduced to the one member this file
+-- takes; nothing else about the bus depends on the library.
+local Bus = LibStub and LibStub("LibKa0s-Bus-1.0", true)
+NS.MSG = Bus and Bus.Catalog(addonName, MSG) or MSG
 
 -- ---------------------------------------------------------------------------
 -- IconGrid: cooldown curve threshold

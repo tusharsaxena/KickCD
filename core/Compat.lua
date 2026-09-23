@@ -21,6 +21,34 @@ local _, NS = ...
 local Compat = {}
 NS.Compat = Compat
 
+-- LibKa0s-Compat-1.0 carries the readers two or more Ka0s addons wrote the same way, and the
+-- secret-value seam. The members it owns are ROUTED through it below; everything else in this
+-- file is KickCD's own and stays hand-written. Call sites keep calling NS.Compat.X either way, so
+-- a test that swaps a member on NS.Compat still reaches every caller.
+--
+-- Library absent (a partial copy; the whole-payload case is announced by core/CoreSetup.lua):
+--   * a READER answers the major's documented absent value -- nil, or 0, 0, false, 1, false --
+--     and calls no client API (LibKa0s docs/api/Compat/version-1-docs.md, "Degradation");
+--   * the GUARD re-implements its one-rung body, because "the library is absent" is not "the
+--     client has no secrets system": answering "not secret" on a 12.x client would send a secret
+--     into a comparison on exactly the degraded path.
+local CompatLib = LibStub and LibStub("LibKa0s-Compat-1.0", true)
+
+-- ---------------------------------------------------------------------------
+-- The secret-value seam
+-- ---------------------------------------------------------------------------
+
+--- Whether `v` is a 12.0 secret value: a strict boolean, false on a client that
+--- has no secrets system. The ONE place this addon asks the question -- feature
+--- modules call NS.Compat.IsSecret rather than reading `issecretvalue` themselves.
+-- Guard stub: deliberate, documented duplication of the library's one-rung body.
+-- See LibKa0s docs/api/Compat/version-1-docs.md, "Degradation".
+Compat.IsSecret = CompatLib and CompatLib.IsSecret or function(v)
+    local fn = _G.issecretvalue
+    if not fn then return false end
+    return fn(v) and true or false
+end
+
 -- ---------------------------------------------------------------------------
 -- Internal helpers
 -- ---------------------------------------------------------------------------
@@ -61,35 +89,17 @@ end
 -- handle secret values fine) and use the plain boolean `info.isActive` for
 -- "is on cooldown" decisions.
 
---- Cooldown info for a spell.
+--- Cooldown info for a spell. LibKa0s-Compat-1.0's member: C_Spell.GetSpellCooldown,
+--- authoritative where it exists, then the pre-12.0 global with isActive derived from
+--- a plain duration (and a legacy isEnabled of 0 read as disabled).
 -- @param spellID number
--- @return startTime, duration, isEnabled, modRate, isActive
+-- @return startTime, duration, isEnabled, modRate, isActive -- always five values
 --   On error / no cooldown: 0, 0, false, 1, false
 --   startTime/duration/modRate may be "secret" — never compare or do
 --   arithmetic on them in tainted scope; pass them straight to C-side APIs
---   (Cooldown:SetCooldown) or gate with issecretvalue() first.
-function Compat.GetSpellCooldown(spellID)
-    if _G.C_Spell and _G.C_Spell.GetSpellCooldown then
-        local info = _G.C_Spell.GetSpellCooldown(spellID)
-        if not info then return 0, 0, false, 1, false end
-        return info.startTime or 0,
-               info.duration  or 0,
-               info.isEnabled ~= false,
-               info.modRate   or 1,
-               info.isActive  == true
-    end
-    -- Pre-12.0 fallback: no secret values, no isActive field — derive it
-    -- from duration after confirming the value is plain.
-    if _G.GetSpellCooldown then
-        local s, d, e, m = _G.GetSpellCooldown(spellID)
-        local active = false
-        if d and not (_G.issecretvalue and _G.issecretvalue(d)) then
-            active = d > 0
-        end
-        return s or 0, d or 0, e ~= false, m or 1, active
-    end
-    return 0, 0, false, 1, false
-end
+--   (Cooldown:SetCooldown) or gate with Compat.IsSecret first.
+Compat.GetSpellCooldown = CompatLib and CompatLib.GetSpellCooldown
+    or function() return 0, 0, false, 1, false end
 
 --- Secret-safe cooldown handle for a spell.
 -- @param spellID number
@@ -143,35 +153,21 @@ function Compat.GetSpellCooldownDuration(spellID)
     return nil
 end
 
---- File ID of the spell's icon texture.
--- @param spellID number
+--- File ID of the spell's icon texture. LibKa0s-Compat-1.0's member: exactly one
+--- value (the client's second return, the original icon, is dropped).
+-- @param spellID number|string
 -- @return number|nil  fileID suitable for Texture:SetTexture()
-function Compat.GetSpellTexture(spellID)
-    if _G.C_Spell and _G.C_Spell.GetSpellTexture then
-        return _G.C_Spell.GetSpellTexture(spellID)
-    end
-    if _G.GetSpellTexture then
-        return _G.GetSpellTexture(spellID)
-    end
-    return nil
-end
+Compat.GetSpellTexture = CompatLib and CompatLib.GetSpellTexture
+    or function() return nil end
 
---- Basic spell info.
--- @param spellID number
--- @return name, iconID, castTime, minRange, maxRange, spellID
-function Compat.GetSpellInfo(spellID)
-    if _G.C_Spell and _G.C_Spell.GetSpellInfo then
-        local i = _G.C_Spell.GetSpellInfo(spellID)
-        if i then
-            return i.name, i.iconID, i.castTime, i.minRange, i.maxRange, i.spellID
-        end
-        return nil
-    end
-    if _G.GetSpellInfo then
-        return _G.GetSpellInfo(spellID)
-    end
-    return nil
-end
+--- Basic spell info. LibKa0s-Compat-1.0's member: C_Spell.GetSpellInfo flattened and
+--- authoritative, else the legacy global remapped from its real shape (rank dropped).
+--- A typed NAME resolves too -- settings/Spells.lua and core/KickCD.lua read the
+--- spellID off position 6.
+-- @param spellID number|string
+-- @return name, iconID, castTime, minRange, maxRange, spellID -- or a single nil
+Compat.GetSpellInfo = CompatLib and CompatLib.GetSpellInfo
+    or function() return nil end
 
 --- Charge info for a spell that has charges (Mind Freeze talents etc.).
 -- @param spellID number
@@ -246,28 +242,21 @@ end
 -- 12.0 (Midnight) moved the specialization query behind the C_SpecializationInfo
 -- namespace; the bare globals GetSpecialization / GetSpecializationInfo are the
 -- deprecated pre-11.x seam. Route every caller through Compat so feature modules
--- never touch the deprecated globals directly (§11). Signatures are preserved:
--- GetSpecialization returns the active spec INDEX; GetSpecializationInfo(index)
--- returns (id, localizedName, description, iconID, role, ...).
+-- never touch the deprecated globals directly (§11). Both members are
+-- LibKa0s-Compat-1.0's: GetSpecialization returns the active spec INDEX;
+-- GetSpecializationInfo(index) returns (id, localizedName, description, iconID,
+-- role, ...), and answers nil for a nil index without calling the client.
 
---- Active specialization index (or nil if unavailable).
+--- Active specialization index (or nil if unavailable). Exactly one value.
 -- @return number|nil
-function Compat.GetSpecialization()
-    if _G.C_SpecializationInfo and _G.C_SpecializationInfo.GetSpecialization then
-        return _G.C_SpecializationInfo.GetSpecialization()
-    end
-    return _G.GetSpecialization and _G.GetSpecialization()
-end
+Compat.GetSpecialization = CompatLib and CompatLib.GetSpecialization
+    or function() return nil end
 
 --- Specialization info for a spec index. Multi-return passthrough of the
 --- underlying API (id, localizedName, description, iconID, role, ...).
 -- @param index number
-function Compat.GetSpecializationInfo(index)
-    if _G.C_SpecializationInfo and _G.C_SpecializationInfo.GetSpecializationInfo then
-        return _G.C_SpecializationInfo.GetSpecializationInfo(index)
-    end
-    if _G.GetSpecializationInfo then return _G.GetSpecializationInfo(index) end
-end
+Compat.GetSpecializationInfo = CompatLib and CompatLib.GetSpecializationInfo
+    or function() return nil end
 
 -- ---------------------------------------------------------------------------
 -- Cast / channel info (target cast bar)
@@ -377,7 +366,7 @@ local RENDER_BY_TYPE = {
 -- Stringify a value safely in tainted scope: secret → "<secret>",
 -- otherwise the usual tostring (or "%q" for strings to quote them).
 local function safeRender(value)
-    if _G.issecretvalue and _G.issecretvalue(value) then
+    if Compat.IsSecret(value) then
         return "<secret>"
     end
     local t = type(value)
@@ -390,7 +379,7 @@ end
 -- pasted dump line up and diff cleanly against another user's — leave them be.
 local function describe(out, label, value)
     local t = type(value)
-    local secret = _G.issecretvalue and _G.issecretvalue(value) or false
+    local secret = Compat.IsSecret(value)
     out(("  %-20s type=%-8s isSecret=%-5s value=%s"):format(
         label, t, tostring(secret), safeRender(value)))
 end

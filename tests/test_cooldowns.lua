@@ -262,7 +262,7 @@ local function refreshWithChurnedHandle(inst, prevReady, prevActive)
     local spy = {}
     inst.mocks.__libs["AceEvent-3.0"]:Embed(spy)
     local emits = 0
-    spy:RegisterMessage("Ka0s_KickCD_SPELL_STATE", function() emits = emits + 1 end)
+    spy:RegisterMessage(T.NS.MSG.SPELL_STATE, function() emits = emits + 1 end)
 
     local before = inst.NS.DebugLog:BufferSize()
     Cooldowns:Refresh()

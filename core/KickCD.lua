@@ -558,7 +558,7 @@ local function getSpellList(class, spec)
 end
 
 -- Mutation commit: fire the closed message; the Spells panel now
--- subscribes to Ka0s_KickCD_CONFIG_CHANGED { section = "spells" } in its own
+-- subscribes to Ka0s_KickCD_ConfigChanged { section = "spells" } in its own
 -- ensurePanel hook so a slash-driven mutation refreshes the open editor
 -- without a direct cross-module call from this layer (closed-bus
 -- contract — see docs/message-bus.md).

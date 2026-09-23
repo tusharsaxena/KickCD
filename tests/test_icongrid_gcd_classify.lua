@@ -32,7 +32,7 @@ local function loaded()
     local icons = NS.db.profile.units.target.icons
     icons.readyAlpha    = READY_ALPHA
     icons.cooldownAlpha = COOLDOWN_ALPHA
-    NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "icons" })
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "icons" })
     return inst, NS
 end
 
@@ -86,7 +86,7 @@ end)
 test("the swipe stays visible through a real cooldown's final second", function()
     local inst, NS = loaded()
     NS.db.profile.units.target.icons.suppressGCDSwipe = true
-    NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "icons" })
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "icons" })
     local _, seen = render(inst, REAL_CD_TOTAL, REAL_CD_LEFT)
     assertEqual(seen.swipe, 1, "the swipe must not be suppressed on a real cooldown")
     assertEqual(seen.text,  1, "the countdown must not be suppressed on a real cooldown")
@@ -95,7 +95,7 @@ end)
 test("the swipe is still suppressed for a GCD-only lockout", function()
     local inst, NS = loaded()
     NS.db.profile.units.target.icons.suppressGCDSwipe = true
-    NS:SendMessage("Ka0s_KickCD_CONFIG_CHANGED", { section = "icons" })
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "icons" })
     local _, seen = render(inst, GCD_TOTAL, GCD_LEFT)
     assertEqual(seen.swipe, 0, "a GCD lockout must not draw a swipe")
     assertEqual(seen.text,  0, "a GCD lockout must not draw a countdown")
