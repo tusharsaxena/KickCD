@@ -655,9 +655,21 @@ local function build()
     -- under its own key; a no-op Register would let a seam that registered nothing,
     -- or registered a path built from the wrong folder, pass unnoticed.
     LSM.__registered = {}
-    function LSM.Register(_, mediaType, key, path)
+    -- The locale bits are LibSharedMedia-3.0.lua's own constants (:31-35). Left
+    -- to noopLib's __index they would answer a FUNCTION, and LibKa0s-Media adds
+    -- western + ruRU into the langmask it hands Register, so the arithmetic
+    -- would raise at file load. Register records that 5th argument per key.
+    LSM.LOCALE_BIT_koKR    = 1
+    LSM.LOCALE_BIT_ruRU    = 2
+    LSM.LOCALE_BIT_zhCN    = 4
+    LSM.LOCALE_BIT_zhTW    = 8
+    LSM.LOCALE_BIT_western = 128
+    LSM.__langmask = {}
+    function LSM.Register(_, mediaType, key, path, langmask)
         LSM.__registered[mediaType] = LSM.__registered[mediaType] or {}
         LSM.__registered[mediaType][key] = path
+        LSM.__langmask[mediaType] = LSM.__langmask[mediaType] or {}
+        LSM.__langmask[mediaType][key] = langmask
         return true
     end
     function LSM.Fetch(_, mediaType, key)

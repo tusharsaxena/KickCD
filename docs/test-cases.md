@@ -51,13 +51,14 @@ badge and any count quoted in the docs must agree with it.
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (8)
+### test_mediasetup.lua (9)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
 - MediaSetup: NS.MediaFont answers the vendored face, and only a face it ships
 - MediaSetup: the font this addon names is a face the library actually registers
 - MediaSetup: the face is registered with LibSharedMedia at file load
+- MediaSetup: the LSM fake carries LibSharedMedia's real locale bits
 - MediaSetup: every mark this addon's windows draw is one the library ships
 - MediaSetup: every name the library ships has a file in the vendored copy
 - MediaSetup: with no library there is no art and no face, and that is not an error
@@ -1248,7 +1249,7 @@ badge and any count quoted in the docs must agree with it.
 |-------|------:|
 | test_util.lua | 13 |
 | test_coresetup.lua | 26 |
-| test_mediasetup.lua | 8 |
+| test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
@@ -1308,4 +1309,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1050** |
+| **Total** | **1051** |

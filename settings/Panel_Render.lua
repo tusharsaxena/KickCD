@@ -58,7 +58,7 @@ end
 -- so the band is where it belongs.
 --
 -- It is also the ONLY picker on the page, which is the other half of §14: two
--- controls over one piece of state is a synchronisation problem invented by the
+-- controls over one piece of state is a synchronization problem invented by the
 -- design and owned forever. There is one value, read at render time, and the
 -- re-render the selection triggers repaints everything below it.
 --

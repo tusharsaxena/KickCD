@@ -165,7 +165,7 @@ These three render through `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` 
 
    Putting it in the chrome band is load-bearing rather than cosmetic. A tab click clears the **scroll** and redraws the rows; the chrome band survives it. A picker added to the scroll therefore looks right on the render that drew it and vanishes the first time the reader clicks a tab — which no static reading of the builder shows. Pinned by `tests/test_schema.lua`.
 
-   It is also the page's **only** picker, which is the other half of `§14`: two controls over one piece of state is a synchronisation problem the design invents and then owns forever. Selecting a unit re-enters `RenderUnitPanel`, and `PageBanner` drains **both** chrome ledgers (its own and the strip's) before it draws, so a switch onto a linked Focus — which draws no strip — cannot leave the previous unit's tabs stranded above the note.
+   It is also the page's **only** picker, which is the other half of `§14`: two controls over one piece of state is a synchronization problem the design invents and then owns forever. Selecting a unit re-enters `RenderUnitPanel`, and `PageBanner` drains **both** chrome ledgers (its own and the strip's) before it draws, so a switch onto a linked Focus — which draws no strip — cannot leave the previous unit's tabs stranded above the note.
 
 2. **The linked-Focus branch** (`Helpers.RenderLinkedUnit`). When `ctx.unit` is a linked Focus, the page draws **the strip first, always**, then the `alwaysPerUnit` rows (there are none today) and a note reading *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
 
