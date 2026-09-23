@@ -428,6 +428,15 @@ build from its `type()` and from `issecretvalue()`'s boolean, and the `NINT_REPO
 reachable only when the type already *is* `boolean`. So the sites are permitted, not ratified
 deviations, and there is nothing to record beyond this sentence.
 
+### Files over the 1500-line cap
+
+The `layout-§1` census: one row per authored `.lua` file the repo tracks that is over 1500 lines,
+naming its terminal state (the issue that names the seam, the deviation row above that ratified it,
+or the scheduled peel). `libs/` and `tests/_kit/` are vendored and not counted.
+`tests/_kit/test_layout_cap.lua` holds this census against the tree in both directions.
+
+Nothing is over the cap today.
+
 ## Load order
 
 `KickCD.toc` is the source of truth. Order is dependency, not alphabetical:
