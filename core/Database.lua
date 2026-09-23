@@ -34,7 +34,7 @@ NS.Database = Database
 -- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
 local CURRENT_DB_VERSION = 5
 
--- The one and only Ka0s_KickCD_PROFILE_CHANGED emitter (architecture-§4:
+-- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
 -- different thing — an AceDB swap/copy/reset, and a spells re-seed — route
 -- here rather than each writing its own SendMessage, so the bus catalog in

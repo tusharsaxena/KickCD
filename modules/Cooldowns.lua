@@ -3,7 +3,7 @@
 -- Per-spell cooldown observer. Owns a `watched` table keyed by spellID
 -- derived from the active spec's spell list in the current profile, polls
 -- state via KickCD.Compat.* on every relevant event, and emits
--- Ka0s_KickCD_SPELL_STATE only for those spells whose state actually changed
+-- Ka0s_KickCD_SpellState only for those spells whose state actually changed
 -- since the last emission. This avoids spamming the IconGrid on every
 -- SPELL_UPDATE_COOLDOWN tick.
 --
@@ -33,12 +33,12 @@
 --     GCD and shows the spell ready before it is.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
--- false (master disable); a "general" Ka0s_KickCD_CONFIG_CHANGED triggers a
+-- false (master disable); a "general" Ka0s_KickCD_ConfigChanged triggers a
 -- full Rebuild so the watched-list comes back online when the user
 -- re-enables.
 --
 -- Message contract (closed):
---   FIRE:    Ka0s_KickCD_SPELL_STATE
+--   FIRE:    Ka0s_KickCD_SpellState
 --              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --            charges is the raw currentCharges from
 --            C_Spell.GetSpellCharges (or nil for uncharged spells). A
@@ -55,8 +55,8 @@
 --            countdown text but does NOT apply the cooldown alpha/tint —
 --            the spell IS castable (state.ready stays true), it just
 --            has fewer charges available than max.
---   LISTEN:  Ka0s_KickCD_PROFILE_CHANGED,
---            Ka0s_KickCD_CONFIG_CHANGED (section=="spells" or "general")
+--   LISTEN:  Ka0s_KickCD_ProfileChanged,
+--            Ka0s_KickCD_ConfigChanged (section=="spells" or "general")
 
 local _, NS = ...
 local Cooldowns = NS:NewModule("Cooldowns", "AceEvent-3.0")
@@ -218,7 +218,7 @@ function Cooldowns:PollSpell(spellID, parentKey)
 end
 
 --- Determine whether two state snapshots differ enough to merit emitting
---- Ka0s_KickCD_SPELL_STATE. The IconGrid drives its swipe and countdown text
+--- Ka0s_KickCD_SpellState. The IconGrid drives its swipe and countdown text
 --- via the cdObject reference once it's handed over, so per-tick re-
 --- emission isn't needed — only state transitions matter (ready ↔ on-CD,
 --- charges available ↔ none).
@@ -302,7 +302,7 @@ local function isEnabled()
 end
 
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
---- one initial Ka0s_KickCD_SPELL_STATE per surviving spell. Skips spells the
+--- one initial Ka0s_KickCD_SpellState per surviving spell. Skips spells the
 --- player doesn't know. Short-circuits to an empty watched-list when the
 --- master enable is off.
 function Cooldowns:Rebuild()
@@ -393,7 +393,7 @@ function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
         #skippedIDs, skippedList)
 end
 
---- Re-poll all watched spells, fire Ka0s_KickCD_SPELL_STATE only for those whose
+--- Re-poll all watched spells, fire Ka0s_KickCD_SpellState only for those whose
 --- state changed since last poll. When a previously-watched spell becomes
 --- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
 --- swapped to the other branch of a choice node, encounter mechanic

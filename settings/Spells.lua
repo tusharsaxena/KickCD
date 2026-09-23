@@ -21,7 +21,7 @@
 --
 -- The page and its popups write the stored list in place, then call
 -- commitSoon, a 50 ms throttle that re-renders the rows and fires
--- Ka0s_KickCD_CONFIG_CHANGED { section = "spells" }.
+-- Ka0s_KickCD_ConfigChanged { section = "spells" }.
 
 local _, NS = ...
 
@@ -1338,7 +1338,7 @@ function Spells.RegisterPanelEvents()
             if panel and panel:IsShown() then Spells:RefreshRows() end
         end)
         -- Slash-command mutations (`/kcd spells add/remove/...`) and the
-        -- panel's own commitSoon both fire Ka0s_KickCD_CONFIG_CHANGED with
+        -- panel's own commitSoon both fire Ka0s_KickCD_ConfigChanged with
         -- section="spells". Subscribing here is what closes the bus
         -- contract — the slash layer no longer reaches across to call
         -- our RefreshRows directly (CR-7).

@@ -3,7 +3,7 @@
 -- Tiny shared "live state" namespace. Owns process-global flags that
 -- multiple modules need to read identically (today: combat state).
 -- This file's bootstrap listener owns the PLAYER_REGEN_* registration
--- and the flag write, then fans out Ka0s_KickCD_COMBAT_STATE so subscribers
+-- and the flag write, then fans out Ka0s_KickCD_CombatState so subscribers
 -- (IconGrid, Castbar) see an explicit ordered transition signal. They
 -- NEVER mutate the flag — this is the only writer.
 --

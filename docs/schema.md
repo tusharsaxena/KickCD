@@ -201,7 +201,7 @@ units[unit] = {
         orientation,                            -- "HORIZONTAL" | "VERTICAL"
         growDirection,                          -- "RIGHT" | "LEFT" | "UP" | "DOWN"
         autoSize,                               -- pull dim from this unit's icon grid each
-                                                -- Ka0s_KickCD_GRID_LAYOUT (filtered on payload.unit)
+                                                -- Ka0s_KickCD_GridLayout (filtered on payload.unit)
         -- Per-element text anchor (INSIDE_LEFT / INSIDE_RIGHT / CENTER /
         -- OUTSIDE_LEFT / OUTSIDE_RIGHT) plus pixel offset.
         namePosition, nameOffsetX, nameOffsetY,

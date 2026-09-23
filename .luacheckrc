@@ -150,7 +150,7 @@ files["core/KickCD.lua"] = {
 -- step with the sibling methods that do read `self`.
 --
 -- `IconGrid:OnSpellState` is the sharper case: it is registered BY NAME at modules/IconGrid.lua
--- :769 (`self:RegisterMessage("Ka0s_KickCD_SPELL_STATE", "OnSpellState")`), and AceEvent-3.0
+-- :880 (`self:RegisterMessage(NS.MSG.SPELL_STATE, "OnSpellState")`), and AceEvent-3.0
 -- invokes a name-registered handler as `self[method](self, ...)`. The receiver is not this
 -- addon's choice at all.
 files["modules/Castbar.lua"]         = { ignore = { "212/self" } }

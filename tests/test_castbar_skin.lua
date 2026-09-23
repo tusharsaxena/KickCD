@@ -47,7 +47,7 @@ end)
 
 test("StructureSignature moves when the RESOLVED size moves", function()
     -- Auto-size tracks the icon grid's footprint, which changes on
-    -- Ka0s_KickCD_GRID_LAYOUT while the config table sits perfectly still.
+    -- Ka0s_KickCD_GridLayout while the config table sits perfectly still.
     -- Signing the resolved dimensions is what keeps auto-size working.
     local NS, Castbar = enabled()
     local c = castbarCfg(NS)

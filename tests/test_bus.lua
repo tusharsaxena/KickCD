@@ -143,6 +143,8 @@ end)
 -- Pinned on the literal-typed tree BEFORE the call sites moved onto NS.MSG, so the sweep is
 -- proven to register every receiver for exactly the wire names it registered before. The wire
 -- names are spelled out here on purpose: this case is the one that says what goes over the wire.
+-- They moved once, deliberately, with the PascalCase rename (naming-cheatsheet) that let the
+-- table be wrapped in LibKa0s-Bus-1.0's Catalog; the receiver sets did not.
 
 --- Sorted wire names `target` is registered for, read off the live message registry.
 local function registeredFor(reg, target)
@@ -154,16 +156,16 @@ local function registeredFor(reg, target)
     return table.concat(out, ",")
 end
 
-test("after enable, each module is subscribed to exactly the wire names it was before", function()
+test("after enable, each module is subscribed to exactly its own set of wire names", function()
     local inst = T.load(true, true)
     local reg = inst.mocks.__msgRegistry
     local EXPECTED = {
-        IconGrid  = "Ka0s_KickCD_COMBAT_STATE,Ka0s_KickCD_CONFIG_CHANGED,"
-                 .. "Ka0s_KickCD_PROFILE_CHANGED,Ka0s_KickCD_SPELL_STATE",
-        Cooldowns = "Ka0s_KickCD_CONFIG_CHANGED,Ka0s_KickCD_PROFILE_CHANGED",
-        Castbar   = "Ka0s_KickCD_COMBAT_STATE,Ka0s_KickCD_CONFIG_CHANGED,"
-                 .. "Ka0s_KickCD_GRID_LAYOUT,Ka0s_KickCD_PROFILE_CHANGED",
-        UnitLabel = "Ka0s_KickCD_CONFIG_CHANGED,Ka0s_KickCD_GRID_LAYOUT,Ka0s_KickCD_PROFILE_CHANGED",
+        IconGrid  = "Ka0s_KickCD_CombatState,Ka0s_KickCD_ConfigChanged,"
+                 .. "Ka0s_KickCD_ProfileChanged,Ka0s_KickCD_SpellState",
+        Cooldowns = "Ka0s_KickCD_ConfigChanged,Ka0s_KickCD_ProfileChanged",
+        Castbar   = "Ka0s_KickCD_CombatState,Ka0s_KickCD_ConfigChanged,"
+                 .. "Ka0s_KickCD_GridLayout,Ka0s_KickCD_ProfileChanged",
+        UnitLabel = "Ka0s_KickCD_ConfigChanged,Ka0s_KickCD_GridLayout,Ka0s_KickCD_ProfileChanged",
     }
     for name, want in pairs(EXPECTED) do
         assertEqual(registeredFor(reg, inst.NS:GetModule(name)), want, name)
@@ -176,11 +178,11 @@ test("NS.MSG declares the five bus messages with the wire names the modules use"
     -- The subscription-map case above spells the wire; this one ties each key to it, so a
     -- constant that drifted from the wire would fail here rather than in-game.
     local want = {
-        SPELL_STATE     = "Ka0s_KickCD_SPELL_STATE",
-        CONFIG_CHANGED  = "Ka0s_KickCD_CONFIG_CHANGED",
-        PROFILE_CHANGED = "Ka0s_KickCD_PROFILE_CHANGED",
-        GRID_LAYOUT     = "Ka0s_KickCD_GRID_LAYOUT",
-        COMBAT_STATE    = "Ka0s_KickCD_COMBAT_STATE",
+        SPELL_STATE     = "Ka0s_KickCD_SpellState",
+        CONFIG_CHANGED  = "Ka0s_KickCD_ConfigChanged",
+        PROFILE_CHANGED = "Ka0s_KickCD_ProfileChanged",
+        GRID_LAYOUT     = "Ka0s_KickCD_GridLayout",
+        COMBAT_STATE    = "Ka0s_KickCD_CombatState",
     }
     local n = 0
     for k, v in pairs(T.NS.MSG) do
@@ -193,7 +195,7 @@ end)
 test("no authored file types a bus message literal outside the catalog", function()
     -- A literal at a call site is the typo nothing reports: a publisher sends to nobody, a
     -- subscriber waits for nothing. The catalog in core/Constants.lua is the one place.
-    -- red under: restoring NS:SendMessage("Ka0s_KickCD_COMBAT_STATE", ...) in core/State.lua
+    -- red under: restoring NS:SendMessage("Ka0s_KickCD_CombatState", ...) in core/State.lua
     local seen, offenders = 0, {}
     for _, rel in ipairs(T.tocFiles) do
         if not rel:match("^libs[/\\]") and rel:match("%.lua$") then
@@ -212,4 +214,37 @@ test("no authored file types a bus message literal outside the catalog", functio
     end
     assertEqual(#offenders, 0, "bus literal outside the catalog: " .. table.concat(offenders, ", "))
     assertEqual(seen, 5, "core/Constants.lua must type each of the five names exactly once")
+end)
+
+-- ── LibKa0s-Bus-1.0's Catalog, and the plain table without it ───────────────
+
+test("with LibKa0s present, reading an undeclared NS.MSG key raises at the call site", function()
+    -- The half the constant alone does not close: a mistyped key used to be a nil name, and
+    -- CallbackHandler sends a nil name to nobody without a word.
+    -- red under: `NS.MSG = MSG` in core/Constants.lua (the plain table, no Catalog)
+    local inst = T.load(false)
+    assertTrue(inst.mocks.LibStub("LibKa0s-Bus-1.0", true) ~= nil, "the live load must register LibKa0s-Bus-1.0")
+    local ok, err = pcall(function() return inst.NS.MSG.SPELL_STATES end)
+    assertFalse(ok, "an undeclared key must raise")
+    assertTrue(tostring(err):find("KickCD: no bus message named SPELL_STATES", 1, true) ~= nil, tostring(err))
+end)
+
+test("with LibKa0s absent, NS.MSG is the plain table with the same keys and wire names", function()
+    -- The degraded arm keeps every sender and receiver wired: only the strict read is lost.
+    -- red under: a degraded arm that leaves NS.MSG nil or drops a key
+    local live = T.load(false)
+    local degraded = T.load(false, false, nil, { libFiles = {} })
+    assertTrue(degraded.mocks.LibStub("LibKa0s-Bus-1.0", true) == nil,
+        "the degraded load registered LibKa0s-Bus-1.0; the empty file list did not take")
+    assertTrue(getmetatable(degraded.NS.MSG) == nil, "the degraded NS.MSG is the plain table")
+    local n = 0
+    for k, v in pairs(live.NS.MSG) do
+        n = n + 1
+        assertEqual(rawget(degraded.NS.MSG, k), v, "NS.MSG." .. k)
+    end
+    for k in pairs(degraded.NS.MSG) do
+        n = n - 1
+        assertTrue(rawget(live.NS.MSG, k) ~= nil, "degraded NS.MSG." .. k .. " is not declared live")
+    end
+    assertEqual(n, 0, "the two arms declare the same keys")
 end)

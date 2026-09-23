@@ -111,7 +111,7 @@ end
 
 -- Per-unit ENABLE toggles (§Task 6). One row per NS.Units.LIST entry, driving
 -- `/kcd set units.<unit>.enabled` and (via Helpers.Set firing
--- Ka0s_KickCD_CONFIG_CHANGED{section="units"}) IconGrid/Castbar's
+-- Ka0s_KickCD_ConfigChanged{section="units"}) IconGrid/Castbar's
 -- ReconcileUnits. The label/selector/link/copy UI (Task 8) lives in its own
 -- panel; this is deliberately just the enable bool so both rows render
 -- under SchemaForPanel("general") regardless of which unit is "selected".

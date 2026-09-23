@@ -106,7 +106,7 @@ end
 --- (NS.Units.Icons — link-aware, so a linked focus resolves target's table).
 ---
 --- Skips the rebuild when the three curve-shaping values are unchanged
---- (F-016): every "icons" Ka0s_KickCD_CONFIG_CHANGED used to land here, so a
+--- (F-016): every "icons" Ka0s_KickCD_ConfigChanged used to land here, so a
 --- border, font, layout or glow edit recreated all three curves for nothing.
 --- Cheap either way — these are tiny 4-point curves — but the signature check
 --- is cheaper still, and it makes "what actually shapes a curve" explicit.
@@ -629,7 +629,7 @@ local function applyGcdSuppressionAlpha(icon, cdObject)
     end
 end
 
--- Apply a Ka0s_KickCD_SPELL_STATE payload to this icon. Payload shape:
+-- Apply a Ka0s_KickCD_SpellState payload to this icon. Payload shape:
 --   { spellID, ready, isActive, cdObject, chargeCdObject, charges }
 --
 -- Three branches:
@@ -746,7 +746,7 @@ local function renderChargesBadge(icon, cfg, state)
     end
 end
 
---- Apply a Ka0s_KickCD_SPELL_STATE payload.
+--- Apply a Ka0s_KickCD_SpellState payload.
 -- @param state table   the payload (see the block comment above)
 -- @param force boolean pass true when re-applying after a CONFIG change
 --        rather than a fresh poll. Config re-applies hand back the SAME

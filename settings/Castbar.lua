@@ -26,7 +26,7 @@ local Schema = NS.Settings.Schema
 local function add(t) Schema[#Schema + 1] = t end
 
 -- Every schema row's write goes through Helpers.Set, which fires
--- Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" }; the Castbar module
+-- Ka0s_KickCD_ConfigChanged { section = "castbar" }; the Castbar module
 -- subscribes and re-applies its config from the bus listener. So no
 -- row in this file needs an onChange purely for "redraw the live
 -- frame" — the bus is the single dispatch path. Rows below only set
@@ -97,7 +97,7 @@ add{
     -- Reset growDirection to the new orientation's canonical default
     -- so we can never end up with an inconsistent pair (e.g. a
     -- horizontal bar with growDirection="UP"). H.Set fires
-    -- Ka0s_KickCD_CONFIG_CHANGED a second time, which re-runs ApplyConfig
+    -- Ka0s_KickCD_ConfigChanged a second time, which re-runs ApplyConfig
     -- with both fields consistent — the transient state from the
     -- orientation write alone is overwritten before any frame
     -- renders. RefreshAllPanels then re-evaluates the growDirection
@@ -105,7 +105,7 @@ add{
     -- the new axis and shows the freshly-reset selection.
     --
     -- No manual ApplyConfig / Reskin call here: Helpers.Set has
-    -- already fired Ka0s_KickCD_CONFIG_CHANGED { section = "castbar" } for
+    -- already fired Ka0s_KickCD_ConfigChanged { section = "castbar" } for
     -- the orientation write, and the secondary H.Set above fires it
     -- a second time for growDirection. Castbar:OnConfigChanged
     -- subscribes and reapplies — adding a direct call would just

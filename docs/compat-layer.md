@@ -31,7 +31,7 @@ The visibility helpers were formerly in this layer; they were relocated to `core
 
 | Visibility helper | Lives in | Purpose |
 |---|---|---|
-| `NS.State.SetInCombat(v)` | `core/State.lua` | The single write seam for the `NS.State.inCombat` flag. Called only by that file's bootstrap `CreateFrame` on `PLAYER_REGEN_DISABLED` / `_ENABLED` / `PLAYER_LOGIN`; it writes the flag and then fires `Ka0s_KickCD_COMBAT_STATE` so subscribers see the write land before their handler runs. |
+| `NS.State.SetInCombat(v)` | `core/State.lua` | The single write seam for the `NS.State.inCombat` flag. Called only by that file's bootstrap `CreateFrame` on `PLAYER_REGEN_DISABLED` / `_ENABLED` / `PLAYER_LOGIN`; it writes the flag and then fires `Ka0s_KickCD_CombatState` so subscribers see the write land before their handler runs. |
 | `NS.State.IsHostileUnitCasting(unit)` | `core/State.lua` | Visibility GATE for `target_casting_interruptible` mode. Returns whether `unit` exists, is hostile (`UnitCanAttack`), and has an active cast/channel. Pure truthy-check — safe even when the API's positional returns are secret-tainted. |
 | `NS.State.ApplyInterruptibleAlpha(frame, unit, alpha)` | `core/State.lua` | The 12.0-correct interruptibility filter. Reads `notInterruptible` from `UnitCastingInfo` / `UnitChannelInfo` and passes the (possibly secret) flag straight to `Frame:SetAlphaFromBoolean(notInterruptible, 0, alpha)` — the **one** C-side method that accepts the secret bool form without erroring. Returns `true` if the mask was applied, `false` if the unit isn't hostile-casting (caller falls back to its own alpha policy). |
 

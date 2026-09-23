@@ -6,7 +6,7 @@ local _, NS = ...
 --
 -- The library shipped at v1.15.0 and this addon could not take it. `active` here is a MAP KEYED BY
 -- spellID, and the keying is load-bearing rather than incidental: it is the O(1) index the
--- `Ka0s_KickCD_SPELL_STATE` fan-out uses on every cooldown-state message, and it is what makes the
+-- `Ka0s_KickCD_SpellState` fan-out uses on every cooldown-state message, and it is what makes the
 -- one-widget-per-spellID invariant enforceable at all. Minor 1's `active` was an array.
 --
 -- Porting anyway would have been worse than not porting. Minor 1's `ReleaseAll` walks

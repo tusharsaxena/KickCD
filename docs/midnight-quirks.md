@@ -37,7 +37,7 @@ The Cell addon's PR #457 is the canonical reference for the `issecretvalue()`-ba
 
 `C_Spell.GetSpellCooldownDuration(spellID)` returns a **brand-new object every single call**. Two calls describing the identical, unchanged cooldown are never `==`. There is no interning, and identity carries no meaning.
 
-This bites any "did the state change?" diff that includes the handle. `modules/Cooldowns.lua`'s `StateChanged` compares `prev.cdObject ~= next_.cdObject`, so a spell parked on an unchanged 60s cooldown compares unequal on *every* poll — with `SPELL_UPDATE_COOLDOWN` firing ~10x/sec in combat that is ~10 redundant `Ka0s_KickCD_SPELL_STATE` emits per second per spell on cooldown. The tell in a debug log is the same line repeating at a fixed cadence while only the spells with a **non-nil** handle are named; ready spells (handle `nil`, and `nil == nil`) stay silent. Reported from the field on an Elemental Shaman with Capacitor Totem on cooldown.
+This bites any "did the state change?" diff that includes the handle. `modules/Cooldowns.lua`'s `StateChanged` compares `prev.cdObject ~= next_.cdObject`, so a spell parked on an unchanged 60s cooldown compares unequal on *every* poll — with `SPELL_UPDATE_COOLDOWN` firing ~10x/sec in combat that is ~10 redundant `Ka0s_KickCD_SpellState` emits per second per spell on cooldown. The tell in a debug log is the same line repeating at a fixed cadence while only the spells with a **non-nil** handle are named; ready spells (handle `nil`, and `nil == nil`) stay silent. Reported from the field on an Elemental Shaman with Capacitor Totem on cooldown.
 
 **Do not "fix" this by comparing handle presence instead of identity in `StateChanged`.** The re-emit is load-bearing twice over:
 

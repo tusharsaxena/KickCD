@@ -165,7 +165,7 @@ drifts from the code is worse than one that names none.
 - `Helpers.SetAndRefresh` is defined in `settings/Panel_Render.lua` (peeled from `Panel.lua`), which
   loads after `core/KickCD.lua`. Slash commands firing before `settings/` has loaded (between
   `OnInitialize` and `PLAYER_LOGIN`) hit a fallback path that writes directly to `db.profile` and emits
-  `Ka0s_KickCD_CONFIG_CHANGED`. The fallback is intentional; don't reorder the TOC to "fix" it without
+  `Ka0s_KickCD_ConfigChanged`. The fallback is intentional; don't reorder the TOC to "fix" it without
   revisiting that path.
 
 ### Chat output
