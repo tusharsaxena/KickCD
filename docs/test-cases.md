@@ -899,7 +899,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (32)
+### test_settings_spells_editor.lua (35)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -927,6 +927,9 @@ badge and any count quoted in the docs must agree with it.
 - the page draws its strip, and the rows land in the LIBRARY's scroll
 - an empty list renders the guidance label instead of rows
 - RefreshRows refuses to run against a hidden panel
+- one commitSoon flush renders the Spells page once
+- a raising render does not latch the guard
+- while stood down a commit still repaints the open page
 - a rebuild drains the scroll before building a new tree into it
 - a re-render cancels the reorder controller BEFORE it clears the tree
 - the selection cascade falls back to the first sorted class the defaults know
@@ -1334,7 +1337,7 @@ badge and any count quoted in the docs must agree with it.
 | test_cooldowns_gates.lua | 23 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 32 |
+| test_settings_spells_editor.lua | 35 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 41 |
@@ -1356,4 +1359,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1094** |
+| **Total** | **1097** |

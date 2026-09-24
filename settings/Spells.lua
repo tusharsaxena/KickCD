@@ -20,8 +20,8 @@
 -- StaticPopup for the currently selected class+spec.
 --
 -- The page and its popups write the stored list in place, then call
--- commitSoon, a 50 ms throttle that re-renders the rows and fires
--- Ka0s_KickCD_ConfigChanged { section = "spells" }.
+-- commitSoon, a 50 ms throttle that fires Ka0s_KickCD_ConfigChanged
+-- { section = "spells" }; the page's own subscriber re-renders the rows.
 
 local _, NS = ...
 
@@ -294,8 +294,14 @@ end
 
 local commitSoon
 
+-- ONE render per commit. While the addon is up, FireConfigChanged's own
+-- CONFIG_CHANGED subscriber on this page renders it; rendering here as well drew
+-- the page twice per edit (KICKCD-R-08). While it is stood down that subscriber
+-- is unregistered (Spells.StandDown), so the direct render is the only one.
 local function doCommit()
-    if panel and panel:IsShown() then Spells:RefreshRows() end
+    if NS.IsDown and NS.IsDown() and panel and panel:IsShown() then
+        Spells:RefreshRows()
+    end
     FireConfigChanged()
 end
 
@@ -1060,17 +1066,9 @@ local function fillRows(AceGUI, scroll, list)
     if reorder then reorder:Finish(scroll.content or scroll.frame) end
 end
 
-function Spells:RefreshRows()
-    if not panel or not panel:IsShown() then return end
-    if rebuildScheduled then return end
-    rebuildScheduled = true
-
+local function renderRows()
     local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
     if not AceGUI then
-        -- The flag is cleared on EVERY exit, this one included: leave it set
-        -- and the panel silently never refreshes again for the rest of the
-        -- session.
-        rebuildScheduled = false
         showAceGUIMissing()
         return
     end
@@ -1117,14 +1115,23 @@ function Spells:RefreshRows()
 
     container = H.EnsureScroll(ctx)
     if not container then
-        rebuildScheduled = false
         showAceGUIMissing()
         return
     end
     fillRows(AceGUI, container, getActiveList())
     if container.DoLayout then container:DoLayout() end
+end
 
+-- The re-entrancy guard is reset by the pcall, not by each exit of the body: a
+-- raise mid-render would otherwise leave it set and every later refresh would
+-- return early for the rest of the session (KICKCD-R-08). The error is re-raised
+-- unchanged.
+function Spells:RefreshRows()
+    if not panel or not panel:IsShown() or rebuildScheduled then return end
+    rebuildScheduled = true
+    local ok, err = pcall(renderRows)
     rebuildScheduled = false
+    if not ok then error(err, 0) end
 end
 
 -- ---------------------------------------------------------------------------

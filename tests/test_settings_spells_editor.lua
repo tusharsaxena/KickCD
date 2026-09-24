@@ -606,6 +606,60 @@ test("RefreshRows refuses to run against a hidden panel", function()
     assertEqual(#g.__created, mark, "a hidden panel must build no widgets")
 end)
 
+-- ── one render per commit, and a guard a raise cannot latch (KICKCD-R-08) ────
+
+--- Count H.PageHeader calls -- one per render -- while fn runs.
+local function countRenders(inst, fn)
+    local H = inst.NS.Settings.Helpers
+    local real, n = H.PageHeader, 0
+    H.PageHeader = function(...) n = n + 1; return real(...) end
+    local ok, err = pcall(fn)
+    H.PageHeader = real
+    if not ok then error(err, 0) end
+    return n
+end
+
+test("one commitSoon flush renders the Spells page once", function()
+    -- doCommit used to render AND fire CONFIG_CHANGED, whose own subscriber on this page renders
+    -- again: every edit drew the page twice.
+    local inst, p = editorInstance()
+    local rows = rebuildRows(inst, p)
+    local n = countRenders(inst, function()
+        rows[1].children[4]:__fire("OnValueChanged", false)
+        inst.mocks.__flushTimers()
+    end)
+    assertEqual(n, 1, "one edit, one render")
+end)
+
+test("a raising render does not latch the guard", function()
+    -- rebuildScheduled was cleared on the explicit returns only, so a raise mid-render left it set
+    -- and every later RefreshRows returned early for the rest of the session.
+    local inst, p = editorInstance()
+    local H = inst.NS.Settings.Helpers
+    local real = H.EnsureScroll
+    H.EnsureScroll = function() H.EnsureScroll = real; error("boom", 0) end
+    T.assertError(function() p:RefreshRows() end, "the raise reaches the caller")
+    H.EnsureScroll = real
+    assertEqual(countRenders(inst, function() p:RefreshRows() end), 1,
+        "the next refresh still renders")
+end)
+
+test("while stood down a commit still repaints the open page", function()
+    -- Spells.StandDown unregisters the CONFIG_CHANGED subscriber, so while the addon is down the
+    -- direct render in doCommit is the only one the page gets.
+    local inst, p = editorInstance()
+    inst.NS.Settings.Helpers.SetAndRefresh("enabled", false)
+    inst.mocks.__flushTimers()
+    assertTrue(inst.NS.IsDown(), "the addon is stood down")
+    for _, ctx in ipairs(inst.NS.Settings.Helpers.__panels()) do ctx.panel:Show() end
+    local rows = rebuildRows(inst, p)
+    local n = countRenders(inst, function()
+        rows[1].children[4]:__fire("OnValueChanged", false)
+        inst.mocks.__flushTimers()
+    end)
+    assertEqual(n, 1, "the page repaints once with no subscriber to do it")
+end)
+
 test("a rebuild drains the scroll before building a new tree into it", function()
     -- The scroll is the library's and is REUSED across renders, so what has to
     -- happen is a drain (H.ClearScroll) rather than a release -- and it has to
