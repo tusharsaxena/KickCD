@@ -429,8 +429,11 @@ test("no seam re-spells the cause in its own words", function()
     -- reads identically today and drifts on the next edit — which is the whole
     -- failure mode adoption 2026-08-01 §8 was raised about.
     -- red under: pasting "The LibKa0s library is missing from ..." into any seam
+    -- Every file that READS the clause. settings/Slash.lua is not one: its stub
+    -- prints slash-commands-§1's own library-absent line (case 5 above).
     local SEAMS = {
         "core/CoreSetup.lua", "core/DebugLogSetup.lua", "core/PerfSetup.lua",
+        "core/LauncherSetup.lua", "settings/SchemaSetup.lua",
         "settings/OptionsSetup.lua",
     }
     local offenders, users = {}, 0
@@ -455,7 +458,7 @@ test("no seam re-spells the cause in its own words", function()
     assertEqual(#offenders, 0,
         "a seam spells the cause itself instead of appending to NS.LIBKA0S_MISSING: "
         .. table.concat(offenders, " | "))
-    assertEqual(users, 4, "all four seams must READ the shared clause")
+    assertEqual(users, 6, "all six seams must READ the shared clause")
 end)
 
 test("CoreSetup: the close button is the library's, told which addon folder is asking", function()

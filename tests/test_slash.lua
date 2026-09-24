@@ -924,17 +924,64 @@ test("the stub's DisabledLine format is the library constant, byte for byte", fu
         "the degraded DisabledLine must equal the live one")
 end)
 
-test("the stub's reserved-verb copy is the library's LIVE_VERBS, in order", function()
-    -- The degraded gate needs the twelve (without them `/kcd enable` would be
-    -- refused while disabled and the switch would be one-way), and a library-
-    -- absent load has no library to read them from.
-    -- red under: a reserved verb added to, dropped from or reordered in either copy
+test("the stub carries no copy of the library's reserved verbs", function()
+    -- slash-commands-§1 lets a stub carry ONE library string, DISABLED_LINE_FORMAT.
+    -- The gate below is the host's own list of its feature verbs instead.
+    -- red under: a stub that re-types lib.LIVE_VERBS (the KC-19 first cut did)
     local inst = degraded()
-    local copy = inst.NS.Slash.cli.__reservedVerbs
-    local live = T.mocks.LibStub("LibKa0s-Slash-1.0", true).LIVE_VERBS
-    assertEqual(type(copy), "table", "the stub must publish its copy for this pin")
-    assertEqual(table.concat(copy, ","), table.concat(live, ","),
-        "the stub's reserved verbs drifted from LibKa0s-Slash-1.0's LIVE_VERBS")
+    assertNil(inst.NS.Slash.cli.__reservedVerbs, "no reserved-verb copy on the stub")
+    local fh = assert(io.open(T.root .. "/settings/Slash.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:find('"resetall",%s*}'), "settings/Slash.lua must not spell out the reserved-verb array")
+end)
+
+test("the host's feature verbs are exactly the verbs the live gate refuses", function()
+    -- NS.FEATURE_VERBS drives the degraded gate; the live gate refuses every
+    -- registered verb outside lib.LIVE_VERBS + NS.EXTRA_LIVE_VERBS. The two
+    -- judgments must name the same verbs, or the two loads would disagree.
+    -- red under: a feature verb added to COMMANDS without joining NS.FEATURE_VERBS
+    local live = {}
+    for _, v in ipairs(T.mocks.LibStub("LibKa0s-Slash-1.0", true).LIVE_VERBS) do live[v] = true end
+    for _, v in ipairs(T.NS.EXTRA_LIVE_VERBS) do live[v] = true end
+    local refused = {}
+    for _, e in ipairs(T.NS.COMMANDS) do
+        if not live[e[1]] then refused[#refused + 1] = e[1] end
+    end
+    local feature = {}
+    for _, v in ipairs(T.NS.FEATURE_VERBS) do feature[#feature + 1] = v end
+    table.sort(refused)
+    table.sort(feature)
+    assertEqual(table.concat(feature, ","), table.concat(refused, ","))
+end)
+
+test("degraded gate while disabled refuses feature verbs and nothing else", function()
+    -- red under: a degraded gate that refuses a reserved verb, or `spells`
+    local inst = degraded()
+    degradedRun(inst, "disable")
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: disabled")
+    local refusal = T.NS.Slash.cli:DisabledLine()
+    local _, _, lines = degradedRun(inst, "resetposition")
+    assertEqual(joined(lines), refusal, "resetposition is a feature verb")
+    _, _, lines = degradedRun(inst, "list")
+    assertEqual(joined(lines), ABSENT:format("/kcd list"), "list is reserved, never refused")
+    _, _, lines = degradedRun(inst, "version")
+    assertTrue(joined(lines) ~= refusal, "version answers: " .. joined(lines))
+    _, _, lines = degradedRun(inst, "spells")
+    assertTrue(not joined(lines):find(refusal, 1, true), "spells answers: " .. joined(lines))
+end)
+
+test("degraded help rows print `cmd  desc` plainly, with no em dash", function()
+    -- slash-commands-§1: no FormatRow copy, so no gold command and no ` — `.
+    -- red under: the stub's LandingRows joining with the library's separator
+    local inst = degraded()
+    local rows = inst.NS.Slash.cli.LandingRows()
+    assertEqual(rows[1], "/kcd help  List available commands")
+    -- Every row is exactly `/kcd <verb>  <desc>`; a description MAY carry its own
+    -- em dash (the host's text), the separator may not.
+    for i, e in ipairs(inst.NS.COMMANDS) do
+        assertEqual(rows[i], "/kcd " .. e[1] .. "  " .. e[2])
+    end
 end)
 
 test("degraded `/kcd list` prints the library-absent line", function()

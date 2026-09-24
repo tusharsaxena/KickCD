@@ -310,6 +310,14 @@ local COMMANDS = {
 -- of something that visibly did not happen.
 NS.EXTRA_LIVE_VERBS = { "spells" }
 
+-- THE SAME FOUR, NAMED, for the one load where there is no library to union
+-- with: settings/Slash.lua's degradation stub refuses exactly these while the
+-- addon is disabled. It is this addon's own list of its own feature verbs, not a
+-- copy of the library's reserved twelve (slash-commands-§1 lets a stub carry one
+-- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash.lua pins it
+-- against the live gate: COMMANDS minus the live union MUST be this list.
+NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
+
 NS.COMMANDS = COMMANDS
 
 local DEBUG_COMMANDS = {

@@ -42,10 +42,13 @@ local Util = NS.Util
 
 -- The ONE cause clause, shared by every seam that has to explain the same
 -- absence: this file, core/DebugLogSetup.lua, core/PerfSetup.lua,
--- settings/Slash.lua and settings/OptionsSetup.lua. Each appends its own
--- "so <what> is unavailable" and its own terminal punctuation, so a degraded
--- install says the same thing about WHY five times and a different thing about
--- WHAT each time.
+-- core/LauncherSetup.lua, settings/SchemaSetup.lua and
+-- settings/OptionsSetup.lua. Each appends its own "so <what> is unavailable"
+-- (or, here, "running on reduced built-in fallbacks") and its own terminal
+-- punctuation, so a degraded install says the same thing about WHY in every
+-- seam and a different thing about WHAT each time. settings/Slash.lua is not a
+-- reader: its stub prints slash-commands-§1's own library-absent line.
+-- tests/test_coresetup.lua counts the six readers.
 --
 -- Converging on this wording — rather than KickCD's five separate sentences —
 -- is the user's decision (adoption 2026-08-01 §8), taken so a player with a

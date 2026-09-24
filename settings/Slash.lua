@@ -256,12 +256,16 @@ NS.Slash.RunReset = runReset
 -- something has to answer it. The shape is the one slash-commands-§1 (WS-02)
 -- and LibKa0s-Slash-1.0's version-15 doc ("The degradation stub") prescribe:
 --
---   * minimal OnSlash dispatch, with the disabled gate: a verb outside
---     d.liveVerbs is refused with DisabledLine while d.isEnabled() is false;
+--   * minimal OnSlash dispatch, with the disabled gate: a verb on the host's
+--     own NS.FEATURE_VERBS (core/KickCD.lua) is refused with DisabledLine while
+--     d.isEnabled() is false. The stub does not read d.liveVerbs: that union is
+--     built from lib.LIVE_VERBS, which this load has no library to read, and
+--     re-typing the reserved verbs here would be a second library copy;
 --   * exactly one library string carried verbatim, the disabled line's format,
 --     pinned byte for byte by tests/test_slash.lua (Kit.assertLibraryConstant);
 --   * no copy of the row formatter, the parser or the key/value shape, so a
---     degraded help row renders plainly (testing-§8's forbidden duplicate);
+--     degraded help row renders plainly as `cmd  desc`, two spaces, no color
+--     and no em dash (testing-§8's forbidden duplicate);
 --   * the composed-row verbs take route (a): `enable` / `disable` reach CliSet,
 --     which writes a bool literal for a path on NS.Settings.WRITE_THROUGH and
 --     nothing else, and `lock` / `unlock` / `toggle` write through the Schema
@@ -276,18 +280,7 @@ if not SlashLib then
     -- surface-parity gate, which is about the public surface.
     local DISABLED_LINE_FORMAT = "%s is disabled \226\128\148 enable it with |cFFFFFF00%s|r"
 
-    -- The standard's reserved verbs (slash-commands-§2), which the library
-    -- publishes as lib.LIVE_VERBS and a library-absent load cannot read. The
-    -- disabled gate needs them: without them `/kcd enable` would be refused
-    -- while disabled and the switch would be one-way. liveVerbs() below reads
-    -- SlashLib.LIVE_VERBS on either arm, so the union is built the same way;
-    -- tests/test_slash.lua pins this copy against the live array, in order.
-    SlashLib = {
-        LIVE_VERBS = {
-            "help", "config", "version", "enable", "disable", "debug",
-            "perf", "get", "set", "list", "reset", "resetall",
-        },
-    }
+    SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
 
     --- The collection's library-absent line for `verb` (e.g. "/kcd list").
@@ -324,7 +317,6 @@ if not SlashLib then
         local stub = {
             SetRowAnnotator = function() end,
             __disabledLineFormat = DISABLED_LINE_FORMAT,
-            __reservedVerbs = SlashLib.LIVE_VERBS,
         }
         for _, verb in ipairs({ "List", "Get", "Reset", "ResetAll" }) do
             local line = "/kcd " .. verb:lower()
@@ -339,7 +331,7 @@ if not SlashLib then
         stub.LandingRows = function()
             local rows = {}
             for _, e in ipairs(d.commands or {}) do
-                rows[#rows + 1] = d.slash .. " " .. e[1] .. " \226\128\148 " .. e[2]
+                rows[#rows + 1] = d.slash .. " " .. e[1] .. "  " .. e[2]
             end
             return rows
         end
@@ -352,15 +344,15 @@ if not SlashLib then
             out("v" .. tostring(d.version and d.version() or "?") .. " slash commands")
             for _, r in ipairs(stub.HelpRows()) do out(r) end
         end
-        local live = {}
-        for _, verb in ipairs(d.liveVerbs or {}) do live[tostring(verb):lower()] = true end
+        local feature = {}
+        for _, verb in ipairs(NS.FEATURE_VERBS or {}) do feature[verb] = true end
         local function find(cmd)
             for _, e in ipairs(d.commands or {}) do
                 if e[1] == cmd then return e end
             end
         end
         local function refused(cmd)
-            return not live[cmd] and type(d.isEnabled) == "function" and not d.isEnabled()
+            return feature[cmd] and type(d.isEnabled) == "function" and not d.isEnabled()
         end
         stub.OnSlash = function(_, msg)
             local raw = (msg or ""):match("^%s*(.-)%s*$") or ""
@@ -431,6 +423,8 @@ end
 -- that a thirteenth reserved verb arriving in a future LibKa0s tag is live the
 -- day it is vendored, rather than silently refused because a copy of the twelve
 -- was typed into this file.
+-- On a library-absent load SlashLib.LIVE_VERBS is nil, so this is just the
+-- extras, and the degradation stub above gates on NS.FEATURE_VERBS instead.
 local function liveVerbs()
     local verbs = {}
     for _, verb in ipairs(SlashLib.LIVE_VERBS or {}) do verbs[#verbs + 1] = verb end

@@ -97,17 +97,19 @@ degradation stub") prescribe:
 
 * **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
   unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
-  verb outside the descriptor's `liveVerbs` is refused with `DisabledLine`, exactly as on the live
-  load.
+  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
+  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
+  the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
+  copy, so it names the host's own feature verbs instead. `tests/test_slash.lua` pins the list
+  against the live union (`COMMANDS` minus the live set).
 * **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
   local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
   surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
   degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included, and
-  `NS.Slash.PrintDisabledLine` prints it on this load too. The gate also needs the standard's
-  reserved verbs, which the library publishes as `lib.LIVE_VERBS` and this load cannot read, so the
-  stub carries that array too, exposed as `__reservedVerbs` and pinned element for element against
-  the live array. Without it `/kcd enable` would be refused while disabled.
-* **No formatter, parser or key/value copy.** Help rows render plainly (`/kcd <verb> — <desc>`).
+  `NS.Slash.PrintDisabledLine` prints it on this load too. It is the only library string the stub
+  carries.
+* **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
+  spaces, no color escapes and no em-dash separator.
 * **Composed-row verbs take route (a).** `enable` / `disable` still dispatch into `/kcd set
   enabled <bool>`. The stub's `CliSet` accepts a path on `NS.Settings.WRITE_THROUGH` (`enabled`,
   `locked`) with a bool literal (`true` / `false` / `on` / `off`), writes it through the Schema stub's

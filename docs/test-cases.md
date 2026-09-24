@@ -1115,7 +1115,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (56)
+### test_slash.lua (59)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1167,7 +1167,10 @@ badge and any count quoted in the docs must agree with it.
 - `spells add <id> SHAMAN 99999` names the spec it could not resolve
 - bare `/kcd spells` names the default spec by SpecDisplay
 - the stub's DisabledLine format is the library constant, byte for byte
-- the stub's reserved-verb copy is the library's LIVE_VERBS, in order
+- the stub carries no copy of the library's reserved verbs
+- the host's feature verbs are exactly the verbs the live gate refuses
+- degraded gate while disabled refuses feature verbs and nothing else
+- degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd list` prints the library-absent line
 - degraded `/kcd set visibility always` writes nothing and prints the library-absent line
 - degraded `/kcd set` refuses a non-bool value even on a writeThrough path
@@ -1388,7 +1391,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 2 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 56 |
+| test_slash.lua | 59 |
 | test_disabled.lua | 19 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
@@ -1400,4 +1403,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1134** |
+| **Total** | **1137** |
