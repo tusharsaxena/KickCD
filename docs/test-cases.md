@@ -286,7 +286,7 @@ badge and any count quoted in the docs must agree with it.
 - a raising OnInitialize fails T.load instead of passing silently
 - allowInitError keeps the OnInitialize raise on the instance for the case to assert
 
-### test_color_shape.lua (27)
+### test_color_shape.lua (28)
 
 - the schema declares at least one color row per color-bearing panel
 - every schema color default is keyed, never positional
@@ -315,6 +315,7 @@ badge and any count quoted in the docs must agree with it.
 - the valueGate hint explains WHY a gated dropdown value was rejected
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
+- GateHint never writes the profile when the row declares valuesFor
 
 ### test_bus.lua (13)
 
@@ -1318,7 +1319,7 @@ badge and any count quoted in the docs must agree with it.
 | test_units.lua | 25 |
 | test_schema.lua | 36 |
 | test_database.lua | 25 |
-| test_color_shape.lua | 27 |
+| test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
@@ -1369,4 +1370,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1107** |
+| **Total** | **1108** |

@@ -34,6 +34,28 @@ local function add(t) Schema[#Schema + 1] = t end
 -- (e.g. the orientation row also writes through to growDirection and
 -- refreshes the panel widgets).
 
+-- The growth directions each orientation offers. One table, read by BOTH the
+-- growDirection row's `values` (which looks the live orientation up) and its
+-- `valuesFor` (which is handed an orientation), so the gating rule is written
+-- once. Unit-independent, so it lives here rather than once per unit below.
+-- An orientation this table does not name falls back to HORIZONTAL's pair,
+-- exactly as the row always has.
+local GROW_OPTIONS_FOR_ORIENTATION = {
+    HORIZONTAL = {
+        { value = "RIGHT", label = L["Right"] },
+        { value = "LEFT",  label = L["Left"]  },
+    },
+    VERTICAL = {
+        { value = "UP",   label = L["Up"]   },
+        { value = "DOWN", label = L["Down"] },
+    },
+}
+
+local function growOptionsFor(orientation)
+    return GROW_OPTIONS_FOR_ORIENTATION[orientation]
+        or GROW_OPTIONS_FOR_ORIENTATION.HORIZONTAL
+end
+
 -- Per-unit row generation ---------------------------------------------
 -- Every row below is built once per unit in NS.Units.LIST (target,
 -- focus): the row's `path` is prefixed with "units.<unit>." and tagged
@@ -149,17 +171,13 @@ add{
         local unitProfile = profile and profile.units and profile.units[unit]
         local orientation = unitProfile and unitProfile.castbar
                             and unitProfile.castbar.orientation
-        if orientation == "VERTICAL" then
-            return {
-                { value = "UP",   label = L["Up"]   },
-                { value = "DOWN", label = L["Down"] },
-            }
-        end
-        return {
-            { value = "RIGHT", label = L["Right"] },
-            { value = "LEFT",  label = L["Left"]  },
-        }
+        return growOptionsFor(orientation)
     end,
+    -- What `values` WOULD return were the gate set to `orientation`. Pure: it
+    -- reads the table above and nothing else, so settings/Slash.lua's
+    -- GateHint can say what flipping orientation would offer without writing
+    -- a candidate into the live profile to find out (KICKCD-R-15).
+    valuesFor = growOptionsFor,
 }
 
 add{

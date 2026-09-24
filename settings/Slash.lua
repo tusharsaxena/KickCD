@@ -22,8 +22,8 @@ NS.Slash = NS.Slash or {}
 --    every row in the addon would list under one "settings" heading.
 --
 -- 2. The parser override. It carries the `valueGate` hint machinery, which
---    explains WHY a dropdown value was rejected by probing what the gating
---    sibling setting would allow. That is genuinely this addon's
+--    explains WHY a dropdown value was rejected by asking what the row would
+--    offer were the gating sibling setting flipped. That is genuinely this addon's
 --    (growDirection's UP/DOWN vs RIGHT/LEFT depends on castbar.orientation) and
 --    the library has no hook for it, so it stays here behind the descriptor's
 --    documented `parse` seam rather than forking the dispatcher.
@@ -75,40 +75,75 @@ NS.Slash.Version = NS.Version
 -- Only the `valueGate` hint lives here — see the header for the color codec
 -- that used to sit beside it and why it isn't needed any more.
 
+--- The keys an option list offers, sorted. Two shapes reach here, the same two
+--- the library's enumList reads: a keyed map (`{ KEY = label }`) and a list of
+--- `{ value =, label = }` items. The list shape is what growDirection returns,
+--- and reading its keys would name the positions "1/2" rather than the values.
+local function listKeys(v)
+    local keys = {}
+    if type(v) ~= "table" then return keys end
+    if type(v[1]) == "table" and v[1].value ~= nil then
+        for _, item in ipairs(v) do keys[#keys + 1] = tostring(item.value) end
+    else
+        for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+    end
+    table.sort(keys)
+    return keys
+end
+
 --- The keys a dropdown row currently offers, resolved at call time because a
 --- media list is populated by another addon and is not knowable when the row is
 --- declared. Same resolution the library's own parser does.
 local function allowedKeys(row)
-    local v = type(row.values) == "function" and row.values() or row.values or {}
-    local keys = {}
-    for k in pairs(v) do keys[#keys + 1] = tostring(k) end
-    table.sort(keys)
-    return keys
+    return listKeys(type(row.values) == "function" and row.values() or row.values)
+end
+
+--- The keys the row would offer with its gate set to `candidate`.
+---
+--- A row that declares `valuesFor(gateValue)` is simply asked: it is pure by
+--- contract, so the live profile is never touched (KICKCD-R-15). That is the
+--- path every gated row in this addon takes -- settings/Castbar.lua's
+--- growDirection shares one table between its `values` and its `valuesFor`, so
+--- the gating rule is still written once.
+---
+--- A row WITHOUT valuesFor falls back to the original probe: swap the gate's
+--- stored value to the candidate, re-ask the row's own `values`, and restore.
+--- The swap is transient -- one call between mutate and restore, with no
+--- message-bus dispatch in between -- but that one call is addon-authored and
+--- free to raise (an LSM row asks another addon's table). Unguarded, the restore
+--- would be skipped and the candidate left in SavedVariables, silently, with no
+--- onChange and no panel refresh, from a READ-ONLY hint. So it runs under
+--- `pcall`: the restore is unconditional, and a raising `values` costs the user
+--- one missing hint clause rather than a changed setting.
+--- tests/test_color_shape.lua pins both paths.
+---
+--- Answers nil when the candidate's keys cannot be computed.
+local function keysForCandidate(row, candidate, parent, key, gateVal)
+    if type(row.valuesFor) == "function" then
+        local ok, alt = pcall(row.valuesFor, candidate)
+        return ok and listKeys(alt) or nil
+    end
+    parent[key] = candidate
+    local ok, alt = pcall(allowedKeys, row)
+    parent[key] = gateVal
+    return ok and alt or nil
 end
 
 --- Why a dropdown value was rejected, when a sibling setting is what rejected it.
 ---
 --- `valueGate` names the setting whose current value gates this row's option
---- list — the cast bar's growDirection offers UP/DOWN or RIGHT/LEFT depending on
+--- list -- the cast bar's growDirection offers UP/DOWN or RIGHT/LEFT depending on
 --- castbar.orientation. Without this, a user who types a perfectly sensible
 --- value gets "Allowed values: LEFT, RIGHT" and no clue why UP vanished.
 ---
---- The probe is real rather than modeled: swap the gate's stored value to each
---- other candidate, re-ask the row's own `values` function, and restore. That is
---- the only way to answer it without duplicating the gating rule here, and the
---- swap is transient — one call between mutate and restore, with no message-bus
---- dispatch in between.
----
---- The one call in that window is `row.values()`, addon-authored and free to
---- raise (an LSM row asks another addon's table). If it did, the restore below
---- would never run and the swapped-in candidate would stay in SavedVariables —
---- silently, with no onChange and no panel refresh, from a READ-ONLY hint. So
---- the probe runs under `pcall`: the restore is unconditional, and a raising
---- `values` costs the user one missing hint clause rather than a changed
---- setting. tests/test_color_shape.lua pins that.
+--- The answer is real rather than modeled: for each other value the gate could
+--- take, keysForCandidate asks what the row would then offer -- through the
+--- row's pure `valuesFor` when it has one, or the pcall-guarded swap-and-restore
+--- probe when it does not. H.Resolve is needed only by that fallback, and only
+--- a row that lacks valuesFor is refused a flip clause when it is missing.
 function NS.Slash.GateHint(row)
     local H = helpers()
-    if not (H and H.Get and H.FindSchema and H.Resolve) then return "" end
+    if not (H and H.Get and H.FindSchema) then return "" end
 
     local gateVal = H.Get(row.valueGate)
     local msg = (" (depends on %s = %s)"):format(row.valueGate, tostring(gateVal))
@@ -118,16 +153,17 @@ function NS.Slash.GateHint(row)
     local gateValues = type(gateDef.values) == "function" and gateDef.values() or gateDef.values
     if type(gateValues) ~= "table" then return msg end
 
-    local parent, key = H.Resolve(row.valueGate)
-    if not (parent and key) then return msg end
+    local parent, key
+    if type(row.valuesFor) ~= "function" then
+        if H.Resolve then parent, key = H.Resolve(row.valueGate) end
+        if not (parent and key) then return msg end
+    end
 
     local hints = {}
     for candidate in pairs(gateValues) do
         if candidate ~= gateVal then
-            parent[key] = candidate
-            local ok, alt = pcall(allowedKeys, row)
-            parent[key] = gateVal
-            if ok and #alt > 0 then
+            local alt = keysForCandidate(row, candidate, parent, key, gateVal)
+            if alt and #alt > 0 then
                 hints[#hints + 1] = ("flip %s to %s for %s")
                     :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
             end

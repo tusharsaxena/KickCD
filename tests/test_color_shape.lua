@@ -498,3 +498,51 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
     assertTrue(hint:find("flip", 1, true) == nil,
         "no flip clause is computable when every probe raised; got: " .. hint)
 end)
+
+test("GateHint never writes the profile when the row declares valuesFor", function()
+    -- KICKCD-R-15. The probe above answers "what would flipping the gate
+    -- offer?" by writing each candidate into the live profile and restoring it.
+    -- pcall makes that safe against a raising values(), but it is still a write
+    -- from a read. A row that can say what it offers for a given gate value
+    -- (valuesFor) is asked directly, and the profile is never touched.
+    -- red under: GateHint ignoring row.valuesFor and probing by swap.
+    local row
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.valueGate then row = def break end
+    end
+    assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
+    assertEqual(type(row.valuesFor), "function", "the gated row must declare valuesFor")
+
+    local H = NS.Settings.Helpers
+    -- The same row with no valuesFor, so the fallback probe computes the
+    -- reference hint the pure path must reproduce word for word.
+    local fallback = {}
+    for k, v in pairs(row) do fallback[k] = v end
+    fallback.valuesFor = nil
+    local expected = NS.Slash.GateHint(fallback)
+
+    -- Every write the probe makes lands on the gate's parent through
+    -- H.Resolve; hand it a proxy that forwards and counts.
+    local writes = 0
+    local origResolve = H.Resolve
+    H.Resolve = function(path)
+        local parent, key = origResolve(path)
+        if path ~= row.valueGate or not parent then return parent, key end
+        local proxy = setmetatable({}, {
+            __index = parent,
+            __newindex = function(_, k, v) writes = writes + 1; parent[k] = v end,
+        })
+        return proxy, key
+    end
+    local ok, hint = pcall(NS.Slash.GateHint, row)
+    H.Resolve = origResolve
+
+    assertTrue(ok, "GateHint raised: " .. tostring(hint))
+    assertEqual(writes, 0, "GateHint wrote the gating setting " .. writes .. " time(s)")
+    assertEqual(hint, expected, "the pure path must give the fallback's hint")
+    assertTrue(hint:find("flip", 1, true) ~= nil, "and still offer a flip; got: " .. hint)
+    -- growDirection's options are a { value =, label = } list; the flip clause
+    -- names the VALUES, not the list positions ("for 1/2").
+    assertTrue(hint:find("for %u+/%u+") ~= nil,
+        "the flip clause must name the offered values; got: " .. hint)
+end)
