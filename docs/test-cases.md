@@ -990,7 +990,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (39)
+### test_options_panel.lua (41)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1009,6 +1009,8 @@ badge and any count quoted in the docs must agree with it.
 - dragging a slider commits on mouse-up
 - choosing a dropdown option stores the option KEY, never its index
 - confirming a color stores the keyed shape the modules read
+- the descriptor's scheduleTimer answers a cancelable handle
+- a color drag commits once per throttle window
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
 - SessionToggle adapts this addon's argument order onto the library's
@@ -1335,7 +1337,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_editor.lua | 32 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 39 |
+| test_options_panel.lua | 41 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1354,4 +1356,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1092** |
+| **Total** | **1094** |

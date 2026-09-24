@@ -291,6 +291,59 @@ test("confirming a color stores the keyed shape the modules read", function()
     H.SetAndRefresh(path, before)
 end)
 
+-- ── the color drag throttle (KICKCD-R-04) ───────────────────────────────────
+--
+-- The descriptor's scheduleTimer backs the picker's 50 ms drag throttle. It
+-- used to wrap C_Timer.After, which answers nil, and until LibKa0s v1.56.0
+-- (OptionsWidgets minor 31) the library used that return value as its armed
+-- flag -- so every ~60 Hz drag tick committed and fanned CONFIG_CHANGED out.
+
+test("the descriptor's scheduleTimer answers a cancelable handle", function()
+    -- red under: `return _G.C_Timer.After(delay, fn)` in settings/OptionsSetup.lua
+    local ran = false
+    local handle = NS.Settings.ScheduleTimer(function() ran = true end, 0.05)
+    assertTrue(handle ~= nil, "scheduleTimer must hand back a handle, not nil")
+    assertEqual(type(handle.Cancel), "function", "the handle must be cancelable")
+    handle:Cancel()
+    T.mocks.__flushTimers()
+    assertFalse(ran, "a canceled handle must not fire")
+
+    -- ...and it is the function the library actually calls: a drag tick
+    -- queues a timer, and that queued entry is the cancelable handle.
+    local w = renderRow("units.target.icons.borderColor")
+    local before = #T.mocks.__timers
+    w:__fire("OnValueChanged", 0.1, 0.2, 0.3, 1)
+    local queued = T.mocks.__timers[before + 1]
+    assertTrue(queued ~= nil, "a drag tick must schedule the throttle timer")
+    assertEqual(type(queued.Cancel), "function",
+        "the descriptor must route the throttle through ScheduleTimer")
+    queued:Cancel()
+end)
+
+test("a color drag commits once per throttle window", function()
+    -- Characterization: green behind v1.56.0's own armed flag, red under a
+    -- pre-minor-31 payload paired with a nil-returning scheduleTimer.
+    local path = "units.target.icons.borderColor"
+    local before = H.Get(path)
+    local w = renderRow(path)
+    T.mocks.__flushTimers()
+    local real, commits = H.SetAndRefresh, 0
+    H.SetAndRefresh = function(p, ...)
+        if p == path then commits = commits + 1 end
+        return real(p, ...)
+    end
+    local ok, err = pcall(function()
+        for i = 1, 10 do w:__fire("OnValueChanged", i / 10, 0.5, 0.5, 1) end
+        assertEqual(commits, 0, "no drag tick may commit before the window closes")
+        T.mocks.__flushTimers()
+    end)
+    H.SetAndRefresh = real
+    assert(ok, err)
+    assertEqual(commits, 1, "ten drag ticks inside one window must commit exactly once")
+    assertNear(H.Get(path).r, 1.0, 1e-9, "the commit must carry the LAST drag value")
+    H.SetAndRefresh(path, before)
+end)
+
 test("an external write re-syncs an open widget through its refresher", function()
     -- options-ui-§11: scalar widgets refresh IN PLACE via a per-widget updater
     -- closure. A refresh does not rebuild the page.

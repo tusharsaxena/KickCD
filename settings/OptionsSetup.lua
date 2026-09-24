@@ -126,6 +126,21 @@ function NS.Settings.ReadForPanel(path)
     return H.Get(path)
 end
 
+--- Backs the color picker's and the slider's 50 ms drag throttle: the
+--- descriptor's `scheduleTimer`. A descriptor field rather than an AceTimer
+--- embed, because embedding would be the library's second dependency-budget
+--- breach.
+---
+--- Since LibKa0s v1.56.0 (OptionsWidgets minor 31) the library keeps its own
+--- armed flag and ignores the return value. The handle is returned anyway, so a
+--- payload older than that still throttles: C_Timer.After would hand back nil,
+--- which such a payload read as "not armed" on every drag tick (KICKCD-R-04).
+--- Named, like ReadForPanel above, so tests/test_options_panel.lua can call the
+--- one function the descriptor passes by reference.
+function NS.Settings.ScheduleTimer(fn, delay)
+    return _G.C_Timer.NewTimer(delay, fn)
+end
+
 -- Both Reset all paths reset the profile through here. settings/Panel.lua's
 -- ResetProfileCounted counts the rows the reset changes before it runs, for the
 -- one line Database:OnProfileChanged logs (debug-logging-§10); the bare call is
@@ -237,10 +252,8 @@ local descriptor = {
         if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
     end,
 
-    -- Backs the color picker's 50 ms drag throttle. A descriptor field rather
-    -- than an AceTimer embed, because embedding would be the library's second
-    -- dependency-budget breach.
-    scheduleTimer = function(fn, delay) return _G.C_Timer.After(delay, fn) end,
+    -- The drag throttle's timer, BY REFERENCE (see NS.Settings.ScheduleTimer).
+    scheduleTimer = NS.Settings.ScheduleTimer,
 
     getLSM   = function() return LibStub and LibStub("LibSharedMedia-3.0", true) end,
     validate = function()
