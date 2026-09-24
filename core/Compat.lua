@@ -438,7 +438,7 @@ end
 --- and table.concat on the resulting string then errors out — that's
 --- why a naive "tostring(name)" inside :format() blew up combat.
 function Compat.DebugInterrupt(unit)
-    local out = (NS.Util and NS.Util.print) or _G.print
+    local out = NS.Util.print
     unit = unit or "target"
 
     if not (_G.UnitExists and _G.UnitExists(unit)) then

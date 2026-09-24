@@ -130,8 +130,7 @@ end
 -- does that itself, so the last caller went with the dispatcher.)
 
 local function p(self, ...)
-    local fn = self.Util and self.Util.print or _G.print
-    fn(...)
+    self.Util.print(...)
 end
 
 -- (The `version` verb reads NS.Version(), the core/EnvSetup.lua seam. The

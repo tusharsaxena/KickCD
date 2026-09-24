@@ -128,3 +128,36 @@ test("no module reads profile.enabled directly", function()
         "master flag read off the profile instead of through NS.MasterEnabled at: "
         .. table.concat(offenders, ", "))
 end)
+
+-- KICKCD-A-05: events-frames-taint-§8 forbids the global print for user-facing
+-- output at any site, reachable or not. core/CoreSetup.lua publishes Util.print on
+-- both of its arms, so `NS.Util.print` resolves at call time everywhere and an
+-- `or _G.print` fallback arm is dead code that also names the forbidden sink. The
+-- scan covers every tracked authored file, not just the TOC, so a suite or a tool
+-- script cannot reintroduce the shape either. Vendored trees are skipped: libs/ and
+-- tests/_kit/ are upstream bytes, and this file names the shape to forbid it.
+test("no authored file falls back to the global print", function()
+    assertTrue(io.popen ~= nil,
+        "io.popen is unavailable, so the tracked set cannot be read; this gate must not pass blind")
+    local pipe = io.popen("git -C '" .. T.root .. "' ls-files '*.lua'")
+    assertTrue(pipe ~= nil, "io.popen returned no handle for `git ls-files`")
+    local paths = {}
+    for path in pipe:lines() do
+        if not path:match("^libs/") and not path:match("^tests/_kit/")
+            and path ~= "tests/test_source_style.lua" then
+            paths[#paths + 1] = path
+        end
+    end
+    pipe:close()
+    assertTrue(#paths > 0, "`git ls-files` reported no Lua files; this gate cannot run")
+
+    local offenders = {}
+    for _, rel in ipairs(paths) do
+        for n, code in ipairs(codeLines(rel)) do
+            if code:match("or%s+_G%.print") then offenders[#offenders + 1] = rel .. ":" .. n end
+        end
+    end
+    assertTrue(#offenders == 0,
+        "`or _G.print` fallback (events-frames-taint-§8; resolve NS.Util.print instead) at: "
+        .. table.concat(offenders, ", "))
+end)

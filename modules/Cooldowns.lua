@@ -696,7 +696,7 @@ end
 
 --- /kickcd debug spells — print the watched-list with current state.
 function Cooldowns:DebugDump()
-    local p = NS.Util and NS.Util.print or _G.print
+    local p = NS.Util.print
     local class, spec = ResolveClassSpec()
     -- English token, not the localized name: this line is what users paste
     -- into bug reports (issue #8).

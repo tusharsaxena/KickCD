@@ -54,13 +54,11 @@ read_globals = {
   -- code and are linted, even though the lib under libs/ is not.
   "debugprofilestop",
   "C_Timer", "C_Spell", "C_SpecializationInfo", "C_AddOns",
-  "GetLocale", "GetSpellInfo", "GetSpecialization", "GetSpecializationInfo",
-  "InCombatLockdown", "PlaySound",
+  "GetLocale", "InCombatLockdown", "PlaySound",
   -- units / spells / combat
   "UnitCastingInfo", "UnitChannelInfo", "UnitExists", "UnitCanAttack",
   "UnitClass", "UnitIsUnit", "UnitGUID", "UnitName", "UnitRace", "UnitIsDead",
   "IsLoggedIn",
-  "IsPlayerSpell", "IsSpellKnown", "IsSpellKnownOrOverridesKnown",
   "GetSpecializationInfoForClassID", "GetNumSpecializationsForClassID",
   -- settings panel
   "Settings", "SettingsPanel",

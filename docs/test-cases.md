@@ -1080,10 +1080,11 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
-### test_source_style.lua (2)
+### test_source_style.lua (3)
 
 - a WoW global on the standing _G. list is never read bare
 - no module reads profile.enabled directly
+- no authored file falls back to the global print
 
 ### test_prose.lua (15)
 
@@ -1302,12 +1303,13 @@ badge and any count quoted in the docs must agree with it.
 - every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
 - every deviation id the register cites is assigned by a bundle in docs/audits/
 
-### test_lintconfig.lua (4)
+### test_lintconfig.lua (5)
 
 - lintconfig: .luacheckrc sets no top-level ignore
 - lintconfig: .luacheckrc switches no warning class off wholesale
 - lintconfig: every files[...] ignore is narrowed to a file or a name
 - lintconfig: no source file carries a bare inline luacheck ignore
+- lintconfig: no deprecated spell/spec global is whitelisted for shipped code
 
 ### test_vendor_sync.lua (3)
 
@@ -1389,7 +1391,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
-| test_source_style.lua | 2 |
+| test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 59 |
@@ -1400,8 +1402,8 @@ badge and any count quoted in the docs must agree with it.
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
 | test_doc_structure.lua | 3 |
-| test_lintconfig.lua | 4 |
+| test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1138** |
+| **Total** | **1140** |
