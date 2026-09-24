@@ -66,6 +66,26 @@ NS.LIBKA0S_MISSING = "The LibKa0s library is missing from this installation of K
 
 local lib = LibStub and LibStub("LibKa0s-Core-1.0", true)
 
+--- Register every `{ event, handler }` row of `list` on `target` through
+--- NS.SafeRegisterEvent, so one name the client refuses costs only its own row
+--- (events-frames-taint-§1). A refused name lands once in NS.State.rejectedEvents
+--- and says so on the debug console the first time.
+---
+--- Defined ABOVE the branch because both arms publish it: the helper is the
+--- host's, and only the three SafeRegister members under it differ. NS.Debug is
+--- read at call time -- core/DebugLogSetup.lua publishes it after this file runs.
+---
+--- The lists are FILE-SCOPE constants at every call site, so a stand-up
+--- allocates nothing (anti-patterns #43).
+function NS.RegisterEventList(target, list)
+    local rejected = NS.State.rejectedEvents
+    for i = 1, #list do
+        local event, before = list[i][1], #rejected
+        NS.SafeRegisterEvent(target, event, list[i][2], rejected)
+        if #rejected > before then NS.Debug("Events", "rejected %s", event) end
+    end
+end
+
 if not lib then
     -- A missing vendored lib must degrade, not error at load. Silence is not an
     -- option the way it is for a diagnostics harness: ~20 call sites across
@@ -111,6 +131,36 @@ if not lib then
         return NS.Util.Unpack(stored)
     end
 
+    -- The pcalled event registration helper (Core version 8). ONE-RUNG bodies,
+    -- as that version's Degradation note requires: the pcall and the
+    -- rejected-list append, no IsEventValid front gate and no probe frame. The
+    -- pcall alone is what keeps one bad name from taking its block down; the
+    -- front gate is the library's, and copying it here would be a second
+    -- implementation. On an AceEvent target it inherits the first-registrant
+    -- blind spot the library document describes.
+    local function safeRegister(method, target, event, rejected, ...)
+        if pcall(method, target, event, ...) then return true end
+        if type(rejected) == "table" then
+            for i = 1, #rejected do if rejected[i] == event then return false end end
+            rejected[#rejected + 1] = event
+        end
+        return false
+    end
+    function NS.SafeRegisterEvent(target, event, handler, rejected)
+        return safeRegister(target.RegisterEvent, target, event, rejected, handler)
+    end
+    -- `...` is `unit1[, unit2]`, passed through exactly as given.
+    function NS.SafeRegisterUnitEvent(frame, event, rejected, ...)
+        return safeRegister(frame.RegisterUnitEvent, frame, event, rejected, ...)
+    end
+    function NS.SafeRegisterEvents(target, events, handler, rejected)
+        local n = 0
+        for _, event in ipairs(events) do
+            if safeRegister(target.RegisterEvent, target, event, rejected, handler) then n = n + 1 end
+        end
+        return n
+    end
+
     local announced = false
     function Util.print(...)
         if not DEFAULT_CHAT_FRAME then return end
@@ -128,6 +178,13 @@ end
 
 NS.IsConcatSafe = lib.IsConcatSafe
 NS.SafeToString = lib.SafeToString
+
+-- The pcalled event registration helper (Core minor 8, events-frames-taint-§1),
+-- handed over whole: IsEventValid front gate, probe frame, pcall, and the
+-- caller-owned rejected list. NS.RegisterEventList above is the one host caller.
+NS.SafeRegisterEvent     = lib.SafeRegisterEvent
+NS.SafeRegisterUnitEvent = lib.SafeRegisterUnitEvent
+NS.SafeRegisterEvents    = lib.SafeRegisterEvents
 
 -- ONE RESOLVER for every "use class color" companion in the addon
 -- (options-ui-§17). Handed over rather than wrapped: the library's signature IS

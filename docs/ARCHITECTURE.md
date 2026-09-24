@@ -164,7 +164,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
 
-`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `window`, `on`, `off`, `toggle`, `spells`, `castbar`, `interrupt`. Bare `/kcd debug` toggles the console window.
+`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `window`, `on`, `off`, `toggle`, `spells`, `castbar`, `interrupt`, `events`. Bare `/kcd debug` toggles the console window.
 
 ## Settings schema
 

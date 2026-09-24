@@ -148,6 +148,7 @@ local SUITES = {
     "test_util_anchor",
     "test_constants",
     "test_state",
+    "test_events",
     "test_locale",
     "test_units",
     "test_schema",

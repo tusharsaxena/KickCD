@@ -1320,6 +1320,32 @@ local function ensurePanel()
     return panel
 end
 
+-- The page's GAME events, as `{ event, handler }` rows for NS.RegisterEventList.
+-- The handlers used to be closures built inside RegisterPanelEvents; they read
+-- only `panel` and `Spells`, both file-scope upvalues, so they live here and the
+-- list with them. MODULE SCOPE so a stand-up allocates nothing (anti-patterns
+-- #43), and one refused name costs only its own row (events-frames-taint-§1).
+--
+-- Talent / spellbook changes flip the per-row known/unknown glyph. Refresh while
+-- the panel is open so the indicators stay in sync with what IconGrid is rendering.
+local function refreshIfShown()
+    if panel and panel:IsShown() then Spells:RefreshRows() end
+end
+
+-- Spec swaps move the SELECTION, not just the rows — see
+-- Spells:OnPlayerSpecChanged. The event fires for any unit, so filter to the
+-- player before re-seeding.
+local function onSpecChanged(_, unit)
+    if unit and unit ~= "player" then return end
+    Spells:OnPlayerSpecChanged()
+end
+
+local PANEL_EVENTS = {
+    { "SPELLS_CHANGED",                refreshIfShown },
+    { "TRAIT_CONFIG_UPDATED",          refreshIfShown },
+    { "PLAYER_SPECIALIZATION_CHANGED", onSpecChanged },
+}
+
 --- The page's own subscriptions, split out of ensurePanel so that the latch can
 --- put them back after a stand-down (slash-commands-§7, Spells.StandUp). Every
 --- registration is idempotent -- AceEvent keys on (event, target) -- so calling
@@ -1349,22 +1375,8 @@ function Spells.RegisterPanelEvents()
             end
         end)
 
-        -- Talent / spellbook changes flip the per-row known/unknown glyph.
-        -- Refresh while the panel is open so the indicators stay in sync
-        -- with what IconGrid is rendering.
-        local function refreshIfShown()
-            if panel and panel:IsShown() then Spells:RefreshRows() end
-        end
-        ev:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
-        ev:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
-
-        -- Spec swaps move the SELECTION, not just the rows — see
-        -- Spells:OnPlayerSpecChanged. The event fires for any unit, so filter
-        -- to the player before re-seeding.
-        ev:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function(_, unit)
-            if unit and unit ~= "player" then return end
-            Spells:OnPlayerSpecChanged()
-        end)
+        -- The three game events: PANEL_EVENTS above.
+        NS.RegisterEventList(ev, PANEL_EVENTS)
     end
 end
 

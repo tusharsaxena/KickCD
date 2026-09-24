@@ -404,6 +404,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
 | `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
 | `/kcd debug window` | Toggles the on-screen debug console window (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`); logging keeps running whether the window is open or closed. |
+| `/kcd debug events` | `no rejected events` on a live 12.1.x client. A client that raised on a name one of the addon's registration blocks asks for prints one `rejected event: <NAME>` line per refused name instead (events-frames-taint-§1). |
 | `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
 
 **Pass.**
@@ -412,6 +413,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - **`/kcd debug castbar` with and without `C_CurveUtil`.** Target a hostile caster mid-cast for a protected interrupt so `notInterruptible` comes back secret, and run the dump. The `current.notInterruptible: type=…, isSecret=true` line is **always** followed by a `secret-tainted; …` line — one saying the visual state is determined via `C_CurveUtil.EvaluateColorValueFromBoolean` where that evaluator exists, and one saying it is unavailable where it does not. **Fail:** the dump reports the field as secret and then says nothing further about it, which reads to whoever is given the paste as a dump that had nothing to say. A client without `C_CurveUtil` is the awkward half to arrange — a Classic-flavor or pre-12.0 build is the honest test; on a live Retail client the evaluator is present and only the first half is observable.
 - `/kcd debug on` starts streaming `Ka0s_KickCD_*` traffic to the on-screen console window (not chat); `off` cleanly stops it. After a `/reload` the flag is back off — `NS.State.debug` is session-only and never persisted.
 - `/kcd debug window` opens / closes the console window without touching the logging flag.
+- `/kcd debug events` prints `no rejected events`. Then `/kcd debug on` and `/reload`, and re-enable the flag: the console's `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause. **Fail:** any rejected name on a live client, which means a registration block is asking for an event this build does not know.
 
 ### 16. Secret-value safety (12.0)
 

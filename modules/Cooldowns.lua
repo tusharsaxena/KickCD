@@ -536,23 +536,30 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
---- The module's GAME-event registrations, split out of OnEnable so a perf
---- Resume can re-arm the same set without re-running the rest of the enable path
---- (rebuilding the watched table, re-subscribing to messages it never dropped).
---- Idempotent: AceEvent keys on (event, target).
-function Cooldowns:RegisterLifecycleEvents()
-    self:RegisterEvent("SPELL_UPDATE_COOLDOWN",        "OnCooldownEvent")
-    self:RegisterEvent("SPELL_UPDATE_USABLE",          "OnCooldownEvent")
-    self:RegisterEvent("SPELL_UPDATE_CHARGES",         "OnCooldownEvent")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",        "OnPlayerEnteringWorld")
-    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED","OnSpecChanged")
+-- The module's GAME events, as `{ event, method }` rows for NS.RegisterEventList.
+-- FILE SCOPE so a stand-up allocates nothing (anti-patterns #43), and one name a
+-- future client retires costs only its own row (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    { "SPELL_UPDATE_COOLDOWN",         "OnCooldownEvent" },
+    { "SPELL_UPDATE_USABLE",           "OnCooldownEvent" },
+    { "SPELL_UPDATE_CHARGES",          "OnCooldownEvent" },
+    { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
+    { "PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged" },
     -- Talent / spellbook changes within the active spec also flip the
     -- "available" set (a choice-node swap, learning a new ability, pet
     -- summon/dismiss for pet spells). Rebuild on either signal so spells
     -- the player just gained appear and ones they just lost disappear
     -- without waiting for a spec change.
-    self:RegisterEvent("SPELLS_CHANGED",               "Rebuild")
-    self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
+    { "SPELLS_CHANGED",                "Rebuild" },
+    { "TRAIT_CONFIG_UPDATED",          "Rebuild" },
+}
+
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm the same set without re-running the rest of the enable path
+--- (rebuilding the watched table, re-subscribing to messages it never dropped).
+--- Idempotent: AceEvent keys on (event, target).
+function Cooldowns:RegisterLifecycleEvents()
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
 end
 
 --- ONE WAY UP, and OnEnable is not it — Resume is (slash-commands-§7).

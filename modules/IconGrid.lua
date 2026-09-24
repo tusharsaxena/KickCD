@@ -923,30 +923,36 @@ function IconGrid:ReconcileUnits()
     end
 end
 
+-- The module's GAME events, as `{ event, method }` rows for NS.RegisterEventList.
+-- FILE SCOPE so a stand-up allocates nothing (anti-patterns #43), and one name a
+-- future client retires costs only its own row (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    -- Spec / login events: rebuild against the new spec's spell list. The
+    -- Cooldowns module hooks the same events to refresh its watched set, so
+    -- both sides stay in sync.
+    { "PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged" },
+    { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
+    -- Talent / spellbook changes within the active spec also flip the
+    -- "available" set used by BuildActiveList (choice-node swap, pet
+    -- summon/dismiss for pet spells). Rebuild + relayout so the grid
+    -- always shows only the spells the player can currently cast.
+    { "SPELLS_CHANGED",                "OnSpellsChanged" },
+    { "TRAIT_CONFIG_UPDATED",          "OnSpellsChanged" },
+    -- The two global unit-change events. These are GLOBAL (no unit filter),
+    -- so they register at MODULE level via plain RegisterEvent — NOT through
+    -- RegisterUnitCastEvent (which is for the UNIT_SPELLCAST_* family). Each
+    -- handler refreshes only its own unit's instance if that instance is live.
+    { "PLAYER_TARGET_CHANGED",         "OnTargetChanged" },
+    { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm exactly the same set without re-running the rest of the
 --- enable path (rebuilding curves, re-subscribing to messages it never dropped).
 --- Registration is idempotent — AceEvent keys on (event, target) — so calling
 --- this twice is harmless.
 function IconGrid:RegisterLifecycleEvents()
-    -- Spec / login events: rebuild against the new spec's spell list. The
-    -- Cooldowns module hooks the same events to refresh its watched set, so
-    -- both sides stay in sync.
-    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
-    -- Talent / spellbook changes within the active spec also flip the
-    -- "available" set used by BuildActiveList (choice-node swap, pet
-    -- summon/dismiss for pet spells). Rebuild + relayout so the grid
-    -- always shows only the spells the player can currently cast.
-    self:RegisterEvent("SPELLS_CHANGED",                "OnSpellsChanged")
-    self:RegisterEvent("TRAIT_CONFIG_UPDATED",          "OnSpellsChanged")
-
-    -- The two global unit-change events. These are GLOBAL (no unit filter),
-    -- so they register at MODULE level via plain RegisterEvent — NOT through
-    -- RegisterUnitCastEvent (which is for the UNIT_SPELLCAST_* family). Each
-    -- handler refreshes only its own unit's instance if that instance is live.
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
 end
 
 function IconGrid:OnEnable()

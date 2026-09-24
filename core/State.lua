@@ -36,7 +36,14 @@ local _, NS = ...
 -- happens to be looking, not something they configured. Persisting it would mean
 -- a fresh login opening on whichever unit was selected weeks ago, with nothing on
 -- screen explaining why. Re-seeded to "target" by this file on every load.
-local State = { inCombat = false, debug = false, viewedUnit = "target" }
+--
+-- `rejectedEvents` is every event name this client refused to register this
+-- session (events-frames-taint-§1), in the order first refused, each once. It is
+-- the caller-owned list core/CoreSetup.lua's NS.RegisterEventList hands to
+-- LibKa0s-Core's SafeRegisterEvent. SESSION-ONLY for the same reason as `debug`:
+-- a refusal is a fact about this client build, so a fresh load asks again.
+-- Read by `/kcd debug events` and counted in the [Init] summary.
+local State = { inCombat = false, debug = false, viewedUnit = "target", rejectedEvents = {} }
 NS.State = State
 
 --- Set the live combat flag. Called only from the bootstrap event

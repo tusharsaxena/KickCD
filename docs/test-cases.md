@@ -157,6 +157,15 @@ badge and any count quoted in the docs must agree with it.
 - ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
 - ApplyInterruptibleAlpha never inspects the cast name it gates on
 
+### test_events.lua (6)
+
+- one bad name does not stop the rest of Cooldowns' block
+- one bad name does not stop the block on a client without C_EventUtils (the pcall rung)
+- one bad name does not stop the block without LibKa0s (the stub bodies)
+- /kcd debug events names the rejected event
+- the [Init] line is unchanged when nothing was rejected
+- a frame RegisterEvent honors __badEvents
+
 ### test_locale.lua (15)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
@@ -1262,6 +1271,7 @@ badge and any count quoted in the docs must agree with it.
 | test_util_anchor.lua | 26 |
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
+| test_events.lua | 6 |
 | test_locale.lua | 15 |
 | test_units.lua | 25 |
 | test_schema.lua | 36 |
@@ -1317,4 +1327,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1059** |
+| **Total** | **1065** |

@@ -345,6 +345,14 @@ local DEBUG_COMMANDS = {
                 self.DebugLog:SetEnabled(not (self.State and self.State.debug))
             else p(self, "DebugLog module not loaded") end
         end},
+    -- events-frames-taint-§1: the names NS.RegisterEventList recorded because
+    -- this client raised on them. Session-only, like the list it reads.
+    {"events", "List event names this client refused to register",
+        function(self)
+            local rejected = self.State and self.State.rejectedEvents or {}
+            if #rejected == 0 then return p(self, "no rejected events") end
+            for _, name in ipairs(rejected) do p(self, "rejected event: " .. name) end
+        end},
 }
 
 local function findCommand(list, name)

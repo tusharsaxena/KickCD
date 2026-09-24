@@ -1074,17 +1074,23 @@ function Castbar:ReconcileUnits()
     end
 end
 
+-- The module's GAME events, as `{ event, method }` rows for NS.RegisterEventList.
+-- FILE SCOPE so a stand-up allocates nothing (anti-patterns #43), and one name a
+-- future client retires costs only its own row (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
+    -- The two GLOBAL unit-change events register at MODULE level via plain
+    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
+    -- Each handler re-evaluates only its own unit's instance if live.
+    { "PLAYER_TARGET_CHANGED",         "OnTargetChanged" },
+    { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm the same set without re-running the rest of the enable
 --- path. Idempotent: AceEvent keys on (event, target).
 function Castbar:RegisterLifecycleEvents()
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
-
-    -- The two GLOBAL unit-change events register at MODULE level via plain
-    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
-    -- Each handler re-evaluates only its own unit's instance if live.
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
 end
 
 --- Make this module INERT -- for either reason the latch can be down: a perf

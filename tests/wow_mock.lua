@@ -382,11 +382,25 @@ end
 function FRAME_METHODS._fire(self, ev, ...)
     if self._onevent then self._onevent(self, ev, ...) end
 end
+--- The client RAISES on a name it does not know, before it records anything:
+--- `Attempt to register unknown event "<NAME>"`, the kit's mock_base message byte
+--- for byte. The bad set is the owning build's `__badEvents`, reached through
+--- `self.__mocks` (stamped by mocks.CreateFrame) and read at CALL time, so a test
+--- that swaps the table is heard. A frame with no owning build (a region, or one
+--- built by hand) knows no bad names.
+local function refuseUnknown(self, ev)
+    local bad = self.__mocks and self.__mocks.__badEvents
+    if type(bad) == "table" and bad[ev] then
+        error("Attempt to register unknown event \"" .. tostring(ev) .. "\"", 3)
+    end
+end
 function FRAME_METHODS.RegisterEvent(self, ev)
+    refuseUnknown(self, ev)
     self.__events[ev] = true
     return self
 end
 function FRAME_METHODS.RegisterUnitEvent(self, ev, unit)
+    refuseUnknown(self, ev)
     self._unitEvents = self._unitEvents or {}
     self._unitEvents[ev] = unit
     self.__events[ev] = unit or true
@@ -840,6 +854,9 @@ local function build()
         -- GetName(), so a test that cannot see the name cannot assert either.
         local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent, name)
         f.__template = template
+        -- The owning build, so the frame's RegisterEvent can read THIS build's
+        -- __badEvents at call time (see refuseUnknown above).
+        f.__mocks = mocks
         created[#created + 1] = f
         return f
     end
