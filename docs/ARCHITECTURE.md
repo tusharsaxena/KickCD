@@ -367,7 +367,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 | `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `perf-analysis/README.md` | Present | `/kcd perf` exists (`LibKa0s-Perf-1.0`, `core/PerfSetup.lua`), so in-game captures have a store to describe |
-| `debug.md` | Not applicable | The console is `LibKa0s-DebugLog-1.0`’s; the `/kcd debug` subcommands dump state through it rather than adding a surface |
+| `debug.md` | Present | Debug surfaces beyond the LibKa0s console: four chat dumps (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
 
 ### Verification and record
 

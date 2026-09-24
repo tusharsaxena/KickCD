@@ -156,11 +156,15 @@ At the command line SPEC is still typed as a name: `Util.ResolveSpecID` accepts 
 | `list [CLASS SPEC]` | Print the watched list with index, spell ID, name, category, and disabled flag. |
 | `add <id\|name> [CLASS SPEC]` | Append a spell. Re-enables an existing entry rather than duplicating. Accepts spell name as well as ID. |
 | `remove <id> [CLASS SPEC]` | Drop a spell from the list. |
-| `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. |
+| `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. This reuse of the reserved pair is allowed; see [below](#spells-enable-and-disable-are-not-the-reserved-verbs). |
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
 | `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`, plus the player's racial cast-stopper when it is their own class, through `Database:ResetSpellList`, the same verb the Spells panel's Defaults popup calls. Intentionally narrower than `/kcd spells resetall` (which wipes every spec via `Database:ResetAllSpells`). |
 
 Every mutating subcommand fires `Ka0s_KickCD_ConfigChanged { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
+
+### `spells enable` and `disable` are not the reserved verbs
+
+`/kcd spells enable|disable` stays as it is. `slash-commands-§2` reserves `enable` and `disable` for the addon-wide switch, and the standard (v2.65.0, WS-06) rules that the reservation binds the **top level** only: under a feature noun's sub-tree the pair **MAY** toggle that noun's own items, because the first token already says which switch is meant. The standard names `/kcd spells enable <spellID>` as its worked case. The limit is the one the rule states: `enable` / `disable` taking a feature name as their first argument (`/kcd enable spells`) would be a top-level reuse and is forbidden, and KickCD has none. This closes audit finding KICKCD-A-27 by rule, with no rename.
 
 ## `/kcd debug <subcmd>`
 
