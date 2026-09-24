@@ -158,6 +158,16 @@ end
 --- function renders the active tab's rows itself, and the whole point here is
 --- that most of them must not be rendered. Tab selection, the stale-pointer
 --- heal and the re-render on click are the same three things it does.
+---
+--- The library's RenderTabbedSchema `opts` (OptionsTabs minor 4, LibKa0s v1.56.0)
+--- were evaluated for this page and DECLINED (KC-20, issue #23, closed as
+--- will-not-do). The gap: `disabledFor` draws `disabledNotice` ABOVE the rows and
+--- still draws every row disabled, where this page must show the note INSTEAD of
+--- them, and the notice is a plain TextRow, not the LinkRow below. The strip is
+--- not made inert by the library either, and `chrome(ctx)` could reach its
+--- buttons only through the private `ctx.__tabLayout`. Pinned by
+--- tests/test_options_panel.lua ("a linked Focus page draws the full strip,
+--- inert, and only the link note").
 --- Make a drawn strip inert: every button disabled, every one of its textures
 --- desaturated.
 ---

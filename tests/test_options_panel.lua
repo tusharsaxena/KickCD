@@ -704,6 +704,77 @@ test("the linked-Focus note opens General on its Units tab", function()
     iH.SetViewedUnit("target")
 end)
 
+-- KC-20's characterization: the whole linked-Focus page in one case, on all three
+-- unit pages. The strip is FULL (one tab per schema group, as the unlinked page
+-- draws), every tab is INERT (disabled and desaturated), and the content is the
+-- link note ALONE -- one LinkRow and no schema widget, because a linked Focus
+-- renders with Target's tables and an editable row here would write to a table
+-- nothing reads.
+--
+-- It pins the page's behavior independently of who draws it. KC-20 evaluated
+-- moving this page onto the library's RenderTabbedSchema(opts) and declined: its
+-- disabledFor draws the rows (disabled) UNDER the notice rather than replacing
+-- them, and its disabledNotice is a plain TextRow, not a link (issue cited at
+-- Helpers.RenderLinkedUnit in settings/Panel_Render.lua). A later adoption has to
+-- keep this case green unchanged.
+--
+-- red under: rendering the page's styled rows, dropping the note, drawing a
+-- partial strip, or dropping the disable pass.
+local SCHEMA_WIDGET_TYPES = {
+    CheckBox = true, Slider = true, Dropdown = true, ColorPicker = true,
+    EditBox = true, MultiLineEditBox = true, Button = true,
+}
+test("a linked Focus page draws the full strip, inert, and only the link note", function()
+    T.withFocusLink(true, function()
+        T.withViewedUnit(function()
+            local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+            for _, page in ipairs({ "icons", "castbar", "label" }) do
+                local ctx = H.CreatePanel("KickCDLinkedChar" .. page, page, { pageKey = page })
+                ctx.scroll = AceGUI:Create("ScrollFrame")
+                H.SetViewedUnit("focus")
+                H.RenderUnitPanel(ctx, page)
+
+                local groups, seen = 0, {}
+                for _, def in ipairs(H.SchemaForPanel(page, "focus")) do
+                    if def.group and not seen[def.group] then
+                        seen[def.group] = true
+                        groups = groups + 1
+                    end
+                end
+                local buttons = (ctx.__tabLayout or {}).buttons or {}
+                assertTrue(groups > 0, page .. ": sanity, the page has schema groups")
+                assertEqual(#buttons, groups, page .. ": one tab per schema group")
+                for i, b in ipairs(buttons) do
+                    local dim = false
+                    for _, r in ipairs(b.__regions or {}) do
+                        if r.__desaturated then dim = true end
+                    end
+                    assertTrue(b.__enabled == false or dim,
+                        page .. ": tab " .. i .. " is operable and undimmed")
+                end
+
+                -- Walked recursively: paired rows sit inside flow groups, so the
+                -- scroll's direct children alone would miss every widget in them.
+                local links, widgets = 0, 0
+                local function walk(container)
+                    for _, child in ipairs(container.children or {}) do
+                        if type(child.text) == "string"
+                           and child.text:find("Linked to Target", 1, true) then
+                            links = links + 1
+                        elseif SCHEMA_WIDGET_TYPES[child.type] then
+                            widgets = widgets + 1
+                        end
+                        walk(child)
+                    end
+                end
+                walk(ctx.scroll)
+                assertEqual(links, 1, page .. ": exactly one link note")
+                assertEqual(widgets, 0, page .. ": no schema widget on a linked page")
+            end
+        end)
+    end)
+end)
+
 -- The Focus link's two controls are ONE LINE: [Use same styling as Target]
 -- [Copy styling from Target]. They were two -- a half-width tick, then a button
 -- pair holding a single button -- and a button on its own line reads as belonging

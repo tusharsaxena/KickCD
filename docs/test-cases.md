@@ -1017,7 +1017,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (41)
+### test_options_panel.lua (42)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1051,6 +1051,7 @@ badge and any count quoted in the docs must agree with it.
 - the degraded stub opens no panel and says so once
 - the linked-Focus note has no hover highlight but is still clickable
 - the linked-Focus note opens General on its Units tab
+- a linked Focus page draws the full strip, inert, and only the link note
 - the Focus link's tick and its Copy button share one row
 - General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
@@ -1384,7 +1385,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_editor.lua | 40 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 41 |
+| test_options_panel.lua | 42 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1403,4 +1404,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1137** |
+| **Total** | **1138** |
