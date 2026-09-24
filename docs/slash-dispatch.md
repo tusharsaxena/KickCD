@@ -76,8 +76,8 @@ The **live set** is a union, built in `settings/Slash.lua` and never a typed cop
 
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
 KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no
-grid to unlock — and **`resetposition`**, which re-anchors the grid, fires `CONFIG_CHANGED` so the
-live grids move, and then echoes *icon grid position reset* at a player who can see no grid.
+grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
+live grids move, and then echoes *icon grid positions reset* at a player who can see no grid.
 
 `isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
 reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
@@ -102,7 +102,7 @@ Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors. On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
 | `reset <path>` | Reset **one setting** to its default. | `LibKa0s-Slash-1.0`'s `CliReset`, through the host's `SetAndRefresh` write seam. **Breaking change:** this used to take a page (`general`/`icons`/`castbar`/`label`/`spells`). A page is a property of a settings panel, not of the data, so page-scoped reset now lives only on each panel's **Defaults** button, and the every-spec spell rebuild moved to `/kcd spells resetall`. Each retired page name is answered with a line naming its replacement rather than a bare "Setting not found". |
 | `resetall` | Reset the **active profile** to the shipped defaults — panels, anchors, `link` flags and every spec's spell list, all of which live in the profile (`options-ui-§12`). | Calls `Helpers.ResetAll`, the same helper behind the General → "Reset all settings" popup, which is now one `db:ResetProfile()`. No CLI confirmation. |
-| `resetposition` | Restore the icon grid to its default screen position. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
+| `resetposition` | Restore the icon grids to their default screen positions. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |

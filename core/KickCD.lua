@@ -242,7 +242,7 @@ local COMMANDS = {
         function(rest) runReset(NS, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
         function() runResetAll(NS) end},
-    {"resetposition", "Restore the icon grid to its default screen position",
+    {"resetposition", "Restore the icon grids to their default screen positions",
         function() runResetPosition(NS) end},
     {"spells",        "Spell-list editor — try `/kcd spells` for the list",
         function(rest) runSpells(NS, rest) end},
@@ -302,8 +302,8 @@ local COMMANDS = {
 -- KickCD on rung (b) precisely because unlocking IS this addon's preview -- and
 -- with the addon off there is no grid and no placeholder to unlock
 -- (slash-commands-§8 says so in as many words). And `resetposition` re-anchors
--- the icon grid and fires CONFIG_CHANGED so the live grids move, then echoes
--- "icon grid position reset" at a player who can see no grid: an acknowledgment
+-- the icon grids and fires CONFIG_CHANGED so the live grids move, then echoes
+-- "icon grid positions reset" at a player who can see no grid: an acknowledgment
 -- of something that visibly did not happen.
 NS.EXTRA_LIVE_VERBS = { "spells" }
 
@@ -484,7 +484,7 @@ function runResetPosition(self)
         return p(self, "Settings layer not ready yet")
     end
     H.ResetIconPosition()
-    p(self, "icon grid position reset")
+    p(self, "icon grid positions reset")
 end
 
 -- ---------------------------------------------------------------------------

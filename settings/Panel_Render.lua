@@ -328,52 +328,51 @@ function Helpers.SetRows(writes, summary)
     return n
 end
 
--- Restore the TARGET icon grid to its default screen position and notify
--- the icon module so it re-anchors immediately. Used by the General tab's
--- "Reset position" button and the `/kcd resetposition` slash command —
--- both are legacy "reset the grid" affordances that predate Focus (Task
--- 8), so they deliberately only touch Target; a Focus position reset is
--- out of scope here (Focus already gets its own screen offset from
--- DEFAULT_PROFILE so the two grids don't overlap on first enable).
+-- Put every unit's icon grid back where it starts, then tell the icon module
+-- to re-anchor. The General page's "Reset position" button and
+-- `/kcd resetposition` both land here. It walks NS.Units.LIST, so target and
+-- focus both come home; before KICKCD-R-14 it reached target alone and a focus
+-- grid dragged off screen had no way back short of a full reset.
 --
--- The default coords come from KickCD.DEFAULT_PROFILE.units.target.
--- anchors.icons so we don't duplicate magic numbers across UI / CLI /
--- Database layers. (Task 1 moved anchors from the profile's top level to
--- units.target/.focus — this helper previously read/wrote the stale
--- top-level path and was a silent no-op ever since.)
+-- Only the grids move. A cast bar set to move freely keeps its own spot
+-- (units.<unit>.anchors.castbar); an anchored bar follows its grid anyway.
 --
--- No defaults tree, no reset: the guard below early-returns rather than
--- falling back to a hand-written coordinate. It used to carry one, and it
--- disagreed with defaults/Profile.lua by 300 px in the opposite direction —
--- the exact duplication the paragraph above says this function avoids. The
--- branch needs defaults/Profile.lua to have failed to load, which the TOC
--- rules out, so nothing was ever going to notice the wrong number. Doing
--- nothing is also the honest answer: with no default to restore, the least
--- surprising outcome is to leave the grid where the user dragged it.
+-- Each unit's coordinate comes from NS.DEFAULT_PROFILE.units.<unit>.anchors
+-- .icons, the one place it is written down. A unit with no default there is
+-- skipped rather than given a made-up coordinate: an earlier fallback number
+-- disagreed with defaults/Profile.lua by 300 px, and leaving the grid where
+-- the user dragged it is the least surprising result. With no defaults tree
+-- at all nothing is written and nothing is published.
 --
 -- The anchor is named non-setting state owned by NS.Units (architecture-§5).
 -- This writes it directly rather than through NS.Units.SetAnchor, and
 -- docs/ARCHITECTURE.md -> Settings schema lists it as one of that state's
 -- writers, which is what makes the direct write compliant.
+local function defaultGridAnchor(unit)
+    local u = NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units
+              and NS.DEFAULT_PROFILE.units[unit]
+    return u and u.anchors and u.anchors.icons
+end
+
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
-    local d = NS.DEFAULT_PROFILE
-              and NS.DEFAULT_PROFILE.units
-              and NS.DEFAULT_PROFILE.units.target
-              and NS.DEFAULT_PROFILE.units.target.anchors
-              and NS.DEFAULT_PROFILE.units.target.anchors.icons
-    if not d then return end
-    NS.db.profile.units = NS.db.profile.units or {}
-    NS.db.profile.units.target = NS.db.profile.units.target or {}
-    NS.db.profile.units.target.anchors = NS.db.profile.units.target.anchors or {}
-    NS.db.profile.units.target.anchors.icons =
-        { point = d.point, relativePoint = d.relativePoint, x = d.x, y = d.y }
-    -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
-    -- branch re-anchors every enabled unit's grid from its own
-    -- units.<unit>.anchors.icons. The previous "icons" fire was
-    -- redundant work — no row in the icons section actually changed,
-    -- and the general branch already owns the re-anchor pass.
-    Helpers.FireConfigChanged("general")
+    local profile, moved = NS.db.profile, false
+    for _, unit in ipairs(NS.Units.LIST) do
+        local d = defaultGridAnchor(unit)
+        if d then
+            profile.units = profile.units or {}
+            local u = profile.units[unit] or {}
+            profile.units[unit] = u
+            u.anchors = u.anchors or {}
+            u.anchors.icons =
+                { point = d.point, relativePoint = d.relativePoint, x = d.x, y = d.y }
+            moved = true
+        end
+    end
+    -- One "general" fire covers every unit: IconGrid:OnConfigChanged's
+    -- general branch re-anchors each enabled grid from its own
+    -- units.<unit>.anchors.icons.
+    if moved then Helpers.FireConfigChanged("general") end
 end
 
 -- (Helpers.ResetAllPositions is gone. It put every unit's icon-grid and

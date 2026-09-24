@@ -98,8 +98,8 @@ L["Open the General page's Units tab."] = "Open the General page's Units tab."
 L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
     "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
 L["Reset position"]              = "Reset position"
-L["Restore the icon grid to its default screen position."] =
-    "Restore the icon grid to its default screen position."
+L["Restore the icon grids to their default screen positions."] =
+    "Restore the icon grids to their default screen positions."
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
 L["General visibility"]          = "General visibility"

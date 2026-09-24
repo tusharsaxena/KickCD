@@ -356,3 +356,37 @@ test("a bad EMPOWER name is rejected and the other routes still arm", function()
     NS.State.rejectedEvents = savedRejected
     if not ok then error(err, 0) end
 end)
+
+-- ── /kcd resetposition ──────────────────────────────────────────────────────
+-- The verb (and General -> Reset position) puts every unit's icon grid back
+-- where DEFAULT_PROFILE ships it. It used to reach only target, so a focus
+-- grid dragged off screen had no way home short of a full reset.
+
+local function dragGridsAndReset()
+    local i = T.load(true)
+    local units = i.NS.db.profile.units
+    for _, u in ipairs(i.NS.Units.LIST) do
+        units[u].anchors.icons =
+            { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 400, y = -300 }
+    end
+    i.NS:OnSlashCommand("resetposition")
+    return i.NS
+end
+
+local function assertGridAtDefault(ns, unit)
+    local d = ns.DEFAULT_PROFILE.units[unit].anchors.icons
+    local a = ns.db.profile.units[unit].anchors.icons
+    assertEqual(a.point, d.point, unit .. " point restored")
+    assertEqual(a.relativePoint, d.relativePoint, unit .. " relativePoint restored")
+    assertEqual(a.x, d.x, unit .. " x restored")
+    assertEqual(a.y, d.y, unit .. " y restored")
+end
+
+test("/kcd resetposition restores the focus grid too", function()
+    -- red under: a reset that reads and writes units.target alone
+    assertGridAtDefault(dragGridsAndReset(), "focus")
+end)
+
+test("/kcd resetposition: the target grid is still restored", function()
+    assertGridAtDefault(dragGridsAndReset(), "target")
+end)

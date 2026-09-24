@@ -72,7 +72,7 @@ badge and any count quoted in the docs must agree with it.
 - EnvSetup: no file inlines its own C_AddOns ladder any more
 - EnvSetup: with no LibKa0s the seam still reads this addon's own TOC
 
-### test_util_anchor.lua (29)
+### test_util_anchor.lua (31)
 
 - SaveAnchor snapshots a frame's first anchor point
 - SaveAnchor stores no frame reference, only serializable fields
@@ -103,6 +103,8 @@ badge and any count quoted in the docs must agree with it.
 - Arm twice registers each event once
 - a non-UNIT_SPELLCAST route is refused
 - a bad EMPOWER name is rejected and the other routes still arm
+- /kcd resetposition restores the focus grid too
+- /kcd resetposition: the target grid is still restored
 
 ### test_constants.lua (27)
 
@@ -1308,7 +1310,7 @@ badge and any count quoted in the docs must agree with it.
 | test_coresetup.lua | 26 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
-| test_util_anchor.lua | 29 |
+| test_util_anchor.lua | 31 |
 | test_constants.lua | 27 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
@@ -1367,4 +1369,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1105** |
+| **Total** | **1107** |

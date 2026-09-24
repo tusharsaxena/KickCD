@@ -161,7 +161,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `perf` | Guided A/B performance capture (`LibKa0s-Perf-1.0`), driven from a clickable step panel |
 | `reset <path>` | Reset one setting to its default. Page-scoped reset lives on each panel's **Defaults** button; the every-spec spell rebuild moved to `/kcd spells resetall` |
 | `resetall` | Reset the **active profile** to the shipped defaults — a profile reset, and the same act as Profiles → Reset Profile (`options-ui-§12`). Every panel, every anchor, every unit's `link` flag and every spec's spell list come back with it, because all of them live in the profile; `Database:OnProfileChanged` re-seeds and refreshes on the way back, exactly as it does for a profile switch. Other profiles are never touched |
-| `resetposition` | Restore the icon grid to its default screen position |
+| `resetposition` | Restore the icon grids to their default screen positions |
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
 
@@ -189,7 +189,7 @@ Each entry's `enabled` and `category` fields are player preferences, not members
 - **Owner.** `core/Units.lua` (`NS.Units`). `Units.SetAnchor(unit, which, a)` writes it and `Units.Anchor(unit, which)` reads it.
 - **Writers, with the act that reaches each.**
   - `Units.SetAnchor`, from the icon grid's drag-stop (`modules/IconGrid.lua` `onDragStop`, `"icons"`) and the cast bar's drag-stop (`modules/Castbar.lua` `onDragStop`, `"castbar"`; the bar only drags in `FREE` anchor mode).
-  - `Helpers.ResetIconPosition` (`settings/Panel_Render.lua`), from Master controls → *Reset position* (`settings/General.lua`) and `/kcd resetposition` (`core/KickCD.lua`). It writes the target grid's `anchors.icons` directly rather than through `Units`, putting back the `DEFAULT_PROFILE` coordinate. A reset to the shipped default chooses nothing, so this is a listed writer and not a finding.
+  - `Helpers.ResetIconPosition` (`settings/Panel_Render.lua`), from Master controls → *Reset position* (`settings/General.lua`) and `/kcd resetposition` (`core/KickCD.lua`). It writes every unit's `anchors.icons` (`NS.Units.LIST`) directly rather than through `Units`, putting back each unit's `DEFAULT_PROFILE` coordinate; cast-bar anchors are left alone. A reset to the shipped default chooses nothing, so this is a listed writer and not a finding.
 
   No other runtime code writes an anchor. Two paths also touch the anchors and are not writers the naming has to list. The load pass, `Database:FoldLegacyUnits`, merges a legacy top-level `anchors` table into `units.target.anchors`. The profile reset behind `/kcd resetall` and Profiles → Reset Profile replaces the profile wholesale.
 
