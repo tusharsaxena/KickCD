@@ -170,7 +170,7 @@ The two halves the teardown itself needs are unchanged, and both are still neede
    target swap, a settings change) can re-show a grid behind the latch's back. It does **not** work
    by hiding frames from a setup file.
 2. **Each module's `Suspend()` releases the work** — its game events, its bus subscriptions *and*
-   its private per-unit dispatch frames, which AceEvent's `UnregisterAllEvents` cannot reach — and
+   its private per-unit cast filters (disarmed, kept for the next arm), which AceEvent's `UnregisterAllEvents` cannot reach — and
    every timer it owns is canceled.
 
 `standUp` rebuilds from **current** state, not from a snapshot: a unit toggled while suspended comes

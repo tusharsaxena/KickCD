@@ -20,7 +20,7 @@ badge and any count quoted in the docs must agree with it.
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
-- RegisterUnitCastEvent registers the dispatch frame for the named unit
+- NewUnitCastFilter arms its filter frame for the named unit
 
 ### test_coresetup.lua (26)
 
@@ -72,7 +72,7 @@ badge and any count quoted in the docs must agree with it.
 - EnvSetup: no file inlines its own C_AddOns ladder any more
 - EnvSetup: with no LibKa0s the seam still reads this addon's own TOC
 
-### test_util_anchor.lua (26)
+### test_util_anchor.lua (29)
 
 - SaveAnchor snapshots a frame's first anchor point
 - SaveAnchor stores no frame reference, only serializable fields
@@ -97,9 +97,12 @@ badge and any count quoted in the docs must agree with it.
 - SpecOrderForClass normalizes a lower-case class token
 - SpecOrderForClass is nil for a class the client can't enumerate
 - NormalizeClassToken upper-cases and tolerates nil
-- RegisterUnitCastEvent forwards the event into the module's handler
-- RegisterUnitCastEvent tolerates a handler that isn't defined yet
-- RegisterUnitCastEvent returns a frame the caller can unregister
+- NewUnitCastFilter forwards the event into the routed handler
+- NewUnitCastFilter tolerates a handler that isn't defined yet
+- NewUnitCastFilter Disarm empties the frame's registrations
+- Arm twice registers each event once
+- a non-UNIT_SPELLCAST route is refused
+- a bad EMPOWER name is rejected and the other routes still arm
 
 ### test_constants.lua (27)
 
@@ -476,7 +479,7 @@ badge and any count quoted in the docs must agree with it.
 - toggling the cooldown tint's companion rebuilds the alpha/tint curves
 - master scale and master alpha reach the grid frame
 
-### test_icongrid_visibility.lua (22)
+### test_icongrid_visibility.lua (23)
 
 - the visibility deciders are published for testing
 - visibilityMode reads the addon-wide setting
@@ -500,6 +503,7 @@ badge and any count quoted in the docs must agree with it.
 - each unit's decision is made against its OWN unit token
 - instanceCasting truth-tests the cast name without ever reading it
 - instanceCasting is false for a unit that doesn't exist
+- an empower start re-evaluates target_casting visibility
 
 ### test_icongrid_render.lua (21)
 
@@ -653,7 +657,7 @@ badge and any count quoted in the docs must agree with it.
 - an unresolvable class falls through to the swatch, never to white
 - a LINKED Focus resolves on the unit being drawn, not on the table's source
 
-### test_castbar.lua (7)
+### test_castbar.lua (8)
 
 - Castbar exposes the pure AutoSizeLong helper
 - AutoSizeLong copies the grid extent verbatim when scales match
@@ -662,6 +666,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong honors the bar's own effective scale
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
+- UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it
 
 ### test_castbar_helpers.lua (29)
 
@@ -1112,7 +1117,7 @@ badge and any count quoted in the docs must agree with it.
 - the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
 
-### test_disabled.lua (15)
+### test_disabled.lua (16)
 
 - baseline: an ENABLED addon registers something worth standing down
 - DISABLED: the registration set is EMPTY, by count and by name
@@ -1126,6 +1131,7 @@ badge and any count quoted in the docs must agree with it.
 - DISABLED: the launcher's RIGHT click still opens the panel
 - RE-ENABLED: the registration set comes back, exactly
 - RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot
+- two disable/enable cycles create no frames
 - LATCH: releasing the perf hold does NOT resurrect a disabled addon
 - LATCH: the holds are order-independent
 - LATCH: a profile switch that flips `enabled` is honored
@@ -1151,7 +1157,7 @@ badge and any count quoted in the docs must agree with it.
 - the nesting the descriptor declares is the nesting a run OBSERVES
 - instrumentation is inert when capture is off
 - the show decisions consult the LATCH as step 0, at the source
-- suspend releases the per-unit dispatch frames AceEvent cannot reach
+- suspend disarms the per-unit cast filters AceEvent cannot reach
 - enabling a unit while suspended does not re-register its frames mid-capture
 - resume restores from CURRENT state, not from a snapshot
 - the suspended flag is session-only and never persisted
@@ -1268,7 +1274,7 @@ badge and any count quoted in the docs must agree with it.
 | test_coresetup.lua | 26 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
-| test_util_anchor.lua | 26 |
+| test_util_anchor.lua | 29 |
 | test_constants.lua | 27 |
 | test_state.lua | 23 |
 | test_events.lua | 6 |
@@ -1285,7 +1291,7 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
-| test_icongrid_visibility.lua | 22 |
+| test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
@@ -1296,7 +1302,7 @@ badge and any count quoted in the docs must agree with it.
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
-| test_castbar.lua | 7 |
+| test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 29 |
 | test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
@@ -1316,7 +1322,7 @@ badge and any count quoted in the docs must agree with it.
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 41 |
-| test_disabled.lua | 15 |
+| test_disabled.lua | 16 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
@@ -1327,4 +1333,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1065** |
+| **Total** | **1071** |

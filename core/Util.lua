@@ -416,32 +416,62 @@ end
 -- per minute and a handler that only cares about one unit pays for every
 -- one before its early-return. Frame:RegisterUnitEvent restricts dispatch
 -- to the unit(s) we name, but AceEvent doesn't expose it.
--- RegisterUnitCastEvent wraps a private CreateFrame, registers it for the
--- named unit ("target" / "focus" / ...) only, and forwards into
--- module:handler so the call site reads like an Ace registration.
--- Handlers can drop their `if unit ~= <expected unit>` guard since the
--- dispatch frame already filtered upstream.
+-- NewUnitCastFilter builds ONE private frame per (module, unit), registered
+-- for that unit only ("target" / "focus" / ...) through RegisterUnitEvent, and
+-- forwards each event into the module method its route names, so handlers can
+-- drop their `if unit ~= <expected unit>` guard.
 --
--- The frame is RETURNED, not tracked here. AceAddon's UnregisterAllEvents
--- on the module will not release these private frames; OnDisable must
--- iterate the caller-owned table and run f:UnregisterAllEvents() on each.
+-- ITS ONE JOB IS THE UNIT_SPELLCAST_* FAMILY. events-frames-taint-§1 allows a
+-- private frame for unit filtering and forbids a general-purpose frame factory,
+-- so a route that is not UNIT_SPELLCAST_* is refused at construction. The route
+-- map is the frame's FIXED event set: Arm registers exactly those names and
+-- nothing is ever added later.
+--
+-- The frame is BUILT ONCE AND RE-ARMED. A disable/enable cycle, a per-unit
+-- toggle or a perf suspend/resume calls Disarm (UnregisterAllEvents) and later
+-- Arm again on the same frame; rebuilding it instead orphaned one frame per
+-- event per cycle (§1: the filter frame MUST be reused, not rebuilt). AceAddon's
+-- UnregisterAllEvents does not reach this frame, so the owner Disarms it on
+-- teardown. Arm and Disarm are built once per filter, so arming allocates
+-- nothing. Each name goes through NS.SafeRegisterUnitEvent, so one the client
+-- refuses (a future retirement, say) costs only its own route and lands once in
+-- NS.State.rejectedEvents.
 
---- Create a private dispatch frame that fires `module[handlerName](module, ...)`
---- only when `eventName` fires for `unit`. Caller stashes the returned frame and
---- runs UnregisterAllEvents in OnDisable (or on per-unit enable-toggle teardown).
---- @param module table     — AceEvent module (handler methods live on it)
---- @param unit string      — "target" / "focus"
---- @param eventName string — UNIT_SPELLCAST_START / _STOP / etc.
---- @param handlerName string — method on `module` to call on dispatch
---- @return Frame
-function Util.RegisterUnitCastEvent(module, unit, eventName, handlerName)
+local CAST_FAMILY = "UNIT_SPELLCAST_"
+
+--- Build the one cast-filter frame for (module, unit).
+--- @param module table  — AceEvent module (handler methods live on it)
+--- @param unit string   — "target" / "focus"
+--- @param routes table  — { [UNIT_SPELLCAST_* event] = handler method name };
+---                        file-scope in the caller, so it is the fixed set
+--- @return table { frame, armed, Arm(), Disarm() }
+function Util.NewUnitCastFilter(module, unit, routes)
+    for ev in pairs(routes) do
+        if type(ev) ~= "string" or ev:sub(1, #CAST_FAMILY) ~= CAST_FAMILY then
+            error("Util.NewUnitCastFilter: route " .. tostring(ev)
+                .. " is not a UNIT_SPELLCAST_* event", 2)
+        end
+    end
     local f = CreateFrame("Frame")
-    f:RegisterUnitEvent(eventName, unit)
     f:SetScript("OnEvent", function(_, event, evUnit, ...)
-        local fn = module[handlerName]
+        local name = routes[event]
+        local fn = name and module[name]
         if fn then fn(module, event, evUnit, ...) end
     end)
-    return f
+    local filter = { frame = f, armed = false }
+    function filter.Arm()
+        if filter.armed then return end
+        local rejected = NS.State and NS.State.rejectedEvents
+        for ev in pairs(routes) do
+            NS.SafeRegisterUnitEvent(f, ev, rejected, unit)
+        end
+        filter.armed = true
+    end
+    function filter.Disarm()
+        f:UnregisterAllEvents()
+        filter.armed = false
+    end
+    return filter
 end
 
 -- ---------------------------------------------------------------------------

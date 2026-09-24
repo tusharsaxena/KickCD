@@ -19,7 +19,7 @@ local addonName, NS = ...
 -- WHY THE SIGNAL IS WHERE IT IS. This addon has almost no hot path, and saying
 -- so plainly is more useful than a bucket list that reads 0.000 forever. There
 -- is exactly one true 60 Hz handler (the cast bar's OnUpdate, and it only runs
--- DURING a cast), no combat-log parsing, and the per-unit dispatch frames are
+-- DURING a cast), no combat-log parsing, and the per-unit cast-filter frames are
 -- already RegisterUnitEvent-filtered so a raid does not spray them.
 --
 -- The measurable cost lives in `iconApply`, and its rate is forced by an API

@@ -393,13 +393,17 @@ test("the show decisions consult the LATCH as step 0, at the source", function()
     assertTrue(beforeCall ~= nil, "sanity: the ladder answered before suspending")
 end)
 
-test("suspend releases the per-unit dispatch frames AceEvent cannot reach", function()
-    -- The 8-per-unit (IconGrid) and 10-per-unit (Castbar) UNIT_SPELLCAST_*
-    -- frames are created by Util.RegisterUnitCastEvent and stashed on the
-    -- instance; AceEvent's UnregisterAllEvents only knows its own table.
+test("suspend disarms the per-unit cast filters AceEvent cannot reach", function()
+    -- Each module holds ONE UNIT_SPELLCAST_* filter frame per unit, built by
+    -- Util.NewUnitCastFilter and kept on the instance as inst.castFilter;
+    -- AceEvent's UnregisterAllEvents only knows its own table.
     local inst = T.load(true, true)
     local NS2 = inst.NS
     local IconGrid = NS2:GetModule("IconGrid", true)
+    local Castbar = NS2:GetModule("Castbar", true)
+    local gridFilter = IconGrid:GetInstance("target").castFilter
+    local barFilter = Castbar:GetInstance("target").castFilter
+    assertTrue(gridFilter.armed and barFilter.armed, "sanity: both filters armed before Suspend")
 
     NS2.Perf.Suspend()
     assertEqual(NS2.Perf.suspended, true, "Suspend must set the flag the ladders read")
@@ -409,11 +413,16 @@ test("suspend releases the per-unit dispatch frames AceEvent cannot reach", func
     -- ReconcileUnits guard deleted — an unfalsifiable assertion, caught by
     -- mutating exactly that.
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "suspend must release every UNIT_SPELLCAST_START dispatch frame")
+        "suspend must release every UNIT_SPELLCAST_START registration")
+    assertFalse(gridFilter.armed or barFilter.armed, "suspend must disarm both filters")
 
     assertEqual(IconGrid.ShouldBeVisible({ unit = "target" }), false,
         "and the grid must refuse to show")
     NS2.Perf.Resume()
+    assertTrue(gridFilter.armed and barFilter.armed, "Resume must re-arm both filters")
+    assertTrue(rawequal(IconGrid:GetInstance("target").castFilter, gridFilter)
+        and rawequal(Castbar:GetInstance("target").castFilter, barFilter),
+        "Resume must re-arm the SAME filters, not build new ones")
 end)
 
 test("enabling a unit while suspended does not re-register its frames mid-capture", function()
@@ -422,7 +431,7 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
     -- finds every instance already reconciled and does nothing either way. The
     -- guard only earns its keep when the DESIRED state changes while suspended —
     -- a unit toggled ON — because ReconcileUnits would then call EnableUnit and
-    -- rebuild all 8 dispatch frames per unit in the middle of a capture.
+    -- re-arm the unit's cast filter in the middle of a capture.
     --
     -- red under: deleting `if NS.IsDown and NS.IsDown() then return end`
     -- from IconGrid:ReconcileUnits
@@ -436,19 +445,19 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
 
     NS2.Perf.Suspend()
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "suspend must leave no dispatch frame registered")
+        "suspend must leave no cast filter registered")
 
     -- Toggle focus ON while suspended. Without the guard this reaches EnableUnit.
     H.SetAndRefresh("units.focus.enabled", true)
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "a unit enabled while suspended must not register frames until Resume")
+        "a unit enabled while suspended must not arm its filter until Resume")
 
     -- Resume then honors the CURRENT desired state, focus included.
     NS2.Perf.Resume()
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
     assertTrue(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START") > 0,
-        "Resume must rebuild the dispatch frames from current state")
+        "Resume must re-arm the cast filters from current state")
 
     NS2.Perf.Resume()
     assertEqual(NS2.Perf.suspended, false, "Resume must clear the flag")

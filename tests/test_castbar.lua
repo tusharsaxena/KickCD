@@ -41,3 +41,42 @@ test("AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)", functi
     assertEqual(Castbar.AutoSizeLong(250, nil, nil, 99), 250)
     assertEqual(Castbar.AutoSizeLong(250, 1, 0, 99), 250)
 end)
+
+-- ── Empowered casts (UNIT_SPELLCAST_EMPOWER_*) ──────────────────────────────
+
+--- Fire `event` at every created frame registered for it on `unit`, the way the
+--- client dispatches a RegisterUnitEvent registration.
+local function fireUnitEvent(mocks, event, unit)
+    for _, f in ipairs(mocks.__frames) do
+        if f.__events[event] == unit then f:_fire(event, unit) end
+    end
+end
+
+test("UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it", function()
+    -- An Evoker's empowered cast reports through UnitChannelInfo and fires the
+    -- EMPOWER family, not CHANNEL_START; an unregistered EMPOWER_START leaves
+    -- the bar blank for a cast begun after targeting.
+    local inst = T.load(true, true)
+    local mocks, CB = inst.mocks, inst.NS:GetModule("Castbar")
+    local p = inst.NS.db.profile
+    p.locked, p.visibility, p.enabled = true, "always", true
+    mocks.UnitExists = function() return true end
+    mocks.UnitCanAttack = function() return true end
+    mocks.UnitCastingInfo = function() return nil end
+    mocks.UnitChannelInfo = function()
+        return "Fire Breath", "d", "tex", 1, 2, false, false, 357208
+    end
+    mocks.UnitChannelDuration = function()
+        return {
+            GetTotalDuration     = function() return 2 end,
+            GetElapsedDuration   = function() return 0 end,
+            GetRemainingDuration = function() return 2 end,
+        }
+    end
+    local bar = CB:GetInstance("target")
+    fireUnitEvent(mocks, "UNIT_SPELLCAST_EMPOWER_START", "target")
+    assertTrue(bar.current ~= nil, "EMPOWER_START must start the target bar")
+    assertTrue(bar.current.isChannel, "an empower reads through the channel shim")
+    fireUnitEvent(mocks, "UNIT_SPELLCAST_EMPOWER_STOP", "target")
+    assertTrue(bar.current == nil, "EMPOWER_STOP must stop the bar")
+end)

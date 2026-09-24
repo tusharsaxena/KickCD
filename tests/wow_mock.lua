@@ -378,7 +378,7 @@ function FRAME_METHODS._run(self, which, ...)
     for _, fn in ipairs(list) do fn(self, ...) end
 end
 --- Fire the OnEvent handler. Kept as the historical name because
---- Util.RegisterUnitCastEvent's suite drives its dispatch frame through it.
+--- Util.NewUnitCastFilter's suite drives its filter frame through it.
 function FRAME_METHODS._fire(self, ev, ...)
     if self._onevent then self._onevent(self, ev, ...) end
 end
@@ -548,7 +548,7 @@ local function build()
     -- this file's own model (see the header: CreateTexture returns a distinct
     -- object, which the kit deliberately does not adopt), so the kit's survey
     -- cannot see the two kinds that matter most here: core/State.lua's raw
-    -- PLAYER_REGEN_* listener and the per-unit UNIT_SPELLCAST_* dispatch frames.
+    -- PLAYER_REGEN_* listener and the per-unit UNIT_SPELLCAST_* cast-filter frames.
     --
     -- This is the union, in the kit's own row shape, so a suite asks ONE
     -- question. It removes on unregister in both halves -- the kit's registry
@@ -862,8 +862,8 @@ local function build()
     end
     --- How many created frames are CURRENTLY registered for `event`.
     --- Recorded rather than no-opped because a test needs to observe it: the
-    --- per-unit UNIT_SPELLCAST_* dispatch frames are the thing a perf suspend
-    --- has to release, and "did they come back?" is only answerable by counting.
+    --- per-unit UNIT_SPELLCAST_* cast filters are the thing a perf suspend
+    --- has to disarm, and "did they come back?" is only answerable by counting.
     mocks.__countFramesFor = function(event)
         local n = 0
         for _, f in ipairs(created) do

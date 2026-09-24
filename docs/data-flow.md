@@ -84,7 +84,7 @@ shouldBeVisible(unit) / isVisible(unit)
 
 `NS.State.IsHostileUnitCasting` is a pure truthy check (safe even when `name` / `texture` come back secret-tainted in combat) plus a `UnitCanAttack` filter. `NS.State.ApplyInterruptibleAlpha` reads the raw `notInterruptible` straight off `UnitCastingInfo` / `UnitChannelInfo` and hands it to `Frame:SetAlphaFromBoolean` — the **one** C-side method that accepts the secret-tainted bool form without erroring. Both helpers live in `core/State.lua` (not `core/Compat.lua`) because they're feature decisions about visibility, not API shape normalization.
 
-So uninterruptible casts run the full UI lifecycle (Show / glow start / cast bar drawn) but at `alpha = 0`, with the visual filter applied entirely C-side. The `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events (unit-filtered per instance via `Util.RegisterUnitCastEvent`) drive a re-application of the alpha mask mid-cast.
+So uninterruptible casts run the full UI lifecycle (Show / glow start / cast bar drawn) but at `alpha = 0`, with the visual filter applied entirely C-side. The `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` events (unit-filtered per instance on its `Util.NewUnitCastFilter` frame) drive a re-application of the alpha mask mid-cast.
 
 Per-icon ready glow follows the same pattern per instance: `Icon:UpdateGlow` starts the LibCustomGlow effect for any hostile cast on that instance's unit under the `target_casting_interruptible` trigger and then drives the glow frame's alpha through `ApplyInterruptibleAlpha`. Each `IconGrid` instance's `RefreshAllGlows` re-runs the per-icon decision on `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` and every cast event so the glow gate stays in sync.
 

@@ -94,7 +94,7 @@ local function eachModule(reverse, fn)
     end
 end
 
---- Stand the addon down: every event, message and per-unit dispatch frame it
+--- Stand the addon down: every event, message and per-unit cast filter it
 --- owns actually UNREGISTERED, every timer and ticker canceled, every frame
 --- hidden through the show ladder rather than imperatively.
 ---

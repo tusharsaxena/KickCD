@@ -7,8 +7,8 @@
 -- through SavedVariables, so "we saved the position" and "we saved garbage"
 -- have to be distinguishable — against a no-op stub they are not.
 local T = _G.KICKCD_TEST
-local test, assertEqual, assertTrue, assertNil =
-    T.test, T.assertEqual, T.assertTrue, T.assertNil
+local test, assertEqual, assertTrue, assertFalse, assertNil =
+    T.test, T.assertEqual, T.assertTrue, T.assertFalse, T.assertNil
 
 local inst  = T.load(true)
 local NS    = inst.NS
@@ -248,10 +248,16 @@ end)
 -- empty body. No call site in the addon prints with no arguments; the change is
 -- one trailing space on a line nothing emits.
 
--- ── RegisterUnitCastEvent ───────────────────────────────────────────────────
+-- ── NewUnitCastFilter ───────────────────────────────────────────────────────
+--
+-- One filter frame per (module, unit), built once and armed/disarmed across
+-- every enable cycle (events-frames-taint-§1: the unit-filter carve-out is
+-- reused, never rebuilt). The route map is the frame's fixed event set.
 
-test("RegisterUnitCastEvent forwards the event into the module's handler", function()
-    -- The dispatch frame exists so handlers can drop their `if unit ~= ...`
+local ONE_ROUTE = { UNIT_SPELLCAST_START = "OnCast" }
+
+test("NewUnitCastFilter forwards the event into the routed handler", function()
+    -- The filter frame exists so handlers can drop their `if unit ~= ...`
     -- guard; that only holds if the forward actually reaches the method.
     local seen = {}
     local module = {
@@ -259,25 +265,94 @@ test("RegisterUnitCastEvent forwards the event into the module's handler", funct
             seen = { event = event, unit = unit, extra = extra }
         end,
     }
-    local f = Util.RegisterUnitCastEvent(module, "focus", "UNIT_SPELLCAST_START", "OnCast")
-    f:_fire("UNIT_SPELLCAST_START", "focus", "payload")
+    local filter = Util.NewUnitCastFilter(module, "focus", ONE_ROUTE)
+    filter.Arm()
+    filter.frame:_fire("UNIT_SPELLCAST_START", "focus", "payload")
     assertEqual(seen.event, "UNIT_SPELLCAST_START")
     assertEqual(seen.unit, "focus")
     assertEqual(seen.extra, "payload")
 end)
 
-test("RegisterUnitCastEvent tolerates a handler that isn't defined yet", function()
-    -- Modules wire their dispatch frames in OnEnable; a typo'd or
-    -- not-yet-defined handler must not error inside the event dispatch.
-    local f = Util.RegisterUnitCastEvent({}, "target", "UNIT_SPELLCAST_STOP", "NoSuchHandler")
-    f:_fire("UNIT_SPELLCAST_STOP", "target")
+test("NewUnitCastFilter tolerates a handler that isn't defined yet", function()
+    -- A typo'd or not-yet-defined handler must not error inside the dispatch.
+    local filter = Util.NewUnitCastFilter({}, "target",
+        { UNIT_SPELLCAST_STOP = "NoSuchHandler" })
+    filter.Arm()
+    filter.frame:_fire("UNIT_SPELLCAST_STOP", "target")
 end)
 
-test("RegisterUnitCastEvent returns a frame the caller can unregister", function()
-    -- AceAddon's UnregisterAllEvents won't reach these private frames, so
-    -- OnDisable has to do it — which requires the handle back.
-    local f = Util.RegisterUnitCastEvent({}, "target", "UNIT_SPELLCAST_START", "X")
-    assertTrue(f:IsEventRegistered("UNIT_SPELLCAST_START"))
-    f:UnregisterAllEvents()
-    assertTrue(f:IsEventRegistered("UNIT_SPELLCAST_START") == false)
+test("NewUnitCastFilter Disarm empties the frame's registrations", function()
+    -- AceAddon's UnregisterAllEvents won't reach this private frame, so the
+    -- module's teardown has to — and the frame itself is kept for the next Arm.
+    local filter = Util.NewUnitCastFilter({}, "target", ONE_ROUTE)
+    assertFalse(filter.armed, "a new filter starts disarmed")
+    assertNil(next(filter.frame.__events), "and registers nothing until armed")
+    filter.Arm()
+    assertTrue(filter.armed)
+    assertEqual(filter.frame.__events.UNIT_SPELLCAST_START, "target",
+        "registered for the named unit only")
+    local frame = filter.frame
+    filter.Disarm()
+    assertFalse(filter.armed)
+    assertNil(next(filter.frame.__events), "Disarm must leave nothing registered")
+    assertTrue(rawequal(filter.frame, frame), "the frame survives a Disarm")
+end)
+
+test("Arm twice registers each event once", function()
+    -- Arm is idempotent: a second Arm on an armed filter registers nothing.
+    local filter = Util.NewUnitCastFilter({}, "target", {
+        UNIT_SPELLCAST_START = "A", UNIT_SPELLCAST_STOP = "B",
+    })
+    local calls = {}
+    local real = filter.frame.RegisterUnitEvent
+    filter.frame.RegisterUnitEvent = function(f, ev, ...)
+        calls[ev] = (calls[ev] or 0) + 1
+        return real(f, ev, ...)
+    end
+    filter.Arm()
+    filter.Arm()
+    assertEqual(calls.UNIT_SPELLCAST_START, 1)
+    assertEqual(calls.UNIT_SPELLCAST_STOP, 1)
+    -- A Disarm/Arm cycle re-arms the SAME fixed set on the SAME frame.
+    filter.Disarm()
+    filter.Arm()
+    assertEqual(calls.UNIT_SPELLCAST_START, 2)
+    assertEqual(calls.UNIT_SPELLCAST_STOP, 2)
+end)
+
+test("a non-UNIT_SPELLCAST route is refused", function()
+    -- The helper's one job is the cast family; a general private-frame
+    -- factory is what events-frames-taint-§1 forbids.
+    local before = #mocks.__frames
+    T.assertErrorMatches(function()
+        Util.NewUnitCastFilter({}, "target", {
+            UNIT_SPELLCAST_START = "A", UNIT_AURA = "B",
+        })
+    end, "UNIT_SPELLCAST_")
+    assertEqual(#mocks.__frames, before, "a refused route map must not build a frame")
+end)
+
+test("a bad EMPOWER name is rejected and the other routes still arm", function()
+    -- One name the client refuses costs only its own row, and lands once in
+    -- NS.State.rejectedEvents.
+    local BAD = "UNIT_SPELLCAST_EMPOWER_START"
+    local savedBad = mocks.__badEvents
+    local savedRejected = NS.State.rejectedEvents
+    mocks.__badEvents = { [BAD] = true }
+    NS.State.rejectedEvents = {}
+    local ok, err = pcall(function()
+        local filter = Util.NewUnitCastFilter({}, "target", {
+            [BAD] = "A", UNIT_SPELLCAST_STOP = "B",
+        })
+        filter.Arm()
+        assertTrue(filter.armed)
+        assertNil(filter.frame.__events[BAD], "the refused name is not registered")
+        assertEqual(filter.frame.__events.UNIT_SPELLCAST_STOP, "target",
+            "the other route still armed")
+        assertEqual(#NS.State.rejectedEvents, 1)
+        assertEqual(NS.State.rejectedEvents[1], BAD)
+    end)
+    mocks.__badEvents = savedBad
+    NS.State.rejectedEvents = savedRejected
+    if not ok then error(err, 0) end
 end)

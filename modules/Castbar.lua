@@ -24,11 +24,12 @@
 -- Drag-lock follows db.profile.locked, the same global lock the icon
 -- grid honors.
 --
--- Listens to the UNIT_SPELLCAST_* family per-instance via
--- Util.RegisterUnitCastEvent (dispatch frame fires only for the instance's
--- unit; the handler resolves instances[unit]): START/CHANNEL_START begin a
--- cast/channel, STOP/FAILED/INTERRUPTED/CHANNEL_STOP hide, DELAYED/CHANNEL_UPDATE
--- re-evaluate, INTERRUPTIBLE/_NOT_INTERRUPTIBLE re-apply per-state visuals.
+-- Listens to the UNIT_SPELLCAST_* family per-instance via one
+-- Util.NewUnitCastFilter frame (fires only for the instance's unit; the handler
+-- resolves instances[unit]): START/CHANNEL_START/EMPOWER_START begin a
+-- cast/channel, STOP/FAILED/INTERRUPTED/CHANNEL_STOP/EMPOWER_STOP hide,
+-- DELAYED/CHANNEL_UPDATE/EMPOWER_UPDATE re-evaluate,
+-- INTERRUPTIBLE/_NOT_INTERRUPTIBLE re-apply per-state visuals.
 -- The global unit-change events register at module level (plain RegisterEvent),
 -- each refreshing only its own unit's instance if live:
 --   PLAYER_TARGET_CHANGED        -> re-evaluate the target bar
@@ -93,7 +94,9 @@ local L       = NS.L
 --                         prefer these over the public accessors. Fallback to
 --                         IconGrid:GetGridFrame(unit) / :GetPrimaryIcon(unit)
 --                         covers the first tick after enable / empty payloads.
---   inst.eventFrames    — private UNIT_SPELLCAST_* dispatch frames (teardown).
+--   inst.castFilter     — the ONE private UNIT_SPELLCAST_* filter frame
+--                         (Util.NewUnitCastFilter): built on first enable,
+--                         armed / disarmed thereafter, never rebuilt.
 --   inst.onUpdateScript — THIS unit's OnUpdate handler, built once in
 --                         EnsureFrame and installed by Start / torn down by
 --                         Stop. It has to be per-instance rather than one
@@ -104,13 +107,34 @@ local L       = NS.L
 --                         M4-22 — see tests/perf.lua's castStart scenario.
 local instances = {}   -- [unit] = instance
 
+-- The cast filter's FIXED event set -> handler. FILE SCOPE so an enable
+-- allocates nothing (anti-patterns #43). EMPOWER_* is an Evoker's empowered
+-- cast: the client reports it through UnitChannelInfo (so OnChannelStart's
+-- Compat.GetChannelInfo reads it, and OnCastDelayed's GetCastingInfo falls
+-- through to the channel shim) but fires its own start/update/stop, not CHANNEL_*.
+local CASTBAR_CAST_ROUTES = {
+    UNIT_SPELLCAST_START             = "OnCastStart",
+    UNIT_SPELLCAST_STOP              = "OnCastStop",
+    UNIT_SPELLCAST_FAILED            = "OnCastStop",
+    UNIT_SPELLCAST_INTERRUPTED       = "OnCastStop",
+    UNIT_SPELLCAST_DELAYED           = "OnCastDelayed",
+    UNIT_SPELLCAST_CHANNEL_START     = "OnChannelStart",
+    UNIT_SPELLCAST_CHANNEL_STOP      = "OnCastStop",
+    UNIT_SPELLCAST_CHANNEL_UPDATE    = "OnCastDelayed",
+    UNIT_SPELLCAST_INTERRUPTIBLE     = "OnInterruptibilityChanged",
+    UNIT_SPELLCAST_NOT_INTERRUPTIBLE = "OnInterruptibilityChanged",
+    UNIT_SPELLCAST_EMPOWER_START     = "OnChannelStart",
+    UNIT_SPELLCAST_EMPOWER_UPDATE    = "OnCastDelayed",
+    UNIT_SPELLCAST_EMPOWER_STOP      = "OnCastStop",
+}
+
 local function newInstance(unit)
     return {
         unit           = unit,
         frame          = nil,
         current        = nil,
         lastGridLayout = { gridFrame = nil, primaryIcon = nil },
-        eventFrames    = {},
+        castFilter     = nil,
         enabled        = false,
         onUpdateScript = nil,
     }
@@ -993,7 +1017,7 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Bring a unit's instance online: build + skin its frame, apply the lock,
--- register the per-instance UNIT_SPELLCAST_* frames, and snap to any live cast.
+-- arm the per-instance UNIT_SPELLCAST_* filter, and snap to any live cast.
 function Castbar:EnableUnit(unit)
     local inst = self:GetInstance(unit)
     self:EnsureFrame(inst)
@@ -1003,32 +1027,16 @@ function Castbar:EnableUnit(unit)
     self:Reskin(inst, true)
     self:ApplyLock(inst)
 
-    -- UNIT_SPELLCAST_* registrations go through Util.RegisterUnitCastEvent so
-    -- the dispatch frame fires only when the event unit IS this instance's unit
-    -- (vanilla RegisterEvent would run the handler for every party/raid/nameplate
-    -- cast and early-return — thousands of no-op dispatches per minute in a raid).
-    -- INTERRUPTIBLE / NOT_INTERRUPTIBLE are dynamic mid-cast events; the initial
-    -- value still comes from UnitCastingInfo.notInterruptible captured in
-    -- Compat.GetCastingInfo. The returned frames are stashed on the instance so
-    -- DisableUnit / OnDisable can release them — AceEvent's UnregisterAllEvents
-    -- only knows about its own table, not these frames.
-    local Util = NS.Util
-    local castEvents = {
-        { "UNIT_SPELLCAST_START",             "OnCastStart"               },
-        { "UNIT_SPELLCAST_STOP",              "OnCastStop"                },
-        { "UNIT_SPELLCAST_FAILED",            "OnCastStop"                },
-        { "UNIT_SPELLCAST_INTERRUPTED",       "OnCastStop"                },
-        { "UNIT_SPELLCAST_DELAYED",           "OnCastDelayed"             },
-        { "UNIT_SPELLCAST_CHANNEL_START",     "OnChannelStart"            },
-        { "UNIT_SPELLCAST_CHANNEL_STOP",      "OnCastStop"                },
-        { "UNIT_SPELLCAST_CHANNEL_UPDATE",    "OnCastDelayed"             },
-        { "UNIT_SPELLCAST_INTERRUPTIBLE",     "OnInterruptibilityChanged" },
-        { "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "OnInterruptibilityChanged" },
-    }
-    for _, e in ipairs(castEvents) do
-        inst.eventFrames[#inst.eventFrames + 1] =
-            Util.RegisterUnitCastEvent(self, unit, e[1], e[2])
-    end
+    -- UNIT_SPELLCAST_* registrations ride ONE filter frame per unit
+    -- (Util.NewUnitCastFilter) that fires only when the event unit IS this
+    -- instance's unit (vanilla RegisterEvent would run the handler for every
+    -- party/raid/nameplate cast and early-return). INTERRUPTIBLE /
+    -- NOT_INTERRUPTIBLE are dynamic mid-cast events; the initial value still
+    -- comes from Compat.GetCastingInfo. Built once, re-armed on every later
+    -- enable (events-frames-taint-§1); DisableUnit / Suspend disarm it.
+    inst.castFilter = inst.castFilter
+        or NS.Util.NewUnitCastFilter(self, unit, CASTBAR_CAST_ROUTES)
+    inst.castFilter.Arm()
     inst.enabled = true
 
     -- Snap to the unit's current state on enable in case we logged in staring
@@ -1036,13 +1044,12 @@ function Castbar:EnableUnit(unit)
     self:Reevaluate(inst)
 end
 
--- Tear a unit's instance down: release its dispatch frames, stop any active
+-- Tear a unit's instance down: disarm its cast filter, stop any active
 -- cast, hide its bar. Used by OnDisable and (Phase 3) runtime enable-gating.
 function Castbar:DisableUnit(unit)
     local inst = instances[unit]
     if not inst then return end
-    for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
-    inst.eventFrames = {}
+    if inst.castFilter then inst.castFilter.Disarm() end
     self:Stop(inst)
     if inst.frame then inst.frame:Hide() end
     inst.enabled = false
@@ -1059,7 +1066,7 @@ end
 --- mismatch.
 function Castbar:ReconcileUnits()
     -- While the latch is down the desired state is "nothing runs"; without this
-    -- the next CONFIG_CHANGED would re-create all 10 dispatch frames per unit on
+    -- the next CONFIG_CHANGED would re-arm every unit's cast filter on
     -- an addon that is off -- and a settings change is exactly what a player does
     -- while it is off.
     if NS.IsDown and NS.IsDown() then return end
@@ -1080,7 +1087,7 @@ end
 local LIFECYCLE_EVENTS = {
     { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
     -- The two GLOBAL unit-change events register at MODULE level via plain
-    -- RegisterEvent (NOT RegisterUnitCastEvent, which is for UNIT_SPELLCAST_*).
+    -- RegisterEvent (NOT NewUnitCastFilter, which is for UNIT_SPELLCAST_*).
     -- Each handler re-evaluates only its own unit's instance if live.
     { "PLAYER_TARGET_CHANGED",         "OnTargetChanged" },
     { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
@@ -1099,7 +1106,7 @@ end
 ---
 --- `inst.enabled` is left alone (it is the user's setting) and Resume rebuilds
 --- from the CURRENT set. Everything that costs anything goes: the module's game
---- events, its bus subscriptions, the private per-unit dispatch frames, and any
+--- events, its bus subscriptions, the private per-unit cast filters, and any
 --- in-flight cast animation -- Stop() nils the per-frame OnUpdate, which is this
 --- addon's only true 60 Hz handler and therefore the thing most worth silencing.
 ---
@@ -1112,8 +1119,7 @@ function Castbar:Suspend()
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
         if inst then
-            for _, f in ipairs(inst.eventFrames or {}) do f:UnregisterAllEvents() end
-            inst.eventFrames = {}
+            if inst.castFilter then inst.castFilter.Disarm() end
             self:Stop(inst)
             if inst.frame then inst.frame:Hide() end
         end
@@ -1135,11 +1141,11 @@ function Castbar:Resume()
     self:RegisterMessage(NS.MSG.COMBAT_STATE,    "OnCombatStateChanged")
 
     self:RegisterLifecycleEvents()
-    -- Suspend left `enabled` true while releasing the frames, so ReconcileUnits
-    -- would consider each instance already reconciled and never rebuild them.
+    -- Suspend left `enabled` true while disarming the filters, so ReconcileUnits
+    -- would consider each instance already reconciled and never re-arm them.
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
-        if inst and inst.enabled and #(inst.eventFrames or {}) == 0 then
+        if inst and inst.enabled and not (inst.castFilter and inst.castFilter.armed) then
             inst.enabled = false
         end
     end
@@ -1206,7 +1212,7 @@ function Castbar:OnPlayerEnteringWorld()
 end
 
 -- Cast / channel / interruptibility handlers receive (self, event, unit) from
--- the per-instance dispatch frame (already filtered to the instance's unit).
+-- the per-instance cast filter (already filtered to the instance's unit).
 -- Each resolves instances[unit]; a dispatch for a dead instance is a no-op.
 
 function Castbar:OnCastStart(_event, unit)

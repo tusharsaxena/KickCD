@@ -112,6 +112,10 @@ When `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` fires m
 
 The invariant matters only as a reminder: don't optimize the curve into a Lua-side `if not nint then ... else ... end` that "happens to work because the value's plain post-flip" — the very next `Start(rec)` puts a fresh secret-tainted bool back into the field before the next event arrives.
 
+## Empowered casts (`UNIT_SPELLCAST_EMPOWER_*`)
+
+An Evoker's empowered cast (Fire Breath, Eternity Surge, …) is reported by `UnitChannelInfo`, not `UnitCastingInfo`, but it does **not** fire `UNIT_SPELLCAST_CHANNEL_START` / `_STOP`: it fires `UNIT_SPELLCAST_EMPOWER_START` / `_UPDATE` / `_STOP`. A listener registered only for the cast and channel families misses an empower begun after targeting (the bar stays blank and the `*_casting` visibility and glow lag until the next unrelated refresh) and never clears on its stop. Both cast filters therefore carry the three EMPOWER events: in `Castbar` they route to `OnChannelStart` / `OnCastDelayed` / `OnCastStop`, in `IconGrid` to `OnUnitCastEvent`. Each name goes through `NS.SafeRegisterUnitEvent`, so a client that ever retires one loses only that route. Evokers empower in PvP; whether any NPC does is unconfirmed, so the in-client check is smoke C-03 step 4.
+
 ## Frame mixin pattern
 
 **Never `setmetatable(frame, t)` on a Blizzard widget.** Frame methods (`ClearAllPoints`, `Show`, `SetAlpha`, …) live on the C-side metatable, and replacing it nils them.

@@ -32,7 +32,7 @@ return is exactly what a draw gate does. `mocks.__registrationSet()` (`tests/wow
 union of the kit's `__registrations()` — the AceEvent events, the bus messages and the buckets — and
 this addon's own frame registry, because KickCD's frame model is the host mock's rather than the
 kit's and the two kinds that matter most here are frames: `core/State.lua`'s raw `PLAYER_REGEN_*`
-listener and the per-unit `UNIT_SPELLCAST_*` dispatch frames. Both halves **remove on unregister**,
+listener and the per-unit `UNIT_SPELLCAST_*` cast-filter frames. Both halves **remove on unregister**,
 which is what makes "the set is empty" falsifiable in the useful direction.
 
 **Two things in it are easy to write unfalsifiably**, and both are commented in the file:

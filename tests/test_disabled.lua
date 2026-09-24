@@ -298,7 +298,7 @@ end)
 test("DISABLED: a settings change does not bring it back", function()
     -- The other half of "enforced at the source". A player who turns the addon off then goes and
     -- changes something is the ordinary case, and a CONFIG_CHANGED that reached EnableUnit would
-    -- rebuild every per-unit dispatch frame on an addon that is supposed to be inert.
+    -- re-arm every per-unit cast filter on an addon that is supposed to be inert.
     --
     -- red under: restore `if NS.Perf and NS.Perf.suspended then return end` to ReconcileUnits --
     -- the perf hold is not taken here, so that guard reads false and the frames come back
@@ -466,6 +466,38 @@ test("RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot", function
     local withFocus = select(2, registrations(inst))
     assertTrue(withFocus > withoutFocus,
         "the rebuilt set must reflect the setting as it is NOW: " .. withoutFocus .. " -> " .. withFocus)
+end)
+
+test("two disable/enable cycles create no frames", function()
+    -- events-frames-taint-§1: the per-(module, unit) cast filter frame is RE-ARMED across a
+    -- disable/enable cycle, never rebuilt. The registration set above cannot see this -- an orphaned
+    -- frame with its events unregistered is invisible to it -- so the frame registry is counted.
+    --
+    -- red under: an EnableUnit that builds fresh dispatch frames per enable (+36 frames per cycle
+    -- before KC-05: 8 IconGrid + 10 Castbar per unit, two units)
+    local inst = baseline()
+    local function slashCycle()
+        say(inst, function() inst.NS:OnSlashCommand("disable") end)
+        inst.mocks.__flushTimers()
+        say(inst, function() inst.NS:OnSlashCommand("enable") end)
+        inst.mocks.__flushTimers()
+    end
+    local function perfCycle()
+        inst.NS.Perf.Suspend()
+        inst.NS.Perf.Resume()
+        inst.mocks.__flushTimers()
+    end
+    -- One warm-up of each first: the first perf arm lazily builds the debug window (nine frames,
+    -- once per session), which is a one-time cost and not the per-cycle leak this case is about.
+    slashCycle()
+    perfCycle()
+    local before = #inst.mocks.__frames
+    for _ = 1, 2 do slashCycle() end
+    for _ = 1, 2 do perfCycle() end
+    assertEqual(#inst.mocks.__frames - before, 0,
+        "a disable/enable or suspend/resume cycle created frames")
+    assertTrue(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START") > 0,
+        "sanity: the cast filters are armed again after the last cycle")
 end)
 
 -- ---------------------------------------------------------------------------
