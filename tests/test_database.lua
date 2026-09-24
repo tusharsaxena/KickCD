@@ -310,3 +310,23 @@ test("the font-flag migration is idempotent and survives a half-built profile", 
     ns.Database:MigrateFontFlags(ns.db)
     assertEqual(ns.db.profile.units.target.icons.cooldownTextFlags, "")
 end)
+
+-- KICKCD-R-11. tests/run.lua used to pcall OnInitialize and drop the result, so a
+-- load whose init raised came back looking exactly like one that built a db, and
+-- every case built on it measured the half-initialized addon instead of failing.
+local function raisingAceDB(mocks)
+    mocks.__libs["AceDB-3.0"].New = function() error("boom") end
+end
+
+test("a raising OnInitialize fails T.load instead of passing silently", function()
+    -- red under: tests/run.lua pcall-swallowing OnInitialize
+    T.assertErrorMatches(function() T.load(true, false, raisingAceDB) end,
+        "OnInitialize raised: ", "an init raise must reach the caller")
+end)
+
+test("allowInitError keeps the OnInitialize raise on the instance for the case to assert", function()
+    -- red under: tests/run.lua pcall-swallowing OnInitialize (no initError is kept)
+    local inst = T.load(true, false, raisingAceDB, { allowInitError = true })
+    assertTrue(type(inst.initError) == "string" and inst.initError:find("boom", 1, true) ~= nil,
+        "inst.initError must carry the raise, got " .. tostring(inst.initError))
+end)

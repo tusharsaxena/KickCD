@@ -78,8 +78,10 @@ end
 ---        load list. Pass `{}` to load the addon with LibKa0s ABSENT — the
 ---        degraded scenario debug-logging-§7 and testing-§8 require to be
 ---        exercised by a real load rather than by hand-stubbing the member
----        under test.
---- @return table inst  { NS, mocks }
+---        under test. `{ allowInitError = true }` lets a raising OnInitialize
+---        return instead of failing the load; the raise is then on
+---        `inst.initError` for the case to assert.
+--- @return table inst  { NS, mocks, initError }
 ---
 --- Isolation is per-instance and comes from the mock, not from the environment: the kit's loader
 --- resolves every WoW global through THIS instance's `mocks` table, and every symbol the addon
@@ -102,18 +104,33 @@ local function loadInstance(initDB, enable, mutate, opts)
     local NS = {}
     Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
     Loader.loadAll(rooted(TOC_FILES), NS, mocks)
-    if initDB and NS.OnInitialize then pcall(NS.OnInitialize, NS) end
-    -- Enable is NOT pcall-wrapped on purpose: a lifecycle throw (e.g. the
-    -- IconGrid.Layout clobber) must surface to the calling test() so it's
-    -- reported as a failure, not silently swallowed like OnInitialize.
+    -- OnInitialize is pcall'd only so the raise can be KEPT, never dropped (KICKCD-R-11). It used
+    -- to be pcall'd and discarded, so a load whose init raised came back looking exactly like one
+    -- that built a db: every case on it measured a half-initialized addon, and the shared instance
+    -- below could fail to build without the run saying so. Now the raise fails the load, and so
+    -- the whole run when it is the shared instance, unless the case opts in with
+    -- `opts.allowInitError` and asserts `inst.initError` itself. Level 0: the message already
+    -- carries the position OnInitialize raised at.
+    local initError
+    if initDB and NS.OnInitialize then
+        local ok, err = pcall(NS.OnInitialize, NS)
+        if not ok then
+            initError = tostring(err)
+            if not (opts and opts.allowInitError) then
+                error("OnInitialize raised: " .. initError, 0)
+            end
+        end
+    end
+    -- Enable is NOT pcall-wrapped at all: a lifecycle throw (e.g. the IconGrid.Layout clobber)
+    -- surfaces to the calling test() as it happens, with nothing to keep.
     if enable and NS.__enableAll then
         NS:__enableAll()
         if mocks.__flushTimers then mocks.__flushTimers() end
     end
-    return { NS = NS, mocks = mocks }
+    return { NS = NS, mocks = mocks, initError = initError }
 end
 
--- Shared instance most suites use (DB built once).
+-- Shared instance most suites use (DB built once). A raising OnInitialize fails the whole run here.
 local shared = loadInstance(true)
 
 -- ---------------------------------------------------------------------------

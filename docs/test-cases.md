@@ -242,7 +242,7 @@ badge and any count quoted in the docs must agree with it.
 - a single-subject tab draws NO subsection heading
 - no page draws a hand-rolled heading in place of H.Section
 
-### test_database.lua (23)
+### test_database.lua (25)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -267,6 +267,8 @@ badge and any count quoted in the docs must agree with it.
 - a stored NONE font flag reads back as the empty string after migration
 - the font-flag migration leaves every other token exactly as it found it
 - the font-flag migration is idempotent and survives a half-built profile
+- a raising OnInitialize fails T.load instead of passing silently
+- allowInitError keeps the OnInitialize raise on the instance for the case to assert
 
 ### test_color_shape.lua (21)
 
@@ -1022,8 +1024,8 @@ badge and any count quoted in the docs must agree with it.
 
 ### test_prose.lua (15)
 
-- prose: no authored file carries a British spelling from localization-5's published list
-- prose: the gate carries localization-5's two lists whole, and nothing of its own
+- prose: no authored file carries a British spelling from localization-§5's published list
+- prose: the gate carries localization-§5's two lists whole, and nothing of its own
 - prose self-test: the carve-out suppresses the named generated folder, and only it
 - prose self-test: a path the carve-out does not name is not covered by one that looks like it
 - prose self-test: a carve-out that is not a set of path strings is a failure, not a silence
@@ -1225,13 +1227,13 @@ badge and any count quoted in the docs must agree with it.
 ### test_eol.lua (2)
 
 - eol: every tracked file carries the terminator .gitattributes declares for it
-- eol: .gitattributes is line-endings-5's canonical body for this repo kind
+- eol: .gitattributes is line-endings-§5's canonical body for this repo kind
 
 ### test_layout_cap.lua (13)
 
 - layoutcap: every authored file over the 1500-line cap is named in the census
 - layoutcap: no census row outlives the breach it records
-- layoutcap: every over-cap census row carries one of layout-1's three terminal states
+- layoutcap: every over-cap census row carries one of layout-§1's three terminal states
 - layoutcap: the census and the exempt set agree about which paths were exempted
 - layoutcap: an empty census is written as a result rather than left standing empty
 - layoutcap self-test: the parser reads the census nested under the register, and stops there
@@ -1257,7 +1259,7 @@ badge and any count quoted in the docs must agree with it.
 | test_locale.lua | 15 |
 | test_units.lua | 25 |
 | test_schema.lua | 36 |
-| test_database.lua | 23 |
+| test_database.lua | 25 |
 | test_color_shape.lua | 21 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
@@ -1309,4 +1311,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1051** |
+| **Total** | **1053** |
