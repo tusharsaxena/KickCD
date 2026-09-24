@@ -51,6 +51,8 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `Combat` | `core/State.lua` | Entering and leaving combat |
 | `Open` | `core/KickCD.lua` | The settings panel opening |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
+| `Launcher` | `core/LauncherSetup.lua` (forwarded from the library's launcher) | Launcher registration (or the missing library that skipped it) and the minimap button shown or hidden |
+| `Cfg` | `settings/OptionsSetup.lua` (forwarded from the library's options panel) | The settings panel opening and registering, including an open refused or a register parked in combat |
 
 A new tag is a one-word string at the call site. Add its row here in the same change.
 
