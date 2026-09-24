@@ -242,7 +242,7 @@ test("every deviation id the register cites is assigned by a bundle in docs/audi
 end)
 
 -- ---------------------------------------------------------------------------------------------
--- KickCD.toc's load-bearing positions for the module siblings (toc-file-§2).
+-- KickCD.toc's load-bearing positions for the module siblings (toc-file-§5).
 --
 -- A sibling file that runs `NS:GetModule("X")` at FILE scope raises during load if X's parent has
 -- not registered yet: AceAddon's GetModule is not silent. So the sibling's TOC position is
