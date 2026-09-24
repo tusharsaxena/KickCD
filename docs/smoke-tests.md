@@ -295,6 +295,9 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - With the Spells page closed, switch spec, then open it: the Add box accepts only the new spec's Cooldown Manager spells.
 - `/kcd spells reset CLASS SPEC` for one spec; verify it rebuilds *only* that spec.
 - `/kcd spells resetall` — verify it wipes *every* spec.
+- On the Spells page, drag row 3 above row 1; `/reload`. Start another drag and press Esc mid-drag.
+- Hover a spell name, a category dropdown and a row's remove button.
+- Close Settings, open another Ka0s addon's panel (e.g. `/at config`) and hover and click its labels.
 
 **Pass.**
 - The active-spec write paths — the page's Add box and `/kcd spells add` alike — validate against the Cooldown Manager spell-set: adding a spell that isn't tracked there prints `Spell <name> (#<id>) is not tracked by the Blizzard Cooldown Manager for this specialization.` and is rejected.
@@ -306,6 +309,9 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
+- The drag's drop line draws in the list color, the new order survives `/reload`, and Esc mid-drag leaves no stray line (LibKa0s-Widgets minor 10).
+- Hovering a spell name shows the spell tooltip; hovering a category dropdown shows the **Category** tooltip. The remove button draws the red catalog close mark and reads as "remove".
+- Another addon's panel shows no KickCD spell tooltip on its labels, and its clicks land: nothing on the Spells page hooks a pooled AceGUI frame.
 - On a character whose race has a racial cast-stopper (Tauren, Highmountain Tauren, Pandaren, Kul Tiran, Nightborne), resetting one of **your own class's** specs, from the Defaults button or `/kcd spells reset`, keeps the racial as the list's last row. Resetting another class's spec never adds it.
 
 ### 11. Settings panel parity

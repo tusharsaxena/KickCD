@@ -450,11 +450,6 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
 -- AceGUI rows
 -- ---------------------------------------------------------------------------
 
--- Builds a row action button (Move up / Move down / Remove) as an AceGUI Icon
--- widget so the row matches ConsumableMaster's iconography rather than the
--- old "Up" / "Dn" / "X" text labels. opts.image is a texture path; opts.atlas
--- swaps in a Blizzard atlas via the inner texture's SetAtlas — needed for
--- transmog-icon-remove (the red "no entry" glyph) which has no plain path.
 --- Line an Icon's ART up with the other controls in its row, not its FRAME.
 ---
 --- AceGUI's Flow stacks a row's children on one alignment line: each child is placed so that
@@ -477,16 +472,26 @@ local function alignIconArt(widget, artHeight)
     return widget
 end
 
+-- Builds a row action button (today only Remove) as an AceGUI Icon widget, so
+-- the row matches the other Ka0s list editors' iconography rather than a text
+-- "X". opts.image is a texture path -- normally a LibKa0s catalog mark through
+-- NS.Icon -- and wins when given. opts.atlas is a Blizzard atlas drawn through
+-- the inner texture's SetAtlas, for the degraded install only, where NS.Icon
+-- answers nil (library-stack-§8, AP #63). opts.tint {r, g, b} colors an enabled
+-- button's art: catalog marks are white in the alpha and carry no color of
+-- their own.
+local WHITE = { 1, 1, 1 }
+
 local function makeRowIconBtn(AceGUI, opts)
     local btn = AceGUI:Create("Icon")
     alignIconArt(btn, 22)
     btn:SetImageSize(22, 22)
     btn:SetWidth(30)
     btn:SetHeight(26)
-    if opts.atlas and btn.image and btn.image.SetAtlas then
-        btn.image:SetAtlas(opts.atlas)
-    elseif opts.image then
+    if opts.image then
         btn:SetImage(opts.image)
+    elseif opts.atlas and btn.image and btn.image.SetAtlas then
+        btn.image:SetAtlas(opts.atlas)
     end
     if opts.disabled then
         if btn.image then
@@ -496,7 +501,8 @@ local function makeRowIconBtn(AceGUI, opts)
     else
         if btn.image then
             if btn.image.SetDesaturated then btn.image:SetDesaturated(false) end
-            if btn.image.SetVertexColor then btn.image:SetVertexColor(1, 1, 1) end
+            local tint = opts.tint or WHITE
+            if btn.image.SetVertexColor then btn.image:SetVertexColor(tint[1], tint[2], tint[3]) end
         end
         btn:SetCallback("OnClick", opts.onClick)
     end
@@ -540,8 +546,13 @@ local function rowSpellIcon(AceGUI, entry)
     return icon, showSpellTooltip, hideSpellTooltip
 end
 
+-- An InteractiveLabel, not a Label with hooks on its frame: AceGUI pools that
+-- frame process-wide and a hook cannot be taken off, so the hooks the name
+-- used to lay on label.frame followed the frame into other addons' panels as a
+-- stray KickCD spell tooltip and a label that ate clicks (KICKCD-R-02). Widget
+-- callbacks are cleared by Release.
 local function rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip)
-    local label = AceGUI:Create("Label")
+    local label = AceGUI:Create("InteractiveLabel")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
     label:SetText(name)
     -- Was 190 (trimmed from 220 to make room for the known/unknown
@@ -549,11 +560,10 @@ local function rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip)
     -- space on the right of each row — long spell names like
     -- "Counterspell" or "Shockwave (talented)" no longer truncate.
     label:SetWidth(238)
-    if label.frame and label.frame.HookScript then
-        label.frame:EnableMouse(true)
-        label.frame:HookScript("OnEnter", function() showSpellTooltip(label) end)
-        label.frame:HookScript("OnLeave", hideSpellTooltip)
-    end
+    -- No hover highlight: the name is not a button.
+    label:SetHighlight(nil)
+    label:SetCallback("OnEnter", function(w) showSpellTooltip(w) end)
+    label:SetCallback("OnLeave", hideSpellTooltip)
     return label
 end
 
@@ -650,13 +660,13 @@ local function rowCategoryDropdown(AceGUI, entry)
     dd:SetCallback("OnValueChanged", function(_, _, value)
         if writer("SetSpellCategory", entry.spellID, value) then commitSoon() end
     end)
-    if dd.frame and dd.frame.HookScript then
-        dd.frame:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(L["Category for future filtering. Currently informational only."])
-            GameTooltip:Show()
-        end)
-        dd.frame:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Through the widget's callbacks, not a hook on dd.frame: that frame is
+    -- pooled, and AceGUI never mouse-enables it, so the old hook both leaked
+    -- and never fired (KICKCD-R-02).
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.AttachTooltip then
+        H.AttachTooltip(dd, L["Category"],
+            L["Category for future filtering. Currently informational only."])
     end
     return dd
 end
@@ -683,9 +693,17 @@ local function cancelReorder()
     end
 end
 
+-- The catalog's white "close" mark, tinted red so it still reads as "remove".
+-- The Blizzard atlas is the degraded install's fallback only, and it is red
+-- already, so it takes no tint.
+local REMOVE_TINT = { 1, 0.3, 0.3 }
+
 local function rowRemoveButton(AceGUI, list, index)
+    local mark = NS.Icon and NS.Icon("close")
     return makeRowIconBtn(AceGUI, {
-        atlas   = "transmog-icon-remove",
+        image   = mark,
+        atlas   = not mark and "transmog-icon-remove" or nil,
+        tint    = mark and REMOVE_TINT or nil,
         tooltip = L["Remove"],
         -- By the spellID the row showed, read at click time. `index` is only
         -- valid until the next rebuild, so a stale click past the end of a list

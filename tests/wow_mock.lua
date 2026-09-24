@@ -361,7 +361,17 @@ function FRAME_METHODS.SetScript(self, which, fn)
     if which == "OnEvent" then self._onevent = fn end
     return self
 end
+--- A hook is RECORDED as well as run, in `self.__hooks` ({ which, fn } per
+--- call). A hook cannot be removed, so one laid on a frame AceGUI pools outlives
+--- the widget and follows the frame into whoever acquires it next (KICKCD-R-02);
+--- the ledger is how a suite asserts that nothing did.
+local function recordHook(self, which, fn)
+    local hooks = rawget(self, "__hooks")
+    if not hooks then hooks = {}; rawset(self, "__hooks", hooks) end
+    hooks[#hooks + 1] = { which, fn }
+end
 function FRAME_METHODS.HookScript(self, which, fn)
+    recordHook(self, which, fn)
     local list = self.__scripts[which]
     if not list then list = {}; self.__scripts[which] = list end
     list[#list + 1] = fn
@@ -812,6 +822,16 @@ local function build()
         local w = kitCreate(self, wtype)
         if w.SetHighlight == nil then
             function w.SetHighlight(widget, ...) widget.__highlight = { ... }; return widget end
+        end
+        -- The widget's frame is the kit's stub, so its HookScript goes through
+        -- the same ledger FRAME_METHODS.HookScript keeps (see recordHook).
+        local f = w.frame
+        local kitHook = f and rawget(f, "HookScript")
+        if kitHook then
+            f.HookScript = function(frame, which, fn)
+                recordHook(frame, which, fn)
+                return kitHook(frame, which, fn)
+            end
         end
         return w
     end

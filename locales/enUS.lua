@@ -490,6 +490,7 @@ L["Color of the label text."]    = "Color of the label text."
 -- Spells editor extras
 L["Spell known"]                 = "Spell known"
 L["Spell not known"]             = "Spell not known"
+L["Category"]                    = "Category"
 L["Category for future filtering. Currently informational only."] =
     "Category for future filtering. Currently informational only."
 
