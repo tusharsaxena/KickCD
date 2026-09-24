@@ -233,3 +233,25 @@ test("Cooldowns.MasterEnabled is false only for an explicit false", function()
     assertTrue(Cooldowns.MasterEnabled())
     profile.enabled = prev
 end)
+
+test("module readers answer what NS.MasterEnabled answers", function()
+    -- KICKCD-R-13: core/LifecycleSetup.lua's NS.MasterEnabled is THE reader of
+    -- the master flag; every module reader routes through it rather than reading
+    -- profile.enabled on its own. Leave the profile saying "on" and make the one
+    -- reader say "off": a module that still reads the profile answers true.
+    local NS = inst.NS
+    local IconGrid = NS:GetModule("IconGrid")
+    local profile = NS.db.profile
+    local prevFlag, prevReader = profile.enabled, NS.MasterEnabled
+    profile.enabled = true
+    assertTrue(NS.Units.IsEnabled("target"), "precondition: target enabled while the reader is real")
+    NS.MasterEnabled = function() return false end
+    local ok, err = pcall(function()
+        assertFalse(Cooldowns.MasterEnabled(), "Cooldowns.MasterEnabled read the profile")
+        assertFalse(IconGrid.MasterEnabled(), "IconGrid.MasterEnabled read the profile")
+        assertFalse(NS.Units.IsEnabled("target"), "Units.IsEnabled read the profile")
+    end)
+    NS.MasterEnabled = prevReader
+    profile.enabled = prevFlag
+    if not ok then error(err, 0) end
+end)

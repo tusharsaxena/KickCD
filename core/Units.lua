@@ -31,8 +31,10 @@ function Units.IsLinked(unit)
 end
 
 function Units.IsEnabled(unit)
-    local p = profile()
-    if not p or p.enabled == false then return false end
+    -- The master flag through its one reader (core/LifecycleSetup.lua), never
+    -- off the profile here. A missing profile still answers false below:
+    -- Units.Config has no table to return.
+    if NS.MasterEnabled and not NS.MasterEnabled() then return false end
     local c = Units.Config(unit)
     return c ~= nil and c.enabled ~= false
 end

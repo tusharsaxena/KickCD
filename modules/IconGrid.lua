@@ -148,12 +148,11 @@ local function forEachEnabled(fn)
     end
 end
 
--- True when the master enable flag is set. Defaults to true on a fresh
--- profile, so a missing field reads as enabled.
+-- True when the master enable flag is set. Asks NS.MasterEnabled
+-- (core/LifecycleSetup.lua, THE one reader of the stored flag), resolved at
+-- call time; a load without it reads as enabled, the reader's own default.
 local function isEnabled()
-    local profile = NS.db and NS.db.profile
-    if not profile then return true end
-    return profile.enabled ~= false
+    return NS.MasterEnabled == nil or NS.MasterEnabled()
 end
 
 -- True if `inst`'s unit is currently casting or channeling. Reads

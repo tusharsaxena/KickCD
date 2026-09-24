@@ -57,6 +57,8 @@ local Lifecycle = LibStub and LibStub("LibKa0s-Lifecycle-1.0", true)
 local HOLD_DISABLED = (Lifecycle and Lifecycle.HOLD_DISABLED) or "disabled"
 
 --- True when the master enable flag is set — THE one reader of the stored path.
+--- Every module reader routes here: Cooldowns' and IconGrid's isEnabled (the
+--- MasterEnabled exports) and Units.IsEnabled's first rung.
 ---
 --- Defaults to true on a fresh or missing profile, exactly as the modules' own
 --- ladders read it, so a load that has not reached OnInitialize stands nothing

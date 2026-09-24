@@ -843,7 +843,7 @@ badge and any count quoted in the docs must agree with it.
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
-### test_cooldowns_gates.lua (22)
+### test_cooldowns_gates.lua (23)
 
 - both gates are published for testing
 - both gates treat a missing previous state as a change (first poll)
@@ -867,6 +867,7 @@ badge and any count quoted in the docs must agree with it.
 - neither gate ever reads a secret charge value itself
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
+- module readers answer what NS.MasterEnabled answers
 
 ### test_settings_log.lua (20)
 
@@ -1049,9 +1050,10 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
-### test_source_style.lua (1)
+### test_source_style.lua (2)
 
 - a WoW global on the standing _G. list is never read bare
+- no module reads profile.enabled directly
 
 ### test_prose.lua (15)
 
@@ -1327,7 +1329,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
-| test_cooldowns_gates.lua | 22 |
+| test_cooldowns_gates.lua | 23 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 32 |
@@ -1337,7 +1339,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
-| test_source_style.lua | 1 |
+| test_source_style.lua | 2 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 48 |
@@ -1352,4 +1354,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1090** |
+| **Total** | **1092** |

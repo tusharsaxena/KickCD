@@ -293,12 +293,13 @@ local function StateChanged(prev, next_)
     return false
 end
 
---- True when the master enable flag is set. Defaults to true on a fresh
---- profile, so a missing field reads as enabled.
+--- True when the master enable flag is set. Asks NS.MasterEnabled
+--- (core/LifecycleSetup.lua, THE one reader of the stored flag) rather than
+--- reading the profile here, resolved at call time so a stubbed or replaced
+--- reader is the one answered. A load without it (core/ not reached) reads as
+--- enabled, the same fresh-profile default the reader itself keeps.
 local function isEnabled()
-    local profile = NS.db and NS.db.profile
-    if not profile then return true end
-    return profile.enabled ~= false
+    return NS.MasterEnabled == nil or NS.MasterEnabled()
 end
 
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
@@ -308,6 +309,10 @@ end
 function Cooldowns:Rebuild()
     self.watched = {}
 
+    -- Defense in depth: while the master flag is off the lifecycle latch has
+    -- already stood this module down, so no event reaches here. Direct calls
+    -- (the harness, a slash path) do not pass the latch, and this return is
+    -- what keeps them from building a watched-list for a disabled addon.
     if not isEnabled() then return end
 
     local class, spec, classID = ResolveClassSpec()
@@ -405,6 +410,8 @@ end
 --- linger with whatever state was current when the spell vanished, until
 --- a manual /reload.
 function Cooldowns:Refresh()
+    -- Defense in depth behind the lifecycle latch, as in Rebuild: direct
+    -- calls do not pass the latch.
     if not isEnabled() then return end
     if not self.watched then return end
     local __t0 = Perf.on and debugprofilestop()

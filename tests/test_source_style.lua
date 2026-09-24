@@ -104,3 +104,27 @@ test("a WoW global on the standing _G. list is never read bare", function()
         "WoW global read without its _G. prefix (common-tasks: global lookup form) at: "
         .. table.concat(offenders, ", "))
 end)
+
+-- KICKCD-R-13: the master enable flag has one reader, NS.MasterEnabled in
+-- core/LifecycleSetup.lua. A module that compares a PROFILE's `enabled` field
+-- itself is a second reader that a stubbed or changed master reader does not
+-- reach. Per-entry and per-unit `enabled` fields (`entry.enabled`, `c.enabled`,
+-- `cfg(inst).enabled`) are other flags and are not matched.
+test("no module reads profile.enabled directly", function()
+    local files = { "core/Units.lua" }
+    for _, rel in ipairs(T.tocFiles) do
+        if rel:match("^modules[/\\].+%.lua$") then files[#files + 1] = rel end
+    end
+    local offenders = {}
+    for _, rel in ipairs(files) do
+        for n, code in ipairs(codeLines(rel)) do
+            if code:match("[%w_]*[pP]rofile%.enabled%s*[~=]=")
+                or code:match("%f[%w_]p%.enabled%s*[~=]=") then
+                offenders[#offenders + 1] = rel .. ":" .. n
+            end
+        end
+    end
+    assertTrue(#offenders == 0,
+        "master flag read off the profile instead of through NS.MasterEnabled at: "
+        .. table.concat(offenders, ", "))
+end)
