@@ -94,6 +94,12 @@ NS.Perf = lib:New({
     -- spell-state handler really does execute inside Cooldowns:Refresh's frame.
     -- A reader comparing two captures months apart cannot be expected to know
     -- which totals overlap, and a parent must never be summed with its children.
+    --
+    -- spellState declares stateEmit, the steady-state path. Cooldowns:Rebuild
+    -- publishes too, from outside any poll, so its emit is the ROOT bucket
+    -- rebuildEmit and IconGrid:OnSpellState passes whichever parent it ran
+    -- under: a capture that saw a Rebuild reports spellState as observedMixed
+    -- instead of silently claiming stateEmit for every call.
     buckets = {
         { key = "spellPoll" },                          -- Cooldowns:Refresh, the coalesced pass
         { key = "pollSpell",  within = "spellPoll"  },  -- Cooldowns:PollSpell, per watched spell
@@ -105,6 +111,7 @@ NS.Perf = lib:New({
         { key = "glowGate" },                           -- IconGrid:RefreshAllGlows
         { key = "visibility" },                         -- IconGrid:RefreshVisibility
         { key = "castTick" },                           -- Castbar OnUpdate, per frame while casting
+        { key = "rebuildEmit" },                        -- Cooldowns:Rebuild's publish, outside any poll
     },
 
     -- NOTE ON EVIDENCE. Both decisions below were taken off an early live

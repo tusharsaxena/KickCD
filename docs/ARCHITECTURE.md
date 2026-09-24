@@ -133,7 +133,7 @@ Each name is declared **once**, in `NS.MSG` (`core/Constants.lua`, keyed by the 
 
 | Message | Sender(s) | Consumers | Payload |
 |---|---|---|---|
-| `Ka0s_KickCD_SpellState` | `Cooldowns:Rebuild` / `:Refresh` | `IconGrid` (every enabled unit instance) | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges }` |
+| `Ka0s_KickCD_SpellState` | `Cooldowns:Rebuild` / `:Refresh` | `IconGrid` (every enabled unit instance) | `{ spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }` |
 | `Ka0s_KickCD_ConfigChanged` | **One sender**: `settings/Panel.lua` `Helpers.FireConfigChanged`. Everything that wants to announce a config change calls it — `Helpers.Set` (every row write, the Focus link and Copy styling's rows included; inside `Helpers.Coalesced` a batch's sections are held and sent once each), `Panel_Render`'s reset helpers, `core/KickCD.lua`'s spells commit, the Spells editor's throttled commit, and IconGrid / Castbar `OnDragStop` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ section }` — section ∈ `general`\|`icons`\|`castbar`\|`label`\|`spells`\|`units` |
 | `Ka0s_KickCD_ProfileChanged` | **One sender**: `core/Database.lua`'s file-local `fireProfileChanged`, called by `Database:OnProfileChanged` (swap / copy / reset; `newProfileKey` is the active profile afterwards) and `Database:ResetAllSpells` | `IconGrid`, `Cooldowns`, `Castbar`, `UnitLabel`, Spells panel | `{ newProfileKey }` |
 | `Ka0s_KickCD_GridLayout` | `IconGrid:Layout`, once per unit instance | `Castbar` (filters on `payload.unit`), `UnitLabel` (re-applies every unit; cheap `ApplyAll`, no per-unit filter) | `{ unit, gridFrame, primaryIcon, width, height }` |

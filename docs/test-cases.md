@@ -1176,7 +1176,7 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (29)
+### test_perfsetup.lua (32)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -1186,6 +1186,9 @@ badge and any count quoted in the docs must agree with it.
 - the declared bucket list and the bracketed call sites agree exactly
 - nesting is declared for every bucket that runs inside another
 - the nesting the descriptor declares is the nesting a run OBSERVES
+- stateEmit's observed parent is spellPoll
+- every spellState note names its real parent
+- the descriptor declares rebuildEmit as a root
 - instrumentation is inert when capture is off
 - the show decisions consult the LATCH as step 0, at the source
 - suspend disarms the per-unit cast filters AceEvent cannot reach
@@ -1355,7 +1358,7 @@ badge and any count quoted in the docs must agree with it.
 | test_slash.lua | 48 |
 | test_disabled.lua | 17 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 29 |
+| test_perfsetup.lua | 32 |
 | test_launcher.lua | 28 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 7 |
@@ -1364,4 +1367,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1102** |
+| **Total** | **1105** |

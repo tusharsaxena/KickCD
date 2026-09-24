@@ -37,20 +37,28 @@ expected to know which totals overlap, and a parent must never be summed with it
 |---|---|---|
 | `spellPoll` | — | `Cooldowns:Refresh`, the coalesced pass over the whole watched set |
 | `pollSpell` | `spellPoll` | `Cooldowns:PollSpell`, per watched spell — **both** exits instrumented |
-| `spellState` | `spellPoll` | `IconGrid:OnSpellState` — `SendMessage` dispatches inline, so it really does run inside the poll |
+| `stateEmit` | `spellPoll` | the poll's `SPELL_STATE` publish, per emitting spell, table constructor included |
+| `spellState` | `stateEmit` | `IconGrid:OnSpellState` — `SendMessage` dispatches inline, so it really does run inside the publish; on the Rebuild path it runs inside `rebuildEmit` instead, see below |
 | `iconApply` | `spellState` | `Icon:Apply`, per icon per unit |
 | `cdText` | — | the 0.1 s cooldown-text ticker pass |
 | `castEvent` | — | `IconGrid:OnUnitCastEvent` |
+| `glowGate` | — | `IconGrid:RefreshAllGlows` — **not** nested: only one of its five call sites runs inside `castEvent` |
 | `visibility` | — | `IconGrid:RefreshVisibility` — deliberately **not** nested, see below |
 | `castTick` | — | the cast bar's `OnUpdate`, per frame while a cast is running |
+| `rebuildEmit` | — | `Cooldowns:Rebuild`'s `SPELL_STATE` publish, per watched spell, outside any poll |
 
 `visibility` used to declare `within = "castEvent"`, taken from its dominant in-combat caller.
 `RefreshVisibility` has seven call sites and six of them are not cast events, so out of combat the
 declared parent may not run at all and the report would indent a bucket under something that never
 executed. That is worse than declaring nothing: nesting exists to tell a reader which totals overlap.
 
-`glowGate` (`IconGrid:RefreshAllGlows`) is deliberately **not declared**. `Note()` records an
-undeclared key anyway, so it can be added ad hoc the moment a capture points at it.
+`spellState` has two real parents. The steady-state one is `stateEmit`, and that is what the
+descriptor declares. `Cooldowns:Rebuild` also publishes, on spell and spec changes and never inside
+`Refresh`, so its emit is the root bucket `rebuildEmit` rather than a second `stateEmit` (which would
+move the false claim up a level, since `stateEmit` declares itself within `spellPoll`). The payload
+carries `rebuild = true` on that path and `IconGrid:OnSpellState` passes the matching parent to
+`Note()`, so a capture that saw a Rebuild reports `spellState` as observed inside more than one
+parent instead of silently claiming `stateEmit` for every call.
 
 ## 1. Offline
 

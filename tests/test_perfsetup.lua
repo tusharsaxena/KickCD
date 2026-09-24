@@ -350,6 +350,82 @@ test("the nesting the descriptor declares is the nesting a run OBSERVES", functi
     end
 end)
 
+-- ── the Rebuild path's publish (KICKCD-R-09) ────────────────────────────────
+--
+-- Cooldowns:Rebuild publishes SPELL_STATE too, from OUTSIDE any poll: it runs
+-- on spell and spec changes, never inside Cooldowns:Refresh. Bracketing that
+-- publish as `stateEmit` would only move the false claim up a level (stateEmit
+-- declares itself within spellPoll), so it has a root bucket of its own,
+-- `rebuildEmit`, and IconGrid:OnSpellState names whichever of the two it ran
+-- inside. The three cases below pin each half.
+
+--- Arm a fresh instance, drive Rebuild then a Refresh that really publishes,
+--- and return the buckets plus every parent spellState was noted under.
+local function driveBothEmitPaths()
+    local inst = T.load(true, true)
+    local P = inst.NS.Perf
+    local Cooldowns = inst.NS:GetModule("Cooldowns", true)
+    local parents = {}
+    local realNote = P.Note
+    P.Note = function(key, ms, parentKey)
+        if key == "spellState" then parents[tostring(parentKey)] = true end
+        return realNote(key, ms, parentKey)
+    end
+    P.on = true
+    Cooldowns:Rebuild()
+    Cooldowns:Refresh()
+    -- Force a material change so the poll publishes; see the bucket-reached case.
+    local id = firstWatchedSpell(Cooldowns)
+    local prev = id and Cooldowns.watched[id]
+    if type(prev) == "table" then
+        prev.ready, prev.isActive = not prev.ready, not prev.isActive
+    end
+    Cooldowns:Refresh()
+    local buckets = P.__buckets and P.__buckets() or {}
+    P.on = false
+    P.Note = realNote
+    return buckets, parents, id
+end
+
+test("stateEmit's observed parent is spellPoll", function()
+    -- Rebuild runs first here on purpose: were its publish bracketed as
+    -- stateEmit, this bucket would observe a nil parent as well as spellPoll.
+    -- red under: bracketing Rebuild's SendMessage as `stateEmit`.
+    local buckets, _, id = driveBothEmitPaths()
+    assertTrue(id ~= nil, "the harness profile must watch at least one spell")
+    local b = buckets.stateEmit
+    assertTrue(b ~= nil and (b.calls or 0) > 0, "Refresh must have published")
+    assertEqual(b.observedWithin, "spellPoll")
+    assertFalse(b.observedMixed, "stateEmit must only ever run inside spellPoll")
+end)
+
+test("every spellState note names its real parent", function()
+    -- red under: IconGrid:OnSpellState noting spellState with no parent, or
+    -- Rebuild's publish dropping `rebuild = true` from its payload.
+    local buckets, parents = driveBothEmitPaths()
+    local seen = {}
+    for k in pairs(parents) do seen[#seen + 1] = k end
+    table.sort(seen)
+    assertEqual(table.concat(seen, ","), "rebuildEmit,stateEmit",
+        "spellState must be noted under exactly stateEmit and rebuildEmit")
+    local rb = buckets.rebuildEmit
+    assertTrue(rb ~= nil and (rb.calls or 0) > 0, "Rebuild's publish must be bracketed")
+    assertNil(rb.observedWithin, "rebuildEmit runs inside no bucket and must claim none")
+    assertTrue(buckets.spellState and buckets.spellState.observedMixed,
+        "spellState runs under two parents and the report must say so")
+end)
+
+test("the descriptor declares rebuildEmit as a root", function()
+    local fh = assert(io.open(T.root .. "/core/PerfSetup.lua", "r"))
+    local setup = fh:read("*a")
+    fh:close()
+    local line = setup:match('\n([^\n]*{ key = "rebuildEmit"[^\n]*)')
+    assertTrue(line ~= nil, "core/PerfSetup.lua must declare a rebuildEmit bucket")
+    assertNil(line:match("within"), "rebuildEmit must declare no parent")
+    -- spellState keeps stateEmit as its declared parent: the steady-state path.
+    assertTrue(setup:find('{ key = "spellState",%s*within = "stateEmit"') ~= nil)
+end)
+
 test("instrumentation is inert when capture is off", function()
     -- The zero-cost claim, exercised rather than asserted in a comment: with the
     -- gate off, driving a bracketed path must record nothing at all.

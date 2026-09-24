@@ -39,7 +39,9 @@
 --
 -- Message contract (closed):
 --   FIRE:    Ka0s_KickCD_SpellState
---              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--              { spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }
+--            rebuild is true only on Rebuild's publish (absent from Refresh's);
+--            it tells IconGrid which Perf parent the handler ran under.
 --            charges is the raw currentCharges from
 --            C_Spell.GetSpellCharges (or nil for uncharged spells). A
 --            value of 0 means "no charges available right now" — the
@@ -341,6 +343,13 @@ function Cooldowns:Rebuild()
             if state then
                 self.watched[id] = state
                 watchedIDs[#watchedIDs + 1] = id
+                -- BRACKETED AS `rebuildEmit`, a ROOT bucket, not `stateEmit`:
+                -- Rebuild runs on spell and spec changes, never inside
+                -- Refresh, so stateEmit's declared `within = "spellPoll"`
+                -- would be false here. `rebuild = true` is a constant field
+                -- on the literal already built (no extra allocation); it is
+                -- how IconGrid:OnSpellState names this parent to Perf.Note.
+                local __e0 = Perf.on and debugprofilestop()
                 NS:SendMessage(NS.MSG.SPELL_STATE, {
                     spellID        = state.spellID,
                     ready          = state.ready,
@@ -348,7 +357,9 @@ function Cooldowns:Rebuild()
                     cdObject       = state.cdObject,
                     chargeCdObject = state.chargeCdObject,
                     charges        = state.charges,
+                    rebuild        = true,
                 })
+                if __e0 then Perf.Note("rebuildEmit", debugprofilestop() - __e0) end
             else
                 skippedIDs[#skippedIDs + 1] = id
             end

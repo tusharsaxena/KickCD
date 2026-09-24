@@ -995,7 +995,7 @@ end
 
 function IconGrid:OnSpellState(_evt, payload)
     -- Payload contract per CLAUDE.md:
-    --   { spellID, ready, isActive, cdObject, charges }
+    --   { spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }
     -- The player's cooldown state applies to every live unit's icon for
     -- that spell, so fan out to each enabled instance's active pool. We
     -- only update icons currently in the active pool — Cooldowns may watch
@@ -1011,7 +1011,12 @@ function IconGrid:OnSpellState(_evt, payload)
             if btn then btn:Apply(payload, nil, "spellState") end
         end
     end
-    if __t0 then Perf.Note("spellState", debugprofilestop() - __t0) end
+    -- The parent is the publish this ran inside: Rebuild's (`rebuildEmit`)
+    -- or the poll's (`stateEmit`), so a capture reports the mix honestly.
+    if __t0 then
+        Perf.Note("spellState", debugprofilestop() - __t0,
+            payload.rebuild and "rebuildEmit" or "stateEmit")
+    end
 end
 
 function IconGrid:OnConfigChanged(_evt, payload)
