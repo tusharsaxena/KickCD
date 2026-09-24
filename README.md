@@ -97,7 +97,7 @@ Enable more spells than the grid can hold and the extras are left off, with one 
 | Why won't the settings panel open in combat? | The game blocks it mid-fight. Run `/kcd config` again once combat ends. |
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
-| How do I capture debug info for a bug report? | The one-off snapshots (`/kcd debug interrupt`, `/kcd debug spells`, `/kcd debug castbar`) print to chat, so copy them from there. For a running trace, turn logging on with `/kcd debug on`, reproduce the problem, then open the on-screen debug window with `/kcd debug window` and hit **Copy**. The window resets on every reload. |
+| How do I capture debug info for a bug report? | The one-off snapshots (`/kcd debug interrupt`, `/kcd debug spells`, `/kcd debug castbar`, `/kcd debug events`) print to chat, so copy them from there. For a running trace, turn logging on with `/kcd debug on`, reproduce the problem, then open the on-screen debug window with `/kcd debug window` and hit **Copy**. The window resets on every reload. |
 
 ## Troubleshooting
 

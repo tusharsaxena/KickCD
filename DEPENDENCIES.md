@@ -18,7 +18,7 @@ Neither repeats the other (documentation-§7).
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
 - `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
   LibDataBroker-1.1, LibDBIcon-1.0`.
-  Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:19-31`,
+  Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:19-37`,
   `libs/AceAddon-3.0/`, `libs/LibStub/`, `libs/CallbackHandler-1.0/`, `libs/LibSharedMedia-3.0/`),
   so `OptionalDeps` only affects **load order** when the player happens to have a standalone copy —
   it is not an install instruction. `libs/LibKa0s/` and `libs/LibCustomGlow-1.0/` are vendored the
@@ -38,13 +38,13 @@ The whole contributor toolchain. There is no build step and no compiler.
 |---|---|---|
 | **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/_kit/loader.lua:72` calls `setfenv(chunk, makeEnv(mocks))` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
 | **`lua` on `PATH`** | same 5.1 binary | `tests/test_list_mode.lua:10` re-invokes the runner as a child process: `io.popen("lua " .. T.root .. "/tests/run.lua --list")`. The command is literally `lua`, so `lua5.1` alone on `PATH` is not enough. |
-| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:47-80`); `docs/testing.md:3` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
-| **git** | any recent | The repo, obviously — but also a **test dependency**: the vendored gate `tests/_kit/vendor_sync.lua` (driven by the five-line `tests/test_vendor_sync.lua`) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
-| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:229` and `tests/test_slash_style.lua:132` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
+| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:48-79`); `docs/testing.md:3` names `luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
+| **git** | any recent | The repo, obviously — but also a **test dependency**: the vendored gate `tests/_kit/vendor_sync.lua` (driven by `tests/test_vendor_sync.lua`, four statements under its header) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
+| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:229` and `tests/test_slash_style.lua:134` enumerate source files with `io.popen("ls ...")`; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
 | **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:187` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:232` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
