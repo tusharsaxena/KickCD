@@ -742,3 +742,118 @@ test("`/kcd get` on a bool stored FALSE prints false, not the literal `nil`", fu
     assertNil(lines[1]:find("nil", 1, true),
         "and must never report the literal nil: " .. lines[1])
 end)
+
+-- ── `/kcd spells add` agrees with the Spells page (KICKCD-R-05, KICKCD-R-18) ──
+--
+-- core/SpellInput.lua is the one resolver both surfaces call. These pin the
+-- three ways the command line used to disagree with the page: a multi-word name
+-- split at its first space, the Cooldown Manager gate skipped, and an unchecked
+-- CLASS / SPEC that lazily wrote an orphan list into SavedVariables.
+
+local WIND_SHEAR, HEX = 57994, 51514
+local KNOWN_SPELLS = { [WIND_SHEAR] = "Wind Shear", [HEX] = "Hex" }
+
+--- An enabled Elemental Shaman whose spell DB knows exactly KNOWN_SPELLS, by id
+--- and by name. `cmIds`, when given, is the set the Cooldown Manager tracks.
+local function shaman(cmIds)
+    return T.load(true, true, function(m)
+        m.UnitClass = function() return "Shaman", "SHAMAN", 7 end
+        m.__setPlayerSpec(7, 1)
+        m.C_Spell.GetSpellInfo = function(q)
+            for id, name in pairs(KNOWN_SPELLS) do
+                if q == id or q == name then
+                    return { name = name, iconID = 1, spellID = id }
+                end
+            end
+            return nil
+        end
+        if cmIds then
+            m.Enum = { CooldownViewerCategory = { ESSENTIAL = 1 } }
+            m.C_CooldownViewer = {
+                GetCooldownViewerCategorySet = function()
+                    local out = {}
+                    for i in ipairs(cmIds) do out[i] = i end
+                    return out
+                end,
+                GetCooldownViewerCooldownInfo = function(cdID)
+                    return { spellID = cmIds[cdID] }
+                end,
+            }
+        end
+    end)
+end
+
+local function hasSpell(inst, class, spec, id)
+    for _, e in ipairs(inst.NS.Database:GetSpellList(class, spec) or {}) do
+        if e.spellID == id then return true end
+    end
+    return false
+end
+
+test("`/kcd spells add Wind Shear` adds 57994 for a Shaman", function()
+    -- red under: tokenizing on %S+ and resolving args[1] alone, which answers
+    -- "Unknown spell: Wind" and reads "Shear" as a CLASS.
+    local inst = shaman()
+    inst.NS.db.profile.spells.SHAMAN[262] = {}
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR),
+        "Wind Shear must land on SHAMAN/ELEMENTAL: " .. joined(lines))
+    assertTrue(joined(lines):find("added Wind Shear (#57994) to SHAMAN/ELEMENTAL", 1, true) ~= nil,
+        "got: " .. joined(lines))
+end)
+
+test("`/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair", function()
+    local inst = shaman()
+    inst.NS.db.profile.spells.SHAMAN[263] = {}
+    say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear SHAMAN ENHANCEMENT") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 263, WIND_SHEAR), "the explicit pair is the target")
+end)
+
+test("the CLI refuses a spell the Cooldown Manager does not track for the live spec", function()
+    -- red under: spellsAdd skipping the gate the page's add box applies.
+    local inst = shaman({ WIND_SHEAR })
+    inst.NS.db.profile.spells.SHAMAN[262] = {}
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 51514") end)
+    assertTrue(not hasSpell(inst, "SHAMAN", 262, HEX), "a spell the CM lacks must not be written")
+    assertTrue(joined(lines):find("is not tracked by the Blizzard Cooldown Manager", 1, true) ~= nil,
+        "the refusal must say why: " .. joined(lines))
+    -- The gate admits what the Cooldown Manager does track.
+    say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR), "a tracked spell is admitted")
+end)
+
+test("the CLI gate is dropped for a pair other than the player's live one, as on the page", function()
+    -- C_CooldownViewer answers only for the logged-in spec, so another spec's
+    -- list gets no opinion from it.
+    local inst = shaman({ WIND_SHEAR })
+    inst.NS.db.profile.spells.SHAMAN[263] = {}
+    say(inst, function() inst.NS:OnSlashCommand("spells add 51514 SHAMAN ENHANCEMENT") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 263, HEX), "another spec's list is not CM-gated")
+end)
+
+test("`spells add <id> WARLORD 99999` writes nothing", function()
+    -- red under: an unchecked class token reaching Database:AddSpell, whose
+    -- EnsureSpellList creates profile.spells.WARLORD[99999].
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 57994 WARLORD 99999") end)
+    assertNil(inst.NS.db.profile.spells.WARLORD, "no orphan class list")
+    assertTrue(joined(lines):find("Unknown class WARLORD", 1, true) ~= nil, "got: " .. joined(lines))
+end)
+
+test("`spells add <id> SHAMAN 99999` names the spec it could not resolve", function()
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 57994 SHAMAN 99999") end)
+    assertNil(inst.NS.db.profile.spells.SHAMAN[99999], "no orphan spec list")
+    assertTrue(joined(lines):find("Unknown spec 99999 for SHAMAN", 1, true) ~= nil, "got: " .. joined(lines))
+    -- A real spec of ANOTHER class is not a spec of this one.
+    say(inst, function() inst.NS:OnSlashCommand("spells add 57994 SHAMAN 253") end)
+    assertNil(inst.NS.db.profile.spells.SHAMAN[253], "a Hunter spec is not a Shaman spec")
+end)
+
+test("bare `/kcd spells` names the default spec by SpecDisplay", function()
+    -- red under: formatting the raw spec ID, which printed SHAMAN/262.
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells") end)
+    assertTrue(joined(lines):find("SHAMAN/ELEMENTAL", 1, true) ~= nil, "got: " .. joined(lines))
+    assertNil(joined(lines):find("SHAMAN/262", 1, true), "never the raw ID")
+end)

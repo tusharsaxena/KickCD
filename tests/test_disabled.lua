@@ -183,7 +183,7 @@ test("DISABLED: the registration set is EMPTY, by count and by name", function()
     -- gate this is here to catch, and it would pass a return-value assertion happily.
     --
     -- red under: drop the `Suspend` call out of core/LifecycleSetup.lua's standDown, or make
-    -- NS.RefreshEnabledHold a no-op, and this reddens with the whole 76-row set named
+    -- NS.RefreshEnabledHold a no-op, and this reddens with the whole registration set named
     local inst = baseline()
     setEnabled(inst, false)
     local _, n = registrations(inst)
@@ -444,6 +444,29 @@ test("RE-ENABLED: the registration set comes back, exactly", function()
     for name, n in pairs(after) do
         assertEqual(before[name] or 0, n, "a registration came back that was not there: " .. name)
     end
+end)
+
+--- The events core/SpellInput.lua's private target holds, sorted.
+local function spellInputEvents(inst)
+    local ev, out = inst.NS.SpellInput.__ev, {}
+    for _, reg in ipairs(inst.mocks.__registrationSet()) do
+        if reg.target == ev then out[#out + 1] = tostring(reg.event) end
+    end
+    table.sort(out)
+    return table.concat(out, ",")
+end
+
+test("the Cooldown Manager cache's invalidator is in the set, and stands down with it", function()
+    -- core/SpellInput.lua arms it at FILE LOAD, outside every module's Suspend.
+    -- red under: dropping NS.SpellInput.StandDown from core/LifecycleSetup.lua.
+    local inst = baseline()
+    assertEqual(spellInputEvents(inst), "PLAYER_SPECIALIZATION_CHANGED,TRAIT_CONFIG_UPDATED",
+        "an enabled addon keeps the cache honest")
+    setEnabled(inst, false)
+    assertEqual(spellInputEvents(inst), "", "a disabled addon holds none of it")
+    setEnabled(inst, true)
+    assertEqual(spellInputEvents(inst), "PLAYER_SPECIALIZATION_CHANGED,TRAIT_CONFIG_UPDATED",
+        "and the stand-up puts it back")
 end)
 
 test("RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot", function()

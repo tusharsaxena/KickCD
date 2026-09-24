@@ -66,6 +66,9 @@ core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
 core\KickCD.lua
+# LOAD-BEARING POSITION: calls NS.NewBusTarget (core/KickCD.lua) at file load;
+# everything else it reads resolves at call time.
+core\SpellInput.lua
 # The LibKa0s-Launcher-1.0 seam. Anywhere in this block: nothing resolves at
 # load beyond LibStub, and the click handlers reach NS.ToggleLock and
 # NS:OpenSettings at CALL time. Here, below core\KickCD.lua, only so a reader

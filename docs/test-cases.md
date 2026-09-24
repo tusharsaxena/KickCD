@@ -928,7 +928,7 @@ badge and any count quoted in the docs must agree with it.
 - hiding the page cancels the reorder controller too
 - kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
-### test_spell_registry.lua (24)
+### test_spell_registry.lua (30)
 
 - `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
 - `/kcd spells add` lazy-creates the list of a spec that has none
@@ -954,6 +954,12 @@ badge and any count quoted in the docs must agree with it.
 - a verb that writes nothing traces nothing
 - the Spells page's actions trace once, from the writer, not again at the call site
 - Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
+- SpellInput.Resolve answers by id, by name, and nil for an unknown
+- the page's ValidateSpellInput is SpellInput.Resolve, not a second copy
+- SpellInput.ParseTail matches the longest name, then CLASS and SPEC
+- the CM cache is invalidated by TRAIT_CONFIG_UPDATED even when the Spells page was never built
+- SpellInput.Admissible has no opinion off the live pair or without the viewer API
+- Database:AddSpell refuses a class token no client or default knows
 
 ### test_settings_widgets.lua (20)
 
@@ -1073,7 +1079,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (41)
+### test_slash.lua (48)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1116,8 +1122,15 @@ badge and any count quoted in the docs must agree with it.
 - nothing refuses while the addon is ENABLED
 - the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
+- `/kcd spells add Wind Shear` adds 57994 for a Shaman
+- `/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair
+- the CLI refuses a spell the Cooldown Manager does not track for the live spec
+- the CLI gate is dropped for a pair other than the player's live one, as on the page
+- `spells add <id> WARLORD 99999` writes nothing
+- `spells add <id> SHAMAN 99999` names the spec it could not resolve
+- bare `/kcd spells` names the default spec by SpecDisplay
 
-### test_disabled.lua (16)
+### test_disabled.lua (17)
 
 - baseline: an ENABLED addon registers something worth standing down
 - DISABLED: the registration set is EMPTY, by count and by name
@@ -1130,6 +1143,7 @@ badge and any count quoted in the docs must agree with it.
 - DISABLED: the launcher's LEFT click is refused and writes nothing
 - DISABLED: the launcher's RIGHT click still opens the panel
 - RE-ENABLED: the registration set comes back, exactly
+- the Cooldown Manager cache's invalidator is in the set, and stands down with it
 - RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot
 - two disable/enable cycles create no frames
 - LATCH: releasing the perf hold does NOT resurrect a disabled addon
@@ -1312,7 +1326,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 32 |
-| test_spell_registry.lua | 24 |
+| test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 39 |
 | test_settings_refreshers.lua | 5 |
@@ -1321,8 +1335,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 1 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 41 |
-| test_disabled.lua | 16 |
+| test_slash.lua | 48 |
+| test_disabled.lua | 17 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 29 |
 | test_launcher.lua | 28 |
@@ -1333,4 +1347,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1071** |
+| **Total** | **1085** |

@@ -283,18 +283,24 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - `/kcd spells list` — dump the current spec's watched spells.
-- `/kcd spells add <SPELL_ID> interrupt` — using a spell ID present in the active spec's Cooldown Manager.
-- `/kcd spells add <SPELL_ID> interrupt` — using an arbitrary spell ID that is NOT in the active spec's Cooldown Manager.
+- `/kcd spells add <SPELL_ID>` — using a spell ID present in the active spec's Cooldown Manager.
+- `/kcd spells add <SPELL_ID>` — using an arbitrary spell ID that is NOT in the active spec's Cooldown Manager.
+- As a Shaman: `/kcd spells add Wind Shear` — a multi-word name.
+- `/kcd spells add <SPELL_ID> WARLORD 99999` and `/kcd spells add <SPELL_ID> <CLASS> 99999`.
 - `/kcd spells disable <SPELL_ID>`; `/kcd spells enable <SPELL_ID>`.
 - `/kcd spells category <SPELL_ID> stun`.
 - `/kcd spells remove <SPELL_ID>`.
 - Open Settings → Spells. Edit a different spec via the class+spec dropdown.
-- Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> interrupt CLASS SPEC`.
+- Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> CLASS SPEC`.
+- With the Spells page closed, switch spec, then open it: the Add box accepts only the new spec's Cooldown Manager spells.
 - `/kcd spells reset CLASS SPEC` for one spec; verify it rebuilds *only* that spec.
 - `/kcd spells resetall` — verify it wipes *every* spec.
 
 **Pass.**
-- The active-spec write paths validate against the Cooldown Manager spell-set — adding a spell that isn't tracked there prints an error and is rejected.
+- The active-spec write paths — the page's Add box and `/kcd spells add` alike — validate against the Cooldown Manager spell-set: adding a spell that isn't tracked there prints `Spell <name> (#<id>) is not tracked by the Blizzard Cooldown Manager for this specialization.` and is rejected.
+- `/kcd spells add Wind Shear` adds Wind Shear; the name is never split at its space.
+- An unknown class prints `Unknown class WARLORD`, a spec that is not the class's prints `Unknown spec 99999 for <CLASS>`, and neither writes anything to `KickCDDB`.
+- After a spec switch made with the page closed, the Add box gates on the NEW spec's Cooldown Manager set, not a cached one.
 - Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
 - After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_ConfigChanged { section = "spells" }`) — no need to close and reopen the panel.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.

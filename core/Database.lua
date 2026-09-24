@@ -351,12 +351,32 @@ local function findEntry(list, spellID)
     end
 end
 
+--- Is `class` a class file token this addon can key a list by? A key of the
+--- shipped defaults, or a token the client's own class list reports. Anything
+--- else ("WARLORD", a typo) would lazy-create an orphan list in SavedVariables
+--- that no character ever reads (KICKCD-R-18).
+-- @param class string|nil
+-- @return boolean
+function Database.IsKnownClass(class)
+    if type(class) ~= "string" or class == "" then return false end
+    if NS.DefaultSpells and NS.DefaultSpells[class] then return true end
+    if not (_G.GetNumClasses and _G.GetClassInfo) then return false end
+    for classID = 1, _G.GetNumClasses() do
+        local _, classFile = _G.GetClassInfo(classID)
+        if classFile == class then return true end
+    end
+    return false
+end
+
 --- Add a spell to one list, or re-enable it IN PLACE when it is already there:
 --- the list is the render order, and a second entry for one spellID would give
---- the icon grid two buttons for one cooldown. Lazy-creates the list.
--- @return "added" | "enabled", or nil when there is nowhere to write
+--- the icon grid two buttons for one cooldown. Lazy-creates the list -- but only
+--- for a class Database.IsKnownClass accepts.
+-- @return "added" | "enabled"; or nil when there is nowhere to write, plus
+--   "unknown class" when the class token is the reason
 function Database:AddSpell(class, spec, spellID)
     if not spellID then return nil end
+    if class ~= nil and not Database.IsKnownClass(class) then return nil, "unknown class" end
     local list = self:EnsureSpellList(class, spec)
     if not list then return nil end
     local existing = findEntry(list, spellID)

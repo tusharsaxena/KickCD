@@ -117,6 +117,9 @@ local function standDown()
     -- argues the line in full.
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandDown then sp.StandDown() end
+    -- The Cooldown Manager cache's invalidator (core/SpellInput.lua) is the same
+    -- kind of registration, owned by the resolver both add surfaces share.
+    if NS.SpellInput and NS.SpellInput.StandDown then NS.SpellInput.StandDown() end
 end
 
 --- Stand the addon back up, FROM CURRENT STATE rather than from a snapshot
@@ -128,6 +131,7 @@ local function standUp()
     if NS.State and NS.State.StandUp then NS.State.StandUp() end
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandUp then sp.StandUp() end
+    if NS.SpellInput and NS.SpellInput.StandUp then NS.SpellInput.StandUp() end
     eachModule(false, function(m) if m.Resume then m:Resume() end end)
 end
 

@@ -269,119 +269,12 @@ local function getSpellIcon(id)
     return nil
 end
 
-local function validateSpellInput(input)
-    if not input or input == "" then return nil end
-    local id = tonumber(input)
-    if id then
-        local name = getSpellName(id)
-        if name then return id, name end
-        return nil
-    end
-    if Compat.GetSpellInfo then
-        local name, _, _, _, _, resolvedID = Compat.GetSpellInfo(input)
-        if name and resolvedID then return resolvedID, name end
-    end
-    return nil
-end
-
--- Build the set of spellIDs the Blizzard Cooldown Manager would surface for
--- the currently selected (class, spec). Walks every CooldownViewerCategory
--- enum value and unions the spellIDs they expose. Returns nil when the API
--- is unavailable (older clients) so callers can fall back to lenient
--- validation.
---
--- Memoized in `_cmCache` because the walk is non-trivial (every enum value
--- × every cdID) and the result is stable for the lifetime of a (login ×
--- spec). Invalidated by the bootstrap below on TRAIT_CONFIG_UPDATED and
--- PLAYER_SPECIALIZATION_CHANGED. Stored as a marker table even when the
--- API returned no useful data, so the next call doesn't re-walk for
--- nothing — a sentinel field distinguishes "computed, set was empty"
--- from "not computed yet."
-local _cmCache         -- { set | EMPTY_SENTINEL } once populated; nil otherwise
-local _CM_EMPTY = {}   -- sentinel: API returned no data; don't recompute
-
--- The two C_CooldownViewer entry points the walk needs, or nil when this client
--- can't answer. Older clients have no C_CooldownViewer at all, and the Enum the
--- category walk iterates arrived with it.
-local function cooldownViewerApi()
-    if not C_CooldownViewer then return nil end
-    local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
-    local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
-    if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
-        return nil
-    end
-    return getCategorySet, getInfo
-end
-
--- Union one category's spellIDs into `set`; returns whether it contributed any.
--- Both pcalls are load-bearing: C_CooldownViewer throws on some category values
--- in some client builds, and one bad category must not abort the whole walk.
-local function collectCategorySpells(getCategorySet, getInfo, category, set)
-    local ok, ids = pcall(getCategorySet, category)
-    if not (ok and type(ids) == "table") then return false end
-    local added = false
-    for _, cdID in ipairs(ids) do
-        local ok2, info = pcall(getInfo, cdID)
-        if ok2 and type(info) == "table" and info.spellID then
-            set[info.spellID] = true
-            added = true
-        end
-    end
-    return added
-end
-
-local function getCooldownManagerSpellSet()
-    if _cmCache == _CM_EMPTY then return nil end
-    if _cmCache then return _cmCache end
-
-    local getCategorySet, getInfo = cooldownViewerApi()
-    if not getCategorySet then
-        _cmCache = _CM_EMPTY
-        return nil
-    end
-
-    local set = {}
-    local seenAny = false
-    for _, category in pairs(Enum.CooldownViewerCategory) do
-        -- Deliberately NOT `seenAny = seenAny or collect(...)`: that
-        -- short-circuits and stops walking once anything has been found.
-        if collectCategorySpells(getCategorySet, getInfo, category, set) then
-            seenAny = true
-        end
-    end
-
-    if not seenAny then
-        _cmCache = _CM_EMPTY
-        return nil
-    end
-    _cmCache = set
-    return set
-end
-
--- Invalidate the cooldown-manager spell-set cache. Triggered on talent
--- swaps and spec changes — both events flip the C_CooldownViewer
--- contents, so a cached set from before the event is stale by the time
--- the panel reopens.
-local function invalidateCmCache()
-    _cmCache = nil
-end
-
--- Bootstrap: a private frame owns the cache-invalidation events. Kept
--- at module scope (rather than inside ensurePanel) so the cache stays
--- correct even when the user never opens the Spells panel — we don't
--- want a panel-open after a spec change to read stale data because the
--- listener was lazy-registered.
-local cacheEvents = CreateFrame("Frame")
-cacheEvents:SetScript("OnEvent", invalidateCmCache)
-
---- Arm the cache invalidator. Split out of the bootstrap so the stand-down can
---- release it and the stand-up can put it back (slash-commands-§7).
-local function armCacheEvents()
-    cacheEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
-    cacheEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-end
-
-armCacheEvents()
+-- The resolver, the Cooldown Manager set and its invalidator live in
+-- core/SpellInput.lua, shared with `/kcd spells add` (KICKCD-R-05). The
+-- invalidator is an AceEvent target armed at THAT file's load, so the cache is
+-- dropped on a spec or talent change whether or not this page is ever built
+-- (KICKCD-A-04).
+local SpellInput = NS.SpellInput
 
 -- ---------------------------------------------------------------------------
 -- Throttled commit pipeline
@@ -439,16 +332,14 @@ end
 -- no class/spec parameter — it returns the set for the LOGGED-IN player's
 -- currently-active spec. So a Mage editing HUNTER/BEASTMASTERY would otherwise
 -- be blocked from adding any Hunter spell. When the pair doesn't match, the gate
--- is DROPPED and the add falls through to the lenient validateSpellInput path
--- (which already confirmed the spell exists in the spell DB).
+-- is DROPPED and the add goes through leniently (the resolver has already
+-- confirmed the spell exists in the spell DB). SpellInput.IsLivePair is the
+-- test; this wrapper adds only the page's debug line.
 local function editorIsActiveSpec()
-    local playerClass  = playerClassFile()
-    local playerSpecID = NS.Util.PlayerSpecID()
-    if playerClass and selectedClass and playerClass == selectedClass
-       and playerSpecID and selectedSpec and playerSpecID == selectedSpec then
-        return true
-    end
+    if SpellInput.IsLivePair(selectedClass, selectedSpec) then return true end
     if NS.State and NS.State.debug then
+        local playerClass  = playerClassFile()
+        local playerSpecID = NS.Util.PlayerSpecID()
         NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
             :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
                     tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
@@ -457,19 +348,12 @@ local function editorIsActiveSpec()
 end
 
 -- True when the Blizzard Cooldown Manager does not track this spell for the
--- player's active spec, so the add should be refused. An UNAVAILABLE API is
--- lenient by design: no set means no opinion, never a rejection.
-local function cooldownManagerRejects(id, resolvedName)
-    local cmSet = getCooldownManagerSpellSet()
-    if not cmSet then
-        if NS.State and NS.State.debug then
-            NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
-        end
-        return false
-    end
-    if cmSet[id] then return false end
-    local name = resolvedName or getSpellName(id) or tostring(id)
-    notify(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+-- player's active spec, so the add should be refused -- and says why in chat.
+-- The verdict is core/SpellInput.lua's, the one `/kcd spells add` asks too.
+local function cooldownManagerRejects(id)
+    local ok, why = SpellInput.Admissible(id, selectedClass, selectedSpec)
+    if ok then return false end
+    notify(why)
     return true
 end
 
@@ -523,7 +407,7 @@ end
 --- addon does not check), a client with no C_CooldownViewer, and a spell the set holds.
 function Spells.SuggestTag(id)
     if not editorIsActiveSpec() then return nil end
-    local cmSet = getCooldownManagerSpellSet()
+    local cmSet = SpellInput.CooldownManagerSet()
     if not cmSet or cmSet[id] then return nil end
     return "|cffff8000" .. L["not tracked"] .. "|r"
 end
@@ -532,7 +416,7 @@ end
 --- library now owns.
 ---
 --- The library has already resolved a name, a link or an id to a NUMBER by the time this is
---- called, so `validateSpellInput` has nothing left to do -- what stays is this addon's own
+--- called, so `SpellInput.Resolve` has nothing left to do -- what stays is this addon's own
 --- question, which the library cannot ask: does the Blizzard Cooldown Manager track this spell for
 --- the spec being edited. That refusal still speaks in chat rather than on the box's status line,
 --- because it is about the game's state and not about what was typed.
@@ -1422,7 +1306,8 @@ end
 --
 -- The cost is precisely one thing: a spec change made WHILE the addon is off and
 -- WHILE this page is open does not re-render the rows under the player's cursor.
--- Reopening the page does, because the cache is invalidated on the way back up.
+-- Reopening the page does, because core/SpellInput.lua's StandUp drops the
+-- Cooldown Manager cache on the way back up.
 --
 -- `commitSoon` is deliberately NOT canceled here. It is armed by the player
 -- typing in this editor, never by a game event, and a stand-down that threw away
@@ -1432,7 +1317,6 @@ end
 
 --- Release the page's game-event subscriptions. Called by the latch's standDown.
 function Spells.StandDown()
-    cacheEvents:UnregisterAllEvents()
     local ev = Spells.__ev
     if ev then
         if ev.UnregisterAllEvents   then ev:UnregisterAllEvents()   end
@@ -1440,16 +1324,14 @@ function Spells.StandDown()
     end
 end
 
---- Re-arm them, and drop the cooldown-manager cache on the way: the spec or the
---- talent build can have changed while nothing was listening, so the next panel
---- open must read the client rather than a set cached before the addon went down.
+--- Re-arm them. The Cooldown Manager cache is not this page's any more: it and
+--- its invalidator are core/SpellInput.lua's, stood down and up beside this one
+--- by core/LifecycleSetup.lua.
 function Spells.StandUp()
-    _cmCache = nil
-    armCacheEvents()
     Spells.RegisterPanelEvents()
 end
 
-Spells.ValidateSpellInput = validateSpellInput
+Spells.ValidateSpellInput = SpellInput.Resolve
 Spells.SpecOrder          = specOrder
 Spells.SortedKeys         = sortedKeys
 Spells.TitleCaseToken     = titleCaseToken

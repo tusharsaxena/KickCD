@@ -575,22 +575,6 @@ local function commitSpellsChange()
     if H and H.FireConfigChanged then H.FireConfigChanged("spells") end
 end
 
-local function resolveSpellInput(input)
-    if not input or input == "" then return nil end
-    local Compat = NS.Compat or {}
-    local id = tonumber(input)
-    if id then
-        local name = Compat.GetSpellInfo and Compat.GetSpellInfo(id) or nil
-        if name then return id, name end
-        return nil
-    end
-    if Compat.GetSpellInfo then
-        local name, _, _, _, _, resolvedID = Compat.GetSpellInfo(input)
-        if name and resolvedID then return resolvedID, name end
-    end
-    return nil
-end
-
 local CATEGORIES = {
     interrupt = true, stun = true, knockback = true, incapacitate = true,
     silence = true, root = true, fear = true, displace = true,
@@ -622,19 +606,17 @@ local function spellsList(self, rest)
     end
 end
 
+-- The spell and its [CLASS SPEC] go through core/SpellInput.lua, the resolver
+-- the Spells page's add box uses too: a multi-word name ("Wind Shear") is one
+-- name, a trailing CLASS / SPEC is validated rather than trusted, and the
+-- Blizzard Cooldown Manager gate applies on the player's live pair exactly as it
+-- does on the page (KICKCD-R-05, KICKCD-R-18).
 local function spellsAdd(self, rest)
-    local args = tokenize(rest)
-    if not args[1] then
-        return p(self, "Usage: /kcd spells add <id|name> [CLASS SPEC]")
-    end
-    local id, name = resolveSpellInput(args[1])
-    if not id then
-        return p(self, "Unknown spell: " .. tostring(args[1]))
-    end
-    local class, spec = resolveClassSpec(args, 2)
-    if not (class and spec) then
-        return p(self, "Could not determine class+spec")
-    end
+    local SI = NS.SpellInput
+    local id, name, class, spec = SI.ParseTail(tokenize(rest))
+    if not id then return p(self, name) end
+    local ok, why = SI.Admissible(id, class, spec)
+    if not ok then return p(self, why) end
     local result = self.Database and self.Database:AddSpell(class, spec, id)
     if not result then return p(self, "db not ready") end
     commitSpellsChange()
@@ -769,7 +751,7 @@ function runSpells(self, rest)
         end
         local cls, spc = resolvePlayerClassSpec()
         if cls and spc then
-            p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, spc))
+            p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, sd(spc)))
         end
         return
     end
