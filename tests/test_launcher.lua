@@ -212,6 +212,132 @@ test("RIGHT click opens the settings panel, whatever the left button does", func
     assertEqual(NS.db.profile.locked, locked, "and must NOT touch the lock")
 end)
 
+-- ── the status tooltip (launcher-§1, standard v2.66.0; Launcher version 3) ──
+--
+-- The LIBRARY draws it, in one shape across all eleven addons, and draws it
+-- while the addon is disabled. What is ours is the answers: the version, the
+-- Enabled and Locked readers, and what the left button says it does. KickCD has
+-- no Test mode (unlocking IS the preview), so it has no Test mode line, and it
+-- has no extra lines of its own, so it passes no onTooltipShow.
+
+--- The tooltip's lines, drawn through the object's own OnTooltipShow, with the
+--- status colors stripped so the cases read the words.
+local function tooltipLines(inst)
+    local lines = {}
+    local tt = { AddLine = function(_, s) lines[#lines + 1] = s end }
+    inst.NS.Launcher:Object().OnTooltipShow(tt)
+    for i, s in ipairs(lines) do
+        lines[i] = (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+    end
+    return lines
+end
+
+--- The descriptor source, for the fields whose ABSENCE is the contract.
+local function launcherSource()
+    local fh = assert(io.open(T.root .. "/core/LauncherSetup.lua", "r"))
+    local body = fh:read("*a"); fh:close()
+    return body
+end
+
+test("the descriptor passes version, isEnabled, isLocked and leftClickLabel -- and no isTestMode",
+function()
+    -- launcher-§1 (v2.66.0): isLocked / isTestMode ONLY for states the addon
+    -- really has. KickCD has a lock and has no test mode (options-ui-§15's
+    -- exemption, settings/General.lua), so a `Test mode` line would be a status
+    -- for a switch nobody can find. No onTooltipShow either: the library draws
+    -- the title and hints, and a host copy of either is anti-pattern #89.
+    -- red under: passing isTestMode, or an onTooltipShow that draws a title
+    local body = launcherSource()
+    for _, field in ipairs({ "version", "isEnabled", "disabledLine", "isLocked", "leftClickLabel" }) do
+        assertTrue(body:find("\n%s*" .. field .. "%s*=") ~= nil, "the descriptor must pass `" .. field .. "`")
+    end
+    assertNil(body:find("\n%s*isTestMode%s*="), "KickCD has no test mode, so it passes no isTestMode")
+    assertNil(body:find("\n%s*onTooltipShow%s*="), "KickCD has no extra lines, so it passes no onTooltipShow")
+end)
+
+test("the tooltip, enabled and locked: title with the TOC version, Enabled, Locked, the rung-(b) hint",
+function()
+    -- red under: no `version` (the title reads the label alone), no isEnabled
+    -- (Enabled is Yes forever), no isLocked (no Locked line), or no
+    -- leftClickLabel (the library's bare `Toggle`)
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    NS.db.profile.enabled = true
+    NS.db.profile.locked = true
+    local lines = tooltipLines(inst)
+    assertEqual(#lines, 5, "title, Enabled, Locked, Left-click, Right-click: " .. table.concat(lines, " / "))
+    assertEqual(lines[1], "Ka0s KickCD  v" .. NS.Version(), "the title carries the TOC's version")
+    assertEqual(lines[2], "Enabled: Yes")
+    assertEqual(lines[3], "Locked: Yes")
+    assertEqual(lines[4], "Left-click: Unlock frame", "locked, the left click unlocks")
+    assertEqual(lines[5], "Right-click: Open settings")
+    for _, s in ipairs(lines) do
+        assertNil(s:find("Test mode", 1, true), "no Test mode line: this addon has no test mode")
+    end
+end)
+
+test("the tooltip reads the lock on EVERY show, and the left-click hint follows it", function()
+    -- Never cached (launcher-§1): the hover after a `/kcd unlock` must say so.
+    -- red under: a leftClickLabel string captured at file load, or isLocked a value
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    NS.db.profile.locked = false
+    local lines = tooltipLines(inst)
+    assertEqual(lines[3], "Locked: No")
+    assertEqual(lines[4], "Left-click: Lock frame", "unlocked, the left click locks")
+    captured(inst, function() NS.Launcher:Object().OnClick(nil, "LeftButton") end)
+    lines = tooltipLines(inst)
+    assertEqual(lines[3], "Locked: Yes", "the click locked it, and the next hover says so")
+    assertEqual(lines[4], "Left-click: Unlock frame")
+end)
+
+test("the version is the TOC's ## Version, not a second constant", function()
+    -- `version` from the TOC metadata (launcher-§1). NS.Version() reads the TOC
+    -- first and only falls back to NS.VERSION, the same answer `/kcd version`
+    -- and a capture record give.
+    -- red under: version = "1.3.0", or any literal
+    local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local toc = fh:read("*a"); fh:close()
+    local tocVersion = toc:match("##%s*Version:%s*([^\r\n]+)")
+    local inst = T.load(true, true)
+    assertEqual(inst.NS.Version(), tocVersion)
+    assertEqual(tooltipLines(inst)[1], "Ka0s KickCD  v" .. tocVersion)
+end)
+
+test("the tooltip still shows while DISABLED: Enabled: No, and the left-click hint names /kcd enable",
+function()
+    -- The owner's M5 ruling: the button ALWAYS answers a hover, disabled
+    -- included, since that is when a player most needs to ask. The left click
+    -- is refused while disabled (launcher-§2), so its hint says so rather than
+    -- promising a lock toggle it will not do. The right button is unchanged.
+    -- red under: no isEnabled (Enabled: Yes while off), or no disabledLine
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    NS.db.profile.enabled = false
+    NS.db.profile.locked = true
+    local lines = tooltipLines(inst)
+    assertEqual(#lines, 5, table.concat(lines, " / "))
+    assertEqual(lines[1], "Ka0s KickCD  v" .. NS.Version())
+    assertEqual(lines[2], "Enabled: No")
+    assertEqual(lines[3], "Locked: Yes", "the lock is still reported while disabled")
+    assertEqual(lines[4], "Left-click: disabled \226\128\148 /kcd enable")
+    assertEqual(lines[5], "Right-click: Open settings")
+end)
+
+test("the left-click hint goes through the addon's locale", function()
+    -- leftClickLabel is ours, so it is localized by our L; the library's own
+    -- words come from lib.STRINGS.
+    -- red under: a literal "Unlock frame" in the descriptor
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    NS.db.profile.locked = true
+    local realL = rawget(NS.L, "Unlock frame")
+    rawset(NS.L, "Unlock frame", "UNLOCK-XX")
+    local lines = tooltipLines(inst)
+    rawset(NS.L, "Unlock frame", realL)
+    assertEqual(lines[4], "Left-click: UNLOCK-XX")
+end)
+
 -- ── the Minimap button row (launcher-§3) ────────────────────────────────────
 
 test("the row's get INVERTS LibDBIcon's `hide`, so the label can say shown", function()

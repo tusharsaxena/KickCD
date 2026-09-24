@@ -8,8 +8,11 @@ local addonName, NS = ...
 --
 -- The library owns the LibDataBroker object, its `type = "launcher"`, the single
 -- click implementation both surfaces dispatch into, the LibDBIcon registration
--- and the idempotence of it. What is genuinely ours is four answers: our FOLDER
--- name, our logo, what the left button does, and how the settings panel opens.
+-- and the idempotence of it, and since Launcher version 3 the status tooltip
+-- too. What is genuinely ours is four answers -- our FOLDER name, our logo, what
+-- the left button does, and how the settings panel opens -- plus the tooltip's
+-- questions: the version, whether the addon is enabled, whether it is locked,
+-- and what the left button will do.
 -- Nothing else belongs here, and in particular no second click handler: an addon
 -- that builds a minimap button with its own handler and a broker object with a
 -- second one has written the feature twice and they drift on the next behavior
@@ -132,15 +135,22 @@ NS.Launcher = Launcher:New({
 
     -- THE RUNG. Its presence is the whole declaration (launcher-§2): a rung-(c)
     -- addon passes nothing rather than passing openSettings, so a skipped rule
-    -- cannot look like a choice.
-    --
+    -- cannot look like a choice. It is the lock toggle and nothing else: the
+    -- disabled gate is the library's, below.
+    onClick = function()
+        if NS.ToggleLock then NS.ToggleLock() end
+    end,
+
     -- REFUSED WHILE THE ADDON IS DISABLED (launcher-§2, slash-commands-§7). Rung
     -- (b) drives a preview switch and a preview switch is a FEATURE, so the left
     -- button prints the collection's one refusal line and does nothing else --
     -- and in particular does not write SavedVariables, which is what a minimap
-    -- button with no disabled gate does every single time it is clicked. The line
-    -- comes from the library through NS.Slash.PrintDisabledLine, never re-spelled
-    -- here.
+    -- button with no disabled gate does every single time it is clicked. The gate
+    -- is the LIBRARY's (Launcher version 2): it asks isEnabled on every click and,
+    -- on false, prints disabledLine through `print` below and never calls onClick.
+    -- It used to sit inside onClick here; it moved so the tooltip's `Enabled`
+    -- line and the refusal read ONE accessor, the Master-controls row's reader.
+    -- The line is the Slash dispatcher's own DisabledLine, never re-spelled here.
     --
     -- THE RUNG-(c) CARVE-OUT DOES NOT REACH THIS ADDON, and it is worth saying
     -- why rather than leaving a reader to wonder: a rung-(c) left click opens the
@@ -149,12 +159,28 @@ NS.Launcher = Launcher:New({
     -- is rung (b) -- this click toggles the lock, not the panel -- so the refusal
     -- applies. RIGHT-click is the library's and opens the panel in either state,
     -- which is what keeps the panel one click away from a disabled addon.
-    onClick = function()
-        if NS.MasterEnabled and not NS.MasterEnabled() then
-            if NS.Slash and NS.Slash.PrintDisabledLine then NS.Slash.PrintDisabledLine() end
-            return
-        end
-        if NS.ToggleLock then NS.ToggleLock() end
+    isEnabled    = function() return NS.MasterEnabled == nil or NS.MasterEnabled() end,
+    disabledLine = function() return NS.Slash and NS.Slash.DisabledLine and NS.Slash.DisabledLine() end,
+
+    -- ── THE STATUS TOOLTIP (launcher-§1, standard v2.66.0) ──────────────────
+    --
+    -- The LIBRARY draws it (Launcher version 3), enabled or disabled, in the one
+    -- shape all eleven addons share: title and version, Enabled, Locked, the
+    -- click hints. These fields only answer its questions, and each is asked on
+    -- every show, so the hover after `/kcd unlock` says so. There is no
+    -- `isTestMode`: this addon has no test mode (unlocking IS the preview), and a
+    -- status line for a switch nobody can find would be a lie. There is no
+    -- `onTooltipShow`: KickCD has no lines of its own, and a host title or click
+    -- hint beside the library's is anti-pattern #89.
+    --
+    -- The TOC's `## Version`, through the one resolver `/kcd version` uses.
+    version = function() return NS.Version and NS.Version() end,
+    -- The same path the `Lock frame` row and NS.ToggleLock read.
+    isLocked = function() return NS.db and NS.db.profile and NS.db.profile.locked and true or false end,
+    -- Rung (b), lock / unlock (ADDONS.md): what THIS click will do, through our L.
+    leftClickLabel = function()
+        local locked = NS.db and NS.db.profile and NS.db.profile.locked
+        return NS.L[locked and "Unlock frame" or "Lock frame"]
     end,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,

@@ -152,7 +152,8 @@ so a misspelling still gets `unknown command '<verb>'` and the index.
 The **refusal line is the collection's, not this addon's**: one sentence, built by the library from
 `lib.DISABLED_LINE_FORMAT`, the brand name and the slash. There is no locale key for it here and a
 descriptor `L` override deliberately does not reach it. The launcher's refused left click prints
-**that same line**, through `NS.Slash.PrintDisabledLine`, rather than a second copy of it.
+**that same line**, handed to `LibKa0s-Launcher-1.0`'s disabled gate through `NS.Slash.DisabledLine`,
+rather than a second copy of it, and the launcher tooltip reads its `/kcd enable` hint out of it.
 
 The **live set** is a union, built in `settings/Slash.lua` and never a typed copy:
 
@@ -197,7 +198,7 @@ degradation stub") prescribe:
   local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
   surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
   degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included, and
-  `NS.Slash.PrintDisabledLine` prints it on this load too. It is the only library string the stub
+  `NS.Slash.DisabledLine` answers it on this load too. It is the only library string the stub
   carries.
 * **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
   spaces, no color escapes and no em-dash separator.

@@ -63,6 +63,9 @@ L["Units"]                       = "Units"
 L["Enable KickCD"]               = "Enable KickCD"
 L["Master enable for the addon."] = "Master enable for the addon."
 L["Lock frame"]                  = "Lock frame"
+-- The launcher's left-click hint while locked (core/LauncherSetup.lua's
+-- leftClickLabel); unlocked, it reuses "Lock frame" above.
+L["Unlock frame"]                = "Unlock frame"
 L["When unlocked, you can drag the icon grid to reposition it."] =
     "When unlocked, you can drag the icon grid to reposition it."
 L["Debug console"]               = "Debug console"

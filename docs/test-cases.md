@@ -1245,7 +1245,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (30)
+### test_launcher.lua (36)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the broker label is the BRAND NAME in plain text, `Ka0s KickCD`
@@ -1257,6 +1257,12 @@ badge and any count quoted in the docs must agree with it.
 - LEFT click toggles the lock — rung (b), through the addon's own switch
 - the left click goes through the SAME write seam the Lock frame checkbox does
 - RIGHT click opens the settings panel, whatever the left button does
+- the descriptor passes version, isEnabled, isLocked and leftClickLabel -- and no isTestMode
+- the tooltip, enabled and locked: title with the TOC version, Enabled, Locked, the rung-(b) hint
+- the tooltip reads the lock on EVERY show, and the left-click hint follows it
+- the version is the TOC's ## Version, not a second constant
+- the tooltip still shows while DISABLED: Enabled: No, and the left-click hint names /kcd enable
+- the left-click hint goes through the addon's locale
 - the row's get INVERTS LibDBIcon's `hide`, so the label can say shown
 - the row's set inverts AND moves the button, in the one write seam
 - `/kcd get global.minimap.shown` answers true while minimap.hide is false
@@ -1399,7 +1405,7 @@ badge and any count quoted in the docs must agree with it.
 | test_disabled.lua | 19 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
-| test_launcher.lua | 30 |
+| test_launcher.lua | 36 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
 | test_doc_structure.lua | 4 |
@@ -1407,4 +1413,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1141** |
+| **Total** | **1147** |

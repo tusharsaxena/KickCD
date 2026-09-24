@@ -509,23 +509,24 @@ function NS.Slash:LandingRows() return NS.Slash.cli:LandingRows() end
 
 function NS.Slash:OnSlash(msg) return NS.Slash.cli:OnSlash(msg) end
 
---- Print the collection's one refusal line, through this addon's tagged printer.
+--- The collection's one refusal line, as the dispatcher builds it.
 ---
---- The launcher's left click is the second call site the standard names
---- (slash-commands-§7, launcher-§2): a refused click prints the SAME line a
---- refused feature verb prints, and it prints it by asking the library for it
---- rather than by spelling it again here. One sentence, one place.
+--- The launcher is the second call site the standard names (slash-commands-§7,
+--- launcher-§2): a refused left click prints the SAME line a refused feature
+--- verb prints, and the launcher's tooltip reads its `/kcd enable` hint out of
+--- it. Both ask the library for it through here rather than spelling it again.
+--- The launcher prints it itself (LibKa0s-Launcher-1.0's disabled gate, through
+--- its `print`, which is NS.Util.print like `out` above).
 ---
 --- On a library-absent load the stub above answers the same line, built from its
 --- one pinned copy of the library's format string (slash-commands-§1). A
---- DisabledLine that answers nothing still prints nothing rather than an empty line.
-function NS.Slash.PrintDisabledLine()
+--- DisabledLine that answers nothing answers nil rather than an empty line.
+function NS.Slash.DisabledLine()
     local cli = NS.Slash.cli
-    if not (cli and cli.DisabledLine) then return false end
+    if not (cli and cli.DisabledLine) then return nil end
     local line = cli:DisabledLine()
-    if type(line) ~= "string" or line == "" then return false end
-    out(line)
-    return true
+    if type(line) ~= "string" or line == "" then return nil end
+    return line
 end
 
 -- There is no `NS.Slash:PrintHelp` forwarder beside these two, and its absence is deliberate:
