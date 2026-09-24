@@ -240,3 +240,69 @@ test("every deviation id the register cites is assigned by a bundle in docs/audi
         "cited by a register row and assigned by no bundle under docs/audits/: "
             .. table.concat(offenders, ", "))
 end)
+
+-- ---------------------------------------------------------------------------------------------
+-- KickCD.toc's load-bearing positions for the module siblings (toc-file-§2).
+--
+-- A sibling file that runs `NS:GetModule("X")` at FILE scope raises during load if X's parent has
+-- not registered yet: AceAddon's GetModule is not silent. So the sibling's TOC position is
+-- load-bearing, and the rule is that such a position says so in a `# LOAD-BEARING POSITION` comment
+-- a reader meets before moving the line. The comment may sit directly above the line or above its
+-- group (one note above modules\IconGrid_Layout.lua covers IconGrid_Render.lua below it), but it
+-- must NAME the file, so a note written for one sibling cannot silently vouch for another.
+--
+-- red under: deleting either module-sibling LOAD-BEARING note from KickCD.toc, or dropping a
+-- sibling's name from it, or moving a sibling above its parent.
+
+--- KickCD.toc's lines, CRLF normalized, in order.
+local function tocLines()
+    local lines = {}
+    for line in (read("KickCD.toc") .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+    return lines
+end
+
+--- The comment text a TOC line inherits: walk up over sibling file lines to the first comment
+--- block, and collect that block, stopping at a blank line.
+local function inheritedComment(lines, at)
+    local i, block = at - 1, {}
+    while i >= 1 and lines[i] ~= "" and lines[i]:sub(1, 1) ~= "#" do i = i - 1 end
+    while i >= 1 and lines[i]:sub(1, 1) == "#" do
+        table.insert(block, 1, lines[i])
+        i = i - 1
+    end
+    return table.concat(block, "\n")
+end
+
+test("every file-scope NS:GetModule sits below its parent under a LOAD-BEARING comment", function()
+    local lines = tocLines()
+    local position, parentOf, siblings = {}, {}, {}
+    for i, line in ipairs(lines) do
+        local rel = line:match("^(modules\\[%w_]+%.lua)%s*$")
+        if rel then
+            local path = rel:gsub("\\", "/")
+            position[path] = i
+            for src in (read(path) .. "\n"):gmatch("([^\n]*)\n") do
+                local made = src:match("^local %w+ = NS:NewModule%(\"(%w+)\"")
+                if made then parentOf[made] = path end
+                local wanted = src:match("^[^%s%-].-NS:GetModule%(\"(%w+)\"%)")
+                if wanted then siblings[#siblings + 1] = { path = path, parent = wanted, line = i } end
+            end
+        end
+    end
+
+    assertTrue(#siblings > 0,
+        "no modules/*.lua calls NS:GetModule at file scope -- either the siblings changed or the scan did")
+    local offenders = {}
+    for _, s in ipairs(siblings) do
+        local parentPath = parentOf[s.parent]
+        local base = s.path:match("([^/]+)$")
+        local note = inheritedComment(lines, s.line)
+        if not parentPath or position[parentPath] > s.line then
+            offenders[#offenders + 1] = s.path .. " (loads above its parent " .. s.parent .. ")"
+        elseif not note:find("LOAD-BEARING POSITION", 1, true) or not note:find(base, 1, true) then
+            offenders[#offenders + 1] = s.path .. " (no LOAD-BEARING POSITION note naming it)"
+        end
+    end
+    assertEqual(#offenders, 0,
+        "file-scope NS:GetModule siblings without a stated TOC position: " .. table.concat(offenders, ", "))
+end)

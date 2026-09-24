@@ -37,9 +37,12 @@ libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 # Locales
+# Conventional position: read through NS.L at call time; free within the block.
 locales\enUS.lua
 
 # Core
+# A line in this block without a LOAD-BEARING POSITION comment is conventional:
+# free to move within the block.
 core\Compat.lua
 # The LibKa0s-Env seam: this addon's own version, read from its TOC manifest.
 # After Compat; nothing here resolves at load, so this line is free to move.
@@ -90,15 +93,24 @@ core\LifecycleSetup.lua
 core\PerfSetup.lua
 
 # Defaults (the only place a profile default is hardcoded — savedvariables-§2)
+# Conventional position: read at call time by core/Database.lua aceDBDefaults;
+# free within the block.
 defaults\Profile.lua
 defaults\Spells.lua
 
 # Modules
+# Conventional position: the four parent modules (Cooldowns, IconGrid, Castbar,
+# UnitLabel) are free relative to each other. Their siblings are not; see below.
 modules\Cooldowns.lua
 modules\IconGrid.lua
+# LOAD-BEARING POSITION: modules/IconGrid_Layout.lua and modules/IconGrid_Render.lua
+# call NS:GetModule("IconGrid") at file scope, so both follow modules\IconGrid.lua.
 modules\IconGrid_Layout.lua
 modules\IconGrid_Render.lua
 modules\Castbar.lua
+# LOAD-BEARING POSITION: modules/Castbar_Handle.lua, modules/Castbar_Skin.lua and
+# modules/Castbar_Debug.lua call NS:GetModule("Castbar") at file scope, so all three
+# follow modules\Castbar.lua.
 modules\Castbar_Handle.lua
 modules\Castbar_Skin.lua
 modules\Castbar_Debug.lua
@@ -122,6 +134,8 @@ settings\OptionsSetup.lua
 # settings/Icons.lua and settings/Castbar.lua resolve AnchorValues into a
 # file-scope local, so this line must stay above every per-tab file.
 settings\Panel.lua
+# Conventional position: below settings\Panel.lua the page files are free relative to
+# each other; the one exception, settings\Spells_Rows.lua, carries its own note.
 settings\Panel_Widgets.lua
 settings\Panel_Render.lua
 settings\General.lua

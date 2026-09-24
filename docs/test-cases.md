@@ -1297,11 +1297,12 @@ badge and any count quoted in the docs must agree with it.
 - the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 
-### test_doc_structure.lua (3)
+### test_doc_structure.lua (4)
 
 - docs/ARCHITECTURE.md carries the section names documentation-§3 mandates
 - every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
 - every deviation id the register cites is assigned by a bundle in docs/audits/
+- every file-scope NS:GetModule sits below its parent under a LOAD-BEARING comment
 
 ### test_lintconfig.lua (5)
 
@@ -1401,9 +1402,9 @@ badge and any count quoted in the docs must agree with it.
 | test_launcher.lua | 30 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
-| test_doc_structure.lua | 3 |
+| test_doc_structure.lua | 4 |
 | test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1140** |
+| **Total** | **1141** |
