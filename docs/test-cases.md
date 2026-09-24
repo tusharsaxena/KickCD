@@ -1189,8 +1189,8 @@ badge and any count quoted in the docs must agree with it.
 - DISABLED: a settings change does not bring it back
 - DISABLED: every reserved verb still answers, and the bare /kcd opens the panel
 - DISABLED: a feature verb refuses on ONE line and reaches no write seam
-- DISABLED: the launcher's LEFT click is refused and writes nothing
-- DISABLED: the launcher's RIGHT click still opens the panel
+- DISABLED: the launcher's LEFT click opens the settings panel and writes nothing
+- DISABLED: the RIGHT click's menu keeps Enabled live and grays Locked
 - RE-ENABLED: the registration set comes back, exactly
 - the Cooldown Manager cache's invalidator is in the set, and stands down with it
 - RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot
@@ -1245,7 +1245,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (36)
+### test_launcher.lua (40)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the broker label is the BRAND NAME in plain text, `Ka0s KickCD`
@@ -1254,15 +1254,19 @@ badge and any count quoted in the docs must agree with it.
 - the 128 logo is on disk, uncompressed 32-bit TGA at 128x128
 - it registers under the addon's FOLDER name, with the table the settings row writes
 - Register is idempotent: a second call builds no second button
-- LEFT click toggles the lock — rung (b), through the addon's own switch
-- the left click goes through the SAME write seam the Lock frame checkbox does
-- RIGHT click opens the settings panel, whatever the left button does
-- the descriptor passes version, isEnabled, isLocked and leftClickLabel -- and no isTestMode
-- the tooltip, enabled and locked: title with the TOC version, Enabled, Locked, the rung-(b) hint
-- the tooltip reads the lock on EVERY show, and the left-click hint follows it
+- LEFT click opens the settings panel and touches nothing else
+- RIGHT click opens the options menu: the label, then Enabled and Locked, nothing else
+- the menu reads the state when it opens, every time
+- Enabled routes to the handler `/kcd enable` and `/kcd disable` run
+- Enabled writes through the single write seam, one write on the `enabled` row
+- Locked routes to NS.ToggleLock, the handler `/kcd toggle` runs
+- Locked goes through the SAME write seam the Lock frame checkbox does
+- with no client menu API the right click falls back to the settings panel
+- the descriptor passes the pairs KickCD has, and no retired or absent field
+- the tooltip, enabled and locked: title with the TOC version, Enabled, Locked, the fixed hints
+- the tooltip reads the lock on EVERY show
 - the version is the TOC's ## Version, not a second constant
-- the tooltip still shows while DISABLED: Enabled: No, and the left-click hint names /kcd enable
-- the left-click hint goes through the addon's locale
+- the tooltip still shows while DISABLED: Enabled: No, the same hints
 - the row's get INVERTS LibDBIcon's `hide`, so the label can say shown
 - the row's set inverts AND moves the button, in the one write seam
 - `/kcd get global.minimap.shown` answers true while minimap.hide is false
@@ -1405,7 +1409,7 @@ badge and any count quoted in the docs must agree with it.
 | test_disabled.lua | 19 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
-| test_launcher.lua | 36 |
+| test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
 | test_doc_structure.lua | 4 |
@@ -1413,4 +1417,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1147** |
+| **Total** | **1151** |

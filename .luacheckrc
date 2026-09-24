@@ -184,3 +184,11 @@ files["settings/Spells.lua"] = {
   ignore = { "212/self" },
 }
 
+-- The client's menu-description API, faked. tests/mock_menu.lua is LibKa0s v1.58.0's own
+-- stand-in copied whole (see its header), so its bytes are not ours to respell: its element
+-- methods take the receiver the client's `element:SetEnabled(false)` hands them and read the
+-- entry from the enclosing closure instead, and `menu:Texts()` / `:Find()` nest one receiver
+-- inside another's scope. Editing the copy to satisfy this lint would make it a fork.
+files["tests/mock_menu.lua"] = {
+  ignore = { "212/self", "432/self" },
+}

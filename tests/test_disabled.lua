@@ -369,7 +369,7 @@ end)
 
 test("DISABLED: a feature verb refuses on ONE line and reaches no write seam", function()
     -- slash-commands-§2's SHOULD, which this addon adopts: `lock`, `unlock`, `toggle` and `resetposition` drive the
-    -- display -- unlocking IS this addon's preview (launcher-§2 rung (b)) -- and with the addon off
+    -- display -- unlocking IS this addon's preview (the launcher menu's Locked entry) -- and with the addon off
     -- there is no grid to unlock. Driven off NS.COMMANDS rather than a typed list, so the next verb
     -- added to the addon is covered here the day it lands.
     local inst = baseline()
@@ -400,40 +400,56 @@ end)
 -- Step 8: the launcher
 -- ---------------------------------------------------------------------------
 
-test("DISABLED: the launcher's LEFT click is refused and writes nothing", function()
-    -- launcher-§2: rung (a) and rung (b) are refused while disabled because both drive features, and
-    -- KickCD is rung (b) -- the left button toggles the lock, which IS its preview switch. The
-    -- rung-(c) carve-out does not reach this addon: that one opens the settings panel, which slash-commands-§7 keeps
-    -- standing, and refusing it would decline one button for doing what the button beside it must
-    -- keep doing.
+-- The library's MenuUtil stand-in (LibKa0s tests/mock_menu.lua, copied whole), installed per
+-- instance; the library resolves it at click time.
+local MockMenu = assert(loadfile(T.root .. "/tests/mock_menu.lua"))()
+local OWNER = { __name = "LibDBIcon10_KickCD" }
+
+test("DISABLED: the launcher's LEFT click opens the settings panel and writes nothing", function()
+    -- launcher-§2 (v2.67.0): the left button opens the panel on every addon, in either state. The
+    -- panel is setup, not a feature, and it is one of the two routes slash-commands-§7 nominates
+    -- for reaching an addon that is off. Opening it writes nothing.
     --
-    -- red under: dropping the gate from core/LauncherSetup.lua's onClick -- the audit found an addon
-    -- whose minimap button writes the stored tree of an addon the player switched off
-    local inst = baseline()
-    setEnabled(inst, false)
-    local click = inst.NS.Launcher:Object().OnClick
-    local before = svSnapshot(inst)
-    local shownBefore = #shownFrames(inst)
-    local lines = say(inst, function() click(nil, "LeftButton") end)
-    local writes = svDiff(before, svSnapshot(inst))
-
-    assertEqual(#writes, 0, "the click wrote SavedVariables: " .. table.concat(writes, ", "))
-    assertEqual(#lines, 1, "the click must answer on exactly one line")
-    assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil, "naming the verb that turns it back on")
-    assertEqual(#shownFrames(inst), shownBefore, "and it must not have shown anything")
-end)
-
-test("DISABLED: the launcher's RIGHT click still opens the panel", function()
-    -- Unchanged in either state, and deliberately not inconsistent with anything: the owner's ruling
-    -- is about the slash surface, and a mouse click is not a slash command. It is also one of the two
-    -- routes slash-commands-§7 nominates for reaching the panel of an addon that is off.
+    -- red under: a left click that still drives the lock -- the audit found an addon whose minimap
+    -- button writes the stored tree of an addon the player switched off
     local inst = baseline()
     setEnabled(inst, false)
     local opened, realOpen = 0, inst.NS.OpenSettings
     inst.NS.OpenSettings = function(self) opened = opened + 1; return realOpen(self) end
-    say(inst, function() inst.NS.Launcher:Object().OnClick(nil, "RightButton") end)
+    local before = svSnapshot(inst)
+    say(inst, function() inst.NS.Launcher:Object().OnClick(OWNER, "LeftButton") end)
     inst.NS.OpenSettings = realOpen
-    assertEqual(opened, 1, "right-click must open the settings panel while disabled")
+    local writes = svDiff(before, svSnapshot(inst))
+    assertEqual(opened, 1, "left-click must open the settings panel while disabled")
+    assertEqual(#writes, 0, "the click wrote SavedVariables: " .. table.concat(writes, ", "))
+end)
+
+test("DISABLED: the RIGHT click's menu keeps Enabled live and grays Locked", function()
+    -- launcher-§2 (v2.67.0): while disabled the Locked entry drives a feature, so the library grays
+    -- it with the note in its label and a click on it calls nothing -- not even one the client
+    -- dispatched despite the gray (ForceClick reaches the library's own gate). Enabled stays live,
+    -- and is the way back.
+    -- red under: a host toggleLock that ignores the library's gray, or a host-built menu
+    local inst = baseline()
+    setEnabled(inst, false)
+    local menu = MockMenu(inst.mocks)
+    say(inst, function() inst.NS.Launcher:Object().OnClick(OWNER, "RightButton") end)
+    local m = menu.last
+    assertTrue(m ~= nil, "right-click must open the options menu while disabled")
+    local texts = m:Texts()
+    assertEqual(texts[1], "Enabled")
+    assertEqual(texts[2], "Locked (enable the addon first)")
+    assertFalse(m:Find("Enabled").enabled == false, "Enabled must stay clickable")
+    assertEqual(m:Find("Locked").enabled, false, "Locked must be grayed")
+
+    local before = svSnapshot(inst)
+    say(inst, function() m:Click("Locked") end)
+    say(inst, function() m:ForceClick("Locked") end)
+    local writes = svDiff(before, svSnapshot(inst))
+    assertEqual(#writes, 0, "a grayed Locked wrote: " .. table.concat(writes, ", "))
+
+    say(inst, function() m:Click("Enabled") end)
+    assertTrue(inst.NS.db.profile.enabled, "the menu's Enabled turns the addon back on")
 end)
 
 -- ---------------------------------------------------------------------------

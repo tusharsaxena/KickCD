@@ -169,15 +169,15 @@ end
 
 --- Flip the lock, through the one writer above.
 ---
---- Published because it has TWO callers now and they must not be two
---- implementations: `/kcd toggle` below, and the minimap button's left click
---- (core/LauncherSetup.lua). launcher-§2 puts this addon on rung (b) -- no
---- primary window, and Lock frame is the preview switch since unlocking IS the
---- preview -- and says in as many words that the launcher drives the addon's
---- EXISTING switch through the same seam rather than holding a copy of it. This
---- is that seam, and it holds no state: it reads db.profile.locked and hands the
---- negation to setLocked, which writes through the schema seam (Store.Set, then
---- RefreshScalars) like the `Lock frame` checkbox and `/kcd set locked` do.
+--- Published because it has TWO callers and they must not be two
+--- implementations: `/kcd toggle` below, and the launcher's options menu, whose
+--- Locked entry is this function (core/LauncherSetup.lua's toggleLock).
+--- launcher-§2 (v2.67.0) says in as many words that each menu entry drives the
+--- addon's EXISTING switch through the same handler its slash verb uses rather
+--- than holding a copy of it. This is that handler, and it holds no state: it
+--- reads db.profile.locked and hands the negation to setLocked, which writes
+--- through the schema seam (Store.Set, then RefreshScalars) like the
+--- `Lock frame` checkbox and `/kcd set locked` do.
 function NS.ToggleLock()
     local cur = NS.db and NS.db.profile and NS.db.profile.locked
     setLocked(NS, not cur)
@@ -187,6 +187,19 @@ end
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting
 local runReset, runResetAll, runResetPosition, runSpells
+
+--- Switch the addon on or off: THE handler `/kcd enable` and `/kcd disable` run.
+---
+--- Published for the same reason as NS.ToggleLock above: it has two callers,
+--- the two verbs below and the launcher's options menu, whose Enabled entry is
+--- this function (core/LauncherSetup.lua's setEnabled, launcher-§2 v2.67.0).
+--- It is `/kcd set enabled <bool>` and nothing else, so the menu, the verbs and
+--- the Master-controls row share one stored path, one write seam
+--- (options-ui-§1) and one confirmation line. setSetting is the forward
+--- declaration above, resolved at call time.
+function NS.SetMasterEnabled(on)
+    setSetting(NS, on and "enabled true" or "enabled false")
+end
 
 -- Published on KickCD as KickCD.COMMANDS at the bottom of this block so
 -- the settings panel's main page can render the same list /kcd help
@@ -211,7 +224,8 @@ local COMMANDS = {
     -- what was missing was the CLI route to it, so the answer to "turn this off
     -- without opening anything" was "find the panel first".
     --
-    -- They dispatch into setSetting, which IS `/kcd set` -- same stored path,
+    -- They dispatch into setSetting (through NS.SetMasterEnabled, which the
+    -- launcher's menu calls too), which IS `/kcd set` -- same stored path,
     -- same single write seam (options-ui-§1), same onChange, and the slash-commands-§5 `set`
     -- confirmation line for free. So they hold NO state of their own: no second
     -- key, no session flag, no NS.enabled, and the checkbox and the verbs cannot
@@ -224,9 +238,9 @@ local COMMANDS = {
     -- their DRAWING down and nothing else. Setup, not a feature
     -- (slash-commands-§2), and tests/test_slash.lua pins it.
     {"enable",        "Enable KickCD",
-        function() setSetting(NS, "enabled true") end},
+        function() NS.SetMasterEnabled(true) end},
     {"disable",       "Disable KickCD — `/kcd enable` turns it back on",
-        function() setSetting(NS, "enabled false") end},
+        function() NS.SetMasterEnabled(false) end},
     {"lock",          "Lock the icon grid in place",
         function() setLocked(NS, true) end},
     {"unlock",        "Unlock the icon grid for dragging",
@@ -299,8 +313,8 @@ local COMMANDS = {
 -- to protect. It configures; it does not drive.
 --
 -- WHAT IS LEFT REFUSED IS FOUR, and each really does drive the display. `lock`,
--- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- launcher-§2 puts
--- KickCD on rung (b) precisely because unlocking IS this addon's preview -- and
+-- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- unlocking IS this
+-- addon's preview, the launcher menu's Locked entry (launcher-§2) -- and
 -- with the addon off there is no grid and no placeholder to unlock
 -- (slash-commands-§8 says so in as many words). And `resetposition` re-anchors
 -- the icon grids and fires CONFIG_CHANGED so the live grids move, then echoes

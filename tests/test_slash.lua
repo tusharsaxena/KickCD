@@ -618,8 +618,8 @@ local LIVE = {
 
 test("a disabled feature verb says so on ONE line, and does NOT act", function()
     -- The headline case, on the verb that would be loudest if it acted: `/kcd
-    -- toggle` flips the lock, which is this addon's preview switch (launcher-§2
-    -- rung (b)). A refusal that still flipped it would leave the player with a
+    -- toggle` flips the lock, which is this addon's preview switch (the
+    -- launcher menu's Locked entry, launcher-§2). A refusal that still flipped it would leave the player with a
     -- message saying nothing happened and a stored value saying it did.
     -- red under: the gate printing and then falling through to the handler
     local inst = disabled()

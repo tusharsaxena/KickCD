@@ -112,12 +112,13 @@ what the **launcher click** does is below.
 ### The launcher while disabled
 
 The button stays on the minimap and the broker row stays in the display — `minimap.hide` is a
-per-installation display preference and says nothing about whether the addon is running. **Left-click
-is refused**: KickCD is `launcher-§2` rung (b), the left button drives the lock, and the lock is this
-addon's preview switch — a feature. It prints the collection's one refusal line and does nothing
-else, and in particular writes no SavedVariables. **Right-click still opens the settings panel**, in
-either state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two
-routes §7 nominates for reaching the panel of an addon that is off.
+per-installation display preference and says nothing about whether the addon is running. Since
+Launcher version 4 (`launcher-§2`, standard v2.67.0) **left-click opens the settings panel** in either
+state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two routes §7
+nominates for reaching the panel of an addon that is off. **Right-click opens the options menu**:
+*Enabled* stays live and is the way back on; *Locked* drives the preview switch, a feature, so the
+library grays it (`Locked (enable the addon first)`) and a click on it calls nothing and writes no
+SavedVariables.
 
 ## The disabled state: the gate is the library's, the judgment is ours
 
@@ -151,9 +152,10 @@ so a misspelling still gets `unknown command '<verb>'` and the index.
 
 The **refusal line is the collection's, not this addon's**: one sentence, built by the library from
 `lib.DISABLED_LINE_FORMAT`, the brand name and the slash. There is no locale key for it here and a
-descriptor `L` override deliberately does not reach it. The launcher's refused left click prints
-**that same line**, handed to `LibKa0s-Launcher-1.0`'s disabled gate through `NS.Slash.DisabledLine`,
-rather than a second copy of it, and the launcher tooltip reads its `/kcd enable` hint out of it.
+descriptor `L` override deliberately does not reach it. The launcher prints no refusal of its own
+since Launcher version 4 (`launcher-§2`, v2.67.0): its left click opens the panel in either state,
+and its options menu grays *Locked* while the addon is off and calls nothing for it, the same answer
+the gated `/kcd toggle` gives.
 
 The **live set** is a union, built in `settings/Slash.lua` and never a typed copy:
 
@@ -167,7 +169,7 @@ The **live set** is a union, built in `settings/Slash.lua` and never a typed cop
   data rather than a feature verb. It configures; it does not drive.
 
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
-KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no
+unlocking *is* this addon's preview (the launcher menu's *Locked* entry), and with the addon off there is no
 grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
 live grids move, and then echoes *icon grid positions reset* at a player who can see no grid.
 
@@ -197,9 +199,8 @@ degradation stub") prescribe:
 * **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
   local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
   surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
-  degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included, and
-  `NS.Slash.DisabledLine` answers it on this load too. It is the only library string the stub
-  carries.
+  degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included. It is the
+  only library string the stub carries.
 * **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
   spaces, no color escapes and no em-dash separator.
 * **Composed-row verbs take route (a).** `enable` / `disable` still dispatch into `/kcd set
@@ -224,7 +225,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash.lua`. |
-| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the minimap button's left click is its second caller — `launcher-§2` rung (b) drives the addon's EXISTING preview switch through the same seam rather than holding a copy of it. |
+| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors, then writes through `Helpers.SetAndRefresh` (`Store.Set`). A path no schema row declares is refused and never stored (`Setting not found: <path>`), and a refusal the seam answers with `false, err, why` is printed instead of an echo (LibKa0s-Slash-1.0 minor 15). On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |

@@ -975,10 +975,15 @@ which is the whole reason this step exists.
   missing registration — check `media/logos/kickcd.logo.128.tga` is TGA image type 2 at 32 bpp.
 - **The AddOns list agrees.** ESC → AddOns (or the character-select AddOns list) shows the **same**
   logo beside *Ka0s KickCD*. One file, three places.
-- **Left click toggles the lock.** Unlock with the button: the grids and the cast bar's placeholder
-  appear and the grid drags. Click again: they lock. `/kcd get locked` agrees, and so does
-  General → Master controls → **Lock frame** — open the panel and watch the tick follow the button.
-- **Right click opens the settings panel**, on its landing page, and does **not** touch the lock.
+- **Hover it.** The tooltip reads `Ka0s KickCD  v<version>`, `Enabled: Yes`, `Locked: Yes|No`,
+  then `Left-click: Open settings` and `Right-click: Options menu`. No `Test mode` line.
+- **Left click opens the settings panel**, on its landing page, and does **not** touch the lock.
+- **Right click opens the options menu** (`launcher-§2`, standard v2.67.0): titled *Ka0s KickCD*,
+  with exactly two ticks, **Enabled** (ticked) and **Locked**, and nothing else. Untick
+  **Locked**: the grids and the cast bar's placeholder appear and the grid drags, the menu closes,
+  and chat prints the same *icon grid unlocked* line `/kcd toggle` prints. Right-click again: the
+  tick now reads unlocked. Tick it: they lock. `/kcd get locked` agrees, and so does General →
+  Master controls → **Lock frame** — open the panel and watch the tick follow the menu.
 - **Drag it.** Drag the button a quarter of the way round the ring, `/reload`, and it comes back
   where you left it. It moved because LibDBIcon wrote `minimapPos` into the same table the checkbox
   writes `hide` into.
@@ -987,9 +992,9 @@ which is the whole reason this step exists.
   name reads in the row's sense, while the stored key is still LibDBIcon's `hide` (`launcher-§3`).
   `/kcd get global.minimap.hide` answers *Setting not found*: the old path is not an alias.
   `/reload` — still gone, and still **false**. Tick it again: back, and **true**.
-- **The button's own menu agrees with the checkbox.** Right-click the button's LibDBIcon menu entry
-  where the display offers one, or hide it from a broker display's plugin list, and the
-  **Minimap button** tick follows. There is one boolean and the library writes it too.
+- **A broker display's hide agrees with the checkbox.** Hide the plugin from a broker display's
+  own plugin list where it offers one, and the **Minimap button** tick follows. There is one
+  boolean and the library writes it too.
 - **A profile switch does not move it.** Hide the button, then Settings → Profiles → switch profile.
   It stays hidden. Switch back: still hidden.
 - **Neither reset un-hides it.** With the button hidden, press General → **Reset all settings**
@@ -999,19 +1004,21 @@ which is the whole reason this step exists.
   broken — a player's minimap-button choice is a per-installation display preference, like the
   angle they dragged it to, and no reset touches either (`launcher-§3`).
 - **A broker display shows the same addon.** With Titan Panel, Bazooka or ElvUI's data texts
-  installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
-  right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
+  installed, add *Ka0s KickCD*: the row wears the same logo, left-click opens the panel and
+  right-click opens the same two-entry options menu. The row shows **no value cell** — it is a `launcher`, not a data
   source.
 - **`/kcd disable` then `/kcd enable`.** With the addon disabled, the bare `/kcd` **opens the
   settings panel**, `/kcd help` and `/kcd version` still answer, and `/kcd enable` turns it back on.
   A dispatcher that went quiet here is a one-way switch (`slash-commands-§2`) and is the finding;
   so is a bare `/kcd` that answers with a refusal instead of the panel, which is the case that
   settled the standard's v2.57.0 reversal.
-- **The minimap button while it is off.** Still disabled, LEFT-click it: one tagged line naming
-  `/kcd enable`, and the lock does not move (`/kcd get locked` is unchanged). RIGHT-click it: the
-  settings panel opens, exactly as it does when the addon is on (`launcher-§2`). A left click that
-  silently toggles the lock is writing the stored tree of an addon the player switched off, and is
-  the finding.
+- **The minimap button while it is off.** Still disabled, hover it: `Enabled: No`, the same two
+  hints. LEFT-click it: the settings panel opens, exactly as it does when the addon is on
+  (`launcher-§2`), and nothing is printed. RIGHT-click it: **Enabled** is unticked and clickable;
+  **Locked** reads *Locked (enable the addon first)* and is grayed — clicking it does nothing, and
+  `/kcd get locked` is unchanged. A grayed entry that still toggles the lock is writing the stored
+  tree of an addon the player switched off, and is the finding. Tick **Enabled**: the addon comes
+  back on, with the same confirmation line `/kcd enable` prints.
 - **A feature verb refuses while it is off.** Still disabled, run `/kcd toggle`. One tagged line
   comes back naming `/kcd enable`, and nothing else — `/kcd get locked` reports the same value it
   did before. Same for `/kcd lock`, `/kcd unlock` and `/kcd resetposition`. Then check the live
