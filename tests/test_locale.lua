@@ -209,7 +209,7 @@ end
 -- `L[…]`" — `trackSubscript` — and `scanLiterals` asks them in the one order
 -- that is correct, and records what falls out.
 --
--- Long brackets are handled rather than skipped: `settings/Spells.lua:50-51`
+-- Long brackets are handled rather than skipped: `settings/Spells_Rows.lua:36-37`
 -- holds two `[[Interface\…]]` texture paths, and a lexer that walked past `[[`
 -- without knowing what it was would read the `'` in a later `spec's` as the
 -- start of a string and lose the rest of the file.

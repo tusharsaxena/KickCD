@@ -287,7 +287,7 @@ test("neither the Spells page nor `/kcd spells` writes a stored spell list itsel
         { "EnsureSpellList",        "the lazy create" },
         { "profile%.spells%s*=",    "the store itself" },
     }
-    for _, rel in ipairs({ "settings/Spells.lua", "core/KickCD.lua" }) do
+    for _, rel in ipairs({ "settings/Spells.lua", "settings/Spells_Rows.lua", "core/KickCD.lua" }) do
         local src = code(rel)
         for _, f in ipairs(forbidden) do
             assertNil(src:match(f[1]), rel .. " writes " .. f[2] .. " itself; call NS.Database")
