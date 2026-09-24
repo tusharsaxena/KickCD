@@ -155,7 +155,7 @@ profiler untrustworthy. So the flip happens in place, live, mid-session.
 on, and the host's own `standDown` / `standUp` (`core/LifecycleSetup.lua`) are what run on the edge.
 `core/PerfSetup.lua` passes `lifecycle = NS.Lifecycle` and no longer carries `suspend` / `resume`
 callbacks at all. The full picture is
-[ARCHITECTURE.md → The stand-down](ARCHITECTURE.md#the-stand-down-disabled-is-total); what matters
+[slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state); what matters
 here is the part that is about captures:
 
 - **The addon is down while ANY hold is taken and comes back only when the LAST one is released.**

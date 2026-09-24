@@ -62,7 +62,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | End-to-end smoke tests (cold install, visibility modes, lock/drag, cast bar, spec/talent/pet, profiles, secret values) | — | [smoke-tests.md](smoke-tests.md) |
 | Slash-command + debug coverage matrices (what each command produces) | — | [testing.md](testing.md) |
 | Performance instrumentation: the buckets, the offline scenarios, the in-game A/B and suspend | `core/PerfSetup.lua`, `tests/perf.lua` | [performance.md](performance.md), [perf-analysis/README.md](perf-analysis/README.md) |
-| The stand-down latch: one teardown, two named holds (`disabled`, `perf`) | `core/LifecycleSetup.lua`, each module's `Suspend` / `Resume` | [The stand-down](#the-stand-down-disabled-is-total) |
+| The stand-down latch: one teardown, two named holds (`disabled`, `perf`) | `core/LifecycleSetup.lua`, each module's `Suspend` / `Resume` | [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
 
@@ -77,12 +77,11 @@ local F = NS.Foo
 ```
 
 - Every source file opens on that vararg, and the FIRST half is spelt `_` unless the file reads
-  it. Five do: `core/CoreSetup.lua`, `core/EnvSetup.lua`, `core/MediaSetup.lua`,
-  `core/DebugLogSetup.lua` and `core/PerfSetup.lua`, each handing the addon FOLDER name to a
-  vendored LibKa0s payload that cannot work out which folder it was copied into. Those five
-  write `local addonName, NS = ...`; the other thirty write `local _, NS = ...`. Writing the
-  name where nothing reads it is a dead local, and `M4c-06` removed twenty-nine of them --
-  they had been invisible under a top-level `211/addonName` in `.luacheckrc`.
+  it. Eight do, each handing the addon FOLDER name to a vendored LibKa0s payload that cannot work
+  out which folder it was copied into: `core/Constants.lua` (`Bus.Catalog`), `core/CoreSetup.lua`,
+  `core/EnvSetup.lua`, `core/MediaSetup.lua`, `core/DebugLogSetup.lua`, `core/LauncherSetup.lua`,
+  `core/LifecycleSetup.lua` and `core/PerfSetup.lua`. The other thirty-three write `local _, NS = ...`:
+  a name nothing reads is a dead local, and `M4c-06` removed twenty-nine of them.
 - `NS` is the shared private table.
 - Never overwrite an existing `NS.Foo` without `or {}` — another file may have reached it first, and never shadow it with a file-local of the same name.
 - The public API hangs off `F` (or `NS.Foo` directly); helpers stay `local` to the file.
@@ -116,7 +115,15 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - AceConsole-3.0
 - AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
 - AceGUI-3.0
-- LibKa0s (the Ka0s shared library — **fourteen majors are adopted**. Eleven have a setup file each: `Core`, `Env`, `Pool`, `Media`, `DebugLog`, `Launcher`, `Lifecycle`, `Perf`, `Slash`, `Options`, `Schema` → `core/CoreSetup.lua`, `core/EnvSetup.lua`, `core/PoolSetup.lua`, `core/MediaSetup.lua`, `core/DebugLogSetup.lua`, `core/LauncherSetup.lua`, `core/LifecycleSetup.lua`, `core/PerfSetup.lua`, `settings/Slash.lua`, `settings/OptionsSetup.lua`, `settings/SchemaSetup.lua` (`LibKa0s-Schema-1.0`, minor 2: the settings write seam, whose degradation stub is write-completing rather than refusing, per the library's version-2 document). The twelfth, `Widgets`, has none — two callers resolve `LibKa0s-Widgets-1.0` inline instead. `settings/Spells.lua` takes the spell list's drag-reorder (`options-ui-§18`), and the list is simply not reorderable without it; `modules/Castbar_Handle.lua` takes `DragHandle` (LibKa0s v1.48.0) for the cast bar's drag strip, and without it the bar draws no strip and is dragged by its body, which is what it did before the adoption. Both degrade to less UI rather than to an error. The thirteenth, `Compat`, has no setup file either: `core/Compat.lua` is already the addon's one compat seam (`compat`), and it wires `LibKa0s-Compat-1.0`'s `GetSpellCooldown`, `GetSpellTexture`, `GetSpellInfo`, `GetSpecialization`, `GetSpecializationInfo` and the secret guard `IsSecret` onto `NS.Compat` by name, so no call site moved. With the library absent a reader answers the major's absent value and `IsSecret` keeps its one-rung body; [compat-layer.md](compat-layer.md) has the member table. The fourteenth, `Bus`, is taken for its `Catalog` alone: `core/Constants.lua` wraps the `NS.MSG` table in it and falls back to the plain table (see [Message bus](#message-bus)). The stand-down record it also offers is not used — KickCD's receivers are AceAddon modules and one settings-page target, and each drops its own bus subscriptions in its own `Suspend` (see [What stands down](#what-stands-down)).) The payload now carries **art as well as code** — `libs/LibKa0s/media/` holds the shared 113-name icon set and the JetBrains Mono face this addon used to ship its own copy of, so the vendored diffs cover binaries too. **Never edit `libs/LibKa0s`** — a library problem is fixed upstream in `../LibKa0s` and re-vendored. The gate is two diffs, not one: `diff -r --strip-trailing-cr ../LibKa0s/LibKa0s libs/LibKa0s` for content and the plain `diff -r` for bytes — but read [docs/testing.md](testing.md) before treating either as a pass/fail, because both compare against whatever the SIBLING has checked out, and neither is empty while the library is tagged ahead of the release this addon vendors. Empty against the tag `CLAUDE.md` names is the claim that has to hold. A byte-only difference is a line-ending divergence, not a fork — renormalize the side that drifted, never edit `libs/`. Each setup file owns only what is genuinely this addon's — the tag, the verb table, the schema adapters — and a descriptor gap you can close *inside* the setup file is not a library change: say so in a comment there rather than forking the library. Every setup file degrades rather than erroring at load, and the six that have an absence to report explain it through **one shared cause clause**, `NS.LIBKA0S_MISSING` — `core/CoreSetup.lua` itself, `core/DebugLogSetup.lua`, `core/PerfSetup.lua`, `core/LauncherSetup.lua`, `settings/SchemaSetup.lua` and `settings/OptionsSetup.lua`, counted by `tests/test_coresetup.lua` (`core/EnvSetup.lua`, `core/MediaSetup.lua` and `core/PoolSetup.lua` are the exceptions and say nothing: `EnvSetup` falls back to reading the TOC exactly as this addon did before the library existed, `MediaSetup` answers nil for an icon or a face the caller already treats as optional, and `PoolSetup` republishes the same four keyed members locally — none of the three has an absence to report) (defined in `core/CoreSetup.lua`, outside its own `if not lib` branch because the seams that read it are reached on both paths). Each seam appends its own "so &lt;what&gt; is unavailable", so a degraded install says the same thing about *why* in every seam and a different thing about *what* each time — and says it identically to AbsorbTracker and ConsumableMaster, which is the point. `settings/Slash.lua` no longer reads the clause: `slash-commands-§1` (WS-02) gives its degraded schema verbs the standard's own one-sentence line, `/kcd <verb> is unavailable: the LibKa0s library did not load.`, through the locale.
+- LibKa0s, the Ka0s shared library. **Fourteen majors are adopted**; what each one supplies, how
+  each seam degrades and the one shared cause clause are
+  [module-map.md → The LibKa0s majors](module-map.md#the-libka0s-majors).
+  - Eleven have a setup file: `Core`, `Env`, `Pool`, `Media`, `DebugLog`, `Launcher`, `Lifecycle`
+    and `Perf` in `core/<Major>Setup.lua`; `Slash`, `Options` and `Schema` in `settings/Slash.lua`,
+    `settings/OptionsSetup.lua` and `settings/SchemaSetup.lua`.
+  - `Widgets` is resolved inline by its two callers; `Compat` is wired onto `NS.Compat` by
+    `core/Compat.lua` ([compat-layer.md](compat-layer.md)); `Bus` is taken for its `Catalog` alone.
+  - **Never edit `libs/LibKa0s`**: fix it upstream and re-vendor. The vendoring gate is [testing.md](testing.md).
 - LibSharedMedia-3.0
 - AceGUI-3.0-SharedMediaWidgets (vendored upstream r65; provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Cast bar / Icons panels). The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is **`lib.__PatchLSM30Border()`, a LibKa0s-Options-1.0 member** (minor 15), called from `settings/OptionsSetup.lua`'s live wiring. It used to be `core/LSMPatch.lua` here and in four sibling addons; AceGUI's widget registry is process-global, so five private registrations in one client meant the last addon loaded owned everyone's Border dropdown. One idempotent library member behind `lib.__lsmBorderPatched` is one registration however many copies of the library are vendored.
 - LibCustomGlow-1.0
@@ -152,7 +159,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `version` | Print the addon version |
 | `config` | Open the settings panel |
 | `enable` | Turn the addon on. A **reserved alias** (`slash-commands-§2`): it writes the Master-controls `enabled` row's own stored path through the same single write seam the checkbox writes through, and holds no state of its own |
-| `disable` | Turn the addon off — **totally**: every registration released, every timer canceled, nothing drawn and nothing written from a game event ([The stand-down](#the-stand-down-disabled-is-total)). The same alias in reverse. Every reserved verb keeps answering while it is off, and the bare `/kcd` still opens the panel — the dispatcher and the settings registration are **setup, not features** — so the pair is never one-way |
+| `disable` | Turn the addon off — **totally**: every registration released, every timer canceled, nothing drawn and nothing written from a game event ([The disabled state](slash-dispatch.md#the-disabled-state)). The same alias in reverse. Every reserved verb keeps answering while it is off, and the bare `/kcd` still opens the panel — the dispatcher and the settings registration are **setup, not features** — so the pair is never one-way |
 | `lock` | Lock the icon grid in place |
 | `unlock` | Unlock the icon grid for dragging |
 | `toggle` | Toggle the icon grid lock state |
@@ -220,10 +227,9 @@ Each entry's `enabled` and `category` fields are player preferences, not members
 
 ## Event subscriptions
 
-Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)):
-
-Every registration below is released on the stand-down and rebuilt on the stand-up — see
-[The stand-down](#the-stand-down-disabled-is-total). A disabled KickCD is registered for **nothing**.
+Game-event registration is deliberately partitioned by module (specifics in [module-map.md](module-map.md)).
+Every registration below is released on the stand-down and rebuilt on the stand-up ([The disabled
+state](slash-dispatch.md#the-disabled-state)), so a disabled KickCD is registered for **nothing**:
 
 - **`core/State.lua` combat listener** (an AceEvent target, not a frame) — the only registration of `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED` / `PLAYER_LOGIN`; owns the `NS.State.inCombat` flag and fans transitions out via `Ka0s_KickCD_CombatState`.
 - **`Cooldowns`** — `SPELL_UPDATE_COOLDOWN` / `_USABLE` / `_CHARGES` (coalesced through a `Util.Throttle(0)` so a same-frame burst yields one `Refresh`/frame), `PLAYER_ENTERING_WORLD`, `PLAYER_SPECIALIZATION_CHANGED`, `SPELLS_CHANGED`, `TRAIT_CONFIG_UPDATED`.
@@ -235,93 +241,11 @@ Every registration below is released on the stand-down and rebuilt on the stand-
 
 ## The stand-down: disabled is total
 
-**`slash-commands-§7`: *disabled* does not mean hidden, quiet, or skipping a repaint — it means NOT
-RUNNING.** A player who unticks *Enable KickCD* has asked for the same outcome they would get by
-unticking the addon in Blizzard's own AddOns list, minus the `/reload`.
-
-This addon implemented it as a **draw gate** until it re-vendored LibKa0s v1.42.0: `enabled = false`
-hid the grid and the bar, and every registration stayed — so the client went on walking KickCD's
-registration list on every `SPELL_UPDATE_COOLDOWN`, building the argument frame, entering Lua, and
-running the comparison that decided to leave. It had not stopped watching; it had stopped
-**reacting**. From outside, the two look identical, which is how the shape survived several audits
-(`anti-patterns` #85).
-
-### Two holds, one latch
-
-The capability to go inert already existed here: `core/PerfSetup.lua`'s suspend/resume arm, built for
-a capture's Experiment B. Writing a second teardown beside it for *disable* is the anti-pattern
-rather than an implementation detail — two mechanisms that both mean "be inert" drift, and the day
-they disagree the addon is half down. So both reasons are **named holds on one latch**,
-`LibKa0s-Lifecycle-1.0`, wired in **`core/LifecycleSetup.lua`**:
-
-| Hold | Taken by | Lifetime |
-|---|---|---|
-| `disabled` | the stored `enabled` path, through `NS.RefreshEnabledHold()` | **persisted**, by being re-taken at load |
-| `perf` | `LibKa0s-Perf-1.0`'s suspended arm — the host never spells this one | **session-only** |
-
-The addon is **stood down whenever at least one hold is taken, and stands up only when the last one
-is released**. There is no `:StandUp()` to call: releasing a hold is the only route out, which is
-what stops a perf run that ends mid-`disable` from resurrecting an addon the player switched off, and
-a `/kcd enable` typed mid-capture from un-suspending the run. `NS.Perf.suspended` still answers and
-still means the same thing — it is a **view** of the `perf` hold now rather than a boolean beside it,
-and assigning to it raises.
-
-`NS.RefreshEnabledHold()` is called from exactly three places, and between them they cover every way
-the stored value can change: **the single write seam** (`Store.Set`, which the checkbox,
-`/kcd set enabled` and the `enable` / `disable` verbs all land on — the `enabled` row's `onChange` in
-`settings/General.lua`, run before the announce, or the seam's `announce` for a written-through
-`enabled` on a library-less load), **`core/Database.lua`'s
-profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
-§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
-for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
-module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
-
-### What stands down
-
-`standDown` releases, and `standUp` rebuilds **from current state** (never from a snapshot — a
-setting changed while the addon was off has to come back as it is now):
-
-- **`core/State.lua`'s combat listener** — `UnregisterAllEvents()` on its AceEvent target. Gone,
-  not gated. The stand-up restores only the `PLAYER_REGEN_*` pair and re-seeds the flag from
-  `InCombatLockdown()`; `PLAYER_LOGIN` never comes back, because the first hold is taken inside
-  `OnEnable`, which is `PLAYER_LOGIN`, so no stand-up can precede it.
-- **`Cooldowns`, `IconGrid`, `Castbar`, `UnitLabel`** — each module's `Suspend` drops its game
-  events, its **bus subscriptions**, and its private per-unit `UNIT_SPELLCAST_*` cast filter (disarmed, kept for the next arm).
-  Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
-  the login path and the stand-up path cannot drift.
-- **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
-  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
-  true 60 Hz handler.
-- **`settings/Spells.lua`'s five subscriptions** — the editor's refreshers and the cooldown-manager
-  cache invalidator. The **page** survives; its reaction to game events does not.
-- **Visibility is enforced at the source.** The show ladders' first rung is `NS.IsDown()`, so nothing
-  — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
-  back. Frames are not hidden imperatively, because a hidden frame comes back.
-
-**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
-one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
-frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
-disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
-name. An addon that grows a secure frame must hold its teardown pending rather than extend
-`standDown`.
-
-### What survives, because it is setup
-
-The chat command, the dispatcher and `COMMANDS`; the settings-category registration and the panel
-body; the AceDB handle, the single write seam and AceDB's three profile callbacks; the launcher's
-registration. None of it is a feature, all of it is how the player gets the addon back. What the
-**slash surface** does while disabled is [slash-dispatch.md](slash-dispatch.md#the-disabled-state-the-gate-is-the-librarys-the-judgment-is-ours);
-what the **launcher click** does is below.
-
-### The launcher while disabled
-
-The button stays on the minimap and the broker row stays in the display — `minimap.hide` is a
-per-installation display preference and says nothing about whether the addon is running. **Left-click
-is refused**: KickCD is `launcher-§2` rung (b), the left button drives the lock, and the lock is this
-addon's preview switch — a feature. It prints the collection's one refusal line and does nothing
-else, and in particular writes no SavedVariables. **Right-click still opens the settings panel**, in
-either state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two
-routes §7 nominates for reaching the panel of an addon that is off.
+`slash-commands-§7`: *disabled* means NOT RUNNING, not hidden. The stored `enabled = false` and a perf
+capture's suspended arm are two named holds (`disabled`, `perf`) on one `LibKa0s-Lifecycle-1.0` latch in
+`core/LifecycleSetup.lua`; while either is taken every registration, bus subscription and timer is released
+and nothing is drawn, and the dispatcher, the settings panel and the launcher stay up because they are
+setup. The full account is [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state).
 
 ## Taint notes
 
@@ -363,8 +287,8 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|---|
 | `slash-dispatch.md` | Present | 17 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
-| `compat-layer.md` | Present | `core/Compat.lua` is 496 lines of addon-specific shimming beyond LibKa0s |
-| `message-bus.md` | Present | The addon’s message contract, kept in sync with each module’s header |
+| `compat-layer.md` | Present | `core/Compat.lua` publishes 8 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
+| `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `perf-analysis/README.md` | Present | `/kcd perf` exists (`LibKa0s-Perf-1.0`, `core/PerfSetup.lua`), so in-game captures have a store to describe |
 | `debug.md` | Present | Debug surfaces beyond the LibKa0s console: four chat dumps (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
@@ -378,7 +302,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 | `test-cases.md` | The generated case inventory (authoritative pass count) |
 | `performance.md` | The addon performance page |
 | `automated-tests/README.md` | What the automated-test record is and how to produce it |
-| `automated-tests/RESULTS.md` | One row per run; generated, never hand-edited |
+| `automated-tests/RESULTS.md` | One row per run; generated by the runner, never hand-edited apart from the watch list's `Disposition` column (automated-tests-§4) |
 
 ### Addon-specific (documentation-§3, Tier 3)
 
@@ -410,28 +334,18 @@ table must not become a graveyard.
 | `architecture-§5` | Each spell-list entry's `enabled` and `category` fields (`db.profile.spells[CLASS][specID][i]`) are player preferences with **no schema row**, so they have no `/kcd get\|set\|list\|reset` reach and never pass through the schema-row helper. They stay bespoke controls: the Spells page's row checkbox and category dropdown, `/kcd spells enable\|disable\|category`, and the re-enable when a spell already in the list is added again. Since [#16](https://github.com/tusharsaxena/KickCD/issues/16) every one of those writes goes through `core/Database.lua`, the spell lists' one writer (`SetSpellEnabled`, `SetSpellCategory`, `AddSpell`), so they have a single writer, just not the helper. | `category` is informational only. It drives no rendering, filtering or ordering, and the dropdown's own tooltip says so. `enabled` does have runtime behavior, since a disabled entry is not tracked, and it was decided with that in view: it is one boolean on one entry, set by the same per-entry controls, and it hits the same addressing wall, so the runtime effect does not earn it a row. Rows per entry would multiply the schema by every tracked spell in every class and spec, and the helper addresses fixed paths only, with no instance argument that could name one entry of one list. Decided by the owner on [#17](https://github.com/tusharsaxena/KickCD/issues/17). | 2026-09-12 | Any one of: `category` starts driving filtering or ordering; a new per-entry field is added to the spell-list entry shape; **or** the helper gains instance addressing, so a row can name one entry of one list. |
 
 **Retired on 2026-09-08: the hollow composers, and the ruling this addon asked for.** The register
-carried an `options-ui-§1` row marked PROVISIONAL — the only row in the collection that said of
-itself it was not ratified. It measured a library-less load registering **112 of 228** schema rows
-and asked the standard which of §1's two MUSTs wins when the missing content is *composed*: the
-stub must be load-completing, and the stub must not carry a host copy of library content, and since
-`LibKa0s-OptionsCompose` moved schema **content** behind a library call no stub can satisfy both.
-Asking was right. The alternative was eight more addons each deciding a question that was never
-theirs.
-
-`options-ui-§1` now answers it, and answers it this way: the **no-copy MUST wins**, a stub's
-composer members exist and answer an empty row list, and *"this shape needs no register row, and the
-rows already written for it retire"*. The three bounds it sets are the ones this row measured — the
-fall-together property (`LibKa0s` is vendored whole, so the load that loses `LibKa0s-Options-1.0`
-loses `LibKa0s-Slash-1.0` with it and no composed setting is ever addressable-but-missing), profile
-defaults coming from `defaults/Profile.lua` rather than off the schema, and a suite pinning both
-counts and the delta. `tests/test_options_panel.lua:423-469` already fingerprints composed rows by
-their `order` field and pins the gap, so the ruling costs this addon no code and the row it costs is
-this one. What ends the hollowness is still upstream, and the section says so. `KICKCD-A-10` in
-`docs/audits/2026-09-07/` is the finding that named the row as provisional and unratified.
-Standard v2.65.0 (WS-02) has since replaced the fall-together bound: on a library-absent load a
-host verb that writes a composed row writes through the schema seam's `writeThrough` list or prints
-the library-absent line. KickCD takes route (a) for `enabled` and `locked` (see
-[Slash commands](#slash-commands)), so those two composed paths are addressable, and stored, there.
+carried an `options-ui-§1` row marked PROVISIONAL (`KICKCD-A-10` in `docs/audits/2026-09-07/`): a
+library-less load registered **112 of 228** schema rows, and once `LibKa0s-OptionsCompose` moved schema
+**content** behind a library call no stub could be both load-completing and free of a host copy of
+library content. `options-ui-§1` now answers it: the **no-copy MUST wins**, a stub's composer members
+answer an empty row list, and *"this shape needs no register row, and the rows already written for it
+retire"*. Its bounds are the ones this row measured: `LibKa0s` is vendored whole, profile defaults come
+from `defaults/Profile.lua` rather than off the schema, and `tests/test_options_panel.lua` fingerprints
+composed rows by their `order` field and pins the gap. Standard v2.65.0 (WS-02) has since replaced the
+fall-together bound: on a library-absent load a host verb that writes a composed row writes through the
+schema seam's `writeThrough` list or prints the library-absent line. KickCD takes route (a) for
+`enabled` and `locked` (see [Slash commands](#slash-commands)), so those two composed paths are
+addressable, and stored, there.
 
 **Not in this table, and why.** The `KickCD<Widget><UnitTitleCase>` frame-naming notes at
 [common-tasks.md](common-tasks.md) and the additive `GRID_LAYOUT` payload note at

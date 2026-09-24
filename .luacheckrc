@@ -22,10 +22,11 @@ exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews
 -- a narrower suppression:
 --
 --   * Twenty-nine files opened `local addonName, NS = ...` over a folder name they never read.
---     Five files in this addon do read it -- CoreSetup, EnvSetup, MediaSetup, DebugLogSetup and
---     PerfSetup, each handing it to a vendored LibKa0s payload that cannot infer which folder it
---     was copied into. The other twenty-nine had the line because it was copied, and they now
---     open `local _, NS = ...`, which is how core/PoolSetup.lua already spelt it.
+--     Eight files in this addon do read it -- Constants, CoreSetup, DebugLogSetup, EnvSetup,
+--     LauncherSetup, LifecycleSetup, MediaSetup and PerfSetup, each handing it to a vendored
+--     LibKa0s payload that cannot infer which folder it was copied into. The twenty-nine had the
+--     line because it was copied, and they now open `local _, NS = ...`, which is how
+--     core/PoolSetup.lua already spelt it; thirty-three authored files open that way today.
 --
 --   * Two receivers in the test tree were named and never read: the mock module method in
 --     tests/test_util.lua and `t.SendMessage` in tests/wow_mock.lua. Both are spelt `_` now,
@@ -84,8 +85,9 @@ globals = {
                         -- not clone it and "reset profile" does not wipe it
 }
 
--- The harness publishes its exposed table under a per-repo global, written at tests/run.lua:217
--- and read back by every suite file. It is declared HERE, in a files["tests/"] stanza, rather
+-- The harness publishes its exposed table under a per-repo global, written by
+-- `_G.KICKCD_TEST = Kit.expose{...}` in tests/run.lua and read back by every suite file. It is
+-- declared HERE, in a files["tests/"] stanza, rather
 -- than in the top-level `read_globals` above, and the difference is not cosmetic: a name granted
 -- at the top level is granted to core/, modules/ and settings/ as much as to a suite, and a
 -- shipped file reaching for the test harness is exactly what this gate exists to refuse.

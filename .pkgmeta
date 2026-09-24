@@ -14,11 +14,11 @@ ignore:
   # Agent tooling, and untracked -- .gitignore names .superpowers/ at :29 and
   # .claude's only file at :28, and `git ls-files` returns nothing for either --
   # so no packager clone has ever carried them and neither line changes a
-  # downloaded byte. They are listed because packaging.md:28 MUSTs every root
+  # downloaded byte. They are listed because packaging MUSTs every root
   # dot-entry present in the repo be named or justified, tracked or not: the
   # check is about an enumeration going stale, not about a package growing.
-  - .claude          # untracked; listed under packaging.md:28
-  - .superpowers     # untracked; listed under packaging.md:28
+  - .claude          # untracked; listed under packaging
+  - .superpowers     # untracked; listed under packaging
   # Tracked, and the only entries here that change a download. Seven files,
   # 7.5M -- the largest such payload in the collection, and most of it the
   # compressed .gif -- project-page art the CurseForge CDN already serves.

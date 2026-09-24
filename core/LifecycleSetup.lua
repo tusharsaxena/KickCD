@@ -112,7 +112,8 @@ local function standDown()
     if NS.State and NS.State.StandDown then NS.State.StandDown() end
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it
-    -- is not in the loop above -- but its five subscriptions are registrations
+    -- is not in the loop above -- but its five subscriptions (two bus messages,
+    -- three game events) are registrations
     -- like any other and slash-commands-§7 does not carve the settings layer out of "actually
     -- UNREGISTERED". The PAGE survives (it still opens, still draws, still
     -- writes); what goes is its reaction to game events. settings/Spells.lua

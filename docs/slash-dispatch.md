@@ -28,11 +28,102 @@ Each row is `{ name, description, fn }`. The dispatcher:
 
 Every chat line emitted by the addon flows through `Util.print` — `LibKa0s-Core-1.0`'s secret-safe printer, published at `NS.Util.print` by `core/CoreSetup.lua` — which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
 
+## The disabled state
+
+**`slash-commands-§7`: *disabled* does not mean hidden, quiet, or skipping a repaint — it means NOT
+RUNNING.** A player who unticks *Enable KickCD* has asked for the same outcome they would get by
+unticking the addon in Blizzard's own AddOns list, minus the `/reload`.
+
+This addon implemented it as a **draw gate** until it re-vendored LibKa0s v1.42.0: `enabled = false`
+hid the grid and the bar, and every registration stayed — so the client went on walking KickCD's
+registration list on every `SPELL_UPDATE_COOLDOWN`, building the argument frame, entering Lua, and
+running the comparison that decided to leave. It had not stopped watching; it had stopped
+**reacting**. From outside, the two look identical, which is how the shape survived several audits
+(`anti-patterns` #85).
+
+### Two holds, one latch
+
+The capability to go inert already existed here: `core/PerfSetup.lua`'s suspend/resume arm, built for
+a capture's Experiment B. Writing a second teardown beside it for *disable* is the anti-pattern
+rather than an implementation detail — two mechanisms that both mean "be inert" drift, and the day
+they disagree the addon is half down. So both reasons are **named holds on one latch**,
+`LibKa0s-Lifecycle-1.0`, wired in **`core/LifecycleSetup.lua`**:
+
+| Hold | Taken by | Lifetime |
+|---|---|---|
+| `disabled` | the stored `enabled` path, through `NS.RefreshEnabledHold()` | **persisted**, by being re-taken at load |
+| `perf` | `LibKa0s-Perf-1.0`'s suspended arm — the host never spells this one | **session-only** |
+
+The addon is **stood down whenever at least one hold is taken, and stands up only when the last one
+is released**. There is no `:StandUp()` to call: releasing a hold is the only route out, which is
+what stops a perf run that ends mid-`disable` from resurrecting an addon the player switched off, and
+a `/kcd enable` typed mid-capture from un-suspending the run. `NS.Perf.suspended` still answers and
+still means the same thing — it is a **view** of the `perf` hold now rather than a boolean beside it,
+and assigning to it raises.
+
+`NS.RefreshEnabledHold()` is called from exactly three places, and between them they cover every way
+the stored value can change: **the single write seam** (`Store.Set`, which the checkbox,
+`/kcd set enabled` and the `enable` / `disable` verbs all land on — the `enabled` row's `onChange` in
+`settings/General.lua`, run before the announce, or the seam's `announce` for a written-through
+`enabled` on a library-less load), **`core/Database.lua`'s
+profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
+§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
+for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
+module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
+
+### What stands down
+
+`standDown` releases, and `standUp` rebuilds **from current state** (never from a snapshot — a
+setting changed while the addon was off has to come back as it is now):
+
+- **`core/State.lua`'s combat listener** — `UnregisterAllEvents()` on its AceEvent target. Gone,
+  not gated. The stand-up restores only the `PLAYER_REGEN_*` pair and re-seeds the flag from
+  `InCombatLockdown()`; `PLAYER_LOGIN` never comes back, because the first hold is taken inside
+  `OnEnable`, which is `PLAYER_LOGIN`, so no stand-up can precede it.
+- **`Cooldowns`, `IconGrid`, `Castbar`, `UnitLabel`** — each module's `Suspend` drops its game
+  events, its **bus subscriptions**, and its private per-unit `UNIT_SPELLCAST_*` cast filter (disarmed, kept for the next arm).
+  Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
+  the login path and the stand-up path cannot drift.
+- **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
+  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
+  true 60 Hz handler.
+- **`settings/Spells.lua`'s five subscriptions** (two bus messages, three game events) — the
+  editor's refreshers — and **`core/SpellInput.lua`'s two**, the Cooldown Manager cache
+  invalidator. The **page** survives; its reaction to game events does not.
+- **Visibility is enforced at the source.** The show ladders' first rung is `NS.IsDown()`, so nothing
+  — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
+  back. Frames are not hidden imperatively, because a hidden frame comes back.
+
+**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
+one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
+frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
+disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
+name. An addon that grows a secure frame must hold its teardown pending rather than extend
+`standDown`.
+
+### What survives, because it is setup
+
+The chat command, the dispatcher and `COMMANDS`; the settings-category registration and the panel
+body; the AceDB handle, the single write seam and AceDB's three profile callbacks; the launcher's
+registration. None of it is a feature, all of it is how the player gets the addon back. What the
+**slash surface** does while disabled is [the section below](#the-disabled-state-the-gate-is-the-librarys-the-judgment-is-ours);
+what the **launcher click** does is below.
+
+### The launcher while disabled
+
+The button stays on the minimap and the broker row stays in the display — `minimap.hide` is a
+per-installation display preference and says nothing about whether the addon is running. **Left-click
+is refused**: KickCD is `launcher-§2` rung (b), the left button drives the lock, and the lock is this
+addon's preview switch — a feature. It prints the collection's one refusal line and does nothing
+else, and in particular writes no SavedVariables. **Right-click still opens the settings panel**, in
+either state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two
+routes §7 nominates for reaching the panel of an addon that is off.
+
 ## The disabled state: the gate is the library's, the judgment is ours
 
 `slash-commands-§7` makes *disabled* **total** — every registration actually unregistered, every
 timer canceled, every frame hidden at the source, nothing written from a game event. That half is
-[ARCHITECTURE.md → The stand-down](ARCHITECTURE.md#the-stand-down-disabled-is-total). This section is
+[The disabled state](#the-disabled-state) above. This section is
 the other half: what the **command surface** does while the addon is off.
 
 **It does not narrow.** Every reserved verb answers normally — `help`, `config`, `version`,
