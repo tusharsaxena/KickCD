@@ -219,9 +219,9 @@ test("the row's get INVERTS LibDBIcon's `hide`, so the label can say shown", fun
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
     inst.NS.db.global.minimap.hide = false
-    assertEqual(H.Get("global.minimap.hide"), true, "hidden=false reads as SHOWN")
+    assertEqual(H.Get("global.minimap.shown"), true, "hidden=false reads as SHOWN")
     inst.NS.db.global.minimap.hide = true
-    assertEqual(H.Get("global.minimap.hide"), false, "hidden=true reads as not shown")
+    assertEqual(H.Get("global.minimap.shown"), false, "hidden=true reads as not shown")
 end)
 
 test("the row's set inverts AND moves the button, in the one write seam", function()
@@ -231,24 +231,82 @@ test("the row's set inverts AND moves the button, in the one write seam", functi
     -- red under: writing `hide` without calling LibDBIcon, or vice versa
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
-    H.SetAndRefresh("global.minimap.hide", false)
+    H.SetAndRefresh("global.minimap.shown", false)
     assertEqual(inst.NS.db.global.minimap.hide, true, "unticked stores hide = true")
     assertFalse(dbicon(inst).__shown[FOLDER], "and hides the button now, not at reload")
     assertFalse(inst.NS.Launcher:IsShown())
-    H.SetAndRefresh("global.minimap.hide", true)
+    H.SetAndRefresh("global.minimap.shown", true)
     assertEqual(inst.NS.db.global.minimap.hide, false, "ticked stores hide = false")
     assertTrue(dbicon(inst).__shown[FOLDER], "and shows it again")
     assertTrue(inst.NS.Launcher:IsShown())
 end)
 
-test("`/kcd set global.minimap.hide` takes exactly the path the checkbox takes", function()
-    -- The CLI and the panel are two surfaces over one writer, which is the
-    -- whole of options-ui-§1 — and the reason the composed row is addressable
-    -- by its verbatim global path at all.
-    -- red under: a CLI branch of its own for the global store
+test("`/kcd get global.minimap.shown` answers true while minimap.hide is false", function()
+    -- launcher-§3 (v2.65.0): the row's schema path IS its CLI name, so it is
+    -- spelled in the row's own sense. Before the rename the path was the stored
+    -- key, and `/kcd get global.minimap.hide` answered true while the button
+    -- was ON the minimap -- a player reading the verb got the opposite answer.
+    -- The old path is not kept as an alias: it answers the unknown-setting
+    -- refusal like any other path the schema does not declare.
+    -- red under: a path spelled after LibDBIcon's key rather than the row's sense
     local inst = T.load(true, true)
-    captured(inst, function() inst.NS:OnSlashCommand("set global.minimap.hide false") end)
+    inst.NS.db.global.minimap.hide = false
+    local lines = captured(inst, function() inst.NS:OnSlashCommand("get global.minimap.shown") end)
+    local out = table.concat(lines, "\n")
+    assertTrue(out:find("true", 1, true) ~= nil and out:find("not found", 1, true) == nil,
+        "the button shows and the verb did not answer true: " .. out)
+    inst.NS.db.global.minimap.hide = true
+    out = table.concat(captured(inst, function()
+        inst.NS:OnSlashCommand("get global.minimap.shown") end), "\n")
+    assertTrue(out:find("false", 1, true) ~= nil, "a hidden button must read false: " .. out)
+    out = table.concat(captured(inst, function()
+        inst.NS:OnSlashCommand("get global.minimap.hide") end), "\n")
+    assertTrue(out:find("Setting not found", 1, true) ~= nil,
+        "the retired path still answers: " .. out)
+end)
+
+test("`/kcd set global.minimap.shown false` stores hide = true", function()
+    -- The CLI and the panel are two surfaces over one writer, which is the
+    -- whole of options-ui-§1 -- and the reason the composed row is addressable
+    -- by its verbatim global path at all. The STORE did not move: the write
+    -- lands on LibDBIcon's own `hide`, and no `shown` key ever appears beside
+    -- it (a second copy of one boolean, anti-pattern #81).
+    -- red under: a CLI branch of its own for the global store, or a stored `shown`
+    local inst = T.load(true, true)
+    captured(inst, function() inst.NS:OnSlashCommand("set global.minimap.shown false") end)
     assertEqual(inst.NS.db.global.minimap.hide, true)
+    assertNil(inst.NS.db.global.minimap.shown, "a `shown` key was written beside `hide` (#81)")
+    assertFalse(dbicon(inst).__shown[FOLDER])
+    captured(inst, function() inst.NS:OnSlashCommand("set global.minimap.shown true") end)
+    assertEqual(inst.NS.db.global.minimap.hide, false)
+    assertTrue(dbicon(inst).__shown[FOLDER])
+end)
+
+test("a legacy store keeps its setting across the CLI rename, with no migration", function()
+    -- Only the CLI name moved; the stored key is still LibDBIcon's `hide`, so
+    -- an existing player's `hide = true` reads as shown = false with no
+    -- SavedVariables migration and no schemaVersion bump, LibDBIcon's dragged
+    -- `minimapPos` is untouched, and no write ever plants a `shown` key in the
+    -- raw SavedVariables.
+    -- red under: a migration that rewrites the table, or a stored `shown`
+    local inst = T.load(true, true, function(m)
+        m.KickCDDB = { global = { schemaVersion = 5, minimap = { hide = true, minimapPos = 200 } },
+            profiles = { Default = {} } }
+    end)
+    local raw = inst.mocks.KickCDDB.global.minimap
+    local H = inst.NS.Settings.Helpers
+    assertEqual(H.Get("global.minimap.shown"), false, "a legacy hide = true reads as not shown")
+    local out = table.concat(captured(inst, function()
+        inst.NS:OnSlashCommand("get global.minimap.shown") end), "\n")
+    assertTrue(out:find("false", 1, true) ~= nil, "the CLI must read the legacy button as hidden: " .. out)
+    assertFalse(dbicon(inst).__shown[FOLDER], "the legacy hidden button came back on the rename")
+    assertEqual(raw.minimapPos, 200, "the dragged angle moved")
+    captured(inst, function() inst.NS:OnSlashCommand("set global.minimap.shown false") end)
+    H.SetAndRefresh("global.minimap.shown", true)
+    H.SetAndRefresh("global.minimap.shown", false)
+    assertNil(raw.shown, "a `shown` key was written to the raw SV (#81)")
+    assertEqual(raw.hide, true)
+    assertEqual(raw.minimapPos, 200, "a write moved the dragged angle")
     assertFalse(dbicon(inst).__shown[FOLDER])
 end)
 
@@ -264,7 +322,7 @@ test("`Reset all settings` does NOT un-hide a button the player hid", function()
     -- red under: storing the table under db.profile, or marking the row sessionOnly
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
-    H.SetAndRefresh("global.minimap.hide", false)
+    H.SetAndRefresh("global.minimap.shown", false)
     captured(inst, function() H.RestoreAllDefaults() end)
     assertEqual(inst.NS.db.global.minimap.hide, true, "the button stays hidden")
 end)
@@ -283,7 +341,7 @@ test("the General page's DEFAULTS button does NOT un-hide a button the player hi
     -- red under: dropping settings/OptionsSetup.lua's applyDefault exemption
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
-    H.SetAndRefresh("global.minimap.hide", false)
+    H.SetAndRefresh("global.minimap.shown", false)
     assertEqual(inst.NS.db.global.minimap.hide, true, "sanity: the player hid it")
     captured(inst, function() H.RestoreDefaults("general") end)
     assertEqual(inst.NS.db.global.minimap.hide, true,
@@ -312,7 +370,7 @@ test("the exemption is ONE row — the page's Defaults still resets everything e
     -- red under: vetoing by page, by section, or by "every global path"
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
-    H.SetAndRefresh("global.minimap.hide", false)
+    H.SetAndRefresh("global.minimap.shown", false)
     H.SetAndRefresh("locked", not H.FindSchema("locked").default)
     H.SetAndRefresh("visibility", "always")
     captured(inst, function() H.RestoreDefaults("general") end)
@@ -329,7 +387,7 @@ test("`/kcd resetall` does not un-hide it either — the SECOND reset, by its ow
     -- through the slash surface because that is the route a player takes.
     -- red under: a resetall path of its own that writes the row's default
     local inst = T.load(true, true)
-    inst.NS.Settings.Helpers.SetAndRefresh("global.minimap.hide", false)
+    inst.NS.Settings.Helpers.SetAndRefresh("global.minimap.shown", false)
     captured(inst, function() inst.NS:OnSlashCommand("resetall") end)
     assertEqual(inst.NS.db.global.minimap.hide, true, "the button stays hidden")
     assertFalse(dbicon(inst).__shown[FOLDER])
@@ -340,7 +398,7 @@ test("a profile switch does not move the player's button", function()
     -- of buttons is furniture the player arranged once (launcher-§3).
     -- red under: db.profile.minimap
     local inst = T.load(true, true)
-    inst.NS.Settings.Helpers.SetAndRefresh("global.minimap.hide", false)
+    inst.NS.Settings.Helpers.SetAndRefresh("global.minimap.shown", false)
     inst.NS.db:SetProfile("a-second-profile")
     assertEqual(inst.NS.db.global.minimap.hide, true)
 end)
@@ -438,8 +496,8 @@ test("a host with NEITHER broker library loads, and says so instead of raising",
     assertNil(L:Object())
     -- And the row still answers, so the checkbox is not a raise inside `/kcd set`.
     local H = inst.NS.Settings.Helpers
-    assertEqual(H.Get("global.minimap.hide"), true)
-    H.SetAndRefresh("global.minimap.hide", false)
+    assertEqual(H.Get("global.minimap.shown"), true)
+    H.SetAndRefresh("global.minimap.shown", false)
     assertEqual(inst.NS.db.global.minimap.hide, true, "the store still records the choice")
 end)
 
@@ -456,7 +514,7 @@ end)
 test("with LibKa0s absent the seam still answers, and the store still records the choice",
 function()
     -- The stub is LOAD-COMPLETING, not silent: settings/Panel.lua's write seam
-    -- calls NS.Launcher:SetShown on every `global.minimap.hide` write, so a nil
+    -- calls NS.Launcher:SetShown on every `global.minimap.shown` write, so a nil
     -- here would be a raise inside `/kcd set` rather than a missing button.
     -- red under: `NS.Launcher = Launcher and Launcher:New(...)`
     local inst = T.load(true, true, nil, { libFiles = {} })

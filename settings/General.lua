@@ -12,7 +12,7 @@
 -- counting "the canonical rows, plus the button-pair hook" counts those two
 -- twice. What the composer emits is `enabled`, `visibility`, `scale`, `alpha`,
 -- `locked`, `state.debugConsole` and -- since compose minor 7 -- the minimap
--- button's `global.minimap.hide`. The two resets are actions rather than
+-- button's `global.minimap.shown`. The two resets are actions rather than
 -- settings -- an anchor is not a key=value the schema covers -- which is why
 -- they are a button pair and not rows.
 --
@@ -73,7 +73,9 @@ local masterRows, masterTail = H.MasterControls{
     -- hid stays hidden across a reload. The row's boolean says SHOWN while
     -- LibDBIcon's key says hidden, so the inversion is ours and lives in the one
     -- write seam (settings/Panel.lua's GLOBAL_PATHS), never in the composer.
-    minimapPath      = "global.minimap.hide",
+    -- The path reads in the row's sense (launcher-§3, v2.65.0) while the store
+    -- stays LibDBIcon's `hide`: no `shown` key is ever written.
+    minimapPath      = "global.minimap.shown",
     -- The two stored values this addon does not share with the canonical block.
     -- PASSED, never edited into the composer: the composer must not change what
     -- is stored, and `visibility` has shipped as

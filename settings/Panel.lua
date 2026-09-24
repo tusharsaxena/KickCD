@@ -97,9 +97,14 @@ local SESSION_PATHS = {
 --     that: it is outside the block's profile prefix.
 --   * SENSE. The row's label says SHOWN and LibDBIcon's key says HIDDEN. There
 --     is ONE boolean -- the library writes it too, from its own right-click menu
---     -- so a second `minimap.show` beside it would be a copy free to disagree
---     the first time either surface was used (anti-pattern #81). The cost of
---     storing the library's key is this `not`, and it is cheaper than the copy.
+--     -- so a second stored `minimap.shown` beside it would be a copy free to
+--     disagree the first time either surface was used (anti-pattern #81). The
+--     cost of storing the library's key is this `not`, and it is cheaper than
+--     the copy. The PATH, though, is the row's CLI name, and launcher-§3
+--     (v2.65.0) spells it in the row's own sense: `global.minimap.shown`, so
+--     `/kcd get global.minimap.shown` answers true while the button shows. The
+--     path names no stored key -- `shown` is never written -- which is why it
+--     can only live here, as a get/set pair, and never in Resolve.
 --
 -- STORED, not session: `vetoedFromResetAll` (settings/OptionsSetup.lua) keeps it
 -- out of `Reset all settings` because it is not sessionOnly, which is the
@@ -109,7 +114,7 @@ local SESSION_PATHS = {
 -- immediately rather than at the next reload. SetShown writes `hide` again with
 -- the same value, which is deliberate on the library's side and harmless here.
 local GLOBAL_PATHS = {
-    ["global.minimap.hide"] = {
+    ["global.minimap.shown"] = {
         get = function()
             local t = NS.db and NS.db.global and NS.db.global.minimap
             return not (t and t.hide)

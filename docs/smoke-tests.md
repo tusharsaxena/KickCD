@@ -982,7 +982,10 @@ which is the whole reason this step exists.
   where you left it. It moved because LibDBIcon wrote `minimapPos` into the same table the checkbox
   writes `hide` into.
 - **The checkbox hides it.** Untick General → Master controls → **Minimap button**: the button goes
-  at once, not at the next reload. `/reload` — still gone. Tick it again: back.
+  at once, not at the next reload. `/kcd get global.minimap.shown` prints **false** — the CLI
+  name reads in the row's sense, while the stored key is still LibDBIcon's `hide` (`launcher-§3`).
+  `/kcd get global.minimap.hide` answers *Setting not found*: the old path is not an alias.
+  `/reload` — still gone, and still **false**. Tick it again: back, and **true**.
 - **The button's own menu agrees with the checkbox.** Right-click the button's LibDBIcon menu entry
   where the display offers one, or hide it from a broker display's plugin list, and the
   **Minimap button** tick follows. There is one boolean and the library writes it too.

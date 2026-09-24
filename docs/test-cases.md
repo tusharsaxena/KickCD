@@ -1214,7 +1214,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (28)
+### test_launcher.lua (30)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the broker label is the BRAND NAME in plain text, `Ka0s KickCD`
@@ -1228,7 +1228,9 @@ badge and any count quoted in the docs must agree with it.
 - RIGHT click opens the settings panel, whatever the left button does
 - the row's get INVERTS LibDBIcon's `hide`, so the label can say shown
 - the row's set inverts AND moves the button, in the one write seam
-- `/kcd set global.minimap.hide` takes exactly the path the checkbox takes
+- `/kcd get global.minimap.shown` answers true while minimap.hide is false
+- `/kcd set global.minimap.shown false` stores hide = true
+- a legacy store keeps its setting across the CLI rename, with no migration
 - `Reset all settings` does NOT un-hide a button the player hid
 - the General page's DEFAULTS button does NOT un-hide a button the player hid
 - nor does it RE-HIDE a button the player is happy with
@@ -1362,7 +1364,7 @@ badge and any count quoted in the docs must agree with it.
 | test_disabled.lua | 17 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
-| test_launcher.lua | 28 |
+| test_launcher.lua | 30 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 7 |
 | test_doc_structure.lua | 3 |
@@ -1370,4 +1372,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1108** |
+| **Total** | **1110** |

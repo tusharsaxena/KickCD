@@ -62,7 +62,7 @@ local Launcher = LibStub and LibStub("LibKa0s-Launcher-1.0", true)
 
 if not Launcher then
     -- Load-completing, like every other seam in core/: settings/Panel.lua's
-    -- write seam calls NS.Launcher:SetShown on every `global.minimap.hide`
+    -- write seam calls NS.Launcher:SetShown on every `global.minimap.shown`
     -- write, and settings/General.lua's composed row reads IsShown, so a nil
     -- here would be a raise inside `/kcd set` rather than a missing button.
     local announced = false

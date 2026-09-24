@@ -76,15 +76,15 @@ end
 -- library's resets write through (libs/LibKa0s/Options.lua's runBulk calls
 -- `d.applyDefault(row)` for every row either walk keeps), so the row is exempt
 -- from both from one place rather than from two. It is deliberately NOT in
--- settings/Slash.lua's own applyDefault: `/kcd reset global.minimap.hide` is a
+-- settings/Slash.lua's own applyDefault: `/kcd reset global.minimap.shown` is a
 -- single row the player named out loud, which is neither of the two resets
 -- launcher-§3 is about, and refusing it would be refusing the CLI route to a
 -- setting the schema CLI is supposed to reach.
-local MINIMAP_HIDE_PATH = "global.minimap.hide"
+local MINIMAP_SHOWN_PATH = "global.minimap.shown"
 
 --- True for the one row every reset leaves alone (launcher-§3).
 local function survivesEveryReset(row)
-    return row ~= nil and row.path == MINIMAP_HIDE_PATH
+    return row ~= nil and row.path == MINIMAP_SHOWN_PATH
 end
 
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)

@@ -664,8 +664,9 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         -- sits alone on its line.
         --
         -- The path is VERBATIM and points at db.GLOBAL, outside the block's
-        -- profile prefix: it is LibDBIcon's own table.
-        { "global.minimap.hide",  "bool"   },
+        -- profile prefix: it is LibDBIcon's own table. It reads in the row's
+        -- sense (launcher-§3, v2.65.0); the store is still LibDBIcon's `hide`.
+        { "global.minimap.shown", "bool"   },
     }
     local got = {}
     for _, def in ipairs(H.SchemaForPanel("general", nil)) do
@@ -698,13 +699,13 @@ test("every canonical Master control is declared exactly ONCE in the repo", func
     for _, def in ipairs(T.NS.Settings.Schema) do
         for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
                                 "locked", "state.debugConsole",
-                                "global.minimap.hide" }) do
+                                "global.minimap.shown" }) do
             if def.path == path then seen[path] = (seen[path] or 0) + 1 end
         end
     end
     for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
                             "locked", "state.debugConsole",
-                            "global.minimap.hide" }) do
+                            "global.minimap.shown" }) do
         assertEqual(seen[path], 1,
             path .. " is declared " .. tostring(seen[path]) .. " times, not once")
     end
