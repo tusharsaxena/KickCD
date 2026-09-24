@@ -56,9 +56,11 @@ local Util = NS.Util
 --
 -- Set OUTSIDE the branch below because the seams that read it are reached on
 -- both paths — a half-vendored libs/LibKa0s can have Core.lua present and
--- DebugLog.lua missing — and set HERE because core/CoreSetup.lua is the first
--- of the five the TOC loads, ahead of core/DebugLogSetup.lua, core/PerfSetup.lua,
--- settings/Slash.lua and settings/OptionsSetup.lua. Named rather than cited by TOC
+-- DebugLog.lua missing — and set HERE because core/CoreSetup.lua loads ahead of
+-- every seam that reads it: core/DebugLogSetup.lua, core/PerfSetup.lua,
+-- core/LauncherSetup.lua, settings/SchemaSetup.lua and settings/OptionsSetup.lua.
+-- (settings/Slash.lua's stub prints the standard's own library-absent line
+-- instead, slash-commands-§1.) Named rather than cited by TOC
 -- line: the line numbers this comment used to carry had drifted by six and this
 -- item's annotations move them again.
 NS.LIBKA0S_MISSING = "The LibKa0s library is missing from this installation of KickCD " ..

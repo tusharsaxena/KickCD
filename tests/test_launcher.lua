@@ -178,18 +178,21 @@ end)
 
 test("the left click goes through the SAME write seam the Lock frame checkbox does", function()
     -- options-ui-§1: one writer. Proven by swapping the seam out and watching
-    -- the click arrive there, rather than by reading the source.
+    -- the click arrive there, rather than by reading the source. The seam is
+    -- NS.Settings.Store.Set: the checkbox reaches it through
+    -- Helpers.SetAndRefresh, and setLocked calls it directly so that the lock
+    -- verbs still write on a library-absent load (WS-02 route (a)).
     -- red under: a second path to db.profile.locked anywhere in the launcher
     local inst = T.load(true, true)
     local NS = inst.NS
-    local H = NS.Settings.Helpers
-    local seen, real = {}, H.SetAndRefresh
-    H.SetAndRefresh = function(path, value)
+    local S = NS.Settings.Store
+    local seen, real = {}, S.Set
+    S.Set = function(path, value, ...)
         seen[#seen + 1] = { path, value }
-        return real(path, value)
+        return real(path, value, ...)
     end
     captured(inst, function() NS.Launcher:Object().OnClick(nil, "LeftButton") end)
-    H.SetAndRefresh = real
+    S.Set = real
     assertEqual(#seen, 1, "exactly one write")
     assertEqual(seen[1][1], "locked", "and it is the `locked` row's own path")
 end)

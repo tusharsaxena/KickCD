@@ -141,28 +141,31 @@ end
 -- same refusal to touch the deprecated global. settings/Slash.lua and
 -- core/PerfSetup.lua went the same way, so the three cannot disagree.)
 
--- Set db.profile.locked through the schema's write+notify+refresh path
--- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
--- true` and the General > "Lock frame" checkbox do, so an open
--- settings panel re-syncs and any future onChange wired onto the
--- `locked` schema row fires here too.
+-- Set db.profile.locked through the schema seam (NS.Settings.Store.Set), then
+-- repaint an open panel's widgets (Helpers.RefreshScalars) -- the same two steps
+-- Helpers.SetAndRefresh takes for `/kcd set locked true` and the General >
+-- "Lock frame" checkbox, so the row's onChange and the announce fire here too.
 --
--- The helper or nothing (architecture-§5, #20). When SetAndRefresh cannot
--- take the write -- the settings layer is not loaded yet, or it finds no
--- `locked` row because that row is composed by LibKa0s-Options-1.0's Master
--- controls block and a load without the library has none -- this says so, the
--- way runResetPosition does, and writes nothing. It used to fall back to
--- `db.profile.locked = v`, which kept one composed setting writable around
--- the helper on the very load options-ui-§1 expects to lose it.
+-- The seam or nothing (architecture-§5, #20), and the seam is enough on the load
+-- that most needs it. `locked` is composed by LibKa0s-Options-1.0's Master
+-- controls block, so a library-absent load has no such row; it is on
+-- NS.Settings.WRITE_THROUGH (settings/SchemaSetup.lua, options-ui-§1 route (a),
+-- WS-02), and both the live Schema instance and its degradation stub store a
+-- listed path with no row. So lock, unlock and toggle still work there, and
+-- RefreshScalars is simply absent when no panel exists. Only a load whose
+-- settings layer never came up (no Store) says so and writes nothing -- it
+-- never falls back to `db.profile.locked = v` around the seam.
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "db not initialized yet")
     end
     local v = value and true or false
-    local H = self.Settings and self.Settings.Helpers
-    if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
+    local S = self.Settings and self.Settings.Store
+    if not (S and S.Set and S.Set("locked", v)) then
         return p(self, "Settings layer not ready yet")
     end
+    local H = self.Settings.Helpers
+    if H and H.RefreshScalars then H.RefreshScalars() end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
 
@@ -175,8 +178,8 @@ end
 --- preview -- and says in as many words that the launcher drives the addon's
 --- EXISTING switch through the same seam rather than holding a copy of it. This
 --- is that seam, and it holds no state: it reads db.profile.locked and hands the
---- negation to setLocked, which writes through Helpers.SetAndRefresh like the
---- `Lock frame` checkbox and `/kcd set locked` do.
+--- negation to setLocked, which writes through the schema seam (Store.Set, then
+--- RefreshScalars) like the `Lock frame` checkbox and `/kcd set locked` do.
 function NS.ToggleLock()
     local cur = NS.db and NS.db.profile and NS.db.profile.locked
     setLocked(NS, not cur)

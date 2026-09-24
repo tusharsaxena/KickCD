@@ -353,17 +353,17 @@ test("with LibKa0s absent bare /kcd still reaches `config`", function()
     assertTrue(not printedHelp(lines), "the stub must not print the help list on bare input")
 end)
 
--- `/kcd lock` writes `locked` through the helper or not at all (#20). It used to
+-- `/kcd lock` writes `locked` through the schema seam or not at all (#20). It used to
 -- fall back to `db.profile.locked = v` whenever SetAndRefresh could not take the
--- write, which put a schema-row path around the helper. The helper is the schema
--- seam now (LibKa0s-Schema-1.0), and `locked` is on its writeThrough list
+-- write, which put a schema-row path around the helper. setLocked calls the schema
+-- seam (Store.Set) directly now, and `locked` is on its writeThrough list
 -- (settings/SchemaSetup.lua, options-ui-§1 route (a)): on a load where the
 -- composer that declares the row is absent, the seam still stores it -- raw, and
 -- announced -- so the verb keeps working on the load it most needs to survive.
 -- The refusal stays for a load where the settings layer never came up at all.
 
 --- Run one COMMANDS verb's handler directly and return what it printed. Direct,
---- because a LibKa0s-absent load has no dispatcher to route `/kcd lock` through.
+--- so the case measures the handler itself and not either dispatcher's gate.
 local function runHandler(inst, verb)
     local lines = {}
     local frame = inst.mocks.DEFAULT_CHAT_FRAME
@@ -409,12 +409,12 @@ test("/kcd lock before the settings layer is up writes nothing and says why", fu
     local inst = T.load(true)
     local ns = inst.NS
     ns.db.profile.locked = false
-    local realSet = ns.Settings.Helpers.SetAndRefresh
-    ns.Settings.Helpers.SetAndRefresh = nil
+    local realStore = ns.Settings.Store
+    ns.Settings.Store = nil
     local ok, out = pcall(runHandler, inst, "lock")
-    ns.Settings.Helpers.SetAndRefresh = realSet
+    ns.Settings.Store = realStore
     if not ok then error(out, 0) end
-    assertEqual(ns.db.profile.locked, false, "no helper, no write")
+    assertEqual(ns.db.profile.locked, false, "no seam, no write")
     assertTrue(out:find("Settings layer not ready yet", 1, true) ~= nil,
         "the refusal must say why; got: " .. out)
     assertNil(out:find("icon grid locked", 1, true), "it must not claim the grid locked")
@@ -643,13 +643,13 @@ test("every feature verb refuses, and NONE of them reaches the write seam", func
         local verb = entry[1]
         if not live[verb] then
             local inst = disabled()
-            local H = inst.NS.Settings.Helpers
-            local writes, realSet = 0, H.SetAndRefresh
+            local H, S = inst.NS.Settings.Helpers, inst.NS.Settings.Store
+            local writes, realSet = 0, S.Set
             local anchors, realAnchor = 0, H.ResetIconPosition
-            H.SetAndRefresh = function(...) writes = writes + 1; return realSet(...) end
+            S.Set = function(...) writes = writes + 1; return realSet(...) end
             H.ResetIconPosition = function(...) anchors = anchors + 1; return realAnchor(...) end
             local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
-            H.SetAndRefresh, H.ResetIconPosition = realSet, realAnchor
+            S.Set, H.ResetIconPosition = realSet, realAnchor
             assertEqual(#lines, 1, "`/kcd " .. verb .. "` must answer on exactly one line")
             assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil,
                 "`/kcd " .. verb .. "` must name `/kcd enable`: " .. lines[1])
@@ -880,4 +880,109 @@ test("bare `/kcd spells` names the default spec by SpecDisplay", function()
     local lines = say(inst, function() inst.NS:OnSlashCommand("spells") end)
     assertTrue(joined(lines):find("SHAMAN/ELEMENTAL", 1, true) ~= nil, "got: " .. joined(lines))
     assertNil(joined(lines):find("SHAMAN/262", 1, true), "never the raw ID")
+end)
+
+-- ── the degraded stub's contract (slash-commands-§1, WS-02, LK-18) ──────────
+--
+-- A library-absent load keeps exactly one library string, the disabled line's
+-- format, pinned byte for byte against the live major. The composed-row verbs
+-- take route (a): `enable` / `disable` go through the stub's CliSet, which
+-- writes a bool literal for a path on NS.Settings.WRITE_THROUGH and nothing
+-- else, and `lock` writes through the Schema stub's own writeThrough. Every
+-- other schema verb prints the collection's one library-absent line.
+
+--- A fresh library-absent load, enabled, with its chat captured by `run`.
+local function degraded()
+    local inst = T.load(true, true, nil, { libFiles = {} })
+    assertNil(inst.mocks.LibStub("LibKa0s-Slash-1.0", true), "sanity: no Slash major on this load")
+    return inst
+end
+
+--- Run one slash line on `inst` under pcall; return ok, err and every line printed.
+local function degradedRun(inst, input)
+    local lines, real = {}, inst.NS.Util.print
+    inst.NS.Util.print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
+        lines[#lines + 1] = table.concat(parts, " ")
+    end
+    local ok, err = pcall(inst.NS.OnSlashCommand, inst.NS, input)
+    inst.NS.Util.print = real
+    return ok, err, lines
+end
+
+local ABSENT = "%s is unavailable: the LibKa0s library did not load."
+
+test("the stub's DisabledLine format is the library constant, byte for byte", function()
+    -- red under: any byte of the stub's copy drifting from lib.DISABLED_LINE_FORMAT
+    local inst = degraded()
+    T.assertLibraryConstant(inst.NS.Slash.cli.__disabledLineFormat,
+        "LibKa0s-Slash-1.0", "DISABLED_LINE_FORMAT")
+    -- ...and the line built from it is the live line, brand and verb included.
+    local expected = T.NS.Slash.cli:DisabledLine()
+    assertEqual(inst.NS.Slash.cli:DisabledLine(), expected,
+        "the degraded DisabledLine must equal the live one")
+end)
+
+test("the stub's reserved-verb copy is the library's LIVE_VERBS, in order", function()
+    -- The degraded gate needs the twelve (without them `/kcd enable` would be
+    -- refused while disabled and the switch would be one-way), and a library-
+    -- absent load has no library to read them from.
+    -- red under: a reserved verb added to, dropped from or reordered in either copy
+    local inst = degraded()
+    local copy = inst.NS.Slash.cli.__reservedVerbs
+    local live = T.mocks.LibStub("LibKa0s-Slash-1.0", true).LIVE_VERBS
+    assertEqual(type(copy), "table", "the stub must publish its copy for this pin")
+    assertEqual(table.concat(copy, ","), table.concat(live, ","),
+        "the stub's reserved verbs drifted from LibKa0s-Slash-1.0's LIVE_VERBS")
+end)
+
+test("degraded `/kcd list` prints the library-absent line", function()
+    local inst = degraded()
+    local ok, err, lines = degradedRun(inst, "list")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], ABSENT:format("/kcd list"))
+end)
+
+test("degraded `/kcd set visibility always` writes nothing and prints the library-absent line", function()
+    -- `visibility` is a COMPOSED row, absent on this load and not on the
+    -- writeThrough list, so route (b) applies to it.
+    local inst = degraded()
+    local before = inst.mocks.__deepcopy(inst.NS.db.profile)
+    local ok, err, lines = degradedRun(inst, "set visibility always")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], ABSENT:format("/kcd set"))
+    assertEqual(inst.NS.db.profile.visibility, before.visibility, "nothing was written")
+end)
+
+test("degraded `/kcd set` refuses a non-bool value even on a writeThrough path", function()
+    local inst = degraded()
+    local ok, err, lines = degradedRun(inst, "set enabled maybe")
+    assertTrue(ok, tostring(err))
+    assertEqual(lines[1], ABSENT:format("/kcd set"))
+    assertTrue(inst.NS.db.profile.enabled ~= false, "enabled was not touched")
+end)
+
+test("degraded `/kcd lock` writes locked, and confirms", function()
+    local inst = degraded()
+    inst.NS.db.profile.locked = false
+    local ok, err, lines = degradedRun(inst, "lock")
+    assertTrue(ok, tostring(err))
+    assertEqual(inst.NS.db.profile.locked, true, "lock landed")
+    assertTrue(joined(lines):find("icon grid locked", 1, true) ~= nil, "got: " .. joined(lines))
+end)
+
+test("degraded `/kcd lock` while disabled prints the DisabledLine and does not act", function()
+    -- red under: a stub OnSlash with no gate
+    local inst = degraded()
+    degradedRun(inst, "disable")
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: disabled")
+    local before = inst.NS.db.profile.locked
+    local ok, err, lines = degradedRun(inst, "lock")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], T.NS.Slash.cli:DisabledLine(), "the collection's refusal line")
+    assertEqual(inst.NS.db.profile.locked, before, "the lock did not move")
 end)

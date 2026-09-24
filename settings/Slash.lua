@@ -253,44 +253,89 @@ NS.Slash.RunReset = runReset
 -- ---------------------------------------------------------------------
 --
 -- `/kcd` is registered unconditionally in core/KickCD.lua's OnInitialize, so
--- something has to answer it. The host verbs never went to the library, so they
--- keep working untouched; what is lost is the schema CLI, and each of those
--- verbs names the missing library rather than going quiet.
+-- something has to answer it. The shape is the one slash-commands-§1 (WS-02)
+-- and LibKa0s-Slash-1.0's version-15 doc ("The degradation stub") prescribe:
 --
--- Note what is NOT here: no copy of the row formatter, no copy of the parser, no
--- copy of the key/value shape. Hand-copying the strings whose drift the
--- extraction exists to end is the one duplicate testing-§8 most specifically
--- forbids, so a degraded help row renders plainly and says so.
+--   * minimal OnSlash dispatch, with the disabled gate: a verb outside
+--     d.liveVerbs is refused with DisabledLine while d.isEnabled() is false;
+--   * exactly one library string carried verbatim, the disabled line's format,
+--     pinned byte for byte by tests/test_slash.lua (Kit.assertLibraryConstant);
+--   * no copy of the row formatter, the parser or the key/value shape, so a
+--     degraded help row renders plainly (testing-§8's forbidden duplicate);
+--   * the composed-row verbs take route (a): `enable` / `disable` reach CliSet,
+--     which writes a bool literal for a path on NS.Settings.WRITE_THROUGH and
+--     nothing else, and `lock` / `unlock` / `toggle` write through the Schema
+--     stub's own writeThrough in core/KickCD.lua's setLocked. Every other
+--     schema verb prints the collection's library-absent line, never raising.
+--
+-- The host verbs never went to the library, so they keep working untouched.
 if not SlashLib then
-    -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
-    -- only the consequence is this seam's. This is the one of the five whose
-    -- consequence comes FIRST — the verb has to lead, or "/kcd list" is buried
-    -- mid-sentence — so it reads "<verb> is unavailable. <cause>." AbsorbTracker
-    -- inverts it the same way for the same reason, in its own
-    -- ../AbsorbTracker/settings/Slash.lua `missing` stub.
-    local missing = " is unavailable. " .. NS.LIBKA0S_MISSING .. "."
-    SlashLib = {}
+    -- The bytes of LibKa0s-Slash-1.0's lib.DISABLED_LINE_FORMAT (v1.56.0), the
+    -- one library string this stub may carry. Exposed on the instance as
+    -- `__disabledLineFormat` for the pin; the `__` prefix keeps it outside the
+    -- surface-parity gate, which is about the public surface.
+    local DISABLED_LINE_FORMAT = "%s is disabled \226\128\148 enable it with |cFFFFFF00%s|r"
+
+    -- The standard's reserved verbs (slash-commands-§2), which the library
+    -- publishes as lib.LIVE_VERBS and a library-absent load cannot read. The
+    -- disabled gate needs them: without them `/kcd enable` would be refused
+    -- while disabled and the switch would be one-way. liveVerbs() below reads
+    -- SlashLib.LIVE_VERBS on either arm, so the union is built the same way;
+    -- tests/test_slash.lua pins this copy against the live array, in order.
+    SlashLib = {
+        LIVE_VERBS = {
+            "help", "config", "version", "enable", "disable", "debug",
+            "perf", "get", "set", "list", "reset", "resetall",
+        },
+    }
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
 
+    --- The collection's library-absent line for `verb` (e.g. "/kcd list").
+    local function absentLine(verb)
+        return NS.L["%s is unavailable: the LibKa0s library did not load."]:format(verb)
+    end
+
+    --- A bool literal, or nil. A literal check on purpose, not a copy of the
+    --- library's parser: the only rows this stub writes are bools.
+    local BOOL_LITERAL = { ["true"] = true, on = true, ["false"] = false, off = false }
+
+    local function writeThrough(path)
+        for _, p in ipairs(NS.Settings.WRITE_THROUGH or {}) do
+            if p == path then return true end
+        end
+        return false
+    end
+
+    --- `/kcd set <path> <value>` with no library: a bool literal for a
+    --- writeThrough path goes to the Schema stub; everything else, and any
+    --- failure, prints the library-absent line and writes nothing.
+    local function cliSet(rest)
+        local path, text = (rest or ""):match("^%s*(%S+)%s*(.-)%s*$")
+        local v = text and BOOL_LITERAL[text:lower()]
+        local S = NS.Settings.Store
+        if v ~= nil and writeThrough(path) and S and S.Set then
+            local ok, stored = pcall(S.Set, path, v)
+            if ok and stored then return out(path .. " = " .. tostring(v)) end
+        end
+        out(absentLine("/kcd set"))
+    end
+
     function SlashLib:New(d)
-        local stub = { SetRowAnnotator = function() end }
-        local function absent(verb)
-            return function() out("/kcd " .. verb .. missing) end
+        local stub = {
+            SetRowAnnotator = function() end,
+            __disabledLineFormat = DISABLED_LINE_FORMAT,
+            __reservedVerbs = SlashLib.LIVE_VERBS,
+        }
+        for _, verb in ipairs({ "List", "Get", "Reset", "ResetAll" }) do
+            local line = "/kcd " .. verb:lower()
+            stub["Cli" .. verb] = function() out(absentLine(line)) end
         end
-        for _, verb in ipairs({ "List", "Get", "Set", "Reset", "ResetAll" }) do
-            stub["Cli" .. verb] = absent(verb:lower())
-        end
+        stub.CliSet = function(_, rest) return cliSet(rest) end
         stub.CliVersion = function() out("v" .. tostring(d.version and d.version() or "?")) end
-        -- ANSWERS NIL, and that is the only honest answer here. The refusal
-        -- line's wording is the collection's and lives in exactly one place --
-        -- lib.DISABLED_LINE_FORMAT -- so a stub that spelled it again would be
-        -- the twelfth copy the extraction exists to prevent. This arm has no gate
-        -- either: without the library there is no dispatcher to refuse anything,
-        -- so there is nothing for the line to accompany. Present because the
-        -- surface-parity gate asks the stub to answer everything the live
-        -- instance answers, and NS.Slash.PrintDisabledLine treats a nil as
-        -- "nothing to say" rather than printing an empty line.
-        stub.DisabledLine = function() return nil end
+        -- The same line the library builds, from the same two arguments.
+        stub.DisabledLine = function()
+            return DISABLED_LINE_FORMAT:format(tostring(d.brandName or d.slash), d.slash .. " enable")
+        end
         stub.LandingRows = function()
             local rows = {}
             for _, e in ipairs(d.commands or {}) do
@@ -307,10 +352,15 @@ if not SlashLib then
             out("v" .. tostring(d.version and d.version() or "?") .. " slash commands")
             for _, r in ipairs(stub.HelpRows()) do out(r) end
         end
+        local live = {}
+        for _, verb in ipairs(d.liveVerbs or {}) do live[tostring(verb):lower()] = true end
         local function find(cmd)
             for _, e in ipairs(d.commands or {}) do
                 if e[1] == cmd then return e end
             end
+        end
+        local function refused(cmd)
+            return not live[cmd] and type(d.isEnabled) == "function" and not d.isEnabled()
         end
         stub.OnSlash = function(_, msg)
             local raw = (msg or ""):match("^%s*(.-)%s*$") or ""
@@ -326,6 +376,7 @@ if not SlashLib then
             cmd = (cmd or ""):lower()
             cmd = (d.aliases or {})[cmd] or cmd
             local e = find(cmd)
+            if e and refused(cmd) then return out(stub.DisabledLine()) end
             if e then return e[3](rest or "") end
             out("unknown command '" .. cmd .. "'")
             stub.PrintHelp()
@@ -471,8 +522,9 @@ function NS.Slash:OnSlash(msg) return NS.Slash.cli:OnSlash(msg) end
 --- refused feature verb prints, and it prints it by asking the library for it
 --- rather than by spelling it again here. One sentence, one place.
 ---
---- Degrades to nothing when LibKa0s is missing: the stub above has no gate, so
---- there is no line to print and no second copy of it to invent.
+--- On a library-absent load the stub above answers the same line, built from its
+--- one pinned copy of the library's format string (slash-commands-§1). A
+--- DisabledLine that answers nothing still prints nothing rather than an empty line.
 function NS.Slash.PrintDisabledLine()
     local cli = NS.Slash.cli
     if not (cli and cli.DisabledLine) then return false end

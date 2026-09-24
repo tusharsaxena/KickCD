@@ -521,7 +521,7 @@ test("with LibKa0s absent the schema loads complete BAR the composed blocks", fu
         "the degraded load is short by more than the composed blocks")
 end)
 
-test("the hollow composers cost the degraded path no CLI reach it otherwise has",
+test("the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)",
 function()
     -- THE BLAST RADIUS OF THE options-ui-§1 DEVIATION, measured rather than
     -- argued -- and it is smaller than the deviation row used to claim.
@@ -530,14 +530,17 @@ function()
     -- and the profile defaults down with it, silently. Neither half is reachable
     -- here, and this case is what says so rather than a paragraph:
     --
-    --   1. THE SCHEMA CLI IS NOT RUNNING ON THIS LOAD AT ALL. LibKa0s-Slash-1.0
-    --      lives in the same libs/LibKa0s/ folder as LibKa0s-Options-1.0, which
+    --   1. THE SCHEMA CLI IS NOT RUNNING ON THIS LOAD. LibKa0s-Slash-1.0 lives
+    --      in the same libs/LibKa0s/ folder as LibKa0s-Options-1.0, which
     --      options-ui-§1 requires be vendored WHOLE (anti-pattern #48), so the
     --      load that loses the composers loses the CLI in the same breath.
-    --      settings/Slash.lua's stub answers `set`/`get`/`list`/`reset` with one
-    --      "is unavailable" line each -- for a HOST-DECLARED row exactly as for a
-    --      composed one. There is no state of this addon in which a composed path
-    --      is addressable-but-missing.
+    --      settings/Slash.lua's stub answers `get`/`list`/`reset` with the
+    --      library-absent line, and `set` too -- for a HOST-DECLARED row exactly
+    --      as for a composed one -- with ONE exception, WS-02's route (a): a bool
+    --      literal for a path on NS.Settings.WRITE_THROUGH (`enabled`, `locked`)
+    --      is written through the Schema stub, so `/kcd enable` and `/kcd
+    --      disable` keep the addon's one switch two-way. Those two paths are the
+    --      only composed paths addressable on this load, and they are stored.
     --   2. The profile defaults are defaults/Profile.lua's, merged by AceDB in
     --      core/Database.lua's aceDBDefaults, and never read off the schema. A
     --      composed setting a player already made keeps being honored.
@@ -548,9 +551,9 @@ function()
     -- looking for `state.debugConsole`, whose console window is unavailable on
     -- this path too (core/DebugLogSetup.lua:70-72).
     --
-    -- red under: settings/Slash.lua's stub gaining a real CliSet, which would
-    -- make the composed rows genuinely unreachable-but-asked-for and turn the
-    -- deviation into the regression it was reported as
+    -- red under: settings/Slash.lua's stub CliSet widening past the writeThrough
+    -- list (a host-declared row written), or narrowing below it (`enabled`
+    -- refused, the switch one-way)
     local inst = T.load(true, false, nil, { libFiles = {} })
     assertNil(inst.mocks.LibStub("LibKa0s-Slash-1.0", true),
         "sanity: the degraded load must not have the slash major either")
@@ -575,6 +578,13 @@ function()
         if tostring(line):find("unavailable", 1, true) then said = true end
     end
     assertTrue(said, "the degraded `/kcd set` must name the missing library, not go quiet")
+
+    -- ...and the route-(a) reach: `enabled` is composed, row-less here, and written.
+    frame.AddMessage = function() end
+    inst.NS:OnSlashCommand("set enabled false")
+    frame.AddMessage = orig
+    assertEqual(inst.NS.db.profile.enabled, false,
+        "the degraded `/kcd set enabled false` must write through (WS-02 route (a))")
 end)
 
 test("the degraded stub keeps the global reset real", function()

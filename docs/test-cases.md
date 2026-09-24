@@ -46,7 +46,7 @@ badge and any count quoted in the docs must agree with it.
 - LibKa0s-Core-1.0 still has no user-visible strings to trap
 - the Core descriptor passes no locale table, and the printer renders no key
 - the shared cause clause is published on the healthy path too
-- with LibKa0s absent all five seams say the same thing about WHY
+- with LibKa0s absent every seam names the missing library
 - no seam re-spells the cause in its own words
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
@@ -1046,7 +1046,7 @@ badge and any count quoted in the docs must agree with it.
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
 - with LibKa0s absent the schema loads complete BAR the composed blocks
-- the hollow composers cost the degraded path no CLI reach it otherwise has
+- the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note has no hover highlight but is still clickable
@@ -1115,7 +1115,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (49)
+### test_slash.lua (56)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1166,8 +1166,15 @@ badge and any count quoted in the docs must agree with it.
 - `spells add <id> WARLORD 99999` writes nothing
 - `spells add <id> SHAMAN 99999` names the spec it could not resolve
 - bare `/kcd spells` names the default spec by SpecDisplay
+- the stub's DisabledLine format is the library constant, byte for byte
+- the stub's reserved-verb copy is the library's LIVE_VERBS, in order
+- degraded `/kcd list` prints the library-absent line
+- degraded `/kcd set visibility always` writes nothing and prints the library-absent line
+- degraded `/kcd set` refuses a non-bool value even on a writeThrough path
+- degraded `/kcd lock` writes locked, and confirms
+- degraded `/kcd lock` while disabled prints the DisabledLine and does not act
 
-### test_disabled.lua (17)
+### test_disabled.lua (19)
 
 - baseline: an ENABLED addon registers something worth standing down
 - DISABLED: the registration set is EMPTY, by count and by name
@@ -1186,6 +1193,8 @@ badge and any count quoted in the docs must agree with it.
 - LATCH: releasing the perf hold does NOT resurrect a disabled addon
 - LATCH: the holds are order-independent
 - LATCH: a profile switch that flips `enabled` is honored
+- DEGRADED: `/kcd disable` writes enabled = false, stands down, confirms, raises nothing
+- DEGRADED: `/kcd enable` brings it back up
 
 ### test_opensettings.lua (6)
 
@@ -1379,8 +1388,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 2 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 49 |
-| test_disabled.lua | 17 |
+| test_slash.lua | 56 |
+| test_disabled.lua | 19 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
 | test_launcher.lua | 30 |
@@ -1391,4 +1400,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1125** |
+| **Total** | **1134** |

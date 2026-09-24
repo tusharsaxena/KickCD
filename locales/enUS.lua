@@ -38,6 +38,12 @@ L["Slash Commands"]              = "Slash Commands"
 -- the library refuses a descriptor `L` for this string on purpose. Eleven addons
 -- each wording it their own way is the drift the shared printer exists to end.
 
+-- The library-absent line (slash-commands-§1, WS-02): one sentence, one placeholder,
+-- the full verb (`/kcd list`). settings/Slash.lua's degradation stub prints it for
+-- every schema verb a load without LibKa0s cannot serve.
+L["%s is unavailable: the LibKa0s library did not load."] =
+    "%s is unavailable: the LibKa0s library did not load."
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

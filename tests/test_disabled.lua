@@ -588,3 +588,48 @@ test("LATCH: a profile switch that flips `enabled` is honored", function()
     assertTrue((select(2, registrations(inst))) > 20,
         "a profile event that re-enabled the addon left it stood down")
 end)
+
+-- ---------------------------------------------------------------------------
+-- The library-absent load: `/kcd disable` and `/kcd enable` still work (WS-02 route (a))
+-- ---------------------------------------------------------------------------
+--
+-- `enabled` is a COMPOSED row, so a load without LibKa0s has no row for it. It is on
+-- NS.Settings.WRITE_THROUGH, the degraded Slash stub's CliSet writes a bool literal for it
+-- through the Schema stub, and the announce takes the disabled hold -- so the verbs keep the
+-- addon's one switch two-way on the load that most needs it.
+
+--- A library-absent, enabled, logged-in instance, like baseline() above.
+local function degradedBaseline()
+    local inst = T.load(true, true, nil, { libFiles = {} })
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
+    inst.mocks.__flushTimers()
+    return inst
+end
+
+test("DEGRADED: `/kcd disable` writes enabled = false, stands down, confirms, raises nothing", function()
+    -- red under: the stub's CliSet answering "unavailable" for every path
+    local inst = degradedBaseline()
+    assertTrue((select(2, registrations(inst))) > 20, "sanity: the degraded load is up")
+    local lines
+    local ok, err = pcall(function()
+        lines = say(inst, function() inst.NS:OnSlashCommand("disable") end)
+    end)
+    inst.mocks.__flushTimers()
+    assertTrue(ok, "the verb raised: " .. tostring(err))
+    assertEqual(inst.NS.db.profile.enabled, false, "the write landed")
+    assertEqual((select(2, registrations(inst))), 0, "and the addon stood down: " .. survivors(inst))
+    assertEqual(#lines, 1, "one confirmation line: " .. table.concat(lines, " / "))
+    assertEqual(lines[1], "enabled = false")
+end)
+
+test("DEGRADED: `/kcd enable` brings it back up", function()
+    local inst = degradedBaseline()
+    say(inst, function() inst.NS:OnSlashCommand("disable") end)
+    inst.mocks.__flushTimers()
+    assertEqual((select(2, registrations(inst))), 0, "sanity: it is down")
+    local lines = say(inst, function() inst.NS:OnSlashCommand("enable") end)
+    inst.mocks.__flushTimers()
+    assertEqual(inst.NS.db.profile.enabled, true, "the write landed")
+    assertTrue((select(2, registrations(inst))) > 20, "and the addon stood back up")
+    assertEqual(lines[1], "enabled = true")
+end)

@@ -375,6 +375,13 @@ end
 --                     English into a locale file without making the client's own
 --                     translation reachable, which is the fix these actually
 --                     want.
+--   LIBRARY CONSTANT  A degradation stub's verbatim copy of a LibKa0s string
+--                     (slash-commands-§1 allows exactly one: the Slash major's
+--                     DISABLED_LINE_FORMAT). It is the COLLECTION's wording, the
+--                     library refuses a locale override for it, and the copy is
+--                     pinned against the live constant; routing it through L
+--                     would let a translation drift from the line the live
+--                     library prints.
 --   NOT YET ROUTED    A plain user-facing sentence in a settings page that would
 --                     route cleanly and simply has not been. M4-21 scoped this
 --                     repository's routing to KICKCD-R-03's three desc keys;
@@ -393,7 +400,9 @@ local RESIDUE = {
     {"settings/Slash.lua", "Use the ", "SPLIT COLOR"},
     {"settings/Slash.lua", " panel's |cFFFFFF00Defaults|r button to reset the ", "SPLIT COLOR"},
     {"settings/Slash.lua", "whole page, or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOR"},
-    {"settings/Slash.lua", " is unavailable. ", "DEGRADED STEM"},
+    -- The degradation stub's one verbatim library string (slash-commands-§1),
+    -- pinned byte for byte in tests/test_slash.lua.
+    {"settings/Slash.lua", "%s is disabled \\226\\128\\148 enable it with |cFFFFFF00%s|r", "LIBRARY CONSTANT"},
     {"settings/Slash.lua", "the LibKa0s library is missing", "VALIDATOR"},
     {"settings/Slash.lua", " slash commands", "FRAGMENT"},
     {"settings/Slash.lua", "unknown command '", "FRAGMENT"},
@@ -449,7 +458,7 @@ local CLASSES = {
     ["SPLIT COLOR"]       = true, ["FRAGMENT"]       = true,
     ["LIB DESCRIPTOR"]    = true, ["MEDIA KEY"]      = true,
     ["FORMAT SUFFIX"]     = true, ["CLIENT SUPPLIED"] = true,
-    ["NOT YET ROUTED"]    = true,
+    ["NOT YET ROUTED"]    = true, ["LIBRARY CONSTANT"] = true,
 }
 
 -- ---------------------------------------------------------------------------

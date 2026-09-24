@@ -88,6 +88,40 @@ failure it guards against.
 
 Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
+## Degraded verbs: a load without LibKa0s
+
+`/kcd` is registered unconditionally, so a load whose `libs/LibKa0s/` is missing still answers it,
+through the degradation stub at the top of `settings/Slash.lua`. Its shape is the one
+`slash-commands-§1` (standard v2.65.0, WS-02) and `LibKa0s-Slash-1.0`'s version-15 document ("The
+degradation stub") prescribe:
+
+* **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
+  unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
+  verb outside the descriptor's `liveVerbs` is refused with `DisabledLine`, exactly as on the live
+  load.
+* **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
+  local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
+  surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
+  degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included, and
+  `NS.Slash.PrintDisabledLine` prints it on this load too. The gate also needs the standard's
+  reserved verbs, which the library publishes as `lib.LIVE_VERBS` and this load cannot read, so the
+  stub carries that array too, exposed as `__reservedVerbs` and pinned element for element against
+  the live array. Without it `/kcd enable` would be refused while disabled.
+* **No formatter, parser or key/value copy.** Help rows render plainly (`/kcd <verb> — <desc>`).
+* **Composed-row verbs take route (a).** `enable` / `disable` still dispatch into `/kcd set
+  enabled <bool>`. The stub's `CliSet` accepts a path on `NS.Settings.WRITE_THROUGH` (`enabled`,
+  `locked`) with a bool literal (`true` / `false` / `on` / `off`), writes it through the Schema stub's
+  `Store.Set`, and echoes `<path> = <bool>`. The Schema announce takes the disabled hold on an
+  `enabled` write, so `disable` stands the addon down and `enable` brings it back. `lock` / `unlock`
+  / `toggle` write `locked` through `Store.Set` in `setLocked` and confirm as usual.
+* **Everything else prints the library-absent line.** `list`, `get`, `reset`, `resetall`, and `set`
+  for any other path or value, print the one sentence `slash-commands-§1` fixes, through the locale:
+  `/kcd list is unavailable: the LibKa0s library did not load.` Nothing is written and nothing
+  raises.
+
+Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`,
+`tests/test_disabled.lua` and `tests/test_options_panel.lua`.
+
 ## Top-level commands
 
 | Command | Purpose | Notes |
@@ -96,7 +130,7 @@ Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash.lua`. |
-| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Routes through `Helpers.SetAndRefresh("locked", ...)` — the schema seam's `Store.Set` plus a scalar refresh — so the General → "Lock frame" checkbox refreshes and any future onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it. Only when the settings layer never came up does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the minimap button's left click is its second caller — `launcher-§2` rung (b) drives the addon's EXISTING preview switch through the same seam rather than holding a copy of it. |
+| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the minimap button's left click is its second caller — `launcher-§2` rung (b) drives the addon's EXISTING preview switch through the same seam rather than holding a copy of it. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors, then writes through `Helpers.SetAndRefresh` (`Store.Set`). A path no schema row declares is refused and never stored (`Setting not found: <path>`), and a refusal the seam answers with `false, err, why` is printed instead of an echo (LibKa0s-Slash-1.0 minor 15). On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
