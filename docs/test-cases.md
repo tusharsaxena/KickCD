@@ -563,7 +563,7 @@ badge and any count quoted in the docs must agree with it.
 - the swipe is still suppressed for a GCD-only lockout
 - classification falls back to remaining on a client without the total API
 
-### test_icongrid_buildlist.lua (23)
+### test_icongrid_buildlist.lua (26)
 
 - BuildActiveList renders one icon per enabled entry
 - BuildActiveList preserves the saved list's ORDER
@@ -588,6 +588,9 @@ badge and any count quoted in the docs must agree with it.
 - pool: a release/rebuild cycle allocates NOTHING new
 - pool: the rebuild draws from the EXISTING widgets, not new ones
 - pool: a release leaves no icon shown
+- an icon rebuilt after Cooldowns already emitted keeps its cooldown
+- with no Cooldowns state the seed is ready
+- every unwatched seed is the shared READY_SEED table
 
 ### test_icongrid_glowgate.lua (8)
 
@@ -1312,7 +1315,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
-| test_icongrid_buildlist.lua | 23 |
+| test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 8 |
 | test_icongrid_handle.lua | 10 |
 | test_lifecycle.lua | 7 |
@@ -1349,4 +1352,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1087** |
+| **Total** | **1090** |

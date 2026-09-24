@@ -663,6 +663,19 @@ end
 -- Debug
 -- ---------------------------------------------------------------------------
 
+--- The current state snapshot Cooldowns holds for `spellID`, or nil when the
+--- spell is not watched (master enable off, not in the list, not castable).
+--- READ-ONLY: the table is Cooldowns' own `watched` entry, the one Refresh
+--- diffs the next poll against, so a caller that mutates it corrupts the
+--- change detection. It is a query, not a second sender (architecture-§4):
+--- IconGrid pulls it to seed a rebuilt icon, because a SPELL_STATE Cooldowns
+--- emitted a moment earlier may have gone to the pool IconGrid then released.
+-- @param spellID  number
+-- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+function Cooldowns:StateFor(spellID)
+    return self.watched and self.watched[spellID]
+end
+
 --- /kickcd debug spells — print the watched-list with current state.
 function Cooldowns:DebugDump()
     local p = NS.Util and NS.Util.print or _G.print
@@ -720,7 +733,9 @@ end
 -- NB: named MasterEnabled, NOT IsEnabled — AceAddon embeds its own
 -- IsEnabled(self) (returns self.enabledState) directly onto every module
 -- object, so publishing under that name would silently shadow the library
--- method with one that answers a different question.
+-- method with one that answers a different question. StateFor (above) is
+-- the one method-shaped export: IconGrid's read-only pull of the current
+-- state when it seeds a rebuilt icon.
 Cooldowns.MaterialChange = MaterialChange
 Cooldowns.StateChanged   = StateChanged
 Cooldowns.MasterEnabled  = isEnabled

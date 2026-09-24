@@ -355,20 +355,29 @@ local function applySpellTexture(btn, spellID)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
 
+--- The seed for an icon Cooldowns holds no state for. One shared, never-
+--- mutated table: Icon:Apply only reads its state and keeps it as
+--- _lastState, so a rebuild allocates no per-icon seed.
+local READY_SEED = { ready = true, start = 0, duration = 0 }
+
 --- Acquire, dress and seed one button for `spellID`, appending it to the
 --- instance's ordered list.
 local function seedIcon(grid, inst, spellID)
     local btn = grid:AcquireIcon(inst, spellID)
     applySpellTexture(btn, spellID)
     btn:ApplyTextConfig(inst.cfg)
-    -- Initial state: assume ready until Cooldowns sends a real
-    -- Ka0s_KickCD_SpellState. Apply{} (no payload) treats the icon
-    -- as "not ready" because state.ready is nil-falsy, so pass
-    -- a synthetic ready frame to render correctly until the
-    -- first real state arrives.
+    -- Seed from what Cooldowns ALREADY knows. Both modules rebuild on PEW,
+    -- SPELLS_CHANGED, TRAIT_CONFIG_UPDATED and a profile change, and
+    -- CallbackHandler runs the two handlers in pairs order: when Cooldowns
+    -- goes first, its SPELL_STATE lands on the pool this rebuild just
+    -- released, and it will not emit again until the spell's state changes.
+    -- So pull its current state (read-only, Cooldowns:StateFor) instead of
+    -- painting ready. READY_SEED covers the spell Cooldowns does not watch
+    -- (yet); Apply{} would read nil-falsy `ready` as "not ready".
     -- force=true: a rebuilt list may hand a pooled button whose
     -- _lastState still matches, and this pass has to repaint it.
-    btn:Apply({ ready = true, start = 0, duration = 0 }, true)
+    local cd = NS:GetModule("Cooldowns", true)
+    btn:Apply((cd and cd:StateFor(spellID)) or READY_SEED, true)
     table.insert(inst.ordered, btn)
 end
 
