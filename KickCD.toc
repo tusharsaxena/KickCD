@@ -127,4 +127,6 @@ settings\Icons.lua
 settings\Castbar.lua
 settings\Label.lua
 settings\Spells.lua
+# LOAD-BEARING POSITION: takes NS.Settings.SpellsPanel (settings/Spells.lua) as a file-scope upvalue.
+settings\Spells_Rows.lua
 settings\Profiles.lua
