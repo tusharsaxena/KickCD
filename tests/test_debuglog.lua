@@ -105,14 +105,14 @@ test("NS.Debug passes plain args through unchanged", function()
     NS.State.debug = false   -- leave the shared instance clean for later suites
 end)
 
-test("scrollbar + line-counter sync methods exist (§11)", function()
+test("scrollbar + line-counter sync methods exist (debug-logging-§11)", function()
     assertTrue(type(DebugLog.UpdateScrollBar) == "function",
         "DebugLog:UpdateScrollBar must exist")
     assertTrue(type(DebugLog.UpdateStatus) == "function",
         "DebugLog:UpdateStatus must exist")
 end)
 
-test("sync methods are a clean no-op before the window is built (§11)", function()
+test("sync methods are a clean no-op before the window is built (debug-logging-§11)", function()
     -- Fresh instance whose console window has never been shown: both syncs must
     -- return without error (window == nil) rather than touching a nil frame.
     local dl = T.load(true).NS.DebugLog
@@ -121,11 +121,11 @@ test("sync methods are a clean no-op before the window is built (§11)", functio
     assertTrue(ok, "syncs must be safe with no window built")
 end)
 
-test("building the console + Add/Clear run the guarded sync headlessly (§11)", function()
+test("building the console + Add/Clear run the guarded sync headlessly (debug-logging-§11)", function()
     -- Show() builds the window (scrollbar Slider + counter) and runs the initial
     -- sync. Under the headless mock the frame's GetMaxScrollRange returns a
     -- non-number, so the type guard makes UpdateScrollBar a clean no-op — this
-    -- is exactly the "MUST stay a no-op under the test mock" rule of §11. The
+    -- is exactly the "MUST stay a no-op under the test mock" rule of debug-logging-§11. The
     -- whole flow must complete without raising (and never call the nil C getters
     -- GetNumLinesDisplayed / GetCurrentScroll).
     local dl = T.load(true).NS.DebugLog

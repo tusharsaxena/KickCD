@@ -375,7 +375,7 @@ test("Database:SetSpellEnabled and :SetSpellCategory write one entry's field", f
     assertEqual(D:SetSpellCategory("SHAMAN", 999, id, "root"), false, "a missing list")
 end)
 
--- ── the writer traces its own writes (debug-logging-§8, §10) ───────────────
+-- ── the writer traces its own writes (debug-logging-§8, debug-logging-§10) ─
 --
 -- A registry's create or delete is a functional flow, traced once by the
 -- registry writer. The trace lives in Database, so the Spells page and

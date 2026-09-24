@@ -1,4 +1,4 @@
--- tests/test_settings_log.lua — settings-change capture at the schema seam (§10)
+-- tests/test_settings_log.lua — settings-change capture at the schema seam (debug-logging-§10)
 --
 -- The write seam is LibKa0s-Schema-1.0's (NS.Settings.Store, settings/SchemaSetup.lua):
 -- the per-write `[Set]` line, the bulk bracket's one line and the profile reset's

@@ -143,7 +143,7 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Write the enable path THROUGH THE SINGLE WRITE SEAM -- never by calling a teardown function
---- directly. §7 step 2 is explicit about this: the test has to exercise the route the checkbox and
+--- directly. slash-commands-§7 step 2 is explicit about this: the test has to exercise the route the checkbox and
 --- the `/kcd disable` verb take, or it proves the teardown works and says nothing about whether
 --- anything reaches it.
 local function setEnabled(inst, on, keepTimers)
@@ -203,7 +203,7 @@ test("DISABLED: nothing is left armed to wake up", function()
     -- ticker that has just fired is absent from the queue for a moment and is still very much alive.
     --
     -- The cast bar's OnUpdate and the 0.1s cooldown-text ticker are the two this addon has, and the
-    -- ticker is the shape §7 calls the most expensive survivor of the lot: it wakes ten times a
+    -- ticker is the shape slash-commands-§7 calls the most expensive survivor of the lot: it wakes ten times a
     -- second to find nothing to paint.
     --
     -- ONE IS ARMED FIRST, deliberately. An addon idling in a headless harness has nothing
@@ -368,7 +368,7 @@ test("DISABLED: every reserved verb still answers, and the bare /kcd opens the p
 end)
 
 test("DISABLED: a feature verb refuses on ONE line and reaches no write seam", function()
-    -- §2's SHOULD, which this addon adopts: `lock`, `unlock`, `toggle` and `resetposition` drive the
+    -- slash-commands-§2's SHOULD, which this addon adopts: `lock`, `unlock`, `toggle` and `resetposition` drive the
     -- display -- unlocking IS this addon's preview (launcher-§2 rung (b)) -- and with the addon off
     -- there is no grid to unlock. Driven off NS.COMMANDS rather than a typed list, so the next verb
     -- added to the addon is covered here the day it lands.
@@ -403,7 +403,7 @@ end)
 test("DISABLED: the launcher's LEFT click is refused and writes nothing", function()
     -- launcher-§2: rung (a) and rung (b) are refused while disabled because both drive features, and
     -- KickCD is rung (b) -- the left button toggles the lock, which IS its preview switch. The
-    -- rung-(c) carve-out does not reach this addon: that one opens the settings panel, which §7 keeps
+    -- rung-(c) carve-out does not reach this addon: that one opens the settings panel, which slash-commands-§7 keeps
     -- standing, and refusing it would decline one button for doing what the button beside it must
     -- keep doing.
     --
@@ -426,7 +426,7 @@ end)
 test("DISABLED: the launcher's RIGHT click still opens the panel", function()
     -- Unchanged in either state, and deliberately not inconsistent with anything: the owner's ruling
     -- is about the slash surface, and a mouse click is not a slash command. It is also one of the two
-    -- routes §7 nominates for reaching the panel of an addon that is off.
+    -- routes slash-commands-§7 nominates for reaching the panel of an addon that is off.
     local inst = baseline()
     setEnabled(inst, false)
     local opened, realOpen = 0, inst.NS.OpenSettings
@@ -535,7 +535,7 @@ end)
 -- ---------------------------------------------------------------------------
 
 test("LATCH: releasing the perf hold does NOT resurrect a disabled addon", function()
-    -- The trap §7 names, and it is reachable by a player rather than only in theory: `/kcd disable`
+    -- The trap slash-commands-§7 names, and it is reachable by a player rather than only in theory: `/kcd disable`
     -- is a LIVE verb, so it can be typed during a suspended arm, and a resume that called a bare
     -- stand-up would bring the addon back under a player who had just switched it off.
     --
@@ -572,7 +572,7 @@ test("LATCH: the holds are order-independent", function()
 end)
 
 test("LATCH: a profile switch that flips `enabled` is honored", function()
-    -- §7 keeps AceDB's profile callbacks alive for exactly this: `enabled` is a stored setting like
+    -- slash-commands-§7 keeps AceDB's profile callbacks alive for exactly this: `enabled` is a stored setting like
     -- any other, and a profile switch can flip it with no checkbox ticked and no verb typed.
     --
     -- Driven through the db's own reset, which is the one profile event this addon's mock models

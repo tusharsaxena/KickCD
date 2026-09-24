@@ -11,7 +11,7 @@
 --
 -- The border block, the annotation font block and all three color swatches are
 -- COMPOSED (libs/LibKa0s/OptionsCompose.lua), not written out: options-ui-§16
--- and §17 make the row set, its order and the class-color companion the
+-- and options-ui-§17 make the row set, its order and the class-color companion the
 -- collection's rather than this page's. H.AddComposed stamps the host's own
 -- `panel` / `section` / `unit` onto what comes back and appends it in place.
 

@@ -6,7 +6,7 @@
 -- NS.Units.Icons(unit) / .Castbar(unit) / .Anchor(unit, which) so the
 -- "link to target styling" behavior lives in exactly one place.
 --
--- Link semantics (spec §2b): when units.focus.link == true, Focus renders with
+-- Link semantics (spec 2b): when units.focus.link == true, Focus renders with
 -- Target's icons/castbar tables (total mirror). enabled, anchors (position),
 -- and label.text stay per-unit even while linked. Target is never linked.
 

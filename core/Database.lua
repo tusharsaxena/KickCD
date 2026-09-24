@@ -298,7 +298,7 @@ function Database:ResetAllSpells()
     self.db.profile.spells = {}
     self:BuildSpells()
     -- The bulk rewrite, traced once (debug-logging-§8), with the counts in the
-    -- one line rather than a line per list (§9). Counted only with the flag on.
+    -- one line rather than a line per list (debug-logging-§9). Counted only with the flag on.
     if NS.State and NS.State.debug and NS.Debug then
         local lists, spells = 0, 0
         for _, specs in pairs(self.db.profile.spells) do
@@ -329,7 +329,7 @@ end
 
 -- ONE gated [Spells] line per write, emitted HERE and nowhere else
 -- (debug-logging-§10: a structural registry's create or delete is a functional
--- flow, traced once by the registry writer under §8; a bulk rewrite is a §8 data
+-- flow, traced once by the registry writer under debug-logging-§8; a bulk rewrite is a debug-logging-§8 data
 -- mutation). Because the trace lives in the writer, the Spells page and
 -- `/kcd spells` log the same line for the same act, and neither caller logs it
 -- again. The per-entry writes are traced too: they produce no [Set] line, so this
@@ -920,7 +920,7 @@ function Database:OnProfileChanged(event, db, arg)
     -- reset can flip it with no checkbox ticked and no verb typed. A player
     -- switching to a profile where the addon is enabled expects it to come up,
     -- and one switching to a profile where it is off expects it to go inert --
-    -- which is why AceDB's three profile callbacks are on §7's list of things a
+    -- which is why AceDB's three profile callbacks are on slash-commands-§7's list of things a
     -- disabled addon MUST keep. Re-read the path and settle the latch; it fires a
     -- callback only on an actual edge, so a profile that agrees with the last one
     -- costs nothing.

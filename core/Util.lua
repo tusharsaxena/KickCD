@@ -98,11 +98,11 @@ end
 -- Throttle
 -- ---------------------------------------------------------------------------
 
---- Leading-edge throttle: fires AT MOST once per `ms` window starting
---- from the first call in a burst. The trailing call's args win — i.e.
---- if the wrapper is called 50 times in 50 ms, `fn` runs once with the
---- 50th call's args at t=ms (or earlier if the burst stops within the
---- window). Use when you want a steady cadence during a sustained
+--- Trailing throttle: the first call arms one timer and fn fires once at
+--- t=ms with the last call's args. Calls made while the timer is armed only
+--- replace the pending args -- i.e. if the wrapper is called 50 times in
+--- 50 ms, `fn` runs once, at t=ms, with the 50th call's args; nothing fires
+--- on the leading edge. Use when you want a steady cadence during a sustained
 --- burst (e.g. mirror an in-progress edit to the live module ~20 times
 --- per sec while typing continues).
 --- @param ms number of milliseconds per window
@@ -430,7 +430,7 @@ end
 -- The frame is BUILT ONCE AND RE-ARMED. A disable/enable cycle, a per-unit
 -- toggle or a perf suspend/resume calls Disarm (UnregisterAllEvents) and later
 -- Arm again on the same frame; rebuilding it instead orphaned one frame per
--- event per cycle (§1: the filter frame MUST be reused, not rebuilt). AceAddon's
+-- event per cycle (events-frames-taint-§1: the filter frame MUST be reused, not rebuilt). AceAddon's
 -- UnregisterAllEvents does not reach this frame, so the owner Disarms it on
 -- teardown. Arm and Disarm are built once per filter, so arming allocates
 -- nothing. Each name goes through NS.SafeRegisterUnitEvent, so one the client

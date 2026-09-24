@@ -51,7 +51,7 @@ local Util = NS.Util
 -- tests/test_coresetup.lua counts the six readers.
 --
 -- Converging on this wording — rather than KickCD's five separate sentences —
--- is the user's decision (adoption 2026-08-01 §8), taken so a player with a
+-- is the user's decision (adoption 2026-08-01, item 8), taken so a player with a
 -- broken install reads the same sentence whichever Ka0s addon they have.
 -- AbsorbTracker established the shape in its PLAN-04; ConsumableMaster follows
 -- it. Keep the phrasing byte-identical across the collection apart from the

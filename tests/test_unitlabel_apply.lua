@@ -236,7 +236,7 @@ test("ApplyAll renders every unit in one pass", function()
     assertEqual(UnitLabel:GetInstance("focus").text:GetText(), "F")
 end)
 
--- ── the font shadow, and the class-color companion (options-ui-§16 / §17) ───
+-- ── the font shadow, and the class-color companion (options-ui-§16 / options-ui-§17)
 --
 -- Both arrived with the composed Font tab. Neither can be wrong on the render
 -- that turns it ON — what breaks is the render that turns it OFF, because a

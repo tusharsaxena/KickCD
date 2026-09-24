@@ -864,7 +864,7 @@ end
 --- the shared cooldown-text ticker.
 ---
 --- MESSAGES GO TOO, which they did not while this was a perf-only suspend. A
---- subscription is a registration and §7 carves nothing out for the addon's own
+--- subscription is a registration and slash-commands-§7 carves nothing out for the addon's own
 --- bus; Resume is called directly by the latch now, so nothing depends on this
 --- module hearing a republish it was never going to hear anyway.
 function IconGrid:Suspend()
@@ -877,7 +877,7 @@ function IconGrid:Suspend()
     end
     -- The 0.1s cooldown-text ticker is module-level and outlives any single
     -- icon, so nothing in the loop above reaches it. Left armed it would wake up
-    -- ten times a second on a stood-down addon, which is the survivor §7 calls
+    -- ten times a second on a stood-down addon, which is the survivor slash-commands-§7 calls
     -- the most expensive of the lot.
     self:_StopTextTicker()
 end
@@ -1229,7 +1229,7 @@ end
 --- Dedup: while interruptibility is secret-tainted the gate short-circuit
 --- is deliberately bypassed, so every cast event reaches here — a boss
 --- firing many casts would log an identical line each time. Emit only when
---- the printed label actually changes (§9). Label each state precisely
+--- the printed label actually changes (debug-logging-§9). Label each state precisely
 --- rather than collapsing "secret"/nil into a misleading "on".
 local function logGateChange(inst, unit, interruptible)
     if not (NS.State and NS.State.debug) then return end

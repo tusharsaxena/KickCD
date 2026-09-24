@@ -846,7 +846,7 @@ local TAB_MIXED = {
 }
 
 --- Tabs that are ONE subject. Every row on one MUST carry NO `subgroup` -- the
---- tab label already names the subject, and §7 forbids a subgroup that repeats
+--- tab label already names the subject, and options-ui-§7 forbids a subgroup that repeats
 --- its tab's name. The value is why, and it is load-bearing: it is the only
 --- place the decision to leave the tab bare is recorded.
 local TAB_SINGLE_SUBJECT = {

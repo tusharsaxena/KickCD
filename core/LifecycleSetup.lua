@@ -113,7 +113,7 @@ local function standDown()
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it
     -- is not in the loop above -- but its five subscriptions are registrations
-    -- like any other and §7 does not carve the settings layer out of "actually
+    -- like any other and slash-commands-§7 does not carve the settings layer out of "actually
     -- UNREGISTERED". The PAGE survives (it still opens, still draws, still
     -- writes); what goes is its reaction to game events. settings/Spells.lua
     -- argues the line in full.

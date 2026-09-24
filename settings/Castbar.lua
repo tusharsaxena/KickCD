@@ -14,7 +14,7 @@
 --
 -- The font block and both per-state appearance blocks are COMPOSED
 -- (libs/LibKa0s/OptionsCompose.lua): options-ui-§16 makes the bar, border and
--- font row sets the collection's rather than this page's, and §17 makes the
+-- font row sets the collection's rather than this page's, and options-ui-§17 makes the
 -- class-color companion beside every swatch non-optional. H.AddComposed stamps
 -- this addon's `panel` / `section` / `unit` onto what comes back.
 
@@ -485,7 +485,7 @@ add{
 -- relevant half.
 --
 -- FOUR KINDS OF CONTROL ON ONE TAB, so each block carries a subsection heading
--- (options-ui-§7) and each is COMPOSED (options-ui-§16, §17):
+-- (options-ui-§7) and each is COMPOSED (options-ui-§16, options-ui-§17):
 --     Bar         [Bar texture]        | [Bar opacity]
 --                 [Bar color]          | [Use class color]
 --     Background  [Background color]   | [Use class color]

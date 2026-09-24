@@ -334,7 +334,7 @@ test("the Core descriptor passes no locale table, and the printer renders no key
     end
 end)
 
--- ── the shared cause clause (adoption 2026-08-01 §8) ────────────────────────
+-- ── the shared cause clause (adoption 2026-08-01, item 8) ─────────────────────
 --
 -- The user's decision, taken over KickCD's own five separately-worded
 -- sentences: a player with a broken install must read the SAME sentence about
@@ -427,7 +427,7 @@ test("no seam re-spells the cause in its own words", function()
     -- The clause is only shared while there is exactly ONE copy of it. A future
     -- seam that pastes the sentence rather than concatenating the constant
     -- reads identically today and drifts on the next edit — which is the whole
-    -- failure mode adoption 2026-08-01 §8 was raised about.
+    -- failure mode adoption 2026-08-01, item 8, was raised about.
     -- red under: pasting "The LibKa0s library is missing from ..." into any seam
     -- Every file that READS the clause. settings/Slash.lua is not one: its stub
     -- prints slash-commands-§1's own library-absent line (case 5 above).

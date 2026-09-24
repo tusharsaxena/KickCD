@@ -126,7 +126,7 @@ test("Icon:Apply keeps the charges badge live when charges are secret", function
         "a secret charge count must be re-rendered, not gated out")
 end)
 
--- ── the composed Annotations font block and the icon Border (options-ui-§16/§17)
+-- ── the composed Annotations font block and the icon Border (options-ui-§16/options-ui-§17)
 --
 -- THE ICON GRID IS PLAYER-SCOPED and the path does not say so: every one of
 -- these settings is stored under `units.<unit>.icons.` and every one of them
@@ -257,8 +257,8 @@ end)
 -- ── the two master rows that were already here (options-ui-§15) ─────────────
 --
 -- `scale` and `alpha` did not move pages and did not change shape in the
--- settings-revamp-v2 pass — they were already the addon-wide values §15 asks
--- for, on the tab §15 asks for. What was missing is a case saying the drawing
+-- settings-revamp-v2 pass — they were already the addon-wide values options-ui-§15 asks
+-- for, on the tab options-ui-§15 asks for. What was missing is a case saying the drawing
 -- code reads them, which is what makes them settings rather than declarations.
 
 test("master scale and master alpha reach the grid frame", function()

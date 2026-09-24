@@ -10,13 +10,12 @@
 -- Promote the bootstrap table to an AceAddon
 -- ---------------------------------------------------------------------------
 --
--- Earlier core/* files have written to a plain `_G.KickCD` table. AceAddon
--- accepts a pre-existing object as its first argument and adds AceAddon /
--- mixin methods directly onto it, so passing _G.KickCD here gives us a
--- single object that has both KickCD.Compat / KickCD.Util / KickCD.Database
--- (set earlier) AND KickCD:RegisterChatCommand / SendMessage / NewModule /
--- ... (set by the mixins). The global rebinding makes downstream code that
--- looks up `KickCD` from _G see the mixed-in version.
+-- Earlier core/* files have hung their fields on the private namespace table
+-- NS. AceAddon accepts a pre-existing object as its first argument and adds
+-- AceAddon / mixin methods directly onto it, so passing NS here gives one
+-- object that has both NS.Compat / NS.Util / NS.Database (set earlier) AND
+-- NS:RegisterChatCommand / SendMessage / NewModule / ... (set by the mixins).
+-- Nothing is published to _G; see the note below.
 
 local _, NS = ...
 
@@ -213,7 +212,7 @@ local COMMANDS = {
     -- without opening anything" was "find the panel first".
     --
     -- They dispatch into setSetting, which IS `/kcd set` -- same stored path,
-    -- same single write seam (options-ui-§1), same onChange, and the §5 `set`
+    -- same single write seam (options-ui-§1), same onChange, and the slash-commands-§5 `set`
     -- confirmation line for free. So they hold NO state of their own: no second
     -- key, no session flag, no NS.enabled, and the checkbox and the verbs cannot
     -- show the player two different answers.

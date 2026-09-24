@@ -208,7 +208,7 @@ test("the Options stub carries every member the host calls", function()
         -- structural sweep rebuilds the page under the slider being dragged). A member the host
         -- calls is a member the stub owes, so it is stubbed rather than exempted.
         "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL",
-        -- The three that arrived with the tabbed page and the banner (options-ui-§13 / §14) are
+        -- The three that arrived with the tabbed page and the banner (options-ui-§13 / options-ui-§14) are
         -- the same class and exempt for the same reason: BANNER_H is the banner's height floor,
         -- TAB_H one row of the strip, CHROME_GAP the gap under the whole band. The host reads them
         -- off the instance or not at all, and tests/test_options_panel.lua fails if a copy of any
@@ -222,7 +222,7 @@ test("the Options stub carries every member the host calls", function()
         -- every color swatch's tooltip ends with. Copying any of them here is
         -- the copy that goes stale, and the whole point of the composers is that
         -- nine addons cannot drift apart on exactly these values
-        -- (options-ui-§15/§16/§17). The host reads them off the instance inside
+        -- (options-ui-§15/options-ui-§16/options-ui-§17). The host reads them off the instance inside
         -- a renderer or not at all, and no renderer runs on the degraded path.
         "FONT_FLAGS", "FONT_FLAGS_SORT", "VISIBILITY_VALUES", "VISIBILITY_SORT",
         "MASTER_GROUP", "CLASS_COLOR_NOTE",

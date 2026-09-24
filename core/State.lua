@@ -209,11 +209,11 @@ end
 -- A disabled addon whose PLAYER_REGEN_* subscription still fired would still
 -- enter Lua, still publish COMBAT_STATE onto a bus nobody is listening to, and
 -- -- with debug on -- still print "entered" at a player who thinks the addon is
--- off. So the stand-down releases it: gone, not gated. §7 is explicit that a
+-- off. So the stand-down releases it: gone, not gated. slash-commands-§7 is explicit that a
 -- handler which merely early-returns has not stopped watching, it has stopped
 -- reacting, and it still pays the dispatch.
 --
--- NOTHING IS HELD PENDING HERE. §7 permits a disabled addon to keep exactly one
+-- NOTHING IS HELD PENDING HERE. slash-commands-§7 permits a disabled addon to keep exactly one
 -- registration -- a secure or attribute teardown that combat lockdown refused,
 -- finished on PLAYER_REGEN_ENABLED. KickCD owns no secure frame, no attribute
 -- driver and no state driver, so it has nothing to hold pending and keeps

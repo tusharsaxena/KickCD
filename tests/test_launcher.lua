@@ -477,7 +477,7 @@ end)
 
 test("both verbs are registered on the COMMANDS table, so `/kcd help` lists them", function()
     -- Reserved verbs are registered by the ADDON through its own COMMANDS table
-    -- (slash-commands-§2/§3), which is also what makes them discoverable.
+    -- (slash-commands-§2/slash-commands-§3), which is also what makes them discoverable.
     -- red under: wiring them straight into the dispatcher
     local want = { enable = false, disable = false }
     for _, entry in ipairs(T.NS.COMMANDS) do

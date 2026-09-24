@@ -486,7 +486,7 @@ test("with LibKa0s absent the schema loads complete BAR the composed blocks", fu
     -- row counts were EQUAL, which they were while the host declared 100% of its
     -- rows by hand. The canonical font / border / bar / color-pair /
     -- master-controls blocks live in libs/LibKa0s/OptionsCompose.lua now
-    -- (options-ui-§16, §17), and a host copy of them in the stub is precisely
+    -- (options-ui-§16, options-ui-§17), and a host copy of them in the stub is precisely
     -- the drift the composers were extracted to end (anti-pattern #73) — the
     -- same argument options-ui-§1 already makes against copying a widget maker
     -- or a layout constant into this stub. So the stub's composers are hollow,
@@ -526,7 +526,7 @@ function()
     -- THE BLAST RADIUS OF THE options-ui-§1 DEVIATION, measured rather than
     -- argued -- and it is smaller than the deviation row used to claim.
     --
-    -- §1's stated harm is that a short schema takes `list`, `get`, `set`, `reset`
+    -- options-ui-§1's stated harm is that a short schema takes `list`, `get`, `set`, `reset`
     -- and the profile defaults down with it, silently. Neither half is reachable
     -- here, and this case is what says so rather than a paragraph:
     --
@@ -860,7 +860,7 @@ test("the degraded stub carries no widget maker or layout constant", function()
     assertNil(src:match('AceGUI:Create'), "the stub reaches for AceGUI")
     assertNil(src:match("ROW_VSPACER%s*="), "the stub copies a layout constant")
     assertNil(src:match("0%.492"), "the stub copies BUTTON_PAIR_REL")
-    -- The three constants the tabbed page and the banner added (options-ui-§13 / §14). They are
+    -- The three constants the tabbed page and the banner added (options-ui-§13 / options-ui-§14). They are
     -- exempted from the surface-parity sweep in tests/test_surface_parity.lua PRECISELY because
     -- copying them here is forbidden, so the exemption and this scan are two halves of one rule:
     -- without the scan, "exempt" would read as "optional".

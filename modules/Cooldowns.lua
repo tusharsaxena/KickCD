@@ -33,9 +33,11 @@
 --     GCD and shows the spell ready before it is.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
--- false (master disable); a "general" Ka0s_KickCD_ConfigChanged triggers a
--- full Rebuild so the watched-list comes back online when the user
--- re-enables.
+-- false (master disable). Master-enable recovery is the Lifecycle latch's:
+-- re-enabling releases the `disabled` hold, and the latch's standUp calls
+-- Resume, which re-arms the events and rebuilds the watched list. A
+-- "general" Ka0s_KickCD_ConfigChanged still triggers a full Rebuild, for the
+-- other general-section writes (master scale / alpha and the like).
 --
 -- Message contract (closed):
 --   FIRE:    Ka0s_KickCD_SpellState
@@ -234,7 +236,7 @@ end
 --- alpha / tint / GCD-suppression curves off the emitted object, and nothing
 --- else re-runs them), but logging it produced ~10 identical
 --- `[Cooldowns] N/M changed: active=[...]` lines per second for the whole
---- cooldown, drowning the console — the same per-gesture spam §9 forbids
+--- cooldown, drowning the console — the same per-gesture spam debug-logging-§9 forbids
 --- and the same reason _logRebuild has its own material-change gate.
 ---
 --- So: key on what actually changed about the spell's STATE, treating the
@@ -375,8 +377,8 @@ end
 --- fires Store.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
 --- changes the watched spell list. Without this gate that produced ~20
 --- identical `[Cooldowns] rebuild …` lines/sec — exactly the per-gesture spam
---- §9 forbids. Signature = class/spec + both spellID lists; built only when
---- debug is on (§4 zero-alloc).
+--- debug-logging-§9 forbids. Signature = class/spec + both spellID lists; built only when
+--- debug is on (debug-logging-§4 zero-alloc).
 ---
 --- The line names every watched and skipped spellID, plus the numeric class
 --- and spec IDs alongside their English tokens. That combination is what
@@ -428,7 +430,7 @@ function Cooldowns:Refresh()
     local __t0 = Perf.on and debugprofilestop()
 
     local dbg = NS.State and NS.State.debug
-    local readyIds, activeIds, dropIds  -- built only when debug-on (§9 zero-alloc)
+    local readyIds, activeIds, dropIds  -- built only when debug-on (debug-logging-§9 zero-alloc)
     if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
     -- `logged` counts MATERIAL changes (see MaterialChange), which is a subset
     -- of the emits: a fresh cooldown handle for an unchanged cooldown re-emits
@@ -603,7 +605,7 @@ function Cooldowns:Resume()
     --
     -- The canceller is kept, and it is not optional: this is the addon's one
     -- coalescing timer, and a coalescing timer that wakes up on a stood-down
-    -- addon to find nothing to poll is the shape §7 names as the most expensive
+    -- addon to find nothing to poll is the shape slash-commands-§7 names as the most expensive
     -- survivor of the lot.
     self._refreshCoalesced, self._cancelRefresh =
         NS.Util.Throttle(0, function() self:Refresh() end)
@@ -625,7 +627,7 @@ end
 --- released, the coalescer's pending timer canceled, the watched table dropped.
 ---
 --- MESSAGES GO TOO, which they did not when this was a perf-only suspend. A
---- subscription is a registration, §7 does not carve the addon's own bus out of
+--- subscription is a registration, slash-commands-§7 does not carve the addon's own bus out of
 --- "actually UNREGISTERED", and Resume above no longer needs the module to hear a
 --- republish — the latch calls it directly.
 function Cooldowns:Suspend()
@@ -670,9 +672,10 @@ end
 function Cooldowns:OnConfigChanged(_, payload)
     local section = payload and payload.section
     if section == "spells" or section == "general" then
-        -- "general" covers the master enable flipping on/off — rebuild
-        -- so the watched list comes back fully populated when re-enabled
-        -- and is cleared when disabled.
+        -- Master enable is NOT recovered here: flipping it moves the
+        -- Lifecycle latch, whose standUp calls Resume (and standDown,
+        -- Suspend). "general" still rebuilds for the section's other
+        -- writes, which is cheap and keeps the watched list current.
         self:Rebuild()
     end
 end

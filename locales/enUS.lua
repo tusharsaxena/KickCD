@@ -443,7 +443,7 @@ L["RGBA border color for non-interruptible casts."] =
 L["KickCD castbar"]              = "KickCD castbar"
 -- The drag strip's label, one key per unit. Two bars can be unlocked at once and
 -- a strip that read the same on both would not say which bar it moves. Two whole
--- keys rather than a composed "%s castbar": localization-§1/§2 make the key the
+-- keys rather than a composed "%s castbar": localization-§1/localization-§2 make the key the
 -- English source string, and a sentence assembled at runtime is not one.
 --
 -- "KickCD castbar — drag to move" left with the FontString it was written for
@@ -503,7 +503,7 @@ L["Category"]                    = "Category"
 L["Category for future filtering. Currently informational only."] =
     "Category for future filtering. Currently informational only."
 
--- Settings revamp v2 (options-ui-§13 / §16 / §17 / §18)
+-- Settings revamp v2 (options-ui-§13 / options-ui-§16 / options-ui-§17 / options-ui-§18)
 --
 -- Tab names the strip draws, and the SUBSECTION headings a tab carries when it
 -- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,

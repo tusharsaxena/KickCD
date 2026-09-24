@@ -1,4 +1,4 @@
--- tests/test_flow_traces.lua — §8 flow traces reachable headlessly
+-- tests/test_flow_traces.lua — debug-logging-§8 flow traces reachable headlessly
 local T = _G.KICKCD_TEST
 local test, assertTrue = T.test, T.assertTrue
 

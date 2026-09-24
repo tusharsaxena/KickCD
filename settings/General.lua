@@ -8,7 +8,7 @@
 -- SEVEN canonical rows from one declaration, and the afterGroup it returns draws
 -- the closing Reset position / Reset all settings button pair.
 --
--- SEVEN, not nine. §15's canonical table's last line IS the button pair, so
+-- SEVEN, not nine. options-ui-§15's canonical table's last line IS the button pair, so
 -- counting "the canonical rows, plus the button-pair hook" counts those two
 -- twice. What the composer emits is `enabled`, `visibility`, `scale`, `alpha`,
 -- `locked`, `state.debugConsole` and -- since compose minor 7 -- the minimap
@@ -27,7 +27,7 @@
 -- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
 -- holding master scale and master alpha. Two rows whose LABELS both say Master
 -- is not a second subject, it is the same subject broken over a click: enable,
--- visibility, lock, scale and alpha are all the addon-as-a-whole, and §15 puts
+-- visibility, lock, scale and alpha are all the addon-as-a-whole, and options-ui-§15 puts
 -- all five under one tab anyway. Units is the one genuinely different question
 -- on this page -- which grids exist, and whether Focus is its own thing -- and
 -- it is what a player sets once, so it sits last.

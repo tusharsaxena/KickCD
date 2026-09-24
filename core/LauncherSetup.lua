@@ -144,7 +144,7 @@ NS.Launcher = Launcher:New({
     --
     -- THE RUNG-(c) CARVE-OUT DOES NOT REACH THIS ADDON, and it is worth saying
     -- why rather than leaving a reader to wonder: a rung-(c) left click opens the
-    -- settings panel, which §7 keeps standing, so refusing it would decline one
+    -- settings panel, which slash-commands-§7 keeps standing, so refusing it would decline one
     -- button for doing exactly what the button beside it must keep doing. KickCD
     -- is rung (b) -- this click toggles the lock, not the panel -- so the refusal
     -- applies. RIGHT-click is the library's and opens the panel in either state,

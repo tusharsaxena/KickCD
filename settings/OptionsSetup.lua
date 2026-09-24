@@ -370,7 +370,7 @@ if not lib then
 
     -- Reached only from a builder or a user action, so a no-op is honest.
     --
-    -- The tabbed-page members (options-ui-§13) and the page banner (§14) joined the list when
+    -- The tabbed-page members (options-ui-§13) and the page banner (options-ui-§14) joined the list when
     -- the pages adopted them: TabStrip and PageBanner draw the chrome band, SetChromeHeight moves
     -- the scroll's top edge under it, and RenderTabbedSchema is what settings/Panel_Render.lua and
     -- settings/General.lua now call in RenderSchema's place. RefreshScalars joined for a different
@@ -430,10 +430,10 @@ if not lib then
     -- against copying a widget maker or a layout constant here. So the degraded
     -- load registers 112 of the addon's 228 rows.
     --
-    -- WHAT THAT COSTS, MEASURED. §1's stated harm is `list`, `get`, `set`,
+    -- WHAT THAT COSTS, MEASURED. options-ui-§1's stated harm is `list`, `get`, `set`,
     -- `reset` and the profile defaults breaking silently, and neither half is
     -- reachable here:
-    --   * LibKa0s-Slash-1.0 is in this same libs/LibKa0s/ folder, which §1
+    --   * LibKa0s-Slash-1.0 is in this same libs/LibKa0s/ folder, which options-ui-§1
     --     requires be vendored WHOLE (anti-pattern #48), so the load that loses
     --     the composers loses the schema CLI in the same breath.
     --     settings/Slash.lua's stub answers set/get/list/reset with one "is

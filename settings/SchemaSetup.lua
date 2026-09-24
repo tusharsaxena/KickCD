@@ -56,7 +56,7 @@ NS.Settings.WRITE_THROUGH = { "enabled", "locked" }
 -- generation token and schedules a fresh timer; only the timer whose token is
 -- still current fires, so earlier writes in the gesture are superseded rather
 -- than each producing their own line. String-building stays behind the debug
--- gate (§4 zero-alloc): the library asks debugEnabled before it formats, and the
+-- gate (debug-logging-§4 zero-alloc): the library asks debugEnabled before it formats, and the
 -- extra per-tick timers only exist while debug is on.
 local SET_LOG_DEBOUNCE = 0.3
 -- pendingSet[path] = { value, seq }: the value the timer will log, and when it

@@ -767,7 +767,7 @@ local function build()
     -- builds a live minimap button out of CreateFrame, Minimap, and a drag
     -- handler measuring the ring in screen coordinates, none of which this mock
     -- client has. What the suites actually need to see is the three facts
-    -- launcher-§1/§3 bind: that there is exactly ONE object, that it is
+    -- launcher-§1/launcher-§3 bind: that there is exactly ONE object, that it is
     -- registered under the addon's FOLDER name with the SAME table the settings
     -- row writes, and that Show/Hide follow the checkbox. A noopLib would answer
     -- every one of those with a shrug.

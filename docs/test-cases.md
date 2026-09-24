@@ -442,9 +442,9 @@ badge and any count quoted in the docs must agree with it.
 - NS.Debug is a no-op when disabled (zero capture) and appends when enabled
 - NS.Debug sanitizes secret args and never errors
 - NS.Debug passes plain args through unchanged
-- scrollbar + line-counter sync methods exist (§11)
-- sync methods are a clean no-op before the window is built (§11)
-- building the console + Add/Clear run the guarded sync headlessly (§11)
+- scrollbar + line-counter sync methods exist (debug-logging-§11)
+- sync methods are a clean no-op before the window is built (debug-logging-§11)
+- building the console + Add/Clear run the guarded sync headlessly (debug-logging-§11)
 - console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
 ### test_debuglogsetup.lua (23)

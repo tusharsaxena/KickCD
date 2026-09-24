@@ -2,7 +2,7 @@
 --
 -- Per-class+spec spell-list editor. Uses the unified canvas panel
 -- header (title + Defaults button + divider) from Panel.lua, then draws the
--- page the way every other page in this addon is drawn (options-ui-§13/§14):
+-- page the way every other page in this addon is drawn (options-ui-§13/options-ui-§14):
 --
 --   * the spec picker and Add spell in a page-wide CHROME BLOCK (H.PageHeader)
 --     -- both apply to every tab, so neither may live in the scroll;
@@ -54,21 +54,21 @@ local CATEGORIES = {
 -- SimpleGroup does not clip. A number nobody can check is a number that goes wrong quietly, so
 -- each term below names the widget it pays for and where that widget's height comes from.
 --
--- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is §14's call, not a preference:
+-- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is options-ui-§14's call, not a preference:
 -- "Controls that apply to every tab MUST sit in that band too, above the strip -- never in the
 -- scroll below it", and the band "MUST carry the identity controls -- the picker, and the create
 -- control where the page has one". Adding a spell is this page's create control. The cost is the
--- one that section warns about -- every row below sits permanently lower -- and the escape §14
+-- one that section warns about -- every row below sits permanently lower -- and the escape options-ui-§14
 -- offers is for the ACTS (rename, copy, reset, delete), explicitly not for these two.
 --
--- THE BAND IS TWO ROWS, WHICH §14 SAYS IT SHOULD NOT BE. Filed as an accepted deviation in
+-- THE BAND IS TWO ROWS, WHICH options-ui-§14 SAYS IT SHOULD NOT BE. Filed as an accepted deviation in
 -- docs/ARCHITECTURE.md -> Documented deviations, with its re-check trigger.
 
 -- AceGUI's labeled Dropdown sets its own frame to 40 (AceGUIWidget-DropDown.lua's SetLabel:
 -- `self:SetHeight(40)`; 26 without a label). Read, not chosen.
 local HEADER_PICKER_H  = 40
 -- The gap between the band's two rows. Small enough that they read as one block of chrome and
--- not as two, which is the thing §14 warns a growing band turns into.
+-- not as two, which is the thing options-ui-§14 warns a growing band turns into.
 local HEADER_ROW_GAP   = 6
 -- AceGUI's labeled EditBox sets its frame to 44 (AceGUIWidget-EditBox.lua's SetLabel), of which
 -- 18 is the caption, 19 the box, and 7 is the widget's own bottom padding. The Add button beside
@@ -1059,20 +1059,21 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- THE PANEL SURVIVES; ITS SUBSCRIPTIONS DO NOT, and the line between the two is
--- worth stating because both halves are in §7. What survives is the settings
+-- worth stating because both halves are in slash-commands-§7. What survives is the settings
 -- registration and the panel BODY: a disabled addon stays in Blizzard's AddOns
 -- tree, this page still opens, still draws every row, and still writes every
 -- edit -- which is the whole reason the disabled slash surface keeps `get`,
 -- `set` and `/kcd spells`. What does not survive is a REGISTRATION: these five
--- exist to react to GAME events (a spec swap, a talent change) and §7's
+-- exist to react to GAME events (a spec swap, a talent change) and slash-commands-§7's
 -- "actually UNREGISTERED" is unqualified. A handler that early-returns on
 -- `panel:IsShown()` is the draw gate in miniature -- the addon did not stop
 -- watching, it stopped reacting, and the client still walks the list.
 --
--- The cost is precisely one thing: a spec change made WHILE the addon is off and
--- WHILE this page is open does not re-render the rows under the player's cursor.
--- Reopening the page does, because core/SpellInput.lua's StandUp drops the
--- Cooldown Manager cache on the way back up.
+-- The cost is two things. First, a spec change made WHILE the addon is off and
+-- WHILE this page is open does not re-render the rows under the player's cursor;
+-- reopening the page does. Second, the Cooldown Manager cache is dropped on the
+-- way back up (core/SpellInput.lua's StandUp), because nothing invalidated it
+-- while the addon was down, so the first read after re-enabling rebuilds it.
 --
 -- `commitSoon` is deliberately NOT canceled here. It is armed by the player
 -- typing in this editor, never by a game event, and a stand-down that threw away
