@@ -65,11 +65,19 @@ local function aceDBDefaults()
     return {
         profile = NS.DEFAULT_PROFILE,
         -- Addon-wide (account) scope. The schema version lives here, not on the
-        -- profile, so a migration runs once per account rather than once per
-        -- profile (savedvariables-§1). See Database:MigrateProfile for the one-shot adoption
-        -- of a legacy per-profile dbVersion.
+        -- profile (savedvariables-§1). See Database:MigrateProfile for the
+        -- one-shot adoption of a legacy per-profile dbVersion.
+        --
+        -- The default is 0, NEVER CURRENT_DB_VERSION (savedvariables-§1 at
+        -- v2.65.0). AceDB's removeDefaults strips a stored value equal to its
+        -- default at logout, so a current-version default never persists; and
+        -- AceDB backfills a declared default onto a legacy account that has no
+        -- stamp, which a current-version default would mask as already
+        -- current. A 0 has neither problem: the runner owns the stamp, and a
+        -- fresh (or stripped-stamp) account walks every step, each idempotent
+        -- against a default profile.
         global = {
-            schemaVersion = CURRENT_DB_VERSION,
+            schemaVersion = 0,
             -- LibDBIcon-1.0's OWN table, and the declared default is what
             -- materializes it (architecture-§5) -- nothing seeds or backfills it
             -- by hand, here or anywhere, because it is a path a schema row
@@ -453,17 +461,18 @@ end
 -- Schema changes that aren't pure additions need a migration: the
 -- previous shape stays in saved-vars for any user who had the addon
 -- installed at the older version, and a new install writes the latest.
--- This is the extension point. Each migration is idempotent and walks
--- profile.dbVersion forward by exactly one step; MigrateProfile loops
--- until the profile reports the current version. Adding a v2 migration
--- means: append a `migrations[1] = function(p) ...; p.dbVersion = 2 end`
--- entry below and bump CURRENT_DB_VERSION at the top of this file. No
--- bootstrap changes required.
+-- This is the extension point. Each step in `migrations` is a PURE,
+-- idempotent function of the db and writes no stamp: MigrateProfile owns
+-- db.global.schemaVersion and advances it only past a step that returned
+-- without raising (savedvariables-§1). Adding a v6 step means: append
+-- `migrations[5] = function(db) ... end` below and bump CURRENT_DB_VERSION
+-- at the top of this file. No bootstrap changes required.
 --
--- For v1 the migrator is a no-op — every shipped DEFAULT_PROFILE field
--- is treated as v1's shape. The scaffold exists so the next change
--- ships next to its migrator and reviewers don't have to wire one up
--- under deadline pressure.
+-- A step whose data is per-PROFILE must not rely on the per-ACCOUNT stamp
+-- alone: it would convert only the profile active on the day the account
+-- crossed that version. Such a step is also shape-driven and runs from
+-- Database:Init and every OnProfileChanged (FoldLegacyUnits,
+-- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags).
 
 -- The legacy top-level tables that fold into units.target. The same two names
 -- appear one level down under `p.anchors`, which folds separately because it
@@ -611,6 +620,32 @@ function Database:MigrateSpecKeys(db)
     end
 end
 
+-- The color-shape step's three helpers; the docstring below states the rule.
+local function looksLikeColor(v)
+    if type(v) ~= "table" then return false end
+    local n = #v
+    if n < 3 or n > 4 then return false end
+    for i = 1, n do
+        local c = v[i]
+        if type(c) ~= "number" or c < 0 or c > 1 then return false end
+    end
+    return true
+end
+
+local function keyedEquals(v, d)
+    return v.r == d.r and v.g == d.g and v.b == d.b and v.a == d.a
+end
+
+-- The resolved value for one array-bearing color `v` whose declared default
+-- is `d` (nil when the path has none). The rule is MigrateColorShape's, below.
+local function reshapeColor(v, d)
+    if v.r == nil or type(d) ~= "table" or keyedEquals(v, d) then
+        return { r = v[1], g = v[2], b = v[3], a = v[4] or 1 }
+    end
+    for i = 4, 1, -1 do v[i] = nil end
+    return v
+end
+
 --- v3 -> v4: colors move from a positional { r, g, b, a } array to the keyed
 --- { r =, g =, b =, a = } table.
 ---
@@ -622,9 +657,9 @@ end
 --- have to be kept in step with every color row added to the schema, and a row
 --- missed there is a color that silently reads nil on every channel and renders
 --- as the fallback — the exact failure this migration exists to prevent, moved
---- one release later. The shape test is deliberately narrow: a table with a
---- numeric [1] AND no .r, of length 3 or 4, whose entries are all numbers in
---- 0..1. That cannot match an anchor table ({ point =, x =, y = }), a spell list
+--- one release later. The shape test is deliberately narrow: a table whose array
+--- part is 3 or 4 long and holds only numbers in 0..1 (keys beside it are
+--- allowed; see the hybrid below). That cannot match an anchor table ({ point =, x =, y = }), a spell list
 --- (array of tables), or a curve (values outside 0..1 and longer).
 --- CRITICAL: by the time this runs, AceDB has ALREADY merged the new keyed
 --- defaults into the saved table. `copyDefaults` fills any key the saved table
@@ -634,36 +669,45 @@ end
 ---
 --- Detecting "already keyed" by the mere presence of `.r` would therefore skip
 --- every row it was written to convert, and every one would silently read back
---- as its default. The array part is the tell: if `[1]` is a number, the user's
---- real color is there and the keys are contamination.
+--- as its default. The array part is the tell: if `[1]` is a number, an
+--- array is there to resolve, and WHICH half is the user's depends on the keys:
+---
+---   * the keyed part equals the declared default at the same path (compared
+---     channel by channel, SameValue on numbers), or there is no declared
+---     default there, or no keyed part at all: the keys are AceDB's backfill
+---     and the array is the user's color. Convert array -> keys.
+---   * the keyed part differs from the default: the keys are a post-upgrade
+---     edit (the profile was converted once, then edited, and an array part
+---     lingered). Keep the keys and drop [1]..[4]; converting would roll the
+---     player's newer choice back to an older one.
+---
+--- Runs from Database:Init and every OnProfileChanged as well as from the
+--- ladder (KICKCD-R-01): the stamp is per-account, colors are per-profile, and
+--- a stamp-gated step converted only the profile active at the upgrade. Every
+--- rule above is idempotent, so running it on every load costs one walk.
+--- docs/schema.md -> "Migration: positional colors to the keyed shape" states
+--- the same rule.
 function NS.Database:MigrateColorShape(db)
-    local function looksLikeColor(v)
-        if type(v) ~= "table" then return false end
-        local n = #v
-        if n < 3 or n > 4 then return false end
-        for i = 1, n do
-            local c = v[i]
-            if type(c) ~= "number" or c < 0 or c > 1 then return false end
-        end
-        return true
-    end
+    if not (db and db.profile) then return end
 
     local converted = 0
-    local function walk(t, depth)
+    -- `d` is NS.DEFAULT_PROFILE's subtree at the same key as `t`, or nil.
+    local function walk(t, d, depth)
         -- Bounded: the profile is a shallow settings tree, and an unbounded
         -- recursion over user data is a hang rather than an error.
         if type(t) ~= "table" or depth > 12 then return end
         for k, v in pairs(t) do
+            local dv = type(d) == "table" and d[k] or nil
             if looksLikeColor(v) then
-                t[k] = { r = v[1], g = v[2], b = v[3], a = v[4] or 1 }
+                t[k] = reshapeColor(v, dv)
                 converted = converted + 1
             elseif type(v) == "table" then
-                walk(v, depth + 1)
+                walk(v, dv, depth + 1)
             end
         end
     end
 
-    walk(db.profile, 0)
+    walk(db.profile, NS.DEFAULT_PROFILE, 0)
     if converted > 0 and NS.Debug then
         NS.Debug("Init", "migrated %s color(s) to the keyed shape", converted)
     end
@@ -711,19 +755,34 @@ function NS.Database:MigrateFontFlags(db)
 end
 
 local migrations = {
-    -- [from-version] = function(db) ... db.global.schemaVersion = from + 1 end
-    -- Each step bumps db.global.schemaVersion to the from-version+1 and may
-    -- read/write db.profile as needed.
-    [1] = function(db) NS.Database:FoldLegacyUnits(db); db.global.schemaVersion = 2 end,
-    [2] = function(db) NS.Database:MigrateSpecKeys(db); db.global.schemaVersion = 3 end,
-    [3] = function(db) NS.Database:MigrateColorShape(db); db.global.schemaVersion = 4 end,
-    [4] = function(db) NS.Database:MigrateFontFlags(db); db.global.schemaVersion = 5 end,
+    -- [from-version] = function(db) ... end: a pure step from `from` to
+    -- `from + 1`. It writes NO stamp: MigrateProfile advances
+    -- db.global.schemaVersion past it only when it returns without raising.
+    [1] = function(db) NS.Database:FoldLegacyUnits(db) end,
+    [2] = function(db) NS.Database:MigrateSpecKeys(db) end,
+    [3] = function(db) NS.Database:MigrateColorShape(db) end,
+    [4] = function(db) NS.Database:MigrateFontFlags(db) end,
 }
+
+-- A step that raised: one chat line the player sees, plus the gated trace.
+local function reportMigrationFailure(from, err)
+    local msg = string.format("settings migration v%d -> v%d failed: %s",
+        from, from + 1, tostring(err))
+    if NS.Util and NS.Util.print then NS.Util.print(msg) end
+    migrateDebug("%s", msg)
+end
 
 --- Migrate the account forward to CURRENT_DB_VERSION. The schema version is
 --- addon-wide (db.global.schemaVersion), so this runs once per account and
 --- is idempotent once at the current version. Called on Init and on every
 --- profile swap.
+---
+--- The runner owns the stamp (savedvariables-§1): a stored 0 (a fresh
+--- install, or a stamp AceDB stripped) starts at v1, because every step is
+--- idempotent against a default profile; each step runs under pcall, and the
+--- stamp advances only past one that returned. A step that raises prints one
+--- line, leaves the stamp at the last completed step, and stops the walk, so
+--- the next load retries it.
 ---
 --- One-shot legacy adoption: installs that pre-date this change stamped the
 --- version per-profile (profile.dbVersion). The first time global.schemaVersion
@@ -737,20 +796,21 @@ function Database:MigrateProfile()
 
     -- Legacy accounts (pre-KCD-20) stamped the version PER-PROFILE. We CANNOT
     -- detect them by `g.schemaVersion == nil`: AceDB's defaults merge backfills
-    -- db.global.schemaVersion to CURRENT_DB_VERSION the moment db.global is first
-    -- accessed (copyDefaults rawsets the scalar default), which would mask a
-    -- legacy account as already-current and skip its migrations. So key legacy
-    -- detection on the presence of the old per-profile field instead. A fresh
-    -- install has no dbVersion and is correctly born at CURRENT_DB_VERSION (via
-    -- the global default) with nothing to migrate.
+    -- db.global.schemaVersion to its declared default the moment db.global is
+    -- first accessed (copyDefaults rawsets the scalar default). That default
+    -- is 0 now, so a backfill can no longer mask an account as current, but the
+    -- old per-profile field is still the only record of how far a legacy
+    -- profile got. A fresh install has no dbVersion, reads 0, and walks every
+    -- step (each idempotent against a default profile) to CURRENT_DB_VERSION.
     if profile and profile.dbVersion ~= nil then
         g.schemaVersion = profile.dbVersion   -- adopt the legacy version...
         profile.dbVersion = nil               -- ...and drop the orphaned field.
     end
-    g.schemaVersion = g.schemaVersion or 1
+    local v = g.schemaVersion or 0
+    if v < 1 then v = 1 end
 
-    while g.schemaVersion < CURRENT_DB_VERSION do
-        local step = migrations[g.schemaVersion]
+    while v < CURRENT_DB_VERSION do
+        local step = migrations[v]
         if not step then
             -- No registered migrator for this jump — bump to avoid an
             -- infinite loop and stop. A real schema change would have
@@ -758,11 +818,14 @@ function Database:MigrateProfile()
             g.schemaVersion = CURRENT_DB_VERSION
             break
         end
-        local from = g.schemaVersion
-        step(self.db)
-        if NS.State and NS.State.debug then
-            NS.Debug("Migrate", "v%d -> v%d", from, from + 1)
+        local ok, err = pcall(step, self.db)
+        if not ok then
+            reportMigrationFailure(v, err)
+            break
         end
+        g.schemaVersion = v + 1
+        migrateDebug("v%d -> v%d", v, v + 1)
+        v = v + 1
     end
 end
 
@@ -820,8 +883,12 @@ function Database:OnProfileChanged(event, db, arg)
     -- what global.schemaVersion reports.
     self:FoldLegacyUnits(self.db)
     self:BackfillLabelStyle(self.db)
-    -- Per-profile, so it has to run on every swap — see MigrateSpecKeys.
+    -- Per-profile, so they have to run on every swap — see MigrateSpecKeys
+    -- and MigrateColorShape (KICKCD-R-01: a stamp-gated color or font-flag
+    -- step converted only the profile active at the upgrade).
     self:MigrateSpecKeys(self.db)
+    self:MigrateColorShape(self.db)
+    self:MigrateFontFlags(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -889,14 +956,18 @@ function Database:Init()
     -- would migrate only the profile active at upgrade time (issue #8).
     self:MigrateSpecKeys(db)
 
+    -- The color-shape and font-flag steps, for the same per-profile reason:
+    -- the ladder runs them once per account, and this is what reaches the
+    -- profiles that were not active then (KICKCD-R-01). Both idempotent.
+    self:MigrateColorShape(db)
+    self:MigrateFontFlags(db)
+
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes
     -- re-trigger it via OnProfileChanged.
     self:BuildSpells()
 
-    -- Walk any required migrations forward. For v1 this is a no-op,
-    -- but every Init runs through the same code path so a future v2
-    -- ships its migrator in one place.
+    -- Walk any required account-level migrations forward (the stamp).
     self:MigrateProfile()
 
     -- Wire profile callbacks. AceDB calls these as `obj:method(event, db, key)`

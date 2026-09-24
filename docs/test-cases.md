@@ -270,7 +270,7 @@ badge and any count quoted in the docs must agree with it.
 - a raising OnInitialize fails T.load instead of passing silently
 - allowInitError keeps the OnInitialize raise on the instance for the case to assert
 
-### test_color_shape.lua (21)
+### test_color_shape.lua (27)
 
 - the schema declares at least one color row per color-bearing panel
 - every schema color default is keyed, never positional
@@ -284,6 +284,12 @@ badge and any count quoted in the docs must agree with it.
 - a pre-migration profile's array colors convert to the keyed shape
 - the migration bumps the stored schema version so it runs once
 - an already-keyed color passes through the migration untouched
+- a second stored profile has its positional colors converted when it becomes active
+- a second stored profile has its 'NONE' font flags rewritten when it becomes active
+- a hybrid whose keys differ from the default keeps its keys and loses its array
+- AceDB defaults declare schemaVersion 0
+- a fresh install ends at v5 with no step raising
+- a raising step leaves the stamp where it was
 - the slash layer needs no color codec now the shapes agree
 - set and get round-trip a color through the library with no translation
 - every dropdown row's values is a keyed hash, never an array of records
@@ -1260,7 +1266,7 @@ badge and any count quoted in the docs must agree with it.
 | test_units.lua | 25 |
 | test_schema.lua | 36 |
 | test_database.lua | 25 |
-| test_color_shape.lua | 21 |
+| test_color_shape.lua | 27 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
@@ -1311,4 +1317,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1053** |
+| **Total** | **1059** |

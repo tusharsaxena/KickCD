@@ -11,24 +11,28 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 ```lua
 db.global = {
     schemaVersion = <int>,       -- addon-wide schema version (CURRENT_DB_VERSION = 5).
-                                 -- Database:MigrateProfile reads and writes
-                                 -- db.global.schemaVersion, looping migrations[v]
-                                 -- forward one step at a time until it reaches
-                                 -- CURRENT_DB_VERSION. A legacy account that still
-                                 -- carries a per-profile dbVersion field is adopted
-                                 -- once — detection keys on the presence of that old
-                                 -- per-profile field, because AceDB's defaults merge
-                                 -- backfills db.global.schemaVersion on first access.
+                                 -- DECLARED DEFAULT 0 (savedvariables-§1): AceDB's
+                                 -- removeDefaults strips a stored value equal to its
+                                 -- default, and backfills a default onto a legacy
+                                 -- account, so a current-version default would never
+                                 -- persist and would mask a legacy account as current.
+                                 -- Database:MigrateProfile owns the stamp: a stored 0
+                                 -- starts at v1 (every step is idempotent against a
+                                 -- default profile), each migrations[v] step is a pure
+                                 -- function run under pcall, and the stamp advances to
+                                 -- v + 1 only past a step that returned. A step that
+                                 -- raises prints one "settings migration vN -> vN+1
+                                 -- failed" line and stops the walk at the last
+                                 -- completed step. A legacy account that still carries
+                                 -- a per-profile dbVersion field is adopted once.
                                  -- v1 -> v2 (migrations[1]) runs Database:FoldLegacyUnits
-                                 -- then bumps schemaVersion to 2 (see "units.* migration"
-                                 -- below). v2 -> v3 (migrations[2]) runs
-                                 -- Database:MigrateSpecKeys then bumps to 3 (see the
-                                 -- localized-spec-name migration below). v3 -> v4
-                                 -- (migrations[3]) runs Database:MigrateColorShape
-                                 -- then bumps to 4 (see the color-shape migration
-                                 -- below). v4 -> v5 (migrations[4]) runs
-                                 -- Database:MigrateFontFlags then bumps to 5 (see the
-                                 -- font-flag migration below).
+                                 -- (see "units.* migration" below). v2 -> v3
+                                 -- (migrations[2]) runs Database:MigrateSpecKeys (see
+                                 -- the localized-spec-name migration below). v3 -> v4
+                                 -- (migrations[3]) runs Database:MigrateColorShape (see
+                                 -- the color-shape migration below). v4 -> v5
+                                 -- (migrations[4]) runs Database:MigrateFontFlags (see
+                                 -- the font-flag migration below).
     minimap = {                  -- LibDBIcon-1.0's OWN table (launcher-§3). The
         hide = false,            -- `hide` boolean is the `Minimap button` row's;
     },                           -- `minimapPos` is the library's, written when the
@@ -276,7 +280,7 @@ Pre-dual-tracking profiles stored `db.profile.icons`, `db.profile.castbar`, and 
 
 It is **shape-driven, not version-gated**: it checks `p.icons == nil and p.castbar == nil and p.anchors == nil` and returns immediately (no-op) when all three are already absent — which is true for both a fresh v2 install and an already-migrated account. Version-gating on `db.global.schemaVersion` was considered and rejected for the same reason the account-adoption code above avoids trusting a bare `schemaVersion == nil` check: AceDB's `copyDefaults` rawsets `db.global.schemaVersion` to `CURRENT_DB_VERSION` the moment `db.global` is first touched, which would make a legacy account that never had a chance to run the migrator look "already current" and silently strand its customized icons/castbar/anchors data under the old top-level keys forever. Keying on the presence of the old tables instead detects exactly (and only) the accounts that carry legacy data, regardless of what `schemaVersion` claims.
 
-The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits` and bumps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `CURRENT_DB_VERSION = 5` — see the spec-key rekey, the color-shape migration and the font-flag migration below.
+The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits`, and the runner then stamps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `CURRENT_DB_VERSION = 5` — see the spec-key rekey, the color-shape migration and the font-flag migration below.
 
 **Deviation recorded as intentional** — ratified in [ARCHITECTURE.md § Documented deviations](ARCHITECTURE.md#documented-deviations) against `savedvariables-§1`; this paragraph is the reasoning, that row is the record. Restructuring `DEFAULT_PROFILE` (a rename/nest, not a pure addition) departs from a "profile shape never changes shape, only grows" expectation some Ace3-based addons hold — it was necessary because target/focus each need independently-customizable `icons`/`castbar`, and the alternative (flat `icons`, `focusIcons`, `castbar`, `focusCastbar`, …) doesn't scale to a third unit later and duplicates the anchor/label bookkeeping. The shape-driven (not version-gated) migration is the mitigation that makes the restructure safe for existing installs.
 
@@ -309,7 +313,7 @@ Two data-safety rules, both covered by tests:
 - A key that resolves to nothing (hand-edited SavedVariables, a spec removed by a patch) is **left in place**, not deleted. A stale key is inert; losing a customized list is not.
 - A string key never overwrites an existing numeric one. On collision the already-migrated numeric list wins and the string key is left alone.
 
-`migrations[2]` calls the same method and bumps `db.global.schemaVersion` to 3, so the rekey also happens once from the version-gated path — safe rather than redundant, given the idempotency above.
+`migrations[2]` calls the same method and the runner stamps `db.global.schemaVersion` to 3, so the rekey also happens once from the version-gated path — safe rather than redundant, given the idempotency above.
 
 ## Migration: positional colors → the keyed shape
 
@@ -321,9 +325,12 @@ borderColor = { r = 0.25, g = 0.5, b = 0.75, a = 1 },
 
 That is the collection's shape, not a preference: `LibKa0s-Slash-1.0` parses into it and renders from it, and `LibKa0s-Options-1.0`'s color picker decodes and encodes it. Keeping the positional array would have meant a host-side codec translating at every seam, in both libraries, forever — `settings/Slash.lua` carried exactly that for one release and now doesn't.
 
-`Database:MigrateColorShape(db)` is the v3→v4 step (`migrations[3]`). It **walks the whole profile** rather than a hardcoded path list — a list would have to be kept in step with every color row ever added, and a row missed there reads `nil` on every channel and renders as the fallback, which is the failure this migration exists to prevent. The shape test is deliberately narrow: a table with a numeric `[1]`, length 3 or 4, whose entries are all numbers in `0..1`. That can't match an anchor table (`{ point =, x =, y = }`), a spell list (array of tables), or a curve. Recursion is depth-bounded at 12, because an unbounded walk over user data is a hang rather than an error.
+`Database:MigrateColorShape(db)` is the v3→v4 step (`migrations[3]`), and it **also runs from `Database:Init` and every `OnProfileChanged`**, after `MigrateSpecKeys`. The stamp is per-account and colors are per-profile: gated on the stamp alone, the step converted only the profile that was active the day the account reached v4, and every other profile kept its positional colors and read them back as the defaults (KICKCD-R-01). Running it on every load and every swap converts each profile the first time it is active, and every rule below is idempotent. It **walks the whole profile** rather than a hardcoded path list — a list would have to be kept in step with every color row ever added, and a row missed there reads `nil` on every channel and renders as the fallback, which is the failure this migration exists to prevent. The shape test is deliberately narrow: a table with a numeric `[1]`, length 3 or 4, whose entries are all numbers in `0..1`. That can't match an anchor table (`{ point =, x =, y = }`), a spell list (array of tables), or a curve. Recursion is depth-bounded at 12, because an unbounded walk over user data is a hang rather than an error.
 
-**The AceDB hybrid trap.** By the time this runs, AceDB has already merged the new *keyed* defaults into the saved table — `copyDefaults` fills any key the saved table lacks, and a saved positional array lacks `r`/`g`/`b`/`a`. So a pre-migration color arrives as a hybrid, `{ 0.25, 0.5, 0.75, 0.5, r = 1, g = 0.4, … }`: the user's values in the array part, the *defaults* in the keys. Detecting "already keyed" by the presence of `.r` would therefore skip every row the migration was written to convert, and each would silently read back as its default. The array part is the tell — if `[1]` is a number, the user's real color is there and the keys are contamination.
+**The AceDB hybrid trap.** By the time this runs, AceDB has already merged the new *keyed* defaults into the saved table — `copyDefaults` fills any key the saved table lacks, and a saved positional array lacks `r`/`g`/`b`/`a`. So a pre-migration color arrives as a hybrid, `{ 0.25, 0.5, 0.75, 0.5, r = 1, g = 0.4, … }`: the user's values in the array part, the *defaults* in the keys. Detecting "already keyed" by the presence of `.r` would therefore skip every row the migration was written to convert, and each would silently read back as its default. The array part is the tell: if `[1]` is a number there is an array to resolve, and the keys decide which half is the user's. The walk carries `NS.DEFAULT_PROFILE`'s subtree at the same path beside the stored one:
+
+- **The keyed part equals the declared default** at that path (channel by channel, SameValue on the numbers), **or the path has no declared default**, **or there is no keyed part at all**: the keys are AceDB's backfill and the array is the user's color. Convert the array to keys.
+- **The keyed part differs from the default**: the keys are a post-upgrade edit. The profile was converted once, the player then changed the color, and an array part lingered. Keep the keys and drop `[1]`..`[4]`; converting would roll the player's newer choice back to an older one.
 
 ## Migration: the `"NONE"` font-flag token → the empty string
 
@@ -339,6 +346,6 @@ Schema **v5** stores `""` instead, which is what `FontString:SetFont` actually s
 
 **The rendering never changed.** `SetFont` did not recognize `"NONE"` and ignored it, which is the same result as `""` — every call site mapped the token to `""` on the way out anyway. What the migration saves is the **control**: a stored `"NONE"` matches no key in the new value list, so the dropdown would have come up showing nothing, in game only.
 
-`Database:MigrateFontFlags(db)` is the v4→v5 step (`migrations[4]`). Unlike `MigrateColorShape` it walks an **explicit path list** rather than the whole profile: a bare `"NONE"` string is not distinguishable from a legitimate user value anywhere else in the tree, and three known leaves per unit is not a list that needs deriving. It is idempotent, and it survives a half-built profile (a unit mid-backfill with no `label` table yet).
+`Database:MigrateFontFlags(db)` is the v4→v5 step (`migrations[4]`), and like `MigrateColorShape` it also runs from `Database:Init` and every `OnProfileChanged`, for the same per-profile reason. Unlike `MigrateColorShape` it walks an **explicit path list** rather than the whole profile: a bare `"NONE"` string is not distinguishable from a legitimate user value anywhere else in the tree, and three known leaves per unit is not a list that needs deriving. It is idempotent, and it survives a half-built profile (a unit mid-backfill with no `label` table yet).
 
 This is the one **stored-value type change** in the settings-revamp-v2 pass, and it takes the full treatment `options-ui-§15` describes for one: a bumped `CURRENT_DB_VERSION` and a registered step in the migration runner, in the same change as the row's new value list. The `Master controls` tab RENAME beside it needed neither — a `group` is not a stored path.

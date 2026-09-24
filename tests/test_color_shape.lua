@@ -140,16 +140,17 @@ test("a pre-migration profile's array colors convert to the keyed shape", functi
     -- THE case that protects real user data. A profile saved before this change
     -- holds arrays; without the ladder step every color would read nil on every
     -- channel and render as the fallback.
-    -- red under: removing the [3] entry from the MIGRATIONS table
+    -- red under: removing MigrateColorShape from both the ladder's [3] entry
+    -- and Database:Init (either one alone still converts the active profile)
     local inst = T.load(false)
     local NS2 = inst.NS
 
     -- A v3 account with one array-shaped color saved, exactly as it was written.
     local saved = {
-        global  = { schemaVersion = 3 },
-        profile = {
+        global   = { schemaVersion = 3 },
+        profiles = { Default = {
             units = { target = { icons = { cooldownTint = { 0.25, 0.5, 0.75, 0.5 } } } },
-        },
+        } },
     }
     inst.mocks.KickCDDB = saved
     pcall(NS2.OnInitialize, NS2)
@@ -167,25 +168,26 @@ end)
 test("the migration bumps the stored schema version so it runs once", function()
     local inst = T.load(false)
     local NS2 = inst.NS
-    inst.mocks.KickCDDB = { global = { schemaVersion = 3 }, profile = {} }
+    inst.mocks.KickCDDB = { global = { schemaVersion = 3 }, profiles = { Default = {} } }
     pcall(NS2.OnInitialize, NS2)
-    assertTrue(NS2.db.global.schemaVersion >= 4,
-        "expected schemaVersion >= 4, got " .. tostring(NS2.db.global.schemaVersion))
+    -- The runner owns the stamp and advances it past each step that returned,
+    -- so a v3 account ends at the current version, 5.
+    assertEqual(NS2.db.global.schemaVersion, 5)
 end)
 
 test("an already-keyed color passes through the migration untouched", function()
-    -- Idempotence. The ladder is keyed on schemaVersion so it should not re-run,
-    -- but a converter that mangled an already-converted value would be a
-    -- one-reload data loss the version guard could not undo.
+    -- Idempotence. The step runs on every load and every profile swap now
+    -- (KICKCD-R-01), not once behind the stamp, so a converter that mangled an
+    -- already-converted value would be data loss on the very next reload.
     local inst = T.load(false)
     local NS2 = inst.NS
     inst.mocks.KickCDDB = {
-        global  = { schemaVersion = 3 },
-        profile = {
+        global   = { schemaVersion = 3 },
+        profiles = { Default = {
             units = { target = { icons = {
                 cooldownTint = { r = 0.1, g = 0.2, b = 0.3, a = 0.4 },
             } } },
-        },
+        } },
     }
     pcall(NS2.OnInitialize, NS2)
     local v = NS2.db.profile.units.target.icons.cooldownTint
@@ -193,6 +195,127 @@ test("an already-keyed color passes through the migration untouched", function()
     assertNear(v.g, 0.2, 1e-9)
     assertNear(v.b, 0.3, 1e-9)
     assertNear(v.a, 0.4, 1e-9)
+end)
+
+-- ── every profile, not just the one active at the upgrade (KICKCD-R-01) ─────
+--
+-- The color and font-flag steps are per-PROFILE data behind a per-ACCOUNT
+-- stamp. Gated on the stamp alone, they converted whichever profile happened to
+-- be active the day the account reached v4/v5 and never touched another one, so
+-- a second profile's customized colors read back as the defaults and its
+-- outline dropdown opened blank. Both steps now run on Init and on every
+-- OnProfileChanged, beside the version ladder.
+
+--- An account already at the current stamp with a second stored profile that
+--- was never active when it got there, and every chat line the load prints.
+local function loadTwoProfiles(alt)
+    local lines = {}
+    local inst = T.load(true, false, function(m)
+        m.KickCDDB = { global = { schemaVersion = 5 }, profiles = { Default = {}, Alt = alt } }
+        local frame = m.DEFAULT_CHAT_FRAME
+        local orig = frame.AddMessage
+        frame.AddMessage = function(f, msg, ...)
+            lines[#lines + 1] = tostring(msg)
+            return orig(f, msg, ...)
+        end
+    end)
+    return inst.NS, lines
+end
+
+test("a second stored profile has its positional colors converted when it becomes active", function()
+    -- red under: dropping MigrateColorShape from Database:OnProfileChanged
+    -- (on HEAD migrations[3] was gated on the account stamp, already 5 here)
+    local ns = loadTwoProfiles({
+        units = { target = { castbar = { interruptible = { barColor = { 0.1, 0.2, 0.3, 1 } } } } },
+    })
+    ns.db:SetProfile("Alt")
+    local c = ns.db.profile.units.target.castbar.interruptible.barColor
+    assertNear(c.r, 0.1, 1e-9, "the stored red must survive, not read back as the default")
+    assertNear(c.g, 0.2, 1e-9)
+    assertNear(c.b, 0.3, 1e-9)
+    assertNil(c[1], "the array part must be gone")
+end)
+
+test("a second stored profile has its 'NONE' font flags rewritten when it becomes active", function()
+    -- red under: dropping MigrateFontFlags from Database:OnProfileChanged
+    local ns = loadTwoProfiles({ units = { target = { castbar = { fontFlags = "NONE" } } } })
+    ns.db:SetProfile("Alt")
+    assertEqual(ns.db.profile.units.target.castbar.fontFlags, "",
+        "a stored NONE must become the empty string, or the outline dropdown opens blank")
+end)
+
+test("a hybrid whose keys differ from the default keeps its keys and loses its array", function()
+    -- red under: MigrateColorShape converting every hybrid array -> keys
+    --
+    -- A profile that was active at the upgrade got its keys, and the player
+    -- then edited the color. If the array part lingered (the old one-shot
+    -- converted only the active profile's arrays), the keys are the newer
+    -- truth: overwriting them from the array would roll the edit back.
+    local ns = loadTwoProfiles({
+        units = { target = { castbar = { interruptible = {
+            barColor = { 0.1, 0.2, 0.3, 1, r = 0.9, g = 0.8, b = 0.7, a = 1 },
+        } } } },
+    })
+    ns.db:SetProfile("Alt")
+    local c = ns.db.profile.units.target.castbar.interruptible.barColor
+    assertNear(c.r, 0.9, 1e-9, "the post-upgrade edit must win")
+    assertNear(c.g, 0.8, 1e-9)
+    assertNear(c.b, 0.7, 1e-9)
+    assertNil(c[1], "the stale array part must be dropped")
+    assertNil(c[4])
+end)
+
+-- ── the stamp (savedvariables-§1, WS-03) ────────────────────────────────────
+
+test("AceDB defaults declare schemaVersion 0", function()
+    -- red under: declaring `schemaVersion = CURRENT_DB_VERSION` in aceDBDefaults
+    --
+    -- AceDB's removeDefaults strips a stored value equal to its default at
+    -- logout, so a current-version default never persists, and backfilling it
+    -- onto a legacy account with no stamp masks that account as current.
+    local captured
+    T.load(true, false, function(m)
+        local AceDB = m.__libs["AceDB-3.0"]
+        local new = AceDB.New
+        AceDB.New = function(self, name, defaults, ...)
+            captured = defaults
+            return new(self, name, defaults, ...)
+        end
+    end)
+    assertTrue(captured ~= nil, "AceDB.New was never called")
+    assertEqual(captured.global.schemaVersion, 0)
+end)
+
+test("a fresh install ends at v5 with no step raising", function()
+    -- red under: a ladder step that raises against a default profile
+    local ns, lines = loadTwoProfiles({})
+    ns.db.global.schemaVersion = 0
+    ns.Database:MigrateProfile()
+    assertEqual(ns.db.global.schemaVersion, 5)
+    local fresh = T.load(true).NS
+    assertEqual(fresh.db.global.schemaVersion, 5, "a fresh account walks 0 -> 5 on its first load")
+    for _, l in ipairs(lines) do
+        assertNil(l:find("migration", 1, true), "no step may fail; printed: " .. l)
+    end
+end)
+
+test("a raising step leaves the stamp where it was", function()
+    -- red under: advancing the stamp without the pcall's ok, or not catching
+    -- the raise (on HEAD the error escaped MigrateProfile)
+    local ns, lines = loadTwoProfiles({})
+    ns.Database.MigrateFontFlags = function() error("boom", 0) end
+    ns.db.global.schemaVersion = 4
+    local before = #lines
+    local ok, err = pcall(ns.Database.MigrateProfile, ns.Database)
+    assertTrue(ok, "a raising step must not escape the runner: " .. tostring(err))
+    assertEqual(ns.db.global.schemaVersion, 4, "the stamp must not pass a failed step")
+    local failures = 0
+    for i = before + 1, #lines do
+        if lines[i]:find("settings migration v4 -> v5 failed: boom", 1, true) then
+            failures = failures + 1
+        end
+    end
+    assertEqual(failures, 1, "exactly one printed failure line")
 end)
 
 -- ── the CLI, end to end ─────────────────────────────────────────────────────

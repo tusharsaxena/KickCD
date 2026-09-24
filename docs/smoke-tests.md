@@ -374,6 +374,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Switching profiles fires `Ka0s_KickCD_ProfileChanged`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
 - `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- **Every profile's colors and font flags come through a switch** (KICKCD-R-01). Create a second profile, switch to it and back: the cast bar color swatches and the outline dropdowns show the stored values, never blank and never the defaults. With `/kcd debug on`, no `settings migration ... failed` line is printed.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -582,7 +583,7 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 - Log in.
 - `/kcd get units.target.icons.primarySize` — compare to the customized value from the edited file.
 - `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customized anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `4` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey and the v3→v4 color-shape rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `5` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey, the v3→v4 color-shape rewrite and the v4→v5 font-flag rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
 
 **Pass.**
 - No Lua errors during the migration login.

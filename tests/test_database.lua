@@ -23,7 +23,9 @@ end)
 
 test("Schema version lives in db.global, not the profile (KCD-20)", function()
     assertTrue(NS.db.global ~= nil, "db.global must exist")
-    assertTrue(NS.db.global.schemaVersion ~= nil, "global.schemaVersion must be set")
+    -- The declared default is 0 (savedvariables-§1); the runner walks a fresh
+    -- account through every step and stamps the current version, 5.
+    assertEqual(NS.db.global.schemaVersion, 5, "the runner must stamp the current version")
     assertEqual(NS.db.profile.dbVersion, nil, "profile must NOT carry a schema version")
 end)
 

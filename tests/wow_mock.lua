@@ -448,18 +448,33 @@ local function dbSection(t, key)
     return t and t[key] or {}
 end
 
---- The profile-management surface the addon calls on its db. Real enough to be
---- harmless: GetProfiles genuinely fills the caller's table, the rest are
---- no-ops. Module-level table, copied onto each db.
+--- The profile-management surface the addon calls on its db that the fake
+--- does not model: harmless no-ops. Module-level table, copied onto each db.
+--- SetProfile, GetCurrentProfile, GetProfiles and ResetProfile are real, and
+--- New() builds them per db below.
 local DB_STUBS = {
     RegisterCallback  = function() end,
-    GetCurrentProfile = function() return "Default" end,
-    GetProfiles       = function(_, t) t = t or {}; t[1] = "Default"; return t end,
-    SetProfile        = function() end,
     ResetProfile      = function() end,
     CopyProfile       = function() end,
     DeleteProfile     = function() end,
 }
+
+--- The staged SavedVariables' stored profiles, by name, as the raw tables the
+--- client would hand over (identity kept, so a merge mutates the staged
+--- table exactly as AceDB mutates the real one). A staged `profile` section is
+--- the older shorthand for `profiles.Default`, kept so a suite can stage one
+--- profile without spelling the whole SV shape.
+local function stagedProfiles(saved)
+    local out = {}
+    if type(saved) ~= "table" then return out end
+    if type(saved.profiles) == "table" then
+        for name, p in pairs(saved.profiles) do out[name] = p end
+    end
+    if out.Default == nil and type(saved.profile) == "table" then
+        out.Default = saved.profile
+    end
+    return out
+end
 
 local function build()
     local mocks = kitMockBase()
@@ -583,9 +598,39 @@ local function build()
             -- the account is missing. Flip it and migration tests would be
             -- migrating a defaults-shaped table and passing for the wrong reason.
             for _, key in ipairs(DB_SECTIONS) do
-                db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
+                if key ~= "profile" then
+                    db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
+                end
             end
             for stub, fn in pairs(DB_STUBS) do db[stub] = fn end
+
+            -- ── Stored profiles, and a real SetProfile ──────────────────────
+            --
+            -- Every stored profile, seeded from the staged SV `profiles` table.
+            -- Each is defaults-merged IN PLACE the first time it is accessed and
+            -- keeps its identity per name after that, which is AceDB-3.0's own
+            -- lazy profile materialization. A profile migration that walks only
+            -- `db.profile` is invisible to a suite that never switches, and a
+            -- SetProfile no-op made the switch impossible to test (KICKCD-R-01).
+            db.__profiles = stagedProfiles(saved)
+            local merged = {}
+            local function profileFor(key)
+                if not merged[key] then
+                    db.__profiles[key] = copyDefaults(db.__profiles[key] or {},
+                        dbSection(defaults, "profile"))
+                    merged[key] = true
+                end
+                return db.__profiles[key]
+            end
+            db.profile = profileFor("Default")
+            db.GetCurrentProfile = function() return db.keys.profile end
+            db.GetProfiles = function(_, t)
+                t = t or {}
+                for i = #t, 1, -1 do t[i] = nil end
+                for key in pairs(db.__profiles) do t[#t + 1] = key end
+                table.sort(t)
+                return t, #t
+            end
 
             -- ── ResetProfile, for real ──────────────────────────────────────
             --
@@ -636,6 +681,16 @@ local function build()
                 -- `self.callbacks:Fire("OnProfileReset", self)`: the database and no
                 -- key. Database:OnProfileChanged names the active profile itself.
                 fire("OnProfileReset")
+            end
+
+            -- AceDB-3.0's SetProfile: a no-op onto the active name, otherwise
+            -- swap the key and the profile table, then
+            -- `self.callbacks:Fire("OnProfileChanged", self, name)`.
+            db.SetProfile = function(_, key)
+                if key == db.keys.profile then return end
+                db.keys.profile = key
+                db.profile = profileFor(key)
+                fire("OnProfileChanged", key)
             end
 
             return db
