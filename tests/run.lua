@@ -152,6 +152,7 @@ local SUITES = {
     "test_locale",
     "test_units",
     "test_schema",
+    "test_schema_store",
     "test_database",
     "test_color_shape",
     "test_bus",
@@ -243,6 +244,11 @@ Kit.setSurfaceSource{
     ["LibKa0s-DebugLog-1.0"] = shared.NS.DebugLog,
     ["LibKa0s-Slash-1.0"]    = shared.NS.Slash and shared.NS.Slash.cli,
     ["LibKa0s-Options-1.0"]  = shared.NS.Settings and shared.NS.Settings.Helpers,
+    -- A LIBRARY TABLE, unlike the three instance rows above: tests/test_surface_parity.lua holds
+    -- settings/SchemaSetup.lua's stub LIBRARY (SplitPath / Read / Write / SameValue / New) to the
+    -- major by name. Its INSTANCE is compared with the two-table form against a live instance,
+    -- because the major's members-N.json lists lib-level members only.
+    ["LibKa0s-Schema-1.0"]   = shared.mocks.LibStub("LibKa0s-Schema-1.0", true),
     -- The one row that IS a library table: LibKa0s-Compat-1.0 is stateless and has no instance,
     -- and core/Compat.lua wires its members onto NS.Compat by name. A table map answers only the
     -- names it carries, so without this row the by-name call raises "the live surface never

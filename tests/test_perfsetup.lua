@@ -546,16 +546,17 @@ test("resume restores from CURRENT state, not from a snapshot", function()
     local inst = T.load(true, true)
     local NS2 = inst.NS
     local H = NS2.Settings.Helpers
+    local S = NS2.Settings.Store
 
     NS2.Perf.Suspend()
     -- Toggle focus off WHILE suspended.
-    local before = H.Get("units.focus.enabled")
+    local before = S.Get("units.focus.enabled")
     H.SetAndRefresh("units.focus.enabled", not before)
     NS2.Perf.Resume()
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
 
     -- The addon must reflect the value as it is NOW, not as it was at suspend.
-    assertEqual(H.Get("units.focus.enabled"), not before)
+    assertEqual(S.Get("units.focus.enabled"), not before)
     H.SetAndRefresh("units.focus.enabled", before)
 end)
 

@@ -58,6 +58,12 @@ local function helpers()
     return NS.Settings and NS.Settings.Helpers
 end
 
+-- The settings schema's runtime (settings/SchemaSetup.lua, which loads first in
+-- the settings block): the reader, the row index and the reset funnel this
+-- descriptor takes by value, and the primitives GateHint's fallback probe walks.
+local Store     = NS.Settings.Store
+local SchemaLib = NS.Settings.SchemaLib
+
 local function out(line)
     if NS.Util and NS.Util.print then NS.Util.print(line) end
 end
@@ -118,14 +124,15 @@ end
 --- tests/test_color_shape.lua pins both paths.
 ---
 --- Answers nil when the candidate's keys cannot be computed.
-local function keysForCandidate(row, candidate, parent, key, gateVal)
+local function keysForCandidate(row, candidate, gateVal)
     if type(row.valuesFor) == "function" then
         local ok, alt = pcall(row.valuesFor, candidate)
         return ok and listKeys(alt) or nil
     end
-    parent[key] = candidate
+    local profile = NS.db.profile
+    SchemaLib.Write(profile, row.valueGate, candidate)
     local ok, alt = pcall(allowedKeys, row)
-    parent[key] = gateVal
+    SchemaLib.Write(profile, row.valueGate, gateVal)
     return ok and alt or nil
 end
 
@@ -139,30 +146,39 @@ end
 --- The answer is real rather than modeled: for each other value the gate could
 --- take, keysForCandidate asks what the row would then offer -- through the
 --- row's pure `valuesFor` when it has one, or the pcall-guarded swap-and-restore
---- probe when it does not. H.Resolve is needed only by that fallback, and only
---- a row that lacks valuesFor is refused a flip clause when it is missing.
-function NS.Slash.GateHint(row)
-    local H = helpers()
-    if not (H and H.Get and H.FindSchema) then return "" end
+--- probe when it does not. The probe reads and writes db.profile through the
+--- schema major's own primitives (SchemaLib.Read / Write, the library or its
+--- stub), and only a row that lacks valuesFor is refused a flip clause when the
+--- gate's parent table is not there -- Write would create it, and a read-only
+--- hint must not.
+local function gateParentExists(path)
+    local profile = NS.db and NS.db.profile
+    local parts = SchemaLib.SplitPath(path)
+    if type(profile) ~= "table" or #parts == 0 then return false end
+    -- SplitPath's array is shared per path string, so the parent's walk is a
+    -- copy one segment short rather than an edit of it.
+    local up = {}
+    for i = 1, #parts - 1 do up[i] = parts[i] end
+    return #up == 0 or type(SchemaLib.Read(profile, up)) == "table"
+end
 
-    local gateVal = H.Get(row.valueGate)
+function NS.Slash.GateHint(row)
+    local gateVal = Store.Get(row.valueGate)
     local msg = (" (depends on %s = %s)"):format(row.valueGate, tostring(gateVal))
 
-    local gateDef = H.FindSchema(row.valueGate)
+    local gateDef = Store.FindRow(row.valueGate)
     if not gateDef then return msg end
     local gateValues = type(gateDef.values) == "function" and gateDef.values() or gateDef.values
     if type(gateValues) ~= "table" then return msg end
 
-    local parent, key
-    if type(row.valuesFor) ~= "function" then
-        if H.Resolve then parent, key = H.Resolve(row.valueGate) end
-        if not (parent and key) then return msg end
+    if type(row.valuesFor) ~= "function" and not gateParentExists(row.valueGate) then
+        return msg
     end
 
     local hints = {}
     for candidate in pairs(gateValues) do
         if candidate ~= gateVal then
-            local alt = keysForCandidate(row, candidate, parent, key, gateVal)
+            local alt = keysForCandidate(row, candidate, gateVal)
             if alt and #alt > 0 then
                 hints[#hints + 1] = ("flip %s to %s for %s")
                     :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
@@ -393,55 +409,37 @@ NS.Slash.cli = SlashLib:New({
     print   = function(line) out(line) end,
     version = NS.Version,
 
-    -- The plain host reader. No translation: colors are stored in the keyed
-    -- shape the library already parses into and renders from.
-    --
-    -- NOT `H and H.Get and H.Get(path) or nil`: that idiom folds a stored FALSE
-    -- to nil, and the library prints nil as the literal "nil". Every bool row
-    -- sitting at false -- `/kcd get locked`, `/kcd list`, and now the `enable` /
-    -- `disable` pair's own confirmation line -- reported a value the addon does
-    -- not hold. tests/test_launcher.lua pins it.
-    get = function(path)
-        local H = helpers()
-        if not (H and H.Get) then return nil end
-        return H.Get(path)
-    end,
+    -- The schema seam's reader, by value. No translation: colors are stored in
+    -- the keyed shape the library already parses into and renders from, and
+    -- Store.Get answers a stored FALSE as false -- the old
+    -- `H and H.Get and H.Get (path) or nil` folded it to nil, which the library
+    -- prints as the literal "nil". tests/test_launcher.lua pins it.
+    get = Store.Get,
 
-    -- The single write seam. SetAndRefresh — not the 3-arg Helpers.Set — because
-    -- it is the one path that fires CONFIG_CHANGED with the row's section, runs
-    -- the row's onChange and refreshes any open panel. A `/kcd set` then takes
-    -- exactly the path a panel checkbox takes, which is the point of the rule.
+    -- The single write seam: Store.Set, through SetAndRefresh so an open panel
+    -- repaints after a `/kcd set` exactly as after a checkbox. Store.Set's
+    -- `false, err, why` comes back through it, and the library prints it
+    -- (Slash minor 15) instead of echoing a value that was never stored.
     set = function(path, v)
         local H = helpers()
-        if H and H.SetAndRefresh then H.SetAndRefresh(path, v) end
+        if H and H.SetAndRefresh then return H.SetAndRefresh(path, v) end
+        return Store.Set(path, v)
     end,
 
-    findRow = function(path)
-        local H = helpers()
-        return H and H.FindSchema and H.FindSchema(path) or nil
-    end,
+    findRow = Store.FindRow,
 
-    applyDefault = function(row)
-        local H = helpers()
-        if not (H and H.SetAndRefresh) then return end
-        -- DeepCopy, because a default that is a table (an RGBA array) would
-        -- otherwise be shared by every profile that reset to it.
-        local d = row.default
-        H.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
-    end,
+    -- Store.ApplyDefault copies a table default in and answers false for a row
+    -- with no default, which the library prints as its NO_DEFAULT line. Outside
+    -- any bracket, so `/kcd reset global.minimap.shown` still resets the one row
+    -- every sweep leaves alone (launcher-§3).
+    applyDefault = Store.ApplyDefault,
 
     -- The bulk bracket (LibKa0s-Slash-1.0 minor 8) around Sl:CliResetAll, the
     -- same pair the Options descriptor takes (debug-logging-§10). Nothing here
     -- routes to CliResetAll today -- `/kcd resetall` is a host verb that reaches
     -- the Options walk -- so this keeps a future route to one line, not one per row.
-    bulkBegin = function(act, scope)
-        local H = helpers()
-        if H and H.BulkBegin then H.BulkBegin(act, scope) end
-    end,
-    bulkEnd = function(act, scope, count, err, info)
-        local H = helpers()
-        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
-    end,
+    bulkBegin = Store.BulkBegin,
+    bulkEnd   = Store.BulkEnd,
 
     allRows  = allRows,
     parse    = parseForHost,

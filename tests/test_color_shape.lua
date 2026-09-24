@@ -72,9 +72,9 @@ end)
 -- ── the live profile ────────────────────────────────────────────────────────
 
 test("the built profile stores colors keyed", function()
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     for _, def in ipairs(colorRows()) do
-        local v = H.Get(def.path)
+        local v = S.Get(def.path)
         assertEqual(type(v), "table", def.path)
         assertTrue(v.r ~= nil, def.path .. " stored positionally in the live profile")
         assertNil(v[1], def.path .. " stored value still carries index [1]")
@@ -84,9 +84,9 @@ end)
 test("DEFAULT_PROFILE and the schema agree on every color", function()
     -- Two literals for one value is how they drift. They are declared in both
     -- core/Database.lua and settings/*.lua, so pin that they match.
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     for _, def in ipairs(colorRows()) do
-        local live = H.Get(def.path)
+        local live = S.Get(def.path)
         local d = def.default
         assertNear(live.r, d.r, 1e-9, def.path .. ".r")
         assertNear(live.g, d.g, 1e-9, def.path .. ".g")
@@ -336,11 +336,12 @@ end)
 
 test("set and get round-trip a color through the library with no translation", function()
     local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     local row = colorRows()[1]
-    local before = H.Get(row.path)
+    local before = S.Get(row.path)
 
     NS:OnSlashCommand("set " .. row.path .. " 0.25 0.5 0.75 0.5")
-    local stored = H.Get(row.path)
+    local stored = S.Get(row.path)
     assertNear(stored.r, 0.25, 1e-9)
     assertNear(stored.g, 0.5, 1e-9)
     assertNear(stored.b, 0.75, 1e-9)
@@ -478,8 +479,8 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
     end
     assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
 
-    local H = NS.Settings.Helpers
-    local before = H.Get(row.valueGate)
+    local S = NS.Settings.Store
+    local before = S.Get(row.valueGate)
 
     -- Same row, same gate, but a `values` that blows up mid-probe.
     local exploding = {
@@ -489,7 +490,7 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
 
     local ok, hint = pcall(NS.Slash.GateHint, exploding)
     assertTrue(ok, "GateHint must not propagate the row's error; got: " .. tostring(hint))
-    assertEqual(H.Get(row.valueGate), before,
+    assertEqual(S.Get(row.valueGate), before,
         "the gating setting must be restored even when the probe raises")
 
     -- And the hint still names the gate, minus the flip clauses it could not
@@ -513,29 +514,29 @@ test("GateHint never writes the profile when the row declares valuesFor", functi
     assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
     assertEqual(type(row.valuesFor), "function", "the gated row must declare valuesFor")
 
-    local H = NS.Settings.Helpers
+    -- Every write the probe makes goes through the schema major's own write
+    -- walk (SchemaLib.Write, settings/Slash.lua); count the ones at the gate.
+    local SchemaLib = NS.Settings.SchemaLib
+    local writes = 0
+    local origWrite = SchemaLib.Write
+    SchemaLib.Write = function(root, path, ...)
+        if path == row.valueGate then writes = writes + 1 end
+        return origWrite(root, path, ...)
+    end
+
     -- The same row with no valuesFor, so the fallback probe computes the
-    -- reference hint the pure path must reproduce word for word.
+    -- reference hint the pure path must reproduce word for word -- and, being
+    -- the swap probe, proves the counter sees its writes.
     local fallback = {}
     for k, v in pairs(row) do fallback[k] = v end
     fallback.valuesFor = nil
-    local expected = NS.Slash.GateHint(fallback)
-
-    -- Every write the probe makes lands on the gate's parent through
-    -- H.Resolve; hand it a proxy that forwards and counts.
-    local writes = 0
-    local origResolve = H.Resolve
-    H.Resolve = function(path)
-        local parent, key = origResolve(path)
-        if path ~= row.valueGate or not parent then return parent, key end
-        local proxy = setmetatable({}, {
-            __index = parent,
-            __newindex = function(_, k, v) writes = writes + 1; parent[k] = v end,
-        })
-        return proxy, key
-    end
+    local okFallback, expected = pcall(NS.Slash.GateHint, fallback)
+    local fallbackWrites = writes
+    writes = 0
     local ok, hint = pcall(NS.Slash.GateHint, row)
-    H.Resolve = origResolve
+    SchemaLib.Write = origWrite
+    assertTrue(okFallback, "the fallback raised: " .. tostring(expected))
+    assertTrue(fallbackWrites > 0, "sanity: the swap probe writes through SchemaLib.Write")
 
     assertTrue(ok, "GateHint raised: " .. tostring(hint))
     assertEqual(writes, 0, "GateHint wrote the gating setting " .. writes .. " time(s)")

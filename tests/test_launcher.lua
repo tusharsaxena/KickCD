@@ -217,11 +217,11 @@ test("the row's get INVERTS LibDBIcon's `hide`, so the label can say shown", fun
     -- disagree (anti-pattern #81). The cost is this inversion.
     -- red under: reading db.global.minimap.hide straight into the checkbox
     local inst = T.load(true, true)
-    local H = inst.NS.Settings.Helpers
+    local S = inst.NS.Settings.Store
     inst.NS.db.global.minimap.hide = false
-    assertEqual(H.Get("global.minimap.shown"), true, "hidden=false reads as SHOWN")
+    assertEqual(S.Get("global.minimap.shown"), true, "hidden=false reads as SHOWN")
     inst.NS.db.global.minimap.hide = true
-    assertEqual(H.Get("global.minimap.shown"), false, "hidden=true reads as not shown")
+    assertEqual(S.Get("global.minimap.shown"), false, "hidden=true reads as not shown")
 end)
 
 test("the row's set inverts AND moves the button, in the one write seam", function()
@@ -295,7 +295,8 @@ test("a legacy store keeps its setting across the CLI rename, with no migration"
     end)
     local raw = inst.mocks.KickCDDB.global.minimap
     local H = inst.NS.Settings.Helpers
-    assertEqual(H.Get("global.minimap.shown"), false, "a legacy hide = true reads as not shown")
+    local S = inst.NS.Settings.Store
+    assertEqual(S.Get("global.minimap.shown"), false, "a legacy hide = true reads as not shown")
     local out = table.concat(captured(inst, function()
         inst.NS:OnSlashCommand("get global.minimap.shown") end), "\n")
     assertTrue(out:find("false", 1, true) ~= nil, "the CLI must read the legacy button as hidden: " .. out)
@@ -370,13 +371,14 @@ test("the exemption is ONE row — the page's Defaults still resets everything e
     -- red under: vetoing by page, by section, or by "every global path"
     local inst = T.load(true, true)
     local H = inst.NS.Settings.Helpers
+    local S = inst.NS.Settings.Store
     H.SetAndRefresh("global.minimap.shown", false)
-    H.SetAndRefresh("locked", not H.FindSchema("locked").default)
+    H.SetAndRefresh("locked", not S.FindRow("locked").default)
     H.SetAndRefresh("visibility", "always")
     captured(inst, function() H.RestoreDefaults("general") end)
-    assertEqual(H.Get("locked"), H.FindSchema("locked").default,
+    assertEqual(S.Get("locked"), S.FindRow("locked").default,
         "`locked` is a General row and must be back at its default")
-    assertEqual(H.Get("visibility"), "target_casting_interruptible",
+    assertEqual(S.Get("visibility"), "target_casting_interruptible",
         "and so is `visibility`")
     assertEqual(inst.NS.db.global.minimap.hide, true, "only the one row is exempt")
 end)
@@ -423,6 +425,7 @@ function()
     local inst = T.load(true, true)
     local NS = inst.NS
     local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     local seen, real = {}, H.SetAndRefresh
     H.SetAndRefresh = function(path, value)
         seen[#seen + 1] = path
@@ -433,7 +436,7 @@ function()
     assertEqual(#seen, 1, "one write, not two")
     assertEqual(seen[1], "enabled", "and it is the Master-controls row's path")
     -- The panel reads the same answer back through the same seam.
-    assertEqual(H.Get("enabled"), false)
+    assertEqual(S.Get("enabled"), false)
 end)
 
 test("the disable confirmation reports FALSE, not `nil`", function()
@@ -496,7 +499,8 @@ test("a host with NEITHER broker library loads, and says so instead of raising",
     assertNil(L:Object())
     -- And the row still answers, so the checkbox is not a raise inside `/kcd set`.
     local H = inst.NS.Settings.Helpers
-    assertEqual(H.Get("global.minimap.shown"), true)
+    local S = inst.NS.Settings.Store
+    assertEqual(S.Get("global.minimap.shown"), true)
     H.SetAndRefresh("global.minimap.shown", false)
     assertEqual(inst.NS.db.global.minimap.hide, true, "the store still records the choice")
 end)

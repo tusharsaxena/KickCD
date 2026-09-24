@@ -53,39 +53,20 @@ end
 -- options-ui-§12's `Reset all settings` AND a page-scoped `Defaults` button,
 -- and neither may un-hide a hidden button or re-hide a shown one.
 --
--- WHY THAT NEEDED A CHANGE HERE, measured rather than assumed. The two resets
--- reach this row by completely different routes and only one of them was safe:
+-- `Reset all settings` never reaches it: O.RestoreAllDefaults narrows its walk
+-- to the `sessionOnly` rows when `resetProfile` is supplied, `vetoedFromResetAll`
+-- above answers true for it anyway, and the reset itself empties db.PROFILE while
+-- this row's table is `db.global.minimap`. The General page's `Defaults` DID
+-- reach it once -- O.RestoreDefaults walks `rowsForPage("general")`, where the
+-- composed Minimap button row lives, and consults no veto.
 --
---   * `Reset all settings` never reached it, and still does not, for TWO
---     independent reasons. libs/LibKa0s/Options.lua's O.RestoreAllDefaults
---     narrows its row walk to the `sessionOnly` rows when `resetProfile` is
---     supplied (it is, below) and the composed Minimap button row is deliberately
---     STORED, not session; and `vetoedFromResetAll` above answers true for it
---     anyway, since it is not sessionOnly. The reset itself is then
---     `db:ResetProfile()`, which empties db.PROFILE, while this row's table is
---     `db.global.minimap`. Three separate things would have to break together.
---   * The General page's `Defaults` button DID reach it, and put the button back
---     on the ring at LibDBIcon's default angle. O.RestoreDefaults walks
---     `rowsForPage("general")` -- which is exactly where the composed Minimap
---     button row lives -- and consults NO veto: `skipRestoreAll` is read by
---     RestoreAllDefaults and by nothing else. That is the bug this exemption
---     fixes, and it is the shape launcher-§3's old derivation could not see,
---     because the old argument was only ever about the other button.
---
--- THE VETO GOES IN `applyDefault` because that is the ONE funnel both of the
--- library's resets write through (libs/LibKa0s/Options.lua's runBulk calls
--- `d.applyDefault(row)` for every row either walk keeps), so the row is exempt
--- from both from one place rather than from two. It is deliberately NOT in
--- settings/Slash.lua's own applyDefault: `/kcd reset global.minimap.shown` is a
--- single row the player named out loud, which is neither of the two resets
--- launcher-§3 is about, and refusing it would be refusing the CLI route to a
--- setting the schema CLI is supposed to reach.
-local MINIMAP_SHOWN_PATH = "global.minimap.shown"
-
---- True for the one row every reset leaves alone (launcher-§3).
-local function survivesEveryReset(row)
-    return row ~= nil and row.path == MINIMAP_SHOWN_PATH
-end
+-- THE VETO IS THE SCHEMA SEAM'S `resetExempt` NOW (settings/SchemaSetup.lua).
+-- Both of the library's resets write through `applyDefault` INSIDE the bulk
+-- bracket this descriptor hands them, and Store.ApplyDefault refuses an exempt
+-- row only while a bracket is open. So the row is exempt from both sweeps from
+-- one place, while `/kcd reset global.minimap.shown` -- a single row the player
+-- named out loud, outside any bracket -- still resets it, which is the CLI route
+-- to a setting the schema CLI is supposed to reach.
 
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 
@@ -99,7 +80,7 @@ local function helpers() return NS.Settings and NS.Settings.Helpers end
 -- test can call it. That is unusual here and the reason is specific: the ONE
 -- defect this reader has ever had is invisible to every caller the library has.
 --
--- Both host descriptors used to read a value as `H and H.Get and H.Get(path) or
+-- Both host descriptors used to read a value as `H and H.Get and H.Get (path) or
 -- nil`, which folds a stored FALSE to nil. In settings/Slash.lua that was loud --
 -- the library prints nil as the literal "nil", so `/kcd get locked` reported a
 -- value the addon does not hold. Here it was SILENT, and still would be: every
@@ -114,17 +95,15 @@ local function helpers() return NS.Settings and NS.Settings.Helpers end
 -- tests/test_options_panel.lua calls it with a stored false. The descriptor below
 -- takes this FUNCTION VALUE rather than wrapping it, so there is one reader and
 -- the case cannot be pinning a parallel copy.
+--
+-- It IS the schema seam's reader now (settings/SchemaSetup.lua), bound by value:
+-- Store.Get answers a stored false as false, and a row with its own storage (the
+-- Debug console, the minimap button) through that row's own `get`.
 NS.Settings = NS.Settings or {}
+local Store = NS.Settings.Store
 
---- Read a schema path for the options surface.
----
---- NOT `H and H.Get and H.Get(path) or nil`: the trailing `or nil` folds a
---- stored FALSE to nil. The guard has to be a statement, not an expression.
-function NS.Settings.ReadForPanel(path)
-    local H = helpers()
-    if not (H and H.Get) then return nil end
-    return H.Get(path)
-end
+--- Read a schema path for the options surface: LibKa0s-Schema-1.0's Get.
+NS.Settings.ReadForPanel = Store.Get
 
 --- Backs the color picker's and the slider's 50 ms drag throttle: the
 --- descriptor's `scheduleTimer`. A descriptor field rather than an AceTimer
@@ -141,13 +120,25 @@ function NS.Settings.ScheduleTimer(fn, delay)
     return _G.C_Timer.NewTimer(delay, fn)
 end
 
--- Both Reset all paths reset the profile through here. settings/Panel.lua's
--- ResetProfileCounted counts the rows the reset changes before it runs, for the
--- one line Database:OnProfileChanged logs (debug-logging-§10); the bare call is
--- only for a load where that file has not run.
+-- Both Reset all paths reset the profile through here. Store.ResetCounted
+-- counts the rows the reset changes before it runs -- the profile rows, never the
+-- AceDBOptions page's -- for the one line Database:OnProfileChanged logs
+-- (debug-logging-§10), and clears the count on both exits.
+local function notProfilesPage(row) return row.panel ~= "profiles" end
+
 local function resetProfileCounted(db)
+    Store.ResetCounted(function() db:ResetProfile() end, notProfilesPage)
+end
+
+--- Write a row's default through the seam, then repaint any open panel. The
+--- library's own funnel for both resets: Store.ApplyDefault copies a table
+--- default in, refuses the launcher-§3 row inside a sweep, and answers false
+--- for a row with no default. Its answers pass through.
+local function applyDefault(row)
+    local ok, err, why = Store.ApplyDefault(row)
     local H = helpers()
-    if H and H.ResetProfileCounted then H.ResetProfileCounted(db) else db:ResetProfile() end
+    if ok and H and H.RefreshScalars then H.RefreshScalars() end
+    return ok, err, why
 end
 
 -- ---------------------------------------------------------------------
@@ -165,31 +156,23 @@ local descriptor = {
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
     debug = function(tag, fmt, ...) if NS.Debug then NS.Debug(tag, fmt, ...) end end,
 
-    -- The schema seams. SetAndRefresh rather than the 3-arg Helpers.Set, because
-    -- it is the addon's SINGLE write seam: it fires CONFIG_CHANGED with the
-    -- row's section, runs the row's onChange and refreshes any open panel. A
-    -- panel checkbox then takes exactly the path `/kcd set` takes, which is the
-    -- whole point of the rule (options-ui-§1).
+    -- The schema seams. Store.Set through SetAndRefresh, because it is the
+    -- addon's SINGLE write seam: it refuses an unknown path, runs the row's
+    -- onChange, fires CONFIG_CHANGED with the row's section and repaints any
+    -- open panel. A panel checkbox then takes exactly the path `/kcd set` takes,
+    -- which is the whole point of the rule (options-ui-§1).
     -- The reader above, BY REFERENCE. Not a wrapper: a wrapper would be a second
     -- place the `or nil` fold could come back, and the case that pins the named
     -- one would go on passing. See its header for why it is named at all.
     get = NS.Settings.ReadForPanel,
     set = function(path, value)
         local H = helpers()
-        if H and H.SetAndRefresh then H.SetAndRefresh(path, value) end
+        if H and H.SetAndRefresh then return H.SetAndRefresh(path, value) end
+        return Store.Set(path, value)
     end,
-    applyDefault = function(row)
-        -- The one carve-out, and it is BOTH resets' (launcher-§3 -- see the block
-        -- above this descriptor). Returning before the write rather than before
-        -- the walk, because this is the only place both walks pass through.
-        if survivesEveryReset(row) then return end
-        local H = helpers()
-        if not (H and H.SetAndRefresh) then return end
-        -- DeepCopy, because a default that is a table (an RGBA color) would
-        -- otherwise be shared by every profile that reset to it.
-        local d = row.default
-        H.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
-    end,
+    -- The launcher-§3 carve-out is the seam's `resetExempt`, honored because
+    -- both resets run inside the bracket below (see the block above).
+    applyDefault = applyDefault,
 
     -- `filter` is ctx.unit, passed through by the library without interpreting
     -- it. That is what makes a per-unit page render only the selected unit's
@@ -239,26 +222,34 @@ local descriptor = {
     profilesPage = true,
 
     -- The bulk bracket (LibKa0s-Options-1.0 minor 16) around RestoreDefaults and
-    -- RestoreAllDefaults. A page's Defaults logs ONE `[Set] reset <page>: N rows`
-    -- line rather than one per row, and Reset all logs only the profile handler's
-    -- line, because the library reports that the act reset the profile
-    -- (debug-logging-§10). settings/Panel.lua owns the mute and the line.
+    -- RestoreAllDefaults: the schema seam's own pair. A page's Defaults logs ONE
+    -- `[Set] reset <page>: N rows` line rather than one per row, and Reset all
+    -- logs only the profile handler's line, because the library reports that the
+    -- act reset the profile (debug-logging-§10). A debounced `[Set]` line still
+    -- pending from a write just before the act is logged first, with its own
+    -- value, so the log never reads the act and then a value it replaced.
     bulkBegin = function(act, scope)
-        local H = helpers()
-        if H and H.BulkBegin then H.BulkBegin(act, scope) end
+        NS.Settings.FlushPendingSets()
+        Store.BulkBegin(act, scope)
     end,
-    bulkEnd = function(act, scope, count, err, info)
-        local H = helpers()
-        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
-    end,
+    bulkEnd = Store.BulkEnd,
 
     -- The drag throttle's timer, BY REFERENCE (see NS.Settings.ScheduleTimer).
     scheduleTimer = NS.Settings.ScheduleTimer,
 
     getLSM   = function() return LibStub and LibStub("LibSharedMedia-3.0", true) end,
+    -- The schema's shape check: path, type, group and duplicates on every row,
+    -- and every stored path resolving against NS.DEFAULT_PROFILE. A row with its
+    -- own `get` stores somewhere else (session state, db.global) and is in no
+    -- defaults tree, so it is answered nil and skipped rather than reported.
+    -- The panel and section enums are tests/test_schema.lua's.
     validate = function()
-        local H = helpers()
-        if H and H.ValidateSchema then H.ValidateSchema() end
+        Store.Validate({
+            defaultsRoot = function(_, row)
+                if type(row.get) == "function" then return nil end
+                return NS.DEFAULT_PROFILE, 1
+            end,
+        })
     end,
 
     -- Ka0s standard, library-stack-§4: resolve AceGUI once and read the upvalue. The page
@@ -344,11 +335,8 @@ if not lib then
     -- the only ones a profile reset cannot reach, because their storage is their
     -- own set() rather than the db (options-ui-§12).
     local function restoreSessionRows()
-        for _, row in ipairs(NS.Settings.Schema or {}) do
-            if not vetoedFromResetAll(row) and Helpers.SetAndRefresh then
-                local d = row.default
-                Helpers.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
-            end
+        for _, row in ipairs(Store.AllRows()) do
+            if not vetoedFromResetAll(row) then applyDefault(row) end
         end
     end
 
@@ -356,12 +344,13 @@ if not lib then
         -- The library's bracket, driven by hand, as the live path runs under it:
         -- the sessionOnly rows written first add no [Set] line of their own, and a
         -- profile reset is logged ONCE, by Database:OnProfileChanged
-        -- (debug-logging-§10). settings/Panel.lua has defined the pair by now.
+        -- (debug-logging-§10). The pair is the schema seam's, whichever it is:
+        -- a library-less load has the log-silent stub, whose bracket is a depth.
         --
         -- `reset` is set only once the reset RETURNS, as the library does: with no
         -- db, or a reset that raised, the handler may never have run, and then the
         -- bracket's own `[Set] reset all: N rows` line is the only record.
-        if Helpers.BulkBegin then Helpers.BulkBegin("reset", "all") end
+        Store.BulkBegin("reset", "all")
         local reset = false
         local ok, err = pcall(function()
             restoreSessionRows()
@@ -375,7 +364,7 @@ if not lib then
                 reset = true
             end
         end)
-        if Helpers.BulkEnd then Helpers.BulkEnd("reset", "all", nil, err, { profileReset = reset }) end
+        Store.BulkEnd("reset", "all", nil, err, { profileReset = reset })
         if not ok then error(err, 0) end
     end
 

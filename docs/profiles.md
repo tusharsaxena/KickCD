@@ -73,15 +73,17 @@ profile's rows wholesale, so each logs one `[Set]` line; a switch rewrites no ro
 | *Changed* | `[Profile] switched to '<name>'` |
 
 That handler line is the only line a Reset all logs. The library's bulk bracket reports that the act
-reset the profile, so `Helpers.BulkEnd` adds nothing, and the `sessionOnly` row the library writes
+reset the profile, so `Store.BulkEnd` adds nothing, and the `sessionOnly` row the library writes
 first is muted ([settings-panel.md](settings-panel.md#bulk-resets-log-one-line)).
 
 **The count is taken before the reset, by the path that drives it.** Only a caller running before
 `db:ResetProfile()` can see which rows the reset will change, so both Reset all paths (the
-descriptor's `resetProfile` and the degraded stub) reset through `settings/Panel.lua`'s
-`Helpers.ResetProfileCounted`. It counts the changed rows by content, stashes the count, resets, and
-clears the stash whether the reset returned or raised, so a count the handler never took cannot
-attach to a later reset. The handler takes it once through `NS.Settings.ConsumeResetCount`. The
+descriptor's `resetProfile` and the degraded stub) reset through the schema seam's
+`Store.ResetCounted` (`LibKa0s-Schema-1.0`). It counts the changed rows by content, holds the count,
+resets, and clears it whether the reset returned or raised, so a count the handler never took cannot
+attach to a later reset. The handler takes it once through `Store.ConsumeResetCount`, which also
+tells an open bulk bracket that the act reset the profile. With LibKa0s absent the seam's
+degradation stub counts nothing, so the handler's line goes out without a count. The
 Profiles page's own Reset Profile button and a `/run` call `db:ResetProfile()` directly, so nothing
 is stashed, and the line goes out without a count rather than with a wrong one.
 

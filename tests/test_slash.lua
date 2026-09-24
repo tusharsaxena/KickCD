@@ -150,10 +150,10 @@ end)
 
 test("set clamps out of range and echoes what was actually STORED", function()
     -- A clamped number is only visible to the user because the echo re-reads.
-    local before = NS.Settings.Helpers.Get("units.target.icons.primarySize")
+    local before = NS.Settings.Store.Get("units.target.icons.primarySize")
     runVerb("set units.target.icons.primarySize 99999")
-    local stored = NS.Settings.Helpers.Get("units.target.icons.primarySize")
-    local row = NS.Settings.Helpers.FindSchema("units.target.icons.primarySize")
+    local stored = NS.Settings.Store.Get("units.target.icons.primarySize")
+    local row = NS.Settings.Store.FindRow("units.target.icons.primarySize")
     assertTrue(stored <= row.max, "expected a clamp to " .. tostring(row.max)
         .. ", stored " .. tostring(stored))
     NS.Settings.Helpers.SetAndRefresh("units.target.icons.primarySize", before)
@@ -162,11 +162,11 @@ end)
 test("set routes through the host's single write seam", function()
     -- Not a bare table write: the panel checkbox and `/kcd set` must take the
     -- same path — the [Set] debug line, the row's onChange, the panel refresh.
-    local before = NS.Settings.Helpers.Get("locked")
+    local before = NS.Settings.Store.Get("locked")
     runVerb("set locked true")
-    assertEqual(NS.Settings.Helpers.Get("locked"), true)
+    assertEqual(NS.Settings.Store.Get("locked"), true)
     runVerb("set locked false")
-    assertEqual(NS.Settings.Helpers.Get("locked"), false)
+    assertEqual(NS.Settings.Store.Get("locked"), false)
     NS.Settings.Helpers.SetAndRefresh("locked", before)
 end)
 
@@ -181,9 +181,9 @@ test("a color round-trips through the library with no host translation", functio
     end
     assertTrue(row ~= nil, "the schema has no color row to exercise")
 
-    local before = NS.Settings.Helpers.Get(row.path)
+    local before = NS.Settings.Store.Get(row.path)
     local lines = runVerb("set " .. row.path .. " 1 0.5 0 1")
-    local stored = NS.Settings.Helpers.Get(row.path)
+    local stored = NS.Settings.Store.Get(row.path)
 
     assertEqual(type(stored), "table")
     assertEqual(stored.r, 1, "red must land in the keyed slot")
@@ -202,9 +202,9 @@ test("a color given in 0-255 rescales jointly", function()
     for _, def in ipairs(NS.Settings.Schema) do
         if def.type == "color" then row = def break end
     end
-    local before = NS.Settings.Helpers.Get(row.path)
+    local before = NS.Settings.Store.Get(row.path)
     runVerb("set " .. row.path .. " 255 128 0")
-    local stored = NS.Settings.Helpers.Get(row.path)
+    local stored = NS.Settings.Store.Get(row.path)
     assertEqual(stored.r, 1)
     assertTrue(math.abs(stored.g - 128 / 255) < 1e-9, "green must rescale with the others")
     assertEqual(stored.b, 0)
@@ -222,10 +222,10 @@ test("reset takes a PATH and resets exactly that one row", function()
     -- CHANGED, deliberately (slash-commands-§2): a page is a property of a
     -- settings panel, not of the data, and every schema-driven page carries a
     -- Defaults button that resets it.
-    local row = NS.Settings.Helpers.FindSchema("units.target.icons.primarySize")
+    local row = NS.Settings.Store.FindRow("units.target.icons.primarySize")
     NS.Settings.Helpers.SetAndRefresh("units.target.icons.primarySize", row.min)
     local lines = runVerb("reset units.target.icons.primarySize")
-    assertEqual(NS.Settings.Helpers.Get("units.target.icons.primarySize"), row.default)
+    assertEqual(NS.Settings.Store.Get("units.target.icons.primarySize"), row.default)
     assertTrue(lines[1]:find("|cFFFFFF00units.target.icons.primarySize|r = ", 1, true) ~= nil,
         "reset must echo the restored pair; got: " .. tostring(lines[1]))
 end)
@@ -355,8 +355,12 @@ end)
 
 -- `/kcd lock` writes `locked` through the helper or not at all (#20). It used to
 -- fall back to `db.profile.locked = v` whenever SetAndRefresh could not take the
--- write, which put a schema-row path (or, with no row, persistent state with no
--- register row) around the helper. Now it prints the refusal runResetPosition uses.
+-- write, which put a schema-row path around the helper. The helper is the schema
+-- seam now (LibKa0s-Schema-1.0), and `locked` is on its writeThrough list
+-- (settings/SchemaSetup.lua, options-ui-§1 route (a)): on a load where the
+-- composer that declares the row is absent, the seam still stores it -- raw, and
+-- announced -- so the verb keeps working on the load it most needs to survive.
+-- The refusal stays for a load where the settings layer never came up at all.
 
 --- Run one COMMANDS verb's handler directly and return what it printed. Direct,
 --- because a LibKa0s-absent load has no dispatcher to route `/kcd lock` through.
@@ -374,39 +378,59 @@ local function runHandler(inst, verb)
     return joined(lines)
 end
 
-test("/kcd lock with no `locked` row writes nothing and says the settings layer is not ready", function()
-    -- red under: restoring the `self.db.profile.locked = v` fallback in setLocked
+test("/kcd lock with no `locked` row still writes it, through the seam's writeThrough", function()
+    -- red under: an empty writeThrough list, where the seam refuses a row-less
+    -- `locked` and the verb says the settings layer is not ready.
     local inst = T.load(true)
     local ns = inst.NS
     local schema = ns.Settings.Schema
     for i = #schema, 1, -1 do
         if schema[i].path == "locked" then table.remove(schema, i) end
     end
+    ns.Settings.Store.Reindex()
+    assertNil(ns.Settings.Store.FindRow("locked"), "sanity: the row is gone")
     ns.db.profile.locked = false
-    local fired = 0
+    local fired = {}
     local H = ns.Settings.Helpers
     local realFire = H.FireConfigChanged
-    H.FireConfigChanged = function(...) fired = fired + 1; return realFire(...) end
+    H.FireConfigChanged = function(section, ...) fired[#fired + 1] = section; return realFire(section, ...) end
     local ok, out = pcall(runHandler, inst, "lock")
     H.FireConfigChanged = realFire
     if not ok then error(out, 0) end
 
-    assertEqual(ns.db.profile.locked, false, "no row, no write")
-    assertEqual(fired, 0, "and nothing is announced")
+    assertEqual(ns.db.profile.locked, true, "the seam stored the row-less path")
+    assertEqual(#fired, 1, "and announced it once")
+    assertEqual(fired[1], "general", "under the General page's section")
+    assertTrue(out:find("icon grid locked", 1, true) ~= nil, "the verb confirms; got: " .. out)
+end)
+
+test("/kcd lock before the settings layer is up writes nothing and says why", function()
+    -- red under: restoring the `self.db.profile.locked = v` fallback in setLocked
+    local inst = T.load(true)
+    local ns = inst.NS
+    ns.db.profile.locked = false
+    local realSet = ns.Settings.Helpers.SetAndRefresh
+    ns.Settings.Helpers.SetAndRefresh = nil
+    local ok, out = pcall(runHandler, inst, "lock")
+    ns.Settings.Helpers.SetAndRefresh = realSet
+    if not ok then error(out, 0) end
+    assertEqual(ns.db.profile.locked, false, "no helper, no write")
     assertTrue(out:find("Settings layer not ready yet", 1, true) ~= nil,
         "the refusal must say why; got: " .. out)
     assertNil(out:find("icon grid locked", 1, true), "it must not claim the grid locked")
 end)
 
-test("with LibKa0s absent /kcd lock and /kcd toggle write nothing", function()
+test("with LibKa0s absent /kcd lock and /kcd toggle still write, through the stub's writeThrough", function()
     -- The real no-row case: `locked` is composed by LibKa0s-Options-1.0's Master
-    -- controls block, so a library-less load has no such row.
+    -- controls block, so a library-less load has no such row. The Schema
+    -- degradation stub takes the same writeThrough list the live instance does.
+    -- red under: a stub that refuses every row-less path.
     local inst = T.load(true, false, nil, { libFiles = {} })
     inst.NS.db.profile.locked = false
     runHandler(inst, "lock")
-    assertEqual(inst.NS.db.profile.locked, false, "lock wrote around the helper")
+    assertEqual(inst.NS.db.profile.locked, true, "lock landed in the store")
     runHandler(inst, "toggle")
-    assertEqual(inst.NS.db.profile.locked, false, "toggle wrote around the helper")
+    assertEqual(inst.NS.db.profile.locked, false, "toggle landed in the store")
 end)
 
 test("the degraded stub carries no copy of the row formatter or the parser", function()
@@ -539,9 +563,9 @@ test("set stores a multi-word label text whole", function()
     -- library's value through untouched.
     -- red under: Slash.lua minor 9 (the parse splitting a string row's value).
     local path = "units.target.label.text"
-    local before = NS.Settings.Helpers.Get(path)
+    local before = NS.Settings.Store.Get(path)
     local out = runVerb("set " .. path .. "  Kick Them Now ")
-    assertEqual(NS.Settings.Helpers.Get(path), "Kick Them Now", joined(out))
+    assertEqual(NS.Settings.Store.Get(path), "Kick Them Now", joined(out))
     NS.Settings.Helpers.SetAndRefresh(path, before)
 end)
 
@@ -668,7 +692,7 @@ test("`/kcd set` still writes while disabled — repair, not just read", functio
     -- red under: gating `set` as a feature verb because it changes something
     local inst = disabled()
     say(inst, function() inst.NS:OnSlashCommand("set locked true") end)
-    assertEqual(inst.NS.Settings.Helpers.Get("locked"), true,
+    assertEqual(inst.NS.Settings.Store.Get("locked"), true,
         "the write must have landed")
 end)
 

@@ -409,29 +409,14 @@ local RESIDUE = {
     {"settings/OptionsSetup.lua", "Ka0s KickCD", "LIB DESCRIPTOR"},
     {"settings/OptionsSetup.lua", ", so the settings panel is unavailable.", "DEGRADED STEM"},
 
-    -- settings/Panel.lua — ValidateSchema and the onChange guard.
-    {"settings/Panel.lua", "|cffff0000schema error|r: ", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " |cffff0000schema error|r: ", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "<no path>", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "row is not a table", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "missing or empty `path`", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, profiles)", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, debug, units)", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: bool, number, string, color)", "DIAGNOSTIC"},
+    -- settings/SchemaSetup.lua — the degradation stub's Validate line, whose
+    -- cause half is NS.LIBKA0S_MISSING (the collection's shared clause). The
+    -- schema's own shape errors are LibKa0s-Schema-1.0's Validate now.
+    {"settings/SchemaSetup.lua", ", so the settings schema was not checked.", "DEGRADED STEM"},
 
     -- settings/Panel_Widgets.lua
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
-
-    -- A bulk act's one [Set] line (settings/Panel.lua logAct, for the bracket
-    -- and for SetRows alike) and the marker it carries when the act stopped on
-    -- an error: debug-console formats, never chat. core/Database.lua's
-    -- profile-event lines are outside this scan, which reads settings/ alone.
-    {"settings/Panel.lua", "%s: %d rows%s", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (stopped by an error)", "DIAGNOSTIC"},
-
-    -- settings/Panel_Render.lua
-    {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.

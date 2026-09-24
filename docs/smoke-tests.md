@@ -453,7 +453,7 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 - Watch chat after login.
 
 **Pass.**
-- No `|cffff0000KickCD schema error|r:` lines print. `Helpers.ValidateSchema` (in `settings/Panel.lua`) runs at panel-register time and emits red error lines for any malformed row — a healthy build is silent here. Any error means a recent schema change shipped a malformed row.
+- No `schema error` lines print. The Options descriptor's `validate` hook runs the schema seam's `Store.Validate` (`LibKa0s-Schema-1.0`, wired in `settings/OptionsSetup.lua`) at panel-register time and emits red error lines for any malformed row or a stored path that does not resolve against the defaults — a healthy build is silent here. Any error means a recent schema change shipped a malformed row.
 
 ### 18. LSM dropdown rendering
 

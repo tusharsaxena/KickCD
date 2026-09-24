@@ -191,7 +191,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (25)
+### test_units.lua (26)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -207,11 +207,12 @@ badge and any count quoted in the docs must agree with it.
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 - CopyStyling carries every icons, castbar, label.style and label.show row onto focus
 - CopyStyling's copy is deep: focus gets its own color tables
-- CopyStyling writes every copied row, and the link, through Helpers.Set
+- CopyStyling writes every copied row, and the link, as ONE Store.SetMany
 - CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
 - CopyStyling announces each section once and refreshes the panels structurally once
 - CopyStyling logs ONE [Set] summary line counting the rows it changed
-- CopyStyling still validates and runs onChange per row with the log muted
+- CopyStyling still runs onChange per row with the log muted
+- a CopyStyling the seam refuses writes nothing at all
 - units.focus.link is a General > Units row, drawn by the tab's own tick
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
 - the Units tab's tick writes the link through Helpers.SetAndRefresh
@@ -219,14 +220,16 @@ badge and any count quoted in the docs must agree with it.
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (36)
+### test_schema.lua (38)
 
 - Settings.Schema is assembled from the settings/* files
-- Helpers.ValidateSchema reports zero malformed rows
+- Validate reports 0 errors on the shipped schema
+- every stored row resolves against DEFAULT_PROFILE
+- every row's panel and section are known
 - Every schema row has a string path and a known type
-- Helpers.Resolve walks a dotted path into db.profile
+- Store.Get walks a dotted path into db.profile
 - icons/castbar/label schema rows are unit-scoped and valid
-- Helpers.FindSchema locates a row by path
+- Store.FindRow locates a row by path
 - General exposes focus rows; unit-selector panels still filter them out
 - label panel carries per-unit label rows; General no longer does
 - every label-panel row's default is a member of its static values list
@@ -257,6 +260,19 @@ badge and any count quoted in the docs must agree with it.
 - a tab that mixes kinds of control carries a subgroup on every row
 - a single-subject tab draws NO subsection heading
 - no page draws a hand-rolled heading in place of H.Section
+
+### test_schema_store.lua (10)
+
+- the settings seam is a LibKa0s-Schema-1.0 instance
+- a write announces CONFIG_CHANGED once with the row's section
+- `/kcd set enabled false` stands the addon down in the same turn
+- Copy styling is one SetMany: one [Set] copy target→focus: N rows line, each section announced once
+- a bad value in a batch writes nothing
+- an unknown path is refused, never stored
+- a stored table is a copy
+- a raising onChange propagates after the store
+- degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
+- degraded: Store.Set on any other composed path is refused
 
 ### test_database.lua (25)
 
@@ -322,7 +338,7 @@ badge and any count quoted in the docs must agree with it.
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
 - Addon SendMessage reaches a registered module target
-- Coalesced holds a nil-section announcement and sends it once, as nil
+- a batch holds a nil-section announcement and sends it once, as nil
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
 - a string method is dispatched as target:Method(message, payload)
 - a registration with no handler calls the method named after the message
@@ -874,8 +890,8 @@ badge and any count quoted in the docs must agree with it.
 
 ### test_settings_log.lua (20)
 
-- Helpers.Set logs one debounced [Set] line with the settled value
-- Helpers.Set formats an RGBA table compactly
+- Store.Set logs one debounced [Set] line with the settled value
+- Store.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
 - the castbar page's Defaults logs ONE [Set] reset line counting the rows it changed
@@ -886,8 +902,8 @@ badge and any count quoted in the docs must agree with it.
 - nested bulk acts log ONE line, the outermost's, with every level's rows
 - the per-row [Set] line comes back after a Defaults, even one whose row raised
 - Reset all logs ONE line in total, the profile handler's, counting the rows it changed
-- with LibKa0s absent, Reset all logs exactly one line, the profile handler's, with the rows it changed
-- with LibKa0s absent, a Reset all that reset no profile logs the bracket's own line
+- with LibKa0s absent, Reset all logs only the profile handler's line, with no count
+- with LibKa0s absent, a Reset all that reset no profile still closes its bracket
 - a profile reset driven straight at the db logs its one line with no count
 - a count taken for a reset that raised does not leak into the next reset
 - a profile copy logs one [Set] copied line and announces the profile that is active
@@ -1099,7 +1115,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (48)
+### test_slash.lua (49)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1127,8 +1143,9 @@ badge and any count quoted in the docs must agree with it.
 - bare /kcd opens the settings landing page through `config`
 - whitespace-only /kcd is bare and reaches `config` too
 - with LibKa0s absent bare /kcd still reaches `config`
-- /kcd lock with no `locked` row writes nothing and says the settings layer is not ready
-- with LibKa0s absent /kcd lock and /kcd toggle write nothing
+- /kcd lock with no `locked` row still writes it, through the seam's writeThrough
+- /kcd lock before the settings layer is up writes nothing and says why
+- with LibKa0s absent /kcd lock and /kcd toggle still write, through the stub's writeThrough
 - the degraded stub carries no copy of the row formatter or the parser
 - every string the Slash CLI renders resolves to prose, not to its own key
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
@@ -1255,7 +1272,7 @@ badge and any count quoted in the docs must agree with it.
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
-### test_surface_parity.lua (7)
+### test_surface_parity.lua (8)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1263,6 +1280,7 @@ badge and any count quoted in the docs must agree with it.
 - the DebugLog stub carries the whole live surface
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
+- the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 
 ### test_doc_structure.lua (3)
@@ -1318,8 +1336,9 @@ badge and any count quoted in the docs must agree with it.
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_locale.lua | 15 |
-| test_units.lua | 25 |
-| test_schema.lua | 36 |
+| test_units.lua | 26 |
+| test_schema.lua | 38 |
+| test_schema_store.lua | 10 |
 | test_database.lua | 25 |
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
@@ -1360,16 +1379,16 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 2 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 48 |
+| test_slash.lua | 49 |
 | test_disabled.lua | 17 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
 | test_launcher.lua | 30 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 7 |
+| test_surface_parity.lua | 8 |
 | test_doc_structure.lua | 3 |
 | test_lintconfig.lua | 4 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1110** |
+| **Total** | **1125** |

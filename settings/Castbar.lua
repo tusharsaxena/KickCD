@@ -21,11 +21,13 @@
 local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
-local Schema = NS.Settings.Schema
+local Store  = NS.Settings.Store
 
-local function add(t) Schema[#Schema + 1] = t end
+-- Through the seam's registry (settings/SchemaSetup.lua), so Store.FindRow
+-- indexes the row the moment it lands.
+local function add(t) Store.AddRows({ t }) end
 
--- Every schema row's write goes through Helpers.Set, which fires
+-- Every schema row's write goes through NS.Settings.Store.Set, which fires
 -- Ka0s_KickCD_ConfigChanged { section = "castbar" }; the Castbar module
 -- subscribes and re-applies its config from the bus listener. So no
 -- row in this file needs an onChange purely for "redraw the live
@@ -54,6 +56,14 @@ local GROW_OPTIONS_FOR_ORIENTATION = {
 local function growOptionsFor(orientation)
     return GROW_OPTIONS_FOR_ORIENTATION[orientation]
         or GROW_OPTIONS_FOR_ORIENTATION.HORIZONTAL
+end
+
+--- Whether `grow` is one of the directions `orientation` offers.
+local function onAxis(orientation, grow)
+    for _, item in ipairs(growOptionsFor(orientation)) do
+        if item.value == grow then return true end
+    end
+    return false
 end
 
 -- Per-unit row generation ---------------------------------------------
@@ -118,24 +128,27 @@ add{
     sorting = { "HORIZONTAL", "VERTICAL" },
     -- Reset growDirection to the new orientation's canonical default
     -- so we can never end up with an inconsistent pair (e.g. a
-    -- horizontal bar with growDirection="UP"). H.Set fires
-    -- Ka0s_KickCD_ConfigChanged a second time, which re-runs ApplyConfig
-    -- with both fields consistent — the transient state from the
-    -- orientation write alone is overwritten before any frame
-    -- renders. RefreshAllPanels then re-evaluates the growDirection
-    -- dropdown's `values` function so its option list rebuilds for
-    -- the new axis and shows the freshly-reset selection.
+    -- horizontal bar with growDirection="UP"). The write goes through
+    -- Store.Set, which fires Ka0s_KickCD_ConfigChanged a second time and
+    -- re-runs ApplyConfig with both fields consistent.
     --
-    -- No manual ApplyConfig / Reskin call here: Helpers.Set has
-    -- already fired Ka0s_KickCD_ConfigChanged { section = "castbar" } for
-    -- the orientation write, and the secondary H.Set above fires it
-    -- a second time for growDirection. Castbar:OnConfigChanged
-    -- subscribes and reapplies — adding a direct call would just
-    -- triple-dispatch the same work.
+    -- ONLY WHEN THE STORED DIRECTION IS NOT ON THE NEW AXIS. A pair that is
+    -- already consistent is left alone, and that is load-bearing for Copy
+    -- styling: it is one Store.SetMany, which stores every row and THEN runs
+    -- every onChange, so by the time this runs the copied growDirection is
+    -- already stored. Resetting it unconditionally would overwrite the value
+    -- the copy just carried across. Switching axis still resets it, because
+    -- no direction is valid on both axes.
+    --
+    -- No manual ApplyConfig / Reskin call here: the seam has already fired
+    -- Ka0s_KickCD_ConfigChanged { section = "castbar" } for the orientation
+    -- write. Castbar:OnConfigChanged subscribes and reapplies -- adding a
+    -- direct call would just double-dispatch the same work.
     onChange = function(value)
         local newGrow = GROW_DEFAULT_FOR_ORIENTATION[value]
-        if newGrow then
-            H.Set("units."..unit..".castbar.growDirection", "castbar", newGrow)
+        local growPath = "units."..unit..".castbar.growDirection"
+        if newGrow and not onAxis(value, Store.Get(growPath)) then
+            Store.Set(growPath, newGrow)
         end
         -- SCALAR, not structural, and the difference now matters. The library's
         -- dropdown refresher re-runs its `values` function before re-reading

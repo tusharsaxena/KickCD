@@ -372,7 +372,7 @@ end
 --- Log a rebuild summary, but only when the result MATERIALLY changed since
 --- the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
 --- the Master scale / alpha sliders are `general`-section, so dragging one
---- fires Helpers.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
+--- fires Store.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
 --- changes the watched spell list. Without this gate that produced ~20
 --- identical `[Cooldowns] rebuild …` lines/sec — exactly the per-gesture spam
 --- §9 forbids. Signature = class/spec + both spellID lists; built only when

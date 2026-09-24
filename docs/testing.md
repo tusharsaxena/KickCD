@@ -120,7 +120,10 @@ local inst = T.load(true, false, nil, { libFiles = {} })   -- LibKa0s absent
 
 `tests/test_surface_parity.lua` carries one `Kit.assertSurfaceParity` case per
 adopted seam whose degradation stub answers members — Core (the namespace and the
-printer), DebugLog, Slash (both `NS.Slash` and `NS.Slash.cli`) and Options —
+printer), DebugLog, Slash (both `NS.Slash` and `NS.Slash.cli`), Options and
+Schema (the instance against a live instance with the two-table form, and the stub
+library `NS.Settings.HostSchemaStub` against `LibKa0s-Schema-1.0` by name, with
+`STRINGS` ignored because the stub's refusals are this addon's own words) —
 reporting **every** divergence in one message rather than the first
 (testing-§8, anti-pattern #56). The question it asks is "what does the library
 export today?" rather than "what did somebody remember to list": a re-vendor that

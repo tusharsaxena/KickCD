@@ -12,6 +12,7 @@ local test, assertEqual, assertTrue, assertNil, assertNear, assertFalse =
     T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear, T.assertFalse
 local NS = T.NS
 local H  = NS.Settings.Helpers
+local S  = NS.Settings.Store
 
 -- ── the Blizzard canvas contract (Options minor 5) ──────────────────────────
 --
@@ -58,7 +59,7 @@ local panelSeq = 0
 local function renderRow(path)
     panelSeq = panelSeq + 1
     local ctx = H.CreatePanel("KickCDTestPanel" .. panelSeq, "T", { pageKey = "test" })
-    local row = H.FindSchema(path)
+    local row = S.FindRow(path)
     assertTrue(row ~= nil, "no schema row at " .. path)
     local widget = H.RenderField(ctx, row, nil, 0.5)
     assertTrue(widget ~= nil, "RenderField returned nothing for " .. path)
@@ -81,8 +82,8 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
     end
     -- ...and the host's own decorations sit on the SAME table.
     for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
-                         "RenderUnitPanel", "PartitionUnitRows", "SetRows", "Coalesced", "AnchorValues", "AnchorOrder",
-                         "BuildMainContent", "ValidateSchema", "SchemaForPanel" }) do
+                         "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
+                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged" }) do
         assertEqual(type(H[m]), "function", "host decoration missing: " .. m)
     end
 end)
@@ -121,12 +122,12 @@ test("every page registers exactly once, through the library's registry", functi
     -- bootstrap frame to settings/Panel.lua.
     local parents, subs = 0, 0
     local inst = T.load(true, true, function(mocks)
-        local S = mocks.Settings
-        local realParent = S.RegisterCanvasLayoutCategory
-        local realSub    = S.RegisterCanvasLayoutSubcategory
-        S.RegisterCanvasLayoutCategory =
+        local Stg = mocks.Settings
+        local realParent = Stg.RegisterCanvasLayoutCategory
+        local realSub    = Stg.RegisterCanvasLayoutSubcategory
+        Stg.RegisterCanvasLayoutCategory =
             function(...) parents = parents + 1; return realParent(...) end
-        S.RegisterCanvasLayoutSubcategory =
+        Stg.RegisterCanvasLayoutSubcategory =
             function(...) subs = subs + 1; return realSub(...) end
     end)
 
@@ -236,10 +237,10 @@ test("ticking a checkbox writes through the addon's single write seam", function
     -- SetAndRefresh is what fires CONFIG_CHANGED with the row's section and runs
     -- the row's onChange — the same path `/kcd set locked true` takes. Two write
     -- paths is two behaviors, and only one of them gets tested.
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
-    assertEqual(H.Get("locked"), not before, "the click must reach the profile")
+    assertEqual(S.Get("locked"), not before, "the click must reach the profile")
     H.SetAndRefresh("locked", before)
 end)
 
@@ -251,40 +252,40 @@ test("a checkbox write fires CONFIG_CHANGED with the row's section", function()
     target:RegisterMessage(T.NS.MSG.CONFIG_CHANGED, function(_, payload)
         seen = payload and payload.section
     end)
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
     target:UnregisterMessage(T.NS.MSG.CONFIG_CHANGED)
     H.SetAndRefresh("locked", before)
-    assertEqual(seen, H.FindSchema("locked").section,
+    assertEqual(seen, S.FindRow("locked").section,
         "the panel write must publish the row's own section")
 end)
 
 test("dragging a slider commits on mouse-up", function()
     local path = "units.target.icons.primarySize"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w, row = renderRow(path)
     w:__fire("OnMouseUp", row.min + (row.step or 1))
-    assertNear(H.Get(path), row.min + (row.step or 1), 1e-6)
+    assertNear(S.Get(path), row.min + (row.step or 1), 1e-6)
     H.SetAndRefresh(path, before)
 end)
 
 test("choosing a dropdown option stores the option KEY, never its index", function()
     local path = "units.target.icons.anchor"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w, row = renderRow(path)
     local target = row.sorting[2]
     w:__fire("OnValueChanged", target)
-    assertEqual(H.Get(path), target)
+    assertEqual(S.Get(path), target)
     H.SetAndRefresh(path, before)
 end)
 
 test("confirming a color stores the keyed shape the modules read", function()
     local path = "units.target.icons.borderColor"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w = renderRow(path)
     w:__fire("OnValueConfirmed", 0.25, 0.5, 0.75, 0.5)
-    local stored = H.Get(path)
+    local stored = S.Get(path)
     assertNear(stored.r, 0.25, 1e-9)
     assertNear(stored.a, 0.5, 1e-9, "alpha must survive the picker")
     assertNil(stored[1], "colorEncode must produce the keyed shape")
@@ -324,7 +325,7 @@ test("a color drag commits once per throttle window", function()
     -- Characterization: green behind v1.56.0's own armed flag, red under a
     -- pre-minor-31 payload paired with a nil-returning scheduleTimer.
     local path = "units.target.icons.borderColor"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w = renderRow(path)
     T.mocks.__flushTimers()
     local real, commits = H.SetAndRefresh, 0
@@ -340,14 +341,14 @@ test("a color drag commits once per throttle window", function()
     H.SetAndRefresh = real
     assert(ok, err)
     assertEqual(commits, 1, "ten drag ticks inside one window must commit exactly once")
-    assertNear(H.Get(path).r, 1.0, 1e-9, "the commit must carry the LAST drag value")
+    assertNear(S.Get(path).r, 1.0, 1e-9, "the commit must carry the LAST drag value")
     H.SetAndRefresh(path, before)
 end)
 
 test("an external write re-syncs an open widget through its refresher", function()
     -- options-ui-§11: scalar widgets refresh IN PLACE via a per-widget updater
     -- closure. A refresh does not rebuild the page.
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w, _, ctx = renderRow("locked")
     H.SetAndRefresh("locked", not before)
     for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
@@ -557,7 +558,7 @@ function()
     -- A row that SURVIVES the library's absence, so the only thing under test is
     -- whether the CLI can reach anything at all.
     local path = "units.target.enabled"
-    assertTrue(inst.NS.Settings.Helpers.FindSchema(path) ~= nil,
+    assertTrue(inst.NS.Settings.Store.FindRow(path) ~= nil,
         "precondition: this witness must be a host-declared row, present on both paths")
 
     local lines = {}
@@ -567,7 +568,7 @@ function()
     inst.NS:OnSlashCommand("set " .. path .. " false")
     frame.AddMessage = orig
 
-    assertEqual(inst.NS.Settings.Helpers.Get(path), true,
+    assertEqual(inst.NS.Settings.Store.Get(path), true,
         "the degraded `/kcd set` must not write -- for a surviving row either")
     local said = false
     for _, line in ipairs(lines) do
@@ -581,6 +582,7 @@ test("the degraded stub keeps the global reset real", function()
     -- needs "reset everything", and the schema loaded fine, so it still works.
     local inst = T.load(true, false, nil, { libFiles = {} })
     local H2 = inst.NS.Settings.Helpers
+    local S2 = inst.NS.Settings.Store
     assertEqual(type(H2.RestoreAllDefaults), "function")
     -- A HOST-DECLARED row, deliberately: `locked` used to be the witness here and
     -- is a COMPOSED row now, so it does not exist on the degraded path at all
@@ -589,9 +591,9 @@ test("the degraded stub keeps the global reset real", function()
     -- on both paths, which is what makes it a witness for the reset itself.
     local path = "units.target.enabled"
     inst.NS.Settings.Helpers.SetAndRefresh(path, false)
-    assertEqual(H2.Get(path), false, "precondition: the write landed")
+    assertEqual(S2.Get(path), false, "precondition: the write landed")
     H2.RestoreAllDefaults()
-    assertEqual(H2.Get(path), inst.NS.Settings.Helpers.FindSchema(path).default,
+    assertEqual(S2.Get(path), inst.NS.Settings.Store.FindRow(path).default,
         "the reset must still reach the profile with no panel at all")
 end)
 
@@ -655,8 +657,8 @@ end)
 test("the linked-Focus note opens General on its Units tab", function()
     local opened
     local inst = T.load(true, true, function(mocks)
-        local S = mocks.Settings
-        S.OpenToCategory = function(id) opened = id end
+        local Stg = mocks.Settings
+        Stg.OpenToCategory = function(id) opened = id end
     end)
     local iNS = inst.NS
     local iH  = iNS.Settings.Helpers
@@ -1007,7 +1009,7 @@ test("the panel's schema reader hands back a stored FALSE as false, not nil", fu
     -- red under: restoring `H and H.Get and H.Get(path) or nil` in OptionsSetup.lua
     local read = NS.Settings.ReadForPanel
     assertEqual(type(read), "function", "the reader must be published to be pinnable")
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     H.SetAndRefresh("locked", false)
     local v = read("locked")
     H.SetAndRefresh("locked", before)

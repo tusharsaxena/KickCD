@@ -18,9 +18,11 @@
 local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
-local Schema = NS.Settings.Schema
+local Store  = NS.Settings.Store
 
-local function add(t) Schema[#Schema + 1] = t end
+-- Through the seam's registry (settings/SchemaSetup.lua), so Store.FindRow
+-- indexes the row the moment it lands.
+local function add(t) Store.AddRows({ t }) end
 
 -- Per-unit row generation ---------------------------------------------
 -- Every row below is built once per unit in NS.Units.LIST (target,

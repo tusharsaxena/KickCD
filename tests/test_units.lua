@@ -301,13 +301,12 @@ local function seedTarget(NS)
     t.castbar.growDirection = "DOWN"
     t.label.style.size = 17
     t.label.show = false
-    local H = NS.Settings.Helpers
-    H.Set(firstColorRow(NS, "units.target.icons."), "icons", { r = 0.1, g = 0.2, b = 0.3, a = 0.4 })
+    NS.Settings.Store.Set(firstColorRow(NS, "units.target.icons."), { r = 0.1, g = 0.2, b = 0.3, a = 0.4 })
 end
 
 test("CopyStyling carries every icons, castbar, label.style and label.show row onto focus", function()
     local NS = T.load(true).NS
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     seedTarget(NS)
     local f = NS.db.profile.units.focus
     f.link, f.enabled, f.label.text, f.label.show = true, false, "MINE", true
@@ -318,7 +317,7 @@ test("CopyStyling carries every icons, castbar, label.style and label.show row o
     local rows = copiedRows(NS)
     T.assertTrue(#rows > 100, "sanity: the copy carries every per-unit appearance row")
     for _, rel in ipairs(rows) do
-        T.assertTrue(deepEqual(H.Get("units.focus." .. rel), H.Get("units.target." .. rel)),
+        T.assertTrue(deepEqual(S.Get("units.focus." .. rel), S.Get("units.target." .. rel)),
             "focus." .. rel .. " was not copied from target")
     end
     assertEqual(f.label.show, false, "label.show is snapshotted: it follows the link")
@@ -332,42 +331,51 @@ test("CopyStyling's copy is deep: focus gets its own color tables", function()
     local NS = T.load(true).NS
     seedTarget(NS)
     NS.Units.CopyStyling("target", "focus")
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     local rel = firstColorRow(NS, "units.target.icons."):match("^units%.target%.(.+)$")
-    local src, dst = H.Get("units.target." .. rel), H.Get("units.focus." .. rel)
+    local src, dst = S.Get("units.target." .. rel), S.Get("units.focus." .. rel)
     T.assertTrue(src ~= dst, "a copied color must not alias target's table")
     dst.r = 0.9
     assertEqual(src.r, 0.1, "editing focus's copy must not reach target")
 end)
 
-test("CopyStyling writes every copied row, and the link, through Helpers.Set", function()
+test("CopyStyling writes every copied row, and the link, as ONE Store.SetMany", function()
     -- red under: the old whole-table copy (`dst.icons = DeepCopy(src.icons)`),
-    -- which wrote around the helper and ran no row's onChange.
+    -- which wrote around the seam and ran no row's onChange; or a row-by-row
+    -- copy, which a refusal half-way through would leave half-written.
     local NS = T.load(true).NS
-    local H = NS.Settings.Helpers
-    local seen = {}
-    local real = H.Set
-    H.Set = function(path, ...) seen[#seen + 1] = path; return real(path, ...) end
+    local S = NS.Settings.Store
+    local batches, seen = 0, {}
+    local real = S.SetMany
+    S.SetMany = function(entries, opts)
+        batches = batches + 1
+        for _, e in ipairs(entries) do seen[#seen + 1] = e.path end
+        assertEqual(opts and opts.act, "copy", "the batch is one named act")
+        assertEqual(opts and opts.scope, "target\226\134\146focus", "scoped by the two units")
+        return real(entries, opts)
+    end
     local ok, err = pcall(NS.Units.CopyStyling, "target", "focus")
-    H.Set = real
+    S.SetMany = real
     if not ok then error(err, 0) end
+    assertEqual(batches, 1, "one batch for the whole copy")
     local written = {}
     for _, p in ipairs(seen) do written[p] = true end
     for _, rel in ipairs(copiedRows(NS)) do
-        T.assertTrue(written["units.focus." .. rel], "units.focus." .. rel .. " bypassed Helpers.Set")
+        T.assertTrue(written["units.focus." .. rel], "units.focus." .. rel .. " is not in the batch")
     end
-    T.assertTrue(written["units.focus.link"], "the link must be written through its row")
+    assertEqual(seen[#seen], "units.focus.link", "the link is written, and written last")
     T.assertNil(written["units.focus.label.text"], "label.text must not be written at all")
 end)
 
 test("CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection", function()
-    -- orientation's onChange resets growDirection to that axis's default. The
-    -- copy walks rows in declaration order, orientation first, so the copied
-    -- growDirection lands after it and wins.
+    -- orientation's onChange resets growDirection to that axis's default when
+    -- the stored direction is off the axis. The copy is one SetMany, which
+    -- stores every row BEFORE any onChange runs, so by the time orientation
+    -- reacts the copied growDirection is already stored, on the axis, and kept.
     local NS = T.load(true).NS
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     seedTarget(NS)
-    local def = H.FindSchema("units.focus.castbar.orientation")
+    local def = S.FindRow("units.focus.castbar.orientation")
     local real, ran = def.onChange, false
     def.onChange = function(...) ran = true; return real(...) end
     local ok, err = pcall(NS.Units.CopyStyling, "target", "focus")
@@ -417,15 +425,15 @@ test("CopyStyling logs ONE [Set] summary line counting the rows it changed", fun
     -- The owner's call: a copy is one act of ~111 rows, and ~111 [Set] lines
     -- bury the log and evict older lines from the 500-line buffer. Its N is the
     -- rows whose value the copy changed, not the rows it walked
-    -- (debug-logging-§10). red under: SetRows letting each row's Helpers.Set
+    -- (debug-logging-§10). red under: a batch with no `act`, letting each row's write
     -- log, or a summary carrying the walk's count.
     local inst = T.load(true, true)
     local NS = inst.NS
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     seedTarget(NS)
     local want = NS.db.profile.units.focus.link ~= false and 1 or 0   -- the link, when it flips
     for _, rel in ipairs(copiedRows(NS)) do
-        if not sameValue(H.Get("units.target." .. rel), H.Get("units.focus." .. rel)) then
+        if not sameValue(S.Get("units.target." .. rel), S.Get("units.focus." .. rel)) then
             want = want + 1
         end
     end
@@ -449,32 +457,44 @@ test("CopyStyling logs ONE [Set] summary line counting the rows it changed", fun
     T.assertNil(lines[1]:find("units.focus.", 1, true), "and no per-row path")
 end)
 
-test("CopyStyling still validates and runs onChange per row with the log muted", function()
-    -- The mute is the log's alone: a row's write, its onChange and the helper's
-    -- schema lookup all still happen per row.
+test("CopyStyling still runs onChange per row with the log muted", function()
+    -- The mute is the log's alone: every row's onChange still runs, once.
     local inst = T.load(true, true)
     local NS = inst.NS
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     NS.State.debug = true
-    local def = H.FindSchema("units.focus.castbar.orientation")
+    local def = S.FindRow("units.focus.castbar.orientation")
     local realChange, ran = def.onChange, 0
     def.onChange = function(...) ran = ran + 1; return realChange(...) end
-    local sets, realSet = 0, H.Set
-    H.Set = function(...) sets = sets + 1; return realSet(...) end
     local ok, err = pcall(NS.Units.CopyStyling, "target", "focus")
-    def.onChange, H.Set = realChange, realSet
+    def.onChange = realChange
     NS.State.debug = false
     if not ok then error(err, 0) end
     assertEqual(ran, 1, "orientation's onChange ran once")
-    T.assertTrue(sets >= #copiedRows(NS) + 1, "every row still went through Helpers.Set")
     -- And a later single write logs its own [Set] line again: the mute is over.
     inst.mocks.__flushTimers()
     NS.State.debug = true
     NS.DebugLog:Clear()
-    H.Set("locked", "general", true)
+    S.Set("locked", true)
     inst.mocks.__flushTimers()
     NS.State.debug = false
     T.assertTrue(NS.DebugLog:FindLine("[Set] locked = true"), "the per-row log is back after the copy")
+end)
+
+test("a CopyStyling the seam refuses writes nothing at all", function()
+    -- All or nothing (LibKa0s-Schema-1.0 SetMany). red under: a row-by-row copy,
+    -- which stores every row ahead of the refused one.
+    local NS = T.load(true).NS
+    local S = NS.Settings.Store
+    seedTarget(NS)
+    local row = S.FindRow("units.focus.castbar.growDirection")
+    row.validate = function() return false, "refused for the test" end
+    local before = NS.Util.DeepCopy(NS.db.profile.units.focus)
+    local ok, copiedOk = pcall(NS.Units.CopyStyling, "target", "focus")
+    row.validate = nil
+    T.assertTrue(ok, "a refusal is an answer, not a raise")
+    assertEqual(copiedOk, false, "and CopyStyling says the copy did not run")
+    T.assertTrue(deepEqual(NS.db.profile.units.focus, before), "focus is exactly as it was")
 end)
 
 test("units.focus.link is a General > Units row, drawn by the tab's own tick", function()
@@ -482,7 +502,8 @@ test("units.focus.link is a General > Units row, drawn by the tab's own tick", f
     -- leaves it outside /kcd get|set|list|reset and the page's Defaults.
     local NS = T.load(true).NS
     local H = NS.Settings.Helpers
-    local def = H.FindSchema("units.focus.link")
+    local S = NS.Settings.Store
+    local def = S.FindRow("units.focus.link")
     T.assertTrue(def ~= nil, "units.focus.link must be a schema row")
     assertEqual(def.type, "bool")
     assertEqual(def.panel, "general")
@@ -491,7 +512,7 @@ test("units.focus.link is a General > Units row, drawn by the tab's own tick", f
     assertEqual(def.default, NS.DEFAULT_PROFILE.units.focus.link)
     assertEqual(def.skipRender, true, "the tab draws the tick itself, paired with Copy styling")
     assertEqual(type(def.onChange), "function", "the structural refresh is the row's")
-    T.assertNil(H.FindSchema("units.target.link"), "target is never linked, so it has no row")
+    T.assertNil(S.FindRow("units.target.link"), "target is never linked, so it has no row")
     T.assertNil(H.RestoreUnitLinks, "the profile reset and the row's own reset replace RestoreUnitLinks")
 end)
 

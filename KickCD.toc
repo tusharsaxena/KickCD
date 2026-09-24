@@ -105,6 +105,8 @@ modules\Castbar_Debug.lua
 modules\UnitLabel.lua
 
 # Settings (last — depend on everything else being initialized)
+# LOAD-BEARING POSITION: creates NS.Settings.Schema (the rows array) and NS.Settings.Store, which both descriptors and every page file's add/AddComposed reach at load
+settings\SchemaSetup.lua
 settings\Slash.lua
 # LOAD-BEARING POSITION: this file creates NS.Settings and publishes the
 # LibKa0s-Options-1.0 instance on it as NS.Settings.Helpers. settings/Panel.lua,

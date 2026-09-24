@@ -1,13 +1,14 @@
 -- tests/test_surface_parity.lua — one stub-surface parity case per adopted LibKa0s seam
 -- (testing-§8, anti-pattern #56).
 --
--- KickCD adopts thirteen LibKa0s majors (docs/ARCHITECTURE.md, External dependencies); these six
+-- KickCD adopts fourteen LibKa0s majors (docs/ARCHITECTURE.md, External dependencies); these seven
 -- have a degradation stub this file holds to the live surface:
 --
 --   Core      core/CoreSetup.lua        NS.IsConcatSafe / NS.SafeToString / NS.Util.print
 --   DebugLog  core/DebugLogSetup.lua    NS.DebugLog
 --   Slash     settings/Slash.lua        NS.Slash.cli
 --   Options   settings/OptionsSetup.lua NS.Settings.Helpers
+--   Schema    settings/SchemaSetup.lua  NS.Settings.Store / NS.Settings.HostSchemaStub
 --   Perf      core/PerfSetup.lua        NS.Perf
 --   Compat    core/Compat.lua           NS.Compat (reader and guard arms, member by member)
 --
@@ -66,7 +67,7 @@ test("sanity: the degraded arm really has no LibKa0s", function()
     -- Without this, every case below could be comparing two live loads and passing for the most
     -- boring possible reason.
     for _, major in ipairs({ "LibKa0s-Core-1.0", "LibKa0s-DebugLog-1.0", "LibKa0s-Slash-1.0",
-                             "LibKa0s-Options-1.0", "LibKa0s-Perf-1.0",
+                             "LibKa0s-Options-1.0", "LibKa0s-Schema-1.0", "LibKa0s-Perf-1.0",
                              "LibKa0s-Compat-1.0" }) do
         assertTrue(live.mocks.LibStub(major, true) ~= nil, major .. " must be live in the live arm")
         assertTrue(degraded.mocks.LibStub(major, true) == nil,
@@ -246,6 +247,24 @@ test("the Options stub carries every member the host calls", function()
     -- red under: deleting `Helpers.__panelFor` from settings/OptionsSetup.lua's stub
     assertTrue(type(degraded.NS.Settings.Helpers.__panelFor) == "function",
         "the stub owes __panelFor: settings/Panel_Widgets.lua:138 calls it")
+end)
+
+-- ── Schema ──────────────────────────────────────────────────────────────────
+--
+-- settings/SchemaSetup.lua's degradation stub is the one LibKa0s docs/api/Schema/version-2-docs.md
+-- prescribes ("The degradation stub"): write-completing and log-silent. It is pinned on BOTH levels
+-- the document names. The INSTANCE with the kit's two-table form -- the major's members-2.json
+-- lists lib-level members only, so there is no name to look an instance up by -- against the live
+-- instance the live arm built. The stub LIBRARY by name, with `STRINGS` ignored: its refusals are
+-- this addon's own words (locales/enUS.lua), never a copy of the library's constants.
+
+test("the Schema stub carries the whole live surface, instance and library", function()
+    -- red under: deleting `SetMany` from settings/SchemaSetup.lua's stub `addWrites`
+    assertTrue(degraded.NS.Settings.SchemaLib == degraded.NS.Settings.HostSchemaStub,
+        "sanity: the degraded arm's seam is the host's stub")
+    T.assertSurfaceParity(live.NS.Settings.Store, degraded.NS.Settings.Store,
+        "schema instance vs host stub")
+    assertSurfaceParity(live.NS.Settings.HostSchemaStub, "LibKa0s-Schema-1.0", { "STRINGS" })
 end)
 
 -- ── Compat ──────────────────────────────────────────────────────────────────

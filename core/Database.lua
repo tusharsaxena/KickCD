@@ -854,14 +854,16 @@ end
 -- ---------------------------------------------------------------------------
 
 -- The rows a profile reset changed, counted before it ran by the Reset all path
--- that drove it (settings/Panel.lua Helpers.ResetProfileCounted), and taken once.
--- nil for a reset driven straight at the db -- AceDBOptions' Reset Profile, a
--- `/run` -- which nothing counted: the line then carries no count rather than a
--- wrong one (debug-logging-§10). Never the schema's size: that is every row the
--- profile stores, not the rows the reset changed.
+-- that drove it (settings/OptionsSetup.lua, through the schema seam's
+-- Store.ResetCounted), and taken once. nil for a reset driven straight at the db
+-- -- AceDBOptions' Reset Profile, a `/run` -- which nothing counted: the line
+-- then carries no count rather than a wrong one (debug-logging-§10). Never the
+-- schema's size: that is every row the profile stores, not the rows the reset
+-- changed. Taking it also tells an open bulk bracket that this act reset the
+-- profile, so the handler's line is the act's only one.
 local function consumeResetCount()
-    local S = NS.Settings
-    return S and S.ConsumeResetCount and S.ConsumeResetCount() or nil
+    local S = NS.Settings and NS.Settings.Store
+    return S and S.ConsumeResetCount() or nil
 end
 
 -- The one line a profile event logs, worded by the event (debug-logging-§10). A

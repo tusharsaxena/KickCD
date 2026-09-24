@@ -241,92 +241,32 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
 
--- Look up `path` in the schema and write `value` through the same
--- path the schema widgets use: Helpers.Set (which fires CONFIG_CHANGED
--- with def.section), then def.onChange, then RefreshAllPanels so any
--- open settings tab reflects the new value. Returns true on success,
--- false if no schema row matches `path`.
---
--- Lets slash commands that mutate schema-backed fields (e.g. `/kcd
--- lock`, `/kcd debug log`) share a single write/notify/refresh code
--- path with `/kcd set <path> <value>` and the panel widgets — so a
--- future onChange added to a row doesn't silently diverge between
--- code paths.
--- The write half every row write shares: Helpers.Set (the write, and the
--- CONFIG_CHANGED for the row's section), then the row's onChange. onChange gets
--- the value it was set to and the value it replaced, so a costly reaction (the
--- link row's structural refresh) can skip a write that changed nothing. Every
--- row write reaches onChange through here: panel widgets, `/kcd set`, both
--- Defaults paths and SetRows. The library never calls a row's onChange itself.
-local function writeRow(def, value)
-    local old = def.onChange and Helpers.Get(def.path)
-    Helpers.Set(def.path, def.section, value)
-    if def.onChange then
-        local ok, err = pcall(def.onChange, value, old)
-        if not ok and NS.Util then
-            NS.Util.print("onChange for " .. tostring(def.path)
-                              .. " failed: " .. tostring(err))
-        end
-    end
-end
-
+--- Write one schema row through the seam and repaint any open panel's values.
+---
+--- NS.Settings.Store.Set is the write (settings/SchemaSetup.lua): the refusal of
+--- an unknown path, the store, the row's onChange and the CONFIG_CHANGED for the
+--- row's section. This adds the one thing a panel needs on top, and only when
+--- the write landed. Answers the seam's own `ok, err, why`, so both descriptors'
+--- `set` hand a refusal straight back to the library that prints it.
+---
+--- SCALAR, never structural. A value write changes what a widget SHOWS; it
+--- does not make a row appear or vanish. A structural sweep here would clear
+--- and rebuild every rendered page on each committed change -- including the
+--- page holding the slider or the color swatch the user is still dragging,
+--- which is released back to AceGUI's pool mid-gesture. Structural refreshes
+--- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
+--- the `units.focus.link` row's onChange (settings/General.lua), because the
+--- link really does change what the unit pages draw.
 function Helpers.SetAndRefresh(path, value)
-    local def = Helpers.FindSchema(path)
-    if not def then return false end
-    writeRow(def, value)
-    -- SCALAR, never structural. A value write changes what a widget SHOWS; it
-    -- does not make a row appear or vanish. A structural sweep here would clear
-    -- and rebuild every rendered page on each committed change -- including the
-    -- page holding the slider or the color swatch the user is still dragging,
-    -- which is released back to AceGUI's pool mid-gesture. Structural refreshes
-    -- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
-    -- the `units.focus.link` row's onChange (settings/General.lua), because the
-    -- link really does change what the unit pages draw.
-    Helpers.RefreshScalars()
-    return true
+    local ok, err, why = NS.Settings.Store.Set(path, value)
+    if ok then Helpers.RefreshScalars() end
+    return ok, err, why
 end
 
---- Write several schema rows as ONE act, through the same seam as
---- SetAndRefresh: each row is Helpers.Set's write plus its onChange, in the
---- order given. Two differences, and both are why this exists. The bus is
---- COALESCED (Helpers.Coalesced), so each section is announced once, after the
---- last write, rather than once per row; and there is no panel refresh here --
---- the caller decides whether the batch is scalar or structural and does it once.
----
---- Its one caller is NS.Units.CopyStyling, whose hundred-odd rows would
---- otherwise fan out a hundred-odd CONFIG_CHANGED re-applies and scalar sweeps.
----
---- Handed a `summary`, the LOG is coalesced too: each row's [Set] line is
---- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
---- (marked ` (stopped by an error)` if a row raised)
---- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
---- bury the log and evict older lines from its capped buffer
---- (debug-logging-§10). N is the rows whose value the batch changed, not the
---- rows it walked. Only the log is muted: every row still writes through
---- Helpers.Set and runs its onChange, in order.
----
---- @param writes  table   { { path, value }, ... }; a path with no row is skipped
---- @param summary string? names the batch in its one [Set] line
---- @return number  how many rows were written
-function Helpers.SetRows(writes, summary)
-    local n = 0
-    local function writeAll()
-        for _, w in ipairs(writes) do
-            local def = Helpers.FindSchema(w[1])
-            if def then
-                writeRow(def, w[2])
-                n = n + 1
-            end
-        end
-    end
-    -- MuteSetLog logs the one line itself, so a row that raises still leaves the
-    -- line (marked) before the error reaches the caller. Nothing when this batch
-    -- ran inside another bulk act, which logs the sum.
-    Helpers.Coalesced(function()
-        if summary then Helpers.MuteSetLog(writeAll, summary) else writeAll() end
-    end)
-    return n
-end
+-- (The host's row-batch helper is gone, and writeRow with it. A batch is Store.SetMany now
+-- -- all or nothing, one bracket line with `act`, every onChange after every
+-- store, and one announcement per section -- and core/Units.lua's CopyStyling,
+-- its one caller, calls it directly.)
 
 -- Put every unit's icon grid back where it starts, then tell the icon module
 -- to re-anchor. The General page's "Reset position" button and

@@ -194,6 +194,9 @@ L["Setting not found: %s"]       = "Setting not found: %s"
 L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
 L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"
 L["Invalid value for %s"]        = "Invalid value for %s"
+-- The settings seam's third refusal, in the degradation stub's words
+-- (settings/SchemaSetup.lua): a stored row written before the db exists.
+L["Setting has nowhere to be stored yet: %s"] = "Setting has nowhere to be stored yet: %s"
 L["Allowed values: %s"]          = "Allowed values: %s"
 L["Cannot open settings during combat."] = "cannot open settings during combat — Blizzard's category-switch is protected"
 
