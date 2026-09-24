@@ -9,8 +9,8 @@
 --
 -- Why a separate file (not a slot in core/Util.lua):
 --   * Util.lua is a pile of dependency-free helpers; State.lua owns
---     the only side-effect frame at module load (the bootstrap
---     CreateFrame). Keeping it isolated makes the side effect
+--     the addon's combat listener (an AceEvent target armed from
+--     NS:OnInitialize). Keeping it isolated makes that side effect
 --     reviewable in one place.
 --   * Future shared state (e.g. an addon-wide "hostile target casting"
 --     flag, or per-spec resolved class/spec keys) lives here too.
@@ -138,7 +138,7 @@ end
 -- Bootstrap event listener
 -- ---------------------------------------------------------------------------
 --
--- One unnamed frame owns the canonical PLAYER_REGEN_* subscription.
+-- One AceEvent target owns the canonical PLAYER_REGEN_* subscription.
 -- We seed from InCombatLockdown() on PLAYER_LOGIN — at that moment
 -- the lockdown state is reliable (the regen events haven't begun
 -- racing yet). After login the flag is driven exclusively by the
@@ -146,12 +146,22 @@ end
 -- inside the PLAYER_REGEN_DISABLED handler can return false (the
 -- lockdown state lags the event by a frame) and would silently
 -- corrupt the flag. The events are the source of truth.
+--
+-- AN ACEEVENT TARGET, NOT A FRAME (events-frames-taint-§1: no private frame
+-- for ordinary event traffic). AceEvent is embedded directly rather than
+-- through NS.NewBusTarget because that helper is defined in core/KickCD.lua,
+-- which loads after this file. AceEvent-3.0 loads in the TOC's libs block
+-- before core/ and is not part of LibKa0s, so it is present on a degraded load.
+--
+-- REGISTERED IN State.Arm, NOT AT FILE LOAD, because the registration goes
+-- through NS.RegisterEventList (core/CoreSetup.lua, which also loads after this
+-- file). NS:OnInitialize calls Arm; ADDON_LOADED always precedes PLAYER_LOGIN,
+-- so the login seed is never missed.
 
-local boot = CreateFrame("Frame")
-boot:RegisterEvent("PLAYER_LOGIN")
-boot:RegisterEvent("PLAYER_REGEN_DISABLED")
-boot:RegisterEvent("PLAYER_REGEN_ENABLED")
-boot:SetScript("OnEvent", function(self, event)
+local boot = {}
+LibStub("AceEvent-3.0"):Embed(boot)
+
+local function onBootEvent(event)
     if event == "PLAYER_REGEN_DISABLED" then
         State.SetInCombat(true)
         if State.debug and NS and NS.Debug then NS.Debug("Combat", "entered") end
@@ -160,36 +170,48 @@ boot:SetScript("OnEvent", function(self, event)
         if State.debug and NS and NS.Debug then NS.Debug("Combat", "left") end
     elseif event == "PLAYER_LOGIN" then
         State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
-        -- PLAYER_LOGIN fires once per session; release the listener once
-        -- we've seeded the flag. (This used to cite core/LSMPatch.lua as the
-        -- other example of the pattern; that file is gone -- its wrapper is
-        -- lib.__PatchLSM30Border in LibKa0s now -- so this is the only
-        -- one-shot PLAYER_LOGIN listener left in the addon.)
-        State.__seeded = true
-        self:UnregisterEvent("PLAYER_LOGIN")
+        -- PLAYER_LOGIN fires once per session; release it once the flag is
+        -- seeded. The only one-shot PLAYER_LOGIN listener in the addon.
+        boot:UnregisterEvent("PLAYER_LOGIN")
     end
     -- Fan out the freshly-written flag so subscribers (IconGrid,
     -- Castbar) see an explicit ordered transition signal instead of
-    -- relying on TOC-load-order to ensure core/State.lua's RegisterEvent
-    -- fired before any module's. Guard documents the AceAddon-mixin race
+    -- relying on registration order to ensure this listener ran before
+    -- any module's. Guard documents the AceAddon-mixin race
     -- (KickCD has SendMessage by PLAYER_LOGIN time, but the guard makes
     -- the dependency explicit). See docs/message-bus.md.
     if NS and NS.SendMessage then
         NS:SendMessage(NS.MSG.COMBAT_STATE, { inCombat = State.inCombat })
     end
-end)
+end
+
+-- `{ event, handler }` rows for NS.RegisterEventList. FILE SCOPE so a stand-up
+-- allocates nothing (anti-patterns #43).
+local ARM_EVENTS = {
+    { "PLAYER_LOGIN",          onBootEvent },
+    { "PLAYER_REGEN_DISABLED", onBootEvent },
+    { "PLAYER_REGEN_ENABLED",  onBootEvent },
+}
+local REGEN_EVENTS = {
+    { "PLAYER_REGEN_DISABLED", onBootEvent },
+    { "PLAYER_REGEN_ENABLED",  onBootEvent },
+}
+
+--- Register the listener for the session. Called once, from NS:OnInitialize.
+function State.Arm()
+    NS.RegisterEventList(boot, ARM_EVENTS)
+end
 
 -- ---------------------------------------------------------------------------
 -- The bootstrap listener under the stand-down latch (slash-commands-§7)
 -- ---------------------------------------------------------------------------
 --
--- This frame is the addon's ONLY raw registration, and a raw registration is
--- exactly what the draw gate used to leave behind: a disabled addon whose
--- PLAYER_REGEN_* subscription still fires, still enters Lua, still publishes
--- COMBAT_STATE onto a bus nobody is listening to, and -- with debug on -- still
--- prints "entered" at a player who thinks the addon is off. Gone, not gated:
--- §7 is explicit that a handler which merely early-returns has not stopped
--- watching, it has stopped reacting, and it still pays the dispatch.
+-- A disabled addon whose PLAYER_REGEN_* subscription still fired would still
+-- enter Lua, still publish COMBAT_STATE onto a bus nobody is listening to, and
+-- -- with debug on -- still print "entered" at a player who thinks the addon is
+-- off. So the stand-down releases it: gone, not gated. §7 is explicit that a
+-- handler which merely early-returns has not stopped watching, it has stopped
+-- reacting, and it still pays the dispatch.
 --
 -- NOTHING IS HELD PENDING HERE. §7 permits a disabled addon to keep exactly one
 -- registration -- a secure or attribute teardown that combat lockdown refused,
@@ -203,20 +225,16 @@ function State.StandDown()
     boot:UnregisterAllEvents()
 end
 
---- Re-arm it, and re-seed the combat flag FROM CURRENT STATE rather than from
---- whatever it held when the addon went down: a fight can start and finish while
---- the addon is switched off, and the events that would have corrected the flag
---- were not being watched. PLAYER_LOGIN is deliberately not re-registered -- it
---- fires once per session and the seed below is what it was for.
+--- Re-arm the regen pair, and re-seed the combat flag FROM CURRENT STATE rather
+--- than from whatever it held when the addon went down: a fight can start and
+--- finish while the addon is switched off, and the events that would have
+--- corrected the flag were not being watched.
+---
+--- PLAYER_LOGIN is never re-registered. The first hold is taken in OnEnable,
+--- which AceAddon runs from its own PLAYER_LOGIN handler, so no stand-up can
+--- precede login: by the time one runs, PLAYER_LOGIN has fired and will not fire
+--- again. The seed below is what the login branch was for.
 function State.StandUp()
-    boot:RegisterEvent("PLAYER_REGEN_DISABLED")
-    boot:RegisterEvent("PLAYER_REGEN_ENABLED")
-    -- PLAYER_LOGIN comes back only if it has not fired yet. It is a one-shot --
-    -- the handler releases it once it has seeded the flag -- so restoring it
-    -- unconditionally would leave a dead subscription on every stand-up, and NOT
-    -- restoring it at all would silently drop the seed for an addon that was
-    -- disabled at load and enabled again before login. `__seeded` is the one
-    -- thing that tells the two cases apart.
-    if not State.__seeded then boot:RegisterEvent("PLAYER_LOGIN") end
+    NS.RegisterEventList(boot, REGEN_EVENTS)
     State.SetInCombat(_G.InCombatLockdown and _G.InCombatLockdown() or false)
 end

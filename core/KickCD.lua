@@ -63,6 +63,12 @@ function NS:OnInitialize()
         self.Database:Init()
     end
 
+    -- The combat listener (core/State.lua). Armed here rather than at State.lua's
+    -- file load because it registers through NS.RegisterEventList, which
+    -- core/CoreSetup.lua defines after State.lua loads. ADDON_LOADED always
+    -- precedes PLAYER_LOGIN, so the login seed is never missed.
+    if NS.State and NS.State.Arm then NS.State.Arm() end
+
     -- Debug logging is a session-only flag (KickCD.State.debug) seeded off on
     -- every load — it is NEVER read back from SavedVariables (debug-logging-§5). No
     -- seeding here on purpose.

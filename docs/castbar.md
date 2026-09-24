@@ -19,7 +19,7 @@ Each Castbar instance listens to `Ka0s_KickCD_GridLayout`, filters on `payload.u
 
 ## Visibility
 
-Visibility is gated by **all** of: the master enable, the unit's own `units.<unit>.enabled` toggle, `units.<unit>.castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same single setting shared across both units and the icon grid — see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking)). In `"in_combat"` mode the bar additionally requires the event-driven combat flag, read from `NS.State.inCombat` — `InCombatLockdown()` lags the regen events by a frame and isn't reliable, and the State module's bootstrap CreateFrame owns the flag-mutation listener so the bar (and the IconGrid) only have to read. While unlocked, visibility is bypassed so the user can move the bar.
+Visibility is gated by **all** of: the master enable, the unit's own `units.<unit>.enabled` toggle, `units.<unit>.castbar.enabled`, and the addon-wide `db.profile.visibility` mode (the same single setting shared across both units and the icon grid — see [ARCHITECTURE.md](ARCHITECTURE.md#invariants-worth-not-breaking)). In `"in_combat"` mode the bar additionally requires the event-driven combat flag, read from `NS.State.inCombat` — `InCombatLockdown()` lags the regen events by a frame and isn't reliable, and the State module's combat listener (an AceEvent target) owns the flag mutation so the bar (and the IconGrid) only have to read. While unlocked, visibility is bypassed so the user can move the bar.
 
 ## `Reskin` vs `RenderCast` split
 

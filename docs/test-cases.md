@@ -134,14 +134,16 @@ badge and any count quoted in the docs must agree with it.
 - Constants: every spec ID in Const.SPEC has a shipped default list
 - Constants: defaults ship one class table per class, all UPPER-case tokens
 
-### test_state.lua (23)
+### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
 - State.SetInCombat coerces any truthy value to a real boolean
-- State: the bootstrap frame owns all three combat/login events
+- State: the combat listener owns all three combat/login events
+- State: the combat listener is an AceEvent registration, not a frame
 - State: PLAYER_REGEN_DISABLED / _ENABLED drive the flag both ways
 - State: PLAYER_LOGIN seeds the flag from InCombatLockdown
 - State: PLAYER_LOGIN releases its own registration after seeding
+- State: a stand-up never re-registers PLAYER_LOGIN
 - State: every combat transition fans out COMBAT_STATE with the new flag
 - IsHostileUnitCasting is false for a nil unit or one that doesn't exist
 - IsHostileUnitCasting is false for a friendly caster
@@ -1290,7 +1292,7 @@ badge and any count quoted in the docs must agree with it.
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 29 |
 | test_constants.lua | 27 |
-| test_state.lua | 23 |
+| test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_locale.lua | 15 |
 | test_units.lua | 25 |
@@ -1347,4 +1349,4 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1085** |
+| **Total** | **1087** |

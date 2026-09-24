@@ -157,8 +157,15 @@ local function setEnabled(inst, on, keepTimers)
 end
 
 --- A fresh, fully enabled instance with its baseline surveys taken.
+---
+--- PLAYER_LOGIN is fired first because in the client OnEnable IS PLAYER_LOGIN, so by the time a
+--- player can type `/kcd disable` the one-shot login listener in core/State.lua has seeded the flag
+--- and released itself. Leaving it registered here would make the baseline a state the client never
+--- reaches, and the re-enable case would then demand a stand-up restore a login event that will not
+--- fire again (KICKCD-R-17).
 local function baseline()
     local inst = T.load(true, true)
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
     inst.mocks.__flushTimers()
     local bag, n = registrations(inst)
     return inst, bag, n
@@ -264,7 +271,7 @@ test("DISABLED: firing every event it USED to watch changes nothing", function()
     -- entering combat while it is disabled, and the player's evidence that the addon is off is the
     -- absence of exactly that line.
     --
-    -- red under: leave core/State.lua's boot frame registered in standDown -- the COMBAT_STATE
+    -- red under: leave core/State.lua's combat listener registered in standDown -- the COMBAT_STATE
     -- publish then reaches the modules and the debug line reaches chat
     local inst = baseline()
     local recorded = {}

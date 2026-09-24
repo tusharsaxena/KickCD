@@ -547,8 +547,8 @@ local function build()
     -- messages, buckets -- and the frames the KIT built. This addon's frames are
     -- this file's own model (see the header: CreateTexture returns a distinct
     -- object, which the kit deliberately does not adopt), so the kit's survey
-    -- cannot see the two kinds that matter most here: core/State.lua's raw
-    -- PLAYER_REGEN_* listener and the per-unit UNIT_SPELLCAST_* cast-filter frames.
+    -- cannot see the kind that matters most here: the per-unit UNIT_SPELLCAST_*
+    -- cast-filter frames.
     --
     -- This is the union, in the kit's own row shape, so a suite asks ONE
     -- question. It removes on unregister in both halves -- the kit's registry
@@ -840,12 +840,12 @@ local function build()
     -- without an explicit parent fall back to UIParent, as in the client.
     local UIParent = makeFrame("Frame", nil)
     mocks.UIParent = UIParent
-    -- Every CreateFrame'd frame is also recorded, in creation order. Some
-    -- bootstrap frames are file-locals with no published handle at all (the
-    -- PLAYER_REGEN_* listener in core/State.lua is the case that forced this),
-    -- so the registry plus __findFrame is how a suite reaches one to fire its
-    -- OnEvent — without having to widen the addon's public surface just for
-    -- the tests.
+    -- Every CreateFrame'd frame is also recorded, in creation order. A frame
+    -- can be a file-local with no published handle at all, so the registry
+    -- plus __findFrame is how a suite reaches one to fire its OnEvent —
+    -- without having to widen the addon's public surface just for the tests.
+    -- (AceEvent targets, such as core/State.lua's combat listener, are fired
+    -- through the kit's __fireEvent instead.)
     local created = {}
     mocks.__frames = created
     mocks.CreateFrame = function(frameType, name, parent, template)

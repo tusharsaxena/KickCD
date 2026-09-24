@@ -65,7 +65,7 @@ Visibility / interruptibility decisions for every enabled unit's icon grid and c
 shouldBeVisible(unit) / isVisible(unit)
   ── always                       → true
   ── in_combat                    → NS.State.inCombat (PLAYER_REGEN_* flag
-                                     owned by core/State.lua's bootstrap and
+                                     owned by core/State.lua's listener and
                                      fanned out via Ka0s_KickCD_CombatState; NOT
                                      InCombatLockdown — that lags by a frame)
   ── target_casting               → UnitCastingInfo / UnitChannelInfo(unit) truthy
