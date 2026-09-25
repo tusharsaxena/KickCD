@@ -1,0 +1,1 @@
+fixed: sink refactor correct, secret-safe, tests fail without it, gate green; docs/debug.md wrongly said all four dumps take a sink, corrected in d554693 (DR-KC-02R)
