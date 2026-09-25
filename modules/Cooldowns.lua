@@ -698,8 +698,12 @@ function Cooldowns:StateFor(spellID)
 end
 
 --- /kickcd debug spells — print the watched-list with current state.
-function Cooldowns:DebugDump()
-    local p = NS.Util.print
+--- `emit` is the line sink: omitted, every line goes to chat through
+--- NS.Util.print exactly as before; the diagnostics report passes its own
+--- sink to route the same lines into the debug console.
+--- @param emit function|nil  (line) -> (), default NS.Util.print
+function Cooldowns:DebugDump(emit)
+    local p = emit or NS.Util.print
     local class, spec = ResolveClassSpec()
     -- English token, not the localized name: this line is what users paste
     -- into bug reports (issue #8).

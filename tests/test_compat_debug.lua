@@ -142,3 +142,28 @@ test("DebugInterrupt closes with the addon's own visibility and glow decisions",
     assertTrue(lines[#lines - 1]:match("^primary glow trigger   = ") ~= nil)
     assertTrue(lines[#lines]:match("^secondary glow trigger = ") ~= nil)
 end)
+
+-- ── The emit sink (DR-KC-02) ────────────────────────────────────────────────
+
+test("DebugInterrupt writes every line through a caller's emit sink, and nothing to chat", function()
+    -- The diagnostics report routes this dump into the debug console, so a
+    -- sink must carry exactly the lines chat would have shown, unprefixed.
+    local stage = function(mocks)
+        mocks.UnitCastingInfo = function()
+            return "Fireball", "Fireball", 12345, 1000, 3000, false, "cast-1", SECRET, 133
+        end
+    end
+    local want = dump(stage, "focus")
+    local inst = T.load(true)
+    inst.mocks.UnitExists = function() return true end
+    inst.mocks.UnitName = function() return "Boss" end
+    inst.mocks.UnitCanAttack = function() return true end
+    inst.mocks.issecretvalue = function(v) return v == SECRET end
+    stage(inst.mocks)
+    local chat, sink = {}, {}
+    inst.mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) chat[#chat + 1] = m end }
+    inst.NS.Compat.DebugInterrupt("focus", function(line) sink[#sink + 1] = line end)
+    assertEqual(#chat, 0, "a sink must replace chat, not add to it")
+    assertEqual(#sink, #want)
+    for i = 1, #want do assertEqual(sink[i], want[i]) end
+end)

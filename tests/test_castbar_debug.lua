@@ -221,3 +221,23 @@ test("DebugDump says (no widget) before the frame has ever been built", function
     assertEqual(lines[at + 1], "    interruptible   = (no widget)")
     assertEqual(lines[at + 2], "    uninterruptible = (no widget)")
 end)
+
+-- ── The emit sink (DR-KC-02) ────────────────────────────────────────────────
+
+test("DebugDump writes every line through a caller's emit sink, and nothing to chat", function()
+    -- The diagnostics report routes this dump into the debug console, so a
+    -- sink must carry exactly the lines chat would have shown, unprefixed.
+    local want = dump(withCast(SECRET))
+    local loaded = T.load(true, true)
+    loaded.mocks.UnitExists = function() return true end
+    loaded.mocks.issecretvalue = function(v) return v == SECRET end
+    local Castbar = loaded.NS:GetModule("Castbar")
+    withCast(SECRET)(loaded.mocks, Castbar:GetInstance("focus"))
+    local chat, sink = {}, {}
+    loaded.mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) chat[#chat + 1] = m end }
+    Castbar:DebugDump("focus", function(line) sink[#sink + 1] = line end)
+    assertEqual(#chat, 0, "a sink must replace chat, not add to it")
+    assertEqual(#sink, #want)
+    assertEqual(sink[1], "castbar state (focus)")
+    for i = 3, #want do assertEqual(sink[i], want[i]) end
+end)

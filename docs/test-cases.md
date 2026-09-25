@@ -417,7 +417,7 @@ badge and any count quoted in the docs must agree with it.
 - a record survives a client with no duration API at all
 - isChannel is a real boolean on both record paths
 
-### test_compat_debug.lua (11)
+### test_compat_debug.lua (12)
 
 - DebugInterrupt bails with the unit name when the unit does not exist
 - DebugInterrupt defaults the unit to target
@@ -430,6 +430,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugInterrupt renders a nil position as the literal nil
 - DebugInterrupt skips the casting block entirely when the API is absent
 - DebugInterrupt closes with the addon's own visibility and glow decisions
+- DebugInterrupt writes every line through a caller's emit sink, and nothing to chat
 
 ### test_debuglog.lua (13)
 
@@ -823,7 +824,7 @@ badge and any count quoted in the docs must agree with it.
 - an NPC target falls through to the stored swatch, which is the common case
 - a LINKED Focus paints in the FOCUS's class, not the linked-from target's
 
-### test_castbar_debug.lua (18)
+### test_castbar_debug.lua (19)
 
 - DebugDump opens with the resolved unit and bails when it does not exist
 - DebugDump defaults the unit to target
@@ -843,8 +844,9 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump reports a missing color table as (missing)
 - DebugDump reports the colors live on the StatusBar widgets
 - DebugDump says (no widget) before the frame has ever been built
+- DebugDump writes every line through a caller's emit sink, and nothing to chat
 
-### test_cooldowns.lua (16)
+### test_cooldowns.lua (19)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
 - Refresh logs one coalesced line only when a spell changed
@@ -862,6 +864,9 @@ badge and any count quoted in the docs must agree with it.
 - Rebuild summary re-logs when only the SKIPPED set changes
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
+- debug spells prints a class/spec header then one sorted line per watched spell
+- debug spells says so when nothing is watched
+- Cooldowns:DebugDump writes every line through a caller's emit sink, and nothing to chat
 
 ### test_cooldowns_gates.lua (23)
 
@@ -1375,7 +1380,7 @@ badge and any count quoted in the docs must agree with it.
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
-| test_compat_debug.lua | 11 |
+| test_compat_debug.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_icongrid_layout.lua | 8 |
@@ -1395,8 +1400,8 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_helpers.lua | 29 |
 | test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
-| test_castbar_debug.lua | 18 |
-| test_cooldowns.lua | 16 |
+| test_castbar_debug.lua | 19 |
+| test_cooldowns.lua | 19 |
 | test_cooldowns_gates.lua | 23 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
@@ -1423,4 +1428,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 1 |
-| **Total** | **1153** |
+| **Total** | **1158** |
