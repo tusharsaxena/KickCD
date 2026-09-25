@@ -10,13 +10,12 @@
 -- Promote the bootstrap table to an AceAddon
 -- ---------------------------------------------------------------------------
 --
--- Earlier core/* files have written to a plain `_G.KickCD` table. AceAddon
--- accepts a pre-existing object as its first argument and adds AceAddon /
--- mixin methods directly onto it, so passing _G.KickCD here gives us a
--- single object that has both KickCD.Compat / KickCD.Util / KickCD.Database
--- (set earlier) AND KickCD:RegisterChatCommand / SendMessage / NewModule /
--- ... (set by the mixins). The global rebinding makes downstream code that
--- looks up `KickCD` from _G see the mixed-in version.
+-- Earlier core/* files have hung their fields on the private namespace table
+-- NS. AceAddon accepts a pre-existing object as its first argument and adds
+-- AceAddon / mixin methods directly onto it, so passing NS here gives one
+-- object that has both NS.Compat / NS.Util / NS.Database (set earlier) AND
+-- NS:RegisterChatCommand / SendMessage / NewModule / ... (set by the mixins).
+-- Nothing is published to _G; see the note below.
 
 local _, NS = ...
 
@@ -62,6 +61,12 @@ function NS:OnInitialize()
     if self.Database and self.Database.Init then
         self.Database:Init()
     end
+
+    -- The combat listener (core/State.lua). Armed here rather than at State.lua's
+    -- file load because it registers through NS.RegisterEventList, which
+    -- core/CoreSetup.lua defines after State.lua loads. ADDON_LOADED always
+    -- precedes PLAYER_LOGIN, so the login seed is never missed.
+    if NS.State and NS.State.Arm then NS.State.Arm() end
 
     -- Debug logging is a session-only flag (KickCD.State.debug) seeded off on
     -- every load — it is NEVER read back from SavedVariables (debug-logging-§5). No
@@ -124,8 +129,7 @@ end
 -- does that itself, so the last caller went with the dispatcher.)
 
 local function p(self, ...)
-    local fn = self.Util and self.Util.print or _G.print
-    fn(...)
+    self.Util.print(...)
 end
 
 -- (The `version` verb reads NS.Version(), the core/EnvSetup.lua seam. The
@@ -135,41 +139,44 @@ end
 -- same refusal to touch the deprecated global. settings/Slash.lua and
 -- core/PerfSetup.lua went the same way, so the three cannot disagree.)
 
--- Set db.profile.locked through the schema's write+notify+refresh path
--- (Helpers.SetAndRefresh). That path mirrors what `/kcd set locked
--- true` and the General > "Lock frame" checkbox do, so an open
--- settings panel re-syncs and any future onChange wired onto the
--- `locked` schema row fires here too.
+-- Set db.profile.locked through the schema seam (NS.Settings.Store.Set), then
+-- repaint an open panel's widgets (Helpers.RefreshScalars) -- the same two steps
+-- Helpers.SetAndRefresh takes for `/kcd set locked true` and the General >
+-- "Lock frame" checkbox, so the row's onChange and the announce fire here too.
 --
--- The helper or nothing (architecture-§5, #20). When SetAndRefresh cannot
--- take the write -- the settings layer is not loaded yet, or it finds no
--- `locked` row because that row is composed by LibKa0s-Options-1.0's Master
--- controls block and a load without the library has none -- this says so, the
--- way runResetPosition does, and writes nothing. It used to fall back to
--- `db.profile.locked = v`, which kept one composed setting writable around
--- the helper on the very load options-ui-§1 expects to lose it.
+-- The seam or nothing (architecture-§5, #20), and the seam is enough on the load
+-- that most needs it. `locked` is composed by LibKa0s-Options-1.0's Master
+-- controls block, so a library-absent load has no such row; it is on
+-- NS.Settings.WRITE_THROUGH (settings/SchemaSetup.lua, options-ui-§1 route (a),
+-- WS-02), and both the live Schema instance and its degradation stub store a
+-- listed path with no row. So lock, unlock and toggle still work there, and
+-- RefreshScalars is simply absent when no panel exists. Only a load whose
+-- settings layer never came up (no Store) says so and writes nothing -- it
+-- never falls back to `db.profile.locked = v` around the seam.
 local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return p(self, "db not initialized yet")
     end
     local v = value and true or false
-    local H = self.Settings and self.Settings.Helpers
-    if not (H and H.SetAndRefresh and H.SetAndRefresh("locked", v)) then
+    local S = self.Settings and self.Settings.Store
+    if not (S and S.Set and S.Set("locked", v)) then
         return p(self, "Settings layer not ready yet")
     end
+    local H = self.Settings.Helpers
+    if H and H.RefreshScalars then H.RefreshScalars() end
     p(self, "icon grid " .. (v and "locked" or "unlocked"))
 end
 
 --- Flip the lock, through the one writer above.
 ---
---- Published because it has TWO callers now and they must not be two
---- implementations: `/kcd toggle` below, and the minimap button's left click
---- (core/LauncherSetup.lua). launcher-§2 puts this addon on rung (b) -- no
---- primary window, and Lock frame is the preview switch since unlocking IS the
---- preview -- and says in as many words that the launcher drives the addon's
---- EXISTING switch through the same seam rather than holding a copy of it. This
---- is that seam, and it holds no state: it reads db.profile.locked and hands the
---- negation to setLocked, which writes through Helpers.SetAndRefresh like the
+--- Published because it has TWO callers and they must not be two
+--- implementations: `/kcd toggle` below, and the launcher's options menu, whose
+--- Locked entry is this function (core/LauncherSetup.lua's toggleLock).
+--- launcher-§2 (v2.67.0) says in as many words that each menu entry drives the
+--- addon's EXISTING switch through the same handler its slash verb uses rather
+--- than holding a copy of it. This is that handler, and it holds no state: it
+--- reads db.profile.locked and hands the negation to setLocked, which writes
+--- through the schema seam (Store.Set, then RefreshScalars) like the
 --- `Lock frame` checkbox and `/kcd set locked` do.
 function NS.ToggleLock()
     local cur = NS.db and NS.db.profile and NS.db.profile.locked
@@ -180,6 +187,19 @@ end
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting
 local runReset, runResetAll, runResetPosition, runSpells
+
+--- Switch the addon on or off: THE handler `/kcd enable` and `/kcd disable` run.
+---
+--- Published for the same reason as NS.ToggleLock above: it has two callers,
+--- the two verbs below and the launcher's options menu, whose Enabled entry is
+--- this function (core/LauncherSetup.lua's setEnabled, launcher-§2 v2.67.0).
+--- It is `/kcd set enabled <bool>` and nothing else, so the menu, the verbs and
+--- the Master-controls row share one stored path, one write seam
+--- (options-ui-§1) and one confirmation line. setSetting is the forward
+--- declaration above, resolved at call time.
+function NS.SetMasterEnabled(on)
+    setSetting(NS, on and "enabled true" or "enabled false")
+end
 
 -- Published on KickCD as KickCD.COMMANDS at the bottom of this block so
 -- the settings panel's main page can render the same list /kcd help
@@ -204,8 +224,9 @@ local COMMANDS = {
     -- what was missing was the CLI route to it, so the answer to "turn this off
     -- without opening anything" was "find the panel first".
     --
-    -- They dispatch into setSetting, which IS `/kcd set` -- same stored path,
-    -- same single write seam (options-ui-§1), same onChange, and the §5 `set`
+    -- They dispatch into setSetting (through NS.SetMasterEnabled, which the
+    -- launcher's menu calls too), which IS `/kcd set` -- same stored path,
+    -- same single write seam (options-ui-§1), same onChange, and the slash-commands-§5 `set`
     -- confirmation line for free. So they hold NO state of their own: no second
     -- key, no session flag, no NS.enabled, and the checkbox and the verbs cannot
     -- show the player two different answers.
@@ -217,9 +238,9 @@ local COMMANDS = {
     -- their DRAWING down and nothing else. Setup, not a feature
     -- (slash-commands-§2), and tests/test_slash.lua pins it.
     {"enable",        "Enable KickCD",
-        function() setSetting(NS, "enabled true") end},
+        function() NS.SetMasterEnabled(true) end},
     {"disable",       "Disable KickCD — `/kcd enable` turns it back on",
-        function() setSetting(NS, "enabled false") end},
+        function() NS.SetMasterEnabled(false) end},
     {"lock",          "Lock the icon grid in place",
         function() setLocked(NS, true) end},
     {"unlock",        "Unlock the icon grid for dragging",
@@ -236,7 +257,7 @@ local COMMANDS = {
         function(rest) runReset(NS, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
         function() runResetAll(NS) end},
-    {"resetposition", "Restore the icon grid to its default screen position",
+    {"resetposition", "Restore the icon grids to their default screen positions",
         function() runResetPosition(NS) end},
     {"spells",        "Spell-list editor — try `/kcd spells` for the list",
         function(rest) runSpells(NS, rest) end},
@@ -292,14 +313,22 @@ local COMMANDS = {
 -- to protect. It configures; it does not drive.
 --
 -- WHAT IS LEFT REFUSED IS FOUR, and each really does drive the display. `lock`,
--- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- launcher-§2 puts
--- KickCD on rung (b) precisely because unlocking IS this addon's preview -- and
+-- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- unlocking IS this
+-- addon's preview, the launcher menu's Locked entry (launcher-§2) -- and
 -- with the addon off there is no grid and no placeholder to unlock
 -- (slash-commands-§8 says so in as many words). And `resetposition` re-anchors
--- the icon grid and fires CONFIG_CHANGED so the live grids move, then echoes
--- "icon grid position reset" at a player who can see no grid: an acknowledgment
+-- the icon grids and fires CONFIG_CHANGED so the live grids move, then echoes
+-- "icon grid positions reset" at a player who can see no grid: an acknowledgment
 -- of something that visibly did not happen.
 NS.EXTRA_LIVE_VERBS = { "spells" }
+
+-- THE SAME FOUR, NAMED, for the one load where there is no library to union
+-- with: settings/Slash.lua's degradation stub refuses exactly these while the
+-- addon is disabled. It is this addon's own list of its own feature verbs, not a
+-- copy of the library's reserved twelve (slash-commands-§1 lets a stub carry one
+-- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash.lua pins it
+-- against the live gate: COMMANDS minus the live union MUST be this list.
+NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
 
 NS.COMMANDS = COMMANDS
 
@@ -344,6 +373,14 @@ local DEBUG_COMMANDS = {
             if self.DebugLog then
                 self.DebugLog:SetEnabled(not (self.State and self.State.debug))
             else p(self, "DebugLog module not loaded") end
+        end},
+    -- events-frames-taint-§1: the names NS.RegisterEventList recorded because
+    -- this client raised on them. Session-only, like the list it reads.
+    {"events", "List event names this client refused to register",
+        function(self)
+            local rejected = self.State and self.State.rejectedEvents or {}
+            if #rejected == 0 then return p(self, "no rejected events") end
+            for _, name in ipairs(rejected) do p(self, "rejected event: " .. name) end
         end},
 }
 
@@ -470,7 +507,7 @@ function runResetPosition(self)
         return p(self, "Settings layer not ready yet")
     end
     H.ResetIconPosition()
-    p(self, "icon grid position reset")
+    p(self, "icon grid positions reset")
 end
 
 -- ---------------------------------------------------------------------------
@@ -567,22 +604,6 @@ local function commitSpellsChange()
     if H and H.FireConfigChanged then H.FireConfigChanged("spells") end
 end
 
-local function resolveSpellInput(input)
-    if not input or input == "" then return nil end
-    local Compat = NS.Compat or {}
-    local id = tonumber(input)
-    if id then
-        local name = Compat.GetSpellInfo and Compat.GetSpellInfo(id) or nil
-        if name then return id, name end
-        return nil
-    end
-    if Compat.GetSpellInfo then
-        local name, _, _, _, _, resolvedID = Compat.GetSpellInfo(input)
-        if name and resolvedID then return resolvedID, name end
-    end
-    return nil
-end
-
 local CATEGORIES = {
     interrupt = true, stun = true, knockback = true, incapacitate = true,
     silence = true, root = true, fear = true, displace = true,
@@ -614,19 +635,17 @@ local function spellsList(self, rest)
     end
 end
 
+-- The spell and its [CLASS SPEC] go through core/SpellInput.lua, the resolver
+-- the Spells page's add box uses too: a multi-word name ("Wind Shear") is one
+-- name, a trailing CLASS / SPEC is validated rather than trusted, and the
+-- Blizzard Cooldown Manager gate applies on the player's live pair exactly as it
+-- does on the page (KICKCD-R-05, KICKCD-R-18).
 local function spellsAdd(self, rest)
-    local args = tokenize(rest)
-    if not args[1] then
-        return p(self, "Usage: /kcd spells add <id|name> [CLASS SPEC]")
-    end
-    local id, name = resolveSpellInput(args[1])
-    if not id then
-        return p(self, "Unknown spell: " .. tostring(args[1]))
-    end
-    local class, spec = resolveClassSpec(args, 2)
-    if not (class and spec) then
-        return p(self, "Could not determine class+spec")
-    end
+    local SI = NS.SpellInput
+    local id, name, class, spec = SI.ParseTail(tokenize(rest))
+    if not id then return p(self, name) end
+    local ok, why = SI.Admissible(id, class, spec)
+    if not ok then return p(self, why) end
     local result = self.Database and self.Database:AddSpell(class, spec, id)
     if not result then return p(self, "db not ready") end
     commitSpellsChange()
@@ -761,7 +780,7 @@ function runSpells(self, rest)
         end
         local cls, spc = resolvePlayerClassSpec()
         if cls and spc then
-            p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, spc))
+            p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, sd(spc)))
         end
         return
     end

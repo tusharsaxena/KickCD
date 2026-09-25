@@ -20,7 +20,7 @@ badge and any count quoted in the docs must agree with it.
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
-- RegisterUnitCastEvent registers the dispatch frame for the named unit
+- NewUnitCastFilter arms its filter frame for the named unit
 
 ### test_coresetup.lua (26)
 
@@ -46,18 +46,19 @@ badge and any count quoted in the docs must agree with it.
 - LibKa0s-Core-1.0 still has no user-visible strings to trap
 - the Core descriptor passes no locale table, and the printer renders no key
 - the shared cause clause is published on the healthy path too
-- with LibKa0s absent all five seams say the same thing about WHY
+- with LibKa0s absent every seam names the missing library
 - no seam re-spells the cause in its own words
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (8)
+### test_mediasetup.lua (9)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
 - MediaSetup: NS.MediaFont answers the vendored face, and only a face it ships
 - MediaSetup: the font this addon names is a face the library actually registers
 - MediaSetup: the face is registered with LibSharedMedia at file load
+- MediaSetup: the LSM fake carries LibSharedMedia's real locale bits
 - MediaSetup: every mark this addon's windows draw is one the library ships
 - MediaSetup: every name the library ships has a file in the vendored copy
 - MediaSetup: with no library there is no art and no face, and that is not an error
@@ -71,7 +72,7 @@ badge and any count quoted in the docs must agree with it.
 - EnvSetup: no file inlines its own C_AddOns ladder any more
 - EnvSetup: with no LibKa0s the seam still reads this addon's own TOC
 
-### test_util_anchor.lua (26)
+### test_util_anchor.lua (31)
 
 - SaveAnchor snapshots a frame's first anchor point
 - SaveAnchor stores no frame reference, only serializable fields
@@ -96,9 +97,14 @@ badge and any count quoted in the docs must agree with it.
 - SpecOrderForClass normalizes a lower-case class token
 - SpecOrderForClass is nil for a class the client can't enumerate
 - NormalizeClassToken upper-cases and tolerates nil
-- RegisterUnitCastEvent forwards the event into the module's handler
-- RegisterUnitCastEvent tolerates a handler that isn't defined yet
-- RegisterUnitCastEvent returns a frame the caller can unregister
+- NewUnitCastFilter forwards the event into the routed handler
+- NewUnitCastFilter tolerates a handler that isn't defined yet
+- NewUnitCastFilter Disarm empties the frame's registrations
+- Arm twice registers each event once
+- a non-UNIT_SPELLCAST route is refused
+- a bad EMPOWER name is rejected and the other routes still arm
+- /kcd resetposition restores the focus grid too
+- /kcd resetposition: the target grid is still restored
 
 ### test_constants.lua (27)
 
@@ -130,14 +136,16 @@ badge and any count quoted in the docs must agree with it.
 - Constants: every spec ID in Const.SPEC has a shipped default list
 - Constants: defaults ship one class table per class, all UPPER-case tokens
 
-### test_state.lua (23)
+### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
 - State.SetInCombat coerces any truthy value to a real boolean
-- State: the bootstrap frame owns all three combat/login events
+- State: the combat listener owns all three combat/login events
+- State: the combat listener is an AceEvent registration, not a frame
 - State: PLAYER_REGEN_DISABLED / _ENABLED drive the flag both ways
 - State: PLAYER_LOGIN seeds the flag from InCombatLockdown
 - State: PLAYER_LOGIN releases its own registration after seeding
+- State: a stand-up never re-registers PLAYER_LOGIN
 - State: every combat transition fans out COMBAT_STATE with the new flag
 - IsHostileUnitCasting is false for a nil unit or one that doesn't exist
 - IsHostileUnitCasting is false for a friendly caster
@@ -155,6 +163,15 @@ badge and any count quoted in the docs must agree with it.
 - ApplyInterruptibleAlpha reads the CHANNEL flag from position 7, not 8
 - ApplyInterruptibleAlpha prefers the cast over a simultaneous channel
 - ApplyInterruptibleAlpha never inspects the cast name it gates on
+
+### test_events.lua (6)
+
+- one bad name does not stop the rest of Cooldowns' block
+- one bad name does not stop the block on a client without C_EventUtils (the pcall rung)
+- one bad name does not stop the block without LibKa0s (the stub bodies)
+- /kcd debug events names the rejected event
+- the [Init] line is unchanged when nothing was rejected
+- a frame RegisterEvent honors __badEvents
 
 ### test_locale.lua (15)
 
@@ -174,7 +191,7 @@ badge and any count quoted in the docs must agree with it.
 - every residue entry carries one of the declared classes
 - the three reworded cast-bar descs are keyed as the panel renders them
 
-### test_units.lua (25)
+### test_units.lua (26)
 
 - Units.LIST is target then focus
 - target is never linked; focus honors its link flag
@@ -190,11 +207,12 @@ badge and any count quoted in the docs must agree with it.
 - CopyStyling snapshots target label.style + show, keeps focus text (spec 2a/2b)
 - CopyStyling carries every icons, castbar, label.style and label.show row onto focus
 - CopyStyling's copy is deep: focus gets its own color tables
-- CopyStyling writes every copied row, and the link, through Helpers.Set
+- CopyStyling writes every copied row, and the link, as ONE Store.SetMany
 - CopyStyling runs each row's onChange, and orientation's cannot undo the copied growDirection
 - CopyStyling announces each section once and refreshes the panels structurally once
 - CopyStyling logs ONE [Set] summary line counting the rows it changed
-- CopyStyling still validates and runs onChange per row with the log muted
+- CopyStyling still runs onChange per row with the log muted
+- a CopyStyling the seam refuses writes nothing at all
 - units.focus.link is a General > Units row, drawn by the tab's own tick
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
 - the Units tab's tick writes the link through Helpers.SetAndRefresh
@@ -202,14 +220,16 @@ badge and any count quoted in the docs must agree with it.
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (36)
+### test_schema.lua (38)
 
 - Settings.Schema is assembled from the settings/* files
-- Helpers.ValidateSchema reports zero malformed rows
+- Validate reports 0 errors on the shipped schema
+- every stored row resolves against DEFAULT_PROFILE
+- every row's panel and section are known
 - Every schema row has a string path and a known type
-- Helpers.Resolve walks a dotted path into db.profile
+- Store.Get walks a dotted path into db.profile
 - icons/castbar/label schema rows are unit-scoped and valid
-- Helpers.FindSchema locates a row by path
+- Store.FindRow locates a row by path
 - General exposes focus rows; unit-selector panels still filter them out
 - label panel carries per-unit label rows; General no longer does
 - every label-panel row's default is a member of its static values list
@@ -241,7 +261,20 @@ badge and any count quoted in the docs must agree with it.
 - a single-subject tab draws NO subsection heading
 - no page draws a hand-rolled heading in place of H.Section
 
-### test_database.lua (23)
+### test_schema_store.lua (10)
+
+- the settings seam is a LibKa0s-Schema-1.0 instance
+- a write announces CONFIG_CHANGED once with the row's section
+- `/kcd set enabled false` stands the addon down in the same turn
+- Copy styling is one SetMany: one [Set] copy target→focus: N rows line, each section announced once
+- a bad value in a batch writes nothing
+- an unknown path is refused, never stored
+- a stored table is a copy
+- a raising onChange propagates after the store
+- degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
+- degraded: Store.Set on any other composed path is refused
+
+### test_database.lua (25)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -266,8 +299,10 @@ badge and any count quoted in the docs must agree with it.
 - a stored NONE font flag reads back as the empty string after migration
 - the font-flag migration leaves every other token exactly as it found it
 - the font-flag migration is idempotent and survives a half-built profile
+- a raising OnInitialize fails T.load instead of passing silently
+- allowInitError keeps the OnInitialize raise on the instance for the case to assert
 
-### test_color_shape.lua (21)
+### test_color_shape.lua (28)
 
 - the schema declares at least one color row per color-bearing panel
 - every schema color default is keyed, never positional
@@ -281,6 +316,12 @@ badge and any count quoted in the docs must agree with it.
 - a pre-migration profile's array colors convert to the keyed shape
 - the migration bumps the stored schema version so it runs once
 - an already-keyed color passes through the migration untouched
+- a second stored profile has its positional colors converted when it becomes active
+- a second stored profile has its 'NONE' font flags rewritten when it becomes active
+- a hybrid whose keys differ from the default keeps its keys and loses its array
+- AceDB defaults declare schemaVersion 0
+- a fresh install ends at v5 with no step raising
+- a raising step leaves the stamp where it was
 - the slash layer needs no color codec now the shapes agree
 - set and get round-trip a color through the library with no translation
 - every dropdown row's values is a keyed hash, never an array of records
@@ -290,13 +331,14 @@ badge and any count quoted in the docs must agree with it.
 - the valueGate hint explains WHY a gated dropdown value was rejected
 - a rejected gated value carries the hint through the slash layer
 - a valueGate probe whose values() raises leaves the gating setting restored
+- GateHint never writes the profile when the row declares valuesFor
 
 ### test_bus.lua (13)
 
 - AceEvent mock fans one message out to two distinct targets
 - Two receivers on the SAME target clobber (proves keying is by target)
 - Addon SendMessage reaches a registered module target
-- Coalesced holds a nil-section announcement and sends it once, as nil
+- a batch holds a nil-section announcement and sends it once, as nil
 - NewBusTarget gives each receiver its own target — both fire (KCD-09)
 - a string method is dispatched as target:Method(message, payload)
 - a registration with no handler calls the method named after the message
@@ -400,9 +442,9 @@ badge and any count quoted in the docs must agree with it.
 - NS.Debug is a no-op when disabled (zero capture) and appends when enabled
 - NS.Debug sanitizes secret args and never errors
 - NS.Debug passes plain args through unchanged
-- scrollbar + line-counter sync methods exist (§11)
-- sync methods are a clean no-op before the window is built (§11)
-- building the console + Add/Clear run the guarded sync headlessly (§11)
+- scrollbar + line-counter sync methods exist (debug-logging-§11)
+- sync methods are a clean no-op before the window is built (debug-logging-§11)
+- building the console + Add/Clear run the guarded sync headlessly (debug-logging-§11)
 - console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
 ### test_debuglogsetup.lua (23)
@@ -458,7 +500,7 @@ badge and any count quoted in the docs must agree with it.
 - toggling the cooldown tint's companion rebuilds the alpha/tint curves
 - master scale and master alpha reach the grid frame
 
-### test_icongrid_visibility.lua (22)
+### test_icongrid_visibility.lua (23)
 
 - the visibility deciders are published for testing
 - visibilityMode reads the addon-wide setting
@@ -482,6 +524,7 @@ badge and any count quoted in the docs must agree with it.
 - each unit's decision is made against its OWN unit token
 - instanceCasting truth-tests the cast name without ever reading it
 - instanceCasting is false for a unit that doesn't exist
+- an empower start re-evaluates target_casting visibility
 
 ### test_icongrid_render.lua (21)
 
@@ -539,7 +582,7 @@ badge and any count quoted in the docs must agree with it.
 - the swipe is still suppressed for a GCD-only lockout
 - classification falls back to remaining on a client without the total API
 
-### test_icongrid_buildlist.lua (23)
+### test_icongrid_buildlist.lua (26)
 
 - BuildActiveList renders one icon per enabled entry
 - BuildActiveList preserves the saved list's ORDER
@@ -564,6 +607,9 @@ badge and any count quoted in the docs must agree with it.
 - pool: a release/rebuild cycle allocates NOTHING new
 - pool: the rebuild draws from the EXISTING widgets, not new ones
 - pool: a release leaves no icon shown
+- an icon rebuilt after Cooldowns already emitted keeps its cooldown
+- with no Cooldowns state the seed is ready
+- every unwatched seed is the shared READY_SEED table
 
 ### test_icongrid_glowgate.lua (8)
 
@@ -635,7 +681,7 @@ badge and any count quoted in the docs must agree with it.
 - an unresolvable class falls through to the swatch, never to white
 - a LINKED Focus resolves on the unit being drawn, not on the table's source
 
-### test_castbar.lua (7)
+### test_castbar.lua (8)
 
 - Castbar exposes the pure AutoSizeLong helper
 - AutoSizeLong copies the grid extent verbatim when scales match
@@ -644,6 +690,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong honors the bar's own effective scale
 - AutoSizeLong returns the fallback for a zero/nil grid extent
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
+- UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it
 
 ### test_castbar_helpers.lua (29)
 
@@ -815,7 +862,7 @@ badge and any count quoted in the docs must agree with it.
 - Rebuild summary logs on a material change and is silent on a repeat
 - Refresh logs nothing when no spell changed
 
-### test_cooldowns_gates.lua (22)
+### test_cooldowns_gates.lua (23)
 
 - both gates are published for testing
 - both gates treat a missing previous state as a change (first poll)
@@ -839,11 +886,12 @@ badge and any count quoted in the docs must agree with it.
 - neither gate ever reads a secret charge value itself
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
+- module readers answer what NS.MasterEnabled answers
 
 ### test_settings_log.lua (20)
 
-- Helpers.Set logs one debounced [Set] line with the settled value
-- Helpers.Set formats an RGBA table compactly
+- Store.Set logs one debounced [Set] line with the settled value
+- Store.Set formats an RGBA table compactly
 - ResetIconPosition restores units.target.anchors.icons to the default (Task 8 fix)
 - ResetIconPosition writes nothing when the defaults tree is absent (M4-18 / KICKCD-R-08)
 - the castbar page's Defaults logs ONE [Set] reset line counting the rows it changed
@@ -854,8 +902,8 @@ badge and any count quoted in the docs must agree with it.
 - nested bulk acts log ONE line, the outermost's, with every level's rows
 - the per-row [Set] line comes back after a Defaults, even one whose row raised
 - Reset all logs ONE line in total, the profile handler's, counting the rows it changed
-- with LibKa0s absent, Reset all logs exactly one line, the profile handler's, with the rows it changed
-- with LibKa0s absent, a Reset all that reset no profile logs the bracket's own line
+- with LibKa0s absent, Reset all logs only the profile handler's line, with no count
+- with LibKa0s absent, a Reset all that reset no profile still closes its bracket
 - a profile reset driven straight at the db logs its one line with no count
 - a count taken for a reset that raised does not leak into the next reset
 - a profile copy logs one [Set] copied line and announces the profile that is active
@@ -870,7 +918,7 @@ badge and any count quoted in the docs must agree with it.
 - Spells editor spec change also tracks a class it can render
 - Spells editor exposes specs in Blizzard's order, not numeric order
 
-### test_settings_spells_editor.lua (32)
+### test_settings_spells_editor.lua (40)
 
 - the Add-spell popup appends a validated spell to the selected list
 - input the spell DB does not resolve is refused and nothing is added
@@ -894,10 +942,18 @@ badge and any count quoted in the docs must agree with it.
 - no row carries a move button any more
 - Remove deletes exactly the row's entry
 - the category dropdown writes the entry's category
+- no Spells row widget hooks its pooled frame
+- hovering the spell name shows the spell tooltip
+- hovering the category dropdown shows the category tooltip
+- the remove button draws the catalog mark, and the atlas only without LibKa0s
+- a reorder drag never writes a row frame's OnUpdate
 - RefreshRows builds the chrome block, then the rows, in that order
 - the page draws its strip, and the rows land in the LIBRARY's scroll
 - an empty list renders the guidance label instead of rows
 - RefreshRows refuses to run against a hidden panel
+- one commitSoon flush renders the Spells page once
+- a raising render does not latch the guard
+- while stood down a commit still repaints the open page
 - a rebuild drains the scroll before building a new tree into it
 - a re-render cancels the reorder controller BEFORE it clears the tree
 - the selection cascade falls back to the first sorted class the defaults know
@@ -905,7 +961,7 @@ badge and any count quoted in the docs must agree with it.
 - hiding the page cancels the reorder controller too
 - kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
-### test_spell_registry.lua (24)
+### test_spell_registry.lua (30)
 
 - `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
 - `/kcd spells add` lazy-creates the list of a spec that has none
@@ -931,6 +987,12 @@ badge and any count quoted in the docs must agree with it.
 - a verb that writes nothing traces nothing
 - the Spells page's actions trace once, from the writer, not again at the call site
 - Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
+- SpellInput.Resolve answers by id, by name, and nil for an unknown
+- the page's ValidateSpellInput is SpellInput.Resolve, not a second copy
+- SpellInput.ParseTail matches the longest name, then CLASS and SPEC
+- the CM cache is invalidated by TRAIT_CONFIG_UPDATED even when the Spells page was never built
+- SpellInput.Admissible has no opinion off the live pair or without the viewer API
+- Database:AddSpell refuses a class token no client or default knows
 
 ### test_settings_widgets.lua (20)
 
@@ -955,7 +1017,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (39)
+### test_options_panel.lua (42)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -974,6 +1036,8 @@ badge and any count quoted in the docs must agree with it.
 - dragging a slider commits on mouse-up
 - choosing a dropdown option stores the option KEY, never its index
 - confirming a color stores the keyed shape the modules read
+- the descriptor's scheduleTimer answers a cancelable handle
+- a color drag commits once per throttle window
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
 - SessionToggle adapts this addon's argument order onto the library's
@@ -982,11 +1046,12 @@ badge and any count quoted in the docs must agree with it.
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
 - with LibKa0s absent the schema loads complete BAR the composed blocks
-- the hollow composers cost the degraded path no CLI reach it otherwise has
+- the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note has no hover highlight but is still clickable
 - the linked-Focus note opens General on its Units tab
+- a linked Focus page draws the full strip, inert, and only the link note
 - the Focus link's tick and its Copy button share one row
 - General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
@@ -1015,14 +1080,16 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd version` prints v<version> on exactly one line
 - `version` falls back to the NS.VERSION stamp when TOC metadata is absent
 
-### test_source_style.lua (1)
+### test_source_style.lua (3)
 
 - a WoW global on the standing _G. list is never read bare
+- no module reads profile.enabled directly
+- no authored file falls back to the global print
 
 ### test_prose.lua (15)
 
-- prose: no authored file carries a British spelling from localization-5's published list
-- prose: the gate carries localization-5's two lists whole, and nothing of its own
+- prose: no authored file carries a British spelling from localization-§5's published list
+- prose: the gate carries localization-§5's two lists whole, and nothing of its own
 - prose self-test: the carve-out suppresses the named generated folder, and only it
 - prose self-test: a path the carve-out does not name is not covered by one that looks like it
 - prose self-test: a carve-out that is not a set of path strings is a failure, not a silence
@@ -1050,7 +1117,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (41)
+### test_slash.lua (59)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1078,8 +1145,9 @@ badge and any count quoted in the docs must agree with it.
 - bare /kcd opens the settings landing page through `config`
 - whitespace-only /kcd is bare and reaches `config` too
 - with LibKa0s absent bare /kcd still reaches `config`
-- /kcd lock with no `locked` row writes nothing and says the settings layer is not ready
-- with LibKa0s absent /kcd lock and /kcd toggle write nothing
+- /kcd lock with no `locked` row still writes it, through the seam's writeThrough
+- /kcd lock before the settings layer is up writes nothing and says why
+- with LibKa0s absent /kcd lock and /kcd toggle still write, through the stub's writeThrough
 - the degraded stub carries no copy of the row formatter or the parser
 - every string the Slash CLI renders resolves to prose, not to its own key
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
@@ -1093,8 +1161,25 @@ badge and any count quoted in the docs must agree with it.
 - nothing refuses while the addon is ENABLED
 - the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
+- `/kcd spells add Wind Shear` adds 57994 for a Shaman
+- `/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair
+- the CLI refuses a spell the Cooldown Manager does not track for the live spec
+- the CLI gate is dropped for a pair other than the player's live one, as on the page
+- `spells add <id> WARLORD 99999` writes nothing
+- `spells add <id> SHAMAN 99999` names the spec it could not resolve
+- bare `/kcd spells` names the default spec by SpecDisplay
+- the stub's DisabledLine format is the library constant, byte for byte
+- the stub carries no copy of the library's reserved verbs
+- the host's feature verbs are exactly the verbs the live gate refuses
+- degraded gate while disabled refuses feature verbs and nothing else
+- degraded help rows print `cmd  desc` plainly, with no em dash
+- degraded `/kcd list` prints the library-absent line
+- degraded `/kcd set visibility always` writes nothing and prints the library-absent line
+- degraded `/kcd set` refuses a non-bool value even on a writeThrough path
+- degraded `/kcd lock` writes locked, and confirms
+- degraded `/kcd lock` while disabled prints the DisabledLine and does not act
 
-### test_disabled.lua (15)
+### test_disabled.lua (19)
 
 - baseline: an ENABLED addon registers something worth standing down
 - DISABLED: the registration set is EMPTY, by count and by name
@@ -1104,13 +1189,17 @@ badge and any count quoted in the docs must agree with it.
 - DISABLED: a settings change does not bring it back
 - DISABLED: every reserved verb still answers, and the bare /kcd opens the panel
 - DISABLED: a feature verb refuses on ONE line and reaches no write seam
-- DISABLED: the launcher's LEFT click is refused and writes nothing
-- DISABLED: the launcher's RIGHT click still opens the panel
+- DISABLED: the launcher's LEFT click opens the settings panel and writes nothing
+- DISABLED: the RIGHT click's menu keeps Enabled live and grays Locked
 - RE-ENABLED: the registration set comes back, exactly
+- the Cooldown Manager cache's invalidator is in the set, and stands down with it
 - RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot
+- two disable/enable cycles create no frames
 - LATCH: releasing the perf hold does NOT resurrect a disabled addon
 - LATCH: the holds are order-independent
 - LATCH: a profile switch that flips `enabled` is honored
+- DEGRADED: `/kcd disable` writes enabled = false, stands down, confirms, raises nothing
+- DEGRADED: `/kcd enable` brings it back up
 
 ### test_opensettings.lua (6)
 
@@ -1121,7 +1210,7 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (29)
+### test_perfsetup.lua (32)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -1131,9 +1220,12 @@ badge and any count quoted in the docs must agree with it.
 - the declared bucket list and the bracketed call sites agree exactly
 - nesting is declared for every bucket that runs inside another
 - the nesting the descriptor declares is the nesting a run OBSERVES
+- stateEmit's observed parent is spellPoll
+- every spellState note names its real parent
+- the descriptor declares rebuildEmit as a root
 - instrumentation is inert when capture is off
 - the show decisions consult the LATCH as step 0, at the source
-- suspend releases the per-unit dispatch frames AceEvent cannot reach
+- suspend disarms the per-unit cast filters AceEvent cannot reach
 - enabling a unit while suspended does not re-register its frames mid-capture
 - resume restores from CURRENT state, not from a snapshot
 - the suspended flag is session-only and never persisted
@@ -1153,7 +1245,7 @@ badge and any count quoted in the docs must agree with it.
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
 
-### test_launcher.lua (28)
+### test_launcher.lua (40)
 
 - the launcher is ONE LibDataBroker object of type `launcher`, wearing the addon's own logo
 - the broker label is the BRAND NAME in plain text, `Ka0s KickCD`
@@ -1162,12 +1254,24 @@ badge and any count quoted in the docs must agree with it.
 - the 128 logo is on disk, uncompressed 32-bit TGA at 128x128
 - it registers under the addon's FOLDER name, with the table the settings row writes
 - Register is idempotent: a second call builds no second button
-- LEFT click toggles the lock — rung (b), through the addon's own switch
-- the left click goes through the SAME write seam the Lock frame checkbox does
-- RIGHT click opens the settings panel, whatever the left button does
+- LEFT click opens the settings panel and touches nothing else
+- RIGHT click opens the options menu: the label, then Enabled and Locked, nothing else
+- the menu reads the state when it opens, every time
+- Enabled routes to the handler `/kcd enable` and `/kcd disable` run
+- Enabled writes through the single write seam, one write on the `enabled` row
+- Locked routes to NS.ToggleLock, the handler `/kcd toggle` runs
+- Locked goes through the SAME write seam the Lock frame checkbox does
+- with no client menu API the right click falls back to the settings panel
+- the descriptor passes the pairs KickCD has, and no retired or absent field
+- the tooltip, enabled and locked: title with the TOC version, Enabled, Locked, the fixed hints
+- the tooltip reads the lock on EVERY show
+- the version is the TOC's ## Version, not a second constant
+- the tooltip still shows while DISABLED: Enabled: No, the same hints
 - the row's get INVERTS LibDBIcon's `hide`, so the label can say shown
 - the row's set inverts AND moves the button, in the one write seam
-- `/kcd set global.minimap.hide` takes exactly the path the checkbox takes
+- `/kcd get global.minimap.shown` answers true while minimap.hide is false
+- `/kcd set global.minimap.shown false` stores hide = true
+- a legacy store keeps its setting across the CLI rename, with no migration
 - `Reset all settings` does NOT un-hide a button the player hid
 - the General page's DEFAULTS button does NOT un-hide a button the player hid
 - nor does it RE-HIDE a button the player is happy with
@@ -1192,7 +1296,7 @@ badge and any count quoted in the docs must agree with it.
 - --list per-suite header counts match their bullet counts
 - --list Totals row equals the grand total of bullets
 
-### test_surface_parity.lua (7)
+### test_surface_parity.lua (8)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1200,20 +1304,23 @@ badge and any count quoted in the docs must agree with it.
 - the DebugLog stub carries the whole live surface
 - the Slash stub carries the whole live surface
 - the Options stub carries every member the host calls
+- the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 
-### test_doc_structure.lua (3)
+### test_doc_structure.lua (4)
 
 - docs/ARCHITECTURE.md carries the section names documentation-§3 mandates
 - every anchor pointing into docs/ARCHITECTURE.md resolves to a heading
 - every deviation id the register cites is assigned by a bundle in docs/audits/
+- every file-scope NS:GetModule sits below its parent under a LOAD-BEARING comment
 
-### test_lintconfig.lua (4)
+### test_lintconfig.lua (5)
 
 - lintconfig: .luacheckrc sets no top-level ignore
 - lintconfig: .luacheckrc switches no warning class off wholesale
 - lintconfig: every files[...] ignore is narrowed to a file or a name
 - lintconfig: no source file carries a bare inline luacheck ignore
+- lintconfig: no deprecated spell/spec global is whitelisted for shipped code
 
 ### test_vendor_sync.lua (3)
 
@@ -1224,13 +1331,13 @@ badge and any count quoted in the docs must agree with it.
 ### test_eol.lua (2)
 
 - eol: every tracked file carries the terminator .gitattributes declares for it
-- eol: .gitattributes is line-endings-5's canonical body for this repo kind
+- eol: .gitattributes is line-endings-§5's canonical body for this repo kind
 
 ### test_layout_cap.lua (13)
 
 - layoutcap: every authored file over the 1500-line cap is named in the census
 - layoutcap: no census row outlives the breach it records
-- layoutcap: every over-cap census row carries one of layout-1's three terminal states
+- layoutcap: every over-cap census row carries one of layout-§1's three terminal states
 - layoutcap: the census and the exempt set agree about which paths were exempted
 - layoutcap: an empty census is written as a result rather than left standing empty
 - layoutcap self-test: the parser reads the census nested under the register, and stops there
@@ -1248,16 +1355,18 @@ badge and any count quoted in the docs must agree with it.
 |-------|------:|
 | test_util.lua | 13 |
 | test_coresetup.lua | 26 |
-| test_mediasetup.lua | 8 |
+| test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
-| test_util_anchor.lua | 26 |
+| test_util_anchor.lua | 31 |
 | test_constants.lua | 27 |
-| test_state.lua | 23 |
+| test_state.lua | 25 |
+| test_events.lua | 6 |
 | test_locale.lua | 15 |
-| test_units.lua | 25 |
-| test_schema.lua | 36 |
-| test_database.lua | 23 |
-| test_color_shape.lua | 21 |
+| test_units.lua | 26 |
+| test_schema.lua | 38 |
+| test_schema_store.lua | 10 |
+| test_database.lua | 25 |
+| test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
@@ -1266,46 +1375,46 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
-| test_icongrid_visibility.lua | 22 |
+| test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 21 |
 | test_icongrid_curves.lua | 12 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
-| test_icongrid_buildlist.lua | 23 |
+| test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 8 |
 | test_icongrid_handle.lua | 10 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
-| test_castbar.lua | 7 |
+| test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 29 |
 | test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 18 |
 | test_cooldowns.lua | 16 |
-| test_cooldowns_gates.lua | 22 |
+| test_cooldowns_gates.lua | 23 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
-| test_settings_spells_editor.lua | 32 |
-| test_spell_registry.lua | 24 |
+| test_settings_spells_editor.lua | 40 |
+| test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 39 |
+| test_options_panel.lua | 42 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
-| test_source_style.lua | 1 |
+| test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 41 |
-| test_disabled.lua | 15 |
+| test_slash.lua | 59 |
+| test_disabled.lua | 19 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 29 |
-| test_launcher.lua | 28 |
+| test_perfsetup.lua | 32 |
+| test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 7 |
-| test_doc_structure.lua | 3 |
-| test_lintconfig.lua | 4 |
+| test_surface_parity.lua | 8 |
+| test_doc_structure.lua | 4 |
+| test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1050** |
+| **Total** | **1151** |

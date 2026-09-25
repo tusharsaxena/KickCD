@@ -287,7 +287,7 @@ test("neither the Spells page nor `/kcd spells` writes a stored spell list itsel
         { "EnsureSpellList",        "the lazy create" },
         { "profile%.spells%s*=",    "the store itself" },
     }
-    for _, rel in ipairs({ "settings/Spells.lua", "core/KickCD.lua" }) do
+    for _, rel in ipairs({ "settings/Spells.lua", "settings/Spells_Rows.lua", "core/KickCD.lua" }) do
         local src = code(rel)
         for _, f in ipairs(forbidden) do
             assertNil(src:match(f[1]), rel .. " writes " .. f[2] .. " itself; call NS.Database")
@@ -375,7 +375,7 @@ test("Database:SetSpellEnabled and :SetSpellCategory write one entry's field", f
     assertEqual(D:SetSpellCategory("SHAMAN", 999, id, "root"), false, "a missing list")
 end)
 
--- ── the writer traces its own writes (debug-logging-§8, §10) ───────────────
+-- ── the writer traces its own writes (debug-logging-§8, debug-logging-§10) ─
 --
 -- A registry's create or delete is a functional flow, traced once by the
 -- registry writer. The trace lives in Database, so the Spells page and
@@ -492,4 +492,112 @@ test("Database:ResetSpellList rebuilds IN PLACE, so a held reference stays valid
     local back = inst.NS.Database:ResetSpellList("SHAMAN", ELEMENTAL)
     assertTrue(back == held, "the list table must be the same one")
     assertListIs(held, defaultsFor(inst.NS, "SHAMAN", ELEMENTAL), "in-place reset")
+end)
+
+-- ── core/SpellInput.lua: the one resolver both surfaces call ────────────────
+
+local WIND_SHEAR = 57994
+local KNOWN = { [WIND_SHEAR] = "Wind Shear", [51514] = "Hex" }
+
+--- An Elemental Shaman instance whose spell DB knows KNOWN, by id and by name.
+local function inputInstance()
+    return T.load(true, true, function(m)
+        m.UnitClass = function() return "Shaman", "SHAMAN", SHAMAN_CLASS_ID end
+        m.__setPlayerSpec(SHAMAN_CLASS_ID, 1)
+        m.C_Spell.GetSpellInfo = function(q)
+            for id, name in pairs(KNOWN) do
+                if q == id or q == name then return { name = name, iconID = 1, spellID = id } end
+            end
+            return nil
+        end
+    end)
+end
+
+local function words(s)
+    local out = {}
+    for w in s:gmatch("%S+") do out[#out + 1] = w end
+    return out
+end
+
+test("SpellInput.Resolve answers by id, by name, and nil for an unknown", function()
+    local SI = inputInstance().NS.SpellInput
+    local id, name = SI.Resolve("57994")
+    assertEqual(id, WIND_SHEAR); assertEqual(name, "Wind Shear")
+    id, name = SI.Resolve("Wind Shear")
+    assertEqual(id, WIND_SHEAR); assertEqual(name, "Wind Shear")
+    assertNil(SI.Resolve("Wind"), "a prefix of a name is not the name")
+    assertNil(SI.Resolve("99999999"), "an id the DB lacks")
+    assertNil(SI.Resolve(""), "empty")
+    assertNil(SI.Resolve(nil), "nil")
+end)
+
+test("the page's ValidateSpellInput is SpellInput.Resolve, not a second copy", function()
+    local inst = inputInstance()
+    assertTrue(inst.NS.Settings.SpellsPanel.ValidateSpellInput == inst.NS.SpellInput.Resolve)
+end)
+
+test("SpellInput.ParseTail matches the longest name, then CLASS and SPEC", function()
+    local SI = inputInstance().NS.SpellInput
+    local _
+    local id, name, class, spec = SI.ParseTail(words("Wind Shear"))
+    assertEqual(id, WIND_SHEAR); assertEqual(name, "Wind Shear")
+    assertEqual(class, "SHAMAN"); assertEqual(spec, ELEMENTAL, "defaults to the player's pair")
+
+    id, _, class, spec = SI.ParseTail(words("Wind Shear shaman enhancement"))
+    assertEqual(id, WIND_SHEAR); assertEqual(class, "SHAMAN"); assertEqual(spec, ENHANCEMENT)
+
+    id, _, class, spec = SI.ParseTail(words("57994 HUNTER 253"))
+    assertEqual(id, WIND_SHEAR); assertEqual(class, "HUNTER"); assertEqual(spec, 253)
+
+    local none, err = SI.ParseTail(words("57994 WARLORD 99999"))
+    assertNil(none); assertEqual(err, "Unknown class WARLORD")
+    none, err = SI.ParseTail(words("57994 SHAMAN 99999"))
+    assertNil(none); assertEqual(err, "Unknown spec 99999 for SHAMAN")
+    -- One trailing token: a spec of the player's own class, or a class whose
+    -- spec list holds the player's spec.
+    id, _, class, spec = SI.ParseTail(words("Wind Shear enhancement"))
+    assertEqual(id, WIND_SHEAR); assertEqual(class, "SHAMAN"); assertEqual(spec, ENHANCEMENT)
+    _, _, class, spec = SI.ParseTail(words("Wind Shear SHAMAN"))
+    assertEqual(class, "SHAMAN"); assertEqual(spec, ELEMENTAL)
+    none, err = SI.ParseTail(words("Wind Shear HUNTER"))
+    assertNil(none); assertEqual(err, "Specify a spec for HUNTER")
+    none, err = SI.ParseTail(words("Wind Shear interrupt"))
+    assertNil(none); assertEqual(err, "Unknown class INTERRUPT")
+    none, err = SI.ParseTail(words("Wind Sheer"))
+    assertNil(none); assertEqual(err, "Unknown spell: Wind Sheer")
+end)
+
+test("the CM cache is invalidated by TRAIT_CONFIG_UPDATED even when the Spells page was never built", function()
+    local inst = inputInstance()
+    local tracked = { WIND_SHEAR }
+    inst.mocks.Enum = { CooldownViewerCategory = { ESSENTIAL = 1 } }
+    inst.mocks.C_CooldownViewer = {
+        GetCooldownViewerCategorySet = function()
+            local out = {}
+            for i in ipairs(tracked) do out[i] = i end
+            return out
+        end,
+        GetCooldownViewerCooldownInfo = function(cdID) return { spellID = tracked[cdID] } end,
+    }
+    local SI = inst.NS.SpellInput
+    assertEqual(SI.Admissible(51514, "SHAMAN", ELEMENTAL), false, "Hex is not tracked yet")
+    tracked = { WIND_SHEAR, 51514 }
+    assertEqual(SI.Admissible(51514, "SHAMAN", ELEMENTAL), false, "sanity: the set is cached")
+    inst.mocks.__fireEvent("TRAIT_CONFIG_UPDATED")
+    assertEqual(SI.Admissible(51514, "SHAMAN", ELEMENTAL), true,
+        "the talent change must have dropped the cached set")
+end)
+
+test("SpellInput.Admissible has no opinion off the live pair or without the viewer API", function()
+    local SI = inputInstance().NS.SpellInput
+    assertEqual(SI.Admissible(51514, "SHAMAN", ELEMENTAL), true, "no C_CooldownViewer: lenient")
+    assertEqual(SI.IsLivePair("SHAMAN", ELEMENTAL), true)
+    assertEqual(SI.IsLivePair("SHAMAN", ENHANCEMENT), false)
+end)
+
+test("Database:AddSpell refuses a class token no client or default knows", function()
+    local inst = inputInstance()
+    local r, why = inst.NS.Database:AddSpell("WARLORD", 99999, WIND_SHEAR)
+    assertNil(r); assertEqual(why, "unknown class")
+    assertNil(inst.NS.db.profile.spells.WARLORD, "EnsureSpellList was never reached")
 end)

@@ -101,7 +101,7 @@ test("Druid's four specs all survive the ordering", function()
     assertEqual(#Spells.SpecOrder("DRUID"), 4)
 end)
 
--- ── validateSpellInput ──────────────────────────────────────────────────────
+-- ── ValidateSpellInput (core/SpellInput.lua's Resolve) ─────────────────────
 
 test("ValidateSpellInput accepts a numeric spell ID and resolves its name", function()
     local id, name = Spells.ValidateSpellInput(1766)

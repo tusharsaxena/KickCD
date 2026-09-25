@@ -72,9 +72,9 @@ end)
 -- ── the live profile ────────────────────────────────────────────────────────
 
 test("the built profile stores colors keyed", function()
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     for _, def in ipairs(colorRows()) do
-        local v = H.Get(def.path)
+        local v = S.Get(def.path)
         assertEqual(type(v), "table", def.path)
         assertTrue(v.r ~= nil, def.path .. " stored positionally in the live profile")
         assertNil(v[1], def.path .. " stored value still carries index [1]")
@@ -84,9 +84,9 @@ end)
 test("DEFAULT_PROFILE and the schema agree on every color", function()
     -- Two literals for one value is how they drift. They are declared in both
     -- core/Database.lua and settings/*.lua, so pin that they match.
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     for _, def in ipairs(colorRows()) do
-        local live = H.Get(def.path)
+        local live = S.Get(def.path)
         local d = def.default
         assertNear(live.r, d.r, 1e-9, def.path .. ".r")
         assertNear(live.g, d.g, 1e-9, def.path .. ".g")
@@ -140,16 +140,17 @@ test("a pre-migration profile's array colors convert to the keyed shape", functi
     -- THE case that protects real user data. A profile saved before this change
     -- holds arrays; without the ladder step every color would read nil on every
     -- channel and render as the fallback.
-    -- red under: removing the [3] entry from the MIGRATIONS table
+    -- red under: removing MigrateColorShape from both the ladder's [3] entry
+    -- and Database:Init (either one alone still converts the active profile)
     local inst = T.load(false)
     local NS2 = inst.NS
 
     -- A v3 account with one array-shaped color saved, exactly as it was written.
     local saved = {
-        global  = { schemaVersion = 3 },
-        profile = {
+        global   = { schemaVersion = 3 },
+        profiles = { Default = {
             units = { target = { icons = { cooldownTint = { 0.25, 0.5, 0.75, 0.5 } } } },
-        },
+        } },
     }
     inst.mocks.KickCDDB = saved
     pcall(NS2.OnInitialize, NS2)
@@ -167,25 +168,26 @@ end)
 test("the migration bumps the stored schema version so it runs once", function()
     local inst = T.load(false)
     local NS2 = inst.NS
-    inst.mocks.KickCDDB = { global = { schemaVersion = 3 }, profile = {} }
+    inst.mocks.KickCDDB = { global = { schemaVersion = 3 }, profiles = { Default = {} } }
     pcall(NS2.OnInitialize, NS2)
-    assertTrue(NS2.db.global.schemaVersion >= 4,
-        "expected schemaVersion >= 4, got " .. tostring(NS2.db.global.schemaVersion))
+    -- The runner owns the stamp and advances it past each step that returned,
+    -- so a v3 account ends at the current version, 5.
+    assertEqual(NS2.db.global.schemaVersion, 5)
 end)
 
 test("an already-keyed color passes through the migration untouched", function()
-    -- Idempotence. The ladder is keyed on schemaVersion so it should not re-run,
-    -- but a converter that mangled an already-converted value would be a
-    -- one-reload data loss the version guard could not undo.
+    -- Idempotence. The step runs on every load and every profile swap now
+    -- (KICKCD-R-01), not once behind the stamp, so a converter that mangled an
+    -- already-converted value would be data loss on the very next reload.
     local inst = T.load(false)
     local NS2 = inst.NS
     inst.mocks.KickCDDB = {
-        global  = { schemaVersion = 3 },
-        profile = {
+        global   = { schemaVersion = 3 },
+        profiles = { Default = {
             units = { target = { icons = {
                 cooldownTint = { r = 0.1, g = 0.2, b = 0.3, a = 0.4 },
             } } },
-        },
+        } },
     }
     pcall(NS2.OnInitialize, NS2)
     local v = NS2.db.profile.units.target.icons.cooldownTint
@@ -193,6 +195,127 @@ test("an already-keyed color passes through the migration untouched", function()
     assertNear(v.g, 0.2, 1e-9)
     assertNear(v.b, 0.3, 1e-9)
     assertNear(v.a, 0.4, 1e-9)
+end)
+
+-- ── every profile, not just the one active at the upgrade (KICKCD-R-01) ─────
+--
+-- The color and font-flag steps are per-PROFILE data behind a per-ACCOUNT
+-- stamp. Gated on the stamp alone, they converted whichever profile happened to
+-- be active the day the account reached v4/v5 and never touched another one, so
+-- a second profile's customized colors read back as the defaults and its
+-- outline dropdown opened blank. Both steps now run on Init and on every
+-- OnProfileChanged, beside the version ladder.
+
+--- An account already at the current stamp with a second stored profile that
+--- was never active when it got there, and every chat line the load prints.
+local function loadTwoProfiles(alt)
+    local lines = {}
+    local inst = T.load(true, false, function(m)
+        m.KickCDDB = { global = { schemaVersion = 5 }, profiles = { Default = {}, Alt = alt } }
+        local frame = m.DEFAULT_CHAT_FRAME
+        local orig = frame.AddMessage
+        frame.AddMessage = function(f, msg, ...)
+            lines[#lines + 1] = tostring(msg)
+            return orig(f, msg, ...)
+        end
+    end)
+    return inst.NS, lines
+end
+
+test("a second stored profile has its positional colors converted when it becomes active", function()
+    -- red under: dropping MigrateColorShape from Database:OnProfileChanged
+    -- (on HEAD migrations[3] was gated on the account stamp, already 5 here)
+    local ns = loadTwoProfiles({
+        units = { target = { castbar = { interruptible = { barColor = { 0.1, 0.2, 0.3, 1 } } } } },
+    })
+    ns.db:SetProfile("Alt")
+    local c = ns.db.profile.units.target.castbar.interruptible.barColor
+    assertNear(c.r, 0.1, 1e-9, "the stored red must survive, not read back as the default")
+    assertNear(c.g, 0.2, 1e-9)
+    assertNear(c.b, 0.3, 1e-9)
+    assertNil(c[1], "the array part must be gone")
+end)
+
+test("a second stored profile has its 'NONE' font flags rewritten when it becomes active", function()
+    -- red under: dropping MigrateFontFlags from Database:OnProfileChanged
+    local ns = loadTwoProfiles({ units = { target = { castbar = { fontFlags = "NONE" } } } })
+    ns.db:SetProfile("Alt")
+    assertEqual(ns.db.profile.units.target.castbar.fontFlags, "",
+        "a stored NONE must become the empty string, or the outline dropdown opens blank")
+end)
+
+test("a hybrid whose keys differ from the default keeps its keys and loses its array", function()
+    -- red under: MigrateColorShape converting every hybrid array -> keys
+    --
+    -- A profile that was active at the upgrade got its keys, and the player
+    -- then edited the color. If the array part lingered (the old one-shot
+    -- converted only the active profile's arrays), the keys are the newer
+    -- truth: overwriting them from the array would roll the edit back.
+    local ns = loadTwoProfiles({
+        units = { target = { castbar = { interruptible = {
+            barColor = { 0.1, 0.2, 0.3, 1, r = 0.9, g = 0.8, b = 0.7, a = 1 },
+        } } } },
+    })
+    ns.db:SetProfile("Alt")
+    local c = ns.db.profile.units.target.castbar.interruptible.barColor
+    assertNear(c.r, 0.9, 1e-9, "the post-upgrade edit must win")
+    assertNear(c.g, 0.8, 1e-9)
+    assertNear(c.b, 0.7, 1e-9)
+    assertNil(c[1], "the stale array part must be dropped")
+    assertNil(c[4])
+end)
+
+-- ── the stamp (savedvariables-§1, WS-03) ────────────────────────────────────
+
+test("AceDB defaults declare schemaVersion 0", function()
+    -- red under: declaring `schemaVersion = CURRENT_DB_VERSION` in aceDBDefaults
+    --
+    -- AceDB's removeDefaults strips a stored value equal to its default at
+    -- logout, so a current-version default never persists, and backfilling it
+    -- onto a legacy account with no stamp masks that account as current.
+    local captured
+    T.load(true, false, function(m)
+        local AceDB = m.__libs["AceDB-3.0"]
+        local new = AceDB.New
+        AceDB.New = function(self, name, defaults, ...)
+            captured = defaults
+            return new(self, name, defaults, ...)
+        end
+    end)
+    assertTrue(captured ~= nil, "AceDB.New was never called")
+    assertEqual(captured.global.schemaVersion, 0)
+end)
+
+test("a fresh install ends at v5 with no step raising", function()
+    -- red under: a ladder step that raises against a default profile
+    local ns, lines = loadTwoProfiles({})
+    ns.db.global.schemaVersion = 0
+    ns.Database:MigrateProfile()
+    assertEqual(ns.db.global.schemaVersion, 5)
+    local fresh = T.load(true).NS
+    assertEqual(fresh.db.global.schemaVersion, 5, "a fresh account walks 0 -> 5 on its first load")
+    for _, l in ipairs(lines) do
+        assertNil(l:find("migration", 1, true), "no step may fail; printed: " .. l)
+    end
+end)
+
+test("a raising step leaves the stamp where it was", function()
+    -- red under: advancing the stamp without the pcall's ok, or not catching
+    -- the raise (on HEAD the error escaped MigrateProfile)
+    local ns, lines = loadTwoProfiles({})
+    ns.Database.MigrateFontFlags = function() error("boom", 0) end
+    ns.db.global.schemaVersion = 4
+    local before = #lines
+    local ok, err = pcall(ns.Database.MigrateProfile, ns.Database)
+    assertTrue(ok, "a raising step must not escape the runner: " .. tostring(err))
+    assertEqual(ns.db.global.schemaVersion, 4, "the stamp must not pass a failed step")
+    local failures = 0
+    for i = before + 1, #lines do
+        if lines[i]:find("settings migration v4 -> v5 failed: boom", 1, true) then
+            failures = failures + 1
+        end
+    end
+    assertEqual(failures, 1, "exactly one printed failure line")
 end)
 
 -- ── the CLI, end to end ─────────────────────────────────────────────────────
@@ -213,11 +336,12 @@ end)
 
 test("set and get round-trip a color through the library with no translation", function()
     local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
     local row = colorRows()[1]
-    local before = H.Get(row.path)
+    local before = S.Get(row.path)
 
     NS:OnSlashCommand("set " .. row.path .. " 0.25 0.5 0.75 0.5")
-    local stored = H.Get(row.path)
+    local stored = S.Get(row.path)
     assertNear(stored.r, 0.25, 1e-9)
     assertNear(stored.g, 0.5, 1e-9)
     assertNear(stored.b, 0.75, 1e-9)
@@ -355,8 +479,8 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
     end
     assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
 
-    local H = NS.Settings.Helpers
-    local before = H.Get(row.valueGate)
+    local S = NS.Settings.Store
+    local before = S.Get(row.valueGate)
 
     -- Same row, same gate, but a `values` that blows up mid-probe.
     local exploding = {
@@ -366,7 +490,7 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
 
     local ok, hint = pcall(NS.Slash.GateHint, exploding)
     assertTrue(ok, "GateHint must not propagate the row's error; got: " .. tostring(hint))
-    assertEqual(H.Get(row.valueGate), before,
+    assertEqual(S.Get(row.valueGate), before,
         "the gating setting must be restored even when the probe raises")
 
     -- And the hint still names the gate, minus the flip clauses it could not
@@ -374,4 +498,52 @@ test("a valueGate probe whose values() raises leaves the gating setting restored
     assertTrue(hint:find("depends on", 1, true) ~= nil, "got: " .. tostring(hint))
     assertTrue(hint:find("flip", 1, true) == nil,
         "no flip clause is computable when every probe raised; got: " .. hint)
+end)
+
+test("GateHint never writes the profile when the row declares valuesFor", function()
+    -- KICKCD-R-15. The probe above answers "what would flipping the gate
+    -- offer?" by writing each candidate into the live profile and restoring it.
+    -- pcall makes that safe against a raising values(), but it is still a write
+    -- from a read. A row that can say what it offers for a given gate value
+    -- (valuesFor) is asked directly, and the profile is never touched.
+    -- red under: GateHint ignoring row.valuesFor and probing by swap.
+    local row
+    for _, def in ipairs(NS.Settings.Schema) do
+        if def.valueGate then row = def break end
+    end
+    assertTrue(row ~= nil, "the schema declares no valueGate row to exercise")
+    assertEqual(type(row.valuesFor), "function", "the gated row must declare valuesFor")
+
+    -- Every write the probe makes goes through the schema major's own write
+    -- walk (SchemaLib.Write, settings/Slash.lua); count the ones at the gate.
+    local SchemaLib = NS.Settings.SchemaLib
+    local writes = 0
+    local origWrite = SchemaLib.Write
+    SchemaLib.Write = function(root, path, ...)
+        if path == row.valueGate then writes = writes + 1 end
+        return origWrite(root, path, ...)
+    end
+
+    -- The same row with no valuesFor, so the fallback probe computes the
+    -- reference hint the pure path must reproduce word for word -- and, being
+    -- the swap probe, proves the counter sees its writes.
+    local fallback = {}
+    for k, v in pairs(row) do fallback[k] = v end
+    fallback.valuesFor = nil
+    local okFallback, expected = pcall(NS.Slash.GateHint, fallback)
+    local fallbackWrites = writes
+    writes = 0
+    local ok, hint = pcall(NS.Slash.GateHint, row)
+    SchemaLib.Write = origWrite
+    assertTrue(okFallback, "the fallback raised: " .. tostring(expected))
+    assertTrue(fallbackWrites > 0, "sanity: the swap probe writes through SchemaLib.Write")
+
+    assertTrue(ok, "GateHint raised: " .. tostring(hint))
+    assertEqual(writes, 0, "GateHint wrote the gating setting " .. writes .. " time(s)")
+    assertEqual(hint, expected, "the pure path must give the fallback's hint")
+    assertTrue(hint:find("flip", 1, true) ~= nil, "and still offer a flip; got: " .. hint)
+    -- growDirection's options are a { value =, label = } list; the flip clause
+    -- names the VALUES, not the list positions ("for 1/2").
+    assertTrue(hint:find("for %u+/%u+") ~= nil,
+        "the flip clause must name the offered values; got: " .. hint)
 end)

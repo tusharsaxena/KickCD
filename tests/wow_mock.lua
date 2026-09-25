@@ -361,7 +361,17 @@ function FRAME_METHODS.SetScript(self, which, fn)
     if which == "OnEvent" then self._onevent = fn end
     return self
 end
+--- A hook is RECORDED as well as run, in `self.__hooks` ({ which, fn } per
+--- call). A hook cannot be removed, so one laid on a frame AceGUI pools outlives
+--- the widget and follows the frame into whoever acquires it next (KICKCD-R-02);
+--- the ledger is how a suite asserts that nothing did.
+local function recordHook(self, which, fn)
+    local hooks = rawget(self, "__hooks")
+    if not hooks then hooks = {}; rawset(self, "__hooks", hooks) end
+    hooks[#hooks + 1] = { which, fn }
+end
 function FRAME_METHODS.HookScript(self, which, fn)
+    recordHook(self, which, fn)
     local list = self.__scripts[which]
     if not list then list = {}; self.__scripts[which] = list end
     list[#list + 1] = fn
@@ -378,15 +388,29 @@ function FRAME_METHODS._run(self, which, ...)
     for _, fn in ipairs(list) do fn(self, ...) end
 end
 --- Fire the OnEvent handler. Kept as the historical name because
---- Util.RegisterUnitCastEvent's suite drives its dispatch frame through it.
+--- Util.NewUnitCastFilter's suite drives its filter frame through it.
 function FRAME_METHODS._fire(self, ev, ...)
     if self._onevent then self._onevent(self, ev, ...) end
 end
+--- The client RAISES on a name it does not know, before it records anything:
+--- `Attempt to register unknown event "<NAME>"`, the kit's mock_base message byte
+--- for byte. The bad set is the owning build's `__badEvents`, reached through
+--- `self.__mocks` (stamped by mocks.CreateFrame) and read at CALL time, so a test
+--- that swaps the table is heard. A frame with no owning build (a region, or one
+--- built by hand) knows no bad names.
+local function refuseUnknown(self, ev)
+    local bad = self.__mocks and self.__mocks.__badEvents
+    if type(bad) == "table" and bad[ev] then
+        error("Attempt to register unknown event \"" .. tostring(ev) .. "\"", 3)
+    end
+end
 function FRAME_METHODS.RegisterEvent(self, ev)
+    refuseUnknown(self, ev)
     self.__events[ev] = true
     return self
 end
 function FRAME_METHODS.RegisterUnitEvent(self, ev, unit)
+    refuseUnknown(self, ev)
     self._unitEvents = self._unitEvents or {}
     self._unitEvents[ev] = unit
     self.__events[ev] = unit or true
@@ -448,18 +472,33 @@ local function dbSection(t, key)
     return t and t[key] or {}
 end
 
---- The profile-management surface the addon calls on its db. Real enough to be
---- harmless: GetProfiles genuinely fills the caller's table, the rest are
---- no-ops. Module-level table, copied onto each db.
+--- The profile-management surface the addon calls on its db that the fake
+--- does not model: harmless no-ops. Module-level table, copied onto each db.
+--- SetProfile, GetCurrentProfile, GetProfiles and ResetProfile are real, and
+--- New() builds them per db below.
 local DB_STUBS = {
     RegisterCallback  = function() end,
-    GetCurrentProfile = function() return "Default" end,
-    GetProfiles       = function(_, t) t = t or {}; t[1] = "Default"; return t end,
-    SetProfile        = function() end,
     ResetProfile      = function() end,
     CopyProfile       = function() end,
     DeleteProfile     = function() end,
 }
+
+--- The staged SavedVariables' stored profiles, by name, as the raw tables the
+--- client would hand over (identity kept, so a merge mutates the staged
+--- table exactly as AceDB mutates the real one). A staged `profile` section is
+--- the older shorthand for `profiles.Default`, kept so a suite can stage one
+--- profile without spelling the whole SV shape.
+local function stagedProfiles(saved)
+    local out = {}
+    if type(saved) ~= "table" then return out end
+    if type(saved.profiles) == "table" then
+        for name, p in pairs(saved.profiles) do out[name] = p end
+    end
+    if out.Default == nil and type(saved.profile) == "table" then
+        out.Default = saved.profile
+    end
+    return out
+end
 
 local function build()
     local mocks = kitMockBase()
@@ -518,8 +557,8 @@ local function build()
     -- messages, buckets -- and the frames the KIT built. This addon's frames are
     -- this file's own model (see the header: CreateTexture returns a distinct
     -- object, which the kit deliberately does not adopt), so the kit's survey
-    -- cannot see the two kinds that matter most here: core/State.lua's raw
-    -- PLAYER_REGEN_* listener and the per-unit UNIT_SPELLCAST_* dispatch frames.
+    -- cannot see the kind that matters most here: the per-unit UNIT_SPELLCAST_*
+    -- cast-filter frames.
     --
     -- This is the union, in the kit's own row shape, so a suite asks ONE
     -- question. It removes on unregister in both halves -- the kit's registry
@@ -583,9 +622,39 @@ local function build()
             -- the account is missing. Flip it and migration tests would be
             -- migrating a defaults-shaped table and passing for the wrong reason.
             for _, key in ipairs(DB_SECTIONS) do
-                db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
+                if key ~= "profile" then
+                    db[key] = copyDefaults(dbSection(saved, key), dbSection(defaults, key))
+                end
             end
             for stub, fn in pairs(DB_STUBS) do db[stub] = fn end
+
+            -- ── Stored profiles, and a real SetProfile ──────────────────────
+            --
+            -- Every stored profile, seeded from the staged SV `profiles` table.
+            -- Each is defaults-merged IN PLACE the first time it is accessed and
+            -- keeps its identity per name after that, which is AceDB-3.0's own
+            -- lazy profile materialization. A profile migration that walks only
+            -- `db.profile` is invisible to a suite that never switches, and a
+            -- SetProfile no-op made the switch impossible to test (KICKCD-R-01).
+            db.__profiles = stagedProfiles(saved)
+            local merged = {}
+            local function profileFor(key)
+                if not merged[key] then
+                    db.__profiles[key] = copyDefaults(db.__profiles[key] or {},
+                        dbSection(defaults, "profile"))
+                    merged[key] = true
+                end
+                return db.__profiles[key]
+            end
+            db.profile = profileFor("Default")
+            db.GetCurrentProfile = function() return db.keys.profile end
+            db.GetProfiles = function(_, t)
+                t = t or {}
+                for i = #t, 1, -1 do t[i] = nil end
+                for key in pairs(db.__profiles) do t[#t + 1] = key end
+                table.sort(t)
+                return t, #t
+            end
 
             -- ── ResetProfile, for real ──────────────────────────────────────
             --
@@ -638,6 +707,16 @@ local function build()
                 fire("OnProfileReset")
             end
 
+            -- AceDB-3.0's SetProfile: a no-op onto the active name, otherwise
+            -- swap the key and the profile table, then
+            -- `self.callbacks:Fire("OnProfileChanged", self, name)`.
+            db.SetProfile = function(_, key)
+                if key == db.keys.profile then return end
+                db.keys.profile = key
+                db.profile = profileFor(key)
+                fire("OnProfileChanged", key)
+            end
+
             return db
         end,
     }
@@ -655,9 +734,21 @@ local function build()
     -- under its own key; a no-op Register would let a seam that registered nothing,
     -- or registered a path built from the wrong folder, pass unnoticed.
     LSM.__registered = {}
-    function LSM.Register(_, mediaType, key, path)
+    -- The locale bits are LibSharedMedia-3.0.lua's own constants (:31-35). Left
+    -- to noopLib's __index they would answer a FUNCTION, and LibKa0s-Media adds
+    -- western + ruRU into the langmask it hands Register, so the arithmetic
+    -- would raise at file load. Register records that 5th argument per key.
+    LSM.LOCALE_BIT_koKR    = 1
+    LSM.LOCALE_BIT_ruRU    = 2
+    LSM.LOCALE_BIT_zhCN    = 4
+    LSM.LOCALE_BIT_zhTW    = 8
+    LSM.LOCALE_BIT_western = 128
+    LSM.__langmask = {}
+    function LSM.Register(_, mediaType, key, path, langmask)
         LSM.__registered[mediaType] = LSM.__registered[mediaType] or {}
         LSM.__registered[mediaType][key] = path
+        LSM.__langmask[mediaType] = LSM.__langmask[mediaType] or {}
+        LSM.__langmask[mediaType][key] = langmask
         return true
     end
     function LSM.Fetch(_, mediaType, key)
@@ -676,7 +767,7 @@ local function build()
     -- builds a live minimap button out of CreateFrame, Minimap, and a drag
     -- handler measuring the ring in screen coordinates, none of which this mock
     -- client has. What the suites actually need to see is the three facts
-    -- launcher-§1/§3 bind: that there is exactly ONE object, that it is
+    -- launcher-§1/launcher-§3 bind: that there is exactly ONE object, that it is
     -- registered under the addon's FOLDER name with the SAME table the settings
     -- row writes, and that Show/Hide follow the checkbox. A noopLib would answer
     -- every one of those with a shrug.
@@ -732,6 +823,16 @@ local function build()
         if w.SetHighlight == nil then
             function w.SetHighlight(widget, ...) widget.__highlight = { ... }; return widget end
         end
+        -- The widget's frame is the kit's stub, so its HookScript goes through
+        -- the same ledger FRAME_METHODS.HookScript keeps (see recordHook).
+        local f = w.frame
+        local kitHook = f and rawget(f, "HookScript")
+        if kitHook then
+            f.HookScript = function(frame, which, fn)
+                recordHook(frame, which, fn)
+                return kitHook(frame, which, fn)
+            end
+        end
         return w
     end
     mocks.__aceGUI = AceGUI
@@ -759,12 +860,12 @@ local function build()
     -- without an explicit parent fall back to UIParent, as in the client.
     local UIParent = makeFrame("Frame", nil)
     mocks.UIParent = UIParent
-    -- Every CreateFrame'd frame is also recorded, in creation order. Some
-    -- bootstrap frames are file-locals with no published handle at all (the
-    -- PLAYER_REGEN_* listener in core/State.lua is the case that forced this),
-    -- so the registry plus __findFrame is how a suite reaches one to fire its
-    -- OnEvent — without having to widen the addon's public surface just for
-    -- the tests.
+    -- Every CreateFrame'd frame is also recorded, in creation order. A frame
+    -- can be a file-local with no published handle at all, so the registry
+    -- plus __findFrame is how a suite reaches one to fire its OnEvent —
+    -- without having to widen the addon's public surface just for the tests.
+    -- (AceEvent targets, such as core/State.lua's combat listener, are fired
+    -- through the kit's __fireEvent instead.)
     local created = {}
     mocks.__frames = created
     mocks.CreateFrame = function(frameType, name, parent, template)
@@ -773,13 +874,16 @@ local function build()
         -- GetName(), so a test that cannot see the name cannot assert either.
         local f = makeFrame(frameType or "Frame", parent ~= nil and parent or UIParent, name)
         f.__template = template
+        -- The owning build, so the frame's RegisterEvent can read THIS build's
+        -- __badEvents at call time (see refuseUnknown above).
+        f.__mocks = mocks
         created[#created + 1] = f
         return f
     end
     --- How many created frames are CURRENTLY registered for `event`.
     --- Recorded rather than no-opped because a test needs to observe it: the
-    --- per-unit UNIT_SPELLCAST_* dispatch frames are the thing a perf suspend
-    --- has to release, and "did they come back?" is only answerable by counting.
+    --- per-unit UNIT_SPELLCAST_* cast filters are the thing a perf suspend
+    --- has to disarm, and "did they come back?" is only answerable by counting.
     mocks.__countFramesFor = function(event)
         local n = 0
         for _, f in ipairs(created) do

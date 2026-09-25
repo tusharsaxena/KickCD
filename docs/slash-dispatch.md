@@ -28,11 +28,103 @@ Each row is `{ name, description, fn }`. The dispatcher:
 
 Every chat line emitted by the addon flows through `Util.print` — `LibKa0s-Core-1.0`'s secret-safe printer, published at `NS.Util.print` by `core/CoreSetup.lua` — which prepends a single cyan `|cff00ffff[KCD]|r` banner. Call sites pass plain text — they don't include their own prefix. The help printers (`printHelp`, `runDebug`'s no-arg branch, `runSpells`'s no-arg branch) wrap each row's invocation in `|cffffff00…|r` (yellow) and the description in `|cffffffff…|r` (white) so the slash command and its explanation are visually distinct in chat. The schema-error path in `settings/Panel.lua` also routes through `Util.print` so it shares the `[KCD]` banner; only the inner `schema error:` token is colored red.
 
+## The disabled state
+
+**`slash-commands-§7`: *disabled* does not mean hidden, quiet, or skipping a repaint — it means NOT
+RUNNING.** A player who unticks *Enable KickCD* has asked for the same outcome they would get by
+unticking the addon in Blizzard's own AddOns list, minus the `/reload`.
+
+This addon implemented it as a **draw gate** until it re-vendored LibKa0s v1.42.0: `enabled = false`
+hid the grid and the bar, and every registration stayed — so the client went on walking KickCD's
+registration list on every `SPELL_UPDATE_COOLDOWN`, building the argument frame, entering Lua, and
+running the comparison that decided to leave. It had not stopped watching; it had stopped
+**reacting**. From outside, the two look identical, which is how the shape survived several audits
+(`anti-patterns` #85).
+
+### Two holds, one latch
+
+The capability to go inert already existed here: `core/PerfSetup.lua`'s suspend/resume arm, built for
+a capture's Experiment B. Writing a second teardown beside it for *disable* is the anti-pattern
+rather than an implementation detail — two mechanisms that both mean "be inert" drift, and the day
+they disagree the addon is half down. So both reasons are **named holds on one latch**,
+`LibKa0s-Lifecycle-1.0`, wired in **`core/LifecycleSetup.lua`**:
+
+| Hold | Taken by | Lifetime |
+|---|---|---|
+| `disabled` | the stored `enabled` path, through `NS.RefreshEnabledHold()` | **persisted**, by being re-taken at load |
+| `perf` | `LibKa0s-Perf-1.0`'s suspended arm — the host never spells this one | **session-only** |
+
+The addon is **stood down whenever at least one hold is taken, and stands up only when the last one
+is released**. There is no `:StandUp()` to call: releasing a hold is the only route out, which is
+what stops a perf run that ends mid-`disable` from resurrecting an addon the player switched off, and
+a `/kcd enable` typed mid-capture from un-suspending the run. `NS.Perf.suspended` still answers and
+still means the same thing — it is a **view** of the `perf` hold now rather than a boolean beside it,
+and assigning to it raises.
+
+`NS.RefreshEnabledHold()` is called from exactly three places, and between them they cover every way
+the stored value can change: **the single write seam** (`Store.Set`, which the checkbox,
+`/kcd set enabled` and the `enable` / `disable` verbs all land on — the `enabled` row's `onChange` in
+`settings/General.lua`, run before the announce, or the seam's `announce` for a written-through
+`enabled` on a library-less load), **`core/Database.lua`'s
+profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
+§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
+for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
+module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
+
+### What stands down
+
+`standDown` releases, and `standUp` rebuilds **from current state** (never from a snapshot — a
+setting changed while the addon was off has to come back as it is now):
+
+- **`core/State.lua`'s combat listener** — `UnregisterAllEvents()` on its AceEvent target. Gone,
+  not gated. The stand-up restores only the `PLAYER_REGEN_*` pair and re-seeds the flag from
+  `InCombatLockdown()`; `PLAYER_LOGIN` never comes back, because the first hold is taken inside
+  `OnEnable`, which is `PLAYER_LOGIN`, so no stand-up can precede it.
+- **`Cooldowns`, `IconGrid`, `Castbar`, `UnitLabel`** — each module's `Suspend` drops its game
+  events, its **bus subscriptions**, and its private per-unit `UNIT_SPELLCAST_*` cast filter (disarmed, kept for the next arm).
+  Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
+  the login path and the stand-up path cannot drift.
+- **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
+  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
+  true 60 Hz handler.
+- **`settings/Spells.lua`'s five subscriptions** (two bus messages, three game events) — the
+  editor's refreshers — and **`core/SpellInput.lua`'s two**, the Cooldown Manager cache
+  invalidator. The **page** survives; its reaction to game events does not.
+- **Visibility is enforced at the source.** The show ladders' first rung is `NS.IsDown()`, so nothing
+  — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
+  back. Frames are not hidden imperatively, because a hidden frame comes back.
+
+**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
+one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
+frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
+disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
+name. An addon that grows a secure frame must hold its teardown pending rather than extend
+`standDown`.
+
+### What survives, because it is setup
+
+The chat command, the dispatcher and `COMMANDS`; the settings-category registration and the panel
+body; the AceDB handle, the single write seam and AceDB's three profile callbacks; the launcher's
+registration. None of it is a feature, all of it is how the player gets the addon back. What the
+**slash surface** does while disabled is [the section below](#the-disabled-state-the-gate-is-the-librarys-the-judgment-is-ours);
+what the **launcher click** does is below.
+
+### The launcher while disabled
+
+The button stays on the minimap and the broker row stays in the display — `minimap.hide` is a
+per-installation display preference and says nothing about whether the addon is running. Since
+Launcher version 4 (`launcher-§2`, standard v2.67.0) **left-click opens the settings panel** in either
+state: the panel is setup that `slash-commands-§7` keeps standing, and it is one of the two routes §7
+nominates for reaching the panel of an addon that is off. **Right-click opens the options menu**:
+*Enabled* stays live and is the way back on; *Locked* drives the preview switch, a feature, so the
+library grays it (`Locked (enable the addon first)`) and a click on it calls nothing and writes no
+SavedVariables.
+
 ## The disabled state: the gate is the library's, the judgment is ours
 
 `slash-commands-§7` makes *disabled* **total** — every registration actually unregistered, every
 timer canceled, every frame hidden at the source, nothing written from a game event. That half is
-[ARCHITECTURE.md → The stand-down](ARCHITECTURE.md#the-stand-down-disabled-is-total). This section is
+[The disabled state](#the-disabled-state) above. This section is
 the other half: what the **command surface** does while the addon is off.
 
 **It does not narrow.** Every reserved verb answers normally — `help`, `config`, `version`,
@@ -60,8 +152,10 @@ so a misspelling still gets `unknown command '<verb>'` and the index.
 
 The **refusal line is the collection's, not this addon's**: one sentence, built by the library from
 `lib.DISABLED_LINE_FORMAT`, the brand name and the slash. There is no locale key for it here and a
-descriptor `L` override deliberately does not reach it. The launcher's refused left click prints
-**that same line**, through `NS.Slash.PrintDisabledLine`, rather than a second copy of it.
+descriptor `L` override deliberately does not reach it. The launcher prints no refusal of its own
+since Launcher version 4 (`launcher-§2`, v2.67.0): its left click opens the panel in either state,
+and its options menu grays *Locked* while the addon is off and calls nothing for it, the same answer
+the gated `/kcd toggle` gives.
 
 The **live set** is a union, built in `settings/Slash.lua` and never a typed copy:
 
@@ -75,9 +169,9 @@ The **live set** is a union, built in `settings/Slash.lua` and never a typed cop
   data rather than a feature verb. It configures; it does not drive.
 
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
-KickCD on rung (b) because unlocking *is* this addon's preview, and with the addon off there is no
-grid to unlock — and **`resetposition`**, which re-anchors the grid, fires `CONFIG_CHANGED` so the
-live grids move, and then echoes *icon grid position reset* at a player who can see no grid.
+unlocking *is* this addon's preview (the launcher menu's *Locked* entry), and with the addon off there is no
+grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
+live grids move, and then echoes *icon grid positions reset* at a player who can see no grid.
 
 `isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
 reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
@@ -88,6 +182,41 @@ failure it guards against.
 
 Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
+## Degraded verbs: a load without LibKa0s
+
+`/kcd` is registered unconditionally, so a load whose `libs/LibKa0s/` is missing still answers it,
+through the degradation stub at the top of `settings/Slash.lua`. Its shape is the one
+`slash-commands-§1` (standard v2.65.0, WS-02) and `LibKa0s-Slash-1.0`'s version-15 document ("The
+degradation stub") prescribe:
+
+* **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
+  unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
+  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
+  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
+  the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
+  copy, so it names the host's own feature verbs instead. `tests/test_slash.lua` pins the list
+  against the live union (`COMMANDS` minus the live set).
+* **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
+  local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
+  surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
+  degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included. It is the
+  only library string the stub carries.
+* **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
+  spaces, no color escapes and no em-dash separator.
+* **Composed-row verbs take route (a).** `enable` / `disable` still dispatch into `/kcd set
+  enabled <bool>`. The stub's `CliSet` accepts a path on `NS.Settings.WRITE_THROUGH` (`enabled`,
+  `locked`) with a bool literal (`true` / `false` / `on` / `off`), writes it through the Schema stub's
+  `Store.Set`, and echoes `<path> = <bool>`. The Schema announce takes the disabled hold on an
+  `enabled` write, so `disable` stands the addon down and `enable` brings it back. `lock` / `unlock`
+  / `toggle` write `locked` through `Store.Set` in `setLocked` and confirm as usual.
+* **Everything else prints the library-absent line.** `list`, `get`, `reset`, `resetall`, and `set`
+  for any other path or value, print the one sentence `slash-commands-§1` fixes, through the locale:
+  `/kcd list is unavailable: the LibKa0s library did not load.` Nothing is written and nothing
+  raises.
+
+Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`,
+`tests/test_disabled.lua` and `tests/test_options_panel.lua`.
+
 ## Top-level commands
 
 | Command | Purpose | Notes |
@@ -96,13 +225,13 @@ Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash.lua`. |
-| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Routes through `Helpers.SetAndRefresh("locked", ...)` so the General → "Lock frame" checkbox refreshes and any future onChange wired onto the schema row fires. When that path cannot take the write (the settings layer is not loaded, or a LibKa0s-less load composes no `locked` row) it prints "Settings layer not ready yet" and writes nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the minimap button's left click is its second caller — `launcher-§2` rung (b) drives the addon's EXISTING preview switch through the same seam rather than holding a copy of it. |
+| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
-| `get <path>` | Print one setting's current value. | Schema-driven; uses `Helpers.FindSchema(path)`. |
-| `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors. On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
-| `reset <path>` | Reset **one setting** to its default. | `LibKa0s-Slash-1.0`'s `CliReset`, through the host's `SetAndRefresh` write seam. **Breaking change:** this used to take a page (`general`/`icons`/`castbar`/`label`/`spells`). A page is a property of a settings panel, not of the data, so page-scoped reset now lives only on each panel's **Defaults** button, and the every-spec spell rebuild moved to `/kcd spells resetall`. Each retired page name is answered with a line naming its replacement rather than a bare "Setting not found". |
+| `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |
+| `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors, then writes through `Helpers.SetAndRefresh` (`Store.Set`). A path no schema row declares is refused and never stored (`Setting not found: <path>`), and a refusal the seam answers with `false, err, why` is printed instead of an echo (LibKa0s-Slash-1.0 minor 15). On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
+| `reset <path>` | Reset **one setting** to its default. | `LibKa0s-Slash-1.0`'s `CliReset`, through the schema seam's `Store.ApplyDefault` (outside any bulk bracket, so `/kcd reset global.minimap.shown` still resets the one row every sweep leaves alone). **Breaking change:** this used to take a page (`general`/`icons`/`castbar`/`label`/`spells`). A page is a property of a settings panel, not of the data, so page-scoped reset now lives only on each panel's **Defaults** button, and the every-spec spell rebuild moved to `/kcd spells resetall`. Each retired page name is answered with a line naming its replacement rather than a bare "Setting not found". |
 | `resetall` | Reset the **active profile** to the shipped defaults — panels, anchors, `link` flags and every spec's spell list, all of which live in the profile (`options-ui-§12`). | Calls `Helpers.ResetAll`, the same helper behind the General → "Reset all settings" popup, which is now one `db:ResetProfile()`. No CLI confirmation. |
-| `resetposition` | Restore the icon grid to its default screen position. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
+| `resetposition` | Restore the icon grids to their default screen positions. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
@@ -120,11 +249,15 @@ At the command line SPEC is still typed as a name: `Util.ResolveSpecID` accepts 
 | `list [CLASS SPEC]` | Print the watched list with index, spell ID, name, category, and disabled flag. |
 | `add <id\|name> [CLASS SPEC]` | Append a spell. Re-enables an existing entry rather than duplicating. Accepts spell name as well as ID. |
 | `remove <id> [CLASS SPEC]` | Drop a spell from the list. |
-| `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. |
+| `enable <id> [CLASS SPEC]` / `disable <id> [CLASS SPEC]` | Flip the entry's `enabled` flag. This reuse of the reserved pair is allowed; see [below](#spells-enable-and-disable-are-not-the-reserved-verbs). |
 | `category <id> <cat> [CLASS SPEC]` | Re-categorize an entry. Allowed: `interrupt`, `stun`, `knockback`, `incapacitate`, `silence`, `root`, `fear`, `displace`, `racial`, `other`. |
 | `reset [CLASS SPEC]` | Rebuild one `(CLASS, SPEC)` list from `NS.DefaultSpells`, plus the player's racial cast-stopper when it is their own class, through `Database:ResetSpellList`, the same verb the Spells panel's Defaults popup calls. Intentionally narrower than `/kcd spells resetall` (which wipes every spec via `Database:ResetAllSpells`). |
 
 Every mutating subcommand fires `Ka0s_KickCD_ConfigChanged { section = "spells" }`. The Spells panel subscribes to that message in `ensurePanel` and re-renders rows when it arrives, so the open editor stays in sync after a CLI write — no direct cross-module call from the slash dispatch into the panel module.
+
+### `spells enable` and `disable` are not the reserved verbs
+
+`/kcd spells enable|disable` stays as it is. `slash-commands-§2` reserves `enable` and `disable` for the addon-wide switch, and the standard (v2.65.0, WS-06) rules that the reservation binds the **top level** only: under a feature noun's sub-tree the pair **MAY** toggle that noun's own items, because the first token already says which switch is meant. The standard names `/kcd spells enable <spellID>` as its worked case. The limit is the one the rule states: `enable` / `disable` taking a feature name as their first argument (`/kcd enable spells`) would be a top-level reuse and is forbidden, and KickCD has none. This closes audit finding KICKCD-A-27 by rule, with no rename.
 
 ## `/kcd debug <subcmd>`
 
@@ -135,3 +268,4 @@ Every mutating subcommand fires `Ka0s_KickCD_ConfigChanged { section = "spells" 
 | `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat. Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
 | `castbar` | Print (to chat) one unit's current cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
 | `interrupt` | Dump (to chat) `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
+| `events` | List (to chat) every event name this client refused to register this session, one `rejected event: <NAME>` line each, or `no rejected events`. The list is `NS.State.rejectedEvents` (session-only), filled by `NS.RegisterEventList` (`core/CoreSetup.lua`) through LibKa0s-Core's `SafeRegisterEvent`, so one retired name costs only its own row of a registration block (events-frames-taint-§1). A non-empty list also adds `, N rejected event(s)` to the debug console's `[Init]` line. |

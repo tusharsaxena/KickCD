@@ -2,7 +2,7 @@
 --
 -- Per-class+spec spell-list editor. Uses the unified canvas panel
 -- header (title + Defaults button + divider) from Panel.lua, then draws the
--- page the way every other page in this addon is drawn (options-ui-§13/§14):
+-- page the way every other page in this addon is drawn (options-ui-§13/options-ui-§14):
 --
 --   * the spec picker and Add spell in a page-wide CHROME BLOCK (H.PageHeader)
 --     -- both apply to every tab, so neither may live in the scroll;
@@ -20,8 +20,8 @@
 -- StaticPopup for the currently selected class+spec.
 --
 -- The page and its popups write the stored list in place, then call
--- commitSoon, a 50 ms throttle that re-renders the rows and fires
--- Ka0s_KickCD_ConfigChanged { section = "spells" }.
+-- commitSoon, a 50 ms throttle that fires Ka0s_KickCD_ConfigChanged
+-- { section = "spells" }; the page's own subscriber re-renders the rows.
 
 local _, NS = ...
 
@@ -44,13 +44,6 @@ local CATEGORIES = {
     "silence", "root", "fear", "displace", "racial", "other",
 }
 
--- Status-glyph textures for the "known to the player?" indicator on each
--- row. Matches the In-bags / Not-in-bags glyphs ConsumableMaster uses
--- (Interface\RaidFrame\ReadyCheck-Ready / -NotReady) so the visual
--- vocabulary is consistent across the user's addons.
-local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
-local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
-
 -- ---------------------------------------------------------------------------
 -- The chrome band's height (options-ui-§14)
 -- ---------------------------------------------------------------------------
@@ -61,21 +54,21 @@ local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 -- SimpleGroup does not clip. A number nobody can check is a number that goes wrong quietly, so
 -- each term below names the widget it pays for and where that widget's height comes from.
 --
--- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is §14's call, not a preference:
+-- THE BAND GROWS RATHER THAN THE CONTROL MOVING, and that is options-ui-§14's call, not a preference:
 -- "Controls that apply to every tab MUST sit in that band too, above the strip -- never in the
 -- scroll below it", and the band "MUST carry the identity controls -- the picker, and the create
 -- control where the page has one". Adding a spell is this page's create control. The cost is the
--- one that section warns about -- every row below sits permanently lower -- and the escape §14
+-- one that section warns about -- every row below sits permanently lower -- and the escape options-ui-§14
 -- offers is for the ACTS (rename, copy, reset, delete), explicitly not for these two.
 --
--- THE BAND IS TWO ROWS, WHICH §14 SAYS IT SHOULD NOT BE. Filed as an accepted deviation in
+-- THE BAND IS TWO ROWS, WHICH options-ui-§14 SAYS IT SHOULD NOT BE. Filed as an accepted deviation in
 -- docs/ARCHITECTURE.md -> Documented deviations, with its re-check trigger.
 
 -- AceGUI's labeled Dropdown sets its own frame to 40 (AceGUIWidget-DropDown.lua's SetLabel:
 -- `self:SetHeight(40)`; 26 without a label). Read, not chosen.
 local HEADER_PICKER_H  = 40
 -- The gap between the band's two rows. Small enough that they read as one block of chrome and
--- not as two, which is the thing §14 warns a growing band turns into.
+-- not as two, which is the thing options-ui-§14 warns a growing band turns into.
 local HEADER_ROW_GAP   = 6
 -- AceGUI's labeled EditBox sets its frame to 44 (AceGUIWidget-EditBox.lua's SetLabel), of which
 -- 18 is the caption, 19 the box, and 7 is the widget's own bottom padding. The Add button beside
@@ -269,119 +262,12 @@ local function getSpellIcon(id)
     return nil
 end
 
-local function validateSpellInput(input)
-    if not input or input == "" then return nil end
-    local id = tonumber(input)
-    if id then
-        local name = getSpellName(id)
-        if name then return id, name end
-        return nil
-    end
-    if Compat.GetSpellInfo then
-        local name, _, _, _, _, resolvedID = Compat.GetSpellInfo(input)
-        if name and resolvedID then return resolvedID, name end
-    end
-    return nil
-end
-
--- Build the set of spellIDs the Blizzard Cooldown Manager would surface for
--- the currently selected (class, spec). Walks every CooldownViewerCategory
--- enum value and unions the spellIDs they expose. Returns nil when the API
--- is unavailable (older clients) so callers can fall back to lenient
--- validation.
---
--- Memoized in `_cmCache` because the walk is non-trivial (every enum value
--- × every cdID) and the result is stable for the lifetime of a (login ×
--- spec). Invalidated by the bootstrap below on TRAIT_CONFIG_UPDATED and
--- PLAYER_SPECIALIZATION_CHANGED. Stored as a marker table even when the
--- API returned no useful data, so the next call doesn't re-walk for
--- nothing — a sentinel field distinguishes "computed, set was empty"
--- from "not computed yet."
-local _cmCache         -- { set | EMPTY_SENTINEL } once populated; nil otherwise
-local _CM_EMPTY = {}   -- sentinel: API returned no data; don't recompute
-
--- The two C_CooldownViewer entry points the walk needs, or nil when this client
--- can't answer. Older clients have no C_CooldownViewer at all, and the Enum the
--- category walk iterates arrived with it.
-local function cooldownViewerApi()
-    if not C_CooldownViewer then return nil end
-    local getCategorySet = C_CooldownViewer.GetCooldownViewerCategorySet
-    local getInfo        = C_CooldownViewer.GetCooldownViewerCooldownInfo
-    if not (getCategorySet and getInfo and Enum and Enum.CooldownViewerCategory) then
-        return nil
-    end
-    return getCategorySet, getInfo
-end
-
--- Union one category's spellIDs into `set`; returns whether it contributed any.
--- Both pcalls are load-bearing: C_CooldownViewer throws on some category values
--- in some client builds, and one bad category must not abort the whole walk.
-local function collectCategorySpells(getCategorySet, getInfo, category, set)
-    local ok, ids = pcall(getCategorySet, category)
-    if not (ok and type(ids) == "table") then return false end
-    local added = false
-    for _, cdID in ipairs(ids) do
-        local ok2, info = pcall(getInfo, cdID)
-        if ok2 and type(info) == "table" and info.spellID then
-            set[info.spellID] = true
-            added = true
-        end
-    end
-    return added
-end
-
-local function getCooldownManagerSpellSet()
-    if _cmCache == _CM_EMPTY then return nil end
-    if _cmCache then return _cmCache end
-
-    local getCategorySet, getInfo = cooldownViewerApi()
-    if not getCategorySet then
-        _cmCache = _CM_EMPTY
-        return nil
-    end
-
-    local set = {}
-    local seenAny = false
-    for _, category in pairs(Enum.CooldownViewerCategory) do
-        -- Deliberately NOT `seenAny = seenAny or collect(...)`: that
-        -- short-circuits and stops walking once anything has been found.
-        if collectCategorySpells(getCategorySet, getInfo, category, set) then
-            seenAny = true
-        end
-    end
-
-    if not seenAny then
-        _cmCache = _CM_EMPTY
-        return nil
-    end
-    _cmCache = set
-    return set
-end
-
--- Invalidate the cooldown-manager spell-set cache. Triggered on talent
--- swaps and spec changes — both events flip the C_CooldownViewer
--- contents, so a cached set from before the event is stale by the time
--- the panel reopens.
-local function invalidateCmCache()
-    _cmCache = nil
-end
-
--- Bootstrap: a private frame owns the cache-invalidation events. Kept
--- at module scope (rather than inside ensurePanel) so the cache stays
--- correct even when the user never opens the Spells panel — we don't
--- want a panel-open after a spec change to read stale data because the
--- listener was lazy-registered.
-local cacheEvents = CreateFrame("Frame")
-cacheEvents:SetScript("OnEvent", invalidateCmCache)
-
---- Arm the cache invalidator. Split out of the bootstrap so the stand-down can
---- release it and the stand-up can put it back (slash-commands-§7).
-local function armCacheEvents()
-    cacheEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
-    cacheEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-end
-
-armCacheEvents()
+-- The resolver, the Cooldown Manager set and its invalidator live in
+-- core/SpellInput.lua, shared with `/kcd spells add` (KICKCD-R-05). The
+-- invalidator is an AceEvent target armed at THAT file's load, so the cache is
+-- dropped on a spec or talent change whether or not this page is ever built
+-- (KICKCD-A-04).
+local SpellInput = NS.SpellInput
 
 -- ---------------------------------------------------------------------------
 -- Throttled commit pipeline
@@ -401,8 +287,14 @@ end
 
 local commitSoon
 
+-- ONE render per commit. While the addon is up, FireConfigChanged's own
+-- CONFIG_CHANGED subscriber on this page renders it; rendering here as well drew
+-- the page twice per edit (KICKCD-R-08). While it is stood down that subscriber
+-- is unregistered (Spells.StandDown), so the direct render is the only one.
 local function doCommit()
-    if panel and panel:IsShown() then Spells:RefreshRows() end
+    if NS.IsDown and NS.IsDown() and panel and panel:IsShown() then
+        Spells:RefreshRows()
+    end
     FireConfigChanged()
 end
 
@@ -439,16 +331,14 @@ end
 -- no class/spec parameter — it returns the set for the LOGGED-IN player's
 -- currently-active spec. So a Mage editing HUNTER/BEASTMASTERY would otherwise
 -- be blocked from adding any Hunter spell. When the pair doesn't match, the gate
--- is DROPPED and the add falls through to the lenient validateSpellInput path
--- (which already confirmed the spell exists in the spell DB).
+-- is DROPPED and the add goes through leniently (the resolver has already
+-- confirmed the spell exists in the spell DB). SpellInput.IsLivePair is the
+-- test; this wrapper adds only the page's debug line.
 local function editorIsActiveSpec()
-    local playerClass  = playerClassFile()
-    local playerSpecID = NS.Util.PlayerSpecID()
-    if playerClass and selectedClass and playerClass == selectedClass
-       and playerSpecID and selectedSpec and playerSpecID == selectedSpec then
-        return true
-    end
+    if SpellInput.IsLivePair(selectedClass, selectedSpec) then return true end
     if NS.State and NS.State.debug then
+        local playerClass  = playerClassFile()
+        local playerSpecID = NS.Util.PlayerSpecID()
         NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
             :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
                     tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
@@ -457,19 +347,12 @@ local function editorIsActiveSpec()
 end
 
 -- True when the Blizzard Cooldown Manager does not track this spell for the
--- player's active spec, so the add should be refused. An UNAVAILABLE API is
--- lenient by design: no set means no opinion, never a rejection.
-local function cooldownManagerRejects(id, resolvedName)
-    local cmSet = getCooldownManagerSpellSet()
-    if not cmSet then
-        if NS.State and NS.State.debug then
-            NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
-        end
-        return false
-    end
-    if cmSet[id] then return false end
-    local name = resolvedName or getSpellName(id) or tostring(id)
-    notify(("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id))
+-- player's active spec, so the add should be refused -- and says why in chat.
+-- The verdict is core/SpellInput.lua's, the one `/kcd spells add` asks too.
+local function cooldownManagerRejects(id)
+    local ok, why = SpellInput.Admissible(id, selectedClass, selectedSpec)
+    if ok then return false end
+    notify(why)
     return true
 end
 
@@ -523,7 +406,7 @@ end
 --- addon does not check), a client with no C_CooldownViewer, and a spell the set holds.
 function Spells.SuggestTag(id)
     if not editorIsActiveSpec() then return nil end
-    local cmSet = getCooldownManagerSpellSet()
+    local cmSet = SpellInput.CooldownManagerSet()
     if not cmSet or cmSet[id] then return nil end
     return "|cffff8000" .. L["not tracked"] .. "|r"
 end
@@ -532,7 +415,7 @@ end
 --- library now owns.
 ---
 --- The library has already resolved a name, a link or an id to a NUMBER by the time this is
---- called, so `validateSpellInput` has nothing left to do -- what stays is this addon's own
+--- called, so `SpellInput.Resolve` has nothing left to do -- what stays is this addon's own
 --- question, which the library cannot ask: does the Blizzard Cooldown Manager track this spell for
 --- the spec being edited. That refusal still speaks in chat rather than on the box's status line,
 --- because it is about the game's state and not about what was typed.
@@ -560,179 +443,10 @@ StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
 -- AceGUI rows
 -- ---------------------------------------------------------------------------
 
--- Builds a row action button (Move up / Move down / Remove) as an AceGUI Icon
--- widget so the row matches ConsumableMaster's iconography rather than the
--- old "Up" / "Dn" / "X" text labels. opts.image is a texture path; opts.atlas
--- swaps in a Blizzard atlas via the inner texture's SetAtlas — needed for
--- transmog-icon-remove (the red "no entry" glyph) which has no plain path.
---- Line an Icon's ART up with the other controls in its row, not its FRAME.
----
---- AceGUI's Flow stacks a row's children on one alignment line: each child is placed so that
---- `child.alignoffset` -- or half its frame height when it names none -- lands on that line
---- (AceGUI-3.0.lua's Flow layout). For a CheckBox that is the right answer, because its art fills
---- its frame from the top (`checkbg:SetPoint("TOPLEFT")` at the frame's own height), so half the
---- frame IS the middle of the art.
----
---- An Icon is different, and it is the difference that made these rows look crooked: its texture is
---- hung 5px below the frame's top (`image:SetPoint("TOP", 0, -5)`, widgets/AceGUIWidget-Icon.lua)
---- and is SMALLER than the frame, so the art's middle sits at `5 + art/2` -- 15 in a 24px frame
---- carrying 20px of art, where the frame's own middle is 12. Every Icon in the row therefore rode
---- three pixels lower than the checkbox and the dropdown beside it.
----
---- Naming that point as the alignoffset puts the ART on the line instead of the frame. It changes
---- no size, so nothing has to fit a taller row: the library's own rule for this is a frame of
---- art + 10, which would want 30px in a 28px row.
-local function alignIconArt(widget, artHeight)
-    widget.alignoffset = 5 + artHeight / 2
-    return widget
-end
-
-local function makeRowIconBtn(AceGUI, opts)
-    local btn = AceGUI:Create("Icon")
-    alignIconArt(btn, 22)
-    btn:SetImageSize(22, 22)
-    btn:SetWidth(30)
-    btn:SetHeight(26)
-    if opts.atlas and btn.image and btn.image.SetAtlas then
-        btn.image:SetAtlas(opts.atlas)
-    elseif opts.image then
-        btn:SetImage(opts.image)
-    end
-    if opts.disabled then
-        if btn.image then
-            if btn.image.SetDesaturated then btn.image:SetDesaturated(true) end
-            if btn.image.SetVertexColor then btn.image:SetVertexColor(0.45, 0.45, 0.45) end
-        end
-    else
-        if btn.image then
-            if btn.image.SetDesaturated then btn.image:SetDesaturated(false) end
-            if btn.image.SetVertexColor then btn.image:SetVertexColor(1, 1, 1) end
-        end
-        btn:SetCallback("OnClick", opts.onClick)
-    end
-    if opts.tooltip then
-        btn:SetCallback("OnEnter", function(widget)
-            GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-            GameTooltip:SetText(opts.tooltip)
-            GameTooltip:Show()
-        end)
-        btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    end
-    return btn
-end
-
--- One builder per row widget, below. buildRow itself then reads as the column
--- order it renders — and AddChild ORDER *is* that column order, spacer
--- included, so the sequence of calls at the bottom is the layout.
-
--- The spell icon, plus the two tooltip closures the name label reuses so
--- hovering either one shows the same spell tooltip.
-local function rowSpellIcon(AceGUI, entry)
-    local icon = AceGUI:Create("Icon")
-    icon:SetImage(getSpellIcon(entry.spellID) or 134400)
-    alignIconArt(icon, 20)
-    icon:SetImageSize(20, 20)
-    icon:SetWidth(28)
-    icon:SetHeight(24)
-    icon:SetCallback("OnClick", function() end)
-    if icon.image and icon.image.SetDesaturated then
-        icon.image:SetDesaturated(entry.enabled == false)
-    end
-    local function showSpellTooltip(widget)
-        if not entry.spellID then return end
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetSpellByID(entry.spellID)
-        GameTooltip:Show()
-    end
-    local function hideSpellTooltip() GameTooltip:Hide() end
-    icon:SetCallback("OnEnter", showSpellTooltip)
-    icon:SetCallback("OnLeave", hideSpellTooltip)
-    return icon, showSpellTooltip, hideSpellTooltip
-end
-
-local function rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip)
-    local label = AceGUI:Create("Label")
-    local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
-    label:SetText(name)
-    -- Was 190 (trimmed from 220 to make room for the known/unknown
-    -- status glyph). Bumped 25% to 238 to take advantage of the empty
-    -- space on the right of each row — long spell names like
-    -- "Counterspell" or "Shockwave (talented)" no longer truncate.
-    label:SetWidth(238)
-    if label.frame and label.frame.HookScript then
-        label.frame:EnableMouse(true)
-        label.frame:HookScript("OnEnter", function() showSpellTooltip(label) end)
-        label.frame:HookScript("OnLeave", hideSpellTooltip)
-    end
-    return label
-end
-
--- The enable checkbox. It desaturates the icon it was handed, which is why the
--- icon has to be built first.
-local function rowEnableCheck(AceGUI, entry, icon)
-    local check = AceGUI:Create("CheckBox")
-    check:SetLabel("")
-    check:SetValue(entry.enabled ~= false)
-    check:SetWidth(40)
-    check:SetCallback("OnValueChanged", function(_, _, value)
-        writer("SetSpellEnabled", entry.spellID, value)
-        if icon.image and icon.image.SetDesaturated then
-            icon.image:SetDesaturated(not value)
-        end
-        commitSoon()
-    end)
-    return check
-end
-
--- "Known to the player?" status glyph. Reads Compat.IsSpellAvailable
--- (the same predicate IconGrid:BuildActiveList and Cooldowns:PollSpell
--- use to decide whether to render the spell), so the green check ↔
--- red X toggle is the user-facing reflection of "this row will / will
--- not appear on the icon grid right now."
---
--- The check is global to the logged-in player, not scoped to the
--- selected (class, spec) in the dropdown — so when the user is
--- browsing another class's spec list, every spell will read as red,
--- which is the correct fact ("you can't cast any of these"). The
--- glyph is informational only; it doesn't gate enable/disable.
-local function rowKnownGlyph(AceGUI, entry)
-    local known = Compat.IsSpellAvailable
-        and Compat.IsSpellAvailable(entry.spellID) or false
-    local statusIcon = AceGUI:Create("Icon")
-    statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
-    alignIconArt(statusIcon, 20)
-    statusIcon:SetImageSize(20, 20)
-    -- Box width hugs the 20 px image (1 px padding each side instead of 4).
-    -- AceGUI's Icon widget anchors the texture to TOP center, so a narrower
-    -- box pulls the visible glyph closer to the checkbox on its left —
-    -- which is the "reduce spacing before the icon" half of the request.
-    statusIcon:SetWidth(22)
-    statusIcon:SetHeight(24)
-    -- No OnClick — the glyph is purely informational. AceGUI's Icon
-    -- still renders a clickable region without a callback, but the
-    -- click is a no-op which matches what we want.
-    local statusTooltip = known and L["Spell known"] or L["Spell not known"]
-    statusIcon:SetCallback("OnEnter", function(widget)
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetText(statusTooltip)
-        GameTooltip:Show()
-    end)
-    statusIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
-    return statusIcon
-end
-
--- Empty-text Label as a fixed-width spacer — the "increase spacing after
--- the icon" half. AceGUI's Flow layout has no inter-widget gap of its
--- own, so the canonical way to inject horizontal whitespace between two
--- adjacent widgets is an invisible filler. Width covers the lost
--- padding from the narrowed icon box plus the requested extra gap
--- before the category dropdown.
-local function rowSpacer(AceGUI, width)
-    local spacer = AceGUI:Create("Label")
-    spacer:SetText("")
-    spacer:SetWidth(width)
-    return spacer
-end
+-- The row builders (buildRow and the per-widget builders under it) and
+-- ROW_HEIGHT live in settings/Spells_Rows.lua, published as Spells.BuildRow
+-- and Spells.ROW_HEIGHT. What they read of this file is Spells.__rowDeps,
+-- filled at the end of this file.
 
 -- The dropdown's items/order are a constant — the closed CATEGORIES set, keyed
 -- through the locale table — so they are built once on first use rather than
@@ -750,25 +464,6 @@ local function categoryList()
         end
     end
     return CATEGORY_ITEMS, CATEGORY_ORDER
-end
-
-local function rowCategoryDropdown(AceGUI, entry)
-    local dd = AceGUI:Create("Dropdown")
-    dd:SetList(categoryList())
-    dd:SetValue(entry.category or "other")
-    dd:SetWidth(120)
-    dd:SetCallback("OnValueChanged", function(_, _, value)
-        if writer("SetSpellCategory", entry.spellID, value) then commitSoon() end
-    end)
-    if dd.frame and dd.frame.HookScript then
-        dd.frame:HookScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(L["Category for future filtering. Currently informational only."])
-            GameTooltip:Show()
-        end)
-        dd.frame:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    end
-    return dd
 end
 
 -- The paired up/down arrow buttons that used to live here are gone
@@ -793,53 +488,6 @@ local function cancelReorder()
     end
 end
 
-local function rowRemoveButton(AceGUI, list, index)
-    return makeRowIconBtn(AceGUI, {
-        atlas   = "transmog-icon-remove",
-        tooltip = L["Remove"],
-        -- By the spellID the row showed, read at click time. `index` is only
-        -- valid until the next rebuild, so a stale click past the end of a list
-        -- that has since shrunk reads nil and removes nothing.
-        onClick = function()
-            local removedId = list[index] and list[index].spellID
-            if writer("RemoveSpell", removedId) then commitSoon() end
-        end,
-    })
-end
-
--- Every row in this list is the SAME height, and that is a requirement rather
--- than a tidy coincidence: ReorderList computes the drop position as arithmetic
--- on the stride, never as a hit test, so a list of unequal rows drops in the
--- wrong place (options-ui-§18).
-local ROW_HEIGHT = 28
-
-local function buildRow(AceGUI, list, index)
-    local entry = list[index]
-    if not entry then return end
-
-    local row = AceGUI:Create("SimpleGroup")
-    row:SetLayout("Flow")
-    row:SetFullWidth(true)
-    row:SetHeight(ROW_HEIGHT)
-
-    -- The drag handle owns a fixed gutter at the row's FAR LEFT and the row's
-    -- contents start beyond it (options-ui-§8's `handle gutter`). The width is
-    -- read off the library rather than restated, for the reason every layout
-    -- constant is: a host copy is the copy that goes stale.
-    local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
-    row:AddChild(rowSpacer(AceGUI, (W and W.ROW_BOX and W.ROW_BOX.HANDLE_W) or 30))
-
-    local icon, showSpellTooltip, hideSpellTooltip = rowSpellIcon(AceGUI, entry)
-    row:AddChild(icon)
-    row:AddChild(rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip))
-    row:AddChild(rowEnableCheck(AceGUI, entry, icon))
-    row:AddChild(rowKnownGlyph(AceGUI, entry))
-    row:AddChild(rowSpacer(AceGUI, 14))
-    row:AddChild(rowCategoryDropdown(AceGUI, entry))
-    row:AddChild(rowRemoveButton(AceGUI, list, index))
-
-    return row
-end
 
 -- ---------------------------------------------------------------------------
 -- Rebuild
@@ -1143,7 +791,7 @@ local function fillRows(AceGUI, scroll, list)
         reorder = W.ReorderList{
             -- Uniform rows, so the stride IS the row height: AceGUI's List
             -- layout stacks children with no gap of its own.
-            stride        = ROW_HEIGHT,
+            stride        = Spells.ROW_HEIGHT,
             -- No `boundary`: one flat priority list, with no section a drag
             -- must not cross.
             handleIcon    = NS.Icon and NS.Icon("segment") or nil,
@@ -1160,7 +808,7 @@ local function fillRows(AceGUI, scroll, list)
     end
 
     for i = 1, #list do
-        local row = buildRow(AceGUI, list, i)
+        local row = Spells.BuildRow(AceGUI, list, i)
         if row then
             -- AddChild FIRST: the handle and the box are parented to the row
             -- frame, and it has no parent of its own until the scroll takes it.
@@ -1176,17 +824,9 @@ local function fillRows(AceGUI, scroll, list)
     if reorder then reorder:Finish(scroll.content or scroll.frame) end
 end
 
-function Spells:RefreshRows()
-    if not panel or not panel:IsShown() then return end
-    if rebuildScheduled then return end
-    rebuildScheduled = true
-
+local function renderRows()
     local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
     if not AceGUI then
-        -- The flag is cleared on EVERY exit, this one included: leave it set
-        -- and the panel silently never refreshes again for the rest of the
-        -- session.
-        rebuildScheduled = false
         showAceGUIMissing()
         return
     end
@@ -1233,14 +873,23 @@ function Spells:RefreshRows()
 
     container = H.EnsureScroll(ctx)
     if not container then
-        rebuildScheduled = false
         showAceGUIMissing()
         return
     end
     fillRows(AceGUI, container, getActiveList())
     if container.DoLayout then container:DoLayout() end
+end
 
+-- The re-entrancy guard is reset by the pcall, not by each exit of the body: a
+-- raise mid-render would otherwise leave it set and every later refresh would
+-- return early for the rest of the session (KICKCD-R-08). The error is re-raised
+-- unchanged.
+function Spells:RefreshRows()
+    if not panel or not panel:IsShown() or rebuildScheduled then return end
+    rebuildScheduled = true
+    local ok, err = pcall(renderRows)
     rebuildScheduled = false
+    if not ok then error(err, 0) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1320,6 +969,32 @@ local function ensurePanel()
     return panel
 end
 
+-- The page's GAME events, as `{ event, handler }` rows for NS.RegisterEventList.
+-- The handlers used to be closures built inside RegisterPanelEvents; they read
+-- only `panel` and `Spells`, both file-scope upvalues, so they live here and the
+-- list with them. MODULE SCOPE so a stand-up allocates nothing (anti-patterns
+-- #43), and one refused name costs only its own row (events-frames-taint-§1).
+--
+-- Talent / spellbook changes flip the per-row known/unknown glyph. Refresh while
+-- the panel is open so the indicators stay in sync with what IconGrid is rendering.
+local function refreshIfShown()
+    if panel and panel:IsShown() then Spells:RefreshRows() end
+end
+
+-- Spec swaps move the SELECTION, not just the rows — see
+-- Spells:OnPlayerSpecChanged. The event fires for any unit, so filter to the
+-- player before re-seeding.
+local function onSpecChanged(_, unit)
+    if unit and unit ~= "player" then return end
+    Spells:OnPlayerSpecChanged()
+end
+
+local PANEL_EVENTS = {
+    { "SPELLS_CHANGED",                refreshIfShown },
+    { "TRAIT_CONFIG_UPDATED",          refreshIfShown },
+    { "PLAYER_SPECIALIZATION_CHANGED", onSpecChanged },
+}
+
 --- The page's own subscriptions, split out of ensurePanel so that the latch can
 --- put them back after a stand-down (slash-commands-§7, Spells.StandUp). Every
 --- registration is idempotent -- AceEvent keys on (event, target) -- so calling
@@ -1349,22 +1024,8 @@ function Spells.RegisterPanelEvents()
             end
         end)
 
-        -- Talent / spellbook changes flip the per-row known/unknown glyph.
-        -- Refresh while the panel is open so the indicators stay in sync
-        -- with what IconGrid is rendering.
-        local function refreshIfShown()
-            if panel and panel:IsShown() then Spells:RefreshRows() end
-        end
-        ev:RegisterEvent("SPELLS_CHANGED",       refreshIfShown)
-        ev:RegisterEvent("TRAIT_CONFIG_UPDATED", refreshIfShown)
-
-        -- Spec swaps move the SELECTION, not just the rows — see
-        -- Spells:OnPlayerSpecChanged. The event fires for any unit, so filter
-        -- to the player before re-seeding.
-        ev:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", function(_, unit)
-            if unit and unit ~= "player" then return end
-            Spells:OnPlayerSpecChanged()
-        end)
+        -- The three game events: PANEL_EVENTS above.
+        NS.RegisterEventList(ev, PANEL_EVENTS)
     end
 end
 
@@ -1398,19 +1059,21 @@ end
 -- ---------------------------------------------------------------------------
 --
 -- THE PANEL SURVIVES; ITS SUBSCRIPTIONS DO NOT, and the line between the two is
--- worth stating because both halves are in §7. What survives is the settings
+-- worth stating because both halves are in slash-commands-§7. What survives is the settings
 -- registration and the panel BODY: a disabled addon stays in Blizzard's AddOns
 -- tree, this page still opens, still draws every row, and still writes every
 -- edit -- which is the whole reason the disabled slash surface keeps `get`,
 -- `set` and `/kcd spells`. What does not survive is a REGISTRATION: these five
--- exist to react to GAME events (a spec swap, a talent change) and §7's
+-- exist to react to GAME events (a spec swap, a talent change) and slash-commands-§7's
 -- "actually UNREGISTERED" is unqualified. A handler that early-returns on
 -- `panel:IsShown()` is the draw gate in miniature -- the addon did not stop
 -- watching, it stopped reacting, and the client still walks the list.
 --
--- The cost is precisely one thing: a spec change made WHILE the addon is off and
--- WHILE this page is open does not re-render the rows under the player's cursor.
--- Reopening the page does, because the cache is invalidated on the way back up.
+-- The cost is two things. First, a spec change made WHILE the addon is off and
+-- WHILE this page is open does not re-render the rows under the player's cursor;
+-- reopening the page does. Second, the Cooldown Manager cache is dropped on the
+-- way back up (core/SpellInput.lua's StandUp), because nothing invalidated it
+-- while the addon was down, so the first read after re-enabling rebuilds it.
 --
 -- `commitSoon` is deliberately NOT canceled here. It is armed by the player
 -- typing in this editor, never by a game event, and a stand-down that threw away
@@ -1420,7 +1083,6 @@ end
 
 --- Release the page's game-event subscriptions. Called by the latch's standDown.
 function Spells.StandDown()
-    cacheEvents:UnregisterAllEvents()
     local ev = Spells.__ev
     if ev then
         if ev.UnregisterAllEvents   then ev:UnregisterAllEvents()   end
@@ -1428,17 +1090,26 @@ function Spells.StandDown()
     end
 end
 
---- Re-arm them, and drop the cooldown-manager cache on the way: the spec or the
---- talent build can have changed while nothing was listening, so the next panel
---- open must read the client rather than a set cached before the addon went down.
+--- Re-arm them. The Cooldown Manager cache is not this page's any more: it and
+--- its invalidator are core/SpellInput.lua's, stood down and up beside this one
+--- by core/LifecycleSetup.lua.
 function Spells.StandUp()
-    _cmCache = nil
-    armCacheEvents()
     Spells.RegisterPanelEvents()
 end
 
-Spells.ValidateSpellInput = validateSpellInput
+Spells.ValidateSpellInput = SpellInput.Resolve
 Spells.SpecOrder          = specOrder
 Spells.SortedKeys         = sortedKeys
 Spells.TitleCaseToken     = titleCaseToken
 Spells.ClassDisplayName   = classDisplayName
+
+-- The page's file-locals the row builders in settings/Spells_Rows.lua call,
+-- handed over once here at file end -- commitSoon is bound above by now -- and
+-- read by that file at call time.
+Spells.__rowDeps = {
+    writer       = writer,
+    commitSoon   = commitSoon,
+    getSpellName = getSpellName,
+    getSpellIcon = getSpellIcon,
+    categoryList = categoryList,
+}

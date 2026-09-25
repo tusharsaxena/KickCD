@@ -70,6 +70,22 @@ test("MediaSetup: the face is registered with LibSharedMedia at file load", func
     assertEqual(LSM:Fetch("font", NS.Const.FONT_MONO_NAME), NS.Const.FONT_MONO)
 end)
 
+test("MediaSetup: the LSM fake carries LibSharedMedia's real locale bits", function()
+    -- LibKa0s-Media flags the face it registers western + ruRU, out of the
+    -- constants LibSharedMedia publishes. A fake that answered those through a
+    -- catch-all __index would hand the library a FUNCTION where the real
+    -- library has a number, and arithmetic on it raises at file load. The values
+    -- are LibSharedMedia-3.0.lua's own; a fake that drifted from them would
+    -- register a mask the real client never sees.
+    local LSM = mocks.LibStub("LibSharedMedia-3.0", true)
+    assertTrue(LSM ~= nil, "the mock has no LibSharedMedia")
+    assertEqual(LSM.LOCALE_BIT_koKR, 1)
+    assertEqual(LSM.LOCALE_BIT_ruRU, 2)
+    assertEqual(LSM.LOCALE_BIT_zhCN, 4)
+    assertEqual(LSM.LOCALE_BIT_zhTW, 8)
+    assertEqual(LSM.LOCALE_BIT_western, 128)
+end)
+
 -- ── the catalog, against what this addon actually puts on screen ─────────────
 
 test("MediaSetup: every mark this addon's windows draw is one the library ships", function()

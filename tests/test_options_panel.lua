@@ -12,6 +12,7 @@ local test, assertEqual, assertTrue, assertNil, assertNear, assertFalse =
     T.test, T.assertEqual, T.assertTrue, T.assertNil, T.assertNear, T.assertFalse
 local NS = T.NS
 local H  = NS.Settings.Helpers
+local S  = NS.Settings.Store
 
 -- ── the Blizzard canvas contract (Options minor 5) ──────────────────────────
 --
@@ -58,7 +59,7 @@ local panelSeq = 0
 local function renderRow(path)
     panelSeq = panelSeq + 1
     local ctx = H.CreatePanel("KickCDTestPanel" .. panelSeq, "T", { pageKey = "test" })
-    local row = H.FindSchema(path)
+    local row = S.FindRow(path)
     assertTrue(row ~= nil, "no schema row at " .. path)
     local widget = H.RenderField(ctx, row, nil, 0.5)
     assertTrue(widget ~= nil, "RenderField returned nothing for " .. path)
@@ -81,8 +82,8 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
     end
     -- ...and the host's own decorations sit on the SAME table.
     for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
-                         "RenderUnitPanel", "PartitionUnitRows", "SetRows", "Coalesced", "AnchorValues", "AnchorOrder",
-                         "BuildMainContent", "ValidateSchema", "SchemaForPanel" }) do
+                         "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
+                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged" }) do
         assertEqual(type(H[m]), "function", "host decoration missing: " .. m)
     end
 end)
@@ -121,12 +122,12 @@ test("every page registers exactly once, through the library's registry", functi
     -- bootstrap frame to settings/Panel.lua.
     local parents, subs = 0, 0
     local inst = T.load(true, true, function(mocks)
-        local S = mocks.Settings
-        local realParent = S.RegisterCanvasLayoutCategory
-        local realSub    = S.RegisterCanvasLayoutSubcategory
-        S.RegisterCanvasLayoutCategory =
+        local Stg = mocks.Settings
+        local realParent = Stg.RegisterCanvasLayoutCategory
+        local realSub    = Stg.RegisterCanvasLayoutSubcategory
+        Stg.RegisterCanvasLayoutCategory =
             function(...) parents = parents + 1; return realParent(...) end
-        S.RegisterCanvasLayoutSubcategory =
+        Stg.RegisterCanvasLayoutSubcategory =
             function(...) subs = subs + 1; return realSub(...) end
     end)
 
@@ -236,10 +237,10 @@ test("ticking a checkbox writes through the addon's single write seam", function
     -- SetAndRefresh is what fires CONFIG_CHANGED with the row's section and runs
     -- the row's onChange — the same path `/kcd set locked true` takes. Two write
     -- paths is two behaviors, and only one of them gets tested.
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
-    assertEqual(H.Get("locked"), not before, "the click must reach the profile")
+    assertEqual(S.Get("locked"), not before, "the click must reach the profile")
     H.SetAndRefresh("locked", before)
 end)
 
@@ -251,50 +252,103 @@ test("a checkbox write fires CONFIG_CHANGED with the row's section", function()
     target:RegisterMessage(T.NS.MSG.CONFIG_CHANGED, function(_, payload)
         seen = payload and payload.section
     end)
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w = renderRow("locked")
     w:__fire("OnValueChanged", not before)
     target:UnregisterMessage(T.NS.MSG.CONFIG_CHANGED)
     H.SetAndRefresh("locked", before)
-    assertEqual(seen, H.FindSchema("locked").section,
+    assertEqual(seen, S.FindRow("locked").section,
         "the panel write must publish the row's own section")
 end)
 
 test("dragging a slider commits on mouse-up", function()
     local path = "units.target.icons.primarySize"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w, row = renderRow(path)
     w:__fire("OnMouseUp", row.min + (row.step or 1))
-    assertNear(H.Get(path), row.min + (row.step or 1), 1e-6)
+    assertNear(S.Get(path), row.min + (row.step or 1), 1e-6)
     H.SetAndRefresh(path, before)
 end)
 
 test("choosing a dropdown option stores the option KEY, never its index", function()
     local path = "units.target.icons.anchor"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w, row = renderRow(path)
     local target = row.sorting[2]
     w:__fire("OnValueChanged", target)
-    assertEqual(H.Get(path), target)
+    assertEqual(S.Get(path), target)
     H.SetAndRefresh(path, before)
 end)
 
 test("confirming a color stores the keyed shape the modules read", function()
     local path = "units.target.icons.borderColor"
-    local before = H.Get(path)
+    local before = S.Get(path)
     local w = renderRow(path)
     w:__fire("OnValueConfirmed", 0.25, 0.5, 0.75, 0.5)
-    local stored = H.Get(path)
+    local stored = S.Get(path)
     assertNear(stored.r, 0.25, 1e-9)
     assertNear(stored.a, 0.5, 1e-9, "alpha must survive the picker")
     assertNil(stored[1], "colorEncode must produce the keyed shape")
     H.SetAndRefresh(path, before)
 end)
 
+-- ── the color drag throttle (KICKCD-R-04) ───────────────────────────────────
+--
+-- The descriptor's scheduleTimer backs the picker's 50 ms drag throttle. It
+-- used to wrap C_Timer.After, which answers nil, and until LibKa0s v1.56.0
+-- (OptionsWidgets minor 31) the library used that return value as its armed
+-- flag -- so every ~60 Hz drag tick committed and fanned CONFIG_CHANGED out.
+
+test("the descriptor's scheduleTimer answers a cancelable handle", function()
+    -- red under: `return _G.C_Timer.After(delay, fn)` in settings/OptionsSetup.lua
+    local ran = false
+    local handle = NS.Settings.ScheduleTimer(function() ran = true end, 0.05)
+    assertTrue(handle ~= nil, "scheduleTimer must hand back a handle, not nil")
+    assertEqual(type(handle.Cancel), "function", "the handle must be cancelable")
+    handle:Cancel()
+    T.mocks.__flushTimers()
+    assertFalse(ran, "a canceled handle must not fire")
+
+    -- ...and it is the function the library actually calls: a drag tick
+    -- queues a timer, and that queued entry is the cancelable handle.
+    local w = renderRow("units.target.icons.borderColor")
+    local before = #T.mocks.__timers
+    w:__fire("OnValueChanged", 0.1, 0.2, 0.3, 1)
+    local queued = T.mocks.__timers[before + 1]
+    assertTrue(queued ~= nil, "a drag tick must schedule the throttle timer")
+    assertEqual(type(queued.Cancel), "function",
+        "the descriptor must route the throttle through ScheduleTimer")
+    queued:Cancel()
+end)
+
+test("a color drag commits once per throttle window", function()
+    -- Characterization: green behind v1.56.0's own armed flag, red under a
+    -- pre-minor-31 payload paired with a nil-returning scheduleTimer.
+    local path = "units.target.icons.borderColor"
+    local before = S.Get(path)
+    local w = renderRow(path)
+    T.mocks.__flushTimers()
+    local real, commits = H.SetAndRefresh, 0
+    H.SetAndRefresh = function(p, ...)
+        if p == path then commits = commits + 1 end
+        return real(p, ...)
+    end
+    local ok, err = pcall(function()
+        for i = 1, 10 do w:__fire("OnValueChanged", i / 10, 0.5, 0.5, 1) end
+        assertEqual(commits, 0, "no drag tick may commit before the window closes")
+        T.mocks.__flushTimers()
+    end)
+    H.SetAndRefresh = real
+    assert(ok, err)
+    assertEqual(commits, 1, "ten drag ticks inside one window must commit exactly once")
+    assertNear(S.Get(path).r, 1.0, 1e-9, "the commit must carry the LAST drag value")
+    H.SetAndRefresh(path, before)
+end)
+
 test("an external write re-syncs an open widget through its refresher", function()
     -- options-ui-§11: scalar widgets refresh IN PLACE via a per-widget updater
     -- closure. A refresh does not rebuild the page.
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     local w, _, ctx = renderRow("locked")
     H.SetAndRefresh("locked", not before)
     for _, fn in ipairs(ctx.refreshers) do pcall(fn) end
@@ -432,7 +486,7 @@ test("with LibKa0s absent the schema loads complete BAR the composed blocks", fu
     -- row counts were EQUAL, which they were while the host declared 100% of its
     -- rows by hand. The canonical font / border / bar / color-pair /
     -- master-controls blocks live in libs/LibKa0s/OptionsCompose.lua now
-    -- (options-ui-§16, §17), and a host copy of them in the stub is precisely
+    -- (options-ui-§16, options-ui-§17), and a host copy of them in the stub is precisely
     -- the drift the composers were extracted to end (anti-pattern #73) — the
     -- same argument options-ui-§1 already makes against copying a widget maker
     -- or a layout constant into this stub. So the stub's composers are hollow,
@@ -467,23 +521,26 @@ test("with LibKa0s absent the schema loads complete BAR the composed blocks", fu
         "the degraded load is short by more than the composed blocks")
 end)
 
-test("the hollow composers cost the degraded path no CLI reach it otherwise has",
+test("the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)",
 function()
     -- THE BLAST RADIUS OF THE options-ui-§1 DEVIATION, measured rather than
     -- argued -- and it is smaller than the deviation row used to claim.
     --
-    -- §1's stated harm is that a short schema takes `list`, `get`, `set`, `reset`
+    -- options-ui-§1's stated harm is that a short schema takes `list`, `get`, `set`, `reset`
     -- and the profile defaults down with it, silently. Neither half is reachable
     -- here, and this case is what says so rather than a paragraph:
     --
-    --   1. THE SCHEMA CLI IS NOT RUNNING ON THIS LOAD AT ALL. LibKa0s-Slash-1.0
-    --      lives in the same libs/LibKa0s/ folder as LibKa0s-Options-1.0, which
+    --   1. THE SCHEMA CLI IS NOT RUNNING ON THIS LOAD. LibKa0s-Slash-1.0 lives
+    --      in the same libs/LibKa0s/ folder as LibKa0s-Options-1.0, which
     --      options-ui-§1 requires be vendored WHOLE (anti-pattern #48), so the
     --      load that loses the composers loses the CLI in the same breath.
-    --      settings/Slash.lua's stub answers `set`/`get`/`list`/`reset` with one
-    --      "is unavailable" line each -- for a HOST-DECLARED row exactly as for a
-    --      composed one. There is no state of this addon in which a composed path
-    --      is addressable-but-missing.
+    --      settings/Slash.lua's stub answers `get`/`list`/`reset` with the
+    --      library-absent line, and `set` too -- for a HOST-DECLARED row exactly
+    --      as for a composed one -- with ONE exception, WS-02's route (a): a bool
+    --      literal for a path on NS.Settings.WRITE_THROUGH (`enabled`, `locked`)
+    --      is written through the Schema stub, so `/kcd enable` and `/kcd
+    --      disable` keep the addon's one switch two-way. Those two paths are the
+    --      only composed paths addressable on this load, and they are stored.
     --   2. The profile defaults are defaults/Profile.lua's, merged by AceDB in
     --      core/Database.lua's aceDBDefaults, and never read off the schema. A
     --      composed setting a player already made keeps being honored.
@@ -494,9 +551,9 @@ function()
     -- looking for `state.debugConsole`, whose console window is unavailable on
     -- this path too (core/DebugLogSetup.lua:70-72).
     --
-    -- red under: settings/Slash.lua's stub gaining a real CliSet, which would
-    -- make the composed rows genuinely unreachable-but-asked-for and turn the
-    -- deviation into the regression it was reported as
+    -- red under: settings/Slash.lua's stub CliSet widening past the writeThrough
+    -- list (a host-declared row written), or narrowing below it (`enabled`
+    -- refused, the switch one-way)
     local inst = T.load(true, false, nil, { libFiles = {} })
     assertNil(inst.mocks.LibStub("LibKa0s-Slash-1.0", true),
         "sanity: the degraded load must not have the slash major either")
@@ -504,7 +561,7 @@ function()
     -- A row that SURVIVES the library's absence, so the only thing under test is
     -- whether the CLI can reach anything at all.
     local path = "units.target.enabled"
-    assertTrue(inst.NS.Settings.Helpers.FindSchema(path) ~= nil,
+    assertTrue(inst.NS.Settings.Store.FindRow(path) ~= nil,
         "precondition: this witness must be a host-declared row, present on both paths")
 
     local lines = {}
@@ -514,13 +571,20 @@ function()
     inst.NS:OnSlashCommand("set " .. path .. " false")
     frame.AddMessage = orig
 
-    assertEqual(inst.NS.Settings.Helpers.Get(path), true,
+    assertEqual(inst.NS.Settings.Store.Get(path), true,
         "the degraded `/kcd set` must not write -- for a surviving row either")
     local said = false
     for _, line in ipairs(lines) do
         if tostring(line):find("unavailable", 1, true) then said = true end
     end
     assertTrue(said, "the degraded `/kcd set` must name the missing library, not go quiet")
+
+    -- ...and the route-(a) reach: `enabled` is composed, row-less here, and written.
+    frame.AddMessage = function() end
+    inst.NS:OnSlashCommand("set enabled false")
+    frame.AddMessage = orig
+    assertEqual(inst.NS.db.profile.enabled, false,
+        "the degraded `/kcd set enabled false` must write through (WS-02 route (a))")
 end)
 
 test("the degraded stub keeps the global reset real", function()
@@ -528,6 +592,7 @@ test("the degraded stub keeps the global reset real", function()
     -- needs "reset everything", and the schema loaded fine, so it still works.
     local inst = T.load(true, false, nil, { libFiles = {} })
     local H2 = inst.NS.Settings.Helpers
+    local S2 = inst.NS.Settings.Store
     assertEqual(type(H2.RestoreAllDefaults), "function")
     -- A HOST-DECLARED row, deliberately: `locked` used to be the witness here and
     -- is a COMPOSED row now, so it does not exist on the degraded path at all
@@ -536,9 +601,9 @@ test("the degraded stub keeps the global reset real", function()
     -- on both paths, which is what makes it a witness for the reset itself.
     local path = "units.target.enabled"
     inst.NS.Settings.Helpers.SetAndRefresh(path, false)
-    assertEqual(H2.Get(path), false, "precondition: the write landed")
+    assertEqual(S2.Get(path), false, "precondition: the write landed")
     H2.RestoreAllDefaults()
-    assertEqual(H2.Get(path), inst.NS.Settings.Helpers.FindSchema(path).default,
+    assertEqual(S2.Get(path), inst.NS.Settings.Store.FindRow(path).default,
         "the reset must still reach the profile with no panel at all")
 end)
 
@@ -602,8 +667,8 @@ end)
 test("the linked-Focus note opens General on its Units tab", function()
     local opened
     local inst = T.load(true, true, function(mocks)
-        local S = mocks.Settings
-        S.OpenToCategory = function(id) opened = id end
+        local Stg = mocks.Settings
+        Stg.OpenToCategory = function(id) opened = id end
     end)
     local iNS = inst.NS
     local iH  = iNS.Settings.Helpers
@@ -637,6 +702,77 @@ test("the linked-Focus note opens General on its Units tab", function()
 
     if cfg then cfg.link = false end
     iH.SetViewedUnit("target")
+end)
+
+-- KC-20's characterization: the whole linked-Focus page in one case, on all three
+-- unit pages. The strip is FULL (one tab per schema group, as the unlinked page
+-- draws), every tab is INERT (disabled and desaturated), and the content is the
+-- link note ALONE -- one LinkRow and no schema widget, because a linked Focus
+-- renders with Target's tables and an editable row here would write to a table
+-- nothing reads.
+--
+-- It pins the page's behavior independently of who draws it. KC-20 evaluated
+-- moving this page onto the library's RenderTabbedSchema(opts) and declined: its
+-- disabledFor draws the rows (disabled) UNDER the notice rather than replacing
+-- them, and its disabledNotice is a plain TextRow, not a link (issue cited at
+-- Helpers.RenderLinkedUnit in settings/Panel_Render.lua). A later adoption has to
+-- keep this case green unchanged.
+--
+-- red under: rendering the page's styled rows, dropping the note, drawing a
+-- partial strip, or dropping the disable pass.
+local SCHEMA_WIDGET_TYPES = {
+    CheckBox = true, Slider = true, Dropdown = true, ColorPicker = true,
+    EditBox = true, MultiLineEditBox = true, Button = true,
+}
+test("a linked Focus page draws the full strip, inert, and only the link note", function()
+    T.withFocusLink(true, function()
+        T.withViewedUnit(function()
+            local AceGUI = T.mocks.LibStub("AceGUI-3.0")
+            for _, page in ipairs({ "icons", "castbar", "label" }) do
+                local ctx = H.CreatePanel("KickCDLinkedChar" .. page, page, { pageKey = page })
+                ctx.scroll = AceGUI:Create("ScrollFrame")
+                H.SetViewedUnit("focus")
+                H.RenderUnitPanel(ctx, page)
+
+                local groups, seen = 0, {}
+                for _, def in ipairs(H.SchemaForPanel(page, "focus")) do
+                    if def.group and not seen[def.group] then
+                        seen[def.group] = true
+                        groups = groups + 1
+                    end
+                end
+                local buttons = (ctx.__tabLayout or {}).buttons or {}
+                assertTrue(groups > 0, page .. ": sanity, the page has schema groups")
+                assertEqual(#buttons, groups, page .. ": one tab per schema group")
+                for i, b in ipairs(buttons) do
+                    local dim = false
+                    for _, r in ipairs(b.__regions or {}) do
+                        if r.__desaturated then dim = true end
+                    end
+                    assertTrue(b.__enabled == false or dim,
+                        page .. ": tab " .. i .. " is operable and undimmed")
+                end
+
+                -- Walked recursively: paired rows sit inside flow groups, so the
+                -- scroll's direct children alone would miss every widget in them.
+                local links, widgets = 0, 0
+                local function walk(container)
+                    for _, child in ipairs(container.children or {}) do
+                        if type(child.text) == "string"
+                           and child.text:find("Linked to Target", 1, true) then
+                            links = links + 1
+                        elseif SCHEMA_WIDGET_TYPES[child.type] then
+                            widgets = widgets + 1
+                        end
+                        walk(child)
+                    end
+                end
+                walk(ctx.scroll)
+                assertEqual(links, 1, page .. ": exactly one link note")
+                assertEqual(widgets, 0, page .. ": no schema widget on a linked page")
+            end
+        end)
+    end)
 end)
 
 -- The Focus link's two controls are ONE LINE: [Use same styling as Target]
@@ -724,7 +860,7 @@ test("the degraded stub carries no widget maker or layout constant", function()
     assertNil(src:match('AceGUI:Create'), "the stub reaches for AceGUI")
     assertNil(src:match("ROW_VSPACER%s*="), "the stub copies a layout constant")
     assertNil(src:match("0%.492"), "the stub copies BUTTON_PAIR_REL")
-    -- The three constants the tabbed page and the banner added (options-ui-§13 / §14). They are
+    -- The three constants the tabbed page and the banner added (options-ui-§13 / options-ui-§14). They are
     -- exempted from the surface-parity sweep in tests/test_surface_parity.lua PRECISELY because
     -- copying them here is forbidden, so the exemption and this scan are two halves of one rule:
     -- without the scan, "exempt" would read as "optional".
@@ -954,7 +1090,7 @@ test("the panel's schema reader hands back a stored FALSE as false, not nil", fu
     -- red under: restoring `H and H.Get and H.Get(path) or nil` in OptionsSetup.lua
     local read = NS.Settings.ReadForPanel
     assertEqual(type(read), "function", "the reader must be published to be pinnable")
-    local before = H.Get("locked")
+    local before = S.Get("locked")
     H.SetAndRefresh("locked", false)
     local v = read("locked")
     H.SetAndRefresh("locked", before)

@@ -57,8 +57,8 @@ end
 -- the picker scopes the whole page -- every tab on it edits the selected unit --
 -- so the band is where it belongs.
 --
--- It is also the ONLY picker on the page, which is the other half of §14: two
--- controls over one piece of state is a synchronisation problem invented by the
+-- It is also the ONLY picker on the page, which is the other half of options-ui-§14: two
+-- controls over one piece of state is a synchronization problem invented by the
 -- design and owned forever. There is one value, read at render time, and the
 -- re-render the selection triggers repaints everything below it.
 --
@@ -158,6 +158,16 @@ end
 --- function renders the active tab's rows itself, and the whole point here is
 --- that most of them must not be rendered. Tab selection, the stale-pointer
 --- heal and the re-render on click are the same three things it does.
+---
+--- The library's RenderTabbedSchema `opts` (OptionsTabs minor 4, LibKa0s v1.56.0)
+--- were evaluated for this page and DECLINED (KC-20, issue #23, closed as
+--- will-not-do). The gap: `disabledFor` draws `disabledNotice` ABOVE the rows and
+--- still draws every row disabled, where this page must show the note INSTEAD of
+--- them, and the notice is a plain TextRow, not the LinkRow below. The strip is
+--- not made inert by the library either, and `chrome(ctx)` could reach its
+--- buttons only through the private `ctx.__tabLayout`. Pinned by
+--- tests/test_options_panel.lua ("a linked Focus page draws the full strip,
+--- inert, and only the link note").
 --- Make a drawn strip inert: every button disabled, every one of its textures
 --- desaturated.
 ---
@@ -241,139 +251,78 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
 
--- Look up `path` in the schema and write `value` through the same
--- path the schema widgets use: Helpers.Set (which fires CONFIG_CHANGED
--- with def.section), then def.onChange, then RefreshAllPanels so any
--- open settings tab reflects the new value. Returns true on success,
--- false if no schema row matches `path`.
---
--- Lets slash commands that mutate schema-backed fields (e.g. `/kcd
--- lock`, `/kcd debug log`) share a single write/notify/refresh code
--- path with `/kcd set <path> <value>` and the panel widgets — so a
--- future onChange added to a row doesn't silently diverge between
--- code paths.
--- The write half every row write shares: Helpers.Set (the write, and the
--- CONFIG_CHANGED for the row's section), then the row's onChange. onChange gets
--- the value it was set to and the value it replaced, so a costly reaction (the
--- link row's structural refresh) can skip a write that changed nothing. Every
--- row write reaches onChange through here: panel widgets, `/kcd set`, both
--- Defaults paths and SetRows. The library never calls a row's onChange itself.
-local function writeRow(def, value)
-    local old = def.onChange and Helpers.Get(def.path)
-    Helpers.Set(def.path, def.section, value)
-    if def.onChange then
-        local ok, err = pcall(def.onChange, value, old)
-        if not ok and NS.Util then
-            NS.Util.print("onChange for " .. tostring(def.path)
-                              .. " failed: " .. tostring(err))
-        end
-    end
-end
-
+--- Write one schema row through the seam and repaint any open panel's values.
+---
+--- NS.Settings.Store.Set is the write (settings/SchemaSetup.lua): the refusal of
+--- an unknown path, the store, the row's onChange and the CONFIG_CHANGED for the
+--- row's section. This adds the one thing a panel needs on top, and only when
+--- the write landed. Answers the seam's own `ok, err, why`, so both descriptors'
+--- `set` hand a refusal straight back to the library that prints it.
+---
+--- SCALAR, never structural. A value write changes what a widget SHOWS; it
+--- does not make a row appear or vanish. A structural sweep here would clear
+--- and rebuild every rendered page on each committed change -- including the
+--- page holding the slider or the color swatch the user is still dragging,
+--- which is released back to AceGUI's pool mid-gesture. Structural refreshes
+--- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
+--- the `units.focus.link` row's onChange (settings/General.lua), because the
+--- link really does change what the unit pages draw.
 function Helpers.SetAndRefresh(path, value)
-    local def = Helpers.FindSchema(path)
-    if not def then return false end
-    writeRow(def, value)
-    -- SCALAR, never structural. A value write changes what a widget SHOWS; it
-    -- does not make a row appear or vanish. A structural sweep here would clear
-    -- and rebuild every rendered page on each committed change -- including the
-    -- page holding the slider or the color swatch the user is still dragging,
-    -- which is released back to AceGUI's pool mid-gesture. Structural refreshes
-    -- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
-    -- the `units.focus.link` row's onChange (settings/General.lua), because the
-    -- link really does change what the unit pages draw.
-    Helpers.RefreshScalars()
-    return true
+    local ok, err, why = NS.Settings.Store.Set(path, value)
+    if ok then Helpers.RefreshScalars() end
+    return ok, err, why
 end
 
---- Write several schema rows as ONE act, through the same seam as
---- SetAndRefresh: each row is Helpers.Set's write plus its onChange, in the
---- order given. Two differences, and both are why this exists. The bus is
---- COALESCED (Helpers.Coalesced), so each section is announced once, after the
---- last write, rather than once per row; and there is no panel refresh here --
---- the caller decides whether the batch is scalar or structural and does it once.
----
---- Its one caller is NS.Units.CopyStyling, whose hundred-odd rows would
---- otherwise fan out a hundred-odd CONFIG_CHANGED re-applies and scalar sweeps.
----
---- Handed a `summary`, the LOG is coalesced too: each row's [Set] line is
---- muted (Helpers.MuteSetLog) and the batch logs one `[Set] <summary>: N rows`
---- (marked ` (stopped by an error)` if a row raised)
---- instead -- the owner's call for Copy styling, whose ~110 per-row lines would
---- bury the log and evict older lines from its capped buffer
---- (debug-logging-§10). N is the rows whose value the batch changed, not the
---- rows it walked. Only the log is muted: every row still writes through
---- Helpers.Set and runs its onChange, in order.
----
---- @param writes  table   { { path, value }, ... }; a path with no row is skipped
---- @param summary string? names the batch in its one [Set] line
---- @return number  how many rows were written
-function Helpers.SetRows(writes, summary)
-    local n = 0
-    local function writeAll()
-        for _, w in ipairs(writes) do
-            local def = Helpers.FindSchema(w[1])
-            if def then
-                writeRow(def, w[2])
-                n = n + 1
-            end
-        end
-    end
-    -- MuteSetLog logs the one line itself, so a row that raises still leaves the
-    -- line (marked) before the error reaches the caller. Nothing when this batch
-    -- ran inside another bulk act, which logs the sum.
-    Helpers.Coalesced(function()
-        if summary then Helpers.MuteSetLog(writeAll, summary) else writeAll() end
-    end)
-    return n
-end
+-- (The host's row-batch helper is gone, and writeRow with it. A batch is Store.SetMany now
+-- -- all or nothing, one bracket line with `act`, every onChange after every
+-- store, and one announcement per section -- and core/Units.lua's CopyStyling,
+-- its one caller, calls it directly.)
 
--- Restore the TARGET icon grid to its default screen position and notify
--- the icon module so it re-anchors immediately. Used by the General tab's
--- "Reset position" button and the `/kcd resetposition` slash command —
--- both are legacy "reset the grid" affordances that predate Focus (Task
--- 8), so they deliberately only touch Target; a Focus position reset is
--- out of scope here (Focus already gets its own screen offset from
--- DEFAULT_PROFILE so the two grids don't overlap on first enable).
+-- Put every unit's icon grid back where it starts, then tell the icon module
+-- to re-anchor. The General page's "Reset position" button and
+-- `/kcd resetposition` both land here. It walks NS.Units.LIST, so target and
+-- focus both come home; before KICKCD-R-14 it reached target alone and a focus
+-- grid dragged off screen had no way back short of a full reset.
 --
--- The default coords come from KickCD.DEFAULT_PROFILE.units.target.
--- anchors.icons so we don't duplicate magic numbers across UI / CLI /
--- Database layers. (Task 1 moved anchors from the profile's top level to
--- units.target/.focus — this helper previously read/wrote the stale
--- top-level path and was a silent no-op ever since.)
+-- Only the grids move. A cast bar set to move freely keeps its own spot
+-- (units.<unit>.anchors.castbar); an anchored bar follows its grid anyway.
 --
--- No defaults tree, no reset: the guard below early-returns rather than
--- falling back to a hand-written coordinate. It used to carry one, and it
--- disagreed with defaults/Profile.lua by 300 px in the opposite direction —
--- the exact duplication the paragraph above says this function avoids. The
--- branch needs defaults/Profile.lua to have failed to load, which the TOC
--- rules out, so nothing was ever going to notice the wrong number. Doing
--- nothing is also the honest answer: with no default to restore, the least
--- surprising outcome is to leave the grid where the user dragged it.
+-- Each unit's coordinate comes from NS.DEFAULT_PROFILE.units.<unit>.anchors
+-- .icons, the one place it is written down. A unit with no default there is
+-- skipped rather than given a made-up coordinate: an earlier fallback number
+-- disagreed with defaults/Profile.lua by 300 px, and leaving the grid where
+-- the user dragged it is the least surprising result. With no defaults tree
+-- at all nothing is written and nothing is published.
 --
 -- The anchor is named non-setting state owned by NS.Units (architecture-§5).
 -- This writes it directly rather than through NS.Units.SetAnchor, and
 -- docs/ARCHITECTURE.md -> Settings schema lists it as one of that state's
 -- writers, which is what makes the direct write compliant.
+local function defaultGridAnchor(unit)
+    local u = NS.DEFAULT_PROFILE and NS.DEFAULT_PROFILE.units
+              and NS.DEFAULT_PROFILE.units[unit]
+    return u and u.anchors and u.anchors.icons
+end
+
 function Helpers.ResetIconPosition()
     if not (NS.db and NS.db.profile) then return end
-    local d = NS.DEFAULT_PROFILE
-              and NS.DEFAULT_PROFILE.units
-              and NS.DEFAULT_PROFILE.units.target
-              and NS.DEFAULT_PROFILE.units.target.anchors
-              and NS.DEFAULT_PROFILE.units.target.anchors.icons
-    if not d then return end
-    NS.db.profile.units = NS.db.profile.units or {}
-    NS.db.profile.units.target = NS.db.profile.units.target or {}
-    NS.db.profile.units.target.anchors = NS.db.profile.units.target.anchors or {}
-    NS.db.profile.units.target.anchors.icons =
-        { point = d.point, relativePoint = d.relativePoint, x = d.x, y = d.y }
-    -- "general" alone is sufficient: IconGrid:OnConfigChanged's general
-    -- branch re-anchors every enabled unit's grid from its own
-    -- units.<unit>.anchors.icons. The previous "icons" fire was
-    -- redundant work — no row in the icons section actually changed,
-    -- and the general branch already owns the re-anchor pass.
-    Helpers.FireConfigChanged("general")
+    local profile, moved = NS.db.profile, false
+    for _, unit in ipairs(NS.Units.LIST) do
+        local d = defaultGridAnchor(unit)
+        if d then
+            profile.units = profile.units or {}
+            local u = profile.units[unit] or {}
+            profile.units[unit] = u
+            u.anchors = u.anchors or {}
+            u.anchors.icons =
+                { point = d.point, relativePoint = d.relativePoint, x = d.x, y = d.y }
+            moved = true
+        end
+    end
+    -- One "general" fire covers every unit: IconGrid:OnConfigChanged's
+    -- general branch re-anchors each enabled grid from its own
+    -- units.<unit>.anchors.icons.
+    if moved then Helpers.FireConfigChanged("general") end
 end
 
 -- (Helpers.ResetAllPositions is gone. It put every unit's icon-grid and

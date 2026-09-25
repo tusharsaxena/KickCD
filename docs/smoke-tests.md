@@ -283,23 +283,35 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 **Steps.**
 - `/kcd spells list` — dump the current spec's watched spells.
-- `/kcd spells add <SPELL_ID> interrupt` — using a spell ID present in the active spec's Cooldown Manager.
-- `/kcd spells add <SPELL_ID> interrupt` — using an arbitrary spell ID that is NOT in the active spec's Cooldown Manager.
+- `/kcd spells add <SPELL_ID>` — using a spell ID present in the active spec's Cooldown Manager.
+- `/kcd spells add <SPELL_ID>` — using an arbitrary spell ID that is NOT in the active spec's Cooldown Manager.
+- As a Shaman: `/kcd spells add Wind Shear` — a multi-word name.
+- `/kcd spells add <SPELL_ID> WARLORD 99999` and `/kcd spells add <SPELL_ID> <CLASS> 99999`.
 - `/kcd spells disable <SPELL_ID>`; `/kcd spells enable <SPELL_ID>`.
 - `/kcd spells category <SPELL_ID> stun`.
 - `/kcd spells remove <SPELL_ID>`.
 - Open Settings → Spells. Edit a different spec via the class+spec dropdown.
-- Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> interrupt CLASS SPEC`.
+- Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> CLASS SPEC`.
+- With the Spells page closed, switch spec, then open it: the Add box accepts only the new spec's Cooldown Manager spells.
 - `/kcd spells reset CLASS SPEC` for one spec; verify it rebuilds *only* that spec.
 - `/kcd spells resetall` — verify it wipes *every* spec.
+- On the Spells page, drag row 3 above row 1; `/reload`. Start another drag and press Esc mid-drag.
+- Hover a spell name, a category dropdown and a row's remove button.
+- Close Settings, open another Ka0s addon's panel (e.g. `/at config`) and hover and click its labels.
 
 **Pass.**
-- The active-spec write paths validate against the Cooldown Manager spell-set — adding a spell that isn't tracked there prints an error and is rejected.
+- The active-spec write paths — the page's Add box and `/kcd spells add` alike — validate against the Cooldown Manager spell-set: adding a spell that isn't tracked there prints `Spell <name> (#<id>) is not tracked by the Blizzard Cooldown Manager for this specialization.` and is rejected.
+- `/kcd spells add Wind Shear` adds Wind Shear; the name is never split at its space.
+- An unknown class prints `Unknown class WARLORD`, a spec that is not the class's prints `Unknown spec 99999 for <CLASS>`, and neither writes anything to `KickCDDB`.
+- After a spec switch made with the page closed, the Add box gates on the NEW spec's Cooldown Manager set, not a cached one.
 - Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
 - After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_ConfigChanged { section = "spells" }`) — no need to close and reopen the panel.
 - `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
 - `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
 - The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
+- The drag's drop line draws in the list color, the new order survives `/reload`, and Esc mid-drag leaves no stray line (LibKa0s-Widgets minor 10).
+- Hovering a spell name shows the spell tooltip; hovering a category dropdown shows the **Category** tooltip. The remove button draws the red catalog close mark and reads as "remove".
+- Another addon's panel shows no KickCD spell tooltip on its labels, and its clicks land: nothing on the Spells page hooks a pooled AceGUI frame.
 - On a character whose race has a racial cast-stopper (Tauren, Highmountain Tauren, Pandaren, Kul Tiran, Nightborne), resetting one of **your own class's** specs, from the Defaults button or `/kcd spells reset`, keeps the racial as the list's last row. Resetting another class's spec never adds it.
 
 ### 11. Settings panel parity
@@ -343,7 +355,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. With `/kcd debug on`, the console shows one `[Set] reset <page>: N rows` line (N = the rows that were off their default), and no per-row `[Set]` line. |
 | `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
 | `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated positions pass it used to run is gone). Profiles untouched. No CLI confirmation prompt. |
-| `/kcd resetposition` | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center, the coordinate `defaults/Profile.lua` ships; everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
+| `/kcd resetposition` (drag both grids away first) | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center — and the focus grid to `CENTER / CENTER, x = 0, y = +260`, the coordinates `defaults/Profile.lua` ships; a free-moving cast bar and everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
 | Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. Hovering it first shows the tooltip *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."* |
 | Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
 | Per-panel **Defaults** button (General / Icons / Cast bar) | That panel only; mirrors `/kcd reset <panel>`. |
@@ -374,6 +386,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - Switching profiles fires `Ka0s_KickCD_ProfileChanged`; both UI pieces re-anchor and re-skin to the new profile's settings.
 - Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
 - `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
+- **Every profile's colors and font flags come through a switch** (KICKCD-R-01). Create a second profile, switch to it and back: the cast bar color swatches and the outline dropdowns show the stored values, never blank and never the defaults. With `/kcd debug on`, no `settings migration ... failed` line is printed.
 - Spell-list edits on one profile do not bleed into another.
 
 ### 14. Combat gating
@@ -403,6 +416,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
 | `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
 | `/kcd debug window` | Toggles the on-screen debug console window (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`); logging keeps running whether the window is open or closed. |
+| `/kcd debug events` | `no rejected events` on a live 12.1.x client. A client that raised on a name one of the addon's registration blocks asks for prints one `rejected event: <NAME>` line per refused name instead (events-frames-taint-§1). |
 | `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
 
 **Pass.**
@@ -411,6 +425,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - **`/kcd debug castbar` with and without `C_CurveUtil`.** Target a hostile caster mid-cast for a protected interrupt so `notInterruptible` comes back secret, and run the dump. The `current.notInterruptible: type=…, isSecret=true` line is **always** followed by a `secret-tainted; …` line — one saying the visual state is determined via `C_CurveUtil.EvaluateColorValueFromBoolean` where that evaluator exists, and one saying it is unavailable where it does not. **Fail:** the dump reports the field as secret and then says nothing further about it, which reads to whoever is given the paste as a dump that had nothing to say. A client without `C_CurveUtil` is the awkward half to arrange — a Classic-flavor or pre-12.0 build is the honest test; on a live Retail client the evaluator is present and only the first half is observable.
 - `/kcd debug on` starts streaming `Ka0s_KickCD_*` traffic to the on-screen console window (not chat); `off` cleanly stops it. After a `/reload` the flag is back off — `NS.State.debug` is session-only and never persisted.
 - `/kcd debug window` opens / closes the console window without touching the logging flag.
+- `/kcd debug events` prints `no rejected events`. Then `/kcd debug on` and `/reload`, and re-enable the flag: the console's `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause. **Fail:** any rejected name on a live client, which means a registration block is asking for an event this build does not know.
 
 ### 16. Secret-value safety (12.0)
 
@@ -438,7 +453,7 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 - Watch chat after login.
 
 **Pass.**
-- No `|cffff0000KickCD schema error|r:` lines print. `Helpers.ValidateSchema` (in `settings/Panel.lua`) runs at panel-register time and emits red error lines for any malformed row — a healthy build is silent here. Any error means a recent schema change shipped a malformed row.
+- No `schema error` lines print. The Options descriptor's `validate` hook runs the schema seam's `Store.Validate` (`LibKa0s-Schema-1.0`, wired in `settings/OptionsSetup.lua`) at panel-register time and emits red error lines for any malformed row or a stored path that does not resolve against the defaults — a healthy build is silent here. Any error means a recent schema change shipped a malformed row.
 
 ### 18. LSM dropdown rendering
 
@@ -582,7 +597,7 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 - Log in.
 - `/kcd get units.target.icons.primarySize` — compare to the customized value from the edited file.
 - `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customized anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `4` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey and the v3→v4 color-shape rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
+- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `5` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey, the v3→v4 color-shape rewrite and the v4→v5 font-flag rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
 
 **Pass.**
 - No Lua errors during the migration login.
@@ -662,7 +677,8 @@ or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSet
 **Setup.** Rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`, `/reload`.
 
 **Checks — the degraded half.**
-- **It degrades, it does not error.** Zero Lua errors at login. `/kcd` still answers and the host verbs still work; `/kcd list` is **complete** — every unit / icons / castbar / label path present, because the page files must finish loading even with no panel library.
+- **It degrades, it does not error.** Zero Lua errors at login. `/kcd` still answers and the host verbs still work.
+- **The degraded verbs (slash-commands-§1, WS-02).** `/kcd list` prints exactly `/kcd list is unavailable: the LibKa0s library did not load.` (tagged `[KCD]`). `/kcd disable` prints `enabled = false`, the grids disappear, and there is no Lua error; `/kcd lock` then prints the collection's disabled line (`Ka0s KickCD is disabled — enable it with /kcd enable`); `/kcd enable` prints `enabled = true` and the grids come back. `/kcd lock` / `/kcd unlock` confirm and move the lock. `/kcd help` rows read `/kcd <verb>  <desc>` plainly: white, two spaces, no em-dash separator. Restore the folder afterwards.
 - **One cause, said once.** The missing-library notice appears **exactly once** per session however many lines print afterwards, and it names `libs/LibKa0s`.
 - **The same sentence the other two addons say.** ⚠ This is the check the section exists for. The cause clause is `NS.LIBKA0S_MISSING` in `core/CoreSetup.lua` — one shared string that every seam appends its own *"so &lt;what&gt; is unavailable"* to. Do the same rename on **AbsorbTracker** and **ConsumableMaster** and compare: all three must state the cause identically, differing only in the trailing consequence and the addon name. KickCD used to phrase this its own way; converging it is the whole point, and a drift here means a seam grew its own wording again.
 - **Each seam names its own consequence.** `/kcd config` opens nothing and prints one line about the settings panel; `/kcd debug` says its piece about the console; `/kcd perf` about the capture. Same cause, different tails.
@@ -959,18 +975,26 @@ which is the whole reason this step exists.
   missing registration — check `media/logos/kickcd.logo.128.tga` is TGA image type 2 at 32 bpp.
 - **The AddOns list agrees.** ESC → AddOns (or the character-select AddOns list) shows the **same**
   logo beside *Ka0s KickCD*. One file, three places.
-- **Left click toggles the lock.** Unlock with the button: the grids and the cast bar's placeholder
-  appear and the grid drags. Click again: they lock. `/kcd get locked` agrees, and so does
-  General → Master controls → **Lock frame** — open the panel and watch the tick follow the button.
-- **Right click opens the settings panel**, on its landing page, and does **not** touch the lock.
+- **Hover it.** The tooltip reads `Ka0s KickCD  v<version>`, `Enabled: Yes`, `Locked: Yes|No`,
+  then `Left-click: Open settings` and `Right-click: Options menu`. No `Test mode` line.
+- **Left click opens the settings panel**, on its landing page, and does **not** touch the lock.
+- **Right click opens the options menu** (`launcher-§2`, standard v2.67.0): titled *Ka0s KickCD*,
+  with exactly two ticks, **Enabled** (ticked) and **Locked**, and nothing else. Untick
+  **Locked**: the grids and the cast bar's placeholder appear and the grid drags, the menu closes,
+  and chat prints the same *icon grid unlocked* line `/kcd toggle` prints. Right-click again: the
+  tick now reads unlocked. Tick it: they lock. `/kcd get locked` agrees, and so does General →
+  Master controls → **Lock frame** — open the panel and watch the tick follow the menu.
 - **Drag it.** Drag the button a quarter of the way round the ring, `/reload`, and it comes back
   where you left it. It moved because LibDBIcon wrote `minimapPos` into the same table the checkbox
   writes `hide` into.
 - **The checkbox hides it.** Untick General → Master controls → **Minimap button**: the button goes
-  at once, not at the next reload. `/reload` — still gone. Tick it again: back.
-- **The button's own menu agrees with the checkbox.** Right-click the button's LibDBIcon menu entry
-  where the display offers one, or hide it from a broker display's plugin list, and the
-  **Minimap button** tick follows. There is one boolean and the library writes it too.
+  at once, not at the next reload. `/kcd get global.minimap.shown` prints **false** — the CLI
+  name reads in the row's sense, while the stored key is still LibDBIcon's `hide` (`launcher-§3`).
+  `/kcd get global.minimap.hide` answers *Setting not found*: the old path is not an alias.
+  `/reload` — still gone, and still **false**. Tick it again: back, and **true**.
+- **A broker display's hide agrees with the checkbox.** Hide the plugin from a broker display's
+  own plugin list where it offers one, and the **Minimap button** tick follows. There is one
+  boolean and the library writes it too.
 - **A profile switch does not move it.** Hide the button, then Settings → Profiles → switch profile.
   It stays hidden. Switch back: still hidden.
 - **Neither reset un-hides it.** With the button hidden, press General → **Reset all settings**
@@ -980,19 +1004,21 @@ which is the whole reason this step exists.
   broken — a player's minimap-button choice is a per-installation display preference, like the
   angle they dragged it to, and no reset touches either (`launcher-§3`).
 - **A broker display shows the same addon.** With Titan Panel, Bazooka or ElvUI's data texts
-  installed, add *Ka0s KickCD*: the row wears the same logo, left-click toggles the lock and
-  right-click opens the panel. The row shows **no value cell** — it is a `launcher`, not a data
+  installed, add *Ka0s KickCD*: the row wears the same logo, left-click opens the panel and
+  right-click opens the same two-entry options menu. The row shows **no value cell** — it is a `launcher`, not a data
   source.
 - **`/kcd disable` then `/kcd enable`.** With the addon disabled, the bare `/kcd` **opens the
   settings panel**, `/kcd help` and `/kcd version` still answer, and `/kcd enable` turns it back on.
   A dispatcher that went quiet here is a one-way switch (`slash-commands-§2`) and is the finding;
   so is a bare `/kcd` that answers with a refusal instead of the panel, which is the case that
   settled the standard's v2.57.0 reversal.
-- **The minimap button while it is off.** Still disabled, LEFT-click it: one tagged line naming
-  `/kcd enable`, and the lock does not move (`/kcd get locked` is unchanged). RIGHT-click it: the
-  settings panel opens, exactly as it does when the addon is on (`launcher-§2`). A left click that
-  silently toggles the lock is writing the stored tree of an addon the player switched off, and is
-  the finding.
+- **The minimap button while it is off.** Still disabled, hover it: `Enabled: No`, the same two
+  hints. LEFT-click it: the settings panel opens, exactly as it does when the addon is on
+  (`launcher-§2`), and nothing is printed. RIGHT-click it: **Enabled** is unticked and clickable;
+  **Locked** reads *Locked (enable the addon first)* and is grayed — clicking it does nothing, and
+  `/kcd get locked` is unchanged. A grayed entry that still toggles the lock is writing the stored
+  tree of an addon the player switched off, and is the finding. Tick **Enabled**: the addon comes
+  back on, with the same confirmation line `/kcd enable` prints.
 - **A feature verb refuses while it is off.** Still disabled, run `/kcd toggle`. One tagged line
   comes back naming `/kcd enable`, and nothing else — `/kcd get locked` reports the same value it
   did before. Same for `/kcd lock`, `/kcd unlock` and `/kcd resetposition`. Then check the live

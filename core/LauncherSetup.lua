@@ -8,32 +8,36 @@ local addonName, NS = ...
 --
 -- The library owns the LibDataBroker object, its `type = "launcher"`, the single
 -- click implementation both surfaces dispatch into, the LibDBIcon registration
--- and the idempotence of it. What is genuinely ours is four answers: our FOLDER
--- name, our logo, what the left button does, and how the settings panel opens.
--- Nothing else belongs here, and in particular no second click handler: an addon
--- that builds a minimap button with its own handler and a broker object with a
--- second one has written the feature twice and they drift on the next behavior
--- change (anti-pattern #81).
+-- and the idempotence of it, the status tooltip (Launcher version 3) and, since
+-- Launcher version 4, what both buttons do and the options menu itself. What is
+-- genuinely ours is our FOLDER name, our logo, how the settings panel opens,
+-- and the accessor-and-toggle pair for each state this addon really has.
+-- Nothing else belongs here, and in particular no click handler and no menu: an
+-- addon that builds a minimap button with its own handler and a broker object
+-- with a second one has written the feature twice and they drift on the next
+-- behavior change (anti-pattern #81).
 --
--- ── THE RUNG, AND THE SEAM IT DRIVES ─────────────────────────────────────────
+-- ── THE TWO BUTTONS, AND THE HANDLERS THE MENU DRIVES ────────────────────────
 --
--- launcher-§2 is a three-rung rule, first match wins. KickCD has no primary
--- window, so rung (a) does not apply; it does have a PREVIEW SWITCH, and since
--- v2.49.0 that switch is Lock frame alone — unlocking IS the preview, which is
--- why this addon has no Test mode row and no `/kcd test` verb (options-ui-§15's
--- exemption, recorded in settings/General.lua's header). So the rung is (b) and
--- the left button toggles the lock.
+-- launcher-§2 (standard v2.67.0): LEFT-click opens the settings panel, in either
+-- state; RIGHT-click opens the client's context menu, one checkbox per pair the
+-- descriptor passes, in the library's order. KickCD passes two pairs, so its
+-- menu is `Enabled` and `Locked` (ADDONS.md's row): it has no test mode --
+-- since v2.49.0 Lock frame alone is the preview switch, unlocking IS the
+-- preview, which is why there is no Test mode row and no `/kcd test` verb
+-- (options-ui-§15's exemption, recorded in settings/General.lua's header) --
+-- and it has no primary window.
 --
--- It toggles it through NS.ToggleLock, which is the SAME seam `/kcd toggle`
--- runs and which lands on Helpers.SetAndRefresh("locked", v) — the addon's
--- single write seam (options-ui-§1). There is deliberately no `db.profile.locked`
--- write here and no copy of the state: the launcher, the `Lock frame` checkbox
--- and the three slash verbs are four callers of one writer.
---
--- RIGHT-click is the library's and always opens the settings panel, so it is not
--- passed and cannot be reassigned. That is what lets the left button spend
--- itself on the lock.
---
+-- Each toggle is the SAME function the slash verb runs, so refusals, messages
+-- and the write seam are the addon's: setEnabled is NS.SetMasterEnabled, the
+-- handler `/kcd enable` and `/kcd disable` run (it is `/kcd set enabled`, the
+-- Master-controls row's path); toggleLock is NS.ToggleLock, the handler
+-- `/kcd toggle` runs, which lands on Store.Set("locked", v) like the `Lock
+-- frame` checkbox. There is deliberately no `db.profile` write here and no copy
+-- of either state. While the addon is disabled the LIBRARY grays Locked and
+-- calls nothing for it (slash-commands-§7: a feature refuses while disabled),
+-- which is the same answer the gated `/kcd toggle` gives; Enabled stays live.
+
 -- ── WHY `minimap` IS A FUNCTION ──────────────────────────────────────────────
 --
 -- `db.global.minimap` does not exist when this file loads: core/Database.lua
@@ -62,7 +66,7 @@ local Launcher = LibStub and LibStub("LibKa0s-Launcher-1.0", true)
 
 if not Launcher then
     -- Load-completing, like every other seam in core/: settings/Panel.lua's
-    -- write seam calls NS.Launcher:SetShown on every `global.minimap.hide`
+    -- write seam calls NS.Launcher:SetShown on every `global.minimap.shown`
     -- write, and settings/General.lua's composed row reads IsShown, so a nil
     -- here would be a raise inside `/kcd set` rather than a missing button.
     local announced = false
@@ -128,34 +132,38 @@ NS.Launcher = Launcher:New({
 
     minimap = function() return NS.db and NS.db.global and NS.db.global.minimap end,
 
+    -- LEFT-click, always (Launcher version 4), and the right click's fallback
+    -- where the client has no context-menu API.
     openSettings = function() NS:OpenSettings() end,
 
-    -- THE RUNG. Its presence is the whole declaration (launcher-§2): a rung-(c)
-    -- addon passes nothing rather than passing openSettings, so a skipped rule
-    -- cannot look like a choice.
+    -- ── THE OPTIONS MENU (launcher-§2, standard v2.67.0; Launcher version 4) ──
     --
-    -- REFUSED WHILE THE ADDON IS DISABLED (launcher-§2, slash-commands-§7). Rung
-    -- (b) drives a preview switch and a preview switch is a FEATURE, so the left
-    -- button prints the collection's one refusal line and does nothing else --
-    -- and in particular does not write SavedVariables, which is what a minimap
-    -- button with no disabled gate does every single time it is clicked. The line
-    -- comes from the library through NS.Slash.PrintDisabledLine, never re-spelled
-    -- here.
+    -- One pair per state this addon really has; an entry needs both halves.
+    -- Each accessor is asked when the menu opens and on every tooltip show,
+    -- never cached. Each toggle is resolved through NS at click time, so it is
+    -- the live handler the slash verb runs, never a copy captured at file load.
     --
-    -- THE RUNG-(c) CARVE-OUT DOES NOT REACH THIS ADDON, and it is worth saying
-    -- why rather than leaving a reader to wonder: a rung-(c) left click opens the
-    -- settings panel, which §7 keeps standing, so refusing it would decline one
-    -- button for doing exactly what the button beside it must keep doing. KickCD
-    -- is rung (b) -- this click toggles the lock, not the panel -- so the refusal
-    -- applies. RIGHT-click is the library's and opens the panel in either state,
-    -- which is what keeps the panel one click away from a disabled addon.
-    onClick = function()
-        if NS.MasterEnabled and not NS.MasterEnabled() then
-            if NS.Slash and NS.Slash.PrintDisabledLine then NS.Slash.PrintDisabledLine() end
-            return
-        end
-        if NS.ToggleLock then NS.ToggleLock() end
-    end,
+    -- Enabled: the Master-controls row's one reader, and the handler
+    -- `/kcd enable` / `/kcd disable` run, handed the state to move TO.
+    isEnabled  = function() return NS.MasterEnabled == nil or NS.MasterEnabled() end,
+    setEnabled = function(on) if NS.SetMasterEnabled then NS.SetMasterEnabled(on) end end,
+    -- Locked: the path the `Lock frame` row writes, and the handler `/kcd toggle`
+    -- runs. Grayed by the library while the addon is disabled.
+    isLocked   = function() return NS.db and NS.db.profile and NS.db.profile.locked and true or false end,
+    toggleLock = function() if NS.ToggleLock then NS.ToggleLock() end end,
+    -- No isTestMode / toggleTestMode (no test mode: unlocking IS the preview) and
+    -- no isWindowShown / toggleWindow (no primary window). A pair for a state
+    -- nobody can find would be a menu entry that lies.
+
+    -- ── THE STATUS TOOLTIP (launcher-§1; Launcher version 3) ─────────────────
+    --
+    -- The LIBRARY draws it, enabled or disabled: title and version, Enabled
+    -- (isEnabled above), Locked (isLocked above), the fixed click hints. No
+    -- `onTooltipShow`: KickCD has no lines of its own, and a host title or click
+    -- hint beside the library's is anti-pattern #89.
+    --
+    -- The TOC's `## Version`, through the one resolver `/kcd version` uses.
+    version = function() return NS.Version and NS.Version() end,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
     debug = function(tag, message) if NS.Debug then NS.Debug(tag, "%s", message) end end,

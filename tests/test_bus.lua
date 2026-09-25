@@ -50,14 +50,18 @@ test("Addon SendMessage reaches a registered module target", function()
     assertTrue(got, "a private target must receive the addon's broadcast")
 end)
 
-test("Coalesced holds a nil-section announcement and sends it once, as nil", function()
-    -- Coalescing moves the TIMING of CONFIG_CHANGED and nothing else, so a
-    -- batch must send what an unbatched call sends. red under: the old batch,
-    -- which marked a nil section seen and then appended nil to its order list
-    -- (a no-op), so the announcement was silently dropped.
+test("a batch holds a nil-section announcement and sends it once, as nil", function()
+    -- A batch (Store.SetMany, through settings/SchemaSetup.lua's announceBatch)
+    -- announces each distinct section once, in first-seen order, and moves the
+    -- TIMING of CONFIG_CHANGED and nothing else -- so it must send what an
+    -- unbatched write sends. red under: a batch that marks a nil section seen and
+    -- then appends nil to its order list (a no-op), dropping the announcement.
     local inst = T.load(true)
     local NS = inst.NS
-    local H = NS.Settings.Helpers
+    local S = NS.Settings.Store
+    -- A row with no section, which no shipped row is, added for the case alone.
+    S.AddRows({ { path = "zzProbe", type = "bool", group = "Probe", default = false } })
+    local icons = S.FindRow("units.target.icons.primarySize")
     local sent = {}
     local realSend = NS.SendMessage
     NS.SendMessage = function(self, msg, payload)
@@ -67,17 +71,17 @@ test("Coalesced holds a nil-section announcement and sends it once, as nil", fun
         return realSend(self, msg, payload)
     end
     local ok, err = pcall(function()
-        H.FireConfigChanged(nil)           -- unbatched: sent as it is
-        H.Coalesced(function()
-            H.FireConfigChanged(nil)
-            H.FireConfigChanged("icons")
-            H.FireConfigChanged(nil)       -- a repeat, held once like any section
-        end)
+        S.Set("zzProbe", true)             -- unbatched: sent as it is
+        S.SetMany({
+            { path = "zzProbe", value = false },
+            { path = icons.path, value = icons.default },
+            { path = "zzProbe", value = true },   -- a repeat, held once like any section
+        })
     end)
     NS.SendMessage = realSend
     if not ok then error(err, 0) end
     assertEqual(#sent, 3, "one unbatched nil, then the batch's nil and icons: " .. table.concat(sent, ", "))
-    assertEqual(sent[1], "<nil>", "the unbatched call")
+    assertEqual(sent[1], "<nil>", "the unbatched write")
     assertEqual(sent[2], "<nil>", "the batch sends its nil, in first-announced order")
     assertEqual(sent[3], "icons")
 end)

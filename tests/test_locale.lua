@@ -209,7 +209,7 @@ end
 -- `L[…]`" — `trackSubscript` — and `scanLiterals` asks them in the one order
 -- that is correct, and records what falls out.
 --
--- Long brackets are handled rather than skipped: `settings/Spells.lua:50-51`
+-- Long brackets are handled rather than skipped: `settings/Spells_Rows.lua:36-37`
 -- holds two `[[Interface\…]]` texture paths, and a lexer that walked past `[[`
 -- without knowing what it was would read the `'` in a later `spec's` as the
 -- start of a string and lose the rest of the file.
@@ -375,6 +375,13 @@ end
 --                     English into a locale file without making the client's own
 --                     translation reachable, which is the fix these actually
 --                     want.
+--   LIBRARY CONSTANT  A degradation stub's verbatim copy of a LibKa0s string
+--                     (slash-commands-§1 allows exactly one: the Slash major's
+--                     DISABLED_LINE_FORMAT). It is the COLLECTION's wording, the
+--                     library refuses a locale override for it, and the copy is
+--                     pinned against the live constant; routing it through L
+--                     would let a translation drift from the line the live
+--                     library prints.
 --   NOT YET ROUTED    A plain user-facing sentence in a settings page that would
 --                     route cleanly and simply has not been. M4-21 scoped this
 --                     repository's routing to KICKCD-R-03's three desc keys;
@@ -393,7 +400,9 @@ local RESIDUE = {
     {"settings/Slash.lua", "Use the ", "SPLIT COLOR"},
     {"settings/Slash.lua", " panel's |cFFFFFF00Defaults|r button to reset the ", "SPLIT COLOR"},
     {"settings/Slash.lua", "whole page, or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOR"},
-    {"settings/Slash.lua", " is unavailable. ", "DEGRADED STEM"},
+    -- The degradation stub's one verbatim library string (slash-commands-§1),
+    -- pinned byte for byte in tests/test_slash.lua.
+    {"settings/Slash.lua", "%s is disabled \\226\\128\\148 enable it with |cFFFFFF00%s|r", "LIBRARY CONSTANT"},
     {"settings/Slash.lua", "the LibKa0s library is missing", "VALIDATOR"},
     {"settings/Slash.lua", " slash commands", "FRAGMENT"},
     {"settings/Slash.lua", "unknown command '", "FRAGMENT"},
@@ -409,29 +418,14 @@ local RESIDUE = {
     {"settings/OptionsSetup.lua", "Ka0s KickCD", "LIB DESCRIPTOR"},
     {"settings/OptionsSetup.lua", ", so the settings panel is unavailable.", "DEGRADED STEM"},
 
-    -- settings/Panel.lua — ValidateSchema and the onChange guard.
-    {"settings/Panel.lua", "|cffff0000schema error|r: ", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " |cffff0000schema error|r: ", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "<no path>", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "row is not a table", "DIAGNOSTIC"},
-    {"settings/Panel.lua", "missing or empty `path`", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, profiles)", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: general, icons, castbar, label, spells, debug, units)", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (expected one of: bool, number, string, color)", "DIAGNOSTIC"},
+    -- settings/SchemaSetup.lua — the degradation stub's Validate line, whose
+    -- cause half is NS.LIBKA0S_MISSING (the collection's shared clause). The
+    -- schema's own shape errors are LibKa0s-Schema-1.0's Validate now.
+    {"settings/SchemaSetup.lua", ", so the settings schema was not checked.", "DEGRADED STEM"},
 
     -- settings/Panel_Widgets.lua
     {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
-
-    -- A bulk act's one [Set] line (settings/Panel.lua logAct, for the bracket
-    -- and for SetRows alike) and the marker it carries when the act stopped on
-    -- an error: debug-console formats, never chat. core/Database.lua's
-    -- profile-event lines are outside this scan, which reads settings/ alone.
-    {"settings/Panel.lua", "%s: %d rows%s", "DIAGNOSTIC"},
-    {"settings/Panel.lua", " (stopped by an error)", "DIAGNOSTIC"},
-
-    -- settings/Panel_Render.lua
-    {"settings/Panel_Render.lua", "onChange for ", "DIAGNOSTIC"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.
@@ -445,9 +439,10 @@ local RESIDUE = {
 
     -- settings/Spells.lua
     {"settings/Spells.lua", "Editing %s/%s \226\137\160 player %s/%s; skipping cooldown-manager gate.", "DIAGNOSTIC"},
-    {"settings/Spells.lua", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell ", "DIAGNOSTIC"},
-    {"settings/Spells.lua", "Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization.", "NOT YET ROUTED"},
     {"settings/Spells.lua", "AceGUI not loaded", "NOT YET ROUTED"},
+    -- The Cooldown Manager diagnostic and refusal moved to core/SpellInput.lua
+    -- (KICKCD-R-05), out of this scan's settings/ surface with the rest of the
+    -- `/kcd` command output.
     -- classDisplayName consults these BEFORE LOCALIZED_CLASS_NAMES_MALE, so on a
     -- French client these two classes read English while the other eleven do not.
     -- Routing them would put that inconsistency in a locale file instead of
@@ -463,7 +458,7 @@ local CLASSES = {
     ["SPLIT COLOR"]       = true, ["FRAGMENT"]       = true,
     ["LIB DESCRIPTOR"]    = true, ["MEDIA KEY"]      = true,
     ["FORMAT SUFFIX"]     = true, ["CLIENT SUPPLIED"] = true,
-    ["NOT YET ROUTED"]    = true,
+    ["NOT YET ROUTED"]    = true, ["LIBRARY CONSTANT"] = true,
 }
 
 -- ---------------------------------------------------------------------------

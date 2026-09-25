@@ -8,11 +8,11 @@
 -- SEVEN canonical rows from one declaration, and the afterGroup it returns draws
 -- the closing Reset position / Reset all settings button pair.
 --
--- SEVEN, not nine. §15's canonical table's last line IS the button pair, so
+-- SEVEN, not nine. options-ui-§15's canonical table's last line IS the button pair, so
 -- counting "the canonical rows, plus the button-pair hook" counts those two
 -- twice. What the composer emits is `enabled`, `visibility`, `scale`, `alpha`,
 -- `locked`, `state.debugConsole` and -- since compose minor 7 -- the minimap
--- button's `global.minimap.hide`. The two resets are actions rather than
+-- button's `global.minimap.shown`. The two resets are actions rather than
 -- settings -- an anchor is not a key=value the schema covers -- which is why
 -- they are a button pair and not rows.
 --
@@ -27,7 +27,7 @@
 -- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
 -- holding master scale and master alpha. Two rows whose LABELS both say Master
 -- is not a second subject, it is the same subject broken over a click: enable,
--- visibility, lock, scale and alpha are all the addon-as-a-whole, and §15 puts
+-- visibility, lock, scale and alpha are all the addon-as-a-whole, and options-ui-§15 puts
 -- all five under one tab anyway. Units is the one genuinely different question
 -- on this page -- which grids exist, and whether Focus is its own thing -- and
 -- it is what a player sets once, so it sits last.
@@ -38,9 +38,11 @@
 local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
-local Schema = NS.Settings.Schema
+local Store  = NS.Settings.Store
 
-local function add(t) Schema[#Schema + 1] = t end
+-- Through the seam's registry (settings/SchemaSetup.lua), so Store.FindRow
+-- indexes the row the moment it lands.
+local function add(t) Store.AddRows({ t }) end
 
 -- Master controls — the canonical tab (options-ui-§15), COMPOSED rather than
 -- typed out (options-ui-§16). H.MasterControls emits the canonical set in the
@@ -54,8 +56,8 @@ local function add(t) Schema[#Schema + 1] = t end
 --
 -- The Debug console is the composer's SESSION-ONLY row now, not the bespoke
 -- SessionToggle this page used to draw beside Lock frame. It still shows/hides
--- the console WINDOW and still never persists — settings/Panel.lua's
--- SESSION_PATHS is where its path resolves — but it is a schema row, so
+-- the console WINDOW and still never persists — the get/set pair wired onto
+-- the row below is where its value lives — but it is a schema row, so
 -- `/kcd get|set|list state.debugConsole` reaches it like anything else.
 --
 -- The group's rows MUST stay contiguous: RenderTabbedSchema partitions by
@@ -71,9 +73,11 @@ local masterRows, masterTail = H.MasterControls{
     -- reason in a different store: LibDBIcon's table lives in db.GLOBAL, outside
     -- this block's profile prefix. STORED, not session -- a button the player
     -- hid stays hidden across a reload. The row's boolean says SHOWN while
-    -- LibDBIcon's key says hidden, so the inversion is ours and lives in the one
-    -- write seam (settings/Panel.lua's GLOBAL_PATHS), never in the composer.
-    minimapPath      = "global.minimap.hide",
+    -- LibDBIcon's key says hidden, so the inversion is ours and lives on the
+    -- row's own get/set (wired below), never in the composer.
+    -- The path reads in the row's sense (launcher-§3, v2.65.0) while the store
+    -- stays LibDBIcon's `hide`: no `shown` key is ever written.
+    minimapPath      = "global.minimap.shown",
     -- The two stored values this addon does not share with the canonical block.
     -- PASSED, never edited into the composer: the composer must not change what
     -- is stored, and `visibility` has shipped as
@@ -95,7 +99,7 @@ H.AddComposed(masterRows, { panel = "general", section = "general" })
 -- KEYS are untouched, so nothing migrates; only the option list and the prose
 -- describing it differ. The row's position, label and pairing stay the
 -- composer's.
-local visibilityRow = H.FindSchema("visibility")
+local visibilityRow = Store.FindRow("visibility")
 if visibilityRow then
     visibilityRow.values  = {
         ["always"] = L["Always"],
@@ -109,8 +113,77 @@ if visibilityRow then
     visibilityRow.tooltip = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."]
 end
 
+-- ── The three composed rows that carry this addon's own behavior ──────────
+--
+-- Wired here, beside the override above, because the composer declares the
+-- rows and only the host knows what they do. On a library-less load the
+-- composer is hollow, none of the three exists, and nothing is wired; the
+-- host verbs that write `enabled` and `locked` then land through the seam's
+-- writeThrough list (settings/SchemaSetup.lua).
+
+-- THE MASTER SWITCH, TAKEN IN THE SAME TURN AS THE WRITE (slash-commands-§7).
+-- The row's onChange, because every surface that can flip it -- the checkbox,
+-- `/kcd set enabled`, the `enable` / `disable` verbs and a Defaults that happens
+-- to clear it -- lands on the one write seam, and the seam runs onChange BEFORE
+-- it announces: a module that re-rendered first and stood down second would draw
+-- one frame of an addon that is already off.
+local enabledRow = Store.FindRow("enabled")
+if enabledRow then
+    enabledRow.onChange = function() NS.RefreshEnabledHold() end
+end
+
+-- The Debug console is SESSION state: the console WINDOW, never the debug
+-- CAPTURE flag (debug-logging-§5), which stays on the in-window "Debug: ON/OFF"
+-- button and `/kcd debug on|off`. The composer emits its path verbatim
+-- (`state.debugConsole`) and marks it sessionOnly; this pair is where its value
+-- lives, so the panel checkbox, `/kcd set` and the reset sweep all take the
+-- addon's one write path (options-ui-§1) and nothing reaches the profile.
+local consoleRow = Store.FindRow("state.debugConsole")
+if consoleRow then
+    consoleRow.get = function() return NS.DebugLog ~= nil and NS.DebugLog:IsShown() end
+    consoleRow.set = function(on)
+        if not NS.DebugLog then return end
+        if on then NS.DebugLog:Show() else NS.DebugLog:Hide() end
+    end
+end
+
+-- The GLOBAL store's one schema row, and the inversion is OURS rather than the
+-- library's (launcher-§3):
+--
+--   * SCOPE. Every other stored row lives in db.PROFILE. LibDBIcon's table is
+--     `db.global.minimap` and the standard fixes it there: a profile switch must
+--     not move a player's buttons, and options-ui-§12's `Reset all settings`, a
+--     profile reset by definition, must not un-hide a button the player
+--     deliberately hid.
+--   * SENSE. The row's label says SHOWN and LibDBIcon's key says HIDDEN. There
+--     is ONE boolean -- the library writes it too, from its own right-click menu
+--     -- so a second stored `minimap.shown` beside it would be a copy free to
+--     disagree the first time either surface was used (anti-pattern #81). The
+--     PATH is the row's CLI name, and launcher-§3 (v2.65.0) spells it in the
+--     row's own sense: `global.minimap.shown` answers true while the button
+--     shows. No `shown` key is ever written, which is why it can only be a
+--     get/set pair on the row.
+--
+-- STORED, not session: settings/OptionsSetup.lua's `vetoedFromResetAll` keeps
+-- it out of `Reset all settings` because it is not sessionOnly, and the seam's
+-- `resetExempt` keeps it out of the General page's Defaults. The set calls
+-- NS.Launcher:SetShown so the button follows the checkbox immediately; SetShown
+-- writes `hide` again with the same value, which is harmless.
+local minimapRow = Store.FindRow("global.minimap.shown")
+if minimapRow then
+    minimapRow.get = function()
+        local t = NS.db and NS.db.global and NS.db.global.minimap
+        return not (t and t.hide)
+    end
+    minimapRow.set = function(shown)
+        local t = NS.db and NS.db.global and NS.db.global.minimap
+        if t then t.hide = not shown end
+        if NS.Launcher then NS.Launcher:SetShown(shown) end
+    end
+end
+
 -- Per-unit ENABLE toggles (§Task 6). One row per NS.Units.LIST entry, driving
--- `/kcd set units.<unit>.enabled` and (via Helpers.Set firing
+-- `/kcd set units.<unit>.enabled` and (via the seam's announce firing
 -- Ka0s_KickCD_ConfigChanged{section="units"}) IconGrid/Castbar's
 -- ReconcileUnits. The label/selector/link/copy UI (Task 8) lives in its own
 -- panel; this is deliberately just the enable bool so both rows render
@@ -141,13 +214,19 @@ end
 -- what the Icons / Cast bar / Text Label pages DRAW (a linked Focus page is just
 -- the note), so every page that declared a renderer re-renders and the hidden
 -- ones repaint on their next show. The CONFIG_CHANGED `units` that IconGrid /
--- Castbar reconcile on comes from Helpers.Set, through the row's section.
+-- Castbar reconcile on comes from the seam's announce, through the row's section.
 --
 -- ONLY WHEN THE LINK MOVED. A write that leaves it where it was (a Defaults on
 -- an already-linked Focus, a repeated `/kcd set`) changes nothing any page
 -- draws, so it skips the rebuild of every rendered page. Copy styling relies on
 -- this row for its refresh, and repaints by itself when the link does not move
 -- (core/Units.lua).
+--
+-- The seam hands onChange the new value and nothing else, so the row stores
+-- through its own `set`, which notes whether the stored link moved before it
+-- writes, and onChange reads that note. Store.Get still reads the row straight
+-- out of the profile: it has no `get` of its own.
+local linkMoved = false
 add{
     panel   = "general", section = "units", group = L["Units"],
     path    = "units.focus.link", type = "bool",
@@ -155,8 +234,13 @@ add{
     desc    = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
     default = NS.DEFAULT_PROFILE.units.focus.link,
     skipRender = true,
-    onChange = function(value, old)
-        if value ~= old then H.RefreshAllPanels() end
+    set = function(value)
+        local focus = NS.Units.Config("focus")
+        linkMoved = focus ~= nil and focus.link ~= value
+        if focus then focus.link = value end
+    end,
+    onChange = function()
+        if linkMoved then H.RefreshAllPanels() end
     end,
 }
 

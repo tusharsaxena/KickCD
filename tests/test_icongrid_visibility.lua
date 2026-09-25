@@ -276,3 +276,30 @@ test("instanceCasting is false for a unit that doesn't exist", function()
     clearCasting()
     assertFalse(IconGrid.InstanceCasting(TARGET))
 end)
+
+-- ── Empowered casts ─────────────────────────────────────────────────────────
+
+test("an empower start re-evaluates target_casting visibility", function()
+    -- The grid's cast-state refresh rides the unit's cast events; without the
+    -- EMPOWER family an Evoker's empowered cast never shows the grid.
+    local fresh = T.load(true, true)
+    local m, p = fresh.mocks, fresh.NS.db.profile
+    p.enabled, p.visibility, p.locked = true, "target_casting", true
+    m.UnitExists = function() return false end
+    m.UnitCastingInfo = function() return nil end
+    m.UnitChannelInfo = function() return nil end
+    local grid = fresh.NS:GetModule("IconGrid")
+    local target = grid:GetInstance("target")
+    grid:RefreshVisibility(target)
+    assertFalse(target.grid:IsShown(), "sanity: hidden while nothing is cast")
+
+    m.UnitExists = function() return true end
+    m.UnitCanAttack = function() return true end
+    m.UnitChannelInfo = function() return "Fire Breath" end
+    for _, f in ipairs(m.__frames) do
+        if f.__events.UNIT_SPELLCAST_EMPOWER_START == "target" then
+            f:_fire("UNIT_SPELLCAST_EMPOWER_START", "target")
+        end
+    end
+    assertTrue(target.grid:IsShown(), "EMPOWER_START must re-evaluate and show the grid")
+end)

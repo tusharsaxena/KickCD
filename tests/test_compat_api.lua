@@ -1,7 +1,7 @@
 -- tests/test_compat_api.lua — core/Compat.lua's spell + cast/channel shims.
 --
 -- Companion to test_compat.lua, which covers only the spec shims. Compat is
--- the addon's ONE seam onto the deprecated/renamed client APIs (§11), and
+-- the addon's ONE seam onto the deprecated/renamed client APIs (compat), and
 -- almost every function is a modern-first, deprecated-fallback pair. Neither
 -- half is exercised in the client the developer happens to be running, so
 -- both branches have to be pinned here: an unreachable fallback is a broken

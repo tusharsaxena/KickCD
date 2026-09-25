@@ -308,3 +308,45 @@ test("pool: a release leaves no icon shown", function()
         assertFalse(btn.__shown, "a parked icon is hidden")
     end
 end)
+
+-- ── The rebuild seed (KICKCD-R-07) ──────────────────────────────────────────
+--
+-- Cooldowns and IconGrid both rebuild on PEW, SPELLS_CHANGED,
+-- TRAIT_CONFIG_UPDATED and a profile change, and CallbackHandler runs the two
+-- handlers in pairs order. When Cooldowns goes first its SPELL_STATE lands on
+-- the pool IconGrid is about to release, so the seed is the only state a
+-- rebuilt icon gets until the spell next changes. It has to be the real one.
+
+test("an icon rebuilt after Cooldowns already emitted keeps its cooldown", function()
+    -- red under: seedIcon painting every rebuilt icon ready regardless of
+    -- what Cooldowns already knows.
+    local gi, IconGrid, NS, mocks = withList({ entry(1766) })
+    mocks.spellCooldowns[1766] = { isEnabled = true, isActive = true, startTime = 100, duration = 15 }
+    local Cooldowns = NS:GetModule("Cooldowns")
+    Cooldowns:Rebuild()               -- the losing order: Cooldowns first
+    assertEqual(Cooldowns:StateFor(1766) and Cooldowns:StateFor(1766).ready, false,
+        "precondition: Cooldowns has the spell on cooldown")
+    IconGrid:BuildActiveList(gi)
+    local btn = gi.pool.active[1766]
+    assertEqual(btn._lastState.ready, false, "the rebuilt icon shows the cooldown, not ready")
+end)
+
+test("with no Cooldowns state the seed is ready", function()
+    local gi, IconGrid, NS = withList({ entry(1766) })
+    NS:GetModule("Cooldowns").watched = {}
+    IconGrid:BuildActiveList(gi)
+    assertEqual(gi.pool.active[1766]._lastState.ready, true)
+end)
+
+test("every unwatched seed is the shared READY_SEED table", function()
+    -- A rebuild runs on every settings edit; a fresh seed table per icon per
+    -- rebuild is garbage the hot path does not need.
+    local gi, IconGrid, NS = withList({ entry(1766), entry(47528) })
+    NS:GetModule("Cooldowns").watched = {}
+    IconGrid:BuildActiveList(gi)
+    local a = gi.pool.active[1766]._lastState
+    IconGrid:BuildActiveList(gi)
+    local b, c = gi.pool.active[1766]._lastState, gi.pool.active[47528]._lastState
+    assertTrue(rawequal(a, b), "the same table across rebuilds")
+    assertTrue(rawequal(b, c), "the same table across icons")
+end)

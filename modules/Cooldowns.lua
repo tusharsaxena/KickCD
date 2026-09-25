@@ -33,13 +33,17 @@
 --     GCD and shows the spell ready before it is.
 --
 -- Both Rebuild and Refresh short-circuit when db.profile.enabled is
--- false (master disable); a "general" Ka0s_KickCD_ConfigChanged triggers a
--- full Rebuild so the watched-list comes back online when the user
--- re-enables.
+-- false (master disable). Master-enable recovery is the Lifecycle latch's:
+-- re-enabling releases the `disabled` hold, and the latch's standUp calls
+-- Resume, which re-arms the events and rebuilds the watched list. A
+-- "general" Ka0s_KickCD_ConfigChanged still triggers a full Rebuild, for the
+-- other general-section writes (master scale / alpha and the like).
 --
 -- Message contract (closed):
 --   FIRE:    Ka0s_KickCD_SpellState
---              { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+--              { spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }
+--            rebuild is true only on Rebuild's publish (absent from Refresh's);
+--            it tells IconGrid which Perf parent the handler ran under.
 --            charges is the raw currentCharges from
 --            C_Spell.GetSpellCharges (or nil for uncharged spells). A
 --            value of 0 means "no charges available right now" — the
@@ -232,7 +236,7 @@ end
 --- alpha / tint / GCD-suppression curves off the emitted object, and nothing
 --- else re-runs them), but logging it produced ~10 identical
 --- `[Cooldowns] N/M changed: active=[...]` lines per second for the whole
---- cooldown, drowning the console — the same per-gesture spam §9 forbids
+--- cooldown, drowning the console — the same per-gesture spam debug-logging-§9 forbids
 --- and the same reason _logRebuild has its own material-change gate.
 ---
 --- So: key on what actually changed about the spell's STATE, treating the
@@ -293,12 +297,13 @@ local function StateChanged(prev, next_)
     return false
 end
 
---- True when the master enable flag is set. Defaults to true on a fresh
---- profile, so a missing field reads as enabled.
+--- True when the master enable flag is set. Asks NS.MasterEnabled
+--- (core/LifecycleSetup.lua, THE one reader of the stored flag) rather than
+--- reading the profile here, resolved at call time so a stubbed or replaced
+--- reader is the one answered. A load without it (core/ not reached) reads as
+--- enabled, the same fresh-profile default the reader itself keeps.
 local function isEnabled()
-    local profile = NS.db and NS.db.profile
-    if not profile then return true end
-    return profile.enabled ~= false
+    return NS.MasterEnabled == nil or NS.MasterEnabled()
 end
 
 --- Rebuild the watched-list from db.profile.spells[CLASS][SPEC] and emit
@@ -308,6 +313,10 @@ end
 function Cooldowns:Rebuild()
     self.watched = {}
 
+    -- Defense in depth: while the master flag is off the lifecycle latch has
+    -- already stood this module down, so no event reaches here. Direct calls
+    -- (the harness, a slash path) do not pass the latch, and this return is
+    -- what keeps them from building a watched-list for a disabled addon.
     if not isEnabled() then return end
 
     local class, spec, classID = ResolveClassSpec()
@@ -336,6 +345,13 @@ function Cooldowns:Rebuild()
             if state then
                 self.watched[id] = state
                 watchedIDs[#watchedIDs + 1] = id
+                -- BRACKETED AS `rebuildEmit`, a ROOT bucket, not `stateEmit`:
+                -- Rebuild runs on spell and spec changes, never inside
+                -- Refresh, so stateEmit's declared `within = "spellPoll"`
+                -- would be false here. `rebuild = true` is a constant field
+                -- on the literal already built (no extra allocation); it is
+                -- how IconGrid:OnSpellState names this parent to Perf.Note.
+                local __e0 = Perf.on and debugprofilestop()
                 NS:SendMessage(NS.MSG.SPELL_STATE, {
                     spellID        = state.spellID,
                     ready          = state.ready,
@@ -343,7 +359,9 @@ function Cooldowns:Rebuild()
                     cdObject       = state.cdObject,
                     chargeCdObject = state.chargeCdObject,
                     charges        = state.charges,
+                    rebuild        = true,
                 })
+                if __e0 then Perf.Note("rebuildEmit", debugprofilestop() - __e0) end
             else
                 skippedIDs[#skippedIDs + 1] = id
             end
@@ -356,11 +374,11 @@ end
 --- Log a rebuild summary, but only when the result MATERIALLY changed since
 --- the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
 --- the Master scale / alpha sliders are `general`-section, so dragging one
---- fires Helpers.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
+--- fires Store.Set ~20/sec → a synchronous Rebuild ~20/sec, none of which
 --- changes the watched spell list. Without this gate that produced ~20
 --- identical `[Cooldowns] rebuild …` lines/sec — exactly the per-gesture spam
---- §9 forbids. Signature = class/spec + both spellID lists; built only when
---- debug is on (§4 zero-alloc).
+--- debug-logging-§9 forbids. Signature = class/spec + both spellID lists; built only when
+--- debug is on (debug-logging-§4 zero-alloc).
 ---
 --- The line names every watched and skipped spellID, plus the numeric class
 --- and spec IDs alongside their English tokens. That combination is what
@@ -405,12 +423,14 @@ end
 --- linger with whatever state was current when the spell vanished, until
 --- a manual /reload.
 function Cooldowns:Refresh()
+    -- Defense in depth behind the lifecycle latch, as in Rebuild: direct
+    -- calls do not pass the latch.
     if not isEnabled() then return end
     if not self.watched then return end
     local __t0 = Perf.on and debugprofilestop()
 
     local dbg = NS.State and NS.State.debug
-    local readyIds, activeIds, dropIds  -- built only when debug-on (§9 zero-alloc)
+    local readyIds, activeIds, dropIds  -- built only when debug-on (debug-logging-§9 zero-alloc)
     if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
     -- `logged` counts MATERIAL changes (see MaterialChange), which is a subset
     -- of the emits: a fresh cooldown handle for an unchanged cooldown re-emits
@@ -536,23 +556,30 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
---- The module's GAME-event registrations, split out of OnEnable so a perf
---- Resume can re-arm the same set without re-running the rest of the enable path
---- (rebuilding the watched table, re-subscribing to messages it never dropped).
---- Idempotent: AceEvent keys on (event, target).
-function Cooldowns:RegisterLifecycleEvents()
-    self:RegisterEvent("SPELL_UPDATE_COOLDOWN",        "OnCooldownEvent")
-    self:RegisterEvent("SPELL_UPDATE_USABLE",          "OnCooldownEvent")
-    self:RegisterEvent("SPELL_UPDATE_CHARGES",         "OnCooldownEvent")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",        "OnPlayerEnteringWorld")
-    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED","OnSpecChanged")
+-- The module's GAME events, as `{ event, method }` rows for NS.RegisterEventList.
+-- FILE SCOPE so a stand-up allocates nothing (anti-patterns #43), and one name a
+-- future client retires costs only its own row (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    { "SPELL_UPDATE_COOLDOWN",         "OnCooldownEvent" },
+    { "SPELL_UPDATE_USABLE",           "OnCooldownEvent" },
+    { "SPELL_UPDATE_CHARGES",          "OnCooldownEvent" },
+    { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
+    { "PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged" },
     -- Talent / spellbook changes within the active spec also flip the
     -- "available" set (a choice-node swap, learning a new ability, pet
     -- summon/dismiss for pet spells). Rebuild on either signal so spells
     -- the player just gained appear and ones they just lost disappear
     -- without waiting for a spec change.
-    self:RegisterEvent("SPELLS_CHANGED",               "Rebuild")
-    self:RegisterEvent("TRAIT_CONFIG_UPDATED",         "Rebuild")
+    { "SPELLS_CHANGED",                "Rebuild" },
+    { "TRAIT_CONFIG_UPDATED",          "Rebuild" },
+}
+
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm the same set without re-running the rest of the enable path
+--- (rebuilding the watched table, re-subscribing to messages it never dropped).
+--- Idempotent: AceEvent keys on (event, target).
+function Cooldowns:RegisterLifecycleEvents()
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
 end
 
 --- ONE WAY UP, and OnEnable is not it — Resume is (slash-commands-§7).
@@ -578,7 +605,7 @@ function Cooldowns:Resume()
     --
     -- The canceller is kept, and it is not optional: this is the addon's one
     -- coalescing timer, and a coalescing timer that wakes up on a stood-down
-    -- addon to find nothing to poll is the shape §7 names as the most expensive
+    -- addon to find nothing to poll is the shape slash-commands-§7 names as the most expensive
     -- survivor of the lot.
     self._refreshCoalesced, self._cancelRefresh =
         NS.Util.Throttle(0, function() self:Refresh() end)
@@ -600,7 +627,7 @@ end
 --- released, the coalescer's pending timer canceled, the watched table dropped.
 ---
 --- MESSAGES GO TOO, which they did not when this was a perf-only suspend. A
---- subscription is a registration, §7 does not carve the addon's own bus out of
+--- subscription is a registration, slash-commands-§7 does not carve the addon's own bus out of
 --- "actually UNREGISTERED", and Resume above no longer needs the module to hear a
 --- republish — the latch calls it directly.
 function Cooldowns:Suspend()
@@ -645,9 +672,10 @@ end
 function Cooldowns:OnConfigChanged(_, payload)
     local section = payload and payload.section
     if section == "spells" or section == "general" then
-        -- "general" covers the master enable flipping on/off — rebuild
-        -- so the watched list comes back fully populated when re-enabled
-        -- and is cleared when disabled.
+        -- Master enable is NOT recovered here: flipping it moves the
+        -- Lifecycle latch, whose standUp calls Resume (and standDown,
+        -- Suspend). "general" still rebuilds for the section's other
+        -- writes, which is cheap and keeps the watched list current.
         self:Rebuild()
     end
 end
@@ -656,9 +684,22 @@ end
 -- Debug
 -- ---------------------------------------------------------------------------
 
+--- The current state snapshot Cooldowns holds for `spellID`, or nil when the
+--- spell is not watched (master enable off, not in the list, not castable).
+--- READ-ONLY: the table is Cooldowns' own `watched` entry, the one Refresh
+--- diffs the next poll against, so a caller that mutates it corrupts the
+--- change detection. It is a query, not a second sender (architecture-§4):
+--- IconGrid pulls it to seed a rebuilt icon, because a SPELL_STATE Cooldowns
+--- emitted a moment earlier may have gone to the pool IconGrid then released.
+-- @param spellID  number
+-- @return table|nil  { spellID, ready, isActive, cdObject, chargeCdObject, charges }
+function Cooldowns:StateFor(spellID)
+    return self.watched and self.watched[spellID]
+end
+
 --- /kickcd debug spells — print the watched-list with current state.
 function Cooldowns:DebugDump()
-    local p = NS.Util and NS.Util.print or _G.print
+    local p = NS.Util.print
     local class, spec = ResolveClassSpec()
     -- English token, not the localized name: this line is what users paste
     -- into bug reports (issue #8).
@@ -713,7 +754,9 @@ end
 -- NB: named MasterEnabled, NOT IsEnabled — AceAddon embeds its own
 -- IsEnabled(self) (returns self.enabledState) directly onto every module
 -- object, so publishing under that name would silently shadow the library
--- method with one that answers a different question.
+-- method with one that answers a different question. StateFor (above) is
+-- the one method-shaped export: IconGrid's read-only pull of the current
+-- state when it seeds a rebuilt icon.
 Cooldowns.MaterialChange = MaterialChange
 Cooldowns.StateChanged   = StateChanged
 Cooldowns.MasterEnabled  = isEnabled

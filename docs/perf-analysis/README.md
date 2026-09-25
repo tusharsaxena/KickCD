@@ -32,8 +32,8 @@ docs/perf-analysis/<YYYYMMDD-HHMMSS>/
 ```
 
 One directory per capture. The stamp is **local time**, rendered from the record's own `timestamp`
-field (epoch seconds) — **when the capture happened**, not when it was written up, so a run analysed
-a week later still sorts against its neighbours. A bundle is never renamed to match a later
+field (epoch seconds) — **when the capture happened**, not when it was written up, so a run analyzed
+a week later still sorts against its neighbors. A bundle is never renamed to match a later
 convention; a frozen directory stays as it was written.
 
 A stamp that had to be reconstructed (a record with no usable `timestamp`) is said to be one, in that

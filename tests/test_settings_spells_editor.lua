@@ -434,7 +434,7 @@ test("a spell row carries its eight widgets in the visual column order", functio
     local kids = rows[1].children
     assertEqual(#kids, 8, "eight widgets per row")
     local want = {
-        { "Label", 30 }, { "Icon", 28 }, { "Label", 238 }, { "CheckBox", 40 },
+        { "Label", 30 }, { "Icon", 28 }, { "InteractiveLabel", 238 }, { "CheckBox", 40 },
         { "Icon", 22 }, { "Label", 14 }, { "Dropdown", 120 }, { "Icon", 30 },
     }
     for i, spec in ipairs(want) do
@@ -534,6 +534,140 @@ test("the category dropdown writes the entry's category", function()
     assertEqual(list[1].category, "silence")
 end)
 
+-- ── pooled frames, tooltips, the remove mark (KICKCD-R-02, KICKCD-A-14) ─────
+--
+-- AceGUI hands its frames out of one process-global pool, and a hook laid on
+-- one cannot be taken off: it follows the frame into the next widget that
+-- acquires it, in whichever addon that is. So the row reaches the pointer
+-- through widget callbacks, which Release clears, and never through a hook.
+
+test("no Spells row widget hooks its pooled frame", function()
+    -- red under: the old name Label's label.frame:HookScript pair, or the
+    -- category dropdown's dd.frame:HookScript pair
+    -- The ROWS, and every widget in them. The chrome band above them is the
+    -- library's (O.IdInput) and is not this page's to answer for.
+    local inst, p = editorInstance()
+    local rows = rebuildRows(inst, p)
+    assertTrue(#rows > 0, "the fixture must render at least one row")
+    local function noHooks(w, where)
+        local hooks = w.frame and rawget(w.frame, "__hooks")
+        assertNil(hooks and hooks[1],
+            where .. " (" .. tostring(w.type) .. ") hooked its pooled frame")
+        for c, kid in ipairs(w.children or {}) do noHooks(kid, where .. "." .. c) end
+    end
+    for i, row in ipairs(rows) do noHooks(row, "row " .. i) end
+    assertEqual(rows[1].children[3].type, "InteractiveLabel",
+        "the name is an InteractiveLabel, which carries its own OnEnter/OnLeave callbacks")
+    assertEqual(#rows[1].children[3].__highlight, 0,
+        "SetHighlight(nil): no highlight texture on the name")
+end)
+
+test("hovering the spell name shows the spell tooltip", function()
+    local inst, p = editorInstance()
+    local list = activeList(inst)
+    local tip, shown = inst.mocks.GameTooltip, nil
+    local saved = rawget(tip, "SetSpellByID")
+    rawset(tip, "SetSpellByID", function(_, id) shown = id end)
+    local ok, err = pcall(function()
+        rebuildRows(inst, p)[1].children[3]:__fire("OnEnter")
+    end)
+    rawset(tip, "SetSpellByID", saved)
+    assertTrue(ok, tostring(err))
+    assertEqual(shown, list[1].spellID)
+end)
+
+test("hovering the category dropdown shows the category tooltip", function()
+    -- red under: the dd.frame:HookScript pair. AceGUI's Dropdown frame is never
+    -- mouse-enabled (the button and its cover take the pointer), so that hook
+    -- never fired in the client and the tooltip was dead.
+    local inst, p = editorInstance()
+    local L = inst.NS.L
+    local tip, title, lines = inst.mocks.GameTooltip, nil, {}
+    local savedText, savedLine = rawget(tip, "SetText"), rawget(tip, "AddLine")
+    rawset(tip, "SetText", function(_, text) title = text end)
+    rawset(tip, "AddLine", function(_, text) lines[#lines + 1] = text end)
+    local ok, err = pcall(function()
+        rebuildRows(inst, p)[1].children[7]:__fire("OnEnter")
+    end)
+    rawset(tip, "SetText", savedText)
+    rawset(tip, "AddLine", savedLine)
+    assertTrue(ok, tostring(err))
+    assertEqual(title, L["Category"])
+    assertEqual(lines[1], L["Category for future filtering. Currently informational only."])
+end)
+
+--- Give every Icon a texture region the row builder can dress, since the kit's
+--- recording Icon has none: SetImage then writes the path onto that texture
+--- instead of replacing it, so a case can read the atlas, the path and the tint
+--- off one object.
+local function iconsWithTextures(inst)
+    local g = inst.mocks.__aceGUI
+    local create = g.Create
+    g.Create = function(self, wtype)
+        local w = create(self, wtype)
+        if wtype == "Icon" then
+            w.image = inst.mocks.CreateFrame("Frame"):CreateTexture()
+            function w.SetImage(widget, path) widget.image:SetTexture(path); return widget end
+        end
+        return w
+    end
+    return function() g.Create = create end
+end
+
+test("the remove button draws the catalog mark, and the atlas only without LibKa0s", function()
+    -- library-stack-§8 / AP #63: a Blizzard atlas only where the catalog has no
+    -- mark. Catalog marks are white in the alpha, so the button tints it red.
+    -- red under: atlas = "transmog-icon-remove" unconditionally
+    local inst, p = editorInstance()
+    local restore = iconsWithTextures(inst)
+    local ok, err = pcall(function()
+        local mark = inst.NS.Icon("close")
+        assertTrue(mark ~= nil, "the live load resolves the catalog's close mark")
+        local img = rebuildRows(inst, p)[1].children[8].image
+        assertEqual(img:GetTexture(), mark, "the remove button draws the catalog mark")
+        assertNil(img:GetAtlas(), "and no Blizzard atlas")
+        local r, gr, b = img:GetVertexColor()
+        assertTrue(r > gr and r > b, "the white mark is tinted red")
+
+        -- NS.Icon answering nil is the degraded install's answer (below).
+        local liveIcon = inst.NS.Icon
+        inst.NS.Icon = function() return nil end
+        img = rebuildRows(inst, p)[1].children[8].image
+        inst.NS.Icon = liveIcon
+        assertEqual(img:GetAtlas(), "transmog-icon-remove", "the fallback is the Blizzard atlas")
+        assertNil(img:GetTexture(), "with no catalog path")
+        assertEqual(select(1, img:GetVertexColor()), 1, "and no tint over the red atlas")
+    end)
+    restore()
+    assertTrue(ok, tostring(err))
+
+    local degraded = T.load(false, false, nil, { libFiles = {} })
+    assertNil(degraded.NS.Icon("close"), "without LibKa0s NS.Icon answers nil")
+end)
+
+test("a reorder drag never writes a row frame's OnUpdate", function()
+    -- LK-21 consumer pin (LibKa0s-Widgets minor 10): the drag polls on the
+    -- library's own ghost frame. Before it, `row.frame:SetScript("OnUpdate")`
+    -- on the HOST's row frame -- a pooled AceGUI frame -- wiped whatever was
+    -- there. Characterization: green on v1.56.0.
+    local inst, p = editorInstance()
+    local W = inst.mocks.LibStub("LibKa0s-Widgets-1.0", true)
+    local realReorder, ctl = W.ReorderList, nil
+    W.ReorderList = function(opts) ctl = realReorder(opts); return ctl end
+    local rows = rebuildRows(inst, p)
+    W.ReorderList = realReorder
+    assertTrue(ctl ~= nil and ctl.rows[1] and ctl.rows[1].handle ~= nil,
+        "the page built a controller and a handle on row 1")
+    inst.mocks.GetCursorPosition = function() return 0, 300 end
+    local handle = ctl.rows[1].handle
+    handle:GetScript("OnMouseDown")(handle)
+    assertTrue(ctl.dragging ~= nil, "the drag started")
+    for i, row in ipairs(rows) do
+        assertNil(row.frame:GetScript("OnUpdate"), "row " .. i .. "'s frame carries an OnUpdate")
+    end
+    ctl:Cancel()
+end)
+
 -- ── the panel rebuild ───────────────────────────────────────────────────────
 
 test("RefreshRows builds the chrome block, then the rows, in that order", function()
@@ -604,6 +738,60 @@ test("RefreshRows refuses to run against a hidden panel", function()
     local mark = #g.__created
     p:RefreshRows()
     assertEqual(#g.__created, mark, "a hidden panel must build no widgets")
+end)
+
+-- ── one render per commit, and a guard a raise cannot latch (KICKCD-R-08) ────
+
+--- Count H.PageHeader calls -- one per render -- while fn runs.
+local function countRenders(inst, fn)
+    local H = inst.NS.Settings.Helpers
+    local real, n = H.PageHeader, 0
+    H.PageHeader = function(...) n = n + 1; return real(...) end
+    local ok, err = pcall(fn)
+    H.PageHeader = real
+    if not ok then error(err, 0) end
+    return n
+end
+
+test("one commitSoon flush renders the Spells page once", function()
+    -- doCommit used to render AND fire CONFIG_CHANGED, whose own subscriber on this page renders
+    -- again: every edit drew the page twice.
+    local inst, p = editorInstance()
+    local rows = rebuildRows(inst, p)
+    local n = countRenders(inst, function()
+        rows[1].children[4]:__fire("OnValueChanged", false)
+        inst.mocks.__flushTimers()
+    end)
+    assertEqual(n, 1, "one edit, one render")
+end)
+
+test("a raising render does not latch the guard", function()
+    -- rebuildScheduled was cleared on the explicit returns only, so a raise mid-render left it set
+    -- and every later RefreshRows returned early for the rest of the session.
+    local inst, p = editorInstance()
+    local H = inst.NS.Settings.Helpers
+    local real = H.EnsureScroll
+    H.EnsureScroll = function() H.EnsureScroll = real; error("boom", 0) end
+    T.assertError(function() p:RefreshRows() end, "the raise reaches the caller")
+    H.EnsureScroll = real
+    assertEqual(countRenders(inst, function() p:RefreshRows() end), 1,
+        "the next refresh still renders")
+end)
+
+test("while stood down a commit still repaints the open page", function()
+    -- Spells.StandDown unregisters the CONFIG_CHANGED subscriber, so while the addon is down the
+    -- direct render in doCommit is the only one the page gets.
+    local inst, p = editorInstance()
+    inst.NS.Settings.Helpers.SetAndRefresh("enabled", false)
+    inst.mocks.__flushTimers()
+    assertTrue(inst.NS.IsDown(), "the addon is stood down")
+    for _, ctx in ipairs(inst.NS.Settings.Helpers.__panels()) do ctx.panel:Show() end
+    local rows = rebuildRows(inst, p)
+    local n = countRenders(inst, function()
+        rows[1].children[4]:__fire("OnValueChanged", false)
+        inst.mocks.__flushTimers()
+    end)
+    assertEqual(n, 1, "the page repaints once with no subscriber to do it")
 end)
 
 test("a rebuild drains the scroll before building a new tree into it", function()

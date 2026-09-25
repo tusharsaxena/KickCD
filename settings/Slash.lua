@@ -22,8 +22,8 @@ NS.Slash = NS.Slash or {}
 --    every row in the addon would list under one "settings" heading.
 --
 -- 2. The parser override. It carries the `valueGate` hint machinery, which
---    explains WHY a dropdown value was rejected by probing what the gating
---    sibling setting would allow. That is genuinely this addon's
+--    explains WHY a dropdown value was rejected by asking what the row would
+--    offer were the gating sibling setting flipped. That is genuinely this addon's
 --    (growDirection's UP/DOWN vs RIGHT/LEFT depends on castbar.orientation) and
 --    the library has no hook for it, so it stays here behind the descriptor's
 --    documented `parse` seam rather than forking the dispatcher.
@@ -58,6 +58,12 @@ local function helpers()
     return NS.Settings and NS.Settings.Helpers
 end
 
+-- The settings schema's runtime (settings/SchemaSetup.lua, which loads first in
+-- the settings block): the reader, the row index and the reset funnel this
+-- descriptor takes by value, and the primitives GateHint's fallback probe walks.
+local Store     = NS.Settings.Store
+local SchemaLib = NS.Settings.SchemaLib
+
 local function out(line)
     if NS.Util and NS.Util.print then NS.Util.print(line) end
 end
@@ -75,59 +81,105 @@ NS.Slash.Version = NS.Version
 -- Only the `valueGate` hint lives here — see the header for the color codec
 -- that used to sit beside it and why it isn't needed any more.
 
+--- The keys an option list offers, sorted. Two shapes reach here, the same two
+--- the library's enumList reads: a keyed map (`{ KEY = label }`) and a list of
+--- `{ value =, label = }` items. The list shape is what growDirection returns,
+--- and reading its keys would name the positions "1/2" rather than the values.
+local function listKeys(v)
+    local keys = {}
+    if type(v) ~= "table" then return keys end
+    if type(v[1]) == "table" and v[1].value ~= nil then
+        for _, item in ipairs(v) do keys[#keys + 1] = tostring(item.value) end
+    else
+        for k in pairs(v) do keys[#keys + 1] = tostring(k) end
+    end
+    table.sort(keys)
+    return keys
+end
+
 --- The keys a dropdown row currently offers, resolved at call time because a
 --- media list is populated by another addon and is not knowable when the row is
 --- declared. Same resolution the library's own parser does.
 local function allowedKeys(row)
-    local v = type(row.values) == "function" and row.values() or row.values or {}
-    local keys = {}
-    for k in pairs(v) do keys[#keys + 1] = tostring(k) end
-    table.sort(keys)
-    return keys
+    return listKeys(type(row.values) == "function" and row.values() or row.values)
+end
+
+--- The keys the row would offer with its gate set to `candidate`.
+---
+--- A row that declares `valuesFor(gateValue)` is simply asked: it is pure by
+--- contract, so the live profile is never touched (KICKCD-R-15). That is the
+--- path every gated row in this addon takes -- settings/Castbar.lua's
+--- growDirection shares one table between its `values` and its `valuesFor`, so
+--- the gating rule is still written once.
+---
+--- A row WITHOUT valuesFor falls back to the original probe: swap the gate's
+--- stored value to the candidate, re-ask the row's own `values`, and restore.
+--- The swap is transient -- one call between mutate and restore, with no
+--- message-bus dispatch in between -- but that one call is addon-authored and
+--- free to raise (an LSM row asks another addon's table). Unguarded, the restore
+--- would be skipped and the candidate left in SavedVariables, silently, with no
+--- onChange and no panel refresh, from a READ-ONLY hint. So it runs under
+--- `pcall`: the restore is unconditional, and a raising `values` costs the user
+--- one missing hint clause rather than a changed setting.
+--- tests/test_color_shape.lua pins both paths.
+---
+--- Answers nil when the candidate's keys cannot be computed.
+local function keysForCandidate(row, candidate, gateVal)
+    if type(row.valuesFor) == "function" then
+        local ok, alt = pcall(row.valuesFor, candidate)
+        return ok and listKeys(alt) or nil
+    end
+    local profile = NS.db.profile
+    SchemaLib.Write(profile, row.valueGate, candidate)
+    local ok, alt = pcall(allowedKeys, row)
+    SchemaLib.Write(profile, row.valueGate, gateVal)
+    return ok and alt or nil
 end
 
 --- Why a dropdown value was rejected, when a sibling setting is what rejected it.
 ---
 --- `valueGate` names the setting whose current value gates this row's option
---- list — the cast bar's growDirection offers UP/DOWN or RIGHT/LEFT depending on
+--- list -- the cast bar's growDirection offers UP/DOWN or RIGHT/LEFT depending on
 --- castbar.orientation. Without this, a user who types a perfectly sensible
 --- value gets "Allowed values: LEFT, RIGHT" and no clue why UP vanished.
 ---
---- The probe is real rather than modeled: swap the gate's stored value to each
---- other candidate, re-ask the row's own `values` function, and restore. That is
---- the only way to answer it without duplicating the gating rule here, and the
---- swap is transient — one call between mutate and restore, with no message-bus
---- dispatch in between.
----
---- The one call in that window is `row.values()`, addon-authored and free to
---- raise (an LSM row asks another addon's table). If it did, the restore below
---- would never run and the swapped-in candidate would stay in SavedVariables —
---- silently, with no onChange and no panel refresh, from a READ-ONLY hint. So
---- the probe runs under `pcall`: the restore is unconditional, and a raising
---- `values` costs the user one missing hint clause rather than a changed
---- setting. tests/test_color_shape.lua pins that.
-function NS.Slash.GateHint(row)
-    local H = helpers()
-    if not (H and H.Get and H.FindSchema and H.Resolve) then return "" end
+--- The answer is real rather than modeled: for each other value the gate could
+--- take, keysForCandidate asks what the row would then offer -- through the
+--- row's pure `valuesFor` when it has one, or the pcall-guarded swap-and-restore
+--- probe when it does not. The probe reads and writes db.profile through the
+--- schema major's own primitives (SchemaLib.Read / Write, the library or its
+--- stub), and only a row that lacks valuesFor is refused a flip clause when the
+--- gate's parent table is not there -- Write would create it, and a read-only
+--- hint must not.
+local function gateParentExists(path)
+    local profile = NS.db and NS.db.profile
+    local parts = SchemaLib.SplitPath(path)
+    if type(profile) ~= "table" or #parts == 0 then return false end
+    -- SplitPath's array is shared per path string, so the parent's walk is a
+    -- copy one segment short rather than an edit of it.
+    local up = {}
+    for i = 1, #parts - 1 do up[i] = parts[i] end
+    return #up == 0 or type(SchemaLib.Read(profile, up)) == "table"
+end
 
-    local gateVal = H.Get(row.valueGate)
+function NS.Slash.GateHint(row)
+    local gateVal = Store.Get(row.valueGate)
     local msg = (" (depends on %s = %s)"):format(row.valueGate, tostring(gateVal))
 
-    local gateDef = H.FindSchema(row.valueGate)
+    local gateDef = Store.FindRow(row.valueGate)
     if not gateDef then return msg end
     local gateValues = type(gateDef.values) == "function" and gateDef.values() or gateDef.values
     if type(gateValues) ~= "table" then return msg end
 
-    local parent, key = H.Resolve(row.valueGate)
-    if not (parent and key) then return msg end
+    if type(row.valuesFor) ~= "function" and not gateParentExists(row.valueGate) then
+        return msg
+    end
 
     local hints = {}
     for candidate in pairs(gateValues) do
         if candidate ~= gateVal then
-            parent[key] = candidate
-            local ok, alt = pcall(allowedKeys, row)
-            parent[key] = gateVal
-            if ok and #alt > 0 then
+            local alt = keysForCandidate(row, candidate, gateVal)
+            if alt and #alt > 0 then
                 hints[#hints + 1] = ("flip %s to %s for %s")
                     :format(row.valueGate, tostring(candidate), table.concat(alt, "/"))
             end
@@ -201,48 +253,85 @@ NS.Slash.RunReset = runReset
 -- ---------------------------------------------------------------------
 --
 -- `/kcd` is registered unconditionally in core/KickCD.lua's OnInitialize, so
--- something has to answer it. The host verbs never went to the library, so they
--- keep working untouched; what is lost is the schema CLI, and each of those
--- verbs names the missing library rather than going quiet.
+-- something has to answer it. The shape is the one slash-commands-§1 (WS-02)
+-- and LibKa0s-Slash-1.0's version-15 doc ("The degradation stub") prescribe:
 --
--- Note what is NOT here: no copy of the row formatter, no copy of the parser, no
--- copy of the key/value shape. Hand-copying the strings whose drift the
--- extraction exists to end is the one duplicate testing-§8 most specifically
--- forbids, so a degraded help row renders plainly and says so.
+--   * minimal OnSlash dispatch, with the disabled gate: a verb on the host's
+--     own NS.FEATURE_VERBS (core/KickCD.lua) is refused with DisabledLine while
+--     d.isEnabled() is false. The stub does not read d.liveVerbs: that union is
+--     built from lib.LIVE_VERBS, which this load has no library to read, and
+--     re-typing the reserved verbs here would be a second library copy;
+--   * exactly one library string carried verbatim, the disabled line's format,
+--     pinned byte for byte by tests/test_slash.lua (Kit.assertLibraryConstant);
+--   * no copy of the row formatter, the parser or the key/value shape, so a
+--     degraded help row renders plainly as `cmd  desc`, two spaces, no color
+--     and no em dash (testing-§8's forbidden duplicate);
+--   * the composed-row verbs take route (a): `enable` / `disable` reach CliSet,
+--     which writes a bool literal for a path on NS.Settings.WRITE_THROUGH and
+--     nothing else, and `lock` / `unlock` / `toggle` write through the Schema
+--     stub's own writeThrough in core/KickCD.lua's setLocked. Every other
+--     schema verb prints the collection's library-absent line, never raising.
+--
+-- The host verbs never went to the library, so they keep working untouched.
 if not SlashLib then
-    -- The cause half is core/CoreSetup.lua's shared clause (NS.LIBKA0S_MISSING);
-    -- only the consequence is this seam's. This is the one of the five whose
-    -- consequence comes FIRST — the verb has to lead, or "/kcd list" is buried
-    -- mid-sentence — so it reads "<verb> is unavailable. <cause>." AbsorbTracker
-    -- inverts it the same way for the same reason, in its own
-    -- ../AbsorbTracker/settings/Slash.lua `missing` stub.
-    local missing = " is unavailable. " .. NS.LIBKA0S_MISSING .. "."
+    -- The bytes of LibKa0s-Slash-1.0's lib.DISABLED_LINE_FORMAT (v1.56.0), the
+    -- one library string this stub may carry. Exposed on the instance as
+    -- `__disabledLineFormat` for the pin; the `__` prefix keeps it outside the
+    -- surface-parity gate, which is about the public surface.
+    local DISABLED_LINE_FORMAT = "%s is disabled \226\128\148 enable it with |cFFFFFF00%s|r"
+
     SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
 
+    --- The collection's library-absent line for `verb` (e.g. "/kcd list").
+    local function absentLine(verb)
+        return NS.L["%s is unavailable: the LibKa0s library did not load."]:format(verb)
+    end
+
+    --- A bool literal, or nil. A literal check on purpose, not a copy of the
+    --- library's parser: the only rows this stub writes are bools.
+    local BOOL_LITERAL = { ["true"] = true, on = true, ["false"] = false, off = false }
+
+    local function writeThrough(path)
+        for _, p in ipairs(NS.Settings.WRITE_THROUGH or {}) do
+            if p == path then return true end
+        end
+        return false
+    end
+
+    --- `/kcd set <path> <value>` with no library: a bool literal for a
+    --- writeThrough path goes to the Schema stub; everything else, and any
+    --- failure, prints the library-absent line and writes nothing.
+    local function cliSet(rest)
+        local path, text = (rest or ""):match("^%s*(%S+)%s*(.-)%s*$")
+        local v = text and BOOL_LITERAL[text:lower()]
+        local S = NS.Settings.Store
+        if v ~= nil and writeThrough(path) and S and S.Set then
+            local ok, stored = pcall(S.Set, path, v)
+            if ok and stored then return out(path .. " = " .. tostring(v)) end
+        end
+        out(absentLine("/kcd set"))
+    end
+
     function SlashLib:New(d)
-        local stub = { SetRowAnnotator = function() end }
-        local function absent(verb)
-            return function() out("/kcd " .. verb .. missing) end
+        local stub = {
+            SetRowAnnotator = function() end,
+            __disabledLineFormat = DISABLED_LINE_FORMAT,
+        }
+        for _, verb in ipairs({ "List", "Get", "Reset", "ResetAll" }) do
+            local line = "/kcd " .. verb:lower()
+            stub["Cli" .. verb] = function() out(absentLine(line)) end
         end
-        for _, verb in ipairs({ "List", "Get", "Set", "Reset", "ResetAll" }) do
-            stub["Cli" .. verb] = absent(verb:lower())
-        end
+        stub.CliSet = function(_, rest) return cliSet(rest) end
         stub.CliVersion = function() out("v" .. tostring(d.version and d.version() or "?")) end
-        -- ANSWERS NIL, and that is the only honest answer here. The refusal
-        -- line's wording is the collection's and lives in exactly one place --
-        -- lib.DISABLED_LINE_FORMAT -- so a stub that spelled it again would be
-        -- the twelfth copy the extraction exists to prevent. This arm has no gate
-        -- either: without the library there is no dispatcher to refuse anything,
-        -- so there is nothing for the line to accompany. Present because the
-        -- surface-parity gate asks the stub to answer everything the live
-        -- instance answers, and NS.Slash.PrintDisabledLine treats a nil as
-        -- "nothing to say" rather than printing an empty line.
-        stub.DisabledLine = function() return nil end
+        -- The same line the library builds, from the same two arguments.
+        stub.DisabledLine = function()
+            return DISABLED_LINE_FORMAT:format(tostring(d.brandName or d.slash), d.slash .. " enable")
+        end
         stub.LandingRows = function()
             local rows = {}
             for _, e in ipairs(d.commands or {}) do
-                rows[#rows + 1] = d.slash .. " " .. e[1] .. " \226\128\148 " .. e[2]
+                rows[#rows + 1] = d.slash .. " " .. e[1] .. "  " .. e[2]
             end
             return rows
         end
@@ -255,10 +344,15 @@ if not SlashLib then
             out("v" .. tostring(d.version and d.version() or "?") .. " slash commands")
             for _, r in ipairs(stub.HelpRows()) do out(r) end
         end
+        local feature = {}
+        for _, verb in ipairs(NS.FEATURE_VERBS or {}) do feature[verb] = true end
         local function find(cmd)
             for _, e in ipairs(d.commands or {}) do
                 if e[1] == cmd then return e end
             end
+        end
+        local function refused(cmd)
+            return feature[cmd] and type(d.isEnabled) == "function" and not d.isEnabled()
         end
         stub.OnSlash = function(_, msg)
             local raw = (msg or ""):match("^%s*(.-)%s*$") or ""
@@ -274,6 +368,7 @@ if not SlashLib then
             cmd = (cmd or ""):lower()
             cmd = (d.aliases or {})[cmd] or cmd
             local e = find(cmd)
+            if e and refused(cmd) then return out(stub.DisabledLine()) end
             if e then return e[3](rest or "") end
             out("unknown command '" .. cmd .. "'")
             stub.PrintHelp()
@@ -328,6 +423,8 @@ end
 -- that a thirteenth reserved verb arriving in a future LibKa0s tag is live the
 -- day it is vendored, rather than silently refused because a copy of the twelve
 -- was typed into this file.
+-- On a library-absent load SlashLib.LIVE_VERBS is nil, so this is just the
+-- extras, and the degradation stub above gates on NS.FEATURE_VERBS instead.
 local function liveVerbs()
     local verbs = {}
     for _, verb in ipairs(SlashLib.LIVE_VERBS or {}) do verbs[#verbs + 1] = verb end
@@ -357,55 +454,37 @@ NS.Slash.cli = SlashLib:New({
     print   = function(line) out(line) end,
     version = NS.Version,
 
-    -- The plain host reader. No translation: colors are stored in the keyed
-    -- shape the library already parses into and renders from.
-    --
-    -- NOT `H and H.Get and H.Get(path) or nil`: that idiom folds a stored FALSE
-    -- to nil, and the library prints nil as the literal "nil". Every bool row
-    -- sitting at false -- `/kcd get locked`, `/kcd list`, and now the `enable` /
-    -- `disable` pair's own confirmation line -- reported a value the addon does
-    -- not hold. tests/test_launcher.lua pins it.
-    get = function(path)
-        local H = helpers()
-        if not (H and H.Get) then return nil end
-        return H.Get(path)
-    end,
+    -- The schema seam's reader, by value. No translation: colors are stored in
+    -- the keyed shape the library already parses into and renders from, and
+    -- Store.Get answers a stored FALSE as false -- the old
+    -- `H and H.Get and H.Get (path) or nil` folded it to nil, which the library
+    -- prints as the literal "nil". tests/test_launcher.lua pins it.
+    get = Store.Get,
 
-    -- The single write seam. SetAndRefresh — not the 3-arg Helpers.Set — because
-    -- it is the one path that fires CONFIG_CHANGED with the row's section, runs
-    -- the row's onChange and refreshes any open panel. A `/kcd set` then takes
-    -- exactly the path a panel checkbox takes, which is the point of the rule.
+    -- The single write seam: Store.Set, through SetAndRefresh so an open panel
+    -- repaints after a `/kcd set` exactly as after a checkbox. Store.Set's
+    -- `false, err, why` comes back through it, and the library prints it
+    -- (Slash minor 15) instead of echoing a value that was never stored.
     set = function(path, v)
         local H = helpers()
-        if H and H.SetAndRefresh then H.SetAndRefresh(path, v) end
+        if H and H.SetAndRefresh then return H.SetAndRefresh(path, v) end
+        return Store.Set(path, v)
     end,
 
-    findRow = function(path)
-        local H = helpers()
-        return H and H.FindSchema and H.FindSchema(path) or nil
-    end,
+    findRow = Store.FindRow,
 
-    applyDefault = function(row)
-        local H = helpers()
-        if not (H and H.SetAndRefresh) then return end
-        -- DeepCopy, because a default that is a table (an RGBA array) would
-        -- otherwise be shared by every profile that reset to it.
-        local d = row.default
-        H.SetAndRefresh(row.path, type(d) == "table" and NS.Util.DeepCopy(d) or d)
-    end,
+    -- Store.ApplyDefault copies a table default in and answers false for a row
+    -- with no default, which the library prints as its NO_DEFAULT line. Outside
+    -- any bracket, so `/kcd reset global.minimap.shown` still resets the one row
+    -- every sweep leaves alone (launcher-§3).
+    applyDefault = Store.ApplyDefault,
 
     -- The bulk bracket (LibKa0s-Slash-1.0 minor 8) around Sl:CliResetAll, the
     -- same pair the Options descriptor takes (debug-logging-§10). Nothing here
     -- routes to CliResetAll today -- `/kcd resetall` is a host verb that reaches
     -- the Options walk -- so this keeps a future route to one line, not one per row.
-    bulkBegin = function(act, scope)
-        local H = helpers()
-        if H and H.BulkBegin then H.BulkBegin(act, scope) end
-    end,
-    bulkEnd = function(act, scope, count, err, info)
-        local H = helpers()
-        if H and H.BulkEnd then H.BulkEnd(act, scope, count, err, info) end
-    end,
+    bulkBegin = Store.BulkBegin,
+    bulkEnd   = Store.BulkEnd,
 
     allRows  = allRows,
     parse    = parseForHost,
@@ -429,24 +508,6 @@ NS.Slash.cli = SlashLib:New({
 function NS.Slash:LandingRows() return NS.Slash.cli:LandingRows() end
 
 function NS.Slash:OnSlash(msg) return NS.Slash.cli:OnSlash(msg) end
-
---- Print the collection's one refusal line, through this addon's tagged printer.
----
---- The launcher's left click is the second call site the standard names
---- (slash-commands-§7, launcher-§2): a refused click prints the SAME line a
---- refused feature verb prints, and it prints it by asking the library for it
---- rather than by spelling it again here. One sentence, one place.
----
---- Degrades to nothing when LibKa0s is missing: the stub above has no gate, so
---- there is no line to print and no second copy of it to invent.
-function NS.Slash.PrintDisabledLine()
-    local cli = NS.Slash.cli
-    if not (cli and cli.DisabledLine) then return false end
-    local line = cli:DisabledLine()
-    if type(line) ~= "string" or line == "" then return false end
-    out(line)
-    return true
-end
 
 -- There is no `NS.Slash:PrintHelp` forwarder beside these two, and its absence is deliberate:
 -- `M4c-06` deleted one. `core/KickCD.lua`'s `printHelp` reaches `NS.Slash.cli:PrintHelp()`

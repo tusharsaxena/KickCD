@@ -270,3 +270,38 @@ test("lintconfig: no source file carries a bare inline luacheck ignore", functio
             .. "warning in the same scope is still reported (lint.md)", 2)
     end
 end)
+
+-- ---------------------------------------------------------------------------
+-- Deprecated globals are not whitelisted for shipped code
+-- ---------------------------------------------------------------------------
+
+-- KICKCD-R-16. Shipped code reaches every one of these through core/Compat.lua or a
+-- C_ namespace, and a bare-name count over core/, modules/ and settings/ is zero for
+-- each. Listing them in the TOP-LEVEL read_globals grants them to shipped code anyway,
+-- so a regression back to the deprecated global would lint clean. A suite that needs
+-- one bare declares it in the files["tests/"] stanza instead.
+local DEPRECATED = {
+    "GetSpellInfo", "GetSpecialization", "GetSpecializationInfo",
+    "IsPlayerSpell", "IsSpellKnown", "IsSpellKnownOrOverridesKnown",
+}
+
+test("lintconfig: no deprecated spell/spec global is whitelisted for shipped code", function()
+    local env = loadConfig()
+    local listed = {}
+    for _, key in ipairs({ "read_globals", "globals" }) do
+        local list = rawget(env, key)
+        if type(list) == "table" then
+            for _, name in ipairs(list) do listed[tostring(name)] = key end
+        end
+    end
+    local found = {}
+    for _, name in ipairs(DEPRECATED) do
+        if listed[name] then found[#found + 1] = listed[name] .. "." .. name end
+    end
+    if #found > 0 then
+        fail(".luacheckrc grants deprecated globals to shipped code at the top level: "
+            .. table.concat(found, ", ") .. ". Nothing in core/, modules/ or settings/ reads "
+            .. "them bare, so the entry only hides a regression; move any a suite needs into "
+            .. "files[\"tests/\"]", 2)
+    end
+end)

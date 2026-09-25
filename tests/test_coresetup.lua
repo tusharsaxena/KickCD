@@ -334,7 +334,7 @@ test("the Core descriptor passes no locale table, and the printer renders no key
     end
 end)
 
--- ── the shared cause clause (adoption 2026-08-01 §8) ────────────────────────
+-- ── the shared cause clause (adoption 2026-08-01, item 8) ─────────────────────
 --
 -- The user's decision, taken over KickCD's own five separately-worded
 -- sentences: a player with a broken install must read the SAME sentence about
@@ -365,7 +365,7 @@ test("the shared cause clause is published on the healthy path too", function()
         "the shared clause must be published whether or not the library loaded")
 end)
 
-test("with LibKa0s absent all five seams say the same thing about WHY", function()
+test("with LibKa0s absent every seam names the missing library", function()
     -- Loaded with the library genuinely gone, then driven through each seam's
     -- own user-facing route. Every expected string below is spelled out in
     -- full, so a wording change has to be a decision.
@@ -414,12 +414,12 @@ test("with LibKa0s absent all five seams say the same thing about WHY", function
     assertEqual(opts[1], P .. " " .. CAUSE .. ", so the settings panel is unavailable.",
         "settings/OptionsSetup.lua's stub line")
 
-    -- 5. Slash — the one seam whose consequence comes FIRST, because the verb
-    --    has to lead or `/kcd list` is buried mid-sentence. AbsorbTracker
-    --    inverts it identically, in its own
-    --    ../AbsorbTracker/settings/Slash.lua `missing` stub.
+    -- 5. Slash — NOT one of the four any more. slash-commands-§1 (WS-02) gives
+    --    the degraded schema verbs the collection's own library-absent line,
+    --    one sentence and one placeholder, through the locale; so the verb
+    --    still leads, but the cause is the standard's words, not this clause.
     local slash = drive(function() inst.NS:OnSlashCommand("list") end)
-    assertEqual(slash[1], P .. " /kcd list is unavailable. " .. CAUSE .. ".",
+    assertEqual(slash[1], P .. " /kcd list is unavailable: the LibKa0s library did not load.",
         "settings/Slash.lua's stub line")
 end)
 
@@ -427,11 +427,14 @@ test("no seam re-spells the cause in its own words", function()
     -- The clause is only shared while there is exactly ONE copy of it. A future
     -- seam that pastes the sentence rather than concatenating the constant
     -- reads identically today and drifts on the next edit — which is the whole
-    -- failure mode adoption 2026-08-01 §8 was raised about.
+    -- failure mode adoption 2026-08-01, item 8, was raised about.
     -- red under: pasting "The LibKa0s library is missing from ..." into any seam
+    -- Every file that READS the clause. settings/Slash.lua is not one: its stub
+    -- prints slash-commands-§1's own library-absent line (case 5 above).
     local SEAMS = {
         "core/CoreSetup.lua", "core/DebugLogSetup.lua", "core/PerfSetup.lua",
-        "settings/Slash.lua", "settings/OptionsSetup.lua",
+        "core/LauncherSetup.lua", "settings/SchemaSetup.lua",
+        "settings/OptionsSetup.lua",
     }
     local offenders, users = {}, 0
     for _, path in ipairs(SEAMS) do
@@ -455,7 +458,7 @@ test("no seam re-spells the cause in its own words", function()
     assertEqual(#offenders, 0,
         "a seam spells the cause itself instead of appending to NS.LIBKA0S_MISSING: "
         .. table.concat(offenders, " | "))
-    assertEqual(users, 5, "all five seams must READ the shared clause")
+    assertEqual(users, 6, "all six seams must READ the shared clause")
 end)
 
 test("CoreSetup: the close button is the library's, told which addon folder is asking", function()

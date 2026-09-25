@@ -1,18 +1,69 @@
--- tests/test_schema.lua — settings schema assembly + validation (Panel.lua Helpers)
+-- tests/test_schema.lua — settings schema assembly + validation
+--
+-- The rows are the settings/* files'; the runtime over them (the index, the shape
+-- check) is LibKa0s-Schema-1.0's, as NS.Settings.Store (settings/SchemaSetup.lua).
 local T = _G.KICKCD_TEST
 local NS = T.NS
 local test, assertEqual, assertTrue, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertNil
+
+--- The shape check the Options descriptor runs at panel registration, with its
+--- print captured: every stored row resolving against NS.DEFAULT_PROFILE, and a
+--- row with its own `get` (stored elsewhere) skipped, as settings/OptionsSetup.lua
+--- asks. Answers errors, resolved, missing, and the lines it would have printed.
+local function validate()
+    local lines = {}
+    local realPrint = NS.Util.print
+    NS.Util.print = function(line) lines[#lines + 1] = line end
+    local ok, errors, resolved, missing = pcall(NS.Settings.Store.Validate, {
+        defaultsRoot = function(_, row)
+            if type(row.get) == "function" then return nil end
+            return NS.DEFAULT_PROFILE, 1
+        end,
+    })
+    NS.Util.print = realPrint
+    if not ok then error(errors, 0) end
+    return errors, resolved, missing, lines
+end
+
+-- The panel and section enums the host's own shape check used to hold at run
+-- time. Store.Validate checks path, type, group and duplicates; these two are
+-- this addon's own vocabulary, so they are a test rather than a runtime print.
+local PANELS = {
+    general = true, icons = true, castbar = true, label = true, spells = true, profiles = true,
+}
+local SECTIONS = {
+    general = true, icons = true, castbar = true, label = true, spells = true, debug = true, units = true,
+}
 
 test("Settings.Schema is assembled from the settings/* files", function()
     assertTrue(NS.Settings and NS.Settings.Schema, "Settings.Schema must exist")
     assertTrue(#NS.Settings.Schema > 0, "schema must have at least one row")
 end)
 
-test("Helpers.ValidateSchema reports zero malformed rows", function()
-    local H = NS.Settings.Helpers
-    assertTrue(H and H.ValidateSchema, "ValidateSchema must exist")
-    assertEqual(H.ValidateSchema(), 0, "assembled schema must be well-formed")
+test("Validate reports 0 errors on the shipped schema", function()
+    -- red under: a row with no group, an unknown type, or two rows on one path.
+    local errors, _, _, lines = validate()
+    assertEqual(errors, 0, "assembled schema must be well-formed: " .. table.concat(lines, " | "))
+end)
+
+test("every stored row resolves against DEFAULT_PROFILE", function()
+    -- architecture-§5: a stored path that resolves against no default is a
+    -- typo that reads and writes nothing. red under: a row whose path names a
+    -- key defaults/Profile.lua does not ship.
+    local _, resolved, missing, lines = validate()
+    assertEqual(missing, 0, "every stored row resolves: " .. table.concat(lines, " | "))
+    assertTrue(resolved > 100, "sanity: the check reached the stored rows (" .. resolved .. ")")
+end)
+
+test("every row's panel and section are known", function()
+    -- red under: a misspelled `panel` or `section` on any row -- a panel nothing
+    -- renders, or a CONFIG_CHANGED section no module listens for.
+    for i, def in ipairs(NS.Settings.Schema) do
+        local where = "row #" .. i .. " (" .. tostring(def.path) .. ")"
+        assertTrue(PANELS[def.panel], where .. " has unknown panel " .. tostring(def.panel))
+        assertTrue(SECTIONS[def.section], where .. " has unknown section " .. tostring(def.section))
+    end
 end)
 
 test("Every schema row has a string path and a known type", function()
@@ -25,13 +76,11 @@ test("Every schema row has a string path and a known type", function()
     end
 end)
 
-test("Helpers.Resolve walks a dotted path into db.profile", function()
-    local H = NS.Settings.Helpers
+test("Store.Get walks a dotted path into db.profile", function()
+    local S = NS.Settings.Store
     -- db was built by OnInitialize; scale is a top-level profile field.
-    local parent, key = H.Resolve("scale")
-    assertTrue(parent ~= nil, "scale must resolve")
-    assertEqual(key, "scale")
-    local nested = H.Get("units.target.icons.primarySize")
+    assertEqual(S.Get("scale"), NS.db.profile.scale, "scale must resolve")
+    local nested = S.Get("units.target.icons.primarySize")
     assertEqual(nested, 64, "nested path must read the default value")
 end)
 
@@ -45,14 +94,14 @@ test("icons/castbar/label schema rows are unit-scoped and valid", function()
         end
     end
     assertTrue(seen.target and seen.focus, "both target and focus rows must exist")
-    assertEqual(NS.Settings.Helpers.ValidateSchema(), 0, "schema must be valid")
+    assertEqual((validate()), 0, "schema must be valid")
 end)
 
-test("Helpers.FindSchema locates a row by path", function()
-    local H = NS.Settings.Helpers
+test("Store.FindRow locates a row by path", function()
+    local S = NS.Settings.Store
     local first = NS.Settings.Schema[1]
-    local found = H.FindSchema(first.path)
-    assertEqual(found, first, "FindSchema must return the row with the matching path")
+    local found = S.FindRow(first.path)
+    assertEqual(found, first, "FindRow must return the row with the matching path")
 end)
 
 -- Regression (Task 8 review, Critical): CreatePanel used to force
@@ -113,7 +162,7 @@ test("label panel carries per-unit label rows; General no longer does", function
     assertTrue(hasPath(labelFocus, "units.focus.label.show"), "label panel has focus label.show")
     assertTrue(hasPath(labelFocus, "units.focus.label.text"), "label panel has focus label.text")
 
-    assertEqual(H.ValidateSchema(), 0, "schema still valid with the label panel")
+    assertEqual((validate()), 0, "schema still valid with the label panel")
 end)
 -- REMOVED, and this is a REGRESSION worth knowing about rather than a tidy-up.
 --
@@ -163,14 +212,16 @@ test("debug console stays session-only: it is a row, and it never reaches the db
     -- SessionToggle bolted onto the side of Lock frame.
     --
     -- What has NOT changed is debug-logging-§5: it must never persist. That is
-    -- now a property of where its path RESOLVES, not of the row's absence --
-    -- settings/Panel.lua's SESSION_PATHS answers `state.debugConsole` off
-    -- NS.DebugLog, so a write never touches db.profile at all.
-    -- red under: deleting the SESSION_PATHS branch from Helpers.Set, which sends
-    -- the write to Resolve and, the day a `state` table exists, into SavedVariables
+    -- now a property of where its value LIVES, not of the row's absence --
+    -- settings/General.lua wires a get/set pair onto the row that answers
+    -- `state.debugConsole` off NS.DebugLog, so a write never touches db.profile.
+    -- red under: deleting that pair, which leaves the seam storing nothing for a
+    -- sessionOnly row -- the console never opens -- and, were the row stored,
+    -- sends the write into SavedVariables.
     local H  = NS.Settings.Helpers
+    local S  = NS.Settings.Store
 
-    local row = H.FindSchema("state.debugConsole")
+    local row = S.FindRow("state.debugConsole")
     assertTrue(row ~= nil, "the Master controls tab must declare the console row")
     assertEqual(row.sessionOnly, true, "the row must be marked session-only")
     assertEqual(row.group, H.MASTER_GROUP, "and it belongs to the Master controls tab")
@@ -191,6 +242,8 @@ test("debug console stays session-only: it is a row, and it never reaches the db
     assertEqual(NS.db.profile.state, before, "the console write reached the profile")
     H.SetAndRefresh("state.debugConsole", false)
     assertEqual(NS.db.profile.state, before, "the console write reached the profile")
+    assertEqual(type(row.get), "function", "the row reads the console window")
+    assertEqual(type(row.set), "function", "and writes it")
 end)
 
 -- ── the tab strip: page -> tab -> row count ────────────────────────────────
@@ -664,8 +717,9 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         -- sits alone on its line.
         --
         -- The path is VERBATIM and points at db.GLOBAL, outside the block's
-        -- profile prefix: it is LibDBIcon's own table.
-        { "global.minimap.hide",  "bool"   },
+        -- profile prefix: it is LibDBIcon's own table. It reads in the row's
+        -- sense (launcher-§3, v2.65.0); the store is still LibDBIcon's `hide`.
+        { "global.minimap.shown", "bool"   },
     }
     local got = {}
     for _, def in ipairs(H.SchemaForPanel("general", nil)) do
@@ -698,13 +752,13 @@ test("every canonical Master control is declared exactly ONCE in the repo", func
     for _, def in ipairs(T.NS.Settings.Schema) do
         for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
                                 "locked", "state.debugConsole",
-                                "global.minimap.hide" }) do
+                                "global.minimap.shown" }) do
             if def.path == path then seen[path] = (seen[path] or 0) + 1 end
         end
     end
     for _, path in ipairs({ "enabled", "visibility", "scale", "alpha",
                             "locked", "state.debugConsole",
-                            "global.minimap.hide" }) do
+                            "global.minimap.shown" }) do
         assertEqual(seen[path], 1,
             path .. " is declared " .. tostring(seen[path]) .. " times, not once")
     end
@@ -742,7 +796,7 @@ function()
     -- returned empty (LSM before registration) into a text box.
     -- red under: deleting `dialogControl = "EditBox"` from settings/Label.lua
     for _, unit in ipairs({ "target", "focus" }) do
-        local row = T.NS.Settings.Helpers.FindSchema("units." .. unit .. ".label.text")
+        local row = T.NS.Settings.Store.FindRow("units." .. unit .. ".label.text")
         assertTrue(row ~= nil, unit .. " must declare a label text row")
         assertEqual(row.type, "string")
         assertEqual(row.dialogControl, "EditBox", unit .. " label text is still a dropdown")
@@ -792,7 +846,7 @@ local TAB_MIXED = {
 }
 
 --- Tabs that are ONE subject. Every row on one MUST carry NO `subgroup` -- the
---- tab label already names the subject, and §7 forbids a subgroup that repeats
+--- tab label already names the subject, and options-ui-§7 forbids a subgroup that repeats
 --- its tab's name. The value is why, and it is load-bearing: it is the only
 --- place the decision to leave the tab bare is recorded.
 local TAB_SINGLE_SUBJECT = {

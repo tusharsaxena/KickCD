@@ -49,7 +49,7 @@ local KW = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
 --- is its title, the same key RenderCast's preview still uses further down this
 --- file) and the label spends its width on the thing that differs.
 ---
---- TWO WHOLE KEYS, not ("%s castbar"):format(unitWord). localization-§1/§2 make
+--- TWO WHOLE KEYS, not ("%s castbar"):format(unitWord). localization-§1/localization-§2 make
 --- the key the English source string, and a sentence assembled at runtime is not
 --- one -- it is two fragments no translator can see the shape of. The inline
 --- unit test is settings/Panel_Render.lua:109's, which picks L["Target"] /

@@ -53,44 +53,95 @@ test("State.SetInCombat coerces any truthy value to a real boolean", function()
     assertEqual(State.inCombat, true, "0 is truthy in Lua")
 end)
 
-test("State: the bootstrap frame owns all three combat/login events", function()
-    local _, mocks = freshState()
-    local boot = mocks.__findFrame("PLAYER_REGEN_DISABLED")
-    assertTrue(boot ~= nil, "no frame registered PLAYER_REGEN_DISABLED")
-    assertTrue(boot:IsEventRegistered("PLAYER_REGEN_ENABLED"),
-        "one frame must own both regen edges")
-    assertTrue(boot:IsEventRegistered("PLAYER_LOGIN"),
-        "the same frame seeds the flag at login")
+-- The combat listener is an AceEvent target armed from NS:OnInitialize
+-- (State.Arm), so a load that never ran OnInitialize has registered nothing.
+-- These cases load WITH init and fire through the kit's AceEvent seam,
+-- mocks.__fireEvent, the way AceEvent's own frame delivers an event.
+
+--- The registration rows for `event`, from the whole live set (AceEvent
+--- targets and this mock's own frames alike).
+local function rowsFor(mocks, event)
+    local out = {}
+    for _, reg in ipairs(mocks.__registrationSet()) do
+        if reg.event == event then out[#out + 1] = reg end
+    end
+    return out
+end
+
+test("State: the combat listener owns all three combat/login events", function()
+    local inst = T.load(true)
+    for _, event in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_LOGIN" }) do
+        assertEqual(#rowsFor(inst.mocks, event), 1, event .. " must have exactly one registration")
+    end
+    assertTrue(rowsFor(inst.mocks, "PLAYER_REGEN_DISABLED")[1].target
+        == rowsFor(inst.mocks, "PLAYER_REGEN_ENABLED")[1].target,
+        "one target must own both regen edges")
+end)
+
+test("State: the combat listener is an AceEvent registration, not a frame", function()
+    -- events-frames-taint-§1: no private frame for ordinary event traffic. The
+    -- listener used to be a CreateFrame'd bootstrap frame; it is an AceEvent
+    -- target now, so the kit's AceEvent survey sees it and no created frame does.
+    local inst = T.load(true, true)
+    local found = false
+    for _, reg in ipairs(inst.mocks.__registrations()) do
+        if reg.event == "PLAYER_REGEN_DISABLED" and reg.kind == "event" then found = true end
+    end
+    assertTrue(found, "PLAYER_REGEN_DISABLED must be an AceEvent ('event') registration")
+    assertEqual(inst.mocks.__countFramesFor("PLAYER_REGEN_DISABLED"), 0,
+        "no created frame may carry PLAYER_REGEN_DISABLED")
 end)
 
 test("State: PLAYER_REGEN_DISABLED / _ENABLED drive the flag both ways", function()
-    local State, mocks = freshState()
-    local boot = mocks.__findFrame("PLAYER_REGEN_DISABLED")
-    boot:_fire("PLAYER_REGEN_DISABLED")
+    local inst = T.load(true)
+    local State = inst.NS.State
+    inst.mocks.__fireEvent("PLAYER_REGEN_DISABLED")
     assertEqual(State.inCombat, true)
-    boot:_fire("PLAYER_REGEN_ENABLED")
+    inst.mocks.__fireEvent("PLAYER_REGEN_ENABLED")
     assertEqual(State.inCombat, false)
 end)
 
 test("State: PLAYER_LOGIN seeds the flag from InCombatLockdown", function()
     -- Login is the ONE moment lockdown state is trusted; after that the regen
     -- events are the source of truth because lockdown lags them by a frame.
-    local State, mocks = freshState()
-    mocks.InCombatLockdown = function() return true end
-    local boot = mocks.__findFrame("PLAYER_LOGIN")
-    boot:_fire("PLAYER_LOGIN")
-    assertEqual(State.inCombat, true)
+    local inst = T.load(true)
+    inst.mocks.InCombatLockdown = function() return true end
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
+    assertEqual(inst.NS.State.inCombat, true)
 end)
 
 test("State: PLAYER_LOGIN releases its own registration after seeding", function()
     -- It fires once per session; leaving it registered would be a dangling
-    -- subscription on a frame that lives for the whole session.
-    local _, mocks = freshState()
-    local boot = mocks.__findFrame("PLAYER_LOGIN")
-    boot:_fire("PLAYER_LOGIN")
-    assertFalse(boot:IsEventRegistered("PLAYER_LOGIN"))
-    assertTrue(boot:IsEventRegistered("PLAYER_REGEN_DISABLED"),
+    -- subscription for the whole session.
+    local inst = T.load(true)
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
+    assertEqual(#rowsFor(inst.mocks, "PLAYER_LOGIN"), 0)
+    assertEqual(#rowsFor(inst.mocks, "PLAYER_REGEN_DISABLED"), 1,
         "the regen subscriptions must survive")
+end)
+
+test("State: a stand-up never re-registers PLAYER_LOGIN", function()
+    -- KICKCD-R-17. A disabled-at-login addon is stood down inside OnEnable,
+    -- which AceAddon runs from its own PLAYER_LOGIN handler -- so there is no
+    -- "enabled again before login" case, and a stand-up that restored
+    -- PLAYER_LOGIN left a registration for an event that never fires again.
+    -- The stand-up's InCombatLockdown() seed is what the login seed was for.
+    local inst = T.load(true, true, function(m)
+        m.KickCDDB = { global = { schemaVersion = 5 },
+            profiles = { Default = { enabled = false } } }
+    end)
+    assertTrue(inst.NS.IsDown(), "sanity: the stored switch stood the addon down at load")
+    local real = inst.NS.Util.print
+    inst.NS.Util.print = function() end
+    local ok, err = pcall(inst.NS.OnSlashCommand, inst.NS, "enable")
+    inst.NS.Util.print = real
+    if not ok then error(err, 0) end
+    inst.mocks.__flushTimers()
+    assertFalse(inst.NS.IsDown(), "sanity: /kcd enable stood the addon back up")
+    assertEqual(#rowsFor(inst.mocks, "PLAYER_LOGIN"), 0,
+        "a stand-up must not restore the one-shot PLAYER_LOGIN")
+    assertEqual(#rowsFor(inst.mocks, "PLAYER_REGEN_DISABLED"), 1,
+        "but it must restore the regen pair")
 end)
 
 test("State: every combat transition fans out COMBAT_STATE with the new flag", function()
@@ -104,9 +155,8 @@ test("State: every combat transition fans out COMBAT_STATE with the new flag", f
     target:RegisterMessage(T.NS.MSG.COMBAT_STATE, function(_, payload)
         seen[#seen + 1] = payload.inCombat
     end)
-    local boot = inst.mocks.__findFrame("PLAYER_REGEN_DISABLED")
-    boot:_fire("PLAYER_REGEN_DISABLED")
-    boot:_fire("PLAYER_REGEN_ENABLED")
+    inst.mocks.__fireEvent("PLAYER_REGEN_DISABLED")
+    inst.mocks.__fireEvent("PLAYER_REGEN_ENABLED")
     assertEqual(#seen, 2)
     assertEqual(seen[1], true)
     assertEqual(seen[2], false)

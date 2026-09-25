@@ -46,7 +46,7 @@ local MSG = {
     PROFILE_CHANGED = "Ka0s_KickCD_ProfileChanged",
     -- Sender: modules/IconGrid.lua IconGrid:Layout, once per unit instance.
     GRID_LAYOUT     = "Ka0s_KickCD_GridLayout",
-    -- Sender: core/State.lua's bootstrap frame, after each combat-flag write.
+    -- Sender: core/State.lua's combat listener, after each combat-flag write.
     COMBAT_STATE    = "Ka0s_KickCD_CombatState",
 }
 

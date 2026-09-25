@@ -242,6 +242,13 @@ function UnitLabel:OnProfileChanged() self:ApplyAll() end
 function UnitLabel:OnGridLayout() self:ApplyAll() end
 function UnitLabel:OnPlayerEnteringWorld() self:ApplyAll() end
 
+-- The module's one GAME event, as a `{ event, method }` row for
+-- NS.RegisterEventList: FILE SCOPE so a stand-up allocates nothing (anti-patterns
+-- #43), and a refused name is recorded rather than raised (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    { "PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld" },
+}
+
 --- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
 --- login path and the stand-up path are the same three subscriptions and the
 --- same re-apply, written once, and ApplyAll reads the labels FROM CURRENT
@@ -250,7 +257,7 @@ function UnitLabel:Resume()
     self:RegisterMessage(NS.MSG.CONFIG_CHANGED,  "OnConfigChanged")
     self:RegisterMessage(NS.MSG.PROFILE_CHANGED, "OnProfileChanged")
     self:RegisterMessage(NS.MSG.GRID_LAYOUT,     "OnGridLayout")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
     self:ApplyAll()
 end
 

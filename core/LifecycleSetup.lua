@@ -57,10 +57,12 @@ local Lifecycle = LibStub and LibStub("LibKa0s-Lifecycle-1.0", true)
 local HOLD_DISABLED = (Lifecycle and Lifecycle.HOLD_DISABLED) or "disabled"
 
 --- True when the master enable flag is set — THE one reader of the stored path.
+--- Every module reader routes here: Cooldowns' and IconGrid's isEnabled (the
+--- MasterEnabled exports) and Units.IsEnabled's first rung.
 ---
 --- Defaults to true on a fresh or missing profile, exactly as the modules' own
 --- ladders read it, so a load that has not reached OnInitialize stands nothing
---- down. Read straight off the profile rather than through Helpers.Get: the
+--- down. Read straight off the profile rather than through Store.Get: the
 --- `enabled` row is COMPOSED by LibKa0s-Options-1.0's Master controls block, so
 --- a load without the library has no row to resolve, and a latch that stood the
 --- addon down on that load would be a far worse failure than the one it guards.
@@ -94,7 +96,7 @@ local function eachModule(reverse, fn)
     end
 end
 
---- Stand the addon down: every event, message and per-unit dispatch frame it
+--- Stand the addon down: every event, message and per-unit cast filter it
 --- owns actually UNREGISTERED, every timer and ticker canceled, every frame
 --- hidden through the show ladder rather than imperatively.
 ---
@@ -110,13 +112,17 @@ local function standDown()
     if NS.State and NS.State.StandDown then NS.State.StandDown() end
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it
-    -- is not in the loop above -- but its five subscriptions are registrations
-    -- like any other and §7 does not carve the settings layer out of "actually
+    -- is not in the loop above -- but its five subscriptions (two bus messages,
+    -- three game events) are registrations
+    -- like any other and slash-commands-§7 does not carve the settings layer out of "actually
     -- UNREGISTERED". The PAGE survives (it still opens, still draws, still
     -- writes); what goes is its reaction to game events. settings/Spells.lua
     -- argues the line in full.
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandDown then sp.StandDown() end
+    -- The Cooldown Manager cache's invalidator (core/SpellInput.lua) is the same
+    -- kind of registration, owned by the resolver both add surfaces share.
+    if NS.SpellInput and NS.SpellInput.StandDown then NS.SpellInput.StandDown() end
 end
 
 --- Stand the addon back up, FROM CURRENT STATE rather than from a snapshot
@@ -128,6 +134,7 @@ local function standUp()
     if NS.State and NS.State.StandUp then NS.State.StandUp() end
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandUp then sp.StandUp() end
+    if NS.SpellInput and NS.SpellInput.StandUp then NS.SpellInput.StandUp() end
     eachModule(false, function(m) if m.Resume then m:Resume() end end)
 end
 
@@ -209,9 +216,11 @@ end
 --- Re-take or release the `disabled` hold from the stored path, then settle.
 ---
 --- The ONE place the stored `enabled` value becomes a hold, called from all
---- three routes that can change it: the single write seam (settings/Panel.lua's
---- Helpers.Set, which is what the checkbox, `/kcd set enabled` and the
---- `enable` / `disable` verbs all land on), AceDB's profile callbacks
+--- three routes that can change it: the single write seam (the `enabled` row's
+--- onChange in settings/General.lua, or settings/SchemaSetup.lua's announce for
+--- a written-through `enabled` on a library-less load -- the checkbox,
+--- `/kcd set enabled` and the `enable` / `disable` verbs all land on
+--- NS.Settings.Store.Set), AceDB's profile callbacks
 --- (core/Database.lua — a profile switch can flip the path with nothing else
 --- being touched), and the end of NS:OnEnable, where the stored value is taken
 --- for the first time in the session.

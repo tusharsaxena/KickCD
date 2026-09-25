@@ -6,7 +6,7 @@
 -- NS.Units.Icons(unit) / .Castbar(unit) / .Anchor(unit, which) so the
 -- "link to target styling" behavior lives in exactly one place.
 --
--- Link semantics (spec §2b): when units.focus.link == true, Focus renders with
+-- Link semantics (spec 2b): when units.focus.link == true, Focus renders with
 -- Target's icons/castbar tables (total mirror). enabled, anchors (position),
 -- and label.text stay per-unit even while linked. Target is never linked.
 
@@ -31,8 +31,10 @@ function Units.IsLinked(unit)
 end
 
 function Units.IsEnabled(unit)
-    local p = profile()
-    if not p or p.enabled == false then return false end
+    -- The master flag through its one reader (core/LifecycleSetup.lua), never
+    -- off the profile here. A missing profile still answers false below:
+    -- Units.Config has no table to return.
+    if NS.MasterEnabled and not NS.MasterEnabled() then return false end
     local c = Units.Config(unit)
     return c ~= nil and c.enabled ~= false
 end
@@ -112,47 +114,52 @@ end
 
 --- Copy `fromUnit`'s appearance onto `toUnit` once, then unlink `toUnit`.
 ---
---- Row by row through the settings helper (architecture-§5: a copy-from that
---- touches rows is a helper write), via H.SetRows, so every row's write is
---- Helpers.Set's and its onChange runs. The walk is in schema declaration order,
---- and that is load-bearing for the cast bar: orientation's onChange resets
---- growDirection to that axis's default, and growDirection is declared after it,
---- so the copied value lands last and wins.
+--- ONE Store.SetMany (architecture-§5: a copy-from that touches rows is a helper
+--- write), so the copy is one act, ALL OR NOTHING: every row is checked before
+--- any is stored, and a refusal leaves `toUnit` exactly as it was. Then every
+--- row is stored, then every row's onChange runs, in schema declaration order.
+--- Stores first is what a reaction reading a sibling row needs -- orientation's
+--- onChange sees the copied growDirection already stored and leaves it alone
+--- (settings/Castbar.lua).
 ---
---- ONE structural refresh, not dozens of reactors. H.SetRows coalesces the bus,
---- so each section is announced once, after the last row. The link row is
---- written last, and when the copy flips it, its own onChange is the structural
---- refresh the Units tab used to do by hand. That onChange repaints only when the
---- link moves, so a copy onto a unit that is already unlinked, or onto a unit
---- with no link row (Target), gets the same one refresh here instead.
+--- ONE announcement per section, not a hundred-odd: the seam's announceBatch
+--- sends each section the batch touched once, after every reaction
+--- (settings/SchemaSetup.lua). The link row is written last, and when the copy
+--- flips it, its own onChange is the structural refresh the Units tab used to do
+--- by hand. That onChange repaints only when the link moves, so a copy onto a
+--- unit that is already unlinked, or onto a unit with no link row (Target), gets
+--- the same one refresh here instead.
 ---
---- ONE [Set] line, not one per row. The copy is a single act, so it hands
---- SetRows a summary: the per-row lines are muted and the debug log shows
---- `[Set] copy target→focus: N rows`. Validation and onChange stay per row.
---- @return boolean  whether the copy ran (false before the settings layer loads)
+--- ONE [Set] line, not one per row: `act = "copy"` makes the batch one bracket,
+--- so the debug log shows `[Set] copy target→focus: N rows`, N the rows the copy
+--- actually moved (debug-logging-§10).
+--- @return boolean  whether the copy ran (false before the settings layer loads,
+---                  or when the seam refused the batch)
 function Units.CopyStyling(fromUnit, toUnit)
-    local H = NS.Settings and NS.Settings.Helpers
-    if not (H and H.SetRows and Units.Config(fromUnit) and Units.Config(toUnit)) then
+    local Settings = NS.Settings
+    local Store = Settings and Settings.Store
+    local H = Settings and Settings.Helpers
+    if not (Store and H and Units.Config(fromUnit) and Units.Config(toUnit)) then
         return false
     end
     local src, dst = "units." .. fromUnit .. ".", "units." .. toUnit .. "."
-    local writes = {}
-    for _, def in ipairs(NS.Settings.Schema) do
+    local entries = {}
+    for _, def in ipairs(Store.AllRows()) do
         local path = def.path
         if type(path) == "string" and path:sub(1, #src) == src then
             local rel = path:sub(#src + 1)
             if copied(rel) then
-                local v = H.Get(path)
-                -- A color is a table; the copy must own its own.
-                writes[#writes + 1] = { dst .. rel, type(v) == "table" and NS.Util.DeepCopy(v) or v }
+                -- The seam copies a table value in, so a color never aliases.
+                entries[#entries + 1] = { path = dst .. rel, value = Store.Get(path) }
             end
         end
     end
-    local linkRow = H.FindSchema(dst .. "link")
+    local linkRow = Store.FindRow(dst .. "link")
     -- Whether the link row's onChange will repaint: only when the copy flips it.
-    local linkFlips = linkRow ~= nil and H.Get(linkRow.path) ~= false
-    if linkRow then writes[#writes + 1] = { linkRow.path, false } end
-    H.SetRows(writes, "copy " .. fromUnit .. "→" .. toUnit)
+    local linkFlips = linkRow ~= nil and Store.Get(linkRow.path) ~= false
+    if linkRow then entries[#entries + 1] = { path = linkRow.path, value = false } end
+    local ok = Store.SetMany(entries, { act = "copy", scope = fromUnit .. "→" .. toUnit })
+    if not ok then return false end
     if not linkFlips then H.RefreshAllPanels() end
     return true
 end

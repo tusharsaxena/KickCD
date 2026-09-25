@@ -2,7 +2,7 @@
 --
 -- Per-unit instance manager. Owns one parent frame + N pooled child icon
 -- widgets PER TRACKED UNIT (target / focus). Each unit's instance carries its
--- own frame, icon pool, ordered list, private cast-event dispatch frames, and
+-- own frame, icon pool, ordered list, private cast-filter frame, and
 -- cached appearance config. In Phase 1 only the target unit enables (Focus
 -- defaults disabled), so behavior is identical to the former singleton.
 --
@@ -65,7 +65,7 @@ local Perf = NS.Perf
 -- ---------------------------------------------------------------------------
 --
 -- Each tracked unit (target/focus) owns its own frame, icon pool, ordered
--- list, private cast-event dispatch frames, and cached config. Formerly these
+-- list, private cast-filter frame, and cached config. Formerly these
 -- were file-local singletons (`pool`, `ordered`, `grid`); the instance model
 -- lets a second unit coexist without any shared mutable state.
 --
@@ -73,12 +73,32 @@ local Perf = NS.Perf
 --                        up its icon in O(1).
 --   inst.pool.free     — a stack of released widgets ready to re-acquire.
 --   inst.ordered       — ordered list of laid-out icons (primary at [1]).
---   inst.eventFrames   — private UNIT_SPELLCAST_* dispatch frames (teardown).
+--   inst.castFilter    — the ONE private UNIT_SPELLCAST_* filter frame
+--                        (Util.NewUnitCastFilter), built on first enable and
+--                        armed / disarmed thereafter, never rebuilt.
 --   inst.cfg           — resolved icons appearance (NS.Units.Icons(unit)),
 --                        refreshed at the top of Layout / config handlers.
 --   inst.isCasting     — per-instance resolver published to the render file's
 --                        glow trigger (replaces the module-level hook).
 local instances = {}   -- [unit] = instance
+
+-- The cast filter's FIXED event set, every one refreshing the unit's
+-- "*_casting" visibility and glow. FILE SCOPE so an enable allocates nothing
+-- (anti-patterns #43). EMPOWER_* is an Evoker's empowered cast, which reads as a
+-- channel but fires its own start/update/stop instead of CHANNEL_*.
+local ICON_CAST_ROUTES = {
+    UNIT_SPELLCAST_START             = "OnUnitCastEvent",
+    UNIT_SPELLCAST_STOP              = "OnUnitCastEvent",
+    UNIT_SPELLCAST_FAILED            = "OnUnitCastEvent",
+    UNIT_SPELLCAST_INTERRUPTED       = "OnUnitCastEvent",
+    UNIT_SPELLCAST_CHANNEL_START     = "OnUnitCastEvent",
+    UNIT_SPELLCAST_CHANNEL_STOP      = "OnUnitCastEvent",
+    UNIT_SPELLCAST_INTERRUPTIBLE     = "OnUnitCastEvent",
+    UNIT_SPELLCAST_NOT_INTERRUPTIBLE = "OnUnitCastEvent",
+    UNIT_SPELLCAST_EMPOWER_START     = "OnUnitCastEvent",
+    UNIT_SPELLCAST_EMPOWER_UPDATE    = "OnUnitCastEvent",
+    UNIT_SPELLCAST_EMPOWER_STOP      = "OnUnitCastEvent",
+}
 
 local function newInstance(unit)
     return {
@@ -86,7 +106,7 @@ local function newInstance(unit)
         grid        = nil,
         pool        = NS.Pool.NewKeyed(),
         ordered     = {},
-        eventFrames = {},
+        castFilter  = nil,
         cfg         = nil,
         enabled     = false,
         -- migrated from the former self._* module fields:
@@ -128,12 +148,11 @@ local function forEachEnabled(fn)
     end
 end
 
--- True when the master enable flag is set. Defaults to true on a fresh
--- profile, so a missing field reads as enabled.
+-- True when the master enable flag is set. Asks NS.MasterEnabled
+-- (core/LifecycleSetup.lua, THE one reader of the stored flag), resolved at
+-- call time; a load without it reads as enabled, the reader's own default.
 local function isEnabled()
-    local profile = NS.db and NS.db.profile
-    if not profile then return true end
-    return profile.enabled ~= false
+    return NS.MasterEnabled == nil or NS.MasterEnabled()
 end
 
 -- True if `inst`'s unit is currently casting or channeling. Reads
@@ -335,20 +354,29 @@ local function applySpellTexture(btn, spellID)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
 
+--- The seed for an icon Cooldowns holds no state for. One shared, never-
+--- mutated table: Icon:Apply only reads its state and keeps it as
+--- _lastState, so a rebuild allocates no per-icon seed.
+local READY_SEED = { ready = true, start = 0, duration = 0 }
+
 --- Acquire, dress and seed one button for `spellID`, appending it to the
 --- instance's ordered list.
 local function seedIcon(grid, inst, spellID)
     local btn = grid:AcquireIcon(inst, spellID)
     applySpellTexture(btn, spellID)
     btn:ApplyTextConfig(inst.cfg)
-    -- Initial state: assume ready until Cooldowns sends a real
-    -- Ka0s_KickCD_SpellState. Apply{} (no payload) treats the icon
-    -- as "not ready" because state.ready is nil-falsy, so pass
-    -- a synthetic ready frame to render correctly until the
-    -- first real state arrives.
+    -- Seed from what Cooldowns ALREADY knows. Both modules rebuild on PEW,
+    -- SPELLS_CHANGED, TRAIT_CONFIG_UPDATED and a profile change, and
+    -- CallbackHandler runs the two handlers in pairs order: when Cooldowns
+    -- goes first, its SPELL_STATE lands on the pool this rebuild just
+    -- released, and it will not emit again until the spell's state changes.
+    -- So pull its current state (read-only, Cooldowns:StateFor) instead of
+    -- painting ready. READY_SEED covers the spell Cooldowns does not watch
+    -- (yet); Apply{} would read nil-falsy `ready` as "not ready".
     -- force=true: a rebuilt list may hand a pooled button whose
     -- _lastState still matches, and this pass has to repaint it.
-    btn:Apply({ ready = true, start = 0, duration = 0 }, true)
+    local cd = NS:GetModule("Cooldowns", true)
+    btn:Apply((cd and cd:StateFor(spellID)) or READY_SEED, true)
     table.insert(inst.ordered, btn)
 end
 
@@ -783,7 +811,7 @@ end
 -- ---------------------------------------------------------------------------
 
 -- Bring a unit's instance fully online: build its frame, active list, layout,
--- visibility, and register the per-instance UNIT_SPELLCAST_* dispatch frames.
+-- visibility, and arm the per-instance UNIT_SPELLCAST_* filter frame.
 function IconGrid:EnableUnit(unit)
     local inst = self:GetInstance(unit)
     inst.cfg = NS.Units.Icons(unit)
@@ -797,39 +825,28 @@ function IconGrid:EnableUnit(unit)
     self:RefreshVisibility(inst)
     self:RefreshAllGlows(inst)   -- reflect any in-progress cast (reevaluate-on-enable)
 
-    -- UNIT_SPELLCAST_* registrations go through Util.RegisterUnitCastEvent
-    -- so the dispatch frame fires only when the unit IS this instance's unit.
-    -- With vanilla RegisterEvent the handler runs for every party / raid /
-    -- nameplate cast and early-returns inside; in a 25-player raid that's
-    -- thousands of no-op dispatches per minute. Interruptibility flips
-    -- mid-cast (boss casts that toggle immunity via an aura, etc.) also
-    -- come through this path so the "target_casting_interruptible" mode
-    -- re-evaluates. The returned frames are stashed on the instance so
-    -- DisableUnit / OnDisable can release them — AceEvent's
-    -- UnregisterAllEvents only knows about its own table, not these frames.
-    for _, ev in ipairs({
-        "UNIT_SPELLCAST_START",
-        "UNIT_SPELLCAST_STOP",
-        "UNIT_SPELLCAST_FAILED",
-        "UNIT_SPELLCAST_INTERRUPTED",
-        "UNIT_SPELLCAST_CHANNEL_START",
-        "UNIT_SPELLCAST_CHANNEL_STOP",
-        "UNIT_SPELLCAST_INTERRUPTIBLE",
-        "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
-    }) do
-        inst.eventFrames[#inst.eventFrames + 1] =
-            NS.Util.RegisterUnitCastEvent(self, unit, ev, "OnUnitCastEvent")
-    end
+    -- UNIT_SPELLCAST_* registrations ride ONE filter frame per unit
+    -- (Util.NewUnitCastFilter) that fires only when the unit IS this
+    -- instance's unit. With vanilla RegisterEvent the handler runs for every
+    -- party / raid / nameplate cast and early-returns inside; in a 25-player
+    -- raid that's thousands of no-op dispatches per minute. Interruptibility
+    -- flips mid-cast also come through this path so the
+    -- "target_casting_interruptible" mode re-evaluates. The filter is built
+    -- once and re-armed on every later enable (events-frames-taint-§1);
+    -- DisableUnit / Suspend disarm it, since AceEvent's UnregisterAllEvents
+    -- only knows about its own table.
+    inst.castFilter = inst.castFilter
+        or NS.Util.NewUnitCastFilter(self, unit, ICON_CAST_ROUTES)
+    inst.castFilter.Arm()
     inst.enabled = true
 end
 
--- Tear a unit's instance down: release its private dispatch frames and hide
+-- Tear a unit's instance down: disarm its private cast-filter frame and hide
 -- its grid. Used by OnDisable and (Phase 3) runtime enable-gating.
 function IconGrid:DisableUnit(unit)
     local inst = instances[unit]
     if not inst then return end
-    for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
-    inst.eventFrames = {}
+    if inst.castFilter then inst.castFilter.Disarm() end
     if inst.grid then inst.grid:Hide() end
     inst.enabled = false
 end
@@ -842,12 +859,12 @@ end
 --- Resume rebuilds from the CURRENT enabled set so a unit toggled while the
 --- addon was down comes back correctly (performance-§6). What goes away is
 --- everything that costs anything — the module's own game events, its bus
---- subscriptions, the private per-unit dispatch frames (which AceEvent's
+--- subscriptions, the private per-unit cast filters (which AceEvent's
 --- UnregisterAllEvents cannot reach because it only knows its own table), and
 --- the shared cooldown-text ticker.
 ---
 --- MESSAGES GO TOO, which they did not while this was a perf-only suspend. A
---- subscription is a registration and §7 carves nothing out for the addon's own
+--- subscription is a registration and slash-commands-§7 carves nothing out for the addon's own
 --- bus; Resume is called directly by the latch now, so nothing depends on this
 --- module hearing a republish it was never going to hear anyway.
 function IconGrid:Suspend()
@@ -855,15 +872,12 @@ function IconGrid:Suspend()
     self:UnregisterAllMessages()
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
-        if inst and inst.eventFrames then
-            for _, f in ipairs(inst.eventFrames) do f:UnregisterAllEvents() end
-            inst.eventFrames = {}
-        end
+        if inst and inst.castFilter then inst.castFilter.Disarm() end
         if inst and inst.grid then inst.grid:Hide() end
     end
     -- The 0.1s cooldown-text ticker is module-level and outlives any single
     -- icon, so nothing in the loop above reaches it. Left armed it would wake up
-    -- ten times a second on a stood-down addon, which is the survivor §7 calls
+    -- ten times a second on a stood-down addon, which is the survivor slash-commands-§7 calls
     -- the most expensive of the lot.
     self:_StopTextTicker()
 end
@@ -887,10 +901,10 @@ function IconGrid:Resume()
 
     self:RegisterLifecycleEvents()
     -- Every instance was left flagged enabled, so ReconcileUnits would consider
-    -- them already reconciled and never re-create the frames Suspend released.
+    -- them already reconciled and never re-arm the filters Suspend disarmed.
     for _, u in ipairs(NS.Units.LIST) do
         local inst = instances[u]
-        if inst and inst.enabled and #(inst.eventFrames or {}) == 0 then
+        if inst and inst.enabled and not (inst.castFilter and inst.castFilter.armed) then
             inst.enabled = false
         end
     end
@@ -909,7 +923,7 @@ end
 function IconGrid:ReconcileUnits()
     -- While the latch is down the desired state is "nothing runs". Without this
     -- the next `general`/`units` CONFIG_CHANGED would call EnableUnit and
-    -- re-create all 8 dispatch frames per unit on an addon the player switched
+    -- re-arm every unit's cast filter on an addon the player switched
     -- off -- and a settings change is exactly what a player does while it is off.
     if NS.IsDown and NS.IsDown() then return end
     for _, u in ipairs(NS.Units.LIST) do
@@ -923,30 +937,36 @@ function IconGrid:ReconcileUnits()
     end
 end
 
+-- The module's GAME events, as `{ event, method }` rows for NS.RegisterEventList.
+-- FILE SCOPE so a stand-up allocates nothing (anti-patterns #43), and one name a
+-- future client retires costs only its own row (events-frames-taint-§1).
+local LIFECYCLE_EVENTS = {
+    -- Spec / login events: rebuild against the new spec's spell list. The
+    -- Cooldowns module hooks the same events to refresh its watched set, so
+    -- both sides stay in sync.
+    { "PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged" },
+    { "PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld" },
+    -- Talent / spellbook changes within the active spec also flip the
+    -- "available" set used by BuildActiveList (choice-node swap, pet
+    -- summon/dismiss for pet spells). Rebuild + relayout so the grid
+    -- always shows only the spells the player can currently cast.
+    { "SPELLS_CHANGED",                "OnSpellsChanged" },
+    { "TRAIT_CONFIG_UPDATED",          "OnSpellsChanged" },
+    -- The two global unit-change events. These are GLOBAL (no unit filter),
+    -- so they register at MODULE level via plain RegisterEvent — NOT through
+    -- NewUnitCastFilter (which is for the UNIT_SPELLCAST_* family). Each
+    -- handler refreshes only its own unit's instance if that instance is live.
+    { "PLAYER_TARGET_CHANGED",         "OnTargetChanged" },
+    { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm exactly the same set without re-running the rest of the
 --- enable path (rebuilding curves, re-subscribing to messages it never dropped).
 --- Registration is idempotent — AceEvent keys on (event, target) — so calling
 --- this twice is harmless.
 function IconGrid:RegisterLifecycleEvents()
-    -- Spec / login events: rebuild against the new spec's spell list. The
-    -- Cooldowns module hooks the same events to refresh its watched set, so
-    -- both sides stay in sync.
-    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "OnSpecChanged")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD",         "OnPlayerEnteringWorld")
-    -- Talent / spellbook changes within the active spec also flip the
-    -- "available" set used by BuildActiveList (choice-node swap, pet
-    -- summon/dismiss for pet spells). Rebuild + relayout so the grid
-    -- always shows only the spells the player can currently cast.
-    self:RegisterEvent("SPELLS_CHANGED",                "OnSpellsChanged")
-    self:RegisterEvent("TRAIT_CONFIG_UPDATED",          "OnSpellsChanged")
-
-    -- The two global unit-change events. These are GLOBAL (no unit filter),
-    -- so they register at MODULE level via plain RegisterEvent — NOT through
-    -- RegisterUnitCastEvent (which is for the UNIT_SPELLCAST_* family). Each
-    -- handler refreshes only its own unit's instance if that instance is live.
-    self:RegisterEvent("PLAYER_TARGET_CHANGED",         "OnTargetChanged")
-    self:RegisterEvent("PLAYER_FOCUS_CHANGED",          "OnFocusChanged")
+    NS.RegisterEventList(self, LIFECYCLE_EVENTS)
 end
 
 function IconGrid:OnEnable()
@@ -975,7 +995,7 @@ end
 
 function IconGrid:OnSpellState(_evt, payload)
     -- Payload contract per CLAUDE.md:
-    --   { spellID, ready, isActive, cdObject, charges }
+    --   { spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }
     -- The player's cooldown state applies to every live unit's icon for
     -- that spell, so fan out to each enabled instance's active pool. We
     -- only update icons currently in the active pool — Cooldowns may watch
@@ -991,7 +1011,12 @@ function IconGrid:OnSpellState(_evt, payload)
             if btn then btn:Apply(payload, nil, "spellState") end
         end
     end
-    if __t0 then Perf.Note("spellState", debugprofilestop() - __t0) end
+    -- The parent is the publish this ran inside: Rebuild's (`rebuildEmit`)
+    -- or the poll's (`stateEmit`), so a capture reports the mix honestly.
+    if __t0 then
+        Perf.Note("spellState", debugprofilestop() - __t0,
+            payload.rebuild and "rebuildEmit" or "stateEmit")
+    end
 end
 
 function IconGrid:OnConfigChanged(_evt, payload)
@@ -1113,8 +1138,8 @@ function IconGrid:RefreshVisibility(inst)
     if __t0 then Perf.Note("visibility", debugprofilestop() - __t0) end
 end
 
---- UNIT_SPELLCAST_* events. The dispatch frame (Util.RegisterUnitCastEvent
---- in EnableUnit) already filters to this instance's unit, so `unit` names
+--- UNIT_SPELLCAST_* events, EMPOWER_* included. The filter frame
+--- (Util.NewUnitCastFilter in EnableUnit) already filters to this instance's unit, so `unit` names
 --- the instance to refresh. Both the "*_casting" visibility modes and the
 --- same-named glow triggers key off the unit's cast state.
 function IconGrid:OnUnitCastEvent(_event, unit)
@@ -1204,7 +1229,7 @@ end
 --- Dedup: while interruptibility is secret-tainted the gate short-circuit
 --- is deliberately bypassed, so every cast event reaches here — a boss
 --- firing many casts would log an identical line each time. Emit only when
---- the printed label actually changes (§9). Label each state precisely
+--- the printed label actually changes (debug-logging-§9). Label each state precisely
 --- rather than collapsing "secret"/nil into a misleading "on".
 local function logGateChange(inst, unit, interruptible)
     if not (NS.State and NS.State.debug) then return end

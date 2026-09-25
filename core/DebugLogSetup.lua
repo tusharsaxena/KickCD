@@ -126,6 +126,14 @@ if not lib then
     return
 end
 
+--- The [Init] line's rejected-events clause: empty when nothing was refused, so
+--- the common case stays byte-identical to the line before the clause existed.
+local function rejectedClause()
+    local n = NS.State and NS.State.rejectedEvents and #NS.State.rejectedEvents or 0
+    if n == 0 then return "" end
+    return (", %d rejected event(s)"):format(n)
+end
+
 NS.DebugLog = lib:New({
     -- Seeds KickCDDebugWindow / KickCDDebugCopyWindow / KickCDDebugCopyScroll —
     -- the three globals modules/DebugLog.lua spelled out by hand, reproduced
@@ -163,13 +171,16 @@ NS.DebugLog = lib:New({
     -- The [Init] line the console brackets a session with. The library owns WHEN
     -- it is emitted — on enable, because the flag is off at login and a
     -- load-time summary would always be gated off — and only we can know what it
-    -- says. Byte-identical to what modules/DebugLog.lua composed.
+    -- says. Byte-identical to what modules/DebugLog.lua composed when this
+    -- client refused no event name; a session that did lose one says how many
+    -- (events-frames-taint-§1), and `/kcd debug events` names them.
     initSummary = function()
         local ver     = NS.VERSION or "?"
         local schema  = NS.db and NS.db.global and NS.db.global.schemaVersion or "?"
         local profile = NS.db and NS.db.GetCurrentProfile and NS.db:GetCurrentProfile() or "?"
         return ("KickCD v%s, schema v%s, profile '%s'"):format(
             NS.SafeToString(ver), NS.SafeToString(schema), NS.SafeToString(profile))
+            .. rejectedClause()
     end,
 
     -- The General page's "Debug console" checkbox mirrors the window's

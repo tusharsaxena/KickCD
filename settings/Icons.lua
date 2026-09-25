@@ -11,16 +11,18 @@
 --
 -- The border block, the annotation font block and all three color swatches are
 -- COMPOSED (libs/LibKa0s/OptionsCompose.lua), not written out: options-ui-§16
--- and §17 make the row set, its order and the class-color companion the
+-- and options-ui-§17 make the row set, its order and the class-color companion the
 -- collection's rather than this page's. H.AddComposed stamps the host's own
 -- `panel` / `section` / `unit` onto what comes back and appends it in place.
 
 local _, NS = ...
 local L      = NS.L
 local H      = NS.Settings.Helpers
-local Schema = NS.Settings.Schema
+local Store  = NS.Settings.Store
 
-local function add(t) Schema[#Schema + 1] = t end
+-- Through the seam's registry (settings/SchemaSetup.lua), so Store.FindRow
+-- indexes the row the moment it lands.
+local function add(t) Store.AddRows({ t }) end
 
 -- Per-unit row generation ---------------------------------------------
 -- Every row below is built once per unit in NS.Units.LIST (target,

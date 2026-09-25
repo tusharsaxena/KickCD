@@ -150,10 +150,10 @@ end)
 
 test("set clamps out of range and echoes what was actually STORED", function()
     -- A clamped number is only visible to the user because the echo re-reads.
-    local before = NS.Settings.Helpers.Get("units.target.icons.primarySize")
+    local before = NS.Settings.Store.Get("units.target.icons.primarySize")
     runVerb("set units.target.icons.primarySize 99999")
-    local stored = NS.Settings.Helpers.Get("units.target.icons.primarySize")
-    local row = NS.Settings.Helpers.FindSchema("units.target.icons.primarySize")
+    local stored = NS.Settings.Store.Get("units.target.icons.primarySize")
+    local row = NS.Settings.Store.FindRow("units.target.icons.primarySize")
     assertTrue(stored <= row.max, "expected a clamp to " .. tostring(row.max)
         .. ", stored " .. tostring(stored))
     NS.Settings.Helpers.SetAndRefresh("units.target.icons.primarySize", before)
@@ -162,11 +162,11 @@ end)
 test("set routes through the host's single write seam", function()
     -- Not a bare table write: the panel checkbox and `/kcd set` must take the
     -- same path — the [Set] debug line, the row's onChange, the panel refresh.
-    local before = NS.Settings.Helpers.Get("locked")
+    local before = NS.Settings.Store.Get("locked")
     runVerb("set locked true")
-    assertEqual(NS.Settings.Helpers.Get("locked"), true)
+    assertEqual(NS.Settings.Store.Get("locked"), true)
     runVerb("set locked false")
-    assertEqual(NS.Settings.Helpers.Get("locked"), false)
+    assertEqual(NS.Settings.Store.Get("locked"), false)
     NS.Settings.Helpers.SetAndRefresh("locked", before)
 end)
 
@@ -181,9 +181,9 @@ test("a color round-trips through the library with no host translation", functio
     end
     assertTrue(row ~= nil, "the schema has no color row to exercise")
 
-    local before = NS.Settings.Helpers.Get(row.path)
+    local before = NS.Settings.Store.Get(row.path)
     local lines = runVerb("set " .. row.path .. " 1 0.5 0 1")
-    local stored = NS.Settings.Helpers.Get(row.path)
+    local stored = NS.Settings.Store.Get(row.path)
 
     assertEqual(type(stored), "table")
     assertEqual(stored.r, 1, "red must land in the keyed slot")
@@ -202,9 +202,9 @@ test("a color given in 0-255 rescales jointly", function()
     for _, def in ipairs(NS.Settings.Schema) do
         if def.type == "color" then row = def break end
     end
-    local before = NS.Settings.Helpers.Get(row.path)
+    local before = NS.Settings.Store.Get(row.path)
     runVerb("set " .. row.path .. " 255 128 0")
-    local stored = NS.Settings.Helpers.Get(row.path)
+    local stored = NS.Settings.Store.Get(row.path)
     assertEqual(stored.r, 1)
     assertTrue(math.abs(stored.g - 128 / 255) < 1e-9, "green must rescale with the others")
     assertEqual(stored.b, 0)
@@ -222,10 +222,10 @@ test("reset takes a PATH and resets exactly that one row", function()
     -- CHANGED, deliberately (slash-commands-§2): a page is a property of a
     -- settings panel, not of the data, and every schema-driven page carries a
     -- Defaults button that resets it.
-    local row = NS.Settings.Helpers.FindSchema("units.target.icons.primarySize")
+    local row = NS.Settings.Store.FindRow("units.target.icons.primarySize")
     NS.Settings.Helpers.SetAndRefresh("units.target.icons.primarySize", row.min)
     local lines = runVerb("reset units.target.icons.primarySize")
-    assertEqual(NS.Settings.Helpers.Get("units.target.icons.primarySize"), row.default)
+    assertEqual(NS.Settings.Store.Get("units.target.icons.primarySize"), row.default)
     assertTrue(lines[1]:find("|cFFFFFF00units.target.icons.primarySize|r = ", 1, true) ~= nil,
         "reset must echo the restored pair; got: " .. tostring(lines[1]))
 end)
@@ -353,13 +353,17 @@ test("with LibKa0s absent bare /kcd still reaches `config`", function()
     assertTrue(not printedHelp(lines), "the stub must not print the help list on bare input")
 end)
 
--- `/kcd lock` writes `locked` through the helper or not at all (#20). It used to
+-- `/kcd lock` writes `locked` through the schema seam or not at all (#20). It used to
 -- fall back to `db.profile.locked = v` whenever SetAndRefresh could not take the
--- write, which put a schema-row path (or, with no row, persistent state with no
--- register row) around the helper. Now it prints the refusal runResetPosition uses.
+-- write, which put a schema-row path around the helper. setLocked calls the schema
+-- seam (Store.Set) directly now, and `locked` is on its writeThrough list
+-- (settings/SchemaSetup.lua, options-ui-§1 route (a)): on a load where the
+-- composer that declares the row is absent, the seam still stores it -- raw, and
+-- announced -- so the verb keeps working on the load it most needs to survive.
+-- The refusal stays for a load where the settings layer never came up at all.
 
 --- Run one COMMANDS verb's handler directly and return what it printed. Direct,
---- because a LibKa0s-absent load has no dispatcher to route `/kcd lock` through.
+--- so the case measures the handler itself and not either dispatcher's gate.
 local function runHandler(inst, verb)
     local lines = {}
     local frame = inst.mocks.DEFAULT_CHAT_FRAME
@@ -374,39 +378,59 @@ local function runHandler(inst, verb)
     return joined(lines)
 end
 
-test("/kcd lock with no `locked` row writes nothing and says the settings layer is not ready", function()
-    -- red under: restoring the `self.db.profile.locked = v` fallback in setLocked
+test("/kcd lock with no `locked` row still writes it, through the seam's writeThrough", function()
+    -- red under: an empty writeThrough list, where the seam refuses a row-less
+    -- `locked` and the verb says the settings layer is not ready.
     local inst = T.load(true)
     local ns = inst.NS
     local schema = ns.Settings.Schema
     for i = #schema, 1, -1 do
         if schema[i].path == "locked" then table.remove(schema, i) end
     end
+    ns.Settings.Store.Reindex()
+    assertNil(ns.Settings.Store.FindRow("locked"), "sanity: the row is gone")
     ns.db.profile.locked = false
-    local fired = 0
+    local fired = {}
     local H = ns.Settings.Helpers
     local realFire = H.FireConfigChanged
-    H.FireConfigChanged = function(...) fired = fired + 1; return realFire(...) end
+    H.FireConfigChanged = function(section, ...) fired[#fired + 1] = section; return realFire(section, ...) end
     local ok, out = pcall(runHandler, inst, "lock")
     H.FireConfigChanged = realFire
     if not ok then error(out, 0) end
 
-    assertEqual(ns.db.profile.locked, false, "no row, no write")
-    assertEqual(fired, 0, "and nothing is announced")
+    assertEqual(ns.db.profile.locked, true, "the seam stored the row-less path")
+    assertEqual(#fired, 1, "and announced it once")
+    assertEqual(fired[1], "general", "under the General page's section")
+    assertTrue(out:find("icon grid locked", 1, true) ~= nil, "the verb confirms; got: " .. out)
+end)
+
+test("/kcd lock before the settings layer is up writes nothing and says why", function()
+    -- red under: restoring the `self.db.profile.locked = v` fallback in setLocked
+    local inst = T.load(true)
+    local ns = inst.NS
+    ns.db.profile.locked = false
+    local realStore = ns.Settings.Store
+    ns.Settings.Store = nil
+    local ok, out = pcall(runHandler, inst, "lock")
+    ns.Settings.Store = realStore
+    if not ok then error(out, 0) end
+    assertEqual(ns.db.profile.locked, false, "no seam, no write")
     assertTrue(out:find("Settings layer not ready yet", 1, true) ~= nil,
         "the refusal must say why; got: " .. out)
     assertNil(out:find("icon grid locked", 1, true), "it must not claim the grid locked")
 end)
 
-test("with LibKa0s absent /kcd lock and /kcd toggle write nothing", function()
+test("with LibKa0s absent /kcd lock and /kcd toggle still write, through the stub's writeThrough", function()
     -- The real no-row case: `locked` is composed by LibKa0s-Options-1.0's Master
-    -- controls block, so a library-less load has no such row.
+    -- controls block, so a library-less load has no such row. The Schema
+    -- degradation stub takes the same writeThrough list the live instance does.
+    -- red under: a stub that refuses every row-less path.
     local inst = T.load(true, false, nil, { libFiles = {} })
     inst.NS.db.profile.locked = false
     runHandler(inst, "lock")
-    assertEqual(inst.NS.db.profile.locked, false, "lock wrote around the helper")
+    assertEqual(inst.NS.db.profile.locked, true, "lock landed in the store")
     runHandler(inst, "toggle")
-    assertEqual(inst.NS.db.profile.locked, false, "toggle wrote around the helper")
+    assertEqual(inst.NS.db.profile.locked, false, "toggle landed in the store")
 end)
 
 test("the degraded stub carries no copy of the row formatter or the parser", function()
@@ -539,9 +563,9 @@ test("set stores a multi-word label text whole", function()
     -- library's value through untouched.
     -- red under: Slash.lua minor 9 (the parse splitting a string row's value).
     local path = "units.target.label.text"
-    local before = NS.Settings.Helpers.Get(path)
+    local before = NS.Settings.Store.Get(path)
     local out = runVerb("set " .. path .. "  Kick Them Now ")
-    assertEqual(NS.Settings.Helpers.Get(path), "Kick Them Now", joined(out))
+    assertEqual(NS.Settings.Store.Get(path), "Kick Them Now", joined(out))
     NS.Settings.Helpers.SetAndRefresh(path, before)
 end)
 
@@ -594,8 +618,8 @@ local LIVE = {
 
 test("a disabled feature verb says so on ONE line, and does NOT act", function()
     -- The headline case, on the verb that would be loudest if it acted: `/kcd
-    -- toggle` flips the lock, which is this addon's preview switch (launcher-§2
-    -- rung (b)). A refusal that still flipped it would leave the player with a
+    -- toggle` flips the lock, which is this addon's preview switch (the
+    -- launcher menu's Locked entry, launcher-§2). A refusal that still flipped it would leave the player with a
     -- message saying nothing happened and a stored value saying it did.
     -- red under: the gate printing and then falling through to the handler
     local inst = disabled()
@@ -619,13 +643,13 @@ test("every feature verb refuses, and NONE of them reaches the write seam", func
         local verb = entry[1]
         if not live[verb] then
             local inst = disabled()
-            local H = inst.NS.Settings.Helpers
-            local writes, realSet = 0, H.SetAndRefresh
+            local H, S = inst.NS.Settings.Helpers, inst.NS.Settings.Store
+            local writes, realSet = 0, S.Set
             local anchors, realAnchor = 0, H.ResetIconPosition
-            H.SetAndRefresh = function(...) writes = writes + 1; return realSet(...) end
+            S.Set = function(...) writes = writes + 1; return realSet(...) end
             H.ResetIconPosition = function(...) anchors = anchors + 1; return realAnchor(...) end
             local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
-            H.SetAndRefresh, H.ResetIconPosition = realSet, realAnchor
+            S.Set, H.ResetIconPosition = realSet, realAnchor
             assertEqual(#lines, 1, "`/kcd " .. verb .. "` must answer on exactly one line")
             assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil,
                 "`/kcd " .. verb .. "` must name `/kcd enable`: " .. lines[1])
@@ -668,7 +692,7 @@ test("`/kcd set` still writes while disabled — repair, not just read", functio
     -- red under: gating `set` as a feature verb because it changes something
     local inst = disabled()
     say(inst, function() inst.NS:OnSlashCommand("set locked true") end)
-    assertEqual(inst.NS.Settings.Helpers.Get("locked"), true,
+    assertEqual(inst.NS.Settings.Store.Get("locked"), true,
         "the write must have landed")
 end)
 
@@ -741,4 +765,271 @@ test("`/kcd get` on a bool stored FALSE prints false, not the literal `nil`", fu
         "`/kcd get locked` must report false: " .. lines[1])
     assertNil(lines[1]:find("nil", 1, true),
         "and must never report the literal nil: " .. lines[1])
+end)
+
+-- ── `/kcd spells add` agrees with the Spells page (KICKCD-R-05, KICKCD-R-18) ──
+--
+-- core/SpellInput.lua is the one resolver both surfaces call. These pin the
+-- three ways the command line used to disagree with the page: a multi-word name
+-- split at its first space, the Cooldown Manager gate skipped, and an unchecked
+-- CLASS / SPEC that lazily wrote an orphan list into SavedVariables.
+
+local WIND_SHEAR, HEX = 57994, 51514
+local KNOWN_SPELLS = { [WIND_SHEAR] = "Wind Shear", [HEX] = "Hex" }
+
+--- An enabled Elemental Shaman whose spell DB knows exactly KNOWN_SPELLS, by id
+--- and by name. `cmIds`, when given, is the set the Cooldown Manager tracks.
+local function shaman(cmIds)
+    return T.load(true, true, function(m)
+        m.UnitClass = function() return "Shaman", "SHAMAN", 7 end
+        m.__setPlayerSpec(7, 1)
+        m.C_Spell.GetSpellInfo = function(q)
+            for id, name in pairs(KNOWN_SPELLS) do
+                if q == id or q == name then
+                    return { name = name, iconID = 1, spellID = id }
+                end
+            end
+            return nil
+        end
+        if cmIds then
+            m.Enum = { CooldownViewerCategory = { ESSENTIAL = 1 } }
+            m.C_CooldownViewer = {
+                GetCooldownViewerCategorySet = function()
+                    local out = {}
+                    for i in ipairs(cmIds) do out[i] = i end
+                    return out
+                end,
+                GetCooldownViewerCooldownInfo = function(cdID)
+                    return { spellID = cmIds[cdID] }
+                end,
+            }
+        end
+    end)
+end
+
+local function hasSpell(inst, class, spec, id)
+    for _, e in ipairs(inst.NS.Database:GetSpellList(class, spec) or {}) do
+        if e.spellID == id then return true end
+    end
+    return false
+end
+
+test("`/kcd spells add Wind Shear` adds 57994 for a Shaman", function()
+    -- red under: tokenizing on %S+ and resolving args[1] alone, which answers
+    -- "Unknown spell: Wind" and reads "Shear" as a CLASS.
+    local inst = shaman()
+    inst.NS.db.profile.spells.SHAMAN[262] = {}
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR),
+        "Wind Shear must land on SHAMAN/ELEMENTAL: " .. joined(lines))
+    assertTrue(joined(lines):find("added Wind Shear (#57994) to SHAMAN/ELEMENTAL", 1, true) ~= nil,
+        "got: " .. joined(lines))
+end)
+
+test("`/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair", function()
+    local inst = shaman()
+    inst.NS.db.profile.spells.SHAMAN[263] = {}
+    say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear SHAMAN ENHANCEMENT") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 263, WIND_SHEAR), "the explicit pair is the target")
+end)
+
+test("the CLI refuses a spell the Cooldown Manager does not track for the live spec", function()
+    -- red under: spellsAdd skipping the gate the page's add box applies.
+    local inst = shaman({ WIND_SHEAR })
+    inst.NS.db.profile.spells.SHAMAN[262] = {}
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 51514") end)
+    assertTrue(not hasSpell(inst, "SHAMAN", 262, HEX), "a spell the CM lacks must not be written")
+    assertTrue(joined(lines):find("is not tracked by the Blizzard Cooldown Manager", 1, true) ~= nil,
+        "the refusal must say why: " .. joined(lines))
+    -- The gate admits what the Cooldown Manager does track.
+    say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR), "a tracked spell is admitted")
+end)
+
+test("the CLI gate is dropped for a pair other than the player's live one, as on the page", function()
+    -- C_CooldownViewer answers only for the logged-in spec, so another spec's
+    -- list gets no opinion from it.
+    local inst = shaman({ WIND_SHEAR })
+    inst.NS.db.profile.spells.SHAMAN[263] = {}
+    say(inst, function() inst.NS:OnSlashCommand("spells add 51514 SHAMAN ENHANCEMENT") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 263, HEX), "another spec's list is not CM-gated")
+end)
+
+test("`spells add <id> WARLORD 99999` writes nothing", function()
+    -- red under: an unchecked class token reaching Database:AddSpell, whose
+    -- EnsureSpellList creates profile.spells.WARLORD[99999].
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 57994 WARLORD 99999") end)
+    assertNil(inst.NS.db.profile.spells.WARLORD, "no orphan class list")
+    assertTrue(joined(lines):find("Unknown class WARLORD", 1, true) ~= nil, "got: " .. joined(lines))
+end)
+
+test("`spells add <id> SHAMAN 99999` names the spec it could not resolve", function()
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells add 57994 SHAMAN 99999") end)
+    assertNil(inst.NS.db.profile.spells.SHAMAN[99999], "no orphan spec list")
+    assertTrue(joined(lines):find("Unknown spec 99999 for SHAMAN", 1, true) ~= nil, "got: " .. joined(lines))
+    -- A real spec of ANOTHER class is not a spec of this one.
+    say(inst, function() inst.NS:OnSlashCommand("spells add 57994 SHAMAN 253") end)
+    assertNil(inst.NS.db.profile.spells.SHAMAN[253], "a Hunter spec is not a Shaman spec")
+end)
+
+test("bare `/kcd spells` names the default spec by SpecDisplay", function()
+    -- red under: formatting the raw spec ID, which printed SHAMAN/262.
+    local inst = shaman()
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells") end)
+    assertTrue(joined(lines):find("SHAMAN/ELEMENTAL", 1, true) ~= nil, "got: " .. joined(lines))
+    assertNil(joined(lines):find("SHAMAN/262", 1, true), "never the raw ID")
+end)
+
+-- ── the degraded stub's contract (slash-commands-§1, WS-02, LK-18) ──────────
+--
+-- A library-absent load keeps exactly one library string, the disabled line's
+-- format, pinned byte for byte against the live major. The composed-row verbs
+-- take route (a): `enable` / `disable` go through the stub's CliSet, which
+-- writes a bool literal for a path on NS.Settings.WRITE_THROUGH and nothing
+-- else, and `lock` writes through the Schema stub's own writeThrough. Every
+-- other schema verb prints the collection's one library-absent line.
+
+--- A fresh library-absent load, enabled, with its chat captured by `run`.
+local function degraded()
+    local inst = T.load(true, true, nil, { libFiles = {} })
+    assertNil(inst.mocks.LibStub("LibKa0s-Slash-1.0", true), "sanity: no Slash major on this load")
+    return inst
+end
+
+--- Run one slash line on `inst` under pcall; return ok, err and every line printed.
+local function degradedRun(inst, input)
+    local lines, real = {}, inst.NS.Util.print
+    inst.NS.Util.print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do parts[i] = tostring((select(i, ...))) end
+        lines[#lines + 1] = table.concat(parts, " ")
+    end
+    local ok, err = pcall(inst.NS.OnSlashCommand, inst.NS, input)
+    inst.NS.Util.print = real
+    return ok, err, lines
+end
+
+local ABSENT = "%s is unavailable: the LibKa0s library did not load."
+
+test("the stub's DisabledLine format is the library constant, byte for byte", function()
+    -- red under: any byte of the stub's copy drifting from lib.DISABLED_LINE_FORMAT
+    local inst = degraded()
+    T.assertLibraryConstant(inst.NS.Slash.cli.__disabledLineFormat,
+        "LibKa0s-Slash-1.0", "DISABLED_LINE_FORMAT")
+    -- ...and the line built from it is the live line, brand and verb included.
+    local expected = T.NS.Slash.cli:DisabledLine()
+    assertEqual(inst.NS.Slash.cli:DisabledLine(), expected,
+        "the degraded DisabledLine must equal the live one")
+end)
+
+test("the stub carries no copy of the library's reserved verbs", function()
+    -- slash-commands-§1 lets a stub carry ONE library string, DISABLED_LINE_FORMAT.
+    -- The gate below is the host's own list of its feature verbs instead.
+    -- red under: a stub that re-types lib.LIVE_VERBS (the KC-19 first cut did)
+    local inst = degraded()
+    assertNil(inst.NS.Slash.cli.__reservedVerbs, "no reserved-verb copy on the stub")
+    local fh = assert(io.open(T.root .. "/settings/Slash.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:find('"resetall",%s*}'), "settings/Slash.lua must not spell out the reserved-verb array")
+end)
+
+test("the host's feature verbs are exactly the verbs the live gate refuses", function()
+    -- NS.FEATURE_VERBS drives the degraded gate; the live gate refuses every
+    -- registered verb outside lib.LIVE_VERBS + NS.EXTRA_LIVE_VERBS. The two
+    -- judgments must name the same verbs, or the two loads would disagree.
+    -- red under: a feature verb added to COMMANDS without joining NS.FEATURE_VERBS
+    local live = {}
+    for _, v in ipairs(T.mocks.LibStub("LibKa0s-Slash-1.0", true).LIVE_VERBS) do live[v] = true end
+    for _, v in ipairs(T.NS.EXTRA_LIVE_VERBS) do live[v] = true end
+    local refused = {}
+    for _, e in ipairs(T.NS.COMMANDS) do
+        if not live[e[1]] then refused[#refused + 1] = e[1] end
+    end
+    local feature = {}
+    for _, v in ipairs(T.NS.FEATURE_VERBS) do feature[#feature + 1] = v end
+    table.sort(refused)
+    table.sort(feature)
+    assertEqual(table.concat(feature, ","), table.concat(refused, ","))
+end)
+
+test("degraded gate while disabled refuses feature verbs and nothing else", function()
+    -- red under: a degraded gate that refuses a reserved verb, or `spells`
+    local inst = degraded()
+    degradedRun(inst, "disable")
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: disabled")
+    local refusal = T.NS.Slash.cli:DisabledLine()
+    local _, _, lines = degradedRun(inst, "resetposition")
+    assertEqual(joined(lines), refusal, "resetposition is a feature verb")
+    _, _, lines = degradedRun(inst, "list")
+    assertEqual(joined(lines), ABSENT:format("/kcd list"), "list is reserved, never refused")
+    _, _, lines = degradedRun(inst, "version")
+    assertTrue(joined(lines) ~= refusal, "version answers: " .. joined(lines))
+    _, _, lines = degradedRun(inst, "spells")
+    assertTrue(not joined(lines):find(refusal, 1, true), "spells answers: " .. joined(lines))
+end)
+
+test("degraded help rows print `cmd  desc` plainly, with no em dash", function()
+    -- slash-commands-§1: no FormatRow copy, so no gold command and no ` — `.
+    -- red under: the stub's LandingRows joining with the library's separator
+    local inst = degraded()
+    local rows = inst.NS.Slash.cli.LandingRows()
+    assertEqual(rows[1], "/kcd help  List available commands")
+    -- Every row is exactly `/kcd <verb>  <desc>`; a description MAY carry its own
+    -- em dash (the host's text), the separator may not.
+    for i, e in ipairs(inst.NS.COMMANDS) do
+        assertEqual(rows[i], "/kcd " .. e[1] .. "  " .. e[2])
+    end
+end)
+
+test("degraded `/kcd list` prints the library-absent line", function()
+    local inst = degraded()
+    local ok, err, lines = degradedRun(inst, "list")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], ABSENT:format("/kcd list"))
+end)
+
+test("degraded `/kcd set visibility always` writes nothing and prints the library-absent line", function()
+    -- `visibility` is a COMPOSED row, absent on this load and not on the
+    -- writeThrough list, so route (b) applies to it.
+    local inst = degraded()
+    local before = inst.mocks.__deepcopy(inst.NS.db.profile)
+    local ok, err, lines = degradedRun(inst, "set visibility always")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], ABSENT:format("/kcd set"))
+    assertEqual(inst.NS.db.profile.visibility, before.visibility, "nothing was written")
+end)
+
+test("degraded `/kcd set` refuses a non-bool value even on a writeThrough path", function()
+    local inst = degraded()
+    local ok, err, lines = degradedRun(inst, "set enabled maybe")
+    assertTrue(ok, tostring(err))
+    assertEqual(lines[1], ABSENT:format("/kcd set"))
+    assertTrue(inst.NS.db.profile.enabled ~= false, "enabled was not touched")
+end)
+
+test("degraded `/kcd lock` writes locked, and confirms", function()
+    local inst = degraded()
+    inst.NS.db.profile.locked = false
+    local ok, err, lines = degradedRun(inst, "lock")
+    assertTrue(ok, tostring(err))
+    assertEqual(inst.NS.db.profile.locked, true, "lock landed")
+    assertTrue(joined(lines):find("icon grid locked", 1, true) ~= nil, "got: " .. joined(lines))
+end)
+
+test("degraded `/kcd lock` while disabled prints the DisabledLine and does not act", function()
+    -- red under: a stub OnSlash with no gate
+    local inst = degraded()
+    degradedRun(inst, "disable")
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: disabled")
+    local before = inst.NS.db.profile.locked
+    local ok, err, lines = degradedRun(inst, "lock")
+    assertTrue(ok, tostring(err))
+    assertEqual(#lines, 1, "one line: " .. joined(lines))
+    assertEqual(lines[1], T.NS.Slash.cli:DisabledLine(), "the collection's refusal line")
+    assertEqual(inst.NS.db.profile.locked, before, "the lock did not move")
 end)

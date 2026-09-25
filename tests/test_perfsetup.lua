@@ -350,6 +350,82 @@ test("the nesting the descriptor declares is the nesting a run OBSERVES", functi
     end
 end)
 
+-- ── the Rebuild path's publish (KICKCD-R-09) ────────────────────────────────
+--
+-- Cooldowns:Rebuild publishes SPELL_STATE too, from OUTSIDE any poll: it runs
+-- on spell and spec changes, never inside Cooldowns:Refresh. Bracketing that
+-- publish as `stateEmit` would only move the false claim up a level (stateEmit
+-- declares itself within spellPoll), so it has a root bucket of its own,
+-- `rebuildEmit`, and IconGrid:OnSpellState names whichever of the two it ran
+-- inside. The three cases below pin each half.
+
+--- Arm a fresh instance, drive Rebuild then a Refresh that really publishes,
+--- and return the buckets plus every parent spellState was noted under.
+local function driveBothEmitPaths()
+    local inst = T.load(true, true)
+    local P = inst.NS.Perf
+    local Cooldowns = inst.NS:GetModule("Cooldowns", true)
+    local parents = {}
+    local realNote = P.Note
+    P.Note = function(key, ms, parentKey)
+        if key == "spellState" then parents[tostring(parentKey)] = true end
+        return realNote(key, ms, parentKey)
+    end
+    P.on = true
+    Cooldowns:Rebuild()
+    Cooldowns:Refresh()
+    -- Force a material change so the poll publishes; see the bucket-reached case.
+    local id = firstWatchedSpell(Cooldowns)
+    local prev = id and Cooldowns.watched[id]
+    if type(prev) == "table" then
+        prev.ready, prev.isActive = not prev.ready, not prev.isActive
+    end
+    Cooldowns:Refresh()
+    local buckets = P.__buckets and P.__buckets() or {}
+    P.on = false
+    P.Note = realNote
+    return buckets, parents, id
+end
+
+test("stateEmit's observed parent is spellPoll", function()
+    -- Rebuild runs first here on purpose: were its publish bracketed as
+    -- stateEmit, this bucket would observe a nil parent as well as spellPoll.
+    -- red under: bracketing Rebuild's SendMessage as `stateEmit`.
+    local buckets, _, id = driveBothEmitPaths()
+    assertTrue(id ~= nil, "the harness profile must watch at least one spell")
+    local b = buckets.stateEmit
+    assertTrue(b ~= nil and (b.calls or 0) > 0, "Refresh must have published")
+    assertEqual(b.observedWithin, "spellPoll")
+    assertFalse(b.observedMixed, "stateEmit must only ever run inside spellPoll")
+end)
+
+test("every spellState note names its real parent", function()
+    -- red under: IconGrid:OnSpellState noting spellState with no parent, or
+    -- Rebuild's publish dropping `rebuild = true` from its payload.
+    local buckets, parents = driveBothEmitPaths()
+    local seen = {}
+    for k in pairs(parents) do seen[#seen + 1] = k end
+    table.sort(seen)
+    assertEqual(table.concat(seen, ","), "rebuildEmit,stateEmit",
+        "spellState must be noted under exactly stateEmit and rebuildEmit")
+    local rb = buckets.rebuildEmit
+    assertTrue(rb ~= nil and (rb.calls or 0) > 0, "Rebuild's publish must be bracketed")
+    assertNil(rb.observedWithin, "rebuildEmit runs inside no bucket and must claim none")
+    assertTrue(buckets.spellState and buckets.spellState.observedMixed,
+        "spellState runs under two parents and the report must say so")
+end)
+
+test("the descriptor declares rebuildEmit as a root", function()
+    local fh = assert(io.open(T.root .. "/core/PerfSetup.lua", "r"))
+    local setup = fh:read("*a")
+    fh:close()
+    local line = setup:match('\n([^\n]*{ key = "rebuildEmit"[^\n]*)')
+    assertTrue(line ~= nil, "core/PerfSetup.lua must declare a rebuildEmit bucket")
+    assertNil(line:match("within"), "rebuildEmit must declare no parent")
+    -- spellState keeps stateEmit as its declared parent: the steady-state path.
+    assertTrue(setup:find('{ key = "spellState",%s*within = "stateEmit"') ~= nil)
+end)
+
 test("instrumentation is inert when capture is off", function()
     -- The zero-cost claim, exercised rather than asserted in a comment: with the
     -- gate off, driving a bracketed path must record nothing at all.
@@ -393,13 +469,17 @@ test("the show decisions consult the LATCH as step 0, at the source", function()
     assertTrue(beforeCall ~= nil, "sanity: the ladder answered before suspending")
 end)
 
-test("suspend releases the per-unit dispatch frames AceEvent cannot reach", function()
-    -- The 8-per-unit (IconGrid) and 10-per-unit (Castbar) UNIT_SPELLCAST_*
-    -- frames are created by Util.RegisterUnitCastEvent and stashed on the
-    -- instance; AceEvent's UnregisterAllEvents only knows its own table.
+test("suspend disarms the per-unit cast filters AceEvent cannot reach", function()
+    -- Each module holds ONE UNIT_SPELLCAST_* filter frame per unit, built by
+    -- Util.NewUnitCastFilter and kept on the instance as inst.castFilter;
+    -- AceEvent's UnregisterAllEvents only knows its own table.
     local inst = T.load(true, true)
     local NS2 = inst.NS
     local IconGrid = NS2:GetModule("IconGrid", true)
+    local Castbar = NS2:GetModule("Castbar", true)
+    local gridFilter = IconGrid:GetInstance("target").castFilter
+    local barFilter = Castbar:GetInstance("target").castFilter
+    assertTrue(gridFilter.armed and barFilter.armed, "sanity: both filters armed before Suspend")
 
     NS2.Perf.Suspend()
     assertEqual(NS2.Perf.suspended, true, "Suspend must set the flag the ladders read")
@@ -409,11 +489,16 @@ test("suspend releases the per-unit dispatch frames AceEvent cannot reach", func
     -- ReconcileUnits guard deleted — an unfalsifiable assertion, caught by
     -- mutating exactly that.
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "suspend must release every UNIT_SPELLCAST_START dispatch frame")
+        "suspend must release every UNIT_SPELLCAST_START registration")
+    assertFalse(gridFilter.armed or barFilter.armed, "suspend must disarm both filters")
 
     assertEqual(IconGrid.ShouldBeVisible({ unit = "target" }), false,
         "and the grid must refuse to show")
     NS2.Perf.Resume()
+    assertTrue(gridFilter.armed and barFilter.armed, "Resume must re-arm both filters")
+    assertTrue(rawequal(IconGrid:GetInstance("target").castFilter, gridFilter)
+        and rawequal(Castbar:GetInstance("target").castFilter, barFilter),
+        "Resume must re-arm the SAME filters, not build new ones")
 end)
 
 test("enabling a unit while suspended does not re-register its frames mid-capture", function()
@@ -422,7 +507,7 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
     -- finds every instance already reconciled and does nothing either way. The
     -- guard only earns its keep when the DESIRED state changes while suspended —
     -- a unit toggled ON — because ReconcileUnits would then call EnableUnit and
-    -- rebuild all 8 dispatch frames per unit in the middle of a capture.
+    -- re-arm the unit's cast filter in the middle of a capture.
     --
     -- red under: deleting `if NS.IsDown and NS.IsDown() then return end`
     -- from IconGrid:ReconcileUnits
@@ -436,19 +521,19 @@ test("enabling a unit while suspended does not re-register its frames mid-captur
 
     NS2.Perf.Suspend()
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "suspend must leave no dispatch frame registered")
+        "suspend must leave no cast filter registered")
 
     -- Toggle focus ON while suspended. Without the guard this reaches EnableUnit.
     H.SetAndRefresh("units.focus.enabled", true)
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
     assertEqual(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START"), 0,
-        "a unit enabled while suspended must not register frames until Resume")
+        "a unit enabled while suspended must not arm its filter until Resume")
 
     -- Resume then honors the CURRENT desired state, focus included.
     NS2.Perf.Resume()
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
     assertTrue(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START") > 0,
-        "Resume must rebuild the dispatch frames from current state")
+        "Resume must re-arm the cast filters from current state")
 
     NS2.Perf.Resume()
     assertEqual(NS2.Perf.suspended, false, "Resume must clear the flag")
@@ -461,16 +546,17 @@ test("resume restores from CURRENT state, not from a snapshot", function()
     local inst = T.load(true, true)
     local NS2 = inst.NS
     local H = NS2.Settings.Helpers
+    local S = NS2.Settings.Store
 
     NS2.Perf.Suspend()
     -- Toggle focus off WHILE suspended.
-    local before = H.Get("units.focus.enabled")
+    local before = S.Get("units.focus.enabled")
     H.SetAndRefresh("units.focus.enabled", not before)
     NS2.Perf.Resume()
     if inst.mocks.__flushTimers then inst.mocks.__flushTimers() end
 
     -- The addon must reflect the value as it is NOW, not as it was at suspend.
-    assertEqual(H.Get("units.focus.enabled"), not before)
+    assertEqual(S.Get("units.focus.enabled"), not before)
     H.SetAndRefresh("units.focus.enabled", before)
 end)
 

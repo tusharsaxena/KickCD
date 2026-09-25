@@ -143,7 +143,7 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Write the enable path THROUGH THE SINGLE WRITE SEAM -- never by calling a teardown function
---- directly. §7 step 2 is explicit about this: the test has to exercise the route the checkbox and
+--- directly. slash-commands-§7 step 2 is explicit about this: the test has to exercise the route the checkbox and
 --- the `/kcd disable` verb take, or it proves the teardown works and says nothing about whether
 --- anything reaches it.
 local function setEnabled(inst, on, keepTimers)
@@ -157,8 +157,15 @@ local function setEnabled(inst, on, keepTimers)
 end
 
 --- A fresh, fully enabled instance with its baseline surveys taken.
+---
+--- PLAYER_LOGIN is fired first because in the client OnEnable IS PLAYER_LOGIN, so by the time a
+--- player can type `/kcd disable` the one-shot login listener in core/State.lua has seeded the flag
+--- and released itself. Leaving it registered here would make the baseline a state the client never
+--- reaches, and the re-enable case would then demand a stand-up restore a login event that will not
+--- fire again (KICKCD-R-17).
 local function baseline()
     local inst = T.load(true, true)
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
     inst.mocks.__flushTimers()
     local bag, n = registrations(inst)
     return inst, bag, n
@@ -183,7 +190,7 @@ test("DISABLED: the registration set is EMPTY, by count and by name", function()
     -- gate this is here to catch, and it would pass a return-value assertion happily.
     --
     -- red under: drop the `Suspend` call out of core/LifecycleSetup.lua's standDown, or make
-    -- NS.RefreshEnabledHold a no-op, and this reddens with the whole 76-row set named
+    -- NS.RefreshEnabledHold a no-op, and this reddens with the whole registration set named
     local inst = baseline()
     setEnabled(inst, false)
     local _, n = registrations(inst)
@@ -196,7 +203,7 @@ test("DISABLED: nothing is left armed to wake up", function()
     -- ticker that has just fired is absent from the queue for a moment and is still very much alive.
     --
     -- The cast bar's OnUpdate and the 0.1s cooldown-text ticker are the two this addon has, and the
-    -- ticker is the shape §7 calls the most expensive survivor of the lot: it wakes ten times a
+    -- ticker is the shape slash-commands-§7 calls the most expensive survivor of the lot: it wakes ten times a
     -- second to find nothing to paint.
     --
     -- ONE IS ARMED FIRST, deliberately. An addon idling in a headless harness has nothing
@@ -264,7 +271,7 @@ test("DISABLED: firing every event it USED to watch changes nothing", function()
     -- entering combat while it is disabled, and the player's evidence that the addon is off is the
     -- absence of exactly that line.
     --
-    -- red under: leave core/State.lua's boot frame registered in standDown -- the COMBAT_STATE
+    -- red under: leave core/State.lua's combat listener registered in standDown -- the COMBAT_STATE
     -- publish then reaches the modules and the debug line reaches chat
     local inst = baseline()
     local recorded = {}
@@ -298,7 +305,7 @@ end)
 test("DISABLED: a settings change does not bring it back", function()
     -- The other half of "enforced at the source". A player who turns the addon off then goes and
     -- changes something is the ordinary case, and a CONFIG_CHANGED that reached EnableUnit would
-    -- rebuild every per-unit dispatch frame on an addon that is supposed to be inert.
+    -- re-arm every per-unit cast filter on an addon that is supposed to be inert.
     --
     -- red under: restore `if NS.Perf and NS.Perf.suspended then return end` to ReconcileUnits --
     -- the perf hold is not taken here, so that guard reads false and the frames come back
@@ -361,8 +368,8 @@ test("DISABLED: every reserved verb still answers, and the bare /kcd opens the p
 end)
 
 test("DISABLED: a feature verb refuses on ONE line and reaches no write seam", function()
-    -- §2's SHOULD, which this addon adopts: `lock`, `unlock`, `toggle` and `resetposition` drive the
-    -- display -- unlocking IS this addon's preview (launcher-§2 rung (b)) -- and with the addon off
+    -- slash-commands-§2's SHOULD, which this addon adopts: `lock`, `unlock`, `toggle` and `resetposition` drive the
+    -- display -- unlocking IS this addon's preview (the launcher menu's Locked entry) -- and with the addon off
     -- there is no grid to unlock. Driven off NS.COMMANDS rather than a typed list, so the next verb
     -- added to the addon is covered here the day it lands.
     local inst = baseline()
@@ -393,40 +400,56 @@ end)
 -- Step 8: the launcher
 -- ---------------------------------------------------------------------------
 
-test("DISABLED: the launcher's LEFT click is refused and writes nothing", function()
-    -- launcher-§2: rung (a) and rung (b) are refused while disabled because both drive features, and
-    -- KickCD is rung (b) -- the left button toggles the lock, which IS its preview switch. The
-    -- rung-(c) carve-out does not reach this addon: that one opens the settings panel, which §7 keeps
-    -- standing, and refusing it would decline one button for doing what the button beside it must
-    -- keep doing.
+-- The library's MenuUtil stand-in (LibKa0s tests/mock_menu.lua, copied whole), installed per
+-- instance; the library resolves it at click time.
+local MockMenu = assert(loadfile(T.root .. "/tests/mock_menu.lua"))()
+local OWNER = { __name = "LibDBIcon10_KickCD" }
+
+test("DISABLED: the launcher's LEFT click opens the settings panel and writes nothing", function()
+    -- launcher-§2 (v2.67.0): the left button opens the panel on every addon, in either state. The
+    -- panel is setup, not a feature, and it is one of the two routes slash-commands-§7 nominates
+    -- for reaching an addon that is off. Opening it writes nothing.
     --
-    -- red under: dropping the gate from core/LauncherSetup.lua's onClick -- the audit found an addon
-    -- whose minimap button writes the stored tree of an addon the player switched off
-    local inst = baseline()
-    setEnabled(inst, false)
-    local click = inst.NS.Launcher:Object().OnClick
-    local before = svSnapshot(inst)
-    local shownBefore = #shownFrames(inst)
-    local lines = say(inst, function() click(nil, "LeftButton") end)
-    local writes = svDiff(before, svSnapshot(inst))
-
-    assertEqual(#writes, 0, "the click wrote SavedVariables: " .. table.concat(writes, ", "))
-    assertEqual(#lines, 1, "the click must answer on exactly one line")
-    assertTrue(lines[1]:find("/kcd enable", 1, true) ~= nil, "naming the verb that turns it back on")
-    assertEqual(#shownFrames(inst), shownBefore, "and it must not have shown anything")
-end)
-
-test("DISABLED: the launcher's RIGHT click still opens the panel", function()
-    -- Unchanged in either state, and deliberately not inconsistent with anything: the owner's ruling
-    -- is about the slash surface, and a mouse click is not a slash command. It is also one of the two
-    -- routes §7 nominates for reaching the panel of an addon that is off.
+    -- red under: a left click that still drives the lock -- the audit found an addon whose minimap
+    -- button writes the stored tree of an addon the player switched off
     local inst = baseline()
     setEnabled(inst, false)
     local opened, realOpen = 0, inst.NS.OpenSettings
     inst.NS.OpenSettings = function(self) opened = opened + 1; return realOpen(self) end
-    say(inst, function() inst.NS.Launcher:Object().OnClick(nil, "RightButton") end)
+    local before = svSnapshot(inst)
+    say(inst, function() inst.NS.Launcher:Object().OnClick(OWNER, "LeftButton") end)
     inst.NS.OpenSettings = realOpen
-    assertEqual(opened, 1, "right-click must open the settings panel while disabled")
+    local writes = svDiff(before, svSnapshot(inst))
+    assertEqual(opened, 1, "left-click must open the settings panel while disabled")
+    assertEqual(#writes, 0, "the click wrote SavedVariables: " .. table.concat(writes, ", "))
+end)
+
+test("DISABLED: the RIGHT click's menu keeps Enabled live and grays Locked", function()
+    -- launcher-§2 (v2.67.0): while disabled the Locked entry drives a feature, so the library grays
+    -- it with the note in its label and a click on it calls nothing -- not even one the client
+    -- dispatched despite the gray (ForceClick reaches the library's own gate). Enabled stays live,
+    -- and is the way back.
+    -- red under: a host toggleLock that ignores the library's gray, or a host-built menu
+    local inst = baseline()
+    setEnabled(inst, false)
+    local menu = MockMenu(inst.mocks)
+    say(inst, function() inst.NS.Launcher:Object().OnClick(OWNER, "RightButton") end)
+    local m = menu.last
+    assertTrue(m ~= nil, "right-click must open the options menu while disabled")
+    local texts = m:Texts()
+    assertEqual(texts[1], "Enabled")
+    assertEqual(texts[2], "Locked (enable the addon first)")
+    assertFalse(m:Find("Enabled").enabled == false, "Enabled must stay clickable")
+    assertEqual(m:Find("Locked").enabled, false, "Locked must be grayed")
+
+    local before = svSnapshot(inst)
+    say(inst, function() m:Click("Locked") end)
+    say(inst, function() m:ForceClick("Locked") end)
+    local writes = svDiff(before, svSnapshot(inst))
+    assertEqual(#writes, 0, "a grayed Locked wrote: " .. table.concat(writes, ", "))
+
+    say(inst, function() m:Click("Enabled") end)
+    assertTrue(inst.NS.db.profile.enabled, "the menu's Enabled turns the addon back on")
 end)
 
 -- ---------------------------------------------------------------------------
@@ -444,6 +467,29 @@ test("RE-ENABLED: the registration set comes back, exactly", function()
     for name, n in pairs(after) do
         assertEqual(before[name] or 0, n, "a registration came back that was not there: " .. name)
     end
+end)
+
+--- The events core/SpellInput.lua's private target holds, sorted.
+local function spellInputEvents(inst)
+    local ev, out = inst.NS.SpellInput.__ev, {}
+    for _, reg in ipairs(inst.mocks.__registrationSet()) do
+        if reg.target == ev then out[#out + 1] = tostring(reg.event) end
+    end
+    table.sort(out)
+    return table.concat(out, ",")
+end
+
+test("the Cooldown Manager cache's invalidator is in the set, and stands down with it", function()
+    -- core/SpellInput.lua arms it at FILE LOAD, outside every module's Suspend.
+    -- red under: dropping NS.SpellInput.StandDown from core/LifecycleSetup.lua.
+    local inst = baseline()
+    assertEqual(spellInputEvents(inst), "PLAYER_SPECIALIZATION_CHANGED,TRAIT_CONFIG_UPDATED",
+        "an enabled addon keeps the cache honest")
+    setEnabled(inst, false)
+    assertEqual(spellInputEvents(inst), "", "a disabled addon holds none of it")
+    setEnabled(inst, true)
+    assertEqual(spellInputEvents(inst), "PLAYER_SPECIALIZATION_CHANGED,TRAIT_CONFIG_UPDATED",
+        "and the stand-up puts it back")
 end)
 
 test("RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot", function()
@@ -468,12 +514,44 @@ test("RE-ENABLED: it rebuilds from CURRENT state, not from a snapshot", function
         "the rebuilt set must reflect the setting as it is NOW: " .. withoutFocus .. " -> " .. withFocus)
 end)
 
+test("two disable/enable cycles create no frames", function()
+    -- events-frames-taint-§1: the per-(module, unit) cast filter frame is RE-ARMED across a
+    -- disable/enable cycle, never rebuilt. The registration set above cannot see this -- an orphaned
+    -- frame with its events unregistered is invisible to it -- so the frame registry is counted.
+    --
+    -- red under: an EnableUnit that builds fresh dispatch frames per enable (+36 frames per cycle
+    -- before KC-05: 8 IconGrid + 10 Castbar per unit, two units)
+    local inst = baseline()
+    local function slashCycle()
+        say(inst, function() inst.NS:OnSlashCommand("disable") end)
+        inst.mocks.__flushTimers()
+        say(inst, function() inst.NS:OnSlashCommand("enable") end)
+        inst.mocks.__flushTimers()
+    end
+    local function perfCycle()
+        inst.NS.Perf.Suspend()
+        inst.NS.Perf.Resume()
+        inst.mocks.__flushTimers()
+    end
+    -- One warm-up of each first: the first perf arm lazily builds the debug window (nine frames,
+    -- once per session), which is a one-time cost and not the per-cycle leak this case is about.
+    slashCycle()
+    perfCycle()
+    local before = #inst.mocks.__frames
+    for _ = 1, 2 do slashCycle() end
+    for _ = 1, 2 do perfCycle() end
+    assertEqual(#inst.mocks.__frames - before, 0,
+        "a disable/enable or suspend/resume cycle created frames")
+    assertTrue(inst.mocks.__countFramesFor("UNIT_SPELLCAST_START") > 0,
+        "sanity: the cast filters are armed again after the last cycle")
+end)
+
 -- ---------------------------------------------------------------------------
 -- Step 10: the latch -- two holds, and neither releases the other
 -- ---------------------------------------------------------------------------
 
 test("LATCH: releasing the perf hold does NOT resurrect a disabled addon", function()
-    -- The trap §7 names, and it is reachable by a player rather than only in theory: `/kcd disable`
+    -- The trap slash-commands-§7 names, and it is reachable by a player rather than only in theory: `/kcd disable`
     -- is a LIVE verb, so it can be typed during a suspended arm, and a resume that called a bare
     -- stand-up would bring the addon back under a player who had just switched it off.
     --
@@ -510,7 +588,7 @@ test("LATCH: the holds are order-independent", function()
 end)
 
 test("LATCH: a profile switch that flips `enabled` is honored", function()
-    -- §7 keeps AceDB's profile callbacks alive for exactly this: `enabled` is a stored setting like
+    -- slash-commands-§7 keeps AceDB's profile callbacks alive for exactly this: `enabled` is a stored setting like
     -- any other, and a profile switch can flip it with no checkbox ticked and no verb typed.
     --
     -- Driven through the db's own reset, which is the one profile event this addon's mock models
@@ -525,4 +603,49 @@ test("LATCH: a profile switch that flips `enabled` is honored", function()
     assertTrue(inst.NS.db.profile.enabled ~= false, "sanity: the reset restored the default")
     assertTrue((select(2, registrations(inst))) > 20,
         "a profile event that re-enabled the addon left it stood down")
+end)
+
+-- ---------------------------------------------------------------------------
+-- The library-absent load: `/kcd disable` and `/kcd enable` still work (WS-02 route (a))
+-- ---------------------------------------------------------------------------
+--
+-- `enabled` is a COMPOSED row, so a load without LibKa0s has no row for it. It is on
+-- NS.Settings.WRITE_THROUGH, the degraded Slash stub's CliSet writes a bool literal for it
+-- through the Schema stub, and the announce takes the disabled hold -- so the verbs keep the
+-- addon's one switch two-way on the load that most needs it.
+
+--- A library-absent, enabled, logged-in instance, like baseline() above.
+local function degradedBaseline()
+    local inst = T.load(true, true, nil, { libFiles = {} })
+    inst.mocks.__fireEvent("PLAYER_LOGIN")
+    inst.mocks.__flushTimers()
+    return inst
+end
+
+test("DEGRADED: `/kcd disable` writes enabled = false, stands down, confirms, raises nothing", function()
+    -- red under: the stub's CliSet answering "unavailable" for every path
+    local inst = degradedBaseline()
+    assertTrue((select(2, registrations(inst))) > 20, "sanity: the degraded load is up")
+    local lines
+    local ok, err = pcall(function()
+        lines = say(inst, function() inst.NS:OnSlashCommand("disable") end)
+    end)
+    inst.mocks.__flushTimers()
+    assertTrue(ok, "the verb raised: " .. tostring(err))
+    assertEqual(inst.NS.db.profile.enabled, false, "the write landed")
+    assertEqual((select(2, registrations(inst))), 0, "and the addon stood down: " .. survivors(inst))
+    assertEqual(#lines, 1, "one confirmation line: " .. table.concat(lines, " / "))
+    assertEqual(lines[1], "enabled = false")
+end)
+
+test("DEGRADED: `/kcd enable` brings it back up", function()
+    local inst = degradedBaseline()
+    say(inst, function() inst.NS:OnSlashCommand("disable") end)
+    inst.mocks.__flushTimers()
+    assertEqual((select(2, registrations(inst))), 0, "sanity: it is down")
+    local lines = say(inst, function() inst.NS:OnSlashCommand("enable") end)
+    inst.mocks.__flushTimers()
+    assertEqual(inst.NS.db.profile.enabled, true, "the write landed")
+    assertTrue((select(2, registrations(inst))) > 20, "and the addon stood back up")
+    assertEqual(lines[1], "enabled = true")
 end)

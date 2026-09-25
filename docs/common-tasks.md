@@ -316,15 +316,21 @@ surrounding files in their directory.
 
 Every word a person wrote in this repository is US English — labels, chat text, comments,
 identifiers and Markdown prose alike. `localization-§5` publishes the canonical `BRITISH` /
-`ALLOWED` pair, and `tests/test_spelling.lua` carries both lists whole and sweeps everything git
-tracks. The rule is not taste. A locale key *is* the English source string (`localization-§1`), so a
+`ALLOWED` pair, and the kit's gate `tests/_kit/test_prose.lua` (declared in `tests/run.lua`)
+carries both lists whole, in `tests/_kit/prose_lists.lua`, and sweeps everything git tracks. It
+replaced this repo's own `tests/test_spelling.lua` at the v1.54.2 re-vendor (`2cee93f`), because
+`localization-§5` allows the kit's gate or your own, never both. The rule is not taste. A locale key *is* the English source string (`localization-§1`), so a
 British spelling wrapped in `NS.L` is frozen into every translation that derives from it, and
 correcting it later orphans the key without a sound.
 
-Four things are out of scope, and each is named in the gate rather than inferred from a pattern:
-`libs/` and `tests/_kit/`, which are vendored and not ours to respell; the frozen dated bundles under
-`docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/revendor/` and `docs/perf-analysis/`,
-which record what was true on a past day; and the gate's own copy of the lists. One narrower waiver
-sits beside them, per file and per word: `docs/smoke-tests.md`'s session-3 perf check quotes two
-forbidden spellings in order to tell the reader that a double L in the client means the string did
-not come from the vendored payload, so correcting the quote would delete the check.
+What is out of scope is named in the gate rather than inferred from a pattern: `libs/` and
+`tests/_kit/`, which are vendored and not ours to respell; the frozen dated bundles under
+`docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/revendor/`, `docs/perf-analysis/` and
+`docs/superpowers/`, which record what was true on a past day (the store-root `README.md` files and
+`docs/automated-tests/RESULTS.md` are read back in, because they are rewritten in place); and the
+waiver file `tests/prose_waivers.lua`, whose reasons quote the words they waive. The waivers
+themselves sit in that file, per file and per word, each with its reason: `docs/smoke-tests.md`'s
+session-3 perf check quotes two forbidden spellings in order to tell the reader that a double L in
+the client means the string did not come from the vendored payload, so correcting the quote would
+delete the check; and `tests/wow_mock.lua`'s timer handle carries AceTimer's own spelling of its
+canceled flag as a field name, which the kit's live-timer survey reads.

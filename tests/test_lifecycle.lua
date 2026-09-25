@@ -1,4 +1,4 @@
--- tests/test_lifecycle.lua — module OnEnable / lifecycle coverage (§14A.1)
+-- tests/test_lifecycle.lua — module OnEnable / lifecycle coverage (review item 14A.1)
 --
 -- Closes the harness blind spot that let the IconGrid.Layout method-vs-table
 -- clobber (KCD-05) ship green: a load-only harness runs OnInitialize and stops,

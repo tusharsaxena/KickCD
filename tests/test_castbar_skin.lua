@@ -482,7 +482,7 @@ test("modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)", functi
     end
 end)
 
--- ── the composed Bar / Background / Border blocks (options-ui-§16, §17) ─────
+-- ── the composed Bar / Background / Border blocks (options-ui-§16, options-ui-§17) ─
 --
 -- Three settings arrived with them that the cast bar did not have: bar opacity,
 -- a cast-time color and a "use class color" companion beside every swatch. Each

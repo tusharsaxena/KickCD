@@ -242,7 +242,7 @@ end
 -- 12.0 (Midnight) moved the specialization query behind the C_SpecializationInfo
 -- namespace; the bare globals GetSpecialization / GetSpecializationInfo are the
 -- deprecated pre-11.x seam. Route every caller through Compat so feature modules
--- never touch the deprecated globals directly (§11). Both members are
+-- never touch the deprecated globals directly (compat). Both members are
 -- LibKa0s-Compat-1.0's: GetSpecialization returns the active spec INDEX;
 -- GetSpecializationInfo(index) returns (id, localizedName, description, iconID,
 -- role, ...), and answers nil for a nil index without calling the client.
@@ -438,7 +438,7 @@ end
 --- and table.concat on the resulting string then errors out — that's
 --- why a naive "tostring(name)" inside :format() blew up combat.
 function Compat.DebugInterrupt(unit)
-    local out = (NS.Util and NS.Util.print) or _G.print
+    local out = NS.Util.print
     unit = unit or "target"
 
     if not (_G.UnitExists and _G.UnitExists(unit)) then

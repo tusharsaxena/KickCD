@@ -38,6 +38,12 @@ L["Slash Commands"]              = "Slash Commands"
 -- the library refuses a descriptor `L` for this string on purpose. Eleven addons
 -- each wording it their own way is the drift the shared printer exists to end.
 
+-- The library-absent line (slash-commands-§1, WS-02): one sentence, one placeholder,
+-- the full verb (`/kcd list`). settings/Slash.lua's degradation stub prints it for
+-- every schema verb a load without LibKa0s cannot serve.
+L["%s is unavailable: the LibKa0s library did not load."] =
+    "%s is unavailable: the LibKa0s library did not load."
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"
@@ -98,8 +104,8 @@ L["Open the General page's Units tab."] = "Open the General page's Units tab."
 L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
     "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
 L["Reset position"]              = "Reset position"
-L["Restore the icon grid to its default screen position."] =
-    "Restore the icon grid to its default screen position."
+L["Restore the icon grids to their default screen positions."] =
+    "Restore the icon grids to their default screen positions."
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
 L["General visibility"]          = "General visibility"
@@ -194,6 +200,9 @@ L["Setting not found: %s"]       = "Setting not found: %s"
 L["Usage: /kcd set <path> <value>"] = "Usage: /kcd set <path> <value>"
 L["Usage: /kcd get <path>"]      = "Usage: /kcd get <path>"
 L["Invalid value for %s"]        = "Invalid value for %s"
+-- The settings seam's third refusal, in the degradation stub's words
+-- (settings/SchemaSetup.lua): a stored row written before the db exists.
+L["Setting has nowhere to be stored yet: %s"] = "Setting has nowhere to be stored yet: %s"
 L["Allowed values: %s"]          = "Allowed values: %s"
 L["Cannot open settings during combat."] = "cannot open settings during combat — Blizzard's category-switch is protected"
 
@@ -434,7 +443,7 @@ L["RGBA border color for non-interruptible casts."] =
 L["KickCD castbar"]              = "KickCD castbar"
 -- The drag strip's label, one key per unit. Two bars can be unlocked at once and
 -- a strip that read the same on both would not say which bar it moves. Two whole
--- keys rather than a composed "%s castbar": localization-§1/§2 make the key the
+-- keys rather than a composed "%s castbar": localization-§1/localization-§2 make the key the
 -- English source string, and a sentence assembled at runtime is not one.
 --
 -- "KickCD castbar — drag to move" left with the FontString it was written for
@@ -490,10 +499,11 @@ L["Color of the label text."]    = "Color of the label text."
 -- Spells editor extras
 L["Spell known"]                 = "Spell known"
 L["Spell not known"]             = "Spell not known"
+L["Category"]                    = "Category"
 L["Category for future filtering. Currently informational only."] =
     "Category for future filtering. Currently informational only."
 
--- Settings revamp v2 (options-ui-§13 / §16 / §17 / §18)
+-- Settings revamp v2 (options-ui-§13 / options-ui-§16 / options-ui-§17 / options-ui-§18)
 --
 -- Tab names the strip draws, and the SUBSECTION headings a tab carries when it
 -- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,

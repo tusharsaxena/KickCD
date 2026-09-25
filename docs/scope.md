@@ -32,7 +32,7 @@ These have been considered and explicitly declined.
 - **A separate test mode.** The unlocked view is the preview: while unlocked, every grid and cast bar ignores the visibility mode and the cast bar shows a static placeholder, so *Lock frame* (and `/kcd lock|unlock|toggle`) is the switch. The standard exempts exactly this case from the Test mode row and the `test` verb (`options-ui-§15`, `preview-mode`, v2.49.0). The original TestMode module was removed at commit `59fb5c0`.
 - **Generic raid-frame / unit-frame replacement.** KickCD is scoped to the player's own interrupt rotation; mirroring party / arena cooldowns is out.
 
-  *(**LDB / minimap icon** used to sit on this list and no longer does: `launcher-§1` makes a launcher mandatory for every addon in the collection, and KickCD ships one — `core/LauncherSetup.lua`, one LibDataBroker-1.1 object registered with LibDBIcon-1.0. Left click toggles the lock, right click opens the settings panel.)*
+  *(**LDB / minimap icon** used to sit on this list and no longer does: `launcher-§1` makes a launcher mandatory for every addon in the collection, and KickCD ships one — `core/LauncherSetup.lua`, one LibDataBroker-1.1 object registered with LibDBIcon-1.0. Left click opens the settings panel; right click opens the options menu, whose Enabled and Locked entries drive `/kcd enable`/`disable` and `/kcd toggle`'s own handlers.)*
 - **Per-encounter / per-boss visibility profiles.**
 
 ## Default spell coverage
