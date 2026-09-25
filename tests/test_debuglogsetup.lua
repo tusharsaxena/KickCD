@@ -234,6 +234,37 @@ test("the degraded stub still flips the flag and still prints the ack", function
         "the stub's state word must carry no color escape; got: " .. ack)
 end)
 
+test("the degraded stub's RunDiagnostics prints the library-absent line, writes nothing, returns 0", function()
+    -- debug-logging-§14 (STD-14): with no console the report has nowhere to go,
+    -- so the stub names the command in the collection's placeholder line.
+    -- red under: a stub RunDiagnostics that is silent, writes to the buffer, or
+    -- answers anything but 0
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    local D = inst.NS.DebugLog
+    local lines = {}
+    local prev = inst.mocks.DEFAULT_CHAT_FRAME
+    inst.mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) lines[#lines + 1] = m end }
+    local n = D:RunDiagnostics()
+    local routed = D:DebugVerb("DIAGNOSTICS")
+    local other = D:DebugVerb("events")
+    inst.mocks.DEFAULT_CHAT_FRAME = prev
+
+    assertEqual(n, 0, "the stub report writes no line")
+    assertEqual(#D.buffer, 0, "the stub buffer stays empty")
+    -- Counted by the placeholder alone: the load's own library-missing banner may
+    -- land in the same window, and it is not this member's line.
+    local placeholders = 0
+    for _, line in ipairs(lines) do
+        if line:find("/kcd diagnostics is unavailable: the LibKa0s library did not load.", 1, true) then
+            placeholders = placeholders + 1
+        end
+    end
+    assertEqual(placeholders, 2, "one placeholder line per run; got: " .. table.concat(lines, "\n"))
+    assertEqual(routed, true, "DebugVerb routes `diagnostics` in any case")
+    assertEqual(other, false, "DebugVerb leaves every other word to the host")
+    assertEqual(#D:BuildDiagnostics().lines, 0, "the stub report as data is empty")
+end)
+
 test("the degraded stub renders no line of its own", function()
     -- debug-logging-§3: "The addon MUST NOT redefine, wrap, or hand-copy those
     -- formatters." The stub has no console, so it has no line to render — and

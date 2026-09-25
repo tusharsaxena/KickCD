@@ -96,6 +96,28 @@ if not lib then
         LastLine        = function() return nil end,
         FindLine        = function() return nil end,
         MakeCloseButton = function() return nil end,
+        -- The diagnostics report (DebugLog 14.1, debug-logging-§14). With no
+        -- console there is nowhere to write it, so the stub says so in the
+        -- collection's library-absent line, writes nothing and answers 0.
+        RunDiagnostics  = function()
+            if NS.Util and NS.Util.print and NS.L then
+                NS.Util.print(NS.L["%s is unavailable: the LibKa0s library did not load."]
+                    :format("/kcd diagnostics"))
+            end
+            return 0
+        end,
+        BuildDiagnostics = function()
+            return { lines = {}, dropped = 0, capped = false, capsHit = false }
+        end,
+        -- The library's routing of the `debug` words: `diagnostics`, `on` and
+        -- `off` answer true, anything else false so the caller keeps its own
+        -- fallback.
+        DebugVerb       = function(_, rest)
+            local word = (type(rest) == "string" and rest or ""):match("^%s*(%S*)"):lower()
+            if word == "diagnostics" then D:RunDiagnostics(); return true end
+            if word == "on" or word == "off" then D:SetEnabled(word == "on"); return true end
+            return false
+        end,
         -- The message, verbatim. NOT the library's line — see the note above.
         -- Nothing in this addon calls these; they exist so the stub's surface
         -- matches the live instance's, which is what the parity case asserts.

@@ -447,7 +447,7 @@ badge and any count quoted in the docs must agree with it.
 - building the console + Add/Clear run the guarded sync headlessly (debug-logging-§11)
 - console WINDOW visibility is decoupled from the capture flag (debug-logging-§5)
 
-### test_debuglogsetup.lua (23)
+### test_debuglogsetup.lua (24)
 
 - modules/DebugLog.lua has been deleted, not left beside the library
 - the TOC lists core/DebugLogSetup.lua and no longer lists modules/DebugLog.lua
@@ -466,6 +466,7 @@ badge and any count quoted in the docs must agree with it.
 - a secret argument renders as the shared sentinel and cannot raise
 - with LibKa0s absent the stub answers every DebugLog member the addon calls
 - the degraded stub still flips the flag and still prints the ack
+- the degraded stub's RunDiagnostics prints the library-absent line, writes nothing, returns 0
 - the degraded stub renders no line of its own
 - the degraded stub carries no copy of the line format or the state hexes
 - every string the debug console renders resolves to prose, not to its own key
@@ -1349,6 +1350,10 @@ badge and any count quoted in the docs must agree with it.
 - layoutcap self-test: a census that states nothing is told apart from one that states none
 - layoutcap self-test: the exempt set takes folders as well as paths
 
+### test_diagnostics_contract.lua (1)
+
+- diagnostics contract: debug-logging-§14 (skipped: Kit.diagnostics is not set in the runner, so this repo's dispatcher is not wired to the shared contract yet. Every Ka0s addon owes debug-logging-§14's report; wire Kit.diagnostics once the report exists)
+
 ## Totals
 
 | Suite | Cases |
@@ -1372,7 +1377,7 @@ badge and any count quoted in the docs must agree with it.
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 11 |
 | test_debuglog.lua | 13 |
-| test_debuglogsetup.lua | 23 |
+| test_debuglogsetup.lua | 24 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
 | test_icongrid_visibility.lua | 23 |
@@ -1417,4 +1422,5 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| **Total** | **1151** |
+| test_diagnostics_contract.lua | 1 |
+| **Total** | **1153** |
