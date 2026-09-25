@@ -214,6 +214,9 @@ local SUITES = {
     -- Kit revision 25's cap gate (layout-§1): the census under `## Documented deviations` in
     -- docs/ARCHITECTURE.md, held against every authored `.lua` the repo tracks.
     { name = "test_layout_cap", dir = "tests/_kit/" },
+    -- Kit revision 27's diagnostics contract (debug-logging-§14), run against this addon's
+    -- dispatcher through Kit.diagnostics. Until the report lands (DR-KC-03) it is one declared skip.
+    { name = "test_diagnostics_contract", dir = "tests/_kit/" },
 }
 
 -- ---------------------------------------------------------------------------
