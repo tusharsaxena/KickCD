@@ -58,8 +58,8 @@ A new tag is a one-word string at the call site. Add its row here in the same ch
 
 ## The four chat dumps
 
-Each dump prints to chat whether or not the console is on. Each also takes an optional line sink
-(`Cooldowns:DebugDump(emit)`, `Castbar:DebugDump(unit, emit)`, `Compat.DebugInterrupt(unit, emit)`):
+Each dump prints to chat whether or not the console is on. The first three also take an optional
+line sink (`Cooldowns:DebugDump(emit)`, `Castbar:DebugDump(unit, emit)`, `Compat.DebugInterrupt(unit, emit)`):
 without one, the lines go to chat through `NS.Util.print`, and with one, the same lines go to the
 sink instead. The slash commands pass no sink. None of them `tostring`s or formats a
 value that may be secret in combat: they print a value's `type()`, its secret flag, or the shared
