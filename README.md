@@ -97,22 +97,31 @@ Enable more spells than the grid can hold and the extras are left off, with one 
 | Why won't the settings panel open in combat? | The game blocks it mid-fight. Run `/kcd config` again once combat ends. |
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
-| How do I capture debug info for a bug report? | The one-off snapshots (`/kcd debug interrupt`, `/kcd debug spells`, `/kcd debug castbar`, `/kcd debug events`) print to chat, so copy them from there. For a running trace, turn logging on with `/kcd debug on`, reproduce the problem, then open the on-screen debug window with `/kcd debug window` and hit **Copy**. The window resets on every reload. |
+| How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace: the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. The single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat if you only need one. The window resets on every reload. |
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility` — some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd debug spells` lists what it's watching. |
+| The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility` — some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd diagnostics` lists what it's watching. |
 | The icon grid won't drag. | It's locked. `/kcd unlock`, drag, `/kcd lock`. If unlocking doesn't seem to take, run `/kcd toggle`. |
 | The focus set sits on top of my target set. | They start apart, but they can be dragged into each other. `/kcd unlock`, move one out of the way, `/kcd lock`. `/kcd resetall` puts every unit back to its starting position. |
 | I only want my target, not focus. | Turn focus off in General → Units, or `/kcd set units.focus.enabled false`. Everything focus-related disappears. |
-| The cast bar still shows on casts I can't interrupt, even in "interruptible only" mode. | If the bar fades out on those casts, that's it working as intended — the frame is still there, just invisible. For anything else, run `/kcd debug interrupt` while the target is casting and include the output in a bug report. |
-| Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | Fixed, and it shouldn't come back. If it does, capture `/kcd debug spells` during the stuck moment and report it, and check that cooldown text is on (Icons → Annotations). |
+| The cast bar still shows on casts I can't interrupt, even in "interruptible only" mode. | If the bar fades out on those casts, that's it working as intended — the frame is still there, just invisible. For anything else, run `/kcd diagnostics` while the target is casting and follow [Reporting a bug](#reporting-a-bug). |
+| Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | Fixed, and it shouldn't come back. If it does, first check that cooldown text is on (Icons → Annotations), then run `/kcd diagnostics` during the stuck moment and follow [Reporting a bug](#reporting-a-bug). |
 | The glow on secondary icons flickers or restarts constantly. | It should not do that any more. If it still does, check the glow trigger is set to one of the "target casting" options, then send a short video with your settings. |
 | The settings panel won't open mid-fight. | On purpose: the game blocks it in combat. Run `/kcd config` again after the fight. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition`, which puts both icon grids back and refreshes the bar. Auto-size only controls the bar's length; its other dimension stays where you set it. |
 | I want a clean slate. | One page: that page's **Defaults** button. One setting: `/kcd reset setting`. Everything but profiles: `/kcd resetall`, or General → Reset all settings. Just the icon grids' positions: `/kcd resetposition` puts both back. One spec's spell list: `/kcd spells reset` or the Spells page's Defaults button; every spec's: `/kcd spells resetall`. |
+| Something looks wrong and I want to report it. | Follow [Reporting a bug](#reporting-a-bug) below. |
+
+## Reporting a bug
+
+1. Type `/kcd debug on` and reproduce the bug.
+2. Type `/kcd diagnostics`.
+3. If the debug window isn't open, open it with `/kcd debug`. Press **Copy**, copy the entire output, and include it with your bug report.
+
+The report is added after the debug trace in the same window, so one copy carries both.
 
 ## Issues and feature requests
 
