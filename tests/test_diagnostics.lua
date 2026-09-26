@@ -345,6 +345,28 @@ test("a raising section costs exactly one line and the next section still runs",
     assertTrue(find(lines, "[CMCache] ") ~= nil, "the section after it ran")
 end)
 
+test("a raising interrupt dump for one unit costs one line and the other unit still reports", function()
+    -- The interrupt dump walks raw UnitCastingInfo/UnitChannelInfo returns, the likeliest place
+    -- for a Midnight secret to raise in combat. Each unit runs in its own nested section, as the
+    -- IconGrid and Castbar sections already do, so target raising cannot cost focus its lines.
+    -- red under: both units inside the one `interrupt` section pcall
+    local inst = fresh()
+    local Compat = inst.NS.Compat
+    local real = Compat.DebugInterrupt
+    Compat.DebugInterrupt = function(unit, emit)
+        if unit == "target" then error("boom") end
+        return real(unit, emit)
+    end
+    local lines = report(inst)
+    local failed = all(lines, "failed:")
+    assertEqual(#failed, 1, joined(failed))
+    assertTrue(failed[1]:find("section interrupt target failed:", 1, true) ~= nil, failed[1])
+    local focusLine = find(lines, "[Interrupt] DebugInterrupt: unit 'focus'")
+        or find(lines, "[Interrupt] DebugInterrupt: unit=focus")
+    assertTrue(focusLine ~= nil, joined(lines))
+    assertTrue(find(lines, "[UnitLabel] ") ~= nil, "the section after it ran")
+end)
+
 test("an over-cap report ends in the truncated line and then the end marker", function()
     local lines = report(fresh(), { maxLines = 20 })
     assertEqual(#lines, 20)

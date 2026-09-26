@@ -214,12 +214,20 @@ function X.Castbar(out)
     for _, u in ipairs(NS.Units.LIST) do out:section("castbar " .. u, castbarUnit, bar, u) end
 end
 
+local function interruptUnit(out, Compat, u)
+    Compat.DebugInterrupt(u, sink(out, "Interrupt"))
+end
+
 function X.Interrupt(out)
     local Compat = NS.Compat
     if not (Compat and Compat.DebugInterrupt) then
         return out:add("Interrupt", "Compat.DebugInterrupt unavailable")
     end
-    for _, u in ipairs(NS.Units.LIST) do Compat.DebugInterrupt(u, sink(out, "Interrupt")) end
+    -- One nested section per unit, as IconGrid and Castbar do: the dump walks the raw cast API
+    -- returns, so a secret raising for target must not cost focus its lines.
+    for _, u in ipairs(NS.Units.LIST) do
+        out:section("interrupt " .. u, interruptUnit, Compat, u)
+    end
 end
 
 function X.UnitLabel(out)

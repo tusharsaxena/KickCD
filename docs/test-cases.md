@@ -475,7 +475,7 @@ badge and any count quoted in the docs must agree with it.
 - the vendored DebugLog major falls THROUGH a key-returning locale table
 - DebugLogSetup: the library is told the FOLDER name, not just the frame name
 
-### test_diagnostics.lua (21)
+### test_diagnostics.lua (22)
 
 - `diagnostics` is a COMMANDS row and a `debug` word, and nothing else runs it
 - no source file under core, modules or settings spells a report alias
@@ -494,6 +494,7 @@ badge and any count quoted in the docs must agree with it.
 - the runtime sections carry the three chat dumps, and chat receives none of them
 - the IconGrid and Castbar sections give saved and live anchors per unit
 - a raising section costs exactly one line and the next section still runs
+- a raising interrupt dump for one unit costs one line and the other unit still reports
 - an over-cap report ends in the truncated line and then the end marker
 - secret values in the cast record and the charges do not raise
 - `/kcd diagnostics` writes one chat line naming the count and Copy
@@ -1414,7 +1415,7 @@ badge and any count quoted in the docs must agree with it.
 | test_compat_debug.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
-| test_diagnostics.lua | 21 |
+| test_diagnostics.lua | 22 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
 | test_icongrid_visibility.lua | 23 |
@@ -1460,4 +1461,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1186** |
+| **Total** | **1187** |
