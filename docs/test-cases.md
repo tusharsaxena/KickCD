@@ -649,7 +649,7 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
-### test_icongrid_handle.lua (10)
+### test_icongrid_handle.lua (12)
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
@@ -661,6 +661,8 @@ badge and any count quoted in the docs must agree with it.
 - the strip keeps its old place when no label is above the grid
 - a label parked on the CAST BAR is not in the grid strip's way
 - a label anchored UNDER the grid is not in the strip's way either
+- after a plain load both units' strips already clear the default label
+- toggling the label re-places both units' strips through the bus
 
 ### test_lifecycle.lua (7)
 
@@ -1425,7 +1427,7 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 8 |
-| test_icongrid_handle.lua | 10 |
+| test_icongrid_handle.lua | 12 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
@@ -1461,4 +1463,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1187** |
+| **Total** | **1189** |

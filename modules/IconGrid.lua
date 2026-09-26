@@ -1089,6 +1089,13 @@ function IconGrid:OnConfigChanged(_evt, payload)
             self:RefreshAllGlows(inst)
             self:ApplyLock(inst)
         end)
+    elseif section == "label" then
+        -- The unit label can be turned on or off, moved between the grid and the cast bar, or
+        -- re-anchored, and the drag strip hangs above it when it sits on the grid. ApplyLock is
+        -- where the strip is re-anchored, so a label edit has to reach it; without this branch
+        -- the strip kept the label's previous answer until the next lock toggle (owner, in the
+        -- client, 2026-09-26). Every enabled unit, because a linked Focus reads Target's label.
+        forEachEnabled(function(inst) self:ApplyLock(inst) end)
     end
 end
 

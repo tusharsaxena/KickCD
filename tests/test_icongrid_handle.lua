@@ -196,3 +196,60 @@ test("a label anchored UNDER the grid is not in the strip's way either", functio
     assertTrue(lbl:FrameAbove("target", "icons") == nil, "the point is configurable; BOTTOM is not above")
     assertEqual(inst.handle.__anchorTo, inst.grid)
 end)
+
+-- ── the strip clears the label with NO manual re-apply (owner, in the client, 2026-09-26) ────
+--
+-- Every case above builds the label and then calls ApplyLock by hand, and that hid the bug the
+-- owner still saw after the 2026-09-21 fix. In the client nothing makes that second call:
+-- core/LifecycleSetup.lua stands IconGrid up BEFORE UnitLabel, so EnsureGrid anchors the strip
+-- while the label has no frame yet (FrameAbove answered nil and the strip went to the grid), and
+-- a later label toggle fires CONFIG_CHANGED { section = "label" }, which IconGrid did not handle
+-- at all. These cases go through the real stand-up and the real bus and make no ApplyLock call
+-- of their own.
+
+--- What a settings write under the Label page fires.
+local function fireLabelChanged(NS, unit)
+    NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "label", unit = unit })
+end
+
+test("after a plain load both units' strips already clear the default label", function()
+    local loaded   = T.load(true, true)
+    local NS       = loaded.NS
+    local IconGrid = NS:GetModule("IconGrid")
+    local lbl      = NS:GetModule("UnitLabel")
+    for _, u in ipairs({ "target", "focus" }) do
+        local inst = IconGrid:GetInstance(u)
+        assertTrue(inst.handle ~= nil and inst.handle:IsShown(), u .. ": the unlocked strip is up")
+        local region = lbl:FrameAbove(u, "icons")
+        assertTrue(region ~= nil, u .. ": the default label sits above the grid")
+        assertEqual(inst.handle.__anchorTo, region,
+            u .. ": the strip hangs off the label's text, not the grid it shares a top edge with")
+    end
+end)
+
+test("toggling the label re-places both units' strips through the bus", function()
+    local loaded   = T.load(true, true)
+    local NS       = loaded.NS
+    local IconGrid = NS:GetModule("IconGrid")
+    local lbl      = NS:GetModule("UnitLabel")
+    local units    = NS.db.profile.units
+    for _, u in ipairs({ "target", "focus" }) do
+        local inst = IconGrid:GetInstance(u)
+        -- Focus is linked by default and reads target's show; unlink it so each unit's own
+        -- flag is what is being toggled.
+        units.focus.link = false
+        units[u].label.show = false
+        fireLabelChanged(NS, u)
+        assertEqual(inst.handle.__anchorTo, inst.grid, u .. ": label off, the strip sits on the grid")
+        units[u].label.show = true
+        fireLabelChanged(NS, u)
+        assertEqual(inst.handle.__anchorTo, lbl:FrameAbove(u, "icons"),
+            u .. ": label back on, the strip moves above it")
+        units[u].label.style.attach = "castbar"
+        fireLabelChanged(NS, u)
+        assertEqual(inst.handle.__anchorTo, inst.grid,
+            u .. ": label moved to the cast bar, the grid's strip returns to the grid")
+        units[u].label.style.attach = "icons"
+        fireLabelChanged(NS, u)
+    end
+end)
