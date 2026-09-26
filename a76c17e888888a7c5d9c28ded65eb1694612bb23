@@ -1,0 +1,1 @@
+clean: DR-KC-04 README section matches STD-17 verbatim (/kcd), no destination or link (DR-OW-01), STD-18 row present, FAQ :100 and Troubleshooting :106/:110/:111 point at diagnostics with accurate section claims; CRLF kept 139/139; gate re-run green (1187/0, luacheck 0/0, lizard clean, max 1440 lines)
