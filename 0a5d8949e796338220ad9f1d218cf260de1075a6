@@ -1,0 +1,1 @@
+fixed: NR-KC-04 meets its task; new tests fail without it (registry + 2 locale residue); NR-KC-04R routes 15 stale smoke steps and 6 comments through Grid; gate 1201/0, luacheck 0/0, lizard clean
