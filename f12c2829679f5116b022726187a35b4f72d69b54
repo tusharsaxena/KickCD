@@ -1,0 +1,1 @@
+clean: reverting either half in a scratch clone reds its own new case (login-order via FrameAbove, label toggle via OnConfigChanged); label-off anchors to grid; font size needs no re-anchor (strip hangs off the FontString). Residual: Castbar_Handle anchors once at build, so a label toggle onto/off the cast bar is not re-placed there.
