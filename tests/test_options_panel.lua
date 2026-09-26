@@ -968,8 +968,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 5,
-        "the major is five files at LibKa0s v1.39.0 -- a count that moved means a file "
+    assertEqual(scanned, 6,
+        "the major is six files at LibKa0s v1.61.0 -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.

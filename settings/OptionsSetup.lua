@@ -403,6 +403,9 @@ if not lib then
         -- SelectTab, new at LibKa0s v1.36.0: reached only from a tab click on an already-rendered
         -- page. This addon does not adopt tab-scoped refresh, so the same inert no-op applies.
         "SelectTab",
+        -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Grid page's
+        -- render (settings/Grid.lua), which never runs here, so the same inert no-op applies.
+        "NavRail",
     }) do
         Helpers[name] = function() end
     end
