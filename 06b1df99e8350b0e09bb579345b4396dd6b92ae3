@@ -1,0 +1,1 @@
+clean: DR-KC-05 docs verified against modules/Diagnostics.lua, runDebug, LibKa0s v1.60.0 (MAX_BUFFER 3000, DIAG_MAX_LINES 1200, per-list 40, wrap 200), STD-20, OWNER_RULINGS (no alias, KickCD no X, nothing redacted) and plan S1-S9/S11; test-cases in sync (1187), CRLF kept; gate re-run green: 1187/0/0, luacheck 0/0 in 109 files, lizard -C 15 clean, max 1440 lines
