@@ -1042,6 +1042,13 @@ the client can show this.
    a label on the cast bar is cleared by the CAST BAR's strip instead. (This is the fix for the
    overlap seen on 2026-09-21; the decision is read off the config, so it holds whichever of the two
    modules redraws first.)
+   **Straight after `/reload`, with no lock toggle in between** (the 2026-09-26 regression): unlock,
+   `/reload`, and check **both** units. Each strip ("Ka0s KickCD — Target" / "— Focus") sits fully
+   above its "Target" / "Focus" label, with a small gap and no text drawn over text. Then, without
+   touching the lock, untick Text Label → **Show label** for each unit in turn (untick "Use same
+   styling as Target" first so Focus has its own): that unit's strip drops to just above its icons.
+   Tick it again and the strip climbs back above the label. Raise the label's font size to 30
+   and the strip stays clear of the taller text. `/kcd lock` hides both strips.
 1. `/kcd unlock`, with a target cast bar on screen in **Free** anchor mode → a dark strip with a
    gold label sits directly above the bar, reading **Target castbar** (and **Focus castbar** on the
    focus bar, if both are up). The label names the UNIT, not the addon: two strips in the same gold

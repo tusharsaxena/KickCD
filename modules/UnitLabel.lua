@@ -222,13 +222,21 @@ end
 ---   * it hangs off a TOP edge of its anchor. The point is configurable, so a label anchored
 ---     under the grid, or centered on it, is not in the strip's way either.
 --- Anything else answers nil, and IconGrid keeps the position it had before this existed.
+---
+--- THE FRAME IS MADE HERE IF IT DOES NOT EXIST YET, and that is the second half of reading the
+--- config. core/LifecycleSetup.lua stands IconGrid and Castbar up BEFORE this module, so the
+--- strips are built and anchored before the first Apply has made a label frame. This used to
+--- answer nil for a missing frame, the strip went to the grid, and nothing asked again until the
+--- next lock toggle: the overlap the owner still saw after /reload (2026-09-26). A SetPoint
+--- against a region is live, so the strip can hang off the text before Apply has placed it, and
+--- it follows the text when Apply moves it or changes its font size.
 function UnitLabel:FrameAbove(unit, attach)
-    local inst = instances[unit]
-    if not (inst and inst.frame) then return nil end
     local style = NS.Units.LabelStyle(unit)
     if sv(style, "attach") ~= attach then return nil end
     if not (NS.Units.IsEnabled(unit) and NS.Units.LabelShow(unit)) then return nil end
     if not tostring(sv(style, "relPoint")):find("TOP", 1, true) then return nil end
+    local inst = self:GetInstance(unit)
+    self:EnsureFrame(inst)
     return inst.text or inst.frame
 end
 
