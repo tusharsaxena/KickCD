@@ -135,3 +135,10 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 | 1.1.0 | 2026-05-03 | - Added texture, font, and border dropdowns with live previews. The settings panel's main page now shows the logo and command list, with breadcrumb headers on subpages. All chat output now uses a single cyan `[KCD]` label. |
 | 1.0.1 | 2026-05-02 | - Rebuild only; nothing changed for players. |
 | 1.0.0 | 2026-05-02 | - Initial release. Interrupt and CC cooldown icon grid with flexible layout, plus a target cast bar that colors itself by interruptibility and can auto-size to the grid. Five-tab settings panel with full `/kcd` command coverage and per-tab Defaults. Visibility modes (always / in combat / target casting / interruptible only) with a per-icon ready glow. Per-spec spell lists with hover tooltips and known/unknown markers. Saved profiles. |
+
+## Credits
+
+The debug console uses [JetBrains Mono](https://www.jetbrains.com/lp/mono/), licensed under the SIL
+Open Font License 1.1, and the **?** on the icon grid's and cast bar's handles, and the drag handles
+and remove marks on the Spells page, are drawn from [Open Iconic](https://github.com/iconic/open-iconic) (MIT). Both ship inside the bundled LibKa0s payload,
+with their license text beside them.
