@@ -1,0 +1,1 @@
+fixed: DR-KC-03 meets DX-KC/STD-19/rulings (no alias, no X, gate green, 37 cases red on source revert); 09b188c DR-KC-03R nests the interrupt dump per unit so a target raise no longer costs focus its lines
