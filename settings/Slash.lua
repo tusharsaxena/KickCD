@@ -417,12 +417,13 @@ end
 -- which opens the panel: the one surface a player uses to switch the addon back
 -- on by hand.
 --
--- THE LIST IS A UNION, NEVER A COPY. The library's twelve are the standard's
+-- THE LIST IS A UNION, NEVER A COPY. The library's thirteen are the standard's
 -- reserved verbs and a host MUST NOT refuse any of them; this addon adds
 -- `spells` to them (core/KickCD.lua argues why). Built here by concatenation so
--- that a thirteenth reserved verb arriving in a future LibKa0s tag is live the
--- day it is vendored, rather than silently refused because a copy of the twelve
--- was typed into this file.
+-- that a new reserved verb arriving in a LibKa0s tag is live the day it is
+-- vendored, rather than silently refused because a copy of the list was typed
+-- into this file. `diagnostics` arrived exactly that way, in Slash minor 16
+-- (v1.60.0), and needed no edit here.
 -- On a library-absent load SlashLib.LIVE_VERBS is nil, so this is just the
 -- extras, and the degradation stub above gates on NS.FEATURE_VERBS instead.
 local function liveVerbs()

@@ -4,10 +4,12 @@ local addonName, NS = ...
 --
 -- The console window, the copy window, the two formatters, the 1500-line buffer,
 -- the scrollbar sync, the line counter and the enable seam live in
--- libs/LibKa0s/DebugLog.lua and are shared across every Ka0s addon. This file
--- supplies only the part that is ours: the frame-name prefix, the title, the
--- monospace font, where the debug flag actually lives, and what the [Init]
--- session summary says.
+-- libs/LibKa0s/DebugLog.lua, and the diagnostics report's plumbing (markers,
+-- identity header, per-section pcall, cap) in DebugLogDiagnostics.lua beside it;
+-- both are shared across every Ka0s addon. This file supplies only the part that
+-- is ours: the frame-name prefix, the title, the monospace font, where the debug
+-- flag actually lives, what the [Init] session summary says, and where the
+-- report's sections come from (modules/Diagnostics.lua).
 --
 -- It replaces modules/DebugLog.lua (518 lines), which is deleted. That file was
 -- the cleanest win in the repo: BOTH its formatters were already byte-identical
@@ -173,6 +175,16 @@ NS.DebugLog = lib:New({
     -- The library appends its own " — Debug", giving "Ka0s KickCD — Debug",
     -- which is byte for byte what the old title bar read.
     title = "Ka0s KickCD",
+    -- The brand the diagnostics report's two markers carry (debug-logging-§14).
+    -- Spelled out rather than left to fall back on `title`, so a later change
+    -- to the window's title cannot move the markers a pasted report is found by.
+    brandName = "Ka0s KickCD",
+    -- The report's sections (`/kcd diagnostics`), from modules/Diagnostics.lua.
+    -- Called by the library each time a report runs, never at New: that module
+    -- loads after this file, and resolving it here would capture a nil.
+    diagnostics = function()
+        return NS.Diagnostics and NS.Diagnostics.Sections and NS.Diagnostics.Sections() or {}
+    end,
     font  = NS.Const and NS.Const.FONT_MONO,
     slash = "/kcd",
     -- fontSize omitted: 10 is the library's default and was this addon's value.

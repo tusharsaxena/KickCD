@@ -330,12 +330,12 @@ end)
 -- because a player must be able to read and repair settings, and reach the panel, while the addon is
 -- off -- which is precisely when they are most likely to need to.
 
---- The live set: the library's twelve reserved verbs plus this addon's `spells`, TYPED here rather
+--- The live set: the library's thirteen reserved verbs plus this addon's `spells`, TYPED here rather
 --- than read off the addon, so that the two lists have to be changed together. A verb added to the
 --- addon's live set and not to this one goes red; a new FEATURE verb is refused by default and
 --- passes without a word.
 local LIVE = {
-    "help", "config", "version", "enable", "disable", "debug", "perf",
+    "help", "config", "version", "enable", "disable", "debug", "diagnostics", "perf",
     "get", "set", "list", "reset", "resetall", "spells",
 }
 
@@ -394,6 +394,33 @@ test("DISABLED: a feature verb refuses on ONE line and reaches no write seam", f
         end
     end
     assertTrue(refused > 0, "sanity: this addon HAS feature verbs, so the SHOULD is testable here")
+end)
+
+test("DISABLED: both diagnostics forms write the report and stand nothing up", function()
+    -- debug-logging-§14: the report is how a player shows what a disabled addon is doing, so it
+    -- runs while disabled through BOTH `/kcd diagnostics` and `/kcd debug diagnostics`, and reads
+    -- only: the registration set, the holds and SavedVariables are where they were.
+    -- red under: `diagnostics` missing from the live set (the library's gate refuses it), or the
+    -- `debug` handler not testing the word (it toggles the window and prints the list instead)
+    local inst = baseline()
+    setEnabled(inst, false)
+    local D = inst.NS.DebugLog
+    for _, form in ipairs({ "diagnostics", "debug diagnostics" }) do
+        local _, regs = registrations(inst)
+        local holds = table.concat(inst.NS.Lifecycle:Holds(), ",")
+        local before, size = svSnapshot(inst), D:BufferSize()
+        local lines = say(inst, function() inst.NS:OnSlashCommand(form) end)
+        for _, line in ipairs(lines) do
+            assertNil(line:find("is disabled", 1, true), "`/kcd " .. form .. "` refused: " .. line)
+        end
+        assertTrue(D:BufferSize() > size, "`/kcd " .. form .. "` wrote nothing to the console")
+        assertTrue(D:FindLine("Ka0s KickCD diagnostics end:") ~= nil, "the report reached its end")
+        local _, after = registrations(inst)
+        assertEqual(after, regs, "`/kcd " .. form .. "` changed the registration count")
+        assertEqual(table.concat(inst.NS.Lifecycle:Holds(), ","), holds, "the holds moved")
+        local writes = svDiff(before, svSnapshot(inst))
+        assertEqual(#writes, 0, "`/kcd " .. form .. "` wrote: " .. table.concat(writes, ", "))
+    end
 end)
 
 -- ---------------------------------------------------------------------------

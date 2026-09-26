@@ -263,6 +263,14 @@ local COMMANDS = {
         function(rest) runSpells(NS, rest) end},
     {"debug",         "Debug subcommands — try `/kcd debug` for the list",
         function(rest) runDebug(NS, rest) end},
+    -- `diagnostics` is RESERVED (slash-commands-§2) and live while disabled
+    -- (LibKa0s-Slash-1.0 minor 16 puts it on LIVE_VERBS): the report is how a
+    -- player shows what a disabled addon is doing. It writes one report into
+    -- the debug console after whatever trace is already there (debug-logging-§14);
+    -- `/kcd debug diagnostics` is the same report. No other name runs it: no
+    -- `diag`, `dump` or `dx`, as a row, a debug word or an alias.
+    {"diagnostics",   NS.L["Write a diagnostic report to the debug console, for a bug report"],
+        function() NS.DebugLog:RunDiagnostics() end},
     -- `perf` is a RESERVED verb across the collection (slash-commands-§2) and
     -- must be registered by the addon, never by the library: the lib returns
     -- lines and we print them through the tagged printer.
@@ -296,13 +304,14 @@ local COMMANDS = {
 -- is no locale key for it here any more either.
 --
 -- WHAT STAYS OURS IS WHICH VERBS ARE LIVE. The library ships the standard's
--- twelve reserved verbs (`help`, `config`, `version`, `enable`, `disable`,
--- `debug`, `perf`, `get`, `set`, `list`, `reset`, `resetall`) and the bare `/kcd`
--- opens the panel in either state. The set below is what THIS addon adds to that
--- twelve, and settings/Slash.lua unions the two rather than re-typing them --
--- a narrowed copy of the library's list is the one thing a host MUST NOT pass.
+-- thirteen reserved verbs (`help`, `config`, `version`, `enable`, `disable`,
+-- `debug`, `diagnostics`, `perf`, `get`, `set`, `list`, `reset`, `resetall`) and
+-- the bare `/kcd` opens the panel in either state. The set below is what THIS
+-- addon adds to those thirteen, and settings/Slash.lua unions the two rather than
+-- re-typing them -- a narrowed copy of the library's list is the one thing a host
+-- MUST NOT pass.
 --
--- `spells` IS THE THIRTEENTH, and it is this addon's own judgment rather than
+-- `spells` IS THE FOURTEENTH, and it is this addon's own judgment rather than
 -- the standard's list. The per-spec spell lists are stored ARRAYS, and an array
 -- is addressable as a whole while its members deliberately are not -- so no
 -- schema row covers them and `/kcd get|set|list|reset` cannot reach them at all.
@@ -325,7 +334,7 @@ NS.EXTRA_LIVE_VERBS = { "spells" }
 -- THE SAME FOUR, NAMED, for the one load where there is no library to union
 -- with: settings/Slash.lua's degradation stub refuses exactly these while the
 -- addon is disabled. It is this addon's own list of its own feature verbs, not a
--- copy of the library's reserved twelve (slash-commands-§1 lets a stub carry one
+-- copy of the library's reserved thirteen (slash-commands-§1 lets a stub carry one
 -- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash.lua pins it
 -- against the live gate: COMMANDS minus the live union MUST be this list.
 NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
@@ -333,6 +342,11 @@ NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
 NS.COMMANDS = COMMANDS
 
 local DEBUG_COMMANDS = {
+    -- First, so the bare `/kcd debug` list shows the report before the topic
+    -- dumps. runDebug tests the word before this table is consulted at all
+    -- (debug-logging-§14); the row is here for that list.
+    {"diagnostics", NS.L["Write the full diagnostic report (same as /kcd diagnostics)"],
+        function(self) self.DebugLog:RunDiagnostics() end},
     {"spells", "Print the watched spell list with cooldown state",
         function(self)
             local m = self:GetModule("Cooldowns", true)
@@ -405,6 +419,10 @@ function runDebug(self, rest)
     -- preserves case in `rest` for schema paths).
     local sub = (rest or ""):match("^(%S*)") or ""
     sub = sub:lower()
+    -- The report first, before every other word and before the bare toggle
+    -- (debug-logging-§14). Any case: `sub` is lowercased above. `diag` and every
+    -- other near-miss fall through to the unknown-word answer below.
+    if sub == "diagnostics" then return self.DebugLog:RunDiagnostics() end
     if sub == "" then
         -- Bare `/kcd debug` toggles the console window (debug-logging-§5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.

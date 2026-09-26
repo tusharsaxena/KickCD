@@ -33,6 +33,9 @@ NS.Database = Database
 -- v5 rewrites the "NONE" font-flag token to the empty string the client's
 -- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
 local CURRENT_DB_VERSION = 5
+-- Published read-only for `/kcd diagnostics`, which prints it beside the
+-- stored db.global.schemaVersion. Nothing reads it to decide anything.
+Database.CURRENT_DB_VERSION = CURRENT_DB_VERSION
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -307,6 +310,70 @@ function Database:ResetAllSpells()
         NS.Debug("Spells", "resetall: %d lists, %d spells", lists, spells)
     end
     fireProfileChanged((self.db.keys and self.db.keys.profile) or "Default")
+end
+
+-- ---------------------------------------------------------------------------
+-- The customized-list count (read-only, for `/kcd diagnostics`)
+-- ---------------------------------------------------------------------------
+--
+-- How many class+spec lists differ from what a reset would give them. The
+-- comparison list is built by the SAME seed routine and racial rule the resets
+-- use, into a scratch table, so "customized" means exactly "a per-spec Defaults
+-- would change this". Nothing here writes the profile or creates a list.
+
+local function sameEntries(a, b)
+    if #a ~= #b then return false end
+    for i = 1, #a do
+        local x, y = a[i], b[i]
+        if x.spellID ~= y.spellID or x.category ~= y.category
+            or (x.enabled ~= false) ~= (y.enabled ~= false) then
+            return false
+        end
+    end
+    return true
+end
+
+--- The list a reset would give (class, spec), built into a scratch table.
+local function defaultListFor(class, spec, racialID, racialClass)
+    local list = {}
+    local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
+    seedList(list, byClass and byClass[spec])
+    if racialID and racialClass == class then appendRacial(list, racialID) end
+    return list
+end
+
+--- Every (class, spec) pair the profile or the defaults name, once each.
+local function everyPair(stored)
+    local seen, out = {}, {}
+    for _, source in ipairs({ stored, NS.DefaultSpells or {} }) do
+        for class, specs in pairs(source) do
+            for spec in pairs(type(specs) == "table" and specs or {}) do
+                local key = tostring(class) .. "/" .. tostring(spec)
+                if not seen[key] then
+                    seen[key] = true
+                    out[#out + 1] = { class, spec }
+                end
+            end
+        end
+    end
+    return out
+end
+
+--- @return number customized, number stored  lists that differ from their
+---         defaults, and lists the profile holds
+function Database:CountCustomizedSpellLists()
+    local stored = self.db and self.db.profile and self.db.profile.spells
+    if type(stored) ~= "table" then return 0, 0 end
+    local racialID, racialClass = playerRacial()
+    local customized, total = 0, 0
+    for _, pair in ipairs(everyPair(stored)) do
+        local list = self:GetSpellList(pair[1], pair[2])
+        if list then total = total + 1 end
+        if not sameEntries(list or {}, defaultListFor(pair[1], pair[2], racialID, racialClass)) then
+            customized = customized + 1
+        end
+    end
+    return customized, total
 end
 
 -- ---------------------------------------------------------------------------

@@ -44,6 +44,15 @@ L["Slash Commands"]              = "Slash Commands"
 L["%s is unavailable: the LibKa0s library did not load."] =
     "%s is unavailable: the LibKa0s library did not load."
 
+-- The diagnostics report's two help rows (debug-logging-§14): the `/kcd
+-- diagnostics` COMMANDS row and its `/kcd debug diagnostics` twin. The report
+-- body is English diagnostic text and is not localized; the one chat line after
+-- it is the library's (lib.STRINGS.DIAG_WRITTEN).
+L["Write a diagnostic report to the debug console, for a bug report"] =
+    "Write a diagnostic report to the debug console, for a bug report"
+L["Write the full diagnostic report (same as /kcd diagnostics)"] =
+    "Write the full diagnostic report (same as /kcd diagnostics)"
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

@@ -475,6 +475,30 @@ badge and any count quoted in the docs must agree with it.
 - the vendored DebugLog major falls THROUGH a key-returning locale table
 - DebugLogSetup: the library is told the FOLDER name, not just the frame name
 
+### test_diagnostics.lua (21)
+
+- `diagnostics` is a COMMANDS row and a `debug` word, and nothing else runs it
+- no source file under core, modules or settings spells a report alias
+- the addon hands the library its sections with the lifecycle first
+- the report runs every section and none of them fails on a live load
+- the state section says stored enabled, stood down, holds and both schema versions
+- while disabled every section still runs and the runtime ones say they are stood down
+- the report stands nothing up: no hold, no registration, no stored write
+- the settings section prints the always rows and only the rows that differ
+- the spells section lists the live class and spec with unlearned and disabled flags
+- the spells section counts the lists that differ from their defaults
+- the CM cache line reads the memo and never forces the walk
+- the CM cache accessor names the three states without walking
+- the units section reports each unit's enabled and link state
+- the events section names every event this client refused
+- the runtime sections carry the three chat dumps, and chat receives none of them
+- the IconGrid and Castbar sections give saved and live anchors per unit
+- a raising section costs exactly one line and the next section still runs
+- an over-cap report ends in the truncated line and then the end marker
+- secret values in the cast record and the charges do not raise
+- `/kcd diagnostics` writes one chat line naming the count and Copy
+- with LibKa0s absent both forms print the library-absent line and raise nothing
+
 ### test_icongrid_layout.lua (8)
 
 - Layout math is published on the IconGrid module
@@ -1185,7 +1209,7 @@ badge and any count quoted in the docs must agree with it.
 - degraded `/kcd lock` writes locked, and confirms
 - degraded `/kcd lock` while disabled prints the DisabledLine and does not act
 
-### test_disabled.lua (19)
+### test_disabled.lua (20)
 
 - baseline: an ENABLED addon registers something worth standing down
 - DISABLED: the registration set is EMPTY, by count and by name
@@ -1195,6 +1219,7 @@ badge and any count quoted in the docs must agree with it.
 - DISABLED: a settings change does not bring it back
 - DISABLED: every reserved verb still answers, and the bare /kcd opens the panel
 - DISABLED: a feature verb refuses on ONE line and reaches no write seam
+- DISABLED: both diagnostics forms write the report and stand nothing up
 - DISABLED: the launcher's LEFT click opens the settings panel and writes nothing
 - DISABLED: the RIGHT click's menu keeps Enabled live and grays Locked
 - RE-ENABLED: the registration set comes back, exactly
@@ -1355,9 +1380,15 @@ badge and any count quoted in the docs must agree with it.
 - layoutcap self-test: a census that states nothing is told apart from one that states none
 - layoutcap self-test: the exempt set takes folders as well as paths
 
-### test_diagnostics_contract.lua (1)
+### test_diagnostics_contract.lua (7)
 
-- diagnostics contract: debug-logging-§14 (skipped: Kit.diagnostics is not set in the runner, so this repo's dispatcher is not wired to the shared contract yet. Every Ka0s addon owes debug-logging-§14's report; wire Kit.diagnostics once the report exists)
+- diagnostics contract: both forms run the report
+- diagnostics contract: the debug word is matched in any case
+- diagnostics contract: both markers carry the brand and the end counts the report
+- diagnostics contract: the report appends after what the console already holds
+- diagnostics contract: the report lands with logging off and leaves it off
+- diagnostics contract: both forms run while the addon is disabled
+- diagnostics contract: no other name runs the report
 
 ## Totals
 
@@ -1383,6 +1414,7 @@ badge and any count quoted in the docs must agree with it.
 | test_compat_debug.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
+| test_diagnostics.lua | 21 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_apply.lua | 13 |
 | test_icongrid_visibility.lua | 23 |
@@ -1416,7 +1448,7 @@ badge and any count quoted in the docs must agree with it.
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 59 |
-| test_disabled.lua | 19 |
+| test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
 | test_launcher.lua | 40 |
@@ -1427,5 +1459,5 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| test_diagnostics_contract.lua | 1 |
-| **Total** | **1158** |
+| test_diagnostics_contract.lua | 7 |
+| **Total** | **1186** |

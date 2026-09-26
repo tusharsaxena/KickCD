@@ -218,6 +218,20 @@ function SpellInput.CooldownManagerSet()
     return set
 end
 
+--- What the memo holds, WITHOUT computing it: "unbuilt" (nothing has asked
+--- since login or the last invalidation), "empty" (the client answered
+--- nothing), or "built" plus the number of spells in the set. `/kcd
+--- diagnostics` reads this; calling CooldownManagerSet instead would force the
+--- walk the report must never force (DX-KC).
+-- @return string state, number|nil count
+function SpellInput.CooldownManagerCacheState()
+    if _cmCache == nil then return "unbuilt" end
+    if _cmCache == _CM_EMPTY then return "empty" end
+    local n = 0
+    for _ in pairs(_cmCache) do n = n + 1 end
+    return "built", n
+end
+
 --- May `id` be added to (class, spec)? True, or false plus the line to print.
 ---
 --- The gate applies only on the player's LIVE pair, because that is the only
