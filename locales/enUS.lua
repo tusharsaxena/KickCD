@@ -542,3 +542,5 @@ L["The cast bar: its size, position, icon, fonts and the colors for casts you ca
     "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
 L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
+L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."] =
+    "Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."

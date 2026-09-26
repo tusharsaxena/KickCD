@@ -1095,7 +1095,7 @@ badge and any count quoted in the docs must agree with it.
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
 
-### test_grid.lua (7)
+### test_grid.lua (12)
 
 - grid: Icons, Cast bar and Text Label register as Grid entries under their page keys, on both builds
 - grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, opening on Icons
@@ -1104,6 +1104,11 @@ badge and any count quoted in the docs must agree with it.
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
 - grid: a linked Focus keeps the rail; each entry draws its full strip, inert, over the link note alone
+- grid: Defaults restores only the active entry's rows, for the unit in the band
+- grid: the Defaults tooltip says it acts on the unit in the band
+- grid: a former page key opens Grid on that entry and tab, drawn on its next show
+- grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
+- grid: selecting an entry is refused in combat and moves nothing
 
 ### test_settings_refreshers.lua (5)
 
@@ -1454,7 +1459,7 @@ badge and any count quoted in the docs must agree with it.
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 42 |
-| test_grid.lua | 7 |
+| test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1474,4 +1479,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1196** |
+| **Total** | **1201** |

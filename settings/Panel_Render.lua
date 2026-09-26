@@ -356,6 +356,54 @@ function Helpers.RenderGridPage(ctx)
     ctx.__renderedSection = entry.key
 end
 
+--- The Grid page's Defaults: the active entry's rows FOR THE UNIT IN THE BAND, and
+--- no other unit's. The owner's ruling for KickCD#33, and a documented deviation
+--- (docs/ARCHITECTURE.md, options-ui-§13): the library's O.RestoreDefaults resets
+--- every unit of a page on purpose, and it still does when called directly.
+---
+--- The library's own bracket, driven by hand: one `reset <entry>` act, so the
+--- console logs one `[Set] reset <entry>: N rows` line and no line per row
+--- (debug-logging-§10). Refused in combat, as the library's page reset is.
+function Helpers.RestoreGridSection(ctx)
+    if Helpers.__combatRefused and Helpers.__combatRefused() then return end
+    local entry = gridEntries[ctx and ctx.activeSection]
+    if not entry then return end
+    local Store = NS.Settings.Store
+    local rows = Helpers.SchemaForPanel(entry.key, Helpers.ViewedUnit())
+    Store.BulkBegin("reset", entry.key)
+    local ok, err = pcall(function()
+        for _, row in ipairs(rows) do Store.ApplyDefault(row) end
+    end)
+    Store.BulkEnd("reset", entry.key, nil, err)
+    if not ok then error(err, 0) end
+    if Helpers.RefreshScalars then Helpers.RefreshScalars() end
+end
+
+--- Select entry `key` on the Grid page, and optionally its tab: the one seam a
+--- link, a deep link or a suite moves the entry through. A hidden page is marked
+--- owed a render and draws the entry on its next show. Refused in combat, as a tab
+--- switch is (options-ui-§2, §13).
+--- @return boolean  whether the entry was selected
+function Helpers.SelectSection(key, tabKey)
+    if Helpers.__combatRefused and Helpers.__combatRefused() then return false end
+    local ctx = gridCtx
+    if not (ctx and gridEntries[key]) then return false end
+    stashTab(ctx)
+    ctx.activeSection = key
+    if tabKey ~= nil then ctx.sectionTabs[key] = tabKey end
+    Helpers.RefreshPanel(ctx, true)
+    return true
+end
+
+-- The library's SelectTab moves one PAGE's tab. An entry key is no page of its own
+-- (KickCD#33): it routes to SelectSection, so a link written against the old page
+-- keys still lands. Any other key -- General, Spells -- is the library's.
+local selectTab = Helpers.SelectTab
+function Helpers.SelectTab(pageKey, tabKey)
+    if gridEntries[pageKey] then return Helpers.SelectSection(pageKey, tabKey) end
+    return selectTab(pageKey, tabKey)
+end
+
 --- Test seam: the ctx the Grid page bound, or nil before its builder ran.
 function Helpers.__gridCtx() return gridCtx end
 

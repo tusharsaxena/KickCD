@@ -22,14 +22,15 @@ local function Build(mainCategory)
     end
 
     local ctx = H.CreatePanel("KickCDGridPanel", L["Grid"], {
-        pageKey        = "grid",
-        defaultsButton = true,
+        pageKey         = "grid",
+        defaultsButton  = true,
+        defaultsTooltip = L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."],
     })
     -- Parked, not wired: the button is built at the panel's first OnShow and
-    -- captures this handler then, so it reads the entry at CLICK time rather than
-    -- fixing the one on screen when the page was built.
+    -- captures this handler then, so it reads the entry at CLICK time. It restores
+    -- the entry's rows for the unit in the band only (Helpers.RestoreGridSection).
     ctx.panel.defaultsOnClick = function()
-        H.RestoreDefaults(ctx.activeSection, ctx)
+        H.RestoreGridSection(ctx)
     end
 
     H.__bindGridPage(ctx)

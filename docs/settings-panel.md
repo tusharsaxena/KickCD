@@ -179,6 +179,19 @@ is stashed **before anything moves the entry**, because the library's own strip 
 back into the host. So Cast bar -> Font, then Icons, then Cast bar again lands on Font. Picking the
 other unit in the band keeps the entry and its tab. Pinned by `tests/test_grid.lua`.
 
+**Defaults** reads the entry **at click time** (the library captures the handler once, at the first
+show) and restores that entry's rows **for the unit in the band only**
+(`Helpers.RestoreGridSection`). The other unit keeps its values. That is the owner's ruling, and a
+[documented deviation](ARCHITECTURE.md#documented-deviations) from `options-ui-§13`, whose railed
+Defaults would reset both units as the three pages' buttons did. It is one bulk act, so the console
+logs one `[Set] reset <entry>: N rows` line. The library's `H.RestoreDefaults(page)` is unchanged and
+still resets every unit when called directly.
+
+**Deep links.** `Helpers.OpenPageTab("icons"|"castbar"|"label", tab)` opens Grid on that entry and
+tab, and the other page keys open their own page as before. `Helpers.SelectSection(entry, tab)` is the
+one seam that moves the entry, and the host's `Helpers.SelectTab` routes an entry key to it. A hidden
+page is marked owed a render and draws the entry on its next show. Both refuse under combat.
+
 ## Per-unit pages (Icons / Cast bar / Text Label)
 
 These three render through `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel_Render.lua`), which does three things in this order and the order matters:

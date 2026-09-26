@@ -225,3 +225,114 @@ test("grid: a linked Focus keeps the rail; each entry draws its full strip, iner
         assertEqual(notes, 1, key .. ": the link note, once")
     end
 end)
+
+-- ── Defaults, deep links, SelectTab (NR-KC-03) ─────────────────────────────────────────────
+
+--- The first stored boolean row of `panel` for `unit`: one to move off its default.
+local function boolRow(H, panel, unit)
+    for _, row in ipairs(H.SchemaForPanel(panel, unit)) do
+        if row.type == "bool" and row.default ~= nil and not row.sessionOnly and row.path then return row end
+    end
+end
+
+-- Review Focus 4.
+test("grid: Defaults restores only the active entry's rows, for the unit in the band", function()
+    local P = env()
+    local H, S = P.H, P.NS.Settings.Store
+    focusLink(P, false)
+    P.show()
+    local ctx = P.rail("castbar")
+    local tc, fc, ti = boolRow(H, "castbar", "target"), boolRow(H, "castbar", "focus"), boolRow(H, "icons", "target")
+    for _, row in ipairs({ tc, fc, ti }) do
+        assertTrue(row ~= nil, "sanity: a boolean row to move")
+        assertTrue(S.Set(row.path, not row.default))
+    end
+
+    local brackets = {}
+    local begin = S.BulkBegin
+    S.BulkBegin = function(act, scope, ...)
+        brackets[#brackets + 1] = tostring(act) .. " " .. tostring(scope)
+        return begin(act, scope, ...)
+    end
+    local ok, err = pcall(ctx.panel.defaultsOnClick)
+    S.BulkBegin = begin
+    assertTrue(ok, tostring(err))
+
+    -- red under: the library's page walk (Focus's row reset too), or a closure that fixed the entry
+    -- when the page was built (Icons' rows reset from Cast bar)
+    assertEqual(S.Get(tc.path), tc.default, "Target's cast bar row is back")
+    assertEqual(S.Get(fc.path), not fc.default, "Focus's cast bar row is not the unit in the band's")
+    assertEqual(S.Get(ti.path), not ti.default, "Target's icons row is not the active entry's")
+    assertEqual(table.concat(brackets, "|"), "reset castbar", "one bulk bracket, scoped to the entry")
+
+    ctx.__bannerWidget:__fire("OnValueChanged", "focus")
+    ctx.panel.defaultsOnClick()
+    assertEqual(S.Get(fc.path), fc.default, "with Focus in the band, Focus's row")
+end)
+
+test("grid: the Defaults tooltip says it acts on the unit in the band", function()
+    local P = env()
+    local ctx = P.show()
+    assertEqual(ctx.panel.defaultsTooltip,
+        P.L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."])
+end)
+
+--- A fresh Grid page whose subcategories answer GetID (KickCD's mock categories do not), recording
+--- by tree label the category every OpenToCategory lands on.
+local function recordingOpens()
+    local byId, opened, count = {}, {}, 0
+    local P = env(function(mocks)
+        local register = mocks.Settings.RegisterCanvasLayoutSubcategory
+        mocks.Settings.RegisterCanvasLayoutSubcategory = function(parent, panel, name)
+            local cat = register(parent, panel, name)
+            count = count + 1
+            local id = 100 + count
+            byId[id] = name
+            cat.GetID = function() return id end
+            return cat
+        end
+        mocks.Settings.OpenToCategory = function(id) opened[#opened + 1] = byId[id] or "main" end
+    end)
+    return P, opened
+end
+
+-- Review Focus 5.
+test("grid: a former page key opens Grid on that entry and tab, drawn on its next show", function()
+    local P, opened = recordingOpens()
+    local ctx = P.show()
+    ctx.panel:Hide()                                -- the settings window is closed
+    -- red under: OpenPageTab looking "castbar" up in NS.Settings.categoryFor alone (the Cast bar
+    -- page today, nothing once it retires)
+    assertTrue(P.H.OpenPageTab("castbar", P.L["Font"]))
+    assertEqual(opened[#opened], P.L["Grid"])
+    assertEqual(ctx.activeSection, "castbar", "selected before the show")
+    ctx.panel:Show()
+    assertEqual(P.railValue(), "castbar", "and drawn on it")
+    assertEqual(ctx.activeTab, P.L["Font"], "on the named tab")
+    assertTrue(P.H.OpenPageTab("general", P.L["Units"]), "the linked-Focus note's own link is unchanged")
+    assertEqual(opened[#opened], P.L["General"])
+end)
+
+test("grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's", function()
+    local P = env()
+    local ctx = P.show()
+    local H, L = P.H, P.L
+    -- red under: the call reaching the library's SelectTab, which moves the page's one scalar tab
+    -- (or finds no page once the three retire)
+    assertTrue(H.SelectTab("label", L["Placement"]))
+    assertEqual(ctx.activeSection, "label")
+    assertEqual(ctx.activeTab, L["Placement"])
+    assertTrue(H.SelectTab("general", L["Units"]), "the General page is the library's")
+    assertEqual(H.__panelFor("general").activeTab, L["Units"])
+end)
+
+test("grid: selecting an entry is refused in combat and moves nothing", function()
+    local P = env()
+    local ctx = P.show()
+    P.inst.mocks.InCombatLockdown = function() return true end
+    -- red under: SelectSection without the library's refusal (a structural render in combat)
+    local ok = P.H.SelectSection("label")
+    P.inst.mocks.InCombatLockdown = function() return false end
+    assertFalse(ok)
+    assertEqual(ctx.activeSection, "icons")
+end)
