@@ -95,6 +95,15 @@ Declare it in the emitter's file header, add it to [message-bus.md](message-bus.
 change, and keep the two in sync. A module that names the messages it emits or listens to and then
 drifts from the code is worse than one that names none.
 
+### Add a section to the diagnostics report
+
+Write a read-only function `X.<Name>(out)` in `modules/Diagnostics.lua` and add it to `X.Sections()`
+in report order; runtime sections open with the `isDown()` check and print one `stood down: …` line.
+Read instances through `PeekInstance`, never `GetInstance`, and hand every value to `out:add` as an
+argument, never pre-formatted, so a secret value prints `<secret>`. Add the section to the table in
+[debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14) and to the section-order case in
+`tests/test_diagnostics.lua`. The report must stay inside that suite's 200-line budget.
+
 ## House rules
 
 ### Working style

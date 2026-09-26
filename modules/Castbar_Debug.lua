@@ -129,9 +129,15 @@ end
 --- Does NOT call tostring or format on notInterruptible / spellID / name --
 --- those may be secret in combat. Uses tostring(type(...)) / boolean
 --- branching with `not not` to avoid arithmetic on secrets.
-function Castbar:DebugDump(unit)
+---
+--- `emit` is the line sink: omitted, every line goes to chat through
+--- NS.Util.print exactly as before; the diagnostics report passes its own
+--- sink to route the same lines into the debug console.
+--- @param unit string|nil  default "target"
+--- @param emit function|nil  (line) -> (), default NS.Util.print
+function Castbar:DebugDump(unit, emit)
     local inst = self:GetInstance(unit or "target")
-    local emit = NS.Util.print
+    emit = emit or NS.Util.print
     emit("castbar state (" .. inst.unit .. ")")
 
     if not dumpUnitHeader(emit, inst) then return end

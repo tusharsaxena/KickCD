@@ -437,8 +437,14 @@ end
 --- secret-tainted. tostring/format on a secret propagate the taint
 --- and table.concat on the resulting string then errors out — that's
 --- why a naive "tostring(name)" inside :format() blew up combat.
-function Compat.DebugInterrupt(unit)
-    local out = NS.Util.print
+---
+--- `emit` is the line sink: omitted, every line goes to chat through
+--- NS.Util.print exactly as before; the diagnostics report passes its own
+--- sink to route the same lines into the debug console.
+--- @param unit string|nil  default "target"
+--- @param emit function|nil  (line) -> (), default NS.Util.print
+function Compat.DebugInterrupt(unit, emit)
+    local out = emit or NS.Util.print
     unit = unit or "target"
 
     if not (_G.UnitExists and _G.UnitExists(unit)) then

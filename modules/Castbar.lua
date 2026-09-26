@@ -155,6 +155,11 @@ function Castbar:GetCastbarFrame(unit)
     return inst and inst.frame
 end
 
+--- The unit's instance or nil, never creating one (`/kcd diagnostics`).
+function Castbar:PeekInstance(unit)
+    return instances[unit or "target"]
+end
+
 -- Combat state lives in KickCD.State.inCombat (core/State.lua) — a shared,
 -- single-owner flag driven off PLAYER_REGEN_* in one place, fanned out via the
 -- Ka0s_KickCD_CombatState message this module subscribes to. (InCombatLockdown()

@@ -605,14 +605,14 @@ local function say(inst, fn)
     return lines
 end
 
--- The live set, slash-commands-§2's twelve plus this addon's `spells` (the spell
+-- The live set, slash-commands-§2's thirteen plus this addon's `spells` (the spell
 -- lists are stored ARRAYS no schema row can address, so `/kcd spells` is their
 -- only CLI route — see core/KickCD.lua). Typed here rather than read off the
 -- addon, so that the two lists have to be changed together: a verb added to the
 -- addon's live set and not to this one goes red, while a NEW feature verb is
 -- gated by default and passes without a word.
 local LIVE = {
-    "help", "config", "version", "enable", "disable", "debug", "perf",
+    "help", "config", "version", "enable", "disable", "debug", "diagnostics", "perf",
     "get", "set", "list", "reset", "resetall", "spells",
 }
 

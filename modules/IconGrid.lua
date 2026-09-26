@@ -125,6 +125,12 @@ function IconGrid:GetInstance(unit)
     return inst
 end
 
+--- The unit's instance if one exists, or nil. Unlike GetInstance it never
+--- creates one: `/kcd diagnostics` reads through it and must build nothing.
+function IconGrid:PeekInstance(unit)
+    return instances[unit or "target"]
+end
+
 -- The per-icon widget system — the Icon prototype, its factory, cooldown /
 -- glow rendering, the step-shaped alpha/tint curves, and the shared cooldown-
 -- text ticker — lives in modules/IconGrid_Render.lua (peeled out for the

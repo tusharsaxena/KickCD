@@ -68,6 +68,11 @@ function UnitLabel:GetInstance(unit)
     return inst
 end
 
+--- The unit's instance or nil, never creating one (`/kcd diagnostics`).
+function UnitLabel:PeekInstance(unit)
+    return instances[unit or "target"]
+end
+
 -- The frame this unit's label anchors to, or nil if that widget isn't live.
 local function attachFrame(unit, attach)
     if attach == "icons" then

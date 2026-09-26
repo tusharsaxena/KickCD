@@ -161,6 +161,7 @@ local SUITES = {
     "test_compat_debug",
     "test_debuglog",
     "test_debuglogsetup",
+    "test_diagnostics",
     "test_icongrid_layout",
     "test_icongrid_apply",
     "test_icongrid_visibility",
@@ -215,7 +216,7 @@ local SUITES = {
     -- docs/ARCHITECTURE.md, held against every authored `.lua` the repo tracks.
     { name = "test_layout_cap", dir = "tests/_kit/" },
     -- Kit revision 27's diagnostics contract (debug-logging-§14), run against this addon's
-    -- dispatcher through Kit.diagnostics. Until the report lands (DR-KC-03) it is one declared skip.
+    -- dispatcher through Kit.diagnostics (wired below).
     { name = "test_diagnostics_contract", dir = "tests/_kit/" },
 }
 
@@ -339,6 +340,39 @@ _G.KICKCD_TEST = Kit.expose{
     -- Guaranteed-run fixture wrappers; see the block above.
     withFocusLink  = withFocusLink,
     withViewedUnit = withViewedUnit,
+}
+
+-- ---------------------------------------------------------------------------
+-- The diagnostics contract's facts (debug-logging-§14, kit revision 27)
+-- ---------------------------------------------------------------------------
+--
+-- The kit's shared case runs `/kcd <line>` through this addon's own dispatcher on an instance of its
+-- own, built on first use with the enable cascade run, so standing it down and up exercises the real
+-- latch. Its own instance rather than the shared one because the contract disables and re-enables
+-- the addon between cases. Chat is muted while it dispatches: the one chat line per report is
+-- tests/test_diagnostics.lua's business, not noise for the run's output. KickCD retires no name for
+-- the report, so `retired` is omitted and the kit checks its own `diag` and `dx`.
+local diagInst
+local function diagNS()
+    diagInst = diagInst or loadInstance(true, true)
+    return diagInst.NS
+end
+
+local function muted(fn)
+    local NS = diagNS()
+    local real = NS.Util.print
+    NS.Util.print = function() end
+    local ok, err = pcall(fn, NS)
+    NS.Util.print = real
+    if not ok then error(err, 0) end
+end
+
+Kit.diagnostics = {
+    brand       = "Ka0s KickCD",
+    dispatch    = function(line) muted(function(NS) NS:OnSlashCommand(line) end) end,
+    console     = function() return diagNS().DebugLog end,
+    setDebug    = function(on) diagNS().State.debug = on and true or false end,
+    setDisabled = function(off) muted(function(NS) NS.SetMasterEnabled(not off) end) end,
 }
 
 Kit.run{ dir = root .. "/tests/", suites = SUITES }

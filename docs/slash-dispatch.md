@@ -128,7 +128,7 @@ timer canceled, every frame hidden at the source, nothing written from a game ev
 the other half: what the **command surface** does while the addon is off.
 
 **It does not narrow.** Every reserved verb answers normally — `help`, `config`, `version`,
-`enable`, `disable`, `debug`, `perf` and the whole schema CLI `get` / `set` / `list` / `reset` /
+`enable`, `disable`, `debug`, `diagnostics`, `perf` and the whole schema CLI `get` / `set` / `list` / `reset` /
 `resetall` — and the bare `/kcd` opens the settings panel exactly as it does when the addon is
 running. A player must be able to read and repair settings, and reach the panel, while the addon is
 off, which is precisely when they are most likely to need to; and `enable` above all, or the switch
@@ -159,9 +159,10 @@ the gated `/kcd toggle` gives.
 
 The **live set** is a union, built in `settings/Slash.lua` and never a typed copy:
 
-* the library's twelve, which are the standard's reserved verbs. A host MUST NOT refuse any of them,
-  and building from `lib.LIVE_VERBS` means a thirteenth arriving in a future LibKa0s tag is live the
-  day it is vendored rather than silently refused;
+* the library's thirteen, which are the standard's reserved verbs, `diagnostics` among them since
+  Slash minor 16 (LibKa0s v1.60.0). A host MUST NOT refuse any of them, and building from
+  `lib.LIVE_VERBS` means a verb arriving in a later LibKa0s tag is live the day it is vendored
+  rather than silently refused, which is how `diagnostics` arrived;
 * **plus `spells`, which is this addon's own call** (`NS.EXTRA_LIVE_VERBS`, `core/KickCD.lua`). The
   per-spec spell lists are stored **arrays**: an array is addressable as a whole while its members
   deliberately are not, so no schema row covers them and `get` / `set` / `list` / `reset` cannot
@@ -234,6 +235,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `resetposition` | Restore the icon grids to their default screen positions. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
+| `diagnostics` | Write the diagnostic report into the debug console. | **Reserved** (`slash-commands-§2`) and live while disabled (`LibKa0s-Slash-1.0` minor 16). Calls `NS.DebugLog:RunDiagnostics()`; the library writes the markers, the identity header and the cap, and `modules/Diagnostics.lua` supplies the sections (`debug-logging-§14`). `/kcd debug diagnostics` is the same report, tested before every other `debug` word. No other name runs it. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
 
 `list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
@@ -263,9 +265,10 @@ Every mutating subcommand fires `Ka0s_KickCD_ConfigChanged { section = "spells" 
 
 | Subcommand | Purpose |
 |---|---|
+| `diagnostics` | Write the diagnostic report into the debug console, exactly as `/kcd diagnostics` does. `runDebug` tests this word first, before every other word and before the bare toggle, and it heads `DEBUG_COMMANDS`. No other word runs the report: `debug diag` is an ordinary unknown word. What the report holds is in [debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14). |
 | `window` | Toggle the on-screen debug console window — the DIALOG-strata "Ka0s KickCD — Debug" panel (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`) with a ScrollingMessageFrame, a title-bar trio of `copy` / `clear` / `close` marks from the shared LibKa0s icon set, a header Debug:ON/OFF toggle, and the JetBrains Mono face that ships in the vendored LibKa0s payload. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
 | `on` / `off` / `toggle` | Set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Default off; never persisted to SavedVariables; resets each `/reload`. |
-| `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat. Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
+| `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat (the report's `cooldowns` section runs the same dump). Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
 | `castbar` | Print (to chat) one unit's current cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
 | `interrupt` | Dump (to chat) `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
 | `events` | List (to chat) every event name this client refused to register this session, one `rejected event: <NAME>` line each, or `no rejected events`. The list is `NS.State.rejectedEvents` (session-only), filled by `NS.RegisterEventList` (`core/CoreSetup.lua`) through LibKa0s-Core's `SafeRegisterEvent`, so one retired name costs only its own row of a registration block (events-frames-taint-§1). A non-empty list also adds `, N rejected event(s)` to the debug console's `[Init]` line. |

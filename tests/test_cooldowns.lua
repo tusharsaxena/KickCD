@@ -390,3 +390,60 @@ test("Refresh logs nothing when no spell changed", function()
     Cooldowns:Refresh()
     assertEqual(inst.NS.DebugLog:BufferSize(), before, "no line on a no-change pass")
 end)
+
+-- ── The /kcd debug spells dump ──────────────────────────────────────────────
+--
+-- Cooldowns:DebugDump takes an optional `emit` sink (DR-KC-02) so the
+-- diagnostics report can route the same lines into the debug console. With no
+-- sink it prints to chat exactly as before: these cases pin that shape and the
+-- sink's equivalence to it.
+
+--- Stage two watched spells, one with a secret charge count, and run the dump.
+--- @param emit function|nil  the sink handed to DebugDump; nil means chat
+--- @return table chatLines, table sinkLines  (chat lines with the prefix stripped)
+local function spellsDump(emit, empty)
+    local inst = T.load(true, true)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    local SECRET = setmetatable({}, { __tostring = function() error("tostring on a secret") end })
+    inst.mocks.issecretvalue = function(v) return v == SECRET end
+    Cooldowns.watched = empty and {} or {
+        [200] = { spellID = 200, ready = false, isActive = true, cdObject = {}, charges = SECRET },
+        [100] = { spellID = 100, ready = true, isActive = false, charges = 2 },
+    }
+    local chat, sink = {}, {}
+    inst.mocks.DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) chat[#chat + 1] = m end }
+    local sinkFn = emit and function(line) sink[#sink + 1] = line end or nil
+    Cooldowns:DebugDump(sinkFn)
+    for i, line in ipairs(chat) do
+        chat[i] = (tostring(line):gsub("^|cff%x+%[KCD%]|r ", ""))
+    end
+    return chat, sink
+end
+
+test("debug spells prints a class/spec header then one sorted line per watched spell", function()
+    local chat = spellsDump()
+    assertEqual(#chat, 3)
+    assertTrue(chat[1]:match("^Cooldowns: class=.- spec=.- %(.-%)$") ~= nil,
+        "header shape, got: " .. tostring(chat[1]))
+    assertTrue(chat[2]:match("^  %[100%] .- ready=true active=false cdObj=nil chargeCdObj=nil charges=2$") ~= nil,
+        "spell 100 line, got: " .. tostring(chat[2]))
+    assertTrue(chat[3]:match("^  %[200%] .- ready=false active=true cdObj=yes chargeCdObj=nil charges=<secret>$") ~= nil,
+        "spell 200 line, got: " .. tostring(chat[3]))
+end)
+
+test("debug spells says so when nothing is watched", function()
+    local chat = spellsDump(nil, true)
+    assertEqual(#chat, 2)
+    assertEqual(chat[2], "  (no watched spells)")
+end)
+
+test("Cooldowns:DebugDump writes every line through a caller's emit sink, and nothing to chat", function()
+    local chatOnly = spellsDump()
+    local chat, sink = spellsDump(true)
+    assertEqual(#chat, 0, "a sink must replace chat, not add to it")
+    assertEqual(#sink, #chatOnly)
+    for i = 1, #chatOnly do assertEqual(sink[i], chatOnly[i]) end
+    local _, emptySink = spellsDump(true, true)
+    assertEqual(emptySink[2], "  (no watched spells)")
+end)

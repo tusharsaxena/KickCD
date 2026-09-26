@@ -115,6 +115,10 @@ modules\Castbar_Handle.lua
 modules\Castbar_Skin.lua
 modules\Castbar_Debug.lua
 modules\UnitLabel.lua
+# The sections of `/kcd diagnostics` (debug-logging-§14). Last in this block by
+# convention only: every module it reads it resolves at CALL time, when the
+# report runs, and core\DebugLogSetup.lua asks it for its sections the same way.
+modules\Diagnostics.lua
 
 # Settings (last — depend on everything else being initialized)
 # LOAD-BEARING POSITION: creates NS.Settings.Schema (the rows array) and NS.Settings.Store, which both descriptors and every page file's add/AddComposed reach at load
