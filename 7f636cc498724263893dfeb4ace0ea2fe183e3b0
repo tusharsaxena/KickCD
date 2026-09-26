@@ -1,0 +1,1 @@
+clean: NR-KC-02 matches its task section verbatim (test file byte-identical to the plan); all 7 grid cases red on revert and under targeted mutations (chrome after linked branch, scalar activeTab, rail order, fixed page key, rail before band); gate re-run 1196/0/0, luacheck 0/0, lizard clean, CRLF, inventory current; rail clicks combat-refused by the library
