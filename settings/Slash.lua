@@ -212,9 +212,10 @@ end
 -- `/kcd reset` used to take a PAGE — general | icons | castbar | label | spells.
 -- It now takes a schema PATH and resets exactly one row, which is the shape the
 -- whole collection uses: a page is a property of a settings panel, not of the
--- data, and every schema-driven page here already carries a Defaults button that
--- resets it (settings/General.lua, Icons.lua, Castbar.lua, Label.lua all wire
--- one). The capability is not lost; only its CLI route is.
+-- data, and every schema-driven page here already carries a Defaults button:
+-- settings/General.lua's, and settings/Grid.lua's, which resets the entry on
+-- screen for the unit in the band. The capability is not lost; only its CLI
+-- route is.
 --
 -- `reset spells` was the odd one out — it never reset a page at all, it rebuilt
 -- EVERY spec's spell list through Database:ResetAllSpells. That has moved to
@@ -224,8 +225,13 @@ end
 -- Removals ship with a message, not silently: each old page name is answered
 -- with where its capability went, because "Setting not found: general" is a bug
 -- report waiting to happen.
+-- Where each old page's reset went. Icons, Cast bar and Text Label are entries of the
+-- Grid page (KickCD#33), whose Defaults restores the entry for the unit in the band.
 local RETIRED_RESET_PAGES = {
-    general = true, icons = true, castbar = true, label = true,
+    general = "the General page's |cFFFFFF00Defaults|r button to reset the whole page",
+    icons   = "Grid \226\134\146 Icons' |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
+    castbar = "Grid \226\134\146 Cast bar's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
+    label   = "Grid \226\134\146 Text Label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
 }
 
 local function runReset(rest)
@@ -237,10 +243,10 @@ local function runReset(rest)
                 .. "\226\128\148 it rebuilds every spec's list.")
             return
         end
-        if RETIRED_RESET_PAGES[lowered] then
+        local where = RETIRED_RESET_PAGES[lowered]
+        if where then
             out(("`/kcd reset %s` is gone \226\128\148 `reset` now takes a setting path. "):format(lowered)
-                .. "Use the " .. lowered .. " panel's |cFFFFFF00Defaults|r button to reset the "
-                .. "whole page, or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).")
+                .. "Use " .. where .. ", or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).")
             return
         end
     end

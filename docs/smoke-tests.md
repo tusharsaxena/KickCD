@@ -49,6 +49,7 @@ Companion docs:
 | 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
 | 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
 | 27 | Composed media rows | `LibKa0s-OptionsCompose` minor 3, the `Helpers.LSMValues` shadow | [Composed media dropdowns after the v1.26.0 re-vendor](#27-composed-media-dropdowns-after-the-v1260-re-vendor) |
+| 36 | Grid page | `settings/Grid.lua`, `Helpers.RenderGridPage`, the nav rail (LibKa0s v1.61.0) | [The Grid page (KickCD#33)](#36-the-grid-page-kickcd33) |
 
 ---
 
@@ -155,7 +156,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 ### 6. Icon grid layout
 
-**Setup.** Open Settings → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
+**Setup.** Open Settings → Grid → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
 
 **Steps.**
 - Walk through every value of `units.target.icons.anchor` (13 anchor tokens). For each, set `units.target.icons.secondaryGrow` to two distinct values applicable to that axis.
@@ -326,23 +327,23 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
 - For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
-- **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
+- **Panel-rebuild integrity.** On Settings → Grid → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
 
 **Pass.**
-- **The Unit dropdown lists exactly `Target` / `Focus` on every page, always** — before and after those rebuilds, and after the `/kcd set`. A unit switch calls `Helpers.RenderUnitPanel` and a tab click clears and rebuilds the scroll; `/kcd set` then runs the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
+- **The Unit dropdown lists exactly `Target` / `Focus` on every Grid entry, always** — before and after those rebuilds, and after the `/kcd set`. A unit switch calls `Helpers.RenderUnitPanel` and a tab click clears and rebuilds the scroll; `/kcd set` then runs the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
 - Every panel write fires `Ka0s_KickCD_ConfigChanged { section = … }`; subscribed modules redraw.
 - Every slash write does the same and any open panel widget refreshes.
 - `valueGate` errors name both the option list and the gating sibling.
 - Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
-- **The tab strip matches the table in [settings-panel.md](settings-panel.md).** General shows `Master controls | Units`; Icons shows `Sizing | Layout | Visual states | Border | Annotations | Ready glow`; Cast bar shows `General | Size and position | Icon | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Text Label shows `General | Placement | Font`; **Spells shows a one-tab strip reading `Spell list`**, with the spec picker and *Add spell* pinned above it. No tab name appears twice on one page (a duplicate means a row was filed under a group its page had already left), and **Profiles is the only page with no strip** — it stays one scrolling AceDBOptions page.
-- **Every color swatch has a `Use class color` checkbox immediately to its right, on the same line.** Tick one and the surface takes a class color; the swatch stays enabled, because its opacity still applies. Against an NPC boss the cast-bar and label swatches keep their stored color — that is intended, and the swatch's tooltip says so. The Icons page's swatches take the PLAYER's class on both units' pages.
-- **Icons → Annotations shows three headings** (`Icon`, `Font`, `Charges`), Cast bar → Size and position shows two (`Size`, `Position`), and Cast bar → Interruptible / Non-interruptible show four (`Bar`, `Background`, `Text`, `Border`). No page draws a heading that repeats the tab you just clicked.
-- **Text Label → General → `Label text` is a text box you can type into**, not a dropdown that opens on nothing. Type a caption, press Enter, and the label above the grid changes.
+- **The tab strip matches the table in [settings-panel.md](settings-panel.md).** General shows `Master controls | Units`; Grid → Icons shows `Sizing | Layout | Visual states | Border | Annotations | Ready glow`; Grid → Cast bar shows `General | Size and position | Icon | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Grid → Text Label shows `General | Placement | Font`; **Spells shows a one-tab strip reading `Spell list`**, with the spec picker and *Add spell* pinned above it. No tab name appears twice on one page (a duplicate means a row was filed under a group its page had already left), and **Profiles is the only page with no strip** — it stays one scrolling AceDBOptions page.
+- **Every color swatch has a `Use class color` checkbox immediately to its right, on the same line.** Tick one and the surface takes a class color; the swatch stays enabled, because its opacity still applies. Against an NPC boss the cast-bar and label swatches keep their stored color — that is intended, and the swatch's tooltip says so. Grid → Icons' swatches take the PLAYER's class on both units' pages.
+- **Grid → Icons → Annotations shows three headings** (`Icon`, `Font`, `Charges`), Grid → Cast bar → Size and position shows two (`Size`, `Position`), and Grid → Cast bar → Interruptible / Non-interruptible show four (`Bar`, `Background`, `Text`, `Border`). No page draws a heading that repeats the tab you just clicked.
+- **Grid → Text Label → General → `Label text` is a text box you can type into**, not a dropdown that opens on nothing. Type a caption, press Enter, and the label above the grid changes.
 - **Spells rows drag.** Grab the handle at a row's far left and move it several positions in one gesture; the list re-orders to where you dropped it, and the icon grid's priority order follows. There is exactly one box and one handle per row — two stacked fills means the host drew its own. Leave and re-enter the page twice: no handle or box is left stranded on anything.
-- **The Unit dropdown sits ABOVE the tab strip, in the page's chrome, and stays there when you click a tab.** This is the check that catches the whole class of regression the banner exists to prevent: a picker drawn into the scroll looks correct until the first tab click and then disappears. Click through every tab on Icons and confirm the dropdown is still there, still naming the same unit, on each one.
-- **Selecting a unit retargets every tab, not just the visible one.** On Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colors shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
-- **Charges badge inset (new controls).** On a spell with charges, tick Icons → Annotations → "Show charges". With both `Charges X offset` and `Charges Y offset` at their defaults (`-2` and `2`) the badge sits exactly where it did before this setting existed — flush inside the icon's bottom-right corner. Drag `Charges X offset` to `-20`: the badge moves LEFT by 18 px. Drag `Charges Y offset` to `20`: it moves UP by 18 px. `/kcd set units.target.icons.chargesOffsetX 900` clamps to `32 px`, and the badge lands at the slider's maximum rather than off the icon.
-- **Rotation reads in plain ASCII.** Text Label → Placement → "Rotation (degrees)" and `/kcd get units.target.label.style.rotation` both render e.g. `45 deg` — never an empty box where a degree sign used to be.
+- **The Unit dropdown sits ABOVE the tab strip, in the page's chrome, and stays there when you click a tab.** This is the check that catches the whole class of regression the banner exists to prevent: a picker drawn into the scroll looks correct until the first tab click and then disappears. Click through every tab on Grid → Icons and confirm the dropdown is still there, still naming the same unit, on each one.
+- **Selecting a unit retargets every tab, not just the visible one.** On Grid → Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colors shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
+- **Charges badge inset (new controls).** On a spell with charges, tick Grid → Icons → Annotations → "Show charges". With both `Charges X offset` and `Charges Y offset` at their defaults (`-2` and `2`) the badge sits exactly where it did before this setting existed — flush inside the icon's bottom-right corner. Drag `Charges X offset` to `-20`: the badge moves LEFT by 18 px. Drag `Charges Y offset` to `20`: it moves UP by 18 px. `/kcd set units.target.icons.chargesOffsetX 900` clamps to `32 px`, and the badge lands at the slider's maximum rather than off the icon.
+- **Rotation reads in plain ASCII.** Grid → Text Label → Placement → "Rotation (degrees)" and `/kcd get units.target.label.style.rotation` both render e.g. `45 deg` — never an empty box where a degree sign used to be.
 - **Renderer robustness (per-row `pcall` in `Helpers.RenderRows`):** a single malformed saved value degrades to one missing widget plus a red `schema error:` line — it does NOT blank the rest of the panel body (regression: a stale saved value once left a whole panel showing only its header). This is exercised by the headless suite (`tests/test_schema.lua`); it is not readily inducible in-game, so there is nothing to click here — it is listed for completeness of branch coverage.
 
 ### 12. Resets
@@ -461,13 +462,13 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is `lib.__PatchLSM30Border()`, a `LibKa0s-Options-1.0` member called once from `settings/OptionsSetup.lua`. **This section checks it with KickCD alone, which is exactly the check that stayed green through the defect section 29 exists for** — run 29 too whenever this one matters.
 
 **Steps.**
-- Open Settings → Cast bar.
+- Open Settings → Grid → Cast bar.
 - Click the **Bar texture** (statusbar) dropdown, the **Border style** dropdown, and the **Font** dropdown.
 
 **Pass.**
 - Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
 - The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; the library's patch hides it).
-- Switching to Settings → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
+- Switching to Settings → Grid → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
 
 ### 19. Debug traces
 
@@ -478,11 +479,11 @@ Debug output is not chat: one gated, secret-safe line per key functional-flow tr
 **Steps + pass.**
 - **Combat.** Enter combat (auto-attack a dummy), then leave combat. One `[Combat] entered` line appears when combat starts, one `[Combat] left` line when it ends — nothing at `PLAYER_LOGIN`, nothing per-tick during sustained combat.
 - **Profile.** Settings → Profiles → switch to a different profile (or create one). One `[Profile] switched to '<name>'` line appears naming the new profile key. Then **Copy From** another profile: one `[Set] copied profile '<source>' → '<active>'` line, and no `[Profile] switched` line.
-- **Resets.** Move two Cast bar settings off their defaults, then press the Cast bar page's **Defaults**: one `[Set] reset castbar: 2 rows` line, and no per-row `[Set] units.…` line. Press **Defaults** again: `[Set] reset castbar: 0 rows`. Then move three settings off their defaults (on any pages) and press **Reset all settings** (or `/kcd resetall`): exactly **one** `[Set]` line, `[Set] reset profile '<name>' to defaults (3 rows)`, with no `[Set] reset all` line beside it and no `[Profile] switched` line. Press **Reset all settings** again at once: `[Set] reset profile '<name>' to defaults (0 rows)`, never the schema's size. Then Settings → Profiles → **Reset Profile**: `[Set] reset profile '<name>' to defaults` with no count. A single `/kcd set locked true` afterwards logs its own `[Set] locked = true`, so the mute did not stick. Finally `/kcd set locked false` and press the General page's **Defaults** within a third of a second: `[Set] locked = false` prints **before** `[Set] reset general: …`, not after it.
+- **Resets.** Move two Cast bar settings off their defaults, then press Grid → Cast bar's **Defaults** (Target in the band): one `[Set] reset castbar: 2 rows` line, and no per-row `[Set] units.…` line. Press **Defaults** again: `[Set] reset castbar: 0 rows`. Then move three settings off their defaults (on any pages) and press **Reset all settings** (or `/kcd resetall`): exactly **one** `[Set]` line, `[Set] reset profile '<name>' to defaults (3 rows)`, with no `[Set] reset all` line beside it and no `[Profile] switched` line. Press **Reset all settings** again at once: `[Set] reset profile '<name>' to defaults (0 rows)`, never the schema's size. Then Settings → Profiles → **Reset Profile**: `[Set] reset profile '<name>' to defaults` with no count. A single `/kcd set locked true` afterwards logs its own `[Set] locked = true`, so the mute did not stick. Finally `/kcd set locked false` and press the General page's **Defaults** within a third of a second: `[Set] locked = false` prints **before** `[Set] reset general: …`, not after it.
 - **Cast / IconGrid.** Set Visibility to `target_casting_interruptible`, then have a hostile target start and stop an interruptible cast. One `[Cast] target cast gate: interruptible on/off` line appears when the gate flips, and one `[IconGrid] visibility …: shown/hidden` line appears when the grid's shown state actually changes — no line on refreshes where neither moved.
 - **Open.** `/kcd config` (or the minimap/options button) while out of combat. One `[Open] settings panel` line appears per successful open.
 - **Spells.** Every spell-list write is traced once, by its one writer (`core/Database.lua`), so the Spells editor and `/kcd spells` log the same line. In the Spells editor: add a spell (`[Spells] add <spellID> to <CLASS>/<SPEC>: N spells`), toggle a row's enabled checkbox (`[Spells] enable/disable <spellID> in <CLASS>/<SPEC>`), change its category (`[Spells] category <spellID> = <cat> in …`), drag a row (`[Spells] move <from> -> <to> in …`), remove a row (`[Spells] remove <spellID> from <CLASS>/<SPEC>: N spells`), and click "Reset to defaults" for a spec (`[Spells] reset <CLASS>/<SPEC>: N spells`). Each act logs **exactly one** line, not two. Then `/kcd spells remove <id>` and `/kcd spells reset` log the same lines, and `/kcd spells resetall` logs one `[Spells] resetall: N lists, M spells`.
-- **Set.** Change any setting on any panel (e.g. Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
+- **Set.** Change any setting on any panel (e.g. Grid → Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
 - **No spam.** Across all of the above, stay in combat for 30+ seconds with no target-cast activity: no additional `[Combat]`/`[Cast]`/`[IconGrid]` lines appear beyond the transition(s) already logged.
 
 ### 20. Focus tracking
@@ -508,26 +509,26 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 #### 20b. Link / unlink / copy styling
 
-**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Icons.
+**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Grid → Icons.
 
 **Steps.**
-- Select **Focus** in the Icons panel's Unit dropdown. Confirm the page draws its **tab strip** and no appearance rows — just the Unit dropdown in the chrome, the strip, and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
+- Select **Focus** in the Grid page's Unit dropdown, on Icons. Confirm the entry draws its **tab strip** and no appearance rows — just the Unit dropdown in the chrome, the strip, and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
 - **The strip is inert.** Every tab on it is **desaturated** and **none of them can be clicked** — every tab of a linked page draws the same note, so a clickable strip would redraw the identical page. Confirm the strip is still THERE (the page must not change shape when the picker flips) and that switching back to Target restores full color and clickability.
 - **The note is a link.** *"General page's Units tab"* is drawn in link blue. Mouse along the whole line: **nothing lights up behind it** — no plate, and above all no bright-green block (AceGUI paints one for a `SetHighlight` given color numbers). Clicking anywhere on it opens **General**, already on the **Units** tab — not the parent category, not General's Master controls tab. Then pull something and click it in combat: it must refuse with `[KCD] cannot open settings during combat` and **not** open the panel (Blizzard's category switch is protected — opening it under lockdown taints the panel for the session).
-- **The Unit dropdown is one selection across the three pages.** With Focus selected on Icons, walk to **Cast bar** and to **Text label**: both open on **Focus**, not back on Target. Flip one of them to Target and return to Icons — it is on Target too. Then `/reload`: every unit page opens on **Target** again, because the selection is session-only and deliberately not saved.
+- **The Unit dropdown is one selection across the three Grid entries.** With Focus selected on Grid → Icons, click **Cast bar** and **Text Label** on the rail: both open on **Focus**, not back on Target. Flip one of them to Target and return to Icons — it is on Target too. Then `/reload`: Grid opens on **Target** again, because the selection is session-only and deliberately not saved.
 - Change Target's `units.target.icons.primarySize` (switch the dropdown to Target first). Switch back to Focus — the linked Focus grid should visually match Target's new size live (no manual sync needed).
-- Go to **General → Units** and untick "Use same styling as Target". Return to Icons with Focus selected: the tab strip and the appearance rows appear, seeded with target's last-copied values (or defaults if never copied). The tick reaching a page you were not looking at is the point — it is a structural refresh, and a page that was hidden repaints on its next show.
+- Go to **General → Units** and untick "Use same styling as Target". Return to Grid → Icons with Focus selected: the tab strip and the appearance rows appear, seeded with target's last-copied values (or defaults if never copied). The tick reaching a page you were not looking at is the point — it is a structural refresh, and a page that was hidden repaints on its next show.
 - Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
-- Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and the Icons page collapses back to the note under its now-inert strip; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
+- Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and Grid → Icons collapses back to the note under its now-inert strip; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
 - On **General → Units**, the tick and the button are **one line**: `[Use same styling as Target] [Copy styling from Target]`, the button in the right half. A button on a line of its own reads as belonging to whatever follows it rather than to the tick above.
 - Untick again, then click **"Copy styling from Target"** (also on General → Units). Every Focus `icons` / `castbar` / `label.style` row and `label.show` takes Target's current value, row by row through the settings helper, and `link` flips to `false` (the button also unlinks if still linked). Before clicking, give Target a **vertical** cast bar growing **Down**; after, Focus's bar is vertical and still grows Down (orientation's own reset to Up must not win). With `/kcd debug on`, the console shows **one** `[Set] copy target→focus: N rows` summary line for the whole copy (N is the rows the copy changed: the Target rows you moved off their defaults, plus the link), **no** per-row `[Set] units.focus.…` lines, and no Lua error.
-- `/kcd set units.focus.link false` unlinks exactly as the tick does: the tick unticks on an open General page, and the three unit pages grow their rows back. `/kcd set units.focus.link true` collapses them to the note again. With Focus unlinked, the General page's **Defaults** button re-links it.
+- `/kcd set units.focus.link false` unlinks exactly as the tick does: the tick unticks on an open General page, and the Grid page's three entries grow their rows back. `/kcd set units.focus.link true` collapses them to the note again. With Focus unlinked, the General page's **Defaults** button re-links it.
 
 **Pass.**
 - While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
 - Position (`units.focus.anchors.icons`/`castbar`) and the Focus identity label (`units.focus.label.text`, if shown) stay independent of Target's position/label at every step, linked or not — dragging the Focus grid never moves Target's.
 - "Copy styling from Target" is a one-time deep copy (not a live link) — a subsequent Target-only appearance change does NOT propagate to the now-unlinked Focus.
-- Neither control appears anywhere else. There is exactly one "Use same styling as Target" tick and one "Copy styling from Target" button in the whole panel, both on General → Units; the three unit pages carry the note and nothing else.
+- Neither control appears anywhere else. There is exactly one "Use same styling as Target" tick and one "Copy styling from Target" button in the whole panel, both on General → Units; the three Grid entries carry the note and nothing else.
 - No Lua errors at any toggle.
 
 #### 20c. Mid-cast enable + master-enable revive
@@ -559,7 +560,7 @@ This is also the reason to unlink **first** and set values **second**.
 /kcd set units.focus.enabled true
 ```
 
-Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
+Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Grid → Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
 
 ```
 /kcd set units.target.icons.cooldownAlpha 0.20
@@ -574,7 +575,7 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 - Cast an interrupt at a friendly target dummy. Use one whose cooldown is comfortably over ~1.6s — any real interrupt (15–24s) qualifies. Both grids render the same player cooldowns, so one cast drives both.
 - Watch both grids during the cooldown.
 - Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
-- Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
+- Mid-cooldown, change target's border **style** on Settings → Grid → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
 - **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open fires every refresher in `ctx.refreshers` (through `RefreshScalars`), which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
 - Re-tick "Use same styling as Target" on General → Units.
 
@@ -588,7 +589,7 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 
 **Note.** While only the GCD is running (no real cooldown on the watched spell) both icons correctly show ready visuals — the curves classify that lockout by its total length, below `Const.GCD_UPPER`. If both look bright and untinted right after you press something else, wait a moment — that is not a failure.
 
-**Cleanup.** Icons panel → **Defaults**.
+**Cleanup.** Grid → Icons → **Defaults**, with Target and then Focus in the band.
 
 ### 21. Legacy migration
 
@@ -608,12 +609,12 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 
 ### 22. Text label
 
-Each unit (target/focus) can show one configurable identity label, rendered by `modules/UnitLabel.lua` and configured on its own **Text Label** settings tab (`settings/Label.lua`, panel/section `label`, after Cast bar).
+Each unit (target/focus) can show one configurable identity label, rendered by `modules/UnitLabel.lua` and configured on the Grid page's **Text Label** entry (`settings/Label.lua`, panel/section `label`, after Cast bar on the rail).
 
-**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Settings → Text Label. (On the way, confirm Settings → **General** no longer carries any label show/text controls — those moved to this Text Label tab; General keeps only the per-unit **Enable** rows.)
+**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Grid → Text Label. (On the way, confirm Settings → **General** no longer carries any label show/text controls — those moved to this Text Label entry; General keeps only the per-unit **Enable** rows.)
 
 **Steps.**
-- Select **Target** in the Text Label panel's unit dropdown. **Show label** is checked by default; confirm a label reading "Target" already appears just above the target icon grid (the default `attach = "icons"`, `point = "BOTTOM"`, `relPoint = "TOP"`, `offsetY = 12`). Toggle **Show label** off/on; confirm the label disappears/reappears.
+- Select **Target** in the Grid page's unit dropdown, on Text Label. **Show label** is checked by default; confirm a label reading "Target" already appears just above the target icon grid (the default `attach = "icons"`, `point = "BOTTOM"`, `relPoint = "TOP"`, `offsetY = 12`). Toggle **Show label** off/on; confirm the label disappears/reappears.
 - Edit **Label text** to something custom (e.g. "MainTank"); confirm it updates live, no `/reload` needed.
 - Switch **Attach to** from `castbar` to `icons`; confirm the label re-anchors to the icon grid frame instead, still tracking live as the grid moves/resizes (drag the grid; the label follows via the next `Ka0s_KickCD_GridLayout`).
 - Walk the anchor/attach point pair (`Label anchor point` / `Attach point`) through a few combinations (e.g. `TOP`/`BOTTOM`, `LEFT`/`RIGHT`) and vary **X offset (in px)** / **Y offset (in px)**; confirm the label's position updates live and matches the chosen points + offsets. Every option in both dropdowns is a native `SetPoint` anchor (`TOPLEFT` … `BOTTOMRIGHT` / `CENTER`), so selecting *any* combination repositions the label with no Lua error — regression guard: an earlier build fed the icon grid's `<SIDE>_<ALIGN>` tokens (e.g. `TOP_MIDDLE`) straight into `SetPoint`, which errored on the first non-`CENTER` pick and left the default unselectable in the dropdown.
@@ -621,7 +622,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 - Set **Rotation (degrees)** to a nonzero value (e.g. 45, -90); confirm the label visibly rotates and returns to upright at 0.
 - Change **Font** / **Font size** / **Font flags**; confirm the label's rendered font updates live (LSM dropdown, same widget family as Cast bar → Font).
 - Change **Label color** (color picker in the Font group) to a distinct color (e.g. bright green or red); confirm the label's text color updates live. Switch **Attach to** between `castbar`/`icons`; confirm the color persists across the re-anchor.
-- Switch to **Focus** in the unit dropdown with `units.focus.link = true` (the default): confirm the Text Label page now shows only the "Linked to Target…" note, under a desaturated and unclickable strip — no Show label / Label text / Placement / Orientation / Font rows are rendered while linked (matching the Icons and Cast bar pages). Focus's label still renders live (with Target's style, including color) if `units.focus.label.show` is `true` in the saved profile — it's just not editable from this page while linked.
+- Switch to **Focus** in the unit dropdown with `units.focus.link = true` (the default): confirm Grid → Text Label now shows only the "Linked to Target…" note, under a desaturated and unclickable strip — no Show label / Label text / Placement / Orientation / Font rows are rendered while linked (matching the Icons and Cast bar pages). Focus's label still renders live (with Target's style, including color) if `units.focus.label.show` is `true` in the saved profile — it's just not editable from this page while linked.
 - Uncheck "Use same styling as Target" for Focus: confirm the page now shows the full Show label / Label text / Placement / Orientation / Font body again. Set Focus's label text to something distinct from Target's (e.g. "Kick this") and change one style value (e.g. rotation or color); confirm Target's label is unaffected and both units can show different text with different styles. Re-check the link; confirm the body collapses back to the note and Focus's label style (including color) reverts to mirroring Target's live (text stays as "Kick this" — text is per-unit data, not link-resolved).
 - With both labels shown, toggle `units.focus.enabled` off; confirm the Focus label disappears immediately (independent of Target's, which stays visible) and reappears when Focus is re-enabled.
 - Toggle **Show label** off for Target while Target's icon grid/cast bar remain visible; confirm only the label disappears, not the grid/bar.
@@ -640,11 +641,11 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Steps.**
 - Log in.
-- `/kcd get units.target.label.style.font` (or open Settings → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
+- `/kcd get units.target.label.style.font` (or open Settings → Grid → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
 - `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`.
 
 **Pass.**
-- No Lua errors during the migration login or on the Text Label panel.
+- No Lua errors during the migration login or on Grid → Text Label.
 - If a label was already shown pre-migration (`label.show = true` in the edited file), it renders identically before and after — **no visual change**, since the backfilled `style` values equal the shipped defaults the label was implicitly using anyway.
 - `label.show` / `label.text` values from the edited file are preserved exactly (the migration only fills in the missing `style` sub-table).
 - A second `/reload` doesn't error or re-write anything (`Database:BackfillLabelStyle` is idempotent — it only acts when `style == nil`).
@@ -736,7 +737,7 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
   `STANDARD_TEXT_FONT` fired (no library, or `media/fonts/` missing from the payload — honest
   degradation); **no text at all** means the path is dead, which is the failure the fallback exists to
   prevent and is never acceptable.
-- **The face is in the font dropdowns.** `/kcd config` → **Text Label** → the font dropdown lists
+- **The face is in the font dropdowns.** `/kcd config` → **Grid** → **Text Label** → the font dropdown lists
   **JetBrains Mono** beside the player's other fonts. `core/MediaSetup.lua` registers it with
   LibSharedMedia at file load; if it is missing, `Media.RegisterLSM` did not run or ran before LSM.
 - **Degraded stays honest.** Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` (section 25's
@@ -765,15 +766,15 @@ SharedMediaAdditionalFonts or ElvUI's media pack — enabled alongside KickCD, s
 Blizzard defaults. Log in fresh; do not `/reload` before the first check.
 
 **Steps.**
-- `/kcd config` → **Icons**. Open **Border texture** and **Cooldown text font**.
-- → **Text Label**. Open the **Font** dropdown.
-- → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
-  **Bar texture** and **Border texture**. That is eight dropdowns across the three pages; they are the
+- `/kcd config` → **Grid** → **Icons**. Open **Border texture** and **Cooldown text font**.
+- Rail → **Text Label**. Open the **Font** dropdown.
+- Rail → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
+  **Bar texture** and **Border texture**. That is eight dropdowns across the three entries; they are the
   eight composed rows this item moved.
 - `/dump LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose`
-- Pick a non-default face in **Text Label** → **Font** and confirm the label redraws in it.
+- Pick a non-default face in **Grid** → **Text Label** → **Font** and confirm the label redraws in it.
 - Now the deferral itself, which is the half a snapshot would pass: with the client already running,
-  enable a media addon you had disabled, `/reload`, and re-open **Cast bar** → **Bar texture**.
+  enable a media addon you had disabled, `/reload`, and re-open **Grid** → **Cast bar** → **Bar texture**.
 
 **Pass.**
 - All eight dropdowns list real media — several faces, several borders, several bar textures — not a
@@ -802,8 +803,8 @@ stale label, a mis-anchored button or a band that changes height on a re-dressed
 every automated check in this repo.**
 
 **Steps — the strip.**
-- `/kcd config` → **General**, **Icons** (six tabs, the widest strip here) and **Cast bar**. On each
-  page, cycle every tab three times, ending back on the first.
+- `/kcd config` → **General**, then **Grid** → **Icons** (six tabs, the widest strip here) and **Grid** → **Cast bar**. On each
+  page or entry, cycle every tab three times, ending back on the first.
 - Watch three things on each pass: the **label** is that tab's own, the **selected** tab is the one
   you pressed, and the strip's **band height** does not move as you go through it.
 
@@ -815,7 +816,7 @@ five, so run two.
 - `/kcd perf start` with no label, then `cancel`.
 
 **Pass.**
-- Every tab labeled and selected correctly on all three passes, on all three pages, and no band that
+- Every tab labeled and selected correctly on all three passes, on General, Icons and Cast bar, and no band that
   grows or shrinks. A label carried over from the previously-dressed tab, a highlight on the wrong
   button, a body drawn under the wrong tab, or a strip whose height moves between passes is the pool
   handing back a frame it did not finish dressing.
@@ -845,7 +846,7 @@ carries its own.
 
 **Steps.**
 - Enable KickCD, PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters together, and log in.
-- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Cast bar** → **Border
+- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Grid** → **Cast bar** → **Border
   style**.
 - Change the load order — disable and re-enable addons, or rename folders so a different one is
   reached last — `/reload`, and walk the five dropdowns again.
@@ -1045,7 +1046,7 @@ the client can show this.
    **Straight after `/reload`, with no lock toggle in between** (the 2026-09-26 regression): unlock,
    `/reload`, and check **both** units. Each strip ("Ka0s KickCD — Target" / "— Focus") sits fully
    above its "Target" / "Focus" label, with a small gap and no text drawn over text. Then, without
-   touching the lock, untick Text Label → **Show label** for each unit in turn (untick "Use same
+   touching the lock, untick Grid → Text Label → **Show label** for each unit in turn (untick "Use same
    styling as Target" first so Focus has its own): that unit's strip drops to just above its icons.
    Tick it again and the strip climbs back above the label. Raise the label's font size to 30
    and the strip stays clear of the taller text. `/kcd lock` hides both strips.
@@ -1119,6 +1120,29 @@ to secret values in combat, and to a Copy. What each section holds is in
     Lua error. Rename the folder back.
 
 ---
+
+### 36. The Grid page (KickCD#33)
+
+The owner runs these in the client and fills in Result; Claude never marks one passed. Open the panel
+with `/kcd config`.
+
+**Owner run, 2026-09-26:** KC-S1 to KC-S11 all passed in the client; the owner then gave the go-ahead to merge.
+
+| # | Check | Expected | Source | Result |
+|---|---|---|---|---|
+| KC-S1 | Look at the Settings tree under Ka0s KickCD. | General · Grid · Spells · Profiles. There are no Icons, Cast bar or Text Label entries. | spec §B1; NR-KC-04 | |
+| KC-S2 | Open Grid. | The Unit picker is the band across the top, full width. The rail is on the left with Icons · Cast bar · Text Label, and the page opens on Icons. The rail's top edge is level with the top of the tab art. | spec §B2; options-ui-§13, §14 | |
+| KC-S3 | Rail -> Cast bar, then scroll to the bottom of the Interruptible tab. | Only the controls move. The band, the rail and the tab strip stay where they are. | spec §B2 | |
+| KC-S4 | Cast bar -> Font, then Icons, then Cast bar again. | Cast bar opens on Font. Text Label -> Placement, Icons, Text Label: it opens on Placement. | spec §B3 (per-entry tabs); Review Focus 3 | |
+| KC-S5 | Untick General -> Units -> "Use same styling as Target". On Grid -> Cast bar -> Font, pick Focus in the band. | The page stays on Cast bar -> Font, and the values shown are Focus's. | options-ui-§14 (the rail is not a picker); NR-KC-02 | |
+| KC-S6 | Tick "Use same styling as Target" again. Open Grid with Focus in the band and click each rail entry. Then click the link in the note. | The rail is there on a linked Focus. Each entry draws its full tab strip, grayed and not clickable, with only the "Linked to Target..." note under it. The link opens General on its Units tab. | spec §B3 (linked Focus); R9 | |
+| KC-S7 | Untick the link again. With Target in the band, change a Cast bar setting and an Icons setting for Target, and a Cast bar setting for Focus. Select Cast bar and click Defaults. | Only Target's Cast bar settings go back to defaults. Target's Icons setting and Focus's Cast bar setting keep your values. The Defaults tooltip says it restores the selected unit's settings in the section on screen. | Review Focus 4; spec §B3 (Defaults); R8 | |
+| KC-S8 | Open Grid, then enter combat. Try clicking a rail entry. Leave combat. | The whole page, rail included, is under the combat cover with "Settings are locked during combat." Nothing changes, and one gray "locked" line prints. After combat the page draws normally, on the entry you were on. | options-ui-§2, §13 | |
+| KC-S9 | `/reload`, then open Grid as the first page of the session. | The tabs sit in one row to the right of the rail from the first frame. None is drawn under the rail. | Global Constraints; NR-KC-02 | |
+| KC-S10 | Type `/kcd reset castbar`. | The reply says the page-shaped reset is gone and points at Grid -> Cast bar's Defaults button (for the unit in the band), or `/kcd reset <path>`. | spec §B3 (slash wording); R13 | |
+| KC-S11 | Hover each rail entry. | Each shows a tooltip saying what the entry holds. | spec §B2 (rail tooltips) | |
+
+---
 ---
 ## When to run which subset
 
@@ -1135,6 +1159,7 @@ to secret values in combat, and to a Copy. What each section holds is in
 - **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
 - **Launcher / logo / `## IconTexture` edits, and any LibKa0s re-vendor that moves `Launcher.lua`:** **33**. It is the only place the icon is checked against what the client actually draws — a wrong TGA format draws nothing and raises nothing, so no gate reports it.
+- **Grid page edits:** **36** after any change to settings/Grid.lua, settings/Panel_Render.lua or the three entry files.
 - **Pre-release / TOC bump:** the entire suite. The numbered surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).

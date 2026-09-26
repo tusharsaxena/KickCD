@@ -93,7 +93,7 @@ end
 ---
 --- The composers (libs/LibKa0s/OptionsCompose.lua) return ORDINARY schema rows
 --- carrying `page`, `group`, `subgroup` and `order`. This addon keys its rows
---- `panel` + `section` -- and, on the three per-unit pages, `unit` -- so one
+--- `panel` + `section` -- and, on the Grid page's three per-unit entries, `unit` -- so one
 --- pass stamps those on and appends in declaration order. Nothing else about a
 --- composed row is touched: what comes back is indistinguishable from a
 --- hand-written row, which is the whole point of the composers being pure.
@@ -362,8 +362,8 @@ end
 --     validation are the descriptor's `buildMain` and `validate` hooks, which
 --     point at Helpers.BuildMainContent and the schema seam's Store.Validate.
 --
--- Page ORDER is the TOC's settings/ block order, which is the order the six
--- builders register in and the order the library drains the queue in. It used
+-- Page ORDER is the TOC's settings/ block order, which is the order the four
+-- builders (General, Grid, Spells, Profiles) register in and the order the library drains the queue in. It used
 -- to be spelled a second time in NS.Settings.order, immediately below the TOC
 -- that already fixed it.
 

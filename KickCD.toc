@@ -126,8 +126,8 @@ settings\SchemaSetup.lua
 settings\Slash.lua
 # LOAD-BEARING POSITION: this file creates NS.Settings and publishes the
 # LibKa0s-Options-1.0 instance on it as NS.Settings.Helpers. settings/Panel.lua,
-# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the per-tab files
-# General/Icons/Castbar/Label all take that member as a file-scope upvalue, and
+# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the page and entry files
+# General/Icons/Castbar/Label/Grid all take that member as a file-scope upvalue, and
 # General and Icons then CALL H.AddComposed at file scope — so a position below
 # any of them raises during load, not on first open.
 settings\OptionsSetup.lua
@@ -139,13 +139,19 @@ settings\OptionsSetup.lua
 # file-scope local, so this line must stay above every per-tab file.
 settings\Panel.lua
 # Conventional position: below settings\Panel.lua the page files are free relative to
-# each other; the one exception, settings\Spells_Rows.lua, carries its own note.
+# each other, bar two notes: settings\Grid.lua's and settings\Spells_Rows.lua's. The
+# Icons, Cast bar and Text Label files call Helpers.RegisterGridSection, which
+# settings\Panel_Render.lua publishes, at file scope, so they stay below it.
 settings\Panel_Widgets.lua
 settings\Panel_Render.lua
 settings\General.lua
 settings\Icons.lua
 settings\Castbar.lua
 settings\Label.lua
+# LOAD-BEARING POSITION: the Grid page (KickCD#33) registers here, and page order is
+# registration order, so the tree reads General, Grid, Spells, Profiles. It binds the
+# entries settings\Icons.lua, Castbar.lua and Label.lua registered above it.
+settings\Grid.lua
 settings\Spells.lua
 # LOAD-BEARING POSITION: takes NS.Settings.SpellsPanel (settings/Spells.lua) as a file-scope upvalue.
 settings\Spells_Rows.lua

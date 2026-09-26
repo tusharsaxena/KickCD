@@ -1,6 +1,6 @@
 -- settings/Label.lua
 --
--- "Text Label" canvas panel. One identity label per unit (target/focus),
+-- The Grid page's "Text Label" entry (KickCD#33). One identity label per unit (target/focus),
 -- rendered by modules/UnitLabel.lua. Pure schema: every widget is a row in
 -- KickCD.Settings.Schema, generated once per NS.Units.LIST entry with a
 -- unit-scoped path (units.<unit>.label.*). label.show FOLLOWS the styling link
@@ -9,7 +9,7 @@
 -- "Linked to Target" note when linked. label.text stays per-unit (spec 2a);
 -- while linked its row also collapses (unlink to edit the text — the stored
 -- per-unit text still renders). Uses the shared Unit banner + tab strip via
--- RenderUnitPanel.
+-- RenderUnitPanel, under the Grid page's rail.
 
 local _, NS = ...
 local L      = NS.L
@@ -208,28 +208,7 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
-local function Build(mainCategory)
-    if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
-        return nil
-    end
-    local ctx
-    ctx = H.CreatePanel("KickCDLabelPanel", L["Text Label"], {
-        pageKey        = "label",
-        defaultsButton = true,
-    })
-    -- Parked, not wired: the Defaults button doesn't exist until the
-    -- panel's first OnShow (H.EnsureDefaultsButton).
-    ctx.panel.defaultsOnClick = function()
-        H.RestoreDefaults("label", ctx)
-    end
-    -- The library owns WHEN this draws (H.SetRenderer) and H.RenderUnitPanel
-    -- pins the Unit picker into the chrome band above the tab strip; see
-    -- settings/Icons.lua's builder for the long form.
-    H.SetRenderer(ctx, function(c) H.RenderUnitPanel(c, "label") end)
-    return Settings.RegisterCanvasLayoutSubcategory(
-        mainCategory, ctx.panel, L["Text Label"])
-end
-
-if NS.RegisterOptionsPage then
-    NS.RegisterOptionsPage("label", L["Text Label"], Build)
-end
+-- The Text Label entry of the Grid page (KickCD#33).
+H.RegisterGridSection("label", L["Text Label"], {
+    tooltip = L["The unit's identity label: what it says, where it sits and its font."],
+})

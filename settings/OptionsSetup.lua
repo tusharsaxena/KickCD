@@ -381,8 +381,7 @@ if not lib then
     -- tests/test_surface_parity.lua on the argument that a page which cannot be built has nothing
     -- to render into -- true, and equally true of CreatePanel and EnsureScroll beside it, which are
     -- stubbed anyway. That exemption is how AbsorbTracker's stub came to omit the member outright
-    -- with every suite green, and it is now called by all six of this addon's pages rather than
-    -- four. A member the host calls is a member the stub owes.
+    -- with every suite green, and every page this addon registers calls it. A member the host calls is a member the stub owes.
     --
     -- The last five arrived with LibKa0s v1.35.0 (OptionsWidgets 16): the ChoiceGrid radio grid,
     -- the IdInput / IdList spell-item-currency id editor, and the ResolveId / UnnamedCandidates
@@ -403,6 +402,9 @@ if not lib then
         -- SelectTab, new at LibKa0s v1.36.0: reached only from a tab click on an already-rendered
         -- page. This addon does not adopt tab-scoped refresh, so the same inert no-op applies.
         "SelectTab",
+        -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Grid page's
+        -- render (settings/Grid.lua), which never runs here, so the same inert no-op applies.
+        "NavRail",
     }) do
         Helpers[name] = function() end
     end

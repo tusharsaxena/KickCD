@@ -1,8 +1,8 @@
 -- settings/Icons.lua
 --
--- Icons canvas panel. Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the builder calls Helpers.RenderUnitPanel, which
--- pins the Unit picker into the page's chrome band and hands the rows to
+-- The Grid page's Icons entry (KickCD#33). Pure schema: every widget is a row in
+-- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
+-- Helpers.RenderGridPage, which pins the Unit picker into the band, draws the rail, and hands the rows to
 -- Helpers.RenderTabbedSchema -- six tabs (Sizing, Layout, Visual states,
 -- Border, Annotations, Ready glow), partitioned from `group` in declaration
 -- order (options-ui-§13). Adding an option means adding one row INSIDE the run
@@ -435,41 +435,7 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
--- ---------------------------------------------------------------------
--- Builder
--- ---------------------------------------------------------------------
-
-local function Build(mainCategory)
-    if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
-        return nil
-    end
-
-    local ctx
-    ctx = H.CreatePanel("KickCDIconsPanel", L["Icons"], {
-        pageKey        = "icons",
-        defaultsButton = true,
-    })
-    -- Parked, not wired: the Defaults button doesn't exist until the
-    -- panel's first OnShow (H.EnsureDefaultsButton).
-    ctx.panel.defaultsOnClick = function()
-        H.RestoreDefaults("icons", ctx)
-    end
-
-    -- The library owns WHEN this draws (H.SetRenderer): first show, and again
-    -- when a refresh marked it dirty while it was hidden — which is what makes
-    -- the General page's Focus styling link reach this page at all. Building at
-    -- registration time would lay the widgets out against a zero-width body,
-    -- because registration happens at PLAYER_LOGIN.
-    --
-    -- H.RenderUnitPanel (not RenderTabbedSchema directly) pins the Unit picker
-    -- into the page's chrome band ABOVE the tab strip and then hands over
-    -- (settings/Panel_Render.lua).
-    H.SetRenderer(ctx, function(c) H.RenderUnitPanel(c, "icons") end)
-
-    return Settings.RegisterCanvasLayoutSubcategory(
-        mainCategory, ctx.panel, L["Icons"])
-end
-
-if NS.RegisterOptionsPage then
-    NS.RegisterOptionsPage("icons", L["Icons"], Build)
-end
+-- The Icons entry of the Grid page (KickCD#33).
+H.RegisterGridSection("icons", L["Icons"], {
+    tooltip = L["The interrupt icons: their size, layout, states, border, annotations and ready glow."],
+})

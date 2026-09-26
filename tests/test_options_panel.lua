@@ -19,11 +19,11 @@ local S  = NS.Settings.Store
 -- The Settings window calls OnCommit on apply, OnRefresh on re-show, and
 -- OnDefault from its own FOOTER control — a different widget from the header
 -- Defaults button this addon builds, and not per-page. LibKa0s stamps all three
--- in CreatePanel as of minor 5, so all five of this addon's pages
--- (settings/General.lua:226, Icons.lua:448, Castbar.lua:561, Label.lua:216,
--- Spells.lua:1113) gained a working footer control without a line of their own
--- changing. Nothing in this repo would notice losing it again: the header
--- Defaults button keeps working and looks equivalent to the user.
+-- in CreatePanel as of minor 5, so every page this addon builds a canvas for
+-- (settings/General.lua, Grid.lua and Spells.lua) gained a working footer
+-- control without a line of their own changing. Nothing in this repo would
+-- notice losing it again: the header Defaults button keeps working and looks
+-- equivalent to the user.
 --
 -- RAWGET, not `type(panel.OnDefault)`. The frame mock synthesizes a no-op for
 -- any PascalCase key, so the type check is true whether or not anything set it.
@@ -83,7 +83,8 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
     -- ...and the host's own decorations sit on the SAME table.
     for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
                          "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
-                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged" }) do
+                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged",
+                         "RegisterGridSection", "GridSection", "RenderGridPage" }) do
         assertEqual(type(H[m]), "function", "host decoration missing: " .. m)
     end
 end)
@@ -102,18 +103,18 @@ test("the host ships no widget maker, flow engine or layout constant of its own"
     assertNil(src:match("BUTTON_PAIR_REL%s*="), "a copied layout constant came back")
 end)
 
--- ── page registration (one registry, six pages, once each) ──────────────────
+-- ── page registration (one registry, every page, once each) ─────────────────
 
---- The six pages, in the order the TOC loads settings/<page>.lua — which is the
+--- The pages, in the order the TOC loads settings/<page>.lua — which is the
 --- order they call NS.RegisterOptionsPage in, and therefore the order the
 --- library drains its queue in. It used to be spelled a second time in
 --- NS.Settings.order.
-local PAGE_KEYS  = { "general", "icons", "castbar", "label", "spells", "profiles" }
-local PAGE_FILES = { "General", "Icons", "Castbar", "Label", "Spells", "Profiles" }
+local PAGE_KEYS  = { "general", "grid", "spells", "profiles" }
+local PAGE_FILES = { "General", "Grid", "Spells", "Profiles" }
 
 test("every page registers exactly once, through the library's registry", function()
     -- The acceptance criterion for KCD-R-03 / KCD-A-09 stated headlessly: the
-    -- Blizzard options list gets ONE parent category and SIX subcategories.
+    -- Blizzard options list gets ONE parent category and one subcategory per page.
     -- With the private registry in settings/Panel.lua still present alongside
     -- the library's, whichever one ran won and the other's guarantees applied to
     -- nothing; wiring the library forwarders WITHOUT deleting the private path
@@ -147,7 +148,7 @@ end)
 test("no page file reaches a registry other than the library's", function()
     -- The other half of the same finding, pinned at the source so a new page
     -- cannot quietly reintroduce the private path. Panel.lua is checked for the
-    -- registry itself; the six page tails for how they enter it.
+    -- registry itself; the page tails for how they enter it.
     -- red under: putting `NS.Settings.RegisterTab("general", Build)` back into
     -- settings/General.lua.
     local function read(rel)
@@ -680,8 +681,9 @@ test("the linked-Focus note opens General on its Units tab", function()
     if cfg then cfg.link = true end
     iH.SetViewedUnit("focus")
 
-    local ctx = iH.__panelFor("castbar")
-    assertTrue(ctx ~= nil, "the Cast bar page must be registered")
+    local ctx = iH.__panelFor("grid")
+    assertTrue(ctx ~= nil, "the Grid page must be registered")
+    assertTrue(iH.SelectSection("castbar"), "the Grid page lists no Cast bar entry")
     ctx.panel:Show()
     iH.RefreshPanel(ctx, true)
 
@@ -968,8 +970,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 5,
-        "the major is five files at LibKa0s v1.39.0 -- a count that moved means a file "
+    assertEqual(scanned, 6,
+        "the major is six files at LibKa0s v1.61.0 -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.

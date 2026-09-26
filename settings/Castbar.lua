@@ -1,8 +1,8 @@
 -- settings/Castbar.lua
 --
--- Castbar canvas panel. Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the builder just calls Helpers.RenderUnitPanel,
--- which draws the Unit picker as the page banner and then hands the rows to
+-- The Grid page's Cast bar entry (KickCD#33). Pure schema: every widget is a row in
+-- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
+-- Helpers.RenderGridPage: the Unit band, the rail, then the rows handed to
 -- Helpers.RenderTabbedSchema. Adding a new castbar option means adding one
 -- schema row here -- into the run of rows its `group` already owns, because
 -- the strip is partitioned by group in declaration order (options-ui-§13) and
@@ -336,7 +336,7 @@ add{
 
 -- Font -----------------------------------------------------------------
 -- The typography the spell name and the cast time SHARE. Named Font rather
--- than Text so it agrees with the Text Label page's Font tab and so it is not
+-- than Text so it agrees with the Text Label entry's Font tab and so it is not
 -- mistaken for the two tabs beside it, which are the text ELEMENTS. The "Show
 -- spell name" and "Show cast time" toggles each sit with their own anchor and
 -- offsets on those tabs -- that decision is older than the strip and it holds:
@@ -577,36 +577,7 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
--- ---------------------------------------------------------------------
--- Builder
--- ---------------------------------------------------------------------
-
-local function Build(mainCategory)
-    if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
-        return nil
-    end
-
-    local ctx
-    ctx = H.CreatePanel("KickCDCastbarPanel", L["Cast bar"], {
-        pageKey        = "castbar",
-        defaultsButton = true,
-    })
-    -- Parked, not wired: the Defaults button doesn't exist until the
-    -- panel's first OnShow (H.EnsureDefaultsButton).
-    ctx.panel.defaultsOnClick = function()
-        H.RestoreDefaults("castbar", ctx)
-    end
-
-    -- The library owns WHEN this draws (H.SetRenderer) and H.RenderUnitPanel
-    -- pins the Unit picker into the chrome band above the tab strip; see
-    -- settings/Icons.lua's builder for the long form.
-    H.SetRenderer(ctx, function(c) H.RenderUnitPanel(c, "castbar") end)
-
-    return Settings.RegisterCanvasLayoutSubcategory(
-        mainCategory, ctx.panel, L["Cast bar"])
-end
-
-if NS.RegisterOptionsPage then
-    NS.RegisterOptionsPage("castbar", L["Cast bar"], Build)
-end
-
+-- The Cast bar entry of the Grid page (KickCD#33).
+H.RegisterGridSection("castbar", L["Cast bar"], {
+    tooltip = L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."],
+})
