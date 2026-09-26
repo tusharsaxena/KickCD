@@ -108,11 +108,12 @@ modules\IconGrid.lua
 modules\IconGrid_Layout.lua
 modules\IconGrid_Render.lua
 modules\Castbar.lua
-# LOAD-BEARING POSITION: modules/Castbar_Handle.lua, modules/Castbar_Skin.lua and
-# modules/Castbar_Debug.lua call NS:GetModule("Castbar") at file scope, so all three
-# follow modules\Castbar.lua.
+# LOAD-BEARING POSITION: modules/Castbar_Handle.lua, modules/Castbar_Skin.lua,
+# modules/Castbar_Events.lua and modules/Castbar_Debug.lua call NS:GetModule("Castbar")
+# at file scope, so all four follow modules\Castbar.lua.
 modules\Castbar_Handle.lua
 modules\Castbar_Skin.lua
+modules\Castbar_Events.lua
 modules\Castbar_Debug.lua
 modules\UnitLabel.lua
 # The sections of `/kcd diagnostics` (debug-logging-§14). Last in this block by
