@@ -188,6 +188,7 @@ local SUITES = {
     "test_spell_registry",
     "test_settings_widgets",
     "test_options_panel",
+    "test_grid",
     "test_settings_refreshers",
     "test_flow_traces",
     "test_version",

@@ -208,6 +208,11 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
+-- The Text Label entry of the Grid page (KickCD#33).
+H.RegisterGridSection("label", L["Text Label"], {
+    tooltip = L["The unit's identity label: what it says, where it sits and its font."],
+})
+
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil

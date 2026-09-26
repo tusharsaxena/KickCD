@@ -56,6 +56,7 @@ L["Write the full diagnostic report (same as /kcd diagnostics)"] =
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"
+L["Grid"]                        = "Grid"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
@@ -533,3 +534,11 @@ L["Track cooldowns for your current target."] =
     "Track cooldowns for your current target."
 L["Track cooldowns for your current focus."] =
     "Track cooldowns for your current focus."
+
+-- The Grid page's rail (KickCD#33): one tooltip per entry.
+L["The interrupt icons: their size, layout, states, border, annotations and ready glow."] =
+    "The interrupt icons: their size, layout, states, border, annotations and ready glow."
+L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."] =
+    "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
+L["The unit's identity label: what it says, where it sits and its font."] =
+    "The unit's identity label: what it says, where it sits and its font."

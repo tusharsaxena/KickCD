@@ -435,6 +435,11 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
+-- The Icons entry of the Grid page (KickCD#33).
+H.RegisterGridSection("icons", L["Icons"], {
+    tooltip = L["The interrupt icons: their size, layout, states, border, annotations and ready glow."],
+})
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------

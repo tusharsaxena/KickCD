@@ -1095,6 +1095,16 @@ badge and any count quoted in the docs must agree with it.
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
 
+### test_grid.lua (7)
+
+- grid: Icons, Cast bar and Text Label register as Grid entries under their page keys, on both builds
+- grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, opening on Icons
+- grid: the draw order is PageBanner, NavRail, TabStrip
+- grid: a rail click draws that entry's own strip under the same band
+- grid: each entry keeps its own tab, including one chosen by the library's own strip click
+- grid: choosing the other unit in the band keeps the entry and its tab
+- grid: a linked Focus keeps the rail; each entry draws its full strip, inert, over the link note alone
+
 ### test_settings_refreshers.lua (5)
 
 - rendering rows registers refreshers
@@ -1444,6 +1454,7 @@ badge and any count quoted in the docs must agree with it.
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 42 |
+| test_grid.lua | 7 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 1 |
 | test_version.lua | 3 |
@@ -1463,4 +1474,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1189** |
+| **Total** | **1196** |

@@ -96,7 +96,7 @@ function Helpers.SetViewedUnit(unit)
     if NS.State then NS.State.viewedUnit = unit end
 end
 
-function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
+function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     -- Read, never defaulted from the ctx: the shared value is the source of
     -- truth, and a ctx that kept its own would be the second copy this exists to
     -- remove. It is still written onto the ctx because everything below -- the
@@ -131,6 +131,12 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)
     -- Parked on the ctx so a suite can drive the selection the way a click
     -- would; the library keeps its own chrome widgets private.
     ctx.__bannerWidget = dd
+
+    -- The Grid page's nav rail (KickCD#33) goes in HERE: after the band, whose
+    -- height it reads for its top, and before EITHER strip path below, which reads
+    -- the inset it records. So a linked Focus keeps the rail too. A caller that
+    -- passes no chrome draws exactly what it drew before.
+    if chrome then chrome(ctx) end
 
     if NS.Units.IsLinked(ctx.unit) then
         Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
@@ -250,6 +256,108 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     local scroll = ensureScroll(ctx)
     if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
+
+-- ---------------------------------------------------------------------
+-- The Grid page: the Unit band, the nav rail, the selected entry (#33)
+-- ---------------------------------------------------------------------
+--
+-- Icons, Cast bar and Text Label are one page (settings/Grid.lua). The Unit
+-- picker is the band, a nav rail (LibKa0s-Options' O.NavRail, options-ui-§13)
+-- chooses the entry, and each entry keeps the tab strip its own page had. An
+-- entry IS the old page key: every row keeps `panel`, `section`, `unit` and its
+-- `units.<unit>.<page>.*` path, so /kcd, the defaults, profiles and
+-- SchemaForPanel never see the rail. The entry and each entry's tab are session
+-- state on the ctx, never persisted; the band stays the only picker, and a unit
+-- switch leaves both alone (options-ui-§14). AuraMaster's Containers page (#6) is
+-- the pattern.
+--
+-- Host code on BOTH arms: settings/OptionsSetup.lua's stub returns before this
+-- file loads, so a library-absent build still has the registry the page files
+-- call at load, and the stub owes nothing but O.NavRail's no-op.
+
+local gridEntries = {}
+-- The rail's order, fixed here rather than taken from the TOC.
+local GRID_ORDER = { "icons", "castbar", "label" }
+-- The Grid page's ctx, bound by its builder: the one page SelectSection moves.
+local gridCtx
+
+--- Register one entry of the Grid page. Called at FILE LOAD by settings/Icons.lua,
+--- Castbar.lua and Label.lua.
+--- @param key string    the entry's page key: the `panel` its schema rows carry
+--- @param label string  the rail entry's label
+--- @param spec table    { tooltip = the rail entry's tooltip }
+function Helpers.RegisterGridSection(key, label, spec)
+    spec = spec or {}
+    gridEntries[key] = { key = key, label = label, tooltip = spec.tooltip }
+end
+
+--- The registered entry `key`, or nil.
+function Helpers.GridSection(key) return gridEntries[key] end
+
+--- The entries the rail lists, in rail order. Every unit has all three.
+local function railEntries()
+    local out = {}
+    for _, key in ipairs(GRID_ORDER) do
+        if gridEntries[key] then out[#out + 1] = gridEntries[key] end
+    end
+    return out
+end
+
+--- The entry to draw: the one the page holds while the rail lists it, else the first.
+local function settleEntry(ctx, list)
+    for _, e in ipairs(list) do
+        if e.key == ctx.activeSection then return e end
+    end
+    return list[1]
+end
+
+--- Keep the tab the page is on for the entry it last drew. Called before ANYTHING
+--- moves the entry: the library's own strip click never calls back here
+--- (RenderTabbedSchema re-renders the strip and the rows itself), so leaving is the
+--- one moment the host sees the tab.
+local function stashTab(ctx)
+    local drawn = ctx.__renderedSection
+    if drawn then ctx.sectionTabs[drawn] = ctx.activeTab end
+    ctx.__renderedSection = nil
+end
+
+--- Bind the Grid page's ctx (settings/Grid.lua's builder). The page opens on Icons.
+function Helpers.__bindGridPage(ctx)
+    gridCtx = ctx
+    ctx.sectionTabs = {}
+    ctx.activeSection = GRID_ORDER[1]
+end
+
+--- Render the Grid page: the Unit band, the nav rail, then the entry's strip and
+--- rows -- the library's draw order, PageBanner, NavRail, TabStrip. The band and
+--- both strip paths are Helpers.RenderUnitPanel's; the rail goes in through its
+--- chrome hook.
+function Helpers.RenderGridPage(ctx)
+    ctx.sectionTabs = ctx.sectionTabs or {}
+    stashTab(ctx)
+    local list = railEntries()
+    local entry = settleEntry(ctx, list)
+    if not entry then return end
+    ctx.activeSection = entry.key
+    ctx.activeTab = ctx.sectionTabs[entry.key]
+    local entries = {}
+    for i, e in ipairs(list) do entries[i] = { key = e.key, label = e.label, tooltip = e.tooltip } end
+    Helpers.RenderUnitPanel(ctx, entry.key, nil, function(c)
+        Helpers.NavRail(c, {
+            entries  = entries,
+            value    = entry.key,
+            onSelect = function(key)
+                stashTab(c)
+                c.activeSection = key
+                Helpers.RefreshPanel(c, true)
+            end,
+        })
+    end)
+    ctx.__renderedSection = entry.key
+end
+
+--- Test seam: the ctx the Grid page bound, or nil before its builder ran.
+function Helpers.__gridCtx() return gridCtx end
 
 --- Write one schema row through the seam and repaint any open panel's values.
 ---

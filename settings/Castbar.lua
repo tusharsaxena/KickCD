@@ -577,6 +577,11 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
+-- The Cast bar entry of the Grid page (KickCD#33).
+H.RegisterGridSection("castbar", L["Cast bar"], {
+    tooltip = L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."],
+})
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------

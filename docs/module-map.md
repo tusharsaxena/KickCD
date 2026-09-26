@@ -235,7 +235,9 @@ KickCD (AceAddon)
                         refresh / reset helpers (SetAndRefresh, which ends in
                         RefreshScalars so a write never rebuilds the page
                         under a slider mid-drag; RestoreDefaults,
-                        RestoreAllDefaults, ResetAll, ResetIconPosition).
+                        RestoreAllDefaults, ResetAll, ResetIconPosition),
+                        and the Grid page's entry registry and renderer
+                        (RegisterGridSection, RenderGridPage).
                         Creates no AceGUI widget of its own any more
     ├── General.lua   — 2 tabs. Master controls (6): the CANONICAL block
                         (options-ui-§15), COMPOSED by H.MasterControls —
@@ -295,6 +297,9 @@ KickCD (AceAddon)
                         justify/rotation/font/size/flags/color) are link-resolved
                         appearance and follow the same body the Icons/Castbar
                         panels use. Rendered via the shared unit selector
+    ├── Grid.lua      — the Grid page (KickCD#33): Icons, Cast bar and Text Label as
+                        entries on a nav rail under the Unit band; builds "grid", binds
+                        the entries; renderer and registry in Panel_Render.lua
     ├── Spells.lua    — per-class+spec spell editor, drawn the way every
                         other page is: the spec picker and Add spell in a
                         page-wide chrome block (H.PageHeader), a one-tab

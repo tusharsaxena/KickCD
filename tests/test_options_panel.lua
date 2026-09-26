@@ -83,7 +83,8 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
     -- ...and the host's own decorations sit on the SAME table.
     for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
                          "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
-                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged" }) do
+                         "BuildMainContent", "SchemaForPanel", "FireConfigChanged",
+                         "RegisterGridSection", "GridSection", "RenderGridPage" }) do
         assertEqual(type(H[m]), "function", "host decoration missing: " .. m)
     end
 end)
@@ -102,18 +103,18 @@ test("the host ships no widget maker, flow engine or layout constant of its own"
     assertNil(src:match("BUTTON_PAIR_REL%s*="), "a copied layout constant came back")
 end)
 
--- ── page registration (one registry, six pages, once each) ──────────────────
+-- ── page registration (one registry, every page, once each) ─────────────────
 
---- The six pages, in the order the TOC loads settings/<page>.lua — which is the
+--- The pages, in the order the TOC loads settings/<page>.lua — which is the
 --- order they call NS.RegisterOptionsPage in, and therefore the order the
 --- library drains its queue in. It used to be spelled a second time in
 --- NS.Settings.order.
-local PAGE_KEYS  = { "general", "icons", "castbar", "label", "spells", "profiles" }
-local PAGE_FILES = { "General", "Icons", "Castbar", "Label", "Spells", "Profiles" }
+local PAGE_KEYS  = { "general", "icons", "castbar", "label", "grid", "spells", "profiles" }
+local PAGE_FILES = { "General", "Icons", "Castbar", "Label", "Grid", "Spells", "Profiles" }
 
 test("every page registers exactly once, through the library's registry", function()
     -- The acceptance criterion for KCD-R-03 / KCD-A-09 stated headlessly: the
-    -- Blizzard options list gets ONE parent category and SIX subcategories.
+    -- Blizzard options list gets ONE parent category and one subcategory per page.
     -- With the private registry in settings/Panel.lua still present alongside
     -- the library's, whichever one ran won and the other's guarantees applied to
     -- nothing; wiring the library forwarders WITHOUT deleting the private path
@@ -147,7 +148,7 @@ end)
 test("no page file reaches a registry other than the library's", function()
     -- The other half of the same finding, pinned at the source so a new page
     -- cannot quietly reintroduce the private path. Panel.lua is checked for the
-    -- registry itself; the six page tails for how they enter it.
+    -- registry itself; the page tails for how they enter it.
     -- red under: putting `NS.Settings.RegisterTab("general", Build)` back into
     -- settings/General.lua.
     local function read(rel)

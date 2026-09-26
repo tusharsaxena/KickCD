@@ -155,6 +155,30 @@ The opts key is **`pageKey`**, not `panelKey`. Every page here handed `CreatePan
 
 Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels` can re-sync widgets after a slash-cmd write.
 
+## The Grid page
+
+**Icons, Cast bar and Text Label are one page, Grid** (KickCD#33, `options-ui-§13` and
+`options-ui-§14`). It has three pinned pieces, drawn in the library's order on every full render:
+`PageBanner`, `NavRail`, `TabStrip`.
+
+- **The band** is the Unit picker, drawn by `Helpers.RenderUnitPanel` exactly as the three pages drew
+  it. It is the page's only picker, shared by every entry through `Helpers.ViewedUnit` /
+  `Helpers.SetViewedUnit`.
+- **The rail** (LibKa0s `O.NavRail`, 120 wide) lists the **entries** Icons · Cast bar · Text Label, in
+  `GRID_ORDER` (`settings/Panel_Render.lua`). An entry **is** the old page key (`icons`, `castbar`,
+  `label`), so every row keeps `panel`, `section`, `unit` and its `units.<unit>.<page>.*` path, and
+  `/kcd`, the defaults and profiles never see the rail. Each page file registers its entry at load
+  with `Helpers.RegisterGridSection`, which is host code on both arms.
+- **The strip** is the entry's own, through `Helpers.RenderUnitPanel(ctx, entry, nil, chrome)`. The
+  rail goes in through the `chrome` hook, after the band and before **either** strip path, so a
+  linked Focus keeps the rail over its inert strip and link note.
+
+`Helpers.RenderGridPage` draws the page. `ctx.activeSection` is the entry on screen, and
+`ctx.sectionTabs[entry]` holds each entry's tab. Both are session state and never persisted. The tab
+is stashed **before anything moves the entry**, because the library's own strip click never calls
+back into the host. So Cast bar -> Font, then Icons, then Cast bar again lands on Font. Picking the
+other unit in the band keeps the entry and its tab. Pinned by `tests/test_grid.lua`.
+
 ## Per-unit pages (Icons / Cast bar / Text Label)
 
 These three render through `Helpers.RenderUnitPanel(ctx, panelKey, afterGroup)` (`settings/Panel_Render.lua`), which does three things in this order and the order matters:
