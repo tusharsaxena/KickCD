@@ -476,7 +476,8 @@ test("modules/Castbar.lua sits under the 1500-LOC hard cap (layout-§1)", functi
         f:close()
         return n
     end
-    for _, path in ipairs({ "modules/Castbar.lua", "modules/Castbar_Skin.lua" }) do
+    for _, path in ipairs({ "modules/Castbar.lua", "modules/Castbar_Skin.lua",
+                            "modules/Castbar_Events.lua" }) do
         local n = loc(path)
         assertTrue(n < 1500, path .. " is " .. n .. " LOC, over the 1500 hard cap")
     end

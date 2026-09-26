@@ -58,7 +58,7 @@ end)
 test("post-enable CONFIG_CHANGED re-layout runs end-to-end without error", function()
     -- Fans out to every subscriber's handler, which re-run IconGrid:Layout /
     -- Castbar:Reskin against the live (mock) frames — the same self:Layout()
-    -- call sites (IconGrid.lua:627/633/661) the crash hid behind.
+    -- call sites (IconGrid.lua:1041/1049/1118) the crash hid behind.
     local inst = T.load(true, true)
     inst.NS:SendMessage(T.NS.MSG.CONFIG_CHANGED, { section = "icons" })
     inst.NS:SendMessage(T.NS.MSG.PROFILE_CHANGED)
