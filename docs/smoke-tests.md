@@ -1126,6 +1126,8 @@ to secret values in combat, and to a Copy. What each section holds is in
 The owner runs these in the client and fills in Result; Claude never marks one passed. Open the panel
 with `/kcd config`.
 
+**Owner run, 2026-09-26:** KC-S1 to KC-S11 all passed in the client; the owner then gave the go-ahead to merge.
+
 | # | Check | Expected | Source | Result |
 |---|---|---|---|---|
 | KC-S1 | Look at the Settings tree under Ka0s KickCD. | General · Grid · Spells · Profiles. There are no Icons, Cast bar or Text Label entries. | spec §B1; NR-KC-04 | |
