@@ -211,8 +211,8 @@ end
 -- any row widget would.
 --
 -- The onChange is STRUCTURAL, which no other row's is. Flipping the link changes
--- what the Icons / Cast bar / Text Label pages DRAW (a linked Focus page is just
--- the note), so every page that declared a renderer re-renders and the hidden
+-- what the Grid page's Icons, Cast bar and Text Label entries DRAW (a linked
+-- Focus entry is just the note), so every page that declared a renderer re-renders and the hidden
 -- ones repaint on their next show. The CONFIG_CHANGED `units` that IconGrid /
 -- Castbar reconcile on comes from the seam's announce, through the row's section.
 --

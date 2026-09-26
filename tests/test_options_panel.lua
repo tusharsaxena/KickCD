@@ -19,11 +19,11 @@ local S  = NS.Settings.Store
 -- The Settings window calls OnCommit on apply, OnRefresh on re-show, and
 -- OnDefault from its own FOOTER control — a different widget from the header
 -- Defaults button this addon builds, and not per-page. LibKa0s stamps all three
--- in CreatePanel as of minor 5, so all five of this addon's pages
--- (settings/General.lua:226, Icons.lua:448, Castbar.lua:561, Label.lua:216,
--- Spells.lua:1113) gained a working footer control without a line of their own
--- changing. Nothing in this repo would notice losing it again: the header
--- Defaults button keeps working and looks equivalent to the user.
+-- in CreatePanel as of minor 5, so every page this addon builds a canvas for
+-- (settings/General.lua, Grid.lua and Spells.lua) gained a working footer
+-- control without a line of their own changing. Nothing in this repo would
+-- notice losing it again: the header Defaults button keeps working and looks
+-- equivalent to the user.
 --
 -- RAWGET, not `type(panel.OnDefault)`. The frame mock synthesizes a no-op for
 -- any PascalCase key, so the type check is true whether or not anything set it.
@@ -109,8 +109,8 @@ end)
 --- order they call NS.RegisterOptionsPage in, and therefore the order the
 --- library drains its queue in. It used to be spelled a second time in
 --- NS.Settings.order.
-local PAGE_KEYS  = { "general", "icons", "castbar", "label", "grid", "spells", "profiles" }
-local PAGE_FILES = { "General", "Icons", "Castbar", "Label", "Grid", "Spells", "Profiles" }
+local PAGE_KEYS  = { "general", "grid", "spells", "profiles" }
+local PAGE_FILES = { "General", "Grid", "Spells", "Profiles" }
 
 test("every page registers exactly once, through the library's registry", function()
     -- The acceptance criterion for KCD-R-03 / KCD-A-09 stated headlessly: the
@@ -681,8 +681,9 @@ test("the linked-Focus note opens General on its Units tab", function()
     if cfg then cfg.link = true end
     iH.SetViewedUnit("focus")
 
-    local ctx = iH.__panelFor("castbar")
-    assertTrue(ctx ~= nil, "the Cast bar page must be registered")
+    local ctx = iH.__panelFor("grid")
+    assertTrue(ctx ~= nil, "the Grid page must be registered")
+    assertTrue(iH.SelectSection("castbar"), "the Grid page lists no Cast bar entry")
     ctx.panel:Show()
     iH.RefreshPanel(ctx, true)
 

@@ -193,8 +193,8 @@ units[unit] = {
         anchorPoint, castbarPoint,              -- 13-point anchor tokens
                                                 -- (TOP_LEFT, TOP_MIDDLE, TOP_RIGHT,
                                                 --  BOTTOM_LEFT, …, RIGHT_BOTTOM,
-                                                --  CENTER) shared with Icons →
-                                                -- Layout → Anchor point. Defaults
+                                                --  CENTER) shared with Grid → Icons
+                                                -- → Layout → Anchor point. Defaults
                                                 -- BOTTOM_LEFT / TOP_LEFT. Legacy
                                                 -- 9-point tokens (TOPLEFT, TOP, …)
                                                 -- still pass through unchanged

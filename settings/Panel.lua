@@ -362,8 +362,8 @@ end
 --     validation are the descriptor's `buildMain` and `validate` hooks, which
 --     point at Helpers.BuildMainContent and the schema seam's Store.Validate.
 --
--- Page ORDER is the TOC's settings/ block order, which is the order the six
--- builders register in and the order the library drains the queue in. It used
+-- Page ORDER is the TOC's settings/ block order, which is the order the four
+-- builders (General, Grid, Spells, Profiles) register in and the order the library drains the queue in. It used
 -- to be spelled a second time in NS.Settings.order, immediately below the TOC
 -- that already fixed it.
 

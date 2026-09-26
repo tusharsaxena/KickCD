@@ -126,8 +126,8 @@ settings\SchemaSetup.lua
 settings\Slash.lua
 # LOAD-BEARING POSITION: this file creates NS.Settings and publishes the
 # LibKa0s-Options-1.0 instance on it as NS.Settings.Helpers. settings/Panel.lua,
-# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the per-tab files
-# General/Icons/Castbar/Label all take that member as a file-scope upvalue, and
+# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the page and entry files
+# General/Icons/Castbar/Label/Grid all take that member as a file-scope upvalue, and
 # General and Icons then CALL H.AddComposed at file scope — so a position below
 # any of them raises during load, not on first open.
 settings\OptionsSetup.lua
