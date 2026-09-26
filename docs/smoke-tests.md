@@ -156,7 +156,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 
 ### 6. Icon grid layout
 
-**Setup.** Open Settings → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
+**Setup.** Open Settings → Grid → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
 
 **Steps.**
 - Walk through every value of `units.target.icons.anchor` (13 anchor tokens). For each, set `units.target.icons.secondaryGrow` to two distinct values applicable to that axis.
@@ -327,7 +327,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 - For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
 - For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
 - Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
-- **Panel-rebuild integrity.** On Settings → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
+- **Panel-rebuild integrity.** On Settings → Grid → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
 
 **Pass.**
 - **The Unit dropdown lists exactly `Target` / `Focus` on every Grid entry, always** — before and after those rebuilds, and after the `/kcd set`. A unit switch calls `Helpers.RenderUnitPanel` and a tab click clears and rebuilds the scroll; `/kcd set` then runs the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
@@ -462,13 +462,13 @@ This suite catches regressions in 12.0's protected-interrupt taint propagation. 
 The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is `lib.__PatchLSM30Border()`, a `LibKa0s-Options-1.0` member called once from `settings/OptionsSetup.lua`. **This section checks it with KickCD alone, which is exactly the check that stayed green through the defect section 29 exists for** — run 29 too whenever this one matters.
 
 **Steps.**
-- Open Settings → Cast bar.
+- Open Settings → Grid → Cast bar.
 - Click the **Bar texture** (statusbar) dropdown, the **Border style** dropdown, and the **Font** dropdown.
 
 **Pass.**
 - Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
 - The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; the library's patch hides it).
-- Switching to Settings → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
+- Switching to Settings → Grid → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
 
 ### 19. Debug traces
 
@@ -509,7 +509,7 @@ Focus tracking adds a second, independent (icon grid + cast bar) instance for th
 
 #### 20b. Link / unlink / copy styling
 
-**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Icons.
+**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Grid → Icons.
 
 **Steps.**
 - Select **Focus** in the Grid page's Unit dropdown, on Icons. Confirm the entry draws its **tab strip** and no appearance rows — just the Unit dropdown in the chrome, the strip, and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
@@ -560,7 +560,7 @@ This is also the reason to unlink **first** and set values **second**.
 /kcd set units.focus.enabled true
 ```
 
-Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
+Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Grid → Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
 
 ```
 /kcd set units.target.icons.cooldownAlpha 0.20
@@ -575,7 +575,7 @@ Open Settings → **General → Units** and **untick "Use same styling as Target
 - Cast an interrupt at a friendly target dummy. Use one whose cooldown is comfortably over ~1.6s — any real interrupt (15–24s) qualifies. Both grids render the same player cooldowns, so one cast drives both.
 - Watch both grids during the cooldown.
 - Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
-- Mid-cooldown, change target's border **style** on Settings → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
+- Mid-cooldown, change target's border **style** on Settings → Grid → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
 - **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open fires every refresher in `ctx.refreshers` (through `RefreshScalars`), which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
 - Re-tick "Use same styling as Target" on General → Units.
 
@@ -641,7 +641,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Steps.**
 - Log in.
-- `/kcd get units.target.label.style.font` (or open Settings → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
+- `/kcd get units.target.label.style.font` (or open Settings → Grid → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
 - `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`.
 
 **Pass.**
@@ -737,7 +737,7 @@ Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `c
   `STANDARD_TEXT_FONT` fired (no library, or `media/fonts/` missing from the payload — honest
   degradation); **no text at all** means the path is dead, which is the failure the fallback exists to
   prevent and is never acceptable.
-- **The face is in the font dropdowns.** `/kcd config` → **Text Label** → the font dropdown lists
+- **The face is in the font dropdowns.** `/kcd config` → **Grid** → **Text Label** → the font dropdown lists
   **JetBrains Mono** beside the player's other fonts. `core/MediaSetup.lua` registers it with
   LibSharedMedia at file load; if it is missing, `Media.RegisterLSM` did not run or ran before LSM.
 - **Degraded stays honest.** Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` (section 25's
@@ -766,15 +766,15 @@ SharedMediaAdditionalFonts or ElvUI's media pack — enabled alongside KickCD, s
 Blizzard defaults. Log in fresh; do not `/reload` before the first check.
 
 **Steps.**
-- `/kcd config` → **Icons**. Open **Border texture** and **Cooldown text font**.
-- → **Text Label**. Open the **Font** dropdown.
-- → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
-  **Bar texture** and **Border texture**. That is eight dropdowns across the three pages; they are the
+- `/kcd config` → **Grid** → **Icons**. Open **Border texture** and **Cooldown text font**.
+- Rail → **Text Label**. Open the **Font** dropdown.
+- Rail → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
+  **Bar texture** and **Border texture**. That is eight dropdowns across the three entries; they are the
   eight composed rows this item moved.
 - `/dump LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose`
-- Pick a non-default face in **Text Label** → **Font** and confirm the label redraws in it.
+- Pick a non-default face in **Grid** → **Text Label** → **Font** and confirm the label redraws in it.
 - Now the deferral itself, which is the half a snapshot would pass: with the client already running,
-  enable a media addon you had disabled, `/reload`, and re-open **Cast bar** → **Bar texture**.
+  enable a media addon you had disabled, `/reload`, and re-open **Grid** → **Cast bar** → **Bar texture**.
 
 **Pass.**
 - All eight dropdowns list real media — several faces, several borders, several bar textures — not a
@@ -803,8 +803,8 @@ stale label, a mis-anchored button or a band that changes height on a re-dressed
 every automated check in this repo.**
 
 **Steps — the strip.**
-- `/kcd config` → **General**, **Icons** (six tabs, the widest strip here) and **Cast bar**. On each
-  page, cycle every tab three times, ending back on the first.
+- `/kcd config` → **General**, then **Grid** → **Icons** (six tabs, the widest strip here) and **Grid** → **Cast bar**. On each
+  page or entry, cycle every tab three times, ending back on the first.
 - Watch three things on each pass: the **label** is that tab's own, the **selected** tab is the one
   you pressed, and the strip's **band height** does not move as you go through it.
 
@@ -816,7 +816,7 @@ five, so run two.
 - `/kcd perf start` with no label, then `cancel`.
 
 **Pass.**
-- Every tab labeled and selected correctly on all three passes, on all three pages, and no band that
+- Every tab labeled and selected correctly on all three passes, on General, Icons and Cast bar, and no band that
   grows or shrinks. A label carried over from the previously-dressed tab, a highlight on the wrong
   button, a body drawn under the wrong tab, or a strip whose height moves between passes is the pool
   handing back a frame it did not finish dressing.
@@ -846,7 +846,7 @@ carries its own.
 
 **Steps.**
 - Enable KickCD, PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters together, and log in.
-- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Cast bar** → **Border
+- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Grid** → **Cast bar** → **Border
   style**.
 - Change the load order — disable and re-enable addons, or rename folders so a different one is
   reached last — `/reload`, and walk the five dropdowns again.

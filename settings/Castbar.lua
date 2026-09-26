@@ -336,7 +336,7 @@ add{
 
 -- Font -----------------------------------------------------------------
 -- The typography the spell name and the cast time SHARE. Named Font rather
--- than Text so it agrees with the Text Label page's Font tab and so it is not
+-- than Text so it agrees with the Text Label entry's Font tab and so it is not
 -- mistaken for the two tabs beside it, which are the text ELEMENTS. The "Show
 -- spell name" and "Show cast time" toggles each sit with their own anchor and
 -- offsets on those tabs -- that decision is older than the strip and it holds:

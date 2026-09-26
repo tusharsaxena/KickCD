@@ -73,9 +73,9 @@ end
 -- between two units rather than three per-page copies of it, and the scroll --
 -- the only place left to draw them -- is cleared out from under them by every
 -- tab click.
---- Which unit every per-unit page is editing, and the only writer of it.
+--- Which unit every Grid entry is editing, and the only writer of it.
 ---
---- ONE value for the three pages rather than one per ctx, which is what it was:
+--- ONE value for the three entries rather than one per ctx, which is what it was:
 --- flipping the picker to Focus on Icons and walking to Cast bar landed back on
 --- Target, because each page's ctx carried its own. The picker names which half
 --- of the addon you are configuring, and that is a property of the reader's
@@ -120,7 +120,7 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
             if not value or value == ctx.unit then return end
             Helpers.SetViewedUnit(value)
             -- STRUCTURAL, not a re-render of this page alone. The selection is
-            -- shared, so the other two unit pages are now showing the wrong unit;
+            -- shared, so the Grid page must redraw on the new unit;
             -- RefreshAllPanels re-renders the ones on screen and marks the hidden
             -- ones dirty so they repaint on their next OnShow. Re-rendering only
             -- this page -- which is what this used to do -- is what let the three
@@ -422,7 +422,7 @@ function Helpers.__gridCtx() return gridCtx end
 --- which is released back to AceGUI's pool mid-gesture. Structural refreshes
 --- have their own callers: NS.RefreshOptionsPanel on a profile switch, and
 --- the `units.focus.link` row's onChange (settings/General.lua), because the
---- link really does change what the unit pages draw.
+--- link really does change what the Grid entries draw.
 function Helpers.SetAndRefresh(path, value)
     local ok, err, why = NS.Settings.Store.Set(path, value)
     if ok then Helpers.RefreshScalars() end
