@@ -1,0 +1,1 @@
+clean: NR-KC-01 matches its task; libs/LibKa0s == v1.61.0 tag byte for byte, kit unchanged; stub+count cases fail on revert (NavRail missing; expected 5, got 6); gate 1189/0/0, luacheck 0/0, lizard clean, CRLF intact
