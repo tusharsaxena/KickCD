@@ -2,7 +2,7 @@ local addonName, NS = ...
 
 -- core/DebugLogSetup.lua — wires the addon into LibKa0s-DebugLog-1.0.
 --
--- The console window, the copy window, the two formatters, the 1500-line buffer,
+-- The console window, the copy window, the two formatters, the line buffer,
 -- the scrollbar sync, the line counter and the enable seam live in
 -- libs/LibKa0s/DebugLog.lua, and the diagnostics report's plumbing (markers,
 -- identity header, per-section pcall, cap) in DebugLogDiagnostics.lua beside it;

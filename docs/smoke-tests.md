@@ -418,6 +418,7 @@ A single visibility selector governs **both** the icon grid and the cast bar.
 | `/kcd debug window` | Toggles the on-screen debug console window (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`); logging keeps running whether the window is open or closed. |
 | `/kcd debug events` | `no rejected events` on a live 12.1.x client. A client that raised on a name one of the addon's registration blocks asks for prints one `rejected event: <NAME>` line per refused name instead (events-frames-taint-§1). |
 | `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
+| `/kcd diagnostics` / `/kcd debug diagnostics` | Writes the diagnostic report into the console after its trace and prints one chat line with the count. It runs `spells`, `castbar` and `interrupt` for both units as sections; section 35 covers it in full. |
 
 **Pass.**
 - Every subcommand runs mid-combat without Lua errors.
@@ -656,7 +657,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Checks.**
 - **Header renders.** The title-bar "Debug: ON/OFF" label is present and colored (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
-- **Line counter.** The bottom-right label reads `N / 1500 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 1500 lines` and the log empties.
+- **Line counter.** The bottom-right label reads `N / 3000 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here (`/kcd diagnostics` does write here, 100 to 200 lines at a time) — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 3000 lines` and the log empties.
 - **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
 - **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
 - **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
@@ -664,7 +665,7 @@ Each unit (target/focus) can show one configurable identity label, rendered by `
 
 **Pass.**
 - Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).
-- Counter increments on every append and resets to `0 / 1500 lines` on Clear.
+- Counter increments on every append and resets to `0 / 3000 lines` on Clear.
 - Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
 - The window edge, inner highlight, divider and title match a second Ka0s addon's console exactly.
 
@@ -682,6 +683,7 @@ or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSet
 - **One cause, said once.** The missing-library notice appears **exactly once** per session however many lines print afterwards, and it names `libs/LibKa0s`.
 - **The same sentence the other two addons say.** ⚠ This is the check the section exists for. The cause clause is `NS.LIBKA0S_MISSING` in `core/CoreSetup.lua` — one shared string that every seam appends its own *"so &lt;what&gt; is unavailable"* to. Do the same rename on **AbsorbTracker** and **ConsumableMaster** and compare: all three must state the cause identically, differing only in the trailing consequence and the addon name. KickCD used to phrase this its own way; converging it is the whole point, and a drift here means a seam grew its own wording again.
 - **Each seam names its own consequence.** `/kcd config` opens nothing and prints one line about the settings panel; `/kcd debug` says its piece about the console; `/kcd perf` about the capture. Same cause, different tails.
+- **The report has nowhere to go.** `/kcd diagnostics` and `/kcd debug diagnostics` each print `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and write nothing.
 
 **Checks — the `L` trap.** Rename the folder back and `/reload` first; this half needs the library present.
 - Open `/kcd config` and walk every panel, then `/kcd debug window` and `/kcd perf`. Every label, tooltip title, section heading, button and perf step name reads as **English prose**.
@@ -1062,11 +1064,59 @@ the client can show this.
    it was before the adoption. No error.
 
 ---
+
+### 35. The diagnostics report (`/kcd diagnostics`, LibKa0s v1.60.0)
+
+The headless suite pins what the report says; only the client shows what it does to a live console,
+to secret values in combat, and to a Copy. What each section holds is in
+[debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14).
+
+1. **The README steps, word for word.** From a fresh `/reload` with the console closed, follow the
+   README's *Reporting a bug* steps exactly as written. **Pass:** every step works as written, and
+   the paste holds the trace and the whole report.
+2. **The trace is kept, and Copy is clean.** `/kcd debug on`, target a hostile caster and let a few
+   casts go, then `/kcd diagnostics`. **Pass:** the console opens if it was closed; the trace lines
+   are still there above `==== Ka0s KickCD diagnostics begin ====`; one chat line reads
+   *Diagnostic report written to the debug console: N lines. Use Copy to share it.* Press **Copy**
+   and paste into a text editor: the paste holds the trace, the begin marker and
+   `==== Ka0s KickCD diagnostics end: N line(s) ====`, with no `|c` color escapes, and the two
+   counts agree.
+3. **Its shape.** In that report, `[State]` comes first after the `[Diag]` identity lines, the
+   sections follow in the order debug.md lists, no line reads `section <name> failed`, and the
+   report is roughly 100 to 200 lines on a default profile.
+4. **Ungated, flag untouched.** `/kcd debug off`, then `/kcd diagnostics`. **Pass:** the report
+   lands in full; afterwards the console header still reads `Debug: OFF`, and changing target writes
+   no trace line.
+5. **While disabled, both forms.** `/kcd disable`, then `/kcd diagnostics`, then
+   `/kcd debug diagnostics`. **Pass:** both write a full report; the state line reads
+   `enabled stored=false, stood down=true`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
+   print one `stood down: …` line; the grids and bars stay hidden (running the report stood nothing
+   up). `/kcd enable` afterwards.
+6. **In combat, and in a restricted instance.** Run it in combat with a hostile caster targeted
+   mid-cast and a second caster on focus, then again inside a Mythic+ key or a raid encounter.
+   **Pass:** no Lua error. The cast record reads as types, `notInterruptible` in the `interrupt`
+   lines reads `<secret>` where the client hides it, and charges may read `<secret>`.
+7. **No alias.** `/kcd diag` answers `unknown command 'diag'` and the help index;
+   `/kcd debug diag` answers with the unknown-word line and the debug verb list. Neither writes a
+   report.
+8. **The long alias and any case.** `/kickcd diagnostics`, `/kickcd debug diagnostics` and
+   `/kcd DIAGNOSTICS` each write the same report as `/kcd diagnostics`.
+9. **The cap.** Fill the console past its cap (`/kcd debug on` through a long combat, or
+   `/kcd diagnostics` run twenty-odd times). **Pass:** the counter reads `3000 / 3000 lines` and
+   stays there as lines keep coming, and **Copy** opens without a noticeable hitch.
+10. **No close mark.** `/kcd unlock`. The icon grid strips and the cast bar strips carry the "?"
+    mark and no X: KickCD does not adopt the drag strip's close option (owner ruling, X-03).
+11. **Without LibKa0s** (section 25's folder rename): `/kcd diagnostics` and
+    `/kcd debug diagnostics` each print
+    `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and nothing else, with no
+    Lua error. Rename the folder back.
+
+---
 ---
 ## When to run which subset
 
 - **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
-- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28**, **31** and **34**, plus 11, 15 and 24 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
+- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28**, **31** and **34**, plus 11, 15, 24 and 35 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
 - **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass. Anything touching the cast bar's `OnUpdate` install or teardown — `EnsureFrame`, `Start`, `Stop` — also needs **32**, which is the only step that drives two units at once.
 - **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
 - **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
@@ -1074,9 +1124,10 @@ the client can show this.
 - **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
 - **`NS.Util.print` call-site edits, or anything under `core/CoreSetup.lua`'s printer:** **31**, then 15. 31 is the only step that runs a call site on the library-less load.
 - **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
+- **Diagnostics report edits** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a section reads through, or a chat dump a section reuses): **35**, then 15.
 - **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
 - **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
 - **Launcher / logo / `## IconTexture` edits, and any LibKa0s re-vendor that moves `Launcher.lua`:** **33**. It is the only place the icon is checked against what the client actually draws — a wrong TGA format draws nothing and raises nothing, so no gate reports it.
-- **Pre-release / TOC bump:** the entire suite. The 33 surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
+- **Pre-release / TOC bump:** the entire suite. The numbered surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
 
 If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).
