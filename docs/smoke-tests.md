@@ -536,11 +536,12 @@ Which checks to run for a partial change:
   y = 260 above Target's (y = 120), with a small gap between Focus's cast timer and the Target label.
   Result:
 - **FOCUS-2. Enabling Focus builds it live.** `/kcd set units.focus.enabled false`, `/reload` (so no
-  Focus frames exist yet), then `/kcd set units.focus.enabled true` → a second grid
-  (`KickCDIconGridFocus`) and cast bar (`KickCDCastbarFocus`) appear with no further `/reload`, tracking
-  the same spells as Target. Result:
-- **FOCUS-3. Independent gating.** `target_casting_interruptible`, a hostile target and a different
-  hostile focus. Only the target casts → only the Target pair shows; only the focus casts → only the
+  Focus frames exist yet), `/kcd unlock` (a locked cast bar stays hidden until a real cast), then
+  `/kcd set units.focus.enabled true` → a second grid (`KickCDIconGridFocus`) and the cast bar's
+  placeholder (`KickCDCastbarFocus`) appear with no further `/reload`, the grid tracking the same spells
+  as Target. Result:
+- **FOCUS-3. Independent gating.** `/kcd lock`, `/kcd set visibility target_casting_interruptible`, a
+  hostile target and a different hostile focus. Only the target casts → only the Target pair shows; only the focus casts → only the
   Focus pair; both cast → both. Result:
 - **FOCUS-4. Disabling Focus.** `/kcd set units.focus.enabled false` → the Focus grid and bar go at once;
   Target is untouched. Result:
@@ -852,9 +853,12 @@ reproduces it exactly.
 ## Pending sign-off
 
 The pre-2026-09-29 document recorded no result for any check, so every check carried over from it is
-owed unless an owner run records its pass. Two runs do, both on 2026-09-26: the Grid page checks
-(KC-S1 to KC-S11, the old `§36`, `Ka0sAddonsCommonTasks/docs/2026-09-26-NAVRAIL_ADOPTION`) and the
-diagnostics checks (the old `§35`, `2026-09-25-DIAGNOSTICS_COMMAND/99_REPORT.md` § 6). So PANEL-4 – 7,
+owed unless an owner run records its pass. Three runs do: the Grid page checks on 2026-09-26 (KC-S1
+to KC-S11, the old `§36`, `Ka0sAddonsCommonTasks/docs/2026-09-26-NAVRAIL_ADOPTION`), the diagnostics
+checks on 2026-09-26 (the old `§35`, `2026-09-25-DIAGNOSTICS_COMMAND/99_REPORT.md` § 6), and the
+minimap button re-run on 2026-09-25 in every addon (left-click opens settings, right-click opens the
+options menu, the status tooltip; part of the old `§33`,
+`2026-09-23-REVIEW_AND_STANDARDS_AUDIT_REMEDIATION/06_SMOKE_TESTS.md` X1.4). So INSTALL-11, PANEL-4 – 7,
 COMBAT-4, COMBAT-11, GRID-14, DIAG-27, DIAG-28, DIAG-30 – 33 and DEGRADED-9 are signed and not listed.
 A check that merged a passed step with an unrun one is listed for the unrun half. Checks new in this
 rework, and checks whose expectation it corrected against the code, are listed too. Origins are the
@@ -866,7 +870,8 @@ off on its own `Result:` line, then remove its row here.
 | INSTALL-1 – 4 | §1 L65 – 66, L70 – 71 | No result recorded |
 | INSTALL-5 | §2 L89 – 93 | No result recorded; corrected: `/kcd get` echoes `50 px` and `{0.20, 0.80, 0.20, 1.00}` |
 | INSTALL-6 – 9 | §17, §21, §23 | No result recorded |
-| INSTALL-10 – 14 | §33 | No result recorded |
+| INSTALL-10, INSTALL-13, INSTALL-14 | §33 L976 – 980, L990 – 992, L1009 – 1012 | No result recorded |
+| INSTALL-12 | §33 L983 | Left-click opening settings passed (2026-09-25, X1.4); the landing page and the untouched lock have no result |
 | SLASH-1 – 3 | §1 L67 – 68, §14 L406, §11 L326 | No result recorded |
 | SLASH-4 | §7b L198, §11 L325, L336 | No result recorded; corrected: the gate hint shares the `allowed values:` line and names the flip |
 | SLASH-5, SLASH-6 | §11 L327 – 328, L337 | No result recorded; corrected: the echoes, and a component above 1 reads the color as 0 – 255 |
@@ -894,8 +899,9 @@ off on its own `Result:` line, then remove its row here.
 | PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |
 | PROFILE-7, PROFILE-8 | §19 L481 – 482, §33 L1001 – 1002 | No result recorded |
 | PROFILE-9 – 14 | New | The `/kcd profile` verb |
-| STATE-1 – 3, STATE-5 – 9 | §3, §5, §33 | No result recorded |
+| STATE-1 – 3, STATE-5 – 8 | §3, §5, §33 | No result recorded |
 | STATE-4 | §3 L117 – 118, §20c L546 | No result recorded; corrected: Focus is turned off first |
+| STATE-9 | §33 L984 – 989 | Right-click opening the menu passed (2026-09-25, X1.4); the Locked tick and the agreement with `/kcd get locked` and Lock frame have no result |
 | STATE-10 | §12 L359, L361 | Never run (2026-09-07 checklist, 3.9) |
 | STATE-11 – 15 | §4, §16 L448 | No result recorded |
 | COMBAT-1, COMBAT-2 | §14 L404 – 405 | No result recorded |
@@ -910,7 +916,7 @@ off on its own `Result:` line, then remove its row here.
 | CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
 | CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
 | CAST-14 | New | An empowered cast |
-| FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first |
+| FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first and the frame unlocked, so the cast bar's placeholder shows |
 | FOCUS-6, FOCUS-7 | §20b L515 – 517, §22 L625, §36 KC-S6 | KC-S6 passed; the Target-restores and link-style halves have no result |
 | FOCUS-13 | §20b L524, L530 | No result recorded; corrected: a `/kcd resetall` baseline makes N = 4 |
 | LABEL-1 – 5, LABEL-7 – 11, LABEL-13 – 15 | §22, §34 step 0 | No result recorded |
