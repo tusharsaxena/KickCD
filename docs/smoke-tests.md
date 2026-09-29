@@ -113,7 +113,8 @@ Which checks to run for a partial change:
 - **INSTALL-5. Settings survive `/reload`.** `/kcd unlock`, `/kcd set units.target.icons.primarySize 50`,
   `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`, drag the grid somewhere new,
   `/kcd lock`, `/reload` → no error; the grid is where you left it; `/kcd get locked` → `true`;
-  `/kcd get units.target.icons.primarySize` → `50`; the bar color reads `0.2 0.8 0.2 1`. Result:
+  `/kcd get units.target.icons.primarySize` → `50 px`; `/kcd get` on the bar color →
+  `{0.20, 0.80, 0.20, 1.00}`. Result:
 - **INSTALL-6. The schema validator is silent.** Quit fully (not `/reload`) and log in, watching chat →
   no `schema error` line. The validator (`Store.Validate`, run at panel register) prints one for a
   malformed row or a stored path the defaults cannot resolve; any line means a schema change shipped
@@ -159,32 +160,41 @@ Which checks to run for a partial change:
 - **SLASH-3. `/kcd list`.** Type `/kcd list` → every schema row from General and the three Grid entries
   prints, each with its current value. Result:
 - **SLASH-4. A gated value names its gate.** With `units.target.castbar.orientation` at `HORIZONTAL`,
-  `/kcd set units.target.castbar.growDirection UP` → refused; the error lists the valid options and a
-  `(depends on units.target.castbar.orientation = HORIZONTAL)` line. Set orientation to `VERTICAL`
-  and try `LEFT` → the same shape, naming `VERTICAL`. Result:
-- **SLASH-5. Numbers clamp.** `/kcd set scale 99` → clamped to the row's maximum, `2.00x`. Result:
-- **SLASH-6. Colors take three or four floats.** `/kcd set units.target.castbar.interruptible.barColor
-  0.5 0.5 0.5` → accepted, alpha `1`. A component above 1 is clamped to `1`. Result:
+  `/kcd set units.target.castbar.growDirection UP` → refused with two lines,
+  `Invalid value for units.target.castbar.growDirection` and `allowed values: RIGHT, LEFT (depends on
+  units.target.castbar.orientation = HORIZONTAL); flip units.target.castbar.orientation to VERTICAL
+  for DOWN/UP`. Set orientation to `VERTICAL` and try `LEFT` → the same shape: `allowed values: UP,
+  DOWN (depends on … = VERTICAL); flip … to HORIZONTAL for LEFT/RIGHT`. Result:
+- **SLASH-5. Numbers clamp.** `/kcd set scale 99` → clamped to the row's maximum; the echo reads
+  `scale = 2`. Result:
+- **SLASH-6. Colors take three or four numbers.** `/kcd set units.target.castbar.interruptible.barColor
+  0.5 0.5 0.5` → accepted with alpha 1, echoed `{0.50, 0.50, 0.50, 1.00}`. The same row with
+  `255 128 0` → any component above 1 switches the whole color to the 0 – 255 scale, echoed
+  `{1.00, 0.50, 0.00, 1.00}`; a component above 255 clamps to `1.00`. Result:
 - **SLASH-7. Reset one setting.** Change `units.target.icons.primarySize`, then
   `/kcd reset units.target.icons.primarySize` → that row returns to its default; every other row and
   the spell list are untouched. Result:
 - **SLASH-8. A reset color is a copy.** `/kcd reset units.target.icons.cooldownTint` on two profiles,
   then edit it on one → the other does not move. Result:
-- **SLASH-9. Retired reset words answer.** `/kcd reset general`, `icons`, `castbar`, `label` and
-  `spells` → each says the page-shaped reset is gone and names where it went (the page's or Grid
-  entry's Defaults button for the unit in the band, `/kcd reset <path>`, or `/kcd spells resetall`),
-  never `Setting not found`. Result:
-- **SLASH-10. `/kcd resetall`.** Move both grids, change settings on several pages, edit a spell list
-  on two specs, then `/kcd resetall` → no confirm prompt; every setting is back to default
-  (`/kcd get enabled` → `true`, `/kcd get visibility` → `target_casting_interruptible`); every spec's
-  spell list is re-seeded; the Target grid is back at y = 120 and Focus at y = 260; the profile list
-  is untouched. Result:
+- **SLASH-9. Retired reset words answer.** `/kcd reset general`, `icons`, `castbar` and `label` → each
+  says `` `/kcd reset <word>` is gone `` and points at the Defaults button that replaced it (General's,
+  or the Grid entry's for the unit in the band) or `/kcd reset <path>`. `/kcd reset spells` → it has
+  moved to `/kcd spells resetall`. None answers `Setting not found`. Result:
+- **SLASH-10. `/kcd resetall`.** `/kcd unlock`, move both grids,
+  `/kcd set units.target.castbar.anchorMode FREE` and drag the Target cast bar well away from the grid;
+  change settings on several pages and edit a spell list on two specs. Then `/kcd resetall` → one line,
+  `all settings + spells reset to defaults`, and no confirm prompt; every setting is back to default
+  (`/kcd get enabled` → `true`, `/kcd get visibility` → `target_casting_interruptible`,
+  `/kcd get units.target.castbar.anchorMode` → `PRIMARY`); every spec's spell list is re-seeded; the
+  Target grid is back at y = 120 and Focus at y = 260; the profile list is untouched. Now
+  `/kcd set units.target.castbar.anchorMode FREE` again → the bar sits at its default free anchor,
+  `CENTER / CENTER, x = 0, y = +120`, not where you dragged it. Result:
 - **SLASH-11. The defaults `resetall` lands on.** After SLASH-10, `/kcd get` each →
-  `units.target.label.show` `true`, `units.target.label.style.offsetY` `12`,
-  `units.target.label.style.color` `1 0.82 0 1`, `units.target.label.style.attach` `icons`,
-  `units.target.castbar.anchorPoint` `BOTTOM_LEFT`, `castbarPoint` `TOP_LEFT`, `anchorOffsetY` `-1`,
-  `timePosition` `CENTER`, `timeOffsetY` `-20`, both states' `statusBarTexture` `Blizzard Raid Bar`;
-  `units.focus.label.style.*` identical to Target's. Result:
+  `units.target.label.show` `true`, `units.target.label.style.offsetY` `12 px`,
+  `units.target.label.style.color` `{1.00, 0.82, 0.00, 1.00}`, `units.target.label.style.attach`
+  `icons`, `units.target.castbar.anchorPoint` `BOTTOM_LEFT`, `castbarPoint` `TOP_LEFT`,
+  `anchorOffsetY` `-1 px`, `timePosition` `CENTER`, `timeOffsetY` `-20 px`, both states'
+  `statusBarTexture` `Blizzard Raid Bar`; `units.focus.label.style.*` identical to Target's. Result:
 - **SLASH-12. Live verbs answer while disabled.** `/kcd disable`, then: bare `/kcd` → the settings
   panel, not a refusal; `/kcd help`, `/kcd version`, `/kcd list`, `/kcd get locked`,
   `/kcd set locked true`, `/kcd spells list`, `/kcd config` and `/kcd debug` → each answers normally;
@@ -241,7 +251,7 @@ Which checks to run for a partial change:
 - **PANEL-14. The Enable box and the slash agree.** With General open, `/kcd set enabled false` → the
   "Enable KickCD" box unticks at once. Tick it → `/kcd get enabled` → `true`. Result:
 - **PANEL-15. A slash write repaints the panel.** General open on Master controls, `/kcd set scale 1.25`
-  → the Master scale slider moves to 1.25x and the grid rescales, no reopen. Result:
+  → the Master scale slider moves to 1.25 and the grid rescales, no reopen. Result:
 - **PANEL-16. Color picker drag.** Drag a color slider in a swatch's picker quickly → no stutter and no
   error (commits are throttled to 50 ms). Result:
 - **PANEL-17. A Grid entry's Defaults.** Unlink Focus. With Target in the band, change a Cast bar and an
@@ -249,10 +259,10 @@ Which checks to run for a partial change:
   Target's Cast bar settings reset; Target's Icons setting and Focus's Cast bar setting keep your
   values; the open page repaints; the spell list is untouched. The Defaults tooltip says it restores the
   selected unit's settings in the section on screen. Result:
-- **PANEL-18. Reset all settings.** Hover General → Reset all settings → *"Reset the current profile to
-  its defaults — the same thing Profiles -> Reset Profile does. Your other profiles are not affected."*
-  (the arrow is ASCII `->` in the vendored string)
-  Click → a confirm popup; Yes → the same result as SLASH-10. Result:
+- **PANEL-18. Reset all settings.** Hover General → Reset all settings → the tooltip reads *"Reset the
+  current profile to its defaults — the same thing Profiles -> Reset Profile does. Your other profiles
+  are not affected."* The arrow is an ASCII `->`, as the vendored string writes it. Click → a confirm
+  popup; Yes → the same result as SLASH-10. Result:
 - **PANEL-19. Media dropdowns list real media.** With a media addon loaded, open Icons → Border texture
   and Cooldown text font; Text Label → Font; Cast bar → Font, and Bar texture and Border texture for
   both states (eight composed dropdowns) → each lists several entries, never a lone `Default` or an
@@ -303,8 +313,11 @@ Which checks to run for a partial change:
   grids re-anchor and re-skin to `Default`'s settings. Create `SmokeCopy`, switch to it, Copy From
   `SmokeTest` → the grid re-draws at 40. Switch to `Default` and Delete `SmokeCopy`; keep `SmokeTest`
   for PROFILE-9 – 14. `/reload` after each step → no error, and each result holds. Result:
-- **PROFILE-3. Profile scope.** Choose a per-character profile, `/reload` → `KickCDDB.profileKeys`
-  maps this character to it. Result:
+- **PROFILE-3. Profile scope.** On Profiles, open Existing Profiles: besides `Default` it offers this
+  character (`<Name> - <Realm>`), the realm (`<Realm>`) and the class (listed by its name). Pick each
+  in turn and `/reload` after each → `KickCDDB.profileKeys["<Name> - <Realm>"]` names the pick:
+  `<Name> - <Realm>`, then `<Realm>`, then the class token (`WARRIOR` on a Warrior). Switch back to
+  `Default` and delete the three. Result:
 - **PROFILE-4. The migration re-runs harmlessly.** Switch profiles → no error and nothing re-folds;
   `global.schemaVersion` reads `5`, account-wide, not per profile. Result:
 - **PROFILE-5. Colors and font flags survive a switch.** Create a second profile, switch to it and back
@@ -322,7 +335,7 @@ Which checks to run for a partial change:
   `Profiles` header, one row per profile sorted without regard to case, the current one suffixed
   `(current)`, then `/kcd profile <name> switches profile`. No line ends in a colon. Result:
 - **PROFILE-10. `/kcd profile <name>` switches.** Switch to `Default` on the Profiles page;
-  `/kcd get units.target.icons.primarySize` → `64` (`/kcd reset units.target.icons.primarySize` if
+  `/kcd get units.target.icons.primarySize` → `64 px` (`/kcd reset units.target.icons.primarySize` if
   not). `SmokeTest` holds 40 from PROFILE-2. `/kcd profile SmokeTest` →
   `Switched to profile 'SmokeTest'.`; the grid shrinks to 40 with no `/reload`, exactly as a switch on
   the page does, and the Profiles page shows `SmokeTest` as current on its next show.
@@ -403,8 +416,8 @@ Which checks to run for a partial change:
   included, is under the cover reading "Settings are locked during combat."; nothing changes; one gray
   locked line prints. After combat the page draws normally on the entry you were on. Result:
 - **COMBAT-5. The linked note's link in combat.** With a linked Focus in the band, pull a dummy and
-  click the note's link → `[KCD] cannot open settings during combat`, and the panel does not switch
-  page. Result:
+  click the note's link → the gray line `cannot open settings during combat — Blizzard's
+  category-switch is protected`, and the panel does not switch page. Result:
 - **COMBAT-6. The drag strip's right-click in combat.** Unlocked, Free anchor mode, in combat,
   right-click the cast bar's strip → the gray refusal line and no panel. Result:
 - **COMBAT-7. Debug dumps in combat.** In combat on a hostile caster, run every `/kcd debug`
@@ -435,12 +448,14 @@ Which checks to run for a partial change:
 - **GRID-1. Layout.** With four or more spells enabled, walk `units.target.icons.anchor` through all 13
   tokens, and for each set `units.target.icons.secondaryGrow` to two values valid on its axis → the
   secondary block lays out from the primary icon's named anchor in that direction, no overlap. Result:
-- **GRID-2. The overflow warning.** Set `secondaryRows` × `secondaryCols` below the enabled count minus
-  one → one `[KCD]` warning naming the class, spec and capacity. Raise it to fit, then drop below again
-  on a different class, spec or capacity → the warning fires for the new one only, once per session.
-  Result:
-- **GRID-3. Icon size is live.** `units.target.icons.primarySize` from 16 to 80 → the grid resizes with
-  no `/reload`. Result:
+- **GRID-2. The overflow warning.** `/kcd set units.focus.enabled false` (each unit warns for its own
+  grid). Set `units.target.icons.secondaryRows` × `secondaryCols` below the enabled spell count minus
+  one → one line, `dropped <n> icon(s) past the <rows × cols>-slot grid for <CLASS>/<specID> — bump
+  rows*cols or remove spells`. Change `primarySize` → no second line. Set another capacity that still
+  does not fit → the line prints again for it. Raise it until everything fits, then drop it below
+  again → the line prints again (fitting re-arms it). `/kcd set units.focus.enabled true`. Result:
+- **GRID-3. Icon size is live.** `units.target.icons.primarySize` from 24 to 96 (the row's range) → the
+  grid resizes with no `/reload`. Result:
 - **GRID-4. A cooldown starts.** `visibility = always`, cast Pummel at a dummy → its icon desaturates at
   once with a swipe, and with Annotations → Show cooldown text on, a countdown. Result:
 - **GRID-5. The GCD is not a cooldown.** While Pummel cools down, cast an on-GCD spell → Pummel's
@@ -497,8 +512,9 @@ Which checks to run for a partial change:
 - **CAST-8. Drag the strip.** Drag it → the bar moves; release, `/kcd lock`, `/reload` → the position
   sticks. Result:
 - **CAST-9. The `?` mark drags too.** Drag the `?` on the strip → the bar moves. Result:
-- **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows a tooltip in prose (no locale
-  key); the `?` brightens under the cursor; the strip's title is the addon's name. Result:
+- **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows the same tooltip, titled
+  `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key); the
+  `?` brightens under the cursor. Result:
 - **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
   opens. Result:
 - **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
@@ -599,8 +615,9 @@ Which checks to run for a partial change:
   raises an error. Result:
 - **LABEL-5. Justify.** Step Horizontal and Vertical justify with multi-word text → the alignment moves.
   Result:
-- **LABEL-6. Rotation.** Set Rotation to 45, then -90 → the label turns, and is upright at 0. The
-  control and `/kcd get units.target.label.style.rotation` read `45 deg`, never an empty box. Result:
+- **LABEL-6. Rotation.** Set Rotation to 45, then -90 → the label turns, and is upright at 0. At 45 the
+  control is labeled `Rotation (degrees)` and `/kcd get units.target.label.style.rotation` echoes
+  `45 deg`; neither shows an empty box where a degree sign used to be. Result:
 - **LABEL-7. Font.** Change Font, Font size and Font flags → the label redraws each time. Result:
 - **LABEL-8. Label color.** Pick a bright color → the text changes; switch Attach to → the color stays.
   Result:
@@ -612,8 +629,10 @@ Which checks to run for a partial change:
 - **LABEL-11. The label follows General visibility.** `visibility target_casting`, Show label on,
   Attach to `castbar` → target not casting: grid, bar and label all hidden; cast starts: all three
   appear; cast stops: all hide. Same with Attach to `icons`. Result:
-- **LABEL-12. Always means the label shows.** `visibility always`, Attach to `icons`, target not casting
-  → the label shows above the grid (a label parented to the bar used to vanish here). Result:
+- **LABEL-12. Always means the label shows.** `visibility always`, Show label on, target not casting.
+  Attach to `icons` → the label shows above the grid. Attach to `castbar` → the label still shows,
+  placed against the hidden cast bar: it follows the grid's visibility, never the bar's own hiding
+  when nothing is cast (a label parented to the bar used to vanish here). Result:
 - **LABEL-13. The strip clears the label.** `/kcd unlock` with the label attached to the icons → the grid
   strip sits above the label text. Label off → the strip drops to the grid's top. Attach the label to the
   cast bar, or anchor it to the grid's bottom → the grid strip returns to the grid's top and the cast
@@ -672,14 +691,16 @@ Which checks to run for a partial change:
 
 ## DIAG
 
-- **DIAG-1. `/kcd debug spells`.** → one line per spell: `ready=…  active=…  cdObj=yes/no
-  chargeCdObj=yes/no  charges=…`, charges maybe `<secret>` in combat, and no remaining-time field.
-  Result:
-- **DIAG-2. `/kcd debug castbar`.** → the target's cast state, configured and live per-state colors, and
-  `notInterruptible`'s `type()` and `issecretvalue()`. Result:
-- **DIAG-3. Logging is session-only.** `/kcd debug on` → `Ka0s_KickCD_*` traffic streams to the console,
-  not chat; `off` stops it; `toggle` flips it. `/reload` → off again; no saved setting holds it.
-  Result:
+- **DIAG-1. `/kcd debug spells`.** → `Cooldowns: class=<CLASS> spec=<SPEC> (<specID>)`, then one line
+  per watched spell: `[<id>] <name> ready=… active=… cdObj=yes|nil chargeCdObj=yes|nil charges=…`,
+  charges maybe `<secret>` in combat, and no remaining-time field. Result:
+- **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
+  cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
+  `live SetStatusBarColor values` for both states. With no cast the dump stops at
+  `no active cast tracked (current = nil)`. Result:
+- **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
+  trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
+  it. `/reload` → off again; no saved setting holds it. Result:
 - **DIAG-4. `/kcd debug window`.** → the console opens and closes; logging keeps its state either way.
   Result:
 - **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client. `/kcd debug on`, `/reload`,
@@ -698,22 +719,25 @@ Which checks to run for a partial change:
   `[Set] locked = true`. `/kcd set locked false` and press General's Defaults within a third of a
   second → `[Set] locked = false` prints before `[Set] reset general: …`. Result:
 - **DIAG-11. The cast and grid traces.** `target_casting_interruptible`; the target starts and stops an
-  interruptible cast → one `[Cast] target cast gate: interruptible on/off` per flip and one
-  `[IconGrid] visibility …: shown/hidden` when the grid's shown state actually changes, nothing on
-  refreshes that move neither. Result:
+  interruptible cast → at the start one `[Cast] [target] cast gate: interruptible on` (`interruptible
+  secret (combat-tainted)` where the client hides the flag), at the stop one
+  `[Cast] [target] cast gate: interruptible none (no hostile cast)`; one
+  `[IconGrid] [target] visibility target_casting_interruptible: shown` or `…: hidden` each time the
+  grid's shown state actually changes; nothing on refreshes that move neither. Result:
 - **DIAG-12. The open trace.** `/kcd config` out of combat → one `[Open] settings panel` per open. Result:
 - **DIAG-13. The spell-list traces.** On the Spells page add, toggle, recategorize, drag, remove and
-  reset a spec → exactly one line each: `[Spells] add <id> to <CLASS>/<SPEC>: N spells`,
+  reset a spec → exactly one write line each: `[Spells] add <id> to <CLASS>/<SPEC>: N spells`,
   `enable/disable <id> in …`, `category <id> = <cat> in …`, `move <from> -> <to> in …`,
   `remove <id> from …: N spells`, `reset <CLASS>/<SPEC>: N spells`. `/kcd spells remove` and
   `/kcd spells reset` log the same lines; `/kcd spells resetall` logs one
-  `[Spells] resetall: N lists, M spells`. Result:
+  `[Spells] resetall: N lists, M spells`. The page's drag list also traces its own gesture and
+  repaint (`[Spells] grab …`, `drop …`, `released …`, `painted …`); those are not writes. Result:
 - **DIAG-14. The setting trace.** Change a setting → one debounced `[Set] …` line after it settles; no
   echo, no per-keystroke lines. Result:
 - **DIAG-15. No spam.** 30 s+ in combat with no target casts → no `[Combat]`, `[Cast]` or `[IconGrid]`
   lines beyond the transitions already logged. Result:
-- **DIAG-16. The console header.** `/kcd debug window` → the title bar's Debug ON/OFF label is there and
-  colored (green / red); Esc closes the window. Opening it raises no error. Result:
+- **DIAG-16. The console header.** `/kcd debug window` → the title bar's `Debug: ON` (green) or
+  `Debug: OFF` (red) label is there; Esc closes the window. Opening it raises no error. Result:
 - **DIAG-17. The line counter and its cap.** Grow the log (debug on in combat) → the bottom-right reads
   `N / 3000 lines`, rising one per line; Clear → `0 / 3000 lines`, log empty. Fill it past the cap (a
   long combat, or twenty-odd `/kcd diagnostics`) → `3000 / 3000 lines` and it stays there; Copy opens
@@ -741,10 +765,11 @@ Which checks to run for a partial change:
 - **DIAG-25. The console face is monospace.** → timestamps and `[tags]` line up in a column. A
   proportional face is the honest fallback (`media/fonts/` missing from the payload); no text at all is
   the failure. Result:
-- **DIAG-26. The perf strings.** `/kcd perf start mylabel`, `/kcd perf finish` → the start line and the
-  report header name `mylabel`. `/kcd perf start`, `/kcd perf cancel` → the start line and header read
-  `unlabeled` and the cancel line `perf run CANCELED`, each with one L. A doubled L means the string
-  did not come from the vendored payload. Result:
+- **DIAG-26. The perf strings.** `/kcd perf start mylabel` → `perf run STARTED — <YYYY-MM-DD HH:MM>
+  mylabel`; `/kcd perf finish`, then `/kcd perf report` → the report's `capture:` line names the same
+  label. `/kcd perf start` with no label → the start line carries the timestamp alone (the library
+  always stamps one, so `unlabeled` never shows); `/kcd perf cancel` → `perf run CANCELED — nothing
+  saved`, one L. A doubled L means the string did not come from the vendored payload. Result:
 - **DIAG-27. The README's bug-report steps.** From a fresh `/reload` with the console closed, follow
   README → *Reporting a bug* word for word → every step works and the paste holds the trace and the
   whole report. Result:
@@ -760,7 +785,7 @@ Which checks to run for a partial change:
   `Debug: OFF` and a target change writes no trace. Result:
 - **DIAG-31. While disabled, both forms.** `/kcd disable`, `/kcd diagnostics`,
   `/kcd debug diagnostics` → both write a full report; the state line reads
-  `enabled stored=false, stood down=true`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
+  `enabled stored=false, stood down=true, holds=…`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
   print one `stood down: …` line; nothing stands up. `/kcd enable`. Result:
 - **DIAG-32. No alias.** `/kcd diag` → `unknown command 'diag'` and the help index;
   `/kcd debug diag` → the unknown-word line and the debug list. Neither writes a report. Result:
@@ -789,8 +814,8 @@ Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` before DEGRADED-1.
   ConsumableMaster → all three state the cause (`NS.LIBKA0S_MISSING`) identically, differing only in the
   addon name and the trailing consequence. Result:
 - **DEGRADED-8. Each seam names its own consequence.** `/kcd config` → opens nothing, one line about the
-  settings panel; `/kcd debug` → its line about the console; `/kcd perf` → its line about the capture.
-  Result:
+  settings panel; `/kcd debug` → its line about the debug console window; `/kcd perf` → its line
+  saying performance measurement is unavailable. Result:
 - **DEGRADED-9. No report.** `/kcd diagnostics` and `/kcd debug diagnostics` → each prints
   `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and nothing else. Result:
 - **DEGRADED-10. No profile verb.** `/kcd profile` and `/kcd profile Default` → each prints
@@ -826,14 +851,88 @@ reproduces it exactly.
 
 ## Pending sign-off
 
-Unsigned owner checks carried over from the pre-2026-09-29 document; origins are its sections
-(`§n`).
+The pre-2026-09-29 document recorded no result for any check, so every check carried over from it is
+owed unless an owner run records its pass. Two runs do, both on 2026-09-26: the Grid page checks
+(KC-S1 to KC-S11, the old `§36`, `Ka0sAddonsCommonTasks/docs/2026-09-26-NAVRAIL_ADOPTION`) and the
+diagnostics checks (the old `§35`, `2026-09-25-DIAGNOSTICS_COMMAND/99_REPORT.md` § 6). So PANEL-4 – 7,
+COMBAT-4, COMBAT-11, GRID-14, DIAG-27, DIAG-28, DIAG-30 – 33 and DEGRADED-9 are signed and not listed.
+A check that merged a passed step with an unrun one is listed for the unrun half. Checks new in this
+rework, and checks whose expectation it corrected against the code, are listed too. Origins are the
+old document's sections (`§n`, with its line numbers where a section held several checks). Sign one
+off on its own `Result:` line, then remove its row here.
 
 | ID | Origin | Why it is owed |
 |---|---|---|
-| CAST-13 | §32 | NOT YET RUN since `M4-22` (no client when it landed) |
-| DEGRADED-6 | §31 (the notice before the dump) | NOT YET RUN since `M4-20`; the once-per-session half from §25 was run, the before-the-dump half was not |
-| DEGRADED-11 | §31 | NOT YET RUN since `M4-20` (no client when it landed) |
+| INSTALL-1 – 4 | §1 L65 – 66, L70 – 71 | No result recorded |
+| INSTALL-5 | §2 L89 – 93 | No result recorded; corrected: `/kcd get` echoes `50 px` and `{0.20, 0.80, 0.20, 1.00}` |
+| INSTALL-6 – 9 | §17, §21, §23 | No result recorded |
+| INSTALL-10 – 14 | §33 | No result recorded |
+| SLASH-1 – 3 | §1 L67 – 68, §14 L406, §11 L326 | No result recorded |
+| SLASH-4 | §7b L198, §11 L325, L336 | No result recorded; corrected: the gate hint shares the `allowed values:` line and names the flip |
+| SLASH-5, SLASH-6 | §11 L327 – 328, L337 | No result recorded; corrected: the echoes, and a component above 1 reads the color as 0 – 255 |
+| SLASH-7, SLASH-8 | §12 L353 – 354 | No result recorded |
+| SLASH-9 | §12 L355, §36 KC-S10 | Only `castbar` passed (KC-S10); corrected: `spells` has moved, not gone |
+| SLASH-10 | §12 L358, L368, L370 | No result recorded; its cast-bar anchor half restored in this rework |
+| SLASH-11 | §12 L369 | No result recorded; corrected: the `px` and color echoes |
+| SLASH-12, SLASH-13 | §33 | No result recorded |
+| PANEL-1 | §1 L69, §2 L94, §14 L408, §36 KC-S1 | KC-S1 passed; the `/reload` half and §14's each-page-once (owed on the 2026-09-07 checklist, 4.2) did not |
+| PANEL-2 | §14 L406 | No result recorded |
+| PANEL-3 | §11 L343, §36 KC-S2 | KC-S2 passed; the every-tab half (§11) has no result |
+| PANEL-8 – 11 | §11 L338 – 340, §20b L518 | No result recorded |
+| PANEL-12 | §11 L344, §36 KC-S5 | KC-S5 passed; the Interruptible-tab half (§11) has no result |
+| PANEL-13, PANEL-14, PANEL-16 | §11 L323, L329 – 330, L333, §3 L119 | No result recorded |
+| PANEL-15 | §11 L324, L334 – 335 | No result recorded; corrected: the slider reads 1.25 |
+| PANEL-17 | §12 L356, L362, L366 – 367, §36 KC-S7 | KC-S7 passed; the repaint and spell-list halves (§12) have no result |
+| PANEL-18 | §12 L360 | No result recorded; corrected: the vendored tooltip's ASCII `->` |
+| PANEL-19 – 22 | §27, §18 L469, L471 | §27 never run (2026-09-07 checklist, session 4); PANEL-20 corrected to the vendored `COMPOSE_MINOR` |
+| PANEL-23 | §29, §18 L470 | §29 never run (2026-09-07 checklist, session 5) |
+| PANEL-24 | §28 | Never run (2026-09-07 checklist, session 3) |
+| PANEL-25 – 27 | §26 L740 – 742, §33 | No result recorded |
+| PANEL-28 | §25 L690 – 697 | Never run (2026-09-07 checklist, 3.9) |
+| PROFILE-1, PROFILE-4 – 6 | §13 L386, L389 – 391 | No result recorded |
+| PROFILE-2 | §13 L377 – 383, L387 | No result recorded; corrected: copies into a scratch `SmokeCopy` |
+| PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |
+| PROFILE-7, PROFILE-8 | §19 L481 – 482, §33 L1001 – 1002 | No result recorded |
+| PROFILE-9 – 14 | New | The `/kcd profile` verb |
+| STATE-1 – 3, STATE-5 – 9 | §3, §5, §33 | No result recorded |
+| STATE-4 | §3 L117 – 118, §20c L546 | No result recorded; corrected: Focus is turned off first |
+| STATE-10 | §12 L359, L361 | Never run (2026-09-07 checklist, 3.9) |
+| STATE-11 – 15 | §4, §16 L448 | No result recorded |
+| COMBAT-1, COMBAT-2 | §14 L404 – 405 | No result recorded |
+| COMBAT-3 | §14 L407 | Never run (2026-09-07 checklist, 1.1); corrected: four pages, not six |
+| COMBAT-5 | §20b L517 | No result recorded; corrected: the whole refusal line |
+| COMBAT-6 – 8, COMBAT-10 | §34 step 5, §15 L425 – 426, §4 L136, §16 | No result recorded |
+| COMBAT-9 | §15 L427 | Never run (2026-09-07 checklist, 1.7) |
+| GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
+| GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
+| GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
+| CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
+| CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
+| CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
+| CAST-14 | New | An empowered cast |
+| FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first |
+| FOCUS-6, FOCUS-7 | §20b L515 – 517, §22 L625, §36 KC-S6 | KC-S6 passed; the Target-restores and link-style halves have no result |
+| FOCUS-13 | §20b L524, L530 | No result recorded; corrected: a `/kcd resetall` baseline makes N = 4 |
+| LABEL-1 – 5, LABEL-7 – 11, LABEL-13 – 15 | §22, §34 step 0 | No result recorded |
+| LABEL-6 | §11 L346 | No result recorded; corrected: only the `/kcd get` echo carries `deg` |
+| LABEL-12 | §22 L630, L635 | No result recorded; its cast-bar attach half restored in this rework |
+| SPELLS-1 – 16 | §9, §10, §12 L357, L363 | No result recorded |
+| DIAG-1 – 3 | §15 L416 – 418, L428 | No result recorded; corrected: the dump and ack lines as printed |
+| DIAG-4 – 10, DIAG-12, DIAG-14, DIAG-15 | §15, §19 | No result recorded |
+| DIAG-11 | §19 L483 | No result recorded; corrected: the `[target]` tag and the stop label |
+| DIAG-13 | §19 L485 | No result recorded; corrected: the drag list's own trace lines |
+| DIAG-16 | §24 L660, L668 | No result recorded; corrected: `Debug: ON` / `Debug: OFF` |
+| DIAG-17 | §24 L661, L669, §35 step 9 | The cap passed (2026-09-26); the rising counter and Clear have no result |
+| DIAG-18 – 22, DIAG-25 | §24, §26 | No result recorded |
+| DIAG-23, DIAG-24 | §30, §26 L727 – 733 | Never run (2026-09-07 checklist, 3.4) |
+| DIAG-26 | §28 | Never run (2026-09-07 checklist, 3.3); corrected: the timestamp label and the cancel line |
+| DIAG-29 | §35 step 3 | Not in the 2026-09-26 run |
+| DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
+| DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
+| DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
+| DEGRADED-10 | New | The `/kcd profile` verb |
+| DEGRADED-11 | §31 | NOT YET RUN since `M4-20` |
+| LOC-1 – 6 | §9b | Never run (2026-09-07 checklist, session 6) |
 
 If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led
 to it, and file an issue at the tracker in [README.md](../README.md#issues-and-feature-requests).
