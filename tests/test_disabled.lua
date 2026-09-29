@@ -341,11 +341,15 @@ local LIVE = {
 
 test("DISABLED: every reserved verb still answers, and the bare /kcd opens the panel", function()
     -- red under: passing a NARROWED `liveVerbs` in settings/Slash.lua, which is what v2.56.0 asked
-    -- for and v2.57.0 reversed
+    -- for and v2.57.0 reversed; or dropping `spells` or `profile` from NS.EXTRA_LIVE_VERBS
     local inst = baseline()
-    setEnabled(inst, false)
 
     for _, verb in ipairs(LIVE) do
+        -- Re-disabled before EVERY verb, and checked: `enable` turns the addon back on and
+        -- `resetall` restores the default `enabled = true`, so without this every verb after them
+        -- in the list would be dispatched to an ENABLED addon and could not go red here.
+        setEnabled(inst, false)
+        assertEqual(inst.NS.MasterEnabled(), false, "sanity: `/kcd " .. verb .. "` must be dispatched while disabled")
         local lines = say(inst, function() inst.NS:OnSlashCommand(verb) end)
         if verb == "help" then
             -- `help` CARRIES the refusal line, under its header, and that is not a refusal OF help:
@@ -360,6 +364,7 @@ test("DISABLED: every reserved verb still answers, and the bare /kcd opens the p
 
     -- The bare command, which is the case that settled the reversal: it opens the settings panel,
     -- the one surface a player uses to switch a disabled addon back on by hand.
+    setEnabled(inst, false)
     local opened, realOpen = 0, inst.NS.OpenSettings
     inst.NS.OpenSettings = function(self) opened = opened + 1; return realOpen(self) end
     say(inst, function() inst.NS:OnSlashCommand("") end)
