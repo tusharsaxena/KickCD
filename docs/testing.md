@@ -323,7 +323,7 @@ The fifth was `tests/test_spelling.lua`, added on 2026-09-08 (M4c-02), and it is
 
 It loads `.luacheckrc` **as Lua**, under a sandbox whose `__index` auto-creates tables the way luacheck's own config loader does, rather than scanning it as text — Lua has half a dozen ways to write the same assignment, and a text scan loses to all of them. What this gate reads is therefore the table luacheck obeys. It fails rather than skips when it cannot look — no config, no `io.popen`, no git, a chunk that will not compile — the same bargain `tests/test_doc_structure.lua` and `tests/_kit/test_eol.lua` strike.
 
-Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant, and anything consumed by a library before it becomes observable. It is not a substitute for behavioral coverage; it is what you add when you can prove coverage is structurally impossible. Pair it with an in-game check where one exists — smoke-test §25 is the `L` trap's.
+Reach for this shape when a rule must hold in code the harness cannot enter — combat-only paths, branches gated on live game state, anything behind an API the mock stubs to a constant, and anything consumed by a library before it becomes observable. It is not a substitute for behavioral coverage; it is what you add when you can prove coverage is structurally impossible. Pair it with an in-game check where one exists — smoke check PANEL-28 in [smoke-tests.md](smoke-tests.md) is the `L` trap's.
 
 ## Keeping the inventory & badge in sync
 
