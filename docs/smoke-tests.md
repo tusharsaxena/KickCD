@@ -22,7 +22,7 @@ and a retired one leaves its number unused.
 | GRID-1 – 14 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge |
 | CAST-1 – 14 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts |
 | FOCUS-1 – 18 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
-| LABEL-1 – 14 | Text label | Every label control, visibility follow, the drag strip clearing the label |
+| LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
 | DIAG-1 – 33 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics` |
 | DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
@@ -54,28 +54,44 @@ and a retired one leaves its number unused.
 
 Which checks to run for a partial change:
 
-- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-23, which is the only check
-  that loads five addons into one AceGUI registry.
+- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19 and PANEL-23. PANEL-23 is
+  the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
-  DEGRADED, PANEL-19 – 28, DIAG-16 – 26, CAST-6 – 12 and INSTALL-10. The panel, the console and the
-  window edge are what the library draws, and a re-vendor can change them with no addon file touched.
-- **Hot paths** (`Cooldowns.lua`, `IconGrid*.lua`, `Castbar*.lua`, the secret-value gates): GRID,
-  COMBAT-8 – 10, STATE-11 – 15. The cast bar's `OnUpdate` install (`EnsureFrame`, `Start`, `Stop`) also
-  needs CAST-13, the only check that drives two units at once.
-- **Settings or schema:** PANEL, SLASH-3 – 11, INSTALL-6, and the Defaults path of the page you touched.
-- **Spell lists or `core/Database.lua`:** SPELLS, PROFILE-2 – 6; a shape change (`DEFAULT_PROFILE`, a
-  migration) also INSTALL-7 – 9.
-- **Target and focus:** FOCUS; anything touching per-unit derived state (the icon curves, the cast bar's
-  structure signature) needs FOCUS-16 – 18, the only checks that catch one unit inheriting the other's
-  resolved appearance.
-- **Text label:** LABEL, and INSTALL-9 if `label.style`'s shape or defaults moved.
-- **The printer (`NS.Util.print` or `core/CoreSetup.lua`):** DEGRADED-11, then DIAG-1 – 6.
-- **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`): DIAG-27 – 33,
-  COMBAT-11, DEGRADED-9.
-- **Launcher, logo or `## IconTexture`:** INSTALL-10 – 14, STATE-5, STATE-9, PANEL-26 – 27.
+  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 33;
+  COMBAT-7 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
+  SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
+  the library draws, and a re-vendor can change them with no addon file touched.
+- **Hot paths** (`Cooldowns.lua`, `IconGrid*.lua`, `Castbar*.lua`, the secret-value gates):
+  INSTALL-1 – 5, SLASH-1 – 2, PANEL-1, GRID, CAST-5, COMBAT-8 – 10, STATE-11 – 15. The cast bar's
+  `OnUpdate` install (`EnsureFrame`, `Start`, `Stop`) also needs CAST-13, the only check that drives two
+  units at once.
+- **Settings or schema:** PANEL, SLASH-3 – 11, INSTALL-6, LABEL-2, LABEL-6, GRID-13, SPELLS-13 and
+  STATE-10. A new schema row also needs its page's reset path (PANEL-17, SLASH-7).
+- **Spell lists or `core/Database.lua`:** SPELLS, PROFILE-1 – 6; a shape change (`DEFAULT_PROFILE`, a
+  migration) also INSTALL-7 – 8, and INSTALL-9 if it touches `units.<unit>.label`.
+- **Target and focus:** FOCUS, STATE-4, PANEL-11, PANEL-13 and COMBAT-5, plus GRID-1 – 3 and
+  CAST-1 – 5 on each unit if the change touches layout or cast-bar internals both instances share.
+  Anything touching per-unit derived state (the icon curves, the cast bar's structure signature) needs
+  FOCUS-16 – 18, the only checks that catch one unit inheriting the other's resolved appearance.
+- **Text label:** LABEL and FOCUS-6, and INSTALL-9 if `label.style`'s shape or defaults moved.
+- **The printer (`NS.Util.print` or `core/CoreSetup.lua`):** DEGRADED-6 and DEGRADED-11, then DIAG-1 – 6
+  and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the library-less load.
+- **Debug console** (the window, its subcommands, the scrollbar and line counter, the title-bar art):
+  DIAG-1 – 6, DIAG-16 – 25, COMBAT-7 – 9 and PANEL-25.
+- **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a
+  section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-17, COMBAT-11, GRID-14,
+  DEGRADED-9, then DIAG-1 – 6 and COMBAT-7 – 9.
+- **Perf descriptor or panel** (`core/PerfSetup.lua`): DIAG-23 – 24, then DIAG-21 – 26 and PANEL-25.
+  DIAG-23 is the only place the panel's close is checked against what is drawn.
+- **Media seam** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton`
+  wrapper, the DebugLog descriptor): DIAG-21 – 25 and PANEL-25, then DIAG-16 – 20. The tests pin what
+  is passed; these are the only look at what is drawn.
+- **Launcher, logo or `## IconTexture`** (and a re-vendor that moves `Launcher.lua`): INSTALL-10 – 14,
+  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13. A wrong TGA format draws nothing and
+  raises nothing, so no gate reports it.
 - **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
-  PANEL-1 – 13, COMBAT-4.
+  PANEL-1 – 13, PANEL-17, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
 - **A release or a TOC bump:** everything.
 
 ## INSTALL
@@ -137,8 +153,8 @@ Which checks to run for a partial change:
   landing page with the tree expanded, and no help list prints. `/kcd config` does the same. Result:
 - **SLASH-2. Help.** `/kcd help` → the help index; every row has the `[KCD]` banner, command names in
   yellow, descriptions in white, and no `schema error:` line. Result:
-- **SLASH-3. `/kcd list`.** → every schema row General and the three Grid entries show, each with its
-  current value. Result:
+- **SLASH-3. `/kcd list`.** Type `/kcd list` → every schema row from General and the three Grid entries
+  prints, each with its current value. Result:
 - **SLASH-4. A gated value names its gate.** With `units.target.castbar.orientation` at `HORIZONTAL`,
   `/kcd set units.target.castbar.growDirection UP` → refused; the error lists the valid options and a
   `(depends on units.target.castbar.orientation = HORIZONTAL)` line. Set orientation to `VERTICAL`
@@ -231,7 +247,8 @@ Which checks to run for a partial change:
   values; the open page repaints; the spell list is untouched. The Defaults tooltip says it restores the
   selected unit's settings in the section on screen. Result:
 - **PANEL-18. Reset all settings.** Hover General → Reset all settings → *"Reset the current profile to
-  its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."*
+  its defaults — the same thing Profiles -> Reset Profile does. Your other profiles are not affected."*
+  (the arrow is ASCII `->` in the vendored string)
   Click → a confirm popup; Yes → the same result as SLASH-10. Result:
 - **PANEL-19. Media dropdowns list real media.** With a media addon loaded, open Icons → Border texture
   and Cooldown text font; Text Label → Font; Cast bar → Font, and Bar texture and Border texture for
@@ -279,9 +296,10 @@ Which checks to run for a partial change:
   Profiles → the AceDBOptions controls (current profile, New, Copy From, Delete, Reset Profile), never
   a blank page under the header. Result:
 - **PROFILE-2. Create, switch, copy, delete.** Create `SmokeTest` and switch to it,
-  `/kcd set units.target.icons.primarySize 60` → the grid re-draws at 60. Switch to `Default` → the
-  grids re-anchor and re-skin to `Default`'s settings. Copy From `SmokeTest`, then Delete `SmokeTest`.
-  `/reload` after each step → no error, and each result holds. Result:
+  `/kcd set units.target.icons.primarySize 40` → the grid re-draws at 40. Switch to `Default` → the
+  grids re-anchor and re-skin to `Default`'s settings. Create `SmokeCopy`, switch to it, Copy From
+  `SmokeTest` → the grid re-draws at 40. Switch to `Default` and Delete `SmokeCopy`; keep `SmokeTest`
+  for PROFILE-9 – 14. `/reload` after each step → no error, and each result holds. Result:
 - **PROFILE-3. Profile scope.** Choose a per-character profile, `/reload` → `KickCDDB.profileKeys`
   maps this character to it. Result:
 - **PROFILE-4. The migration re-runs harmlessly.** Switch profiles → no error and nothing re-folds;
@@ -300,11 +318,13 @@ Which checks to run for a partial change:
 - **PROFILE-9. `/kcd profile` lists.** With `Default` and `SmokeTest` present, `/kcd profile` → a
   `Profiles` header, one row per profile sorted without regard to case, the current one suffixed
   `(current)`, then `/kcd profile <name> switches profile`. No line ends in a colon. Result:
-- **PROFILE-10. `/kcd profile <name>` switches.** On `SmokeTest` set primarySize 60, go back to
-  `Default`, then `/kcd profile SmokeTest` → `Switched to profile 'SmokeTest'.`; the grid re-draws at
-  60 with no `/reload`, exactly as a switch on the page does, and the Profiles page shows `SmokeTest`
-  as current on its next show. `/kcd profile SmokeTest` again → `Already on profile 'SmokeTest'.` and
-  nothing changes. `/kcd profile Default`. Result:
+- **PROFILE-10. `/kcd profile <name>` switches.** Switch to `Default` on the Profiles page;
+  `/kcd get units.target.icons.primarySize` → `64` (`/kcd reset units.target.icons.primarySize` if
+  not). `SmokeTest` holds 40 from PROFILE-2. `/kcd profile SmokeTest` →
+  `Switched to profile 'SmokeTest'.`; the grid shrinks to 40 with no `/reload`, exactly as a switch on
+  the page does, and the Profiles page shows `SmokeTest` as current on its next show.
+  `/kcd profile SmokeTest` again → `Already on profile 'SmokeTest'.` and nothing changes.
+  `/kcd profile Default`. Result:
 - **PROFILE-11. An unknown name is refused, never created.** `/kcd profile Nope` →
   `No profile named 'Nope'.` then the list; the Profiles page has no `Nope`. `/kcd profile smoketest`
   → refused the same way, with `Did you mean 'SmokeTest'?` before the list. Result:
@@ -330,9 +350,10 @@ Which checks to run for a partial change:
   `/kcd get locked` reports what it did before. Result:
 - **STATE-3. Off unregisters listeners.** Disabled, `/kcd debug on`, enter combat → no
   `[Combat] entered` line in the console. Result:
-- **STATE-4. Enable rebuilds from current state.** Disabled, enable Focus
-  (`/kcd set units.focus.enabled true`), target and focus hostile casters, `/kcd enable` → every unit
-  whose `units.<unit>.enabled` is true comes back in the same turn, including Focus, with the current
+- **STATE-4. Enable rebuilds from current state.** `/kcd enable`,
+  `/kcd set units.focus.enabled false`, `/kcd disable`. While off, `/kcd set units.focus.enabled true`,
+  target and focus hostile casters, then `/kcd enable` → every unit whose `units.<unit>.enabled` is
+  true comes back in the same turn, including Focus (enabled while the addon was off), with the current
   casts and cooldowns shown, no `/reload`. Result:
 - **STATE-5. The minimap button while off.** Disabled, hover the button → `Enabled: No` and the same
   two hints. Left-click → the settings panel, nothing printed. Right-click → Enabled unticked and
@@ -341,8 +362,7 @@ Which checks to run for a partial change:
 - **STATE-6. A fresh profile starts unlocked.** On a new profile `/kcd get locked` → `false`, and the
   grid drags with no `/kcd unlock`. Result:
 - **STATE-7. Lock and unlock.** `/kcd set units.target.castbar.anchorMode FREE`, `/kcd unlock` → the
-  grid and the cast bar both drag. `/kcd lock` → neither does, and both drag strips go. `/reload` →
-  both keep their positions. Result:
+  grid and the cast bar both drag. `/kcd lock` → neither does, and both drag strips go. Result:
 - **STATE-8. `/kcd toggle` and the Lock frame box.** Panel open on General → Master controls,
   `/kcd toggle` twice → the lock flips each time and Lock frame follows live. Result:
 - **STATE-9. The launcher menu.** Right-click the button → a menu titled Ka0s KickCD with exactly two
@@ -494,9 +514,10 @@ Which checks to run for a partial change:
 - **FOCUS-1. Focus defaults.** On a fresh profile → Focus is enabled and linked to Target, its grid at
   y = 260 above Target's (y = 120), with a small gap between Focus's cast timer and the Target label.
   Result:
-- **FOCUS-2. Enabling Focus builds it live.** `/kcd set units.focus.enabled true` → a second grid
-  (`KickCDIconGridFocus`) and cast bar (`KickCDCastbarFocus`) appear with no `/reload`, tracking the
-  same spells as Target. Result:
+- **FOCUS-2. Enabling Focus builds it live.** `/kcd set units.focus.enabled false`, `/reload` (so no
+  Focus frames exist yet), then `/kcd set units.focus.enabled true` → a second grid
+  (`KickCDIconGridFocus`) and cast bar (`KickCDCastbarFocus`) appear with no further `/reload`, tracking
+  the same spells as Target. Result:
 - **FOCUS-3. Independent gating.** `target_casting_interruptible`, a hostile target and a different
   hostile focus. Only the target casts → only the Target pair shows; only the focus casts → only the
   Focus pair; both cast → both. Result:
@@ -572,9 +593,9 @@ Which checks to run for a partial change:
   independent. Relink → Focus's style mirrors Target's again and its text stays "Kick this". Result:
 - **LABEL-10. Focus off hides its label.** Both labels shown, `/kcd set units.focus.enabled false` →
   the Focus label goes at once, Target's stays; enable → back. Result:
-- **LABEL-11. The label follows General visibility.** `visibility target_casting` with Show label on →
-  target not casting: grid, bar and label all hidden; cast starts: all three appear; cast stops: all
-  hide. Same with Attach to `icons`. Result:
+- **LABEL-11. The label follows General visibility.** `visibility target_casting`, Show label on,
+  Attach to `castbar` → target not casting: grid, bar and label all hidden; cast starts: all three
+  appear; cast stops: all hide. Same with Attach to `icons`. Result:
 - **LABEL-12. Always means the label shows.** `visibility always`, Attach to `icons`, target not casting
   → the label shows above the grid (a label parented to the bar used to vanish here). Result:
 - **LABEL-13. The strip clears the label.** `/kcd unlock` with the label attached to the icons → the grid
@@ -585,6 +606,11 @@ Which checks to run for a partial change:
   both strips ("Ka0s KickCD — Target" / "— Focus") sit fully above their labels with a small gap.
   Untick Show label on each unit (unlink Focus first) → that strip drops to just above its icons; tick
   → it climbs back. Font size 30 → the strip still clears it. `/kcd lock` hides both. Result:
+- **LABEL-15. Rapid changes raise nothing.** Panel open on Text Label, flip Attach to between
+  `castbar` and `icons` ten times fast; drag the X offset, Y offset and Rotation sliders end to end
+  quickly several times; then cycle `/kcd set visibility` through `always`, `in_combat`,
+  `target_casting` and `target_casting_interruptible` back to back → no Lua error at any point, and the
+  label ends where the final values put it. Result:
 
 ## SPELLS
 
@@ -741,7 +767,8 @@ Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` before DEGRADED-1.
 - **DEGRADED-5. Plain help rows.** `/kcd help` → rows read `/kcd <verb>  <desc>`: white, two spaces, no
   em-dash. Result:
 - **DEGRADED-6. One notice.** → the missing-library notice appears exactly once per session, naming
-  `libs/LibKa0s`, however many lines print after it (including DEGRADED-11's dump). Result:
+  `libs/LibKa0s`, however many lines print after it. Run DEGRADED-11's dump too: the notice comes
+  before the dump, never once per dump line. Result:
 - **DEGRADED-7. The same sentence as the other addons.** Do the same rename on AbsorbTracker and
   ConsumableMaster → all three state the cause (`NS.LIBKA0S_MISSING`) identically, differing only in the
   addon name and the trailing consequence. Result:
@@ -783,16 +810,14 @@ reproduces it exactly.
 
 ## Pending sign-off
 
-Checks the owner has not yet run in a client. Origins are sections of the pre-2026-09-29 document
-(`§n`), or new with this rework.
+Unsigned owner checks carried over from the pre-2026-09-29 document; origins are its sections
+(`§n`).
 
 | ID | Origin | Why it is owed |
 |---|---|---|
 | CAST-13 | §32 | NOT YET RUN since `M4-22` (no client when it landed) |
+| DEGRADED-6 | §31 (the notice before the dump) | NOT YET RUN since `M4-20`; the once-per-session half from §25 was run, the before-the-dump half was not |
 | DEGRADED-11 | §31 | NOT YET RUN since `M4-20` (no client when it landed) |
-| CAST-14 | New | Replaces a dangling "smoke C-03 step 4" pointer in midnight-quirks.md; never run |
-| PROFILE-9 – 14 | New | The `/kcd profile` verb (SP-KC-02, 2026-09-29) |
-| DEGRADED-10 | New | The verb's library-absent line (SP-KC-02) |
 
 If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led
 to it, and file an issue at the tracker in [README.md](../README.md#issues-and-feature-requests).
