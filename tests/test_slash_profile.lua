@@ -63,12 +63,23 @@ test("COMMANDS carries `profile` beside the settings verbs, in a pinned order", 
 end)
 
 test("the `profile` description is the locale's, and names the <name> form", function()
-    -- red under: an English literal in COMMANDS instead of NS.L
+    -- red under: an English literal in COMMANDS instead of NS.L (the override
+    -- below is what catches it -- enUS's L returns the key, so on a stock load the
+    -- literal and the lookup are the same string); the enUS key removed
     local key = "List profiles, or switch to one: profile <name>"
     assertEqual(rawget(T.NS.L, key), key, "locales/enUS.lua must define the key")
-    for _, e in ipairs(T.NS.COMMANDS) do
-        if e[1] == "profile" then assertEqual(e[2], T.NS.L[key]) end
+    local marker = "<translated> profile <name>"
+    local inst = loadProfiles({ afterFile = { ["locales/enUS.lua"] = function(NS)
+        NS.L[key] = marker
+    end } })
+    local seen = 0
+    for _, e in ipairs(inst.NS.COMMANDS) do
+        if e[1] == "profile" then
+            seen = seen + 1
+            assertEqual(e[2], marker, "the row's description must be read through NS.L")
+        end
     end
+    assertEqual(seen, 1, "one `profile` row")
 end)
 
 test("`/kcd help` lists `profile` once, one row per COMMANDS entry", function()

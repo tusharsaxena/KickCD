@@ -164,7 +164,7 @@ files["modules/UnitLabel.lua"]       = { ignore = { "212/self" } }
 -- nothing else, and modules/IconGrid.lua:272 calls the unregister half through `self:`.
 files["modules/IconGrid_Render.lua"] = { ignore = { "212/self" } }
 
--- Three receivers the settings layer does not choose. `SlashLib:New(d)` at settings/Slash.lua:322
+-- Three receivers the settings layer does not choose. `SlashLib:New(d)` at settings/Slash.lua:323
 -- is the degradation stub standing in for `LibKa0s-Slash-1.0`'s constructor, so it takes the
 -- receiver the real one takes or the live and degraded paths stop being callable the same way --
 -- which is the single fact tests/test_surface_parity.lua exists to hold. The two `NS.Slash`
