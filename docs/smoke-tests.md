@@ -15,7 +15,7 @@ and a retired one leaves its number unused.
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
 | SLASH-1 – 13 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled |
-| PANEL-1 – 28 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys |
+| PANEL-1 – 29 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
@@ -68,7 +68,7 @@ Which checks to run for a partial change:
   `OnUpdate` install (`EnsureFrame`, `Start`, `Stop`) also needs CAST-13, the only check that drives two
   units at once.
 - **Settings or schema:** PANEL, SLASH-3 – 11, INSTALL-6, LABEL-2, LABEL-6, GRID-13, SPELLS-13 and
-  STATE-10. A new schema row also needs the reset paths (PANEL-17 – 18, SLASH-7 – 11, SPELLS-11 – 12
+  STATE-10. A new schema row also needs the reset paths (PANEL-17 – 18, PANEL-29, SLASH-7 – 11, SPELLS-11 – 12
   and DIAG-8).
 - **Spell lists or `core/Database.lua`:** SPELLS, PROFILE-1 – 6; a shape change (`DEFAULT_PROFILE`, a
   migration) also INSTALL-7 – 8, and INSTALL-9 if it touches `units.<unit>.label`.
@@ -95,7 +95,7 @@ Which checks to run for a partial change:
   STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13. A wrong TGA format draws nothing and
   raises nothing, so no gate reports it.
 - **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
-  PANEL-1 – 13, PANEL-17, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
+  PANEL-1 – 13, PANEL-17, PANEL-29, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
 - **A release or a TOC bump:** everything.
 
 ## INSTALL
@@ -303,6 +303,15 @@ Which checks to run for a partial change:
   `SCREAMING_SNAKE_CASE` string (`STEP_START`, `PANEL_TITLE_SUFFIX`, `LIST_HEADER`) means a descriptor
   was handed `NS.L` itself; this addon once shipped a perf panel reading `Ka0s KickCDPANEL_TITLE_SUFFIX`.
   `tests/test_perfsetup.lua` guards the source; this is the only look at what rendered. Result:
+- **PANEL-29. General's and Icons' Defaults stay on their own page.** Out of combat, Focus linked (the
+  default): `/kcd set scale 1.25`, `/kcd set units.target.icons.primarySize 50`,
+  `/kcd set units.target.castbar.timeOffsetY -30`, and on Spells drag row 3 above row 1. Open General and
+  click Defaults → the Master scale slider is back at 1 and the grid returns to its normal size;
+  `/kcd get units.target.icons.primarySize` → `50 px`; `/kcd get units.target.castbar.timeOffsetY` →
+  `-30 px`; the Spells order is still yours. `/kcd set scale 1.25` again, then Grid → Icons with Target in
+  the band → Defaults → `/kcd get units.target.icons.primarySize` → `64 px`; the Master scale slider still
+  reads 1.25, `timeOffsetY` still `-30 px`, the Spells order still yours. Clean up: Grid → Cast bar →
+  Defaults, General → Defaults, Spells → Defaults. Result:
 
 ## PROFILE
 
@@ -397,7 +406,7 @@ Which checks to run for a partial change:
   start; leave combat → both hide. Result:
 - **STATE-14. Visibility `target_casting`.** Target a mob that is not casting → hidden. It starts a cast
   or channel → both appear; the cast ends or is canceled → both hide. Result:
-- **STATE-15. Visibility `target_casting_interruptible`** (the default). Target a hostile in an
+- **STATE-15. Visibility `target_casting_interruptible` (the default).** Target a hostile in an
   uninterruptible cast → hidden. Switch to one casting interruptibly → both appear. A cast that flips
   to uninterruptible mid-cast (some bosses) → the cast bar fades to alpha 0 but stays shown (an alpha
   curve, not `:Hide()`). An occasional leak at cast start is a known issue (WoW's `notInterruptible` is
@@ -904,6 +913,7 @@ off on its own `Result:` line, then remove its row here.
 | PANEL-24 | §28 | Never run (2026-09-07 checklist, session 3) |
 | PANEL-25 – 27 | §26 L740 – 742, §33 | No result recorded |
 | PANEL-28 | §25 L690 – 697 | Never run (2026-09-07 checklist, 3.9) |
+| PANEL-29 | §12 L362 | No result recorded; restored in this rework: General's and Icons' Defaults leave the other pages and the spell list alone |
 | PROFILE-1, PROFILE-4 – 6 | §13 L386, L389 – 391 | No result recorded |
 | PROFILE-2 | §13 L377 – 383, L387 | No result recorded; corrected: copies into a scratch `SmokeCopy` |
 | PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |
