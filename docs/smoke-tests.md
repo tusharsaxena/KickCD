@@ -21,7 +21,7 @@ and a retired one leaves its number unused.
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
 | GRID-1 – 14 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge |
 | CAST-1 – 14 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts |
-| FOCUS-1 – 18 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
+| FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
 | DIAG-1 – 33 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics` |
@@ -59,7 +59,7 @@ Which checks to run for a partial change:
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
   DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 33;
-  COMBAT-7 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
+  COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
   SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
   the library draws, and a re-vendor can change them with no addon file touched.
 - **Hot paths** (`Cooldowns.lua`, `IconGrid*.lua`, `Castbar*.lua`, the secret-value gates):
@@ -67,18 +67,21 @@ Which checks to run for a partial change:
   `OnUpdate` install (`EnsureFrame`, `Start`, `Stop`) also needs CAST-13, the only check that drives two
   units at once.
 - **Settings or schema:** PANEL, SLASH-3 – 11, INSTALL-6, LABEL-2, LABEL-6, GRID-13, SPELLS-13 and
-  STATE-10. A new schema row also needs its page's reset path (PANEL-17, SLASH-7).
+  STATE-10. A new schema row also needs the reset paths (PANEL-17 – 18, SLASH-7 – 11, SPELLS-11 – 12
+  and DIAG-8).
 - **Spell lists or `core/Database.lua`:** SPELLS, PROFILE-1 – 6; a shape change (`DEFAULT_PROFILE`, a
   migration) also INSTALL-7 – 8, and INSTALL-9 if it touches `units.<unit>.label`.
-- **Target and focus:** FOCUS, STATE-4, PANEL-11, PANEL-13 and COMBAT-5, plus GRID-1 – 3 and
-  CAST-1 – 5 on each unit if the change touches layout or cast-bar internals both instances share.
-  Anything touching per-unit derived state (the icon curves, the cast bar's structure signature) needs
-  FOCUS-16 – 18, the only checks that catch one unit inheriting the other's resolved appearance.
+- **Target and focus:** FOCUS, STATE-4, PANEL-11, PANEL-13 and COMBAT-5, plus GRID-1 – 3, CAST-1 – 5,
+  CAST-8 and SLASH-4 on each unit if the change touches layout or cast-bar internals both instances
+  share. Anything touching per-unit derived state (the icon curves, the cast bar's structure
+  signature) needs FOCUS-16 – 19, the only checks that catch one unit inheriting the other's resolved
+  appearance.
 - **Text label:** LABEL and FOCUS-6, and INSTALL-9 if `label.style`'s shape or defaults moved.
-- **The printer (`NS.Util.print` or `core/CoreSetup.lua`):** DEGRADED-6 and DEGRADED-11, then DIAG-1 – 6
-  and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the library-less load.
+- **The printer (`NS.Util.print` or `core/CoreSetup.lua`):** DEGRADED-6 and DEGRADED-11, then
+  DIAG-1 – 6, DIAG-28 and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the
+  library-less load.
 - **Debug console** (the window, its subcommands, the scrollbar and line counter, the title-bar art):
-  DIAG-1 – 6, DIAG-16 – 25, COMBAT-7 – 9 and PANEL-25.
+  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, COMBAT-7 – 9 and PANEL-25.
 - **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a
   section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-17, COMBAT-11, GRID-14,
   DEGRADED-9, then DIAG-1 – 6 and COMBAT-7 – 9.
@@ -231,10 +234,10 @@ Which checks to run for a partial change:
   Target's. Result:
 - **PANEL-13. The Unit picker survives rebuilds.** On Icons switch the band Target → Focus → Target a
   few times and click every tab; tick and untick General → Units → "Use same styling as Target" and
-  press "Copy styling from Target"; then, panel open, run any `/kcd set …` (twice, including mid-cooldown
-  per FOCUS-17). Repeat on Cast bar and Text Label → the picker lists exactly `Target` / `Focus`
-  throughout, and every other widget shows its own value. Anchor points or text positions in the
-  picker are the stale-refresher bug. Result:
+  press "Copy styling from Target"; then, panel open, run any `/kcd set …`. Repeat on Cast bar and
+  Text Label → the picker lists exactly `Target` / `Focus` throughout, and every other widget shows its
+  own value. Anchor points or text positions in the picker are the stale-refresher bug. FOCUS-17 makes
+  the same check after a write mid-cooldown. Result:
 - **PANEL-14. The Enable box and the slash agree.** With General open, `/kcd set enabled false` → the
   "Enable KickCD" box unticks at once. Tick it → `/kcd get enabled` → `true`. Result:
 - **PANEL-15. A slash write repaints the panel.** General open on Master controls, `/kcd set scale 1.25`
@@ -414,8 +417,10 @@ Which checks to run for a partial change:
   line: that the state comes from `C_CurveUtil.EvaluateColorValueFromBoolean` where it exists, that it
   is unavailable where it does not. On live Retail only the first half is observable; a pre-12.0 or
   Classic-flavor build shows the second. A secret field with nothing after it is the failure. Result:
-- **COMBAT-10. The protected-interrupt taint pass.** In combat on a hostile interruptible caster:
-  interrupt it, press the interrupt again on cooldown, five or more times over a long cast or channel;
+- **COMBAT-10. The protected-interrupt taint pass.** Run
+  `/kcd set visibility target_casting_interruptible` (the mode that runs the interruptible-alpha gate
+  on a secret `notInterruptible`), then in combat on a hostile interruptible caster: interrupt it, press the
+  interrupt again on cooldown, five or more times over a long cast or channel; with that mode still set,
   swap between a hostile interruptible caster, a hostile uninterruptible caster, a friendly NPC and no
   target → zero Lua errors (the usual signature is `cannot perform arithmetic on a secret value` or
   `attempt to format a secret value` as the interrupt fires), and the interrupt icon's swipe and text
@@ -545,11 +550,15 @@ Which checks to run for a partial change:
 - **FOCUS-12. The link controls.** General → Units shows `[Use same styling as Target] [Copy styling
   from Target]` on one line, the button in the right half, and neither control appears anywhere else.
   Result:
-- **FOCUS-13. Copy styling from Target.** Give Target a vertical cast bar growing Down and a few
-  non-default settings, `/kcd debug on`, click Copy styling from Target → every Focus `icons`,
-  `castbar`, `label.style` row and `label.show` takes Target's value, `link` becomes false, Focus's bar
-  is vertical and grows Down; the console shows one `[Set] copy target→focus: N rows` line, no per-row
-  `[Set] units.focus.…` lines. Then change Target → Focus does not follow (a one-time copy). Result:
+- **FOCUS-13. Copy styling from Target.** `/kcd resetall` (Focus linked, every styling row equal to
+  Target's), then `/kcd set units.target.castbar.orientation VERTICAL`,
+  `/kcd set units.target.castbar.growDirection DOWN`, `/kcd set units.target.icons.primarySize 50` and
+  `/kcd debug on`; click General → Units → Copy styling from Target → every Focus `icons`, `castbar`,
+  `label.style` row and `label.show` takes Target's value, `link` becomes false, Focus's bar is vertical
+  and still grows Down (orientation's own reset to Up must not win). The console shows one
+  `[Set] copy target→focus: 4 rows` line and no per-row `[Set] units.focus.…` lines: N counts the rows
+  the copy changed, here the three Target rows you moved off their defaults plus the link. Then change
+  Target → Focus does not follow (a one-time copy). Result:
 - **FOCUS-14. The link from the slash, and Defaults.** `/kcd set units.focus.link false` → the tick
   clears on an open General page and the Grid entries grow their rows; `true` collapses them. With
   Focus unlinked, General's Defaults re-links it. Result:
@@ -562,12 +571,19 @@ Which checks to run for a partial change:
   (cooldown over ~1.6 s) → Target's icon heavily dimmed and red, Focus's nearly bright and blue. Identical
   grids mean Focus inherits Target's curves. (While only the GCD runs both look ready; that is correct.)
   Result:
-- **FOCUS-17. A Focus alpha change mid-cooldown.** Panel open, mid-cooldown
-  `/kcd set units.focus.icons.cooldownAlpha 0.40` → Focus changes while the cooldown runs; Target does
-  not. Result:
+- **FOCUS-17. A Focus alpha change mid-cooldown.** With the settings panel open on Grid → Icons,
+  mid-cooldown `/kcd set units.focus.icons.cooldownAlpha 0.40` → Focus changes while the cooldown runs;
+  Target does not. Then, panel still open, pick Target and Focus in the band and click every tab on
+  Icons, Cast bar and Text Label → the Unit picker lists exactly `Target` / `Focus` throughout (anchor
+  points or text positions there are a stale refresher that survived the rebuild). Result:
 - **FOCUS-18. An unrelated edit leaves the curves alone.** Mid-cooldown, change Target's Border style
   (Icons → Border) to a visibly different border → Target's edge changes and neither grid's alpha or
-  tint shifts. Clean up with Icons → Defaults for Target, then Focus. Result:
+  tint shifts. Result:
+- **FOCUS-19. Relinking mid-cooldown reverts the curves.** With FOCUS-16's values still set (Target
+  0.20 and red, Focus 0.40 and blue), cast the interrupt again if its cooldown has ended, and while it
+  runs tick General → Units → "Use same styling as Target" → Focus's icon takes Target's dim red at
+  once, mid-cooldown, with no `/reload`. Clean up: Icons → Defaults with Target in the band; untick the
+  box, Icons → Defaults with Focus in the band, and tick the box again. Result:
 
 ## LABEL
 
