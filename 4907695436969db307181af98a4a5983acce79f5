@@ -1,0 +1,1 @@
+OK SP-KC-02 PASS: S3 met across 0710ce8..4907695; gate 1216/1216, luacheck 0/0 (113 files), lizard -C 15 (libs/, tests/_kit/ excluded) 0 over, loadInstance CCN 13 / loadTocFiles CCN 7; locale-literal and hook-order mutations go red in scratch; revendor bundle is frozen and accurate for 0710ce8
