@@ -63,6 +63,24 @@ local function rooted(list)
     return out
 end
 
+--- Load every TOC file into NS in order, running each `afterFile` hook on NS right after its
+--- file loads and before the next one does. A hook keyed by a path that names no TOC file raises
+--- rather than silently never firing. Split out of loadInstance to keep it under CCN 15.
+--- @param NS table  the instance's addon namespace
+--- @param mocks table  the instance's mock table
+--- @param afterFile table|nil  { [tocRelPath] = function(NS) end }
+local function loadTocFiles(NS, mocks, afterFile)
+    local fired = {}
+    for i, path in ipairs(rooted(TOC_FILES)) do
+        Loader.load(path, NS, mocks)
+        local hook = afterFile and afterFile[TOC_FILES[i]]
+        if hook then hook(NS); fired[TOC_FILES[i]] = true end
+    end
+    for rel in pairs(afterFile or {}) do
+        if not fired[rel] then error("opts.afterFile: " .. tostring(rel) .. " is not a TOC file", 0) end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Instance factory: a fully-loaded, isolated addon environment
 -- ---------------------------------------------------------------------------
@@ -108,15 +126,7 @@ local function loadInstance(initDB, enable, mutate, opts)
     mocks._G = Loader.makeEnv(mocks)
     local NS = {}
     Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
-    local afterFile, fired = opts and opts.afterFile, {}
-    for i, path in ipairs(rooted(TOC_FILES)) do
-        Loader.load(path, NS, mocks)
-        local hook = afterFile and afterFile[TOC_FILES[i]]
-        if hook then hook(NS); fired[TOC_FILES[i]] = true end
-    end
-    for rel in pairs(afterFile or {}) do
-        if not fired[rel] then error("opts.afterFile: " .. tostring(rel) .. " is not a TOC file", 0) end
-    end
+    loadTocFiles(NS, mocks, opts and opts.afterFile)
     -- OnInitialize is pcall'd only so the raise can be KEPT, never dropped (KICKCD-R-11). It used
     -- to be pcall'd and discarded, so a load whose init raised came back looking exactly like one
     -- that built a db: every case on it measured a half-initialized addon, and the shared instance
