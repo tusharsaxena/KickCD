@@ -409,15 +409,19 @@ Which checks to run for a partial change:
 - **COMBAT-2. `/kcd set` in combat.** `/kcd set units.target.icons.primarySize 50` in combat → applies
   live. Result:
 - **COMBAT-3. The AddOns sidebar in combat.** In combat, Game Menu → Options → AddOns → Ka0s KickCD,
-  then General, Grid, Spells and Profiles in turn → each prints the library's refusal line and closes
-  the Settings window. This path skips `OpenOptionsPanel` and is guarded only by `Helpers.SetRenderer`,
-  so run all four, not a sample. Result:
+  then General, Grid, Spells and Profiles in turn → each page shows under the cover reading "Settings
+  are locked during combat.", nothing on it can be clicked, and the Settings window stays open. Chat
+  prints one gray `settings are locked during combat — changes are refused until it ends` line on the
+  first page and none on the others (once per combat). Leave combat → the page on screen draws
+  normally. This path skips `OpenOptionsPanel` and is guarded only by the library's page cover, so run
+  all five pages, not a sample. Result:
 - **COMBAT-4. The combat cover.** Open Grid, enter combat, click a rail entry → the whole page, rail
   included, is under the cover reading "Settings are locked during combat."; nothing changes; one gray
   locked line prints. After combat the page draws normally on the entry you were on. Result:
-- **COMBAT-5. The linked note's link in combat.** With a linked Focus in the band, pull a dummy and
-  click the note's link → the gray line `cannot open settings during combat — Blizzard's
-  category-switch is protected`, and the panel does not switch page. Result:
+- **COMBAT-5. The linked note under the cover.** Open Grid with a linked Focus picked in the band, so
+  the Linked-to-Target note shows, then pull a dummy → the cover goes over the note as well. Click the
+  note's link → nothing happens: the page does not switch to General and no `cannot open settings
+  during combat` line prints (the link's own combat refusal sits under the cover). Result:
 - **COMBAT-6. The drag strip's right-click in combat.** Unlocked, Free anchor mode, in combat,
   right-click the cast bar's strip → the gray refusal line and no panel. Result:
 - **COMBAT-7. Debug dumps in combat.** In combat on a hostile caster, run every `/kcd debug`
@@ -905,8 +909,8 @@ off on its own `Result:` line, then remove its row here.
 | STATE-10 | §12 L359, L361 | Never run (2026-09-07 checklist, 3.9) |
 | STATE-11 – 15 | §4, §16 L448 | No result recorded |
 | COMBAT-1, COMBAT-2 | §14 L404 – 405 | No result recorded |
-| COMBAT-3 | §14 L407 | Never run (2026-09-07 checklist, 1.1); corrected: four pages, not six |
-| COMBAT-5 | §20b L517 | No result recorded; corrected: the whole refusal line |
+| COMBAT-3 | §14 L407 | Never run (2026-09-07 checklist, 1.1); corrected: the Ka0s KickCD page and four subpages, not six, each covered with the window left open |
+| COMBAT-5 | §20b L517 | No result recorded; rewritten: the combat cover blocks the note's link |
 | COMBAT-6 – 8, COMBAT-10 | §34 step 5, §15 L425 – 426, §4 L136, §16 | No result recorded |
 | COMBAT-9 | §15 L427 | Never run (2026-09-07 checklist, 1.7) |
 | GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
