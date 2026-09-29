@@ -341,7 +341,7 @@ KickCD (AceAddon)
 
 `KickCD.toc` orders files by dependency, not alphabetically:
 
-1. `libs/` — vendored Ace3 + LibSharedMedia + LibCustomGlow. Don't edit.
+1. `libs/` — vendored Ace3 + LibKa0s + LibSharedMedia + AceGUI-3.0-SharedMediaWidgets + LibCustomGlow + LibDataBroker-1.1 + LibDBIcon-1.0. Don't edit.
 2. `locales/enUS.lua` — sets up `NS.L` with a missing-key fallback.
 3. `core/Compat.lua` — hangs `NS.Compat` (the shared private namespace `NS` arrives as the second file vararg, not a global), populating `Compat` shims for spell APIs (`GetSpellCooldown`, `GetSpellCooldownDuration`, `GetSpellInfo`, `GetSpellTexture`, `GetSpellCharges`, `IsSpellUsable`, `IsSpellAvailable`, `GetCastingInfo`, `GetChannelInfo`, `DebugInterrupt`), the spec pair, and the secret guard `IsSecret`, plus the `Compat._firstReturn` truthy-check helper. `GetSpellCooldown`, `GetSpellInfo`, `GetSpellTexture`, the spec pair and `IsSecret` are `LibKa0s-Compat-1.0`'s members, wired by name ([compat-layer.md](compat-layer.md)); the rest are hand-written here. `GetSpellCooldownDuration`'s docstring carries the measured 12.0.7 secrecy rules — every getter on the returned object except `HasSecretValues()` is secret in combat, and it returns a ZEROED object (not nil) for an idle spell. **Loads first** of `core/` — anything later can rely on `NS.Compat` existing.
 3a. `core/EnvSetup.lua` — the `LibKa0s-Env-1.0` seam: `NS.Meta(field)` and `NS.Version()`. This addon read its own TOC manifest through the same six-line `C_AddOns` ladder in THREE places — `addonVersion()` in `core/KickCD.lua`, the same function again in `settings/Slash.lua`, and the `version` field of the perf descriptor in `core/PerfSetup.lua` — and none of the three was in `core/Compat.lua`, which is why no audit of the shim files ever counted them. All three now resolve one function, so `/kcd version` and a perf capture record cannot disagree. Like `core/MediaSetup.lua` it hands the library the addon FOLDER name, which is neither the `[KCD]` prefix nor the `Ka0s KickCD` title; unlike it, this file's TOC position is conventional, because nothing here resolves at load. With the library absent it falls back to the same `C_AddOns` read the three copies did and then to `NS.VERSION`, so a degraded install reports its real version rather than `?`. It deliberately does not reach for the deprecated bare `GetAddOnMetadata` global (architecture-§1), which none of the three copies did either.
@@ -391,7 +391,7 @@ KickCD (AceAddon)
 
 ### Files in the 1000-1500 band
 
-layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26):
+layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26); `tests/test_slash.lua` re-measured 2026-09-30 after `/kcd profile` landed:
 
 | File | Lines | Peel tracked in |
 |---|---|---|
@@ -401,7 +401,7 @@ layout-§1 caps an authored file at 1500 lines and tracks a peel for any file pa
 | `settings/Spells.lua` | 1115 | #28 |
 | `tests/test_options_panel.lua` | 1101 | #31 |
 | `core/Database.lua` | 1069 | #29 |
-| `tests/test_slash.lua` | 1035 | #30 |
+| `tests/test_slash.lua` | 1054 | #30 |
 | `tests/test_perfsetup.lua` | 1018 | #32 |
 | `modules/IconGrid_Render.lua` | 1014 | #26 |
 
