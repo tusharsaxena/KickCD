@@ -49,8 +49,9 @@ and a retired one leaves its number unused.
 - Back up `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` before INSTALL-1, INSTALL-7, INSTALL-9
   and LOC-6: each deletes or edits it.
 - A frFR (or other non-English) client for LOC.
-- For DEGRADED, rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off` and `/reload`;
-  DEGRADED-13 renames it back. A folder left renamed ships a silently degraded addon.
+- For DEGRADED, first `/kcd set units.target.castbar.anchorMode FREE` (DEGRADED-12 needs it, and nothing
+  can change it once the library is gone), then rename `Interface/AddOns/KickCD/libs/LibKa0s` to
+  `libs/LibKa0s_off` and `/reload`; DEGRADED-13 renames it back. A folder left renamed ships a silently degraded addon.
 
 Which checks to run for a partial change:
 
@@ -799,7 +800,10 @@ Which checks to run for a partial change:
 
 ## DEGRADED
 
-Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` before DEGRADED-1.
+Before the rename, `/kcd set units.target.castbar.anchorMode FREE`. With the library gone the degraded
+`/kcd set` writes only `enabled` and `locked`, and the settings panel does not open, so the anchor mode
+cannot be changed afterwards; an earlier reset puts it back to Primary. Then rename `libs/LibKa0s` to
+`libs/LibKa0s_off` and `/reload` before DEGRADED-1.
 
 - **DEGRADED-1. It degrades, it does not error.** → zero Lua errors at login; `/kcd` answers and the host
   verbs work. Result:
@@ -811,7 +815,8 @@ Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` before DEGRADED-1.
 - **DEGRADED-4. Lock and unlock.** `/kcd unlock`, `/kcd lock` → each confirms and moves the lock.
   Result:
 - **DEGRADED-5. Plain help rows.** `/kcd help` → rows read `/kcd <verb>  <desc>`: white, two spaces, no
-  em-dash. Result:
+  em-dash separator between verb and description (a description may carry its own em dash, as
+  `disable`, `get`, `set`, `reset`, `spells`, `debug` and `perf` do). Result:
 - **DEGRADED-6. One notice.** → the missing-library notice appears exactly once per session, naming
   `libs/LibKa0s`, however many lines print after it. Run DEGRADED-11's dump too: the notice comes
   before the dump, never once per dump line. Result:
@@ -828,8 +833,9 @@ Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` before DEGRADED-1.
 - **DEGRADED-11. The castbar dump prints tagged.** Target anything, `/kcd debug castbar` → the dump
   prints, every line tagged `[KCD]`. A Lua error naming `Castbar_Debug.lua` and a nil `emit` means
   `Util.print` is missing on the degraded path. Result:
-- **DEGRADED-12. The cast bar drags by its body.** Unlock in Free mode → no strip; the bar drags by its
-  body. No error. Result:
+- **DEGRADED-12. The cast bar drags by its body.** Target's anchor mode set to Free before the rename (see
+  above), `/kcd unlock` → the Target cast bar's preview shows with no strip, and drags by its body. No
+  error. Result:
 - **DEGRADED-13. Restore.** Rename the folder back to `libs/LibKa0s` and `/reload` → the notice is gone
   and the console is back. Result:
 
