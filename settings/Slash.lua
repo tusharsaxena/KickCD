@@ -276,7 +276,8 @@ NS.Slash.RunReset = runReset
 --     which writes a bool literal for a path on NS.Settings.WRITE_THROUGH and
 --     nothing else, and `lock` / `unlock` / `toggle` write through the Schema
 --     stub's own writeThrough in core/KickCD.lua's setLocked. Every other
---     schema verb prints the collection's library-absent line, never raising.
+--     schema verb prints the collection's library-absent line, never raising,
+--     and so do CliProfile and ProfileSwitch (Slash minor 17).
 --
 -- The host verbs never went to the library, so they keep working untouched.
 if not SlashLib then
@@ -329,6 +330,11 @@ if not SlashLib then
             stub["Cli" .. verb] = function() out(absentLine(line)) end
         end
         stub.CliSet = function(_, rest) return cliSet(rest) end
+        -- The profile verb (Slash minor 17) on route (b): both members, because
+        -- the live instance has both. No library, no store adapter to trust,
+        -- so neither switches anything.
+        stub.CliProfile = function() out(absentLine("/kcd profile")) end
+        stub.ProfileSwitch = function() out(absentLine("/kcd profile")); return false end
         stub.CliVersion = function() out("v" .. tostring(d.version and d.version() or "?")) end
         -- The same line the library builds, from the same two arguments.
         stub.DisabledLine = function()

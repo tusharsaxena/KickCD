@@ -213,7 +213,9 @@ degradation stub") prescribe:
 * **Everything else prints the library-absent line.** `list`, `get`, `reset`, `resetall`, and `set`
   for any other path or value, print the one sentence `slash-commands-§1` fixes, through the locale:
   `/kcd list is unavailable: the LibKa0s library did not load.` Nothing is written and nothing
-  raises.
+  raises. The stub also carries `CliProfile` and `ProfileSwitch`, because `LibKa0s-Slash-1.0`
+  minor 17 put both on the live instance; each prints the same line for `/kcd profile` and
+  switches nothing, since with no library there is no store adapter to trust.
 
 Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`,
 `tests/test_disabled.lua` and `tests/test_options_panel.lua`.

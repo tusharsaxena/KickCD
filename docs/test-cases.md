@@ -1165,7 +1165,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (59)
+### test_slash.lua (60)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1222,6 +1222,7 @@ badge and any count quoted in the docs must agree with it.
 - degraded gate while disabled refuses feature verbs and nothing else
 - degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd list` prints the library-absent line
+- degraded CliProfile and ProfileSwitch print the library-absent line and switch nothing
 - degraded `/kcd set visibility always` writes nothing and prints the library-absent line
 - degraded `/kcd set` refuses a non-bool value even on a writeThrough path
 - degraded `/kcd lock` writes locked, and confirms
@@ -1466,7 +1467,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 59 |
+| test_slash.lua | 60 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
@@ -1479,4 +1480,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1201** |
+| **Total** | **1202** |
