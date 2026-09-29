@@ -859,7 +859,7 @@ checks on 2026-09-26 (the old `§35`, `2026-09-25-DIAGNOSTICS_COMMAND/99_REPORT.
 minimap button re-run on 2026-09-25 in every addon (left-click opens settings, right-click opens the
 options menu, the status tooltip; part of the old `§33`,
 `2026-09-23-REVIEW_AND_STANDARDS_AUDIT_REMEDIATION/06_SMOKE_TESTS.md` X1.4). So INSTALL-11, PANEL-4 – 7,
-COMBAT-4, COMBAT-11, GRID-14, DIAG-27, DIAG-28, DIAG-30 – 33 and DEGRADED-9 are signed and not listed.
+COMBAT-4, COMBAT-11, GRID-14, DIAG-27, DIAG-31 – 33 and DEGRADED-9 are signed and not listed.
 A check that merged a passed step with an unrun one is listed for the unrun half. Checks new in this
 rework, and checks whose expectation it corrected against the code, are listed too. Origins are the
 old document's sections (`§n`, with its line numbers where a section held several checks). Sign one
@@ -932,7 +932,9 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-18 – 22, DIAG-25 | §24, §26 | No result recorded |
 | DIAG-23, DIAG-24 | §30, §26 L727 – 733 | Never run (2026-09-07 checklist, 3.4) |
 | DIAG-26 | §28 | Never run (2026-09-07 checklist, 3.3); corrected: the timestamp label and the cancel line |
+| DIAG-28 | §15 L422, §35 step 2 | The kept trace and the clean Copy passed (2026-09-26, KC-S2, KC-S4); the console opening, the chat line and the agreeing counts have no result |
 | DIAG-29 | §35 step 3 | Not in the 2026-09-26 run |
+| DIAG-30 | §35 step 4 | The full report and `Debug: OFF` passed (2026-09-26, KC-S5); no trace on a target change has no result |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
