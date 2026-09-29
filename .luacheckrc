@@ -169,7 +169,7 @@ files["modules/IconGrid_Render.lua"] = { ignore = { "212/self" } }
 -- receiver the real one takes or the live and degraded paths stop being callable the same way --
 -- which is the single fact tests/test_surface_parity.lua exists to hold. The two `NS.Slash`
 -- forwarders below it are method-sugar on the host table, reached with the colon from
--- settings/Panel.lua:327 and core/KickCD.lua:451; they forward to `NS.Slash.cli`, a file-local,
+-- settings/Panel.lua:327 and core/KickCD.lua:468; they forward to `NS.Slash.cli`, a file-local,
 -- not to anything on `self`.
 files["settings/Slash.lua"] = {
   ignore = { "212/self" },

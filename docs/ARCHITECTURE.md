@@ -169,11 +169,13 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `perf` | Guided A/B performance capture (`LibKa0s-Perf-1.0`), driven from a clickable step panel |
 | `reset <path>` | Reset one setting to its default. Page-scoped reset lives on each panel's **Defaults** button; the every-spec spell rebuild moved to `/kcd spells resetall` |
 | `resetall` | Reset the **active profile** to the shipped defaults — a profile reset, and the same act as Profiles → Reset Profile (`options-ui-§12`). Every panel, every anchor, every unit's `link` flag and every spec's spell list come back with it, because all of them live in the profile; `Database:OnProfileChanged` re-seeds and refreshes on the way back, exactly as it does for a profile switch. Other profiles are never touched |
+| `profile [name]` | Bare, list the stored profiles with the current one marked; with a name, switch to that **existing** profile (quotes stripped, case and inner spaces kept). An unknown name is refused with the list and never created, and a switch in combat is refused. `LibKa0s-Slash-1.0`'s `CliProfile` (minor 17) does the work through the descriptor's `profiles` field; live while disabled, and the switch runs `Database:OnProfileChanged` like any other ([profiles.md](profiles.md#switching-from-the-command-line)) |
 | `resetposition` | Restore the icon grids to their default screen positions |
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
+| `diagnostics` | Write the diagnostic report into the debug console (`debug-logging-§14`); reserved, and live while disabled |
 
-With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
+With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb, and `profile`, prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
 
 `/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `window`, `on`, `off`, `toggle`, `spells`, `castbar`, `interrupt`, `events`. Bare `/kcd debug` toggles the console window.
 
@@ -286,7 +288,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 18 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
+| `slash-dispatch.md` | Present | 19 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 8 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |

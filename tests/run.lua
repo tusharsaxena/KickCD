@@ -196,6 +196,7 @@ local SUITES = {
     { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",
+    "test_slash_profile",
     "test_disabled",
     "test_opensettings",
     "test_perfsetup",

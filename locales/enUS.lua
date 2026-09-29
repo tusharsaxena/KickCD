@@ -53,6 +53,11 @@ L["Write a diagnostic report to the debug console, for a bug report"] =
 L["Write the full diagnostic report (same as /kcd diagnostics)"] =
     "Write the full diagnostic report (same as /kcd diagnostics)"
 
+-- The `/kcd profile` COMMANDS row. The verb's own chat lines (the list, the
+-- switched / unknown / combat lines) are LibKa0s-Slash-1.0's PROFILE_* strings.
+L["List profiles, or switch to one: profile <name>"] =
+    "List profiles, or switch to one: profile <name>"
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

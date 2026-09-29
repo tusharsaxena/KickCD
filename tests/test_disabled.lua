@@ -330,13 +330,13 @@ end)
 -- because a player must be able to read and repair settings, and reach the panel, while the addon is
 -- off -- which is precisely when they are most likely to need to.
 
---- The live set: the library's thirteen reserved verbs plus this addon's `spells`, TYPED here rather
---- than read off the addon, so that the two lists have to be changed together. A verb added to the
---- addon's live set and not to this one goes red; a new FEATURE verb is refused by default and
---- passes without a word.
+--- The live set: the library's thirteen reserved verbs plus this addon's `spells` and `profile`,
+--- TYPED here rather than read off the addon, so that the two lists have to be changed together. A
+--- verb added to the addon's live set and not to this one goes red; a new FEATURE verb is refused by
+--- default and passes without a word.
 local LIVE = {
     "help", "config", "version", "enable", "disable", "debug", "diagnostics", "perf",
-    "get", "set", "list", "reset", "resetall", "spells",
+    "get", "set", "list", "reset", "resetall", "spells", "profile",
 }
 
 test("DISABLED: every reserved verb still answers, and the bare /kcd opens the panel", function()
