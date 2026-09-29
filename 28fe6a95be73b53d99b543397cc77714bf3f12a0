@@ -1,0 +1,1 @@
+OK SP-KC-03 clean; scoped final review after 5 full rounds (PANEL-29 restores old §12 L362 General/Icons scope, verified vs RestoreDefaults/RestoreGridSection and row fmt; STATE-15 title fixed; map row correct; gate 1216/0, luacheck 0/0)
