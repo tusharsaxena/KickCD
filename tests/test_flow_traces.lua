@@ -227,7 +227,7 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     -- §8 diagnosis: a command refused or a write rejected names the guard. The
     -- writer's line is shared by the Spells page and `/kcd spells`; the verb logs
     -- only the guards it owns (parse, usage, no list, db not ready).
-    -- red under: drop refused() from core/Database.lua's writers, or refuse() from core/KickCD.lua's spells verbs
+    -- red under: drop refused() from core/Database.lua's writers, or refuse() from core/KickCD.lua's spells, lock or debug verbs
     local _, NS = listening()
     local DB, BM = NS.Database, NS.Const.SPEC.BEASTMASTERY
     assertTrue(DB:AddSpell("HUNTER", BM, 424240) ~= nil, "seed a list to refuse against")
@@ -254,6 +254,15 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     assertTrue(NS.DebugLog:FindLine("[Set] /kcd lock refused: db not ready"), "a top-level host verb names its guard too")
     NS:OnSlashCommand("reset spells")
     assertTrue(NS.DebugLog:FindLine("[Set] /kcd reset spells refused: a retired page word, redirected"))
+    NS:OnSlashCommand("debug frobnicate")
+    assertTrue(NS.DebugLog:FindLine("[Debug] /kcd debug refused: unknown subcommand 'frobnicate'"),
+        "a /kcd debug word it does not know names the word")
+    local probe = NS.Compat.DebugInterrupt
+    NS.Compat.DebugInterrupt = nil
+    NS:OnSlashCommand("debug interrupt")
+    NS.Compat.DebugInterrupt = probe
+    assertTrue(NS.DebugLog:FindLine("[Debug] /kcd debug interrupt refused: Compat.DebugInterrupt unavailable"),
+        "a debug topic with its module missing names what is missing")
     NS.DebugLog:SetEnabled(false)
 end)
 

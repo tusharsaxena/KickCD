@@ -55,8 +55,9 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 |---|---|---|
 | `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary (with a `missing <lib>` clause for an optional library that did not load); the color and font-flag migrations |
 | `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
-| `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua`, `settings/Slash.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready, or a `/kcd reset` given a retired page word |
+| `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua`, `settings/Slash.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `list`, `get`, `set`, `profile`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready, or a `/kcd reset` given a retired page word |
 | `Profile` | `core/Database.lua` | Profile switches |
+| `Debug` | `core/KickCD.lua` | A `/kcd debug` word refused: an unknown subcommand (naming it), or a topic whose module is missing (`spells` with no Cooldowns module, `castbar` with no Castbar module, `interrupt` with no `Compat.DebugInterrupt`) |
 | `Spells` | `core/Database.lua`, `core/KickCD.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, a spell-list write or `/kcd spells` verb refused (naming the guard), a skipped cooldown-manager check, the cooldown-manager set each time it is built (with the site and message of any viewer call that raised), and an add the cooldown-manager gate refused |
 | `Cooldowns` | `modules/Cooldowns.lua` | Each watched-list rebuild (watched and skipped counts), a rebuild that watched nothing and why, and material state changes |
 | `IconGrid` | `modules/IconGrid.lua` | Visibility decisions per unit; the per-unit list summary (drawn, not castable, duplicate IDs skipped); a unit enabled or disabled |
@@ -97,6 +98,7 @@ flag.
 | Stand-down | `State` | The addon stands down (naming the holds: `disabled`, or a perf hold) or stands back up | No |
 | Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
 | Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing); a page link's click raised (`settings link click raised: <error>`) | No |
+| Debug verbs | `Debug` | A `/kcd debug` word refused: an unknown subcommand, or a topic whose module is missing | No, user-driven |
 | Events | `Events` | The client refuses an event name, once per name per session | No |
 | Launcher | `Launcher` | The minimap button shown or hidden (its registration line lands at login, before the flag can be on, which is why `[Init]` carries the missing-library clause) | No |
 
@@ -115,7 +117,9 @@ flag.
 - **A verb or value LibKa0s-Slash refuses** (an unknown `/kcd` verb, a bad `/kcd set` path or value,
   a feature verb while disabled, a profile switch in combat). The library prints the refusal to chat
   and offers the host no hook to log it; the chat line is the record. The host's own refusals, the
-  `/kcd spells` verbs and the spell-list writers, are logged (above).
+  `/kcd spells`, `debug`, settings and lock verbs and the spell-list writers, are logged (above).
+- **`/kcd debug on`, `off`, `toggle` or `window` with the DebugLog module missing.** That module is
+  the log, so there is nowhere to write the refusal; the chat line is the record.
 
 ## `/kcd diagnostics`: the report (`debug-logging-§14`)
 

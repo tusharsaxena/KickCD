@@ -383,20 +383,21 @@ local DEBUG_COMMANDS = {
         function(self)
             local m = self:GetModule("Cooldowns", true)
             if m and m.DebugDump then m:DebugDump()
-            else p(self, "Cooldowns module not loaded") end
+            else refuse(self, "Debug", "debug", "spells", "Cooldowns module not loaded", "Cooldowns module not loaded") end
         end},
     {"castbar", "Print the current target cast bar state",
         function(self)
             local m = self:GetModule("Castbar", true)
             if m and m.DebugDump then m:DebugDump()
-            else p(self, "Castbar module not loaded") end
+            else refuse(self, "Debug", "debug", "castbar", "Castbar module not loaded", "Castbar module not loaded") end
         end},
     {"interrupt", "Dump the target's UnitCastingInfo / UnitChannelInfo positions (type + secret-tainted flag) plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
         function(self)
             if NS.Compat and NS.Compat.DebugInterrupt then
                 NS.Compat.DebugInterrupt("target")
             else
-                p(self, "Compat.DebugInterrupt unavailable")
+                refuse(self, "Debug", "debug", "interrupt", "Compat.DebugInterrupt unavailable",
+                    "Compat.DebugInterrupt unavailable")
             end
         end},
     {"window", "Toggle the debug console window",
@@ -467,7 +468,7 @@ function runDebug(self, rest)
     end
     local entry = findCommand(DEBUG_COMMANDS, sub)
     if entry then return entry[3](self) end
-    p(self, "unknown debug subcommand '" .. sub .. "'")
+    refuse(self, "Debug", "debug", nil, "unknown subcommand", "unknown debug subcommand '" .. sub .. "'", sub)
     runDebug(self, "")
 end
 
@@ -511,17 +512,17 @@ end
 
 function listSettings(self)
     if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliList() end
-    p(self, "Settings layer not ready yet")
+    refuse(self, "Set", "list", nil, "settings layer not ready", "Settings layer not ready yet")
 end
 
 function getSetting(self, rest)
     if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliGet(rest) end
-    p(self, "Settings layer not ready yet")
+    refuse(self, "Set", "get", nil, "settings layer not ready", "Settings layer not ready yet")
 end
 
 function setSetting(self, rest)
     if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliSet(rest) end
-    p(self, "Settings layer not ready yet")
+    refuse(self, "Set", "set", nil, "settings layer not ready", "Settings layer not ready yet")
 end
 
 -- `/kcd profile [name]` is the library's CliProfile, like the three above. With
@@ -529,7 +530,7 @@ end
 -- library-absent line and switches nothing.
 function runProfile(self, rest)
     if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliProfile(rest) end
-    p(self, "Settings layer not ready yet")
+    refuse(self, "Set", "profile", nil, "settings layer not ready", "Settings layer not ready yet")
 end
 
 -- ---------------------------------------------------------------------------
