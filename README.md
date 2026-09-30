@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1228%2F1228_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1229%2F1229_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -124,7 +124,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 2. Type `/kcd diagnostics`.
 3. If the debug window isn't open, open it with `/kcd debug`. Press **Copy**, copy the entire output, and include it with your bug report.
 
-The report is added after the debug trace in the same window, so one copy carries both.
+The report is added after the debug trace in the same window, so one copy carries both. Running it also turns debug logging on for the rest of the session, if it was off; a `/reload` turns it off again. The orange **Diagnostics** link in the debug window's title bar runs the same report.
 
 ## Issues and feature requests
 

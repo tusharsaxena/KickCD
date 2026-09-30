@@ -6,7 +6,7 @@ KickCD has three kinds of debug output:
   there while the session flag is on.
 - **The diagnostics report**, `/kcd diagnostics`, is one structured snapshot of the addon's state,
   appended to the same console after whatever trace is already there. It is what a bug report
-  carries (`debug-logging-§14`).
+  carries (`debug-logging-§14`). Running it turns debug logging on for the session.
 - **The four debug topics** (`/kcd debug spells`, `castbar`, `interrupt`, `events`) are narrower
   one-shot snapshots printed to the chat frame through `NS.Util.print`, each on the cyan `[KCD]`
   banner. They run whether the debug flag is on or off. The first three are also sections of the
@@ -15,8 +15,8 @@ KickCD has three kinds of debug output:
 The report and the topics are why this page exists (`documentation-§3`, Tier 2: debug surfaces
 beyond the LibKa0s default console). The console and the report's frame are the library's, and
 their contract lives in LibKa0s's
-[`docs/api/DebugLog/version-14.1-docs.md`](https://github.com/tusharsaxena/LibKa0s/blob/master/docs/api/DebugLog/version-14.1-docs.md)
-(DebugLog minor 14 with its diagnostics file at minor 1, as vendored at LibKa0s v1.60.0). This page
+[`docs/api/DebugLog/version-17.2-docs.md`](https://github.com/tusharsaxena/LibKa0s/blob/master/docs/api/DebugLog/version-17.2-docs.md)
+(DebugLog minor 17 with its diagnostics file at minor 2, as vendored at LibKa0s v1.64.0). This page
 covers only what KickCD adds on top.
 
 ## The console
@@ -133,12 +133,25 @@ That is what the README's *Reporting a bug* steps do.
 word and before the bare toggle. Both end in `NS.DebugLog:RunDiagnostics()`. There is no `diag`,
 `dump` or `dx` alias: `/kcd diag` gets the library's `unknown command 'diag'` line and the help
 index, and `/kcd debug diag` is an ordinary unknown `debug` word, answered like any other (the
-unknown-word line, then the bare `/kcd debug` toggle and verb list).
+unknown-word line, then the bare `/kcd debug` toggle and verb list). The console's title bar
+carries a third way in: the orange **Diagnostics** link just right of the `Debug: ON` / `Debug: OFF`
+label, which runs the same `RunDiagnostics()`.
+
+**It turns logging on for the session.** Running the report, by either form or the link, turns
+debug logging on first when it is off (`debug-logging-§14`, DebugLogDiagnostics 2), through the
+flag's one seam, `NS.DebugLog:SetEnabled(true)`, exactly as `/kcd debug on` would. So chat prints
+`debug logging ON`, and the `[Debug] logging enabled` line and the `[Init]` summary land just ahead
+of the report, whose header then reads `debug logging: on`. It never turns logging off, and with
+logging already on it writes no second enable line. A `/reload` turns it off again, as it always
+does. KickCD keeps the library's default: its descriptor does not set
+`diagnosticsEnablesLogging = false`. The sections themselves read state only and never touch the
+flag; only the run does.
 
 **What it does to the console.** It writes through the library's raw append, not the gated sink
-`NS.Debug`, so it lands in full with logging **off**, and it never changes the logging flag beyond
-printing it. It never clears the console, and it shows the console if it was hidden. Then it prints
-one chat line: *Diagnostic report written to the debug console: N lines. Use Copy to share it.*
+`NS.Debug`, so the whole report lands whatever the flag read before the run. It never clears the
+console, and it shows the console if it was hidden. Then it prints one chat line: *Diagnostic report
+written to the debug console: N lines. Use Copy to share it.* A run that found logging off has
+printed the `debug logging ON` line just before it.
 `debug` and `diagnostics` are both reserved verbs (`slash-commands-§2`) on the library's live set,
 so both forms answer while the addon is **disabled**.
 
@@ -290,4 +303,4 @@ order, budget, read-only and stood-down behavior), the kit's shared `test_diagno
 run against `/kcd`'s own dispatcher, `tests/test_disabled.lua` (both forms while disabled),
 `tests/test_debuglog.lua`, `tests/test_debuglogsetup.lua`, `tests/test_castbar_debug.lua`,
 `tests/test_compat_debug.lua` and `tests/test_events.lua`. The in-game checks are DIAG-27 – 33,
-DIAG-17, COMBAT-11, GRID-14 and DEGRADED-9 of [smoke-tests.md](smoke-tests.md).
+DIAG-39 – 40, DIAG-17, COMBAT-11, GRID-14 and DEGRADED-9 of [smoke-tests.md](smoke-tests.md).

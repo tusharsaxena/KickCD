@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| DIAG-1 – 38 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel |
+| DIAG-1 – 40 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on |
 | DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
 | LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
 
@@ -82,9 +82,9 @@ Which checks to run for a partial change:
   DIAG-1 – 6, DIAG-28 and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the
   library-less load.
 - **Debug console** (the window, its subcommands, the scrollbar and line counter, the title-bar art):
-  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, DIAG-34 – 37, COMBAT-7 – 9 and PANEL-25.
+  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, DIAG-34 – 37, DIAG-39, COMBAT-7 – 9 and PANEL-25.
 - **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a
-  section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-17, COMBAT-11, GRID-14,
+  section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-39 – 40, DIAG-17, COMBAT-11, GRID-14,
   DEGRADED-9, then DIAG-1 – 6 and COMBAT-7 – 9.
 - **Perf descriptor or panel** (`core/PerfSetup.lua`): DIAG-23 – 24 and DIAG-38, then DIAG-21 – 26
   and PANEL-25. DIAG-23 is the only place the panel's close is checked against what is drawn.
@@ -796,8 +796,9 @@ Which checks to run for a partial change:
 - **DIAG-29. The report's shape.** → `[State]` first after the `[Diag]` identity lines, sections in
   [debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14)'s order, no `section <name> failed`,
   about 100 to 200 lines on a default profile. Result:
-- **DIAG-30. Ungated.** `/kcd debug off`, `/kcd diagnostics` → the full report; the header still reads
-  `Debug: OFF` and a target change writes no trace. Result:
+- **DIAG-30. Ungated.** `/kcd debug off`, `/kcd diagnostics` → the full report, begin to end marker,
+  with nothing missing: it lands whatever the flag read before the run. The run turns logging on
+  first (DIAG-40), so afterwards the header reads `Debug: ON`. Result:
 - **DIAG-31. While disabled, both forms.** `/kcd disable`, `/kcd diagnostics`,
   `/kcd debug diagnostics` → both write a full report; the state line reads
   `enabled stored=false, stood down=true, holds=…`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
@@ -826,6 +827,24 @@ Which checks to run for a partial change:
   the height does not move, and the panel will not go narrower than it opened. `/kcd perf hide`,
   `/kcd perf show` → the same width; `/kcd perf cancel`, `/reload`, `/kcd perf start` → the default
   width again. Result:
+- **DIAG-39. The Diagnostics link.** Bare `/kcd debug` → in the title bar, top left, the word
+  **Diagnostics** sits just right of the `Debug: ON` / `Debug: OFF` label with a small gap, drawn
+  orange in the same plain text as that label: no button art, border or background. Hover it → it
+  brightens; move off → orange again. With logging off, click it → logging turns on first: the label
+  reads `Debug: ON`, chat prints `debug logging ON`, and the console gains `[Debug] logging enabled`
+  and the `[Init]` summary; then the report is written after them (begin to end marker, as DIAG-28,
+  its header reading `debug logging: on`) with the one chat line giving its line count. Click it
+  again → the report appends once more, with no second `logging enabled` line. Toggle the label
+  between ON and OFF → the gap after it holds for either word. Drag the console in as far as it goes
+  (DIAG-34) → the link still fits beside the label and the title. Result:
+- **DIAG-40. Diagnostics turns logging on for the session.** `/reload` → logging is off (DIAG-3).
+  `/kcd diagnostics` → chat prints `debug logging ON`, then the report's line-count line; the console
+  holds `[Debug] logging enabled` and the `[Init]` summary ahead of the begin marker, the header reads
+  `debug logging: on`, and the title-bar label reads `Debug: ON`. Change a setting → a `[Set]` line
+  streams. `/reload` → logging is off again. `/kcd debug diagnostics`, or the console's Diagnostics
+  link (DIAG-39) → the same: logging on for the session. `/reload` once more, then `/kcd debug on` and
+  `/kcd diagnostics` → the report appends with no second `logging enabled` line. `/kcd debug off` →
+  logging stops, and nothing turns it back on until the next report or `/kcd debug on`. Result:
 
 ## DEGRADED
 
@@ -974,8 +993,10 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-26 | §28 | Never run (2026-09-07 checklist, 3.3); corrected: the timestamp label and the cancel line |
 | DIAG-28 | §15 L422, §35 step 2 | The kept trace and the clean Copy passed (2026-09-26, KC-S2, KC-S4); the console opening, the chat line and the agreeing counts have no result |
 | DIAG-29 | §35 step 3 | Not in the 2026-09-26 run |
-| DIAG-30 | §35 step 4 | The full report and `Debug: OFF` passed (2026-09-26, KC-S5); no trace on a target change has no result |
+| DIAG-30 | §35 step 4 | The full report passed (2026-09-26, KC-S5); corrected on 2026-09-30: the run now turns logging on (standard v2.71.0, DebugLogDiagnostics 2, DL-KC-03), so the header reads `Debug: ON` afterwards |
 | DIAG-34 – 38 | New | Resizing the console, the copy window and the perf panel (LibKa0s v1.64.0) |
+| DIAG-39 | New | The console's Diagnostics link (LibKa0s v1.64.0, DebugLog 17, DL-KC-03) |
+| DIAG-40 | New | Diagnostics turns debug logging on for the session (standard v2.71.0, DebugLogDiagnostics 2, DL-KC-03) |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
