@@ -59,7 +59,7 @@ Which checks to run for a partial change:
   the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
-  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 38;
+  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 40;
   COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
   SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
   the library draws, and a re-vendor can change them with no addon file touched.
