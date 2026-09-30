@@ -171,21 +171,57 @@ local function cooldownViewerApi()
     return getCategorySet, getInfo
 end
 
--- Union one category's spellIDs into `set`; returns whether it contributed any.
+-- Record one caught viewer error for the build line: the site and the message,
+-- once per distinct pair (debug-logging-§8, diagnosis: errors caught by an owned
+-- pcall), capped so a client that raises per cooldown ID cannot grow the line.
+-- `errs` is nil while the debug flag is off, so an off log builds no string.
+local ERR_CAP = 3
+local function noteError(errs, site, err)
+    if not errs then return end
+    local key = site .. ": " .. tostring(err)
+    if errs[key] then return end
+    errs[key] = true
+    if #errs < ERR_CAP then errs[#errs + 1] = key else errs.more = (errs.more or 0) + 1 end
+end
+
+-- Union one category's spellIDs into `set`; returns whether it contributed any,
+-- and how many of its calls raised (for the one build line, never per call).
 -- Both pcalls are load-bearing: C_CooldownViewer throws on some category values
 -- in some client builds, and one bad category must not abort the whole walk.
-local function collectCategorySpells(getCategorySet, getInfo, category, set)
+local function collectCategorySpells(getCategorySet, getInfo, category, set, errs)
     local ok, ids = pcall(getCategorySet, category)
-    if not (ok and type(ids) == "table") then return false end
-    local added = false
+    if not ok then
+        noteError(errs, "GetCooldownViewerCategorySet", ids)
+        return false, 1
+    end
+    if type(ids) ~= "table" then return false, 0 end
+    local added, raised = false, 0
     for _, cdID in ipairs(ids) do
         local ok2, info = pcall(getInfo, cdID)
-        if ok2 and type(info) == "table" and info.spellID then
+        if not ok2 then
+            raised = raised + 1
+            noteError(errs, "GetCooldownViewerCooldownInfo", info)
+        elseif type(info) == "table" and info.spellID then
             set[info.spellID] = true
             added = true
         end
     end
-    return added
+    return added, raised
+end
+
+-- The one line a Cooldown Manager walk writes (debug-logging-§8, diagnosis: a
+-- dependency's answer, and the errors its pcalls caught with their site and
+-- message, once per build rather than once per call). The memo means this runs
+-- once per login, talent swap or spec change, never per add. `n` counts the
+-- set; nil for an empty answer. A walk that raised nothing keeps the short form.
+local function logCmBuild(n, raised, errs)
+    if not debugOn() then return end
+    local what = n and ("built: " .. n .. " spell(s)") or "empty: the client answered nothing"
+    if raised == 0 or not errs or #errs == 0 then
+        return NS.Debug("Spells", "cooldown-manager set %s; %d viewer call(s) raised", what, raised)
+    end
+    NS.Debug("Spells", "cooldown-manager set %s; %d viewer call(s) raised: %s%s", what, raised,
+        table.concat(errs, " | "), errs.more and (" (+" .. errs.more .. " more)") or "")
 end
 
 --- The Cooldown Manager's spell set for the active spec, or nil when the client
@@ -201,20 +237,26 @@ function SpellInput.CooldownManagerSet()
     end
 
     local set = {}
-    local seenAny = false
+    local errs = debugOn() and {} or nil
+    local seenAny, raised, n = false, 0, 0
     for _, category in pairs(Enum.CooldownViewerCategory) do
         -- Deliberately NOT `seenAny = seenAny or collect(...)`: that
         -- short-circuits and stops walking once anything has been found.
-        if collectCategorySpells(getCategorySet, getInfo, category, set) then
-            seenAny = true
-        end
+        local added, r = collectCategorySpells(getCategorySet, getInfo, category, set, errs)
+        if added then seenAny = true end
+        raised = raised + r
     end
 
     if not seenAny then
         _cmCache = _CM_EMPTY
+        logCmBuild(nil, raised, errs)
         return nil
     end
     _cmCache = set
+    if debugOn() then
+        for _ in pairs(set) do n = n + 1 end
+        logCmBuild(n, raised, errs)
+    end
     return set
 end
 
@@ -245,11 +287,17 @@ function SpellInput.Admissible(id, class, spec)
     local cmSet = SpellInput.CooldownManagerSet()
     if not cmSet then
         if debugOn() then
-            NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell " .. tostring(id))
+            NS.Debug("Spells", "C_CooldownViewer unavailable; skipping cooldown-manager validation for spell %s", id)
         end
         return true
     end
     if cmSet[id] then return true end
+    -- The refusal, named by its guard (debug-logging-§8, diagnosis). Chat gets
+    -- the sentence below; the log gets the ID and the gate that said no.
+    if debugOn() then
+        NS.Debug("Spells", "add %s to %s/%s refused: not in the cooldown-manager set", id,
+            tostring(class), NS.Util.SpecDisplay(spec))
+    end
     local Compat = NS.Compat or {}
     local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(id)) or tostring(id)
     return false, ("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id)

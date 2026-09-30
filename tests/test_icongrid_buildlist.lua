@@ -183,7 +183,7 @@ test("a duplicate is reported to the debug console when logging is on", function
     DebugLog:SetEnabled(true)
     DebugLog:Clear()
     IconGrid:BuildActiveList(IconGrid:GetInstance("target"))
-    assertTrue(DebugLog:FindLine("duplicate spellID 1766") ~= nil,
+    assertTrue(DebugLog:FindLine("1 duplicate spellID(s) skipped (1766)") ~= nil,
         "the skipped duplicate must be surfaced in the console")
     DebugLog:SetEnabled(false)
 end)

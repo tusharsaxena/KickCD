@@ -115,6 +115,9 @@ local function newInstance(unit)
         lastGateCasting      = nil,
         lastGateInterruptible = nil,
         lastCastLabel = nil,
+        -- The last `[IconGrid] [unit] list ...` summary written, so a rebuild
+        -- that lands on the same list logs nothing (debug-logging-§9).
+        lastListSig   = nil,
     }
 end
 
@@ -342,12 +345,28 @@ local function isRenderable(spellID)
     return name and available
 end
 
---- Surface a skipped duplicate in the debug console (KickCD.State.debug).
-local function logDuplicateSpell(spellID, classFile, specName)
-    if NS.State and NS.State.debug then
-        NS.Debug("IconGrid", ("duplicate spellID %d in %s/%s — skipping"):format(
-            spellID, classFile, specName))
-    end
+--- The one `[IconGrid] [unit] list ...` line a rebuild writes, and only when it
+--- differs from the last one this instance wrote (debug-logging-§9, quiet steady
+--- state). SPELLS_CHANGED fires several times at login and every `spells`
+--- section write rebuilds, so an unchanged list is the common case and says
+--- nothing new. `trace` is nil with the flag off: nothing here is built then.
+---
+--- The line is the missing-icon answer (debug-logging-§8): which spells the
+--- grid drew, which the list holds that the player cannot cast right now (an
+--- unpicked choice node, a pet spell with no pet), and which duplicate IDs it
+--- skipped. `head` names the spec the list was read for, or why none was.
+local function logActiveList(inst, head, trace)
+    if not trace then return end
+    local shown = {}
+    for i, btn in ipairs(inst.ordered) do shown[i] = tostring(btn.spellID) end
+    local shownList   = table.concat(shown, ",")
+    local unknownList = table.concat(trace.unknown, ",")
+    local dupList     = table.concat(trace.dup, ",")
+    local sig = head .. "|" .. shownList .. "|" .. unknownList .. "|" .. dupList
+    if sig == inst.lastListSig then return end
+    inst.lastListSig = sig
+    NS.Debug("IconGrid", "[%s] list %s: %d icon(s) (%s); %d not castable (%s); %d duplicate spellID(s) skipped (%s)",
+        inst.unit, head, #shown, shownList, #trace.unknown, unknownList, #trace.dup, dupList)
 end
 
 --- Paint the spell's icon texture, unless it is a 12.0 "secret value".
@@ -386,42 +405,59 @@ local function seedIcon(grid, inst, spellID)
     table.insert(inst.ordered, btn)
 end
 
+--- Walk the list into the pool, deduped by spellID. With `trace` (debug on)
+--- the skipped IDs are collected for logActiveList's one summary line, in
+--- place of the per-duplicate line this used to write (debug-logging-§9).
+local function seedList(grid, inst, list, trace)
+    local seen = {}
+    for _, entry in ipairs(list) do
+        local spellID = eligibleSpellID(entry)
+        if spellID and seen[spellID] then
+            if trace then trace.dup[#trace.dup + 1] = spellID end
+        elseif spellID then
+            seen[spellID] = true
+            -- Hide entries the player can't see in their own spellbook.
+            if isRenderable(spellID) then
+                seedIcon(grid, inst, spellID)
+            elseif trace then
+                trace.unknown[#trace.unknown + 1] = spellID
+            end
+        end
+    end
+end
+
 function IconGrid:BuildActiveList(inst)
     self:ReleaseAll(inst)
 
     if not (NS.db and NS.db.profile) then return end
 
     inst.cfg = NS.Units.Icons(inst.unit)
+    -- Built only while the console is listening (debug-logging-§4 zero-alloc).
+    local trace = NS.State and NS.State.debug and { unknown = {}, dup = {} } or nil
 
     local classFile, specName = getActiveSpecKey()
-    if not (classFile and specName) then return end
+    if not (classFile and specName) then
+        return logActiveList(inst, "skipped: class/spec not resolved", trace)
+    end
+    local head = tostring(classFile) .. "/" .. tostring(specName)
 
     -- Read-only lookup via Database:GetSpellList — never lazy-creates
     -- a per-spec table, so a class+spec the user has never customized
     -- doesn't pollute the saved-vars with an empty entry.
     local list = NS.Database and NS.Database:GetSpellList(classFile, specName)
-    if not list then return end
+    if not list then
+        return logActiveList(inst, head .. " (no stored list)", trace)
+    end
 
     -- Dedupe by spellID so pool.active stays strictly 1:1 with id.
     -- A duplicate id (hand-edited saved-vars, profile copy gone wrong,
     -- or a future bug at the mutation layer) would otherwise have
     -- AcquireIcon overwrite pool.active[id] with the second widget,
     -- orphaning the first — which then never receives SPELL_STATE
-    -- updates while still being visible. Skip the duplicate; surface
-    -- it in the debug console when debug logging is on (KickCD.State.debug).
-    local _seen = {}
-    for _, entry in ipairs(list) do
-        local spellID = eligibleSpellID(entry)
-        if spellID and _seen[spellID] then
-            logDuplicateSpell(spellID, classFile, specName)
-        elseif spellID then
-            _seen[spellID] = true
-            -- Hide entries the player can't see in their own spellbook.
-            if isRenderable(spellID) then
-                seedIcon(self, inst, spellID)
-            end
-        end
-    end
+    -- updates while still being visible. Skip the duplicate; the summary
+    -- line names it when debug logging is on (KickCD.State.debug).
+    seedList(self, inst, list, trace)
+    logActiveList(inst, head, trace)
 end
 
 -- ---------------------------------------------------------------------------
@@ -845,6 +881,9 @@ function IconGrid:EnableUnit(unit)
         or NS.Util.NewUnitCastFilter(self, unit, ICON_CAST_ROUTES)
     inst.castFilter.Arm()
     inst.enabled = true
+    -- The per-unit enable edge (debug-logging-§8, diagnosis). ReconcileUnits
+    -- calls this only on a want-vs-live mismatch, so it is one line per edge.
+    if NS.State and NS.State.debug then NS.Debug("IconGrid", "[%s] unit enabled", unit) end
 end
 
 -- Tear a unit's instance down: disarm its private cast-filter frame and hide
@@ -854,7 +893,14 @@ function IconGrid:DisableUnit(unit)
     if not inst then return end
     if inst.castFilter then inst.castFilter.Disarm() end
     if inst.grid then inst.grid:Hide() end
+    -- Only a live instance going down is an edge; OnDisable walks every unit.
+    if inst.enabled and NS.State and NS.State.debug then
+        NS.Debug("IconGrid", "[%s] unit disabled", unit)
+    end
     inst.enabled = false
+    -- The next enable starts a fresh story: its list line prints even when
+    -- the list is the one that was showing before.
+    inst.lastListSig = nil
 end
 
 --- Make this module INERT -- for either reason the latch can be down: a perf

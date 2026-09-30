@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1216%2F1216_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1229%2F1229_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -27,12 +27,12 @@ _[Watch on YouTube](https://youtu.be/-rUhkVdmZfo)_
 
 A fresh install puts an icon grid and a placeholder cast bar on screen for your target, and a second pair for your focus. KickCD starts unlocked, and unlocked is its preview: every grid and bar stays up so you have something to drag. There's no separate test mode. `/kcd lock` starts the real behavior, and `/kcd unlock` brings the preview back.
 
-Setting it up takes four steps.
+Setting it up takes four steps, in this order.
 
-1. Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Grid → Cast bar → Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back.
-2. Check your spells. The grid starts from a list for your class and spec, and it only shows what you can cast right now, so it changes when you respec. The Spells page is where you add to that list, disable rows you never use, or drag a row by its handle to reorder the icons. Enable more than the grid has room for and the extras are left off, with one warning in chat.
-3. Pick when it shows. Once you lock, a set only appears while its unit is casting something you can interrupt. **General visibility** on General → Master controls changes that to always, in combat only, or any cast. The ready glow has its own trigger on Grid → Icons → Ready glow.
-4. Make it look right. The Grid page's rail holds Icons, Cast bar and Text Label, and the Target / Focus picker across the top says which unit you're editing. Focus copies your target's look until you untick "Use same styling as Target" on General → Units, which is also where you turn focus off. Text Label renames, restyles or hides the "Target" and "Focus" tags beside each grid.
+- Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Grid → Cast bar → Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back.
+- Check your spells. The grid starts from a list for your class and spec, and it only shows what you can cast right now, so it changes when you respec. The Spells page is where you add to that list, disable rows you never use, or drag a row by its handle to reorder the icons. Enable more than the grid has room for and the extras are left off, with one warning in chat.
+- Pick when it shows. Once you lock, a set only appears while its unit is casting something you can interrupt. **General visibility** on General → Master controls changes that to always, in combat only, or any cast. The ready glow has its own trigger on Grid → Icons → Ready glow.
+- Make it look right. The Grid page's rail holds Icons, Cast bar and Text Label, and the Target / Focus picker across the top says which unit you're editing. Focus copies your target's look until you untick "Use same styling as Target" on General → Units, which is also where you turn focus off. Text Label renames, restyles or hides the "Target" and "Focus" tags beside each grid.
 
 The minimap button opens the settings on a left-click, and a right-click gives you a menu with **Enabled** and **Locked**. `/kcd disable` turns the addon off without opening anything, and `/kcd enable` turns it back on. `/kcd resetall` puts every page, position and spec's spell list back to defaults, so keep it for when you really want a fresh start. To see every setting and its value without clicking through the pages, run `/kcd list`.
 
@@ -120,9 +120,9 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 
 ## Reporting a bug
 
-1. Type `/kcd debug on` and reproduce the bug.
-2. Type `/kcd diagnostics`.
-3. If the debug window isn't open, open it with `/kcd debug`. Press **Copy**, copy the entire output, and include it with your bug report.
+- Type `/kcd debug on` and reproduce the bug.
+- Type `/kcd diagnostics`.
+- If the debug window isn't open, open it with `/kcd debug`. Press **Copy**, copy the entire output, and include it with your bug report.
 
 The report is added after the debug trace in the same window, so one copy carries both.
 

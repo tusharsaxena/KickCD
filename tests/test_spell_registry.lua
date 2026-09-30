@@ -461,7 +461,10 @@ test("each Database spell-list verb traces one [Spells] line", function()
     end
 end)
 
-test("a verb that writes nothing traces nothing", function()
+test("a verb that writes nothing traces no write, only its refusal", function()
+    -- debug-logging-§8: a write rejected names the guard. Each refused verb is
+    -- ONE line, and that line is the refusal, never a mutation line.
+    -- red under: a refused writer that logs nothing, or logs as if it wrote.
     local inst = instance()
     local D = inst.NS.Database
     local lines = traced(inst, true, function()
@@ -469,7 +472,10 @@ test("a verb that writes nothing traces nothing", function()
         D:MoveSpell("SHAMAN", ELEMENTAL, 2, 2)
         D:SetSpellEnabled("SHAMAN", ELEMENTAL, 999999, false)
     end)
-    assertEqual(#lines, 0, "no write, no line: " .. table.concat(lines, " | "))
+    assertEqual(#lines, 3, "one refusal per verb: " .. table.concat(lines, " | "))
+    for _, line in ipairs(lines) do
+        assertTrue(line:find(" refused: ", 1, true) ~= nil, "a refusal, not a write: " .. line)
+    end
 end)
 
 test("the Spells page's actions trace once, from the writer, not again at the call site", function()

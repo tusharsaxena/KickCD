@@ -321,7 +321,7 @@ function Cooldowns:Rebuild()
 
     local class, spec, classID = ResolveClassSpec()
     if not class or not spec then
-        return
+        return self:_logRebuildSkip("class/spec not resolved", class, spec)
     end
 
     -- Read-only lookup via Database:GetSpellList — never lazy-creates
@@ -329,7 +329,7 @@ function Cooldowns:Rebuild()
     -- doesn't pollute the saved-vars with an empty entry.
     local list = NS.Database and NS.Database:GetSpellList(class, spec)
     if not list then
-        return
+        return self:_logRebuildSkip("no stored spell list", class, spec)
     end
 
     -- Walk the spec list in order and build the watched dict. We deliberately
@@ -409,6 +409,22 @@ function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
         NS.Util.SpecDisplay(spec), tostring(spec),
         #watchedIDs, watchedList,
         #skippedIDs, skippedList)
+end
+
+--- The rebuild that watched nothing, and why (debug-logging-§8: the no-op that
+--- explains an empty grid). Shares _logRebuild's signature slot, so the same
+--- reason repeated -- a slider drag rebuilds ~20 times a second -- is one line,
+--- and a later real rebuild still prints (debug-logging-§9).
+-- @param reason  string  the guard that stopped it
+-- @param class   string|nil
+-- @param spec    number|nil
+function Cooldowns:_logRebuildSkip(reason, class, spec)
+    if not (NS.State and NS.State.debug) then return end
+    local sig = "skip|" .. reason .. "|" .. tostring(class) .. "/" .. tostring(spec)
+    if sig == self._lastRebuildSig then return end
+    self._lastRebuildSig = sig
+    NS.Debug("Cooldowns", "rebuild skipped: %s (class=%s spec=%s); watching nothing",
+        reason, tostring(class), tostring(spec))
 end
 
 --- Re-poll all watched spells, fire Ka0s_KickCD_SpellState only for those whose

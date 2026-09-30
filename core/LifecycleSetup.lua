@@ -85,6 +85,21 @@ end
 -- teardown runs the same list in reverse, so the publisher stops first.
 local UP_ORDER = { "IconGrid", "Castbar", "UnitLabel", "Cooldowns" }
 
+--- The stand-down and stand-up edges, one `[State]` line each
+--- (debug-logging-§8, diagnosis: the addon's own enable and stand-down
+--- transitions). The latch prints nothing of its own, by design, so the host
+--- says it here, naming the holds that took it down: `disabled` is the player's
+--- switch, a perf hold is a capture's second arm. Holds() allocates, so it is
+--- read only behind the gate.
+local function logEdge(down)
+    if not (NS.State and NS.State.debug and NS.Debug) then return end
+    if not down then return NS.Debug("State", "standing up: events and frames rebuilt from current state") end
+    local lc = NS.Lifecycle
+    local holds = lc and lc.Holds and lc:Holds() or {}
+    NS.Debug("State", "stood down (holds: %s): events, timers and frames released",
+        #holds > 0 and table.concat(holds, ",") or "-")
+end
+
 --- Call `fn(module)` for each runtime module that exists, in `UP_ORDER` or its
 --- reverse. Resolved at CALL time, never hoisted: this file loads before
 --- modules/, so a load-time GetModule would answer nil for every one of them.
@@ -109,6 +124,7 @@ end
 --- addon that GROWS a secure frame must hold its teardown pending instead of
 --- extending this function.
 local function standDown()
+    logEdge(true)
     if NS.State and NS.State.StandDown then NS.State.StandDown() end
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it
@@ -131,6 +147,7 @@ end
 --- Each module's Resume is the same path its OnEnable runs, so there is exactly
 --- one way up.
 local function standUp()
+    logEdge(false)
     if NS.State and NS.State.StandUp then NS.State.StandUp() end
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandUp then sp.StandUp() end

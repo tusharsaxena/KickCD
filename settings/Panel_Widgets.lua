@@ -89,9 +89,15 @@ function Helpers.LinkRow(ctx, text, onClick, tooltip)
         -- reaches into live addon state and Blizzard's category switch, and a
         -- raise inside AceGUI's dispatch takes the click handling of every widget
         -- on the frame with it.
+        -- The chat line is the player's; the [Open] line is the pasted log's
+        -- (debug-logging-§8, diagnosis: an error caught by an owned pcall names
+        -- the site and the message). Behind the flag, so an off log builds nothing.
         local ok, err = pcall(onClick)
-        if not ok and NS.Util then
-            NS.Util.print("link failed: " .. tostring(err))
+        if not ok then
+            if NS.State and NS.State.debug and NS.Debug then
+                NS.Debug("Open", "settings link click raised: %s", err)
+            end
+            if NS.Util then NS.Util.print("link failed: " .. tostring(err)) end
         end
     end)
     if tooltip then Helpers.AttachTooltip(w, nil, tooltip) end

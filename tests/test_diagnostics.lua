@@ -394,13 +394,24 @@ end)
 
 -- ── the chat line and the library-absent load ───────────────────────────────
 
-test("`/kcd diagnostics` writes one chat line naming the count and Copy", function()
+test("`/kcd diagnostics` turns logging on, then writes one chat line naming the count and Copy", function()
+    -- The run turns logging on for the session first (debug-logging-§14, DebugLogDiagnostics 2):
+    -- the seam's own "debug logging ON" line, then the report's one line.
     local inst = fresh()
+    assertFalse(inst.NS.State.debug, "logging starts off")
+    inst.NS:OnSlashCommand("diagnostics")
+    -- red under: a run that leaves the flag off, so no ON line precedes the count line
+    assertTrue(inst.NS.State.debug, "the diagnostic turns logging on for the session")
+    assertEqual(#inst.chat, 2, joined(inst.chat))
+    assertTrue(inst.chat[1]:find("debug logging", 1, true) ~= nil, inst.chat[1])
+    local n = tonumber(inst.chat[2]:match("console: (%d+) lines"))
+    assertTrue(n ~= nil and n > 20, inst.chat[2])
+    assertTrue(inst.chat[2]:find("Copy", 1, true) ~= nil, inst.chat[2])
+    -- With logging already on, a second run prints the count line alone.
+    inst.chat = {}
     inst.NS:OnSlashCommand("diagnostics")
     assertEqual(#inst.chat, 1, joined(inst.chat))
-    local n = tonumber(inst.chat[1]:match("console: (%d+) lines"))
-    assertTrue(n ~= nil and n > 20, inst.chat[1])
-    assertTrue(inst.chat[1]:find("Copy", 1, true) ~= nil, inst.chat[1])
+    assertTrue(inst.chat[1]:find("console: %d+ lines") ~= nil, inst.chat[1])
 end)
 
 test("with LibKa0s absent both forms print the library-absent line and raise nothing", function()
