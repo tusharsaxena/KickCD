@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| DIAG-1 – 33 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics` |
+| DIAG-1 – 38 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel |
 | DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
 | LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
 
@@ -42,7 +42,7 @@ and a retired one leaves its number unused.
   a class with an off-GCD interrupt plus an on-GCD crowd control (Warrior Pummel
   and Intimidating Shout) for GRID.
 - An Evoker to duel for CAST-14 (a duel partner counts as hostile).
-- Other addons: a second Ka0s addon with a debug console (DIAG-20), AbsorbTracker and
+- Other addons: a second Ka0s addon with a debug console (DIAG-20, DIAG-36), AbsorbTracker and
   ConsumableMaster (DEGRADED-7), PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters
   (PANEL-23), a media addon such as SharedMedia (PANEL-19 – 22), and Titan Panel, Bazooka or ElvUI's
   data texts (INSTALL-14, PANEL-26).
@@ -59,7 +59,7 @@ Which checks to run for a partial change:
   the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
-  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 33;
+  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 38;
   COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
   SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
   the library draws, and a re-vendor can change them with no addon file touched.
@@ -82,12 +82,12 @@ Which checks to run for a partial change:
   DIAG-1 – 6, DIAG-28 and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the
   library-less load.
 - **Debug console** (the window, its subcommands, the scrollbar and line counter, the title-bar art):
-  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, COMBAT-7 – 9 and PANEL-25.
+  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, DIAG-34 – 37, COMBAT-7 – 9 and PANEL-25.
 - **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a
   section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-17, COMBAT-11, GRID-14,
   DEGRADED-9, then DIAG-1 – 6 and COMBAT-7 – 9.
-- **Perf descriptor or panel** (`core/PerfSetup.lua`): DIAG-23 – 24, then DIAG-21 – 26 and PANEL-25.
-  DIAG-23 is the only place the panel's close is checked against what is drawn.
+- **Perf descriptor or panel** (`core/PerfSetup.lua`): DIAG-23 – 24 and DIAG-38, then DIAG-21 – 26
+  and PANEL-25. DIAG-23 is the only place the panel's close is checked against what is drawn.
 - **Media seam** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton`
   wrapper, the DebugLog descriptor): DIAG-21 – 25 and PANEL-25, then DIAG-16 – 20. The tests pin what
   is passed; these are the only look at what is drawn.
@@ -806,6 +806,26 @@ Which checks to run for a partial change:
   `/kcd debug diag` → the unknown-word line and the debug list. Neither writes a report. Result:
 - **DIAG-33. The long alias and any case.** `/kickcd diagnostics`, `/kickcd debug diagnostics` and
   `/kcd DIAGNOSTICS` → each writes the same report. Result:
+- **DIAG-34. The console resizes.** `/kcd debug window` → a small grip sits in the bottom-right corner,
+  clear of the `N / 3000 lines` counter. Drag it out and in on both axes → the window follows; the log,
+  the scrollbar and the title-bar controls follow their edges, the counter and the thumb stay in step,
+  and the lines and scroll position are kept. Drag it as small as it goes → it stops while the title and
+  every title-bar control still fit side by side and a few lines show; nothing overlaps. Result:
+- **DIAG-35. The console's size is for the session.** Resize the console, close it (Esc or the close
+  mark) and reopen it → the same size, not the default. `/reload`, reopen → back at 700 × 344. Drag the
+  window somewhere, resize it, `/reload` → the default size again, and the position behaves as it did
+  before this change. `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` holds no console size. Result:
+- **DIAG-36. Each console is its own.** Beside a second Ka0s addon's console (DIAG-20), resize KickCD's →
+  the other keeps its size; resize the other → KickCD's does not move. Result:
+- **DIAG-37. The copy window resizes.** Click copy → `KickCDDebugCopyWindow` has the same grip. Drag it
+  on both axes → the text box widens and narrows with it, the scroll bar's down arrow stays clickable
+  above the grip, and there is a minimum it will not go under. Close and reopen it → the same size;
+  `/reload`, open it again → the default size. Resizing it leaves the console's size alone. Result:
+- **DIAG-38. The perf panel resizes in width only.** `/kcd perf start` → the step panel has a grip in
+  its bottom-right corner. Drag it → the width changes and every step row stretches to the new width;
+  the height does not move, and the panel will not go narrower than it opened. `/kcd perf hide`,
+  `/kcd perf show` → the same width; `/kcd perf cancel`, `/reload`, `/kcd perf start` → the default
+  width again. Result:
 
 ## DEGRADED
 
@@ -955,6 +975,7 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-28 | §15 L422, §35 step 2 | The kept trace and the clean Copy passed (2026-09-26, KC-S2, KC-S4); the console opening, the chat line and the agreeing counts have no result |
 | DIAG-29 | §35 step 3 | Not in the 2026-09-26 run |
 | DIAG-30 | §35 step 4 | The full report and `Debug: OFF` passed (2026-09-26, KC-S5); no trace on a target change has no result |
+| DIAG-34 – 38 | New | Resizing the console, the copy window and the perf panel (LibKa0s v1.64.0) |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
