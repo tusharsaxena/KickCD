@@ -84,6 +84,13 @@ if not lib then
         buffer = {},
         Add             = function() end,
         Debug           = function() end,
+        -- The change gates and the at-enable queue (DebugLogGates, LibKa0s
+        -- v1.65.0). No console, so nothing is written and each answers false,
+        -- as the live members do when they write nothing.
+        DebugOnce       = function() return false end,
+        DebugChanged    = function() return false end,
+        DebugForget     = function() end,
+        DebugAtEnable   = function() return false end,
         Clear           = function() end,
         Show            = function() sayOnce() end,
         Hide            = function() end,

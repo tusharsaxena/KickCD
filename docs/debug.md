@@ -15,8 +15,9 @@ KickCD has three kinds of debug output:
 The report and the topics are why this page exists (`documentation-§3`, Tier 2: debug surfaces
 beyond the LibKa0s default console). The console and the report's frame are the library's, and
 their contract lives in LibKa0s's
-[`docs/api/DebugLog/version-17.2-docs.md`](https://github.com/tusharsaxena/LibKa0s/blob/master/docs/api/DebugLog/version-17.2-docs.md)
-(DebugLog minor 17 with its diagnostics file at minor 2, as vendored at LibKa0s v1.64.0). This page
+[`docs/api/DebugLog/version-18.2.1-docs.md`](https://github.com/tusharsaxena/LibKa0s/blob/master/docs/api/DebugLog/version-18.2.1-docs.md)
+(DebugLog minor 18 with its diagnostics file at minor 2 and its gates file at minor 1, as vendored at
+LibKa0s v1.65.0). This page
 covers only what KickCD adds on top.
 
 ## The console
