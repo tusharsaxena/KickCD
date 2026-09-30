@@ -125,17 +125,9 @@ test("a per-unit enable and disable edge is one line from each module", function
     NS.DebugLog:SetEnabled(false)
 end)
 
-test("the stand-down and stand-up edges are logged, naming the hold", function()
-    -- §8 diagnosis: a player who says "it stopped working" with the addon
-    -- disabled is answered by this line and nothing else.
-    -- red under: drop logEdge from core/LifecycleSetup.lua's standDown / standUp
-    local _, NS = listening()
-    NS.SetMasterEnabled(false)
-    assertTrue(NS.DebugLog:FindLine("[State] stood down (holds: disabled)"))
-    NS.SetMasterEnabled(true)
-    assertTrue(NS.DebugLog:FindLine("[State] standing up"))
-    NS.DebugLog:SetEnabled(false)
-end)
+-- The stand-down and stand-up edges are the library's lines since LibKa0s
+-- v1.65.0 (Lifecycle minor 3): tests/test_library_lines.lua pins them landing in
+-- this console, once each.
 
 test("a rebuild that watches nothing says why, once for a repeated reason", function()
     -- §8's no-op reason for an empty grid, change-gated per §9: a slider drag

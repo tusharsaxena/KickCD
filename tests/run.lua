@@ -214,6 +214,7 @@ local SUITES = {
     "test_grid",
     "test_settings_refreshers",
     "test_flow_traces",
+    "test_library_lines",
     "test_version",
     "test_source_style",
     { name = "test_prose", dir = "tests/_kit/" },

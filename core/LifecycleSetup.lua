@@ -85,20 +85,12 @@ end
 -- teardown runs the same list in reverse, so the publisher stops first.
 local UP_ORDER = { "IconGrid", "Castbar", "UnitLabel", "Cooldowns" }
 
---- The stand-down and stand-up edges, one `[State]` line each
---- (debug-logging-§8, diagnosis: the addon's own enable and stand-down
---- transitions). The latch prints nothing of its own, by design, so the host
---- says it here, naming the holds that took it down: `disabled` is the player's
---- switch, a perf hold is a capture's second arm. Holds() allocates, so it is
---- read only behind the gate.
-local function logEdge(down)
-    if not (NS.State and NS.State.debug and NS.Debug) then return end
-    if not down then return NS.Debug("State", "standing up: events and frames rebuilt from current state") end
-    local lc = NS.Lifecycle
-    local holds = lc and lc.Holds and lc:Holds() or {}
-    NS.Debug("State", "stood down (holds: %s): events, timers and frames released",
-        #holds > 0 and table.concat(holds, ",") or "-")
-end
+-- THE EDGE LINES ARE THE LIBRARY'S (Lifecycle minor 3, LibKa0s v1.65.0). The
+-- descriptor's `debug` below receives one `[Lifecycle]` line per stand-down and
+-- stand-up edge, naming the hold that caused it and the resulting set
+-- (debug-logging-§8, diagnosis: the addon's own enable and stand-down
+-- transitions). This file used to write its own `[State]` line from standDown /
+-- standUp; that copy is deleted so an edge is one line, not two.
 
 --- Call `fn(module)` for each runtime module that exists, in `UP_ORDER` or its
 --- reverse. Resolved at CALL time, never hoisted: this file loads before
@@ -124,7 +116,6 @@ end
 --- addon that GROWS a secure frame must hold its teardown pending instead of
 --- extending this function.
 local function standDown()
-    logEdge(true)
     if NS.State and NS.State.StandDown then NS.State.StandDown() end
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it
@@ -147,7 +138,6 @@ end
 --- Each module's Resume is the same path its OnEnable runs, so there is exactly
 --- one way up.
 local function standUp()
-    logEdge(false)
     if NS.State and NS.State.StandUp then NS.State.StandUp() end
     local sp = NS.Settings and NS.Settings.SpellsPanel
     if sp and sp.StandUp then sp.StandUp() end
@@ -165,6 +155,9 @@ if Lifecycle then
         standDown = standDown,
         standUp   = standUp,
         print     = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
+        -- The host's gated sink (debug-logging-§4), as the Launcher and Slash
+        -- descriptors take it: the library hands over a finished message.
+        debug     = function(tag, message) if NS.Debug then NS.Debug(tag, "%s", message) end end,
     })
 else
     -- The degradation stub, and it is deliberately the SMALLEST thing that can

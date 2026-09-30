@@ -1118,14 +1118,13 @@ badge and any count quoted in the docs must agree with it.
 - RefreshAllPanels never runs a refresher from a cleared render
 - ClearScroll is safe on a ctx that never rendered
 
-### test_flow_traces.lua (13)
+### test_flow_traces.lua (12)
 
 - OnProfileChanged logs a [Profile] line
 - BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds
 - the list summary names the spells it could not draw and the duplicates it skipped
 - a cast bar logs its outcome once per change, not once per cast
 - a per-unit enable and disable edge is one line from each module
-- the stand-down and stand-up edges are logged, naming the hold
 - a rebuild that watches nothing says why, once for a repeated reason
 - Cooldowns:Refresh stays silent across passes that change nothing
 - a settings open refused in combat names the guard in the log
@@ -1133,6 +1132,16 @@ badge and any count quoted in the docs must agree with it.
 - a settings link whose click raises names the site and the error in the log
 - a refused spell-list write names its guard, once, from the writer or the verb
 - the [Init] line names an optional library that did not load
+
+### test_library_lines.lua (7)
+
+- an unknown /kcd verb is one [Cmd] line from the library
+- a feature verb while disabled is the library's disabled-gate line, once
+- a /kcd set the library cannot parse names the path and the guard
+- a profile switch in combat is the library's in-combat line
+- with logging off a Slash refusal writes nothing
+- the stand-down and stand-up edges are one [Lifecycle] line each, naming the hold
+- a hold call that fires no edge writes no Lifecycle line
 
 ### test_version.lua (3)
 
@@ -1493,7 +1502,8 @@ badge and any count quoted in the docs must agree with it.
 | test_options_panel.lua | 42 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
-| test_flow_traces.lua | 13 |
+| test_flow_traces.lua | 12 |
+| test_library_lines.lua | 7 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
@@ -1512,4 +1522,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
-| **Total** | **1230** |
+| **Total** | **1236** |

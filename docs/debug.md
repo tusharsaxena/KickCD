@@ -64,7 +64,8 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `IconGrid` | `modules/IconGrid.lua` | Visibility decisions per unit; the per-unit list summary (drawn, not castable, duplicate IDs skipped); a unit enabled or disabled |
 | `Cast` | `modules/IconGrid.lua` | The interruptible cast gate per unit |
 | `Castbar` | `modules/Castbar.lua` | A cast's outcome per unit when it changes (shown, suppressed by the visibility mode, skipped for no duration object); a unit enabled or disabled |
-| `State` | `core/LifecycleSetup.lua` | The addon standing down (with the holds) and standing up |
+| `Lifecycle` | LibKa0s-Lifecycle-1.0, through `core/LifecycleSetup.lua`'s `debug` sink | The addon standing down or up: `stood down: added <hold> (holds: <set>)`, `stood up: released <hold> (holds: none)` |
+| `Cmd` | LibKa0s-Slash-1.0, through `settings/Slash.lua`'s `debug` sink | A `/kcd` verb the dispatcher refused, `refused <verb>[ <arg>]: <guard>`: a feature verb while disabled, an unknown verb, `get` / `set` / `reset` usage or not-found, a `set` value it could not parse or the seam refused, a reset with no default, a profile switch refused (unavailable, already current, in combat, unknown profile) |
 | `Combat` | `core/State.lua` | Entering and leaving combat |
 | `Open` | `core/KickCD.lua`, `settings/Panel_Widgets.lua` | The settings panel opening, or refused (in combat, or the options layer did not load); a settings-page link whose click raised, with the error |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
@@ -82,6 +83,12 @@ What the console records, by flow, so a pasted log can be read back into what ha
 (`debug-logging-§9`). Every line is one gated `NS.Debug` call; its string-building sits behind the
 flag.
 
+**Four tags are the library's**, not this addon's: `Cmd` (LibKa0s-Slash-1.0), `Lifecycle`
+(LibKa0s-Lifecycle-1.0), `Cfg` (LibKa0s-Options-1.0) and `Launcher` (LibKa0s-Launcher-1.0). The
+library decides those refusals and edges, and writes their lines through the `debug` sink each
+descriptor is passed, which is `NS.Debug`. No host code writes them, and none repeats one: a
+refusal or an edge is one line, not two.
+
 | Flow | Tag | Emitted when | Repeating path? |
 |---|---|---|---|
 | Session | `Init` | Logging is switched on: version, schema, profile, rejected events, missing optional libraries | No |
@@ -96,7 +103,8 @@ flag.
 | Cast gate | `Cast` | A unit's interruptible gate label changes | Yes: change-gated per unit |
 | Cast bar | `Castbar` | A unit's cast outcome changes: shown, suppressed by the visibility mode, skipped for no duration object | Yes: change-gated per unit |
 | Unit edges | `IconGrid`, `Castbar` | A unit is enabled or disabled (reconcile acts only on a mismatch) | No |
-| Stand-down | `State` | The addon stands down (naming the holds: `disabled`, or a perf hold) or stands back up | No |
+| Stand-down | `Lifecycle` (library) | The addon stands down or back up, naming the hold that did it (`disabled`, or a perf hold) and the resulting set; a call that changes nothing writes nothing | No |
+| Slash refusals | `Cmd` (library) | A `/kcd` verb the dispatcher refused, naming the verb and the guard (the disabled gate, an unknown verb, `get` / `set` / `reset` usage, not-found or parse, a profile switch in combat) | No, user-driven |
 | Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
 | Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing); a page link's click raised (`settings link click raised: <error>`) | No |
 | Debug verbs | `Debug` | A `/kcd debug` word refused: an unknown subcommand, or a topic whose module is missing | No, user-driven |
@@ -115,10 +123,6 @@ flag.
   per read (see [midnight-quirks.md](midnight-quirks.md)).
 - **Held work.** KickCD owns no secure frame and defers nothing to combat's end; the settings
   panel's parked registration is the library's `Cfg` line.
-- **A verb or value LibKa0s-Slash refuses** (an unknown `/kcd` verb, a bad `/kcd set` path or value,
-  a feature verb while disabled, a profile switch in combat). The library prints the refusal to chat
-  and offers the host no hook to log it; the chat line is the record. The host's own refusals, the
-  `/kcd spells`, `debug`, settings and lock verbs and the spell-list writers, are logged (above).
 - **`/kcd debug on`, `off`, `toggle` or `window` with the DebugLog module missing.** That module is
   the log, so there is nowhere to write the refusal; the chat line is the record.
 
