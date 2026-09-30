@@ -252,6 +252,8 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     NS:OnSlashCommand("lock")
     NS.db = db
     assertTrue(NS.DebugLog:FindLine("[Set] /kcd lock refused: db not ready"), "a top-level host verb names its guard too")
+    NS:OnSlashCommand("reset spells")
+    assertTrue(NS.DebugLog:FindLine("[Set] /kcd reset spells refused: a retired page word, redirected"))
     NS.DebugLog:SetEnabled(false)
 end)
 

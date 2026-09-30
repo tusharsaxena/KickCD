@@ -55,7 +55,7 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 |---|---|---|
 | `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary (with a `missing <lib>` clause for an optional library that did not load); the color and font-flag migrations |
 | `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
-| `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready |
+| `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua`, `settings/Slash.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready, or a `/kcd reset` given a retired page word |
 | `Profile` | `core/Database.lua` | Profile switches |
 | `Spells` | `core/Database.lua`, `core/KickCD.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, a spell-list write or `/kcd spells` verb refused (naming the guard), a skipped cooldown-manager check, the cooldown-manager set each time it is built (with the site and message of any viewer call that raised), and an add the cooldown-manager gate refused |
 | `Cooldowns` | `modules/Cooldowns.lua` | Each watched-list rebuild (watched and skipped counts), a rebuild that watched nothing and why, and material state changes |

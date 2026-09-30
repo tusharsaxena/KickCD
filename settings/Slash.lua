@@ -238,6 +238,12 @@ local function runReset(rest)
     local token = (rest or ""):match("^(%S+)")
     if token then
         local lowered = token:lower()
+        -- A retired page word is refused with a redirect; the pasted log names it
+        -- (debug-logging-§8, refusals). One gated line, formatted behind the flag.
+        if (lowered == "spells" or RETIRED_RESET_PAGES[lowered])
+           and NS.State and NS.State.debug and NS.Debug then
+            NS.Debug("Set", "/kcd reset %s refused: a retired page word, redirected", lowered)
+        end
         if lowered == "spells" then
             out("`/kcd reset spells` has moved to |cFFFFFF00/kcd spells resetall|r "
                 .. "\226\128\148 it rebuilds every spec's list.")
