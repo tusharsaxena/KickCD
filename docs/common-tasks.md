@@ -54,7 +54,7 @@ so **do not** write a parallel mutator for a field that already has a row.
    preserved. It does **not** take `self`: `LibKa0s-Slash-1.0`'s dispatcher calls it with the
    remainder alone, and a handler still expecting `self` silently reads the rest of the line as its
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
-3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:199` and is the single source
+3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:359` and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
    in the UI.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered
@@ -338,8 +338,7 @@ What is out of scope is named in the gate rather than inferred from a pattern: `
 `docs/superpowers/`, which record what was true on a past day (the store-root `README.md` files and
 `docs/automated-tests/RESULTS.md` are read back in, because they are rewritten in place); and the
 waiver file `tests/prose_waivers.lua`, whose reasons quote the words they waive. The waivers
-themselves sit in that file, per file and per word, each with its reason: `docs/smoke-tests.md`'s
-session-3 perf check quotes two forbidden spellings in order to tell the reader that a double L in
-the client means the string did not come from the vendored payload, so correcting the quote would
-delete the check; and `tests/wow_mock.lua`'s timer handle carries AceTimer's own spelling of its
-canceled flag as a field name, which the kit's live-timer survey reads.
+themselves sit in that file, per file and per word, each with its reason. There is one:
+`tests/wow_mock.lua`'s timer handle carries AceTimer's own spelling of its canceled flag as a field
+name, which the kit's live-timer survey reads. (`docs/smoke-tests.md` had one until the 2026-09-29
+rework, whose perf-string check, DIAG-26, now says "one L" instead of quoting the British forms.)

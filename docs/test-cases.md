@@ -1165,7 +1165,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (59)
+### test_slash.lua (60)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1222,10 +1222,28 @@ badge and any count quoted in the docs must agree with it.
 - degraded gate while disabled refuses feature verbs and nothing else
 - degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd list` prints the library-absent line
+- degraded CliProfile and ProfileSwitch print the library-absent line and switch nothing
 - degraded `/kcd set visibility always` writes nothing and prints the library-absent line
 - degraded `/kcd set` refuses a non-bool value even on a writeThrough path
 - degraded `/kcd lock` writes locked, and confirms
 - degraded `/kcd lock` while disabled prints the DisabledLine and does not act
+
+### test_slash_profile.lua (14)
+
+- COMMANDS carries `profile` beside the settings verbs, in a pinned order
+- the `profile` description is the locale's, and names the <name> form
+- `/kcd help` lists `profile` once, one row per COMMANDS entry
+- bare `/kcd profile` lists the stored profiles, the current one marked
+- `/kcd profile Alt` switches, and the host's profile handler runs
+- a quoted name with spaces switches, case kept
+- an unknown name is refused, lists the profiles, and creates nothing
+- a name that differs only in case is refused with a did-you-mean
+- the current profile answers `Already on`, and switches nothing
+- in combat the switch is refused, and the profile does not move
+- `profile` is on the addon's own live verbs, not the library's reserved list
+- while disabled `/kcd profile <name>` still switches, with no refusal line
+- with LibKa0s absent `/kcd profile` prints the library-absent line and switches nothing
+- with LibKa0s absent and the addon disabled, `/kcd profile` is not refused
 
 ### test_disabled.lua (20)
 
@@ -1466,7 +1484,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 59 |
+| test_slash.lua | 60 |
+| test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
 | test_perfsetup.lua | 32 |
@@ -1479,4 +1498,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 7 |
-| **Total** | **1201** |
+| **Total** | **1216** |

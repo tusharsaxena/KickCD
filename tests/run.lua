@@ -63,6 +63,24 @@ local function rooted(list)
     return out
 end
 
+--- Load every TOC file into NS in order, running each `afterFile` hook on NS right after its
+--- file loads and before the next one does. A hook keyed by a path that names no TOC file raises
+--- rather than silently never firing. Split out of loadInstance to keep it under CCN 15.
+--- @param NS table  the instance's addon namespace
+--- @param mocks table  the instance's mock table
+--- @param afterFile table|nil  { [tocRelPath] = function(NS) end }
+local function loadTocFiles(NS, mocks, afterFile)
+    local fired = {}
+    for i, path in ipairs(rooted(TOC_FILES)) do
+        Loader.load(path, NS, mocks)
+        local hook = afterFile and afterFile[TOC_FILES[i]]
+        if hook then hook(NS); fired[TOC_FILES[i]] = true end
+    end
+    for rel in pairs(afterFile or {}) do
+        if not fired[rel] then error("opts.afterFile: " .. tostring(rel) .. " is not a TOC file", 0) end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Instance factory: a fully-loaded, isolated addon environment
 -- ---------------------------------------------------------------------------
@@ -81,6 +99,11 @@ end
 ---        under test. `{ allowInitError = true }` lets a raising OnInitialize
 ---        return instead of failing the load; the raise is then on
 ---        `inst.initError` for the case to assert.
+---        `{ afterFile = { ["locales/enUS.lua"] = function(NS) end } }` runs
+---        each hook on the instance's NS right after that TOC file loads and
+---        before the next one does -- the seam a case needs to hand later files
+---        a non-identity locale string, since enUS's own `L` returns the key. A
+---        key that names no TOC file raises rather than silently never firing.
 --- @return table inst  { NS, mocks, initError }
 ---
 --- Isolation is per-instance and comes from the mock, not from the environment: the kit's loader
@@ -103,7 +126,7 @@ local function loadInstance(initDB, enable, mutate, opts)
     mocks._G = Loader.makeEnv(mocks)
     local NS = {}
     Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
-    Loader.loadAll(rooted(TOC_FILES), NS, mocks)
+    loadTocFiles(NS, mocks, opts and opts.afterFile)
     -- OnInitialize is pcall'd only so the raise can be KEPT, never dropped (KICKCD-R-11). It used
     -- to be pcall'd and discarded, so a load whose init raised came back looking exactly like one
     -- that built a db: every case on it measured a half-initialized addon, and the shared instance
@@ -196,6 +219,7 @@ local SUITES = {
     { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",
+    "test_slash_profile",
     "test_disabled",
     "test_opensettings",
     "test_perfsetup",

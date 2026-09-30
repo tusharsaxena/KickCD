@@ -43,6 +43,33 @@ Three decisions in that file are deliberate:
 This is the one place `AceConfigDialog` is used. Every other page is raw AceGUI on a Blizzard canvas
 (`options-ui`); AceDBOptions is the exception because the options table is Ace's, not the addon's.
 
+## Switching from the command line
+
+`/kcd profile` lists the stored profiles, sorted case-insensitively with the current one marked
+`(current)`, and `/kcd profile <name>` switches to one. The verb's behavior is
+`LibKa0s-Slash-1.0`'s `CliProfile` (Slash minor 17); the addon supplies the `profile` COMMANDS row
+(`core/KickCD.lua`) and the descriptor's `profiles = function() return NS.db end`
+(`settings/Slash.lua`), asked at call time because `NS.db` is built after that file runs.
+
+- **Existing profiles only.** AceDB's `SetProfile` creates a profile that does not exist, which is how
+  a typo becomes a stray profile. The library calls it only for a name the store already lists; an
+  unknown name is refused with `No profile named '<name>'.`, a did-you-mean when exactly one stored
+  name matches case-insensitively, and the list. Creating, copying and deleting stay on the
+  Profiles page.
+- **Names are taken as typed.** One pair of surrounding quotes is stripped, and case and inner spaces
+  are kept, so `/kcd profile "My Raid"` reaches `My Raid`.
+- **Combat.** A switch in combat is refused (`Can't switch profiles in combat.`); the list and the
+  refusals still answer.
+- **Live while disabled.** `profile` is on the addon's own live verbs (`NS.EXTRA_LIVE_VERBS`), since
+  a switch is a repair. The switch re-reads the master switch from the new profile, so it can bring
+  a disabled addon back up.
+
+A CLI switch is an ordinary AceDB switch: it fires `OnProfileChanged`, so everything below runs
+exactly as it does for a switch on the Profiles page, including the one `[Profile] switched to
+'<name>'` debug line. The library logs nothing of its own. With LibKa0s absent the degradation
+stub's `CliProfile` prints `/kcd profile is unavailable: the LibKa0s library did not load.` and
+switches nothing. `tests/test_slash_profile.lua` pins the wiring.
+
 ## Reacting to a profile change
 
 A profile switch is not a settings change — the whole settings tree is different afterwards, and

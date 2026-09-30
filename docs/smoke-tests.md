@@ -1,1165 +1,966 @@
-# Smoke tests
+# Smoke tests — Ka0s KickCD
 
-Manual end-to-end smoke tests for **Ka0s KickCD**. Run before claiming a non-trivial change works, before tagging a release, and after refreshing libs or bumping `## Interface:`. There is no automated harness — every check below is performed in-game with the live client.
+These are the in-client checks the headless suite cannot make: real frames drawing, real casts and
+cooldowns, 12.0 secret values in combat, real taint, real SavedVariables files. Run them before a
+release, after a LibKa0s re-vendor or an `## Interface` bump, and before claiming a non-trivial change
+works. Start from a clean `/reload` (`/console reloadui`) and turn logging on (`/kcd debug on`) only
+where a check says so. Each check says what to do and what must happen; anything that does not match
+is a bug, not a tolerance. Record the outcome on the check's `Result:` line (pass, or what you saw
+instead). IDs are `<THEME>-<n>` and stay stable: a new check takes the next free number in its theme,
+and a retired one leaves its number unused.
 
-Companion docs:
+## Index
 
-- Slash + debug coverage matrix (what each command produces): [testing.md](testing.md).
-- 12.0 secret-value rules referenced throughout: [midnight-quirks.md](midnight-quirks.md).
-
-## Conventions
-
-- **`/reload`** is the abbreviation used below for `/console reloadui`.
-- **BugSack / BugGrabber** (or the stock Lua error frame) is the primary regression signal — a clean run is "no errors thrown at any point".
-- **Chat banner** — every line the addon prints starts with a cyan `[KCD]`. A double `[KCD][KCD]` banner or any line missing the banner is a bug; the only sanctioned colored sub-tokens are the yellow command names + white descriptions in the help printers and the red `schema error:` token in `settings/Panel.lua`.
-- **"Hostile caster"** below means a target dummy / world mob that channels or casts an interruptible spell on demand. Stockades casters, Stormwind training dummies tagged with a friend's spell, and Plaguefall trash are common picks.
-- **"In combat"** smoke checks rely on `NS.State.inCombat`, which flips on `PLAYER_REGEN_DISABLED` / `_ENABLED`. Auto-attack on a dummy is enough.
-- **"Pass"** lines describe what success looks like; if a step says "should X" and X does not happen, the smoke test failed.
-
-## Suite
-
-| # | Area | Surfaces | Scenario |
-|---|------|----------|----------|
-| 1 | Cold start | TOC load, `OnInitialize`, schema validator | [Fresh install + first login](#1-fresh-install--first-login) |
-| 2 | Reload | Persistence, OnEnable | [`/reload` integrity](#2-reload-integrity) |
-| 3 | Master enable | `db.profile.enabled` | [Master enable toggle](#3-master-enable-toggle) |
-| 4 | Visibility | All four visibility modes | [Visibility mode matrix](#4-visibility-mode-matrix) |
-| 5 | Lock + drag | Shared lock, anchor save | [Lock / unlock / drag](#5-lock--unlock--drag) |
-| 6 | Icon grid | Anchor × grow × dimensions, truncation | [Icon grid layout](#6-icon-grid-layout) |
-| 7 | Cast bar | Free / anchored, auto-size, orientation, per-state | [Cast bar](#7-cast-bar) |
-| 8 | Cooldowns + glow | Interrupt fire, GCD suppression, ready glow | [Cooldown + glow](#8-cooldown--glow) |
-| 9 | Spec / talent / pet | Watched-list rebuild | [Spec, talent, pet rebuilds](#9-spec-talent-pet-rebuilds) |
-| 9b | Locale | Non-English client seeds + resolves specs | [Non-English client](#9b-non-english-client-issue-8) |
-| 9c | Icons | Render gating repaints correctly | [Icon render gating](#9c-icon-render-gating) |
-| 10 | Spells | Spells panel + slash parity | [Spell-list editor](#10-spell-list-editor) |
-| 11 | Settings panel | Schema, valueGate, panel ↔ slash sync | [Settings panel parity](#11-settings-panel-parity) |
-| 12 | Resets | Per-panel, resetall, resetposition, per-spec | [Resets](#12-resets) |
-| 13 | Profiles | AceDB profile lifecycle | [Profiles](#13-profiles) |
-| 14 | Combat gating | Combat-protected operations | [Combat gating](#14-combat-gating) |
-| 15 | Debug | `/kcd debug …` subcommands | [Debug commands](#15-debug-commands) |
-| 16 | 12.0 secret values | Cooldown / cast secret-tainted paths | [Secret-value safety](#16-secret-value-safety-120) |
-| 17 | Schema validator | PLAYER_LOGIN validator output | [Schema validator boot output](#17-schema-validator-boot-output) |
-| 18 | LSM dropdowns | Statusbar / Border / Font dropdowns | [LSM dropdown rendering](#18-lsm-dropdown-rendering) |
-| 19 | Debug traces | §8 key functional-flow lines in the debug console | [Debug traces](#19-debug-traces) |
-| 20 | Focus tracking | Enable focus, independent gating, link/copy styling, per-unit alpha/tint | [Focus tracking](#20-focus-tracking) |
-| 21 | Legacy migration | `FoldLegacyUnits` on a pre-`units` profile | [Legacy migration](#21-legacy-migration) |
-| 22 | Text label | `modules/UnitLabel.lua`, Text Label settings panel | [Text label](#22-text-label) |
-| 23 | Label style migration | `Database:BackfillLabelStyle` on a pre-`label.style` profile | [Label style migration](#23-label-style-migration) |
-| 24 | Debug console scrollbar + counter | `DebugLog:UpdateScrollBar` / `UpdateStatus`, `ScrollingMessageFrameMixin` offsets | [Debug console scrollbar + line counter](#24-debug-console-scrollbar--line-counter) |
-| 25 | LibKa0s seam | Degraded install + the shared `NS.LIBKA0S_MISSING` clause, the `L` trap | [LibKa0s seam](#25-libka0s-seam--degraded-install--the-l-trap) |
-| 26 | Shared art + shipped face | `core/MediaSetup.lua`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor's `addonName` | [The shared icon set and the shipped face](#26-the-shared-icon-set-and-the-shipped-face) |
-| 27 | Composed media rows | `LibKa0s-OptionsCompose` minor 3, the `Helpers.LSMValues` shadow | [Composed media dropdowns after the v1.26.0 re-vendor](#27-composed-media-dropdowns-after-the-v1260-re-vendor) |
-| 36 | Grid page | `settings/Grid.lua`, `Helpers.RenderGridPage`, the nav rail (LibKa0s v1.61.0) | [The Grid page (KickCD#33)](#36-the-grid-page-kickcd33) |
-
----
-
-### 1. Fresh install + first login
-
-**Setup.** Quit WoW. Delete `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (and the `.lua.bak` if present). Confirm the addon is enabled in the character select AddOns list as **Ka0s KickCD**.
-
-**Steps.**
-- Log in to a fresh character.
-- Run `/kcd help`, then `/kcd` on its own.
-
-**Pass.**
-- Login completes with no Lua errors.
-- The icon grid renders with the current spec's default spells (filtered to spells the player can actually cast).
-- `/kcd` on its own opens the settings panel on the Ka0s KickCD landing page and prints no help list.
-- `/kcd help` prints the help index — every row carries the cyan `[KCD]` banner, command names are yellow, descriptions are white, no `schema error:` line appears.
-- Settings → AddOns shows a **Ka0s KickCD** parent category with the six subcategories **General / Icons / Cast bar / Text Label / Spells / Profiles**.
-- `KickCDDB` is now present on disk after `/reload` with `profileKeys`, `profiles.Default`, and the seeded `spells[CLASS][specID]` block for the current spec — the spec key is a **number** (e.g. `[262]`), never a spec name.
-- Switch to a different class+spec character (alt) and log in: their spec's spells are seeded on first profile creation without errors.
-
-### 2. `/reload` integrity
-
-**Setup.** From the cold-start state, run a few writes:
-
-```
-/kcd unlock
-/kcd set units.target.icons.primarySize 50
-/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1
-```
-
-Drag the icon grid to a new screen position. Lock it back: `/kcd lock`.
-
-**Steps.**
-- `/reload`.
-
-**Pass.**
-- No Lua errors during reload.
-- Icon grid sits at the dragged position.
-- Lock state is `locked = true` (`/kcd get locked` → `true`).
-- `/kcd get units.target.icons.primarySize` → `50`.
-- `/kcd get units.target.castbar.interruptible.barColor` → `0.2 0.8 0.2 1`.
-- All six settings tabs still appear under **Ka0s KickCD**.
-
-### 3. Master enable toggle
-
-**Setup.** Pick a context where the icon grid would normally be visible (e.g. `visibility = always`).
-
-**Steps.**
-- `/kcd set enabled false`.
-- `/kcd set enabled true`.
-
-**Pass.**
-- `false` hides both the icon grid and the cast bar regardless of visibility mode or current target.
-- `true` immediately restores both per the active visibility rules.
-
-**And it is TOTAL, not a draw gate** (`slash-commands-§7`). The in-client check for the part the eye
-cannot see, with the addon disabled:
-
-- `/dump C_AddOns.IsAddOnLoaded("KickCD")` still answers true — the addon is loaded, it is standing
-  down, not unloaded.
-- Enter and leave combat on a dummy, swap target, swap spec. **Nothing appears**, nothing is printed,
-  and `/kcd get locked` reports the value it did before — no game event writes the stored tree.
-- Turn debug on first (`/kcd debug on`) and repeat: the console gets **no** `[Combat] entered` line,
-  because the listener that used to print it is unregistered rather than gated.
-- `/kcd enable` brings all of it back in the same turn, including a unit you enabled *while it was
-  off*, which is what "rebuilds from current state" means.
-- The General → "Enable KickCD" checkbox in the panel reflects the slash write live (open the panel before flipping; the box state changes when `/kcd set enabled …` is run).
-
-### 4. Visibility mode matrix
-
-A single visibility selector governs **both** the icon grid and the cast bar.
-
-> **Run this section LOCKED.** While the frame is unlocked — now the default on a fresh profile (`locked = false`) — both pieces deliberately bypass the visibility mode (and the interruptibility alpha-mask) and always show at full alpha so you can reposition them. `/kcd lock` before exercising the modes below, or every row will read as "always visible". (Known follow-up, tracked separately: even while locked, a non-interruptible cast can intermittently leak through `target_casting_interruptible` because WoW's `notInterruptible` is unreliable at cast-start — see the repo issue tracker.)
-
-| `visibility` | Setup | Expected |
+| ID range | Theme | What it covers |
 |---|---|---|
-| `always` | No target, no combat | Both UI pieces visible. |
-| `in_combat` | No target | Hidden out of combat. Auto-attack a dummy: both appear within one frame of `PLAYER_REGEN_DISABLED`. Drop combat: both hide on `_ENABLED`. |
-| `target_casting` | Target a friendly NPC casting an emote spell, or no cast | Hidden until the target *starts* casting / channeling, then both appear; both hide on cast finish/cancel. |
-| `target_casting_interruptible` (default) | Target a hostile mob mid-uninterruptible cast | Hidden. Switch to a hostile mob casting interruptibly: both appear. During an `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` flip mid-cast (some bosses), the cast bar's alpha fades to 0 — the frame stays parented but visually disappears (alpha curve, not `:Hide()`). |
-
-**Pass for each row.**
-- No Lua errors at any visibility flip.
-- `/kcd debug interrupt` while a hostile is casting reports the secret-value status of `notInterruptible` and the gate's decision matching the row's expected outcome.
-
-### 5. Lock / unlock / drag
-
-**Setup.** On a fresh profile, `locked` defaults to `false` (`/kcd get locked` → `false`) — the frame is draggable out of the box, no `/kcd unlock` needed. `/kcd set units.target.castbar.anchorMode FREE` so the cast bar is independently draggable. Pick `visibility = always` so both pieces are visible without a casting target.
-
-**Steps.**
-- `/kcd unlock`.
-- Click-drag the icon grid; release.
-- Click-drag the cast bar; release.
-- `/kcd lock`.
-- Try to drag both again.
-- `/reload`.
-
-**Pass.**
-- After `unlock`, both pieces are draggable.
-- After `lock`, neither piece is draggable.
-- After `/reload`, both retain their dragged positions.
-- Switch `units.target.castbar.anchorMode` back to `PRIMARY`: the cast bar is no longer draggable (it's parented to the primary icon) even when unlocked, and it follows the icon grid when the grid is dragged.
-- `/kcd toggle` flips the lock state; the General → "Lock frame" checkbox updates to match in real time when the panel is open.
-
-### 6. Icon grid layout
-
-**Setup.** Open Settings → Grid → Icons. Make sure at least 4 spells are enabled in the current spec so the secondary block is non-empty.
-
-**Steps.**
-- Walk through every value of `units.target.icons.anchor` (13 anchor tokens). For each, set `units.target.icons.secondaryGrow` to two distinct values applicable to that axis.
-- Set `units.target.icons.secondaryRows` and `units.target.icons.secondaryCols` such that `rows * cols < (number of enabled spells) - 1`.
-
-**Pass.**
-- For each anchor / grow combination, the secondary block lays out from the primary icon's named anchor in the chosen direction without overlap.
-- When `visibleCount > rows * cols`, a one-time chat warning prints with a `[KCD]` banner naming the (class, spec, capacity) tuple.
-- Bumping `rows × cols` to fit the visible count, then dropping back below it on a *different* (class, spec, capacity) tuple, re-fires the warning for the new tuple but does not re-fire for the previous one in the same session.
-- Setting `units.target.icons.primarySize` from 16 → 80 (within the slider range) live-updates without reloading.
-
-### 7. Cast bar
-
-#### 7a. Free anchor mode
-
-**Setup.** `/kcd set units.target.castbar.anchorMode FREE`. `/kcd unlock`. Pick a hostile caster in `target_casting_interruptible` mode.
-
-**Steps.**
-- Drag the cast bar to a new position; lock; `/reload`.
-- Target the hostile caster mid-cast.
-
-**Pass.**
-- Position persists across reload.
-- Bar appears on cast start, mirrors duration via `UnitCastingDuration`, snaps off at cast end.
-- Spell name and remaining time render; spark animates along the fill.
-
-#### 7b. Anchored mode + auto-size
-
-**Setup.** `/kcd set units.target.castbar.anchorMode PRIMARY`. `/kcd set units.target.castbar.autoSize true`. `/kcd set units.target.castbar.orientation HORIZONTAL`.
-
-**Steps.**
-- Disable a few spells with `/kcd spells disable <id>` and re-enable them with `add` so the icon grid's *visible* footprint changes.
-- Resize via `/kcd set units.target.icons.secondaryCols 4`, then `2`.
-- Toggle `/kcd set units.target.castbar.orientation VERTICAL`. Set `/kcd set units.target.castbar.growDirection UP`.
-
-**Pass.**
-- The bar's long axis tracks the grid's *visible* width (HORIZONTAL) or height (VERTICAL), not the configured `rows × cols` capacity. Removing a visible spell shortens the bar in place; adding one extends it.
-- The orthogonal dimension stays at the configured `units.target.castbar.width` / `units.target.castbar.height`.
-- Switching `orientation` resets `growDirection` to the canonical default for the new axis (`HORIZONTAL` → `RIGHT`, `VERTICAL` → `UP`); `/kcd set units.target.castbar.growDirection UP` while in HORIZONTAL is rejected and the error message names the gating sibling (`units.target.castbar.orientation`) and its current value (the `valueGate` mechanism).
-
-#### 7c. Per-state appearance
-
-**Setup.** `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`. `/kcd set units.target.castbar.uninterruptible.barColor 0.8 0.2 0.2 1`.
-
-**Steps.**
-- Target a hostile caster mid-interruptible cast.
-- Find a hostile mid-uninterruptible cast (or a boss spell that flips to uninterruptible mid-cast).
-
-**Pass.**
-- Interruptible cast renders with the green bar, configured interruptible border style and font.
-- Uninterruptible cast renders with red (or alpha-fades to 0 in `target_casting_interruptible` mode — both behaviors are correct, governed by the visibility mode).
-- Mid-cast flip via `UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE` switches state without a Lua error and without the addon ever doing a Lua-side `if notInterruptible then …`.
-
-### 8. Cooldown + glow
-
-**Setup.** Pick a class/spec with at least one off-GCD interrupt and one on-GCD CC (e.g. Warrior Pummel + Intimidating Shout). `visibility = always`.
-
-**Steps.**
-- Cast Pummel into a friendly target dummy.
-- During its cooldown, also cast a different spell with a GCD that's shorter than Pummel's CD.
-- Set `units.target.icons.primaryGlowTrigger` and `units.target.icons.secondaryGlowTrigger` to two different trigger modes (e.g. primary = `target_casting_interruptible`, secondary = `target_casting`).
-
-**Pass.**
-- Pummel's icon desaturates immediately on cast, with a cooldown swipe and (if enabled) the `Icons > Annotations > Show cooldown text` countdown ticking down.
-- The unrelated GCD does NOT visually trigger Pummel's swipe — the C-side curve gates GCD vs real CD without comparing the secret remaining time in Lua.
-- Glow on the primary icon triggers only on hostile interruptible casts; glow on the secondary icons triggers on any hostile cast, per the per-trigger config. The two are independent.
-- After Pummel comes off CD, `Cooldowns:Refresh` re-emits `Ka0s_KickCD_SpellState { ready = true }`, the icon re-saturates, and the cooldown swipe vanishes — no `0.0` stuck-text bug (regression check from 1.0.0).
-
-### 9. Spec, talent, pet rebuilds
-
-**Setup.** Pick a character with two specs and at least one talent choice node that materially differs (e.g. a node that replaces one interrupt-adjacent spell). For pet rebuild, use a Hunter.
-
-**Steps.**
-- Switch spec via the Talents UI or `/changespec`.
-- In a spec with a choice-node interrupt swap, swap the choice node.
-- On a Hunter: `/cast Call Pet 1`, then dismiss the pet.
-
-**Pass.**
-- Spec swap rebuilds the watched cooldown list against the new spec's seeded spells; the icon grid re-pools and re-lays out without errors. `Cooldowns:OnEnable` listens for `PLAYER_SPECIALIZATION_CHANGED`.
-- Talent choice swap fires `TRAIT_CONFIG_UPDATED` / `SPELLS_CHANGED` and rebuilds the watched list immediately — no need to swap spec.
-- With **Settings → Spells already open**, swapping spec moves the spec dropdown to the new spec and re-renders its rows (regression: it used to stay pinned to the old spec until Settings was fully closed and reopened).
-- Pet summon adds the pet's tracked interrupt to the visible grid; pet dismiss removes it. The dismissed pet's icon does not linger with stale state — `Cooldowns` emits a sentinel `SPELL_STATE { ready=false, isActive=false, cdObject=nil }` on poll-nil for the now-vanished spell.
-- After dismiss, `/kcd debug spells` no longer lists the pet spell.
-
-### 9b. Non-English client (issue #8)
-
-**Setup.** A client set to a non-English locale — frFR is the reported case. Any class works; an Elemental Shaman reproduces the original report exactly.
-
-**Steps.**
-- Log in on a fresh profile and watch the grid populate.
-- `/kcd debug spells`.
-- `/kcd spells list`.
-- `/kcd spells add 51490 ELEMENTAL` and `/kcd spells add 51490 Élémentaire` (the localized name).
-- Upgrade path: log in with a `KickCDDB` saved by v1.2.0 or earlier that has customized spell lists, then inspect it after `/reload`.
-
-**Expect.**
-- The grid populates with the spec's default spells — the original bug was an entirely empty grid with no error.
-- `/kcd debug spells` prints the English spec token alongside the numeric ID, e.g. `class=SHAMAN spec=ELEMENTAL (262)`, on every locale.
-- The `[Cooldowns] rebuild` debug line reads `SHAMAN(7) ELEMENTAL(262): N watched (...); M skipped (...)` — English tokens and numeric IDs, not localized names.
-- Both `/kcd spells add` forms resolve to the same list; output echoes the English token.
-- Settings → Spells shows spec names in the client's own language (`Élémentaire`) while storing `[262]`.
-- After the upgrade, `KickCDDB` has numeric spec keys and the user's customized entries are intact under them. **Repeat with a second profile** — the rekey is per-profile and must catch each one as it is activated, not just the profile that was active at upgrade.
-
-### 9c. Icon render gating
-
-**Setup.** `visibility = always`, cooldown text on, charges shown, a glow trigger configured on both the primary and a secondary icon. `Icon:Apply` skips glow / badge / Show work when no plain state field moved, so these steps confirm nothing that *should* repaint stopped repainting.
-
-**Steps.**
-- Put a spell on a long (30s+) cooldown and watch the icon through the whole cooldown.
-- With that cooldown still running, change the glow type and glow color in Settings > Icons.
-- With it still running, toggle cooldown text and the charges badge.
-- Target a hostile caster and let it start and stop casting while a spell is on cooldown (glow trigger `target_casting` / `target_casting_interruptible`).
-- Use a charged spell (e.g. a talented Mind Freeze) in combat and watch the badge as charges are spent and recharge.
-
-**Expect.**
-- The swipe animates smoothly with no stutter or restart, and the countdown text ticks continuously.
-- The icon holds the cooldown alpha/tint for the **whole** cooldown, including its final second, and snaps to ready visuals only when the spell is actually castable. Brightening early is the regression the `evaluateByTotal` classification exists to prevent — the curves read the cooldown's total length, not its remaining time.
-- Glow type / color changes take effect immediately, without waiting for the cooldown to end.
-- Glow follows the target's cast start/stop while the spell stays on cooldown throughout.
-- The charges badge keeps updating in combat, where the count is secret-tainted.
-
-### 10. Spell-list editor
-
-**Setup.** Note the player's current class+spec for the slash invocations below.
-
-**Steps.**
-- `/kcd spells list` — dump the current spec's watched spells.
-- `/kcd spells add <SPELL_ID>` — using a spell ID present in the active spec's Cooldown Manager.
-- `/kcd spells add <SPELL_ID>` — using an arbitrary spell ID that is NOT in the active spec's Cooldown Manager.
-- As a Shaman: `/kcd spells add Wind Shear` — a multi-word name.
-- `/kcd spells add <SPELL_ID> WARLORD 99999` and `/kcd spells add <SPELL_ID> <CLASS> 99999`.
-- `/kcd spells disable <SPELL_ID>`; `/kcd spells enable <SPELL_ID>`.
-- `/kcd spells category <SPELL_ID> stun`.
-- `/kcd spells remove <SPELL_ID>`.
-- Open Settings → Spells. Edit a different spec via the class+spec dropdown.
-- Trigger a CLI write while the panel is open: `/kcd spells add <SPELL_ID> CLASS SPEC`.
-- With the Spells page closed, switch spec, then open it: the Add box accepts only the new spec's Cooldown Manager spells.
-- `/kcd spells reset CLASS SPEC` for one spec; verify it rebuilds *only* that spec.
-- `/kcd spells resetall` — verify it wipes *every* spec.
-- On the Spells page, drag row 3 above row 1; `/reload`. Start another drag and press Esc mid-drag.
-- Hover a spell name, a category dropdown and a row's remove button.
-- Close Settings, open another Ka0s addon's panel (e.g. `/at config`) and hover and click its labels.
-
-**Pass.**
-- The active-spec write paths — the page's Add box and `/kcd spells add` alike — validate against the Cooldown Manager spell-set: adding a spell that isn't tracked there prints `Spell <name> (#<id>) is not tracked by the Blizzard Cooldown Manager for this specialization.` and is rejected.
-- `/kcd spells add Wind Shear` adds Wind Shear; the name is never split at its space.
-- An unknown class prints `Unknown class WARLORD`, a spec that is not the class's prints `Unknown spec 99999 for <CLASS>`, and neither writes anything to `KickCDDB`.
-- After a spec switch made with the page closed, the Add box gates on the NEW spec's Cooldown Manager set, not a cached one.
-- Editing a *different* class+spec falls through to the lenient validation path and succeeds for any valid spell ID.
-- After every mutating subcommand, the Spells panel rebuilds rows live (it listens for `Ka0s_KickCD_ConfigChanged { section = "spells" }`) — no need to close and reopen the panel.
-- `/kcd spells reset CLASS SPEC` rebuilds one spec from `NS.DefaultSpells`; the other specs are untouched.
-- `/kcd spells resetall` calls `Database:ResetAllSpells` and wipes every spec.
-- The Spells panel header **Defaults** button rebuilds *only* the currently-selected spec, matching `/kcd spells reset` (not `/kcd spells resetall`).
-- The drag's drop line draws in the list color, the new order survives `/reload`, and Esc mid-drag leaves no stray line (LibKa0s-Widgets minor 10).
-- Hovering a spell name shows the spell tooltip; hovering a category dropdown shows the **Category** tooltip. The remove button draws the red catalog close mark and reads as "remove".
-- Another addon's panel shows no KickCD spell tooltip on its labels, and its clicks land: nothing on the Spells page hooks a pooled AceGUI frame.
-- On a character whose race has a racial cast-stopper (Tauren, Highmountain Tauren, Pandaren, Kul Tiran, Nightborne), resetting one of **your own class's** specs, from the Defaults button or `/kcd spells reset`, keeps the racial as the list's last row. Resetting another class's spec never adds it.
-
-### 11. Settings panel parity
-
-**Setup.** Open Settings → General with the chat window visible.
-
-**Steps.**
-- Toggle the General → "Enable KickCD" checkbox; observe `/kcd get enabled` reports the new value.
-- Run `/kcd set scale 1.25`; observe the General → "Master scale" slider snap to 1.25x while the panel is open.
-- Run `/kcd set units.target.castbar.growDirection LEFT` while `units.target.castbar.orientation = VERTICAL`. The error message should list the valid options for VERTICAL plus a `(depends on units.target.castbar.orientation = VERTICAL)` line.
-- Run `/kcd list`. Spot-check that every General / Icons / Castbar row from the panel is present with its current value.
-- For a number-type row, run `/kcd set <path> <out-of-range>` (e.g. `/kcd set scale 99`) — the value should clamp to the row's `max` (e.g. `2.00x`).
-- For a color-type row, run `/kcd set units.target.castbar.interruptible.barColor 0.5 0.5 0.5` (3 floats, no alpha); the alpha should default to 1 and the row should accept the write.
-- Drag a color slider in the panel's `ColorPicker`; chat / frame should not stutter or error on rapid drag (the throttle is 50ms via `Util.Throttle` in `settings/Panel_Widgets.lua`).
-- **Panel-rebuild integrity.** On Settings → Grid → Icons, switch the **Unit** dropdown Target → Focus → Target a few times, click every tab in the strip in turn, then go to General → Units and tick / untick "Use same styling as Target" and press "Copy styling from Target". Then, with the panel still open, run any `/kcd set …`. Repeat the unit and tab clicking on Cast bar and Text Label.
-
-**Pass.**
-- **The Unit dropdown lists exactly `Target` / `Focus` on every Grid entry, always** — before and after those rebuilds, and after the `/kcd set`. A unit switch calls `Helpers.RenderUnitPanel` and a tab click clears and rebuilds the scroll; `/kcd set` then runs the whole refresher registry. If a refresher outlives the widget it captured, AceGUI's pool has already recycled that object into a different role and the stale closure overwrites it: the shipped symptom was the Unit dropdown listing **anchor points** on Icons and **text positions** on Cast bar. Any row's values appearing in a dropdown that shouldn't have them is this bug. Every other widget must also still show its own value, not a neighbor's.
-- Every panel write fires `Ka0s_KickCD_ConfigChanged { section = … }`; subscribed modules redraw.
-- Every slash write does the same and any open panel widget refreshes.
-- `valueGate` errors name both the option list and the gating sibling.
-- Number clamps respect `min` / `max` / `step`. Color writes accept 3 or 4 floats and clamp each to `[0, 1]`.
-- **The tab strip matches the table in [settings-panel.md](settings-panel.md).** General shows `Master controls | Units`; Grid → Icons shows `Sizing | Layout | Visual states | Border | Annotations | Ready glow`; Grid → Cast bar shows `General | Size and position | Icon | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Grid → Text Label shows `General | Placement | Font`; **Spells shows a one-tab strip reading `Spell list`**, with the spec picker and *Add spell* pinned above it. No tab name appears twice on one page (a duplicate means a row was filed under a group its page had already left), and **Profiles is the only page with no strip** — it stays one scrolling AceDBOptions page.
-- **Every color swatch has a `Use class color` checkbox immediately to its right, on the same line.** Tick one and the surface takes a class color; the swatch stays enabled, because its opacity still applies. Against an NPC boss the cast-bar and label swatches keep their stored color — that is intended, and the swatch's tooltip says so. Grid → Icons' swatches take the PLAYER's class on both units' pages.
-- **Grid → Icons → Annotations shows three headings** (`Icon`, `Font`, `Charges`), Grid → Cast bar → Size and position shows two (`Size`, `Position`), and Grid → Cast bar → Interruptible / Non-interruptible show four (`Bar`, `Background`, `Text`, `Border`). No page draws a heading that repeats the tab you just clicked.
-- **Grid → Text Label → General → `Label text` is a text box you can type into**, not a dropdown that opens on nothing. Type a caption, press Enter, and the label above the grid changes.
-- **Spells rows drag.** Grab the handle at a row's far left and move it several positions in one gesture; the list re-orders to where you dropped it, and the icon grid's priority order follows. There is exactly one box and one handle per row — two stacked fills means the host drew its own. Leave and re-enter the page twice: no handle or box is left stranded on anything.
-- **The Unit dropdown sits ABOVE the tab strip, in the page's chrome, and stays there when you click a tab.** This is the check that catches the whole class of regression the banner exists to prevent: a picker drawn into the scroll looks correct until the first tab click and then disappears. Click through every tab on Grid → Icons and confirm the dropdown is still there, still naming the same unit, on each one.
-- **Selecting a unit retargets every tab, not just the visible one.** On Grid → Cast bar with Focus unlinked, switch to Focus, click through to Interruptible, and confirm the colors shown are Focus's (`/kcd get units.focus.castbar.interruptible.barColor` agrees) rather than Target's.
-- **Charges badge inset (new controls).** On a spell with charges, tick Grid → Icons → Annotations → "Show charges". With both `Charges X offset` and `Charges Y offset` at their defaults (`-2` and `2`) the badge sits exactly where it did before this setting existed — flush inside the icon's bottom-right corner. Drag `Charges X offset` to `-20`: the badge moves LEFT by 18 px. Drag `Charges Y offset` to `20`: it moves UP by 18 px. `/kcd set units.target.icons.chargesOffsetX 900` clamps to `32 px`, and the badge lands at the slider's maximum rather than off the icon.
-- **Rotation reads in plain ASCII.** Grid → Text Label → Placement → "Rotation (degrees)" and `/kcd get units.target.label.style.rotation` both render e.g. `45 deg` — never an empty box where a degree sign used to be.
-- **Renderer robustness (per-row `pcall` in `Helpers.RenderRows`):** a single malformed saved value degrades to one missing widget plus a red `schema error:` line — it does NOT blank the rest of the panel body (regression: a stale saved value once left a whole panel showing only its header). This is exercised by the headless suite (`tests/test_schema.lua`); it is not readily inducible in-game, so there is nothing to click here — it is listed for completeness of branch coverage.
-
-### 12. Resets
-
-| Command | Expected |
-|---|---|
-| `/kcd reset units.target.icons.primarySize` | That one row returns to its `default`; every other row, and the spell list, untouched. |
-| `/kcd reset units.target.icons.cooldownTint` | A color row resets to a *copy* of its default — reset the same row on two profiles and confirm editing one doesn't move the other. |
-| `/kcd reset general` (and `icons` / `castbar` / `label` / `spells`) | Retired. Each prints a line naming where the capability went — the panel's **Defaults** button, `/kcd reset <path>`, or `/kcd spells resetall` — never "Setting not found". |
-| Each panel's **Defaults** button | All of that panel's rows return to their `default` values; other panels and the spell list untouched. With `/kcd debug on`, the console shows one `[Set] reset <page>: N rows` line (N = the rows that were off their default), and no per-row `[Set]` line. |
-| `/kcd spells resetall` | Every spec's spell list is rebuilt from `NS.DefaultSpells` (NOT just the active spec). |
-| `/kcd resetall` | Every schema-driven panel + every spec's spell list reset, AND every unit's icon-grid + cast-bar screen position restored to its `DEFAULT_PROFILE` anchor (anchors aren't schema rows; `resetall` is a profile reset now, so `db:ResetProfile()` puts `DEFAULT_PROFILE`'s anchors back with everything else and `Database:OnProfileChanged` re-seeds the spell lists — the dedicated positions pass it used to run is gone). Profiles untouched. No CLI confirmation prompt. |
-| `/kcd resetposition` (drag both grids away first) | Target icon grid snaps to `CENTER / CENTER, x = 0, y = +120` — **above** screen center — and the focus grid to `CENTER / CENTER, x = 0, y = +260`, the coordinates `defaults/Profile.lua` ships; a free-moving cast bar and everything else untouched. The number is named here on purpose: `Helpers.ResetIconPosition` used to carry a second, hand-written copy of it that said `y = -180`, and a check that only asks whether the grid moved cannot tell the two apart. |
-| Settings → General → **Reset all settings** button | StaticPopup confirm → same effect as `/kcd resetall`. Hovering it first shows the tooltip *"Reset the current profile to its defaults — the same thing Profiles → Reset Profile does. Your other profiles are not affected."* |
-| Settings → General → **Reset position** button | Same effect as `/kcd resetposition`. |
-| Per-panel **Defaults** button (General / Icons / Cast bar) | That panel only; mirrors `/kcd reset <panel>`. |
-| Spells panel header **Defaults** button | Currently-selected spec only; mirrors `/kcd spells reset CLASS SPEC`. |
-
-**Pass.**
-- No Lua errors at any reset path.
-- Open panels reflect reset values without manual refresh.
-- After `/kcd resetall`, `/kcd get enabled` returns `true` and `/kcd get visibility` returns `target_casting_interruptible` (the schema defaults from `settings/General.lua`).
-- After `/kcd resetall`, the label + cast-bar defaults shipped on this branch hold (schema `default` ↔ `DEFAULT_PROFILE` are single-sourced/in-sync): `/kcd get units.target.label.show` → `true`, `units.target.label.style.offsetY` → `12`, `units.target.label.style.color` → `1 0.82 0 1`, `units.target.label.style.attach` → `icons`; `units.target.castbar.anchorPoint` → `BOTTOM_LEFT`, `castbarPoint` → `TOP_LEFT`, `anchorOffsetY` → `-1`, `timePosition` → `CENTER`, `timeOffsetY` → `-20`; both `units.target.castbar.interruptible.statusBarTexture` and `.uninterruptible.statusBarTexture` → `Blizzard Raid Bar`. `units.focus.label.style.*` reset to the identical values (single-sourced `LABELSTYLE_DEFAULT`).
-- Drag either grid (or its cast bar) away from its default position, then `/kcd resetall`: the grid snaps back to its `DEFAULT_PROFILE` position (Target y=120, Focus y=260) rather than staying where it was dragged. (The cast bar is only independently draggable when `anchorMode = FREE`; in the default `PRIMARY` mode it follows the grid — the caveat in §5 `anchorMode FREE` setup applies here.)
-
-### 13. Profiles
-
-**Setup.** Settings → Ka0s KickCD → Profiles.
-
-**Steps.**
-- Create a new profile `SmokeTest`. Switch to it.
-- Make a change (`/kcd set units.target.icons.primarySize 60`).
-- Switch back to `Default`.
-- Switch to per-character: choose **Choose** → character-specific.
-- Use **Copy from** to copy `SmokeTest` into the active profile.
-- Use **Delete** to remove `SmokeTest`.
-- `/reload` after each step.
-
-**Pass.**
-- **The page draws.** Open another addon's options page first, then Ka0s KickCD → Profiles → the AceDBOptions controls render (current profile, New, Copy From, Delete, Reset Profile): never a blank page under the header.
-- Switching profiles fires `Ka0s_KickCD_ProfileChanged`; both UI pieces re-anchor and re-skin to the new profile's settings.
-- Per-character / per-class / per-realm scope correctly scopes the active profile (verify via `KickCDDB.profileKeys` after `/reload`).
-- `Database:MigrateProfile` runs on profile change (`db.global.schemaVersion` should already read `CURRENT_DB_VERSION = 5` for an account that's run this build before; re-running should not error or re-fold anything). The schema version is account-wide in `db.global.schemaVersion`, not per-profile.
-- **Every profile's colors and font flags come through a switch** (KICKCD-R-01). Create a second profile, switch to it and back: the cast bar color swatches and the outline dropdowns show the stored values, never blank and never the defaults. With `/kcd debug on`, no `settings migration ... failed` line is printed.
-- Spell-list edits on one profile do not bleed into another.
-
-### 14. Combat gating
-
-**Setup.** Pull a target dummy so `NS.State.inCombat = true`.
-
-**Steps.**
-- Run `/kcd config` mid-combat.
-- Run `/kcd set units.target.icons.primarySize 50` mid-combat.
-- Still in combat, open the game menu → **Options → AddOns** and click **Ka0s KickCD** in the sidebar. Then click each of the six sub-pages in turn: General, Icons, Cast bar, Text Label, **Spells**, **Profiles**.
-- Drop combat. Run `/kcd config` again.
-
-**Pass.**
-- Mid-combat `/kcd config` prints a one-line "cannot open during combat" message with the `[KCD]` banner and does NOT open the settings panel (Blizzard's category-switch is protected and would taint the panel).
-- Mid-combat `/kcd set …` for non-protected operations succeeds and applies live (icon size, color, etc.).
-- Out of combat `/kcd config`, and bare `/kcd`, open the settings panel landing on the Ka0s KickCD parent page with the subcategory tree expanded in the left nav (the parent page renders the logo + slash command list).
-- Mid-combat, **every one of the six pages opened from the Blizzard AddOns sidebar** prints the library's refusal line and closes the Settings window. This is a **different path** from the `/kcd config` check above and it fails for different reasons: the sidebar reaches a canvas panel without going through `OpenOptionsPanel`, so the only guard on it is the one `Helpers.SetRenderer` installs (`libs/LibKa0s/Options.lua:1035-1051`). Spells and Profiles parked their own `OnShow` until `CX03` and had no guard at all on this path, so a green here before that change proved nothing about them — run all six, not a sample, after anything that touches a page builder's render wiring.
-- Each of the six pages (General / Icons / Cast bar / Text Label / Spells / Profiles) appears **exactly once** under the Ka0s KickCD parent in the left nav — there is one registry now (LibKa0s-Options-1.0's), drained once from `OnEnable`.
-
-### 15. Debug commands
-
-**Setup.** Hostile caster targeted in combat is the most informative state.
-
-| Command | Expected output |
-|---|---|
-| `/kcd debug spells` | Per-spell line: `ready=…  active=…  cdObj=yes/no  chargeCdObj=yes/no  charges=…`. Charges may render as `<secret>` for charged spells in combat. **No remaining-time field** — `:GetRemainingDuration()` is secret in combat and printing it would error. |
-| `/kcd debug castbar` | Current target cast state plus configured + live per-state colors and `notInterruptible`'s `type()` and `issecretvalue()` flag. The dump uses `type()` / `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error. |
-| `/kcd debug on` / `off` / `toggle` | Sets / clears the session-only `NS.State.debug` flag (never written to SavedVariables — resets to off on every `/reload`). Continuous debug output streams to the on-screen console window, not chat. There is no longer a `db.profile.debugLog` field or a General → "Debug" checkbox. |
-| `/kcd debug window` | Toggles the on-screen debug console window (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`); logging keeps running whether the window is open or closed. |
-| `/kcd debug events` | `no rejected events` on a live 12.1.x client. A client that raised on a name one of the addon's registration blocks asks for prints one `rejected event: <NAME>` line per refused name instead (events-frames-taint-§1). |
-| `/kcd debug` | Toggles the console window and prints the debug subcommand help index. |
-| `/kcd diagnostics` / `/kcd debug diagnostics` | Writes the diagnostic report into the console after its trace and prints one chat line with the count. It runs `spells`, `castbar` and `interrupt` for both units as sections; section 35 covers it in full. |
-
-**Pass.**
-- Every subcommand runs mid-combat without Lua errors.
-- `interrupt` shows `<secret>` for `notInterruptible` (and any other secret-tainted field) when targeting a hostile caster mid-cast for a protected interrupt — never a Lua-coerced value.
-- **`/kcd debug castbar` with and without `C_CurveUtil`.** Target a hostile caster mid-cast for a protected interrupt so `notInterruptible` comes back secret, and run the dump. The `current.notInterruptible: type=…, isSecret=true` line is **always** followed by a `secret-tainted; …` line — one saying the visual state is determined via `C_CurveUtil.EvaluateColorValueFromBoolean` where that evaluator exists, and one saying it is unavailable where it does not. **Fail:** the dump reports the field as secret and then says nothing further about it, which reads to whoever is given the paste as a dump that had nothing to say. A client without `C_CurveUtil` is the awkward half to arrange — a Classic-flavor or pre-12.0 build is the honest test; on a live Retail client the evaluator is present and only the first half is observable.
-- `/kcd debug on` starts streaming `Ka0s_KickCD_*` traffic to the on-screen console window (not chat); `off` cleanly stops it. After a `/reload` the flag is back off — `NS.State.debug` is session-only and never persisted.
-- `/kcd debug window` opens / closes the console window without touching the logging flag.
-- `/kcd debug events` prints `no rejected events`. Then `/kcd debug on` and `/reload`, and re-enable the flag: the console's `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause. **Fail:** any rejected name on a live client, which means a registration block is asking for an event this build does not know.
-
-### 16. Secret-value safety (12.0)
-
-This suite catches regressions in 12.0's protected-interrupt taint propagation. See [midnight-quirks.md](midnight-quirks.md) for the underlying rules; the test below exercises every known taint vector.
-
-**Setup.** A class with a tracked interrupt (Warrior Pummel, Rogue Kick, Mage Counterspell, etc.) targeted onto a hostile caster mid-interruptible cast, in combat.
-
-**Steps.**
-- Cast the interrupt successfully; cast it on cooldown (it should fail). Repeat 5+ times across a long cast / channel.
-- Switch targets between hostile interruptible-caster, hostile uninterruptible-caster, friendly NPC, and untargeted, while `visibility = target_casting_interruptible`.
-- Run `/kcd debug interrupt` while a hostile is mid-cast.
-- Trigger a glow flip mid-cast on a boss spell that flips `notInterruptible` (some Plaguefall and Zskera trash do).
-
-**Pass.**
-- Zero Lua errors at any point. The most common regression signature is a `cannot perform arithmetic on a secret value` or `attempt to format a secret value` error at the moment the protected interrupt fires while in combat.
-- Cooldown swipe + cooldown text on the interrupt icon work correctly (text is rendered via `:SetFormattedText` on a duration object — never `tostring`).
-- Cast bar's interruptible / uninterruptible appearance switches without a Lua-side `if notInterruptible then …` ever running. `/kcd debug interrupt` reports `<secret>` for `notInterruptible`.
-- The two-step gate (`NS.State.IsHostileUnitCasting` for show + `NS.State.ApplyInterruptibleAlpha` for filter) is invoked; the interruptible-only visibility mode hides the cast bar via *alpha curve to 0*, not via `:Hide()`.
-
-### 17. Schema validator boot output
-
-**Setup.** Restart WoW (full quit, not `/reload`) to force a cold `PLAYER_LOGIN`.
-
-**Steps.**
-- Watch chat after login.
-
-**Pass.**
-- No `schema error` lines print. The Options descriptor's `validate` hook runs the schema seam's `Store.Validate` (`LibKa0s-Schema-1.0`, wired in `settings/OptionsSetup.lua`) at panel-register time and emits red error lines for any malformed row or a stored path that does not resolve against the defaults — a healthy build is silent here. Any error means a recent schema change shipped a malformed row.
-
-### 18. LSM dropdown rendering
-
-The vendored `AceGUI-3.0-SharedMediaWidgets` (r65) provides `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns. The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is `lib.__PatchLSM30Border()`, a `LibKa0s-Options-1.0` member called once from `settings/OptionsSetup.lua`. **This section checks it with KickCD alone, which is exactly the check that stayed green through the defect section 29 exists for** — run 29 too whenever this one matters.
-
-**Steps.**
-- Open Settings → Grid → Cast bar.
-- Click the **Bar texture** (statusbar) dropdown, the **Border style** dropdown, and the **Font** dropdown.
-
-**Pass.**
-- Each dropdown opens, lists installed media, and applies a chosen entry live to the cast bar.
-- The Border dropdown does NOT show a 42×42 black preview tile to the left of the dropdown bar (regression: that tile was the upstream lib's `displayButton`; the library's patch hides it).
-- Switching to Settings → Grid → Icons and changing **Cooldown text font** updates the icon countdown immediately on the live grid.
-
-### 19. Debug traces
-
-Debug output is not chat: one gated, secret-safe line per key functional-flow transition, routed through `NS.Debug` to the on-screen console (see [testing.md](testing.md#debug-subcommands)).
-
-**Setup.** `/kcd debug on`, then `/kcd debug window` to keep the console visible while driving each transition below.
-
-**Steps + pass.**
-- **Combat.** Enter combat (auto-attack a dummy), then leave combat. One `[Combat] entered` line appears when combat starts, one `[Combat] left` line when it ends — nothing at `PLAYER_LOGIN`, nothing per-tick during sustained combat.
-- **Profile.** Settings → Profiles → switch to a different profile (or create one). One `[Profile] switched to '<name>'` line appears naming the new profile key. Then **Copy From** another profile: one `[Set] copied profile '<source>' → '<active>'` line, and no `[Profile] switched` line.
-- **Resets.** Move two Cast bar settings off their defaults, then press Grid → Cast bar's **Defaults** (Target in the band): one `[Set] reset castbar: 2 rows` line, and no per-row `[Set] units.…` line. Press **Defaults** again: `[Set] reset castbar: 0 rows`. Then move three settings off their defaults (on any pages) and press **Reset all settings** (or `/kcd resetall`): exactly **one** `[Set]` line, `[Set] reset profile '<name>' to defaults (3 rows)`, with no `[Set] reset all` line beside it and no `[Profile] switched` line. Press **Reset all settings** again at once: `[Set] reset profile '<name>' to defaults (0 rows)`, never the schema's size. Then Settings → Profiles → **Reset Profile**: `[Set] reset profile '<name>' to defaults` with no count. A single `/kcd set locked true` afterwards logs its own `[Set] locked = true`, so the mute did not stick. Finally `/kcd set locked false` and press the General page's **Defaults** within a third of a second: `[Set] locked = false` prints **before** `[Set] reset general: …`, not after it.
-- **Cast / IconGrid.** Set Visibility to `target_casting_interruptible`, then have a hostile target start and stop an interruptible cast. One `[Cast] target cast gate: interruptible on/off` line appears when the gate flips, and one `[IconGrid] visibility …: shown/hidden` line appears when the grid's shown state actually changes — no line on refreshes where neither moved.
-- **Open.** `/kcd config` (or the minimap/options button) while out of combat. One `[Open] settings panel` line appears per successful open.
-- **Spells.** Every spell-list write is traced once, by its one writer (`core/Database.lua`), so the Spells editor and `/kcd spells` log the same line. In the Spells editor: add a spell (`[Spells] add <spellID> to <CLASS>/<SPEC>: N spells`), toggle a row's enabled checkbox (`[Spells] enable/disable <spellID> in <CLASS>/<SPEC>`), change its category (`[Spells] category <spellID> = <cat> in …`), drag a row (`[Spells] move <from> -> <to> in …`), remove a row (`[Spells] remove <spellID> from <CLASS>/<SPEC>: N spells`), and click "Reset to defaults" for a spec (`[Spells] reset <CLASS>/<SPEC>: N spells`). Each act logs **exactly one** line, not two. Then `/kcd spells remove <id>` and `/kcd spells reset` log the same lines, and `/kcd spells resetall` logs one `[Spells] resetall: N lists, M spells`.
-- **Set.** Change any setting on any panel (e.g. Grid → Icons → primary size). One debounced `[Set] …` line appears after the value settles — no re-echo, no per-keystroke spam (§10, Task 3).
-- **No spam.** Across all of the above, stay in combat for 30+ seconds with no target-cast activity: no additional `[Combat]`/`[Cast]`/`[IconGrid]` lines appear beyond the transition(s) already logged.
-
-### 20. Focus tracking
-
-Focus tracking adds a second, independent (icon grid + cast bar) instance for the player's focus unit, rendering the same player cooldowns. Focus is ON by default (`units.focus.enabled` defaults to `true`, same as Target) and defaults to linking Target's appearance, offset 140px above Target's grid (Target y=120, Focus y=260) — a computed estimate leaving ~10px of clearance between the Focus cast-timer bottom and the Target label top; nudge Focus Y if the rendered gap isn't quite right.
-
-#### 20a. Enable focus + independent target/focus gating
-
-**Setup.** `visibility = target_casting_interruptible`. Set a focus target (`/focus` while targeting a hostile caster) distinct from the current hard target.
-
-**Steps.**
-- `/kcd set units.focus.enabled true`.
-- Target a hostile mid-interruptible cast (different mob than the focus) while the focus mob is NOT casting.
-- Have the focus mob start an interruptible cast while the hard target is NOT casting.
-- Have both cast simultaneously.
-- `/kcd set units.focus.enabled false`.
-
-**Pass.**
-- Enabling focus immediately builds a second icon grid (`KickCDIconGridFocus`) and cast bar (`KickCDCastbarFocus`) — no `/reload` needed — showing the SAME tracked spells as target's grid (player-centric spell list).
-- Each grid/bar's visibility is gated independently against its OWN unit's cast state: target casting alone shows only the target pair; focus casting alone shows only the focus pair; both casting shows both. Neither unit's gate is affected by the other's cast state.
-- `/kcd set units.focus.enabled false` immediately tears down the focus instance (grid + bar disappear); target's instance is unaffected.
-- Zero Lua errors at any step.
-
-#### 20b. Link / unlink / copy styling
-
-**Setup.** `/kcd set units.focus.enabled true`. Open Settings → Grid → Icons.
-
-**Steps.**
-- Select **Focus** in the Grid page's Unit dropdown, on Icons. Confirm the entry draws its **tab strip** and no appearance rows — just the Unit dropdown in the chrome, the strip, and the note *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
-- **The strip is inert.** Every tab on it is **desaturated** and **none of them can be clicked** — every tab of a linked page draws the same note, so a clickable strip would redraw the identical page. Confirm the strip is still THERE (the page must not change shape when the picker flips) and that switching back to Target restores full color and clickability.
-- **The note is a link.** *"General page's Units tab"* is drawn in link blue. Mouse along the whole line: **nothing lights up behind it** — no plate, and above all no bright-green block (AceGUI paints one for a `SetHighlight` given color numbers). Clicking anywhere on it opens **General**, already on the **Units** tab — not the parent category, not General's Master controls tab. Then pull something and click it in combat: it must refuse with `[KCD] cannot open settings during combat` and **not** open the panel (Blizzard's category switch is protected — opening it under lockdown taints the panel for the session).
-- **The Unit dropdown is one selection across the three Grid entries.** With Focus selected on Grid → Icons, click **Cast bar** and **Text Label** on the rail: both open on **Focus**, not back on Target. Flip one of them to Target and return to Icons — it is on Target too. Then `/reload`: Grid opens on **Target** again, because the selection is session-only and deliberately not saved.
-- Change Target's `units.target.icons.primarySize` (switch the dropdown to Target first). Switch back to Focus — the linked Focus grid should visually match Target's new size live (no manual sync needed).
-- Go to **General → Units** and untick "Use same styling as Target". Return to Grid → Icons with Focus selected: the tab strip and the appearance rows appear, seeded with target's last-copied values (or defaults if never copied). The tick reaching a page you were not looking at is the point — it is a structural refresh, and a page that was hidden repaints on its next show.
-- Change a Focus-only appearance value (e.g. `units.focus.icons.primarySize`) — confirm Target's grid is unaffected.
-- Re-tick "Use same styling as Target" on General → Units — Focus reverts to mirroring Target live, and Grid → Icons collapses back to the note under its now-inert strip; the customization from the previous step is no longer visually active (though not necessarily wiped from `units.focus.icons` — the schema row is simply not read while linked).
-- On **General → Units**, the tick and the button are **one line**: `[Use same styling as Target] [Copy styling from Target]`, the button in the right half. A button on a line of its own reads as belonging to whatever follows it rather than to the tick above.
-- Untick again, then click **"Copy styling from Target"** (also on General → Units). Every Focus `icons` / `castbar` / `label.style` row and `label.show` takes Target's current value, row by row through the settings helper, and `link` flips to `false` (the button also unlinks if still linked). Before clicking, give Target a **vertical** cast bar growing **Down**; after, Focus's bar is vertical and still grows Down (orientation's own reset to Up must not win). With `/kcd debug on`, the console shows **one** `[Set] copy target→focus: N rows` summary line for the whole copy (N is the rows the copy changed: the Target rows you moved off their defaults, plus the link), **no** per-row `[Set] units.focus.…` lines, and no Lua error.
-- `/kcd set units.focus.link false` unlinks exactly as the tick does: the tick unticks on an open General page, and the Grid page's three entries grow their rows back. `/kcd set units.focus.link true` collapses them to the note again. With Focus unlinked, the General page's **Defaults** button re-links it.
-
-**Pass.**
-- While linked, `NS.Units.Icons("focus")` / `.Castbar("focus")` resolve to `units.target.icons` / `.castbar` — verified by the live visual match in the steps above.
-- Position (`units.focus.anchors.icons`/`castbar`) and the Focus identity label (`units.focus.label.text`, if shown) stay independent of Target's position/label at every step, linked or not — dragging the Focus grid never moves Target's.
-- "Copy styling from Target" is a one-time deep copy (not a live link) — a subsequent Target-only appearance change does NOT propagate to the now-unlinked Focus.
-- Neither control appears anywhere else. There is exactly one "Use same styling as Target" tick and one "Copy styling from Target" button in the whole panel, both on General → Units; the three Grid entries carry the note and nothing else.
-- No Lua errors at any toggle.
-
-#### 20c. Mid-cast enable + master-enable revive
-
-**Setup.** Set a focus target that is a hostile caster. `visibility = target_casting_interruptible`, `units.focus.enabled = false`.
-
-**Steps.**
-- While the focus unit IS mid-cast, run `/kcd set units.focus.enabled true`.
-- `/kcd set units.focus.enabled false`, then re-target/re-cast, then `/kcd set units.focus.enabled true` again.
-- With both target and focus enabled and visible, `/kcd set enabled false` (master enable), then `/kcd set enabled true`.
-
-**Pass.**
-- Enabling focus mid-cast shows the focus cast bar immediately, mid-cast, at the correct progress — the newly-built instance re-evaluates current cast state on enable rather than waiting for the next `UNIT_SPELLCAST_*` event.
-- Re-enabling focus after a fresh cast start behaves identically (no stale state from the previous enable/disable cycle).
-- `/kcd set enabled false` hides BOTH units' grids and bars regardless of per-unit `enabled`; `/kcd set enabled true` immediately revives every unit whose `units.<unit>.enabled` is still `true`, re-evaluating current cast/cooldown state for each without requiring a `/reload`.
-
-#### 20d. Unlinked focus honors its own alpha / tint
-
-Unlink **first**: untick **"Use same styling as Target"** on Settings → General → Units, or `/kcd set units.focus.link false` (the link is a schema row, `units.focus.link`; there is no `units.target.link`, since Target is never linked). Getting this wrong is what hid the regression this scenario now guards: the values below were set while focus was still silently linked, so focus resolved target's table and the two grids rendered identically.
-
-This is also the reason to unlink **first** and set values **second**.
-
-**Setup.** `visibility = always` (no focus target needed — in this mode `shouldBeVisible` returns true regardless of unit existence, so both grids sit on screen for side-by-side comparison). Both units enabled:
-
-```
-/kcd set enabled true
-/kcd set visibility always
-/kcd set units.target.enabled true
-/kcd set units.focus.enabled true
-```
-
-Open Settings → **General → Units** and **untick "Use same styling as Target"**. Then open Grid → Icons and pick **Focus** in the Unit dropdown; confirm the tab strip and the appearance rows appear. Only then:
-
-```
-/kcd set units.target.icons.cooldownAlpha 0.20
-/kcd set units.target.icons.cooldownTint 1 0.3 0.3 1
-/kcd set units.focus.icons.cooldownAlpha 0.90
-/kcd set units.focus.icons.cooldownTint 0.3 0.3 1 1
-```
-
-`/kcd unlock`, drag the two grids apart if they overlap, `/kcd lock`.
-
-**Steps.**
-- Cast an interrupt at a friendly target dummy. Use one whose cooldown is comfortably over ~1.6s — any real interrupt (15–24s) qualifies. Both grids render the same player cooldowns, so one cast drives both.
-- Watch both grids during the cooldown.
-- Mid-cooldown, run `/kcd set units.focus.icons.cooldownAlpha 0.40`.
-- Mid-cooldown, change target's border **style** on Settings → Grid → Icons (the `units.target.icons.borderTexture` row, "Border style") to a visibly different LSM border. Style is the clearest of the three border rows to eyeball: it changes the whole edge treatment, whereas `borderColor` only repaints it and `borderSize` defaults to `2` on a composed 0-16 slider, so a one-step thickness change is invisible and proves nothing.
-- **Leave the settings panel open** for the two steps above — a `/kcd set` with a panel open fires every refresher in `ctx.refreshers` (through `RefreshScalars`), which is the path that once corrupted the Unit dropdown after a rebuild (see 11).
-- Re-tick "Use same styling as Target" on General → Units.
-
-**Pass.**
-- Target's icon is heavily dimmed and red-tinted; focus's is nearly full brightness and blue-tinted. They must be **clearly different**. Identical grids mean focus is inheriting target's curves.
-- The mid-cooldown focus alpha change takes effect **while the cooldown is still running**, and target is unaffected — the curve rebuild guard re-opens on a real change instead of stranding a stale curve.
-- Target's border visibly changes style and **neither** grid's alpha or tint shifts — an unrelated `icons` edit must not disturb the curves.
-- The **Unit** dropdown still lists exactly `Target` / `Focus` on every tab after those `/kcd set` calls. Anchor points, text positions, or any other row's values appearing there means a stale refresher survived a panel rebuild.
-- Re-ticking the checkbox immediately reverts focus to target's dim-red values, with no `/reload`.
-- Zero Lua errors throughout.
-
-**Note.** While only the GCD is running (no real cooldown on the watched spell) both icons correctly show ready visuals — the curves classify that lockout by its total length, below `Const.GCD_UPPER`. If both look bright and untinted right after you press something else, wait a moment — that is not a failure.
-
-**Cleanup.** Grid → Icons → **Defaults**, with Target and then Focus in the band.
-
-### 21. Legacy migration
-
-**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy from before this feature) so the active profile has top-level `icons`, `castbar`, and `anchors` tables with a few customized values (e.g. a non-default `icons.primarySize`, a moved `anchors.icons`) and NO `units` table. Set `db.global.schemaVersion` to `1` or remove it entirely (either should trigger the fold).
-
-**Steps.**
-- Log in.
-- `/kcd get units.target.icons.primarySize` — compare to the customized value from the edited file.
-- `/kcd get units.target.anchors.icons` (or visually check the grid's position) — compare to the customized anchor.
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.icons` / `.castbar` / `.anchors` no longer exist at the top level and `profiles.<key>.units.target.{icons,castbar,anchors}` hold the customized values. `db.global.schemaVersion` should read `5` — `MigrateProfile` loops forward one step at a time, so a v1 account runs the v1→v2 fold, the v2→v3 spec-key rekey, the v3→v4 color-shape rewrite and the v4→v5 font-flag rewrite in the same login. Spot-check one color (e.g. `/kcd get units.target.icons.cooldownTint`) to confirm it survived as the user's value, not the default — a positional color arrives at the migrator as an AceDB hybrid whose *keys* hold the defaults.
-
-**Pass.**
-- No Lua errors during the migration login.
-- The icon grid renders at the SAME position and with the SAME customized appearance as before the migration — visually, nothing changes for the user.
-- `Database:FoldLegacyUnits` output is idempotent: a second `/reload` doesn't move anything or error (the top-level tables are already gone, so the shape check short-circuits).
-- Focus (`units.focus`) is present with its own fresh defaults (`enabled = true`, `link = true`) — the migration only touches target, since legacy accounts only ever had one unit.
-
-### 22. Text label
-
-Each unit (target/focus) can show one configurable identity label, rendered by `modules/UnitLabel.lua` and configured on the Grid page's **Text Label** entry (`settings/Label.lua`, panel/section `label`, after Cast bar on the rail).
-
-**Setup.** `/kcd set units.target.enabled true` and `/kcd set units.focus.enabled true`. Open Grid → Text Label. (On the way, confirm Settings → **General** no longer carries any label show/text controls — those moved to this Text Label entry; General keeps only the per-unit **Enable** rows.)
-
-**Steps.**
-- Select **Target** in the Grid page's unit dropdown, on Text Label. **Show label** is checked by default; confirm a label reading "Target" already appears just above the target icon grid (the default `attach = "icons"`, `point = "BOTTOM"`, `relPoint = "TOP"`, `offsetY = 12`). Toggle **Show label** off/on; confirm the label disappears/reappears.
-- Edit **Label text** to something custom (e.g. "MainTank"); confirm it updates live, no `/reload` needed.
-- Switch **Attach to** from `castbar` to `icons`; confirm the label re-anchors to the icon grid frame instead, still tracking live as the grid moves/resizes (drag the grid; the label follows via the next `Ka0s_KickCD_GridLayout`).
-- Walk the anchor/attach point pair (`Label anchor point` / `Attach point`) through a few combinations (e.g. `TOP`/`BOTTOM`, `LEFT`/`RIGHT`) and vary **X offset (in px)** / **Y offset (in px)**; confirm the label's position updates live and matches the chosen points + offsets. Every option in both dropdowns is a native `SetPoint` anchor (`TOPLEFT` … `BOTTOMRIGHT` / `CENTER`), so selecting *any* combination repositions the label with no Lua error — regression guard: an earlier build fed the icon grid's `<SIDE>_<ALIGN>` tokens (e.g. `TOP_MIDDLE`) straight into `SetPoint`, which errored on the first non-`CENTER` pick and left the default unselectable in the dropdown.
-- Set **Horizontal justify** / **Vertical justify** through their values; confirm text alignment changes visibly (most apparent with multi-word text).
-- Set **Rotation (degrees)** to a nonzero value (e.g. 45, -90); confirm the label visibly rotates and returns to upright at 0.
-- Change **Font** / **Font size** / **Font flags**; confirm the label's rendered font updates live (LSM dropdown, same widget family as Cast bar → Font).
-- Change **Label color** (color picker in the Font group) to a distinct color (e.g. bright green or red); confirm the label's text color updates live. Switch **Attach to** between `castbar`/`icons`; confirm the color persists across the re-anchor.
-- Switch to **Focus** in the unit dropdown with `units.focus.link = true` (the default): confirm Grid → Text Label now shows only the "Linked to Target…" note, under a desaturated and unclickable strip — no Show label / Label text / Placement / Orientation / Font rows are rendered while linked (matching the Icons and Cast bar pages). Focus's label still renders live (with Target's style, including color) if `units.focus.label.show` is `true` in the saved profile — it's just not editable from this page while linked.
-- Uncheck "Use same styling as Target" for Focus: confirm the page now shows the full Show label / Label text / Placement / Orientation / Font body again. Set Focus's label text to something distinct from Target's (e.g. "Kick this") and change one style value (e.g. rotation or color); confirm Target's label is unaffected and both units can show different text with different styles. Re-check the link; confirm the body collapses back to the note and Focus's label style (including color) reverts to mirroring Target's live (text stays as "Kick this" — text is per-unit data, not link-resolved).
-- With both labels shown, toggle `units.focus.enabled` off; confirm the Focus label disappears immediately (independent of Target's, which stays visible) and reappears when Focus is re-enabled.
-- Toggle **Show label** off for Target while Target's icon grid/cast bar remain visible; confirm only the label disappears, not the grid/bar.
-- **General-visibility follow (reversal of the old "independent visibility" behavior):** the label follows the icon grid's General-visibility state (its position still comes from the chosen attach frame). Set `visibility = target_casting` (or `target_casting_interruptible`) via General settings, with **Show label** on for Target. With the target NOT casting (grid + cast bar hidden per General visibility), confirm the Target label is ALSO hidden — it no longer floats on screen while the grid is hidden. Start a target cast; confirm the grid/cast bar AND the label all appear together. Stop casting; confirm all three hide together. Repeat with `attach = "icons"` to confirm the label follows the icon grid's visibility too, not just the cast bar's.
-- **Always-visibility regression guard (the bug this fix addresses):** set `visibility = Always` via General settings, with **Show label** on for Target and the default `attach = "icons"`. With the target NOT casting (so the cast bar itself is hidden — it only shows during an active cast), confirm the Target label IS still shown, anchored above the icon grid. This is the case a prior build broke: parenting the label to the cast bar (instead of the icon grid) made it cast-gated, so it stayed invisible in Always mode whenever nothing was being cast — even though the grid itself was always visible.
-
-**Pass.**
-- Every field change is live — no `/reload` required for any of the above.
-- Target and Focus labels are visually and positionally independent (dragging the grid/cast bar of one never moves the other's label), while sharing identical default style values (including color) out of the box.
-- A label is visible only when BOTH `label.show` is on AND the icon grid is currently shown per General visibility — the label never floats on screen while the grid is hidden, and (the regression this fix addresses) it is NOT additionally gated by the cast bar's own cast-presence hiding when attached to the cast bar.
-- No Lua errors at any step, including rapid attach-mode switching, rapid slider drags on offset/rotation, and visibility-mode changes.
-
-### 23. Label style migration
-
-**Setup.** On a test account/character, quit WoW. Edit `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` (or a backed-up copy predating this feature) so the active profile's `units.target.label` and `units.focus.label` exist as `{ show, text }` only — **no** `style` sub-table. Leave `db.global.schemaVersion` as-is (this migration is shape-driven, not version-gated, so it runs regardless).
-
-**Steps.**
-- Log in.
-- `/kcd get units.target.label.style.font` (or open Settings → Grid → Text Label and confirm the Font/placement/orientation rows show sane default values rather than erroring or rendering blank).
-- `/reload`, then inspect `KickCDDB` on disk: confirm `profiles.<key>.units.target.label.style` and `profiles.<key>.units.focus.label.style` are now both present and match `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`.
-
-**Pass.**
-- No Lua errors during the migration login or on Grid → Text Label.
-- If a label was already shown pre-migration (`label.show = true` in the edited file), it renders identically before and after — **no visual change**, since the backfilled `style` values equal the shipped defaults the label was implicitly using anyway.
-- `label.show` / `label.text` values from the edited file are preserved exactly (the migration only fills in the missing `style` sub-table).
-- A second `/reload` doesn't error or re-write anything (`Database:BackfillLabelStyle` is idempotent — it only acts when `style == nil`).
-
----
-
-### 24. Debug console scrollbar + line counter
-
-**Setup.** `/reload`, then open the console with `/kcd debug window`. Turn capture on (`/kcd debug on`, or the header "Debug: OFF/ON" button) so lines stream in; targeting a hostile caster in combat fills it fastest.
-
-**Checks.**
-- **Header renders.** The title-bar "Debug: ON/OFF" label is present and colored (green ON / red OFF) — i.e. the initial scrollbar/counter sync didn't abort the build. ESC closes the window (`UISpecialFrames` registration intact).
-- **Line counter.** The bottom-right label reads `N / 3000 lines` and `N` climbs by one per appended line. `/kcd debug spells` (and friends) print to chat, not here (`/kcd diagnostics` does write here, 100 to 200 lines at a time) — use `/kcd debug on` + live combat, or repeated events, to grow `N`. Hit **Clear**: the counter resets to `0 / 3000 lines` and the log empties.
-- **Scrollbar tracks the wheel.** With more lines than fit, mouse-wheel up/down over the log — the thumb moves in step. Drag the thumb — the log scrolls to match. No flicker or runaway (the `_syncing` re-entrancy guard holds).
-- **Thumb direction.** Thumb at the **bottom** = newest lines (offset 0); thumb at the **top** = oldest. If it reads inverted, the `sliderValue = maxRange − offset` mapping in `LibKa0s-DebugLog-1.0` has the wrong sign — fix it upstream in `../LibKa0s` and re-vendor, never in `libs/`.
-- **Inert when it fits.** Right after Clear (or with only a few lines), the scrollbar is still shown but the thumb is parked and the bar ignores mouse/drag; the right-edge gutter stays the same width.
-- **The shared Ka0s window edge.** ⚠ This is chrome the addon does not own: `core/DebugLogSetup.lua` passes no `applySkin` and no `makeCloseButton`, so both the console and the `/kcd perf` step panel take `Core.SKIN` / `Core.ApplySkin` verbatim. The window must read as a **flat 1px black outer border** with a **1px light-gray highlight** one pixel inside it, a **gold** "Ka0s KickCD — Debug" title and a **gray** divider under the title bar — not the soft brown 12px tooltip frame with a black divider and a white title it wore before LibKa0s v1.3.0. Then open a **second** Ka0s addon's console (AbsorbTracker, ConsumableMaster, BankLedger or LootHistory) and put them side by side: border, highlight, divider and title colors must be **indistinguishable**. A difference is either a host that has gone back to passing `applySkin`, or `libs/LibKa0s` drifting from `../LibKa0s` — fix it upstream and re-vendor, never in `libs/`.
-
-**Pass.**
-- Opening the console never throws (`GetNumLinesDisplayed` / `GetCurrentScroll` are **not** called — only `GetMaxScrollRange` / `GetScrollOffset` / `SetScrollOffset`).
-- Counter increments on every append and resets to `0 / 3000 lines` on Clear.
-- Wheel ↔ thumb stay synced both ways with the thumb bottom = newest.
-- The window edge, inner highlight, divider and title match a second Ka0s addon's console exactly.
-
-### 25. LibKa0s seam — degraded install + the `L` trap
-
-Both halves are invisible headlessly and both are cheap. Run after any change under `libs/LibKa0s/`
-or to a seam file (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`, `core/PerfSetup.lua`,
-`settings/OptionsSetup.lua`, `settings/Slash.lua`).
-
-**Setup.** Rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`, `/reload`.
-
-**Checks — the degraded half.**
-- **It degrades, it does not error.** Zero Lua errors at login. `/kcd` still answers and the host verbs still work.
-- **The degraded verbs (slash-commands-§1, WS-02).** `/kcd list` prints exactly `/kcd list is unavailable: the LibKa0s library did not load.` (tagged `[KCD]`). `/kcd disable` prints `enabled = false`, the grids disappear, and there is no Lua error; `/kcd lock` then prints the collection's disabled line (`Ka0s KickCD is disabled — enable it with /kcd enable`); `/kcd enable` prints `enabled = true` and the grids come back. `/kcd lock` / `/kcd unlock` confirm and move the lock. `/kcd help` rows read `/kcd <verb>  <desc>` plainly: white, two spaces, no em-dash separator. Restore the folder afterwards.
-- **One cause, said once.** The missing-library notice appears **exactly once** per session however many lines print afterwards, and it names `libs/LibKa0s`.
-- **The same sentence the other two addons say.** ⚠ This is the check the section exists for. The cause clause is `NS.LIBKA0S_MISSING` in `core/CoreSetup.lua` — one shared string that every seam appends its own *"so &lt;what&gt; is unavailable"* to. Do the same rename on **AbsorbTracker** and **ConsumableMaster** and compare: all three must state the cause identically, differing only in the trailing consequence and the addon name. KickCD used to phrase this its own way; converging it is the whole point, and a drift here means a seam grew its own wording again.
-- **Each seam names its own consequence.** `/kcd config` opens nothing and prints one line about the settings panel; `/kcd debug` says its piece about the console; `/kcd perf` about the capture. Same cause, different tails.
-- **The report has nowhere to go.** `/kcd diagnostics` and `/kcd debug diagnostics` each print `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and write nothing.
-
-**Checks — the `L` trap.** Rename the folder back and `/reload` first; this half needs the library present.
-- Open `/kcd config` and walk every panel, then `/kcd debug window` and `/kcd perf`. Every label, tooltip title, section heading, button and perf step name reads as **English prose**.
-- A `SCREAMING_SNAKE_CASE` string on screen — `STEP_START`, `PANEL_TITLE_SUFFIX`, `LIST_HEADER` — is the trap: a descriptor was handed `NS.L`, whose metatable answers every key with the key, so the library's own strings became unreachable. It fails for every key in that module at once, so one sighting means dozens. **This addon has shipped this bug**: a perf panel once read `Ka0s KickCDPANEL_TITLE_SUFFIX` / `STEP_START` / `STEP_MEASURE_A` in exactly this way.
-- The one legitimate override is `settings/Slash.lua`'s `L = NS.L and { LIST_HEADER = … } or nil` — a freshly built table, not `NS.L` itself. `tests/test_perfsetup.lua` guards the source (including the `and` → `or` typo that would quietly turn it back into the trap); this step is the only one that sees what actually rendered.
-
-**Pass.**
-- Rename the folder back and `/reload` before you finish — a `libs/LibKa0s_off` left in place is a silently degraded addon.
-- Degraded: no errors, complete `/kcd list`, one notice, wording identical to the other two Ka0s addons.
-- Normal: not one SCREAMING_SNAKE string anywhere in the UI.
-
----
-
-### 26. The shared icon set and the shipped face
-
-The art on the console's title bar and the face its lines are drawn in both live in the VENDORED
-LibKa0s payload (`libs/LibKa0s/media/`), not in this addon. Neither can be checked headlessly: a
-texture path that resolves to nothing draws nothing and raises nothing, and `SetFont` on a missing
-file loads nothing and raises nothing. That is the whole reason this section exists.
-
-Run after any LibKa0s re-vendor, and after any edit to `core/MediaSetup.lua`, `core/CoreSetup.lua`,
-`core/DebugLogSetup.lua`, `core/PerfSetup.lua` or `core/Constants.lua`.
-
-**Setup.** `/reload`, then `/kcd debug window`.
-
-**Checks.**
-- **The console title bar is three MARKS, not two words and a glyph.** Left to right on the right-hand
-  side of the bar: a **copy** sheet, a **clear**/eraser mark, and a **close** cross — all three small
-  white square glyphs of the same weight, all three from `libs/LibKa0s/media/icons/`. There is **no
-  tooltip** on any of them, and that is deliberate: one shipped for a single release, anchored under
-  the control, and it covered the first line of the log.
-- **The regression to watch for is a multiplication sign.** A `×` on the console close — or the words
-  `Copy` and `Clear` next to it — means the addon FOLDER name stopped reaching the library. The
-  library is vendored: it cannot work out which folder it was copied into, so it falls back to the
-  glyph and the words when nothing tells it. The one line that tells it is `addonName = addonName`
-  in `core/DebugLogSetup.lua`'s descriptor, beside `name` and not instead of it.
-- **The copy window closes with the same mark.** Click **copy**; `KickCDDebugCopyWindow` opens with a
-  read-only edit box. Its close control must be the same `close` art, not a `×`. A mismatch between
-  the two windows means the descriptor is right and something else regressed.
-- **The perf panel closes with the same mark, too.** `/kcd perf start` and look at the step panel's
-  top-right. ⚠ **As of `M4-16` no close button in this addon is built by the HOST** — this one used
-  to be, through a `decorate` hook in `core/PerfSetup.lua`, and that hook is gone; the library's own
-  `PerfPanel` arm draws it now, from the `addonName` the descriptor states. So this bullet has
-  changed meaning: it is no longer checking a wrapper call, it is checking that a descriptor field
-  reached the library. Put the panel and the console on screen together and compare the two close
-  controls pixel for pixel — see **30** for the full check.
-- **The console text is monospace.** Timestamps and `[tags]` line up in a column down the left. If
-  they do not, `Const.FONT_MONO` resolved to something that is not JetBrains Mono. Two outcomes are
-  possible and they look different: a **proportional** face means the fallback to the client's
-  `STANDARD_TEXT_FONT` fired (no library, or `media/fonts/` missing from the payload — honest
-  degradation); **no text at all** means the path is dead, which is the failure the fallback exists to
-  prevent and is never acceptable.
-- **The face is in the font dropdowns.** `/kcd config` → **Grid** → **Text Label** → the font dropdown lists
-  **JetBrains Mono** beside the player's other fonts. `core/MediaSetup.lua` registers it with
-  LibSharedMedia at file load; if it is missing, `Media.RegisterLSM` did not run or ran before LSM.
-- **Degraded stays honest.** Rename `libs/LibKa0s` to `libs/LibKa0s_off` and `/reload` (section 25's
-  setup). The console is gone entirely with the library, but `/kcd config` must still open, still
-  render text, and the **Text Label** font dropdown must simply not list JetBrains Mono. No errors, no
-  blank labels. Rename it back before you finish.
-
-**Pass.**
-- Copy, clear and close are art; nothing on the title bar is a word or a `×`.
-- The console close, the copy-window close and the perf panel close are the SAME mark.
-- Console timestamps line up; JetBrains Mono is in the font dropdown.
-- With the library renamed away: no errors, no missing text, no dead font.
-
----
-
-### 27. Composed media dropdowns after the v1.26.0 re-vendor
-
-**Smoke, session 4.** The proof that `LIBKA0S-A-01` — the collection's only Critical — is closed in a
-consumer, and the proof that closing it did not break the one consumer that was already working around
-it. Nothing here is headless-testable end to end: the harness pins that a composed media row hands back
-a **reader** rather than a reading, but only a live client has a LibSharedMedia that fills after the
-schema files have been read, which is the whole failure mode.
-
-**Setup.** A media addon that registers extra faces, borders and bar textures — SharedMedia,
-SharedMediaAdditionalFonts or ElvUI's media pack — enabled alongside KickCD, so LSM holds more than the
-Blizzard defaults. Log in fresh; do not `/reload` before the first check.
-
-**Steps.**
-- `/kcd config` → **Grid** → **Icons**. Open **Border texture** and **Cooldown text font**.
-- Rail → **Text Label**. Open the **Font** dropdown.
-- Rail → **Cast bar**. Open **Font**, and for BOTH the interruptible and the uninterruptible state open
-  **Bar texture** and **Border texture**. That is eight dropdowns across the three entries; they are the
-  eight composed rows this item moved.
-- `/dump LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose`
-- Pick a non-default face in **Grid** → **Text Label** → **Font** and confirm the label redraws in it.
-- Now the deferral itself, which is the half a snapshot would pass: with the client already running,
-  enable a media addon you had disabled, `/reload`, and re-open **Grid** → **Cast bar** → **Bar texture**.
-
-**Pass.**
-- All eight dropdowns list real media — several faces, several borders, several bar textures — not a
-  single `Default` entry and not an empty list that opens onto nothing.
-- The `/dump` reports **3**. A 2 means the vendored payload is still v1.25.0 and CLAUDE.md's provenance
-  line is lying; anything else means a foreign LibKa0s won the LibStub resolve.
-- The chosen face applies live, and survives `/reload`.
-- The newly registered media appears in the dropdown after the reload. If the list is identical to what
-  it held before, `Helpers.LSMValues` (`settings/Panel.lua`) has gone back to returning a **table** and
-  every composed media row is frozen at file load — silently, with no error and no empty control. That
-  is the regression this step exists to catch, and it is invisible to every other check in this suite.
-- No Lua errors at any point.
-
-### 28. The pooled tab strip, and the perf strings, after the v1.27.0 re-vendor
-
-**Smoke, session 3.** Two things arrived with `M4-01`'s LibKa0s v1.27.0 payload that only a client
-can settle. Nothing here may be reported as passing until someone has actually looked at it.
-
-`TabStrip` (`libs/LibKa0s/OptionsWidgets.lua`) no longer builds a button and a content panel per
-click: it acquires both from per-`ctx` `LibKa0s-Pool-1.0` pools and re-dresses them, re-setting
-`OnClick` on every dress. Its only headless proof counts `CreateFrame` calls on a second selection
-pass, and the case that would pin band geometry as invariant under selection cannot be written yet —
-the shared mock answers `GetHeight` with 0 for every frame, and neither kit 19 (LibKa0s v1.34.0) nor
-kit 20 (v1.35.0) flipped that: the flip ships alone, in a later revision, not here. **So a
-stale label, a mis-anchored button or a band that changes height on a re-dressed tab is invisible to
-every automated check in this repo.**
-
-**Steps — the strip.**
-- `/kcd config` → **General**, then **Grid** → **Icons** (six tabs, the widest strip here) and **Grid** → **Cast bar**. On each
-  page or entry, cycle every tab three times, ending back on the first.
-- Watch three things on each pass: the **label** is that tab's own, the **selected** tab is the one
-  you pressed, and the strip's **band height** does not move as you go through it.
-
-**Steps — the strings.** `LibKa0s-Perf-1.0` minor 8 respells five player-facing strings: two
-`CANCELLED` and three `unlabelled` become `CANCELED` and `unlabeled`. No single capture shows all
-five, so run two.
-- `/kcd perf start mylabel`, then `finish` — the started line and the report header both name the
-  label.
-- `/kcd perf start` with no label, then `cancel`.
-
-**Pass.**
-- Every tab labeled and selected correctly on all three passes, on General, Icons and Cast bar, and no band that
-  grows or shrinks. A label carried over from the previously-dressed tab, a highlight on the wrong
-  button, a body drawn under the wrong tab, or a strip whose height moves between passes is the pool
-  handing back a frame it did not finish dressing.
-- The unlabeled start line, its report header and the cancel line read **`unlabeled`** and
-  **`perf run CANCELED`**. A double-L in either is a copy of the string that did not come from the
-  vendored payload.
-- No Lua errors at any point.
-
-### 29. The Border dropdown when five Ka0s addons share one registry
-
-**Smoke, session 5.** Run after this addon's `core/LSMPatch.lua` was deleted and
-`settings/OptionsSetup.lua`'s live wiring took over the fixup (`M4-04`), and again after **each** of
-the four remaining deletions — PanelMaster, ConsumableMaster, MultiMeters, then AbsorbTracker last,
-because AbsorbTracker's copy is the one that diverges (a callable `NS.ApplyLSMBorderPatch()` rather
-than a `PLAYER_LOGIN` frame). Five deletions, five commits, five bisect points if this goes wrong.
-
-**The thing under test is not KickCD.** AceGUI's `WidgetRegistry` is process-global: one slot named
-`LSM30_Border` shared by every addon in the client. Five Ka0s addons each carried a private copy of
-the wrapper, each registering at whatever version it found plus one, so the wrapper a Border dropdown
-actually got belonged to whichever addon the client loaded last. Nothing headless in any of the five
-repos could see it — each suite loads one copy, registers once and passes — and section 18 above,
-which checks the alignment with KickCD alone, passed throughout.
-
-KickCD is now the **only** one of the five with no private copy. So this run is also the first
-evidence that one library-level registration is enough to dress a dropdown in an addon that no longer
-carries its own.
-
-**Steps.**
-- Enable KickCD, PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters together, and log in.
-- Open each addon's Border dropdown in turn. KickCD's is `/kcd config` → **Grid** → **Cast bar** → **Border
-  style**.
-- Change the load order — disable and re-enable addons, or rename folders so a different one is
-  reached last — `/reload`, and walk the five dropdowns again.
-
-**Pass.**
-- In all five, the closed control's left edge is **flush** with the sliders and checkboxes stacked
-  with it, with **no ~42px gap**, and opening it still draws the per-row hover previews.
-- Nothing differs between the two passes. **Any dropdown that looks different from the other four, or
-  that changes when the load order changes, is the finding** — the whole point of moving the
-  registration into LibKa0s is that the answer no longer depends on who loaded last.
-- No Lua errors at any point.
-
----
-
-### 30. The perf panel's close control, after `decorate` was deleted
-
-**Smoke, session 3.** Run after `M4-16` removed the `decorate` field from `core/PerfSetup.lua`'s
-descriptor. **Nothing on screen is supposed to change**, and that is precisely why it needs a human:
-the change swaps which code draws the control, not what the control looks like, and the two arms are
-exclusive — `libs/LibKa0s/PerfPanel.lua` runs the host's hook **or** its own else arm, never both. For
-as long as the hook existed the library's arm never ran once in a client from this addon, so this is
-the first time it will have run at all. A headless case pins the argument that reaches the factory
-(`tests/test_perfsetup.lua`); nothing headless can see what was drawn.
-
-**Setup.** `/reload`, then `/kcd perf start`.
-
-**Checks.**
-- The step panel opens with **exactly one** close control in its top-right corner — not two stacked on
-  the same corner, and not none.
-- That control is the shared **`close`** mark from `libs/LibKa0s/media/icons/`, the same small white
-  glyph the debug console wears. **A multiplication sign `×` is the regression**, and it means the
-  addon FOLDER name stopped reaching `MakeCloseButton`: the library is vendored, cannot infer which
-  folder it was copied into, and falls back to the glyph when nothing tells it. The one line that
-  tells it is now `addonName = addonName` in the perf descriptor.
-- It sits at the same inset from the same corner as before the change — level with the title, ~6px in
-  from the right edge. Put the panel and `/kcd debug window` on screen together and compare the two
-  close controls pixel for pixel; they come from one factory and must be indistinguishable.
-- **Clicking it hides the panel** and nothing else: the run is not canceled, and `/kcd perf report`
-  afterwards still has the capture. The click handler is now the library's own `HidePanel` rather
-  than one this addon passed in, which is the half of the swap a screenshot cannot show.
-- No Lua errors at any point.
-
----
-
-### 31. The castbar dump with no LibKa0s, after the `_G.print` arm went
-
-**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-20` landed.** Folded into
-session 3 because that is this repository's outstanding seam run, and the setup it needs — the
-renamed `libs/LibKa0s` folder — is already section 25's.
-
-`M4-20` deleted `modules/Castbar_Debug.lua`'s `local emit = NS.Util and NS.Util.print or _G.print`
-in favor of `local emit = NS.Util.print`. The deleted arm was unreachable: `core/CoreSetup.lua`
-defines `Util.print` on the library-absent path at `:115` and returns, and on the library-present
-path at `:187`, so there is no load in which `NS.Util.print` is nil. But the guard and the fallback
-went together, and what used to degrade into an untagged global `print` now raises. That is the
-intended trade — an untagged dump pasted into a bug report is worse than a visible error — and it is
-the only behavior this deletion can change.
-
-Both halves are pinned headlessly and neither pins the join. `tests/test_coresetup.lua`'s "the
-degraded printer is still secret-safe and still says `<secret>`" proves `Util.print` exists with no
-library; the 18 cases in `tests/test_castbar_debug.lua` drive the dump line by line **with** one.
-Nothing headless runs the dump on a library-less load, because `tests/test_castbar_debug.lua`'s
-helper loads `T.load(true, …)` throughout. This step is that composition and nothing else.
-
-**Setup.** Section 25's — rename `Interface/AddOns/KickCD/libs/LibKa0s` to `libs/LibKa0s_off`,
-`/reload`. Run this while you are already in there for 25 rather than arranging it twice.
-
-**Checks.**
-- Target anything and run `/kcd debug castbar`. It prints the dump. **A Lua error naming
-  `Castbar_Debug.lua` and a nil `emit` is the finding** — it would mean `Util.print` is not on the
-  namespace by the time a slash command runs on the degraded path, which no headless load reproduces.
-- **Every line carries the `[KCD]` tag.** The degraded printer prefixes with `NS.PREFIX` the same way
-  the library's does; a run of untagged lines means something else is doing the printing.
-- The one-off missing-library notice appears before the dump, not once per dump line — the same
-  `announced` latch section 25 checks, seen through a command that prints ~20 lines at once.
-- Rename the folder back and `/reload` before you finish.
-
----
-
-### 32. Two cast bars driven by one cached handler each
-
-**Smoke, session 3. NOT YET RUN — no WoW client was available when `M4-22` landed.** Folded into
-session 3 because that is this repository's outstanding run, and it needs no setup of its own.
-
-`M4-22` stopped `Castbar:Start` from minting `function() onUpdate(inst) end` on every cast start.
-`EnsureFrame` builds `inst.onUpdateScript` once per unit instead, and Start installs that. Section
-7a already watches one bar fill and snap off, and it would have caught a handler that was never
-installed. What it cannot see is the failure this change actually risks, which is a handler that is
-installed but bound to the **wrong instance** — because 7a drives one unit.
-
-Headless proof exists for the binding (`tests/test_castbar_frame.lua` asserts target and focus get
-distinct handler objects) and for the allocation (`tests/perf.lua`'s `castStart` scenario, 304.0 ->
-208.0 bytes per start/stop pair). Neither runs a frame. `SetScript` under the mock is a table write
-and `GetScript` reads it back; nothing headless ever calls the handler the way the client does,
-sixty times a second, against two live casts at once. This step is that and nothing else.
-
-**Setup.** `/kcd set units.target.castbar.enabled true` and the same for `units.focus.castbar`.
-`/kcd lock`. `/kcd set units.target.visibility always`. Find two hostile casters — a pull with two
-casting mobs is the easiest arrangement.
-
-**Steps.**
-- Target one caster and focus the other, both mid-cast, and watch both bars at once.
-- Let each finish and start a second cast without retargeting.
-- Swap target and focus and repeat.
-
-**Pass.**
-- **Both bars animate simultaneously and independently.** One bar frozen while the other runs, or
-  both bars showing the same fill, is the finding — that is a shared or mis-bound handler, and it is
-  exactly what a single file-scope handler would produce.
-- The second cast on the same unit animates like the first. A bar that fills on the first cast of a
-  session and is static afterwards means the handler is being torn down and not re-installed.
-- Spell name and remaining time keep tracking on both bars, and neither shows the other's spell.
-- No Lua error naming `Castbar.lua` and a nil `onUpdateScript` — that would mean Start ran on an
-  instance `EnsureFrame` had not reached, which no headless load reproduces.
-
-### 33. The launcher — the minimap button and the broker plugin
-
-One LibDataBroker-1.1 object registered twice (`launcher-§1`), so the button and any broker display
-answer the same click. **Nothing here is headless-testable past the arguments**: the suite pins what
-is passed and which seam the click lands on, and only the client can say whether the icon actually
-DRAWS — an `IconTexture` in the wrong TGA format draws nothing and raises nothing (anti-pattern #82),
-which is the whole reason this step exists.
-
-**Setup.** A clean `/reload` out of combat.
-
-**Steps + pass.**
-- **It draws.** A round button sits on the minimap ring wearing **the KickCD logo**, not a Blizzard
-  ability icon and not an empty square. An empty or black button is the format failure, not a
-  missing registration — check `media/logos/kickcd.logo.128.tga` is TGA image type 2 at 32 bpp.
-- **The AddOns list agrees.** ESC → AddOns (or the character-select AddOns list) shows the **same**
-  logo beside *Ka0s KickCD*. One file, three places.
-- **Hover it.** The tooltip reads `Ka0s KickCD  v<version>`, `Enabled: Yes`, `Locked: Yes|No`,
-  then `Left-click: Open settings` and `Right-click: Options menu`. No `Test mode` line.
-- **Left click opens the settings panel**, on its landing page, and does **not** touch the lock.
-- **Right click opens the options menu** (`launcher-§2`, standard v2.67.0): titled *Ka0s KickCD*,
-  with exactly two ticks, **Enabled** (ticked) and **Locked**, and nothing else. Untick
-  **Locked**: the grids and the cast bar's placeholder appear and the grid drags, the menu closes,
-  and chat prints the same *icon grid unlocked* line `/kcd toggle` prints. Right-click again: the
-  tick now reads unlocked. Tick it: they lock. `/kcd get locked` agrees, and so does General →
-  Master controls → **Lock frame** — open the panel and watch the tick follow the menu.
-- **Drag it.** Drag the button a quarter of the way round the ring, `/reload`, and it comes back
-  where you left it. It moved because LibDBIcon wrote `minimapPos` into the same table the checkbox
-  writes `hide` into.
-- **The checkbox hides it.** Untick General → Master controls → **Minimap button**: the button goes
-  at once, not at the next reload. `/kcd get global.minimap.shown` prints **false** — the CLI
-  name reads in the row's sense, while the stored key is still LibDBIcon's `hide` (`launcher-§3`).
-  `/kcd get global.minimap.hide` answers *Setting not found*: the old path is not an alias.
-  `/reload` — still gone, and still **false**. Tick it again: back, and **true**.
-- **A broker display's hide agrees with the checkbox.** Hide the plugin from a broker display's
-  own plugin list where it offers one, and the **Minimap button** tick follows. There is one
-  boolean and the library writes it too.
-- **A profile switch does not move it.** Hide the button, then Settings → Profiles → switch profile.
-  It stays hidden. Switch back: still hidden.
-- **Neither reset un-hides it.** With the button hidden, press General → **Reset all settings**
-  and confirm: every profile setting comes back and the button stays hidden. Then press the
-  General page's own **Defaults** button: *Lock frame*, *General visibility* and the rest go back
-  to their defaults and the button **still** stays hidden. The second half is the one that was
-  broken — a player's minimap-button choice is a per-installation display preference, like the
-  angle they dragged it to, and no reset touches either (`launcher-§3`).
-- **A broker display shows the same addon.** With Titan Panel, Bazooka or ElvUI's data texts
-  installed, add *Ka0s KickCD*: the row wears the same logo, left-click opens the panel and
-  right-click opens the same two-entry options menu. The row shows **no value cell** — it is a `launcher`, not a data
-  source.
-- **`/kcd disable` then `/kcd enable`.** With the addon disabled, the bare `/kcd` **opens the
-  settings panel**, `/kcd help` and `/kcd version` still answer, and `/kcd enable` turns it back on.
-  A dispatcher that went quiet here is a one-way switch (`slash-commands-§2`) and is the finding;
-  so is a bare `/kcd` that answers with a refusal instead of the panel, which is the case that
-  settled the standard's v2.57.0 reversal.
-- **The minimap button while it is off.** Still disabled, hover it: `Enabled: No`, the same two
-  hints. LEFT-click it: the settings panel opens, exactly as it does when the addon is on
-  (`launcher-§2`), and nothing is printed. RIGHT-click it: **Enabled** is unticked and clickable;
-  **Locked** reads *Locked (enable the addon first)* and is grayed — clicking it does nothing, and
-  `/kcd get locked` is unchanged. A grayed entry that still toggles the lock is writing the stored
-  tree of an addon the player switched off, and is the finding. Tick **Enabled**: the addon comes
-  back on, with the same confirmation line `/kcd enable` prints.
-- **A feature verb refuses while it is off.** Still disabled, run `/kcd toggle`. One tagged line
-  comes back naming `/kcd enable`, and nothing else — `/kcd get locked` reports the same value it
-  did before. Same for `/kcd lock`, `/kcd unlock` and `/kcd resetposition`. Then check the live
-  ones still work while off: `/kcd list`, `/kcd get locked`, `/kcd set locked true`,
-  `/kcd spells list`, `/kcd config` and `/kcd debug` all answer normally. A refusal on any of
-  those is the finding — the addon being off is exactly when a player needs to read and repair
-  their settings (`slash-commands-§2`).
-
-### 34. The cast bar's drag strip (LibKa0s v1.48.0)
-
-The bar used to be dragged by its body, with a line of hint text above it while unlocked. It now
-carries the library's labeled strip, the same widget Aura Master and Consumable Master wear. Only
-the client can show this.
-
-0. **The strip clears the unit label.** `/kcd unlock` with the **Target** / **Focus** label turned
-   on and attached to the icons → the strip sits **above** the label text, not on top of it. Turn
-   the label off → the strip drops back to the grid's own top edge. Move the label's attach to the
-   **cast bar**, or anchor it to the grid's BOTTOM → the grid strip goes back to the grid's top, and
-   a label on the cast bar is cleared by the CAST BAR's strip instead. (This is the fix for the
-   overlap seen on 2026-09-21; the decision is read off the config, so it holds whichever of the two
-   modules redraws first.)
-   **Straight after `/reload`, with no lock toggle in between** (the 2026-09-26 regression): unlock,
-   `/reload`, and check **both** units. Each strip ("Ka0s KickCD — Target" / "— Focus") sits fully
-   above its "Target" / "Focus" label, with a small gap and no text drawn over text. Then, without
-   touching the lock, untick Grid → Text Label → **Show label** for each unit in turn (untick "Use same
-   styling as Target" first so Focus has its own): that unit's strip drops to just above its icons.
-   Tick it again and the strip climbs back above the label. Raise the label's font size to 30
-   and the strip stays clear of the taller text. `/kcd lock` hides both strips.
-1. `/kcd unlock`, with a target cast bar on screen in **Free** anchor mode → a dark strip with a
-   gold label sits directly above the bar, reading **Target castbar** (and **Focus castbar** on the
-   focus bar, if both are up). The label names the UNIT, not the addon: two strips in the same gold
-   saying the same thing would not tell you which bar you are about to move.
-2. **Drag the strip** → the bar moves with it. Release → the position sticks across `/reload`.
-3. **Drag the "?" mark** on the strip → the bar moves too. The mark is a second drag target, not
-   just a tooltip.
-4. **Hover the strip, then the "?"** → both show a tooltip; the "?" brightens under the cursor and
-   the strip's own title is the addon's name. Check the tooltip text reads as prose, not as a
-   locale key.
-5. **Right-click the strip** → the settings panel opens. In combat → the gray refusal line, and no
-   panel.
-6. Set the bar's anchor mode to **Primary** → the strip disappears, and the bar cannot be dragged
-   by the strip, the mark or its own body. Primary means the icon grid places it.
-7. Set it back to **Free** without leaving the panel → the strip comes back. (The one path worth
-   checking twice: `ApplyLock` does not run on every route that changes `anchorMode`, which is why
-   `canDrag` gates the act as well as the strip being hidden.)
-8. `/kcd lock` → the strip goes away on both bars and neither can be dragged.
-9. **With `libs/LibKa0s` removed** → the bar draws NO strip and is dragged by its body, exactly as
-   it was before the adoption. No error.
-
----
-
-### 35. The diagnostics report (`/kcd diagnostics`, LibKa0s v1.60.0)
-
-The headless suite pins what the report says; only the client shows what it does to a live console,
-to secret values in combat, and to a Copy. What each section holds is in
-[debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14).
-
-1. **The README steps, word for word.** From a fresh `/reload` with the console closed, follow the
-   README's *Reporting a bug* steps exactly as written. **Pass:** every step works as written, and
-   the paste holds the trace and the whole report.
-2. **The trace is kept, and Copy is clean.** `/kcd debug on`, target a hostile caster and let a few
-   casts go, then `/kcd diagnostics`. **Pass:** the console opens if it was closed; the trace lines
-   are still there above `==== Ka0s KickCD diagnostics begin ====`; one chat line reads
-   *Diagnostic report written to the debug console: N lines. Use Copy to share it.* Press **Copy**
-   and paste into a text editor: the paste holds the trace, the begin marker and
-   `==== Ka0s KickCD diagnostics end: N line(s) ====`, with no `|c` color escapes, and the two
-   counts agree.
-3. **Its shape.** In that report, `[State]` comes first after the `[Diag]` identity lines, the
-   sections follow in the order debug.md lists, no line reads `section <name> failed`, and the
-   report is roughly 100 to 200 lines on a default profile.
-4. **Ungated, flag untouched.** `/kcd debug off`, then `/kcd diagnostics`. **Pass:** the report
-   lands in full; afterwards the console header still reads `Debug: OFF`, and changing target writes
-   no trace line.
-5. **While disabled, both forms.** `/kcd disable`, then `/kcd diagnostics`, then
-   `/kcd debug diagnostics`. **Pass:** both write a full report; the state line reads
-   `enabled stored=false, stood down=true`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
-   print one `stood down: …` line; the grids and bars stay hidden (running the report stood nothing
-   up). `/kcd enable` afterwards.
-6. **In combat, and in a restricted instance.** Run it in combat with a hostile caster targeted
-   mid-cast and a second caster on focus, then again inside a Mythic+ key or a raid encounter.
-   **Pass:** no Lua error. The cast record reads as types, `notInterruptible` in the `interrupt`
-   lines reads `<secret>` where the client hides it, and charges may read `<secret>`.
-7. **No alias.** `/kcd diag` answers `unknown command 'diag'` and the help index;
-   `/kcd debug diag` answers with the unknown-word line and the debug verb list. Neither writes a
-   report.
-8. **The long alias and any case.** `/kickcd diagnostics`, `/kickcd debug diagnostics` and
-   `/kcd DIAGNOSTICS` each write the same report as `/kcd diagnostics`.
-9. **The cap.** Fill the console past its cap (`/kcd debug on` through a long combat, or
-   `/kcd diagnostics` run twenty-odd times). **Pass:** the counter reads `3000 / 3000 lines` and
-   stays there as lines keep coming, and **Copy** opens without a noticeable hitch.
-10. **No close mark.** `/kcd unlock`. The icon grid strips and the cast bar strips carry the "?"
-    mark and no X: KickCD does not adopt the drag strip's close option (owner ruling, X-03).
-11. **Without LibKa0s** (section 25's folder rename): `/kcd diagnostics` and
-    `/kcd debug diagnostics` each print
-    `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and nothing else, with no
-    Lua error. Rename the folder back.
-
----
-
-### 36. The Grid page (KickCD#33)
-
-The owner runs these in the client and fills in Result; Claude never marks one passed. Open the panel
-with `/kcd config`.
-
-**Owner run, 2026-09-26:** KC-S1 to KC-S11 all passed in the client; the owner then gave the go-ahead to merge.
-
-| # | Check | Expected | Source | Result |
-|---|---|---|---|---|
-| KC-S1 | Look at the Settings tree under Ka0s KickCD. | General · Grid · Spells · Profiles. There are no Icons, Cast bar or Text Label entries. | spec §B1; NR-KC-04 | |
-| KC-S2 | Open Grid. | The Unit picker is the band across the top, full width. The rail is on the left with Icons · Cast bar · Text Label, and the page opens on Icons. The rail's top edge is level with the top of the tab art. | spec §B2; options-ui-§13, §14 | |
-| KC-S3 | Rail -> Cast bar, then scroll to the bottom of the Interruptible tab. | Only the controls move. The band, the rail and the tab strip stay where they are. | spec §B2 | |
-| KC-S4 | Cast bar -> Font, then Icons, then Cast bar again. | Cast bar opens on Font. Text Label -> Placement, Icons, Text Label: it opens on Placement. | spec §B3 (per-entry tabs); Review Focus 3 | |
-| KC-S5 | Untick General -> Units -> "Use same styling as Target". On Grid -> Cast bar -> Font, pick Focus in the band. | The page stays on Cast bar -> Font, and the values shown are Focus's. | options-ui-§14 (the rail is not a picker); NR-KC-02 | |
-| KC-S6 | Tick "Use same styling as Target" again. Open Grid with Focus in the band and click each rail entry. Then click the link in the note. | The rail is there on a linked Focus. Each entry draws its full tab strip, grayed and not clickable, with only the "Linked to Target..." note under it. The link opens General on its Units tab. | spec §B3 (linked Focus); R9 | |
-| KC-S7 | Untick the link again. With Target in the band, change a Cast bar setting and an Icons setting for Target, and a Cast bar setting for Focus. Select Cast bar and click Defaults. | Only Target's Cast bar settings go back to defaults. Target's Icons setting and Focus's Cast bar setting keep your values. The Defaults tooltip says it restores the selected unit's settings in the section on screen. | Review Focus 4; spec §B3 (Defaults); R8 | |
-| KC-S8 | Open Grid, then enter combat. Try clicking a rail entry. Leave combat. | The whole page, rail included, is under the combat cover with "Settings are locked during combat." Nothing changes, and one gray "locked" line prints. After combat the page draws normally, on the entry you were on. | options-ui-§2, §13 | |
-| KC-S9 | `/reload`, then open Grid as the first page of the session. | The tabs sit in one row to the right of the rail from the first frame. None is drawn under the rail. | Global Constraints; NR-KC-02 | |
-| KC-S10 | Type `/kcd reset castbar`. | The reply says the page-shaped reset is gone and points at Grid -> Cast bar's Defaults button (for the unit in the band), or `/kcd reset <path>`. | spec §B3 (slash wording); R13 | |
-| KC-S11 | Hover each rail entry. | Each shows a tooltip saying what the entry holds. | spec §B2 (rail tooltips) | |
-
----
----
-## When to run which subset
-
-- **The Border dropdown, or anything under `settings/OptionsSetup.lua`'s live wiring:** 18 **and 29**. 18 alone cannot see the defect 29 is for.
-- **LibKa0s re-vendor, or any seam-file edit:** 25, 26, **27**, **28**, **31** and **34**, plus 11, 15, 24 and 35 (the panel and console are what the library actually draws — and 24 is where the shared Ka0s window edge is checked, which a re-vendor can change with no addon file touched, as v1.3.0 did).
-- **Pre-commit (hot path edits):** 1, 2, 8, 16. Anything touching `Cooldowns.lua`, `IconGrid.lua` / `IconGrid_Layout.lua` / `IconGrid_Render.lua`, `Castbar.lua` / `Castbar_Skin.lua`, or the secret-value gates needs the secret-value pass. Anything touching the cast bar's `OnUpdate` install or teardown — `EnsureFrame`, `Start`, `Stop` — also needs **32**, which is the only step that drives two units at once.
-- **Settings / schema edits:** 11, 17 plus the panel under change. Any new schema row also exercises 12 (its panel's reset path).
-- **Spell-list / Database edits:** 9, 10, 13. DB shape edits (`DEFAULT_PROFILE`, migrations) also need 21 (and 23 if the edit touches `units.<unit>.label`).
-- **Target/focus dual-tracking edits:** 20 (plus 6/7 per-unit if touching layout/cast-bar internals shared by both instance managers). Anything touching per-unit **derived** state — the icon curves, the cast bar's structure signature — needs **20d** specifically: it is the only surface that catches a unit inheriting another unit's resolved appearance.
-- **Text label edits:** 22 (plus 23 if the change touches `label.style`'s shape or defaults).
-- **`NS.Util.print` call-site edits, or anything under `core/CoreSetup.lua`'s printer:** **31**, then 15. 31 is the only step that runs a call site on the library-less load.
-- **Debug console edits:** 15, 24, 26 (the console window, its subcommands, the scrollbar + line counter, and the title-bar art).
-- **Diagnostics report edits** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a section reads through, or a chat dump a section reuses): **35**, then 15.
-- **Perf descriptor / perf panel edits (`core/PerfSetup.lua`):** **30**, then 26. 30 is the only place the panel's close control is checked against what is actually drawn; 26 is where it is compared with the console's.
-- **Media-seam edits** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton` wrapper, the DebugLog descriptor): **26**, then 24. Nothing here is headless-testable past the argument — the tests pin what is PASSED, and 26 is the only place what is DRAWN is checked.
-- **Launcher / logo / `## IconTexture` edits, and any LibKa0s re-vendor that moves `Launcher.lua`:** **33**. It is the only place the icon is checked against what the client actually draws — a wrong TGA format draws nothing and raises nothing, so no gate reports it.
-- **Grid page edits:** **36** after any change to settings/Grid.lua, settings/Panel_Render.lua or the three entry files.
-- **Pre-release / TOC bump:** the entire suite. The numbered surfaces above are designed to span every system the addon owns; running them in order takes ~30–40 minutes and gives release-grade confidence.
-
-If a smoke test fails, capture the offending line from BugSack / the Lua error frame plus the exact slash command sequence that produced it and file an issue at the tracker referenced in [README.md](../README.md#issues-and-feature-requests).
+| INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
+| SLASH-1 – 13 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled |
+| PANEL-1 – 29 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys |
+| PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
+| STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
+| COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
+| GRID-1 – 14 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge |
+| CAST-1 – 14 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts |
+| FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
+| LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
+| SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
+| DIAG-1 – 33 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics` |
+| DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
+| LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
+
+## Before you start
+
+- Error display on: BugSack / BugGrabber, or `/console scriptErrors 1`. A clean run means no Lua error
+  at any point, and every check assumes it.
+- **Chat banner.** Every line the addon prints starts with a cyan `[KCD]`. A doubled `[KCD][KCD]`, or
+  a line with no banner, fails whichever check printed it.
+- **A hostile caster** is a dummy or world mob that casts or channels an interruptible spell on demand
+  (Stockades casters, Plaguefall trash). **In combat** means `PLAYER_REGEN_DISABLED` has fired;
+  auto-attacking a dummy is enough.
+- Characters: one with two specs and a talent choice node that swaps an interrupt-adjacent spell, a
+  Hunter (SPELLS-4), a Tauren, Highmountain Tauren, Pandaren, Kul Tiran or Nightborne (SPELLS-16), and
+  a class with an off-GCD interrupt plus an on-GCD crowd control (Warrior Pummel
+  and Intimidating Shout) for GRID.
+- An Evoker to duel for CAST-14 (a duel partner counts as hostile).
+- Other addons: a second Ka0s addon with a debug console (DIAG-20), AbsorbTracker and
+  ConsumableMaster (DEGRADED-7), PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters
+  (PANEL-23), a media addon such as SharedMedia (PANEL-19 – 22), and Titan Panel, Bazooka or ElvUI's
+  data texts (INSTALL-14, PANEL-26).
+- Back up `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` before INSTALL-1, INSTALL-7, INSTALL-9
+  and LOC-6: each deletes or edits it.
+- A frFR (or other non-English) client for LOC.
+- For DEGRADED, first `/kcd set units.target.castbar.anchorMode FREE` (DEGRADED-12 needs it, and nothing
+  can change it once the library is gone), then rename `Interface/AddOns/KickCD/libs/LibKa0s` to
+  `libs/LibKa0s_off` and `/reload`; DEGRADED-13 renames it back. A folder left renamed ships a silently degraded addon.
+
+Which checks to run for a partial change:
+
+- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19 and PANEL-23. PANEL-23 is
+  the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
+- **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
+  `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
+  DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 33;
+  COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
+  SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
+  the library draws, and a re-vendor can change them with no addon file touched.
+- **Hot paths** (`Cooldowns.lua`, `IconGrid*.lua`, `Castbar*.lua`, the secret-value gates):
+  INSTALL-1 – 5, SLASH-1 – 2, PANEL-1, GRID, CAST-5, COMBAT-8 – 10, STATE-11 – 15. The cast bar's
+  `OnUpdate` install (`EnsureFrame`, `Start`, `Stop`) also needs CAST-13, the only check that drives two
+  units at once.
+- **Settings or schema:** PANEL, SLASH-3 – 11, INSTALL-6, LABEL-2, LABEL-6, GRID-13, SPELLS-13 and
+  STATE-10. A new schema row also needs the reset paths (PANEL-17 – 18, PANEL-29, SLASH-7 – 11, SPELLS-11 – 12
+  and DIAG-8).
+- **Spell lists or `core/Database.lua`:** SPELLS, PROFILE-1 – 6; a shape change (`DEFAULT_PROFILE`, a
+  migration) also INSTALL-7 – 8, and INSTALL-9 if it touches `units.<unit>.label`.
+- **Target and focus:** FOCUS, STATE-4, PANEL-11, PANEL-13 and COMBAT-5, plus GRID-1 – 3, CAST-1 – 5,
+  CAST-8 and SLASH-4 on each unit if the change touches layout or cast-bar internals both instances
+  share. Anything touching per-unit derived state (the icon curves, the cast bar's structure
+  signature) needs FOCUS-16 – 19, the only checks that catch one unit inheriting the other's resolved
+  appearance.
+- **Text label:** LABEL and FOCUS-6, and INSTALL-9 if `label.style`'s shape or defaults moved.
+- **The printer (`NS.Util.print` or `core/CoreSetup.lua`):** DEGRADED-6 and DEGRADED-11, then
+  DIAG-1 – 6, DIAG-28 and COMBAT-7 – 9. DEGRADED-11 is the only check that runs a call site on the
+  library-less load.
+- **Debug console** (the window, its subcommands, the scrollbar and line counter, the title-bar art):
+  DIAG-1 – 6, DIAG-16 – 25, DIAG-28, COMBAT-7 – 9 and PANEL-25.
+- **Diagnostics** (`modules/Diagnostics.lua`, the descriptor's `diagnostics` or `brandName`, a seam a
+  section reads through, or a chat dump a section reuses): DIAG-27 – 33, DIAG-17, COMBAT-11, GRID-14,
+  DEGRADED-9, then DIAG-1 – 6 and COMBAT-7 – 9.
+- **Perf descriptor or panel** (`core/PerfSetup.lua`): DIAG-23 – 24, then DIAG-21 – 26 and PANEL-25.
+  DIAG-23 is the only place the panel's close is checked against what is drawn.
+- **Media seam** (`core/MediaSetup.lua`, `core/Constants.lua`'s `FONT_MONO`, the `NS.MakeCloseButton`
+  wrapper, the DebugLog descriptor): DIAG-21 – 25 and PANEL-25, then DIAG-16 – 20. The tests pin what
+  is passed; these are the only look at what is drawn.
+- **Launcher, logo or `## IconTexture`** (and a re-vendor that moves `Launcher.lua`): INSTALL-10 – 14,
+  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13. A wrong TGA format draws nothing and
+  raises nothing, so no gate reports it.
+- **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
+  PANEL-1 – 13, PANEL-17, PANEL-29, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
+- **A release or a TOC bump:** everything.
+
+## INSTALL
+
+- **INSTALL-1. Clean first login.** Quit WoW, delete `KickCD.lua` (and `KickCD.lua.bak`) from
+  SavedVariables, confirm the character-select AddOns list shows **Ka0s KickCD** enabled, and log in →
+  zero Lua errors. Result:
+- **INSTALL-2. The grid seeds itself.** On that login (a fresh profile starts unlocked, so the grid
+  shows) → the icon grid holds the current spec's default spells, only ones the character can cast.
+  Result:
+- **INSTALL-3. The store on disk.** `/reload`, then open `KickCD.lua` → `profileKeys`,
+  `profiles.Default` and a seeded `spells[CLASS][specID]` block for the current spec, the spec key a
+  **number** (`[262]`), never a spec name. Result:
+- **INSTALL-4. An alt seeds its own spec.** Log in on a character of another class and spec → its spec's
+  spells are seeded with no error. Result:
+- **INSTALL-5. Settings survive `/reload`.** `/kcd unlock`, `/kcd set units.target.icons.primarySize 50`,
+  `/kcd set units.target.castbar.interruptible.barColor 0.2 0.8 0.2 1`, drag the grid somewhere new,
+  `/kcd lock`, `/reload` → no error; the grid is where you left it; `/kcd get locked` → `true`;
+  `/kcd get units.target.icons.primarySize` → `50 px`; `/kcd get` on the bar color →
+  `{0.20, 0.80, 0.20, 1.00}`. Result:
+- **INSTALL-6. The schema validator is silent.** Quit fully (not `/reload`) and log in, watching chat →
+  no `schema error` line. The validator (`Store.Validate`, run at panel register) prints one for a
+  malformed row or a stored path the defaults cannot resolve; any line means a schema change shipped
+  broken. Result:
+- **INSTALL-7. The legacy unit fold.** Quit. Edit `KickCD.lua` so the active profile has top-level
+  `icons`, `castbar` and `anchors` tables with a non-default `icons.primarySize`, a moved
+  `anchors.icons` and a custom color, no `units` table, and `global.schemaVersion` set to `1` or
+  removed. Log in → no error; the grid sits at the same place with the same look;
+  `/kcd get units.target.icons.primarySize` and `/kcd get units.target.icons.cooldownTint` return your
+  values, not the defaults. `/reload` and reopen the file → the top-level tables are gone,
+  `units.target.{icons,castbar,anchors}` hold your values, and `global.schemaVersion` is `5` (one
+  login runs every step from v1). Result:
+- **INSTALL-8. The fold runs once, and Focus arrives fresh.** After INSTALL-7, `/reload` again →
+  nothing moves and nothing errors. `units.focus` exists with its own defaults (`enabled = true`,
+  `link = true`); the fold touched only Target. Result:
+- **INSTALL-9. The label style backfill.** Quit. Edit `KickCD.lua` so `units.target.label` and
+  `units.focus.label` hold only `show` and `text` (no `style`); leave `schemaVersion` alone, since this
+  step is shape-driven. Log in → no error; `/kcd get units.target.label.style.font` answers and Grid →
+  Text Label shows sane values; a label that was shown looks the same as before; `show` and `text` are
+  as you wrote them. `/reload` and reopen the file → both units have a `style` equal to
+  `LABELSTYLE_DEFAULT` in `defaults/Profile.lua`. A second `/reload` rewrites nothing. Result:
+- **INSTALL-10. The minimap button draws the logo.** Look at the minimap ring → a round button wearing
+  the KickCD logo, not a Blizzard ability icon and not an empty or black square (the TGA-format
+  failure: `media/logos/kickcd.logo.128.tga` must be image type 2 at 32 bpp). The AddOns list shows the
+  same logo beside Ka0s KickCD. Result:
+- **INSTALL-11. The button's tooltip.** Hover it → `Ka0s KickCD  v<version>`, `Enabled: Yes`,
+  `Locked: Yes` or `No`, `Left-click: Open settings`, `Right-click: Options menu`, and no `Test mode`
+  line. Result:
+- **INSTALL-12. Left-click.** Left-click the button → the settings panel opens on its landing page,
+  and the lock does not change. Result:
+- **INSTALL-13. The button remembers where it sits.** Drag it a quarter of the way round the ring,
+  `/reload` → it comes back where you left it. Result:
+- **INSTALL-14. Broker displays.** In Titan Panel, Bazooka or ElvUI's data texts add Ka0s KickCD → the
+  row wears the same logo, left-click opens the panel, right-click opens the same two-entry menu, and
+  the row has no value cell (it is a launcher, not a data source). Result:
+
+## SLASH
+
+- **SLASH-1. Bare `/kcd`.** Out of combat type `/kcd` → the settings panel opens on the Ka0s KickCD
+  landing page with the tree expanded, and no help list prints. `/kcd config` does the same. Result:
+- **SLASH-2. Help.** `/kcd help` → the help index; every row has the `[KCD]` banner, command names in
+  yellow, descriptions in white, and no `schema error:` line. Result:
+- **SLASH-3. `/kcd list`.** Type `/kcd list` → every schema row from General and the three Grid entries
+  prints, each with its current value. Result:
+- **SLASH-4. A gated value names its gate.** With `units.target.castbar.orientation` at `HORIZONTAL`,
+  `/kcd set units.target.castbar.growDirection UP` → refused with two lines,
+  `Invalid value for units.target.castbar.growDirection` and `allowed values: RIGHT, LEFT (depends on
+  units.target.castbar.orientation = HORIZONTAL); flip units.target.castbar.orientation to VERTICAL
+  for DOWN/UP`. Set orientation to `VERTICAL` and try `LEFT` → the same shape: `allowed values: UP,
+  DOWN (depends on … = VERTICAL); flip … to HORIZONTAL for LEFT/RIGHT`. Result:
+- **SLASH-5. Numbers clamp.** `/kcd set scale 99` → clamped to the row's maximum; the echo reads
+  `scale = 2`. Result:
+- **SLASH-6. Colors take three or four numbers.** `/kcd set units.target.castbar.interruptible.barColor
+  0.5 0.5 0.5` → accepted with alpha 1, echoed `{0.50, 0.50, 0.50, 1.00}`. The same row with
+  `255 128 0` → any component above 1 switches the whole color to the 0 – 255 scale, echoed
+  `{1.00, 0.50, 0.00, 1.00}`; a component above 255 clamps to `1.00`. Result:
+- **SLASH-7. Reset one setting.** Change `units.target.icons.primarySize`, then
+  `/kcd reset units.target.icons.primarySize` → that row returns to its default; every other row and
+  the spell list are untouched. Result:
+- **SLASH-8. A reset color is a copy.** `/kcd reset units.target.icons.cooldownTint` on two profiles,
+  then edit it on one → the other does not move. Result:
+- **SLASH-9. Retired reset words answer.** `/kcd reset general`, `icons`, `castbar` and `label` → each
+  says `` `/kcd reset <word>` is gone `` and points at the Defaults button that replaced it (General's,
+  or the Grid entry's for the unit in the band) or `/kcd reset <path>`. `/kcd reset spells` → it has
+  moved to `/kcd spells resetall`. None answers `Setting not found`. Result:
+- **SLASH-10. `/kcd resetall`.** `/kcd unlock`, move both grids,
+  `/kcd set units.target.castbar.anchorMode FREE` and drag the Target cast bar well away from the grid;
+  change settings on several pages and edit a spell list on two specs. Then `/kcd resetall` → one line,
+  `all settings + spells reset to defaults`, and no confirm prompt; every setting is back to default
+  (`/kcd get enabled` → `true`, `/kcd get visibility` → `target_casting_interruptible`,
+  `/kcd get units.target.castbar.anchorMode` → `PRIMARY`); every spec's spell list is re-seeded; the
+  Target grid is back at y = 120 and Focus at y = 260; the profile list is untouched. Now
+  `/kcd set units.target.castbar.anchorMode FREE` again → the bar sits at its default free anchor,
+  `CENTER / CENTER, x = 0, y = +120`, not where you dragged it. Result:
+- **SLASH-11. The defaults `resetall` lands on.** After SLASH-10, `/kcd get` each →
+  `units.target.label.show` `true`, `units.target.label.style.offsetY` `12 px`,
+  `units.target.label.style.color` `{1.00, 0.82, 0.00, 1.00}`, `units.target.label.style.attach`
+  `icons`, `units.target.castbar.anchorPoint` `BOTTOM_LEFT`, `castbarPoint` `TOP_LEFT`,
+  `anchorOffsetY` `-1 px`, `timePosition` `CENTER`, `timeOffsetY` `-20 px`, both states'
+  `statusBarTexture` `Blizzard Raid Bar`; `units.focus.label.style.*` identical to Target's. Result:
+- **SLASH-12. Live verbs answer while disabled.** `/kcd disable`, then: bare `/kcd` → the settings
+  panel, not a refusal; `/kcd help`, `/kcd version`, `/kcd list`, `/kcd get locked`,
+  `/kcd set locked true`, `/kcd spells list`, `/kcd config` and `/kcd debug` → each answers normally;
+  `/kcd enable` → back on. A refusal on any of these is the failure (`slash-commands-§2`). Result:
+- **SLASH-13. Feature verbs refuse while disabled.** Still disabled, `/kcd toggle`, `/kcd lock`,
+  `/kcd unlock` and `/kcd resetposition` → each prints one tagged line,
+  `Ka0s KickCD is disabled — enable it with /kcd enable`, and nothing else; `/kcd get locked` is
+  unchanged. `/kcd enable`. Result:
+
+## PANEL
+
+- **PANEL-1. The Settings tree.** Settings → AddOns → Ka0s KickCD → exactly **General · Grid ·
+  Spells · Profiles**, each once, and no Icons, Cast bar or Text Label entries. Same after `/reload`.
+  Result:
+- **PANEL-2. The landing page.** Click Ka0s KickCD itself → the logo and the slash command list.
+  Result:
+- **PANEL-3. The Grid page's shape.** Open Grid → the Unit picker is a band across the top, full
+  width; the rail is on the left with Icons · Cast bar · Text Label; the page opens on Icons; the
+  rail's top edge is level with the top of the tab art. Click every tab on Icons → the Unit picker
+  stays in the band, naming the same unit, on each one. Result:
+- **PANEL-4. Only the controls scroll.** Rail → Cast bar, scroll to the bottom of Interruptible → the
+  band, the rail and the tab strip stay put. Result:
+- **PANEL-5. Tabs from the first frame.** `/reload`, open Grid as the session's first page → the tabs
+  sit in one row right of the rail from the first frame, none under the rail. Result:
+- **PANEL-6. Rail tooltips.** Hover each rail entry → a tooltip saying what the entry holds. Result:
+- **PANEL-7. Each entry remembers its tab.** Cast bar → Font, then Icons, then Cast bar → opens on Font.
+  Text Label → Placement, Icons, Text Label → opens on Placement. Result:
+- **PANEL-8. The tab strips.** General → `Master controls | Units`; Grid → Icons → `Sizing | Layout |
+  Visual states | Border | Annotations | Ready glow`; Grid → Cast bar → `General | Size and position |
+  Icon | Font | Spell name | Cast time | Interruptible | Non-interruptible`; Grid → Text Label →
+  `General | Placement | Font`; Spells → one tab, `Spell list`, with the spec picker and Add spell
+  above it; Profiles → no strip. No tab name appears twice on a page. The table in
+  [settings-panel.md](settings-panel.md) is the reference. Result:
+- **PANEL-9. Headings.** Icons → Annotations shows `Icon`, `Font`, `Charges`; Cast bar → Size and
+  position shows `Size`, `Position`; Interruptible and Non-interruptible each show `Bar`,
+  `Background`, `Text`, `Border`. No page draws a heading that repeats its tab's name. Result:
+- **PANEL-10. Class color beside every swatch.** Every color swatch has a `Use class color` checkbox
+  right of it on the same line. Tick one → the surface takes a class color and the swatch stays
+  enabled (its opacity still applies). Against an NPC boss the cast bar and label keep the stored color,
+  as the swatch's tooltip says. Icons' swatches take the player's class on both units. Result:
+- **PANEL-11. One unit selection across the Grid entries.** Pick Focus on Icons, click Cast bar and
+  Text Label on the rail → both open on Focus. Flip one to Target, return to Icons → Target. `/reload`
+  → Grid opens on Target (the selection is session-only). Result:
+- **PANEL-12. The band retargets every tab.** Untick General → Units → "Use same styling as Target".
+  On Grid → Cast bar → Font pick Focus → the page stays on Font and shows Focus's values. Click to
+  Interruptible → Focus's colors (`/kcd get units.focus.castbar.interruptible.barColor` agrees), not
+  Target's. Result:
+- **PANEL-13. The Unit picker survives rebuilds.** On Icons switch the band Target → Focus → Target a
+  few times and click every tab; tick and untick General → Units → "Use same styling as Target" and
+  press "Copy styling from Target"; then, panel open, run any `/kcd set …`. Repeat on Cast bar and
+  Text Label → the picker lists exactly `Target` / `Focus` throughout, and every other widget shows its
+  own value. Anchor points or text positions in the picker are the stale-refresher bug. FOCUS-17 makes
+  the same check after a write mid-cooldown. Result:
+- **PANEL-14. The Enable box and the slash agree.** With General open, `/kcd set enabled false` → the
+  "Enable KickCD" box unticks at once. Tick it → `/kcd get enabled` → `true`. Result:
+- **PANEL-15. A slash write repaints the panel.** General open on Master controls, `/kcd set scale 1.25`
+  → the Master scale slider moves to 1.25 and the grid rescales, no reopen. Result:
+- **PANEL-16. Color picker drag.** Drag a color slider in a swatch's picker quickly → no stutter and no
+  error (commits are throttled to 50 ms). Result:
+- **PANEL-17. A Grid entry's Defaults.** Unlink Focus. With Target in the band, change a Cast bar and an
+  Icons setting for Target and a Cast bar setting for Focus; open Cast bar and click Defaults → only
+  Target's Cast bar settings reset; Target's Icons setting and Focus's Cast bar setting keep your
+  values; the open page repaints; the spell list is untouched. The Defaults tooltip says it restores the
+  selected unit's settings in the section on screen. Result:
+- **PANEL-18. Reset all settings.** Hover General → Reset all settings → the tooltip reads *"Reset the
+  current profile to its defaults — the same thing Profiles -> Reset Profile does. Your other profiles
+  are not affected."* The arrow is an ASCII `->`, as the vendored string writes it. Click → a confirm
+  popup; Yes → the same result as SLASH-10. Result:
+- **PANEL-19. Media dropdowns list real media.** With a media addon loaded, open Icons → Border texture
+  and Cooldown text font; Text Label → Font; Cast bar → Font, and Bar texture and Border texture for
+  both states (eight composed dropdowns) → each lists several entries, never a lone `Default` or an
+  empty list. Pick a Cast bar texture, border and font → the bar takes each live. Change Cooldown text
+  font → the grid's countdown changes at once. Result:
+- **PANEL-20. The composed module is the vendored one.** `/dump
+  LibStub("LibKa0s-Options-1.0").MODULES.OptionsCompose` → the `COMPOSE_MINOR` in the vendored
+  `libs/LibKa0s/OptionsCompose.lua`. Anything else means a foreign LibKa0s won the LibStub resolve or
+  CLAUDE.md's provenance line is wrong. Result:
+- **PANEL-21. A chosen face sticks.** Grid → Text Label → Font → a non-default face → the label redraws
+  in it, and still does after `/reload`. Result:
+- **PANEL-22. Media registered later shows up.** Enable a media addon that was off, `/reload`, reopen
+  Cast bar → Bar texture → its textures are listed. An unchanged list means `Helpers.LSMValues`
+  (`settings/Panel.lua`) went back to returning a table frozen at file load. Result:
+- **PANEL-23. The Border dropdown, alone and with five addons.** Open Cast bar → Border style → no
+  42×42 black preview tile left of the bar. Then enable KickCD, PanelMaster, AbsorbTracker,
+  ConsumableMaster and MultiMeters, log in, and open each one's Border dropdown → in all five the closed
+  control's left edge is flush with the controls stacked with it (no ~42px gap), and the open list still
+  previews each row. Change which addon loads last (toggle addons or rename a folder), `/reload`, walk
+  all five again → nothing differs. A dropdown unlike the other four, or one that changes with load
+  order, is the failure. Result:
+- **PANEL-24. The pooled tab strip.** On General, Grid → Icons and Grid → Cast bar, cycle every tab three
+  times, ending on the first → each pass shows each tab's own label, the tab you pressed selected, the
+  body under the right tab, and a band that never changes height. Result:
+- **PANEL-25. JetBrains Mono is offered.** Grid → Text Label → Font → JetBrains Mono is listed with the
+  other fonts. Result:
+- **PANEL-26. The Minimap button checkbox.** Untick General → Master controls → Minimap button → the
+  button goes at once; `/kcd get global.minimap.shown` → `false`; `/kcd get global.minimap.hide` →
+  `Setting not found` (the stored key is not an alias). `/reload` → still gone, still `false`. Tick it
+  → back, `true`. Hide the plugin from a broker display's own list where it offers one → the tick
+  follows. Result:
+- **PANEL-27. No reset shows a hidden button.** Hide the button. Reset all settings ▸ Yes → the button
+  stays hidden. General's Defaults → Lock frame, General visibility and the rest reset, and the button
+  **still** stays hidden (`launcher-§3`). Result:
+- **PANEL-28. No raw locale keys.** Walk every page of `/kcd config`, then `/kcd debug window` and
+  `/kcd perf` → every label, tooltip title, heading, button and perf step reads as English prose. A
+  `SCREAMING_SNAKE_CASE` string (`STEP_START`, `PANEL_TITLE_SUFFIX`, `LIST_HEADER`) means a descriptor
+  was handed `NS.L` itself; this addon once shipped a perf panel reading `Ka0s KickCDPANEL_TITLE_SUFFIX`.
+  `tests/test_perfsetup.lua` guards the source; this is the only look at what rendered. Result:
+- **PANEL-29. General's and Icons' Defaults stay on their own page.** Out of combat, Focus linked (the
+  default): `/kcd set scale 1.25`, `/kcd set units.target.icons.primarySize 50`,
+  `/kcd set units.target.castbar.timeOffsetY -30`, and on Spells drag row 3 above row 1. Open General and
+  click Defaults → the Master scale slider is back at 1 and the grid returns to its normal size;
+  `/kcd get units.target.icons.primarySize` → `50 px`; `/kcd get units.target.castbar.timeOffsetY` →
+  `-30 px`; the Spells order is still yours. `/kcd set scale 1.25` again, then Grid → Icons with Target in
+  the band → Defaults → `/kcd get units.target.icons.primarySize` → `64 px`; the Master scale slider still
+  reads 1.25, `timeOffsetY` still `-30 px`, the Spells order still yours. Clean up: Grid → Cast bar →
+  Defaults, General → Defaults, Spells → Defaults. Result:
+
+## PROFILE
+
+- **PROFILE-1. The Profiles page draws.** Open another addon's options page first, then Ka0s KickCD →
+  Profiles → the AceDBOptions controls (current profile, New, Copy From, Delete, Reset Profile), never
+  a blank page under the header. Result:
+- **PROFILE-2. Create, switch, copy, delete.** Create `SmokeTest` and switch to it,
+  `/kcd set units.target.icons.primarySize 40` → the grid re-draws at 40. Switch to `Default` → the
+  grids re-anchor and re-skin to `Default`'s settings. Create `SmokeCopy`, switch to it, Copy From
+  `SmokeTest` → the grid re-draws at 40. Switch to `Default` and Delete `SmokeCopy`; keep `SmokeTest`
+  for PROFILE-9 – 14. `/reload` after each step → no error, and each result holds. Result:
+- **PROFILE-3. Profile scope.** On Profiles, open Existing Profiles: besides `Default` it offers this
+  character (`<Name> - <Realm>`), the realm (`<Realm>`) and the class (listed by its name). Pick each
+  in turn and `/reload` after each → `KickCDDB.profileKeys["<Name> - <Realm>"]` names the pick:
+  `<Name> - <Realm>`, then `<Realm>`, then the class token (`WARRIOR` on a Warrior). Switch back to
+  `Default` and delete the three. Result:
+- **PROFILE-4. The migration re-runs harmlessly.** Switch profiles → no error and nothing re-folds;
+  `global.schemaVersion` reads `5`, account-wide, not per profile. Result:
+- **PROFILE-5. Colors and font flags survive a switch.** Create a second profile, switch to it and back
+  → cast bar swatches and outline dropdowns show the stored values, never blank or defaults. With
+  `/kcd debug on`, no `settings migration ... failed` line. Result:
+- **PROFILE-6. Spell lists are per profile.** Edit a spell list on one profile, switch → the other
+  profile's list is unchanged. Result:
+- **PROFILE-7. One debug line per profile event.** `/kcd debug on`, `/kcd debug window`. Switch profile
+  → one `[Profile] switched to '<name>'`. Copy From another profile → one
+  `[Set] copied profile '<source>' → '<active>'` and no `[Profile] switched`. Profiles → Reset Profile
+  → `[Set] reset profile '<name>' to defaults` with no count. Result:
+- **PROFILE-8. A switch leaves the minimap button alone.** Hide the button, switch profile → still
+  hidden; switch back → still hidden. Result:
+- **PROFILE-9. `/kcd profile` lists.** With `Default` and `SmokeTest` present, `/kcd profile` → a
+  `Profiles` header, one row per profile sorted without regard to case, the current one suffixed
+  `(current)`, then `/kcd profile <name> switches profile`. No line ends in a colon. Result:
+- **PROFILE-10. `/kcd profile <name>` switches.** Switch to `Default` on the Profiles page;
+  `/kcd get units.target.icons.primarySize` → `64 px` (`/kcd reset units.target.icons.primarySize` if
+  not). `SmokeTest` holds 40 from PROFILE-2. `/kcd profile SmokeTest` →
+  `Switched to profile 'SmokeTest'.`; the grid shrinks to 40 with no `/reload`, exactly as a switch on
+  the page does, and the Profiles page shows `SmokeTest` as current on its next show.
+  `/kcd profile SmokeTest` again → `Already on profile 'SmokeTest'.` and nothing changes.
+  `/kcd profile Default`. Result:
+- **PROFILE-11. An unknown name is refused, never created.** `/kcd profile Nope` →
+  `No profile named 'Nope'.` then the list; the Profiles page has no `Nope`. `/kcd profile smoketest`
+  → refused the same way, with `Did you mean 'SmokeTest'?` before the list. Result:
+- **PROFILE-12. Quotes and spaces.** Create `My Raid` on the page, switch to `Default`.
+  `/kcd profile "My Raid"` → switched to `My Raid`. `/kcd profile 'Default'` → switched back. Delete
+  `My Raid`. Result:
+- **PROFILE-13. The verb answers while disabled.** `/kcd profile SmokeTest`, `/kcd disable` (the
+  master switch is per profile). `/kcd profile` → the list, not the disabled refusal.
+  `/kcd profile Default` → switched, and the grids are back (`Default` is enabled).
+  `/kcd profile SmokeTest` → the addon stands down again. `/kcd enable`, `/kcd profile Default`.
+  Result:
+- **PROFILE-14. No switch in combat.** Pull a dummy. `/kcd profile SmokeTest` →
+  `Can't switch profiles in combat.` and the profile does not change. `/kcd profile` → the list still
+  prints. Leave combat, delete `SmokeTest`. Result:
+
+## STATE
+
+- **STATE-1. The master switch hides and restores.** `/kcd lock`, `/kcd set visibility always`,
+  `/kcd set enabled false` → the grids and cast bars go, whatever the visibility mode or target.
+  `/kcd set enabled true` → they come back at once. Result:
+- **STATE-2. Off is total.** Disabled: `/dump C_AddOns.IsAddOnLoaded("KickCD")` → true (standing down,
+  not unloaded). Enter and leave combat, swap target, swap spec → nothing appears, nothing prints,
+  `/kcd get locked` reports what it did before. Result:
+- **STATE-3. Off unregisters listeners.** Disabled, `/kcd debug on`, enter combat → no
+  `[Combat] entered` line in the console. Result:
+- **STATE-4. Enable rebuilds from current state.** `/kcd enable`,
+  `/kcd set units.focus.enabled false`, `/kcd disable`. While off, `/kcd set units.focus.enabled true`,
+  target and focus hostile casters, then `/kcd enable` → every unit whose `units.<unit>.enabled` is
+  true comes back in the same turn, including Focus (enabled while the addon was off), with the current
+  casts and cooldowns shown, no `/reload`. Result:
+- **STATE-5. The minimap button while off.** Disabled, hover the button → `Enabled: No` and the same
+  two hints. Left-click → the settings panel, nothing printed. Right-click → Enabled unticked and
+  clickable; Locked reads *Locked (enable the addon first)*, grayed, and clicking it does nothing
+  (`/kcd get locked` unchanged). Tick Enabled → back on, with the line `/kcd enable` prints. Result:
+- **STATE-6. A fresh profile starts unlocked.** On a new profile `/kcd get locked` → `false`, and the
+  grid drags with no `/kcd unlock`. Result:
+- **STATE-7. Lock and unlock.** `/kcd set units.target.castbar.anchorMode FREE`, `/kcd unlock` → the
+  grid and the cast bar both drag. `/kcd lock` → neither does, and both drag strips go. Result:
+- **STATE-8. `/kcd toggle` and the Lock frame box.** Panel open on General → Master controls,
+  `/kcd toggle` twice → the lock flips each time and Lock frame follows live. Result:
+- **STATE-9. The launcher menu.** Right-click the button → a menu titled Ka0s KickCD with exactly two
+  ticks, Enabled (ticked) and Locked. Untick Locked → the grids and the cast bar placeholder appear, the
+  grid drags, the menu closes, and chat prints the *icon grid unlocked* line `/kcd toggle` prints.
+  Right-click → Locked unticked. Tick it → locked. `/kcd get locked` and General → Lock frame agree at
+  each step. Result:
+- **STATE-10. `resetposition`.** Drag both grids away, `/kcd resetposition` → Target's grid at
+  `CENTER / CENTER, x = 0, y = +120` (above center) and Focus's at `y = +260`, exactly; a free cast bar
+  and every setting untouched. Drag them away again, General → Reset position → the same. Result:
+- **STATE-11. Unlocked bypasses visibility.** `/kcd unlock` with any visibility mode and no target →
+  both pieces show at full alpha, so they can be placed. Run STATE-12 – 15 locked. Result:
+- **STATE-12. Visibility `always`.** No target, no combat → both pieces visible. Result:
+- **STATE-13. Visibility `in_combat`.** No target → hidden. Auto-attack a dummy → both appear on combat
+  start; leave combat → both hide. Result:
+- **STATE-14. Visibility `target_casting`.** Target a mob that is not casting → hidden. It starts a cast
+  or channel → both appear; the cast ends or is canceled → both hide. Result:
+- **STATE-15. Visibility `target_casting_interruptible` (the default).** Target a hostile in an
+  uninterruptible cast → hidden. Switch to one casting interruptibly → both appear. A cast that flips
+  to uninterruptible mid-cast (some bosses) → the cast bar fades to alpha 0 but stays shown (an alpha
+  curve, not `:Hide()`). An occasional leak at cast start is a known issue (WoW's `notInterruptible` is
+  unreliable then), tracked on the issue tracker. Result:
+
+## COMBAT
+
+- **COMBAT-1. `/kcd config` in combat.** → one `[KCD]` line saying settings cannot open during combat,
+  and no panel. Result:
+- **COMBAT-2. `/kcd set` in combat.** `/kcd set units.target.icons.primarySize 50` in combat → applies
+  live. Result:
+- **COMBAT-3. The AddOns sidebar in combat.** In combat, Game Menu → Options → AddOns → Ka0s KickCD,
+  then General, Grid, Spells and Profiles in turn → each page shows under the cover reading "Settings
+  are locked during combat.", nothing on it can be clicked, and the Settings window stays open. Chat
+  prints one gray `settings are locked during combat — changes are refused until it ends` line on the
+  first page and none on the others (once per combat). Leave combat → the page on screen draws
+  normally. This path skips `OpenOptionsPanel` and is guarded only by the library's page cover, so run
+  all five pages, not a sample. Result:
+- **COMBAT-4. The combat cover.** Open Grid, enter combat, click a rail entry → the whole page, rail
+  included, is under the cover reading "Settings are locked during combat."; nothing changes; one gray
+  locked line prints. After combat the page draws normally on the entry you were on. Result:
+- **COMBAT-5. The linked note under the cover.** Open Grid with a linked Focus picked in the band, so
+  the Linked-to-Target note shows, then pull a dummy → the cover goes over the note as well. Click the
+  note's link → nothing happens: the page does not switch to General and no `cannot open settings
+  during combat` line prints (the link's own combat refusal sits under the cover). Result:
+- **COMBAT-6. The drag strip's right-click in combat.** Unlocked, Free anchor mode, in combat,
+  right-click the cast bar's strip → the gray refusal line and no panel. Result:
+- **COMBAT-7. Debug dumps in combat.** In combat on a hostile caster, run every `/kcd debug`
+  subcommand → no Lua error. Result:
+- **COMBAT-8. `/kcd debug interrupt` on a secret cast.** Target a hostile mid-cast of a protected
+  interrupt → `notInterruptible` reads `<secret>`, never a coerced value, and the gate decision
+  matches what the current visibility mode shows. Result:
+- **COMBAT-9. `/kcd debug castbar` on a secret cast.** Same target → the
+  `current.notInterruptible: type=…, isSecret=true` line is always followed by a `secret-tainted; …`
+  line: that the state comes from `C_CurveUtil.EvaluateColorValueFromBoolean` where it exists, that it
+  is unavailable where it does not. On live Retail only the first half is observable; a pre-12.0 or
+  Classic-flavor build shows the second. A secret field with nothing after it is the failure. Result:
+- **COMBAT-10. The protected-interrupt taint pass.** Run
+  `/kcd set visibility target_casting_interruptible` (the mode that runs the interruptible-alpha gate
+  on a secret `notInterruptible`), then in combat on a hostile interruptible caster: interrupt it, press the
+  interrupt again on cooldown, five or more times over a long cast or channel; with that mode still set,
+  swap between a hostile interruptible caster, a hostile uninterruptible caster, a friendly NPC and no
+  target → zero Lua errors (the usual signature is `cannot perform arithmetic on a secret value` or
+  `attempt to format a secret value` as the interrupt fires), and the interrupt icon's swipe and text
+  keep working. Result:
+- **COMBAT-11. Diagnostics in combat and in a restricted instance.** `/kcd diagnostics` in combat with
+  a hostile caster targeted mid-cast and a second on focus, then again in a Mythic+ key or raid
+  encounter → no Lua error; the cast record reads as types; `notInterruptible` in the `interrupt` lines
+  reads `<secret>` where the client hides it; charges may read `<secret>`. Result:
+
+## GRID
+
+- **GRID-1. Layout.** With four or more spells enabled, walk `units.target.icons.anchor` through all 13
+  tokens, and for each set `units.target.icons.secondaryGrow` to two values valid on its axis → the
+  secondary block lays out from the primary icon's named anchor in that direction, no overlap. Result:
+- **GRID-2. The overflow warning.** `/kcd set units.focus.enabled false` (each unit warns for its own
+  grid). Set `units.target.icons.secondaryRows` × `secondaryCols` below the enabled spell count minus
+  one → one line, `dropped <n> icon(s) past the <rows × cols>-slot grid for <CLASS>/<specID> — bump
+  rows*cols or remove spells`. Change `primarySize` → no second line. Set another capacity that still
+  does not fit → the line prints again for it. Raise it until everything fits, then drop it below
+  again → the line prints again (fitting re-arms it). `/kcd set units.focus.enabled true`. Result:
+- **GRID-3. Icon size is live.** `units.target.icons.primarySize` from 24 to 96 (the row's range) → the
+  grid resizes with no `/reload`. Result:
+- **GRID-4. A cooldown starts.** `visibility = always`, cast Pummel at a dummy → its icon desaturates at
+  once with a swipe, and with Annotations → Show cooldown text on, a countdown. Result:
+- **GRID-5. The GCD is not a cooldown.** While Pummel cools down, cast an on-GCD spell → Pummel's
+  swipe is not restarted or touched by the GCD. Result:
+- **GRID-6. Two glow triggers, independent.** Primary glow trigger `target_casting_interruptible`,
+  secondary `target_casting` → the primary glows only on hostile interruptible casts, the secondaries on
+  any hostile cast. Result:
+- **GRID-7. Ready again.** When Pummel comes off cooldown → the icon re-saturates and the swipe goes, with
+  no `0.0` stuck on the text. Result:
+- **GRID-8. The swipe runs smoothly.** Put a spell on a 30 s+ cooldown → the swipe animates without a
+  stutter or restart and the countdown ticks continuously. Result:
+- **GRID-9. Cooldown visuals hold to the end.** Same cooldown → the icon keeps the cooldown alpha and
+  tint for all of it, final second included, and turns ready only when castable. Brightening early is
+  the regression (the curves read the total length, not the remaining time). Result:
+- **GRID-10. Changes land mid-cooldown.** While it runs, change glow type and glow color, and toggle
+  cooldown text and the charges badge → each applies at once. Result:
+- **GRID-11. Glow follows the target mid-cooldown.** With the spell still cooling and a
+  `target_casting` or `target_casting_interruptible` trigger, the target starts and stops casting → the
+  glow follows it. Result:
+- **GRID-12. Charges in combat.** Spend and recharge a charged spell (a talented Mind Freeze) in combat
+  → the badge keeps counting, though the count is secret. Result:
+- **GRID-13. The charges badge inset.** Annotations → Show charges on a charged spell. At the defaults
+  (X `-2`, Y `2`) → flush inside the bottom-right corner. X `-20` → 18 px left; Y `20` → 18 px up.
+  `/kcd set units.target.icons.chargesOffsetX 900` → clamps to `32 px`, badge at the slider maximum.
+  Result:
+- **GRID-14. Grid strips carry no close mark.** `/kcd unlock` → the grid strips and cast bar strips
+  have the `?` mark and no X (KickCD does not adopt the strip's close option, owner ruling X-03).
+  Result:
+
+## CAST
+
+- **CAST-1. A cast on the bar.** Target a hostile caster mid-cast → the bar appears at cast start, fills
+  over the cast's duration and goes at cast end; the spell name and remaining time draw and the spark
+  moves along the fill. Result:
+- **CAST-2. Auto-size tracks the visible grid.** `anchorMode PRIMARY`, `autoSize true`, `orientation
+  HORIZONTAL`. Disable spells (`/kcd spells disable <id>`) and re-add them, and set `secondaryCols` 4
+  then 2 → the bar's long side matches the grid's visible width, not its `rows × cols` capacity,
+  shrinking and growing in place; the other side stays at `castbar.width` / `height`. Same with
+  `VERTICAL` and height. Result:
+- **CAST-3. Orientation resets grow direction.** Switch `orientation` → `growDirection` resets to that
+  axis's default (`HORIZONTAL` → `RIGHT`, `VERTICAL` → `UP`). Result:
+- **CAST-4. Per-state appearance.** Interruptible bar color `0.2 0.8 0.2 1`, uninterruptible
+  `0.8 0.2 0.2 1` → an interruptible cast draws green with its border style and font; an
+  uninterruptible one draws red, or fades to 0 under `target_casting_interruptible`. Result:
+- **CAST-5. A mid-cast flip.** A boss or trash spell that flips interruptibility mid-cast
+  (`UNIT_SPELLCAST_INTERRUPTIBLE` / `_NOT_INTERRUPTIBLE`) → the bar switches state and the glow follows,
+  with no Lua error. Result:
+- **CAST-6. Primary anchor mode.** `anchorMode PRIMARY`, unlocked → no strip on the cast bar, and the
+  bar cannot be dragged by the strip, the mark or its body; it follows the grid when the grid is dragged.
+  Result:
+- **CAST-7. The strip names its unit.** `anchorMode FREE`, `/kcd unlock`, a cast bar on screen → a dark
+  strip with a gold label directly above the bar reading **Target castbar** (and **Focus castbar** on
+  the focus bar). Result:
+- **CAST-8. Drag the strip.** Drag it → the bar moves; release, `/kcd lock`, `/reload` → the position
+  sticks. Result:
+- **CAST-9. The `?` mark drags too.** Drag the `?` on the strip → the bar moves. Result:
+- **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows the same tooltip, titled
+  `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key); the
+  `?` brightens under the cursor. Result:
+- **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
+  opens. Result:
+- **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
+  comes back (`ApplyLock` does not run on every route that changes `anchorMode`). Result:
+- **CAST-13. Two bars at once.** `units.target.castbar.enabled` and `units.focus.castbar.enabled` true,
+  `/kcd lock`, `/kcd set visibility always`. Target one hostile caster and focus another, both
+  mid-cast → both bars animate at the same time and independently; each unit's second cast (no
+  retarget) animates like its first; swap target and focus and repeat; names and times track on both
+  and neither shows the other's spell. One frozen bar, or both showing the same fill, is a mis-bound
+  `onUpdateScript`; a Lua error naming `Castbar.lua` and a nil `onUpdateScript` is too. Result:
+- **CAST-14. An empowered cast.** Duel an Evoker. Target (then focus) them first, and only then have
+  them start Fire Breath or Eternity Surge → the bar shows the empower, the `*_casting` visibility and glow follow
+  it at once, and the bar clears on its release. A blank bar or a late glow means the
+  `UNIT_SPELLCAST_EMPOWER_*` routes are missing ([midnight-quirks.md](midnight-quirks.md)). Result:
+
+## FOCUS
+
+- **FOCUS-1. Focus defaults.** On a fresh profile → Focus is enabled and linked to Target, its grid at
+  y = 260 above Target's (y = 120), with a small gap between Focus's cast timer and the Target label.
+  Result:
+- **FOCUS-2. Enabling Focus builds it live.** `/kcd set units.focus.enabled false`, `/reload` (so no
+  Focus frames exist yet), `/kcd unlock` (a locked cast bar stays hidden until a real cast), then
+  `/kcd set units.focus.enabled true` → a second grid (`KickCDIconGridFocus`) and the cast bar's
+  placeholder (`KickCDCastbarFocus`) appear with no further `/reload`, the grid tracking the same spells
+  as Target. Result:
+- **FOCUS-3. Independent gating.** `/kcd lock`, `/kcd set visibility target_casting_interruptible`, a
+  hostile target and a different hostile focus. Only the target casts → only the Target pair shows; only the focus casts → only the
+  Focus pair; both cast → both. Result:
+- **FOCUS-4. Disabling Focus.** `/kcd set units.focus.enabled false` → the Focus grid and bar go at once;
+  Target is untouched. Result:
+- **FOCUS-5. Enabling mid-cast.** Focus disabled, the focus mob mid-cast, `/kcd set units.focus.enabled
+  true` → the Focus bar shows at once at the cast's current progress. Disable, let a new cast start,
+  enable again → the same, no stale state. Result:
+- **FOCUS-6. A linked Focus page.** Pick Focus in the band on each Grid entry → the full tab strip,
+  every tab grayed and not clickable, and only the note *"Linked to Target. Untick 'Use same styling as
+  Target' on the General page's Units tab to give Focus its own."* The page keeps its shape; picking
+  Target restores color and clicks. Result:
+- **FOCUS-7. The note's link.** *General page's Units tab* is in link blue. Mouse along the line →
+  nothing lights up behind it (no plate, no bright-green block). Click anywhere on it → General opens
+  on its Units tab. Result:
+- **FOCUS-8. Linked Focus mirrors Target live.** Change Target's `primarySize` → the linked Focus grid
+  matches at once. Result:
+- **FOCUS-9. Unlinking.** Untick General → Units → "Use same styling as Target", then open Grid → Icons
+  on Focus → the strip and rows appear, seeded with Target's last-copied values (or defaults). The page
+  was hidden when you unticked; it repaints on its next show. Result:
+- **FOCUS-10. Unlinked edits stay on Focus.** Change `units.focus.icons.primarySize` → Target's grid does
+  not change. Result:
+- **FOCUS-11. Relinking reverts live.** Re-tick the box → Focus mirrors Target again at once and Icons
+  collapses to the note under its grayed strip; your Focus values stop applying. Result:
+- **FOCUS-12. The link controls.** General → Units shows `[Use same styling as Target] [Copy styling
+  from Target]` on one line, the button in the right half, and neither control appears anywhere else.
+  Result:
+- **FOCUS-13. Copy styling from Target.** `/kcd resetall` (Focus linked, every styling row equal to
+  Target's), then `/kcd set units.target.castbar.orientation VERTICAL`,
+  `/kcd set units.target.castbar.growDirection DOWN`, `/kcd set units.target.icons.primarySize 50` and
+  `/kcd debug on`; click General → Units → Copy styling from Target → every Focus `icons`, `castbar`,
+  `label.style` row and `label.show` takes Target's value, `link` becomes false, Focus's bar is vertical
+  and still grows Down (orientation's own reset to Up must not win). The console shows one
+  `[Set] copy target→focus: 4 rows` line and no per-row `[Set] units.focus.…` lines: N counts the rows
+  the copy changed, here the three Target rows you moved off their defaults plus the link. Then change
+  Target → Focus does not follow (a one-time copy). Result:
+- **FOCUS-14. The link from the slash, and Defaults.** `/kcd set units.focus.link false` → the tick
+  clears on an open General page and the Grid entries grow their rows; `true` collapses them. With
+  Focus unlinked, General's Defaults re-links it. Result:
+- **FOCUS-15. Position and identity stay per unit.** Linked or not, drag the Focus grid → Target's does
+  not move; Focus's label text stays its own. Result:
+- **FOCUS-16. Unlinked Focus has its own alpha and tint.** Unlink first, then `visibility always`, both
+  units enabled, and `/kcd set units.target.icons.cooldownAlpha 0.20`,
+  `units.target.icons.cooldownTint 1 0.3 0.3 1`, `units.focus.icons.cooldownAlpha 0.90`,
+  `units.focus.icons.cooldownTint 0.3 0.3 1 1`; unlock, part the grids, lock. Cast a real interrupt
+  (cooldown over ~1.6 s) → Target's icon heavily dimmed and red, Focus's nearly bright and blue. Identical
+  grids mean Focus inherits Target's curves. (While only the GCD runs both look ready; that is correct.)
+  Result:
+- **FOCUS-17. A Focus alpha change mid-cooldown.** With the settings panel open on Grid → Icons,
+  mid-cooldown `/kcd set units.focus.icons.cooldownAlpha 0.40` → Focus changes while the cooldown runs;
+  Target does not. Then, panel still open, pick Target and Focus in the band and click every tab on
+  Icons, Cast bar and Text Label → the Unit picker lists exactly `Target` / `Focus` throughout (anchor
+  points or text positions there are a stale refresher that survived the rebuild). Result:
+- **FOCUS-18. An unrelated edit leaves the curves alone.** Mid-cooldown, change Target's Border style
+  (Icons → Border) to a visibly different border → Target's edge changes and neither grid's alpha or
+  tint shifts. Result:
+- **FOCUS-19. Relinking mid-cooldown reverts the curves.** With FOCUS-16's values still set (Target
+  0.20 and red, Focus 0.40 and blue), cast the interrupt again if its cooldown has ended, and while it
+  runs tick General → Units → "Use same styling as Target" → Focus's icon takes Target's dim red at
+  once, mid-cooldown, with no `/reload`. Clean up: Icons → Defaults with Target in the band; untick the
+  box, Icons → Defaults with Focus in the band, and tick the box again. Result:
+
+## LABEL
+
+- **LABEL-1. The default label.** Grid → Text Label, Target → Show label is on and "Target" sits just
+  above the grid. Untick → only the label goes, grid and bar stay; tick → back. General carries no
+  label controls. Result:
+- **LABEL-2. Label text.** Type "MainTank" in the Label text box and press Enter → the label changes at
+  once. Result:
+- **LABEL-3. Attach to.** Switch Attach to between `castbar` and `icons` → the label re-anchors; drag
+  the grid → it follows. Result:
+- **LABEL-4. Anchor pairs.** Walk Label anchor point and Attach point through several pairs (`TOP` /
+  `BOTTOM`, `LEFT` / `RIGHT`) and vary the X and Y offsets → the label moves to match, and no pick
+  raises an error. Result:
+- **LABEL-5. Justify.** Step Horizontal and Vertical justify with multi-word text → the alignment moves.
+  Result:
+- **LABEL-6. Rotation.** Set Rotation to 45, then -90 → the label turns, and is upright at 0. At 45 the
+  control is labeled `Rotation (degrees)` and `/kcd get units.target.label.style.rotation` echoes
+  `45 deg`; neither shows an empty box where a degree sign used to be. Result:
+- **LABEL-7. Font.** Change Font, Font size and Font flags → the label redraws each time. Result:
+- **LABEL-8. Label color.** Pick a bright color → the text changes; switch Attach to → the color stays.
+  Result:
+- **LABEL-9. An unlinked Focus label.** Unlink Focus, set its text to "Kick this" and change its rotation
+  or color → Target's label is unaffected; both show their own text and style; positions are
+  independent. Relink → Focus's style mirrors Target's again and its text stays "Kick this". Result:
+- **LABEL-10. Focus off hides its label.** Both labels shown, `/kcd set units.focus.enabled false` →
+  the Focus label goes at once, Target's stays; enable → back. Result:
+- **LABEL-11. The label follows General visibility.** `visibility target_casting`, Show label on,
+  Attach to `castbar` → target not casting: grid, bar and label all hidden; cast starts: all three
+  appear; cast stops: all hide. Same with Attach to `icons`. Result:
+- **LABEL-12. Always means the label shows.** `visibility always`, Show label on, target not casting.
+  Attach to `icons` → the label shows above the grid. Attach to `castbar` → the label still shows,
+  placed against the hidden cast bar: it follows the grid's visibility, never the bar's own hiding
+  when nothing is cast (a label parented to the bar used to vanish here). Result:
+- **LABEL-13. The strip clears the label.** `/kcd unlock` with the label attached to the icons → the grid
+  strip sits above the label text. Label off → the strip drops to the grid's top. Attach the label to the
+  cast bar, or anchor it to the grid's bottom → the grid strip returns to the grid's top and the cast
+  bar's strip clears the label instead. Result:
+- **LABEL-14. The strip clears it straight after `/reload`.** Unlocked, `/reload`, no lock toggle →
+  both strips ("Ka0s KickCD — Target" / "— Focus") sit fully above their labels with a small gap.
+  Untick Show label on each unit (unlink Focus first) → that strip drops to just above its icons; tick
+  → it climbs back. Font size 30 → the strip still clears it. `/kcd lock` hides both. Result:
+- **LABEL-15. Rapid changes raise nothing.** Panel open on Text Label, flip Attach to between
+  `castbar` and `icons` ten times fast; drag the X offset, Y offset and Rotation sliders end to end
+  quickly several times; then cycle `/kcd set visibility` through `always`, `in_combat`,
+  `target_casting` and `target_casting_interruptible` back to back → no Lua error at any point, and the
+  label ends where the final values put it. Result:
+
+## SPELLS
+
+- **SPELLS-1. A spec swap rebuilds.** Switch spec → the watched list and the grid rebuild for the new
+  spec's spells, no error. Result:
+- **SPELLS-2. A talent swap rebuilds.** Swap a choice node that replaces an interrupt-adjacent spell →
+  the list rebuilds at once, no spec swap needed. Result:
+- **SPELLS-3. An open Spells page follows the spec.** With Settings → Spells open, switch spec → the
+  spec dropdown moves to the new spec and its rows redraw. Result:
+- **SPELLS-4. Pets.** On a Hunter, `/cast Call Pet 1` → the pet's interrupt joins the grid. Dismiss it
+  → it leaves with no stale icon, and `/kcd debug spells` no longer lists it. Result:
+- **SPELLS-5. The Cooldown Manager gate.** On the active spec, add a spell not tracked by the Cooldown
+  Manager (on the page and with `/kcd spells add <id>`) → `Spell <name> (#<id>) is not tracked by the
+  Blizzard Cooldown Manager for this specialization.`, and nothing is added. A tracked id is added.
+  Result:
+- **SPELLS-6. Names with spaces.** As a Shaman, `/kcd spells add Wind Shear` → Wind Shear is added, the
+  name never split. Result:
+- **SPELLS-7. Unknown class or spec.** `/kcd spells add <id> WARLORD 99999` → `Unknown class WARLORD`;
+  `/kcd spells add <id> <CLASS> 99999` → `Unknown spec 99999 for <CLASS>`. Neither writes to
+  `KickCDDB`. Result:
+- **SPELLS-8. A spec swap with the page closed.** Close Settings, switch spec, open Spells → the Add box
+  accepts only the new spec's Cooldown Manager spells. Result:
+- **SPELLS-9. Editing another spec.** Pick another class and spec in the page's dropdown and add any
+  valid spell id → accepted (the lenient path). Result:
+- **SPELLS-10. The subcommands, live.** Page open, run `/kcd spells list`, `disable <id>`,
+  `enable <id>`, `category <id> stun`, `remove <id>`, and `add <id> <CLASS> <SPEC>` → each works and
+  the page's rows redraw after each write, no reopen. Result:
+- **SPELLS-11. Reset one spec.** Edit two specs' lists, then `/kcd spells reset <CLASS> <SPEC>` on one →
+  only that spec is rebuilt from the defaults. The page's Defaults button → only the selected spec.
+  Result:
+- **SPELLS-12. Reset every spec.** `/kcd spells resetall` → every spec's list is rebuilt. Result:
+- **SPELLS-13. Drag to reorder.** Grab row 3's handle and drop it above row 1 in one gesture → the list
+  and the grid's priority follow; one box and one handle per row; the drop line is in the list color;
+  `/reload` keeps the order. Start a drag and press Esc → no stray line. Leave and re-enter the page
+  twice → no handle or box left stranded. Result:
+- **SPELLS-14. Row tooltips and the remove mark.** Hover a spell name → the spell tooltip; a category
+  dropdown → the Category tooltip. The remove button draws the red catalog close mark. Result:
+- **SPELLS-15. Other addons' panels are untouched.** Close Settings, open another Ka0s addon's panel
+  (`/at config`), hover and click its labels → no KickCD spell tooltip, and every click lands. Result:
+- **SPELLS-16. Racials survive a reset.** On a race with a racial cast-stopper, reset one of your own
+  class's specs (Defaults or `/kcd spells reset`) → the racial is the last row. Reset another class's
+  spec → no racial. Result:
+
+## DIAG
+
+- **DIAG-1. `/kcd debug spells`.** → `Cooldowns: class=<CLASS> spec=<SPEC> (<specID>)`, then one line
+  per watched spell: `[<id>] <name> ready=… active=… cdObj=yes|nil chargeCdObj=yes|nil charges=…`,
+  charges maybe `<secret>` in combat, and no remaining-time field. Result:
+- **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
+  cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
+  `live SetStatusBarColor values` for both states. With no cast the dump stops at
+  `no active cast tracked (current = nil)`. Result:
+- **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
+  trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
+  it. `/reload` → off again; no saved setting holds it. Result:
+- **DIAG-4. `/kcd debug window`.** → the console opens and closes; logging keeps its state either way.
+  Result:
+- **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client. `/kcd debug on`, `/reload`,
+  turn it on again → the `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause.
+  Result:
+- **DIAG-6. Bare `/kcd debug`.** → the console toggles and the debug subcommand list prints. Result:
+- **DIAG-7. The combat trace.** Debug on, console open. Enter and leave combat → one
+  `[Combat] entered`, one `[Combat] left`; nothing at login, nothing per tick. Result:
+- **DIAG-8. A section's Defaults logs a count.** Move two Cast bar settings, press Cast bar's Defaults
+  (Target in the band) → one `[Set] reset castbar: 2 rows`, no per-row `[Set]`. Again →
+  `[Set] reset castbar: 0 rows`. Result:
+- **DIAG-9. Reset all logs one line.** Move three settings, Reset all settings (or `/kcd resetall`) →
+  exactly one `[Set] reset profile '<name>' to defaults (3 rows)`, no `[Set] reset all` and no
+  `[Profile] switched`. Again at once → `(0 rows)`, never the schema's size. Result:
+- **DIAG-10. The reset mute does not stick.** After DIAG-9, `/kcd set locked true` → its own
+  `[Set] locked = true`. `/kcd set locked false` and press General's Defaults within a third of a
+  second → `[Set] locked = false` prints before `[Set] reset general: …`. Result:
+- **DIAG-11. The cast and grid traces.** `target_casting_interruptible`; the target starts and stops an
+  interruptible cast → at the start one `[Cast] [target] cast gate: interruptible on` (`interruptible
+  secret (combat-tainted)` where the client hides the flag), at the stop one
+  `[Cast] [target] cast gate: interruptible none (no hostile cast)`; one
+  `[IconGrid] [target] visibility target_casting_interruptible: shown` or `…: hidden` each time the
+  grid's shown state actually changes; nothing on refreshes that move neither. Result:
+- **DIAG-12. The open trace.** `/kcd config` out of combat → one `[Open] settings panel` per open. Result:
+- **DIAG-13. The spell-list traces.** On the Spells page add, toggle, recategorize, drag, remove and
+  reset a spec → exactly one write line each: `[Spells] add <id> to <CLASS>/<SPEC>: N spells`,
+  `enable/disable <id> in …`, `category <id> = <cat> in …`, `move <from> -> <to> in …`,
+  `remove <id> from …: N spells`, `reset <CLASS>/<SPEC>: N spells`. `/kcd spells remove` and
+  `/kcd spells reset` log the same lines; `/kcd spells resetall` logs one
+  `[Spells] resetall: N lists, M spells`. The page's drag list also traces its own gesture and
+  repaint (`[Spells] grab …`, `drop …`, `released …`, `painted …`); those are not writes. Result:
+- **DIAG-14. The setting trace.** Change a setting → one debounced `[Set] …` line after it settles; no
+  echo, no per-keystroke lines. Result:
+- **DIAG-15. No spam.** 30 s+ in combat with no target casts → no `[Combat]`, `[Cast]` or `[IconGrid]`
+  lines beyond the transitions already logged. Result:
+- **DIAG-16. The console header.** `/kcd debug window` → the title bar's `Debug: ON` (green) or
+  `Debug: OFF` (red) label is there; Esc closes the window. Opening it raises no error. Result:
+- **DIAG-17. The line counter and its cap.** Grow the log (debug on in combat) → the bottom-right reads
+  `N / 3000 lines`, rising one per line; Clear → `0 / 3000 lines`, log empty. Fill it past the cap (a
+  long combat, or twenty-odd `/kcd diagnostics`) → `3000 / 3000 lines` and it stays there; Copy opens
+  without a hitch. Result:
+- **DIAG-18. The scrollbar tracks.** With more lines than fit, wheel up and down → the thumb moves with
+  it; drag the thumb → the log follows; no flicker. Thumb at the bottom is newest, at the top oldest.
+  Result:
+- **DIAG-19. Inert when it fits.** After Clear → the scrollbar still shows, thumb parked, ignoring wheel
+  and drag, and the right gutter keeps its width. Result:
+- **DIAG-20. The shared window edge.** The console reads as a flat 1px black border with a 1px light-gray
+  highlight inside it, a gold "Ka0s KickCD — Debug" title and a gray divider. Beside a second Ka0s
+  addon's console → border, highlight, divider and title are indistinguishable. A difference means
+  a host passing `applySkin` again or `libs/LibKa0s` drifting from `../LibKa0s` (fix upstream and
+  re-vendor, never in `libs/`). Result:
+- **DIAG-21. The title bar marks.** → copy, clear and close are three small white glyphs from
+  `libs/LibKa0s/media/icons/`, with no tooltips. A `×`, or the words Copy and Clear, means
+  `addonName = addonName` fell out of `core/DebugLogSetup.lua`'s descriptor. Result:
+- **DIAG-22. The copy window's close.** Click copy → `KickCDDebugCopyWindow` opens with a read-only box,
+  and its close is the same mark. Result:
+- **DIAG-23. The perf panel's close.** `/kcd perf start` → the step panel has exactly one close control,
+  top right, level with the title about 6 px in: the same `close` mark as the console's, pixel for pixel
+  side by side. A `×` means `addonName` stopped reaching the library's `PerfPanel`. Result:
+- **DIAG-24. The perf close only hides.** Click it → the panel hides, the run is not canceled, and
+  `/kcd perf report` still has the capture. Result:
+- **DIAG-25. The console face is monospace.** → timestamps and `[tags]` line up in a column. A
+  proportional face is the honest fallback (`media/fonts/` missing from the payload); no text at all is
+  the failure. Result:
+- **DIAG-26. The perf strings.** `/kcd perf start mylabel` → `perf run STARTED — <YYYY-MM-DD HH:MM>
+  mylabel`; `/kcd perf finish`, then `/kcd perf report` → the report's `capture:` line names the same
+  label. `/kcd perf start` with no label → the start line carries the timestamp alone (the library
+  always stamps one, so `unlabeled` never shows); `/kcd perf cancel` → `perf run CANCELED — nothing
+  saved`, one L. A doubled L means the string did not come from the vendored payload. Result:
+- **DIAG-27. The README's bug-report steps.** From a fresh `/reload` with the console closed, follow
+  README → *Reporting a bug* word for word → every step works and the paste holds the trace and the
+  whole report. Result:
+- **DIAG-28. `/kcd diagnostics` keeps the trace and copies clean.** Debug on, a few target casts, then
+  `/kcd diagnostics` → the console opens if closed; the trace sits above
+  `==== Ka0s KickCD diagnostics begin ====`; chat prints *Diagnostic report written to the debug
+  console: N lines. Use Copy to share it.* Copy and paste → the trace, both markers
+  (`==== Ka0s KickCD diagnostics end: N line(s) ====`), no `|c` escapes, and the counts agree. Result:
+- **DIAG-29. The report's shape.** → `[State]` first after the `[Diag]` identity lines, sections in
+  [debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14)'s order, no `section <name> failed`,
+  about 100 to 200 lines on a default profile. Result:
+- **DIAG-30. Ungated.** `/kcd debug off`, `/kcd diagnostics` → the full report; the header still reads
+  `Debug: OFF` and a target change writes no trace. Result:
+- **DIAG-31. While disabled, both forms.** `/kcd disable`, `/kcd diagnostics`,
+  `/kcd debug diagnostics` → both write a full report; the state line reads
+  `enabled stored=false, stood down=true, holds=…`; `cooldowns`, `icongrid`, `castbar` and `unitlabel` each
+  print one `stood down: …` line; nothing stands up. `/kcd enable`. Result:
+- **DIAG-32. No alias.** `/kcd diag` → `unknown command 'diag'` and the help index;
+  `/kcd debug diag` → the unknown-word line and the debug list. Neither writes a report. Result:
+- **DIAG-33. The long alias and any case.** `/kickcd diagnostics`, `/kickcd debug diagnostics` and
+  `/kcd DIAGNOSTICS` → each writes the same report. Result:
+
+## DEGRADED
+
+Before the rename, `/kcd set units.target.castbar.anchorMode FREE`. With the library gone the degraded
+`/kcd set` writes only `enabled` and `locked`, and the settings panel does not open, so the anchor mode
+cannot be changed afterwards; an earlier reset puts it back to Primary. Then rename `libs/LibKa0s` to
+`libs/LibKa0s_off` and `/reload` before DEGRADED-1.
+
+- **DEGRADED-1. It degrades, it does not error.** → zero Lua errors at login; `/kcd` answers and the host
+  verbs work. Result:
+- **DEGRADED-2. `/kcd list`.** → exactly `/kcd list is unavailable: the LibKa0s library did not load.`,
+  tagged `[KCD]`. Result:
+- **DEGRADED-3. Disable and enable.** `/kcd disable` → `enabled = false`, the grids go, no error.
+  `/kcd lock` → `Ka0s KickCD is disabled — enable it with /kcd enable`. `/kcd enable` →
+  `enabled = true`, the grids return. Result:
+- **DEGRADED-4. Lock and unlock.** `/kcd unlock`, `/kcd lock` → each confirms and moves the lock.
+  Result:
+- **DEGRADED-5. Plain help rows.** `/kcd help` → rows read `/kcd <verb>  <desc>`: white, two spaces, no
+  em-dash separator between verb and description (a description may carry its own em dash, as
+  `disable`, `get`, `set`, `reset`, `spells`, `debug` and `perf` do). Result:
+- **DEGRADED-6. One notice.** → the missing-library notice appears exactly once per session, naming
+  `libs/LibKa0s`, however many lines print after it. Run DEGRADED-11's dump too: the notice comes
+  before the dump, never once per dump line. Result:
+- **DEGRADED-7. The same sentence as the other addons.** Do the same rename on AbsorbTracker and
+  ConsumableMaster → all three state the cause (`NS.LIBKA0S_MISSING`) identically, differing only in the
+  addon name and the trailing consequence. Result:
+- **DEGRADED-8. Each seam names its own consequence.** `/kcd config` → opens nothing, one line about the
+  settings panel; `/kcd debug` → its line about the debug console window; `/kcd perf` → its line
+  saying performance measurement is unavailable. Result:
+- **DEGRADED-9. No report.** `/kcd diagnostics` and `/kcd debug diagnostics` → each prints
+  `/kcd diagnostics is unavailable: the LibKa0s library did not load.` and nothing else. Result:
+- **DEGRADED-10. No profile verb.** `/kcd profile` and `/kcd profile Default` → each prints
+  `/kcd profile is unavailable: the LibKa0s library did not load.` and switches nothing. Result:
+- **DEGRADED-11. The castbar dump prints tagged.** Target anything, `/kcd debug castbar` → the dump
+  prints, every line tagged `[KCD]`. A Lua error naming `Castbar_Debug.lua` and a nil `emit` means
+  `Util.print` is missing on the degraded path. Result:
+- **DEGRADED-12. The cast bar drags by its body.** Target's anchor mode set to Free before the rename (see
+  above), `/kcd unlock` → the Target cast bar's preview shows with no strip, and drags by its body. No
+  error. Result:
+- **DEGRADED-13. Restore.** Rename the folder back to `libs/LibKa0s` and `/reload` → the notice is gone
+  and the console is back. Result:
+
+## Non-English client
+
+A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
+reproduces it exactly.
+
+- **LOC-1. The grid populates.** Log in on a fresh profile → the grid fills with the spec's default
+  spells. The original bug was an empty grid with no error. Result:
+- **LOC-2. `/kcd debug spells` speaks tokens.** → the English spec token beside the numeric id,
+  `class=SHAMAN spec=ELEMENTAL (262)`, on every locale. Result:
+- **LOC-3. The rebuild line.** Debug on → the `[Cooldowns] rebuild` line reads
+  `SHAMAN(7) ELEMENTAL(262): N watched (...); M skipped (...)`, tokens and ids, not localized names.
+  Result:
+- **LOC-4. Both spec forms resolve.** `/kcd spells add 51490 ELEMENTAL` and
+  `/kcd spells add 51490 Élémentaire` → the same list; the output echoes the English token. Result:
+- **LOC-5. The page shows the client's names.** Settings → Spells → spec names in the client's language
+  (`Élémentaire`) while the store holds `[262]`. Result:
+- **LOC-6. The spec-key upgrade, per profile.** Log in with a `KickCDDB` saved by v1.2.0 or earlier with
+  customized spell lists, `/reload`, inspect it → numeric spec keys, your entries intact under them.
+  Switch to a second profile and check again → rekeyed too (the rekey runs on each profile as it is
+  activated). Result:
+
+## Pending sign-off
+
+The pre-2026-09-29 document recorded no result for any check, so every check carried over from it is
+owed unless an owner run records its pass. Three runs do: the Grid page checks on 2026-09-26 (KC-S1
+to KC-S11, the old `§36`, `Ka0sAddonsCommonTasks/docs/2026-09-26-NAVRAIL_ADOPTION`), the diagnostics
+checks on 2026-09-26 (the old `§35`, `2026-09-25-DIAGNOSTICS_COMMAND/99_REPORT.md` § 6), and the
+minimap button re-run on 2026-09-25 in every addon (left-click opens settings, right-click opens the
+options menu, the status tooltip; part of the old `§33`,
+`2026-09-23-REVIEW_AND_STANDARDS_AUDIT_REMEDIATION/06_SMOKE_TESTS.md` X1.4). So INSTALL-11, PANEL-4 – 7,
+COMBAT-4, COMBAT-11, GRID-14, DIAG-27, DIAG-31 – 33 and DEGRADED-9 are signed and not listed.
+A check that merged a passed step with an unrun one is listed for the unrun half. Checks new in this
+rework, and checks whose expectation it corrected against the code, are listed too. Origins are the
+old document's sections (`§n`, with its line numbers where a section held several checks). Sign one
+off on its own `Result:` line, then remove its row here.
+
+| ID | Origin | Why it is owed |
+|---|---|---|
+| INSTALL-1 – 4 | §1 L65 – 66, L70 – 71 | No result recorded |
+| INSTALL-5 | §2 L89 – 93 | No result recorded; corrected: `/kcd get` echoes `50 px` and `{0.20, 0.80, 0.20, 1.00}` |
+| INSTALL-6 – 9 | §17, §21, §23 | No result recorded |
+| INSTALL-10, INSTALL-13, INSTALL-14 | §33 L976 – 980, L990 – 992, L1009 – 1012 | No result recorded |
+| INSTALL-12 | §33 L983 | Left-click opening settings passed (2026-09-25, X1.4); the landing page and the untouched lock have no result |
+| SLASH-1 – 3 | §1 L67 – 68, §14 L406, §11 L326 | No result recorded |
+| SLASH-4 | §7b L198, §11 L325, L336 | No result recorded; corrected: the gate hint shares the `allowed values:` line and names the flip |
+| SLASH-5, SLASH-6 | §11 L327 – 328, L337 | No result recorded; corrected: the echoes, and a component above 1 reads the color as 0 – 255 |
+| SLASH-7, SLASH-8 | §12 L353 – 354 | No result recorded |
+| SLASH-9 | §12 L355, §36 KC-S10 | Only `castbar` passed (KC-S10); corrected: `spells` has moved, not gone |
+| SLASH-10 | §12 L358, L368, L370 | No result recorded; its cast-bar anchor half restored in this rework |
+| SLASH-11 | §12 L369 | No result recorded; corrected: the `px` and color echoes |
+| SLASH-12, SLASH-13 | §33 | No result recorded |
+| PANEL-1 | §1 L69, §2 L94, §14 L408, §36 KC-S1 | KC-S1 passed; the `/reload` half and §14's each-page-once (owed on the 2026-09-07 checklist, 4.2) did not |
+| PANEL-2 | §14 L406 | No result recorded |
+| PANEL-3 | §11 L343, §36 KC-S2 | KC-S2 passed; the every-tab half (§11) has no result |
+| PANEL-8 – 11 | §11 L338 – 340, §20b L518 | No result recorded |
+| PANEL-12 | §11 L344, §36 KC-S5 | KC-S5 passed; the Interruptible-tab half (§11) has no result |
+| PANEL-13, PANEL-14, PANEL-16 | §11 L323, L329 – 330, L333, §3 L119 | No result recorded |
+| PANEL-15 | §11 L324, L334 – 335 | No result recorded; corrected: the slider reads 1.25 |
+| PANEL-17 | §12 L356, L362, L366 – 367, §36 KC-S7 | KC-S7 passed; the repaint and spell-list halves (§12) have no result |
+| PANEL-18 | §12 L360 | No result recorded; corrected: the vendored tooltip's ASCII `->` |
+| PANEL-19 – 22 | §27, §18 L469, L471 | §27 never run (2026-09-07 checklist, session 4); PANEL-20 corrected to the vendored `COMPOSE_MINOR` |
+| PANEL-23 | §29, §18 L470 | §29 never run (2026-09-07 checklist, session 5) |
+| PANEL-24 | §28 | Never run (2026-09-07 checklist, session 3) |
+| PANEL-25 – 27 | §26 L740 – 742, §33 | No result recorded |
+| PANEL-28 | §25 L690 – 697 | Never run (2026-09-07 checklist, 3.9) |
+| PANEL-29 | §12 L362 | No result recorded; restored in this rework: General's and Icons' Defaults leave the other pages and the spell list alone |
+| PROFILE-1, PROFILE-4 – 6 | §13 L386, L389 – 391 | No result recorded |
+| PROFILE-2 | §13 L377 – 383, L387 | No result recorded; corrected: copies into a scratch `SmokeCopy` |
+| PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |
+| PROFILE-7, PROFILE-8 | §19 L481 – 482, §33 L1001 – 1002 | No result recorded |
+| PROFILE-9 – 14 | New | The `/kcd profile` verb |
+| STATE-1 – 3, STATE-5 – 8 | §3, §5, §33 | No result recorded |
+| STATE-4 | §3 L117 – 118, §20c L546 | No result recorded; corrected: Focus is turned off first |
+| STATE-9 | §33 L984 – 989 | Right-click opening the menu passed (2026-09-25, X1.4); the Locked tick and the agreement with `/kcd get locked` and Lock frame have no result |
+| STATE-10 | §12 L359, L361 | Never run (2026-09-07 checklist, 3.9) |
+| STATE-11 – 15 | §4, §16 L448 | No result recorded |
+| COMBAT-1, COMBAT-2 | §14 L404 – 405 | No result recorded |
+| COMBAT-3 | §14 L407 | Never run (2026-09-07 checklist, 1.1); corrected: the Ka0s KickCD page and four subpages, not six, each covered with the window left open |
+| COMBAT-5 | §20b L517 | No result recorded; rewritten: the combat cover blocks the note's link |
+| COMBAT-6 – 8, COMBAT-10 | §34 step 5, §15 L425 – 426, §4 L136, §16 | No result recorded |
+| COMBAT-9 | §15 L427 | Never run (2026-09-07 checklist, 1.7) |
+| GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
+| GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
+| GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
+| CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
+| CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
+| CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
+| CAST-14 | New | An empowered cast |
+| FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first and the frame unlocked, so the cast bar's placeholder shows |
+| FOCUS-6, FOCUS-7 | §20b L515 – 517, §22 L625, §36 KC-S6 | KC-S6 passed; the Target-restores and link-style halves have no result |
+| FOCUS-13 | §20b L524, L530 | No result recorded; corrected: a `/kcd resetall` baseline makes N = 4 |
+| LABEL-1 – 5, LABEL-7 – 11, LABEL-13 – 15 | §22, §34 step 0 | No result recorded |
+| LABEL-6 | §11 L346 | No result recorded; corrected: only the `/kcd get` echo carries `deg` |
+| LABEL-12 | §22 L630, L635 | No result recorded; its cast-bar attach half restored in this rework |
+| SPELLS-1 – 16 | §9, §10, §12 L357, L363 | No result recorded |
+| DIAG-1 – 3 | §15 L416 – 418, L428 | No result recorded; corrected: the dump and ack lines as printed |
+| DIAG-4 – 10, DIAG-12, DIAG-14, DIAG-15 | §15, §19 | No result recorded |
+| DIAG-11 | §19 L483 | No result recorded; corrected: the `[target]` tag and the stop label |
+| DIAG-13 | §19 L485 | No result recorded; corrected: the drag list's own trace lines |
+| DIAG-16 | §24 L660, L668 | No result recorded; corrected: `Debug: ON` / `Debug: OFF` |
+| DIAG-17 | §24 L661, L669, §35 step 9 | The cap passed (2026-09-26); the rising counter and Clear have no result |
+| DIAG-18 – 22, DIAG-25 | §24, §26 | No result recorded |
+| DIAG-23, DIAG-24 | §30, §26 L727 – 733 | Never run (2026-09-07 checklist, 3.4) |
+| DIAG-26 | §28 | Never run (2026-09-07 checklist, 3.3); corrected: the timestamp label and the cancel line |
+| DIAG-28 | §15 L422, §35 step 2 | The kept trace and the clean Copy passed (2026-09-26, KC-S2, KC-S4); the console opening, the chat line and the agreeing counts have no result |
+| DIAG-29 | §35 step 3 | Not in the 2026-09-26 run |
+| DIAG-30 | §35 step 4 | The full report and `Debug: OFF` passed (2026-09-26, KC-S5); no trace on a target change has no result |
+| DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
+| DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
+| DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
+| DEGRADED-10 | New | The `/kcd profile` verb |
+| DEGRADED-11 | §31 | NOT YET RUN since `M4-20` |
+| LOC-1 – 6 | §9b | Never run (2026-09-07 checklist, session 6) |
+
+If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led
+to it, and file an issue at the tracker in [README.md](../README.md#issues-and-feature-requests).

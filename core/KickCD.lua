@@ -185,7 +185,7 @@ end
 
 -- Forward declarations so command tables and dispatchers can reference each
 -- other without ordering pain.
-local printHelp, runDebug, listSettings, getSetting, setSetting
+local printHelp, runDebug, listSettings, getSetting, setSetting, runProfile
 local runReset, runResetAll, runResetPosition, runSpells
 
 --- Switch the addon on or off: THE handler `/kcd enable` and `/kcd disable` run.
@@ -257,6 +257,15 @@ local COMMANDS = {
         function(rest) runReset(NS, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
         function() runResetAll(NS) end},
+    -- `profile` is a HOST verb (slash-commands.md:7), and what it does is
+    -- LibKa0s-Slash-1.0's (minor 17): bare lists the stored profiles with the
+    -- current one marked, `profile <name>` switches to an EXISTING profile only
+    -- (quotes stripped, case and inner spaces kept, a typo refused with the list
+    -- rather than created), and a switch in combat is refused. The library reads
+    -- the store through the descriptor's `profiles` field (settings/Slash.lua);
+    -- the one switch line in the debug log is Database:OnProfileChanged's.
+    {"profile",       NS.L["List profiles, or switch to one: profile <name>"],
+        function(rest) runProfile(NS, rest) end},
     {"resetposition", "Restore the icon grids to their default screen positions",
         function() runResetPosition(NS) end},
     {"spells",        "Spell-list editor — try `/kcd spells` for the list",
@@ -321,6 +330,14 @@ local COMMANDS = {
 -- configuration that needs it most, which is the exact thing the live set exists
 -- to protect. It configures; it does not drive.
 --
+-- `profile` IS THE FIFTEENTH, for the same reason. It is a host verb, not a
+-- reserved one, so the library leaves it off LIVE_VERBS and each host decides
+-- (LibKa0s-Slash-1.0 minor 17). Switching to a profile whose settings are
+-- right is a repair, and a player who turned the addon off because the
+-- settings were wrong is the one who needs it. The switch also re-reads the
+-- master switch from the new profile (Database:OnProfileChanged), so it can
+-- bring a disabled addon back up.
+--
 -- WHAT IS LEFT REFUSED IS FOUR, and each really does drive the display. `lock`,
 -- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- unlocking IS this
 -- addon's preview, the launcher menu's Locked entry (launcher-§2) -- and
@@ -329,7 +346,7 @@ local COMMANDS = {
 -- the icon grids and fires CONFIG_CHANGED so the live grids move, then echoes
 -- "icon grid positions reset" at a player who can see no grid: an acknowledgment
 -- of something that visibly did not happen.
-NS.EXTRA_LIVE_VERBS = { "spells" }
+NS.EXTRA_LIVE_VERBS = { "spells", "profile" }
 
 -- THE SAME FOUR, NAMED, for the one load where there is no library to union
 -- with: settings/Slash.lua's degradation stub refuses exactly these while the
@@ -489,6 +506,14 @@ end
 
 function setSetting(self, rest)
     if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliSet(rest) end
+    p(self, "Settings layer not ready yet")
+end
+
+-- `/kcd profile [name]` is the library's CliProfile, like the three above. With
+-- LibKa0s absent it reaches the degradation stub's CliProfile, which prints the
+-- library-absent line and switches nothing.
+function runProfile(self, rest)
+    if NS.Slash and NS.Slash.cli then return NS.Slash.cli:CliProfile(rest) end
     p(self, "Settings layer not ready yet")
 end
 

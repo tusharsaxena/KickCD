@@ -355,7 +355,7 @@ function Icon:StartCooldownText(cdObject, isFullCooldown)
     -- ticker driver.
     self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
     self.cooldownText:Show()
-    -- Register with the module-level ticker (see IconGrid:_TextTickerStart).
+    -- Register with the module-level ticker (see IconGrid:_RegisterTextIcon).
     -- Idempotent — re-registering a widget already in the set is a no-op.
     IconGrid:_RegisterTextIcon(self)
 end

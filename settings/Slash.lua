@@ -276,7 +276,8 @@ NS.Slash.RunReset = runReset
 --     which writes a bool literal for a path on NS.Settings.WRITE_THROUGH and
 --     nothing else, and `lock` / `unlock` / `toggle` write through the Schema
 --     stub's own writeThrough in core/KickCD.lua's setLocked. Every other
---     schema verb prints the collection's library-absent line, never raising.
+--     schema verb prints the collection's library-absent line, never raising,
+--     and so do CliProfile and ProfileSwitch (Slash minor 17).
 --
 -- The host verbs never went to the library, so they keep working untouched.
 if not SlashLib then
@@ -329,6 +330,11 @@ if not SlashLib then
             stub["Cli" .. verb] = function() out(absentLine(line)) end
         end
         stub.CliSet = function(_, rest) return cliSet(rest) end
+        -- The profile verb (Slash minor 17) on route (b): both members, because
+        -- the live instance has both. No library, no store adapter to trust,
+        -- so neither switches anything.
+        stub.CliProfile = function() out(absentLine("/kcd profile")) end
+        stub.ProfileSwitch = function() out(absentLine("/kcd profile")); return false end
         stub.CliVersion = function() out("v" .. tostring(d.version and d.version() or "?")) end
         -- The same line the library builds, from the same two arguments.
         stub.DisabledLine = function()
@@ -425,11 +431,11 @@ end
 --
 -- THE LIST IS A UNION, NEVER A COPY. The library's thirteen are the standard's
 -- reserved verbs and a host MUST NOT refuse any of them; this addon adds
--- `spells` to them (core/KickCD.lua argues why). Built here by concatenation so
--- that a new reserved verb arriving in a LibKa0s tag is live the day it is
--- vendored, rather than silently refused because a copy of the list was typed
--- into this file. `diagnostics` arrived exactly that way, in Slash minor 16
--- (v1.60.0), and needed no edit here.
+-- `spells` and `profile` to them (core/KickCD.lua argues why). Built here by
+-- concatenation so that a new reserved verb arriving in a LibKa0s tag is live
+-- the day it is vendored, rather than silently refused because a copy of the
+-- list was typed into this file. `diagnostics` arrived exactly that way, in
+-- Slash minor 16 (v1.60.0), and needed no edit here.
 -- On a library-absent load SlashLib.LIVE_VERBS is nil, so this is just the
 -- extras, and the degradation stub above gates on NS.FEATURE_VERBS instead.
 local function liveVerbs()
@@ -460,6 +466,10 @@ NS.Slash.cli = SlashLib:New({
 
     print   = function(line) out(line) end,
     version = NS.Version,
+
+    -- The profile store `/kcd profile` lists and switches (Slash minor 17).
+    -- Asked at call time: NS.db is built in OnInitialize, after this file runs.
+    profiles = function() return NS.db end,
 
     -- The schema seam's reader, by value. No translation: colors are stored in
     -- the keyed shape the library already parses into and renders from, and

@@ -237,5 +237,5 @@ chat-output checks for all four topics (sub-header color, the `[KCD]` banner) ar
 order, budget, read-only and stood-down behavior), the kit's shared `test_diagnostics_contract.lua`
 run against `/kcd`'s own dispatcher, `tests/test_disabled.lua` (both forms while disabled),
 `tests/test_debuglog.lua`, `tests/test_debuglogsetup.lua`, `tests/test_castbar_debug.lua`,
-`tests/test_compat_debug.lua` and `tests/test_events.lua`. The in-game checks are section 35 of
-[smoke-tests.md](smoke-tests.md).
+`tests/test_compat_debug.lua` and `tests/test_events.lua`. The in-game checks are DIAG-27 – 33,
+DIAG-17, COMBAT-11, GRID-14 and DEGRADED-9 of [smoke-tests.md](smoke-tests.md).

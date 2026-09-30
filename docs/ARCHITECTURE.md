@@ -40,7 +40,7 @@ Settings widget / slash CLI ─▶ Store.Set  ─▶ Ka0s_KickCD_ConfigChanged �
 AceDB profile change         ─▶                Ka0s_KickCD_ProfileChanged ─▶ same
 IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit, ... } ─▶ Castbar instances[unit] (re-anchor / auto-size)
 
-  AceDB (all chars share the "Default" profile; user-switchable)  ──  6-page settings panel (each schema page tab-stripped) + /kcd CLI
+  AceDB (all chars share the "Default" profile; user-switchable)  ──  4-page settings panel (General, Grid, Spells, Profiles; each tab-stripped) + /kcd CLI
 ```
 
 | Subsystem | Lives in | Read |
@@ -55,7 +55,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | Icon grid layout (anchor + grow + dimensions) | `modules/IconGrid.lua` | [icon-grid.md](icon-grid.md) |
 | Cast bar (stacked dual widgets, Reskin/RenderCast split, anti-patterns) | `modules/Castbar.lua`, `modules/Castbar_Handle.lua`, `modules/Castbar_Skin.lua`, `modules/Castbar_Events.lua` | [castbar.md](castbar.md) |
 | The settings write seam (`LibKa0s-Schema-1.0`): the row index, `Store.Set` / `SetMany`, the bulk bracket, validation, and its degradation stub | `settings/SchemaSetup.lua` | [settings-panel.md](settings-panel.md#the-write-seam-libka0s-schema-10) |
-| Schema-driven canvas-layout settings panel; widget primitives | `settings/Panel.lua`, `settings/Panel_Widgets.lua`, `settings/Panel_Render.lua`, `settings/{General,Icons,Castbar,Label,Spells,Profiles}.lua` | [settings-panel.md](settings-panel.md) |
+| Schema-driven canvas-layout settings panel; widget primitives | `settings/Panel.lua`, `settings/Panel_Widgets.lua`, `settings/Panel_Render.lua`, `settings/{General,Grid,Icons,Castbar,Label,Spells,Spells_Rows,Profiles}.lua` | [settings-panel.md](settings-panel.md) |
 | Slash dispatch tables and command catalog | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | Adding a spell: the one resolver (id or name, multi-word names, validated `[CLASS SPEC]`), the Cooldown Manager gate and its cached set, shared by the Spells page and `/kcd spells add` | `core/SpellInput.lua` | [module-map.md](module-map.md) |
 | The launcher: one LibDataBroker object, the minimap button, the `Minimap button` row | `core/LauncherSetup.lua`, `settings/General.lua` (`minimapPath`, and the row's own get/set) | [settings-panel.md](settings-panel.md) |
@@ -80,7 +80,7 @@ local F = NS.Foo
   it. Eight do, each handing the addon FOLDER name to a vendored LibKa0s payload that cannot work
   out which folder it was copied into: `core/Constants.lua` (`Bus.Catalog`), `core/CoreSetup.lua`,
   `core/EnvSetup.lua`, `core/MediaSetup.lua`, `core/DebugLogSetup.lua`, `core/LauncherSetup.lua`,
-  `core/LifecycleSetup.lua` and `core/PerfSetup.lua`. The other thirty-three write `local _, NS = ...`:
+  `core/LifecycleSetup.lua` and `core/PerfSetup.lua`. The other thirty-six write `local _, NS = ...`:
   a name nothing reads is a dead local, and `M4c-06` removed twenty-nine of them.
 - `NS` is the shared private table.
 - Never overwrite an existing `NS.Foo` without `or {}` — another file may have reached it first, and never shadow it with a file-local of the same name.
@@ -169,13 +169,15 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `perf` | Guided A/B performance capture (`LibKa0s-Perf-1.0`), driven from a clickable step panel |
 | `reset <path>` | Reset one setting to its default. Page-scoped reset lives on each panel's **Defaults** button; the every-spec spell rebuild moved to `/kcd spells resetall` |
 | `resetall` | Reset the **active profile** to the shipped defaults — a profile reset, and the same act as Profiles → Reset Profile (`options-ui-§12`). Every panel, every anchor, every unit's `link` flag and every spec's spell list come back with it, because all of them live in the profile; `Database:OnProfileChanged` re-seeds and refreshes on the way back, exactly as it does for a profile switch. Other profiles are never touched |
+| `profile [name]` | Bare, list the stored profiles with the current one marked; with a name, switch to that **existing** profile (quotes stripped, case and inner spaces kept). An unknown name is refused with the list and never created, and a switch in combat is refused. `LibKa0s-Slash-1.0`'s `CliProfile` (minor 17) does the work through the descriptor's `profiles` field; live while disabled, and the switch runs `Database:OnProfileChanged` like any other ([profiles.md](profiles.md#switching-from-the-command-line)) |
 | `resetposition` | Restore the icon grids to their default screen positions |
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
+| `diagnostics` | Write the diagnostic report into the debug console (`debug-logging-§14`); reserved, and live while disabled |
 
-With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
+With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb, and `profile`, prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
 
-`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `window`, `on`, `off`, `toggle`, `spells`, `castbar`, `interrupt`, `events`. Bare `/kcd debug` toggles the console window.
+`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `diagnostics`, `spells`, `castbar`, `interrupt`, `window`, `on`, `off`, `toggle`, `events`. `runDebug` tests `diagnostics` before the table and before the bare toggle (`debug-logging-§14`). Bare `/kcd debug` toggles the console window and prints the sub-verb list.
 
 ## Settings schema
 
@@ -286,7 +288,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 18 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
+| `slash-dispatch.md` | Present | 19 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 8 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
@@ -377,7 +379,7 @@ Nothing is over the cap today.
 
 `KickCD.toc` is the source of truth. Order is dependency, not alphabetical:
 
-1. `libs/` — vendored Ace3 + LibSharedMedia + LibCustomGlow + LibDataBroker-1.1 + LibDBIcon-1.0 (the last two after `CallbackHandler-1.0`, which both need; nothing fixes their order relative to `LibKa0s.xml`, which is why `LibKa0s-Launcher-1.0` resolves them at Register time rather than at load)
+1. `libs/` — vendored Ace3 + LibKa0s + LibSharedMedia + AceGUI-3.0-SharedMediaWidgets + LibCustomGlow + LibDataBroker-1.1 + LibDBIcon-1.0 (the last two after `CallbackHandler-1.0`, which both need; nothing fixes their order relative to `LibKa0s.xml`, which is why `LibKa0s-Launcher-1.0` resolves them at Register time rather than at load)
 2. `locales/enUS.lua`
 3. `core/Compat.lua` (hangs `NS.Compat` on the shared private `NS` table — WoW's addon vararg; `NS` is not `_G.KickCD`)
 4. `core/EnvSetup.lua` (`LibKa0s-Env-1.0` seam — publishes `NS.Meta(field)` and `NS.Version()`: this addon's own TOC manifest, read in one place instead of three. Position is conventional rather than load-bearing — nothing here resolves at load, and both callers that resolve a version AT load sit far below it)
@@ -398,6 +400,6 @@ Nothing is over the cap today.
 19. `defaults/Profile.lua` (sets `NS.C` / `NS.DEFAULT_PROFILE` — the profile defaults tree, and the only place a profile default is hardcoded, `savedvariables-§2`)
 20. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
 21. `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves, cooldown-text ticker) → `modules/Castbar.lua` (per-unit instance manager) → `modules/Castbar_Handle.lua` (peeled: the cast bar's drag strip, `LibKa0s-Widgets-1.0`'s `DragHandle` published back as `Castbar.BuildHandle`) → `modules/Castbar_Skin.lua` (peeled: the config-driven `Castbar:Reskin` — sizing, orientation, insets, spark, fonts, text anchors, per-state textures/colors/borders) → `modules/Castbar_Events.lua` (peeled: the event and message handlers — unit changes, combat / world, the `UNIT_SPELLCAST_*` routes and the three bus messages) → `modules/Castbar_Debug.lua` (peeled: the `Castbar:DebugDump(unit)` diagnostic behind `/kcd debug castbar`, re-opening the already-registered module) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame) → `modules/Diagnostics.lua` (the sections of `/kcd diagnostics`, read by the library's report helper at run time). `modules/IconGrid.lua` was split into three flat siblings (`IconGrid` / `IconGrid_Layout` / `IconGrid_Render`), and `Reskin`, `DebugDump`, the drag strip and the event/message handlers peeled off `Castbar.lua`, to stay under the 1500-LOC cap.
-22. `settings/Slash.lua` (`LibKa0s-Slash-1.0` descriptor — the `/kcd` dispatcher and schema CLI; loads after `core/KickCD.lua` has defined `NS.COMMANDS`, which is passed in) → `settings/OptionsSetup.lua` (`LibKa0s-Options-1.0` descriptor — **is** `NS.Settings.Helpers`, decorated in place by the three `Panel*` files; must precede every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load) → `settings/Panel.lua` → `settings/Panel_Widgets.lua` → `settings/Panel_Render.lua` → `settings/{General, Icons, Castbar, Label, Spells, Profiles}.lua` (the two `Panel_*` siblings were peeled from `Panel.lua` to stay under the 1500-LOC cap — KCD-24; they must load before the per-tab files that call the makers / renderers)
+22. `settings/SchemaSetup.lua` (`LibKa0s-Schema-1.0` descriptor — first in the settings block: it creates `NS.Settings.Schema` and `NS.Settings.Store`, which both descriptors and every page file's `add` / `Helpers.AddComposed` reach at load) → `settings/Slash.lua` (`LibKa0s-Slash-1.0` descriptor — the `/kcd` dispatcher and schema CLI; loads after `core/KickCD.lua` has defined `NS.COMMANDS`, which is passed in) → `settings/OptionsSetup.lua` (`LibKa0s-Options-1.0` descriptor — **is** `NS.Settings.Helpers`, decorated in place by the three `Panel*` files; must precede every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load) → `settings/Panel.lua` → `settings/Panel_Widgets.lua` → `settings/Panel_Render.lua` → `settings/{General, Icons, Castbar, Label, Grid, Spells, Spells_Rows, Profiles}.lua` in that order (`Icons`, `Castbar` and `Label` register Grid entries rather than pages, above `Grid.lua`, which binds them; `Spells_Rows.lua` follows `Spells.lua`, whose table it takes at file scope) (the two `Panel_*` siblings were peeled from `Panel.lua` to stay under the 1500-LOC cap — KCD-24; they must load before the per-tab files that call the makers / renderers)
 
 `NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the five shape-driven migrators unconditionally (`Database:FoldLegacyUnits` → `Database:BackfillLabelStyle` → `Database:MigrateSpecKeys` → `Database:MigrateColorShape` → `Database:MigrateFontFlags`, again on every `OnProfileChanged`) then the version ladder `Database:MigrateProfile` (`CURRENT_DB_VERSION = 5`, declared default 0; registered pure steps v1→v2 `FoldLegacyUnits`, v2→v3 `MigrateSpecKeys`, v3→v4 `MigrateColorShape`, v4→v5 `MigrateFontFlags`, the stamp advancing only past a step that returned without raising), and seeds spells on first profile creation. `<Module>:OnEnable` calls `ReconcileUnits()`, which registers messages and game events **per currently-enabled unit** (target by default; focus only if `units.focus.enabled`). `NS:OnEnable` — which AceAddon fires at `PLAYER_LOGIN` — calls `NS.CreateOptionsPanel()` once, which is where the library registers the Blizzard category and drains its page-builder queue, so per-tab builders run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

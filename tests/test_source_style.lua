@@ -17,7 +17,7 @@
 -- 03_SPEC.md § C31 names as a non-goal. So the guard half stays advisory, the standing
 -- list is what is measured, and the doc says which is which.
 --
--- This is a SOURCE SCAN, and here that is forced rather than chosen. tests/run.lua:83-97
+-- This is a SOURCE SCAN, and here that is forced rather than chosen. tests/run.lua:117-126
 -- publishes the per-instance mock table AS `mocks._G`, precisely so that `_G.X` and a
 -- bare `X` resolve through the same table — the two spellings are behaviorally
 -- identical under the harness, and in the client too. No input a case can pass

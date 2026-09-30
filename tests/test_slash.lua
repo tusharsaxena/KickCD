@@ -607,13 +607,13 @@ end
 
 -- The live set, slash-commands-§2's thirteen plus this addon's `spells` (the spell
 -- lists are stored ARRAYS no schema row can address, so `/kcd spells` is their
--- only CLI route — see core/KickCD.lua). Typed here rather than read off the
+-- only CLI route) and `profile` (a switch is a repair) — see core/KickCD.lua. Typed here rather than read off the
 -- addon, so that the two lists have to be changed together: a verb added to the
 -- addon's live set and not to this one goes red, while a NEW feature verb is
 -- gated by default and passes without a word.
 local LIVE = {
     "help", "config", "version", "enable", "disable", "debug", "diagnostics", "perf",
-    "get", "set", "list", "reset", "resetall", "spells",
+    "get", "set", "list", "reset", "resetall", "spells", "profile",
 }
 
 test("a disabled feature verb says so on ONE line, and does NOT act", function()
@@ -990,6 +990,25 @@ test("degraded `/kcd list` prints the library-absent line", function()
     assertTrue(ok, tostring(err))
     assertEqual(#lines, 1, "one line: " .. joined(lines))
     assertEqual(lines[1], ABSENT:format("/kcd list"))
+end)
+
+test("degraded CliProfile and ProfileSwitch print the library-absent line and switch nothing", function()
+    -- Slash minor 17 puts both on the live instance, so the stub carries both
+    -- (route (b)): with no library there is no store adapter to trust.
+    -- red under: a stub missing either member, switching through NS.db, or raising
+    local inst = degraded()
+    local before = inst.NS.db:GetCurrentProfile()
+    local stub = inst.NS.Slash.cli
+    local lines, real = {}, inst.NS.Util.print
+    inst.NS.Util.print = function(m) lines[#lines + 1] = tostring(m) end
+    local ok1, err1 = pcall(function() return stub:CliProfile("Alt") end)
+    local ok2, switched = pcall(function() return stub:ProfileSwitch("Alt") end)
+    inst.NS.Util.print = real
+    assertTrue(ok1, tostring(err1))
+    assertTrue(ok2, tostring(switched))
+    assertEqual(switched, false, "ProfileSwitch answers false: it switched nothing")
+    assertEqual(joined(lines), ABSENT:format("/kcd profile") .. "\n" .. ABSENT:format("/kcd profile"))
+    assertEqual(inst.NS.db:GetCurrentProfile(), before, "the profile did not move")
 end)
 
 test("degraded `/kcd set visibility always` writes nothing and prints the library-absent line", function()
