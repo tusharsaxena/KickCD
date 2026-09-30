@@ -132,6 +132,20 @@ local function p(self, ...)
     self.Util.print(...)
 end
 
+-- A host-owned `/kcd` verb refused: the chat line `msg` is the player's, and
+-- one gated line on `tag` names the guard for the pasted log (debug-logging-§8,
+-- refusals: the report is "nothing happened", and the guard is the answer).
+-- `sub` and `detail` (the offending word, quoted) are optional; everything is
+-- formatted behind the gate. The refusals LibKa0s-Slash prints itself (an
+-- unknown verb, a bad `set` value) have no host seam and are not logged here.
+local function refuse(self, tag, verb, sub, guard, msg, detail)
+    if NS.State and NS.State.debug and NS.Debug then
+        NS.Debug(tag, "/kcd %s%s refused: %s%s", verb, sub and (" " .. sub) or "", guard,
+            detail ~= nil and (" '" .. tostring(detail) .. "'") or "")
+    end
+    return p(self, msg)
+end
+
 -- (The `version` verb reads NS.Version(), the core/EnvSetup.lua seam. The
 -- six-line C_AddOns ladder that used to sit here was one of THREE inline copies
 -- in this addon and one of eleven across the collection; it lives in
@@ -154,13 +168,14 @@ end
 -- settings layer never came up (no Store) says so and writes nothing -- it
 -- never falls back to `db.profile.locked = v` around the seam.
 local function setLocked(self, value)
+    local verb = value and "lock" or "unlock"
     if not (self.db and self.db.profile) then
-        return p(self, "db not initialized yet")
+        return refuse(self, "Set", verb, nil, "db not ready", "db not initialized yet")
     end
     local v = value and true or false
     local S = self.Settings and self.Settings.Store
     if not (S and S.Set and S.Set("locked", v)) then
-        return p(self, "Settings layer not ready yet")
+        return refuse(self, "Set", verb, nil, "settings layer not ready", "Settings layer not ready yet")
     end
     local H = self.Settings.Helpers
     if H and H.RefreshScalars then H.RefreshScalars() end
@@ -532,13 +547,13 @@ end
 -- spell-database rebuild all live in settings/Slash.lua.
 function runReset(self, rest)
     if NS.Slash and NS.Slash.RunReset then return NS.Slash.RunReset(rest) end
-    p(self, "Settings layer not ready yet")
+    refuse(self, "Set", "reset", nil, "settings layer not ready", "Settings layer not ready yet")
 end
 
 function runResetAll(self)
     local H = helpers()
     if not (H and H.ResetAll) then
-        return p(self, "Settings layer not ready yet")
+        return refuse(self, "Set", "resetall", nil, "settings layer not ready", "Settings layer not ready yet")
     end
     H.ResetAll()
     p(self, "all settings + spells reset to defaults")
@@ -547,7 +562,7 @@ end
 function runResetPosition(self)
     local H = helpers()
     if not (H and H.ResetIconPosition) then
-        return p(self, "Settings layer not ready yet")
+        return refuse(self, "Set", "resetposition", nil, "settings layer not ready", "Settings layer not ready yet")
     end
     H.ResetIconPosition()
     p(self, "icon grid positions reset")
@@ -655,25 +670,19 @@ local CATEGORIES = {
 
 -- Per-subcommand handlers --------------------------------------------------
 
--- A `/kcd spells` verb refused before it reached a Database writer: the chat
--- line is the player's, and one gated [Spells] line names the guard for the
--- pasted log (debug-logging-§8, refusals). A write the WRITER refuses is logged
--- by core/Database.lua instead, once, so the Spells page shares that line; the
--- cooldown-manager refusal is core/SpellInput.lua's Admissible.
--- `detail` (optional) is the offending word, quoted behind the gate.
-local function refuse(self, verb, guard, msg, detail)
-    if NS.State and NS.State.debug and NS.Debug then
-        NS.Debug("Spells", "/kcd spells %s refused: %s%s", verb, guard,
-            detail ~= nil and (" '" .. tostring(detail) .. "'") or "")
-    end
-    return p(self, msg)
+-- A `/kcd spells` verb refused before it reached a Database writer. A write the
+-- WRITER refuses is logged by core/Database.lua instead, once, so the Spells
+-- page shares that line; the cooldown-manager refusal is core/SpellInput.lua's
+-- Admissible.
+local function spellsRefuse(self, sub, guard, msg, detail)
+    return refuse(self, "Spells", "spells", sub, guard, msg, detail)
 end
 
 local function spellsList(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)
     if not (class and spec) then
-        return refuse(self, "list", "class/spec unresolved", "Could not determine class+spec; specify them: "
+        return spellsRefuse(self, "list", "class/spec unresolved", "Could not determine class+spec; specify them: "
                  .. "/kcd spells list <CLASS> <SPEC>")
     end
     local list = getSpellList(class, spec)
@@ -700,10 +709,10 @@ end
 local function spellsAdd(self, rest)
     local SI = NS.SpellInput
     local id, name, class, spec = SI.ParseTail(tokenize(rest))
-    if not id then return refuse(self, "add", name, name) end
+    if not id then return spellsRefuse(self, "add", name, name) end
     local ok, why = SI.Admissible(id, class, spec)
     if not ok then return p(self, why) end
-    if not self.Database then return refuse(self, "add", "db not ready", "db not ready") end
+    if not self.Database then return spellsRefuse(self, "add", "db not ready", "db not ready") end
     local result = self.Database:AddSpell(class, spec, id)
     if not result then return p(self, "db not ready") end
     commitSpellsChange()
@@ -719,12 +728,12 @@ local function spellsRemove(self, rest)
     local args = tokenize(rest)
     local id = tonumber(args[1])
     if not id then
-        return refuse(self, "remove", "no spell id", "Usage: /kcd spells remove <id> [CLASS SPEC]")
+        return spellsRefuse(self, "remove", "no spell id", "Usage: /kcd spells remove <id> [CLASS SPEC]")
     end
     local class, spec = resolveClassSpec(args, 2)
     local list = getSpellList(class, spec)
     if not list then
-        return refuse(self, "remove", "no spell list", ("No spell list for %s/%s"):format(
+        return spellsRefuse(self, "remove", "no spell list", ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
     if not self.Database:RemoveSpell(class, spec, id) then
@@ -738,13 +747,13 @@ local function spellsSetEnabled(self, rest, enabled)
     local args = tokenize(rest)
     local id = tonumber(args[1])
     if not id then
-        return refuse(self, enabled and "enable" or "disable", "no spell id",
+        return spellsRefuse(self, enabled and "enable" or "disable", "no spell id",
                   ("Usage: /kcd spells %s <id> [CLASS SPEC]"):format(enabled and "enable" or "disable"))
     end
     local class, spec = resolveClassSpec(args, 2)
     local list = getSpellList(class, spec)
     if not list then
-        return refuse(self, enabled and "enable" or "disable", "no spell list",
+        return spellsRefuse(self, enabled and "enable" or "disable", "no spell list",
                   ("No spell list for %s/%s"):format(tostring(class), sd(spec)))
     end
     if not self.Database:SetSpellEnabled(class, spec, id, enabled) then
@@ -760,20 +769,20 @@ local function spellsSetCategory(self, rest)
     local id = tonumber(args[1])
     local cat = args[2] and args[2]:lower() or nil
     if not (id and cat) then
-        return refuse(self, "category", "no spell id or category",
+        return spellsRefuse(self, "category", "no spell id or category",
                   "Usage: /kcd spells category <id> <cat> [CLASS SPEC]")
     end
     if not CATEGORIES[cat] then
         local names = {}
         for k in pairs(CATEGORIES) do names[#names + 1] = k end
         table.sort(names)
-        return refuse(self, "category", "unknown category",
+        return spellsRefuse(self, "category", "unknown category",
                   "Unknown category. Allowed: " .. table.concat(names, ", "), cat)
     end
     local class, spec = resolveClassSpec(args, 3)
     local list = getSpellList(class, spec)
     if not list then
-        return refuse(self, "category", "no spell list", ("No spell list for %s/%s"):format(
+        return spellsRefuse(self, "category", "no spell list", ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
     if not self.Database:SetSpellCategory(class, spec, id, cat) then
@@ -793,9 +802,9 @@ local function spellsReset(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)
     if not (class and spec) then
-        return refuse(self, "reset", "class/spec unresolved", "Could not determine class+spec")
+        return spellsRefuse(self, "reset", "class/spec unresolved", "Could not determine class+spec")
     end
-    if not self.Database then return refuse(self, "reset", "db not ready", "db not ready") end
+    if not self.Database then return spellsRefuse(self, "reset", "db not ready", "db not ready") end
     if not self.Database:ResetSpellList(class, spec) then
         return p(self, "db not ready")
     end
@@ -825,7 +834,7 @@ local SPELLS_COMMANDS = {
     {"resetall", "Rebuild EVERY spec's list from the defaults — `... resetall`",
         function(self)
             if not (self.Database and self.Database.ResetAllSpells) then
-                return refuse(self, "resetall", "db not ready", "Database not ready")
+                return spellsRefuse(self, "resetall", "db not ready", "Database not ready")
             end
             self.Database:ResetAllSpells()
             p(self, "spells reset to defaults")
@@ -847,7 +856,7 @@ function runSpells(self, rest)
     end
     local entry = findCommand(SPELLS_COMMANDS, sub)
     if entry then return entry[3](self, rem) end
-    refuse(self, sub, "unknown subcommand", "unknown spells subcommand '" .. sub .. "'")
+    spellsRefuse(self, sub, "unknown subcommand", "unknown spells subcommand '" .. sub .. "'")
     runSpells(self, "")
 end
 

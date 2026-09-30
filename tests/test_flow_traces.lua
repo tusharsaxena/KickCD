@@ -247,6 +247,11 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     assertTrue(NS.DebugLog:FindLine("[Spells] /kcd spells category refused: unknown category 'bogus'"))
     NS:OnSlashCommand("spells frobnicate")
     assertTrue(NS.DebugLog:FindLine("[Spells] /kcd spells frobnicate refused: unknown subcommand"))
+    local db = NS.db
+    NS.db = nil
+    NS:OnSlashCommand("lock")
+    NS.db = db
+    assertTrue(NS.DebugLog:FindLine("[Set] /kcd lock refused: db not ready"), "a top-level host verb names its guard too")
     NS.DebugLog:SetEnabled(false)
 end)
 
