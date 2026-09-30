@@ -284,15 +284,19 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     NS.DebugLog:SetEnabled(false)
 end)
 
-test("the [Init] line names an optional library that did not load", function()
-    -- §8 diagnosis: a dependency missing, once, at enable. The launcher's own
-    -- missing-library line lands at login with the flag off, so this clause is
-    -- the only place a pasted log learns it.
-    -- red under: drop missingClause() from core/DebugLogSetup.lua's initSummary
+test("an optional library that did not load is named when logging is first turned on", function()
+    -- §8 diagnosis: a dependency missing, once, at enable. Written at load with
+    -- the flag off, so it goes through the console's at-enable queue and lands
+    -- after the [Init] summary, once, not on every enable edge.
+    -- red under: the OPTIONAL_LIBS walk in core/DebugLogSetup.lua writing through NS.Debug
     local inst = T.load(true, true, function(mocks) mocks.__libs["LibCustomGlow-1.0"] = nil end)
     local NS = inst.NS
     NS.DebugLog:Clear()
     NS.DebugLog:SetEnabled(true)
-    assertTrue(NS.DebugLog:FindLine(", missing LibCustomGlow-1.0"), "the missing glow library is named")
+    assertEqual(count(NS, "[Init] LibCustomGlow-1.0 absent; no icon glows"), 1, "the missing glow library is named")
+    assertEqual(count(NS, "LibSharedMedia-3.0 absent"), 0, "a library that loaded is not")
+    NS.DebugLog:SetEnabled(false)
+    NS.DebugLog:SetEnabled(true)
+    assertEqual(count(NS, "LibCustomGlow-1.0 absent"), 1, "a second enable does not repeat it")
     NS.DebugLog:SetEnabled(false)
 end)

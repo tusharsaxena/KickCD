@@ -165,30 +165,6 @@ local function rejectedClause()
     return (", %d rejected event(s)"):format(n)
 end
 
--- The optional libraries a feature degrades without, in the order the clause
--- names them: the icon glows (LibCustomGlow-1.0), the fonts and textures
--- (LibSharedMedia-3.0) and the minimap button (LibDataBroker-1.1 +
--- LibDBIcon-1.0). The launcher's own `[Launcher]` line for a missing library
--- lands at PLAYER_LOGIN, while the flag is still off, so it never renders; this
--- clause is where a pasted log learns it.
-local OPTIONAL_LIBS = { "LibCustomGlow-1.0", "LibSharedMedia-3.0", "LibDataBroker-1.1", "LibDBIcon-1.0" }
-
---- The [Init] line's missing-dependencies clause (debug-logging-§8, diagnosis:
---- a dependency found or missing, once, at enable). Empty when every optional
---- library loaded, so the common case stays byte-identical; the line landing on
---- enable IS the once-at-enable the checklist asks for.
-local function missingClause()
-    local missing
-    for _, name in ipairs(OPTIONAL_LIBS) do
-        if not (LibStub and LibStub(name, true)) then
-            missing = missing or {}
-            missing[#missing + 1] = name
-        end
-    end
-    if not missing then return "" end
-    return ", missing " .. table.concat(missing, ", ")
-end
-
 NS.DebugLog = lib:New({
     -- Seeds KickCDDebugWindow / KickCDDebugCopyWindow / KickCDDebugCopyScroll —
     -- the three globals modules/DebugLog.lua spelled out by hand, reproduced
@@ -245,7 +221,7 @@ NS.DebugLog = lib:New({
         local profile = NS.db and NS.db.GetCurrentProfile and NS.db:GetCurrentProfile() or "?"
         return ("KickCD v%s, schema v%s, profile '%s'"):format(
             NS.SafeToString(ver), NS.SafeToString(schema), NS.SafeToString(profile))
-            .. rejectedClause() .. missingClause()
+            .. rejectedClause()
     end,
 
     -- The General page's "Debug console" checkbox mirrors the window's
@@ -262,3 +238,25 @@ NS.DebugLog = lib:New({
 -- function precisely so `NS.Debug("Cast", "unit=%s", unit)` keeps working with
 -- no self and no allocation when the flag is off.
 NS.Debug = NS.DebugLog.Debug
+
+-- The optional libraries a feature degrades without, and what degrades: the
+-- icon glows (LibCustomGlow-1.0) and the fonts and textures (LibSharedMedia-3.0).
+-- The minimap button's two (LibDataBroker-1.1, LibDBIcon-1.0) are not here: the
+-- launcher writes its own state lines, through the same queue
+-- (core/LauncherSetup.lua's `debugAtEnable`).
+local OPTIONAL_LIBS = {
+    { "LibCustomGlow-1.0",  "no icon glows" },
+    { "LibSharedMedia-3.0", "stock fonts and textures only" },
+}
+
+-- debug-logging-§8, diagnosis: a dependency found or missing, once, at enable.
+-- The flag is session-only and off at load, so each line goes to the console's
+-- at-enable queue (D.DebugAtEnable, LibKa0s v1.65.0), which holds it and writes
+-- it after the `[Init]` summary the first time logging is turned on. It used to
+-- be a `, missing <names>` clause on that summary, the one line that did land.
+-- Every library above sits in the TOC's libs block, so all are resolved here.
+for _, entry in ipairs(OPTIONAL_LIBS) do
+    if not (LibStub and LibStub(entry[1], true)) then
+        NS.DebugLog.DebugAtEnable("Init", "%s absent; %s", entry[1], entry[2])
+    end
+end

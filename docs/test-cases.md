@@ -1132,9 +1132,9 @@ badge and any count quoted in the docs must agree with it.
 - the Cooldown Manager walk logs one build line, with the calls that raised
 - a settings link whose click raises names the site and the error in the log
 - a refused spell-list write names its guard, once, from the writer or the verb
-- the [Init] line names an optional library that did not load
+- an optional library that did not load is named when logging is first turned on
 
-### test_library_lines.lua (7)
+### test_library_lines.lua (9)
 
 - an unknown /kcd verb is one [Cmd] line from the library
 - a feature verb while disabled is the library's disabled-gate line, once
@@ -1143,6 +1143,8 @@ badge and any count quoted in the docs must agree with it.
 - with logging off a Slash refusal writes nothing
 - the stand-down and stand-up edges are one [Lifecycle] line each, naming the hold
 - a hold call that fires no edge writes no Lifecycle line
+- the launcher's registration lands the first time logging is turned on
+- a missing LibDBIcon is the launcher's own line at enable, and nothing else names it
 
 ### test_version.lua (3)
 
@@ -1504,7 +1506,7 @@ badge and any count quoted in the docs must agree with it.
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 13 |
-| test_library_lines.lua | 7 |
+| test_library_lines.lua | 9 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
@@ -1523,4 +1525,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
-| **Total** | **1237** |
+| **Total** | **1239** |

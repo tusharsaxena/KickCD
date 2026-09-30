@@ -115,3 +115,33 @@ test("a hold call that fires no edge writes no Lifecycle line", function()
     assertEqual(count(NS, "[Lifecycle]"), 0, "an enabled addon re-reading its switch is no edge")
     NS.DebugLog:SetEnabled(false)
 end)
+
+-- ── LibKa0s-Launcher-1.0 (minor 5): state lines held for the first enable ─────
+
+test("the launcher's registration lands the first time logging is turned on", function()
+    -- Register runs at OnEnable with the session-only flag off, so through
+    -- `debug` this line never rendered; the console's at-enable queue holds it.
+    -- red under: the `debugAtEnable` field dropped from core/LauncherSetup.lua's descriptor
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    NS.DebugLog:Clear()
+    NS.DebugLog:SetEnabled(true)
+    assertEqual(count(NS, "[Launcher] registered"), 1)
+    NS.DebugLog:SetEnabled(false)
+    NS.DebugLog:SetEnabled(true)
+    assertEqual(count(NS, "[Launcher] registered"), 1, "held once, not on every enable edge")
+    NS.DebugLog:SetEnabled(false)
+end)
+
+test("a missing LibDBIcon is the launcher's own line at enable, and nothing else names it", function()
+    -- The [Init] summary used to carry a `, missing <names>` clause for the
+    -- broker libraries; the launcher's state line replaced it, so the fact is
+    -- written once.
+    local inst = T.load(true, true, function(m) m.__libs["LibDBIcon-1.0"] = nil end)
+    local NS = inst.NS
+    NS.DebugLog:Clear()
+    NS.DebugLog:SetEnabled(true)
+    assertEqual(count(NS, "[Launcher] LibDBIcon-1.0 absent; broker plugin only"), 1)
+    assertEqual(count(NS, "LibDBIcon-1.0"), 1, "one line names the missing library")
+    NS.DebugLog:SetEnabled(false)
+end)

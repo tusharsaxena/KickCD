@@ -167,4 +167,11 @@ NS.Launcher = Launcher:New({
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
     debug = function(tag, message) if NS.Debug then NS.Debug(tag, "%s", message) end end,
+    -- The STATE lines (Launcher minor 5, LibKa0s v1.65.0): a broker library
+    -- absent, no minimap table, `registered`. Register runs at OnEnable, while
+    -- the session-only flag is always off, so through `debug` they never landed;
+    -- the console's at-enable queue holds them for the first enable.
+    debugAtEnable = function(tag, message)
+        if NS.DebugLog and NS.DebugLog.DebugAtEnable then NS.DebugLog.DebugAtEnable(tag, "%s", message) end
+    end,
 })

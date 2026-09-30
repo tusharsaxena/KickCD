@@ -39,8 +39,13 @@ What KickCD supplies, all in `core/DebugLogSetup.lua`:
 - **The `[Init]` line** opens a session when the flag goes on:
   `KickCD v<version>, schema v<n>, profile '<name>'`. When this client refused an event name it adds
   `, N rejected event(s)`; `/kcd debug events` lists them, and so does the report's `events` section.
-  When an optional library did not load (LibCustomGlow-1.0, LibSharedMedia-3.0, LibDataBroker-1.1,
-  LibDBIcon-1.0) it adds `, missing <names>`.
+- **Dependency lines wait for the first enable.** An optional library that did not load is one
+  line, written at load into the console's at-enable queue (`D.DebugAtEnable`, LibKa0s v1.65.0) and
+  landing after the `[Init]` summary the first time logging is turned on:
+  `[Init] LibCustomGlow-1.0 absent; no icon glows`, `[Init] LibSharedMedia-3.0 absent; stock fonts
+  and textures only`. The launcher's state lines (`[Launcher] registered`, or LibDataBroker-1.1 /
+  LibDBIcon-1.0 absent) take the same queue through its descriptor's `debugAtEnable`. Each held line
+  is written once, not on every enable edge.
 - **The sink is `NS.Debug(tag, fmt, ...)`**, bound bare to the library's gated `Debug`. A call with
   the flag off does nothing and allocates nothing.
 - **The report's brand and sections.** The descriptor's `brandName` is `Ka0s KickCD`, which both
@@ -54,7 +59,7 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 
 | Tag | Emitted by | What it logs |
 |---|---|---|
-| `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary (with a `missing <lib>` clause for an optional library that did not load); the color and font-flag migrations |
+| `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary; an optional library that did not load (held for the first enable); the color and font-flag migrations |
 | `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
 | `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua`, `settings/Slash.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `list`, `get`, `set`, `profile`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready, or a `/kcd reset` given a retired page word |
 | `Profile` | `core/Database.lua` | Profile switches |
@@ -69,7 +74,7 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `Combat` | `core/State.lua` | Entering and leaving combat |
 | `Open` | `core/KickCD.lua`, `settings/Panel_Widgets.lua` | The settings panel opening, or refused (in combat, or the options layer did not load); a settings-page link whose click raised, with the error |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
-| `Launcher` | `core/LauncherSetup.lua` (forwarded from the library's launcher) | Launcher registration (or the missing library that skipped it) and the minimap button shown or hidden |
+| `Launcher` | LibKa0s-Launcher-1.0, through `core/LauncherSetup.lua`'s `debug` and `debugAtEnable` sinks | Launcher registration (or the missing library that skipped it), held for the first enable, and the minimap button shown or hidden |
 | `Cfg` | `settings/OptionsSetup.lua` (forwarded from the library's options panel) | The settings panel opening and registering, including an open refused or a register parked in combat |
 
 A new tag is a one-word string at the call site. Add its row here in the same change. The report's
@@ -97,7 +102,7 @@ even when nothing changed. The addon keeps no signature of its own.
 
 | Flow | Tag | Emitted when | Repeating path? |
 |---|---|---|---|
-| Session | `Init` | Logging is switched on: version, schema, profile, rejected events, missing optional libraries | No |
+| Session | `Init` | Logging is switched on: version, schema, profile, rejected events; then each optional library that did not load, held from load in the at-enable queue | No |
 | Migration | `Init`, `Migrate` | A migration step runs, converts something, or raises | No |
 | Settings | `Set`, `Profile` | Every schema write (debounced per path), a bulk reset or copy, a profile reset, copy or switch; a host settings verb refused (`/kcd <verb> refused: <guard>`) | Debounced, one line per settled value |
 | Spell list | `Spells` | An add, remove, move, enable, category change or reset; a write the writer refused (`<act> <id> in <class>/<spec> refused: <guard>`, from `core/Database.lua`, so the Spells page and `/kcd spells` share it); a `/kcd spells` verb refused before it reached the writer (`/kcd spells <verb> refused: <guard>`: parse, usage, no list, unknown category or subcommand, db not ready); an add the cooldown-manager gate refused; the gate skipped off the live spec or with no viewer API | No, user-driven |
@@ -115,7 +120,7 @@ even when nothing changed. The addon keeps no signature of its own.
 | Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing); a page link's click raised (`settings link click raised: <error>`) | No |
 | Debug verbs | `Debug` | A `/kcd debug` word refused: an unknown subcommand, or a topic whose module is missing | No, user-driven |
 | Events | `Events` | The client refuses an event name, once per name per session | No |
-| Launcher | `Launcher` | The minimap button shown or hidden (its registration line lands at login, before the flag can be on, which is why `[Init]` carries the missing-library clause) | No |
+| Launcher | `Launcher` (library) | The minimap button shown or hidden; its state lines (`registered`, a broker library absent, no minimap table), written at login and held in the at-enable queue until logging is first turned on | No |
 
 **Deliberately not logged:**
 
