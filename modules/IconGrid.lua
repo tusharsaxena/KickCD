@@ -114,10 +114,9 @@ local function newInstance(unit)
         lastVisible   = nil,
         lastGateCasting      = nil,
         lastGateInterruptible = nil,
-        lastCastLabel = nil,
-        -- The last `[IconGrid] [unit] list ...` summary written, so a rebuild
-        -- that lands on the same list logs nothing (debug-logging-§9).
-        lastListSig   = nil,
+        -- The `[Cast]` gate line and the `[IconGrid] [unit] list ...` summary
+        -- are change-gated on the console (D.DebugChanged, keyed per unit),
+        -- not on fields here: a Clear or a fresh enable re-arms them.
     }
 end
 
@@ -362,10 +361,7 @@ local function logActiveList(inst, head, trace)
     local shownList   = table.concat(shown, ",")
     local unknownList = table.concat(trace.unknown, ",")
     local dupList     = table.concat(trace.dup, ",")
-    local sig = head .. "|" .. shownList .. "|" .. unknownList .. "|" .. dupList
-    if sig == inst.lastListSig then return end
-    inst.lastListSig = sig
-    NS.Debug("IconGrid", "[%s] list %s: %d icon(s) (%s); %d not castable (%s); %d duplicate spellID(s) skipped (%s)",
+    NS.DebugLog.DebugChanged("IconGrid.list." .. inst.unit, "IconGrid", "[%s] list %s: %d icon(s) (%s); %d not castable (%s); %d duplicate spellID(s) skipped (%s)",
         inst.unit, head, #shown, shownList, #trace.unknown, unknownList, #trace.dup, dupList)
 end
 
@@ -900,7 +896,7 @@ function IconGrid:DisableUnit(unit)
     inst.enabled = false
     -- The next enable starts a fresh story: its list line prints even when
     -- the list is the one that was showing before.
-    inst.lastListSig = nil
+    if NS.State and NS.State.debug then NS.DebugLog.DebugForget("IconGrid.list." .. unit) end
 end
 
 --- Make this module INERT -- for either reason the latch can be down: a perf
@@ -1290,13 +1286,10 @@ end
 --- firing many casts would log an identical line each time. Emit only when
 --- the printed label actually changes (debug-logging-§9). Label each state precisely
 --- rather than collapsing "secret"/nil into a misleading "on".
-local function logGateChange(inst, unit, interruptible)
+local function logGateChange(unit, interruptible)
     if not (NS.State and NS.State.debug) then return end
     local gate = GATE_LABEL[interruptible] or "none (no hostile cast)"
-    if gate ~= inst.lastCastLabel then
-        inst.lastCastLabel = gate
-        NS.Debug("Cast", "[%s] cast gate: interruptible %s", unit, gate)
-    end
+    NS.DebugLog.DebugChanged("Cast." .. unit, "Cast", "[%s] cast gate: interruptible %s", unit, gate)
 end
 
 --- Re-run UpdateGlow for every active icon against its last-known state.
@@ -1342,7 +1335,7 @@ function IconGrid:RefreshAllGlows(inst)
     -- allocate a table per gate change.
     inst.lastGateCasting, inst.lastGateInterruptible = hostileCasting, interruptible
 
-    logGateChange(inst, unit, interruptible)
+    logGateChange(unit, interruptible)
 
     for _, btn in ipairs(inst.ordered) do
         if btn.UpdateGlow then btn:UpdateGlow(btn._lastState) end

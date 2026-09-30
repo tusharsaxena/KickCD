@@ -371,6 +371,9 @@ function Cooldowns:Rebuild()
     self:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
 end
 
+-- The one change-gate key both rebuild lines share.
+local REBUILD_GATE = "Cooldowns.rebuild"
+
 --- Log a rebuild summary, but only when the result MATERIALLY changed since
 --- the last logged rebuild. A cosmetic reactor rebuild spams otherwise:
 --- the Master scale / alpha sliders are `general`-section, so dragging one
@@ -399,12 +402,10 @@ function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
     local watchedList = table.concat(watchedIDs, ",")
     local skippedList = table.concat(skippedIDs, ",")
 
-    local sig = tostring(class) .. "/" .. tostring(spec)
-        .. "|" .. watchedList .. "|" .. skippedList
-    if sig == self._lastRebuildSig then return end
-    self._lastRebuildSig = sig
-
-    NS.Debug("Cooldowns", "rebuild %s(%s) %s(%s): %d watched (%s); %d skipped (%s)",
+    -- The console's change gate (DebugLogGates, LibKa0s v1.65.0) replaces the
+    -- hand-rolled `_lastRebuildSig`: the line itself is the signature, and a
+    -- Clear or a fresh enable re-arms it, which the copy never was.
+    NS.DebugLog.DebugChanged(REBUILD_GATE, "Cooldowns", "rebuild %s(%s) %s(%s): %d watched (%s); %d skipped (%s)",
         tostring(class), tostring(classID),
         NS.Util.SpecDisplay(spec), tostring(spec),
         #watchedIDs, watchedList,
@@ -412,7 +413,7 @@ function Cooldowns:_logRebuild(class, classID, spec, watchedIDs, skippedIDs)
 end
 
 --- The rebuild that watched nothing, and why (debug-logging-§8: the no-op that
---- explains an empty grid). Shares _logRebuild's signature slot, so the same
+--- explains an empty grid). Shares _logRebuild's gate key, so the same
 --- reason repeated -- a slider drag rebuilds ~20 times a second -- is one line,
 --- and a later real rebuild still prints (debug-logging-§9).
 -- @param reason  string  the guard that stopped it
@@ -420,10 +421,7 @@ end
 -- @param spec    number|nil
 function Cooldowns:_logRebuildSkip(reason, class, spec)
     if not (NS.State and NS.State.debug) then return end
-    local sig = "skip|" .. reason .. "|" .. tostring(class) .. "/" .. tostring(spec)
-    if sig == self._lastRebuildSig then return end
-    self._lastRebuildSig = sig
-    NS.Debug("Cooldowns", "rebuild skipped: %s (class=%s spec=%s); watching nothing",
+    NS.DebugLog.DebugChanged(REBUILD_GATE, "Cooldowns", "rebuild skipped: %s (class=%s spec=%s); watching nothing",
         reason, tostring(class), tostring(spec))
 end
 

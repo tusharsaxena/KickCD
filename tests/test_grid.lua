@@ -329,10 +329,24 @@ end)
 test("grid: selecting an entry is refused in combat and moves nothing", function()
     local P = env()
     local ctx = P.show()
+    local D = P.inst.NS.DebugLog
+    D:SetEnabled(true)
+    D:Clear()
     P.inst.mocks.InCombatLockdown = function() return true end
     -- red under: SelectSection without the library's refusal (a structural render in combat)
     local ok = P.H.SelectSection("label")
+    P.H.SelectSection("label")
+    P.H.RestoreGridSection(ctx)
     P.inst.mocks.InCombatLockdown = function() return false end
     assertFalse(ok)
     assertEqual(ctx.activeSection, "icons")
+    -- The library's combat-lock line (Options minor 27), naming what was refused,
+    -- once per combat per act; the host writes none of its own.
+    -- red under: either call passing no kind (the line reads `change refused`)
+    local n = 0
+    for _, line in ipairs(D.buffer) do if tostring(line):find("refused (in combat)", 1, true) then n = n + 1 end end
+    assertTrue(D:FindLine("[Cfg] section label refused (in combat)"), "the section switch is named")
+    assertTrue(D:FindLine("[Cfg] defaults grid/icons refused (in combat)"), "the Grid Defaults is named")
+    assertEqual(n, 2, "one line per refused act, not one per attempt")
+    D:SetEnabled(false)
 end)

@@ -136,8 +136,10 @@ end
 -- one gated line on `tag` names the guard for the pasted log (debug-logging-§8,
 -- refusals: the report is "nothing happened", and the guard is the answer).
 -- `sub` and `detail` (the offending word, quoted) are optional; everything is
--- formatted behind the gate. The refusals LibKa0s-Slash prints itself (an
--- unknown verb, a bad `set` value) have no host seam and are not logged here.
+-- formatted behind the gate. The refusals LibKa0s-Slash decides itself (an
+-- unknown verb, a bad `set` value, a feature verb while disabled, a profile
+-- switch in combat) are the library's `[Cmd]` lines, written through the Slash
+-- descriptor's `debug` (settings/Slash.lua), and are not repeated here.
 local function refuse(self, tag, verb, sub, guard, msg, detail)
     if NS.State and NS.State.debug and NS.Debug then
         NS.Debug(tag, "/kcd %s%s refused: %s%s", verb, sub and (" " .. sub) or "", guard,

@@ -51,7 +51,7 @@ local function entry(spellID) return { spellID = spellID, category = "interrupt"
 test("BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds", function()
     -- §9 quiet steady state: SPELLS_CHANGED fires several times at login and every
     -- `spells` write rebuilds, so an unchanged list must not log again.
-    -- red under: drop the `sig == inst.lastListSig` return in modules/IconGrid.lua's logActiveList
+    -- red under: logActiveList writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
     local IconGrid = NS:GetModule("IconGrid")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766), entry(47528) }
@@ -82,7 +82,7 @@ end)
 test("a cast bar logs its outcome once per change, not once per cast", function()
     -- §9 quiet steady state on a per-cast path, and §8's no-op reason: a bar the
     -- visibility mode suppressed says so, once.
-    -- red under: drop the `outcome == inst.lastOutcome` return in modules/Castbar.lua's logCastOutcome
+    -- red under: logCastOutcome writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
     local Castbar = NS:GetModule("Castbar")
     NS.db.profile.locked, NS.db.profile.visibility = true, "always"
@@ -125,22 +125,14 @@ test("a per-unit enable and disable edge is one line from each module", function
     NS.DebugLog:SetEnabled(false)
 end)
 
-test("the stand-down and stand-up edges are logged, naming the hold", function()
-    -- §8 diagnosis: a player who says "it stopped working" with the addon
-    -- disabled is answered by this line and nothing else.
-    -- red under: drop logEdge from core/LifecycleSetup.lua's standDown / standUp
-    local _, NS = listening()
-    NS.SetMasterEnabled(false)
-    assertTrue(NS.DebugLog:FindLine("[State] stood down (holds: disabled)"))
-    NS.SetMasterEnabled(true)
-    assertTrue(NS.DebugLog:FindLine("[State] standing up"))
-    NS.DebugLog:SetEnabled(false)
-end)
+-- The stand-down and stand-up edges are the library's lines since LibKa0s
+-- v1.65.0 (Lifecycle minor 3): tests/test_library_lines.lua pins them landing in
+-- this console, once each.
 
 test("a rebuild that watches nothing says why, once for a repeated reason", function()
     -- §8's no-op reason for an empty grid, change-gated per §9: a slider drag
     -- rebuilds about twenty times a second.
-    -- red under: drop the `sig == self._lastRebuildSig` return in Cooldowns:_logRebuildSkip
+    -- red under: Cooldowns:_logRebuildSkip writing through NS.Debug rather than DebugChanged
     local _, NS = listening()
     local Cooldowns = NS:GetModule("Cooldowns")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = nil
@@ -161,6 +153,62 @@ test("Cooldowns:Refresh stays silent across passes that change nothing", functio
     local before = NS.DebugLog:BufferSize()
     for _ = 1, 10 do Cooldowns:Refresh() end
     assertEqual(NS.DebugLog:BufferSize(), before, "ten unchanged polls added lines")
+    NS.DebugLog:SetEnabled(false)
+end)
+
+test("a Clear re-arms the change-gated lines, so the next pass says where it stands", function()
+    -- G2 of the LibKa0s debug-gaps run: the list, rebuild, cast-gate and
+    -- cast-outcome lines are gated on the console (D.DebugChanged), which a
+    -- Clear re-arms. The hand-rolled signatures they replaced never were, so a
+    -- cleared console stayed silent until something changed.
+    -- red under: any of the four gates kept on a field of its own
+    local inst, NS = listening()
+    local IconGrid, Cooldowns = NS:GetModule("IconGrid"), NS:GetModule("Cooldowns")
+    local Castbar = NS:GetModule("Castbar")
+    NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766) }
+    local gi = IconGrid:GetInstance("target")
+    -- The cast gate reaches its log line on every pass only while the flag is
+    -- secret (gateMoved stops a plain unchanged gate before the log), which is
+    -- the path the console gate is there for: a boss chaining casts.
+    local SECRET = {}
+    inst.mocks.issecretvalue = function(v) return v == SECRET end
+    inst.mocks.UnitCastingInfo = function() return "Bolt", nil, nil, nil, nil, nil, nil, SECRET end
+    local realHostile = NS.State.IsHostileUnitCasting
+    NS.State.IsHostileUnitCasting = function() return true end
+    NS.db.profile.locked, NS.db.profile.visibility = true, "always"
+    local bar = Castbar:GetInstance("target")
+    local function rec()
+        return { name = "Bolt", texture = "t", spellID = 1, notInterruptible = false, isChannel = false,
+            duration = { GetTotalDuration = function() return 3 end,
+                         GetElapsedDuration = function() return 1 end,
+                         GetRemainingDuration = function() return 2 end } }
+    end
+    local LINES = {
+        list    = "[IconGrid] [target] list HUNTER/",
+        rebuild = "[Cooldowns] rebuild ",
+        gate    = "[Cast] [target] cast gate: interruptible secret",
+        outcome = "[Castbar] [target] cast shown",
+    }
+    --- One pass over the four gated paths, with nothing changed since the last.
+    local function pass()
+        IconGrid:BuildActiveList(gi)
+        Cooldowns:Rebuild()
+        IconGrid:RefreshAllGlows(gi)
+        Castbar:Start(bar, rec()); Castbar:Stop(bar)
+    end
+    local function each(want, why)
+        for name, needle in pairs(LINES) do
+            assertEqual(count(NS, needle), want, name .. ": " .. why)
+        end
+    end
+    pass(); pass()
+    each(1, "one line for two unchanged passes")
+    NS.DebugLog:Clear()
+    pass()
+    each(1, "the unchanged line is written again after a Clear")
+    pass()
+    each(1, "and it is quiet again after that")
+    NS.State.IsHostileUnitCasting = realHostile
     NS.DebugLog:SetEnabled(false)
 end)
 
@@ -266,15 +314,19 @@ test("a refused spell-list write names its guard, once, from the writer or the v
     NS.DebugLog:SetEnabled(false)
 end)
 
-test("the [Init] line names an optional library that did not load", function()
-    -- §8 diagnosis: a dependency missing, once, at enable. The launcher's own
-    -- missing-library line lands at login with the flag off, so this clause is
-    -- the only place a pasted log learns it.
-    -- red under: drop missingClause() from core/DebugLogSetup.lua's initSummary
+test("an optional library that did not load is named when logging is first turned on", function()
+    -- §8 diagnosis: a dependency missing, once, at enable. Written at load with
+    -- the flag off, so it goes through the console's at-enable queue and lands
+    -- after the [Init] summary, once, not on every enable edge.
+    -- red under: the OPTIONAL_LIBS walk in core/DebugLogSetup.lua writing through NS.Debug
     local inst = T.load(true, true, function(mocks) mocks.__libs["LibCustomGlow-1.0"] = nil end)
     local NS = inst.NS
     NS.DebugLog:Clear()
     NS.DebugLog:SetEnabled(true)
-    assertTrue(NS.DebugLog:FindLine(", missing LibCustomGlow-1.0"), "the missing glow library is named")
+    assertEqual(count(NS, "[Init] LibCustomGlow-1.0 absent; no icon glows"), 1, "the missing glow library is named")
+    assertEqual(count(NS, "LibSharedMedia-3.0 absent"), 0, "a library that loaded is not")
+    NS.DebugLog:SetEnabled(false)
+    NS.DebugLog:SetEnabled(true)
+    assertEqual(count(NS, "LibCustomGlow-1.0 absent"), 1, "a second enable does not repeat it")
     NS.DebugLog:SetEnabled(false)
 end)

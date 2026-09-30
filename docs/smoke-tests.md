@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| DIAG-1 – 40 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on |
+| DIAG-1 – 44 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates |
 | DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
 | LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
 
@@ -845,6 +845,29 @@ Which checks to run for a partial change:
   link (DIAG-39) → the same: logging on for the session. `/reload` once more, then `/kcd debug on` and
   `/kcd diagnostics` → the report appends with no second `logging enabled` line. `/kcd debug off` →
   logging stops, and nothing turns it back on until the next report or `/kcd debug on`. Result:
+- **DIAG-41. A Slash refusal shows in the console.** `/kcd debug on`, `/kcd debug window`. Type
+  `/kcd frobnicate` → chat prints `unknown command 'frobnicate'` and the help index, and the console
+  gains one `[Cmd] refused frobnicate: unknown verb` line. `/kcd set locked banana` → one
+  `[Cmd] refused set locked: parse` line. `/kcd disable`, then `/kcd lock` → chat prints the disabled
+  line, and the console gains one `[Cmd] refused lock: disabled`; `/kcd enable`. In combat,
+  `/kcd profile Default` (with a second profile active) → `Can't switch profiles in combat.` in chat
+  and one `[Cmd] refused profile Default: in combat`. No refusal is written twice, and none has a
+  second line beside it naming the same verb. Result:
+- **DIAG-42. A Lifecycle edge shows in the console.** `/kcd debug on`, `/kcd debug window`.
+  `/kcd disable` → one `[Lifecycle] stood down: added disabled (holds: disabled)` line and no
+  `[State] stood down` line. `/kcd disable` again → no new `[Lifecycle]` line (nothing changed).
+  `/kcd enable` → one `[Lifecycle] stood up: released disabled (holds: none)`. Result:
+- **DIAG-43. State lines land at the first enable.** `/reload`, then `/kcd debug on` → after
+  `[Debug] logging enabled` and the `[Init]` summary, the console holds one `[Launcher] registered`
+  line. `/kcd debug off`, `/kcd debug on` → no second `[Launcher] registered`. With
+  `libs/LibCustomGlow-1.0` renamed aside and a `/reload`, `/kcd debug on` → one
+  `[Init] LibCustomGlow-1.0 absent; no icon glows` line, and the `[Init]` summary carries no
+  `missing` clause. Restore the folder. Result:
+- **DIAG-44. Clear re-arms the change-gated lines.** `/kcd debug on`, `/kcd debug window`, open the
+  settings on the General page. Drag the master scale slider back and forth → at most one
+  `[Cooldowns] rebuild …` line, however long the drag. Click the console's clear control, then nudge
+  the slider → exactly one `[Cooldowns] rebuild …` line, although the watched list did not change;
+  keep dragging → no more. Result:
 
 ## DEGRADED
 
@@ -997,6 +1020,7 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-34 – 38 | New | Resizing the console, the copy window and the perf panel (LibKa0s v1.64.0) |
 | DIAG-39 | New | The console's Diagnostics link (LibKa0s v1.64.0, DebugLog 17, DL-KC-03) |
 | DIAG-40 | New | Diagnostics turns debug logging on for the session (standard v2.71.0, DebugLogDiagnostics 2, DL-KC-03) |
+| DIAG-41 – 44 | New | The library's Slash refusals and Lifecycle edges in the console, the at-enable queue, Clear re-arming the gates (LibKa0s v1.65.0, DG-KC-01) |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |

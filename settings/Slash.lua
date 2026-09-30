@@ -473,6 +473,15 @@ NS.Slash.cli = SlashLib:New({
     print   = function(line) out(line) end,
     version = NS.Version,
 
+    -- The host's gated sink (debug-logging-§4; Slash minor 18, LibKa0s v1.65.0).
+    -- Every refusal the dispatcher decides itself -- the disabled gate, an
+    -- unknown verb, get / set / reset usage, not-found and parse or write
+    -- refusals, and the profile verb's refusals, in combat among them -- writes
+    -- one `[Cmd] refused <verb>[ <arg>]: <guard>` line through it after its chat
+    -- line. The host logs none of these itself: its own refusals are the host
+    -- verbs' (core/KickCD.lua's `refuse`), which the library never sees.
+    debug   = function(tag, message) if NS.Debug then NS.Debug(tag, "%s", message) end end,
+
     -- The profile store `/kcd profile` lists and switches (Slash minor 17).
     -- Asked at call time: NS.db is built in OnInitialize, after this file runs.
     profiles = function() return NS.db end,
