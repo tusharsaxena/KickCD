@@ -162,23 +162,53 @@ test("a Clear re-arms the change-gated lines, so the next pass says where it sta
     -- Clear re-arms. The hand-rolled signatures they replaced never were, so a
     -- cleared console stayed silent until something changed.
     -- red under: any of the four gates kept on a field of its own
-    local _, NS = listening()
+    local inst, NS = listening()
     local IconGrid, Cooldowns = NS:GetModule("IconGrid"), NS:GetModule("Cooldowns")
+    local Castbar = NS:GetModule("Castbar")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766) }
     local gi = IconGrid:GetInstance("target")
-    IconGrid:BuildActiveList(gi)
-    Cooldowns:Rebuild()
-    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1)
-    assertEqual(count(NS, "[Cooldowns] rebuild "), 1)
+    -- The cast gate reaches its log line on every pass only while the flag is
+    -- secret (gateMoved stops a plain unchanged gate before the log), which is
+    -- the path the console gate is there for: a boss chaining casts.
+    local SECRET = {}
+    inst.mocks.issecretvalue = function(v) return v == SECRET end
+    inst.mocks.UnitCastingInfo = function() return "Bolt", nil, nil, nil, nil, nil, nil, SECRET end
+    local realHostile = NS.State.IsHostileUnitCasting
+    NS.State.IsHostileUnitCasting = function() return true end
+    NS.db.profile.locked, NS.db.profile.visibility = true, "always"
+    local bar = Castbar:GetInstance("target")
+    local function rec()
+        return { name = "Bolt", texture = "t", spellID = 1, notInterruptible = false, isChannel = false,
+            duration = { GetTotalDuration = function() return 3 end,
+                         GetElapsedDuration = function() return 1 end,
+                         GetRemainingDuration = function() return 2 end } }
+    end
+    local LINES = {
+        list    = "[IconGrid] [target] list HUNTER/",
+        rebuild = "[Cooldowns] rebuild ",
+        gate    = "[Cast] [target] cast gate: interruptible secret",
+        outcome = "[Castbar] [target] cast shown",
+    }
+    --- One pass over the four gated paths, with nothing changed since the last.
+    local function pass()
+        IconGrid:BuildActiveList(gi)
+        Cooldowns:Rebuild()
+        IconGrid:RefreshAllGlows(gi)
+        Castbar:Start(bar, rec()); Castbar:Stop(bar)
+    end
+    local function each(want, why)
+        for name, needle in pairs(LINES) do
+            assertEqual(count(NS, needle), want, name .. ": " .. why)
+        end
+    end
+    pass(); pass()
+    each(1, "one line for two unchanged passes")
     NS.DebugLog:Clear()
-    IconGrid:BuildActiveList(gi)
-    Cooldowns:Rebuild()
-    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1, "the unchanged list is written again after a Clear")
-    assertEqual(count(NS, "[Cooldowns] rebuild "), 1, "so is the unchanged rebuild")
-    IconGrid:BuildActiveList(gi)
-    Cooldowns:Rebuild()
-    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1, "and it is quiet again after that")
-    assertEqual(count(NS, "[Cooldowns] rebuild "), 1)
+    pass()
+    each(1, "the unchanged line is written again after a Clear")
+    pass()
+    each(1, "and it is quiet again after that")
+    NS.State.IsHostileUnitCasting = realHostile
     NS.DebugLog:SetEnabled(false)
 end)
 
