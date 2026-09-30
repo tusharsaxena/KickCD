@@ -124,7 +124,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 2. Type `/kcd diagnostics`.
 3. If the debug window isn't open, open it with `/kcd debug`. Press **Copy**, copy the entire output, and include it with your bug report.
 
-The report is added after the debug trace in the same window, so one copy carries both. Running it also turns debug logging on for the rest of the session, if it was off; a `/reload` turns it off again. The orange **Diagnostics** link in the debug window's title bar runs the same report.
+The report is added after the debug trace in the same window, so one copy carries both.
 
 ## Issues and feature requests
 
