@@ -139,9 +139,8 @@ local function newInstance(unit)
         castFilter     = nil,
         enabled        = false,
         onUpdateScript = nil,
-        -- The last cast outcome logged ("shown", "suppressed", ...), so a run of
-        -- casts that all end the same way is one line (debug-logging-§9).
-        lastOutcome    = nil,
+        -- The cast outcome line is change-gated on the console (D.DebugChanged,
+        -- keyed per unit), not on a field here, so a Clear re-arms it.
     }
 end
 
@@ -934,16 +933,15 @@ end
 --- The mode is read only behind the gate, and only for the suppressed label.
 local function logCastOutcome(inst, outcome)
     if not (NS.State and NS.State.debug) then return end
-    if outcome == inst.lastOutcome then return end
-    inst.lastOutcome = outcome
+    local changed, key = NS.DebugLog.DebugChanged, "Castbar.outcome." .. inst.unit
     if outcome == "suppressed" then
         local profile = NS.db and NS.db.profile
-        NS.Debug("Castbar", "[%s] cast suppressed: visibility %s", inst.unit,
+        changed(key, "Castbar", "[%s] cast suppressed: visibility %s", inst.unit,
             tostring(profile and profile.visibility or "always"))
     elseif outcome == "noduration" then
-        NS.Debug("Castbar", "[%s] cast skipped: the client returned no duration object", inst.unit)
+        changed(key, "Castbar", "[%s] cast skipped: the client returned no duration object", inst.unit)
     else
-        NS.Debug("Castbar", "[%s] cast shown", inst.unit)
+        changed(key, "Castbar", "[%s] cast shown", inst.unit)
     end
 end
 
@@ -1095,7 +1093,7 @@ function Castbar:DisableUnit(unit)
         NS.Debug("Castbar", "[%s] unit disabled", unit)
     end
     inst.enabled = false
-    inst.lastOutcome = nil
+    if NS.State and NS.State.debug then NS.DebugLog.DebugForget("Castbar.outcome." .. unit) end
 end
 
 --- Reconcile every tracked unit's live enable-state against its desired

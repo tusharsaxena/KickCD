@@ -89,6 +89,12 @@ library decides those refusals and edges, and writes their lines through the `de
 descriptor is passed, which is `NS.Debug`. No host code writes them, and none repeats one: a
 refusal or an edge is one line, not two.
 
+**The change gates are the console's.** The watched-list, icon-list, cast-gate and cast-bar lines
+go through `NS.DebugLog.DebugChanged(key, tag, fmt, ...)` (LibKa0s-DebugLog-1.0's gates file),
+keyed per unit where the line is per unit, and a unit disabled forgets its key. Clearing the console
+or turning logging on re-arms every gate, so the first pass after either writes where things stand
+even when nothing changed. The addon keeps no signature of its own.
+
 | Flow | Tag | Emitted when | Repeating path? |
 |---|---|---|---|
 | Session | `Init` | Logging is switched on: version, schema, profile, rejected events, missing optional libraries | No |
@@ -96,12 +102,12 @@ refusal or an edge is one line, not two.
 | Settings | `Set`, `Profile` | Every schema write (debounced per path), a bulk reset or copy, a profile reset, copy or switch; a host settings verb refused (`/kcd <verb> refused: <guard>`) | Debounced, one line per settled value |
 | Spell list | `Spells` | An add, remove, move, enable, category change or reset; a write the writer refused (`<act> <id> in <class>/<spec> refused: <guard>`, from `core/Database.lua`, so the Spells page and `/kcd spells` share it); a `/kcd spells` verb refused before it reached the writer (`/kcd spells <verb> refused: <guard>`: parse, usage, no list, unknown category or subcommand, db not ready); an add the cooldown-manager gate refused; the gate skipped off the live spec or with no viewer API | No, user-driven |
 | Cooldown Manager | `Spells` | The set is built after a login, talent swap or spec change: its size, how many viewer calls raised, and each distinct `site: message` among them (up to three, then a `+N more` count) | No, memoized |
-| Watched list | `Cooldowns` | A rebuild whose class, spec, watched or skipped IDs differ from the last one logged, or a rebuild that watched nothing (no class/spec, no stored list) | Yes: change-gated on the rebuild's signature |
+| Watched list | `Cooldowns` | A rebuild whose class, spec, watched or skipped IDs differ from the last one logged, or a rebuild that watched nothing (no class/spec, no stored list) | Yes: change-gated on the console (`DebugChanged`) |
 | Cooldown state | `Cooldowns` | A poll that found a material change (ready, active, dropped), marked `(gcd)` when the global cooldown explains all of it | Yes: silent on a poll with no material change |
-| Icon list | `IconGrid` | A rebuild whose drawn, not-castable or duplicate IDs differ from the last one this unit logged, or a rebuild with no spec or no stored list | Yes: change-gated per unit |
+| Icon list | `IconGrid` | A rebuild whose drawn, not-castable or duplicate IDs differ from the last one this unit logged, or a rebuild with no spec or no stored list | Yes: change-gated per unit on the console (`DebugChanged`) |
 | Visibility | `IconGrid` | A unit's grid flips between shown and hidden | Yes: change-gated per unit |
-| Cast gate | `Cast` | A unit's interruptible gate label changes | Yes: change-gated per unit |
-| Cast bar | `Castbar` | A unit's cast outcome changes: shown, suppressed by the visibility mode, skipped for no duration object | Yes: change-gated per unit |
+| Cast gate | `Cast` | A unit's interruptible gate label changes | Yes: change-gated per unit on the console (`DebugChanged`) |
+| Cast bar | `Castbar` | A unit's cast outcome changes: shown, suppressed by the visibility mode, skipped for no duration object | Yes: change-gated per unit on the console (`DebugChanged`) |
 | Unit edges | `IconGrid`, `Castbar` | A unit is enabled or disabled (reconcile acts only on a mismatch) | No |
 | Stand-down | `Lifecycle` (library) | The addon stands down or back up, naming the hold that did it (`disabled`, or a perf hold) and the resulting set; a call that changes nothing writes nothing | No |
 | Slash refusals | `Cmd` (library) | A `/kcd` verb the dispatcher refused, naming the verb and the guard (the disabled gate, an unknown verb, `get` / `set` / `reset` usage, not-found or parse, a profile switch in combat) | No, user-driven |

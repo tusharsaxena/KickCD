@@ -51,7 +51,7 @@ local function entry(spellID) return { spellID = spellID, category = "interrupt"
 test("BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds", function()
     -- §9 quiet steady state: SPELLS_CHANGED fires several times at login and every
     -- `spells` write rebuilds, so an unchanged list must not log again.
-    -- red under: drop the `sig == inst.lastListSig` return in modules/IconGrid.lua's logActiveList
+    -- red under: logActiveList writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
     local IconGrid = NS:GetModule("IconGrid")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766), entry(47528) }
@@ -82,7 +82,7 @@ end)
 test("a cast bar logs its outcome once per change, not once per cast", function()
     -- §9 quiet steady state on a per-cast path, and §8's no-op reason: a bar the
     -- visibility mode suppressed says so, once.
-    -- red under: drop the `outcome == inst.lastOutcome` return in modules/Castbar.lua's logCastOutcome
+    -- red under: logCastOutcome writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
     local Castbar = NS:GetModule("Castbar")
     NS.db.profile.locked, NS.db.profile.visibility = true, "always"
@@ -132,7 +132,7 @@ end)
 test("a rebuild that watches nothing says why, once for a repeated reason", function()
     -- §8's no-op reason for an empty grid, change-gated per §9: a slider drag
     -- rebuilds about twenty times a second.
-    -- red under: drop the `sig == self._lastRebuildSig` return in Cooldowns:_logRebuildSkip
+    -- red under: Cooldowns:_logRebuildSkip writing through NS.Debug rather than DebugChanged
     local _, NS = listening()
     local Cooldowns = NS:GetModule("Cooldowns")
     NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = nil
@@ -153,6 +153,32 @@ test("Cooldowns:Refresh stays silent across passes that change nothing", functio
     local before = NS.DebugLog:BufferSize()
     for _ = 1, 10 do Cooldowns:Refresh() end
     assertEqual(NS.DebugLog:BufferSize(), before, "ten unchanged polls added lines")
+    NS.DebugLog:SetEnabled(false)
+end)
+
+test("a Clear re-arms the change-gated lines, so the next pass says where it stands", function()
+    -- G2 of the LibKa0s debug-gaps run: the list, rebuild, cast-gate and
+    -- cast-outcome lines are gated on the console (D.DebugChanged), which a
+    -- Clear re-arms. The hand-rolled signatures they replaced never were, so a
+    -- cleared console stayed silent until something changed.
+    -- red under: any of the four gates kept on a field of its own
+    local _, NS = listening()
+    local IconGrid, Cooldowns = NS:GetModule("IconGrid"), NS:GetModule("Cooldowns")
+    NS.db.profile.spells.HUNTER[NS.Const.SPEC.BEASTMASTERY] = { entry(1766) }
+    local gi = IconGrid:GetInstance("target")
+    IconGrid:BuildActiveList(gi)
+    Cooldowns:Rebuild()
+    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1)
+    assertEqual(count(NS, "[Cooldowns] rebuild "), 1)
+    NS.DebugLog:Clear()
+    IconGrid:BuildActiveList(gi)
+    Cooldowns:Rebuild()
+    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1, "the unchanged list is written again after a Clear")
+    assertEqual(count(NS, "[Cooldowns] rebuild "), 1, "so is the unchanged rebuild")
+    IconGrid:BuildActiveList(gi)
+    Cooldowns:Rebuild()
+    assertEqual(count(NS, "[IconGrid] [target] list HUNTER/"), 1, "and it is quiet again after that")
+    assertEqual(count(NS, "[Cooldowns] rebuild "), 1)
     NS.DebugLog:SetEnabled(false)
 end)
 

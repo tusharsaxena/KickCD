@@ -1118,7 +1118,7 @@ badge and any count quoted in the docs must agree with it.
 - RefreshAllPanels never runs a refresher from a cleared render
 - ClearScroll is safe on a ctx that never rendered
 
-### test_flow_traces.lua (12)
+### test_flow_traces.lua (13)
 
 - OnProfileChanged logs a [Profile] line
 - BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds
@@ -1127,6 +1127,7 @@ badge and any count quoted in the docs must agree with it.
 - a per-unit enable and disable edge is one line from each module
 - a rebuild that watches nothing says why, once for a repeated reason
 - Cooldowns:Refresh stays silent across passes that change nothing
+- a Clear re-arms the change-gated lines, so the next pass says where it stands
 - a settings open refused in combat names the guard in the log
 - the Cooldown Manager walk logs one build line, with the calls that raised
 - a settings link whose click raises names the site and the error in the log
@@ -1502,7 +1503,7 @@ badge and any count quoted in the docs must agree with it.
 | test_options_panel.lua | 42 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
-| test_flow_traces.lua | 12 |
+| test_flow_traces.lua | 13 |
 | test_library_lines.lua | 7 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
@@ -1522,4 +1523,4 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
-| **Total** | **1236** |
+| **Total** | **1237** |
