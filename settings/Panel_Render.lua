@@ -363,9 +363,11 @@ end
 ---
 --- The library's own bracket, driven by hand: one `reset <entry>` act, so the
 --- console logs one `[Set] reset <entry>: N rows` line and no line per row
---- (debug-logging-§10). Refused in combat, as the library's page reset is.
+--- (debug-logging-§10). Refused in combat, as the library's page reset is, and
+--- named in the library's one `[Cfg] defaults grid/<entry> refused (in combat)` line.
 function Helpers.RestoreGridSection(ctx)
-    if Helpers.__combatRefused and Helpers.__combatRefused() then return end
+    if Helpers.__combatRefused
+        and Helpers.__combatRefused("defaults", "grid", ctx and ctx.activeSection or "?") then return end
     local entry = gridEntries[ctx and ctx.activeSection]
     if not entry then return end
     local Store = NS.Settings.Store
@@ -382,10 +384,11 @@ end
 --- Select entry `key` on the Grid page, and optionally its tab: the one seam a
 --- link, a deep link or a suite moves the entry through. A hidden page is marked
 --- owed a render and draws the entry on its next show. Refused in combat, as a tab
---- switch is (options-ui-§2, §13).
+--- switch is (options-ui-§2, §13), and named in the library's one
+--- `[Cfg] section <key> refused (in combat)` line.
 --- @return boolean  whether the entry was selected
 function Helpers.SelectSection(key, tabKey)
-    if Helpers.__combatRefused and Helpers.__combatRefused() then return false end
+    if Helpers.__combatRefused and Helpers.__combatRefused("section", key) then return false end
     local ctx = gridCtx
     if not (ctx and gridEntries[key]) then return false end
     stashTab(ctx)

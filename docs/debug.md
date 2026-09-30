@@ -75,7 +75,7 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `Open` | `core/KickCD.lua`, `settings/Panel_Widgets.lua` | The settings panel opening, or refused (in combat, or the options layer did not load); a settings-page link whose click raised, with the error |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
 | `Launcher` | LibKa0s-Launcher-1.0, through `core/LauncherSetup.lua`'s `debug` and `debugAtEnable` sinks | Launcher registration (or the missing library that skipped it), held for the first enable, and the minimap button shown or hidden |
-| `Cfg` | `settings/OptionsSetup.lua` (forwarded from the library's options panel) | The settings panel opening and registering, including an open refused or a register parked in combat |
+| `Cfg` | LibKa0s-Options-1.0, through `settings/OptionsSetup.lua`'s `debug` sink | The settings panel opening and registering, including an open refused, a register parked in combat and its `register flushed (combat ended)`; each act the combat lock refuses, `<what> refused (in combat)`, once per combat (a write, Defaults, a button, a tab; the Grid page's `section <key>` and `defaults grid/<entry>` among them) |
 
 A new tag is a one-word string at the call site. Add its row here in the same change. The report's
 own tags are listed with its sections below; the report writes them through the ungated append, not
@@ -117,7 +117,7 @@ even when nothing changed. The addon keeps no signature of its own.
 | Stand-down | `Lifecycle` (library) | The addon stands down or back up, naming the hold that did it (`disabled`, or a perf hold) and the resulting set; a call that changes nothing writes nothing | No |
 | Slash refusals | `Cmd` (library) | A `/kcd` verb the dispatcher refused, naming the verb and the guard (the disabled gate, an unknown verb, `get` / `set` / `reset` usage, not-found or parse, a profile switch in combat) | No, user-driven |
 | Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
-| Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing); a page link's click raised (`settings link click raised: <error>`) | No |
+| Settings panel | `Open`, `Cfg` (library) | The panel opens, registers, or is refused (in combat, or the options layer missing); a registration parked in combat and flushed at its end; an act on an open panel the combat lock refused; a page link's click raised (`settings link click raised: <error>`) | No, once per combat per act |
 | Debug verbs | `Debug` | A `/kcd debug` word refused: an unknown subcommand, or a topic whose module is missing | No, user-driven |
 | Events | `Events` | The client refuses an event name, once per name per session | No |
 | Launcher | `Launcher` (library) | The minimap button shown or hidden; its state lines (`registered`, a broker library absent, no minimap table), written at login and held in the at-enable queue until logging is first turned on | No |
@@ -133,7 +133,7 @@ even when nothing changed. The addon keeps no signature of its own.
 - **`ADDON_RESTRICTION_STATE_CHANGED`.** KickCD does not register it; secret values are handled
   per read (see [midnight-quirks.md](midnight-quirks.md)).
 - **Held work.** KickCD owns no secure frame and defers nothing to combat's end; the settings
-  panel's parked registration is the library's `Cfg` line.
+  panel's parked registration is the library's `Cfg` line, and so is its flush when combat ends.
 - **`/kcd debug on`, `off`, `toggle` or `window` with the DebugLog module missing.** That module is
   the log, so there is nowhere to write the refusal; the chat line is the record.
 
