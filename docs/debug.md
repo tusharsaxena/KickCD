@@ -57,14 +57,14 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
 | `Set` | `settings/SchemaSetup.lua`, `core/Database.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy |
 | `Profile` | `core/Database.lua` | Profile switches |
-| `Spells` | `core/Database.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, a skipped cooldown-manager check, the cooldown-manager set each time it is built, and an add the cooldown-manager gate refused |
+| `Spells` | `core/Database.lua`, `core/KickCD.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, a spell-list write or `/kcd spells` verb refused (naming the guard), a skipped cooldown-manager check, the cooldown-manager set each time it is built (with the site and message of any viewer call that raised), and an add the cooldown-manager gate refused |
 | `Cooldowns` | `modules/Cooldowns.lua` | Each watched-list rebuild (watched and skipped counts), a rebuild that watched nothing and why, and material state changes |
 | `IconGrid` | `modules/IconGrid.lua` | Visibility decisions per unit; the per-unit list summary (drawn, not castable, duplicate IDs skipped); a unit enabled or disabled |
 | `Cast` | `modules/IconGrid.lua` | The interruptible cast gate per unit |
 | `Castbar` | `modules/Castbar.lua` | A cast's outcome per unit when it changes (shown, suppressed by the visibility mode, skipped for no duration object); a unit enabled or disabled |
 | `State` | `core/LifecycleSetup.lua` | The addon standing down (with the holds) and standing up |
 | `Combat` | `core/State.lua` | Entering and leaving combat |
-| `Open` | `core/KickCD.lua` | The settings panel opening, or refused (in combat, or the options layer did not load) |
+| `Open` | `core/KickCD.lua`, `settings/Panel_Widgets.lua` | The settings panel opening, or refused (in combat, or the options layer did not load); a settings-page link whose click raised, with the error |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
 | `Launcher` | `core/LauncherSetup.lua` (forwarded from the library's launcher) | Launcher registration (or the missing library that skipped it) and the minimap button shown or hidden |
 | `Cfg` | `settings/OptionsSetup.lua` (forwarded from the library's options panel) | The settings panel opening and registering, including an open refused or a register parked in combat |
@@ -85,8 +85,8 @@ flag.
 | Session | `Init` | Logging is switched on: version, schema, profile, rejected events, missing optional libraries | No |
 | Migration | `Init`, `Migrate` | A migration step runs, converts something, or raises | No |
 | Settings | `Set`, `Profile` | Every schema write (debounced per path), a bulk reset or copy, a profile reset, copy or switch | Debounced, one line per settled value |
-| Spell list | `Spells` | An add, remove, move, enable, category change or reset; an add the cooldown-manager gate refused; the gate skipped off the live spec or with no viewer API | No, user-driven |
-| Cooldown Manager | `Spells` | The set is built after a login, talent swap or spec change: its size and how many viewer calls raised | No, memoized |
+| Spell list | `Spells` | An add, remove, move, enable, category change or reset; a write the writer refused (`<act> <id> in <class>/<spec> refused: <guard>`, from `core/Database.lua`, so the Spells page and `/kcd spells` share it); a `/kcd spells` verb refused before it reached the writer (`/kcd spells <verb> refused: <guard>`: parse, usage, no list, unknown category or subcommand, db not ready); an add the cooldown-manager gate refused; the gate skipped off the live spec or with no viewer API | No, user-driven |
+| Cooldown Manager | `Spells` | The set is built after a login, talent swap or spec change: its size, how many viewer calls raised, and each distinct `site: message` among them (up to three, then a `+N more` count) | No, memoized |
 | Watched list | `Cooldowns` | A rebuild whose class, spec, watched or skipped IDs differ from the last one logged, or a rebuild that watched nothing (no class/spec, no stored list) | Yes: change-gated on the rebuild's signature |
 | Cooldown state | `Cooldowns` | A poll that found a material change (ready, active, dropped), marked `(gcd)` when the global cooldown explains all of it | Yes: silent on a poll with no material change |
 | Icon list | `IconGrid` | A rebuild whose drawn, not-castable or duplicate IDs differ from the last one this unit logged, or a rebuild with no spec or no stored list | Yes: change-gated per unit |
@@ -96,7 +96,7 @@ flag.
 | Unit edges | `IconGrid`, `Castbar` | A unit is enabled or disabled (reconcile acts only on a mismatch) | No |
 | Stand-down | `State` | The addon stands down (naming the holds: `disabled`, or a perf hold) or stands back up | No |
 | Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
-| Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing) | No |
+| Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing); a page link's click raised (`settings link click raised: <error>`) | No |
 | Events | `Events` | The client refuses an event name, once per name per session | No |
 | Launcher | `Launcher` | The minimap button shown or hidden (its registration line lands at login, before the flag can be on, which is why `[Init]` carries the missing-library clause) | No |
 
@@ -112,8 +112,10 @@ flag.
   per read (see [midnight-quirks.md](midnight-quirks.md)).
 - **Held work.** KickCD owns no secure frame and defers nothing to combat's end; the settings
   panel's parked registration is the library's `Cfg` line.
-- **A refused `/kcd` verb or a bad `/kcd set` value.** LibKa0s-Slash prints the refusal to chat and
-  offers the host no hook to log it; the chat line is the record.
+- **A verb or value LibKa0s-Slash refuses** (an unknown `/kcd` verb, a bad `/kcd set` path or value,
+  a feature verb while disabled, a profile switch in combat). The library prints the refusal to chat
+  and offers the host no hook to log it; the chat line is the record. The host's own refusals, the
+  `/kcd spells` verbs and the spell-list writers, are logged (above).
 
 ## `/kcd diagnostics`: the report (`debug-logging-§14`)
 

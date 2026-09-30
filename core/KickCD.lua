@@ -655,11 +655,25 @@ local CATEGORIES = {
 
 -- Per-subcommand handlers --------------------------------------------------
 
+-- A `/kcd spells` verb refused before it reached a Database writer: the chat
+-- line is the player's, and one gated [Spells] line names the guard for the
+-- pasted log (debug-logging-§8, refusals). A write the WRITER refuses is logged
+-- by core/Database.lua instead, once, so the Spells page shares that line; the
+-- cooldown-manager refusal is core/SpellInput.lua's Admissible.
+-- `detail` (optional) is the offending word, quoted behind the gate.
+local function refuse(self, verb, guard, msg, detail)
+    if NS.State and NS.State.debug and NS.Debug then
+        NS.Debug("Spells", "/kcd spells %s refused: %s%s", verb, guard,
+            detail ~= nil and (" '" .. tostring(detail) .. "'") or "")
+    end
+    return p(self, msg)
+end
+
 local function spellsList(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)
     if not (class and spec) then
-        return p(self, "Could not determine class+spec; specify them: "
+        return refuse(self, "list", "class/spec unresolved", "Could not determine class+spec; specify them: "
                  .. "/kcd spells list <CLASS> <SPEC>")
     end
     local list = getSpellList(class, spec)
@@ -686,10 +700,11 @@ end
 local function spellsAdd(self, rest)
     local SI = NS.SpellInput
     local id, name, class, spec = SI.ParseTail(tokenize(rest))
-    if not id then return p(self, name) end
+    if not id then return refuse(self, "add", name, name) end
     local ok, why = SI.Admissible(id, class, spec)
     if not ok then return p(self, why) end
-    local result = self.Database and self.Database:AddSpell(class, spec, id)
+    if not self.Database then return refuse(self, "add", "db not ready", "db not ready") end
+    local result = self.Database:AddSpell(class, spec, id)
     if not result then return p(self, "db not ready") end
     commitSpellsChange()
     if result == "enabled" then
@@ -704,12 +719,12 @@ local function spellsRemove(self, rest)
     local args = tokenize(rest)
     local id = tonumber(args[1])
     if not id then
-        return p(self, "Usage: /kcd spells remove <id> [CLASS SPEC]")
+        return refuse(self, "remove", "no spell id", "Usage: /kcd spells remove <id> [CLASS SPEC]")
     end
     local class, spec = resolveClassSpec(args, 2)
     local list = getSpellList(class, spec)
     if not list then
-        return p(self, ("No spell list for %s/%s"):format(
+        return refuse(self, "remove", "no spell list", ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
     if not self.Database:RemoveSpell(class, spec, id) then
@@ -723,14 +738,14 @@ local function spellsSetEnabled(self, rest, enabled)
     local args = tokenize(rest)
     local id = tonumber(args[1])
     if not id then
-        return p(self, ("Usage: /kcd spells %s <id> [CLASS SPEC]")
-                  :format(enabled and "enable" or "disable"))
+        return refuse(self, enabled and "enable" or "disable", "no spell id",
+                  ("Usage: /kcd spells %s <id> [CLASS SPEC]"):format(enabled and "enable" or "disable"))
     end
     local class, spec = resolveClassSpec(args, 2)
     local list = getSpellList(class, spec)
     if not list then
-        return p(self, ("No spell list for %s/%s"):format(
-                  tostring(class), sd(spec)))
+        return refuse(self, enabled and "enable" or "disable", "no spell list",
+                  ("No spell list for %s/%s"):format(tostring(class), sd(spec)))
     end
     if not self.Database:SetSpellEnabled(class, spec, id, enabled) then
         return p(self, ("Spell #%d not in %s/%s"):format(id, class, sd(spec)))
@@ -745,18 +760,20 @@ local function spellsSetCategory(self, rest)
     local id = tonumber(args[1])
     local cat = args[2] and args[2]:lower() or nil
     if not (id and cat) then
-        return p(self, "Usage: /kcd spells category <id> <cat> [CLASS SPEC]")
+        return refuse(self, "category", "no spell id or category",
+                  "Usage: /kcd spells category <id> <cat> [CLASS SPEC]")
     end
     if not CATEGORIES[cat] then
         local names = {}
         for k in pairs(CATEGORIES) do names[#names + 1] = k end
         table.sort(names)
-        return p(self, "Unknown category. Allowed: " .. table.concat(names, ", "))
+        return refuse(self, "category", "unknown category",
+                  "Unknown category. Allowed: " .. table.concat(names, ", "), cat)
     end
     local class, spec = resolveClassSpec(args, 3)
     local list = getSpellList(class, spec)
     if not list then
-        return p(self, ("No spell list for %s/%s"):format(
+        return refuse(self, "category", "no spell list", ("No spell list for %s/%s"):format(
                   tostring(class), sd(spec)))
     end
     if not self.Database:SetSpellCategory(class, spec, id, cat) then
@@ -776,9 +793,10 @@ local function spellsReset(self, rest)
     local args = tokenize(rest)
     local class, spec = resolveClassSpec(args, 1)
     if not (class and spec) then
-        return p(self, "Could not determine class+spec")
+        return refuse(self, "reset", "class/spec unresolved", "Could not determine class+spec")
     end
-    if not (self.Database and self.Database:ResetSpellList(class, spec)) then
+    if not self.Database then return refuse(self, "reset", "db not ready", "db not ready") end
+    if not self.Database:ResetSpellList(class, spec) then
         return p(self, "db not ready")
     end
     commitSpellsChange()
@@ -807,7 +825,7 @@ local SPELLS_COMMANDS = {
     {"resetall", "Rebuild EVERY spec's list from the defaults — `... resetall`",
         function(self)
             if not (self.Database and self.Database.ResetAllSpells) then
-                return p(self, "Database not ready")
+                return refuse(self, "resetall", "db not ready", "Database not ready")
             end
             self.Database:ResetAllSpells()
             p(self, "spells reset to defaults")
@@ -829,7 +847,7 @@ function runSpells(self, rest)
     end
     local entry = findCommand(SPELLS_COMMANDS, sub)
     if entry then return entry[3](self, rem) end
-    p(self, "unknown spells subcommand '" .. sub .. "'")
+    refuse(self, sub, "unknown subcommand", "unknown spells subcommand '" .. sub .. "'")
     runSpells(self, "")
 end
 

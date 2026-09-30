@@ -401,7 +401,9 @@ end
 -- `/kcd spells` log the same line for the same act, and neither caller logs it
 -- again. The per-entry writes are traced too: they produce no [Set] line, so this
 -- is the only place they can show up in the log. Nothing is formatted with the
--- flag off, and a verb that writes nothing logs nothing.
+-- flag off. A write a guard REFUSED logs one line naming that guard
+-- (debug-logging-§8, refusals: the report is "nothing happened", and the guard
+-- is the answer), here for the same reason: the page and the slash verb share it.
 local function trace(fmt, ...)
     if NS.State and NS.State.debug and NS.Debug then NS.Debug("Spells", fmt, ...) end
 end
@@ -410,6 +412,16 @@ local function where(class, spec)
     local sd = NS.Util and NS.Util.SpecDisplay
     return tostring(class) .. "/" .. (sd and sd(spec) or tostring(spec))
 end
+
+-- The refusal line. `a` is the spellID, or with `b` the from/to pair of a move;
+-- everything is formatted behind the gate.
+local function refused(act, class, spec, guard, a, b)
+    if not (NS.State and NS.State.debug) then return end
+    local subject = b ~= nil and (tostring(a) .. " -> " .. tostring(b)) or tostring(a)
+    trace("%s %s in %s refused: %s", act, subject, where(class, spec), guard)
+end
+
+local NO_LIST = "no spell list for that class/spec"
 
 local function findEntry(list, spellID)
     if not (list and spellID) then return nil end
@@ -442,10 +454,19 @@ end
 -- @return "added" | "enabled"; or nil when there is nowhere to write, plus
 --   "unknown class" when the class token is the reason
 function Database:AddSpell(class, spec, spellID)
-    if not spellID then return nil end
-    if class ~= nil and not Database.IsKnownClass(class) then return nil, "unknown class" end
+    if not spellID then
+        refused("add", class, spec, "no spellID", spellID)
+        return nil
+    end
+    if class ~= nil and not Database.IsKnownClass(class) then
+        refused("add", class, spec, "unknown class", spellID)
+        return nil, "unknown class"
+    end
     local list = self:EnsureSpellList(class, spec)
-    if not list then return nil end
+    if not list then
+        refused("add", class, spec, "no class/spec, or the profile is not ready", spellID)
+        return nil
+    end
     local existing = findEntry(list, spellID)
     if existing then
         existing.enabled = true
@@ -466,7 +487,10 @@ end
 function Database:RemoveSpell(class, spec, spellID)
     local list = self:GetSpellList(class, spec)
     local _, index = findEntry(list, spellID)
-    if not index then return false end
+    if not index then
+        refused("remove", class, spec, list and "not in the list" or NO_LIST, spellID)
+        return false
+    end
     table.remove(list, index)
     if NS.State and NS.State.debug then
         trace("remove %s from %s: %d spells", tostring(spellID), where(class, spec), #list)
@@ -483,10 +507,25 @@ end
 -- @return true if the list changed
 function Database:MoveSpell(class, spec, from, to)
     local list = self:GetSpellList(class, spec)
-    if not list then return false end
-    if type(from) ~= "number" or type(to) ~= "number" then return false end
+    if not list then
+        refused("move", class, spec, NO_LIST, from, to)
+        return false
+    end
+    if type(from) ~= "number" or type(to) ~= "number" then
+        refused("move", class, spec, "an index is not a number", from, to)
+        return false
+    end
     local n = #list
-    if from < 1 or from > n or to < 1 or to > n or from == to then return false end
+    if from < 1 or from > n or to < 1 or to > n then
+        if NS.State and NS.State.debug then
+            refused("move", class, spec, "index out of range (the list has " .. n .. ")", from, to)
+        end
+        return false
+    end
+    if from == to then
+        refused("move", class, spec, "same position", from, to)
+        return false
+    end
     table.insert(list, to, table.remove(list, from))
     if NS.State and NS.State.debug then
         trace("move %d -> %d in %s", from, to, where(class, spec))
@@ -499,8 +538,12 @@ end
 --- everywhere else in the addon (`entry.enabled ~= false`).
 -- @return true if the entry exists
 function Database:SetSpellEnabled(class, spec, spellID, enabled)
-    local entry = findEntry(self:GetSpellList(class, spec), spellID)
-    if not entry then return false end
+    local list = self:GetSpellList(class, spec)
+    local entry = findEntry(list, spellID)
+    if not entry then
+        refused(enabled and "enable" or "disable", class, spec, list and "not in the list" or NO_LIST, spellID)
+        return false
+    end
     entry.enabled = enabled and true or false
     if NS.State and NS.State.debug then
         trace("%s %s in %s", entry.enabled and "enable" or "disable", tostring(spellID), where(class, spec))
@@ -512,8 +555,12 @@ end
 --- closed category set; the category is informational only.
 -- @return true if the entry exists
 function Database:SetSpellCategory(class, spec, spellID, category)
-    local entry = findEntry(self:GetSpellList(class, spec), spellID)
-    if not entry then return false end
+    local list = self:GetSpellList(class, spec)
+    local entry = findEntry(list, spellID)
+    if not entry then
+        refused("category", class, spec, list and "not in the list" or NO_LIST, spellID)
+        return false
+    end
     entry.category = category
     if NS.State and NS.State.debug then
         trace("category %s = %s in %s", tostring(spellID), tostring(category), where(class, spec))
@@ -530,7 +577,12 @@ end
 -- @return the list, or nil when the profile is not ready
 function Database:ResetSpellList(class, spec)
     local list = self:EnsureSpellList(class, spec)
-    if not list then return nil end
+    if not list then
+        if NS.State and NS.State.debug then
+            trace("reset %s refused: no class/spec, or the profile is not ready", where(class, spec))
+        end
+        return nil
+    end
     local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
     seedList(list, byClass and byClass[spec])
     local racialID, classFile = playerRacial()

@@ -85,9 +85,6 @@ end
 -- teardown runs the same list in reverse, so the publisher stops first.
 local UP_ORDER = { "IconGrid", "Castbar", "UnitLabel", "Cooldowns" }
 
---- Call `fn(module)` for each runtime module that exists, in `UP_ORDER` or its
---- reverse. Resolved at CALL time, never hoisted: this file loads before
---- modules/, so a load-time GetModule would answer nil for every one of them.
 --- The stand-down and stand-up edges, one `[State]` line each
 --- (debug-logging-§8, diagnosis: the addon's own enable and stand-down
 --- transitions). The latch prints nothing of its own, by design, so the host
@@ -103,6 +100,9 @@ local function logEdge(down)
         #holds > 0 and table.concat(holds, ",") or "-")
 end
 
+--- Call `fn(module)` for each runtime module that exists, in `UP_ORDER` or its
+--- reverse. Resolved at CALL time, never hoisted: this file loads before
+--- modules/, so a load-time GetModule would answer nil for every one of them.
 local function eachModule(reverse, fn)
     for i = 1, #UP_ORDER do
         local name = UP_ORDER[reverse and (#UP_ORDER - i + 1) or i]

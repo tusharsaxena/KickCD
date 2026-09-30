@@ -195,11 +195,58 @@ test("the Cooldown Manager walk logs one build line, with the calls that raised"
     SI.CooldownManagerSet(); SI.CooldownManagerSet()
     assertEqual(count(NS, "[Spells] cooldown-manager set built: 2 spell(s); 1 viewer call(s) raised"), 1,
         "the memo means one build line")
+    -- red under: drop noteError from collectCategorySpells, or the %s clause from logCmBuild
+    assertEqual(count(NS, "1 viewer call(s) raised: GetCooldownViewerCooldownInfo: bad cooldown id"), 1,
+        "the build line names the site and the message of the caught error")
     local ok = SI.Admissible(999, "HUNTER", NS.Const.SPEC.BEASTMASTERY)
     assertTrue(ok == false, "999 is not in the set")
     assertTrue(NS.DebugLog:FindLine("[Spells] add 999 to HUNTER/"), "the refusal is logged")
     assertTrue(NS.DebugLog:FindLine("refused: not in the cooldown-manager set"))
     inst.mocks.C_CooldownViewer = nil
+    NS.DebugLog:SetEnabled(false)
+end)
+
+test("a settings link whose click raises names the site and the error in the log", function()
+    -- §8 diagnosis: an error caught by an owned pcall reaches the pasted log, not
+    -- only the chat line the player saw.
+    -- red under: drop the [Open] line from Helpers.LinkRow's OnClick in settings/Panel_Widgets.lua
+    local inst, NS = listening()
+    local H = NS.Settings.Helpers
+    local AceGUI = inst.mocks.LibStub("AceGUI-3.0")
+    local ctx = H.CreatePanel("KickCDLinkRaise", "general", { pageKey = "general" })
+    ctx.scroll = AceGUI:Create("ScrollFrame")
+    local w = H.LinkRow(ctx, "go", function() error("no such page", 0) end)
+    assertTrue(w ~= nil, "the link row must draw")
+    w:__fire("OnClick")
+    assertEqual(count(NS, "[Open] settings link click raised: no such page"), 1,
+        "the caught error is logged once, with its site")
+    NS.DebugLog:SetEnabled(false)
+end)
+
+test("a refused spell-list write names its guard, once, from the writer or the verb", function()
+    -- §8 diagnosis: a command refused or a write rejected names the guard. The
+    -- writer's line is shared by the Spells page and `/kcd spells`; the verb logs
+    -- only the guards it owns (parse, usage, no list, db not ready).
+    -- red under: drop refused() from core/Database.lua's writers, or refuse() from core/KickCD.lua's spells verbs
+    local _, NS = listening()
+    local DB, BM = NS.Database, NS.Const.SPEC.BEASTMASTERY
+    assertTrue(DB:AddSpell("HUNTER", BM, 424240) ~= nil, "seed a list to refuse against")
+    assertTrue(DB:RemoveSpell("HUNTER", BM, 424242) == false)
+    assertTrue(NS.DebugLog:FindLine("[Spells] remove 424242 in HUNTER/"), "the writer names the act")
+    assertEqual(count(NS, "refused: not in the list"), 1, "and the guard, once")
+    assertTrue(DB:MoveSpell("HUNTER", BM, 1, 1) == false)
+    assertTrue(NS.DebugLog:FindLine("refused: same position"))
+    assertTrue(DB:MoveSpell("HUNTER", BM, 1, 999) == false)
+    assertTrue(NS.DebugLog:FindLine("refused: index out of range"))
+    assertTrue(DB:AddSpell("WARLORD", BM, 1) == nil)
+    assertTrue(NS.DebugLog:FindLine("refused: unknown class"))
+    NS:OnSlashCommand("spells add Zzqxnotaspell")
+    assertTrue(NS.DebugLog:FindLine("[Spells] /kcd spells add refused: Unknown spell: Zzqxnotaspell"),
+        "the verb names the parse failure")
+    NS:OnSlashCommand("spells category 424240 bogus")
+    assertTrue(NS.DebugLog:FindLine("[Spells] /kcd spells category refused: unknown category 'bogus'"))
+    NS:OnSlashCommand("spells frobnicate")
+    assertTrue(NS.DebugLog:FindLine("[Spells] /kcd spells frobnicate refused: unknown subcommand"))
     NS.DebugLog:SetEnabled(false)
 end)
 
