@@ -875,13 +875,19 @@ end
 --
 -- @param input slash-command tail (ignored)
 function NS:OpenSettings()
+    -- Each refusal names its guard in the log as well as in chat
+    -- (debug-logging-§8, diagnosis): the pasted log is what a report carries.
     if inCombat(self) then
+        if NS.State and NS.State.debug then NS.Debug("Open", "settings panel refused: in combat") end
         p(self, combatNotice(self))
         return
     end
     if not NS.OpenOptionsPanel then
         -- settings/OptionsSetup.lua never loaded at all. Say so rather than
         -- failing silently; the stub in that file covers "LibKa0s missing".
+        if NS.State and NS.State.debug then
+            NS.Debug("Open", "settings panel refused: the options layer did not load")
+        end
         return p(self, "Settings not yet registered")
     end
     if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end

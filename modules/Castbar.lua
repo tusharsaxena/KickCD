@@ -139,6 +139,9 @@ local function newInstance(unit)
         castFilter     = nil,
         enabled        = false,
         onUpdateScript = nil,
+        -- The last cast outcome logged ("shown", "suppressed", ...), so a run of
+        -- casts that all end the same way is one line (debug-logging-§9).
+        lastOutcome    = nil,
     }
 end
 
@@ -923,11 +926,33 @@ function Castbar:ApplyState(inst)
         intCfg, unintCfg, intBorderShow, unintBorderShow, inst.unit)
 end
 
+--- The outcome of a cast start, logged only when it differs from the last one
+--- this unit logged (debug-logging-§8's no-op reasons, §9's quiet steady state).
+--- A target casting every few seconds for a whole dungeon is one `shown` line,
+--- not one per cast; the line that matters is the edge -- the first cast the
+--- visibility mode suppressed, or the first one the client gave no duration for.
+--- The mode is read only behind the gate, and only for the suppressed label.
+local function logCastOutcome(inst, outcome)
+    if not (NS.State and NS.State.debug) then return end
+    if outcome == inst.lastOutcome then return end
+    inst.lastOutcome = outcome
+    if outcome == "suppressed" then
+        local profile = NS.db and NS.db.profile
+        NS.Debug("Castbar", "[%s] cast suppressed: visibility %s", inst.unit,
+            tostring(profile and profile.visibility or "always"))
+    elseif outcome == "noduration" then
+        NS.Debug("Castbar", "[%s] cast skipped: the client returned no duration object", inst.unit)
+    else
+        NS.Debug("Castbar", "[%s] cast shown", inst.unit)
+    end
+end
+
 function Castbar:Start(inst, rec)
     if not rec then return self:Stop(inst) end
     if not rec.duration then
         -- No CastingDuration object available — pre-12.0 client, or the API
         -- failed for some reason. We don't try to fake it; just skip.
+        logCastOutcome(inst, "noduration")
         return self:Stop(inst)
     end
     self:EnsureFrame(inst)
@@ -944,9 +969,12 @@ function Castbar:Start(inst, rec)
     self:RenderCast(inst, rec)
 
     if isVisible(inst) then
+        logCastOutcome(inst, "shown")
         inst.frame:Show()
         ApplyVisibilityMask(inst.frame, inst.unit)
         inst.frame:SetScript("OnUpdate", inst.onUpdateScript)
+    else
+        logCastOutcome(inst, "suppressed")
     end
 end
 
@@ -1045,6 +1073,9 @@ function Castbar:EnableUnit(unit)
         or NS.Util.NewUnitCastFilter(self, unit, CASTBAR_CAST_ROUTES)
     inst.castFilter.Arm()
     inst.enabled = true
+    -- The per-unit enable edge (debug-logging-§8, diagnosis): one line, since
+    -- ReconcileUnits calls this only on a want-vs-live mismatch.
+    if NS.State and NS.State.debug then NS.Debug("Castbar", "[%s] unit enabled", unit) end
 
     -- Snap to the unit's current state on enable in case we logged in staring
     -- at a casting mob.
@@ -1059,7 +1090,12 @@ function Castbar:DisableUnit(unit)
     if inst.castFilter then inst.castFilter.Disarm() end
     self:Stop(inst)
     if inst.frame then inst.frame:Hide() end
+    -- Only a live instance going down is an edge; OnDisable walks every unit.
+    if inst.enabled and NS.State and NS.State.debug then
+        NS.Debug("Castbar", "[%s] unit disabled", unit)
+    end
     inst.enabled = false
+    inst.lastOutcome = nil
 end
 
 --- Reconcile every tracked unit's live enable-state against its desired

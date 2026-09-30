@@ -294,7 +294,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `perf-analysis/README.md` | Present | `/kcd perf` exists (`LibKa0s-Perf-1.0`, `core/PerfSetup.lua`), so in-game captures have a store to describe |
-| `debug.md` | Present | Debug surfaces beyond the LibKa0s console: the `/kcd diagnostics` report and its twelve sections (`debug-logging-§14`), and four chat topics (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
+| `debug.md` | Present | The console's tags and its Coverage map (what each flow logs, and how each repeating path stays quiet, `debug-logging-§8`/`§9`); debug surfaces beyond the LibKa0s console: the `/kcd diagnostics` report and its twelve sections (`debug-logging-§14`), and four chat topics (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
 
 ### Verification and record
 

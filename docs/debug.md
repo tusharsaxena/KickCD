@@ -38,6 +38,8 @@ What KickCD supplies, all in `core/DebugLogSetup.lua`:
 - **The `[Init]` line** opens a session when the flag goes on:
   `KickCD v<version>, schema v<n>, profile '<name>'`. When this client refused an event name it adds
   `, N rejected event(s)`; `/kcd debug events` lists them, and so does the report's `events` section.
+  When an optional library did not load (LibCustomGlow-1.0, LibSharedMedia-3.0, LibDataBroker-1.1,
+  LibDBIcon-1.0) it adds `, missing <names>`.
 - **The sink is `NS.Debug(tag, fmt, ...)`**, bound bare to the library's gated `Debug`. A call with
   the flag off does nothing and allocates nothing.
 - **The report's brand and sections.** The descriptor's `brandName` is `Ka0s KickCD`, which both
@@ -51,16 +53,18 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 
 | Tag | Emitted by | What it logs |
 |---|---|---|
-| `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary; the color and font-flag migrations |
+| `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary (with a `missing <lib>` clause for an optional library that did not load); the color and font-flag migrations |
 | `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
 | `Set` | `settings/SchemaSetup.lua`, `core/Database.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy |
 | `Profile` | `core/Database.lua` | Profile switches |
-| `Spells` | `core/Database.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, and a skipped cooldown-manager check |
-| `Cooldowns` | `modules/Cooldowns.lua` | Each watched-list rebuild (watched and skipped counts) and material state changes |
-| `IconGrid` | `modules/IconGrid.lua` | Visibility decisions per unit; duplicate spell IDs skipped |
+| `Spells` | `core/Database.lua`, `core/SpellInput.lua`, `settings/Spells.lua` | Spell-list edits and resets, a skipped cooldown-manager check, the cooldown-manager set each time it is built, and an add the cooldown-manager gate refused |
+| `Cooldowns` | `modules/Cooldowns.lua` | Each watched-list rebuild (watched and skipped counts), a rebuild that watched nothing and why, and material state changes |
+| `IconGrid` | `modules/IconGrid.lua` | Visibility decisions per unit; the per-unit list summary (drawn, not castable, duplicate IDs skipped); a unit enabled or disabled |
 | `Cast` | `modules/IconGrid.lua` | The interruptible cast gate per unit |
+| `Castbar` | `modules/Castbar.lua` | A cast's outcome per unit when it changes (shown, suppressed by the visibility mode, skipped for no duration object); a unit enabled or disabled |
+| `State` | `core/LifecycleSetup.lua` | The addon standing down (with the holds) and standing up |
 | `Combat` | `core/State.lua` | Entering and leaving combat |
-| `Open` | `core/KickCD.lua` | The settings panel opening |
+| `Open` | `core/KickCD.lua` | The settings panel opening, or refused (in combat, or the options layer did not load) |
 | `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
 | `Launcher` | `core/LauncherSetup.lua` (forwarded from the library's launcher) | Launcher registration (or the missing library that skipped it) and the minimap button shown or hidden |
 | `Cfg` | `settings/OptionsSetup.lua` (forwarded from the library's options panel) | The settings panel opening and registering, including an open refused or a register parked in combat |
@@ -68,6 +72,48 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 A new tag is a one-word string at the call site. Add its row here in the same change. The report's
 own tags are listed with its sections below; the report writes them through the ungated append, not
 through `NS.Debug`.
+
+### Coverage
+
+What the console records, by flow, so a pasted log can be read back into what happened
+(`debug-logging-§8`), and how each repeating path stays quiet when nothing changed
+(`debug-logging-§9`). Every line is one gated `NS.Debug` call; its string-building sits behind the
+flag.
+
+| Flow | Tag | Emitted when | Repeating path? |
+|---|---|---|---|
+| Session | `Init` | Logging is switched on: version, schema, profile, rejected events, missing optional libraries | No |
+| Migration | `Init`, `Migrate` | A migration step runs, converts something, or raises | No |
+| Settings | `Set`, `Profile` | Every schema write (debounced per path), a bulk reset or copy, a profile reset, copy or switch | Debounced, one line per settled value |
+| Spell list | `Spells` | An add, remove, move, enable, category change or reset; an add the cooldown-manager gate refused; the gate skipped off the live spec or with no viewer API | No, user-driven |
+| Cooldown Manager | `Spells` | The set is built after a login, talent swap or spec change: its size and how many viewer calls raised | No, memoized |
+| Watched list | `Cooldowns` | A rebuild whose class, spec, watched or skipped IDs differ from the last one logged, or a rebuild that watched nothing (no class/spec, no stored list) | Yes: change-gated on the rebuild's signature |
+| Cooldown state | `Cooldowns` | A poll that found a material change (ready, active, dropped), marked `(gcd)` when the global cooldown explains all of it | Yes: silent on a poll with no material change |
+| Icon list | `IconGrid` | A rebuild whose drawn, not-castable or duplicate IDs differ from the last one this unit logged, or a rebuild with no spec or no stored list | Yes: change-gated per unit |
+| Visibility | `IconGrid` | A unit's grid flips between shown and hidden | Yes: change-gated per unit |
+| Cast gate | `Cast` | A unit's interruptible gate label changes | Yes: change-gated per unit |
+| Cast bar | `Castbar` | A unit's cast outcome changes: shown, suppressed by the visibility mode, skipped for no duration object | Yes: change-gated per unit |
+| Unit edges | `IconGrid`, `Castbar` | A unit is enabled or disabled (reconcile acts only on a mismatch) | No |
+| Stand-down | `State` | The addon stands down (naming the holds: `disabled`, or a perf hold) or stands back up | No |
+| Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
+| Settings panel | `Open`, `Cfg` | The panel opens, registers, or is refused (in combat, or the options layer missing) | No |
+| Events | `Events` | The client refuses an event name, once per name per session | No |
+| Launcher | `Launcher` | The minimap button shown or hidden (its registration line lands at login, before the flag can be on, which is why `[Init]` carries the missing-library clause) | No |
+
+**Deliberately not logged:**
+
+- **Target and focus changes.** Their effect is already a line: the `IconGrid` visibility line, the
+  `Cast` gate and the `Castbar` outcome all change-gate on what the swap did. A line per swap would
+  be one per tab-target in combat.
+- **Each cast start and stop.** The outcome line covers the edge; a target casting every few seconds
+  through a dungeon would otherwise evict the buffer.
+- **The 0.1 s cooldown-text ticker and the cast bar's `OnUpdate`.** They repaint and decide nothing.
+- **`ADDON_RESTRICTION_STATE_CHANGED`.** KickCD does not register it; secret values are handled
+  per read (see [midnight-quirks.md](midnight-quirks.md)).
+- **Held work.** KickCD owns no secure frame and defers nothing to combat's end; the settings
+  panel's parked registration is the library's `Cfg` line.
+- **A refused `/kcd` verb or a bad `/kcd set` value.** LibKa0s-Slash prints the refusal to chat and
+  offers the host no hook to log it; the chat line is the record.
 
 ## `/kcd diagnostics`: the report (`debug-logging-§14`)
 

@@ -339,9 +339,9 @@ local function editorIsActiveSpec()
     if NS.State and NS.State.debug then
         local playerClass  = playerClassFile()
         local playerSpecID = NS.Util.PlayerSpecID()
-        NS.Debug("Spells", ("Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.")
-            :format(tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
-                    tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)))
+        NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.",
+            tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
+            tostring(playerClass), NS.Util.SpecDisplay(playerSpecID))
     end
     return false
 end

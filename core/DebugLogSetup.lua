@@ -158,6 +158,30 @@ local function rejectedClause()
     return (", %d rejected event(s)"):format(n)
 end
 
+-- The optional libraries a feature degrades without, in the order the clause
+-- names them: the icon glows (LibCustomGlow-1.0), the fonts and textures
+-- (LibSharedMedia-3.0) and the minimap button (LibDataBroker-1.1 +
+-- LibDBIcon-1.0). The launcher's own `[Launcher]` line for a missing library
+-- lands at PLAYER_LOGIN, while the flag is still off, so it never renders; this
+-- clause is where a pasted log learns it.
+local OPTIONAL_LIBS = { "LibCustomGlow-1.0", "LibSharedMedia-3.0", "LibDataBroker-1.1", "LibDBIcon-1.0" }
+
+--- The [Init] line's missing-dependencies clause (debug-logging-§8, diagnosis:
+--- a dependency found or missing, once, at enable). Empty when every optional
+--- library loaded, so the common case stays byte-identical; the line landing on
+--- enable IS the once-at-enable the checklist asks for.
+local function missingClause()
+    local missing
+    for _, name in ipairs(OPTIONAL_LIBS) do
+        if not (LibStub and LibStub(name, true)) then
+            missing = missing or {}
+            missing[#missing + 1] = name
+        end
+    end
+    if not missing then return "" end
+    return ", missing " .. table.concat(missing, ", ")
+end
+
 NS.DebugLog = lib:New({
     -- Seeds KickCDDebugWindow / KickCDDebugCopyWindow / KickCDDebugCopyScroll —
     -- the three globals modules/DebugLog.lua spelled out by hand, reproduced
@@ -214,7 +238,7 @@ NS.DebugLog = lib:New({
         local profile = NS.db and NS.db.GetCurrentProfile and NS.db:GetCurrentProfile() or "?"
         return ("KickCD v%s, schema v%s, profile '%s'"):format(
             NS.SafeToString(ver), NS.SafeToString(schema), NS.SafeToString(profile))
-            .. rejectedClause()
+            .. rejectedClause() .. missingClause()
     end,
 
     -- The General page's "Debug console" checkbox mirrors the window's
