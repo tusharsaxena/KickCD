@@ -417,7 +417,7 @@ badge and any count quoted in the docs must agree with it.
 - a record survives a client with no duration API at all
 - isChannel is a real boolean on both record paths
 
-### test_compat_debug.lua (12)
+### test_compat_debug.lua (13)
 
 - DebugInterrupt bails with the unit name when the unit does not exist
 - DebugInterrupt defaults the unit to target
@@ -427,6 +427,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugInterrupt dumps all nine UnitCastingInfo positions, in order
 - DebugInterrupt dumps eight UnitChannelInfo positions — notInterruptible at 7
 - DebugInterrupt renders a secret notInterruptible without touching tostring
+- with LibKa0s absent the interrupt dump still renders secrets as <secret>
 - DebugInterrupt renders a nil position as the literal nil
 - DebugInterrupt skips the casting block entirely when the API is absent
 - DebugInterrupt closes with the addon's own visibility and glow decisions
@@ -1547,7 +1548,7 @@ badge and any count quoted in the docs must agree with it.
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
-| test_compat_debug.lua | 12 |
+| test_compat_debug.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 22 |
@@ -1606,4 +1607,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1292** |
+| **Total** | **1293** |
