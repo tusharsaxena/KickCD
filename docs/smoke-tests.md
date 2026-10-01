@@ -19,7 +19,7 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 14 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge |
+| GRID-1 – 16 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time |
 | CAST-1 – 14 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
@@ -498,6 +498,16 @@ Which checks to run for a partial change:
 - **GRID-14. Grid strips carry no close mark.** `/kcd unlock` → the grid strips and cast bar strips
   have the `?` mark and no X (KickCD does not adopt the strip's close option, owner ruling X-03).
   Result:
+- **GRID-15. Cooldown text off: the icon still dims, tints and brightens on time (KickCD#9).**
+  Annotations → Show cooldown text off. Put Pummel on cooldown → the icon dims and tints for the whole
+  cooldown and brightens when it is castable again, with no countdown drawn. Then, mid-rotation, press
+  the interrupt inside an on-GCD spell's global cooldown → within a moment the icon dims to the
+  cooldown alpha, and the swipe shows the interrupt's cooldown no later than when the GCD's swipe would
+  have ended. Result:
+- **GRID-16. A steady cooldown emits nothing (KickCD#9).** `/kcd debug on`, put a spell on a 30 s+
+  cooldown and stand still → one `[Cooldowns]` line when it starts and one when it ends, none repeating
+  in between. Then `/kcd perf` through a short fight → `iconApply` is close to 0 calls/sec while
+  spells sit on cooldown, and the cost shows under `cdText`. Result:
 
 ## CAST
 
@@ -994,6 +1004,7 @@ off on its own `Result:` line, then remove its row here.
 | GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
 | GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
 | GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
+| GRID-15, GRID-16 | New | KickCD#9: the ticker owns time, the emit only state |
 | CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
 | CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
 | CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |

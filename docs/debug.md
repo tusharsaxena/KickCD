@@ -129,7 +129,7 @@ even when nothing changed. The addon keeps no signature of its own.
   be one per tab-target in combat.
 - **Each cast start and stop.** The outcome line covers the edge; a target casting every few seconds
   through a dungeon would otherwise evict the buffer.
-- **The 0.1 s cooldown-text ticker and the cast bar's `OnUpdate`.** They repaint and decide nothing.
+- **The 0.1 s cooldown ticker and the cast bar's `OnUpdate`.** They repaint and decide nothing.
 - **`ADDON_RESTRICTION_STATE_CHANGED`.** KickCD does not register it; secret values are handled
   per read (see [midnight-quirks.md](midnight-quirks.md)).
 - **Held work.** KickCD owns no secure frame and defers nothing to combat's end; the settings

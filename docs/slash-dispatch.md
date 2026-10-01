@@ -85,7 +85,7 @@ setting changed while the addon was off has to come back as it is now):
   Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
   the login path and the stand-up path cannot drift.
 - **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
-  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
+  canceller), IconGrid's 0.1s cooldown ticker, and the cast bar's `OnUpdate`, this addon's one
   true 60 Hz handler.
 - **`settings/Spells.lua`'s five subscriptions** (two bus messages, three game events) — the
   editor's refreshers — and **`core/SpellInput.lua`'s two**, the Cooldown Manager cache

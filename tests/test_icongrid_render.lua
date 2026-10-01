@@ -191,3 +191,142 @@ test("PlainStateMoved never compares a secret charge value", function()
     })
     IconGrid.PlainStateMoved(st({ charges = mine }), st({ charges = mine }))
 end)
+
+-- ── The cooldown ticker owns time (KickCD#9) ────────────────────────────────
+--
+-- Emit = state changed, ticker = time passed. Cooldowns no longer re-emits for
+-- a fresh handle, so every time-varying visual must be reachable by ticks
+-- alone: the body alpha/tint curves, the GCD-suppression alpha and the text.
+-- `mocks.__flushTimers()` fires exactly one tick (the ticker re-queues itself
+-- onto the NEXT queue), which is what lets these cases step time.
+
+--- A real icon widget on a fresh enabled instance, with Compat's cooldown
+--- readers answering from `world`, which a case edits between ticks.
+local function tickWorld()
+    local ti = T.load(true, true)
+    local TNS = ti.NS
+    local IG = TNS:GetModule("IconGrid")
+    ti.mocks.__flushTimers()
+    local cfg = TNS.db.profile.units.target.icons
+    cfg.readyAlpha, cfg.cooldownAlpha = 1.0, 0.4
+    IG.BuildCurves("target")
+    local icon = IG.CreateIconWidget(ti.mocks.CreateFrame("Frame"))
+    icon.unit, icon.spellID, icon._isPrimary, icon.cfg = "target", 192058, true, cfg
+    icon.UpdateGlow = function() end
+    local world = { active = true, charges = nil, swipes = 0,
+                    handle = ti.mocks.__makeDurationObject(29, 30) }
+    TNS.Compat.GetSpellCooldown = function() return 0, 0, true, 1, world.active end
+    TNS.Compat.GetSpellCooldownDuration = function() return world.handle end
+    TNS.Compat.GetSpellCharges = function() return world.charges end
+    icon.cooldown.SetCooldownFromDurationObject = function() world.swipes = world.swipes + 1 end
+    return ti, icon, cfg, world
+end
+
+local function fullCd(ti, remaining, total)
+    return { spellID = 192058, ready = false, isActive = true,
+             cdObject = ti.mocks.__makeDurationObject(remaining, total) }
+end
+
+test("an icon on a full cooldown is ticked even with the countdown text OFF", function()
+    -- The text toggle used to gate the ticker registration, so with it off the
+    -- curves ran only when an emit arrived — and emits no longer arrive for time.
+    -- red under: registering on the ticker only when cfg.showCooldownText is set
+    local ti, icon, cfg, world = tickWorld()
+    cfg.showCooldownText = false
+    icon:Apply(fullCd(ti, 1.0, 1.0))           -- a GCD-length total: ready alpha
+    assertEqual(icon:GetAlpha(), 1.0, "sanity: a GCD reads as ready")
+    world.handle = ti.mocks.__makeDurationObject(14, 15)
+    ti.mocks.__flushTimers()
+    assertEqual(icon:GetAlpha(), 0.4, "one tick must re-evaluate the alpha curve from a fresh handle")
+    assertFalse(icon.cooldownText:IsShown(), "the countdown stays hidden while its toggle is off")
+end)
+
+test("a tick never re-arms a running swipe", function()
+    -- SWIPE STUTTER: a fresh handle every 0.1s could restart the animation.
+    -- red under: calling SetCooldownFromDurationObject on every tick
+    local ti, icon, _, world = tickWorld()
+    icon:Apply(fullCd(ti, 29, 30))
+    assertEqual(world.swipes, 1, "sanity: the state work armed it once")
+    for _ = 1, 3 do ti.mocks.__flushTimers() end
+    assertEqual(world.swipes, 1, "ticks must leave a running swipe alone")
+end)
+
+test("a tick after the cooldown ends hides the swipe and the text", function()
+    local ti, icon, _, world = tickWorld()
+    icon:Apply(fullCd(ti, 29, 30))
+    assertTrue(icon.cooldown:IsShown(), "sanity: the swipe is up")
+    world.active = false
+    ti.mocks.__flushTimers()
+    assertFalse(icon.cooldown:IsShown(), "the plain isActive flip must hide the swipe")
+    assertFalse(icon.cooldownText:IsShown(), "and the countdown with it")
+end)
+
+test("a recast inside the event lag is re-armed by the ticker, not lost", function()
+    -- The ticker reads the plain isActive before SPELL_UPDATE_COOLDOWN lands.
+    -- If the spell goes straight back on cooldown, Cooldowns sees active ->
+    -- active and emits nothing, so the ticker must bring the swipe back itself.
+    -- red under: unregistering the icon on the isActive=false tick
+    local ti, icon, _, world = tickWorld()
+    icon:Apply(fullCd(ti, 29, 30))
+    world.active = false
+    ti.mocks.__flushTimers()
+    world.active = true
+    world.handle = ti.mocks.__makeDurationObject(15, 15)
+    ti.mocks.__flushTimers()
+    assertTrue(icon.cooldown:IsShown(), "the swipe must come back")
+    assertEqual(world.swipes, 2, "re-armed once, from the fresh handle")
+end)
+
+test("a finished swipe on a still-active spell is re-armed on the next tick", function()
+    -- The GCD -> real-cooldown handoff: an off-GCD interrupt pressed under a
+    -- GCD keeps isActive true and the handle present, so no emit. The swipe
+    -- was armed from the GCD handle and finishes first; the C side says so
+    -- through OnCooldownDone, and the next tick re-arms from a fresh handle.
+    -- red under: not re-arming after OnCooldownDone
+    local ti, icon, _, world = tickWorld()
+    icon:Apply(fullCd(ti, 1.0, 1.2))
+    world.handle = ti.mocks.__makeDurationObject(14, 15)
+    ti.mocks.__flushTimers()
+    assertEqual(world.swipes, 1, "sanity: no re-arm while the GCD swipe still runs")
+    icon.cooldown:_run("OnCooldownDone")
+    ti.mocks.__flushTimers()
+    assertEqual(world.swipes, 2, "the finished swipe must be re-armed from the real cooldown")
+    ti.mocks.__flushTimers()
+    assertEqual(world.swipes, 2, "once, not on every tick after")
+end)
+
+test("a charge-recharge tick never touches the icon body", function()
+    -- Branch 2: the spell IS castable, so the body keeps its ready visuals and
+    -- only the swipe overlay, its suppression alpha and the text are time's.
+    -- red under: painting the body alpha curve on a branch-2 tick
+    local ti, icon, cfg, world = tickWorld()
+    cfg.showCooldownText = true
+    world.active, world.charges = false, 1
+    icon:Apply({ spellID = 192058, ready = true, isActive = false, charges = 1,
+                 chargeCdObject = ti.mocks.__makeDurationObject(9, 10) })
+    icon:SetAlpha(0.123)                       -- a sentinel no tick may overwrite
+    world.handle = ti.mocks.__makeDurationObject(7, 10)
+    ti.mocks.__flushTimers()
+    assertEqual(icon:GetAlpha(), 0.123, "a recharge tick must leave the body alpha alone")
+    assertEqual(icon.cooldownText:GetText(), "7.0", "but must repaint the text from a fresh handle")
+end)
+
+test("the ticker never compares a duration getter in Lua", function()
+    -- Every getter on a DurationObject is secret in combat. A landmine handle
+    -- whose getters return values that error on compare, arithmetic or
+    -- tostring must still pass through a whole tick cleanly.
+    local ti, icon, _, world = tickWorld()
+    local mine = setmetatable({}, {
+        __eq  = function() error("compared a secret duration", 0) end,
+        __lt  = function() error("compared a secret duration", 0) end,
+        __le  = function() error("compared a secret duration", 0) end,
+        __add = function() error("arithmetic on a secret duration", 0) end,
+        __tostring = function() error("tostring on a secret duration", 0) end,
+    })
+    icon:Apply(fullCd(ti, 29, 30))
+    local h = ti.mocks.__makeDurationObject(29, 30)
+    h.GetRemainingDuration = function() return mine end
+    world.handle = h
+    icon.cooldownText.SetFormattedText = function() end   -- the C side accepts a secret
+    ti.mocks.__flushTimers()
+end)

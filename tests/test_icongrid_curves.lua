@@ -212,3 +212,35 @@ test("CurveSignature covers exactly the three curve-shaping fields", function()
             "a curve-shaping field must change the signature")
     end
 end)
+
+-- ── Ticks alone drive the curves (KickCD#9) ─────────────────────────────────
+
+test("the GCD -> real-cooldown handoff dims and tints the icon by ticks alone", function()
+    -- An off-GCD interrupt pressed under a GCD keeps isActive true and the
+    -- handle present, so Cooldowns emits nothing. The icon was painted from the
+    -- GCD handle (ready alpha, white); the ticker's fresh handle is the real
+    -- cooldown, and the curves read its TOTAL, so one tick must dim and tint it.
+    -- red under: the ticker driving only the countdown text
+    local inst = T.load(true, true)
+    local NS, IconGrid = inst.NS, inst.NS:GetModule("IconGrid")
+    inst.mocks.__flushTimers()
+    local cfg = iconsCfg(NS)
+    cfg.readyAlpha, cfg.cooldownAlpha = 1.0, 0.25
+    cfg.cooldownTint, cfg.useClassColorCooldownTint = { r = 0, g = 0, b = 1, a = 1 }, false
+    IconGrid.BuildCurves("target")
+    local icon = IconGrid.CreateIconWidget(inst.mocks.CreateFrame("Frame"))
+    icon.unit, icon.spellID, icon._isPrimary, icon.cfg = "target", 192058, true, cfg
+    icon.UpdateGlow = function() end
+    local handle = inst.mocks.__makeDurationObject(1.0, 1.2)
+    NS.Compat.GetSpellCooldown = function() return 0, 0, true, 1, true end
+    NS.Compat.GetSpellCooldownDuration = function() return handle end
+
+    icon:Apply({ spellID = 192058, ready = false, isActive = true, cdObject = handle })
+    assertEqual(icon:GetAlpha(), 1.0, "sanity: a GCD-length total reads as ready")
+
+    handle = inst.mocks.__makeDurationObject(14, 15)
+    inst.mocks.__flushTimers()
+    assertEqual(icon:GetAlpha(), 0.25, "the tick must dim the body to cooldownAlpha")
+    local r, g, b = icon.icon:GetVertexColor()
+    assertEqual(r, 0); assertEqual(g, 0); assertEqual(b, 1)
+end)

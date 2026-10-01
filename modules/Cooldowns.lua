@@ -145,6 +145,19 @@ local function rechargeHandle(spellID, cur, isActive)
     return nil
 end
 
+--- The recharge handle for `spellID` as of NOW, read fresh from the APIs. The
+--- icon ticker (modules/IconGrid_Ticker.lua) calls this every 0.1s for an icon on
+--- the charge-recharge branch, because KickCD#9 stopped re-emitting a payload
+--- per poll just to carry a fresh handle. Same rule as buildSpellState: the
+--- charge count is only tested against nil, never compared, so a secret count
+--- passes through.
+-- @return DurationObject|nil  nil once the spell has no charges or is on its
+--   spell-level cooldown (the full-cooldown branch owns it then)
+function Cooldowns.RechargeHandle(spellID)
+    local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
+    return rechargeHandle(spellID, NS.Compat.GetSpellCharges(spellID), isActive)
+end
+
 --- The state record for a spell that passed isPollable.
 local function buildSpellState(spellID)
     -- Plain-bool active flag from the legacy API. We deliberately discard
@@ -221,23 +234,16 @@ function Cooldowns:PollSpell(spellID, parentKey)
     return state
 end
 
---- Determine whether two state snapshots differ enough to merit emitting
---- Ka0s_KickCD_SpellState. The IconGrid drives its swipe and countdown text
---- via the cdObject reference once it's handed over, so per-tick re-
---- emission isn't needed — only state transitions matter (ready ↔ on-CD,
---- charges available ↔ none).
---- Does a transition warrant a DEBUG LINE? Deliberately narrower than
---- StateChanged.
+--- Does a transition warrant a DEBUG LINE? StateChanged (below) is this plus
+--- one rule: a secret charge count emits but does not log.
 ---
---- StateChanged returns true whenever the cooldown handle differs, and
---- C_Spell.GetSpellCooldownDuration hands back a FRESH object on every call
---- — so a spell parked on an unchanged 60s cooldown compares unequal on
---- every poll. That re-emit is load-bearing (Icon:Apply re-evaluates the
---- alpha / tint / GCD-suppression curves off the emitted object, and nothing
---- else re-runs them), but logging it produced ~10 identical
---- `[Cooldowns] N/M changed: active=[...]` lines per second for the whole
---- cooldown, drowning the console — the same per-gesture spam debug-logging-§9 forbids
---- and the same reason _logRebuild has its own material-change gate.
+--- C_Spell.GetSpellCooldownDuration hands back a FRESH object on every call,
+--- so a spell parked on an unchanged 60s cooldown would compare unequal on
+--- every poll if the handles were compared by identity. Logging that produced
+--- ~10 identical `[Cooldowns] N/M changed: active=[...]` lines per second for
+--- the whole cooldown, drowning the console — the same per-gesture spam
+--- debug-logging-§9 forbids and the same reason _logRebuild has its own
+--- material-change gate.
 ---
 --- So: key on what actually changed about the spell's STATE, treating the
 --- handles as present/absent rather than comparing identity.
@@ -266,34 +272,31 @@ local function MaterialChange(prev, next_)
     return a ~= b
 end
 
+--- Determine whether two state snapshots differ enough to merit emitting
+--- Ka0s_KickCD_SpellState: emit = state changed, ticker = time passed (KickCD#9).
+---
+--- The time-varying half of an icon (curves, countdown text) is the icon
+--- ticker's: it re-fetches the handle every 0.1s itself. So handle IDENTITY is
+--- not compared here any more — the API mints a fresh object per call, which
+--- made every poll an emit for every spell on cooldown. What is left is
+--- MaterialChange (ready / isActive / handle presence / plain charges) plus
+--- one conservative rule.
+---
+--- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted numbers
+--- for charged spells (Blood Boil, Death Grip, talented Mind Freeze...). Two
+--- secrets cannot be `~=`'d, and skipping the diff suppressed real transitions
+--- for spells whose only changing field is `charges` (a charge recharging while
+--- the spell-level cooldown stays inactive: cdObject stays nil, ready/active
+--- stay unchanged — the Blood Boil 1→2 trap). So when either side is secret,
+--- emit. Icon:Apply renders only the charges badge for such an emit
+--- (FontString:SetFormattedText("%d", c) accepts a secret C-side), so the
+--- redundant emit is cheap. MaterialChange answers the same case the other
+--- way, because a log line per poll would flood the console.
 local function StateChanged(prev, next_)
-    if not prev then return true end
-    if prev.ready          ~= next_.ready          then return true end
-    if prev.isActive       ~= next_.isActive       then return true end
-    if prev.cdObject       ~= next_.cdObject       then return true end
-    if prev.chargeCdObject ~= next_.chargeCdObject then return true end
-    -- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted
-    -- numbers for charged spells (Blood Boil, Death Grip, talented Mind
-    -- Freeze...). We can't `~=` two secrets without erroring. Previously
-    -- we skipped the diff entirely when either side was secret — but
-    -- that suppresses real transitions for spells whose only changing
-    -- field is `charges` (e.g. a charge recharging on a spell whose
-    -- spell-level cooldown stays inactive because at-least-one-charge
-    -- is available; cdObject stays nil, ready/active stay unchanged).
-    -- The 1→2 transition for Blood Boil hit exactly this trap.
-    --
-    -- Solution: when either side is secret, conservatively emit. The
-    -- IconGrid render path uses FontString:SetFormattedText("%d", c)
-    -- which accepts secret args C-side, so a redundant emit with the
-    -- (possibly identical) value is harmless and cheap. The cost is a
-    -- per-event re-emit for charged spells in combat — well within
-    -- budget (a SetFormattedText call per SPELL_UPDATE_*).
+    if MaterialChange(prev, next_) then return true end
     local a, b = prev.charges, next_.charges
-    if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
-    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
-    if aSecret or bSecret then return true end
-    if a ~= b then return true end
+    if a ~= nil and NS.Compat.IsSecret(a) then return true end
+    if b ~= nil and NS.Compat.IsSecret(b) then return true end
     return false
 end
 
@@ -495,8 +498,8 @@ function Cooldowns:Refresh()
                 prev.gcdOnly = false
             end
         else
-            -- Emit unconditionally — the renderer needs the fresh handle to
-            -- re-evaluate its curves. Log only a material change.
+            -- Emit: the plain state moved (or charges are secret). Log only a
+            -- material change.
             -- WHOSE DOING WAS THIS? Carried per spell across polls, because the question cannot be
             -- answered from a snapshot at emit time. A GCD flips a spell active NOW and back to
             -- ready ~1.5s LATER, by which point the GCD has ended -- so reading the live flag when

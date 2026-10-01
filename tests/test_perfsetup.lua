@@ -764,7 +764,7 @@ end)
 test("no bracketed function leaks an exit — every return closes the bracket", function()
     -- The generalization of the PollSpell case above, and the reason it exists:
     -- PollSpell got its four-exit coverage by hand, and two OTHER brackets were
-    -- leaking the whole time. `_tickAllTextIcons` returned unclosed on the
+    -- leaking the whole time. `_tickAllTextIcons` (now `_tickAllCdIcons`) returned unclosed on the
     -- empty-set guard (taken on the last tick of every cooldown burst) and
     -- Castbar's `onUpdate` returned unclosed on the no-duration guard (taken
     -- once per cast, on the frame that tears the handler down). Both are

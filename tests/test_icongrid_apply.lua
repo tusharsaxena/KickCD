@@ -1,15 +1,13 @@
 -- tests/test_icongrid_apply.lua — Icon:Apply state-work vs time-work split
 --
--- C_Spell.GetSpellCooldownDuration mints a fresh handle per call, and in
--- combat every getter on it is secret (see docs/midnight-quirks.md), so
--- Cooldowns:StateChanged has no choice but to re-emit ~10x/sec for a spell
--- parked on an unchanged cooldown. Icon:Apply therefore runs on every one of
--- those.
---
--- Some of that work is genuinely time-varying (the alpha/tint/GCD curves step
--- at GCD_UPPER, the swipe handle, the countdown text) and MUST keep running.
--- The rest depends only on plain state fields that did not move — glow,
--- charges badge, Show calls — and is pure waste. These cases pin the split.
+-- KickCD#9: emit = state changed, ticker = time passed. Cooldowns emits only
+-- when a plain field moves (or charges are secret), and the time-varying half
+-- of an icon (the alpha/tint/GCD curves and the countdown text) is the 0.1s
+-- ticker's (modules/IconGrid_Ticker.lua). So Icon:Apply does the state work —
+-- branch choice, swipe arm, initial paint, glow, ticker registration — only
+-- when the plain state moved or a config re-apply forces it. Otherwise it
+-- refreshes the charges badge alone, because charges can be secret and cannot
+-- be compared. These cases pin the split.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
@@ -63,15 +61,34 @@ test("Icon:Apply skips glow work when no plain state field moved", function()
         "a repeat apply for the same logical state must not redo glow work")
 end)
 
-test("Icon:Apply STILL re-arms the swipe when only the handle changed", function()
-    -- The time-varying half must not be gated: the curves step at GCD_UPPER
-    -- and the swipe needs the fresh handle, so both run on every apply.
+test("Icon:Apply arms the swipe ONLY on state work, not per payload", function()
+    -- Re-arming a running swipe from a fresh handle risks restarting its
+    -- animation, and the C side keeps animating the handle it was given.
+    -- red under: calling SetCooldownFromDurationObject outside the stateWork arm
     local inst = T.load(true, true)
     local icon, counts = makeIcon(inst)
     icon:Apply(onCooldownState(inst))
     icon:Apply(onCooldownState(inst))
-    assertEqual(counts.swipe, 2,
-        "the swipe must be re-armed from the fresh handle on every apply")
+    assertEqual(counts.swipe, 1, "a repeat payload must not re-arm the swipe")
+    icon:Apply(onCooldownState(inst), true)
+    assertEqual(counts.swipe, 2, "a forced (config) re-apply re-arms it")
+end)
+
+test("a steady-state Icon:Apply refreshes the charges badge and nothing else", function()
+    -- The curves and the text are the ticker's now; repainting them from an
+    -- emit would be the per-emit cost KickCD#9 removes.
+    -- red under: running the branch render outside the stateWork arm
+    local inst = T.load(true, true)
+    local icon, counts = makeIcon(inst)
+    icon:Apply(onCooldownState(inst))
+    local alphaCalls, textCalls = 0, 0
+    icon.SetAlphaFromBoolean = function() alphaCalls = alphaCalls + 1 end
+    icon.cooldownText.SetFormattedText = function() textCalls = textCalls + 1 end
+    local badgeBefore = counts.badge
+    icon:Apply(onCooldownState(inst))
+    assertEqual(alphaCalls, 0, "no body-alpha curve evaluation on a steady payload")
+    assertEqual(textCalls, 0, "no countdown repaint on a steady payload")
+    assertTrue(counts.badge > badgeBefore, "the charges badge is still refreshed")
 end)
 
 test("Icon:Apply redoes glow work when `ready` actually flips", function()

@@ -511,10 +511,11 @@ badge and any count quoted in the docs must agree with it.
 - placeBlock TOP/CENTER geometry (block above primary)
 - placeBlock CENTER stacks both on the grid center
 
-### test_icongrid_apply.lua (13)
+### test_icongrid_apply.lua (14)
 
 - Icon:Apply skips glow work when no plain state field moved
-- Icon:Apply STILL re-arms the swipe when only the handle changed
+- Icon:Apply arms the swipe ONLY on state work, not per payload
+- a steady-state Icon:Apply refreshes the charges badge and nothing else
 - Icon:Apply redoes glow work when `ready` actually flips
 - Icon:Apply redoes glow work when the cooldown ends
 - Icon:Apply forced re-apply redoes state work even when nothing moved
@@ -553,7 +554,7 @@ badge and any count quoted in the docs must agree with it.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (21)
+### test_icongrid_render.lua (28)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -576,8 +577,15 @@ badge and any count quoted in the docs must agree with it.
 - PlainStateMoved watches the charge timer's presence independently
 - PlainStateMoved deliberately IGNORES charges, unlike the cooldown gates
 - PlainStateMoved never compares a secret charge value
+- an icon on a full cooldown is ticked even with the countdown text OFF
+- a tick never re-arms a running swipe
+- a tick after the cooldown ends hides the swipe and the text
+- a recast inside the event lag is re-armed by the ticker, not lost
+- a finished swipe on a still-active spell is re-armed on the next tick
+- a charge-recharge tick never touches the icon body
+- the ticker never compares a duration getter in Lua
 
-### test_icongrid_curves.lua (12)
+### test_icongrid_curves.lua (13)
 
 - each unit gets its own curve pair
 - an unlinked focus builds its curve from ITS OWN readyAlpha
@@ -591,6 +599,7 @@ badge and any count quoted in the docs must agree with it.
 - a cooldownTint edit DOES recreate the curve
 - one unit's rebuild does not disturb the other's cached curves
 - CurveSignature covers exactly the three curve-shaping fields
+- the GCD -> real-cooldown handoff dims and tints the icon by ticks alone
 
 ### test_icongrid_curve_link.lua (6)
 
@@ -873,7 +882,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump says (no widget) before the frame has ever been built
 - DebugDump writes every line through a caller's emit sink, and nothing to chat
 
-### test_cooldowns.lua (19)
+### test_cooldowns.lua (22)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
 - Refresh logs one coalesced line only when a spell changed
@@ -884,7 +893,10 @@ badge and any count quoted in the docs must agree with it.
 - Refresh does not cry GCD when the global cooldown is not running (#15)
 - Refresh coalesces multiple simultaneous changes into ONE line
 - Refresh does not log when only the cooldown handle identity changed
-- Refresh STILL emits SPELL_STATE when the cooldown handle changed
+- Refresh does NOT emit SPELL_STATE when only the cooldown handle changed
+- a spell parked on an unchanged cooldown emits ONCE across many polls
+- an isActive flip still emits on the poll it happens
+- a secret charge count still emits on every poll (the conservative rule)
 - Refresh logs a genuine on-cooldown -> ready transition
 - Rebuild summary names the class/spec IDs and every watched + skipped spell
 - Rebuild summary distinguishes an empty watched set from an empty skipped set
@@ -905,7 +917,7 @@ badge and any count quoted in the docs must agree with it.
 - both gates fire when a cooldown handle APPEARS
 - both gates fire when a cooldown handle DISAPPEARS
 - both gates fire when a charge-recharge timer appears
-- StateChanged fires on a NEW handle for the same cooldown
+- StateChanged is SILENT on a new handle for the same cooldown
 - MaterialChange ignores a new handle for the same cooldown
 - MaterialChange ignores a new CHARGE handle too
 - both gates ignore charges that stayed nil
@@ -1498,10 +1510,10 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 22 |
 | test_icongrid_layout.lua | 8 |
-| test_icongrid_apply.lua | 13 |
+| test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 21 |
-| test_icongrid_curves.lua | 12 |
+| test_icongrid_render.lua | 28 |
+| test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
@@ -1515,7 +1527,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
-| test_cooldowns.lua | 19 |
+| test_cooldowns.lua | 22 |
 | test_cooldowns_gates.lua | 23 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
@@ -1549,4 +1561,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1247** |
+| **Total** | **1259** |

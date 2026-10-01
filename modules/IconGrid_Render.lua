@@ -235,10 +235,17 @@ local function CreateIconWidget(parent)
     if cd.SetHideCountdownNumbers then
         cd:SetHideCountdownNumbers(true)
     end
+    -- The swipe is armed only on state work (KickCD#9), so the C side telling us
+    -- it has FINISHED is the one signal that it is now stale while the spell may
+    -- still be on cooldown: the GCD -> real-cooldown handoff, or a recharge
+    -- rolling onto the next charge. A flag, not a re-arm: the ticker consumes it
+    -- on its next pass (Icon:_TickCooldown), where it already holds a fresh
+    -- handle and knows whether anything is still running.
+    cd:SetScript("OnCooldownDone", function() btn._swipeDone = true end)
     btn.cooldown = cd
 
     -- Cooldown text overlay. We drive this FontString ourselves
-    -- (via an OnUpdate started from Apply) instead of relying on
+    -- (from the shared 0.1s ticker, modules/IconGrid_Ticker.lua) instead of relying on
     -- CooldownFrameTemplate's built-in countdown numbers — those only
     -- render while the swipe is animating, which means they never appear
     -- for secret-protected interrupts where SetCooldown is skipped.
@@ -305,10 +312,11 @@ local function CreateIconWidget(parent)
     return Mixin(btn, Icon)
 end
 
--- The cooldown-text methods (Icon:StartCooldownText / StopCooldownText /
--- _RenderCooldownText) and the shared ticker that drives them live in
--- modules/IconGrid_Ticker.lua (#26); renderFullCooldown / renderChargeRecharge /
--- renderIdle below call them on the icon, resolved when the widget is mixed.
+-- The time-varying render (Icon:StartCooldownTick / StopCooldownTick /
+-- _TickCooldown / _PaintCooldown) and the shared ticker that drives it live in
+-- modules/IconGrid_Ticker.lua (#26, KickCD#9); renderFullCooldown /
+-- renderChargeRecharge / renderIdle below call them on the icon, resolved when
+-- the widget is mixed.
 
 -- ---------------------------------------------------------------------------
 -- Ready glow
@@ -567,15 +575,20 @@ end
 -- The GCD-vs-real-CD and ready-vs-charging distinctions all happen
 -- C-side via curve evaluation; Lua never compares the spell's
 -- secret-tainted remaining time directly.
+--
+-- EMIT = STATE CHANGED, TICKER = TIME PASSED (KickCD#9). Apply does the state
+-- work: picks the branch, arms the swipe, paints the first frame and puts the
+-- icon on (or takes it off) the 0.1s ticker in modules/IconGrid_Ticker.lua.
+-- From then on the ticker re-fetches the handle and re-runs the curves and the
+-- text by itself, so Cooldowns emits only when a plain field moves.
 --- Did any PLAIN state field move between two payloads?
 ---
---- Splits Icon:Apply's work in two. The alpha/tint/GCD curves, the swipe
---- handle and the countdown text are TIME-varying and must be re-applied on
---- every payload. Glow, the charges badge and the Show/Hide calls depend only
---- on the fields below — so when none of them moved, redoing that half is
---- pure waste, repeated ~10x/sec for the whole of every cooldown (the emit
---- rate is forced: see docs/midnight-quirks.md, nothing on the duration
---- object is comparable from Lua in combat).
+--- The gate on Icon:Apply's state work. When none of the fields below moved,
+--- the branch, the swipe, the glow and the ticker registration are all exactly
+--- as the last apply left them, and the time-varying visuals are the ticker's.
+--- Since KickCD#9 Cooldowns no longer re-emits for a fresh handle, so a
+--- payload that fails this gate is the conservative secret-charges emit, a
+--- second unit's fan-out, or a seed.
 ---
 --- Charges are deliberately NOT part of this gate. They can be secret, and a
 --- secret cannot be compared — while the badge renders one fine via
@@ -593,57 +606,41 @@ local function plainStateMoved(prev, next_)
     return false
 end
 
---- Branch 1: full spell-level cooldown (real CD or just-GCD). The curves drive
---- the icon-body alpha / tint so a GCD-only window still reads as "ready";
---- a real CD past the GCD threshold dims and tints the icon.
-local function renderFullCooldown(icon, state, curves, stateWork)
-    local alpha = evaluateByTotal(state.cdObject, curves.alpha)
-    -- SetAlphaFromBoolean accepts secret values for its alpha args.
-    -- Passing `true` as the condition selects the second arg
-    -- unconditionally.
-    if icon.SetAlphaFromBoolean then
-        icon:SetAlphaFromBoolean(true, alpha, 0)
-    else
-        icon:SetAlpha(alpha)
-    end
+--- Arm the swipe from `h` and hand the icon to the ticker on `branch`.
+--- The ONLY call to SetCooldownFromDurationObject on the state path: a fresh
+--- handle per tick would risk restarting the swipe animation, and the C side
+--- keeps animating the handle it was given. The ticker re-arms only a swipe
+--- that has already finished (Icon:_TickCooldown).
+local function armCooldown(icon, h, branch)
+    icon.cooldown:SetCooldownFromDurationObject(h)
+    icon.cooldown:Show()
+    icon:StartCooldownTick(h, branch)
+end
 
-    if curves.tint then
-        local color = evaluateByTotal(state.cdObject, curves.tint)
-        if color and color.GetRGB then
-            icon.icon:SetVertexColor(color:GetRGB())
-        end
-    end
-
-    icon.cooldown:SetCooldownFromDurationObject(state.cdObject)
-    if stateWork then icon.cooldown:Show() end
-    icon:StartCooldownText(state.cdObject, true)
-    applyGcdSuppressionAlpha(icon, state.cdObject)
+--- Branch 1: full spell-level cooldown (real CD or just-GCD). The first frame
+--- of body alpha / tint, suppression alpha and text is painted by
+--- StartCooldownTick with the same call a tick makes.
+local function renderFullCooldown(icon, state)
+    armCooldown(icon, state.cdObject, 1)
 end
 
 --- Branch 2: charge recharge ticking; spell is still castable.
 --- Show swipe + countdown text but keep the icon body at ready
 --- visuals (no alpha dim, no tint shift). state.ready stays true
 --- so the glow trigger keeps firing as configured.
-local function renderChargeRecharge(icon, state, cfg, stateWork)
-    if stateWork then
-        icon:SetAlpha(cfg.readyAlpha or 1.0)
-        icon.icon:SetVertexColor(1, 1, 1)
-    end
-    icon.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
-    if stateWork then icon.cooldown:Show() end
-    icon:StartCooldownText(state.chargeCdObject, false)
-    applyGcdSuppressionAlpha(icon, state.chargeCdObject)
+local function renderChargeRecharge(icon, state, cfg)
+    icon:SetAlpha(cfg.readyAlpha or 1.0)
+    icon.icon:SetVertexColor(1, 1, 1)
+    armCooldown(icon, state.chargeCdObject, 2)
 end
 
 --- Branch 3: no active cooldown of any kind. Plain ready visuals.
-local function renderIdle(icon, cfg, stateWork)
-    if stateWork then
-        icon:SetAlpha(cfg.readyAlpha or 1.0)
-        icon.icon:SetVertexColor(1, 1, 1)
-        icon.cooldown:Hide()
-        icon.cooldown:Clear()
-        icon:StopCooldownText()
-    end
+local function renderIdle(icon, cfg)
+    icon:SetAlpha(cfg.readyAlpha or 1.0)
+    icon.icon:SetVertexColor(1, 1, 1)
+    icon.cooldown:Hide()
+    icon.cooldown:Clear()
+    icon:StopCooldownTick()
 end
 
 --- Charges badge. Visibility = "this spell has charges at all",
@@ -662,6 +659,22 @@ local function renderChargesBadge(icon, cfg, state)
         icon.chargesText:Show()
     else
         icon.chargesText:Hide()
+    end
+end
+
+--- The state work: branch choice, swipe arm, first paint, ticker registration.
+local function renderState(icon, state, cfg)
+    -- Resolve THIS icon's unit curves, not a module-level pair — an unlinked
+    -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
+    local curves = curvesFor(icon.unit)
+    -- The branch predicate is "which duration handle is non-nil", which an
+    -- if/elseif states far more clearly than a dispatch table would.
+    if state and state.cdObject and curves.alpha then
+        renderFullCooldown(icon, state)
+    elseif state and state.chargeCdObject then
+        renderChargeRecharge(icon, state, cfg)
+    else
+        renderIdle(icon, cfg)
     end
 end
 
@@ -685,30 +698,17 @@ function Icon:Apply(state, force, parentKey)
     -- without waiting for the next SPELL_STATE message.
     self._lastState = state
 
-    -- Resolve THIS icon's unit curves, not a module-level pair — an unlinked
-    -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
-    local curves = curvesFor(self.unit)
-
-    -- The branch predicate is "which duration handle is non-nil", which an
-    -- if/elseif states far more clearly than a dispatch table would.
-    if state and state.cdObject and curves.alpha then
-        renderFullCooldown(self, state, curves, stateWork)
-    elseif state and state.chargeCdObject then
-        renderChargeRecharge(self, state, cfg, stateWork)
-    else
-        renderIdle(self, cfg, stateWork)
+    if stateWork then
+        renderState(self, state, cfg)
+        -- Ready glow (off when on cooldown, on when castable). Driven from
+        -- state.ready so it picks up the same "is castable" decision the
+        -- rest of the UI uses; primary vs secondary chooses which schema
+        -- entry's type/color applies. The trigger also depends on the UNIT's
+        -- cast state, which changes independently of the spell — but
+        -- IconGrid:OnUnitCastEvent already re-runs UpdateGlow across every icon
+        -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
+        self:UpdateGlow(state)
     end
-
-    -- Ready glow (off when on cooldown, on when castable). Driven from
-    -- state.ready so it picks up the same "is castable" decision the
-    -- rest of the UI uses; primary vs secondary chooses which schema
-    -- entry's type/color applies.
-    -- Gated: this costs four LibCustomGlow stop calls per apply while the
-    -- spell is on cooldown. The trigger also depends on the UNIT's cast
-    -- state, which changes independently of the spell — but
-    -- IconGrid:OnUnitCastEvent already re-runs UpdateGlow across every icon
-    -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
-    if stateWork then self:UpdateGlow(state) end
 
     renderChargesBadge(self, cfg, state)
     if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0, parentKey) end
@@ -747,7 +747,7 @@ end
 
 -- Wire the cooldown text font / size / flags on this icon in response to a
 -- config change. The built-in CooldownFrameTemplate countdown numbers are
--- always suppressed — we render our own FontString via StartCooldownText
+-- always suppressed — we render our own FontString via StartCooldownTick
 -- so the text displays even when the swipe is hidden (interrupts) and
 -- inherits parent alpha for free.
 --- Clamp a hand-editable pixel offset into the range the slider offers.
@@ -856,4 +856,7 @@ IconGrid.SafeUnpackColor = safeUnpackColor
 IconGrid.UnpackGlowColor = unpackGlowColor
 IconGrid.TriggerSatisfied = triggerSatisfied
 IconGrid.PlainStateMoved  = plainStateMoved
+-- The two curve painters the ticker (modules/IconGrid_Ticker.lua) runs per tick.
+IconGrid.EvaluateByTotal         = evaluateByTotal
+IconGrid.ApplyGcdSuppressionAlpha = applyGcdSuppressionAlpha
 IconGrid.FetchBorderTexture = fetchBorderTexture

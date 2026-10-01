@@ -20,12 +20,17 @@ expensive. KickCD has almost no hot path. There is exactly one true 60 Hz handle
 `OnUpdate`, and it only runs *during* a cast — no combat-log parsing, and the per-unit dispatch
 frames are `RegisterUnitEvent`-filtered so a raid does not spray them.
 
-The measurable cost lives in `iconApply`, and its rate is forced by an **API constraint** rather than
-by frame rate. `C_Spell.GetSpellCooldownDuration` mints a **fresh handle per call**
-([midnight-quirks.md](midnight-quirks.md)), so `Cooldowns:StateChanged` compares unequal on every
-poll for any spell parked on cooldown. That is ~10 polls/second per spell on cooldown, multiplied by
-enabled units — roughly 100 applies/second with a seven-spell list mid-fight, each doing three curve
-evaluations and a cooldown write. If a capture shows anything, it shows there.
+Until KickCD#9 the measurable cost lived in `iconApply`, at a rate forced by an **API constraint**
+rather than by frame rate. `C_Spell.GetSpellCooldownDuration` mints a **fresh handle per call**
+([midnight-quirks.md](midnight-quirks.md)), and `Cooldowns:StateChanged` compared handle identity,
+so every poll re-emitted for every spell parked on cooldown: roughly 100 applies/second with a
+seven-spell list mid-fight, each doing three curve evaluations and a cooldown write.
+
+Since KickCD#9 the emit carries only a plain state change, and the 0.1 s ticker
+(`modules/IconGrid_Ticker.lua`) owns time. One `cdText` pass per tick visits every icon on a
+cooldown, re-fetches its handle and re-runs the curves and the countdown text; the swipe is re-armed
+only once it has stopped. `iconApply` should read about 0 calls/sec in steady combat, and `cdText`
+is where a capture shows the cost now.
 
 ## The buckets
 
@@ -40,7 +45,7 @@ expected to know which totals overlap, and a parent must never be summed with it
 | `stateEmit` | `spellPoll` | the poll's `SPELL_STATE` publish, per emitting spell, table constructor included |
 | `spellState` | `stateEmit` | `IconGrid:OnSpellState` — `SendMessage` dispatches inline, so it really does run inside the publish; on the Rebuild path it runs inside `rebuildEmit` instead, see below |
 | `iconApply` | `spellState` | `Icon:Apply`, per icon per unit |
-| `cdText` | — | the 0.1 s cooldown-text ticker pass |
+| `cdText` | — | the 0.1 s cooldown ticker pass: per icon on a cooldown, the handle re-fetch, the body alpha / tint curves, the GCD-suppression alpha and the countdown text (KickCD#9; the name is kept from when it drove only the text, so older captures stay comparable) |
 | `castEvent` | — | `IconGrid:OnUnitCastEvent` |
 | `glowGate` | — | `IconGrid:RefreshAllGlows` — **not** nested: only one of its five call sites runs inside `castEvent` |
 | `visibility` | — | `IconGrid:RefreshVisibility` — deliberately **not** nested, see below |
@@ -82,18 +87,20 @@ generator that trains people to ignore the suite.
 |---|---|---|
 | `spellPoll` | `Cooldowns:Refresh` over the watched set | exactly 3 WoW API calls per watched spell |
 | `spellState` | `IconGrid:OnSpellState`, fanning out to every enabled unit | recorded only |
-| `iconApply` | `Icon:Apply` in steady state — same logical state re-applied, so only the time-varying half runs | recorded only |
+| `iconApply` | `Icon:Apply` in steady state — same logical state re-applied, so the plain-state gate holds and only the charges badge is refreshed | recorded only |
 | `probeOverheadOff` / `probeOverheadOn` | the same `Icon:Apply` path with the brackets dormant, then armed | the **zero-overhead** assertions below |
 | `castStart` | `Castbar:Start` / `Castbar:Stop`, one cast start and its teardown | that both starts install the **same** `OnUpdate` handler object, plus a byte ceiling (288 bytes/pair; measured 208.0) |
+| `cdText` | `Icon:_TickCooldown` for one icon on a full cooldown, the handle held constant (KickCD#9) | exactly 2 WoW API calls per tick (the plain `isActive` read and the handle fetch); the bytes column is mostly the mock's own recording and is not asserted |
 
 The `probeOverheadOff` / `probeOverheadOn` pair is the one `performance-§9` requires by name (it is
 no longer the last row in that table), and it carries three assertions:
 
-- the dormant arm stays under an **absolute byte ceiling** (900 bytes/pass; measured 848.0,
-  re-verified over three runs on 2026-09-08 under `M4-22` and left where it stands). The relation
-  alone is not enough — if a regression adds allocation to `Icon:Apply` itself, both arms rise
-  together and `off <= on` still holds. The 52-byte margin is narrower than one empty table
-  (64 bytes/pass on this path, measured), so the smallest realistic regression trips it. **A rise
+- the dormant arm stays under an **absolute byte ceiling** (32 bytes/pass; measured 0.0 over three
+  runs on 2026-10-01, re-baselined under KickCD#9 from 900 / 848.0, because the steady-state apply
+  no longer paints the curves, the swipe or the text). The relation alone is not enough — if a
+  regression adds allocation to `Icon:Apply` itself, both arms rise together and `off <= on` still
+  holds. The 32-byte margin is narrower than one empty table (64 bytes/pass on this path,
+  measured), so the smallest realistic regression trips it. **A rise
   in that figure IS the finding**; raise the ceiling only with a recorded reason.
 - the dormant arm allocates no more than the armed one, which is what `performance-§2`'s gating
   idiom (one upvalue read, one field read, one boolean test — no call, no allocation) buys.

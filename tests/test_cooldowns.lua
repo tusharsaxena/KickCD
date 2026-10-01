@@ -279,14 +279,74 @@ test("Refresh does not log when only the cooldown handle identity changed", func
         "an unchanged cooldown must not produce a debug line just because the handle is new")
 end)
 
-test("Refresh STILL emits SPELL_STATE when the cooldown handle changed", function()
-    -- Guard on the fix not going too far: Icon:Apply re-evaluates the
-    -- alpha/tint/GCD-suppression curves from the emitted object, so
-    -- suppressing the emit (rather than just the log) would freeze those
-    -- visuals mid-cooldown.
+test("Refresh does NOT emit SPELL_STATE when only the cooldown handle changed", function()
+    -- KickCD#9: emit = state changed, ticker = time passed. The icon ticker
+    -- (modules/IconGrid_Ticker.lua) re-fetches the handle and re-runs the
+    -- curves and the text every 0.1s, so a fresh wrapper for the same
+    -- cooldown is not news to the renderer either.
+    -- red under: restoring the identity compare in Cooldowns' StateChanged
     local inst = T.load(true, true)
     local _, emits = refreshWithChurnedHandle(inst, false, true)
-    assertEqual(emits, 1, "the renderer must still receive the fresh handle")
+    assertEqual(emits, 0, "an unchanged cooldown with a new handle must not emit")
+end)
+
+--- Count SPELL_STATE emits across `passes` Refresh calls, each poll answering
+--- what `poll(pass)` returns for one watched spell that starts out ready.
+local function emitsAcross(inst, passes, poll)
+    local Cooldowns = inst.NS:GetModule("Cooldowns")
+    inst.mocks.__flushTimers()
+    Cooldowns.watched = {
+        [192058] = { spellID = 192058, ready = true, isActive = false,
+                     cdObject = nil, chargeCdObject = nil, charges = nil },
+    }
+    local pass = 0
+    Cooldowns.PollSpell = function(_, id)
+        local s = poll(pass)
+        s.spellID = id
+        return s
+    end
+    local spy = {}
+    inst.mocks.__libs["AceEvent-3.0"]:Embed(spy)
+    local emits = 0
+    spy:RegisterMessage(T.NS.MSG.SPELL_STATE, function() emits = emits + 1 end)
+    for i = 1, passes do
+        pass = i
+        Cooldowns:Refresh()
+    end
+    return emits
+end
+
+test("a spell parked on an unchanged cooldown emits ONCE across many polls", function()
+    -- The first poll is the ready -> on-cooldown transition; every later poll
+    -- carries the same plain state and a brand-new handle, as the live API does.
+    local inst = T.load(true, true)
+    local emits = emitsAcross(inst, 5, function()
+        return { ready = false, isActive = true,
+                 cdObject = inst.mocks.__makeDurationObject(30), charges = nil }
+    end)
+    assertEqual(emits, 1, "one transition, one emit")
+end)
+
+test("an isActive flip still emits on the poll it happens", function()
+    local inst = T.load(true, true)
+    local emits = emitsAcross(inst, 4, function(pass)
+        local active = pass <= 2
+        return { ready = not active, isActive = active,
+                 cdObject = active and inst.mocks.__makeDurationObject(30) or nil }
+    end)
+    assertEqual(emits, 2, "ready -> active on pass 1, active -> ready on pass 3")
+end)
+
+test("a secret charge count still emits on every poll (the conservative rule)", function()
+    -- Secret charges cannot be compared, so the badge is fed on every poll;
+    -- Icon:Apply renders only the badge for such an emit.
+    local inst = T.load(true, true)
+    local SECRET = setmetatable({}, {})
+    inst.mocks.issecretvalue = function(v) return v == SECRET end
+    local emits = emitsAcross(inst, 3, function()
+        return { ready = true, isActive = false, charges = SECRET }
+    end)
+    assertEqual(emits, 3, "every poll with a secret charge count must emit")
 end)
 
 test("Refresh logs a genuine on-cooldown -> ready transition", function()

@@ -164,10 +164,10 @@ files["modules/IconGrid_Visibility.lua"] = { ignore = { "212/self" } }
 files["modules/IconGrid_Handle.lua"]     = { ignore = { "212/self" } }
 files["modules/UnitLabel.lua"]       = { ignore = { "212/self" } }
 
--- `IconGrid:_RegisterTextIcon` / `_UnregisterTextIcon` keep the text-icon registry in
--- modules/IconGrid_Ticker.lua's own upvalue, so neither reads the module. They are still methods
--- because Icon:StartCooldownText / StopCooldownText in the same file have the module in scope and
--- nothing else, and modules/IconGrid.lua calls the unregister half through `self:`.
+-- `IconGrid:_RegisterCdIcon` / `_UnregisterCdIcon` / `_StopCdTicker` keep the ticker's icon set in
+-- modules/IconGrid_Ticker.lua's own upvalue, so none reads the module. They are still methods
+-- because Icon:StartCooldownTick / StopCooldownTick in the same file have the module in scope and
+-- nothing else, and modules/IconGrid.lua calls the unregister and stop halves through `self:`.
 files["modules/IconGrid_Ticker.lua"] = { ignore = { "212/self" } }
 
 -- Three receivers the settings layer does not choose. `SlashLib:New(d)` at settings/Slash.lua:323

@@ -223,11 +223,12 @@ function IconGrid:ReleaseAll(inst)
         btn:ClearAllPoints()
         btn.spellID    = nil
         btn._lastState = nil
-        btn._cdObject  = nil
+        btn._swipeDone = nil
+        btn._cdEnded   = nil
         btn._isPrimary = nil
-        -- Pull the icon out of the shared cooldown-text ticker before
+        -- Pull the icon out of the shared cooldown ticker before
         -- recycling it; the next acquire will re-register if needed.
-        self:_UnregisterTextIcon(btn)
+        self:_UnregisterCdIcon(btn)
         -- Reset cooldown so a stale swipe doesn't reappear on re-acquire.
         if btn.cooldown then btn.cooldown:Clear() end
         if btn.chargesText then btn.chargesText:Hide() end
@@ -659,7 +660,7 @@ end
 --- everything that costs anything — the module's own game events, its bus
 --- subscriptions, the private per-unit cast filters (which AceEvent's
 --- UnregisterAllEvents cannot reach because it only knows its own table), and
---- the shared cooldown-text ticker.
+--- the shared cooldown ticker.
 ---
 --- MESSAGES GO TOO, which they did not while this was a perf-only suspend. A
 --- subscription is a registration and slash-commands-§7 carves nothing out for the addon's own
@@ -673,11 +674,11 @@ function IconGrid:Suspend()
         if inst and inst.castFilter then inst.castFilter.Disarm() end
         if inst and inst.grid then inst.grid:Hide() end
     end
-    -- The 0.1s cooldown-text ticker is module-level and outlives any single
+    -- The 0.1s cooldown ticker is module-level and outlives any single
     -- icon, so nothing in the loop above reaches it. Left armed it would wake up
     -- ten times a second on a stood-down addon, which is the survivor slash-commands-§7 calls
     -- the most expensive of the lot.
-    self:_StopTextTicker()
+    self:_StopCdTicker()
 end
 
 --- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
