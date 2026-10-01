@@ -511,6 +511,18 @@ badge and any count quoted in the docs must agree with it.
 - placeBlock TOP/CENTER geometry (block above primary)
 - placeBlock CENTER stacks both on the grid center
 
+### test_icongrid_layout_pass.lua (9)
+
+- Layout returns at once when the instance has no grid frame
+- Layout re-reads the unit's config and binds every button, primary first
+- Layout resolves every unset config field to its default
+- Layout passes every configured field through
+- an empty list keeps the frame at primary size and announces no primary
+- a laid-out grid takes the block's size and announces the primary with it
+- a truncated grid warns once per class/spec/cap, and re-arms when the cap changes
+- a pass with no truncation clears the dedup key so a later overflow warns again
+- the warning names ?/? when the player's class cannot be read
+
 ### test_icongrid_apply.lua (14)
 
 - Icon:Apply skips glow work when no plain state field moved
@@ -932,6 +944,19 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 - module readers answer what NS.MasterEnabled answers
+
+### test_cooldowns_refresh.lua (10)
+
+- Refresh does nothing while the master enable is off
+- Refresh does nothing before the first Rebuild
+- a vanished spell is dropped, emits the ready sentinel, and is named drop=[]
+- the summary line lists ready, then active, then drop, over the watched count
+- a material change replaces the record and emits every field of the new state
+- a secret-charges emit is not logged, so no line is written for it
+- with the console off no GCD attribution is written onto any record
+- an unchanged record keeps its GCD attribution only while a GCD runs
+- a changed record is stamped with whose doing its transition was
+- Refresh closes its spellPoll bracket once and a stateEmit bracket per emit
 
 ### test_settings_log.lua (20)
 
@@ -1518,6 +1543,7 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 22 |
 | test_icongrid_layout.lua | 8 |
+| test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 28 |
@@ -1537,6 +1563,7 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
 | test_cooldowns_gates.lua | 23 |
+| test_cooldowns_refresh.lua | 10 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 40 |
@@ -1570,4 +1597,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1264** |
+| **Total** | **1283** |
