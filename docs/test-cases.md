@@ -511,10 +511,23 @@ badge and any count quoted in the docs must agree with it.
 - placeBlock TOP/CENTER geometry (block above primary)
 - placeBlock CENTER stacks both on the grid center
 
-### test_icongrid_apply.lua (13)
+### test_icongrid_layout_pass.lua (9)
+
+- Layout returns at once when the instance has no grid frame
+- Layout re-reads the unit's config and binds every button, primary first
+- Layout resolves every unset config field to its default
+- Layout passes every configured field through
+- an empty list keeps the frame at primary size and announces no primary
+- a laid-out grid takes the block's size and announces the primary with it
+- a truncated grid warns once per class/spec/cap, and re-arms when the cap changes
+- a pass with no truncation clears the dedup key so a later overflow warns again
+- the warning names ?/? when the player's class cannot be read
+
+### test_icongrid_apply.lua (14)
 
 - Icon:Apply skips glow work when no plain state field moved
-- Icon:Apply STILL re-arms the swipe when only the handle changed
+- Icon:Apply arms the swipe ONLY on state work, not per payload
+- a steady-state Icon:Apply refreshes the charges badge and nothing else
 - Icon:Apply redoes glow work when `ready` actually flips
 - Icon:Apply redoes glow work when the cooldown ends
 - Icon:Apply forced re-apply redoes state work even when nothing moved
@@ -553,7 +566,7 @@ badge and any count quoted in the docs must agree with it.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (21)
+### test_icongrid_render.lua (28)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -576,8 +589,15 @@ badge and any count quoted in the docs must agree with it.
 - PlainStateMoved watches the charge timer's presence independently
 - PlainStateMoved deliberately IGNORES charges, unlike the cooldown gates
 - PlainStateMoved never compares a secret charge value
+- an icon on a full cooldown is ticked even with the countdown text OFF
+- a tick never re-arms a running swipe
+- a tick after the cooldown ends hides the swipe and the text
+- a recast inside the event lag is re-armed by the ticker, not lost
+- a finished swipe on a still-active spell is re-armed on the next tick
+- a charge-recharge tick never touches the icon body
+- the ticker never compares a duration getter in Lua
 
-### test_icongrid_curves.lua (12)
+### test_icongrid_curves.lua (13)
 
 - each unit gets its own curve pair
 - an unlinked focus builds its curve from ITS OWN readyAlpha
@@ -591,6 +611,7 @@ badge and any count quoted in the docs must agree with it.
 - a cooldownTint edit DOES recreate the curve
 - one unit's rebuild does not disturb the other's cached curves
 - CurveSignature covers exactly the three curve-shaping fields
+- the GCD -> real-cooldown handoff dims and tints the icon by ticks alone
 
 ### test_icongrid_curve_link.lua (6)
 
@@ -873,7 +894,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugDump says (no widget) before the frame has ever been built
 - DebugDump writes every line through a caller's emit sink, and nothing to chat
 
-### test_cooldowns.lua (19)
+### test_cooldowns.lua (22)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
 - Refresh logs one coalesced line only when a spell changed
@@ -884,7 +905,10 @@ badge and any count quoted in the docs must agree with it.
 - Refresh does not cry GCD when the global cooldown is not running (#15)
 - Refresh coalesces multiple simultaneous changes into ONE line
 - Refresh does not log when only the cooldown handle identity changed
-- Refresh STILL emits SPELL_STATE when the cooldown handle changed
+- Refresh does NOT emit SPELL_STATE when only the cooldown handle changed
+- a spell parked on an unchanged cooldown emits ONCE across many polls
+- an isActive flip still emits on the poll it happens
+- a secret charge count still emits on every poll (the conservative rule)
 - Refresh logs a genuine on-cooldown -> ready transition
 - Rebuild summary names the class/spec IDs and every watched + skipped spell
 - Rebuild summary distinguishes an empty watched set from an empty skipped set
@@ -905,7 +929,7 @@ badge and any count quoted in the docs must agree with it.
 - both gates fire when a cooldown handle APPEARS
 - both gates fire when a cooldown handle DISAPPEARS
 - both gates fire when a charge-recharge timer appears
-- StateChanged fires on a NEW handle for the same cooldown
+- StateChanged is SILENT on a new handle for the same cooldown
 - MaterialChange ignores a new handle for the same cooldown
 - MaterialChange ignores a new CHARGE handle too
 - both gates ignore charges that stayed nil
@@ -920,6 +944,19 @@ badge and any count quoted in the docs must agree with it.
 - Cooldowns.MasterEnabled defaults to true when the field is absent
 - Cooldowns.MasterEnabled is false only for an explicit false
 - module readers answer what NS.MasterEnabled answers
+
+### test_cooldowns_refresh.lua (10)
+
+- Refresh does nothing while the master enable is off
+- Refresh does nothing before the first Rebuild
+- a vanished spell is dropped, emits the ready sentinel, and is named drop=[]
+- the summary line lists ready, then active, then drop, over the watched count
+- a material change replaces the record and emits every field of the new state
+- a secret-charges emit is not logged, so no line is written for it
+- with the console off no GCD attribution is written onto any record
+- an unchanged record keeps its GCD attribution only while a GCD runs
+- a changed record is stamped with whose doing its transition was
+- Refresh closes its spellPoll bracket once and a stateEmit bracket per emit
 
 ### test_settings_log.lua (20)
 
@@ -994,6 +1031,14 @@ badge and any count quoted in the docs must agree with it.
 - hiding the page cancels the reorder controller too
 - kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
+### test_settings_spells_grid.lua (5)
+
+- the list renders through H.RenderGrid into the page's scroll with no gap
+- the scroll holds exactly one group per entry, with no spacer between rows
+- the reorder controller is handed the stacked groups, in list order, each ROW_HEIGHT tall
+- a row that cannot be built leaves no blank group behind
+- an empty list renders the guidance label as the grid's one item
+
 ### test_spell_registry.lua (30)
 
 - `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
@@ -1050,7 +1095,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (42)
+### test_options_panel.lua (33)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1078,6 +1123,16 @@ badge and any count quoted in the docs must agree with it.
 - the Profiles page is vetoed from a global reset
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
+- General's bespoke controls key their tooltip body `tooltip`, not `desc`
+- every schema row the panel renders is labeled with prose, not with a key
+- the panel's group and section headings are prose too
+- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- the live wiring patches LSM30_Border through the library, not a private copy
+- General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
+- the panel's schema reader hands back a stored FALSE as false, not nil
+
+### test_options_panel_degraded.lua (9)
+
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
@@ -1086,14 +1141,7 @@ badge and any count quoted in the docs must agree with it.
 - the linked-Focus note opens General on its Units tab
 - a linked Focus page draws the full strip, inert, and only the link note
 - the Focus link's tick and its Copy button share one row
-- General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
-- every schema row the panel renders is labeled with prose, not with a key
-- the panel's group and section headings are prose too
-- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- the live wiring patches LSM30_Border through the library, not a private copy
-- General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
-- the panel's schema reader hands back a stored FALSE as false, not nil
 
 ### test_grid.lua (12)
 
@@ -1189,7 +1237,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (60)
+### test_slash.lua (42)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1225,13 +1273,6 @@ badge and any count quoted in the docs must agree with it.
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 - set stores a multi-word label text whole
-- a disabled feature verb says so on ONE line, and does NOT act
-- every feature verb refuses, and NONE of them reaches the write seam
-- the live verbs still answer while disabled, and none of them refuses
-- `/kcd set` still writes while disabled — repair, not just read
-- `/kcd enable` above all — the switch is never one-way
-- nothing refuses while the addon is ENABLED
-- the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
 - `/kcd spells add Wind Shear` adds 57994 for a Shaman
 - `/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair
@@ -1240,6 +1281,16 @@ badge and any count quoted in the docs must agree with it.
 - `spells add <id> WARLORD 99999` writes nothing
 - `spells add <id> SHAMAN 99999` names the spec it could not resolve
 - bare `/kcd spells` names the default spec by SpecDisplay
+
+### test_slash_degraded.lua (18)
+
+- a disabled feature verb says so on ONE line, and does NOT act
+- every feature verb refuses, and NONE of them reaches the write seam
+- the live verbs still answer while disabled, and none of them refuses
+- `/kcd set` still writes while disabled — repair, not just read
+- `/kcd enable` above all — the switch is never one-way
+- nothing refuses while the addon is ENABLED
+- the refusal line is the LIBRARY's, and this addon does not re-spell it
 - the stub's DisabledLine format is the library constant, byte for byte
 - the stub carries no copy of the library's reserved verbs
 - the host's feature verbs are exactly the verbs the live gate refuses
@@ -1301,7 +1352,7 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (32)
+### test_perfsetup.lua (25)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -1315,15 +1366,8 @@ badge and any count quoted in the docs must agree with it.
 - every spellState note names its real parent
 - the descriptor declares rebuildEmit as a root
 - instrumentation is inert when capture is off
-- the show decisions consult the LATCH as step 0, at the source
-- suspend disarms the per-unit cast filters AceEvent cannot reach
-- enabling a unit while suspended does not re-register its frames mid-capture
-- resume restores from CURRENT state, not from a snapshot
-- the suspended flag is session-only and never persisted
 - `perf` is a host verb in NS.COMMANDS, not registered by the library
 - a bare /kcd perf answers through the addon's tagged printer
-- with LibKa0s absent the probe stub answers every member the addon calls
-- with LibKa0s absent the bracketed paths still run
 - the perf panel resolves real English, never a raw STRINGS key
 - no LibKa0s descriptor is handed the key-returning locale table
 - the panel title is the host's brand plus the library's resolved suffix
@@ -1335,6 +1379,16 @@ badge and any count quoted in the docs must agree with it.
 - every castTick exit is measured, including the teardown frame
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
+
+### test_perfsetup_latch.lua (7)
+
+- the show decisions consult the LATCH as step 0, at the source
+- suspend disarms the per-unit cast filters AceEvent cannot reach
+- enabling a unit while suspended does not re-register its frames mid-capture
+- resume restores from CURRENT state, not from a snapshot
+- the suspended flag is session-only and never persisted
+- with LibKa0s absent the probe stub answers every member the addon calls
+- with LibKa0s absent the bracketed paths still run
 
 ### test_launcher.lua (40)
 
@@ -1452,6 +1506,17 @@ badge and any count quoted in the docs must agree with it.
 - diagnostics contract: both forms run while the addon is disabled
 - diagnostics contract: no other name runs the report
 
+### test_lizard_sighted.lua (8)
+
+- lizard sighted: every hazard lizard loses a function over is neutralized
+- lizard sighted: fields, strings, comments and look-alike names come through unchanged
+- lizard sighted: a method definition is rewritten to its dot form with self
+- lizard sighted: no line is added or removed, CRLF included
+- lizard sighted: countFunctions counts the keyword, not strings, comments or longer names
+- lizard sighted: listedCounts reads the per-file table, once per file
+- lizard sighted: parity names every file whose counts differ, and only those
+- lizard sighted: lizard lists every function of a hazard fixture once it is sanitized
+
 ## Totals
 
 | Suite | Cases |
@@ -1478,10 +1543,11 @@ badge and any count quoted in the docs must agree with it.
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 22 |
 | test_icongrid_layout.lua | 8 |
-| test_icongrid_apply.lua | 13 |
+| test_icongrid_layout_pass.lua | 9 |
+| test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 21 |
-| test_icongrid_curves.lua | 12 |
+| test_icongrid_render.lua | 28 |
+| test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
@@ -1495,14 +1561,17 @@ badge and any count quoted in the docs must agree with it.
 | test_castbar_frame.lua | 43 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
-| test_cooldowns.lua | 19 |
+| test_cooldowns.lua | 22 |
 | test_cooldowns_gates.lua | 23 |
+| test_cooldowns_refresh.lua | 10 |
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 40 |
+| test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 42 |
+| test_options_panel.lua | 33 |
+| test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 13 |
@@ -1511,11 +1580,13 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 60 |
+| test_slash.lua | 42 |
+| test_slash_degraded.lua | 18 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 32 |
+| test_perfsetup.lua | 25 |
+| test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
@@ -1525,4 +1596,5 @@ badge and any count quoted in the docs must agree with it.
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
-| **Total** | **1239** |
+| test_lizard_sighted.lua | 8 |
+| **Total** | **1283** |

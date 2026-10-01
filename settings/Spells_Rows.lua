@@ -271,11 +271,15 @@ end
 -- wrong place (options-ui-§18).
 local ROW_HEIGHT = 28
 
-local function buildRow(AceGUI, list, index)
+--- Build row `index` of `list`, into `into` when given (KickCD#10: the full-width Flow group
+--- H.RenderGrid hands a wide item, which is then the one group the scroll's List layout stacks
+--- and the frame the reorder controller is handed), or into a group of its own otherwise. Nil
+--- when the entry is gone.
+local function buildRow(AceGUI, list, index, into)
     local entry = list[index]
     if not entry then return end
 
-    local row = AceGUI:Create("SimpleGroup")
+    local row = into or AceGUI:Create("SimpleGroup")
     row:SetLayout("Flow")
     row:SetFullWidth(true)
     row:SetHeight(ROW_HEIGHT)

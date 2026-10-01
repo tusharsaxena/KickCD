@@ -11,7 +11,7 @@
 -- the options descriptor, i.e. the same translation written twice.
 --
 -- The migration is real user data: a profile written before this ran holds
--- arrays, so core/Database.lua's ladder converts them on load. That step is what
+-- arrays, so core/Database_Migrations.lua's ladder converts them on load. That step is what
 -- most of this suite is about — the defaults are easy, the saved profiles are
 -- the part that can silently render every color white.
 

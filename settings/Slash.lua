@@ -274,7 +274,7 @@ NS.Slash.RunReset = runReset
 --     built from lib.LIVE_VERBS, which this load has no library to read, and
 --     re-typing the reserved verbs here would be a second library copy;
 --   * exactly one library string carried verbatim, the disabled line's format,
---     pinned byte for byte by tests/test_slash.lua (Kit.assertLibraryConstant);
+--     pinned byte for byte by tests/test_slash_degraded.lua (Kit.assertLibraryConstant);
 --   * no copy of the row formatter, the parser or the key/value shape, so a
 --     degraded help row renders plainly as `cmd  desc`, two spaces, no color
 --     and no em dash (testing-§8's forbidden duplicate);

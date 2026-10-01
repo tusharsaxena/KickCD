@@ -202,7 +202,7 @@ test("DISABLED: nothing is left armed to wake up", function()
     -- every frame still carrying an OnUpdate -- rather than the pending queue, because a repeating
     -- ticker that has just fired is absent from the queue for a moment and is still very much alive.
     --
-    -- The cast bar's OnUpdate and the 0.1s cooldown-text ticker are the two this addon has, and the
+    -- The cast bar's OnUpdate and the 0.1s cooldown ticker are the two this addon has, and the
     -- ticker is the shape slash-commands-§7 calls the most expensive survivor of the lot: it wakes ten times a
     -- second to find nothing to paint.
     --

@@ -10,6 +10,11 @@
 -- exists to avoid). That asymmetry is the whole point of this suite — a
 -- well-meaning "make these consistent" refactor breaks one of the two.
 --
+-- Handle IDENTITY is in neither gate since KickCD#9. The live API mints a
+-- fresh DurationObject per call, so an identity compare fired on every poll;
+-- the icon ticker (modules/IconGrid_Ticker.lua) now re-fetches the handle
+-- itself, so the emit is only needed when the plain state moves.
+--
 -- test_cooldowns.lua drives the same rules end-to-end through Refresh; here
 -- they are pinned directly, so a failure says which gate is wrong.
 local T = _G.KICKCD_TEST
@@ -96,15 +101,17 @@ test("both gates fire when a charge-recharge timer appears", function()
     assertTrue(MaterialChange(prev, next_))
 end)
 
--- ── Where they diverge: handle IDENTITY ─────────────────────────────────────
+-- ── Handle IDENTITY: neither gate (KickCD#9) ───────────────────────────────
 
-test("StateChanged fires on a NEW handle for the same cooldown", function()
-    -- C_Spell.GetSpellCooldownDuration mints a fresh object per call, so this
-    -- fires ~10x/sec. It must: the render path needs the live handle, and
-    -- nothing on the object is comparable from Lua in combat.
+test("StateChanged is SILENT on a new handle for the same cooldown", function()
+    -- C_Spell.GetSpellCooldownDuration mints a fresh object per call, so the
+    -- identity compare StateChanged used before KickCD#9 fired ~10x/sec for
+    -- every spell on cooldown. The icon ticker re-fetches the handle itself,
+    -- so no emit is needed.
+    -- red under: restoring `prev.cdObject ~= next_.cdObject` in StateChanged
     local prev = st({ isActive = true, cdObject = mocks.__makeDurationObject(30) })
     local next_ = st({ isActive = true, cdObject = mocks.__makeDurationObject(29) })
-    assertTrue(StateChanged(prev, next_))
+    assertFalse(StateChanged(prev, next_))
 end)
 
 test("MaterialChange ignores a new handle for the same cooldown", function()
@@ -119,7 +126,8 @@ test("MaterialChange ignores a new CHARGE handle too", function()
     local prev = st({ chargeCdObject = mocks.__makeDurationObject(10) })
     local next_ = st({ chargeCdObject = mocks.__makeDurationObject(9) })
     assertFalse(MaterialChange(prev, next_))
-    assertTrue(StateChanged(prev, next_), "the render path still needs the live handle")
+    -- red under: restoring `prev.chargeCdObject ~= next_.chargeCdObject`
+    assertFalse(StateChanged(prev, next_), "the ticker re-fetches the recharge handle itself")
 end)
 
 -- ── Plain charges ───────────────────────────────────────────────────────────

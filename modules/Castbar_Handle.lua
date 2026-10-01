@@ -1,8 +1,8 @@
 -- modules/Castbar_Handle.lua -- the cast bar's drag strip (peeled from Castbar.lua)
 --
 -- LibKa0s-Widgets-1.0's DragHandle, wearing this addon's strings and callbacks:
--- the library resolution, the strip's label, and the build itself. Castbar.lua
--- keeps everything the strip calls BACK into -- whether a drag is allowed
+-- the library resolution, the strip's label, and the build itself. Castbar_Frame.lua
+-- (peeled from Castbar.lua, #24) keeps everything the strip calls BACK into -- whether a drag is allowed
 -- (`Castbar.DragAllowed`, which the PRIMARY anchor mode refuses) and where the
 -- anchor is written when one stops (`Castbar.SaveAnchor`) -- because both are
 -- also the bar's own drag scripts' answers and neither is about the strip.
@@ -118,6 +118,6 @@ local function buildHandle(inst, frame)
     return handle
 end
 
--- Published rather than local: Castbar.lua's EnsureFrame is the only caller and it
+-- Published rather than local: EnsureFrame (Castbar_Frame.lua) is the only caller and it
 -- reaches this file through the module table, the same way it reaches Castbar_Skin.
 Castbar.BuildHandle = buildHandle

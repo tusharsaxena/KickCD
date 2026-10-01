@@ -1,9 +1,9 @@
 -- modules/IconGrid_Render.lua — per-icon widget rendering (peeled from IconGrid.lua, KCD-05)
 --
 -- The icon-widget prototype (Icon), its factory (CreateIconWidget), the cooldown-
--- swipe / countdown-text / ready-glow rendering, the step-shaped per-unit
--- alpha/tint curves,
--- and the shared cooldown-text ticker — everything that draws a single icon. Core
+-- swipe / ready-glow rendering and the step-shaped per-unit alpha/tint curves —
+-- everything that draws a single icon, apart from the countdown text and its
+-- shared ticker (modules/IconGrid_Ticker.lua, #26). Core
 -- (IconGrid.lua) owns the per-unit instances, pool, layout orchestration,
 -- visibility, and message handlers; it calls IconGrid.CreateIconWidget /
 -- IconGrid.BuildCurves (exposed at the bottom). The one reverse dependency
@@ -39,11 +39,6 @@ local gcdSuppressCurve
 -- Returned by curvesFor when a unit has no curves yet, so every caller can
 -- read `.alpha` / `.tint` unguarded. Shared and never written to.
 local EMPTY_CURVES = {}
-
--- Cooldown-text ticker: the set of icons needing a per-tick FontString refresh and
--- the single shared C_Timer.NewTicker handle.
-local _textIcons  = {}
-local _textTicker
 
 local function safeUnpackColor(c, fr, fg, fb, fa)
     -- Util.Unpack handles nil with sane defaults but we want module-specific
@@ -240,10 +235,17 @@ local function CreateIconWidget(parent)
     if cd.SetHideCountdownNumbers then
         cd:SetHideCountdownNumbers(true)
     end
+    -- The swipe is armed only on state work (KickCD#9), so the C side telling us
+    -- it has FINISHED is the one signal that it is now stale while the spell may
+    -- still be on cooldown: the GCD -> real-cooldown handoff, or a recharge
+    -- rolling onto the next charge. A flag, not a re-arm: the ticker consumes it
+    -- on its next pass (Icon:_TickCooldown), where it already holds a fresh
+    -- handle and knows whether anything is still running.
+    cd:SetScript("OnCooldownDone", function() btn._swipeDone = true end)
     btn.cooldown = cd
 
     -- Cooldown text overlay. We drive this FontString ourselves
-    -- (via an OnUpdate started from Apply) instead of relying on
+    -- (from the shared 0.1s ticker, modules/IconGrid_Ticker.lua) instead of relying on
     -- CooldownFrameTemplate's built-in countdown numbers — those only
     -- render while the swipe is animating, which means they never appear
     -- for secret-protected interrupts where SetCooldown is skipped.
@@ -310,86 +312,11 @@ local function CreateIconWidget(parent)
     return Mixin(btn, Icon)
 end
 
--- Drive the cooldownText FontString from a CooldownDuration object.
---
--- 12.0 secret-value protection means we cannot read :GetRemainingDuration()
--- into a Lua local in combat (the value is itself secret-tainted, and
--- tostring / string.format / `<` / `-` all error). The trick is to pass
--- the secret directly into a Blizzard C method as a function argument —
--- argument passing crosses into C without ever holding the value in a
--- tainted Lua local. FontString:SetFormattedText(fmt, arg) does the
--- formatting C-side, so this works:
---
---     fontString:SetFormattedText("%.1f", cdObj:GetRemainingDuration())
---
--- We can't conditionally choose the format (no comparison on remaining is
--- legal), so we live with a single fixed format ("%.1f").
---
--- A single module-level C_Timer.NewTicker (see _textTicker below) iterates
--- the registered icons every 0.1s and calls _RenderCooldownText on each.
--- Per-icon OnUpdate scripts were the previous implementation but ran a
--- separate frame-driver per visible cooldown — N icons meant N OnUpdate
--- callbacks per tick. The shared ticker collapses the fixed cost to one.
--- For full spell-level cooldowns we additionally re-poll the plain
--- `isActive` bool from Compat.GetSpellCooldown — SPELL_UPDATE_COOLDOWN
--- can lag the actual cooldown end by a few hundred ms, leaving the text
--- stuck at "0.0" until Cooldowns:Refresh re-emits SPELL_STATE. Because
--- isActive is plain (taint-safe), reading it here is free; on the flip
--- we kill the text + clear the swipe locally and let Cooldowns catch up
--- via its own event handler shortly after.
---
--- For the charge-recharge path (cdObject = state.chargeCdObject,
--- isFullCooldown=false), the spell-level isActive stays false the
--- whole time so we skip that early-exit branch — SPELL_UPDATE_CHARGES
--- handles the recharge-end transition with adequate latency.
-function Icon:StartCooldownText(cdObject, isFullCooldown)
-    local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
-    if not cfg.showCooldownText or not cdObject then
-        self:StopCooldownText()
-        return
-    end
-    self._cdObject       = cdObject
-    self._isFullCooldown = isFullCooldown and true or false
-    -- Initial paint. SetFormattedText handles the secret value via its
-    -- C-side argument path; the same pattern is used by the shared
-    -- ticker driver.
-    self.cooldownText:SetFormattedText("%.1f", cdObject:GetRemainingDuration())
-    self.cooldownText:Show()
-    -- Register with the module-level ticker (see IconGrid:_RegisterTextIcon).
-    -- Idempotent — re-registering a widget already in the set is a no-op.
-    IconGrid:_RegisterTextIcon(self)
-end
-
-function Icon:StopCooldownText()
-    IconGrid:_UnregisterTextIcon(self)
-    self._cdObject = nil
-    self.cooldownText:Hide()
-end
-
---- Per-tick render for one icon's cooldown text. Called by the module-
---- level ticker for every registered widget. Mirrors the per-frame work
---- the previous OnUpdate did (full-cooldown plain-bool early-exit +
---- secret-safe SetFormattedText), but the iteration cadence comes from
---- the shared ticker, not a per-icon script.
-function Icon:_RenderCooldownText()
-    local obj = self._cdObject
-    if not obj then
-        self:StopCooldownText()
-        return
-    end
-    if self._isFullCooldown then
-        local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(self.spellID)
-        if not isActive then
-            self:StopCooldownText()
-            if self.cooldown then
-                self.cooldown:Hide()
-                self.cooldown:Clear()
-            end
-            return
-        end
-    end
-    self.cooldownText:SetFormattedText("%.1f", obj:GetRemainingDuration())
-end
+-- The time-varying render (Icon:StartCooldownTick / StopCooldownTick /
+-- _TickCooldown / _PaintCooldown) and the shared ticker that drives it live in
+-- modules/IconGrid_Ticker.lua (#26, KickCD#9); renderFullCooldown /
+-- renderChargeRecharge / renderIdle below call them on the icon, resolved when
+-- the widget is mixed.
 
 -- ---------------------------------------------------------------------------
 -- Ready glow
@@ -648,15 +575,20 @@ end
 -- The GCD-vs-real-CD and ready-vs-charging distinctions all happen
 -- C-side via curve evaluation; Lua never compares the spell's
 -- secret-tainted remaining time directly.
+--
+-- EMIT = STATE CHANGED, TICKER = TIME PASSED (KickCD#9). Apply does the state
+-- work: picks the branch, arms the swipe, paints the first frame and puts the
+-- icon on (or takes it off) the 0.1s ticker in modules/IconGrid_Ticker.lua.
+-- From then on the ticker re-fetches the handle and re-runs the curves and the
+-- text by itself, so Cooldowns emits only when a plain field moves.
 --- Did any PLAIN state field move between two payloads?
 ---
---- Splits Icon:Apply's work in two. The alpha/tint/GCD curves, the swipe
---- handle and the countdown text are TIME-varying and must be re-applied on
---- every payload. Glow, the charges badge and the Show/Hide calls depend only
---- on the fields below — so when none of them moved, redoing that half is
---- pure waste, repeated ~10x/sec for the whole of every cooldown (the emit
---- rate is forced: see docs/midnight-quirks.md, nothing on the duration
---- object is comparable from Lua in combat).
+--- The gate on Icon:Apply's state work. When none of the fields below moved,
+--- the branch, the swipe, the glow and the ticker registration are all exactly
+--- as the last apply left them, and the time-varying visuals are the ticker's.
+--- Since KickCD#9 Cooldowns no longer re-emits for a fresh handle, so a
+--- payload that fails this gate is the conservative secret-charges emit, a
+--- second unit's fan-out, or a seed.
 ---
 --- Charges are deliberately NOT part of this gate. They can be secret, and a
 --- secret cannot be compared — while the badge renders one fine via
@@ -674,57 +606,41 @@ local function plainStateMoved(prev, next_)
     return false
 end
 
---- Branch 1: full spell-level cooldown (real CD or just-GCD). The curves drive
---- the icon-body alpha / tint so a GCD-only window still reads as "ready";
---- a real CD past the GCD threshold dims and tints the icon.
-local function renderFullCooldown(icon, state, curves, stateWork)
-    local alpha = evaluateByTotal(state.cdObject, curves.alpha)
-    -- SetAlphaFromBoolean accepts secret values for its alpha args.
-    -- Passing `true` as the condition selects the second arg
-    -- unconditionally.
-    if icon.SetAlphaFromBoolean then
-        icon:SetAlphaFromBoolean(true, alpha, 0)
-    else
-        icon:SetAlpha(alpha)
-    end
+--- Arm the swipe from `h` and hand the icon to the ticker on `branch`.
+--- The ONLY call to SetCooldownFromDurationObject on the state path: a fresh
+--- handle per tick would risk restarting the swipe animation, and the C side
+--- keeps animating the handle it was given. The ticker re-arms only a swipe
+--- that has already finished (Icon:_TickCooldown).
+local function armCooldown(icon, h, branch)
+    icon.cooldown:SetCooldownFromDurationObject(h)
+    icon.cooldown:Show()
+    icon:StartCooldownTick(h, branch)
+end
 
-    if curves.tint then
-        local color = evaluateByTotal(state.cdObject, curves.tint)
-        if color and color.GetRGB then
-            icon.icon:SetVertexColor(color:GetRGB())
-        end
-    end
-
-    icon.cooldown:SetCooldownFromDurationObject(state.cdObject)
-    if stateWork then icon.cooldown:Show() end
-    icon:StartCooldownText(state.cdObject, true)
-    applyGcdSuppressionAlpha(icon, state.cdObject)
+--- Branch 1: full spell-level cooldown (real CD or just-GCD). The first frame
+--- of body alpha / tint, suppression alpha and text is painted by
+--- StartCooldownTick with the same call a tick makes.
+local function renderFullCooldown(icon, state)
+    armCooldown(icon, state.cdObject, 1)
 end
 
 --- Branch 2: charge recharge ticking; spell is still castable.
 --- Show swipe + countdown text but keep the icon body at ready
 --- visuals (no alpha dim, no tint shift). state.ready stays true
 --- so the glow trigger keeps firing as configured.
-local function renderChargeRecharge(icon, state, cfg, stateWork)
-    if stateWork then
-        icon:SetAlpha(cfg.readyAlpha or 1.0)
-        icon.icon:SetVertexColor(1, 1, 1)
-    end
-    icon.cooldown:SetCooldownFromDurationObject(state.chargeCdObject)
-    if stateWork then icon.cooldown:Show() end
-    icon:StartCooldownText(state.chargeCdObject, false)
-    applyGcdSuppressionAlpha(icon, state.chargeCdObject)
+local function renderChargeRecharge(icon, state, cfg)
+    icon:SetAlpha(cfg.readyAlpha or 1.0)
+    icon.icon:SetVertexColor(1, 1, 1)
+    armCooldown(icon, state.chargeCdObject, 2)
 end
 
 --- Branch 3: no active cooldown of any kind. Plain ready visuals.
-local function renderIdle(icon, cfg, stateWork)
-    if stateWork then
-        icon:SetAlpha(cfg.readyAlpha or 1.0)
-        icon.icon:SetVertexColor(1, 1, 1)
-        icon.cooldown:Hide()
-        icon.cooldown:Clear()
-        icon:StopCooldownText()
-    end
+local function renderIdle(icon, cfg)
+    icon:SetAlpha(cfg.readyAlpha or 1.0)
+    icon.icon:SetVertexColor(1, 1, 1)
+    icon.cooldown:Hide()
+    icon.cooldown:Clear()
+    icon:StopCooldownTick()
 end
 
 --- Charges badge. Visibility = "this spell has charges at all",
@@ -743,6 +659,22 @@ local function renderChargesBadge(icon, cfg, state)
         icon.chargesText:Show()
     else
         icon.chargesText:Hide()
+    end
+end
+
+--- The state work: branch choice, swipe arm, first paint, ticker registration.
+local function renderState(icon, state, cfg)
+    -- Resolve THIS icon's unit curves, not a module-level pair — an unlinked
+    -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
+    local curves = curvesFor(icon.unit)
+    -- The branch predicate is "which duration handle is non-nil", which an
+    -- if/elseif states far more clearly than a dispatch table would.
+    if state and state.cdObject and curves.alpha then
+        renderFullCooldown(icon, state)
+    elseif state and state.chargeCdObject then
+        renderChargeRecharge(icon, state, cfg)
+    else
+        renderIdle(icon, cfg)
     end
 end
 
@@ -766,30 +698,17 @@ function Icon:Apply(state, force, parentKey)
     -- without waiting for the next SPELL_STATE message.
     self._lastState = state
 
-    -- Resolve THIS icon's unit curves, not a module-level pair — an unlinked
-    -- focus has its own readyAlpha / cooldownAlpha / cooldownTint.
-    local curves = curvesFor(self.unit)
-
-    -- The branch predicate is "which duration handle is non-nil", which an
-    -- if/elseif states far more clearly than a dispatch table would.
-    if state and state.cdObject and curves.alpha then
-        renderFullCooldown(self, state, curves, stateWork)
-    elseif state and state.chargeCdObject then
-        renderChargeRecharge(self, state, cfg, stateWork)
-    else
-        renderIdle(self, cfg, stateWork)
+    if stateWork then
+        renderState(self, state, cfg)
+        -- Ready glow (off when on cooldown, on when castable). Driven from
+        -- state.ready so it picks up the same "is castable" decision the
+        -- rest of the UI uses; primary vs secondary chooses which schema
+        -- entry's type/color applies. The trigger also depends on the UNIT's
+        -- cast state, which changes independently of the spell — but
+        -- IconGrid:OnUnitCastEvent already re-runs UpdateGlow across every icon
+        -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
+        self:UpdateGlow(state)
     end
-
-    -- Ready glow (off when on cooldown, on when castable). Driven from
-    -- state.ready so it picks up the same "is castable" decision the
-    -- rest of the UI uses; primary vs secondary chooses which schema
-    -- entry's type/color applies.
-    -- Gated: this costs four LibCustomGlow stop calls per apply while the
-    -- spell is on cooldown. The trigger also depends on the UNIT's cast
-    -- state, which changes independently of the spell — but
-    -- IconGrid:OnUnitCastEvent already re-runs UpdateGlow across every icon
-    -- on each UNIT_SPELLCAST_* transition, so that path stays covered.
-    if stateWork then self:UpdateGlow(state) end
 
     renderChargesBadge(self, cfg, state)
     if __t0 then Perf.Note("iconApply", debugprofilestop() - __t0, parentKey) end
@@ -828,7 +747,7 @@ end
 
 -- Wire the cooldown text font / size / flags on this icon in response to a
 -- config change. The built-in CooldownFrameTemplate countdown numbers are
--- always suppressed — we render our own FontString via StartCooldownText
+-- always suppressed — we render our own FontString via StartCooldownTick
 -- so the text displays even when the swipe is hidden (interrupts) and
 -- inherits parent alpha for free.
 --- Clamp a hand-editable pixel offset into the range the slider offers.
@@ -916,80 +835,6 @@ function Icon:ApplyTextConfig(cfg)
 end
 
 -- ---------------------------------------------------------------------------
--- Shared cooldown-text ticker
--- ---------------------------------------------------------------------------
---
--- One C_Timer.NewTicker(0.1) drives every visible cooldown's countdown
--- text. Icons register on StartCooldownText and deregister on
--- StopCooldownText (or ReleaseAll); the ticker pauses (Cancel + nil)
--- the moment the set goes empty so the addon costs nothing while no
--- cooldowns are active. Re-arms on the next register call.
-
-local function _tickAllTextIcons()
-    local __t0 = Perf.on and debugprofilestop()
-    -- Snapshot the count and short-circuit if empty — guards against
-    -- a race where the ticker fires after the last icon deregistered
-    -- but before we got around to canceling the timer.
-    if next(_textIcons) == nil then
-        if _textTicker and _textTicker.Cancel then
-            _textTicker:Cancel()
-        end
-        _textTicker = nil
-        -- Close the bracket on THIS exit too. The tick that finds the set
-        -- empty still paid for the ticker callback and the `next` probe, and
-        -- it is the exit taken on the very last tick of every cooldown burst
-        -- — so leaving it unclosed under-counts `cdText.calls` by exactly the
-        -- number of bursts and drops their teardown cost on the floor.
-        if __t0 then Perf.Note("cdText", debugprofilestop() - __t0) end
-        return
-    end
-    for icon in pairs(_textIcons) do
-        if icon and icon._RenderCooldownText then
-            icon:_RenderCooldownText()
-        end
-    end
-    if __t0 then Perf.Note("cdText", debugprofilestop() - __t0) end
-end
-
-function IconGrid:_RegisterTextIcon(icon)
-    if not icon then return end
-    -- Idempotent — re-registering an already-active icon is a no-op.
-    if _textIcons[icon] then return end
-    _textIcons[icon] = true
-    -- Lazy-start the ticker on the first registered icon.
-    if not _textTicker and _G.C_Timer and _G.C_Timer.NewTicker then
-        _textTicker = _G.C_Timer.NewTicker(0.1, _tickAllTextIcons)
-    end
-end
-
---- Cancel the shared ticker and forget every icon registered on it.
----
---- The stand-down's half of the pair (slash-commands-§7, modules/IconGrid.lua's
---- Suspend). The lazy self-cancel below is fine while the addon is running — the
---- ticker notices the empty set on its next fire — but "on its next fire" is one
---- more wake-up than a stood-down addon is allowed, and the set does not empty
---- itself on the way down: Suspend hides the grids, it does not release the
---- icons. So this cancels eagerly and clears the set. The ticker re-arms on the
---- first StartCooldownText after the addon stands back up, which is the same
---- lazy start a fresh login takes.
-function IconGrid:_StopTextTicker()
-    if _textTicker and _textTicker.Cancel then _textTicker:Cancel() end
-    _textTicker = nil
-    for icon in pairs(_textIcons) do _textIcons[icon] = nil end
-end
-
-function IconGrid:_UnregisterTextIcon(icon)
-    if not icon then return end
-    if not _textIcons[icon] then return end
-    _textIcons[icon] = nil
-    -- The ticker itself notices the empty set on its next fire and
-    -- self-cancels — see _tickAllTextIcons above. We could cancel
-    -- eagerly here too, but lazy cancel keeps the deregister path
-    -- O(1) and avoids double-free races if Cancel is non-idempotent
-    -- on a given Blizzard build.
-end
-
--- ---------------------------------------------------------------------------
 -- Exposed to modules/IconGrid.lua
 -- ---------------------------------------------------------------------------
 IconGrid.CreateIconWidget = CreateIconWidget
@@ -1011,4 +856,7 @@ IconGrid.SafeUnpackColor = safeUnpackColor
 IconGrid.UnpackGlowColor = unpackGlowColor
 IconGrid.TriggerSatisfied = triggerSatisfied
 IconGrid.PlainStateMoved  = plainStateMoved
+-- The two curve painters the ticker (modules/IconGrid_Ticker.lua) runs per tick.
+IconGrid.EvaluateByTotal         = evaluateByTotal
+IconGrid.ApplyGcdSuppressionAlpha = applyGcdSuppressionAlpha
 IconGrid.FetchBorderTexture = fetchBorderTexture

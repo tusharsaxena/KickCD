@@ -145,6 +145,19 @@ local function rechargeHandle(spellID, cur, isActive)
     return nil
 end
 
+--- The recharge handle for `spellID` as of NOW, read fresh from the APIs. The
+--- icon ticker (modules/IconGrid_Ticker.lua) calls this every 0.1s for an icon on
+--- the charge-recharge branch, because KickCD#9 stopped re-emitting a payload
+--- per poll just to carry a fresh handle. Same rule as buildSpellState: the
+--- charge count is only tested against nil, never compared, so a secret count
+--- passes through.
+-- @return DurationObject|nil  nil once the spell has no charges or is on its
+--   spell-level cooldown (the full-cooldown branch owns it then)
+function Cooldowns.RechargeHandle(spellID)
+    local _, _, _, _, isActive = NS.Compat.GetSpellCooldown(spellID)
+    return rechargeHandle(spellID, NS.Compat.GetSpellCharges(spellID), isActive)
+end
+
 --- The state record for a spell that passed isPollable.
 local function buildSpellState(spellID)
     -- Plain-bool active flag from the legacy API. We deliberately discard
@@ -221,23 +234,16 @@ function Cooldowns:PollSpell(spellID, parentKey)
     return state
 end
 
---- Determine whether two state snapshots differ enough to merit emitting
---- Ka0s_KickCD_SpellState. The IconGrid drives its swipe and countdown text
---- via the cdObject reference once it's handed over, so per-tick re-
---- emission isn't needed — only state transitions matter (ready ↔ on-CD,
---- charges available ↔ none).
---- Does a transition warrant a DEBUG LINE? Deliberately narrower than
---- StateChanged.
+--- Does a transition warrant a DEBUG LINE? StateChanged (below) is this plus
+--- one rule: a secret charge count emits but does not log.
 ---
---- StateChanged returns true whenever the cooldown handle differs, and
---- C_Spell.GetSpellCooldownDuration hands back a FRESH object on every call
---- — so a spell parked on an unchanged 60s cooldown compares unequal on
---- every poll. That re-emit is load-bearing (Icon:Apply re-evaluates the
---- alpha / tint / GCD-suppression curves off the emitted object, and nothing
---- else re-runs them), but logging it produced ~10 identical
---- `[Cooldowns] N/M changed: active=[...]` lines per second for the whole
---- cooldown, drowning the console — the same per-gesture spam debug-logging-§9 forbids
---- and the same reason _logRebuild has its own material-change gate.
+--- C_Spell.GetSpellCooldownDuration hands back a FRESH object on every call,
+--- so a spell parked on an unchanged 60s cooldown would compare unequal on
+--- every poll if the handles were compared by identity. Logging that produced
+--- ~10 identical `[Cooldowns] N/M changed: active=[...]` lines per second for
+--- the whole cooldown, drowning the console — the same per-gesture spam
+--- debug-logging-§9 forbids and the same reason _logRebuild has its own
+--- material-change gate.
 ---
 --- So: key on what actually changed about the spell's STATE, treating the
 --- handles as present/absent rather than comparing identity.
@@ -266,34 +272,31 @@ local function MaterialChange(prev, next_)
     return a ~= b
 end
 
+--- Determine whether two state snapshots differ enough to merit emitting
+--- Ka0s_KickCD_SpellState: emit = state changed, ticker = time passed (KickCD#9).
+---
+--- The time-varying half of an icon (curves, countdown text) is the icon
+--- ticker's: it re-fetches the handle every 0.1s itself. So handle IDENTITY is
+--- not compared here any more — the API mints a fresh object per call, which
+--- made every poll an emit for every spell on cooldown. What is left is
+--- MaterialChange (ready / isActive / handle presence / plain charges) plus
+--- one conservative rule.
+---
+--- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted numbers
+--- for charged spells (Blood Boil, Death Grip, talented Mind Freeze...). Two
+--- secrets cannot be `~=`'d, and skipping the diff suppressed real transitions
+--- for spells whose only changing field is `charges` (a charge recharging while
+--- the spell-level cooldown stays inactive: cdObject stays nil, ready/active
+--- stay unchanged — the Blood Boil 1→2 trap). So when either side is secret,
+--- emit. Icon:Apply renders only the charges badge for such an emit
+--- (FontString:SetFormattedText("%d", c) accepts a secret C-side), so the
+--- redundant emit is cheap. MaterialChange answers the same case the other
+--- way, because a log line per poll would flood the console.
 local function StateChanged(prev, next_)
-    if not prev then return true end
-    if prev.ready          ~= next_.ready          then return true end
-    if prev.isActive       ~= next_.isActive       then return true end
-    if prev.cdObject       ~= next_.cdObject       then return true end
-    if prev.chargeCdObject ~= next_.chargeCdObject then return true end
-    -- Charges in combat: C_Spell.GetSpellCharges returns secret-tainted
-    -- numbers for charged spells (Blood Boil, Death Grip, talented Mind
-    -- Freeze...). We can't `~=` two secrets without erroring. Previously
-    -- we skipped the diff entirely when either side was secret — but
-    -- that suppresses real transitions for spells whose only changing
-    -- field is `charges` (e.g. a charge recharging on a spell whose
-    -- spell-level cooldown stays inactive because at-least-one-charge
-    -- is available; cdObject stays nil, ready/active stay unchanged).
-    -- The 1→2 transition for Blood Boil hit exactly this trap.
-    --
-    -- Solution: when either side is secret, conservatively emit. The
-    -- IconGrid render path uses FontString:SetFormattedText("%d", c)
-    -- which accepts secret args C-side, so a redundant emit with the
-    -- (possibly identical) value is harmless and cheap. The cost is a
-    -- per-event re-emit for charged spells in combat — well within
-    -- budget (a SetFormattedText call per SPELL_UPDATE_*).
+    if MaterialChange(prev, next_) then return true end
     local a, b = prev.charges, next_.charges
-    if a == nil and b == nil then return false end
-    local aSecret = a ~= nil and NS.Compat.IsSecret(a)
-    local bSecret = b ~= nil and NS.Compat.IsSecret(b)
-    if aSecret or bSecret then return true end
-    if a ~= b then return true end
+    if a ~= nil and NS.Compat.IsSecret(a) then return true end
+    if b ~= nil and NS.Compat.IsSecret(b) then return true end
     return false
 end
 
@@ -425,6 +428,125 @@ function Cooldowns:_logRebuildSkip(reason, class, spec)
         reason, tostring(class), tostring(spec))
 end
 
+-- ── Refresh's pieces (split from one CCN-46 function, GI-KC-12) ─────────────
+--
+-- The pass log exists only while the console is listening (debug-logging-§9 zero-alloc): every
+-- helper below takes it as `log` and does its debug half only when it is non-nil. `logged` counts
+-- MATERIAL changes (see MaterialChange), which is a subset of the emits: emits caused only by
+-- secret charges are emitted by StateChanged but not logged by MaterialChange. The printed count
+-- has to match the ids actually listed, so the line reports `logged`.
+
+--- A fresh pass log, or nil while the console is off.
+---
+--- The GCD flag is read ONCE per pass: this is the hot path, and the answer is the same for every
+--- spell in the loop. `allGcd` stays true only while every logged transition is the global
+--- cooldown's doing -- one real transition disqualifies the whole line, because a "(gcd)" marker
+--- on a line carrying a real cooldown reads as "skip me" over the one thing worth reading.
+local function newPassLog()
+    if not (NS.State and NS.State.debug) then return nil end
+    local _, _, _, _, active = NS.Compat.GetSpellCooldown(GCD_SPELL_ID)
+    return { watched = 0, logged = 0, gcdActive = active and true or false, allGcd = true,
+             readyIds = {}, activeIds = {}, dropIds = {} }
+end
+
+--- Publish one SPELL_STATE.
+---
+--- BRACKETED AS `stateEmit`, and the bracket covers the table constructor as well as the publish:
+--- the allocation is per emitting spell and is the half of this statement that a collection can
+--- be charged to. See core/PerfSetup.lua.
+local function emitState(spellID, ready, isActive, cdObject, chargeCdObject, charges)
+    local __e0 = Perf.on and debugprofilestop()
+    NS:SendMessage(NS.MSG.SPELL_STATE, {
+        spellID = spellID, ready = ready, isActive = isActive,
+        cdObject = cdObject, chargeCdObject = chargeCdObject, charges = charges,
+    })
+    if __e0 then Perf.Note("stateEmit", debugprofilestop() - __e0, "spellPoll") end
+end
+
+--- Spell disappeared (pet dismiss, talent untrain, ...). Force the icon back to ready visuals and
+--- stop polling it; the next Rebuild trims it out of the watched list entirely. A vanished spell
+--- is always material.
+local function dropSpell(watched, id, log)
+    watched[id] = nil
+    if log then
+        log.logged = log.logged + 1
+        log.dropIds[#log.dropIds + 1] = id
+    end
+    emitState(id, false, false, nil, nil, nil)
+end
+
+--- NOTHING CHANGED, AND THE ATTRIBUTION STILL CAN. A spell parked on a real cooldown does not
+--- change from poll to poll, so this is the only place its GCD attribution can be withdrawn — and
+--- it must be, or a spell that went down under a GCD and stayed down keeps that attribution for
+--- the whole cooldown and is labeled noise when it finally comes back. Written in place on the
+--- record we already hold: no allocation.
+local function withdrawGcd(prev, log)
+    if prev and prev.isActive and prev.gcdOnly and not log.gcdActive then
+        prev.gcdOnly = false
+    end
+end
+
+--- WHOSE DOING WAS THIS? Carried per spell across polls, because the question cannot be answered
+--- from a snapshot at emit time. A GCD flips a spell active NOW and back to ready ~1.5s LATER, by
+--- which point the GCD has ended -- so reading the live flag when the line is written marks the
+--- opening half of the churn and misses the closing half. The first cut of this did exactly that,
+--- and a live trace showed it inside a minute.
+local function stampGcd(prev, next_, gcdActive)
+    if next_.isActive and not (prev and prev.isActive) then
+        -- It just went down. If a GCD was running, the GCD is the likeliest cause.
+        next_.gcdOnly = gcdActive
+    elseif next_.isActive then
+        -- Still down. If the GCD has since ended and this is STILL active, it is a real
+        -- cooldown wearing a GCD's clothes, and the attribution is withdrawn.
+        next_.gcdOnly = (prev and prev.gcdOnly and gcdActive) and true or false
+    else
+        next_.gcdOnly = false
+    end
+end
+
+--- The debug half of an emit: stamp the attribution, then log only a material change.
+---
+--- A transition to ready is attributed to whatever put the spell DOWN, which is the state we
+--- carried, not the flag that happens to be set now. That is what keeps an off-GCD interrupt
+--- coming off its own cooldown -- the one line in the log worth reading -- from being labeled as
+--- noise because someone else's global cooldown was running at that instant.
+local function noteChange(log, id, prev, next_)
+    stampGcd(prev, next_, log.gcdActive)
+    if not MaterialChange(prev, next_) then return end
+    log.logged = log.logged + 1
+    local byGcd = next_.isActive and next_.gcdOnly or (prev and prev.gcdOnly)
+    if not byGcd then log.allGcd = false end
+    if next_.ready then log.readyIds[#log.readyIds + 1] = id
+    elseif next_.isActive then log.activeIds[#log.activeIds + 1] = id end
+end
+
+--- The pass's one coalesced line, when anything material moved.
+---
+--- MARK WHAT THE GLOBAL COOLDOWN EXPLAINS (#15). Every GCD flips `ready` and `isActive` for every
+--- watched spell, because both are derived from the legacy active flag and that flag covers "real
+--- CD or just GCD" (header, :50). MaterialChange keys on exactly those two fields, so the churn is
+--- material by its own test. In a live 45-second fight that was fifteen lines of GCD against two
+--- real cooldown transitions, with the two in the middle.
+---
+--- MARKED RATHER THAN SUPPRESSED, and that is forced rather than preferred. The C-side curve
+--- evaluation that separates a GCD from a real cooldown cannot hand its answer back into a Lua
+--- `if`, and every duration involved is secret in combat -- the same wall the header documents for
+--- the icon path. A time-based heuristic that hid the churn would also hide a real cooldown
+--- starting, since one always coincides with the other: the 5/5 line where Mind Freeze goes on its
+--- own cooldown IS a GCD line too.
+---
+--- Spell 61304 is the global cooldown and its plain-bool active flag is the one value in reach
+--- that can be branched on at all. The line says which it was; the reader judges.
+local function logPass(log)
+    if log.logged == 0 then return end
+    local parts = {}
+    if #log.readyIds  > 0 then parts[#parts+1] = "ready=["  .. table.concat(log.readyIds, ",")  .. "]" end
+    if #log.activeIds > 0 then parts[#parts+1] = "active=[" .. table.concat(log.activeIds, ",") .. "]" end
+    if #log.dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(log.dropIds, ",")   .. "]" end
+    if log.allGcd then parts[#parts+1] = "(gcd)" end
+    NS.Debug("Cooldowns", "%d/%d changed: %s", log.logged, log.watched, table.concat(parts, " "))
+end
+
 --- Re-poll all watched spells, fire Ka0s_KickCD_SpellState only for those whose
 --- state changed since last poll. When a previously-watched spell becomes
 --- unavailable mid-fight (PollSpell returns nil — pet dismissed, talent
@@ -442,127 +564,25 @@ function Cooldowns:Refresh()
     if not isEnabled() then return end
     if not self.watched then return end
     local __t0 = Perf.on and debugprofilestop()
-
-    local dbg = NS.State and NS.State.debug
-    local readyIds, activeIds, dropIds  -- built only when debug-on (debug-logging-§9 zero-alloc)
-    if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
-    -- `logged` counts MATERIAL changes (see MaterialChange), which is a subset
-    -- of the emits: a fresh cooldown handle for an unchanged cooldown re-emits
-    -- to the renderer but must not reach the log. The printed count has to
-    -- match the ids actually listed, so the line reports `logged`.
-    local watched, logged = 0, 0
-
-    -- Read ONCE per pass, and only when the console is listening: this is the hot path, and the
-    -- answer is the same for every spell in the loop. `allGcd` stays true only while every logged
-    -- transition is the global cooldown's doing -- one real transition disqualifies the whole line,
-    -- because a "(gcd)" marker on a line carrying a real cooldown reads as "skip me" over the one
-    -- thing worth reading.
-    local gcdActive, allGcd = false, true
-    if dbg then
-        local _, _, _, _, active = NS.Compat.GetSpellCooldown(GCD_SPELL_ID)
-        gcdActive = active and true or false
-    end
+    local log = newPassLog()
 
     for id, prev in pairs(self.watched) do
-        watched = watched + 1
+        if log then log.watched = log.watched + 1 end
         local next_ = self:PollSpell(id, "spellPoll")
         if next_ == nil then
-            -- Spell disappeared (pet dismiss, talent untrain, ...). Force
-            -- the icon back to ready visuals and stop polling it; the next
-            -- Rebuild trims it out of the watched list entirely.
-            self.watched[id] = nil
-            -- A vanished spell is always material.
-            logged = logged + 1
-            if dbg then dropIds[#dropIds + 1] = id end
-            -- BRACKETED AS `stateEmit`, and the bracket covers the table
-            -- constructor as well as the publish: the allocation is per
-            -- emitting spell and is the half of this statement that a
-            -- collection can be charged to. See core/PerfSetup.lua.
-            local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage(NS.MSG.SPELL_STATE, {
-                spellID = id, ready = false, isActive = false,
-                cdObject = nil, chargeCdObject = nil, charges = nil,
-            })
-            if __e0 then Perf.Note("stateEmit", debugprofilestop() - __e0, "spellPoll") end
+            dropSpell(self.watched, id, log)
         elseif not StateChanged(prev, next_) then
-            -- NOTHING CHANGED, AND THE ATTRIBUTION STILL CAN. A spell parked on a real cooldown
-            -- does not change from poll to poll, so this is the only place its GCD attribution can
-            -- be withdrawn — and it must be, or a spell that went down under a GCD and stayed down
-            -- keeps that attribution for the whole cooldown and is labeled noise when it finally
-            -- comes back. Written in place on the record we already hold: no allocation, and the
-            -- branch does nothing at all when the console is not listening.
-            if dbg and prev and prev.isActive and prev.gcdOnly and not gcdActive then
-                prev.gcdOnly = false
-            end
+            if log then withdrawGcd(prev, log) end
         else
-            -- Emit unconditionally — the renderer needs the fresh handle to
-            -- re-evaluate its curves. Log only a material change.
-            -- WHOSE DOING WAS THIS? Carried per spell across polls, because the question cannot be
-            -- answered from a snapshot at emit time. A GCD flips a spell active NOW and back to
-            -- ready ~1.5s LATER, by which point the GCD has ended -- so reading the live flag when
-            -- the line is written marks the opening half of the churn and misses the closing half.
-            -- The first cut of this did exactly that, and a live trace showed it inside a minute.
-            if dbg then
-                if next_.isActive and not (prev and prev.isActive) then
-                    -- It just went down. If a GCD was running, the GCD is the likeliest cause.
-                    next_.gcdOnly = gcdActive
-                elseif next_.isActive then
-                    -- Still down. If the GCD has since ended and this is STILL active, it is a real
-                    -- cooldown wearing a GCD's clothes, and the attribution is withdrawn.
-                    next_.gcdOnly = (prev and prev.gcdOnly and gcdActive) and true or false
-                else
-                    next_.gcdOnly = false
-                end
-            end
-
-            if MaterialChange(prev, next_) then
-                logged = logged + 1
-                if dbg then
-                    -- A transition to ready is attributed to whatever put the spell DOWN, which is
-                    -- the state we carried, not the flag that happens to be set now. That is what
-                    -- keeps an off-GCD interrupt coming off its own cooldown -- the one line in the
-                    -- log worth reading -- from being labeled as noise because someone else's
-                    -- global cooldown was running at that instant.
-                    local byGcd = next_.isActive and next_.gcdOnly or (prev and prev.gcdOnly)
-                    if not byGcd then allGcd = false end
-                    if next_.ready then readyIds[#readyIds + 1] = id
-                    elseif next_.isActive then activeIds[#activeIds + 1] = id end
-                end
-            end
+            -- Emit: the plain state moved (or charges are secret).
+            if log then noteChange(log, id, prev, next_) end
             self.watched[id] = next_
-            local __e0 = Perf.on and debugprofilestop()
-            NS:SendMessage(NS.MSG.SPELL_STATE, {
-                spellID = next_.spellID, ready = next_.ready, isActive = next_.isActive,
-                cdObject = next_.cdObject, chargeCdObject = next_.chargeCdObject,
-                charges = next_.charges,
-            })
-            if __e0 then Perf.Note("stateEmit", debugprofilestop() - __e0, "spellPoll") end
+            emitState(next_.spellID, next_.ready, next_.isActive,
+                      next_.cdObject, next_.chargeCdObject, next_.charges)
         end
     end
 
-    if dbg and logged > 0 then
-        local parts = {}
-        if #readyIds  > 0 then parts[#parts+1] = "ready=["  .. table.concat(readyIds, ",")  .. "]" end
-        if #activeIds > 0 then parts[#parts+1] = "active=[" .. table.concat(activeIds, ",") .. "]" end
-        if #dropIds   > 0 then parts[#parts+1] = "drop=["   .. table.concat(dropIds, ",")   .. "]" end
-        -- MARK WHAT THE GLOBAL COOLDOWN EXPLAINS (#15). Every GCD flips `ready` and `isActive` for
-        -- every watched spell, because both are derived from the legacy active flag and that flag
-        -- covers "real CD or just GCD" (header, :50). MaterialChange keys on exactly those two
-        -- fields, so the churn is material by its own test. In a live 45-second fight that was
-        -- fifteen lines of GCD against two real cooldown transitions, with the two in the middle.
-        --
-        -- MARKED RATHER THAN SUPPRESSED, and that is forced rather than preferred. The C-side
-        -- curve evaluation that separates a GCD from a real cooldown cannot hand its answer back
-        -- into a Lua `if`, and every duration involved is secret in combat -- the same wall the
-        -- header documents for the icon path. A time-based heuristic that hid the churn would also
-        -- hide a real cooldown starting, since one always coincides with the other: the 5/5 line
-        -- where Mind Freeze goes on its own cooldown IS a GCD line too.
-        --
-        -- Spell 61304 is the global cooldown and its plain-bool active flag is the one value in
-        -- reach that can be branched on at all. The line says which it was; the reader judges.
-        if allGcd then parts[#parts+1] = "(gcd)" end
-        NS.Debug("Cooldowns", "%d/%d changed: %s", logged, watched, table.concat(parts, " "))
-    end
+    if log then logPass(log) end
     if __t0 then Perf.Note("spellPoll", debugprofilestop() - __t0) end
 end
 

@@ -96,7 +96,7 @@ local ICONS_DEFAULT = {
         chargesOffsetY   = 2,
         -- Hover-tooltip on individual icons. The grid swallows mouse for
         -- drag while unlocked, so tooltips only fire while locked AND
-        -- this flag is true (see modules/IconGrid.lua:ApplyLock).
+        -- this flag is true (see modules/IconGrid_Handle.lua:ApplyLock).
         showTooltip      = false,
         -- Secondary-icon block. `rows × cols` capacity, geometric:
         --   * `rows` = vertical extent (number of horizontal lines, up/down).

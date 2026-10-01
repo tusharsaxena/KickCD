@@ -20,14 +20,20 @@ Cooldowns:Refresh ──► PollSpell(spellID) ──► Compat.GetSpellCooldown
         │                                  (Get…Duration on either object is secret in combat)
         ▼
 StateChanged(prev, next) ── true ──► SendMessage("Ka0s_KickCD_SpellState", payload)
-                                                          │
+  (plain state moved, or charges secret)                  │
                                                           ▼
                                           IconGrid:OnSpellState ──► btn:Apply(state)
-                                                                          │
+                                                                          │  state work only
                                                                           ▼
-                                          alphaCurve / tintCurve evaluated C-side → SetAlphaFromBoolean / SetVertexColor
-                                          cdObject → SetCooldownFromDurationObject (swipe)
-                                          cdObject:GetRemainingDuration → SetFormattedText (countdown)
+                                          cdObject → SetCooldownFromDurationObject (swipe, armed once)
+                                          first paint + IconGrid:_RegisterCdIcon(btn, branch)
+
+C_Timer.NewTicker(0.1) ──► Icon:_TickCooldown, per registered icon      (modules/IconGrid_Ticker.lua)
+                              Compat.GetSpellCooldown isActive (plain) → ended? hide swipe + text
+                              fresh handle (GetSpellCooldownDuration / Cooldowns.RechargeHandle)
+                              alphaCurve / tintCurve evaluated C-side → SetAlphaFromBoolean / SetVertexColor
+                              handle:GetRemainingDuration → SetFormattedText (countdown)
+                              swipe stopped while still on cooldown → re-arm once
 ```
 
 `SPELL_UPDATE_COOLDOWN` / `_USABLE` are **global and chatty** — they don't name the changed spell and fire many times per frame in combat, and each fire would otherwise re-poll every watched spell. The three events register to `Cooldowns:OnCooldownEvent`, which forwards into a `Util.Throttle(0)` coalescer built in `OnEnable`: a same-frame burst schedules a single `C_Timer.After(0, …)` that runs one `Refresh` on the next frame. `Refresh` re-polls the whole watched table fresh, so the throttle's trailing-args behavior is irrelevant. `Rebuild` and its triggers (`PLAYER_ENTERING_WORLD`, `SPELLS_CHANGED`, …) stay synchronous — only the `SPELL_UPDATE_*` path is coalesced.
@@ -38,14 +44,17 @@ A `Cooldowns:Refresh` whose `PollSpell(id)` returns `nil` for a previously-watch
 
 `Cooldowns` is unit-agnostic — it polls the player's OWN spellbook, not a per-unit state — so a single `Ka0s_KickCD_SpellState` broadcast feeds every enabled unit's `IconGrid` instance identically (`instances[unit]:OnSpellState`, unit by unit).
 
-### Emit rate: why SPELL_STATE fires ~10x/sec per spell on cooldown
+### Emit rate: emit = state changed, ticker = time passed
 
-`StateChanged` compares the cooldown handle, and `C_Spell.GetSpellCooldownDuration` mints a **fresh object on every call** — so any spell sitting on an unchanged cooldown compares unequal on every poll. This is not a defect to tidy up: in combat every getter on the duration object is secret-tainted (including the booleans, which therefore cannot be branched on), so the identity compare is the *only* change signal an addon has. It over-fires but never under-fires. See [midnight-quirks.md](midnight-quirks.md).
+`C_Spell.GetSpellCooldownDuration` mints a **fresh object on every call**, and in combat every getter on it is secret-tainted (including the booleans, which therefore cannot be branched on), so nothing in Lua can tell "the same cooldown" from "a new one". Until KickCD#9, `StateChanged` compared the handle's identity, which made every poll an emit for every spell on cooldown (~10x/sec per spell), because `Icon:Apply` was the only thing that re-ran the curves and it needed the fresh handle. See [midnight-quirks.md](midnight-quirks.md).
 
-Two consequences shaped the downstream code:
+KickCD#9 stopped needing the comparison instead of looking for a better one:
 
-- **Logging** is gated on `MaterialChange` (plain fields + handle presence, ignoring identity), so the debug console shows one line per real transition rather than ten per second.
-- **Rendering** is split in `Icon:Apply`: the alpha/tint/GCD curve evaluations, the swipe re-arm and the countdown text are time-varying and must run on every payload; glow, the charges badge and the Show/Hide calls are gated behind `plainStateMoved`. Anything added to `Icon:Apply` has to land on the correct side of that split — the time-varying half runs at ~10 Hz.
+- **Emitting** is gated on the plain state: `StateChanged` is `MaterialChange` (`ready` / `isActive` / handle **presence** / plain charges) plus a conservative emit while a charge count is secret, so the badge stays live in combat.
+- **Time** is the ticker's. `modules/IconGrid_Ticker.lua` re-fetches each registered icon's handle every 0.1 s and re-runs the body alpha / tint curves, the GCD-suppression alpha and the countdown text. Registration happens for any icon on a cooldown branch, whatever `showCooldownText` says.
+- **The swipe** is armed by `Icon:Apply`'s state work only, never per tick (a fresh handle every 0.1 s risks restarting the animation). It is re-armed only once it has stopped while the spell is still on cooldown: the Cooldown frame's `OnCooldownDone` (the GCD → real-cooldown handoff, the next charge's recharge) or the ticker's own isActive=false hide followed by a recast inside `SPELL_UPDATE_COOLDOWN`'s lag.
+- **Logging** stays on `MaterialChange` alone, so the debug console shows one line per real transition.
+- **`Icon:Apply`** does its state work (branch, swipe arm, first paint, ticker registration, glow) only when `plainStateMoved` says a plain field moved or a config re-apply forces it; otherwise it refreshes the charges badge alone. Anything time-varying added to an icon belongs in the ticker's `Icon:_PaintCooldown`, not in `Icon:Apply`.
 
 ## Settings input → bus
 

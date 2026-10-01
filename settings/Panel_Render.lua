@@ -172,7 +172,7 @@ end
 --- them, and the notice is a plain TextRow, not the LinkRow below. The strip is
 --- not made inert by the library either, and `chrome(ctx)` could reach its
 --- buttons only through the private `ctx.__tabLayout`. Pinned by
---- tests/test_options_panel.lua ("a linked Focus page draws the full strip,
+--- tests/test_options_panel_degraded.lua ("a linked Focus page draws the full strip,
 --- inert, and only the link note").
 --- Make a drawn strip inert: every button disabled, every one of its textures
 --- desaturated.

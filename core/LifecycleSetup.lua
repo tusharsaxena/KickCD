@@ -211,7 +211,7 @@ else
 end
 
 --- Is the addon stood down — for ANY reason? The first rung of every show
---- decision in the addon (modules/IconGrid.lua's shouldBeVisible,
+--- decision in the addon (modules/IconGrid_Visibility.lua's shouldBeVisible,
 --- modules/Castbar.lua's isVisible) and the guard on both ReconcileUnits.
 ---
 --- Asked of the LATCH rather than of the stored setting, so the one question

@@ -10,12 +10,13 @@
 -- Timings are printed for orientation ONLY. Read them as ratios between scenarios inside one run,
 -- never as absolute numbers to compare across machines.
 --
--- Why these scenarios: KickCD's cost is not driven by frame rate, it is driven by
--- C_Spell.GetSpellCooldownDuration minting a FRESH handle on every call (docs/midnight-quirks.md).
--- Cooldowns:StateChanged therefore cannot conclude "nothing moved" for a spell parked on an
--- unchanged cooldown, so the whole spellPoll -> spellState -> iconApply chain re-runs ~10x/second
--- per watched spell per enabled unit. That chain is the addon, so it is what is measured here — the
--- same four buckets core/PerfSetup.lua declares for the in-game probe.
+-- Why these scenarios: KickCD's cost is not driven by frame rate. Until KickCD#9 it was driven by
+-- C_Spell.GetSpellCooldownDuration minting a FRESH handle on every call (docs/midnight-quirks.md):
+-- Cooldowns:StateChanged compared handle identity, so the whole spellPoll -> spellState ->
+-- iconApply chain re-ran ~10x/second per watched spell per enabled unit. Since KickCD#9 the emit
+-- carries only a plain state change and the 0.1s ticker owns time, so the steady state is
+-- spellPoll (still event-rate) plus one ticker pass (cdText) per icon on a cooldown. Those are the
+-- buckets core/PerfSetup.lua declares for the in-game probe, and what is measured here.
 --
 -- Output is the shared record schema, encoded by the SAME NS.Perf.EncodeJSON the in-game probe
 -- uses, so an offline record and an in-game record are guaranteed to be the same shape.
@@ -177,9 +178,11 @@ measure("spellState", ITERS, function()
     IconGrid:OnSpellState(nil, statePayload)
 end)
 
--- 3. iconApply — the innermost bucket, run once per icon per unit per poll. This is the steady
---    state: the same logical state re-applied, so the plain-state gate holds and only the
---    time-varying half (curves, swipe handle, countdown text) runs.
+-- 3. iconApply — the innermost bucket, run once per icon per unit per emit. This is the steady
+--    state: the same logical state re-applied, so the plain-state gate holds and only the charges
+--    badge is refreshed (KickCD#9 moved the curves and the text onto the ticker, scenario 6). Since
+--    Cooldowns no longer emits for a fresh handle, the live path reaches this only for the
+--    conservative secret-charges emit and a second unit's fan-out.
 local iconApply = measure("iconApply", ITERS, function()
     icon:Apply(statePayload)
 end)
@@ -200,23 +203,22 @@ NS.Perf.on = false
 -- Icon:Apply itself, BOTH arms rise together and `off <= on + 1` still holds. The dormant arm
 -- therefore also carries an ABSOLUTE ceiling, set just above the measured figure. Raise it only
 -- with a recorded reason — a rise IS the finding.
--- RE-VERIFIED 2026-09-08 under M4-22, three consecutive runs, and left exactly where it stands.
--- The item re-baselines "the ceilings that bound nothing"; this is not one of them.
+-- RE-BASELINED 2026-10-01 under KickCD#9 (GI-KC-10), three consecutive runs. The steady-state
+-- apply no longer paints the curves, the swipe or the text, so the old 900-byte ceiling (measured
+-- 848.0 on 2026-09-08) stopped bounding anything.
 --
---   measured   848.0 bytes/iter with the brackets dormant, identical to the tenth in all three
---              runs and identical to the plain `iconApply` figure, which is the point — the probe
---              contributes none of it. Unmoved by this commit's new scenario, which is worth
---              knowing: a figure taken this way reports what the collector has NOT reclaimed by
---              the end of the loop, so it can move with unrelated edits to this file. This one
---              did not.
---   ceiling    900, i.e. 52 bytes of headroom, 6.1%.
---   margin     Measured rather than asserted: one empty table added to this scenario's body moves
---              the figure 848.0 -> 912.0, so a table costs 64 bytes/pass under this interpreter
---              and the 52-byte margin admits NONE of them. The smallest realistic regression on
---              this path trips this line, which is the whole of what it is for.
+--   measured   0.0 bytes/iter with the brackets dormant, in all three runs, and identical to the
+--              plain `iconApply` figure, which is the point — the probe contributes none of it. A
+--              figure taken this way reports what the collector has NOT reclaimed by the end of
+--              the loop, so it can move with unrelated edits to this file.
+--   ceiling    32 bytes.
+--   margin     A table costs 64 bytes/pass under this interpreter (measured on 2026-09-08: one
+--              empty table moved this scenario 848.0 -> 912.0), so the 32-byte margin admits NONE
+--              of them. The smallest realistic regression on this path trips this line, which is
+--              the whole of what it is for.
 --
 -- Raise it only by filling in those three lines again — a rise IS the finding.
-local PROBE_OFF_BYTES_CEILING = 900
+local PROBE_OFF_BYTES_CEILING = 32
 
 assert_(probeOff.bytesPerIter <= PROBE_OFF_BYTES_CEILING,
     ("a dormant pass allocated %.1f bytes/iter, over the %d-byte ceiling — Icon:Apply grew")
@@ -310,6 +312,33 @@ assert_(castStart.bytesPerIter <= CAST_START_BYTES_CEILING,
     ("a cast start/stop pair allocated %.1f bytes, over the %d-byte ceiling — something on the "
      .. "cast-start path is allocating per cast again")
         :format(castStart.bytesPerIter, CAST_START_BYTES_CEILING))
+
+-- 6. cdText — one ticker pass for one icon on a full cooldown (KickCD#9). This is the steady-state
+--    cost now: the ticker re-fetches the handle and re-runs the body alpha / tint curves, the
+--    GCD-suppression alpha and the countdown text, ten times a second per icon on a cooldown.
+--
+--    THE HANDLE IS HELD CONSTANT across iterations, unlike the live API, which mints a fresh one
+--    per call: a per-iteration mock object would put its own allocation in the column. The bytes
+--    column (800.0 on 2026-10-01) is still mostly the MOCK's: its SetAlphaFromBoolean records each
+--    call into a fresh table and its SetFormattedText runs string.format in Lua, where the client
+--    does both C-side. It is printed for orientation and not asserted.
+--
+--    THE LOAD-BEARING ASSERTION IS THE API COUNT: exactly two calls per tick (the plain isActive
+--    read and the handle fetch). A tick that grew a third read — a charge count, a usability
+--    check — would be paid ten times a second per icon.
+local heldHandle = mocks.__makeDurationObject(12, 15)
+mocks.spellCooldowns[SPELL_ID] = { isEnabled = true, startTime = 0, duration = 0, isActive = true }
+mocks.C_Spell.GetSpellCooldownDuration = function()
+    apiCalls = apiCalls + 1
+    return heldHandle
+end
+icon:Apply(onCooldownState(), true)        -- the state work puts the icon on branch 1
+local cdTick = measure("cdText", ITERS, function()
+    icon:_TickCooldown(1)
+end)
+assert_(cdTick.apiPerIter == 2,
+    ("one ticker pass made %.1f API calls for one icon, expected 2 (isActive + the handle)")
+        :format(cdTick.apiPerIter))
 
 -- ── report ──────────────────────────────────────────────────────────────────────────────────
 

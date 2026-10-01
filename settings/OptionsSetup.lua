@@ -304,7 +304,7 @@ local descriptor = {
 -- evaluates it at load any more.
 --
 -- The measurement is the gate, not this comment:
--- tests/test_options_panel.lua loads the addon with the library ABSENT and pins
+-- tests/test_options_panel_degraded.lua loads the addon with the library ABSENT and pins
 -- #NS.Settings.Schema against the fully-loaded environment. If a future change
 -- moves either generator onto the library instance, that case goes red and this
 -- stub grows the member back.
@@ -447,7 +447,7 @@ if not lib then
     -- RestoreAllDefaults' sessionOnly walk -- absent, absent, and looking for
     -- state.debugConsole, whose console window is unavailable on this path too.
     --
-    -- Both halves are pinned rather than argued: tests/test_options_panel.lua's
+    -- Both halves are pinned rather than argued: tests/test_options_panel_degraded.lua's
     -- "with LibKa0s absent the schema loads complete BAR the composed blocks"
     -- fingerprints the delta, and "the hollow composers cost the degraded path no
     -- CLI reach it otherwise has" pins the blast radius.
@@ -481,7 +481,7 @@ if not lib then
     --
     -- The three layout CONSTANTS that arrived with the departed ten -- BANNER_H, CHROME_GAP, TAB_H
     -- -- never appeared here and still must not: options-ui-§8 forbids a host copy of a library
-    -- constant, the copy is the one that goes stale, and tests/test_options_panel.lua scans this
+    -- constant, the copy is the one that goes stale, and tests/test_options_panel_degraded.lua scans this
     -- file for exactly that.
     Helpers.__panelFor = function() return nil end
 

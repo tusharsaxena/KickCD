@@ -20,7 +20,7 @@ local _, NS = ...
 -- ── WHAT THE ADOPTION DID AND DID NOT CHANGE ─────────────────────────────────────────────────
 --
 -- The free/active mechanics are the library's now. What stays here is everything that is about an
--- ICON rather than about a pool: the five stamped fields, the shared cooldown-text ticker
+-- ICON rather than about a pool: the five stamped fields, the shared cooldown ticker
 -- unregistration, the cooldown clear and the glow stop. That is most of the code either way, which
 -- is why this is a small change with a large reason.
 --

@@ -22,13 +22,13 @@ local addonName, NS = ...
 -- DURING a cast), no combat-log parsing, and the per-unit cast-filter frames are
 -- already RegisterUnitEvent-filtered so a raid does not spray them.
 --
--- The measurable cost lives in `iconApply`, and its rate is forced by an API
--- constraint rather than by frame rate: C_Spell.GetSpellCooldownDuration mints a
--- fresh handle per call, so the change-detection compares unequal on every poll
--- for any spell parked on cooldown (docs/data-flow.md). That is ~10x/sec per
--- spell on cooldown, multiplied by enabled units — roughly 100 calls/s with a
--- seven-spell list mid-fight, each doing three curve evaluations and a cooldown
--- write. If a capture shows anything, it shows there.
+-- Until KickCD#9 the measurable cost lived in `iconApply`, at a rate forced by an
+-- API constraint rather than by frame rate: C_Spell.GetSpellCooldownDuration
+-- mints a fresh handle per call, and the change-detection compared it by
+-- identity, so every poll re-emitted for every spell parked on cooldown —
+-- roughly 100 applies/s with a seven-spell list mid-fight. Since KickCD#9 the
+-- emit carries only a plain state change and the 0.1s ticker owns time
+-- (docs/data-flow.md), so `cdText` is where a capture shows the cost now.
 
 local lib = LibStub and LibStub("LibKa0s-Perf-1.0", true)
 
@@ -106,7 +106,7 @@ NS.Perf = lib:New({
         { key = "stateEmit",  within = "spellPoll"  },  -- the SPELL_STATE publish, per emitting spell
         { key = "spellState", within = "stateEmit"  },  -- IconGrid:OnSpellState, synchronous
         { key = "iconApply",  within = "spellState" },  -- Icon:Apply, per icon per unit
-        { key = "cdText" },                             -- the 0.1s cooldown-text ticker pass
+        { key = "cdText" },                             -- the 0.1s cooldown ticker pass (curves + text, KickCD#9)
         { key = "castEvent" },                          -- IconGrid:OnUnitCastEvent
         { key = "glowGate" },                           -- IconGrid:RefreshAllGlows
         { key = "visibility" },                         -- IconGrid:RefreshVisibility
@@ -158,7 +158,7 @@ NS.Perf = lib:New({
     -- NOT `glowGate`, which the 20260909 write-up first proposed and which
     -- would have measured the wrong function: RefreshAllGlows is NOT reachable
     -- from Cooldowns:Refresh. The only glow work on the poll path is
-    -- Icon:UpdateGlow, called from Icon:Apply (modules/IconGrid_Render.lua:787)
+    -- Icon:UpdateGlow, called from Icon:Apply (modules/IconGrid_Render.lua)
     -- and therefore already inside `iconApply`.
     --
     -- `glowGate` IS declared now, on its own merits rather than that one's:

@@ -85,7 +85,7 @@ setting changed while the addon was off has to come back as it is now):
   Each module's `Resume` **is** its start-up path, and `OnEnable` is a two-line front door onto it, so
   the login path and the stand-up path cannot drift.
 - **Every timer** — Cooldowns' coalescing throttle (which is why `Util.Throttle` hands back a
-  canceller), IconGrid's 0.1s cooldown-text ticker, and the cast bar's `OnUpdate`, this addon's one
+  canceller), IconGrid's 0.1s cooldown ticker, and the cast bar's `OnUpdate`, this addon's one
   true 60 Hz handler.
 - **`settings/Spells.lua`'s five subscriptions** (two bus messages, three game events) — the
   editor's refreshers — and **`core/SpellInput.lua`'s two**, the Cooldown Manager cache
@@ -186,7 +186,7 @@ missing profile, because the `enabled` row is **composed** and a load without Li
 resolve; a gate that silently refused every feature verb on that load would be worse than the
 failure it guards against.
 
-Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
+Pinned by `tests/test_slash_degraded.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
 ## Degraded verbs: a load without LibKa0s
 
@@ -200,11 +200,11 @@ degradation stub") prescribe:
   verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
   `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
   the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
-  copy, so it names the host's own feature verbs instead. `tests/test_slash.lua` pins the list
+  copy, so it names the host's own feature verbs instead. `tests/test_slash_degraded.lua` pins the list
   against the live union (`COMMANDS` minus the live set).
 * **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
   local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
-  surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
+  surface-parity gate), and `tests/test_slash_degraded.lua` pins it with `Kit.assertLibraryConstant`. The
   degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included. It is the
   only library string the stub carries.
 * **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
@@ -222,8 +222,8 @@ degradation stub") prescribe:
   minor 17 put both on the live instance; each prints the same line for `/kcd profile` and
   switches nothing, since with no library there is no store adapter to trust.
 
-Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`,
-`tests/test_disabled.lua` and `tests/test_options_panel.lua`.
+Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`, `tests/test_slash_degraded.lua`,
+`tests/test_disabled.lua` and `tests/test_options_panel_degraded.lua`.
 
 ## Top-level commands
 
@@ -232,7 +232,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `help` | Print the help index. | Iterates `COMMANDS`. |
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
-| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash.lua`. |
+| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |

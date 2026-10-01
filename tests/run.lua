@@ -186,6 +186,7 @@ local SUITES = {
     "test_debuglogsetup",
     "test_diagnostics",
     "test_icongrid_layout",
+    "test_icongrid_layout_pass",
     "test_icongrid_apply",
     "test_icongrid_visibility",
     "test_icongrid_render",
@@ -205,12 +206,15 @@ local SUITES = {
     "test_castbar_debug",
     "test_cooldowns",
     "test_cooldowns_gates",
+    "test_cooldowns_refresh",
     "test_settings_log",
     "test_settings_spells",
     "test_settings_spells_editor",
+    "test_settings_spells_grid",
     "test_spell_registry",
     "test_settings_widgets",
     "test_options_panel",
+    "test_options_panel_degraded",
     "test_grid",
     "test_settings_refreshers",
     "test_flow_traces",
@@ -220,10 +224,12 @@ local SUITES = {
     { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",
+    "test_slash_degraded",
     "test_slash_profile",
     "test_disabled",
     "test_opensettings",
     "test_perfsetup",
+    "test_perfsetup_latch",
     "test_launcher",
     "test_list_mode",
     "test_surface_parity",
@@ -244,6 +250,9 @@ local SUITES = {
     -- Kit revision 27's diagnostics contract (debug-logging-§14), run against this addon's
     -- dispatcher through Kit.diagnostics (wired below).
     { name = "test_diagnostics_contract", dir = "tests/_kit/" },
+    -- Kit revision 35's sighted-complexity gate (automated-tests-§3): pins the sanitizer and the
+    -- parity reader the runner's complexity suite measures through.
+    { name = "test_lizard_sighted", dir = "tests/_kit/" },
 }
 
 -- ---------------------------------------------------------------------------

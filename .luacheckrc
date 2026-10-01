@@ -127,11 +127,11 @@ files["tests/"] = {
 
 -- The two version-gated migrators, `Database:MigrateColorShape` and `Database:MigrateFontFlags`.
 -- Both read the AceDB instance they are handed and nothing off the Database table, but both are
--- reached with the colon -- from the `migrations` scaffold at core/Database.lua:527-528 and from
+-- reached with the colon -- from the `migrations` scaffold in core/Database_Migrations.lua and from
 -- tests/test_database.lua -- and they sit in a family with FoldLegacyUnits, BackfillLabelStyle
 -- and MigrateSpecKeys, which do read it. A migrator family whose signatures disagree is worse
 -- than two unused receivers.
-files["core/Database.lua"] = {
+files["core/Database_Migrations.lua"] = {
   ignore = { "212/self" },
 }
 
@@ -154,15 +154,21 @@ files["core/KickCD.lua"] = {
 -- invokes a name-registered handler as `self[method](self, ...)`. The receiver is not this
 -- addon's choice at all.
 files["modules/Castbar.lua"]         = { ignore = { "212/self" } }
+-- Castbar_Frame.lua (#24) carries ApplyAnchor, peeled from Castbar.lua with the same receiver.
+files["modules/Castbar_Frame.lua"]   = { ignore = { "212/self" } }
 files["modules/Cooldowns.lua"]       = { ignore = { "212/self" } }
 files["modules/IconGrid.lua"]        = { ignore = { "212/self" } }
+-- The two siblings peeled from it (#25) carry methods that moved with the same receivers:
+-- RefreshVisibility, RefreshAllGlows and the three name-registered event handlers, and ApplyLock.
+files["modules/IconGrid_Visibility.lua"] = { ignore = { "212/self" } }
+files["modules/IconGrid_Handle.lua"]     = { ignore = { "212/self" } }
 files["modules/UnitLabel.lua"]       = { ignore = { "212/self" } }
 
--- `IconGrid:_RegisterTextIcon` / `_UnregisterTextIcon` keep the text-icon registry in
--- modules/IconGrid.lua's own upvalue, so neither reads the module. They are still methods because
--- the button handlers at modules/IconGrid_Render.lua:360 and :364 have the module in scope and
--- nothing else, and modules/IconGrid.lua:272 calls the unregister half through `self:`.
-files["modules/IconGrid_Render.lua"] = { ignore = { "212/self" } }
+-- `IconGrid:_RegisterCdIcon` / `_UnregisterCdIcon` / `_StopCdTicker` keep the ticker's icon set in
+-- modules/IconGrid_Ticker.lua's own upvalue, so none reads the module. They are still methods
+-- because Icon:StartCooldownTick / StopCooldownTick in the same file have the module in scope and
+-- nothing else, and modules/IconGrid.lua calls the unregister and stop halves through `self:`.
+files["modules/IconGrid_Ticker.lua"] = { ignore = { "212/self" } }
 
 -- Three receivers the settings layer does not choose. `SlashLib:New(d)` at settings/Slash.lua:323
 -- is the degradation stub standing in for `LibKa0s-Slash-1.0`'s constructor, so it takes the
