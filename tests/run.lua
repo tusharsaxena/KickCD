@@ -226,6 +226,7 @@ local SUITES = {
     "test_disabled",
     "test_opensettings",
     "test_perfsetup",
+    "test_perfsetup_latch",
     "test_launcher",
     "test_list_mode",
     "test_surface_parity",

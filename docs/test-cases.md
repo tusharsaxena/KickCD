@@ -1307,7 +1307,7 @@ badge and any count quoted in the docs must agree with it.
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
 
-### test_perfsetup.lua (32)
+### test_perfsetup.lua (25)
 
 - NS.Perf is the library instance, with the hot-path gate as a plain field
 - the capture ring is declared in the TOC as a second SavedVariables global
@@ -1321,15 +1321,8 @@ badge and any count quoted in the docs must agree with it.
 - every spellState note names its real parent
 - the descriptor declares rebuildEmit as a root
 - instrumentation is inert when capture is off
-- the show decisions consult the LATCH as step 0, at the source
-- suspend disarms the per-unit cast filters AceEvent cannot reach
-- enabling a unit while suspended does not re-register its frames mid-capture
-- resume restores from CURRENT state, not from a snapshot
-- the suspended flag is session-only and never persisted
 - `perf` is a host verb in NS.COMMANDS, not registered by the library
 - a bare /kcd perf answers through the addon's tagged printer
-- with LibKa0s absent the probe stub answers every member the addon calls
-- with LibKa0s absent the bracketed paths still run
 - the perf panel resolves real English, never a raw STRINGS key
 - no LibKa0s descriptor is handed the key-returning locale table
 - the panel title is the host's brand plus the library's resolved suffix
@@ -1341,6 +1334,16 @@ badge and any count quoted in the docs must agree with it.
 - every castTick exit is measured, including the teardown frame
 - no bracketed function leaks an exit — every return closes the bracket
 - the record stamps a real client interface version, never 0
+
+### test_perfsetup_latch.lua (7)
+
+- the show decisions consult the LATCH as step 0, at the source
+- suspend disarms the per-unit cast filters AceEvent cannot reach
+- enabling a unit while suspended does not re-register its frames mid-capture
+- resume restores from CURRENT state, not from a snapshot
+- the suspended flag is session-only and never persisted
+- with LibKa0s absent the probe stub answers every member the addon calls
+- with LibKa0s absent the bracketed paths still run
 
 ### test_launcher.lua (40)
 
@@ -1534,7 +1537,8 @@ badge and any count quoted in the docs must agree with it.
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
-| test_perfsetup.lua | 32 |
+| test_perfsetup.lua | 25 |
+| test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 8 |
