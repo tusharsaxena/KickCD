@@ -131,8 +131,9 @@ end)
 -- The two sub-dispatchers in core/KickCD.lua carry their own command tables
 -- (DEBUG_COMMANDS, SPELLS_COMMANDS). Their sub-help lists must look exactly like
 -- the top-level `/kcd help` rows: one shared formatter, two-space indent, in
--- table order. Compared case-insensitively on the hex for now; the KickCD#36
--- adoption renders them through LibKa0s-Slash-1.0's CommandRows.
+-- table order. Since KickCD#36 they render through LibKa0s-Slash-1.0's
+-- CommandRows (NS.Slash.CommandRows), split through SplitVerb and look up through
+-- FindCommand, so the bytes are pinned exactly, uppercase hex included.
 
 local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "window",
                        "on", "off", "toggle", "events" }
@@ -164,7 +165,7 @@ local function assertSharedRows(rows, verbs, prefix)
     for i, name in ipairs(verbs) do
         assertEqual(rows[i].name, name, prefix .. " row " .. i)
         local want = NS.PREFIX .. " " .. "  " .. SlashLib.FormatRow(prefix .. " " .. name, rows[i].desc)
-        assertEqual(rows[i].line:lower(), want:lower(), prefix .. " row " .. i .. " bytes")
+        assertEqual(rows[i].line, want, prefix .. " row " .. i .. " bytes")
     end
 end
 
@@ -177,6 +178,18 @@ end)
 test("`/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line", function()
     local lines = runVerb("spells")
     assertSharedRows(subRows(lines, "spells subcommands", "/kcd spells"), SPELLS_VERBS, "/kcd spells")
+end)
+
+test("core/KickCD.lua carries no second sub-help formatter, verb split or lookup", function()
+    -- KickCD#36: the sub-levels use NS.Slash.SplitVerb / FindCommand / CommandRows.
+    -- red under: restoring the `|cffffff00/kcd debug %s|r` row literal, or the
+    -- file-local lowerFirst / findCommand helpers
+    local fh = assert(io.open(T.root .. "/core/KickCD.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:find("|cffffff00/kcd", 1, true), "core/KickCD.lua formats its own command rows")
+    assertNil(src:find("lowerFirst", 1, true), "core/KickCD.lua carries its own verb split")
+    assertNil(src:find("findCommand", 1, true), "core/KickCD.lua carries its own command lookup")
 end)
 
 test("an unknown debug word refuses, then reprints the list", function()
@@ -568,7 +581,7 @@ test("every string the Slash CLI renders resolves to prose, not to its own key",
     end
 
     -- The one override this addon declares is byte-identical to the library's
-    -- default (settings/Slash.lua:331 says so). Pinned so a future divergence in
+    -- default (settings/Slash.lua:551 says so). Pinned so a future divergence in
     -- either direction is a decision rather than a surprise.
     assertEqual(cli:Text("LIST_HEADER"), lib.STRINGS.LIST_HEADER)
 end)

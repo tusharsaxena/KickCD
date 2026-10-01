@@ -292,14 +292,40 @@ test("degraded help rows print `cmd  desc` plainly, with no em dash", function()
 end)
 
 test("degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising", function()
-    -- slash-commands-§1: a library-absent install still lists the sub-verbs.
+    -- slash-commands-§1: a library-absent install still lists the sub-verbs, in
+    -- the stub's plain `cmd  desc` shape (no color, no em dash separator),
+    -- exactly as degraded `/kcd help` prints its rows.
+    -- red under: a stub CommandRows that copies the library's FormatRow
     local inst = degraded()
     local ok, err, lines = degradedRun(inst, "debug")
     assertTrue(ok, tostring(err))
-    assertTrue(joined(lines):find("/kcd debug diagnostics", 1, true) ~= nil, "got: " .. joined(lines))
+    assertTrue(joined(lines):find("\n  /kcd debug diagnostics  ", 1, true) ~= nil, "got: " .. joined(lines))
+    assertNil(joined(lines):find("|c", 1, true), "degraded sub-help carries no color: " .. joined(lines))
     ok, err, lines = degradedRun(inst, "spells")
     assertTrue(ok, tostring(err))
-    assertTrue(joined(lines):find("/kcd spells list", 1, true) ~= nil, "got: " .. joined(lines))
+    assertTrue(joined(lines):find("\n  /kcd spells list  List spells", 1, true) ~= nil, "got: " .. joined(lines))
+    assertNil(joined(lines):find("|c", 1, true), "degraded sub-help carries no color: " .. joined(lines))
+end)
+
+test("the degraded sub-command vocabulary splits, finds and renders like the library", function()
+    -- The stub's SplitVerb and FindCommand are the library's contract (verb
+    -- lowercased, remainder verbatim; nil for a non-table list); its CommandRows
+    -- is the plain row, never FormatRow.
+    local S = degraded().NS.Slash
+    local verb, rest = S.SplitVerb("ADD Wind Shear")
+    assertEqual(verb, "add")
+    assertEqual(rest, "Wind Shear")
+    verb, rest = S.SplitVerb(nil)
+    assertEqual(verb, "")
+    assertEqual(rest, "")
+    local list = { { "on", "Turn on" }, { "off", "Turn off" } }
+    assertEqual(S.FindCommand(list, "off"), list[2])
+    assertNil(S.FindCommand(list, "OFF"))
+    assertNil(S.FindCommand(nil, "off"))
+    local rows = S.CommandRows("/kcd x", list, "  ")
+    assertEqual(#rows, 2)
+    assertEqual(rows[1], "  /kcd x on  Turn on")
+    assertEqual(#S.CommandRows("/kcd x", nil), 0)
 end)
 
 test("degraded `/kcd list` prints the library-absent line", function()

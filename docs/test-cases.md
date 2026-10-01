@@ -1238,7 +1238,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (47)
+### test_slash.lua (48)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1252,6 +1252,7 @@ badge and any count quoted in the docs must agree with it.
 - the panel no longer carries a second command-row formatter
 - `/kcd debug` prints one shared-format row per debug sub-verb, in table order
 - `/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line
+- core/KickCD.lua carries no second sub-help formatter, verb split or lookup
 - an unknown debug word refuses, then reprints the list
 - a debug sub-verb is matched case-insensitively
 - list groups by the row's panel, in the addon's declared page order
@@ -1288,7 +1289,7 @@ badge and any count quoted in the docs must agree with it.
 - bare `/kcd spells` names the default spec by SpecDisplay
 - a spells sub-verb is matched case-insensitively and its remainder keeps its case
 
-### test_slash_degraded.lua (19)
+### test_slash_degraded.lua (20)
 
 - a disabled feature verb says so on ONE line, and does NOT act
 - every feature verb refuses, and NONE of them reaches the write seam
@@ -1303,6 +1304,7 @@ badge and any count quoted in the docs must agree with it.
 - degraded gate while disabled refuses feature verbs and nothing else
 - degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising
+- the degraded sub-command vocabulary splits, finds and renders like the library
 - degraded `/kcd list` prints the library-absent line
 - degraded CliProfile and ProfileSwitch print the library-absent line and switch nothing
 - degraded `/kcd set visibility always` writes nothing and prints the library-absent line
@@ -1587,8 +1589,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 47 |
-| test_slash_degraded.lua | 19 |
+| test_slash.lua | 48 |
+| test_slash_degraded.lua | 20 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
@@ -1604,4 +1606,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1290** |
+| **Total** | **1292** |

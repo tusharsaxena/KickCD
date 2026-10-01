@@ -6,7 +6,7 @@
 --
 --   Core      core/CoreSetup.lua        NS.IsConcatSafe / NS.SafeToString / NS.Util.print
 --   DebugLog  core/DebugLogSetup.lua    NS.DebugLog
---   Slash     settings/Slash.lua        NS.Slash.cli
+--   Slash     settings/Slash.lua        NS.Slash.cli, NS.Slash.SplitVerb / FindCommand / CommandRows
 --   Options   settings/OptionsSetup.lua NS.Settings.Helpers
 --   Schema    settings/SchemaSetup.lua  NS.Settings.Store / NS.Settings.HostSchemaStub
 --   Perf      core/PerfSetup.lua        NS.Perf
@@ -129,11 +129,18 @@ end)
 --
 -- NS.Slash is the host's own table and is identical on both paths, so it keeps the four-argument
 -- form for the reason Core does. The SEAM is NS.Slash.cli, which is `SlashLib:New(...)` live and
--- settings/Slash.lua:223's local stub degraded; tests/run.lua registers the live one under the
+-- settings/Slash.lua:353's local stub degraded; tests/run.lua registers the live one under the
 -- major's name.
 
 test("the Slash stub carries the whole live surface", function()
     -- red under: deleting `CliList` from settings/Slash.lua's stub `New`
+    -- The NS.Slash half also holds the sub-command vocabulary (KickCD#36):
+    -- SplitVerb / FindCommand / CommandRows are published on both paths.
+    -- red under: deleting `SlashLib.CommandRows` from settings/Slash.lua's stub
+    for _, m in ipairs({ "SplitVerb", "FindCommand", "CommandRows" }) do
+        assertTrue(type(live.NS.Slash[m]) == "function", "live NS.Slash." .. m)
+        assertTrue(type(degraded.NS.Slash[m]) == "function", "degraded NS.Slash." .. m)
+    end
     assertSurfaceParity(live.NS.Slash, degraded.NS.Slash, "NS.Slash")
     assertSurfaceParity(degraded.NS.Slash.cli, "LibKa0s-Slash-1.0", {
         -- `Text` is the library's string resolver (see the DebugLog note — same reason).
