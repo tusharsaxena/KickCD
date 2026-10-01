@@ -158,7 +158,7 @@ NS.Perf = lib:New({
     -- NOT `glowGate`, which the 20260909 write-up first proposed and which
     -- would have measured the wrong function: RefreshAllGlows is NOT reachable
     -- from Cooldowns:Refresh. The only glow work on the poll path is
-    -- Icon:UpdateGlow, called from Icon:Apply (modules/IconGrid_Render.lua:787)
+    -- Icon:UpdateGlow, called from Icon:Apply (modules/IconGrid_Render.lua)
     -- and therefore already inside `iconApply`.
     --
     -- `glowGate` IS declared now, on its own merits rather than that one's:

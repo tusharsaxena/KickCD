@@ -134,8 +134,8 @@ function IconGrid:PeekInstance(unit)
 end
 
 -- The per-icon widget system — the Icon prototype, its factory, cooldown /
--- glow rendering, the step-shaped alpha/tint curves, and the shared cooldown-
--- text ticker — lives in modules/IconGrid_Render.lua (peeled out for the
+-- glow rendering and the step-shaped alpha/tint curves — lives in
+-- modules/IconGrid_Render.lua, the shared cooldown ticker in IconGrid_Ticker.lua (peeled out for the
 -- 1500-LOC cap). The grid geometry (anchor/grow parsing + block placement)
 -- lives in modules/IconGrid_Layout.lua; visibility and the glow gate in
 -- IconGrid_Visibility.lua; the drag strip in IconGrid_Handle.lua. This file owns

@@ -217,7 +217,7 @@ add{
 -- expose the same 13 options (12 side+alignment + CENTER).
 --
 -- Runtime translation to SetPoint-compatible names happens in
--- modules/Castbar.lua's ApplyAnchor; legacy 9-point tokens (TOPLEFT,
+-- modules/Castbar_Frame.lua's ApplyAnchor; legacy 9-point tokens (TOPLEFT,
 -- TOP, BOTTOM, etc.) saved by older profiles still work because the
 -- translator passes unrecognized values through unchanged.
 local POSITION_ANCHOR_VALUES = H.AnchorValues()
