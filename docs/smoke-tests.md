@@ -704,7 +704,9 @@ Which checks to run for a partial change:
 - **SPELLS-12. Reset every spec.** `/kcd spells resetall` → every spec's list is rebuilt. Result:
 - **SPELLS-13. Drag to reorder.** Grab row 3's handle and drop it above row 1 in one gesture → the list
   and the grid's priority follow; one box and one handle per row; the drop line is in the list color;
-  `/reload` keeps the order. Start a drag and press Esc → no stray line. Leave and re-enter the page
+  `/reload` keeps the order. The row strip looks as it did before the list moved onto `RenderGrid`
+  (KickCD#10): no gap between rows, and a drop onto the fourth or a later row lands on that slot,
+  not one off. Start a drag and press Esc → no stray line. Leave and re-enter the page
   twice → no handle or box left stranded. Result:
 - **SPELLS-14. Row tooltips and the remove mark.** Hover a spell name → the spell tooltip; a category
   dropdown → the Category tooltip. The remove button draws the red catalog close mark. Result:

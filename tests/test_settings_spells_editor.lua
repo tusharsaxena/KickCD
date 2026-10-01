@@ -109,6 +109,13 @@ local function isAddHost(w)
     return holdsEditBox(w, 1)
 end
 
+--- The empty list's guidance is RenderGrid's one wide item (KickCD#10), so it too sits in a
+--- SimpleGroup -- one whose only child is the Label, which no row ever is.
+local function isGuidance(w)
+    local kid = w.children and w.children[1]
+    return kid ~= nil and kid.type == "Label" and #w.children == 1
+end
+
 local function rebuildRows(inst, p)
     local g = inst.mocks.__aceGUI
     local mark = #g.__created
@@ -116,7 +123,9 @@ local function rebuildRows(inst, p)
     local rows = {}
     for i = mark + 1, #g.__created do
         local w = g.__created[i]
-        if w.type == "SimpleGroup" and not isAddHost(w) then rows[#rows + 1] = w end
+        if w.type == "SimpleGroup" and not isAddHost(w) and not isGuidance(w) then
+            rows[#rows + 1] = w
+        end
     end
     return rows
 end

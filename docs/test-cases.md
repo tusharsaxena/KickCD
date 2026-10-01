@@ -1006,6 +1006,14 @@ badge and any count quoted in the docs must agree with it.
 - hiding the page cancels the reorder controller too
 - kit reach: a rebuild hands the previous header widgets back through AceGUI:Release
 
+### test_settings_spells_grid.lua (5)
+
+- the list renders through H.RenderGrid into the page's scroll with no gap
+- the scroll holds exactly one group per entry, with no spacer between rows
+- the reorder controller is handed the stacked groups, in list order, each ROW_HEIGHT tall
+- a row that cannot be built leaves no blank group behind
+- an empty list renders the guidance label as the grid's one item
+
 ### test_spell_registry.lua (30)
 
 - `/kcd spells add` appends { id, other, enabled } and re-adding re-enables in place
@@ -1532,6 +1540,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_log.lua | 20 |
 | test_settings_spells.lua | 4 |
 | test_settings_spells_editor.lua | 40 |
+| test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
@@ -1561,4 +1570,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1259** |
+| **Total** | **1264** |

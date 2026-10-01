@@ -560,53 +560,87 @@ end
 ---
 --- No row background or border is drawn here either. The library owns the
 --- bounded box now, and a host box under it would stack two fills.
-local function fillRows(AceGUI, scroll, list)
-    if not list or #list == 0 then
+-- The guidance an empty list shows, as RenderGrid's one wide item. Names the control that is
+-- actually there. It read "Click Add spell..." until the button became the band's add box, which
+-- would have sent a player looking for a button.
+local function emptyListItem(AceGUI)
+    return { wide = true, path = "spells.empty", make = function(_, into)
         local lbl = AceGUI:Create("Label")
-        -- Names the control that is actually there. It read "Click Add spell..." until the
-        -- button became the band's add box, which would have sent a player looking for a button.
         lbl:SetText(L["No spells tracked. Type one into Add a spell above, or press Defaults."])
         lbl:SetFullWidth(true)
-        scroll:AddChild(lbl)
+        into:AddChild(lbl)
+        return true
+    end }
+end
+
+-- One wide item per entry. The row is built INTO the group RenderGrid hands `make`, so that group
+-- is the row: the one child the scroll's List layout stacks, exactly ROW_HEIGHT tall, and the
+-- frame the reorder controller is handed. Each built group is noted in `built` because the
+-- controller can only take it AFTER RenderGrid has added it to the scroll -- the handle and the
+-- box are parented to the row frame, which has no parent of its own until then. A row that cannot
+-- be built answers false, and the grid releases its group rather than leaving a blank slot.
+local function spellItems(AceGUI, list, built)
+    local items = {}
+    for i = 1, #list do
+        items[i] = { wide = true, path = "spells[" .. i .. "]", make = function(_, into)
+            if not Spells.BuildRow(AceGUI, list, i, into) then return false end
+            built[#built + 1] = { group = into, index = i }
+            return true
+        end }
+    end
+    return items
+end
+
+local function newReorder()
+    local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
+    if not (W and W.ReorderList) then return nil end
+    return W.ReorderList{
+        -- Uniform rows, so the stride IS the row height: AceGUI's List layout stacks children
+        -- with no gap of its own, and RenderGrid is called with `gap = false` so it adds none.
+        stride        = Spells.ROW_HEIGHT,
+        -- No `boundary`: one flat priority list, with no section a drag must not cross.
+        handleIcon    = NS.Icon and NS.Icon("segment") or nil,
+        handleTooltip = L["Drag to reorder"],
+        onMove        = function(from, to)
+            -- ONE write, ONE re-render, however far the row traveled.
+            -- The [Spells] move line is the writer's (core/Database.lua).
+            if writer("MoveSpell", from, to) then commitSoon() end
+        end,
+        debug = function(fmt, ...)
+            if NS.State and NS.State.debug then NS.Debug("Spells", fmt, ...) end
+        end,
+    }
+end
+
+--- Paint the rows through H.RenderGrid, and hand each one to the reorder controller.
+---
+--- `gap = false` because the stride is arithmetic: RenderGrid's default spacer after every row
+--- would put each drop target 8px further off per row (KickCD#10). RenderGrid does not lay out;
+--- renderRows calls container:DoLayout() after this returns.
+---
+--- WITHOUT LibKa0s-Widgets there is no handle and no row box, and the list is
+--- not reorderable. That is an accepted cosmetic degradation (options-ui-§18)
+--- and the arrows are deliberately NOT re-added as a fallback -- a host-drawn
+--- alternative is the drift the shared widget exists to end.
+---
+--- No row background or border is drawn here either. The library owns the
+--- bounded box now, and a host box under it would stack two fills.
+local function fillRows(AceGUI, scroll, list)
+    local H = NS.Settings and NS.Settings.Helpers
+    if not list or #list == 0 then
+        H.RenderGrid(ctx, { emptyListItem(AceGUI) }, scroll, { gap = false })
         return
     end
 
-    local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
-    if W and W.ReorderList then
-        reorder = W.ReorderList{
-            -- Uniform rows, so the stride IS the row height: AceGUI's List
-            -- layout stacks children with no gap of its own.
-            stride        = Spells.ROW_HEIGHT,
-            -- No `boundary`: one flat priority list, with no section a drag
-            -- must not cross.
-            handleIcon    = NS.Icon and NS.Icon("segment") or nil,
-            handleTooltip = L["Drag to reorder"],
-            onMove        = function(from, to)
-                -- ONE write, ONE re-render, however far the row traveled.
-                -- The [Spells] move line is the writer's (core/Database.lua).
-                if writer("MoveSpell", from, to) then commitSoon() end
-            end,
-            debug = function(fmt, ...)
-                if NS.State and NS.State.debug then NS.Debug("Spells", fmt, ...) end
-            end,
-        }
+    reorder = newReorder()
+    local built = {}
+    H.RenderGrid(ctx, spellItems(AceGUI, list, built), scroll, { gap = false })
+    if not reorder then return end
+    for _, b in ipairs(built) do
+        local id = list[b.index].spellID
+        reorder:AddRow(b.group.frame, { ghostText = getSpellName(id) or ("#" .. tostring(id)) })
     end
-
-    for i = 1, #list do
-        local row = Spells.BuildRow(AceGUI, list, i)
-        if row then
-            -- AddChild FIRST: the handle and the box are parented to the row
-            -- frame, and it has no parent of its own until the scroll takes it.
-            scroll:AddChild(row)
-            if reorder then
-                reorder:AddRow(row.frame, {
-                    ghostText = getSpellName(list[i].spellID)
-                                or ("#" .. tostring(list[i].spellID)),
-                })
-            end
-        end
-    end
-    if reorder then reorder:Finish(scroll.content or scroll.frame) end
+    reorder:Finish(scroll.content or scroll.frame)
 end
 
 local function renderRows()
