@@ -262,7 +262,7 @@ Suppressions come in two forms, and the choice between them is about scope:
   forces the receiver. An argument that falls out of use under any other name, in those nine files
   or in the other 88, still reports. `libs/`,
   `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
-  **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua` and `wow_mock.lua` are this
+  **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua`, `wow_mock.lua` and `wow_mock_frames.lua` are this
   addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
   that tree, because it is a byte copy of LibKa0s' `testkit/` and is linted there as source. A run
   reporting fewer files than `luacheck . --formatter plain | tail -1` says today is a run that has

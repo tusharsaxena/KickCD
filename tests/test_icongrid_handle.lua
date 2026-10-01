@@ -71,7 +71,7 @@ end)
 test("the strip is sized to its label plus the widget's reserve", function()
     local NS, IconGrid, inst, mocks = fresh()
     -- The widget measures on a detached font string of its own (`__DragHandleMeasurer`), never on
-    -- the label. UNSTUBBED THIS CASE WOULD ASSERT THE FIXTURE: tests/wow_mock.lua:67 lists
+    -- the label. UNSTUBBED THIS CASE WOULD ASSERT THE FIXTURE: tests/wow_mock_frames.lua lists
     -- GetStringWidth among the NUMERIC_GETTERS, which answer an inert 0 so that arithmetic on a
     -- measurement can never raise — so the label measures 0 and this case would be asserting
     -- RESERVE * 2, the constant alone, rather than anything about the label. One lib table per

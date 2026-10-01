@@ -407,11 +407,10 @@ KickCD (AceAddon)
 
 ### Files in the 1000-1500 band
 
-layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26); `tests/test_slash.lua` re-measured 2026-09-30 after `/kcd profile` landed. Rows leave as their peels land (2026-10-01 issue pass): `modules/IconGrid.lua` is 996 after #25, `modules/IconGrid_Render.lua` 859 after #26.
+layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26); `tests/test_slash.lua` re-measured 2026-09-30 after `/kcd profile` landed. Rows leave as their peels land (2026-10-01 issue pass): `modules/IconGrid.lua` is 996 after #25, `modules/IconGrid_Render.lua` 859 after #26, `tests/wow_mock.lua` 834 after #27 (the frame model is in `tests/wow_mock_frames.lua`).
 
 | File | Lines | Peel tracked in |
 |---|---|---|
-| `tests/wow_mock.lua` | 1233 | #27 |
 | `modules/Castbar.lua` | 1217 | #24 (the handler peel to `Castbar_Events.lua` landed; still in the band) |
 | `settings/Spells.lua` | 1115 | #28 |
 | `tests/test_options_panel.lua` | 1101 | #31 |
