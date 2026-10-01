@@ -1,1 +1,1 @@
-OK GI-KC-03 — pure move of the frame model to tests/wow_mock_frames.lua via root-relative loadfile; only the loader/return lines are new; wow_mock 834; totals identical
+OK GI-KC-03 — line-set check: every non-comment line of old wow_mock.lua survives in wow_mock.lua+wow_mock_frames.lua; root-relative loadfile; recordHook exported; all pointers updated; totals identical
