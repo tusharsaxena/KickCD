@@ -1,1 +1,1 @@
-OK GI-KC-04 — lock/drag/anchor + EnsureFrame moved verbatim to Castbar_Frame.lua (Castbar 949), onUpdate bound after definition via Castbar._OnUpdate, LOC test extended, totals identical
+OK GI-KC-04 — pure move to Castbar_Frame.lua (Castbar 949); onUpdate/resolvePrimaryIcon exported after definition and bound at load correctly; TOC, LOC case, luacheckrc, header and docs updated; totals identical
