@@ -1,1 +1,1 @@
-OK GI-KC-01 — pure move verified line-by-line (IconGrid.lua 996; Visibility/Handle seams via IconGrid._instances/_OnDragStop/_BuildHandle), TOC LOAD-BEARING order right, CRLF kept, totals 1246/0/1 identical, docs moved
+OK GI-KC-01 — pure move verified by line-set diff (only new headers/exports); IconGrid.lua 996; TOC load-bearing order, luacheckrc, perfsetup bracket lists and docs moved; totals identical. Nit: module-map item 12 still opens with 'Also publishes VisibilityMode/ShouldBeVisible' though its appended sentence corrects it
