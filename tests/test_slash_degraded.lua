@@ -291,6 +291,17 @@ test("degraded help rows print `cmd  desc` plainly, with no em dash", function()
     end
 end)
 
+test("degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising", function()
+    -- slash-commands-§1: a library-absent install still lists the sub-verbs.
+    local inst = degraded()
+    local ok, err, lines = degradedRun(inst, "debug")
+    assertTrue(ok, tostring(err))
+    assertTrue(joined(lines):find("/kcd debug diagnostics", 1, true) ~= nil, "got: " .. joined(lines))
+    ok, err, lines = degradedRun(inst, "spells")
+    assertTrue(ok, tostring(err))
+    assertTrue(joined(lines):find("/kcd spells list", 1, true) ~= nil, "got: " .. joined(lines))
+end)
+
 test("degraded `/kcd list` prints the library-absent line", function()
     local inst = degraded()
     local ok, err, lines = degradedRun(inst, "list")
