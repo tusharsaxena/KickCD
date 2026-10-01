@@ -223,7 +223,7 @@ degradation stub") prescribe:
   switches nothing, since with no library there is no store adapter to trust.
 
 Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`, `tests/test_slash_degraded.lua`,
-`tests/test_disabled.lua` and `tests/test_options_panel.lua`.
+`tests/test_disabled.lua` and `tests/test_options_panel_degraded.lua`.
 
 ## Top-level commands
 

@@ -1050,7 +1050,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (42)
+### test_options_panel.lua (33)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1078,6 +1078,16 @@ badge and any count quoted in the docs must agree with it.
 - the Profiles page is vetoed from a global reset
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
+- General's bespoke controls key their tooltip body `tooltip`, not `desc`
+- every schema row the panel renders is labeled with prose, not with a key
+- the panel's group and section headings are prose too
+- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- the live wiring patches LSM30_Border through the library, not a private copy
+- General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
+- the panel's schema reader hands back a stored FALSE as false, not nil
+
+### test_options_panel_degraded.lua (9)
+
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
@@ -1086,14 +1096,7 @@ badge and any count quoted in the docs must agree with it.
 - the linked-Focus note opens General on its Units tab
 - a linked Focus page draws the full strip, inert, and only the link note
 - the Focus link's tick and its Copy button share one row
-- General's bespoke controls key their tooltip body `tooltip`, not `desc`
 - the degraded stub carries no widget maker or layout constant
-- every schema row the panel renders is labeled with prose, not with a key
-- the panel's group and section headings are prose too
-- libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- the live wiring patches LSM30_Border through the library, not a private copy
-- General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
-- the panel's schema reader hands back a stored FALSE as false, not nil
 
 ### test_grid.lua (12)
 
@@ -1516,7 +1519,8 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_editor.lua | 40 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 42 |
+| test_options_panel.lua | 33 |
+| test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 13 |

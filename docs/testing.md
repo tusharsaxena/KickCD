@@ -157,7 +157,7 @@ implementation** — a hand-copied line format or ack string. That is
 `debug-logging-§7`, and it stays with the source-scan cases in
 `tests/test_debuglogsetup.lua`.
 
-`tests/test_options_panel.lua` additionally pins `#NS.Settings.Schema` against
+`tests/test_options_panel_degraded.lua` additionally pins `#NS.Settings.Schema` against
 the fully-loaded environment — the only thing standing between the options stub
 and a silent half-load — and exercises a **write** through the degraded settings
 path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.

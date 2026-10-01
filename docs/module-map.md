@@ -425,11 +425,10 @@ KickCD (AceAddon)
 
 ### Files in the 1000-1500 band
 
-layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26); `tests/test_slash.lua` re-measured 2026-09-30 after `/kcd profile` landed. Rows leave as their peels land (2026-10-01 issue pass): `modules/IconGrid.lua` is 996 after #25, `modules/IconGrid_Render.lua` 859 after #26, `tests/wow_mock.lua` 834 after #27 (the frame model is in `tests/wow_mock_frames.lua`), `modules/Castbar.lua` 949 after #24's second peel (`Castbar_Frame.lua`), `core/Database.lua` 758 after #29, `settings/Spells.lua` 914 after #28, `tests/test_slash.lua` 719 after #30 (its disabled-state and degraded-stub cases are `tests/test_slash_degraded.lua`).
+layout-§1 caps an authored file at 1500 lines and tracks a peel for any file past 1000, `tests/` included. Measured on the automated-tests sweep branch (2026-09-26); `tests/test_slash.lua` re-measured 2026-09-30 after `/kcd profile` landed. Rows leave as their peels land (2026-10-01 issue pass): `modules/IconGrid.lua` is 996 after #25, `modules/IconGrid_Render.lua` 859 after #26, `tests/wow_mock.lua` 834 after #27 (the frame model is in `tests/wow_mock_frames.lua`), `modules/Castbar.lua` 949 after #24's second peel (`Castbar_Frame.lua`), `core/Database.lua` 758 after #29, `settings/Spells.lua` 914 after #28, `tests/test_slash.lua` 719 after #30 (its disabled-state and degraded-stub cases are `tests/test_slash_degraded.lua`), `tests/test_options_panel.lua` 742 after #31 (degraded-stub and linked-Focus cases in `tests/test_options_panel_degraded.lua`).
 
 | File | Lines | Peel tracked in |
 |---|---|---|
-| `tests/test_options_panel.lua` | 1101 | #31 |
 | `tests/test_perfsetup.lua` | 1018 | #32 |
 
 ## AceAddon lifecycle

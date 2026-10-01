@@ -192,8 +192,8 @@ test("the Options stub carries every member the host calls", function()
         -- for exactly the same reason.
         "RenderGrid", "TextRow", "BuildLandingPage",
         -- The library's layout constants. Same rule, stated as constants:
-        -- tests/test_options_panel.lua's source scan already fails if a copy of any of these
-        -- appears in the host or in the stub.
+        -- tests/test_options_panel.lua's and tests/test_options_panel_degraded.lua's source scans
+        -- already fail if a copy of any of these appears in the host or in the stub.
         --
         -- ROW_VSPACER joined this list when the host stopped restating it. settings/Panel.lua used
         -- to declare `local ROW_VSPACER = 8` and assign it over the library's published value, so
@@ -211,7 +211,7 @@ test("the Options stub carries every member the host calls", function()
         -- The three that arrived with the tabbed page and the banner (options-ui-§13 / options-ui-§14) are
         -- the same class and exempt for the same reason: BANNER_H is the banner's height floor,
         -- TAB_H one row of the strip, CHROME_GAP the gap under the whole band. The host reads them
-        -- off the instance or not at all, and tests/test_options_panel.lua fails if a copy of any
+        -- off the instance or not at all, and tests/test_options_panel_degraded.lua fails if a copy of any
         -- of them appears in settings/OptionsSetup.lua.
         "BANNER_H", "CHROME_GAP", "TAB_H",
         -- The composers' PUBLISHED CONSTANTS (OptionsCompose 1) are the same
