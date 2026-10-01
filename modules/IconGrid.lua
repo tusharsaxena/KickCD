@@ -414,29 +414,28 @@ end
 -- Pixel-floor every offset so we don't end up with sub-pixel positions
 -- on fractional UIScale values (which would blur icons by one pixel).
 
-function IconGrid:Layout(inst)
-    local grid = inst.grid
-    if not grid then return end
-    inst.cfg = NS.Units.Icons(inst.unit)
-    local cfg = inst.cfg or {}
+-- ── Layout's pieces (split from one CCN-29 method, GI-KC-12) ────────────────
 
-    local primarySize   = cfg.primarySize or 48
-    local secondarySize = floor(primarySize * (cfg.secondarySize or 0.7))
-    local gap           = cfg.gap or 4
-    local anchor        = cfg.anchor or "RIGHT_MIDDLE"
-    local grow          = cfg.secondaryGrow or "right_down"
-    local rows          = cfg.secondaryRows or 1
-    local cols          = cfg.secondaryCols or 6
-    local offX          = cfg.secondaryOffsetX or 0
-    local offY          = cfg.secondaryOffsetY or 0
+--- Every layout input, resolved against its default. One table per pass, as the cfg read is.
+local function layoutSettings(cfg)
+    local primarySize = cfg.primarySize or 48
+    return {
+        primarySize   = primarySize,
+        secondarySize = floor(primarySize * (cfg.secondarySize or 0.7)),
+        gap           = cfg.gap or 4,
+        anchor        = cfg.anchor or "RIGHT_MIDDLE",
+        grow          = cfg.secondaryGrow or "right_down",
+        rows          = cfg.secondaryRows or 1,
+        cols          = cfg.secondaryCols or 6,
+        offX          = cfg.secondaryOffsetX or 0,
+        offY          = cfg.secondaryOffsetY or 0,
+    }
+end
 
-    local ordered = inst.ordered
-
-    -- Re-bind cfg + text/appearance config on every layout pass so changes
-    -- to color/alpha/font/zoom/border apply without a full rebuild. Stamp
-    -- _isPrimary BEFORE ApplyTextConfig because that re-runs Apply which
-    -- in turn calls UpdateGlow — and the glow path reads the slot flag.
-    for i, btn in ipairs(ordered) do
+--- Re-bind cfg + appearance/text config every pass, so a style change applies without a rebuild.
+--- _isPrimary is stamped BEFORE ApplyTextConfig: that re-runs Apply -> UpdateGlow, which reads it.
+local function bindIcons(inst, cfg)
+    for i, btn in ipairs(inst.ordered) do
         btn.cfg        = cfg
         btn.unit       = inst.unit
         btn.instance   = inst
@@ -445,24 +444,55 @@ function IconGrid:Layout(inst)
         btn:ApplyAppearance(cfg)
         btn:ApplyTextConfig(cfg)
     end
+end
+
+--- Tell dependents (Castbar) the geometry / primary icon may have moved, with the bounding box,
+--- so they need not reach back through GetGridFrame / GetPrimaryIcon. primaryIcon is nil for an
+--- empty list; subscribers fall back to the public accessor or skip.
+local function announceLayout(inst, primary, w, h)
+    if not NS.SendMessage then return end
+    NS:SendMessage(NS.MSG.GRID_LAYOUT, {
+        unit        = inst.unit,
+        gridFrame   = inst.grid,
+        primaryIcon = primary,
+        width       = w,
+        height      = h,
+    })
+end
+
+--- Warn once per (class/spec/cap) tuple when the grid dropped icons, or the user sees a smaller
+--- grid than configured with no hint that spells are invisible. The cap in the key re-arms it.
+local function warnTruncation(inst, truncated, rows, cols)
+    local cap     = (rows or 0) * (cols or 0)
+    local clsKey  = "?/?"
+    local cls, spc = getActiveSpecKey()
+    if cls and spc then clsKey = cls .. "/" .. spc end
+    local key = clsKey .. "/" .. tostring(cap)
+    if inst.truncationWarnedFor == key then return end
+    inst.truncationWarnedFor = key
+    if NS.Util and NS.Util.print then
+        NS.Util.print(("dropped %d icon(s) past the %d-slot grid for %s — bump rows*cols or remove spells")
+            :format(truncated, cap, clsKey))
+    end
+end
+
+function IconGrid:Layout(inst)
+    local grid = inst.grid
+    if not grid then return end
+    inst.cfg = NS.Units.Icons(inst.unit)
+    local cfg = inst.cfg or {}
+    local geo = layoutSettings(cfg)
+    local ordered = inst.ordered
+
+    bindIcons(inst, cfg)
 
     -- Empty-list decision: keep the frame visible at primary-icon size so
     -- the user can still drag it to reposition. The frame has no fill so
     -- "empty" reads as a small invisible square at its anchor; that's a
     -- minor cosmetic issue compared to losing the drag handle entirely.
     if #ordered == 0 then
-        grid:SetSize(primarySize, primarySize)
-        if NS.SendMessage then
-            -- primaryIcon is nil here (no spells in the active list) —
-            -- subscribers fall back to the public accessor or just skip.
-            NS:SendMessage(NS.MSG.GRID_LAYOUT, {
-                unit        = inst.unit,
-                gridFrame   = grid,
-                primaryIcon = nil,
-                width       = primarySize,
-                height      = primarySize,
-            })
-        end
+        grid:SetSize(geo.primarySize, geo.primarySize)
+        announceLayout(inst, nil, geo.primarySize, geo.primarySize)
         return
     end
 
@@ -470,49 +500,18 @@ function IconGrid:Layout(inst)
     local secondaries = {}
     for i = 2, #ordered do secondaries[i - 1] = ordered[i] end
 
-    local w, h, truncated = IconGrid.LayoutMath.layoutBlock(grid, primary, secondaries, primarySize, secondarySize, gap,
-                                        anchor, grow, rows, cols, offX, offY)
+    local w, h, truncated = IconGrid.LayoutMath.layoutBlock(grid, primary, secondaries,
+        geo.primarySize, geo.secondarySize, geo.gap, geo.anchor, geo.grow, geo.rows, geo.cols, geo.offX, geo.offY)
     grid:SetSize(w, h)
 
-    -- Warn once per (class/spec/cap) tuple when the configured grid
-    -- size dropped icons. Without this the user sees a smaller grid
-    -- than they configured with no indication that some spells are
-    -- silently invisible. The dedup key includes cap so changing
-    -- secondaryRows / secondaryCols re-arms the warning.
     if truncated and truncated > 0 then
-        local cap     = (rows or 0) * (cols or 0)
-        local clsKey  = "?/?"
-        local cls, spc = getActiveSpecKey()
-        if cls and spc then clsKey = cls .. "/" .. spc end
-        local key = clsKey .. "/" .. tostring(cap)
-        if inst.truncationWarnedFor ~= key then
-            inst.truncationWarnedFor = key
-            if NS.Util and NS.Util.print then
-                NS.Util.print(("dropped %d icon(s) past the %d-slot grid for %s — bump rows*cols or remove spells")
-                    :format(truncated, cap, clsKey))
-            end
-        end
-    elseif inst.truncationWarnedFor and (truncated == 0 or not truncated) then
-        -- No truncation this pass (user fixed it or the spell list shrank).
-        -- Clear the dedup key so a future overflow re-warns.
+        warnTruncation(inst, truncated, geo.rows, geo.cols)
+    elseif truncated == 0 or not truncated then
+        -- No truncation this pass: clear the dedup key so a future overflow re-warns.
         inst.truncationWarnedFor = nil
     end
 
-    -- Notify dependent modules (Castbar) that grid geometry / primary icon
-    -- reference may have changed. Payload carries the unit + gridFrame +
-    -- primaryIcon references and the post-layout bounding box so the
-    -- subscriber doesn't need to reach back through the public accessors.
-    -- The accessors (GetGridFrame / GetPrimaryIcon) remain for callers
-    -- that haven't yet adopted the payload form.
-    if NS.SendMessage then
-        NS:SendMessage(NS.MSG.GRID_LAYOUT, {
-            unit        = inst.unit,
-            gridFrame   = grid,
-            primaryIcon = primary,
-            width       = w,
-            height      = h,
-        })
-    end
+    announceLayout(inst, primary, w, h)
 end
 
 -- Apply general-tab visual settings (scale, alpha) to the parent frame.
