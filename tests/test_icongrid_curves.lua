@@ -198,12 +198,14 @@ test("CurveSignature covers exactly the three curve-shaping fields", function()
     assertEqual(IconGrid.CurveSignature(base), sig,
         "non-curve fields must be absent from the signature")
 
-    -- Each of the three must.
-    for _, mutate in ipairs({
+    -- Each of the three must. The mutators are a local, not a literal in the `for` header:
+    -- lizard does not list a function literal there (kit revision 35's parity names this file).
+    local mutators = {
         function(t) t.readyAlpha = 0.5 end,
         function(t) t.cooldownAlpha = 0.9 end,
         function(t) t.cooldownTint = { 0, 1, 0, 1 } end,
-    }) do
+    }
+    for _, mutate in ipairs(mutators) do
         local t = { readyAlpha = 1, cooldownAlpha = 0.4, cooldownTint = { 1, 0.4, 0.4, 1 } }
         mutate(t)
         assertTrue(IconGrid.CurveSignature(t) ~= sig,

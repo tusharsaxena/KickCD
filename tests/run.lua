@@ -244,6 +244,9 @@ local SUITES = {
     -- Kit revision 27's diagnostics contract (debug-logging-§14), run against this addon's
     -- dispatcher through Kit.diagnostics (wired below).
     { name = "test_diagnostics_contract", dir = "tests/_kit/" },
+    -- Kit revision 35's sighted-complexity gate (automated-tests-§3): pins the sanitizer and the
+    -- parity reader the runner's complexity suite measures through.
+    { name = "test_lizard_sighted", dir = "tests/_kit/" },
 }
 
 -- ---------------------------------------------------------------------------

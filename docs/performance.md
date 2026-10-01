@@ -230,8 +230,13 @@ judge that from the arms (two arms at the same frame time, or at a round one lik
 Cyclomatic complexity is measured by the same runner, as its `complexity` suite:
 
 ```sh
-lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .
+bash tests/_kit/run-automated-tests.sh --suite complexity
 ```
+
+Never the raw `lizard -l lua -x ...` command: lizard 1.24.0's Lua reader loses whole functions over
+`#` and the bare words `it`, `class`, `module`, `begin` and `unless`. Since kit revision 35 the suite
+measures a sanitized shadow of the tree and fails (`blindFiles` above 0) when any file's `function`
+tokens and the functions lizard listed differ (`automated-tests-§3`).
 
 Recorded and compared, never thresholded into a build failure (`performance-§10`) — though a release
 does gate on zero functions above CCN 15. See [testing.md](testing.md).

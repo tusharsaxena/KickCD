@@ -184,7 +184,7 @@ than the tag this addon has taken.
 Between a library release and the re-vendor that carries it they disagree, and that disagreement is
 the normal state rather than a defect. Re-vendoring to quiet them would be the actual mistake — it
 would pull an untested library release for the sake of a clean diff. As this is written the two
-agree: `../LibKa0s` sits on **v1.65.0**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
+agree: `../LibKa0s` sits on **v1.66.0**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
 four commands above report nothing. That is the state immediately after a re-vendor and before the
 library's next tag — a coincidence of timing, not the stronger guarantee the block below states.
 
@@ -254,7 +254,7 @@ them, so the table names both:
 | `lint` | `luacheck .` | **yes** | **yes** |
 | `tests` | `lua tests/run.lua` | **yes** | **yes** |
 | `perf` | `lua tests/perf.lua` | no — recorded only | **yes** |
-| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only | **yes** |
+| `complexity` | `bash tests/_kit/run-automated-tests.sh --suite complexity` (lizard over the kit's sighted shadow, with function-count parity; kit revision 35) | no — recorded only | **yes** |
 
 **`perf` and `complexity` never fail a run and never block a commit** — they are measured, recorded
 and diffed, not thresholded. A threshold that fails a run teaches everyone to reach for
