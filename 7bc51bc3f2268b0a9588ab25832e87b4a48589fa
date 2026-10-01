@@ -1,1 +1,1 @@
-OK GI-KC-09 — 7 latch/degraded cases moved verbatim to test_perfsetup_latch.lua (868 left); L-trap and firstWatchedSpell stay where docs cite them; band table now empty; totals identical
+OK GI-KC-09 — 7 latch/library-absent cases moved to test_perfsetup_latch.lua (868 left); every test_perfsetup.lua citation (TOC order, folder/hook, exits, version, L trap) still names a case that remains; totals identical
