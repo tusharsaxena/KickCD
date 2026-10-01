@@ -1,0 +1,1 @@
+OK GI-KC-06 — header builders moved to Spells_Header.lua (Spells 914); deps forwarders keep selection/headerWidgets live (read once, written via setSelection), totals identical
