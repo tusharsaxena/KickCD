@@ -521,7 +521,7 @@ local function build()
 
     -- NewTicker is KickCD's to add: the kit models one-shots and AceTimer, and
     -- this addon's cooldown-text countdown is a REPEATING C_Timer ticker
-    -- (modules/IconGrid_Render.lua). Modeled as a queue entry that re-arms
+    -- (modules/IconGrid_Ticker.lua). Modeled as a queue entry that re-arms
     -- itself after each fire and carries the handle, so the live set reports it
     -- for as long as it is armed and stops the moment it is canceled. Until
     -- now this returned a bare frame stub: a ticker that never fired, never

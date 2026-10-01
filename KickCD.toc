@@ -84,8 +84,8 @@ core\LauncherSetup.lua
 # touches -- the modules it stands down -- it resolves at call time.
 core\LifecycleSetup.lua
 # LOAD-BEARING POSITION: modules/Cooldowns.lua, modules/IconGrid.lua,
-# modules/IconGrid_Render.lua, modules/IconGrid_Visibility.lua and
-# modules/Castbar.lua each take
+# modules/IconGrid_Render.lua, modules/IconGrid_Ticker.lua,
+# modules/IconGrid_Visibility.lua and modules/Castbar.lua each take
 # `local Perf = NS.Perf` at file scope, so this seam must have published NS.Perf
 # — the LibKa0s-Perf-1.0 instance or its stub — before the # Modules block is
 # reached. It is also below core/KickCD.lua because the descriptor's `version`
@@ -105,10 +105,13 @@ defaults\Spells.lua
 modules\Cooldowns.lua
 modules\IconGrid.lua
 # LOAD-BEARING POSITION: modules/IconGrid_Layout.lua, modules/IconGrid_Render.lua,
-# modules/IconGrid_Visibility.lua and modules/IconGrid_Handle.lua call
-# NS:GetModule("IconGrid") at file scope, so all four follow modules\IconGrid.lua.
+# modules/IconGrid_Ticker.lua, modules/IconGrid_Visibility.lua and
+# modules/IconGrid_Handle.lua call NS:GetModule("IconGrid") at file scope, so all
+# five follow modules\IconGrid.lua; IconGrid_Ticker.lua also follows
+# IconGrid_Render.lua, whose IconGrid.Icon prototype it reads at file load.
 modules\IconGrid_Layout.lua
 modules\IconGrid_Render.lua
+modules\IconGrid_Ticker.lua
 modules\IconGrid_Visibility.lua
 modules\IconGrid_Handle.lua
 modules\Castbar.lua

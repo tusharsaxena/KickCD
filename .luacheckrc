@@ -163,10 +163,10 @@ files["modules/IconGrid_Handle.lua"]     = { ignore = { "212/self" } }
 files["modules/UnitLabel.lua"]       = { ignore = { "212/self" } }
 
 -- `IconGrid:_RegisterTextIcon` / `_UnregisterTextIcon` keep the text-icon registry in
--- modules/IconGrid.lua's own upvalue, so neither reads the module. They are still methods because
--- the button handlers at modules/IconGrid_Render.lua:360 and :364 have the module in scope and
--- nothing else, and modules/IconGrid.lua:272 calls the unregister half through `self:`.
-files["modules/IconGrid_Render.lua"] = { ignore = { "212/self" } }
+-- modules/IconGrid_Ticker.lua's own upvalue, so neither reads the module. They are still methods
+-- because Icon:StartCooldownText / StopCooldownText in the same file have the module in scope and
+-- nothing else, and modules/IconGrid.lua calls the unregister half through `self:`.
+files["modules/IconGrid_Ticker.lua"] = { ignore = { "212/self" } }
 
 -- Three receivers the settings layer does not choose. `SlashLib:New(d)` at settings/Slash.lua:323
 -- is the degradation stub standing in for `LibKa0s-Slash-1.0`'s constructor, so it takes the

@@ -73,7 +73,8 @@ test("every bracket call site reads the gate through a load-time upvalue", funct
     -- hold `local Perf = NS.Perf` at file scope.
     for _, rel in ipairs({
         "modules/Cooldowns.lua", "modules/IconGrid.lua",
-        "modules/IconGrid_Render.lua", "modules/IconGrid_Visibility.lua",
+        "modules/IconGrid_Render.lua", "modules/IconGrid_Ticker.lua",
+        "modules/IconGrid_Visibility.lua",
         "modules/Castbar.lua",
     }) do
         local fh = assert(io.open(T.root .. "/" .. rel, "r"))
@@ -241,7 +242,8 @@ test("the declared bucket list and the bracketed call sites agree exactly", func
     local bracketed = {}
     for _, rel in ipairs({
         "modules/Cooldowns.lua", "modules/IconGrid.lua",
-        "modules/IconGrid_Render.lua", "modules/IconGrid_Visibility.lua",
+        "modules/IconGrid_Render.lua", "modules/IconGrid_Ticker.lua",
+        "modules/IconGrid_Visibility.lua",
         "modules/Castbar.lua",
     }) do
         local h = assert(io.open(T.root .. "/" .. rel, "r"))
@@ -945,7 +947,8 @@ test("no bracketed function leaks an exit — every return closes the bracket", 
     local leaks = {}
     for _, rel in ipairs({
         "modules/Cooldowns.lua", "modules/IconGrid.lua",
-        "modules/IconGrid_Render.lua", "modules/IconGrid_Visibility.lua",
+        "modules/IconGrid_Render.lua", "modules/IconGrid_Ticker.lua",
+        "modules/IconGrid_Visibility.lua",
         "modules/Castbar.lua",
     }) do
         local fh = assert(io.open(T.root .. "/" .. rel, "r"))
