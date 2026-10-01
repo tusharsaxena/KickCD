@@ -503,11 +503,11 @@ Which checks to run for a partial change:
   cooldown and brightens when it is castable again, with no countdown drawn. Then, mid-rotation, press
   the interrupt inside an on-GCD spell's global cooldown → within a moment the icon dims to the
   cooldown alpha, and the swipe shows the interrupt's cooldown no later than when the GCD's swipe would
-  have ended. Result:
+  have ended. Result: pass (owner, 2026-10-02)
 - **GRID-16. A steady cooldown emits nothing (KickCD#9).** `/kcd debug on`, put a spell on a 30 s+
   cooldown and stand still → one `[Cooldowns]` line when it starts and one when it ends, none repeating
   in between. Then `/kcd perf` through a short fight → `iconApply` is close to 0 calls/sec while
-  spells sit on cooldown, and the cost shows under `cdText`. Result:
+  spells sit on cooldown, and the cost shows under `cdText`. Result: pass (owner, 2026-10-02)
 
 ## CAST
 
@@ -1006,7 +1006,6 @@ off on its own `Result:` line, then remove its row here.
 | GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
 | GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
 | GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
-| GRID-15, GRID-16 | New | KickCD#9: the ticker owns time, the emit only state |
 | CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
 | CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
 | CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
