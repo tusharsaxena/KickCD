@@ -102,7 +102,7 @@ The object is far richer than this addon currently uses, and several methods are
 1. `NS.State.IsHostileUnitCasting(unit)` — a plain truthy check on the API's `name` return (safe, even when secret) plus a `UnitCanAttack` filter. Drives `Show` / `Hide`.
 2. `NS.State.ApplyInterruptibleAlpha(frame, unit, alpha)` — pulls the raw `notInterruptible` and pipes it straight into `frame:SetAlphaFromBoolean(notInterruptible, 0, alpha)`. `SetAlphaFromBoolean` is the **one** C-side method that accepts the secret-tainted bool form without erroring.
 
-So uninterruptible casts run the full UI lifecycle (Shown frame, started glow animation, drawn cast bar) but at `alpha = 0` — the visual filter is C-side and the Lua decision is never made. `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast. See `modules/IconGrid.lua` (`ApplyInterruptibilityMask`), `modules/IconGrid_Render.lua` (`Icon:UpdateGlow`), and `modules/Castbar.lua` (`ApplyVisibilityMask`).
+So uninterruptible casts run the full UI lifecycle (Shown frame, started glow animation, drawn cast bar) but at `alpha = 0` — the visual filter is C-side and the Lua decision is never made. `UNIT_SPELLCAST_INTERRUPTIBLE` / `UNIT_SPELLCAST_NOT_INTERRUPTIBLE` events drive a re-application of the alpha mask mid-cast. See `modules/IconGrid_Visibility.lua` (`ApplyInterruptibilityMask`), `modules/IconGrid_Render.lua` (`Icon:UpdateGlow`), and `modules/Castbar.lua` (`ApplyVisibilityMask`).
 
 ### Plain-after-flip invariant
 

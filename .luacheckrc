@@ -156,6 +156,10 @@ files["core/KickCD.lua"] = {
 files["modules/Castbar.lua"]         = { ignore = { "212/self" } }
 files["modules/Cooldowns.lua"]       = { ignore = { "212/self" } }
 files["modules/IconGrid.lua"]        = { ignore = { "212/self" } }
+-- The two siblings peeled from it (#25) carry methods that moved with the same receivers:
+-- RefreshVisibility, RefreshAllGlows and the three name-registered event handlers, and ApplyLock.
+files["modules/IconGrid_Visibility.lua"] = { ignore = { "212/self" } }
+files["modules/IconGrid_Handle.lua"]     = { ignore = { "212/self" } }
 files["modules/UnitLabel.lua"]       = { ignore = { "212/self" } }
 
 -- `IconGrid:_RegisterTextIcon` / `_UnregisterTextIcon` keep the text-icon registry in
