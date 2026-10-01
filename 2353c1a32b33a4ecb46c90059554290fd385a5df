@@ -1,0 +1,1 @@
+OK CA-KC-01 lua tests/run.lua 1291 passed/0 failed/1 skipped; luacheck 0/0 in 127 files; lizard CCN<=15 on touched files; vendor diff empty; test-cases.md == --list; CRLF kept
