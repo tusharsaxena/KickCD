@@ -105,18 +105,17 @@ Const.CASTBAR_OUTSIDE_INSET = 4
 -- forbids a host copy: the host copy is the one that goes stale, and the
 -- whole point of extracting the panel chrome is that the panels cannot
 -- drift apart. Read it off the instance; never restate the number here.
-
--- Vertical inset of the title (and the per-panel "Defaults" button next
--- to it) from the top of the panel. Roughly half the height of the
--- GameFontNormalHuge title glyph so the header doesn't crowd the
--- panel's top edge.
-Const.PANEL_HEADER_TOP    = 20
-
--- Distance from the top of the panel to the divider underneath the
--- title. Sits in lockstep with PANEL_HEADER_TOP so the title-to-divider
--- gap (and divider-to-body gap below it) stay unchanged when the header
--- block is repositioned vertically.
-Const.PANEL_HEADER_HEIGHT = 54
+--
+-- PANEL_HEADER_TOP and PANEL_HEADER_HEIGHT are deliberately absent too, and
+-- unlike PADDING_X they are not even readable: the title inset and the
+-- divider offset are `lib.LAYOUT.HEADER_TOP` / `HEADER_HEIGHT`, which
+-- LibKa0s-Options-1.0 marks INTERNAL. The library's own header builder draws
+-- the title, the Defaults button and the divider from them, the instance
+-- publishes neither, and `lib.LAYOUT` is never handed to a host. So there is
+-- nothing to read and nothing to restate: do not reach into `lib.LAYOUT`
+-- from here. A future widget that truly needs a header metric is a request
+-- for the library to publish it, not a host constant.
+-- tests/test_constants.lua's restatement lint keeps all three out.
 
 -- ---------------------------------------------------------------------------
 -- Debug console: shipped monospace font

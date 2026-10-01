@@ -363,11 +363,13 @@ local RENDER_BY_TYPE = {
     ["nil"] = function() return "nil" end,
 }
 
--- Stringify a value safely in tainted scope: secret → "<secret>",
--- otherwise the usual tostring (or "%q" for strings to quote them).
+-- Stringify a value safely in tainted scope: secret → NS.SECRET (LibKa0s-Core-1.0
+-- `lib.SECRET`, published by core/CoreSetup.lua on both paths), otherwise the
+-- usual tostring (or "%q" for strings to quote them). NS.SECRET is read at call
+-- time: this file loads before core/CoreSetup.lua, but the dump runs long after.
 local function safeRender(value)
     if Compat.IsSecret(value) then
-        return "<secret>"
+        return NS.SECRET
     end
     local t = type(value)
     local render = RENDER_BY_TYPE[t]

@@ -144,6 +144,15 @@ test("NS.SafeToString renders an unconcatable value as the shared <secret> senti
     assertEqual(NS.SafeToString({}), "<secret>")
 end)
 
+test("NS.SECRET is the library's sentinel, the one NS.SafeToString renders", function()
+    -- red under: deleting `NS.SECRET = lib.SECRET` from core/CoreSetup.lua's live
+    -- path (KickCD#36). core/Compat.lua's safeRender reads it, so the
+    -- `/kcd debug interrupt` dump and every SafeToString line spell one sentinel.
+    local Core = mocks.LibStub("LibKa0s-Core-1.0")
+    assertEqual(NS.SECRET, Core.SECRET)
+    assertEqual(NS.SafeToString({}), NS.SECRET)
+end)
+
 test("NS.IsConcatSafe probes table.concat, not the .. operator", function()
     assertTrue(NS.IsConcatSafe("x"))
     assertTrue(NS.IsConcatSafe(1))
@@ -246,6 +255,42 @@ test("no addon file emits a bare \"secret\" sentinel of its own", function()
         .. " — use NS.SafeToString so every line spells it <secret>")
 end)
 
+test("the <secret> literal is spelled only in core/CoreSetup.lua's library-absent arm", function()
+    -- red under: restoring `return "<secret>"` in core/Compat.lua's safeRender.
+    --
+    -- events-frames-taint-§8 allows exactly one host copy of the sentinel: the
+    -- degradation stub's, for an install with no library to read it from. Every
+    -- other reader goes through NS.SECRET (LibKa0s-Core-1.0 lib.SECRET live), so
+    -- a library retune cannot leave a second spelling behind (KickCD#36, D3.11).
+    local offenders, inArm, stubHits = {}, false, 0
+    for _, dir in ipairs({ "core", "modules", "settings" }) do
+        local pipe = io.popen("ls " .. T.root .. "/" .. dir .. "/*.lua 2>/dev/null")
+        for path in pipe:lines() do
+            local isSetup = path:sub(-#"core/CoreSetup.lua") == "core/CoreSetup.lua"
+            local fh = io.open(path, "r")
+            local n = 0
+            for line in fh:lines() do
+                n = n + 1
+                if isSetup and line:match("^if not lib then") then inArm = true end
+                if isSetup and line:match("^NS%.IsConcatSafe%s*=%s*lib%.") then inArm = false end
+                local code = line:gsub("%-%-.*$", "")
+                if code:find('"<secret>"', 1, true) then
+                    if isSetup and inArm then
+                        stubHits = stubHits + 1
+                    else
+                        offenders[#offenders + 1] = path:gsub("^.*/(%w+/[%w_]+%.lua)$", "%1") .. ":" .. n
+                    end
+                end
+            end
+            fh:close()
+        end
+        pipe:close()
+    end
+    assertEqual(#offenders, 0, "\"<secret>\" spelled outside the library-absent arm at: "
+        .. table.concat(offenders, ", ") .. " — read NS.SECRET")
+    assertEqual(stubHits, 1, "the library-absent arm spells the sentinel exactly once")
+end)
+
 -- ── the degraded path ───────────────────────────────────────────────────────
 
 test("with LibKa0s absent the addon still loads and still prints tagged lines", function()
@@ -275,6 +320,14 @@ test("the degraded printer is still secret-safe and still says <secret>", functi
     -- on a repeating ticker.
     local inst = T.load(true, false, nil, { libFiles = {} })
     assertEqual(inst.NS.SafeToString({}), "<secret>")
+end)
+
+test("with LibKa0s absent NS.SECRET is still published, as the stub literal", function()
+    -- test_surface_parity.lua already demands the NAME on both paths; this pins
+    -- the VALUE, which core/Compat.lua's safeRender returns for a secret.
+    local inst = T.load(true, false, nil, { libFiles = {} })
+    assertEqual(inst.NS.SECRET, "<secret>")
+    assertEqual(inst.NS.SafeToString({}), inst.NS.SECRET)
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────

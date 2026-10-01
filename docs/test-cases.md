@@ -22,7 +22,7 @@ badge and any count quoted in the docs must agree with it.
 - Util.Throttle coalesces a burst to one trailing-args call
 - NewUnitCastFilter arms its filter frame for the named unit
 
-### test_coresetup.lua (26)
+### test_coresetup.lua (29)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner FEEDS the derived library list, and it is not empty
@@ -33,6 +33,7 @@ badge and any count quoted in the docs must agree with it.
 - NS.SafeToString renders ordinary values through tostring
 - NS.SafeToString answers nil and booleans up front, never masking them
 - NS.SafeToString renders an unconcatable value as the shared <secret> sentinel
+- NS.SECRET is the library's sentinel, the one NS.SafeToString renders
 - NS.IsConcatSafe probes table.concat, not the .. operator
 - NS.Util.print renders prefix, one space, then the body — byte for byte
 - NS.Util.print space-joins its arguments, mirroring print()
@@ -41,8 +42,10 @@ badge and any count quoted in the docs must agree with it.
 - NS.Util.print is the library printer, not a host reimplementation
 - core/Util.lua no longer defines a printer of its own
 - no addon file emits a bare "secret" sentinel of its own
+- the <secret> literal is spelled only in core/CoreSetup.lua's library-absent arm
 - with LibKa0s absent the addon still loads and still prints tagged lines
 - the degraded printer is still secret-safe and still says <secret>
+- with LibKa0s absent NS.SECRET is still published, as the stub literal
 - LibKa0s-Core-1.0 still has no user-visible strings to trap
 - the Core descriptor passes no locale table, and the printer renders no key
 - the shared cause clause is published on the healthy path too
@@ -106,14 +109,13 @@ badge and any count quoted in the docs must agree with it.
 - /kcd resetposition restores the focus grid too
 - /kcd resetposition: the target grid is still restored
 
-### test_constants.lua (27)
+### test_constants.lua (26)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
 - Constants: the GCD upper bound covers an unhasted 1.5s global
 - Constants: the cast bar's inside and outside insets are symmetric
-- Constants: the panel header reserves more height than its top inset
-- Constants: every panel metric is a positive number
+- Constants: the host declares no panel header metric of its own
 - Constants: the library publishes every panel layout metric as a positive number
 - Constants: a rendered unit panel spaces its rows by a real number of pixels
 - Constants: no host copy of a LibKa0s-Options layout constant
@@ -1532,11 +1534,11 @@ badge and any count quoted in the docs must agree with it.
 | Suite | Cases |
 |-------|------:|
 | test_util.lua | 13 |
-| test_coresetup.lua | 26 |
+| test_coresetup.lua | 29 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 31 |
-| test_constants.lua | 27 |
+| test_constants.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_locale.lua | 15 |
@@ -1607,4 +1609,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1293** |
+| **Total** | **1295** |

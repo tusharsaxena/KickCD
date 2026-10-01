@@ -757,7 +757,7 @@ function Cooldowns:DebugDump(emit)
     --
     -- The shared stringifier (LibKa0s-Core-1.0, via core/CoreSetup.lua), not a
     -- local copy. Two things change and both are improvements: the sentinel is
-    -- now "<secret>" — the same one core/Compat.lua already used, so a pasted
+    -- now NS.SECRET ("<secret>") — the same one core/Compat.lua renders, so a pasted
     -- log spells the condition one way — and the probe is `table.concat` rather
     -- than `issecretvalue`, which tests the operation that actually rejects a
     -- secret instead of asking the API whether it thinks it has one.

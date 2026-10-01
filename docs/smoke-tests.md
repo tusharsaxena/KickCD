@@ -24,8 +24,8 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| DIAG-1 – 44 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates |
-| DEGRADED-1 – 14 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows |
+| DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
+| DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
 | LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
 
 ## Before you start
@@ -893,6 +893,10 @@ Which checks to run for a partial change:
   `[Cooldowns] rebuild …` line, however long the drag. Click the console's clear control, then nudge
   the slider → exactly one `[Cooldowns] rebuild …` line, although the watched list did not change;
   keep dragging → no more. Result:
+- **DIAG-45. The interrupt dump's secret sentinel.** In combat, target a hostile caster whose cast
+  flags are secret and type `/kcd debug interrupt` → every secret-tainted position reads
+  `isSecret=true  value=<secret>`, with no Lua error, the same spelling as `charges=<secret>` in
+  `/kcd debug spells` (both are LibKa0s-Core's `NS.SECRET` now). Result:
 
 ## DEGRADED
 
@@ -938,6 +942,10 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   `/kcd spells` → each prints its sub-list as plain `/kcd debug <verb>  <description>` (and
   `/kcd spells <verb>  <description>`) rows: no color, no em-dash separator, the same shape as
   DEGRADED-5's help rows, and no Lua error. `/kcd debug events` still answers. Result:
+- **DEGRADED-15. The interrupt dump still says `<secret>`.** Run this before DEGRADED-13's restore. In
+  combat, target a hostile caster whose cast flags are secret, `/kcd debug interrupt` → the dump prints,
+  every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
+  `NS.SECRET`), with no Lua error. Result:
 
 ## Non-English client
 
@@ -1052,12 +1060,14 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-39 | New | The console's Diagnostics link (LibKa0s v1.64.0, DebugLog 17, DL-KC-03) |
 | DIAG-40 | New | Diagnostics turns debug logging on for the session (standard v2.71.0, DebugLogDiagnostics 2, DL-KC-03) |
 | DIAG-41 – 44 | New | The library's Slash refusals and Lifecycle edges in the console, the at-enable queue, Clear re-arming the gates (LibKa0s v1.65.0, DG-KC-01) |
+| DIAG-45 | New | The interrupt dump's secret sentinel, now LibKa0s-Core's `NS.SECRET` (KickCD#36, CA-KC-02) |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
 | DEGRADED-10 | New | The `/kcd profile` verb |
 | DEGRADED-11 | §31 | NOT YET RUN since `M4-20` |
 | DEGRADED-14 | New | The stub's plain `debug` and `spells` sub-help rows (KickCD#36, CA-KC-01) |
+| DEGRADED-15 | New | The degraded interrupt dump's `<secret>`, from the stub's `NS.SECRET` (KickCD#36, CA-KC-02) |
 | LOC-1 – 6 | §9b | Never run (2026-09-07 checklist, session 6) |
 
 If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led

@@ -44,21 +44,17 @@ test("Constants: the cast bar's inside and outside insets are symmetric", functi
     assertEqual(Const.CASTBAR_INSIDE_INSET, Const.CASTBAR_OUTSIDE_INSET)
 end)
 
-test("Constants: the panel header reserves more height than its top inset", function()
-    -- HEADER_HEIGHT positions the divider BELOW the title that HEADER_TOP
-    -- positions; inverting them would draw the divider through the title.
-    assertTrue(Const.PANEL_HEADER_HEIGHT > Const.PANEL_HEADER_TOP,
-        "the divider must sit below the title")
-end)
-
-test("Constants: every panel metric is a positive number", function()
-    -- PANEL_PADDING_X is NOT here: it was a host copy of the library's
-    -- published PADDING_X and is deleted (options-ui-§8). The case below
-    -- pins that it stays deleted.
-    for _, key in ipairs({ "PANEL_HEADER_TOP",
-                           "PANEL_HEADER_HEIGHT" }) do
-        assertTrue(type(Const[key]) == "number" and Const[key] > 0,
-            key .. " must be a positive number")
+test("Constants: the host declares no panel header metric of its own", function()
+    -- PANEL_PADDING_X, PANEL_HEADER_TOP and PANEL_HEADER_HEIGHT were host copies
+    -- of LibKa0s-Options-1.0's lib.LAYOUT values and are deleted (options-ui-§8,
+    -- KickCD#36). PADDING_X is published on the instance; HEADER_TOP and
+    -- HEADER_HEIGHT are INTERNAL to the library's header builder, so there is no
+    -- host value to keep at all. The source lint below keeps the declarations
+    -- out; this keeps the names out of the loaded table, whatever shape a
+    -- reintroduction takes.
+    for _, key in ipairs({ "PANEL_PADDING_X", "PANEL_HEADER_TOP", "PANEL_HEADER_HEIGHT" }) do
+        assertTrue(Const[key] == nil, "Const." .. key .. " must stay deleted, got "
+            .. tostring(Const[key]))
     end
 end)
 
@@ -129,9 +125,17 @@ test("Constants: no host copy of a LibKa0s-Options layout constant", function()
     -- library's 8" from "read a host 8" while the two agree — which is the
     -- entire failure mode.
     --
-    -- red under: restoring `Const.PANEL_PADDING_X = 16` in core/Constants.lua,
-    -- or `local ROW_VSPACER = 8` in settings/Panel.lua.
-    local published = { "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL" }
+    -- The two lib.LAYOUT values the library keeps INTERNAL -- HEADER_TOP and
+    -- HEADER_HEIGHT, drawn by its own header builder and never published -- are
+    -- held to the same rule: this addon's `Const.PANEL_HEADER_TOP = 20` and
+    -- `Const.PANEL_HEADER_HEIGHT = 54` had no reader and are deleted
+    -- (KickCD#36). An internal value is even less the host's to restate.
+    --
+    -- red under: restoring `Const.PANEL_PADDING_X = 16` or
+    -- `Const.PANEL_HEADER_TOP = 20` in core/Constants.lua, or
+    -- `local ROW_VSPACER = 8` in settings/Panel.lua.
+    local published = { "PADDING_X", "ROW_VSPACER", "SECTION_HEADING_H", "BUTTON_PAIR_REL",
+                        "HEADER_TOP", "HEADER_HEIGHT" }
     local offenders = {}
     for _, rel in ipairs({ "core/Constants.lua", "settings/Panel.lua",
                            "settings/Panel_Render.lua", "settings/Panel_Widgets.lua" }) do
@@ -153,7 +157,7 @@ test("Constants: no host copy of a LibKa0s-Options layout constant", function()
         fh:close()
     end
     assertEqual(#offenders, 0,
-        "host copies of a published LibKa0s-Options layout constant:\n  "
+        "host copies of a LibKa0s-Options layout constant:\n  "
         .. table.concat(offenders, "\n  "))
 end)
 
