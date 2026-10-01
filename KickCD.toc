@@ -68,6 +68,9 @@ core\CoreSetup.lua
 core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
+# LOAD-BEARING POSITION: core/Database_Migrations.lua defines its migrators on
+# NS.Database, which core/Database.lua creates, at file load -- so directly after it.
+core\Database_Migrations.lua
 core\KickCD.lua
 # LOAD-BEARING POSITION: calls NS.NewBusTarget (core/KickCD.lua) at file load;
 # everything else it reads resolves at call time.

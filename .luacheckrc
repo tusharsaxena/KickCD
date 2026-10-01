@@ -127,11 +127,11 @@ files["tests/"] = {
 
 -- The two version-gated migrators, `Database:MigrateColorShape` and `Database:MigrateFontFlags`.
 -- Both read the AceDB instance they are handed and nothing off the Database table, but both are
--- reached with the colon -- from the `migrations` scaffold at core/Database.lua:527-528 and from
+-- reached with the colon -- from the `migrations` scaffold in core/Database_Migrations.lua and from
 -- tests/test_database.lua -- and they sit in a family with FoldLegacyUnits, BackfillLabelStyle
 -- and MigrateSpecKeys, which do read it. A migrator family whose signatures disagree is worse
 -- than two unused receivers.
-files["core/Database.lua"] = {
+files["core/Database_Migrations.lua"] = {
   ignore = { "212/self" },
 }
 

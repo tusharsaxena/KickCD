@@ -59,8 +59,8 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 
 | Tag | Emitted by | What it logs |
 |---|---|---|
-| `Init` | `core/DebugLogSetup.lua`, `core/Database.lua` | The session summary; an optional library that did not load (held for the first enable); the color and font-flag migrations |
-| `Migrate` | `core/Database.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
+| `Init` | `core/DebugLogSetup.lua`, `core/Database_Migrations.lua` | The session summary; an optional library that did not load (held for the first enable); the color and font-flag migrations |
+| `Migrate` | `core/Database_Migrations.lua` | The spell-list spec-key migration (each resolved, unresolved or colliding entry), and a migration step that raised |
 | `Set` | `settings/SchemaSetup.lua`, `core/Database.lua`, `core/KickCD.lua`, `settings/Slash.lua` | Every schema write (`<path> = <value>`, debounced), bulk-reset brackets, profile reset and copy; a host `/kcd lock`, `unlock`, `list`, `get`, `set`, `profile`, `reset`, `resetall` or `resetposition` refused because the db or the settings layer is not ready, or a `/kcd reset` given a retired page word |
 | `Profile` | `core/Database.lua` | Profile switches |
 | `Debug` | `core/KickCD.lua` | A `/kcd debug` word refused: an unknown subcommand (naming it), or a topic whose module is missing (`spells` with no Cooldowns module, `castbar` with no Castbar module, `interrupt` with no `Compat.DebugInterrupt`) |
