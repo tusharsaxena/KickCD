@@ -154,6 +154,8 @@ files["core/KickCD.lua"] = {
 -- invokes a name-registered handler as `self[method](self, ...)`. The receiver is not this
 -- addon's choice at all.
 files["modules/Castbar.lua"]         = { ignore = { "212/self" } }
+-- Castbar_Frame.lua (#24) carries ApplyAnchor, peeled from Castbar.lua with the same receiver.
+files["modules/Castbar_Frame.lua"]   = { ignore = { "212/self" } }
 files["modules/Cooldowns.lua"]       = { ignore = { "212/self" } }
 files["modules/IconGrid.lua"]        = { ignore = { "212/self" } }
 -- The two siblings peeled from it (#25) carry methods that moved with the same receivers:

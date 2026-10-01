@@ -115,9 +115,10 @@ modules\IconGrid_Ticker.lua
 modules\IconGrid_Visibility.lua
 modules\IconGrid_Handle.lua
 modules\Castbar.lua
-# LOAD-BEARING POSITION: modules/Castbar_Handle.lua, modules/Castbar_Skin.lua,
-# modules/Castbar_Events.lua and modules/Castbar_Debug.lua call NS:GetModule("Castbar")
-# at file scope, so all four follow modules\Castbar.lua.
+# LOAD-BEARING POSITION: modules/Castbar_Frame.lua, modules/Castbar_Handle.lua,
+# modules/Castbar_Skin.lua, modules/Castbar_Events.lua and modules/Castbar_Debug.lua call
+# NS:GetModule("Castbar") at file scope, so all five follow modules\Castbar.lua.
+modules\Castbar_Frame.lua
 modules\Castbar_Handle.lua
 modules\Castbar_Skin.lua
 modules\Castbar_Events.lua
