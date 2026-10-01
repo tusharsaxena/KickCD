@@ -1095,7 +1095,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (33)
+### test_options_panel.lua (34)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1127,6 +1127,7 @@ badge and any count quoted in the docs must agree with it.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1570,7 +1571,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 33 |
+| test_options_panel.lua | 34 |
 | test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
@@ -1597,4 +1598,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1283** |
+| **Total** | **1284** |

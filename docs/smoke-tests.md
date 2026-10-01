@@ -15,7 +15,7 @@ and a retired one leaves its number unused.
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
 | SLASH-1 – 13 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled |
-| PANEL-1 – 29 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys |
+| PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
@@ -55,7 +55,7 @@ and a retired one leaves its number unused.
 
 Which checks to run for a partial change:
 
-- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19 and PANEL-23. PANEL-23 is
+- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19, PANEL-23 and PANEL-30. PANEL-23 is
   the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
@@ -312,6 +312,11 @@ Which checks to run for a partial change:
   the band → Defaults → `/kcd get units.target.icons.primarySize` → `64 px`; the Master scale slider still
   reads 1.25, `timeOffsetY` still `-30 px`, the Spells order still yours. Clean up: Grid → Cast bar →
   Defaults, General → Defaults, Spells → Defaults. Result:
+- **PANEL-30. The Options descriptor names the folder.** `/kcd debug on`, then `/kcd config` and open
+  every page in turn → each renders exactly as before, with no Lua error, and the console logs no
+  `[Cfg] help art:` line. The descriptor now passes `addonName` (LibKa0s v1.67.0, LibKa0s#42), the folder
+  name an IdList help mark builds the library's `info` art from. No page here has a help mark yet, so
+  this only proves nothing broke; `tests/test_options_panel.lua` pins the field. `/kcd debug off`. Result:
 
 ## PROFILE
 
@@ -988,6 +993,7 @@ off on its own `Result:` line, then remove its row here.
 | PANEL-25 – 27 | §26 L740 – 742, §33 | No result recorded |
 | PANEL-28 | §25 L690 – 697 | Never run (2026-09-07 checklist, 3.9) |
 | PANEL-29 | §12 L362 | No result recorded; restored in this rework: General's and Icons' Defaults leave the other pages and the spell list alone |
+| PANEL-30 | New | The Options descriptor passes `addonName` (LibKa0s v1.67.0, LibKa0s#42, CA-KC-NM) |
 | PROFILE-1, PROFILE-4 – 6 | §13 L386, L389 – 391 | No result recorded |
 | PROFILE-2 | §13 L377 – 383, L387 | No result recorded; corrected: copies into a scratch `SmokeCopy` |
 | PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |

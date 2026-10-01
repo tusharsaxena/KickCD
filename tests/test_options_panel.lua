@@ -622,6 +622,31 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
 end)
 
+test("OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk", function()
+    -- LibKa0s#42 (Options 28 / OptionsIdList 3). An IdList help mark draws this
+    -- library's own white `info` art only when the descriptor names the host's
+    -- FOLDER; with no `addonName` it falls back to Blizzard's blue disc and a
+    -- `[Cfg] help art:` debug line. Neither parentTitle ("Ka0s KickCD") nor
+    -- mainPanelName is the folder, so it is passed explicitly -- the first vararg,
+    -- the same value core/DebugLogSetup.lua passes -- never a display label.
+    -- KickCD has no IdList with help today, so this is latent: it protects the
+    -- first help line anyone adds.
+    -- red under: `local _, NS = ...` with no `addonName = addonName,` in the
+    -- descriptor, or a vendor that dropped media/icons/info.tga.
+    local fh = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
+    local src = fh:read("*a"); fh:close()
+    src = src:gsub("%-%-[^\r\n]*", "")
+    assertTrue(src:match("^local addonName, NS = %.%.%.") ~= nil,
+        "the first vararg (the folder name) must be kept as `addonName`, not thrown away as `_`")
+    local body = src:match("local descriptor = (%b{})")
+    assertTrue(body ~= nil, "the Options descriptor table was not found")
+    assertTrue(body:match("\n%s*addonName%s*=%s*addonName%s*,") ~= nil,
+        "the Options descriptor does not pass addonName, so help marks draw the client glyph")
+    local art = io.open(T.root .. "/libs/LibKa0s/media/icons/info.tga", "rb")
+    assertTrue(art ~= nil, "libs/LibKa0s/media/icons/info.tga is not vendored, so the path would be dead")
+    if art then art:close() end
+end)
+
 -- ── the LSM30_Border fixup, promoted out of core/LSMPatch.lua ────────────────
 
 test("the live wiring patches LSM30_Border through the library, not a private copy", function()
