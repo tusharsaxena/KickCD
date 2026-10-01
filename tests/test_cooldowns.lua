@@ -237,9 +237,10 @@ end)
 -- ---------------------------------------------------------------------------
 --
 -- C_Spell.GetSpellCooldownDuration returns a FRESH object every call, so a
--- spell sitting on an unchanged cooldown compares unequal on every poll.
--- The re-emit is load-bearing (Icon:Apply re-evaluates the alpha/tint/GCD
--- curves from it), but logging it floods the console ~10x/sec per spell.
+-- spell sitting on an unchanged cooldown hands back a new handle on every
+-- poll. Since KickCD#9 that churn produces neither an emit nor a log line:
+-- the icon ticker re-fetches the handle itself, so nothing downstream needs
+-- the re-emit, and logging it would flood the console ~10x/sec per spell.
 
 --- Drive one Refresh where every poll returns the same logical state but a
 --- brand-new cdObject, mimicking the live API. Returns (linesLogged, emits).

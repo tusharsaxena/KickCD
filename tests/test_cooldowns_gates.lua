@@ -104,9 +104,10 @@ end)
 -- ── Handle IDENTITY: neither gate (KickCD#9) ───────────────────────────────
 
 test("StateChanged is SILENT on a new handle for the same cooldown", function()
-    -- C_Spell.GetSpellCooldownDuration mints a fresh object per call, so an
-    -- identity compare fired ~10x/sec for every spell on cooldown. The icon
-    -- ticker re-fetches the handle itself now, so the emit is not needed.
+    -- C_Spell.GetSpellCooldownDuration mints a fresh object per call, so the
+    -- identity compare StateChanged used before KickCD#9 fired ~10x/sec for
+    -- every spell on cooldown. The icon ticker re-fetches the handle itself,
+    -- so no emit is needed.
     -- red under: restoring `prev.cdObject ~= next_.cdObject` in StateChanged
     local prev = st({ isActive = true, cdObject = mocks.__makeDurationObject(30) })
     local next_ = st({ isActive = true, cdObject = mocks.__makeDurationObject(29) })

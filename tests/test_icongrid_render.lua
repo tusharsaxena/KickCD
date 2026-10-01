@@ -143,8 +143,9 @@ test("PlainStateMoved treats a first render as a change", function()
 end)
 
 test("PlainStateMoved is false when nothing plain moved", function()
-    -- This is the common case ~10x/sec through a whole cooldown, and the
-    -- entire reason the gate exists.
+    -- Before KickCD#9 this was the common case ~10x/sec through a whole
+    -- cooldown (handle churn re-emitted every poll), which is why the gate
+    -- was added; it still guards any emit that moves nothing plain.
     assertFalse(IconGrid.PlainStateMoved(st(), st()))
 end)
 

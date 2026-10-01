@@ -450,8 +450,8 @@ function Cooldowns:Refresh()
     local readyIds, activeIds, dropIds  -- built only when debug-on (debug-logging-§9 zero-alloc)
     if dbg then readyIds, activeIds, dropIds = {}, {}, {} end
     -- `logged` counts MATERIAL changes (see MaterialChange), which is a subset
-    -- of the emits: a fresh cooldown handle for an unchanged cooldown re-emits
-    -- to the renderer but must not reach the log. The printed count has to
+    -- of the emits: emits caused only by secret charges are emitted by
+    -- StateChanged but not logged by MaterialChange. The printed count has to
     -- match the ids actually listed, so the line reports `logged`.
     local watched, logged = 0, 0
 
