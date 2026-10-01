@@ -253,7 +253,7 @@ local COMMANDS = {
     -- is unconditional, and nothing in this addon tears down the chat command,
     -- this table or the dispatcher when `enabled` goes false -- the modules stand
     -- their DRAWING down and nothing else. Setup, not a feature
-    -- (slash-commands-§2), and tests/test_slash.lua pins it.
+    -- (slash-commands-§2), and tests/test_slash_degraded.lua pins it.
     {"enable",        "Enable KickCD",
         function() NS.SetMasterEnabled(true) end},
     {"disable",       "Disable KickCD — `/kcd enable` turns it back on",
@@ -369,7 +369,7 @@ NS.EXTRA_LIVE_VERBS = { "spells", "profile" }
 -- with: settings/Slash.lua's degradation stub refuses exactly these while the
 -- addon is disabled. It is this addon's own list of its own feature verbs, not a
 -- copy of the library's reserved thirteen (slash-commands-§1 lets a stub carry one
--- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash.lua pins it
+-- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash_degraded.lua pins it
 -- against the live gate: COMMANDS minus the live union MUST be this list.
 NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
 

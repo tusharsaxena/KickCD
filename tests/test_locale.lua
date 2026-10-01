@@ -403,7 +403,7 @@ local RESIDUE = {
     {"settings/Slash.lua", "Grid \\226\\134\\146 Text Label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
     {"settings/Slash.lua", ", or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOR"},
     -- The degradation stub's one verbatim library string (slash-commands-§1),
-    -- pinned byte for byte in tests/test_slash.lua.
+    -- pinned byte for byte in tests/test_slash_degraded.lua.
     {"settings/Slash.lua", "%s is disabled \\226\\128\\148 enable it with |cFFFFFF00%s|r", "LIBRARY CONSTANT"},
     {"settings/Slash.lua", "the LibKa0s library is missing", "VALIDATOR"},
     {"settings/Slash.lua", " slash commands", "FRAGMENT"},
