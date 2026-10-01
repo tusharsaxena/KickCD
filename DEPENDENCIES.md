@@ -143,7 +143,7 @@ The exact commands this repo is verified with. All run from the repo root.
 ```bash
 luacheck .                                          # must be 0 warnings, 0 errors
 lua tests/run.lua                                   # must exit 0, all cases passing
-lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .   # the `complexity` suite; recorded in each run bundle
+bash tests/_kit/run-automated-tests.sh --suite complexity   # the sighted complexity suite (kit 35); recorded in each run bundle
 ```
 
 The first two are the **green commit gate**. The third is a **release** checkpoint and is
