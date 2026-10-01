@@ -1,0 +1,1 @@
+OK GI-KC-RV — libs/LibKa0s and tests/_kit byte-identical to v1.66.0 (e4c5ef7); test_lizard_sighted wired; provenance, testing/performance/DEPENDENCIES moved off raw lizard; reviewer gate 1246/0/1, luacheck 0/0, sighted complexity pass (max 46, 3 warnings left for GI-KC-12)
