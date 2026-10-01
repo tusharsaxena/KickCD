@@ -1,0 +1,1 @@
+OK GI-KC-12 — Cooldowns.Refresh 46->12, IconGrid.Layout 29->9, perfsetup scan 19->2; 19 characterization tests green on the unsplit code (checked at 9787b9e) and after; behaviour identical, debug-off path still allocates nothing; sighted complexity 0 warnings, max CCN 15; IconGrid.lua at 996 lines; CRLF kept
