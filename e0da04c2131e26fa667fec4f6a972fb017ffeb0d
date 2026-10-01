@@ -1,0 +1,1 @@
+OK GI-KC-11 — fillRows uses H.RenderGrid(ctx, items, scroll, {gap=false}); AddRow runs on the stacked group after RenderGrid returns; height == ROW_HEIGHT is asserted; unbuilt rows are released; the call-shape and empty-label tests are red-first; the BuildRow 'into' deviation is sound; docs updated; CRLF kept; gate green (1282/0/1, luacheck 0/0)
