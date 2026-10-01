@@ -1189,7 +1189,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (60)
+### test_slash.lua (42)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1225,13 +1225,6 @@ badge and any count quoted in the docs must agree with it.
 - no chrome line /kcd prints is a raw SCREAMING_SNAKE key
 - the vendored Slash major falls THROUGH a key-returning locale table
 - set stores a multi-word label text whole
-- a disabled feature verb says so on ONE line, and does NOT act
-- every feature verb refuses, and NONE of them reaches the write seam
-- the live verbs still answer while disabled, and none of them refuses
-- `/kcd set` still writes while disabled — repair, not just read
-- `/kcd enable` above all — the switch is never one-way
-- nothing refuses while the addon is ENABLED
-- the refusal line is the LIBRARY's, and this addon does not re-spell it
 - `/kcd get` on a bool stored FALSE prints false, not the literal `nil`
 - `/kcd spells add Wind Shear` adds 57994 for a Shaman
 - `/kcd spells add Wind Shear SHAMAN ENHANCEMENT` takes the trailing pair
@@ -1240,6 +1233,16 @@ badge and any count quoted in the docs must agree with it.
 - `spells add <id> WARLORD 99999` writes nothing
 - `spells add <id> SHAMAN 99999` names the spec it could not resolve
 - bare `/kcd spells` names the default spec by SpecDisplay
+
+### test_slash_degraded.lua (18)
+
+- a disabled feature verb says so on ONE line, and does NOT act
+- every feature verb refuses, and NONE of them reaches the write seam
+- the live verbs still answer while disabled, and none of them refuses
+- `/kcd set` still writes while disabled — repair, not just read
+- `/kcd enable` above all — the switch is never one-way
+- nothing refuses while the addon is ENABLED
+- the refusal line is the LIBRARY's, and this addon does not re-spell it
 - the stub's DisabledLine format is the library constant, byte for byte
 - the stub carries no copy of the library's reserved verbs
 - the host's feature verbs are exactly the verbs the live gate refuses
@@ -1522,7 +1525,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 60 |
+| test_slash.lua | 42 |
+| test_slash_degraded.lua | 18 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |

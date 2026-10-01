@@ -186,7 +186,7 @@ missing profile, because the `enabled` row is **composed** and a load without Li
 resolve; a gate that silently refused every feature verb on that load would be worse than the
 failure it guards against.
 
-Pinned by `tests/test_slash.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
+Pinned by `tests/test_slash_degraded.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
 ## Degraded verbs: a load without LibKa0s
 
@@ -200,11 +200,11 @@ degradation stub") prescribe:
   verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
   `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
   the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
-  copy, so it names the host's own feature verbs instead. `tests/test_slash.lua` pins the list
+  copy, so it names the host's own feature verbs instead. `tests/test_slash_degraded.lua` pins the list
   against the live union (`COMMANDS` minus the live set).
 * **One library string, verbatim and pinned.** The stub carries `DISABLED_LINE_FORMAT`'s bytes as a
   local, exposed as `NS.Slash.cli.__disabledLineFormat` (the `__` prefix keeps it outside the
-  surface-parity gate), and `tests/test_slash.lua` pins it with `Kit.assertLibraryConstant`. The
+  surface-parity gate), and `tests/test_slash_degraded.lua` pins it with `Kit.assertLibraryConstant`. The
   degraded `DisabledLine` is therefore the live line, brand and `/kcd enable` included. It is the
   only library string the stub carries.
 * **No formatter, parser or key/value copy.** Help rows render plainly as `/kcd <verb>  <desc>`: two
@@ -222,7 +222,7 @@ degradation stub") prescribe:
   minor 17 put both on the live instance; each prints the same line for `/kcd profile` and
   switches nothing, since with no library there is no store adapter to trust.
 
-Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`,
+Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/test_slash.lua`, `tests/test_slash_degraded.lua`,
 `tests/test_disabled.lua` and `tests/test_options_panel.lua`.
 
 ## Top-level commands
