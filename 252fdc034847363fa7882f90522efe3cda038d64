@@ -1,1 +1,1 @@
-OK GI-KC-06 — header builders moved to Spells_Header.lua (Spells 914); mutable selection/headerWidgets reached through GetSelection and __headerDeps setters, not copies, behaviour equivalent; TOC and test_locale rows follow; totals identical
+OK GI-KC-06 — header builders moved to Spells_Header.lua (914); selection read live via GetSelection, written via __headerDeps.setSelection, headerWidgets via newHeaderWidgets; TitleCaseToken/ClassDisplayName still published; totals identical
