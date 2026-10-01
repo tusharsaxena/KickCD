@@ -1,1 +1,1 @@
-OK GI-KC-03 — frame model moved verbatim to tests/wow_mock_frames.lua, loaded root-relative at file scope (mock 834), recordHook exported, totals identical
+OK GI-KC-03 — pure move of the frame model to tests/wow_mock_frames.lua via root-relative loadfile; only the loader/return lines are new; wow_mock 834; totals identical
