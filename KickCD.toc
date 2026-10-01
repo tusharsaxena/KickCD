@@ -151,7 +151,7 @@ settings\OptionsSetup.lua
 # file-scope local, so this line must stay above every per-tab file.
 settings\Panel.lua
 # Conventional position: below settings\Panel.lua the page files are free relative to
-# each other, bar two notes: settings\Grid.lua's and settings\Spells_Rows.lua's. The
+# each other, bar two notes: settings\Grid.lua's and the Spells siblings'. The
 # Icons, Cast bar and Text Label files call Helpers.RegisterGridSection, which
 # settings\Panel_Render.lua publishes, at file scope, so they stay below it.
 settings\Panel_Widgets.lua
@@ -165,6 +165,8 @@ settings\Label.lua
 # entries settings\Icons.lua, Castbar.lua and Label.lua registered above it.
 settings\Grid.lua
 settings\Spells.lua
-# LOAD-BEARING POSITION: takes NS.Settings.SpellsPanel (settings/Spells.lua) as a file-scope upvalue.
+# LOAD-BEARING POSITION: settings/Spells_Rows.lua and settings/Spells_Header.lua take
+# NS.Settings.SpellsPanel (settings/Spells.lua) as a file-scope upvalue.
 settings\Spells_Rows.lua
+settings\Spells_Header.lua
 settings\Profiles.lua

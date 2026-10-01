@@ -451,8 +451,8 @@ local RESIDUE = {
     -- Routing them would put that inconsistency in a locale file instead of
     -- ending it; the fix is to consult the client first and keep these as the
     -- no-global fallback, which is a behavior change M4-21 does not scope.
-    {"settings/Spells.lua", "Death Knight", "CLIENT SUPPLIED"},
-    {"settings/Spells.lua", "Demon Hunter", "CLIENT SUPPLIED"},
+    {"settings/Spells_Header.lua", "Death Knight", "CLIENT SUPPLIED"},
+    {"settings/Spells_Header.lua", "Demon Hunter", "CLIENT SUPPLIED"},
 }
 
 local CLASSES = {
