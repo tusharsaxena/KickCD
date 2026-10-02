@@ -75,7 +75,7 @@ badge and any count quoted in the docs must agree with it.
 - EnvSetup: no file inlines its own C_AddOns ladder any more
 - EnvSetup: with no LibKa0s the seam still reads this addon's own TOC
 
-### test_util_anchor.lua (31)
+### test_util_anchor.lua (37)
 
 - SaveAnchor snapshots a frame's first anchor point
 - SaveAnchor stores no frame reference, only serializable fields
@@ -108,6 +108,12 @@ badge and any count quoted in the docs must agree with it.
 - a bad EMPOWER name is rejected and the other routes still arm
 - /kcd resetposition restores the focus grid too
 - /kcd resetposition: the target grid is still restored
+- PlaceTooltipBeside puts the tooltip to the strip's right when it fits
+- PlaceTooltipBeside flips to the strip's left when the right side would leave the screen
+- PlaceTooltipBeside anchors to the STRIP when the hovered frame is its ? mark
+- PlaceTooltipBeside compares in screen pixels, so a scaled strip flips when it should
+- PlaceTooltipBeside answers non-true and anchors nothing when a read is secret
+- PlaceTooltipBeside answers non-true and anchors nothing when a read is nil
 
 ### test_constants.lua (26)
 
@@ -673,10 +679,11 @@ badge and any count quoted in the docs must agree with it.
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
 
-### test_icongrid_handle.lua (12)
+### test_icongrid_handle.lua (13)
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
+- hovering the grid's strip puts its tooltip beside the strip, not above it
 - ApplyLock shows the strip when it registers the drag and hides it when it clears it
 - the strip is sized to its label plus the widget's reserve
 - dragging the strip moves the GRID and saves its anchor
@@ -777,7 +784,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (43)
+### test_castbar_frame.lua (44)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -818,6 +825,7 @@ badge and any count quoted in the docs must agree with it.
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 - EnsureFrame builds the library's drag strip in place of the hint text
+- hovering the strip puts its tooltip beside the strip, not above it
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
@@ -1537,7 +1545,7 @@ badge and any count quoted in the docs must agree with it.
 | test_coresetup.lua | 29 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
-| test_util_anchor.lua | 31 |
+| test_util_anchor.lua | 37 |
 | test_constants.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
@@ -1564,13 +1572,13 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 8 |
-| test_icongrid_handle.lua | 12 |
+| test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 43 |
+| test_castbar_frame.lua | 44 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -1609,4 +1617,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1295** |
+| **Total** | **1303** |

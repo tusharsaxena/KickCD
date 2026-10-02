@@ -565,6 +565,31 @@ test("EnsureFrame builds the library's drag strip in place of the hint text", fu
         "the label names the unit -- two unlocked bars would otherwise read alike")
 end)
 
+test("hovering the strip puts its tooltip beside the strip, not above it", function()
+    -- LibKa0s WidgetsDragHandle minor 4's tooltipPlace (TP-KC-01). red under: a spec without the
+    -- hook, which owns the tooltip by the strip at ANCHOR_TOP and anchors nothing beside it.
+    local _, mocks, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    local strip, tip, owners = frame.dragHandle, mocks.GameTooltip, {}
+    mocks.UIParent.GetRight = function() return 1000 end
+    strip.GetRight = function() return 500 end
+    tip:SetWidth(200)
+    tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
+    strip:_run("OnEnter")
+    assertEqual(#owners, 1, "placed on the first try, so owned once")
+    assertTrue(rawequal(owners[1][1], mocks.UIParent), "owned by UIParent, as the hook requires")
+    assertEqual(owners[1][2], "ANCHOR_NONE")
+    local point, rel, relPoint = tip:GetPoint(1)
+    assertEqual(point, "TOPLEFT")
+    assertTrue(rawequal(rel, strip), "beside the strip")
+    assertEqual(relPoint, "TOPRIGHT")
+    -- The ? mark shows the same tooltip in the same place: anchored to the strip, not the mark.
+    tip:ClearAllPoints()
+    strip.help:_run("OnEnter")
+    local _, relMark = tip:GetPoint(1)
+    assertTrue(rawequal(relMark, strip), "the mark's tooltip sits beside the strip too")
+end)
+
 test("the focus bar's strip is labeled for ITS unit", function()
     local _, _, Castbar = enabled()
     local frame = Castbar:EnsureFrame(Castbar:GetInstance("focus"))

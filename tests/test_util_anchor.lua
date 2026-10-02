@@ -390,3 +390,86 @@ end)
 test("/kcd resetposition: the target grid is still restored", function()
     assertGridAtDefault(dragGridsAndReset(), "target")
 end)
+
+-- ── PlaceTooltipBeside (the drag strips' tooltipPlace, LibKa0s WidgetsDragHandle minor 4) ──
+--
+-- Both strips (the cast bar's, the grid's) hand the library this one placement. The owner's rule:
+-- the tooltip sits to the strip's RIGHT, or to its LEFT when the strip's right edge plus the
+-- tooltip's width would leave the screen. Only a literal `true` means placed; anything else makes
+-- the widget fall back to the cursor, so a read that cannot be trusted must answer non-true and
+-- leave the tooltip unanchored rather than guess.
+
+--- A fresh load whose screen is `screenRight` px wide, a strip whose right edge reads `right`
+--- (through `read`, so a case can hand back a secret or a nil), and a tooltip `width` wide. Fresh
+--- per case: the screen width is set on THIS instance's UIParent, and a shared one would carry it
+--- into the next case.
+local function placeBench(screenRight, right, width, read)
+    local i      = T.load(true)
+    local m      = i.mocks
+    m.UIParent.GetRight = function() return screenRight end
+    local strip  = m.CreateFrame("Button")
+    strip.help   = m.CreateFrame("Button", nil, strip)  -- what marks a frame as the widget's strip
+    strip.GetRight = read or function() return right end
+    local tip    = m.CreateFrame("GameTooltip")
+    tip:SetWidth(width)
+    return i.NS.Util, strip, tip, m
+end
+
+test("PlaceTooltipBeside puts the tooltip to the strip's right when it fits", function()
+    local U, strip, tip = placeBench(1000, 500, 200)
+    assertEqual(U.PlaceTooltipBeside(tip, strip), true, "a placement it made answers true")
+    assertEqual(tip:GetNumPoints(), 1)
+    local point, rel, relPoint, x, y = tip:GetPoint(1)
+    assertEqual(point, "TOPLEFT")
+    assertTrue(rawequal(rel, strip), "anchored to the strip itself")
+    assertEqual(relPoint, "TOPRIGHT")
+    assertTrue(x > 0, "a gap clear of the strip's edge")
+    assertEqual(y, 0)
+end)
+
+test("PlaceTooltipBeside flips to the strip's left when the right side would leave the screen", function()
+    -- red under: a placement that always anchors right (900 + 200 runs 100 px off a 1000 px screen)
+    local U, strip, tip = placeBench(1000, 900, 200)
+    assertEqual(U.PlaceTooltipBeside(tip, strip), true)
+    local point, rel, relPoint, x = tip:GetPoint(1)
+    assertEqual(point, "TOPRIGHT")
+    assertTrue(rawequal(rel, strip))
+    assertEqual(relPoint, "TOPLEFT")
+    assertTrue(x < 0, "a gap clear of the strip's left edge")
+end)
+
+test("PlaceTooltipBeside anchors to the STRIP when the hovered frame is its ? mark", function()
+    -- The widget hands the hook the frame hovered; for the mark that is the mark, whose parent is the
+    -- strip. One position for the strip and its mark, not two.
+    local U, strip, tip = placeBench(1000, 500, 200)
+    assertEqual(U.PlaceTooltipBeside(tip, strip.help), true)
+    local _, rel, relPoint = tip:GetPoint(1)
+    assertTrue(rawequal(rel, strip), "the mark resolves to its strip")
+    assertEqual(relPoint, "TOPRIGHT")
+end)
+
+test("PlaceTooltipBeside compares in screen pixels, so a scaled strip flips when it should", function()
+    -- red under: comparing the strip's raw GetRight (450, in its own scaled units) with the screen.
+    -- At scale 2 its right edge is 900 screen px, and 900 + 200 does not fit in 1000.
+    local U, strip, tip, m = placeBench(1000, 450, 200)
+    local grid = m.CreateFrame("Frame")
+    grid:SetScale(2)
+    strip.__parent = grid
+    assertEqual(U.PlaceTooltipBeside(tip, strip), true)
+    assertEqual((tip:GetPoint(1)), "TOPRIGHT")
+end)
+
+test("PlaceTooltipBeside answers non-true and anchors nothing when a read is secret", function()
+    local secret = {}
+    local U, strip, tip, m = placeBench(1000, nil, 200, function() return secret end)
+    m.issecretvalue = function(v) return rawequal(v, secret) end
+    assertTrue(U.PlaceTooltipBeside(tip, strip) ~= true, "the widget must fall back to the cursor")
+    assertEqual(tip:GetNumPoints(), 0, "nothing anchored on a guess")
+end)
+
+test("PlaceTooltipBeside answers non-true and anchors nothing when a read is nil", function()
+    -- A strip not yet laid out answers nil for its edges in the client.
+    local U, strip, tip = placeBench(1000, nil, 200, function() return nil end)
+    assertTrue(U.PlaceTooltipBeside(tip, strip) ~= true)
+    assertEqual(tip:GetNumPoints(), 0)
+end)

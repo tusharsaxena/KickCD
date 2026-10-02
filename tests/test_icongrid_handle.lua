@@ -57,6 +57,25 @@ test("the strip's label names the addon and which grid it moves", function()
     assertEqual(inst.handle.__label, NS.L["Ka0s KickCD"] .. " — " .. NS.L["Target"])
 end)
 
+test("hovering the grid's strip puts its tooltip beside the strip, not above it", function()
+    -- LibKa0s WidgetsDragHandle minor 4's tooltipPlace (TP-KC-01). red under: a spec without the
+    -- hook (owned by the strip at ANCHOR_TOP). A strip near the right edge flips to its left.
+    local NS, IconGrid, inst, mocks = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local strip, tip, owners = inst.handle, mocks.GameTooltip, {}
+    mocks.UIParent.GetRight = function() return 1000 end
+    strip.GetRight = function() return 900 end
+    tip:SetWidth(200)
+    tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
+    strip:_run("OnEnter")
+    assertEqual(#owners, 1)
+    assertEqual(owners[1][2], "ANCHOR_NONE")
+    local point, rel, relPoint = tip:GetPoint(1)
+    assertEqual(point, "TOPRIGHT")
+    assertTrue(rawequal(rel, strip), "beside the strip")
+    assertEqual(relPoint, "TOPLEFT", "900 + 200 leaves a 1000 px screen, so the left side")
+end)
+
 test("ApplyLock shows the strip when it registers the drag and hides it when it clears it", function()
     local NS, IconGrid, inst = fresh()
     setLocked(NS, IconGrid, inst, false)

@@ -3,7 +3,7 @@
 --
 -- Small, dependency-free helpers shared across modules:
 --   * Color {r,g,b,a} unpacking
---   * Frame anchor save + restore (point/relativePoint/x/y)
+--   * Frame anchor save + restore (point/relativePoint/x/y), and the drag strips' tooltip placement
 --   * Throttle wrapper using C_Timer.After to coalesce setting writes
 --   * print() with the addon's chat prefix
 
@@ -66,6 +66,61 @@ function Util.ApplyAnchor(frame, anchor)
         anchor.relativePoint or "CENTER",
         anchor.x             or 0,
         anchor.y             or 0)
+end
+
+-- ---------------------------------------------------------------------------
+-- Drag strip tooltip placement
+-- ---------------------------------------------------------------------------
+--
+-- Both drag strips (modules/Castbar_Handle.lua, modules/IconGrid_Handle.lua) pass this as
+-- LibKa0s-Widgets' `tooltipPlace` (WidgetsDragHandle minor 4). The widget owns GameTooltip by
+-- UIParent at ANCHOR_NONE, draws and shows it, then calls this under pcall; only a literal `true`
+-- means placed, and anything else falls back to the cursor tooltip with the same lines.
+
+-- The gap between the strip's edge and the tooltip, in the tooltip's own units (SetPoint's).
+local TIP_GAP = 4
+
+--- A frame geometry read as a plain number, or nil when the method is missing or the answer is
+--- nil, secret (NS.Compat.IsSecret, the one place this addon asks) or not a number. Asked before
+--- any arithmetic, because arithmetic on a secret raises.
+local function plainRead(frame, method)
+    local fn = frame and frame[method]
+    if not fn then return nil end
+    local v = fn(frame)
+    if v == nil or NS.Compat.IsSecret(v) or type(v) ~= "number" then return nil end
+    return v
+end
+
+--- `method`'s answer in SCREEN px (times the frame's effective scale), or nil. The grid takes the
+--- master scale and the strip inherits it, so a raw edge and a raw screen width are in different
+--- units and comparing them would flip on the wrong side.
+local function screenRead(frame, method)
+    local v, s = plainRead(frame, method), plainRead(frame, "GetEffectiveScale")
+    return v and s and v * s or nil
+end
+
+--- Place a drag strip's tooltip beside the strip: to its right, or to its left when the strip's
+--- right edge plus the tooltip's width would pass the screen's right edge. `frame` is the frame
+--- hovered: the strip itself (it carries the widget's `help` field) or its `?` mark, whose parent
+--- is the strip, so both show the tooltip in one place.
+--- @return true|nil  true only once the tooltip is anchored; nil (the widget's cursor fallback)
+---                   when any read is missing, nil or secret, with nothing anchored.
+function Util.PlaceTooltipBeside(tip, frame)
+    if not (tip and frame) then return nil end
+    local strip = frame
+    if not frame.help and frame.GetParent then strip = frame:GetParent() end
+    local right    = screenRead(strip, "GetRight")
+    local width    = screenRead(tip, "GetWidth")
+    local screen   = screenRead(UIParent, "GetRight")
+    local tipScale = plainRead(tip, "GetEffectiveScale")
+    if not (right and width and screen and tipScale) then return nil end
+    tip:ClearAllPoints()
+    if right + TIP_GAP * tipScale + width <= screen then
+        tip:SetPoint("TOPLEFT", strip, "TOPRIGHT", TIP_GAP, 0)
+    else
+        tip:SetPoint("TOPRIGHT", strip, "TOPLEFT", -TIP_GAP, 0)
+    end
+    return true
 end
 
 -- ---------------------------------------------------------------------------
