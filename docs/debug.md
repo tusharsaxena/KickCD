@@ -291,7 +291,7 @@ visibly casting. Configured and live colors disagreeing means a write did not re
 
 `Compat.DebugInterrupt` (`core/Compat.lua`), on `target` (the report runs it for both units). It
 prints every positional return of `UnitCastingInfo` and `UnitChannelInfo` with its `type()` and
-secret flag, rendered through `safeRender`. Then it prints what `NS.State.IsHostileUnitCasting`
+secret flag, rendered through `safeRender`, which spells a secret as the shared `NS.SECRET` sentinel (`<secret>`). Then it prints what `NS.State.IsHostileUnitCasting`
 decided, the addon-wide visibility mode, and the primary and secondary glow triggers.
 
 **Use it when** the `target_casting_interruptible` visibility mode or an interrupt glow misbehaves,

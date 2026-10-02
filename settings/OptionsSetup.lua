@@ -1,4 +1,4 @@
-local _, NS = ...
+local addonName, NS = ...
 
 -- settings/OptionsSetup.lua — wires the addon into LibKa0s-Options-1.0.
 --
@@ -152,6 +152,9 @@ end
 local descriptor = {
     parentTitle   = "Ka0s KickCD",
     mainPanelName = "KickCDMainPanel",
+    -- The FOLDER name (the first vararg), so an IdList help mark draws the
+    -- library's own `info` art (LibKa0s#42). Not a display label.
+    addonName     = addonName,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
     debug = function(tag, fmt, ...) if NS.Debug then NS.Debug(tag, fmt, ...) end end,

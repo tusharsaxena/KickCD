@@ -126,6 +126,92 @@ test("the panel no longer carries a second command-row formatter", function()
     assertNil(src:match("|cffffff00/kcd"), "settings/Panel.lua still formats its own rows")
 end)
 
+-- ── the sub-command levels: /kcd debug and /kcd spells (KickCD#36) ──────────
+--
+-- The two sub-dispatchers in core/KickCD.lua carry their own command tables
+-- (DEBUG_COMMANDS, SPELLS_COMMANDS). Their sub-help lists must look exactly like
+-- the top-level `/kcd help` rows: one shared formatter, two-space indent, in
+-- table order. Since KickCD#36 they render through LibKa0s-Slash-1.0's
+-- CommandRows (NS.Slash.CommandRows), split through SplitVerb and look up through
+-- FindCommand, so the bytes are pinned exactly, uppercase hex included.
+
+local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "window",
+                       "on", "off", "toggle", "events" }
+local SPELLS_VERBS = { "list", "add", "remove", "enable", "disable", "category",
+                       "reset", "resetall" }
+
+--- The rows a sub-help printed after its `header` line, stopping at the first
+--- line that is not a `prefix <verb>` row. Each is { line, name, desc }.
+local function subRows(lines, header, prefix)
+    local pat = "^.-  |c[fF][fF][fF][fF][fF][fF]00" .. (prefix:gsub("%p", "%%%0"))
+        .. " (%S+)|r \226\128\148 |c[fF][fF][fF][fF][fF][fF][fF][fF](.*)|r$"
+    local rows, seen = {}, false
+    for _, l in ipairs(lines) do
+        if seen then
+            local name, desc = l:match(pat)
+            if not name then break end
+            rows[#rows + 1] = { line = l, name = name, desc = desc }
+        elseif l:find(header, 1, true) then
+            seen = true
+        end
+    end
+    return rows
+end
+
+--- Assert `rows` are the shared-format rows for `verbs`, in order.
+local function assertSharedRows(rows, verbs, prefix)
+    local SlashLib = mocks.LibStub("LibKa0s-Slash-1.0")
+    assertEqual(#rows, #verbs, prefix .. " row count")
+    for i, name in ipairs(verbs) do
+        assertEqual(rows[i].name, name, prefix .. " row " .. i)
+        local want = NS.PREFIX .. " " .. "  " .. SlashLib.FormatRow(prefix .. " " .. name, rows[i].desc)
+        assertEqual(rows[i].line, want, prefix .. " row " .. i .. " bytes")
+    end
+end
+
+test("`/kcd debug` prints one shared-format row per debug sub-verb, in table order", function()
+    local lines = runVerb("debug")
+    runVerb("debug") -- bare `debug` toggles the console; toggle it back
+    assertSharedRows(subRows(lines, "debug subcommands", "/kcd debug"), DEBUG_VERBS, "/kcd debug")
+end)
+
+test("`/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line", function()
+    local lines = runVerb("spells")
+    assertSharedRows(subRows(lines, "spells subcommands", "/kcd spells"), SPELLS_VERBS, "/kcd spells")
+end)
+
+test("core/KickCD.lua carries no second sub-help formatter, verb split or lookup", function()
+    -- KickCD#36: the sub-levels use NS.Slash.SplitVerb / FindCommand / CommandRows.
+    -- red under: restoring the `|cffffff00/kcd debug %s|r` row literal, or the
+    -- file-local lowerFirst / findCommand helpers
+    local fh = assert(io.open(T.root .. "/core/KickCD.lua", "r"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:find("|cffffff00/kcd", 1, true), "core/KickCD.lua formats its own command rows")
+    assertNil(src:find("lowerFirst", 1, true), "core/KickCD.lua carries its own verb split")
+    assertNil(src:find("findCommand", 1, true), "core/KickCD.lua carries its own command lookup")
+end)
+
+test("an unknown debug word refuses, then reprints the list", function()
+    -- The not-found path of the debug lookup. The verb is lowercased before it
+    -- is named.
+    local lines = runVerb("debug NoSuch")
+    runVerb("debug") -- the reprint toggled the console; toggle it back
+    local text = joined(lines)
+    local refused = text:find("unknown debug subcommand 'nosuch'", 1, true)
+    local row = text:find("/kcd debug diagnostics", 1, true)
+    assertTrue(refused ~= nil, "got: " .. text)
+    assertTrue(row ~= nil and row > refused, "the list must follow the refusal: " .. text)
+end)
+
+test("a debug sub-verb is matched case-insensitively", function()
+    local lower = runVerb("debug events")
+    local upper = runVerb("debug EVENTS")
+    assertTrue(#lower > 0, "debug events must answer")
+    assertEqual(joined(upper), joined(lower))
+    assertNil(joined(upper):find("unknown debug subcommand", 1, true))
+end)
+
 -- ── the schema CLI ──────────────────────────────────────────────────────────
 
 test("list groups by the row's panel, in the addon's declared page order", function()
@@ -495,7 +581,7 @@ test("every string the Slash CLI renders resolves to prose, not to its own key",
     end
 
     -- The one override this addon declares is byte-identical to the library's
-    -- default (settings/Slash.lua:331 says so). Pinned so a future divergence in
+    -- default (settings/Slash.lua:551 says so). Pinned so a future divergence in
     -- either direction is a decision rather than a surprise.
     assertEqual(cli:Text("LIST_HEADER"), lib.STRINGS.LIST_HEADER)
 end)
@@ -716,4 +802,13 @@ test("bare `/kcd spells` names the default spec by SpecDisplay", function()
     local lines = say(inst, function() inst.NS:OnSlashCommand("spells") end)
     assertTrue(joined(lines):find("SHAMAN/ELEMENTAL", 1, true) ~= nil, "got: " .. joined(lines))
     assertNil(joined(lines):find("SHAMAN/262", 1, true), "never the raw ID")
+end)
+
+test("a spells sub-verb is matched case-insensitively and its remainder keeps its case", function()
+    -- `ADD` is the verb, lowercased; `Wind Shear` is the remainder, verbatim.
+    local inst = shaman()
+    inst.NS.db.profile.spells.SHAMAN[262] = {}
+    local lines = say(inst, function() inst.NS:OnSlashCommand("spells ADD Wind Shear") end)
+    assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR),
+        "Wind Shear must land on SHAMAN/ELEMENTAL: " .. joined(lines))
 end)

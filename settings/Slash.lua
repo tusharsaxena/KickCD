@@ -296,6 +296,30 @@ if not SlashLib then
     SlashLib = {}
     SlashLib.ParseValue = function() return nil, "the LibKa0s library is missing" end
 
+    -- The sub-command vocabulary (Slash minor 19), at its minimum. A verb split
+    -- and a guarded lookup are dispatch, which slash-commands-§1 lets a stub do;
+    -- CommandRows renders PLAIN `cmd  desc` rows, the shape LandingRows below
+    -- prints, and never a copy of the library's FormatRow. core/KickCD.lua's
+    -- `/kcd debug` and `/kcd spells` reach all three through NS.Slash.
+    SlashLib.SplitVerb = function(rest)
+        local verb, remainder = (rest or ""):match("^(%S*)%s*(.*)$")
+        return (verb or ""):lower(), remainder or ""
+    end
+    SlashLib.FindCommand = function(list, name)
+        if type(list) ~= "table" then return nil end
+        for _, e in ipairs(list) do
+            if e[1] == name then return e end
+        end
+    end
+    SlashLib.CommandRows = function(prefix, commands, indent)
+        local rows = {}
+        if type(commands) ~= "table" then return rows end
+        for _, e in ipairs(commands) do
+            rows[#rows + 1] = (indent or "") .. prefix .. " " .. e[1] .. "  " .. e[2]
+        end
+        return rows
+    end
+
     --- The collection's library-absent line for `verb` (e.g. "/kcd list").
     local function absentLine(verb)
         return NS.L["%s is unavailable: the LibKa0s library did not load."]:format(verb)
@@ -346,29 +370,15 @@ if not SlashLib then
         stub.DisabledLine = function()
             return DISABLED_LINE_FORMAT:format(tostring(d.brandName or d.slash), d.slash .. " enable")
         end
-        stub.LandingRows = function()
-            local rows = {}
-            for _, e in ipairs(d.commands or {}) do
-                rows[#rows + 1] = d.slash .. " " .. e[1] .. "  " .. e[2]
-            end
-            return rows
-        end
-        stub.HelpRows = function()
-            local rows = {}
-            for _, r in ipairs(stub.LandingRows()) do rows[#rows + 1] = "  " .. r end
-            return rows
-        end
+        stub.LandingRows = function() return SlashLib.CommandRows(d.slash, d.commands, "") end
+        stub.HelpRows = function() return SlashLib.CommandRows(d.slash, d.commands, "  ") end
         stub.PrintHelp = function()
             out("v" .. tostring(d.version and d.version() or "?") .. " slash commands")
             for _, r in ipairs(stub.HelpRows()) do out(r) end
         end
         local feature = {}
         for _, verb in ipairs(NS.FEATURE_VERBS or {}) do feature[verb] = true end
-        local function find(cmd)
-            for _, e in ipairs(d.commands or {}) do
-                if e[1] == cmd then return e end
-            end
-        end
+        local function find(cmd) return SlashLib.FindCommand(d.commands, cmd) end
         local function refused(cmd)
             return feature[cmd] and type(d.isEnabled) == "function" and not d.isEnabled()
         end
@@ -394,6 +404,15 @@ if not SlashLib then
         return stub
     end
 end
+
+-- The sub-command vocabulary, published on both paths: LibKa0s-Slash-1.0's
+-- lib.SplitVerb / lib.FindCommand / lib.CommandRows (Slash minor 19) live, the
+-- stub's three above degraded. core/KickCD.lua's runDebug and runSpells read
+-- them off NS.Slash at call time (this file loads after that one), so the
+-- sub-levels split, look up and render exactly as the top level does.
+NS.Slash.SplitVerb   = SlashLib.SplitVerb
+NS.Slash.FindCommand = SlashLib.FindCommand
+NS.Slash.CommandRows = SlashLib.CommandRows
 
 -- ---------------------------------------------------------------------
 -- The dispatcher

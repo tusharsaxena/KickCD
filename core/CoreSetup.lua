@@ -108,6 +108,12 @@ if not lib then
     -- key/value coloring, no console line format.
     local function probeConcat(v) return table.concat({ v }) end
 
+    -- The secret sentinel (Core minor 9 `lib.SECRET`). This arm is the ONE
+    -- place the literal may be spelled (events-frames-taint-§8): every other
+    -- reader -- the stringifier below, core/Compat.lua's safeRender -- reads
+    -- NS.SECRET, so a pasted log spells the condition one way on both paths.
+    NS.SECRET = "<secret>"
+
     function NS.IsConcatSafe(v)
         return (pcall(probeConcat, v))
     end
@@ -116,7 +122,7 @@ if not lib then
         if v == nil then return "nil" end
         if type(v) == "boolean" then return tostring(v) end
         if NS.IsConcatSafe(v) then return tostring(v) end
-        return "<secret>"
+        return NS.SECRET
     end
 
     -- The degraded branch owes the caller the same NAME the live half publishes,
@@ -183,6 +189,9 @@ end
 
 NS.IsConcatSafe = lib.IsConcatSafe
 NS.SafeToString = lib.SafeToString
+-- The library's secret sentinel (Core minor 9), the same string lib.SafeToString
+-- renders. core/Compat.lua's safeRender reads it at call time.
+NS.SECRET       = lib.SECRET
 
 -- The pcalled event registration helper (Core minor 8, events-frames-taint-§1),
 -- handed over whole: IsEventValid front gate, probe frame, pcall, and the

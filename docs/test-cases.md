@@ -22,7 +22,7 @@ badge and any count quoted in the docs must agree with it.
 - Util.Throttle coalesces a burst to one trailing-args call
 - NewUnitCastFilter arms its filter frame for the named unit
 
-### test_coresetup.lua (26)
+### test_coresetup.lua (29)
 
 - the harness loads the vendored LibKa0s majors, so the suite is not measuring a stub
 - the runner FEEDS the derived library list, and it is not empty
@@ -33,6 +33,7 @@ badge and any count quoted in the docs must agree with it.
 - NS.SafeToString renders ordinary values through tostring
 - NS.SafeToString answers nil and booleans up front, never masking them
 - NS.SafeToString renders an unconcatable value as the shared <secret> sentinel
+- NS.SECRET is the library's sentinel, the one NS.SafeToString renders
 - NS.IsConcatSafe probes table.concat, not the .. operator
 - NS.Util.print renders prefix, one space, then the body — byte for byte
 - NS.Util.print space-joins its arguments, mirroring print()
@@ -41,8 +42,10 @@ badge and any count quoted in the docs must agree with it.
 - NS.Util.print is the library printer, not a host reimplementation
 - core/Util.lua no longer defines a printer of its own
 - no addon file emits a bare "secret" sentinel of its own
+- the <secret> literal is spelled only in core/CoreSetup.lua's library-absent arm
 - with LibKa0s absent the addon still loads and still prints tagged lines
 - the degraded printer is still secret-safe and still says <secret>
+- with LibKa0s absent NS.SECRET is still published, as the stub literal
 - LibKa0s-Core-1.0 still has no user-visible strings to trap
 - the Core descriptor passes no locale table, and the printer renders no key
 - the shared cause clause is published on the healthy path too
@@ -106,14 +109,13 @@ badge and any count quoted in the docs must agree with it.
 - /kcd resetposition restores the focus grid too
 - /kcd resetposition: the target grid is still restored
 
-### test_constants.lua (27)
+### test_constants.lua (26)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
 - Constants: the GCD upper bound covers an unhasted 1.5s global
 - Constants: the cast bar's inside and outside insets are symmetric
-- Constants: the panel header reserves more height than its top inset
-- Constants: every panel metric is a positive number
+- Constants: the host declares no panel header metric of its own
 - Constants: the library publishes every panel layout metric as a positive number
 - Constants: a rendered unit panel spaces its rows by a real number of pixels
 - Constants: no host copy of a LibKa0s-Options layout constant
@@ -417,7 +419,7 @@ badge and any count quoted in the docs must agree with it.
 - a record survives a client with no duration API at all
 - isChannel is a real boolean on both record paths
 
-### test_compat_debug.lua (12)
+### test_compat_debug.lua (13)
 
 - DebugInterrupt bails with the unit name when the unit does not exist
 - DebugInterrupt defaults the unit to target
@@ -427,6 +429,7 @@ badge and any count quoted in the docs must agree with it.
 - DebugInterrupt dumps all nine UnitCastingInfo positions, in order
 - DebugInterrupt dumps eight UnitChannelInfo positions — notInterruptible at 7
 - DebugInterrupt renders a secret notInterruptible without touching tostring
+- with LibKa0s absent the interrupt dump still renders secrets as <secret>
 - DebugInterrupt renders a nil position as the literal nil
 - DebugInterrupt skips the casting block entirely when the API is absent
 - DebugInterrupt closes with the addon's own visibility and glow decisions
@@ -1095,7 +1098,7 @@ badge and any count quoted in the docs must agree with it.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (33)
+### test_options_panel.lua (34)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1127,6 +1130,7 @@ badge and any count quoted in the docs must agree with it.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
+- OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1237,7 +1241,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (42)
+### test_slash.lua (48)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1249,6 +1253,11 @@ badge and any count quoted in the docs must agree with it.
 - a help row is the one shared formatter, two-space indented
 - the landing page renders the SAME rows, un-indented
 - the panel no longer carries a second command-row formatter
+- `/kcd debug` prints one shared-format row per debug sub-verb, in table order
+- `/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line
+- core/KickCD.lua carries no second sub-help formatter, verb split or lookup
+- an unknown debug word refuses, then reprints the list
+- a debug sub-verb is matched case-insensitively
 - list groups by the row's panel, in the addon's declared page order
 - get echoes the shared key = value pair
 - set clamps out of range and echoes what was actually STORED
@@ -1281,8 +1290,9 @@ badge and any count quoted in the docs must agree with it.
 - `spells add <id> WARLORD 99999` writes nothing
 - `spells add <id> SHAMAN 99999` names the spec it could not resolve
 - bare `/kcd spells` names the default spec by SpecDisplay
+- a spells sub-verb is matched case-insensitively and its remainder keeps its case
 
-### test_slash_degraded.lua (18)
+### test_slash_degraded.lua (20)
 
 - a disabled feature verb says so on ONE line, and does NOT act
 - every feature verb refuses, and NONE of them reaches the write seam
@@ -1296,6 +1306,8 @@ badge and any count quoted in the docs must agree with it.
 - the host's feature verbs are exactly the verbs the live gate refuses
 - degraded gate while disabled refuses feature verbs and nothing else
 - degraded help rows print `cmd  desc` plainly, with no em dash
+- degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising
+- the degraded sub-command vocabulary splits, finds and renders like the library
 - degraded `/kcd list` prints the library-absent line
 - degraded CliProfile and ProfileSwitch print the library-absent line and switch nothing
 - degraded `/kcd set visibility always` writes nothing and prints the library-absent line
@@ -1522,11 +1534,11 @@ badge and any count quoted in the docs must agree with it.
 | Suite | Cases |
 |-------|------:|
 | test_util.lua | 13 |
-| test_coresetup.lua | 26 |
+| test_coresetup.lua | 29 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 31 |
-| test_constants.lua | 27 |
+| test_constants.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_locale.lua | 15 |
@@ -1538,7 +1550,7 @@ badge and any count quoted in the docs must agree with it.
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
-| test_compat_debug.lua | 12 |
+| test_compat_debug.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 22 |
@@ -1570,7 +1582,7 @@ badge and any count quoted in the docs must agree with it.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 33 |
+| test_options_panel.lua | 34 |
 | test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
@@ -1580,8 +1592,8 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 42 |
-| test_slash_degraded.lua | 18 |
+| test_slash.lua | 48 |
+| test_slash_degraded.lua | 20 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
@@ -1597,4 +1609,4 @@ badge and any count quoted in the docs must agree with it.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 9 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1283** |
+| **Total** | **1295** |

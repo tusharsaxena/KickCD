@@ -17,8 +17,8 @@ local SECRET = setmetatable({}, { __tostring = function() error("tostring on a s
 --- Load an isolated instance, let the caller stage the client on it, then run
 --- DebugInterrupt and return the chat lines with the [KCD] prefix stripped so
 --- the assertions read exactly as the dump does.
-local function dump(stage, unit)
-    local inst = T.load(true)
+local function dump(stage, unit, loadOpts)
+    local inst = T.load(true, nil, nil, loadOpts)
     inst.mocks.UnitExists = function() return true end
     inst.mocks.UnitName = function() return "Boss" end
     inst.mocks.UnitCanAttack = function() return true end
@@ -112,6 +112,23 @@ test("DebugInterrupt renders a secret notInterruptible without touching tostring
         end
     end)
     local at = indexOf(lines, "UnitCastingInfo positions")
+    assertEqual(lines[at + 8], "  8 notInterruptible   type=table    isSecret=true  value=<secret>")
+end)
+
+test("with LibKa0s absent the interrupt dump still renders secrets as <secret>", function()
+    -- safeRender's sentinel must survive a library-absent install: the dump is
+    -- the one a user pastes when something is wrong, and a degraded install is
+    -- exactly when something is.
+    local lines = dump(function(mocks)
+        mocks.UnitName = function() return SECRET end
+        mocks.UnitCastingInfo = function()
+            return "Fireball", "Fireball", 12345, 1000, 3000, false, "cast-1", SECRET, 133
+        end
+    end, nil, { libFiles = {} })
+    assertTrue(indexOf(lines, "DebugInterrupt: unit=target name=<secret> canAttack=true") ~= nil,
+        "the degraded header must render the secret name as <secret>")
+    local at = indexOf(lines, "UnitCastingInfo positions")
+    assertTrue(at ~= nil, "the positions header must be printed")
     assertEqual(lines[at + 8], "  8 notInterruptible   type=table    isSecret=true  value=<secret>")
 end)
 

@@ -433,12 +433,6 @@ local DEBUG_COMMANDS = {
         end},
 }
 
-local function findCommand(list, name)
-    for _, entry in ipairs(list) do
-        if entry[1] == name then return entry end
-    end
-end
-
 function printHelp(self)
     -- The header, the rows and their colors are LibKa0s-Slash-1.0's one
     -- formatter now (settings/Slash.lua). The two-space chat indent is the
@@ -449,11 +443,11 @@ function printHelp(self)
 end
 
 function runDebug(self, rest)
-    -- Debug subcommands are all-lowercase identifiers; lowercase the
-    -- first token so callers don't have to (now that OnSlashCommand
+    -- Debug subcommands are all-lowercase identifiers. LibKa0s-Slash-1.0's
+    -- SplitVerb (via NS.Slash, settings/Slash.lua) lowercases the verb and
+    -- keeps the remainder's case, so callers type any case (OnSlashCommand
     -- preserves case in `rest` for schema paths).
-    local sub = (rest or ""):match("^(%S*)") or ""
-    sub = sub:lower()
+    local sub = NS.Slash.SplitVerb(rest)
     -- The report first, before every other word and before the bare toggle
     -- (debug-logging-§14). Any case: `sub` is lowercased above. `diag` and every
     -- other near-miss fall through to the unknown-word answer below.
@@ -463,12 +457,10 @@ function runDebug(self, rest)
         -- untouched. Print the verb list alongside so it stays discoverable.
         if self.DebugLog then self.DebugLog:Toggle() end
         p(self, "debug subcommands")
-        for _, entry in ipairs(DEBUG_COMMANDS) do
-            p(self, ("  |cffffff00/kcd debug %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
-        end
+        for _, row in ipairs(NS.Slash.CommandRows("/kcd debug", DEBUG_COMMANDS, "  ")) do p(self, row) end
         return
     end
-    local entry = findCommand(DEBUG_COMMANDS, sub)
+    local entry = NS.Slash.FindCommand(DEBUG_COMMANDS, sub)
     if entry then return entry[3](self) end
     refuse(self, "Debug", "debug", nil, "unknown subcommand", "unknown debug subcommand '" .. sub .. "'", sub)
     runDebug(self, "")
@@ -590,11 +582,6 @@ end
 --
 -- Every subcommand accepts an optional trailing `[CLASS SPEC]`; when
 -- omitted, both default to the player's current class+spec.
-
-local function lowerFirst(rest)
-    local first, remainder = (rest or ""):match("^(%S*)%s*(.*)$")
-    return (first or ""):lower(), remainder or ""
-end
 
 local function tokenize(rest)
     local out = {}
@@ -845,19 +832,17 @@ local SPELLS_COMMANDS = {
 }
 
 function runSpells(self, rest)
-    local sub, rem = lowerFirst(rest)
+    local sub, rem = NS.Slash.SplitVerb(rest)
     if sub == "" then
         p(self, "spells subcommands")
-        for _, entry in ipairs(SPELLS_COMMANDS) do
-            p(self, ("  |cffffff00/kcd spells %s|r — |cffffffff%s|r"):format(entry[1], entry[2]))
-        end
+        for _, row in ipairs(NS.Slash.CommandRows("/kcd spells", SPELLS_COMMANDS, "  ")) do p(self, row) end
         local cls, spc = resolvePlayerClassSpec()
         if cls and spc then
             p(self, ("  (default class/spec when omitted: %s/%s)"):format(cls, sd(spc)))
         end
         return
     end
-    local entry = findCommand(SPELLS_COMMANDS, sub)
+    local entry = NS.Slash.FindCommand(SPELLS_COMMANDS, sub)
     if entry then return entry[3](self, rem) end
     spellsRefuse(self, sub, "unknown subcommand", "unknown spells subcommand '" .. sub .. "'")
     runSpells(self, "")

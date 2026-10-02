@@ -14,8 +14,8 @@ and a retired one leaves its number unused.
 | ID range | Theme | What it covers |
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 13 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled |
-| PANEL-1 – 29 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys |
+| SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows |
+| PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
@@ -24,8 +24,8 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| DIAG-1 – 44 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates |
-| DEGRADED-1 – 13 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore |
+| DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
+| DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
 | LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
 
 ## Before you start
@@ -55,7 +55,7 @@ and a retired one leaves its number unused.
 
 Which checks to run for a partial change:
 
-- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19 and PANEL-23. PANEL-23 is
+- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19, PANEL-23 and PANEL-30. PANEL-23 is
   the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
@@ -204,6 +204,14 @@ Which checks to run for a partial change:
   `/kcd unlock` and `/kcd resetposition` → each prints one tagged line,
   `Ka0s KickCD is disabled — enable it with /kcd enable`, and nothing else; `/kcd get locked` is
   unchanged. `/kcd enable`. Result:
+- **SLASH-14. Sub-command help through the shared formatter.** `/kcd debug` → the console toggles and
+  chat prints `debug subcommands`, then one row per verb (`diagnostics`, `spells`, `castbar`,
+  `interrupt`, `window`, `on`, `off`, `toggle`, `events`), each with the `[KCD]` banner and a two-space
+  indent: `/kcd debug <verb>` in yellow, an em dash, the description in white, the same look as a
+  `/kcd help` row. `/kcd debug` again to close the console. `/kcd spells` → `spells subcommands` and its
+  rows the same way, then the `(default class/spec when omitted: …)` line. `/kcd debug EVENTS` → the
+  events answer (the verb is case-insensitive); `/kcd debug nosuch` → `unknown debug subcommand
+  'nosuch'`, then the list again. Result:
 
 ## PANEL
 
@@ -312,6 +320,11 @@ Which checks to run for a partial change:
   the band → Defaults → `/kcd get units.target.icons.primarySize` → `64 px`; the Master scale slider still
   reads 1.25, `timeOffsetY` still `-30 px`, the Spells order still yours. Clean up: Grid → Cast bar →
   Defaults, General → Defaults, Spells → Defaults. Result:
+- **PANEL-30. The Options descriptor names the folder.** `/kcd debug on`, then `/kcd config` and open
+  every page in turn → each renders exactly as before, with no Lua error, and the console logs no
+  `[Cfg] help art:` line. The descriptor now passes `addonName` (LibKa0s v1.67.0, LibKa0s#42), the folder
+  name an IdList help mark builds the library's `info` art from. No page here has a help mark yet, so
+  this only proves nothing broke; `tests/test_options_panel.lua` pins the field. `/kcd debug off`. Result:
 
 ## PROFILE
 
@@ -880,6 +893,10 @@ Which checks to run for a partial change:
   `[Cooldowns] rebuild …` line, however long the drag. Click the console's clear control, then nudge
   the slider → exactly one `[Cooldowns] rebuild …` line, although the watched list did not change;
   keep dragging → no more. Result:
+- **DIAG-45. The interrupt dump's secret sentinel.** In combat, target a hostile caster whose cast
+  flags are secret and type `/kcd debug interrupt` → every secret-tainted position reads
+  `isSecret=true  value=<secret>`, with no Lua error, the same spelling as `charges=<secret>` in
+  `/kcd debug spells` (both are LibKa0s-Core's `NS.SECRET` now). Result:
 
 ## DEGRADED
 
@@ -921,6 +938,14 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   error. Result:
 - **DEGRADED-13. Restore.** Rename the folder back to `libs/LibKa0s` and `/reload` → the notice is gone
   and the console is back. Result:
+- **DEGRADED-14. Plain sub-help rows.** Run this before DEGRADED-13's restore. `/kcd debug` and
+  `/kcd spells` → each prints its sub-list as plain `/kcd debug <verb>  <description>` (and
+  `/kcd spells <verb>  <description>`) rows: no color, no em-dash separator, the same shape as
+  DEGRADED-5's help rows, and no Lua error. `/kcd debug events` still answers. Result:
+- **DEGRADED-15. The interrupt dump still says `<secret>`.** Run this before DEGRADED-13's restore. In
+  combat, target a hostile caster whose cast flags are secret, `/kcd debug interrupt` → the dump prints,
+  every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
+  `NS.SECRET`), with no Lua error. Result:
 
 ## Non-English client
 
@@ -973,6 +998,7 @@ off on its own `Result:` line, then remove its row here.
 | SLASH-10 | §12 L358, L368, L370 | No result recorded; its cast-bar anchor half restored in this rework |
 | SLASH-11 | §12 L369 | No result recorded; corrected: the `px` and color echoes |
 | SLASH-12, SLASH-13 | §33 | No result recorded |
+| SLASH-14 | New | The `debug` and `spells` sub-help through LibKa0s-Slash's `CommandRows` (LibKa0s v1.67.0, KickCD#36, CA-KC-01) |
 | PANEL-1 | §1 L69, §2 L94, §14 L408, §36 KC-S1 | KC-S1 passed; the `/reload` half and §14's each-page-once (owed on the 2026-09-07 checklist, 4.2) did not |
 | PANEL-2 | §14 L406 | No result recorded |
 | PANEL-3 | §11 L343, §36 KC-S2 | KC-S2 passed; the every-tab half (§11) has no result |
@@ -988,6 +1014,7 @@ off on its own `Result:` line, then remove its row here.
 | PANEL-25 – 27 | §26 L740 – 742, §33 | No result recorded |
 | PANEL-28 | §25 L690 – 697 | Never run (2026-09-07 checklist, 3.9) |
 | PANEL-29 | §12 L362 | No result recorded; restored in this rework: General's and Icons' Defaults leave the other pages and the spell list alone |
+| PANEL-30 | New | The Options descriptor passes `addonName` (LibKa0s v1.67.0, LibKa0s#42, CA-KC-NM) |
 | PROFILE-1, PROFILE-4 – 6 | §13 L386, L389 – 391 | No result recorded |
 | PROFILE-2 | §13 L377 – 383, L387 | No result recorded; corrected: copies into a scratch `SmokeCopy` |
 | PROFILE-3 | §13 L388 | No result recorded; its realm and class scopes restored in this rework |
@@ -1033,11 +1060,14 @@ off on its own `Result:` line, then remove its row here.
 | DIAG-39 | New | The console's Diagnostics link (LibKa0s v1.64.0, DebugLog 17, DL-KC-03) |
 | DIAG-40 | New | Diagnostics turns debug logging on for the session (standard v2.71.0, DebugLogDiagnostics 2, DL-KC-03) |
 | DIAG-41 – 44 | New | The library's Slash refusals and Lifecycle edges in the console, the at-enable queue, Clear re-arming the gates (LibKa0s v1.65.0, DG-KC-01) |
+| DIAG-45 | New | The interrupt dump's secret sentinel, now LibKa0s-Core's `NS.SECRET` (KickCD#36, CA-KC-02) |
 | DEGRADED-1 – 5, DEGRADED-7, DEGRADED-12, DEGRADED-13 | §25, §34 step 9 | No result recorded |
 | DEGRADED-6 | §25 L684, §31 L923 – 924 | The before-the-dump half NOT YET RUN since `M4-20` |
 | DEGRADED-8 | §25 L686 | No result recorded; corrected: the perf seam's line |
 | DEGRADED-10 | New | The `/kcd profile` verb |
 | DEGRADED-11 | §31 | NOT YET RUN since `M4-20` |
+| DEGRADED-14 | New | The stub's plain `debug` and `spells` sub-help rows (KickCD#36, CA-KC-01) |
+| DEGRADED-15 | New | The degraded interrupt dump's `<secret>`, from the stub's `NS.SECRET` (KickCD#36, CA-KC-02) |
 | LOC-1 – 6 | §9b | Never run (2026-09-07 checklist, session 6) |
 
 If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led
