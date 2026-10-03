@@ -42,7 +42,7 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **git** | any recent | The repo, obviously — but also a **test dependency**, inside the green gate itself: three suites read the tracked file set with `git ls-files` (`tests/test_lintconfig.lua:219`, `tests/test_source_style.lua:142`, `tests/test_doc_structure.lua:100`) and fail rather than pass when they cannot. The vendored gate `tests/_kit/vendor_sync.lua` (driven by `tests/test_vendor_sync.lua`, four statements under its header) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
 | **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:238` and `tests/test_slash_style.lua:134` enumerate source files with `io.popen("ls ...")`, and `tests/test_doc_structure.lua:181` lists the audit bundles the same way; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
-| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). **Optional** — absent `lizard` means the report is stale, not that the addon is broken. |
+| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (`tests/run.lua:255`), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
 
 `file` is worth having for one documented troubleshooting path — `docs/testing.md:232` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
@@ -121,8 +121,10 @@ and open a PR with only the Development group installed.
   `convert("RGBA")` is what makes it 32 bpp and Pillow's TGA writer emits image type 2
   (uncompressed) for this call — both are MUSTs, because an `IconTexture` in the wrong format draws
   nothing and raises nothing (anti-pattern #82). `tests/test_launcher.lua` reads the header bytes
-  and fails on either. Install with `pip install Pillow` (10.x here) **only if you are regenerating
-  the logo**; the committed file is what ships, and the green gate never touches Pillow.
+  and fails on either. Install with `sudo apt install -y python3-pil` (10.2.0 here) **only if you
+  are regenerating the logo**: the recipe runs the system `python3`, and `pip install Pillow` fails
+  on Ubuntu 24.04's `EXTERNALLY-MANAGED` marker (PEP 668, the note above). The committed file is
+  what ships, and the green gate never touches Pillow.
 
   The monospace face and the shared icon set are **not this addon's assets at all**: they arrive
   inside the vendored LibKa0s payload at `libs/LibKa0s/media/`, with the OFL license beside the

@@ -27,7 +27,7 @@ local onDragStop = IconGrid._OnDragStop
 -- primary-icon size in the first place -- "a small invisible square", :454-457 -- a wart written
 -- down as a wart because losing the only grab target was the worse of the two.
 --
--- THE STRIP IS THE LIBRARY'S, NOT OURS. libs/LibKa0s/WidgetsDragHandle.lua (minor 2) ships the dark
+-- THE STRIP IS THE LIBRARY'S, NOT OURS. libs/LibKa0s/WidgetsDragHandle.lua (minor 4 vendored) ships the dark
 -- fill, the 1px gold edge, the centered gold label, the help mark with its own art fallback and
 -- resting tint, the tooltip bands, the drag scripts and the width arithmetic. AuraMaster
 -- (modules/Anchors.lua) and ConsumableMaster (modules/MacroBar.lua) had each drawn that same widget
