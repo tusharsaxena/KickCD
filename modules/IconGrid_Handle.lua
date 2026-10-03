@@ -89,8 +89,10 @@ end
 --- frameName, UIParent) with no template, so the widget's own `tonumber` fallback and its own four
 --- 1px strips are the right defaults rather than a gap.
 ---
---- THE TOOLTIP IS OWNED BY THE HOVERED FRAME (the widget's default), again because nothing here is
---- restricted -- AuraMaster has to own by UIParent at the cursor and this addon does not.
+--- THE TOOLTIP SITS BESIDE THE STRIP (TP-KC-01, LibKa0s v1.68.0), the same placement as the cast
+--- bar's strip: `tooltipPlace` is NS.Util.PlaceTooltipBeside -- right of the strip, or left of it
+--- when that would leave the screen. Above the strip (the old ANCHOR_TOP owner) is where the unit
+--- label and the Focus grid stack, so a tooltip opening upward covered them.
 --- @return table|nil
 --- Hang the strip above the unit LABEL when there is one above this grid, else above the
 --- grid itself.
@@ -136,6 +138,7 @@ local function buildHandle(inst, grid)
         end,
         onDragStop   = function() onDragStop(inst, grid) end,
         onRightClick = function() NS:OpenSettings() end,
+        tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = label,
             body  = { NS.L["Drag to move. Right-click for settings."] },

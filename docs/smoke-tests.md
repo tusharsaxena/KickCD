@@ -19,8 +19,8 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 16 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time |
-| CAST-1 – 14 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts |
+| GRID-1 – 17 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it |
+| CAST-1 – 15 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
@@ -60,7 +60,8 @@ Which checks to run for a partial change:
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
   DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 40;
-  COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14;
+  COMBAT-6 – 9 and COMBAT-11; CAST-6 – 12 and CAST-15; LABEL-2, LABEL-6 and LABEL-13 – 14; GRID-13 – 14
+  and GRID-17;
   SPELLS-13; STATE-7; INSTALL-10 – 14. The panel, the console, the strips and the window edge are what
   the library draws, and a re-vendor can change them with no addon file touched.
 - **Hot paths** (`Cooldowns.lua`, `IconGrid*.lua`, `Castbar*.lua`, the secret-value gates):
@@ -521,6 +522,13 @@ Which checks to run for a partial change:
   cooldown and stand still → one `[Cooldowns]` line when it starts and one when it ends, none repeating
   in between. Then `/kcd perf` through a short fight → `iconApply` is close to 0 calls/sec while
   spells sit on cooldown, and the cost shows under `cdText`. Result: pass (owner, 2026-10-02)
+- **GRID-17. The grid strip's tooltip sits beside the strip (TP-KC-01).** `/kcd unlock`, hover the
+  Target grid's strip, then its `?` → each time the tooltip opens to the strip's RIGHT, its top level with
+  the strip's top, not above the strip and not at the cursor; it covers neither the unit label nor the
+  Focus grid above. Drag the grid until its strip nearly touches the right edge of the screen and hover
+  again → the tooltip opens to the strip's LEFT instead. `/kcd set scale 1.5` and repeat both → the same
+  two sides, fully on screen (the grid strip takes the master scale, so the flip is judged in screen
+  pixels). Result:
 
 ## CAST
 
@@ -550,8 +558,8 @@ Which checks to run for a partial change:
   sticks. Result:
 - **CAST-9. The `?` mark drags too.** Drag the `?` on the strip → the bar moves. Result:
 - **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows the same tooltip, titled
-  `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key); the
-  `?` brightens under the cursor. Result:
+  `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key), in the
+  same place beside the strip (CAST-15); the `?` brightens under the cursor. Result:
 - **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
   opens. Result:
 - **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
@@ -566,6 +574,11 @@ Which checks to run for a partial change:
   them start Fire Breath or Eternity Surge → the bar shows the empower, the `*_casting` visibility and glow follow
   it at once, and the bar clears on its release. A blank bar or a late glow means the
   `UNIT_SPELLCAST_EMPOWER_*` routes are missing ([midnight-quirks.md](midnight-quirks.md)). Result:
+- **CAST-15. The cast bar strip's tooltip sits beside the strip, and flips at the edge (TP-KC-01).**
+  `anchorMode FREE`, `/kcd unlock`, a cast bar on screen. Hover its strip → the tooltip opens to the
+  strip's RIGHT, top edges level, not at the cursor. Drag the bar until the strip's right end is within a
+  tooltip's width of the screen's right edge and hover again → the tooltip opens to the strip's LEFT, fully
+  on screen. Result:
 
 ## FOCUS
 
@@ -1033,10 +1046,12 @@ off on its own `Result:` line, then remove its row here.
 | GRID-1, GRID-4 – 13 | §6 L166, §8, §9c, §11 L345 | No result recorded |
 | GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
 | GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
+| GRID-17 | New | The grid strip's tooltip beside the strip (LibKa0s v1.68.0, TP-KC-01) |
 | CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
 | CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
 | CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
 | CAST-14 | New | An empowered cast |
+| CAST-15 | New | The strip's tooltip beside the strip, flipping left at the screen edge (LibKa0s v1.68.0, TP-KC-01) |
 | FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first and the frame unlocked, so the cast bar's placeholder shows |
 | FOCUS-6, FOCUS-7 | §20b L515 – 517, §22 L625, §36 KC-S6 | KC-S6 passed; the Target-restores and link-style halves have no result |
 | FOCUS-13 | §20b L524, L530 | No result recorded; corrected: a `/kcd resetall` baseline makes N = 4 |

@@ -77,10 +77,12 @@ end
 --- width or level read comes back secret and the widget's own tonumber guard is
 --- the right one. Contrast AuraMaster, which must pass both.
 ---
---- THE TOOLTIP IS OWNED BY THE HOVERED FRAME (the widget's default), not by the
---- cursor: AuraMaster needs "cursor" because its anchor inherits
---- DisableUntrustedLayoutScriptsTemplate and the client refuses SetOwner under it.
---- No frame here inherits that template.
+--- THE TOOLTIP SITS BESIDE THE STRIP (TP-KC-01, LibKa0s v1.68.0): `tooltipPlace` is
+--- NS.Util.PlaceTooltipBeside, which anchors it to the strip's right, or its left
+--- when that would leave the screen -- the owner's rule for every Ka0s strip. Until
+--- then it was owned by the hovered frame at ANCHOR_TOP, which opened it over
+--- whatever is stacked above the bar. A read the placement cannot trust falls back
+--- to the cursor, the widget's own fallback.
 ---
 --- @return table|nil  nil without LibKa0s-Widgets-1.0, and in a client that
 ---                    cannot make the frame -- ApplyLock guards on the field.
@@ -96,6 +98,7 @@ local function buildHandle(inst, frame)
         -- (core/LauncherSetup.lua:131, core/KickCD.lua:200). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
+        tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = L["KickCD castbar"],
             body  = { L["Drag to move. Right-click for settings."] },
