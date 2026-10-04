@@ -269,7 +269,7 @@ generated directories are named once each and never enumerated per run: `docs/au
 Those frozen bundles are history, not requirements. The older ones predate standard v2.17.0 and
 still name `docs/agent-context.md` or describe an earlier doc set; that file does not exist here and
 MUST NOT be restored (documentation-§3) — root `CLAUDE.md` is the only agent brief. The current
-compliance baseline is the newest `docs/audits/<date>/` bundle; re-run `/wow-addon:standards-audit`
+compliance baseline is the newest `docs/audits/<date>/` bundle; re-run `/dev-copilot:wow-standards-audit`
 when in doubt, which fetches the living standard and writes a fresh one.
 
 ### Required (documentation-§3, Tier 1)
