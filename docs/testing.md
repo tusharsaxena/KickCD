@@ -262,7 +262,7 @@ and diffed, not thresholded. A threshold that fails a run teaches everyone to re
 which is a signal rather than a stop.
 
 **They do gate the tag.** The release gate requires all four suites at `pass` plus zero functions
-above CCN 15, evaluated by `/wow-addon:bump-version` from the `manifest.json` the release run writes
+above CCN 15, evaluated by `/dev-copilot:bump-version` from the `manifest.json` the release run writes
 — not by the runner, whose exit code is unchanged. **A missing tool is a skip recorded with its
 reason**, never a pass: at the release gate a `skip` is NOT EVALUATED rather than passed, so install
 the tool and re-run.
