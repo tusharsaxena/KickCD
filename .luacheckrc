@@ -46,31 +46,20 @@ exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews
 -- the receiver written beside it.
 
 read_globals = {
-  -- core Lua/WoW globals
-  "_G", "LibStub", "CreateFrame", "GetTime", "GetTimePreciseSec",
-  "UIParent", "GameTooltip", "GameFontNormal", "GameFontHighlight", "GameFontDisable",
-  "STANDARD_TEXT_FONT",
-  "hooksecurefunc", "securecallfunction", "issecretvalue",
+  -- core WoW globals. Only a name some linted file reads BARE belongs here: `_G` is already in
+  -- std lua51, and a name nothing reads is a permission that lets a new bare call lint clean.
+  "LibStub", "CreateFrame", "UIParent", "GameTooltip",
   -- Perf bracket timer (performance-§2). The bracket CALL SITES are addon
   -- code and are linted, even though the lib under libs/ is not.
   "debugprofilestop",
-  "C_Timer", "C_Spell", "C_SpecializationInfo", "C_AddOns",
-  "GetLocale", "InCombatLockdown", "PlaySound",
-  -- units / spells / combat
-  "UnitCastingInfo", "UnitChannelInfo", "UnitExists", "UnitCanAttack",
-  "UnitClass", "UnitIsUnit", "UnitGUID", "UnitName", "UnitRace", "UnitIsDead",
-  "IsLoggedIn",
+  "C_AddOns",
+  -- units / specs
+  "UnitClass", "UnitIsUnit", "UnitRace",
   "GetSpecializationInfoForClassID", "GetNumSpecializationsForClassID",
   -- settings panel
-  "Settings", "SettingsPanel",
-  "DEFAULT_CHAT_FRAME", "UISpecialFrames", "UIDropDownMenu_AddButton",
-  -- color / util
-  "CreateColor", "CreateColorFromHexString", "WrapTextInColorCode",
-  "CopyTable", "wipe", "tContains", "tinsert", "tremove", "strsplit", "strtrim", "strjoin",
-  "date", "time",
-  -- fonts / textures used in DebugLog / panels
-  "BackdropTemplateMixin", "Mixin", "CreateFromMixins",
-  "NORMAL_FONT_COLOR", "HIGHLIGHT_FONT_COLOR", "RED_FONT_COLOR", "GREEN_FONT_COLOR",
+  "Settings", "SettingsPanel", "DEFAULT_CHAT_FRAME",
+  -- color / mixins
+  "CreateColor", "Mixin",
   -- class / spell / cooldown data APIs
   "C_CooldownViewer", "Enum", "GetNumClasses", "GetClassInfo",
   "LOCALIZED_CLASS_NAMES_MALE", "RAID_CLASS_COLORS", "CreateAtlasMarkup",

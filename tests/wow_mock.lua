@@ -577,7 +577,8 @@ local function build()
         return profileClock
     end
 
-    -- WoW exposes `date` as a GLOBAL (it is in .luacheckrc's read_globals), and
+    -- WoW exposes `date` as a GLOBAL (no linted file reads it bare, so it is
+    -- no longer in .luacheckrc's read_globals), and
     -- stock Lua does not — it only has os.date. modules/DebugLog.lua papered
     -- over the gap with its own `_G.date or os.date` fallback; the library
     -- rightly just calls date(), so the mock has to model the client instead.
