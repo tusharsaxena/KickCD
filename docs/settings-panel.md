@@ -59,7 +59,7 @@ There are no hand-rolled headings anywhere — a colored full-width `Label` stan
 * **Icons → Visual states** — ready alpha, cooldown alpha, the cooldown tint and the GCD sub-state's swipe toggle. The sliders and the swatch are not two *kinds* of control on this tab; they are two channels of one answer to *what does this icon look like right now*, which is the tab's entire question. Headings would read *Opacity* / *Tint* over two rows each and name properties of one subject rather than subjects beside it.
 * **Icons → Ready glow** — one effect declared twice because there are two icon slots: trigger, style and color for the primary icon and for the secondary. Every row's label already says *glow*, and *Trigger* / *Style* / *Color* headings would name the glow's properties, not a second subject.
 
-Both would be legitimate `subgroup` candidates on a reading of §7 that counts widget types rather than subjects. They are bare on purpose, and the purpose is written down where the gate can be read beside it.
+Both would be legitimate `subgroup` candidates on a reading of `options-ui-§7` that counts widget types rather than subjects. They are bare on purpose, and the purpose is written down where the gate can be read beside it.
 
 ## Master controls — the canonical tab (`options-ui-§15`)
 
@@ -200,7 +200,7 @@ These three render through `Helpers.RenderGridPage`, which hands each to `Helper
 
    Putting it in the chrome band is load-bearing rather than cosmetic. A tab click clears the **scroll** and redraws the rows; the chrome band survives it. A picker added to the scroll therefore looks right on the render that drew it and vanishes the first time the reader clicks a tab — which no static reading of the builder shows. Pinned by `tests/test_schema.lua`.
 
-   It is also the page's **only** picker, which is the other half of `§14`: two controls over one piece of state is a synchronization problem the design invents and then owns forever. Selecting a unit re-enters `RenderUnitPanel`, and `PageBanner` drains **both** chrome ledgers (its own and the strip's) before it draws, so a switch onto a linked Focus — which draws no strip — cannot leave the previous unit's tabs stranded above the note.
+   It is also the page's **only** picker, which is the other half of `options-ui-§14`: two controls over one piece of state is a synchronization problem the design invents and then owns forever. Selecting a unit re-enters `RenderUnitPanel`, and `PageBanner` drains **both** chrome ledgers (its own and the strip's) before it draws, so a switch onto a linked Focus — which draws no strip — cannot leave the previous unit's tabs stranded above the note.
 
 2. **The linked-Focus branch** (`Helpers.RenderLinkedUnit`). When `ctx.unit` is a linked Focus, the page draws **the strip first, always**, then the `alwaysPerUnit` rows (there are none today) and a note reading *"Linked to Target. Untick 'Use same styling as Target' on the General page's Units tab to give Focus its own."*
 

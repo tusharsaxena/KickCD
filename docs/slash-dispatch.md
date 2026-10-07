@@ -68,7 +68,7 @@ the stored value can change: **the single write seam** (`Store.Set`, which the c
 `settings/General.lua`, run before the announce, or the seam's `announce` for a written-through
 `enabled` on a library-less load), **`core/Database.lua`'s
 profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
-§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
+`slash-commands-§7` keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
 for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
 module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
 
@@ -95,7 +95,7 @@ setting changed while the addon was off has to come back as it is now):
   — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
   back. Frames are not hidden imperatively, because a hidden frame comes back.
 
-**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
+**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** `slash-commands-§7` permits a disabled addon to keep exactly
 one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
 frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
 disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
@@ -238,7 +238,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `help` | Print the help index. | Iterates `COMMANDS`. |
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
-| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
+| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get `slash-commands-§5`'s `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |

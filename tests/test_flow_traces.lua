@@ -25,7 +25,7 @@ end)
 -- Each case below pins one line a support read of a pasted log depends on, or
 -- pins that a repeating path stays SILENT when nothing it reports changed. The
 -- quiet cases count the console's buffer across N passes: the console's `(xN)`
--- folding does not satisfy §9, so a folded repeat still has to fail them.
+-- folding does not satisfy debug-logging-§9, so a folded repeat still has to fail them.
 
 --- A fresh enabled instance with logging on and an empty console.
 local function listening()
@@ -49,7 +49,7 @@ end
 local function entry(spellID) return { spellID = spellID, category = "interrupt", enabled = true } end
 
 test("BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds", function()
-    -- §9 quiet steady state: SPELLS_CHANGED fires several times at login and every
+    -- debug-logging-§9 quiet steady state: SPELLS_CHANGED fires several times at login and every
     -- `spells` write rebuilds, so an unchanged list must not log again.
     -- red under: logActiveList writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
@@ -65,7 +65,7 @@ test("BuildActiveList writes ONE list summary for an unchanged list, however oft
 end)
 
 test("the list summary names the spells it could not draw and the duplicates it skipped", function()
-    -- §8: the missing-icon answer. An unlearned choice-node sibling and a
+    -- debug-logging-§8: the missing-icon answer. An unlearned choice-node sibling and a
     -- duplicated ID are both "the icon is not there"; the line says which.
     -- red under: drop the `trace.unknown` / `trace.dup` collection in seedList
     local inst, NS = listening()
@@ -80,7 +80,7 @@ test("the list summary names the spells it could not draw and the duplicates it 
 end)
 
 test("a cast bar logs its outcome once per change, not once per cast", function()
-    -- §9 quiet steady state on a per-cast path, and §8's no-op reason: a bar the
+    -- debug-logging-§9 quiet steady state on a per-cast path, and debug-logging-§8's no-op reason: a bar the
     -- visibility mode suppressed says so, once.
     -- red under: logCastOutcome writing through NS.Debug rather than NS.DebugLog.DebugChanged
     local _, NS = listening()
@@ -107,7 +107,7 @@ test("a cast bar logs its outcome once per change, not once per cast", function(
 end)
 
 test("a per-unit enable and disable edge is one line from each module", function()
-    -- §8 diagnosis: the addon's own enable transitions. ReconcileUnits acts only
+    -- debug-logging-§8 diagnosis: the addon's own enable transitions. ReconcileUnits acts only
     -- on a mismatch, so a settings write that changes nothing logs nothing.
     -- red under: drop the `unit enabled` / `unit disabled` lines from EnableUnit / DisableUnit
     local _, NS = listening()
@@ -130,7 +130,7 @@ end)
 -- this console, once each.
 
 test("a rebuild that watches nothing says why, once for a repeated reason", function()
-    -- §8's no-op reason for an empty grid, change-gated per §9: a slider drag
+    -- debug-logging-§8's no-op reason for an empty grid, change-gated per debug-logging-§9: a slider drag
     -- rebuilds about twenty times a second.
     -- red under: Cooldowns:_logRebuildSkip writing through NS.Debug rather than DebugChanged
     local _, NS = listening()
@@ -142,7 +142,7 @@ test("a rebuild that watches nothing says why, once for a repeated reason", func
 end)
 
 test("Cooldowns:Refresh stays silent across passes that change nothing", function()
-    -- §9 quiet steady state on the hottest path: SPELL_UPDATE_* fires many times
+    -- debug-logging-§9 quiet steady state on the hottest path: SPELL_UPDATE_* fires many times
     -- a second in combat. Pinned rather than fixed: it already logs only material
     -- changes, and this keeps it that way.
     -- red under: log the `%d/%d changed` line when `logged == 0`
@@ -213,7 +213,7 @@ test("a Clear re-arms the change-gated lines, so the next pass says where it sta
 end)
 
 test("a settings open refused in combat names the guard in the log", function()
-    -- §8 diagnosis: refusals with the reason. Chat has the notice; the pasted
+    -- debug-logging-§8 diagnosis: refusals with the reason. Chat has the notice; the pasted
     -- log is what a report carries.
     -- red under: drop the `[Open] settings panel refused` line from NS:OpenSettings
     local _, NS = listening()
@@ -225,7 +225,7 @@ test("a settings open refused in combat names the guard in the log", function()
 end)
 
 test("the Cooldown Manager walk logs one build line, with the calls that raised", function()
-    -- §8 diagnosis: a dependency's answer and the errors its pcalls caught, once
+    -- debug-logging-§8 diagnosis: a dependency's answer and the errors its pcalls caught, once
     -- per build; then the add it refuses names that gate.
     -- red under: drop logCmBuild from SpellInput.CooldownManagerSet, or the refusal line from Admissible
     local inst, NS = listening()
@@ -255,7 +255,7 @@ test("the Cooldown Manager walk logs one build line, with the calls that raised"
 end)
 
 test("a settings link whose click raises names the site and the error in the log", function()
-    -- §8 diagnosis: an error caught by an owned pcall reaches the pasted log, not
+    -- debug-logging-§8 diagnosis: an error caught by an owned pcall reaches the pasted log, not
     -- only the chat line the player saw.
     -- red under: drop the [Open] line from Helpers.LinkRow's OnClick in settings/Panel_Widgets.lua
     local inst, NS = listening()
@@ -272,7 +272,7 @@ test("a settings link whose click raises names the site and the error in the log
 end)
 
 test("a refused spell-list write names its guard, once, from the writer or the verb", function()
-    -- §8 diagnosis: a command refused or a write rejected names the guard. The
+    -- debug-logging-§8 diagnosis: a command refused or a write rejected names the guard. The
     -- writer's line is shared by the Spells page and `/kcd spells`; the verb logs
     -- only the guards it owns (parse, usage, no list, db not ready).
     -- red under: drop refused() from core/Database.lua's writers, or refuse() from core/KickCD.lua's spells, lock or debug verbs
@@ -315,7 +315,7 @@ test("a refused spell-list write names its guard, once, from the writer or the v
 end)
 
 test("an optional library that did not load is named when logging is first turned on", function()
-    -- §8 diagnosis: a dependency missing, once, at enable. Written at load with
+    -- debug-logging-§8 diagnosis: a dependency missing, once, at enable. Written at load with
     -- the flag off, so it goes through the console's at-enable queue and lands
     -- after the [Init] summary, once, not on every enable edge.
     -- red under: the OPTIONAL_LIBS walk in core/DebugLogSetup.lua writing through NS.Debug
