@@ -247,11 +247,14 @@ function Castbar:OnGridLayout(_evt, payload)
     local inst = instances[payload.unit]
     if not (inst and inst.frame) then return end
 
-    -- Cache the payload's references for ApplyAnchor / Reskin.
-    -- Defensive: only cache when the field is actually populated, so an
-    -- empty payload doesn't blank the cache.
-    if payload.gridFrame   ~= nil then inst.lastGridLayout.gridFrame   = payload.gridFrame   end
-    if payload.primaryIcon ~= nil then inst.lastGridLayout.primaryIcon = payload.primaryIcon end
+    -- Cache the payload's references for ApplyAnchor / Reskin. The payload is
+    -- the full layout announcement, so primaryIcon is copied verbatim: nil is
+    -- IconGrid saying "no primary icon" (an empty grid, whose old button went
+    -- back to the pool), and ApplyAnchor must then fall back to the grid frame
+    -- rather than keep anchoring to that released button. gridFrame keeps its
+    -- guard: every announcement carries it, so a nil there is not news.
+    if payload.gridFrame ~= nil then inst.lastGridLayout.gridFrame = payload.gridFrame end
+    inst.lastGridLayout.primaryIcon = payload.primaryIcon
 
     local c = cfg(inst)
     -- PRIMARY mode: re-target the primary icon button (which may have been

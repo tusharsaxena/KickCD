@@ -215,7 +215,9 @@ local function resolveGridFrame(inst)
 end
 
 -- Resolve `inst`'s icon-grid primary (first-laid-out) icon button. Same
--- payload-preferred / accessor-fallback policy as resolveGridFrame.
+-- payload-preferred / accessor-fallback policy as resolveGridFrame. The cache
+-- holds nil after an empty-grid announcement, and the accessor then reports
+-- nil too, so ApplyAnchor falls through to the grid frame.
 local function resolvePrimaryIcon(inst)
     if inst.lastGridLayout.primaryIcon then return inst.lastGridLayout.primaryIcon end
     local m = NS:GetModule("IconGrid", true)

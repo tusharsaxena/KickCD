@@ -654,3 +654,50 @@ test("the strip refuses a drag in PRIMARY mode and persists nothing", function()
     assertTrue(rawequal(NS.Units.Anchor("target", "castbar"), before),
         "a refused drag must not write an anchor at all")
 end)
+
+-- ── OnGridLayout: the payload cache ────────────────────────────────────────
+
+--- The relativeTo of the bar's most recent anchor point.
+local function anchoredTo(frame)
+    local _, rel = frame:GetPoint(frame:GetNumPoints())
+    return rel
+end
+
+test("an empty grid announcement drops the cached primary icon and anchors to the grid frame", function()
+    -- red under: Castbar_Events.lua guarding primaryIcon ~= nil
+    -- IconGrid announces primaryIcon = nil once every watched spell is gone
+    -- and releases the old button to its pool (ClearAllPoints + Hide). A
+    -- cache that kept it would pin the bar to an orphan in PRIMARY mode.
+    local NS, mocks, Castbar = enabled()
+    local inst  = Castbar:GetInstance("target")
+    local frame = Castbar:EnsureFrame(inst)
+    NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    local grid, btnA = mocks.CreateFrame("Frame"), mocks.CreateFrame("Button")
+
+    Castbar:OnGridLayout("Ka0s_KickCD_GridLayout",
+        { unit = "target", gridFrame = grid, primaryIcon = btnA })
+    assertTrue(rawequal(anchoredTo(frame), btnA), "a populated grid anchors to its first icon")
+
+    local IconGrid = NS:GetModule("IconGrid")
+    IconGrid.GetPrimaryIcon = function() return nil end
+    Castbar:OnGridLayout("Ka0s_KickCD_GridLayout",
+        { unit = "target", gridFrame = grid, primaryIcon = nil })
+    assertEqual(inst.lastGridLayout.primaryIcon, nil, "nil means no primary icon, not 'field absent'")
+    assertTrue(rawequal(anchoredTo(frame), grid), "an empty grid falls back to the grid frame")
+end)
+
+test("a focus grid announcement never touches the target bar's cache", function()
+    local NS, mocks, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    Castbar:EnsureFrame(inst)
+    Castbar:EnsureFrame(Castbar:GetInstance("focus"))
+    NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    local grid, btnA = mocks.CreateFrame("Frame"), mocks.CreateFrame("Button")
+    Castbar:OnGridLayout("Ka0s_KickCD_GridLayout",
+        { unit = "target", gridFrame = grid, primaryIcon = btnA })
+
+    Castbar:OnGridLayout("Ka0s_KickCD_GridLayout",
+        { unit = "focus", gridFrame = mocks.CreateFrame("Frame"), primaryIcon = nil })
+    assertTrue(rawequal(inst.lastGridLayout.primaryIcon, btnA), "the target's icon survives")
+    assertTrue(rawequal(inst.lastGridLayout.gridFrame, grid), "the target's grid survives")
+end)

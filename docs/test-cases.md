@@ -786,7 +786,7 @@ Total.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (44)
+### test_castbar_frame.lua (46)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -832,6 +832,8 @@ Total.
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
 - the strip refuses a drag in PRIMARY mode and persists nothing
+- an empty grid announcement drops the cached primary icon and anchors to the grid frame
+- a focus grid announcement never touches the target bar's cache
 
 ### test_castbar_skin.lua (49)
 
@@ -1580,7 +1582,7 @@ Total.
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 44 |
+| test_castbar_frame.lua | 46 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -1620,4 +1622,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1302** |
+| **Total** | **1304** |
