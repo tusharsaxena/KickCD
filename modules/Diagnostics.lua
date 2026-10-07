@@ -185,8 +185,8 @@ local function iconGridUnit(out, grid, u)
         u, inst.enabled, shown(inst.grid), active, free, #inst.ordered, inst.handle ~= nil)
     out:add("IconGrid", "%s: anchor saved=%s live=%s", u,
         savedAnchor(NS.Units.Anchor(u, "icons")), livePoint(inst.grid))
-    out:add("IconGrid", "%s: last visible=%s gate casting=%s interruptible=%s", u,
-        inst.lastVisible, inst.lastGateCasting, inst.lastGateInterruptible)
+    out:add("IconGrid", "%s: last visible=%s gate casting=%s interruptible=%s any=%s", u,
+        inst.lastVisible, inst.lastGateCasting, inst.lastGateInterruptible, inst.lastGateAnyCasting)
 end
 
 function X.IconGrid(out)

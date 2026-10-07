@@ -486,7 +486,7 @@ Total.
 - the vendored DebugLog major falls THROUGH a key-returning locale table
 - DebugLogSetup: the library is told the FOLDER name, not just the frame name
 
-### test_diagnostics.lua (22)
+### test_diagnostics.lua (23)
 
 - `diagnostics` is a COMMANDS row and a `debug` word, and nothing else runs it
 - no source file under core, modules or settings spells a report alias
@@ -504,6 +504,7 @@ Total.
 - the events section names every event this client refused
 - the runtime sections carry the three chat dumps, and chat receives none of them
 - the IconGrid and Castbar sections give saved and live anchors per unit
+- the IconGrid gate line names all three cached gate scalars, the raw cast state included
 - a raising section costs exactly one line and the next section still runs
 - a raising interrupt dump for one unit costs one line and the other unit still reports
 - an over-cap report ends in the truncated line and then the end marker
@@ -1571,7 +1572,7 @@ Total.
 | test_compat_debug.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
-| test_diagnostics.lua | 22 |
+| test_diagnostics.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
@@ -1628,4 +1629,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1310** |
+| **Total** | **1311** |

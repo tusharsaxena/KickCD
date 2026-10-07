@@ -331,6 +331,16 @@ test("the IconGrid and Castbar sections give saved and live anchors per unit", f
     assertTrue(find(lines, "[Castbar] target: anchor mode=") ~= nil, joined(lines))
 end)
 
+test("the IconGrid gate line names all three cached gate scalars, the raw cast state included", function()
+    -- red under: the dump prints only casting/interruptible, so a friendly caster that moved the
+    -- gate on the raw cast state (KC-03) reads as an unmoved gate
+    local inst = fresh()
+    local g = inst.NS:GetModule("IconGrid"):PeekInstance("target")
+    g.lastGateCasting, g.lastGateInterruptible, g.lastGateAnyCasting = false, nil, true
+    local lines = report(inst)
+    assertTrue(find(lines, "gate casting=false interruptible=nil any=true") ~= nil, joined(lines))
+end)
+
 -- ── STD-19's failure cases ──────────────────────────────────────────────────
 
 test("a raising section costs exactly one line and the next section still runs", function()
