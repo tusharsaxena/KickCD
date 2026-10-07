@@ -77,11 +77,13 @@ local F = NS.Foo
 ```
 
 - Every source file opens on that vararg, and the FIRST half is spelt `_` unless the file reads
-  it. Eight do, each handing the addon FOLDER name to a vendored LibKa0s payload that cannot work
-  out which folder it was copied into: `core/Constants.lua` (`Bus.Catalog`), `core/CoreSetup.lua`,
-  `core/EnvSetup.lua`, `core/MediaSetup.lua`, `core/DebugLogSetup.lua`, `core/LauncherSetup.lua`,
-  `core/LifecycleSetup.lua` and `core/PerfSetup.lua`. The other thirty-six write `local _, NS = ...`:
-  a name nothing reads is a dead local, and `M4c-06` removed twenty-nine of them.
+  it. The rule: a file opens `local addonName, NS = ...` only when it hands the addon FOLDER name
+  to a vendored LibKa0s payload that cannot work out which folder it was copied into (the
+  `*Setup.lua` seams, `settings/OptionsSetup.lua` among them, and `core/Constants.lua`'s
+  `Bus.Catalog`). Every other file writes `local _, NS = ...`: a name nothing reads is a dead
+  local, and `M4c-06` removed the ones that had been copied in. The files that read it today are
+  whatever `git grep -l 'local addonName, NS = \.\.\.' -- '*.lua' ':!libs' ':!tests'` lists, so
+  this paragraph names the rule, not a count.
 - `NS` is the shared private table.
 - Never overwrite an existing `NS.Foo` without `or {}` — another file may have reached it first, and never shadow it with a file-local of the same name.
 - The public API hangs off `F` (or `NS.Foo` directly); helpers stay `local` to the file.
