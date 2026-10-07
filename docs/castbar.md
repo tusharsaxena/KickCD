@@ -118,7 +118,7 @@ Texture differentiation between states (different statusbar textures, different 
 
 ## Spell-name truncate cap
 
-`castbar.nameTruncate` (0 = unlimited) trims the spell-name string in `truncateName` before handing it to `FontString:SetText`. The helper is byte-counted via `#` (so multi-byte UTF-8 names may truncate mid-character at the edge but won't error) and short-circuits via `issecretvalue` — secret-tainted names pass through verbatim to `SetText` (which is C-side safe), losing the truncation for that frame rather than throwing. `OnConfigChanged`'s `castbar` branch re-runs `RenderCast(current)` mid-cast so a config change (truncate cap, `showName`, `iconSize` toggle, …) takes effect immediately without waiting for the next cast.
+`castbar.nameTruncate` (0 = unlimited) trims the spell-name string in `truncateName` before handing it to `FontString:SetText`. The cap counts characters (UTF-8 lead bytes, via the file-local `utf8Prefix`), not bytes: a name of exactly the cap is never cut whatever its byte length, a cut never splits a code point, and the clipped name gains a trailing `…`. The helper short-circuits via `issecretvalue` — secret-tainted names pass through verbatim to `SetText` (which is C-side safe), losing the truncation for that frame rather than throwing. `OnConfigChanged`'s `castbar` branch re-runs `RenderCast(current)` mid-cast so a config change (truncate cap, `showName`, `iconSize` toggle, …) takes effect immediately without waiting for the next cast.
 
 ## Anti-patterns explicitly avoided
 

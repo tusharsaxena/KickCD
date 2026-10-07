@@ -754,7 +754,7 @@ Total.
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
 - UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it
 
-### test_castbar_helpers.lua (29)
+### test_castbar_helpers.lua (33)
 
 - the Castbar pure helpers are published for testing
 - UnpackColor reads an array-style color
@@ -768,6 +768,10 @@ Total.
 - TruncateName treats 0 and nil as 'no truncation'
 - TruncateName treats a negative cap as 'no truncation'
 - TruncateName returns an empty string for a nil name
+- TruncateName counts an accented name in characters, not bytes
+- TruncateName counts a CJK name in characters, not bytes
+- TruncateName leaves a Cyrillic name of exactly the cap alone
+- TruncateName output is valid UTF-8 at every cap
 - TruncateName passes a SECRET name through without measuring it
 - StateConfig returns the configured per-state table when present
 - StateConfig falls back when the state key is missing
@@ -1581,7 +1585,7 @@ Total.
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
-| test_castbar_helpers.lua | 29 |
+| test_castbar_helpers.lua | 33 |
 | test_castbar_frame.lua | 46 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
@@ -1622,4 +1626,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1304** |
+| **Total** | **1308** |

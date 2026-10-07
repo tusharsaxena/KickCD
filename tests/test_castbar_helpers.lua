@@ -86,6 +86,57 @@ test("TruncateName returns an empty string for a nil name", function()
     assertEqual(Castbar.TruncateName(nil, 10), "")
 end)
 
+-- A cut must never leave a lead byte without all of its continuation bytes.
+-- Checks the part before the appended ellipsis (or the whole string).
+local function validUtf8(s)
+    local body = s:gsub("…$", "")
+    local i, n = 1, #body
+    while i <= n do
+        local b = body:byte(i)
+        local need
+        if b < 0x80 then need = 0
+        elseif b >= 0xF0 then need = 3
+        elseif b >= 0xE0 then need = 2
+        elseif b >= 0xC0 then need = 1
+        else return false end -- a stray continuation byte
+        for k = 1, need do
+            local c = body:byte(i + k)
+            if not c or c < 0x80 or c > 0xBF then return false end
+        end
+        i = i + need + 1
+    end
+    return true
+end
+
+test("TruncateName counts an accented name in characters, not bytes", function()
+    -- red under: byte-counted #name / string.sub
+    local out = Castbar.TruncateName("Éclair de givre", 3)
+    assertEqual(out, "Écl…")
+    assertTrue(validUtf8(out), "the cut must not split a code point")
+end)
+
+test("TruncateName counts a CJK name in characters, not bytes", function()
+    -- red under: byte-counted #name / string.sub
+    local out = Castbar.TruncateName("脚踢打断", 2)
+    assertEqual(out, "脚踢…")
+    assertTrue(validUtf8(out), "the cut must not split a code point")
+end)
+
+test("TruncateName leaves a Cyrillic name of exactly the cap alone", function()
+    -- red under: byte-counted #name / string.sub (8 bytes > cap 4)
+    assertEqual(Castbar.TruncateName("Удар", 4), "Удар")
+end)
+
+test("TruncateName output is valid UTF-8 at every cap", function()
+    -- red under: byte-counted #name / string.sub
+    for _, name in ipairs({ "Éclair de givre", "脚踢打断", "Пинок щитом", "Kick" }) do
+        for cap = 1, 12 do
+            local out = Castbar.TruncateName(name, cap)
+            assertTrue(validUtf8(out), ("cap %d split a code point in %q"):format(cap, out))
+        end
+    end
+end)
+
 test("TruncateName passes a SECRET name through without measuring it", function()
     -- `#name` and string.sub on a secret error in tainted scope. Dropping the
     -- truncation for that frame is the documented degradation.
