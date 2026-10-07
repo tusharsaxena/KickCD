@@ -375,6 +375,23 @@ NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition" }
 
 NS.COMMANDS = COMMANDS
 
+-- The optional unit word of `/kcd debug castbar` and `/kcd debug interrupt`
+-- (KC-R-04): none means target, and focus is the other tracked unit. Any case;
+-- anything else is nil, which the caller refuses.
+local DEBUG_UNITS = { [""] = "target", target = "target", focus = "focus" }
+local function parseDebugUnit(word)
+    return DEBUG_UNITS[(word or ""):match("^%s*(%S*)"):lower()]
+end
+
+-- Resolve the unit word for debug sub-verb `sub`, or refuse it and return nil.
+local function debugUnit(self, sub, rest)
+    local unit = parseDebugUnit(rest)
+    if unit then return unit end
+    local word = (rest or ""):match("^%s*(%S*)"):lower()
+    refuse(self, "Debug", "debug", sub, "unknown unit",
+        "unknown unit '" .. word .. "', expected target or focus", word)
+end
+
 local DEBUG_COMMANDS = {
     -- First, so the bare `/kcd debug` list shows the report before the topic
     -- dumps. runDebug tests the word before this table is consulted at all
@@ -387,16 +404,20 @@ local DEBUG_COMMANDS = {
             if m and m.DebugDump then m:DebugDump()
             else refuse(self, "Debug", "debug", "spells", "Cooldowns module not loaded", "Cooldowns module not loaded") end
         end},
-    {"castbar", "Print the current target cast bar state",
-        function(self)
+    {"castbar", "Print a unit's cast bar state (target by default, or focus)",
+        function(self, rest)
+            local unit = debugUnit(self, "castbar", rest)
+            if not unit then return end
             local m = self:GetModule("Castbar", true)
-            if m and m.DebugDump then m:DebugDump()
+            if m and m.DebugDump then m:DebugDump(unit)
             else refuse(self, "Debug", "debug", "castbar", "Castbar module not loaded", "Castbar module not loaded") end
         end},
-    {"interrupt", "Dump the target's UnitCastingInfo / UnitChannelInfo positions (type + secret-tainted flag) plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
-        function(self)
+    {"interrupt", "Dump the UnitCastingInfo / UnitChannelInfo positions of [target|focus] (target by default) with each type + secret-tainted flag, plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
+        function(self, rest)
+            local unit = debugUnit(self, "interrupt", rest)
+            if not unit then return end
             if NS.Compat and NS.Compat.DebugInterrupt then
-                NS.Compat.DebugInterrupt("target")
+                NS.Compat.DebugInterrupt(unit)
             else
                 refuse(self, "Debug", "debug", "interrupt", "Compat.DebugInterrupt unavailable",
                     "Compat.DebugInterrupt unavailable")
@@ -442,12 +463,19 @@ function printHelp(self)
     p(self, "slash help is unavailable \226\128\148 the settings layer failed to load")
 end
 
+-- The `/kcd debug` sub-verb list. Printed by the bare verb beside its console
+-- toggle, and after an unknown word's refusal WITHOUT the toggle (KC-R-03).
+local function printDebugList(self)
+    p(self, "debug subcommands")
+    for _, row in ipairs(NS.Slash.CommandRows("/kcd debug", DEBUG_COMMANDS, "  ")) do p(self, row) end
+end
+
 function runDebug(self, rest)
     -- Debug subcommands are all-lowercase identifiers. LibKa0s-Slash-1.0's
     -- SplitVerb (via NS.Slash, settings/Slash.lua) lowercases the verb and
     -- keeps the remainder's case, so callers type any case (OnSlashCommand
     -- preserves case in `rest` for schema paths).
-    local sub = NS.Slash.SplitVerb(rest)
+    local sub, remainder = NS.Slash.SplitVerb(rest)
     -- The report first, before every other word and before the bare toggle
     -- (debug-logging-§14). Any case: `sub` is lowercased above. `diag` and every
     -- other near-miss fall through to the unknown-word answer below.
@@ -456,14 +484,16 @@ function runDebug(self, rest)
         -- Bare `/kcd debug` toggles the console window (debug-logging-§5); the flag is
         -- untouched. Print the verb list alongside so it stays discoverable.
         if self.DebugLog then self.DebugLog:Toggle() end
-        p(self, "debug subcommands")
-        for _, row in ipairs(NS.Slash.CommandRows("/kcd debug", DEBUG_COMMANDS, "  ")) do p(self, row) end
-        return
+        return printDebugList(self)
     end
+    -- The remainder goes to the row: castbar and interrupt read an optional
+    -- unit word from it, every other row ignores it.
     local entry = NS.Slash.FindCommand(DEBUG_COMMANDS, sub)
-    if entry then return entry[3](self) end
+    if entry then return entry[3](self, remainder) end
+    -- An unknown word refuses and reprints the list; it never toggles the
+    -- console, which only the bare verb does (debug-logging-§5).
     refuse(self, "Debug", "debug", nil, "unknown subcommand", "unknown debug subcommand '" .. sub .. "'", sub)
-    runDebug(self, "")
+    printDebugList(self)
 end
 
 --- The entry point AceConsole's RegisterChatCommand resolves by name, kept here

@@ -118,8 +118,10 @@ local ICONS_DEFAULT = {
         -- the type picks WHICH visual. Trigger values:
         --   * "never"                       — glow off
         --   * "always"                      — glow whenever the spell is ready
-        --   * "target_casting"              — only while target is casting
-        --   * "target_casting_interruptible" — only for interruptible target casts
+        --   * "target_casting"              — only while the unit is casting:
+        --                                     ANY cast, friendly or hostile (the
+        --                                     same meaning as the visibility mode)
+        --   * "target_casting_interruptible" — only for interruptible HOSTILE casts
         -- Type values map to LibCustomGlow's four glow effects:
         --   * "button"   — Blizzard's spell-activation rotating rays + spark
         --   * "proc"     — Blizzard's modern proc flipbook

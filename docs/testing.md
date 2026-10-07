@@ -183,10 +183,10 @@ than the tag this addon has taken.
 
 Between a library release and the re-vendor that carries it they disagree, and that disagreement is
 the normal state rather than a defect. Re-vendoring to quiet them would be the actual mistake — it
-would pull an untested library release for the sake of a clean diff. As this is written the two
-agree: `../LibKa0s` sits on **v1.68.1**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
-four commands above report nothing. That is the state immediately after a re-vendor and before the
-library's next tag — a coincidence of timing, not the stronger guarantee the block below states.
+would pull an untested library release for the sake of a clean diff. The two agree — `../LibKa0s`
+checked out at the tag [`CLAUDE.md`](../CLAUDE.md) names, and all four commands above reporting
+nothing — only in the window between a re-vendor and the library's next tag. That agreement is a
+coincidence of timing, not the stronger guarantee the block below states.
 
 **The authoritative comparison is against the tag `CLAUDE.md` names**, and that one must be empty at
 every commit:
@@ -360,8 +360,8 @@ Continuous debug output does **not** go to the chat frame. It routes through the
 - `/kcd debug on` / `/kcd debug off` / `/kcd debug toggle` — set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Off by default; not persisted; resets each `/reload`.
 - `/kcd debug diagnostics` — the diagnostic report, the same call as `/kcd diagnostics` (above). Tested before every other `debug` word.
 - `/kcd debug spells` — dump (to chat) the watched cooldown list with `ready / active / cdObj / chargeCdObj / charges` per spell. `cdObj=yes` means a full-cooldown duration object is held; `chargeCdObj=yes` means a charge-recharge timer is ticking while the spell is still castable. We deliberately do NOT print remaining time — `:GetRemainingDuration()` is secret in combat and `tostring` would error in tainted scope; charges are also secret-safed via a `safeStr` placeholder.
-- `/kcd debug castbar` — print (to chat) one unit's cast state plus the configured/live per-state colors and `notInterruptible`'s type/secret-status (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump.
-- `/kcd debug interrupt` — dump (to chat) every `UnitCastingInfo` / `UnitChannelInfo` position with `type()` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting("target")` and the addon-wide visibility / glow-trigger logic decided. The reference for diagnosing 12.0 secret-value handling drift (especially regressions in the `target_casting_interruptible` mode where `notInterruptible` cannot be inspected from Lua). Reads safely via the `safeRender` helper that short-circuits secret values to `NS.SECRET` (`<secret>`).
+- `/kcd debug castbar [target|focus]` — print (to chat) one unit's cast state plus the configured/live per-state colors and `notInterruptible`'s type/secret-status (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump.
+- `/kcd debug interrupt [target|focus]` — dump (to chat) every `UnitCastingInfo` / `UnitChannelInfo` position with `type()` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting(unit)` (`target` by default) and the addon-wide visibility / glow-trigger logic decided. The reference for diagnosing 12.0 secret-value handling drift (especially regressions in the `target_casting_interruptible` mode where `notInterruptible` cannot be inspected from Lua). Reads safely via the `safeRender` helper that short-circuits secret values to `NS.SECRET` (`<secret>`).
 
 ## In-game spot checks
 

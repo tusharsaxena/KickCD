@@ -242,7 +242,7 @@ NS.Perf = lib:New({
     -- NO `decorate`, and the descriptor deliberately ends here. This file used
     -- to supply that hook, and by the end its whole body was a close button:
     -- LibKa0s-Perf's own panel draws the identical control in its else arm
-    -- (libs/LibKa0s/PerfPanel.lua:185-196) out of the same LibKa0s-Core factory,
+    -- (libs/LibKa0s/PerfPanel.lua EnsureFrame, its `if decorate` else arm) out of the same LibKa0s-Core factory,
     -- at the same TOPRIGHT anchor and the same -(TITLE_H - 18) / 2 offset,
     -- resolving the folder through `d.addonName or d.name` -- which the
     -- `addonName` field above answers explicitly rather than by luck.

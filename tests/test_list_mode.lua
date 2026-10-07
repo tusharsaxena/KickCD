@@ -66,11 +66,20 @@ test("--list per-suite header counts match their bullet counts", function()
     assertTrue(seen > 0, "must emit at least one '### <suite>.lua (N)' section")
 end)
 
-test("--list Totals row equals the grand total of bullets", function()
+-- Kit revision 38 (LibKa0s v1.71.0): Total counts only the cases that run, and the
+-- declared skips get their own `| Skipped | N |` row (testing-§5: a skip is never
+-- folded into the total). Every bullet is either counted in Total or is a declared
+-- skip, which the inventory discloses as "(skipped: <reason>)".
+test("--list Totals row plus the Skipped row equals the grand total of bullets", function()
     local out = listOutput()
     local total = out:match("| %*%*Total%*%* | %*%*(%d+)%*%* |")
     assertTrue(total ~= nil, "must end with a | **Total** | **N** | row")
+    local skipped = tonumber(out:match("\n| Skipped | (%d+) |") or "0")
+    local skipBullets = select(2, out:gsub("\n%- [^\r\n]*%(skipped: ", ""))
+    assertEqual(skipped, skipBullets,
+        "Skipped row (" .. skipped .. ") must equal the skipped bullets (" .. skipBullets .. ")")
     local bullets = select(2, out:gsub("\n%- ", ""))
-    assertEqual(tonumber(total), bullets,
-        "Totals row (" .. tostring(total) .. ") must equal bullet count (" .. bullets .. ")")
+    assertEqual(tonumber(total) + skipped, bullets,
+        "Totals row (" .. tostring(total) .. ") plus Skipped (" .. skipped
+        .. ") must equal bullet count (" .. bullets .. ")")
 end)

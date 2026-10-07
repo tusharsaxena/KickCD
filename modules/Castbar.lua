@@ -215,7 +215,9 @@ local function resolveGridFrame(inst)
 end
 
 -- Resolve `inst`'s icon-grid primary (first-laid-out) icon button. Same
--- payload-preferred / accessor-fallback policy as resolveGridFrame.
+-- payload-preferred / accessor-fallback policy as resolveGridFrame. The cache
+-- holds nil after an empty-grid announcement, and the accessor then reports
+-- nil too, so ApplyAnchor falls through to the grid frame.
 local function resolvePrimaryIcon(inst)
     if inst.lastGridLayout.primaryIcon then return inst.lastGridLayout.primaryIcon end
     local m = NS:GetModule("IconGrid", true)
@@ -318,26 +320,46 @@ local function fetchBorderTexture(name)
     return "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
+-- The first `cap` characters of a UTF-8 string, or the string itself when it
+-- is no longer than that. A character starts at every byte outside
+-- 0x80-0xBF (continuation bytes belong to the character before them), so a
+-- cut always lands on a code-point boundary. Pure Lua because strlenutf8 is
+-- absent from the headless harness; mirrors MultiMeters' utf8Truncate.
+local function utf8Prefix(s, cap)
+    local chars = 0
+    for i = 1, #s do
+        local b = s:byte(i)
+        if b < 0x80 or b > 0xBF then
+            chars = chars + 1
+            if chars > cap then return s:sub(1, i - 1) end
+        end
+    end
+    return s
+end
+
 -- Apply the user's spell-name truncate cap, returning a string fit
 -- to hand to FontString:SetText. `0` (or nil) means "no truncation".
 --
+-- Length is counted in characters (UTF-8 lead bytes), matching the
+-- "Truncate after (characters)" label: a name of exactly `maxChars`
+-- characters is never cut, whatever its byte length, and a cut never
+-- splits a code point.
+--
 -- Secret-value handling: `rec.name` from Compat.GetCastingInfo can
 -- be secret-tainted in combat for protected casts (per the module
--- header). `string.sub` / `#` on a secret may error in tainted
--- scope, so we short-circuit with `Compat.IsSecret` and pass the raw
--- secret straight through to SetText (which accepts secret args
--- via its C-side argument path) — losing the truncation for that
--- one frame is preferable to throwing a Lua error.
---
--- Length is byte-counted; multi-byte UTF-8 names may truncate mid-
--- character at the edge, but won't error. Most spell names are
--- short enough that the cap rarely fires anyway.
+-- header). `#` / byte access on a secret may error in tainted scope,
+-- so this short-circuits with `Compat.IsSecret` before measuring and
+-- passes the raw secret straight through to SetText (which accepts
+-- secret args via its C-side argument path). Losing the truncation
+-- for that one frame is preferable to throwing a Lua error, so
+-- utf8Prefix is never called on a secret.
 local function truncateName(name, maxChars)
     if not name then return "" end
     if not maxChars or maxChars <= 0 then return name end
     if NS.Compat.IsSecret(name) then return name end
-    if #name <= maxChars then return name end
-    return string.sub(name, 1, maxChars) .. "…"
+    local cut = utf8Prefix(name, maxChars)
+    if cut == name then return name end
+    return cut .. "…"
 end
 
 local function fetchFont(name)

@@ -19,14 +19,14 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 17 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it |
-| CAST-1 – 15 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge |
+| GRID-1 – 18 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster |
+| CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
-| LOC-1 – 6 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade |
+| LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
 ## Before you start
 
@@ -212,7 +212,7 @@ Which checks to run for a partial change:
   `/kcd help` row. `/kcd debug` again to close the console. `/kcd spells` → `spells subcommands` and its
   rows the same way, then the `(default class/spec when omitted: …)` line. `/kcd debug EVENTS` → the
   events answer (the verb is case-insensitive); `/kcd debug nosuch` → `unknown debug subcommand
-  'nosuch'`, then the list again. Result:
+  'nosuch'`, then the list again, and the console neither opens nor closes. Result:
 
 ## PANEL
 
@@ -529,6 +529,13 @@ Which checks to run for a partial change:
   again → the tooltip opens to the strip's LEFT instead. `/kcd set scale 1.5` and repeat both → the same
   two sides, fully on screen (the grid strip takes the master scale, so the flip is judged in screen
   pixels). Result:
+- **GRID-18. `target_casting` glows on a friendly cast too (KC-03).** `/kcd set visibility always`,
+  `/kcd set units.target.icons.primaryGlowTrigger target_casting`, an interrupt off cooldown. Target a
+  friendly player and have them hard-cast (a heal, a hearthstone) → the primary icon starts glowing
+  when the cast starts and stops when it ends or is canceled, every time, not stuck on or off. Set
+  the trigger to `target_casting_interruptible` and repeat → no glow on the friendly cast. With
+  `/kcd diagnostics`, the `IconGrid` section's `gate` line ends `any=true` while the friendly cast
+  runs. Result:
 
 ## CAST
 
@@ -579,6 +586,12 @@ Which checks to run for a partial change:
   strip's RIGHT, top edges level, not at the cursor. Drag the bar until the strip's right end is within a
   tooltip's width of the screen's right edge and hover again → the tooltip opens to the strip's LEFT, fully
   on screen. Result:
+- **CAST-16. An empty grid hands the primary anchor to the grid frame (KC-01).** `anchorMode PRIMARY`,
+  `/kcd set visibility always`, `/kcd lock`. Disable every spell on the current spec's list
+  (`/kcd spells disable <id>` for each) → the grid draws no icons. Target a hostile caster → the bar
+  draws at the grid's position (anchored to the grid frame), not hidden and not stranded where the old
+  first icon sat; drag the grid while unlocked and the bar follows it. Re-enable one spell → the bar
+  re-anchors under that icon. Result:
 
 ## FOCUS
 
@@ -750,7 +763,10 @@ Which checks to run for a partial change:
 - **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
   cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
   `live SetStatusBarColor values` for both states. With no cast the dump stops at
-  `no active cast tracked (current = nil)`. Result:
+  `no active cast tracked (current = nil)`. Set a hostile caster as focus: `/kcd debug castbar focus` →
+  `castbar state (focus)`, and `/kcd debug interrupt focus` dumps the focus unit's cast info; a bare
+  `/kcd debug castbar` still reports the target. `/kcd debug castbar bogus` → `unknown unit 'bogus',
+  expected target or focus` and no dump. Result:
 - **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
   trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
   it. `/reload` → off again; no saved setting holds it. Result:
@@ -980,6 +996,11 @@ reproduces it exactly.
   customized spell lists, `/reload`, inspect it → numeric spec keys, your entries intact under them.
   Switch to a second profile and check again → rekeyed too (the rekey runs on each profile as it is
   activated). Result:
+- **LOC-7. The name cap counts characters (KC-02).** On a client whose spell names carry accents or a
+  non-Latin script (French, Russian, Korean, Chinese), `/kcd set units.target.castbar.nameTruncate 4`
+  and target a caster → the bar's spell name shows exactly four characters and a trailing `…`, with
+  no broken glyph or box at the cut; a name of four characters or fewer shows whole, with no `…`.
+  `/kcd reset units.target.castbar.nameTruncate` → the full name again. Result:
 
 ## Pending sign-off
 
@@ -1011,7 +1032,7 @@ off on its own `Result:` line, then remove its row here.
 | SLASH-10 | §12 L358, L368, L370 | No result recorded; its cast-bar anchor half restored in this rework |
 | SLASH-11 | §12 L369 | No result recorded; corrected: the `px` and color echoes |
 | SLASH-12, SLASH-13 | §33 | No result recorded |
-| SLASH-14 | New | The `debug` and `spells` sub-help through LibKa0s-Slash's `CommandRows` (LibKa0s v1.67.0, KickCD#36, CA-KC-01) |
+| SLASH-14 | New | The `debug` and `spells` sub-help through LibKa0s-Slash's `CommandRows` (LibKa0s v1.67.0, KickCD#36, CA-KC-01); extended on 2026-10-07: an unknown `debug` word leaves the console alone (KC-04, KC-R-03) |
 | PANEL-1 | §1 L69, §2 L94, §14 L408, §36 KC-S1 | KC-S1 passed; the `/reload` half and §14's each-page-once (owed on the 2026-09-07 checklist, 4.2) did not |
 | PANEL-2 | §14 L406 | No result recorded |
 | PANEL-3 | §11 L343, §36 KC-S2 | KC-S2 passed; the every-tab half (§11) has no result |
@@ -1047,11 +1068,13 @@ off on its own `Result:` line, then remove its row here.
 | GRID-2 | §6 L167 – 168 | No result recorded; corrected: the warning's text, one per unit, re-armed once the grid fits |
 | GRID-3 | §6 L169 | No result recorded; corrected: the row's range is 24 – 96 |
 | GRID-17 | New | The grid strip's tooltip beside the strip (LibKa0s v1.68.0, TP-KC-01) |
+| GRID-18 | New | The `target_casting` glow gate tracks a friendly cast (2026-10-07, KC-03, KC-R-05) |
 | CAST-1 – 9, CAST-11, CAST-12 | §5 L154, §7a – 7c, §34 | No result recorded |
 | CAST-10 | §34 step 4 | No result recorded; corrected: the tooltip's title is `KickCD castbar` |
 | CAST-13 | §32 | NOT YET RUN since `M4-22`; corrected: the top-level `visibility` |
 | CAST-14 | New | An empowered cast |
 | CAST-15 | New | The strip's tooltip beside the strip, flipping left at the screen edge (LibKa0s v1.68.0, TP-KC-01) |
+| CAST-16 | New | The PRIMARY bar falls back to the grid frame on an empty grid (2026-10-07, KC-01, KC-R-01) |
 | FOCUS-1 – 5, FOCUS-8 – 12, FOCUS-14 – 19 | §20, §20a – 20d | No result recorded; FOCUS-2 corrected: Focus is turned off first and the frame unlocked, so the cast bar's placeholder shows |
 | FOCUS-6, FOCUS-7 | §20b L515 – 517, §22 L625, §36 KC-S6 | KC-S6 passed; the Target-restores and link-style halves have no result |
 | FOCUS-13 | §20b L524, L530 | No result recorded; corrected: a `/kcd resetall` baseline makes N = 4 |
@@ -1059,7 +1082,8 @@ off on its own `Result:` line, then remove its row here.
 | LABEL-6 | §11 L346 | No result recorded; corrected: only the `/kcd get` echo carries `deg` |
 | LABEL-12 | §22 L630, L635 | No result recorded; its cast-bar attach half restored in this rework |
 | SPELLS-1 – 16 | §9, §10, §12 L357, L363 | No result recorded |
-| DIAG-1 – 3 | §15 L416 – 418, L428 | No result recorded; corrected: the dump and ack lines as printed |
+| DIAG-1, DIAG-3 | §15 L416 – 418, L428 | No result recorded; corrected: the dump and ack lines as printed |
+| DIAG-2 | §15 L416 – 418, L428 | No result recorded; corrected: the dump lines as printed; extended on 2026-10-07: the `focus` unit word and the refused bogus unit (KC-04, KC-R-04) |
 | DIAG-4 – 10, DIAG-12, DIAG-14, DIAG-15 | §15, §19 | No result recorded |
 | DIAG-11 | §19 L483 | No result recorded; corrected: the `[target]` tag and the stop label |
 | DIAG-13 | §19 L485 | No result recorded; corrected: the drag list's own trace lines |
@@ -1084,6 +1108,7 @@ off on its own `Result:` line, then remove its row here.
 | DEGRADED-14 | New | The stub's plain `debug` and `spells` sub-help rows (KickCD#36, CA-KC-01) |
 | DEGRADED-15 | New | The degraded interrupt dump's `<secret>`, from the stub's `NS.SECRET` (KickCD#36, CA-KC-02) |
 | LOC-1 – 6 | §9b | Never run (2026-09-07 checklist, session 6) |
+| LOC-7 | New | The cast-bar name cap counts UTF-8 characters, not bytes (2026-10-07, KC-02, KC-R-02) |
 
 If a check fails, capture the error from BugSack or the Lua error frame and the exact commands that led
 to it, and file an issue at the tracker in [README.md](../README.md#issues-and-feature-requests).

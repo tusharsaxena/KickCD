@@ -114,6 +114,7 @@ local function newInstance(unit)
         lastVisible   = nil,
         lastGateCasting      = nil,
         lastGateInterruptible = nil,
+        lastGateAnyCasting    = nil,
         -- The `[Cast]` gate line and the `[IconGrid] [unit] list ...` summary
         -- are change-gated on the console (D.DebugChanged, keyed per unit),
         -- not on fields here: a Clear or a fresh enable re-arms them.

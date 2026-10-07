@@ -29,6 +29,18 @@ test("Schema version lives in db.global, not the profile (KCD-20)", function()
     assertEqual(NS.db.profile.dbVersion, nil, "profile must NOT carry a schema version")
 end)
 
+test("NS.SCHEMA_VERSION is the migration target and a fresh install ends on it", function()
+    -- red under: the target kept as Database.CURRENT_DB_VERSION
+    --
+    -- savedvariables-§1 names the runner's target NS.SCHEMA_VERSION, the
+    -- spelling every other Ka0s addon uses; no second alias survives.
+    local ns = T.load(true).NS
+    assertEqual(ns.SCHEMA_VERSION, 5, "the target is published as NS.SCHEMA_VERSION")
+    assertEqual(ns.db.global.schemaVersion, ns.SCHEMA_VERSION,
+        "a fresh install is stamped with NS.SCHEMA_VERSION")
+    assertEqual(ns.Database.CURRENT_DB_VERSION, nil, "the retired alias is gone")
+end)
+
 test("MigrateProfile is a no-op at the current schema version", function()
     local before = NS.db.global.schemaVersion
     NS.Database:MigrateProfile()
@@ -41,7 +53,7 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     ns.db.global.schemaVersion = nil
     ns.db.profile.dbVersion = nil
     ns.Database:MigrateProfile()
-    -- CURRENT_DB_VERSION is 5 (units fold, spec-key rekey, color reshape, font-flag
+    -- NS.SCHEMA_VERSION is 5 (units fold, spec-key rekey, color reshape, font-flag
     -- token) — an unversioned account is treated as v1 and walked forward through
     -- every step.
     assertEqual(ns.db.global.schemaVersion, 5, "migration must stamp v1 then walk to current")
@@ -59,7 +71,7 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     ns.db.profile.dbVersion = 1
     ns.Database:MigrateProfile()
     assertTrue(ns.db.global.schemaVersion ~= 99, "legacy dbVersion must override the backfilled global value")
-    -- CURRENT_DB_VERSION is 5 — the adopted v1 account walks forward through
+    -- NS.SCHEMA_VERSION is 5 — the adopted v1 account walks forward through
     -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys), [3]
     -- (MigrateColorShape) and [4] (MigrateFontFlags) to the current version.
     assertEqual(ns.db.global.schemaVersion, 5, "adopted version migrates forward to the current version")

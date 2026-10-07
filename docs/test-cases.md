@@ -1,12 +1,14 @@
 # Test Cases
 
 The full inventory of every headless test case in this repo, grouped by the suite file it
-lives in. The `## Totals` table below is the **authoritative pass count** — the README test
-badge and any count quoted in the docs must agree with it.
+lives in. The `## Totals` table below counts the cases that run: its **Total** is the
+authoritative pass count, and the README test badge and any count quoted in the docs must equal
+it. A declared skip is listed by name in its group and counted on the `Skipped` row, never in
+Total.
 
 **Generated — do not hand-edit.** Regenerate with `lua tests/run.lua --list > docs/test-cases.md`.
 
-### test_util.lua (13)
+### test_util.lua (15)
 
 - Util.Unpack array-style color
 - Util.Unpack hash-style color
@@ -20,6 +22,8 @@ badge and any count quoted in the docs must agree with it.
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
+- a zero-argument throttle fires fn once per burst with no arguments
+- a zero-arg burst after an args burst does not leak the old args
 - NewUnitCastFilter arms its filter frame for the named unit
 
 ### test_coresetup.lua (29)
@@ -282,11 +286,12 @@ badge and any count quoted in the docs must agree with it.
 - degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
 - degraded: Store.Set on any other composed path is refused
 
-### test_database.lua (25)
+### test_database.lua (26)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
 - Schema version lives in db.global, not the profile (KCD-20)
+- NS.SCHEMA_VERSION is the migration target and a fresh install ends on it
 - MigrateProfile is a no-op at the current schema version
 - MigrateProfile treats a missing version as v1 and walks forward to current
 - MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
@@ -484,7 +489,7 @@ badge and any count quoted in the docs must agree with it.
 - the vendored DebugLog major falls THROUGH a key-returning locale table
 - DebugLogSetup: the library is told the FOLDER name, not just the frame name
 
-### test_diagnostics.lua (22)
+### test_diagnostics.lua (23)
 
 - `diagnostics` is a COMMANDS row and a `debug` word, and nothing else runs it
 - no source file under core, modules or settings spells a report alias
@@ -502,6 +507,7 @@ badge and any count quoted in the docs must agree with it.
 - the events section names every event this client refused
 - the runtime sections carry the three chat dumps, and chat receives none of them
 - the IconGrid and Castbar sections give saved and live anchors per unit
+- the IconGrid gate line names all three cached gate scalars, the raw cast state included
 - a raising section costs exactly one line and the next section still runs
 - a raising interrupt dump for one unit costs one line and the other unit still reports
 - an over-cap report ends in the truncated line and then the end marker
@@ -668,7 +674,7 @@ badge and any count quoted in the docs must agree with it.
 - with no Cooldowns state the seed is ready
 - every unwatched seed is the shared READY_SEED table
 
-### test_icongrid_glowgate.lua (8)
+### test_icongrid_glowgate.lua (10)
 
 - RefreshAllGlows pushes the glow decision through every icon
 - an unmoved gate short-circuits the per-icon loop
@@ -678,6 +684,8 @@ badge and any count quoted in the docs must agree with it.
 - a SECRET interruptibility reading defeats the short-circuit
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
+- a friendly cast moves the gate for the target_casting trigger
+- an unmoved friendly-cast gate still short-circuits
 
 ### test_icongrid_handle.lua (13)
 
@@ -752,7 +760,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong treats a zero/nil scale as 1 (never divides by zero)
 - UNIT_SPELLCAST_EMPOWER_START on target starts the bar and EMPOWER_STOP stops it
 
-### test_castbar_helpers.lua (29)
+### test_castbar_helpers.lua (33)
 
 - the Castbar pure helpers are published for testing
 - UnpackColor reads an array-style color
@@ -766,6 +774,10 @@ badge and any count quoted in the docs must agree with it.
 - TruncateName treats 0 and nil as 'no truncation'
 - TruncateName treats a negative cap as 'no truncation'
 - TruncateName returns an empty string for a nil name
+- TruncateName counts an accented name in characters, not bytes
+- TruncateName counts a CJK name in characters, not bytes
+- TruncateName leaves a Cyrillic name of exactly the cap alone
+- TruncateName output is valid UTF-8 at every cap
 - TruncateName passes a SECRET name through without measuring it
 - StateConfig returns the configured per-state table when present
 - StateConfig falls back when the state key is missing
@@ -784,7 +796,7 @@ badge and any count quoted in the docs must agree with it.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (44)
+### test_castbar_frame.lua (46)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -830,6 +842,8 @@ badge and any count quoted in the docs must agree with it.
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
 - the strip refuses a drag in PRIMARY mode and persists nothing
+- an empty grid announcement drops the cached primary icon and anchors to the grid frame
+- a focus grid announcement never touches the target bar's cache
 
 ### test_castbar_skin.lua (49)
 
@@ -1249,7 +1263,7 @@ badge and any count quoted in the docs must agree with it.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (48)
+### test_slash.lua (53)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1265,6 +1279,11 @@ badge and any count quoted in the docs must agree with it.
 - `/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line
 - core/KickCD.lua carries no second sub-help formatter, verb split or lookup
 - an unknown debug word refuses, then reprints the list
+- an unknown debug word leaves the debug console as it was (KC-R-03)
+- `/kcd debug castbar` still dumps the target bar
+- `/kcd debug castbar focus` dumps the focus bar (KC-R-04)
+- `/kcd debug interrupt focus` dumps the focus unit (KC-R-04)
+- `/kcd debug interrupt` and `castbar` refuse an unknown unit and run nothing
 - a debug sub-verb is matched case-insensitively
 - list groups by the row's panel, in the addon's declared page order
 - get echoes the shared key = value pair
@@ -1459,7 +1478,7 @@ badge and any count quoted in the docs must agree with it.
 - --list stdout is inventory-only, no run output
 - --list emits CRLF line endings (matches the repo eol=crlf policy)
 - --list per-suite header counts match their bullet counts
-- --list Totals row equals the grand total of bullets
+- --list Totals row plus the Skipped row equals the grand total of bullets
 
 ### test_surface_parity.lua (8)
 
@@ -1541,7 +1560,7 @@ badge and any count quoted in the docs must agree with it.
 
 | Suite | Cases |
 |-------|------:|
-| test_util.lua | 13 |
+| test_util.lua | 15 |
 | test_coresetup.lua | 29 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
@@ -1553,7 +1572,7 @@ badge and any count quoted in the docs must agree with it.
 | test_units.lua | 26 |
 | test_schema.lua | 38 |
 | test_schema_store.lua | 10 |
-| test_database.lua | 25 |
+| test_database.lua | 26 |
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
@@ -1561,7 +1580,7 @@ badge and any count quoted in the docs must agree with it.
 | test_compat_debug.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
-| test_diagnostics.lua | 22 |
+| test_diagnostics.lua | 23 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
@@ -1571,14 +1590,14 @@ badge and any count quoted in the docs must agree with it.
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
-| test_icongrid_glowgate.lua | 8 |
+| test_icongrid_glowgate.lua | 10 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
-| test_castbar_helpers.lua | 29 |
-| test_castbar_frame.lua | 44 |
+| test_castbar_helpers.lua | 33 |
+| test_castbar_frame.lua | 46 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -1600,7 +1619,7 @@ badge and any count quoted in the docs must agree with it.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 48 |
+| test_slash.lua | 53 |
 | test_slash_degraded.lua | 20 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
@@ -1615,6 +1634,7 @@ badge and any count quoted in the docs must agree with it.
 | test_vendor_sync.lua | 3 |
 | test_eol.lua | 2 |
 | test_layout_cap.lua | 13 |
-| test_diagnostics_contract.lua | 9 |
+| test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
-| **Total** | **1303** |
+| Skipped | 1 |
+| **Total** | **1319** |

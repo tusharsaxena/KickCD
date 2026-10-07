@@ -142,9 +142,9 @@ test("the state section says stored enabled, stood down, holds and both schema v
     assertTrue(find(lines, "[State] enabled stored=true, stood down=false, holds=-") ~= nil,
         joined(lines))
     local want = ("[State] schema stored=%s code=%s"):format(
-        tostring(inst.NS.db.global.schemaVersion), tostring(inst.NS.Database.CURRENT_DB_VERSION))
+        tostring(inst.NS.db.global.schemaVersion), tostring(inst.NS.SCHEMA_VERSION))
     assertTrue(find(lines, want) ~= nil, "want `" .. want .. "`:\n" .. joined(lines))
-    assertEqual(type(inst.NS.Database.CURRENT_DB_VERSION), "number",
+    assertEqual(type(inst.NS.SCHEMA_VERSION), "number",
         "the code's schema version is published for the report")
 end)
 
@@ -329,6 +329,16 @@ test("the IconGrid and Castbar sections give saved and live anchors per unit", f
     assertTrue(find(lines, "[IconGrid] target: anchor saved=CENTER CENTER 0 120 live=") ~= nil,
         joined(lines))
     assertTrue(find(lines, "[Castbar] target: anchor mode=") ~= nil, joined(lines))
+end)
+
+test("the IconGrid gate line names all three cached gate scalars, the raw cast state included", function()
+    -- red under: the dump prints only casting/interruptible, so a friendly caster that moved the
+    -- gate on the raw cast state (KC-03) reads as an unmoved gate
+    local inst = fresh()
+    local g = inst.NS:GetModule("IconGrid"):PeekInstance("target")
+    g.lastGateCasting, g.lastGateInterruptible, g.lastGateAnyCasting = false, nil, true
+    local lines = report(inst)
+    assertTrue(find(lines, "gate casting=false interruptible=nil any=true") ~= nil, joined(lines))
 end)
 
 -- ── STD-19's failure cases ──────────────────────────────────────────────────

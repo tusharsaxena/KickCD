@@ -86,6 +86,37 @@ test("Util.Throttle coalesces a burst to one trailing-args call", function()
     assertEqual(lastArg, 3, "trailing call's args win")
 end)
 
+test("a zero-argument throttle fires fn once per burst with no arguments", function()
+    T.mocks.__flushTimers()
+    local calls, argc = 0, nil
+    local wrapped = Util.Throttle(50, function(...) calls = calls + 1; argc = select("#", ...) end)
+    wrapped(); wrapped(); wrapped()
+    assertEqual(calls, 0, "throttled fn must not fire synchronously")
+    T.mocks.__flushTimers()
+    assertEqual(calls, 1, "burst must coalesce to a single call")
+    assertEqual(argc, 0, "a zero-arg burst passes no arguments")
+    wrapped()
+    T.mocks.__flushTimers()
+    assertEqual(calls, 2, "the next zero-arg burst fires again")
+    assertEqual(argc, 0, "still no arguments on the second burst")
+end)
+
+test("a zero-arg burst after an args burst does not leak the old args", function()
+    T.mocks.__flushTimers()
+    local seen = {}
+    local wrapped = Util.Throttle(50, function(...) seen[#seen + 1] = { n = select("#", ...), ... } end)
+    wrapped("a", "b")
+    T.mocks.__flushTimers()
+    wrapped()
+    T.mocks.__flushTimers()
+    wrapped("c")
+    T.mocks.__flushTimers()
+    assertEqual(#seen, 3, "three bursts, three calls")
+    assertEqual(seen[1].n, 2); assertEqual(seen[1][1], "a"); assertEqual(seen[1][2], "b")
+    assertEqual(seen[2].n, 0, "the zero-arg burst sees no arguments, not the earlier ones")
+    assertEqual(seen[3].n, 1); assertEqual(seen[3][1], "c")
+end)
+
 test("NewUnitCastFilter arms its filter frame for the named unit", function()
     local calls = {}
     local module = { OnX = function(_, event, unit) calls[#calls+1] = { event, unit } end }

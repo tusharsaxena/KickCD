@@ -19,9 +19,9 @@ ignore:
   # check is about an enumeration going stale, not about a package growing.
   - .claude          # untracked; listed under packaging
   - .superpowers     # untracked; listed under packaging
-  # Tracked, and the only entries here that change a download. Seven files,
-  # 7.5M -- the largest such payload in the collection, and most of it the
-  # compressed .gif -- project-page art the CurseForge CDN already serves.
+  # Tracked, and the only entries here that change a download. The
+  # media/screenshots art is project-page material the CurseForge CDN already
+  # serves, so shipping it would only enlarge every download.
   # CLAUDE.md and DEPENDENCIES.md are developer documentation; README.md and
   # LICENSE stay, because players do read those.
   - media/screenshots

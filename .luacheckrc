@@ -22,11 +22,10 @@ exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews
 -- a narrower suppression:
 --
 --   * Twenty-nine files opened `local addonName, NS = ...` over a folder name they never read.
---     Eight files in this addon do read it -- Constants, CoreSetup, DebugLogSetup, EnvSetup,
---     LauncherSetup, LifecycleSetup, MediaSetup and PerfSetup, each handing it to a vendored
---     LibKa0s payload that cannot infer which folder it was copied into. The twenty-nine had the
---     line because it was copied, and they now open `local _, NS = ...`, which is how
---     core/PoolSetup.lua already spelt it; thirty-three authored files open that way today.
+--     The files that did read it handed it to a vendored LibKa0s payload that cannot infer
+--     which folder it was copied into. The twenty-nine had the line because it was copied, and
+--     they were changed to open `local _, NS = ...`, which is how core/PoolSetup.lua already
+--     spelt it. Which files read the name is a rule, not a count: docs/ARCHITECTURE.md states it.
 --
 --   * Two receivers in the test tree were named and never read: the mock module method in
 --     tests/test_util.lua and `t.SendMessage` in tests/wow_mock.lua. Both are spelt `_` now,
@@ -46,31 +45,20 @@ exclude_files = { "libs/", "docs/audits/", "_dev/", "tests/_kit/", "docs/reviews
 -- the receiver written beside it.
 
 read_globals = {
-  -- core Lua/WoW globals
-  "_G", "LibStub", "CreateFrame", "GetTime", "GetTimePreciseSec",
-  "UIParent", "GameTooltip", "GameFontNormal", "GameFontHighlight", "GameFontDisable",
-  "STANDARD_TEXT_FONT",
-  "hooksecurefunc", "securecallfunction", "issecretvalue",
+  -- core WoW globals. Only a name some linted file reads BARE belongs here: `_G` is already in
+  -- std lua51, and a name nothing reads is a permission that lets a new bare call lint clean.
+  "LibStub", "CreateFrame", "UIParent", "GameTooltip",
   -- Perf bracket timer (performance-§2). The bracket CALL SITES are addon
   -- code and are linted, even though the lib under libs/ is not.
   "debugprofilestop",
-  "C_Timer", "C_Spell", "C_SpecializationInfo", "C_AddOns",
-  "GetLocale", "InCombatLockdown", "PlaySound",
-  -- units / spells / combat
-  "UnitCastingInfo", "UnitChannelInfo", "UnitExists", "UnitCanAttack",
-  "UnitClass", "UnitIsUnit", "UnitGUID", "UnitName", "UnitRace", "UnitIsDead",
-  "IsLoggedIn",
+  "C_AddOns",
+  -- units / specs
+  "UnitClass", "UnitIsUnit", "UnitRace",
   "GetSpecializationInfoForClassID", "GetNumSpecializationsForClassID",
   -- settings panel
-  "Settings", "SettingsPanel",
-  "DEFAULT_CHAT_FRAME", "UISpecialFrames", "UIDropDownMenu_AddButton",
-  -- color / util
-  "CreateColor", "CreateColorFromHexString", "WrapTextInColorCode",
-  "CopyTable", "wipe", "tContains", "tinsert", "tremove", "strsplit", "strtrim", "strjoin",
-  "date", "time",
-  -- fonts / textures used in DebugLog / panels
-  "BackdropTemplateMixin", "Mixin", "CreateFromMixins",
-  "NORMAL_FONT_COLOR", "HIGHLIGHT_FONT_COLOR", "RED_FONT_COLOR", "GREEN_FONT_COLOR",
+  "Settings", "SettingsPanel", "DEFAULT_CHAT_FRAME",
+  -- color / mixins
+  "CreateColor", "Mixin",
   -- class / spell / cooldown data APIs
   "C_CooldownViewer", "Enum", "GetNumClasses", "GetClassInfo",
   "LOCALIZED_CLASS_NAMES_MALE", "RAID_CLASS_COLORS", "CreateAtlasMarkup",

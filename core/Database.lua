@@ -33,10 +33,10 @@ NS.Database = Database
 -- { r =, g =, b =, a = } shape (migrations[3] / Database:MigrateColorShape).
 -- v5 rewrites the "NONE" font-flag token to the empty string the client's
 -- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
-local CURRENT_DB_VERSION = 5
--- Published read-only for `/kcd diagnostics`, which prints it beside the
--- stored db.global.schemaVersion. Nothing reads it to decide anything.
-Database.CURRENT_DB_VERSION = CURRENT_DB_VERSION
+-- The migration runner's target, under the name savedvariables-§1 gives it.
+-- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
+-- diagnostics` prints it beside the stored db.global.schemaVersion.
+NS.SCHEMA_VERSION = 5
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -75,7 +75,7 @@ local function aceDBDefaults()
         -- profile (savedvariables-§1). See Database:MigrateProfile for the
         -- one-shot adoption of a legacy per-profile dbVersion.
         --
-        -- The default is 0, NEVER CURRENT_DB_VERSION (savedvariables-§1 at
+        -- The default is 0, NEVER NS.SCHEMA_VERSION (savedvariables-§1 at
         -- v2.65.0). AceDB's removeDefaults strips a stored value equal to its
         -- default at logout, so a current-version default never persists; and
         -- AceDB backfills a declared default onto a legacy account that has no

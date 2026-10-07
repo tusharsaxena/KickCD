@@ -153,6 +153,12 @@ end
 -- Throttle
 -- ---------------------------------------------------------------------------
 
+-- Util.Throttle's shared args for a zero-argument call. Never written to:
+-- Cooldowns' refresh coalescer is called with no arguments on every
+-- SPELL_UPDATE_COOLDOWN / _USABLE / _CHARGES, and packing a fresh `{ n = 0 }`
+-- for each was one throwaway table per event in combat.
+local EMPTY_ARGS = { n = 0 }
+
 --- Trailing throttle: the first call arms one timer and fn fires once at
 --- t=ms with the last call's args. Calls made while the timer is armed only
 --- replace the pending args -- i.e. if the wrapper is called 50 times in
@@ -179,15 +185,19 @@ end
 --- the callback fires into a no-op.
 function Util.Throttle(ms, fn)
     local delay = (ms or 0) / 1000
-    -- Closure state: pendingArgs is a fresh table per "burst" so the
-    -- captured timer callback works on the args from *that* burst,
-    -- not whatever happens to be in the slot when it fires.
+    -- Closure state: pendingArgs is a fresh table per "burst" for a call WITH
+    -- arguments, so the captured timer callback works on the args from *that*
+    -- burst, not whatever happens to be in the slot when it fires. A call with
+    -- none takes the shared EMPTY_ARGS sentinel; that is safe because nothing
+    -- ever writes to it -- fire() only reads args.n and unpacks it -- so every
+    -- zero-arg burst sees exactly n = 0, whatever burst came before.
     local scheduled = false
     local pendingArgs
     local handle
 
     local function wrapped(...)
-        pendingArgs = { n = select("#", ...), ... }
+        local n = select("#", ...)
+        pendingArgs = n == 0 and EMPTY_ARGS or { n = n, ... }
         if scheduled then return end
         scheduled = true
         local function fire()

@@ -2,9 +2,10 @@
 --
 -- RefreshAllGlows fires on every UNIT_SPELLCAST_* transition, and a boss
 -- chaining short casts used to re-push the glow decision through every icon
--- on each one. The per-instance cache of the two booleans the trigger
--- predicates branch on is what stops that, and three of its rules are easy
--- to lose in a tidy-up:
+-- on each one. The per-instance cache of the three values the trigger
+-- predicates branch on (hostile cast, interruptibility, and the raw any-cast
+-- state 'target_casting' reads) is what stops that, and three of its rules are
+-- easy to lose in a tidy-up:
 --
 --   * an UNMOVED gate must skip the per-icon loop entirely;
 --   * a SECRET interruptibility reading must DEFEAT the cache — the flip
@@ -163,4 +164,63 @@ test("each gate state gets its own debug label", function()
     assertTrue(labelFor(false, nil):find("none (no hostile cast)", 1, true) ~= nil,
         "no cast is not the same as 'off'")
     loaded.NS.State.debug = false
+end)
+
+-- ── 'target_casting' = ANY cast (KC-R-05) ──────────────────────────────────
+-- The 'target_casting' glow trigger reads inst.isCasting(), which counts a
+-- cast by a friendly or otherwise non-attackable unit; so the gate must move
+-- on that cast too, or the glow never starts (and goes stale when it ends).
+
+--- Point the cast APIs at a NON-attackable unit that is (or is not) casting.
+local function setFriendlyCast(mocks, casting)
+    mocks.UnitExists    = function() return true end
+    mocks.UnitCanAttack = function() return false end
+    mocks.UnitCastingInfo = function()
+        if not casting then return nil end
+        return "Hearthstone", nil, nil, nil, nil, nil, nil, false
+    end
+    mocks.UnitChannelInfo = function() return nil end
+end
+
+--- One icon whose UpdateGlow spy records the 'target_casting' decision it
+--- would take, through the real trigger resolver.
+local function makeTriggerInstance(IconGrid)
+    local seen = { calls = 0, glow = nil }
+    local inst = { unit = "target" }
+    inst.isCasting = function() return IconGrid.InstanceCasting(inst) end
+    inst.ordered = { { UpdateGlow = function()
+        seen.calls = seen.calls + 1
+        seen.glow = IconGrid.TriggerSatisfied("target_casting", inst)
+    end } }
+    return inst, seen
+end
+
+test("a friendly cast moves the gate for the target_casting trigger", function()
+    -- red under: gate keyed only on IsHostileUnitCasting
+    local loaded = T.load(true, true)
+    local IconGrid = loaded.NS:GetModule("IconGrid")
+    local inst, seen = makeTriggerInstance(IconGrid)
+    setFriendlyCast(loaded.mocks, false)
+    IconGrid:RefreshAllGlows(inst)      -- first call: no cast, glow off
+    assertEqual(seen.calls, 1)
+    assertEqual(seen.glow, false)
+    setFriendlyCast(loaded.mocks, true)
+    IconGrid:RefreshAllGlows(inst)      -- friendly cast starts
+    assertEqual(seen.calls, 2, "a friendly cast start must re-push the glow decision")
+    assertEqual(seen.glow, true, "the target_casting glow comes on for a friendly cast")
+    setFriendlyCast(loaded.mocks, false)
+    IconGrid:RefreshAllGlows(inst)      -- friendly cast ends
+    assertEqual(seen.calls, 3, "a friendly cast stop must re-push the glow decision")
+    assertEqual(seen.glow, false, "the glow goes off when the friendly cast ends")
+end)
+
+test("an unmoved friendly-cast gate still short-circuits", function()
+    local loaded = T.load(true, true)
+    local IconGrid = loaded.NS:GetModule("IconGrid")
+    local inst, seen = makeTriggerInstance(IconGrid)
+    setFriendlyCast(loaded.mocks, true)
+    IconGrid:RefreshAllGlows(inst)
+    IconGrid:RefreshAllGlows(inst)
+    IconGrid:RefreshAllGlows(inst)
+    assertEqual(seen.calls, 1, "repeat events on an identical friendly-cast gate must not re-iterate")
 end)

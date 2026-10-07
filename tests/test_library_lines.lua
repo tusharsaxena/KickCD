@@ -94,7 +94,7 @@ end)
 -- ── LibKa0s-Lifecycle-1.0 (minor 3): the stand-down and stand-up edges ────────
 
 test("the stand-down and stand-up edges are one [Lifecycle] line each, naming the hold", function()
-    -- §8 diagnosis: a player who says "it stopped working" with the addon
+    -- debug-logging-§8 diagnosis: a player who says "it stopped working" with the addon
     -- disabled is answered by this line and nothing else.
     -- red under: the `debug` field dropped from core/LifecycleSetup.lua's descriptor
     local _, NS = listening()

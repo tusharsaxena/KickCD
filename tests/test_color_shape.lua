@@ -268,7 +268,7 @@ end)
 -- ── the stamp (savedvariables-§1, WS-03) ────────────────────────────────────
 
 test("AceDB defaults declare schemaVersion 0", function()
-    -- red under: declaring `schemaVersion = CURRENT_DB_VERSION` in aceDBDefaults
+    -- red under: declaring `schemaVersion = NS.SCHEMA_VERSION` in aceDBDefaults
     --
     -- AceDB's removeDefaults strips a stored value equal to its default at
     -- logout, so a current-version default never persists, and backfilling it

@@ -14,7 +14,8 @@ Each row is `{ name, description, fn }`. The dispatcher:
 - `/kcd help` → `printHelp` (iterates `COMMANDS`).
 - `/kcd <known>` → executes that row's `fn`.
 - `/kcd debug` → `runDebug("")` toggles the on-screen debug console window (`DebugLog:Toggle`) **and** prints the verb list for `DEBUG_COMMANDS`.
-- `/kcd debug <known>` → executes that row's `fn`.
+- `/kcd debug <known> [rest]` → executes that row's `fn` with the rest of the line; `castbar` and `interrupt` read an optional `target` / `focus` unit word from it, and every other row ignores it.
+- `/kcd debug <unknown>` → "unknown debug subcommand" + the verb list, through the same `printDebugList` the bare verb uses, but **without** the console toggle.
 - `/kcd spells` → `runSpells("")` prints the help index for `SPELLS_COMMANDS` plus the player's resolved class/spec defaults.
 - `/kcd spells <known>` → executes that row's `fn`.
 - `/kcd <unknown>` → "unknown command" + help.
@@ -67,7 +68,7 @@ the stored value can change: **the single write seam** (`Store.Set`, which the c
 `settings/General.lua`, run before the announce, or the seam's `announce` for a written-through
 `enabled` on a library-less load), **`core/Database.lua`'s
 profile handler** (a switch, copy or reset can flip the path with nothing else touched — which is why
-§7 keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
+`slash-commands-§7` keeps AceDB's callbacks alive), and the end of **`NS:OnEnable`**, where the stored value is taken
 for the first time in the session. That last one runs *before* AceAddon enables the modules, so each
 module's `OnEnable` finds `NS.IsDown()` already true and registers nothing.
 
@@ -94,7 +95,7 @@ setting changed while the addon was off has to come back as it is now):
   — a combat transition, a target swap, a settings change — can re-show a grid behind the latch's
   back. Frames are not hidden imperatively, because a hidden frame comes back.
 
-**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** §7 permits a disabled addon to keep exactly
+**Nothing is held pending for `PLAYER_REGEN_ENABLED`.** `slash-commands-§7` permits a disabled addon to keep exactly
 one registration: a secure or attribute teardown that combat lockdown refused. KickCD owns no secure
 frame, no attribute driver and no state driver, so it has nothing to hold and keeps nothing — the
 disabled registration set is **empty**, and `tests/test_disabled.lua` asserts that by count and by
@@ -237,7 +238,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `help` | Print the help index. | Iterates `COMMANDS`. |
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
-| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get §5's `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
+| `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get `slash-commands-§5`'s `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |
@@ -282,6 +283,6 @@ Every mutating subcommand fires `Ka0s_KickCD_ConfigChanged { section = "spells" 
 | `window` | Toggle the on-screen debug console window — the DIALOG-strata "Ka0s KickCD — Debug" panel (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`) with a ScrollingMessageFrame, a title-bar trio of `copy` / `clear` / `close` marks from the shared LibKa0s icon set, a header Debug:ON/OFF toggle, and the JetBrains Mono face that ships in the vendored LibKa0s payload. This is where continuous `NS.Debug(tag, fmt, ...)` output lands (gated on `NS.State.debug`), not the chat frame. |
 | `on` / `off` / `toggle` | Set / clear / flip the session-only debug flag `NS.State.debug` via the single write seam `DebugLog:SetEnabled(on)`. Default off; never persisted to SavedVariables; resets each `/reload`. |
 | `spells` | Dump the watched cooldown list (`Cooldowns:DebugDump`), printed to chat (the report's `cooldowns` section runs the same dump). Prints `ready / active / cdObj / chargeCdObj / charges` per spell. Charges are `safeStr`-ed because they're secret-tainted in combat for charged spells; remaining time is deliberately not printed (`:GetRemainingDuration()` is secret in combat). |
-| `castbar` | Print (to chat) one unit's current cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump(unit)`, defaulting to `target`). Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
-| `interrupt` | Dump (to chat) `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
+| `castbar` | Print (to chat) one unit's current cast state plus configured/live per-state colors and `notInterruptible`'s type/secret flag (`Castbar:DebugDump(unit)`). `/kcd debug castbar [target|focus]`: the unit defaults to `target`, and any other word is refused (`unknown unit '<word>', expected target or focus`) with no dump. Uses `type()` and `issecretvalue()` rather than `tostring` so a secret-tainted record doesn't error the dump. |
+| `interrupt` | `/kcd debug interrupt [target|focus]`, unit parsed as for `castbar`. Dump (to chat) `UnitCastingInfo` / `UnitChannelInfo` positions with their `type` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the addon-wide visibility/glow logic decided. The reference for diagnosing 12.0 secret-value handling drift (added during the visibility-mode rework). |
 | `events` | List (to chat) every event name this client refused to register this session, one `rejected event: <NAME>` line each, or `no rejected events`. The list is `NS.State.rejectedEvents` (session-only), filled by `NS.RegisterEventList` (`core/CoreSetup.lua`) through LibKa0s-Core's `SafeRegisterEvent`, so one retired name costs only its own row of a registration block (events-frames-taint-§1). A non-empty list also adds `, N rejected event(s)` to the debug console's `[Init]` line. |
