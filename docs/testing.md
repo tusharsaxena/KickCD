@@ -183,10 +183,10 @@ than the tag this addon has taken.
 
 Between a library release and the re-vendor that carries it they disagree, and that disagreement is
 the normal state rather than a defect. Re-vendoring to quiet them would be the actual mistake — it
-would pull an untested library release for the sake of a clean diff. As this is written the two
-agree: `../LibKa0s` sits on **v1.68.1**, [`CLAUDE.md`](../CLAUDE.md) names the same tag, and all
-four commands above report nothing. That is the state immediately after a re-vendor and before the
-library's next tag — a coincidence of timing, not the stronger guarantee the block below states.
+would pull an untested library release for the sake of a clean diff. The two agree — `../LibKa0s`
+checked out at the tag [`CLAUDE.md`](../CLAUDE.md) names, and all four commands above reporting
+nothing — only in the window between a re-vendor and the library's next tag. That agreement is a
+coincidence of timing, not the stronger guarantee the block below states.
 
 **The authoritative comparison is against the tag `CLAUDE.md` names**, and that one must be empty at
 every commit:
