@@ -210,8 +210,8 @@ units[unit] = {
         -- OUTSIDE_LEFT / OUTSIDE_RIGHT) plus pixel offset.
         namePosition, nameOffsetX, nameOffsetY,
         nameTruncate,                           -- max visible chars in spell name
-                                                -- (0 = unlimited); truncated at byte
-                                                -- length, with "…" tail. Short-circuits
+                                                -- (0 = unlimited); counted in UTF-8
+                                                -- characters, with "…" tail. Short-circuits
                                                 -- on secret-tainted names (passes through
                                                 -- raw to SetText, which is C-side safe).
         timePosition, timeOffsetX, timeOffsetY,

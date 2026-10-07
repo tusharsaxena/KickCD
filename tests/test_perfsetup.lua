@@ -98,7 +98,7 @@ test("the perf descriptor names the FOLDER and leaves the close control to the l
     -- only witness was a screenshot.
     --
     -- THE HOOK IS GONE AND THAT IS WHAT THIS CASE GUARDS. From PerfPanel minor 4
-    -- the library draws the control itself (libs/LibKa0s/PerfPanel.lua:185-196)
+    -- the library draws the control itself (libs/LibKa0s/PerfPanel.lua EnsureFrame, its `if decorate` else arm)
     -- out of the same LibKa0s-Core factory, at the same TOPRIGHT anchor and the
     -- same -(TITLE_H - 18) / 2 offset, resolving the folder through
     -- `d.addonName or d.name`. So a hook here would be a second copy of library

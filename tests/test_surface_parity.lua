@@ -114,7 +114,7 @@ test("the DebugLog stub carries the whole live surface", function()
         -- library's strings, which debug-logging-§7 is specifically about not doing.
         "Text", "CopyText",
         -- Test seams the library stamps ON THE INSTANCE when it BUILDS the console window
-        -- (libs/LibKa0s/DebugLog.lua:477, :482). They are on the live half by the time this case
+        -- (libs/LibKa0s/DebugLog.lua, where the window build assigns D._toggleClickForTest and D._frameForTest). They are on the live half by the time this case
         -- runs only because tests/test_debuglogsetup.lua:70 showed the window on the shared
         -- instance; a library-less build has no window to build, so their absence from the stub is
         -- the condition under test rather than a gap in it. SINGLE underscore, so Kit.publicMembers

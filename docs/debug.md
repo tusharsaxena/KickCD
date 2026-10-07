@@ -185,7 +185,7 @@ tag shown.
 | `spells` | `Spells` | this addon | The class and spec, the current spec's list with `off` on a disabled row and `unlearned` on a spell the player does not know, and how many stored lists exist and how many differ from their defaults |
 | `cooldowns` | `Cooldowns` | this addon | The `/kcd debug spells` dump, routed into the report |
 | `cmcache` | `CMCache` | this addon | The Cooldown Manager cache's state and its spell count, read from the memo |
-| `icongrid` | `IconGrid` | this addon | Per unit: enabled, shown, active and free icons, laid-out count, handle; the saved anchor against the live one; the last visibility decision and the cast gate |
+| `icongrid` | `IconGrid` | this addon | Per unit: enabled, shown, active and free icons, laid-out count, handle; the saved anchor against the live one; the last visibility decision and the three cached glow-gate scalars (`casting`, `interruptible`, and `any`, the raw cast state the `target_casting` trigger reads) |
 | `castbar` | `Castbar` | this addon | Per unit: enabled, shown, casting; the anchor mode and the saved anchor against the live one; then the `/kcd debug castbar` dump for that unit |
 | `interrupt` | `Interrupt` | this addon | The `/kcd debug interrupt` dump, once for `target` and once for `focus` |
 | `unitlabel` | `UnitLabel` | this addon | Per unit: show, text, attach point, shown |

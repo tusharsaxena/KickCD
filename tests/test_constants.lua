@@ -85,7 +85,7 @@ test("Constants: a rendered unit panel spaces its rows by a real number of pixel
     -- creates a full-width SimpleGroup with no height, every options row loses
     -- its spacing in game, and nothing raises.
     --
-    -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua:210.
+    -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua's `O.ROW_VSPACER = L.ROW_VSPACER` export.
     local H = NS.Settings.Helpers
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
     local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { pageKey = "castbar" })

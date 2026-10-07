@@ -179,7 +179,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 
 With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb, and `profile`, prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` `/kcd debug` and `/kcd spells` still list their sub-verbs, as plain `cmd  desc` rows from the stub's `NS.Slash.CommandRows`. Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
 
-`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `diagnostics`, `spells`, `castbar`, `interrupt`, `window`, `on`, `off`, `toggle`, `events`. `runDebug` tests `diagnostics` before the table and before the bare toggle (`debug-logging-§14`). Bare `/kcd debug` toggles the console window and prints the sub-verb list.
+`/kcd debug` sub-verbs (`DEBUG_COMMANDS`): `diagnostics`, `spells`, `castbar`, `interrupt`, `window`, `on`, `off`, `toggle`, `events`. `runDebug` tests `diagnostics` before the table and before the bare toggle (`debug-logging-§14`). Bare `/kcd debug` toggles the console window and prints the sub-verb list; an unknown sub-verb is refused and prints the same list without the toggle. `castbar` and `interrupt` take an optional `target` / `focus` unit word (default `target`) and refuse any other word with no dump.
 
 ## Settings schema
 
