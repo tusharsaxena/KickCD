@@ -8,7 +8,7 @@ Total.
 
 **Generated — do not hand-edit.** Regenerate with `lua tests/run.lua --list > docs/test-cases.md`.
 
-### test_util.lua (13)
+### test_util.lua (15)
 
 - Util.Unpack array-style color
 - Util.Unpack hash-style color
@@ -22,6 +22,8 @@ Total.
 - Util.NormalizeClassToken upper-cases
 - Util.DeepCopy clones nested tables (no shared refs)
 - Util.Throttle coalesces a burst to one trailing-args call
+- a zero-argument throttle fires fn once per burst with no arguments
+- a zero-arg burst after an args burst does not leak the old args
 - NewUnitCastFilter arms its filter frame for the named unit
 
 ### test_coresetup.lua (29)
@@ -1558,7 +1560,7 @@ Total.
 
 | Suite | Cases |
 |-------|------:|
-| test_util.lua | 13 |
+| test_util.lua | 15 |
 | test_coresetup.lua | 29 |
 | test_mediasetup.lua | 9 |
 | test_envsetup.lua | 6 |
@@ -1635,4 +1637,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1317** |
+| **Total** | **1319** |
