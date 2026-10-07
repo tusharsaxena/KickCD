@@ -196,12 +196,65 @@ test("an unknown debug word refuses, then reprints the list", function()
     -- The not-found path of the debug lookup. The verb is lowercased before it
     -- is named.
     local lines = runVerb("debug NoSuch")
-    runVerb("debug") -- the reprint toggled the console; toggle it back
     local text = joined(lines)
     local refused = text:find("unknown debug subcommand 'nosuch'", 1, true)
     local row = text:find("/kcd debug diagnostics", 1, true)
     assertTrue(refused ~= nil, "got: " .. text)
     assertTrue(row ~= nil and row > refused, "the list must follow the refusal: " .. text)
+end)
+
+test("an unknown debug word leaves the debug console as it was (KC-R-03)", function()
+    -- A typo such as `/kcd debug spels` is a refusal, not the bare toggle: only
+    -- `/kcd debug` with no word opens or closes the console (debug-logging-§5).
+    -- red under: refuse then runDebug(self, "")
+    for _ = 1, 2 do -- once from each state: closed, then open
+        local before = NS.DebugLog:IsShown()
+        runVerb("debug NoSuch")
+        assertEqual(NS.DebugLog:IsShown(), before, "the unknown word toggled the console")
+        NS.DebugLog:Toggle()
+    end
+end)
+
+--- Run `input` with Castbar:DebugDump and Compat.DebugInterrupt replaced by
+--- spies; returns the units each was called with and the chat lines.
+local function spyDebugDumps(input)
+    local castbar = NS:GetModule("Castbar")
+    local origDump, origInterrupt = castbar.DebugDump, NS.Compat.DebugInterrupt
+    local dumped, interrupted = {}, {}
+    castbar.DebugDump = function(_, unit) dumped[#dumped + 1] = unit end
+    NS.Compat.DebugInterrupt = function(unit) interrupted[#interrupted + 1] = unit end
+    local ok, lines = pcall(runVerb, input)
+    castbar.DebugDump, NS.Compat.DebugInterrupt = origDump, origInterrupt
+    assert(ok, lines)
+    return dumped, interrupted, lines
+end
+
+test("`/kcd debug castbar` still dumps the target bar", function()
+    local dumped, _, lines = spyDebugDumps("debug castbar")
+    assertEqual(#dumped, 1, joined(lines))
+    assertEqual(dumped[1], "target")
+end)
+
+test("`/kcd debug castbar focus` dumps the focus bar (KC-R-04)", function()
+    local dumped, _, lines = spyDebugDumps("debug castbar FOCUS")
+    assertEqual(#dumped, 1, joined(lines))
+    assertEqual(dumped[1], "focus")
+end)
+
+test("`/kcd debug interrupt focus` dumps the focus unit (KC-R-04)", function()
+    local _, interrupted = spyDebugDumps("debug interrupt focus")
+    assertEqual(#interrupted, 1)
+    assertEqual(interrupted[1], "focus")
+end)
+
+test("`/kcd debug interrupt` and `castbar` refuse an unknown unit and run nothing", function()
+    for _, verb in ipairs({ "interrupt", "castbar" }) do
+        local dumped, interrupted, lines = spyDebugDumps("debug " .. verb .. " Bogus")
+        assertEqual(#dumped, 0, verb .. " ran the castbar dump")
+        assertEqual(#interrupted, 0, verb .. " ran the interrupt dump")
+        assertTrue(joined(lines):find("unknown unit 'bogus', expected target or focus", 1, true) ~= nil,
+            verb .. ": " .. joined(lines))
+    end
 end)
 
 test("a debug sub-verb is matched case-insensitively", function()

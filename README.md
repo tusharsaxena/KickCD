@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1311%2F1311_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1316%2F1316_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -100,7 +100,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | Why won't the settings panel open in combat? | The game blocks it mid-fight. Run `/kcd config` again once combat ends. |
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. `/kcd profile` lists your profiles, and `/kcd profile <name>` switches to one without opening the panel. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
-| How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace. It covers the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. If you only need one of those, the single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat. The window resets on every reload. |
+| How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace. It covers the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. If you only need one of those, the single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat. `castbar` and `interrupt` show your target, or your focus if you add `focus`. The window resets on every reload. |
 | Can I measure how much KickCD costs my frame rate? | Yes. `/kcd perf start` begins a run. Play for a while, then `/kcd perf finish` ends and saves it, and `/kcd perf report` writes the summary and a JSON line to copy into the debug window. `/kcd perf` on its own shows where a run stands and lists every step, and the same steps are on a small panel. |
 
 ## Troubleshooting

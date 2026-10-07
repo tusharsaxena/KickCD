@@ -1260,7 +1260,7 @@ Total.
 - /kcd debug interrupt emits no line ending in ':'
 - no addon source passes a ':'-terminated literal to a printer
 
-### test_slash.lua (48)
+### test_slash.lua (53)
 
 - the dispatcher instance is built from LibKa0s-Slash-1.0
 - NS.COMMANDS stays the host's, as ordered positional triples
@@ -1276,6 +1276,11 @@ Total.
 - `/kcd spells` prints one shared-format row per spells sub-verb, then the default class/spec line
 - core/KickCD.lua carries no second sub-help formatter, verb split or lookup
 - an unknown debug word refuses, then reprints the list
+- an unknown debug word leaves the debug console as it was (KC-R-03)
+- `/kcd debug castbar` still dumps the target bar
+- `/kcd debug castbar focus` dumps the focus bar (KC-R-04)
+- `/kcd debug interrupt focus` dumps the focus unit (KC-R-04)
+- `/kcd debug interrupt` and `castbar` refuse an unknown unit and run nothing
 - a debug sub-verb is matched case-insensitively
 - list groups by the row's panel, in the addon's declared page order
 - get echoes the shared key = value pair
@@ -1611,7 +1616,7 @@ Total.
 | test_source_style.lua | 3 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
-| test_slash.lua | 48 |
+| test_slash.lua | 53 |
 | test_slash_degraded.lua | 20 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
@@ -1629,4 +1634,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1311** |
+| **Total** | **1316** |

@@ -274,10 +274,11 @@ actually watches for the player's class and spec, as against what the Spells pag
 page lists but the dump lacks was filtered at rebuild; the `Cooldowns` rebuild line in the console
 says why.
 
-### `/kcd debug castbar`
+### `/kcd debug castbar [target|focus]`
 
-`Castbar:DebugDump` (`modules/Castbar_Debug.lua`), always on `target` from the slash command (the
-report runs it for both units). It prints the unit's name, whether it is the player, and whether it
+`Castbar:DebugDump` (`modules/Castbar_Debug.lua`), on `target` unless the slash command names
+`focus` (the report runs it for both units). Any other unit word is refused with `unknown unit
+'<word>', expected target or focus`, and nothing is dumped. It prints the unit's name, whether it is the player, and whether it
 can be attacked. If no cast is tracked, it says so, and flags a record that `Compat.GetCastingInfo`
 still returns, since that points to a missed event. With a cast tracked it prints `isChannel`,
 `notInterruptible`'s type and secret flag (and how the bar resolved it), the types of `duration`,
@@ -287,9 +288,10 @@ live on the two status bars.
 **Use it when** the cast bar shows the wrong color or border, or stays hidden while the target is
 visibly casting. Configured and live colors disagreeing means a write did not reach the reskin.
 
-### `/kcd debug interrupt`
+### `/kcd debug interrupt [target|focus]`
 
-`Compat.DebugInterrupt` (`core/Compat.lua`), on `target` (the report runs it for both units). It
+`Compat.DebugInterrupt` (`core/Compat.lua`), on `target` unless the slash command names `focus` (the
+report runs it for both units). The unit word is parsed and refused exactly as for `castbar`. It
 prints every positional return of `UnitCastingInfo` and `UnitChannelInfo` with its `type()` and
 secret flag, rendered through `safeRender`, which spells a secret as the shared `NS.SECRET` sentinel (`<secret>`). Then it prints what `NS.State.IsHostileUnitCasting`
 decided, the addon-wide visibility mode, and the primary and secondary glow triggers.

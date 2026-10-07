@@ -212,7 +212,7 @@ Which checks to run for a partial change:
   `/kcd help` row. `/kcd debug` again to close the console. `/kcd spells` → `spells subcommands` and its
   rows the same way, then the `(default class/spec when omitted: …)` line. `/kcd debug EVENTS` → the
   events answer (the verb is case-insensitive); `/kcd debug nosuch` → `unknown debug subcommand
-  'nosuch'`, then the list again. Result:
+  'nosuch'`, then the list again, and the console neither opens nor closes. Result:
 
 ## PANEL
 
@@ -750,7 +750,10 @@ Which checks to run for a partial change:
 - **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
   cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
   `live SetStatusBarColor values` for both states. With no cast the dump stops at
-  `no active cast tracked (current = nil)`. Result:
+  `no active cast tracked (current = nil)`. Set a hostile caster as focus: `/kcd debug castbar focus` →
+  `castbar state (focus)`, and `/kcd debug interrupt focus` dumps the focus unit's cast info; a bare
+  `/kcd debug castbar` still reports the target. `/kcd debug castbar bogus` → `unknown unit 'bogus',
+  expected target or focus` and no dump. Result:
 - **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
   trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
   it. `/reload` → off again; no saved setting holds it. Result:
