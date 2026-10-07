@@ -212,9 +212,13 @@ end
 --- iteration re-runs rather than risk stranding a stale glow decision.
 --- The very first call also counts: hostileCasting is always a real boolean,
 --- so it can never equal the nil the instance starts with.
-local function gateMoved(inst, hostileCasting, interruptible)
+--- anyCasting is the raw cast state (friendly or hostile) the
+--- 'target_casting' trigger reads; without it a friendly cast never moves
+--- the gate (KC-R-05).
+local function gateMoved(inst, hostileCasting, interruptible, anyCasting)
     return inst.lastGateCasting ~= hostileCasting
         or inst.lastGateInterruptible ~= interruptible
+        or inst.lastGateAnyCasting ~= anyCasting
         or interruptible == SECRET_GATE
 end
 
@@ -236,17 +240,24 @@ end
 --- state hasn't moved but the glow gate has, so we need to push the new
 --- decision through.
 ---
---- Short-circuit on a (hostileCasting, interruptible) gate that hasn't
---- moved since the previous call. Boss casts that fire many short
---- abilities used to retrigger N icon evaluations per cast event even
---- when the gate decision was identical to last time; this caches the
---- two booleans the trigger predicates branch on and skips the per-icon
---- iteration when neither moved. Cache is per-instance so target and
---- focus don't share (or clobber) each other's gate.
+--- Short-circuit on a (hostileCasting, interruptible, anyCasting) gate
+--- that hasn't moved since the previous call. Boss casts that fire many
+--- short abilities used to retrigger N icon evaluations per cast event
+--- even when the gate decision was identical to last time; this caches
+--- the three values the trigger predicates branch on and skips the
+--- per-icon iteration when none moved:
+---   * hostileCasting — 'target_casting_interruptible' fires on it;
+---   * interruptible  — the tri-state that flips mid-cast;
+---   * anyCasting     — the raw cast state, friendly or hostile, which is
+---     what 'target_casting' reads (inst.isCasting). Without it a cast by a
+---     non-attackable unit leaves the other two at (false, nil), so the
+---     glow never starts and goes stale when the cast ends (KC-R-05).
+--- Cache is per-instance so target and focus don't share (or clobber)
+--- each other's gate.
 function IconGrid:RefreshAllGlows(inst)
     -- Bracketed as `glowGate`, opening ABOVE the gate check for the same reason
-    -- Cooldowns:PollSpell opens above its guards: resolveInterruptible and
-    -- IsHostileUnitCasting are themselves API calls, and a bracket that covered
+    -- Cooldowns:PollSpell opens above its guards: resolveInterruptible,
+    -- IsHostileUnitCasting and instanceCasting are themselves API calls, and a bracket that covered
     -- only the fall-through would measure the cache's misses and call the hits
     -- free. Both exits close it. No parentKey: four of the five call sites run
     -- under no bracket at all (core/PerfSetup.lua).
@@ -264,14 +275,18 @@ function IconGrid:RefreshAllGlows(inst)
         and NS.State.IsHostileUnitCasting
         and NS.State.IsHostileUnitCasting(unit) or false
     local interruptible = resolveInterruptible(unit, hostileCasting)
+    -- A hostile cast is a cast, so the extra API read runs only when the
+    -- hostile check said no.
+    local anyCasting = hostileCasting or instanceCasting(inst)
 
-    if not gateMoved(inst, hostileCasting, interruptible) then
+    if not gateMoved(inst, hostileCasting, interruptible, anyCasting) then
         if __t0 then Perf.Note("glowGate", debugprofilestop() - __t0) end
         return
     end
-    -- Two scalars rather than a record, so a boss chaining casts doesn't
+    -- Three scalars rather than a record, so a boss chaining casts doesn't
     -- allocate a table per gate change.
-    inst.lastGateCasting, inst.lastGateInterruptible = hostileCasting, interruptible
+    inst.lastGateCasting, inst.lastGateInterruptible, inst.lastGateAnyCasting =
+        hostileCasting, interruptible, anyCasting
 
     logGateChange(unit, interruptible)
 

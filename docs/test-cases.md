@@ -670,7 +670,7 @@ Total.
 - with no Cooldowns state the seed is ready
 - every unwatched seed is the shared READY_SEED table
 
-### test_icongrid_glowgate.lua (8)
+### test_icongrid_glowgate.lua (10)
 
 - RefreshAllGlows pushes the glow decision through every icon
 - an unmoved gate short-circuits the per-icon loop
@@ -680,6 +680,8 @@ Total.
 - a SECRET interruptibility reading defeats the short-circuit
 - the debug line dedups on the printed label
 - each gate state gets its own debug label
+- a friendly cast moves the gate for the target_casting trigger
+- an unmoved friendly-cast gate still short-circuits
 
 ### test_icongrid_handle.lua (13)
 
@@ -1579,7 +1581,7 @@ Total.
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
-| test_icongrid_glowgate.lua | 8 |
+| test_icongrid_glowgate.lua | 10 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
@@ -1626,4 +1628,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1308** |
+| **Total** | **1310** |
