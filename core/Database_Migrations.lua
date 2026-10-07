@@ -9,13 +9,13 @@
 -- The migrators are methods on NS.Database, which core/Database.lua creates; this
 -- file defines them on that table at load, so it sits directly after it in the
 -- TOC. Database:Init and Database:OnProfileChanged call them at run time. The
--- shared pieces come off the table: CURRENT_DB_VERSION (already published for
--- `/kcd diagnostics`) and the file-local deep copy (Database._copy).
+-- shared pieces come off NS and the table: NS.SCHEMA_VERSION (the runner's
+-- target, published by core/Database.lua) and its deep copy (Database._copy).
 
 local _, NS = ...
 
 local Database           = NS.Database
-local CURRENT_DB_VERSION = Database.CURRENT_DB_VERSION
+local SCHEMA_VERSION     = NS.SCHEMA_VERSION
 local copy               = Database._copy
 
 -- ---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ local copy               = Database._copy
 -- idempotent function of the db and writes no stamp: MigrateProfile owns
 -- db.global.schemaVersion and advances it only past a step that returned
 -- without raising (savedvariables-§1). Adding a v6 step means: append
--- `migrations[5] = function(db) ... end` below and bump CURRENT_DB_VERSION
+-- `migrations[5] = function(db) ... end` below and bump NS.SCHEMA_VERSION
 -- at the top of core/Database.lua. No bootstrap changes required.
 --
 -- A step whose data is per-PROFILE must not rely on the per-ACCOUNT stamp
@@ -336,7 +336,7 @@ local function reportMigrationFailure(from, err)
     migrateDebug("%s", msg)
 end
 
---- Migrate the account forward to CURRENT_DB_VERSION. The schema version is
+--- Migrate the account forward to NS.SCHEMA_VERSION. The schema version is
 --- addon-wide (db.global.schemaVersion), so this runs once per account and
 --- is idempotent once at the current version. Called on Init and on every
 --- profile swap.
@@ -365,7 +365,7 @@ function Database:MigrateProfile()
     -- is 0 now, so a backfill can no longer mask an account as current, but the
     -- old per-profile field is still the only record of how far a legacy
     -- profile got. A fresh install has no dbVersion, reads 0, and walks every
-    -- step (each idempotent against a default profile) to CURRENT_DB_VERSION.
+    -- step (each idempotent against a default profile) to NS.SCHEMA_VERSION.
     if profile and profile.dbVersion ~= nil then
         g.schemaVersion = profile.dbVersion   -- adopt the legacy version...
         profile.dbVersion = nil               -- ...and drop the orphaned field.
@@ -373,13 +373,13 @@ function Database:MigrateProfile()
     local v = g.schemaVersion or 0
     if v < 1 then v = 1 end
 
-    while v < CURRENT_DB_VERSION do
+    while v < SCHEMA_VERSION do
         local step = migrations[v]
         if not step then
             -- No registered migrator for this jump — bump to avoid an
             -- infinite loop and stop. A real schema change would have
-            -- registered the step before bumping CURRENT_DB_VERSION.
-            g.schemaVersion = CURRENT_DB_VERSION
+            -- registered the step before bumping NS.SCHEMA_VERSION.
+            g.schemaVersion = SCHEMA_VERSION
             break
         end
         local ok, err = pcall(step, self.db)

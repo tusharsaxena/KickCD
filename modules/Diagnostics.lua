@@ -101,7 +101,7 @@ function X.State(out)
         #holds > 0 and table.concat(holds, ",") or "-")
     local g = NS.db and NS.db.global or {}
     out:add("State", "schema stored=%s code=%s", g.schemaVersion,
-        NS.Database and NS.Database.CURRENT_DB_VERSION)
+        NS.SCHEMA_VERSION)
     local profile = NS.db and NS.db.GetCurrentProfile and NS.db:GetCurrentProfile()
     local p = NS.db and NS.db.profile or {}
     out:add("State", "profile=%s locked=%s (unlocked is the placement preview)", profile, p.locked)

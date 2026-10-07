@@ -284,11 +284,12 @@ Total.
 - degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
 - degraded: Store.Set on any other composed path is refused
 
-### test_database.lua (25)
+### test_database.lua (26)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
 - Schema version lives in db.global, not the profile (KCD-20)
+- NS.SCHEMA_VERSION is the migration target and a fresh install ends on it
 - MigrateProfile is a no-op at the current schema version
 - MigrateProfile treats a missing version as v1 and walks forward to current
 - MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)
@@ -1569,7 +1570,7 @@ Total.
 | test_units.lua | 26 |
 | test_schema.lua | 38 |
 | test_schema_store.lua | 10 |
-| test_database.lua | 25 |
+| test_database.lua | 26 |
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
@@ -1634,4 +1635,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1316** |
+| **Total** | **1317** |

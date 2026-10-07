@@ -142,9 +142,9 @@ test("the state section says stored enabled, stood down, holds and both schema v
     assertTrue(find(lines, "[State] enabled stored=true, stood down=false, holds=-") ~= nil,
         joined(lines))
     local want = ("[State] schema stored=%s code=%s"):format(
-        tostring(inst.NS.db.global.schemaVersion), tostring(inst.NS.Database.CURRENT_DB_VERSION))
+        tostring(inst.NS.db.global.schemaVersion), tostring(inst.NS.SCHEMA_VERSION))
     assertTrue(find(lines, want) ~= nil, "want `" .. want .. "`:\n" .. joined(lines))
-    assertEqual(type(inst.NS.Database.CURRENT_DB_VERSION), "number",
+    assertEqual(type(inst.NS.SCHEMA_VERSION), "number",
         "the code's schema version is published for the report")
 end)
 
