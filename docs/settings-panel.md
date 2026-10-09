@@ -235,7 +235,7 @@ A bulk copy or reset is logged as **one** `[Set] <act> <scope>: N rows` line, ne
 
 | Act | Lines logged |
 |---|---|
-| A page's **Defaults** (Cast bar, Icons, Text Label, General walk 110, 78, 32 and 9 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
+| A page's **Defaults** (Cast bar, Icons, Text Label, General walk 110, 78, 32 and 10 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
 | **Reset all settings** and `/kcd resetall`, live or with LibKa0s absent | `[Set] reset profile '<name>' to defaults (N rows)` alone, from `Database:OnProfileChanged` ([profiles.md](profiles.md#reacting-to-a-profile-change)). N is the profile rows not at their default just before the reset, counted by `Store.ResetCounted`; a profile already at its defaults logs `(0 rows)`. The bracket sees `info.profileReset` (and the handler's `Store.ConsumeResetCount` marks it too) and adds nothing. With LibKa0s absent the degraded Options stub drives the stub seam's bracket itself, which counts nothing, so the handler's line carries no count |
 | The Profiles page's **Reset Profile**, or `db:ResetProfile()` from `/run` | `[Set] reset profile '<name>' to defaults`, with no count, since nothing counted the rows before the reset |
 | **Copy styling from Target** | `[Set] copy target→focus: N rows`, from `Store.SetMany` with `act = "copy"` |

@@ -270,10 +270,11 @@ KickCD (AceAddon)
                         and the Grid page's entry registry and renderer
                         (RegisterGridSection, RenderGridPage).
                         Creates no AceGUI widget of its own any more
-    ├── General.lua   — 2 tabs. Master controls (6): the CANONICAL block
+    ├── General.lua   — 2 tabs. Master controls (7): the CANONICAL block
                         (options-ui-§15), COMPOSED by H.MasterControls —
                         enable / visibility / scale / alpha / lock / the
-                        session-only Debug console — plus the Reset position
+                        session-only Debug console / the Minimap button
+                        (global.minimap.shown) — plus the Reset position
                         / Reset all button pair, which is the composer's own
                         returned afterGroup, keyed on H.MASTER_GROUP. This
                         addon is the collection's reference for that tab.
@@ -473,7 +474,7 @@ Every setup file degrades rather than erroring at load, and the six that have an
 Per CLAUDE.md's flag-deviations rule, these are recorded as **intentional**:
 
 - **Suffixed global frame names** (`KickCDIconGridFocus`, `KickCDCastbarFocus`) extend, rather than break, the "frame names stay literally `KickCD`" convention documented in [scope.md](scope.md) / [common-tasks.md](common-tasks.md) — target keeps the exact legacy name so existing macros/addons referencing it are unaffected, and focus gets an unambiguous `Focus` suffix rather than a numeric or generic index.
-- **`Ka0s_KickCD_GridLayout` payload gained `unit`** — additive change within the closed five-message bus, not a new message. See [message-bus.md](message-bus.md#ka0s_kickcd_grid_layout-payload).
+- **`Ka0s_KickCD_GridLayout` payload gained `unit`** — additive change within the closed five-message bus, not a new message. See [message-bus.md](message-bus.md#ka0s_kickcd_gridlayout-payload).
 - **`IconGrid` / `Castbar` module singleton → per-unit instance manager** (`instances[unit]`) — necessary because the two widgets now each render N independent unit instances (currently target + focus) sharing one module's message registration; a full module-per-unit split was rejected as it would have doubled the TOC surface and the `NS:GetModule("IconGrid", true)` accessor contract other code depends on.
 - **`DEFAULT_PROFILE` restructure to `units.*`** (a rename/nest, not a pure addition) — see [schema.md](schema.md#migration-folding-legacy-iconscastbaranchors-into-unitstarget) for the full rationale and the shape-driven migration that makes it safe for existing installs.
 

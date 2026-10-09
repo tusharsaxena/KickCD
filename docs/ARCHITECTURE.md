@@ -40,7 +40,7 @@ Settings widget / slash CLI ─▶ Store.Set  ─▶ Ka0s_KickCD_ConfigChanged �
 AceDB profile change         ─▶                Ka0s_KickCD_ProfileChanged ─▶ same
 IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit, ... } ─▶ Castbar instances[unit] (re-anchor / auto-size)
 
-  AceDB (all chars share the "Default" profile; user-switchable)  ──  4-page settings panel (General, Grid, Spells, Profiles; each tab-stripped) + /kcd CLI
+  AceDB (all chars share the "Default" profile; user-switchable)  ──  4-page settings panel (General, Grid, Spells, Profiles; all but Profiles tab-stripped) + /kcd CLI
 ```
 
 | Subsystem | Lives in | Read |

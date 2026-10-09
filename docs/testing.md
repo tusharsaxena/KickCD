@@ -73,7 +73,7 @@ Each parks the value, `pcall`s the body, restores, and re-raises the original
 error at level 0 so the failure still points at the assertion that raised it.
 
 They are a guarantee, not the repair of an observed break: `units.focus.link`
-defaults to `true` (`defaults/Profile.lua:322`) and the viewed unit is written
+defaults to `true` (`defaults/Profile.lua:324`) and the viewed unit is written
 without restore by every unit-page fixture, so a leak out of these cases reddens
 nothing measurable today. Write new cases through the wrappers anyway — the first
 case to render a Focus page without seeding the flag is the one that pays.
@@ -144,7 +144,7 @@ The three library-backed seams — DebugLog, Slash and Options — call the kit'
   `MODULES` and every `__`-prefixed key are the library talking to itself across
   its own file boundary, and a stub does not mirror them. That rule is the kit's
   now, so a re-vendor that publishes a new internal needs no edit in this repo.
-  The one exception is pinned by hand — `settings/Panel_Widgets.lua:138` calls
+  The one exception is pinned by hand — `settings/Panel_Widgets.lua:154` calls
   `Helpers.__panelFor`, so the stub owes it and a line beside the parity call
   says so.
 
