@@ -27,7 +27,6 @@
 
 local _, NS = ...
 local L      = NS.L
-local AceGUI = LibStub("AceGUI-3.0")
 
 NS.Settings = NS.Settings or {}
 NS.Settings.Schema    = NS.Settings.Schema or {}
@@ -253,86 +252,36 @@ end
 --
 -- The parent canvas page carries the standard header (title + divider)
 -- plus a static splash: logo, the addon's one-liner, and the slash-
--- command list. Rendered through Helpers.EnsureScroll(ctx) so the page picks
+-- command list. The library's builder renders it into Helpers.EnsureScroll(ctx), so the page picks
 -- up the same always-visible vertical scrollbar as every other tab,
 -- and so AceGUI's "List" layout left-aligns every child for free.
 
-local MAIN_LOGO_SIZE      = 300    -- exact native size of media/logos/kickcd.logo.tga
-local MAIN_GAP_AFTER_LOGO = 8
-local MAIN_GAP_AFTER_DESC = 12
-local MAIN_GAP_BELOW_HEAD = 6
+local MAIN_LOGO_TEXTURE = "Interface\\AddOns\\KickCD\\media\\logos\\kickcd.logo.tga"
+local MAIN_LOGO_SIZE    = 300    -- exact native size of media/logos/kickcd.logo.tga
 
+-- The page body goes through the library's builder (options-ui-§5): logo, the
+-- one-liner, then the "Slash Commands" heading and its rows. It replaced a
+-- private copy that drew the logo as a texture straight on a pooled AceGUI
+-- SimpleGroup frame and never took it off: after a re-render the frame came
+-- back as another SimpleGroup (the spacer under the heading) still carrying the
+-- logo, so the page showed it twice. The builder owns the ClearScroll, keeps one
+-- texture per frame and hides it in the group's OnRelease.
+--
+-- The rows are rendered by the SAME formatter `/kcd help` prints through
+-- (NS.Slash:LandingRows -> LibKa0s-Slash-1.0's one row formatter), minus the
+-- chat indent, so the panel and the help block cannot drift. `rows` is a
+-- function, so a command added in core/KickCD.lua still surfaces here
+-- automatically.
 function Helpers.BuildMainContent(ctx)
-    local scroll = Helpers.EnsureScroll(ctx)
-
-    -- 1) Logo. SimpleGroup is a full-width child so AceGUI's List layout
-    -- gives it the scroll's full width to live in; the texture inside
-    -- is anchored TOPLEFT, sized to the source TGA's native dimensions
-    -- (MAIN_LOGO_SIZE × MAIN_LOGO_SIZE), so it renders pixel-exact and
-    -- left-aligned regardless of panel width.
-    local logoGroup = AceGUI:Create("SimpleGroup")
-    logoGroup:SetLayout(nil)
-    logoGroup:SetFullWidth(true)
-    logoGroup:SetHeight(MAIN_LOGO_SIZE)
-
-    local logoTex = logoGroup.frame:CreateTexture(nil, "ARTWORK")
-    logoTex:SetTexture("Interface\\AddOns\\KickCD\\media\\logos\\kickcd.logo.tga")
-    logoTex:SetSize(MAIN_LOGO_SIZE, MAIN_LOGO_SIZE)
-    logoTex:SetPoint("TOPLEFT", logoGroup.frame, "TOPLEFT", 0, 0)
-    scroll:AddChild(logoGroup)
-
-    Helpers.AddSpacer(scroll, MAIN_GAP_AFTER_LOGO)
-
-    -- 2) One-liner — full-width Label (left-aligned by AceGUI default).
-    local desc = AceGUI:Create("Label")
-    desc:SetFullWidth(true)
-    desc:SetText(L["Tracks interrupt and CC cooldowns on a movable icon grid."])
-    if desc.label and desc.label.SetFontObject and _G.GameFontHighlight then
-        desc.label:SetFontObject(_G.GameFontHighlight)
-    end
-    if desc.label and desc.label.SetJustifyH then
-        desc.label:SetJustifyH("LEFT")
-    end
-    scroll:AddChild(desc)
-
-    Helpers.AddSpacer(scroll, MAIN_GAP_AFTER_DESC)
-
-    -- 3) Separator + "Slash Commands" heading: a single AceGUI Heading
-    -- widget renders as a label flanked by side dividers, so this one
-    -- widget delivers both the visual separator and the section title.
-    local heading = AceGUI:Create("Heading")
-    heading:SetFullWidth(true)
-    heading:SetHeight(26)
-    heading:SetText(L["Slash Commands"])
-    if heading.label and heading.label.SetFontObject and _G.GameFontNormalLarge then
-        heading.label:SetFontObject(_G.GameFontNormalLarge)
-    end
-    scroll:AddChild(heading)
-
-    Helpers.AddSpacer(scroll, MAIN_GAP_BELOW_HEAD)
-
-    -- 4) Slash-command rows, rendered by the SAME formatter `/kcd help` prints
-    -- through (NS.Slash:LandingRows -> LibKa0s-Slash-1.0's one row formatter),
-    -- minus the chat indent — each row here is its own label, where a leading
-    -- indent reads as a mistake.
-    --
-    -- This file used to carry its own format string for the same NS.COMMANDS
-    -- data: two spaces either side of the dash, the dash itself wrapped in the
-    -- white color run, and the description left uncolored. So the panel and
-    -- the help block rendered one table two ways, and every command added drifted
-    -- them further. That is the divergence the convergence exists to end, and the
-    -- visible cost is this page's spacing halving and its descriptions turning
-    -- white. Adding a command in core/KickCD.lua still surfaces here
-    -- automatically.
-    for _, text in ipairs(NS.Slash and NS.Slash:LandingRows() or {}) do
-        local row = AceGUI:Create("Label")
-        row:SetFullWidth(true)
-        row:SetText(text)
-        if row.label and row.label.SetJustifyH then
-            row.label:SetJustifyH("LEFT")
-        end
-        scroll:AddChild(row)
-    end
+    Helpers.BuildLandingPage(ctx, {
+        logo     = MAIN_LOGO_TEXTURE,
+        logoSize = MAIN_LOGO_SIZE,
+        notes    = function() return L["Tracks interrupt and CC cooldowns on a movable icon grid."] end,
+        sections = { {
+            heading = L["Slash Commands"],
+            rows    = function() return NS.Slash and NS.Slash:LandingRows() or {} end,
+        } },
+    })
 end
 
 -- ---------------------------------------------------------------------

@@ -1120,7 +1120,7 @@ Total.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (34)
+### test_options_panel.lua (35)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1156,6 +1156,7 @@ Total.
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
+- the landing page is drawn by the library's BuildLandingPage, logo and commands
 
 ### test_options_panel_degraded.lua (9)
 
@@ -1609,7 +1610,7 @@ Total.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 34 |
+| test_options_panel.lua | 35 |
 | test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_refreshers.lua | 5 |
@@ -1637,4 +1638,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1319** |
+| **Total** | **1320** |

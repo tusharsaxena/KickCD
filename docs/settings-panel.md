@@ -32,7 +32,7 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 
 Counts are **per unit** on the Grid page's three entries, because that is what a reader sees: the page renders only the unit its banner names. General has no unit picker, so its Units tab shows both units' toggles.
 
-**Two pages are exempt, and both are exempt for the same reason** — the host does not render them through the flow engine. They are the **Profiles** sub-page (`options-ui-§3`, AceConfigDialog draws it whole) and the **landing page** (`options-ui-§5`, whose body is this addon's own `buildMain`: the logo, the tagline, a *Slash Commands* heading and one Label per `COMMANDS` row). The landing page declares no `group` and names no sections, so there is nothing for a strip to be a strip of; its untabbed `Heading` form is its mandated rendering, not a deviation.
+**Two pages are exempt, and both are exempt for the same reason** — the host does not render them through the flow engine. They are the **Profiles** sub-page (`options-ui-§3`, AceConfigDialog draws it whole) and the **landing page** (`options-ui-§5`, whose body is this addon's own `buildMain`, drawn through the library's `BuildLandingPage`: the logo, the tagline, a *Slash Commands* heading and one Label per `COMMANDS` row). The landing page declares no `group` and names no sections, so there is nothing for a strip to be a strip of; its untabbed `Heading` form is its mandated rendering, not a deviation.
 
 The table is pinned by `tests/test_schema.lua`, which asserts the strip order, the per-tab counts, that no group's rows resume after the page has left it, that every row anywhere carries a `group`, and that Target and Focus partition identically.
 
