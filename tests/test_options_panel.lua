@@ -765,3 +765,26 @@ test("the panel's schema reader hands back a stored FALSE as false, not nil", fu
     assertTrue(v ~= nil, "a stored false must not read back as nil")
     assertEqual(v, false, "and it must be the boolean false, not a coerced truthy value")
 end)
+
+-- Owner report (sibling addon, same body): the landing page showed the logo
+-- twice, the second under the Slash Commands heading. The private body drew it
+-- as a texture on a pooled AceGUI SimpleGroup frame and never took it off; the
+-- library's BuildLandingPage hides it on release. The page body must go through
+-- the library's builder, carrying this addon's logo, one-liner and commands.
+test("the landing page is drawn by the library's BuildLandingPage, logo and commands", function()
+    local ctx = H.CreatePanel("KickCDLandingPanel", "Landing", {})
+    local seen
+    local real = H.BuildLandingPage
+    H.BuildLandingPage = function(c, spec) seen = spec; return real(c, spec) end
+    local ok, err = pcall(H.BuildMainContent, ctx)
+    H.BuildLandingPage = real
+    assertTrue(ok, tostring(err))
+    -- red under: the private logoGroup.frame:CreateTexture body in settings/Panel.lua
+    assertTrue(seen ~= nil, "BuildMainContent delegates to the library")
+    assertTrue(seen.logo:find("media\\logos\\kickcd.logo.tga", 1, true) ~= nil, seen.logo)
+    assertEqual(seen.logoSize, 300)
+    assertEqual(seen.notes(), NS.L["Tracks interrupt and CC cooldowns on a movable icon grid."])
+    assertEqual(#seen.sections, 1)
+    assertEqual(seen.sections[1].heading, NS.L["Slash Commands"])
+    assertEqual(#seen.sections[1].rows(), #NS.Slash:LandingRows())
+end)
