@@ -407,9 +407,6 @@ function Helpers.SelectTab(pageKey, tabKey)
     return selectTab(pageKey, tabKey)
 end
 
---- Test seam: the ctx the Grid page bound, or nil before its builder ran.
-function Helpers.__gridCtx() return gridCtx end
-
 --- Write one schema row through the seam and repaint any open panel's values.
 ---
 --- NS.Settings.Store.Set is the write (settings/SchemaSetup.lua): the refusal of
