@@ -34,7 +34,7 @@ LibStub("AceAddon-3.0"):NewAddon(
     "AceEvent-3.0")
 
 -- Public version stamp.
-NS.VERSION = "1.4.0"
+NS.VERSION = "1.5.0"
 
 -- Fresh AceEvent-embedded table for a message-bus / event RECEIVER (architecture-§4).
 -- Any consumer that is NOT itself an AceAddon module (which already gets its
