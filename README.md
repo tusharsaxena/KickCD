@@ -1,6 +1,6 @@
 # Ka0s KickCD
 
-![WoW](https://img.shields.io/badge/WoW-Midnight_12.1.0-purple)
+![WoW](https://img.shields.io/badge/WoW-Midnight_12.1.5-purple)
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)

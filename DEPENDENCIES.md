@@ -24,7 +24,7 @@ Neither repeats the other (documentation-§7).
   it is not an install instruction. `libs/LibKa0s/` and `libs/LibCustomGlow-1.0/` are vendored the
   same way and are deliberately absent from `OptionalDeps`, because no standalone copy of either
   exists to defer to.
-- Client version: `KickCD.toc:1` is `## Interface: 120100` — WoW 12.1.0 (Midnight).
+- Client version: `KickCD.toc:1` is `## Interface: 120105` — WoW 12.1.5 (Midnight).
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
 
