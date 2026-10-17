@@ -175,6 +175,23 @@ units[unit] = {
         useClassColorPrimaryGlowColor,
         secondaryGlowTrigger, secondaryGlowType, secondaryGlowColor,
         useClassColorSecondaryGlowColor,
+        -- Each slot's per-style knobs, <slot> = primary | secondary
+        -- (core/Constants.lua's Const.GLOW_KNOBS: range / step, default).
+        -- Only the slot's chosen style's knobs are read; the render clamps
+        -- each into its range and reads a wrong-typed value as the default.
+        --   button:   <slot>GlowButtonFrequency    0.05-2 / 0.05,  0.125
+        --   proc:     <slot>GlowProcDuration       0.25-3 / 0.25,  1
+        --             <slot>GlowProcStartAnim      bool,           true
+        --   pixel:    <slot>GlowPixelLines         1-20 / 1,       8
+        --             <slot>GlowPixelFrequency     0.05-2 / 0.05,  0.25
+        --             <slot>GlowPixelLength        0-20 / 1,       0 (automatic)
+        --             <slot>GlowPixelThickness     1-6 / 1,        2
+        --             <slot>GlowPixelBorder        bool,           false
+        --   autocast: <slot>GlowAutocastParticles  1-12 / 1,       4
+        --             <slot>GlowAutocastFrequency  0.05-2 / 0.05,  0.125
+        --             <slot>GlowAutocastScale      0.5-3 / 0.1,    1
+        --   pixel, autocast, proc:
+        --             <slot>GlowXOffset, <slot>GlowYOffset  -10-10 / 1, 0
     },
     castbar = {
         enabled,                                -- sub-module enable (master + unit enable still win)

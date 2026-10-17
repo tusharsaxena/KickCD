@@ -333,7 +333,9 @@ add{
 --
 -- Color is a single RGBA tuple shared across types (each LCG function
 -- accepts the same {r,g,b,a} shape). Primary and secondary icons each
--- get their own trigger + type + color.
+-- get their own trigger + type + color, and their own copy of every
+-- style's knobs (core/Constants.lua's Const.GLOW_KNOBS), only the chosen
+-- style's read.
 
 local GLOW_TRIGGER_VALUES = {
     ["never"] = L["Never"],
@@ -365,15 +367,47 @@ local GLOW_TYPE_VALUES_ORDER = {
 -- renderer in settings/Panel.lua (Helpers.RenderSchema, pairs adjacent
 -- entries into a Flow row) produces a layout where the left column is
 -- the primary slot's controls and the right column mirrors it on the
--- secondary slot:
+-- secondary slot. The tab mixes kinds of control -- what fires the glow,
+-- then each style's own knobs -- so every row carries a subsection
+-- heading (options-ui-§7), and each style's heading is that style's own
+-- name in the Style dropdown:
 --
---   Primary glow trigger | Secondary glow trigger
---   Primary glow style   | Secondary glow style
---   Primary glow color   | Secondary glow color
+--   Effect                  Primary glow trigger | Secondary glow trigger
+--                           Primary glow style   | Secondary glow style
+--                           Primary glow color   | Use class color
+--                           Secondary glow color | Use class color
+--   Button (rotating rays)  Primary frequency    | Secondary frequency
+--   Proc (flipbook)         duration, start animation
+--   Pixel border            lines, frequency, length, thickness, border
+--   Auto cast sparkles      particles, frequency, scale
+--   Offset                  X offset, Y offset (pixel, auto cast and proc)
+
+-- A slot's own trigger and style, read live, for its rows' `disabledIf`
+-- predicates. The panel re-runs them on every write, so a style or trigger
+-- change re-dims the tab on the same frame.
+local function slotGlow(slot)
+    local get = Store.Get
+    return get(PREFIX .. slot .. "GlowTrigger"), get(PREFIX .. slot .. "GlowType")
+end
+
+--- The style row is dimmed while its slot's trigger is Never: nothing glows.
+local function styleOff(slot)
+    return function() return (slotGlow(slot)) == "never" end
+end
+
+--- A knob row is dimmed while its slot glows not at all, or in a style the
+--- knob does not apply to (Const.GLOW_KNOBS' `styles`).
+local function knobOff(slot, styles)
+    return function()
+        local trigger, kind = slotGlow(slot)
+        return trigger == "never" or not styles[kind]
+    end
+end
 
 -- Trigger row -----------------------------------------------------
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
+    subgroup = L["Effect"],
     path  = "units."..unit..".icons.primaryGlowTrigger", type = "string",
     label = L["Primary glow trigger"],
     desc = L["When to show the glow on the primary icon."],
@@ -382,6 +416,7 @@ add{
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
+    subgroup = L["Effect"],
     path  = "units."..unit..".icons.secondaryGlowTrigger", type = "string",
     label = L["Secondary glow trigger"],
     desc = L["When to show the glow on secondary icons."],
@@ -392,19 +427,23 @@ add{
 -- Style row -------------------------------------------------------
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
+    subgroup = L["Effect"],
     path  = "units."..unit..".icons.primaryGlowType", type = "string",
     label = L["Primary glow style"],
     desc = L["Visual style of the primary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
     values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
+    disabledIf = styleOff("primary"),
 }
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
+    subgroup = L["Effect"],
     path  = "units."..unit..".icons.secondaryGlowType", type = "string",
     label = L["Secondary glow style"],
     desc = L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."],
     default = "pixel",
     values  = GLOW_TYPE_VALUES, sorting = GLOW_TYPE_VALUES_ORDER,
+    disabledIf = styleOff("secondary"),
 }
 
 -- Color rows ------------------------------------------------------
@@ -415,21 +454,116 @@ add{
 --     [Primary glow color]   | [Use class color]
 --     [Secondary glow color] | [Use class color]
 --
+-- Never dimmed, even under trigger Never: a color pair carries no
+-- `disabledIf`, on either half (options-ui-§17, the composer's rule).
+--
 -- Player-scoped, for the reason the cooldown tint above gives: a ready glow
 -- fires on the PLAYER'S OWN interrupt being off cooldown. The tracked unit's
 -- class has nothing to do with it, whichever unit's page you are on.
 H.AddComposed(H.ColorPair{
     prefix     = PREFIX, page = "icons", group = L["Ready glow"],
+    subgroup   = L["Effect"],
     key        = "primaryGlowColor", label = L["Primary glow color"],
     defaults   = { primaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
     classColor = { source = "player" },
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix     = PREFIX, page = "icons", group = L["Ready glow"],
+    subgroup   = L["Effect"],
     key        = "secondaryGlowColor", label = L["Secondary glow color"],
     defaults   = { secondaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
     classColor = { source = "player" },
 }, STAMP)
+
+-- Style knobs -----------------------------------------------------
+-- One row per Const.GLOW_KNOBS entry per slot, primary then secondary, so
+-- each knob reads across one line. The ranges, steps and defaults are the
+-- constant's; the words are here. `heading` names the subsection a knob
+-- opens under (the style's dropdown label, or Offset for the two offsets
+-- three styles share).
+local KNOB_TEXT = {
+    ButtonFrequency = {
+        heading = L["Button (rotating rays)"], fmt = "%.3f",
+        labels  = { L["Primary frequency"], L["Secondary frequency"] },
+        desc    = L["How fast the rays turn. Higher is faster. Button style only."],
+    },
+    ProcDuration = {
+        heading = L["Proc (flipbook)"], fmt = "%.2f s",
+        labels  = { L["Primary duration (in seconds)"], L["Secondary duration (in seconds)"] },
+        desc    = L["Seconds one loop of the flipbook takes. Proc style only."],
+    },
+    ProcStartAnim = {
+        heading = L["Proc (flipbook)"],
+        labels  = { L["Primary start animation"], L["Secondary start animation"] },
+        desc    = L["Play the burst that opens the proc glow when it starts. Proc style only."],
+    },
+    PixelLines = {
+        heading = L["Pixel border"], fmt = "%d",
+        labels  = { L["Primary lines"], L["Secondary lines"] },
+        desc    = L["Number of lines running around the icon. Pixel style only."],
+    },
+    PixelFrequency = {
+        heading = L["Pixel border"], fmt = "%.2f",
+        labels  = { L["Primary frequency"], L["Secondary frequency"] },
+        desc    = L["How fast the lines run around the icon. Higher is faster. Pixel style only."],
+    },
+    PixelLength = {
+        heading = L["Pixel border"], fmt = "%d px",
+        labels  = { L["Primary line length (0 = automatic)"], L["Secondary line length (0 = automatic)"] },
+        desc    = L["Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."],
+    },
+    PixelThickness = {
+        heading = L["Pixel border"], fmt = "%d px",
+        labels  = { L["Primary thickness (in px)"], L["Secondary thickness (in px)"] },
+        desc    = L["Thickness of each line in pixels. Pixel style only."],
+    },
+    PixelBorder = {
+        heading = L["Pixel border"],
+        labels  = { L["Primary dark border"], L["Secondary dark border"] },
+        desc    = L["Draw a dark border inside the lines. Pixel style only."],
+    },
+    AutocastParticles = {
+        heading = L["Auto cast sparkles"], fmt = "%d",
+        labels  = { L["Primary particles"], L["Secondary particles"] },
+        desc    = L["Number of sparkles in each ring. Auto cast style only."],
+    },
+    AutocastFrequency = {
+        heading = L["Auto cast sparkles"], fmt = "%.3f",
+        labels  = { L["Primary frequency"], L["Secondary frequency"] },
+        desc    = L["How fast the sparkles circle the icon. Higher is faster. Auto cast style only."],
+    },
+    AutocastScale = {
+        heading = L["Auto cast sparkles"], fmt = "%.1f",
+        labels  = { L["Primary scale"], L["Secondary scale"] },
+        desc    = L["Size of the sparkles. Auto cast style only."],
+    },
+    XOffset = {
+        heading = L["Offset"], fmt = "%d px",
+        labels  = { L["Primary X offset (in px)"], L["Secondary X offset (in px)"] },
+        desc    = L["How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."],
+    },
+    YOffset = {
+        heading = L["Offset"], fmt = "%d px",
+        labels  = { L["Primary Y offset (in px)"], L["Secondary Y offset (in px)"] },
+        desc    = L["How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."],
+    },
+}
+
+for _, knob in ipairs(NS.Const.GLOW_KNOBS) do
+    local text = KNOB_TEXT[knob.leaf]
+    for i, slot in ipairs({ "primary", "secondary" }) do
+        add{
+            panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
+            subgroup = text.heading,
+            path  = PREFIX .. slot .. "Glow" .. knob.leaf, type = knob.kind,
+            label = text.labels[i],
+            desc  = text.desc,
+            default = knob.default,
+            min = knob.min, max = knob.max, step = knob.step, fmt = text.fmt,
+            disabledIf = knobOff(slot, knob.styles),
+        }
+    end
+end
 
 end
 

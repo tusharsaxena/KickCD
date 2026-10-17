@@ -19,7 +19,7 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 18 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster |
+| GRID-1 – 20 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp |
 | CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
@@ -536,6 +536,24 @@ Which checks to run for a partial change:
   the trigger to `target_casting_interruptible` and repeat → no glow on the friendly cast. With
   `/kcd diagnostics`, the `IconGrid` section's `gate` line ends `any=true` while the friendly cast
   runs. Result: pass (owner-marked 2026-10-10)
+- **GRID-19. The glow's style knobs apply at once, and only their own style's are live.** Grid → Icons →
+  Ready glow, primary trigger `always`, an interrupt off cooldown, style `Pixel border` → under
+  *Pixel border* and *Offset* the primary rows are live and every other style's primary rows are dimmed;
+  the secondary column follows the secondary trigger and style on its own. Move Primary lines to `3`,
+  thickness to `5`, length to `6` and tick Primary dark border → the running glow redraws with three
+  thick short lines over a dark edge as each control moves, with no `/reload`. Switch the style to
+  `Auto cast sparkles` → the *Pixel border* rows dim and the *Auto cast sparkles* rows wake; Primary
+  particles `10`, scale `2` → more and bigger sparkles at once. `Button (rotating rays)` → the offsets
+  dim; Primary frequency `1` → the rays turn faster. `Proc (flipbook)` → Primary duration `3` slows the
+  loop; untick Primary start animation, then flip the trigger to `never` and back → the glow returns
+  with no opening burst. Primary trigger `never` → the primary style and every primary knob dim, and
+  the primary glow color stays live. Defaults on the page → every knob back to the defaults in
+  `docs/schema.md`. Result:
+- **GRID-20. A hand-set glow knob is clamped.** `/kcd set units.target.icons.primaryGlowPixelLines 900`
+  → clamps to `20`, the slider's maximum, as GRID-13's offset does. Edit
+  `primaryGlowPixelLines = 900` and `primaryGlowPixelThickness = -5` into the SavedVariables file
+  while logged out, log in with a pixel-style primary glow showing → the glow draws twenty one-pixel
+  lines and no Lua error. Result:
 
 ## CAST
 
@@ -1004,7 +1022,12 @@ reproduces it exactly.
 
 ## Pending sign-off
 
-None. On 2026-10-10 the owner marked every check in this file as passed, recorded on its
-`Result:` line as `pass (owner-marked 2026-10-10)`; a check that already carried a dated owner pass
-keeps it. A check added or rewritten after that date is listed here until its `Result:` line records
-a pass.
+On 2026-10-10 the owner marked every check in this file as passed, recorded on its `Result:` line as
+`pass (owner-marked 2026-10-10)`; a check that already carried a dated owner pass keeps it. A check
+added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
+off on its own `Result:` line, then remove its row here.
+
+| ID | Origin | Why it is owed |
+|---|---|---|
+| GRID-19 | feature/glow-options (DropWatcher feedback-21 K1) | New: the per-style glow knobs, their dimming and their live restart |
+| GRID-20 | feature/glow-options (DropWatcher feedback-21 K1) | New: the glow knobs' clamp on a hand-set value |

@@ -201,6 +201,59 @@ L["Visual style of secondary-icon glow. Inert when the trigger is set to Never."
     "Visual style of secondary-icon glow. Inert when the trigger is set to Never."
 L["Secondary glow color"]        = "Secondary glow color"
 L["Glow color on secondary icons."] = "Glow color on secondary icons."
+L["Effect"]                      = "Effect"
+L["Primary frequency"]           = "Primary frequency"
+L["Secondary frequency"]         = "Secondary frequency"
+L["How fast the rays turn. Higher is faster. Button style only."] =
+    "How fast the rays turn. Higher is faster. Button style only."
+L["Primary duration (in seconds)"] = "Primary duration (in seconds)"
+L["Secondary duration (in seconds)"] =
+    "Secondary duration (in seconds)"
+L["Seconds one loop of the flipbook takes. Proc style only."] =
+    "Seconds one loop of the flipbook takes. Proc style only."
+L["Primary start animation"]     = "Primary start animation"
+L["Secondary start animation"]   = "Secondary start animation"
+L["Play the burst that opens the proc glow when it starts. Proc style only."] =
+    "Play the burst that opens the proc glow when it starts. Proc style only."
+L["Primary lines"]               = "Primary lines"
+L["Secondary lines"]             = "Secondary lines"
+L["Number of lines running around the icon. Pixel style only."] =
+    "Number of lines running around the icon. Pixel style only."
+L["How fast the lines run around the icon. Higher is faster. Pixel style only."] =
+    "How fast the lines run around the icon. Higher is faster. Pixel style only."
+L["Primary line length (0 = automatic)"] =
+    "Primary line length (0 = automatic)"
+L["Secondary line length (0 = automatic)"] =
+    "Secondary line length (0 = automatic)"
+L["Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."] =
+    "Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."
+L["Primary thickness (in px)"]   = "Primary thickness (in px)"
+L["Secondary thickness (in px)"] = "Secondary thickness (in px)"
+L["Thickness of each line in pixels. Pixel style only."] =
+    "Thickness of each line in pixels. Pixel style only."
+L["Primary dark border"]         = "Primary dark border"
+L["Secondary dark border"]       = "Secondary dark border"
+L["Draw a dark border inside the lines. Pixel style only."] =
+    "Draw a dark border inside the lines. Pixel style only."
+L["Primary particles"]           = "Primary particles"
+L["Secondary particles"]         = "Secondary particles"
+L["Number of sparkles in each ring. Auto cast style only."] =
+    "Number of sparkles in each ring. Auto cast style only."
+L["How fast the sparkles circle the icon. Higher is faster. Auto cast style only."] =
+    "How fast the sparkles circle the icon. Higher is faster. Auto cast style only."
+L["Primary scale"]               = "Primary scale"
+L["Secondary scale"]             = "Secondary scale"
+L["Size of the sparkles. Auto cast style only."] =
+    "Size of the sparkles. Auto cast style only."
+L["Offset"]                      = "Offset"
+L["Primary X offset (in px)"]    = "Primary X offset (in px)"
+L["Secondary X offset (in px)"]  = "Secondary X offset (in px)"
+L["How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."] =
+    "How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."
+L["Primary Y offset (in px)"]    = "Primary Y offset (in px)"
+L["Secondary Y offset (in px)"]  = "Secondary Y offset (in px)"
+L["How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."] =
+    "How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."
 L["Button (rotating rays)"]      = "Button (rotating rays)"
 L["Proc (flipbook)"]             = "Proc (flipbook)"
 L["Pixel border"]                = "Pixel border"

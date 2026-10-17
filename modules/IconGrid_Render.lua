@@ -340,8 +340,9 @@ end
 --   * "autocast" — LCG.AutoCastGlow_Start (pet auto-cast sparkles)
 --
 -- Primary and secondary icons read independent trigger / type / color
--- settings — Layout stamps `_isPrimary` on each icon so UpdateGlow knows
--- which slot it's in.
+-- settings and their own copy of each style's knobs (Const.GLOW_KNOBS:
+-- lines, frequency, scale, offsets, ...) — Layout stamps `_isPrimary` on
+-- each icon so UpdateGlow knows which slot it's in.
 
 local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 -- Per-frame key passed to LCG so addons sharing a button (e.g. Masque
@@ -397,7 +398,80 @@ function Icon:StopGlow()
     self._glowColor = nil
 end
 
-function Icon:StartGlow(kind, color, useClassColor)
+-- The per-style knobs (core/Constants.lua's Const.GLOW_KNOBS), by slot. The
+-- stored keys are built ONCE here, so the gate below indexes the config with
+-- interned strings and concatenates nothing on the SPELL_STATE path.
+local GLOW_KNOBS = NS.Const.GLOW_KNOBS
+local KNOB_KEYS  = { primary = {}, secondary = {} }
+local KNOB_INDEX = {}
+for i, knob in ipairs(GLOW_KNOBS) do
+    KNOB_KEYS.primary[i]   = "primaryGlow" .. knob.leaf
+    KNOB_KEYS.secondary[i] = "secondaryGlow" .. knob.leaf
+    KNOB_INDEX[knob.leaf]  = i
+end
+
+--- One knob's value for the glow call: the stored value clamped into the
+--- slider's range, or the knob's default when the stored value is missing or
+--- the wrong type. SavedVariables can hold anything (a hand edit, a broken
+--- import), and a 900-line pixel glow is a frozen client rather than an error.
+local function knobValue(cfg, key, knob)
+    local v = cfg and cfg[key]
+    if knob.kind == "bool" then
+        if type(v) ~= "boolean" then return knob.default end
+        return v
+    end
+    if type(v) ~= "number" then return knob.default end
+    if v < knob.min then return knob.min end
+    if v > knob.max then return knob.max end
+    return v
+end
+
+--- Read this slot's knobs into `vals` (the icon's own reused array). Truthy
+--- when any of them moved since the last read, which is what restarts a
+--- running glow for a knob edit as a swatch edit does.
+local function readKnobs(vals, cfg, keys)
+    local moved = false
+    for i, knob in ipairs(GLOW_KNOBS) do
+        local v = knobValue(cfg, keys[i], knob)
+        if vals[i] ~= v then
+            vals[i] = v
+            moved = true
+        end
+    end
+    return moved
+end
+
+--- Start the LibCustomGlow effect `kind` on `g` with color `c` and the knob
+--- values `vals` (indexed as Const.GLOW_KNOBS). Each style passes only the
+--- knobs its _Start takes; PixelLength 0 is "automatic", which the library
+--- spells nil.
+local function startEffect(g, kind, c, vals)
+    local function k(leaf) return vals[KNOB_INDEX[leaf]] end
+    if kind == "button" then
+        -- (frame, color, frequency, frameLevel)
+        LCG.ButtonGlow_Start(g, c, k("ButtonFrequency"))
+    elseif kind == "proc" then
+        LCG.ProcGlow_Start(g, {
+            color = c, key = LCG_KEY,
+            duration = k("ProcDuration"), startAnim = k("ProcStartAnim"),
+            xOffset = k("XOffset"), yOffset = k("YOffset"),
+        })
+    elseif kind == "pixel" then
+        -- (frame, color, N, frequency, length, th, xOffset, yOffset, border, key, frameLevel)
+        local length = k("PixelLength")
+        if length == 0 then length = nil end
+        LCG.PixelGlow_Start(g, c, k("PixelLines"), k("PixelFrequency"), length,
+            k("PixelThickness"), k("XOffset"), k("YOffset"), k("PixelBorder"), LCG_KEY)
+    elseif kind == "autocast" then
+        -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
+        LCG.AutoCastGlow_Start(g, c, k("AutocastParticles"), k("AutocastFrequency"),
+            k("AutocastScale"), k("XOffset"), k("YOffset"), LCG_KEY)
+    end
+end
+
+--- Start (or keep) this icon's glow. `cfg` and `isPrimary` pick the slot's
+--- knobs; both may be nil, and every knob then reads its default.
+function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary)
     local g = self.glow
     if not (g and LCG) then return end
     -- Resolved HERE rather than in glowConfig so nothing allocates a table on a
@@ -405,6 +479,14 @@ function Icon:StartGlow(kind, color, useClassColor)
     -- compares the four resolved numbers, so a class-color toggle restarts the
     -- glow exactly as a swatch edit does and a no-op change still costs nothing.
     local r, gr, b, a = unpackGlowColor(color, useClassColor)
+    -- The knobs ride the same gate: read into the icon's own array (made once),
+    -- and a moved knob restarts the glow so a slider edit shows at once.
+    local vals = self._glowKnobs
+    if not vals then
+        vals = {}
+        self._glowKnobs = vals
+    end
+    local knobsMoved = readKnobs(vals, cfg, isPrimary and KNOB_KEYS.primary or KNOB_KEYS.secondary)
     -- Idempotency gate: UpdateGlow gets called on every SPELL_STATE re-emit
     -- (Cooldowns:Refresh fires for any non-trivially-equal poll, and charged
     -- secondaries hit this path multiple times per second because
@@ -412,7 +494,7 @@ function Icon:StartGlow(kind, color, useClassColor)
     -- Re-issuing Stop+Start unconditionally replays LCG's animIn — most
     -- visibly the ButtonGlow pop — so skip when nothing changed.
     local prev = self._glowColor
-    if self._glowKind == kind and prev
+    if not knobsMoved and self._glowKind == kind and prev
        and prev[1] == r and prev[2] == gr and prev[3] == b and prev[4] == a
     then
         return
@@ -420,17 +502,7 @@ function Icon:StartGlow(kind, color, useClassColor)
     local c = { r, gr, b, a }
     -- Stop first so a kind change (e.g. button → pixel) doesn't stack.
     self:StopGlow()
-    if kind == "button" then
-        LCG.ButtonGlow_Start(g, c)
-    elseif kind == "proc" then
-        LCG.ProcGlow_Start(g, { color = c, key = LCG_KEY })
-    elseif kind == "pixel" then
-        -- (frame, color, N, frequency, length, th, xOffset, yOffset, border, key, frameLevel)
-        LCG.PixelGlow_Start(g, c, nil, nil, nil, nil, nil, nil, nil, LCG_KEY)
-    elseif kind == "autocast" then
-        -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
-        LCG.AutoCastGlow_Start(g, c, nil, nil, nil, 0, 0, LCG_KEY)
-    end
+    startEffect(g, kind, c, vals)
     self._glowKind = kind
     self._glowColor = c
 end
@@ -504,7 +576,7 @@ function Icon:UpdateGlow(state)
         self:StopGlow()
         return
     end
-    self:StartGlow(kind, color, useClassColor)
+    self:StartGlow(kind, color, useClassColor, cfg, self._isPrimary)
 
     if applyInterruptibleMask(self, trigger) then return end
     if self.glow then self.glow:SetAlpha(1) end

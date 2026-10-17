@@ -138,6 +138,36 @@ local ICONS_DEFAULT = {
         secondaryGlowType    = "pixel",
         secondaryGlowColor   = { r = 1, g = 1, b = 0, a = 1 },
         useClassColorSecondaryGlowColor = false,
+
+        -- Each slot's per-style knobs (core/Constants.lua's Const.GLOW_KNOBS has
+        -- the ranges and which glow type each one applies to). PixelLength 0 is
+        -- "automatic": LibCustomGlow sizes the lines from the icon.
+        primaryGlowButtonFrequency       = 0.125,
+        primaryGlowProcDuration          = 1,
+        primaryGlowProcStartAnim         = true,
+        primaryGlowPixelLines            = 8,
+        primaryGlowPixelFrequency        = 0.25,
+        primaryGlowPixelLength           = 0,
+        primaryGlowPixelThickness        = 2,
+        primaryGlowPixelBorder           = false,
+        primaryGlowAutocastParticles     = 4,
+        primaryGlowAutocastFrequency     = 0.125,
+        primaryGlowAutocastScale         = 1,
+        primaryGlowXOffset               = 0,
+        primaryGlowYOffset               = 0,
+        secondaryGlowButtonFrequency     = 0.125,
+        secondaryGlowProcDuration        = 1,
+        secondaryGlowProcStartAnim       = true,
+        secondaryGlowPixelLines          = 8,
+        secondaryGlowPixelFrequency      = 0.25,
+        secondaryGlowPixelLength         = 0,
+        secondaryGlowPixelThickness      = 2,
+        secondaryGlowPixelBorder         = false,
+        secondaryGlowAutocastParticles   = 4,
+        secondaryGlowAutocastFrequency   = 0.125,
+        secondaryGlowAutocastScale       = 1,
+        secondaryGlowXOffset             = 0,
+        secondaryGlowYOffset             = 0,
 }
 
 local CASTBAR_DEFAULT = {

@@ -268,7 +268,7 @@ local STRIP = {
     general = { { "Master controls", 7 }, { "Units", 3 } },
     icons   = {
         { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
-        { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 8 },
+        { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 34 },
     },
     castbar = {
         { "General", 5 }, { "Size and position", 7 }, { "Icon", 2 }, { "Font", 6 },
@@ -840,7 +840,7 @@ end)
 --- `subgroup`: half-heading a tab is worse than none, because the reader gets a
 --- divider partway down and no name for what came before it.
 local TAB_MIXED = {
-    icons   = { ["Annotations"] = true },
+    icons   = { ["Annotations"] = true, ["Ready glow"] = true },
     castbar = { ["Size and position"] = true, ["Interruptible"] = true,
                 ["Non-interruptible"] = true },
 }
@@ -867,11 +867,6 @@ local TAB_SINGLE_SUBJECT = {
             .. "is the tab's entire question. Headings would read Opacity / Tint over two rows "
             .. "each and name properties of one subject rather than separate subjects.",
         ["Border"] = "options-ui-§16's composed border block and nothing beside it.",
-        ["Ready glow"] = "ONE effect, declared twice because there are two icon slots: trigger, "
-            .. "style and color for the primary icon and for the secondary. Every row's label "
-            .. "already says 'glow'. Headings would read Trigger / Style / Color over two rows "
-            .. "each -- properties of the glow, not subjects beside it -- and the tab label "
-            .. "names the subject.",
     },
     castbar = {
         ["General"] = "what the bar IS: enabled, orientation, growth, auto-size, spark. The two "

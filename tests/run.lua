@@ -195,6 +195,7 @@ local SUITES = {
     "test_icongrid_gcd_classify",
     "test_icongrid_buildlist",
     "test_icongrid_glowgate",
+    "test_icongrid_glow_knobs",
     "test_icongrid_handle",
     "test_lifecycle",
     "test_unitlabel",

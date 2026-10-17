@@ -7,7 +7,7 @@ Four pages sit under **Ka0s KickCD** in the game's own settings. This is the pag
 | Page | Covers |
 |---|---|
 | **General** | The master on/off switch, which units to track (target and/or focus), when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
-| **Grid** | Three entries on a nav rail under the **Unit** picker (Target / Focus): **Icons** (icon size, grid layout, ready and not-ready looks, borders, cooldown text and charges, tooltips, the ready glow), **Cast bar** (turn it on, place it, size it, its direction, a font, and separate colors for casts you can and can't interrupt) and **Text Label** (a custom identity label on a unit's icon grid or cast bar: its text, where it attaches, its offset, alignment, rotation and font). |
+| **Grid** | Three entries on a nav rail under the **Unit** picker (Target / Focus): **Icons** (icon size, grid layout, ready and not-ready looks, borders, cooldown text and charges, tooltips, the ready glow and each glow style's own knobs), **Cast bar** (turn it on, place it, size it, its direction, a font, and separate colors for casts you can and can't interrupt) and **Text Label** (a custom identity label on a unit's icon grid or cast bar: its text, where it attaches, its offset, alignment, rotation and font). |
 | **Spells** | Choose which spells to track for each class and spec, and drag a row by its handle to change its priority order. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, realm, or faction. |
 
@@ -24,7 +24,7 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 | Page | Tabs, in strip order (rows per tab) | Rows |
 |---|---|---|
 | **General** | Master controls (7) \| Units (3: two enables, and the Focus `link` row the tab draws itself) | 10 |
-| **Grid → Icons** | Sizing (4) \| Layout (6) \| Visual states (5) \| Border (5) \| Annotations (11) \| Ready glow (8) | 39 per unit |
+| **Grid → Icons** | Sizing (4) \| Layout (6) \| Visual states (5) \| Border (5) \| Annotations (11) \| Ready glow (34) | 65 per unit |
 | **Grid → Cast bar** | General (5) \| Size and position (7) \| Icon (2) \| Font (6) \| Spell name (5) \| Cast time (4) \| Interruptible (13) \| Non-interruptible (13) | 55 per unit |
 | **Grid → Text Label** | General (2) \| Placement (8) \| Font (6) | 16 per unit |
 | **Spells** | Spell list (1 tab, hand-drawn — the page has no schema rows) | — |
@@ -49,17 +49,19 @@ Renaming a group **detaches any `afterGroup` hook on it**, because the group nam
 | Tab | Subsections |
 |---|---|
 | Icons → Annotations | Icon · Font · Charges |
+| Icons → Ready glow | Effect · Button (rotating rays) · Proc (flipbook) · Pixel border · Auto cast sparkles · Offset |
 | Cast bar → Size and position | Size · Position |
 | Cast bar → Interruptible / Non-interruptible | Bar · Background · Text · Border |
 
 There are no hand-rolled headings anywhere — a colored full-width `Label` standing in for a `Heading` is anti-pattern #71, and `tests/test_schema.lua` scans `settings/` for the gold it would be written in.
 
-**Every other tab is one subject, and that is a recorded decision rather than an omission.** `tests/test_schema.lua` classifies **every** tab on every page into one of two tables — `TAB_MIXED`, whose rows must *all* carry a `subgroup`, and `TAB_SINGLE_SUBJECT`, whose rows must carry *none* — reading the tab list off the live schema, so a tab added later belongs to neither and fails until somebody decides which it is. The earlier gate was a literal list of the four mixed tabs, which asserted nothing about a tab not on it; a new bare mixed tab passed in silence. Each single-subject entry carries its reason, and the two closest calls are worth naming here:
+**Every other tab is one subject, and that is a recorded decision rather than an omission.** `tests/test_schema.lua` classifies **every** tab on every page into one of two tables — `TAB_MIXED`, whose rows must *all* carry a `subgroup`, and `TAB_SINGLE_SUBJECT`, whose rows must carry *none* — reading the tab list off the live schema, so a tab added later belongs to neither and fails until somebody decides which it is. The earlier gate was a literal list of the four mixed tabs, which asserted nothing about a tab not on it; a new bare mixed tab passed in silence. Each single-subject entry carries its reason, and the closest call is worth naming here:
 
 * **Icons → Visual states** — ready alpha, cooldown alpha, the cooldown tint and the GCD sub-state's swipe toggle. The sliders and the swatch are not two *kinds* of control on this tab; they are two channels of one answer to *what does this icon look like right now*, which is the tab's entire question. Headings would read *Opacity* / *Tint* over two rows each and name properties of one subject rather than subjects beside it.
-* **Icons → Ready glow** — one effect declared twice because there are two icon slots: trigger, style and color for the primary icon and for the secondary. Every row's label already says *glow*, and *Trigger* / *Style* / *Color* headings would name the glow's properties, not a second subject.
 
-Both would be legitimate `subgroup` candidates on a reading of `options-ui-§7` that counts widget types rather than subjects. They are bare on purpose, and the purpose is written down where the gate can be read beside it.
+It would be a legitimate `subgroup` candidate on a reading of `options-ui-§7` that counts widget types rather than subjects. It is bare on purpose, and the purpose is written down where the gate can be read beside it.
+
+**Icons → Ready glow was single-subject until it grew each style's knobs** (trigger, style and color only, every row's label saying *glow*). Its rows now answer two kinds of question — *what fires the glow and in what color* (**Effect**), and *how this style draws* (one heading per style, named as the Style dropdown names it, plus **Offset** for the two offsets the pixel, proc and auto cast styles share) — so it is in `TAB_MIXED`. The primary | secondary interleave holds under every heading: each knob reads across one line, the primary's on the left. A knob row is dimmed (`disabledIf`, a predicate over its own slot's trigger and style) under any style it does not apply to and while its slot's trigger is *Never*; the style dropdown is dimmed under *Never* too. The two glow swatches are never dimmed (`options-ui-§17`). The knob set, its ranges and its defaults are `core/Constants.lua`'s `Const.GLOW_KNOBS`, shared with Ka0s Drop Watcher's upgrade glow.
 
 ## Master controls — the canonical tab (`options-ui-§15`)
 
@@ -235,7 +237,7 @@ A bulk copy or reset is logged as **one** `[Set] <act> <scope>: N rows` line, ne
 
 | Act | Lines logged |
 |---|---|
-| A page's **Defaults** (Cast bar, Icons, Text Label, General walk 110, 78, 32 and 10 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
+| A page's **Defaults** (Cast bar, Icons, Text Label, General walk 110, 130, 32 and 10 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
 | **Reset all settings** and `/kcd resetall`, live or with LibKa0s absent | `[Set] reset profile '<name>' to defaults (N rows)` alone, from `Database:OnProfileChanged` ([profiles.md](profiles.md#reacting-to-a-profile-change)). N is the profile rows not at their default just before the reset, counted by `Store.ResetCounted`; a profile already at its defaults logs `(0 rows)`. The bracket sees `info.profileReset` (and the handler's `Store.ConsumeResetCount` marks it too) and adds nothing. With LibKa0s absent the degraded Options stub drives the stub seam's bracket itself, which counts nothing, so the handler's line carries no count |
 | The Profiles page's **Reset Profile**, or `db:ResetProfile()` from `/run` | `[Set] reset profile '<name>' to defaults`, with no count, since nothing counted the rows before the reset |
 | **Copy styling from Target** | `[Set] copy target→focus: N rows`, from `Store.SetMany` with `act = "copy"` |
