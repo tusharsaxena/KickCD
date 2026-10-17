@@ -540,15 +540,15 @@ Which checks to run for a partial change:
   Ready glow, primary trigger `always`, an interrupt off cooldown, style `Pixel border` → under
   *Pixel border* and *Offset* the primary rows are live and every other style's primary rows are dimmed;
   the secondary column follows the secondary trigger and style on its own. Move Primary lines to `3`,
-  thickness to `5`, length to `6` and tick Primary dark border → the running glow redraws with three
-  thick short lines over a dark edge as each control moves, with no `/reload`. Switch the style to
+  thickness to `5`, length to `6` and untick Primary dark border → the running glow redraws with three
+  thick short lines and no dark edge as each control moves, with no `/reload`. Switch the style to
   `Auto cast sparkles` → the *Pixel border* rows dim and the *Auto cast sparkles* rows wake; Primary
   particles `10`, scale `2` → more and bigger sparkles at once. `Button (rotating rays)` → the offsets
   dim; Primary frequency `1` → the rays turn faster. `Proc (flipbook)` → Primary duration `3` slows the
   loop; untick Primary start animation, then flip the trigger to `never` and back → the glow returns
   with no opening burst. Primary trigger `never` → the primary style and every primary knob dim, and
   the primary glow color stays live. Defaults on the page → every knob back to the defaults in
-  `docs/schema.md`. Result:
+  `docs/schema.md`, and the glow looks as it did before the knobs (one-pixel lines with the dark edge). Result:
 - **GRID-20. A hand-set glow knob is clamped.** `/kcd set units.target.icons.primaryGlowPixelLines 900`
   → clamps to `20`, the slider's maximum, as GRID-13's offset does. Edit
   `primaryGlowPixelLines = 900` and `primaryGlowPixelThickness = -5` into the SavedVariables file

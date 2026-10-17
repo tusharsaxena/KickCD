@@ -169,7 +169,7 @@ test("each style's _Start receives its own knobs, the slot's and not the other's
     icon:StartGlow("pixel", RED, false, cfg, false)
     c = lcg.calls[#lcg.calls]
     assertEqual(c[3], 11, "the secondary icon reads the secondary knobs")
-    assertEqual(c[6], 2, "and a knob it does not set reads the default")
+    assertEqual(c[6], 1, "and a knob it does not set reads the default")
 
     icon:StartGlow("autocast", RED, false, { primaryGlowAutocastParticles = 6,
         primaryGlowAutocastFrequency = 0.3, primaryGlowAutocastScale = 1.5,
@@ -192,6 +192,36 @@ test("each style's _Start receives its own knobs, the slot's and not the other's
     assertEqual(o.xOffset, -1); assertEqual(o.yOffset, 4); assertEqual(o.key, "KickCD")
 end)
 
+test("the knob defaults draw the glow the library drew before the knobs existed", function()
+    -- Before the knobs, StartGlow passed nil for every one of them and the
+    -- library filled its own: 8 lines, frequency 0.25 (period 4), th 1 and the
+    -- dark inner border for pixel; 4 particles, frequency 0.125 (period 8),
+    -- scale 1 for auto cast; throttle 0.01 for button, which its frequency
+    -- spells 0.25 (throttle = 0.25 / frequency * 0.01). The defaults must keep
+    -- that look for a profile that never touched a knob.
+    -- red under: PixelThickness 2, PixelBorder false or ButtonFrequency 0.125
+    local icon, lcg = glowIcon()
+    icon:StartGlow("pixel", RED, false, {}, true)
+    local c = lcg.calls[#lcg.calls]
+    assertEqual(c[3], 8);  assertEqual(c[4], 0.25); assertNil(c[5])
+    assertEqual(c[6], 1, "the library's nil thickness is 1")
+    assertTrue(c[9] ~= false, "the library draws the dark border unless told false")
+    assertEqual(c[7], 0); assertEqual(c[8], 0)
+
+    icon:StartGlow("autocast", RED, false, {}, true)
+    c = lcg.calls[#lcg.calls]
+    assertEqual(c[3], 4); assertEqual(c[4], 0.125); assertEqual(c[5], 1)
+
+    icon:StartGlow("button", RED, false, {}, true)
+    c = lcg.calls[#lcg.calls]
+    assertEqual(0.25 / c[3] * 0.01, 0.01, "the button ants step every 0.01 s, as with nil")
+
+    icon:StartGlow("proc", RED, false, {}, true)
+    local o = lcg.calls[#lcg.calls][2]
+    assertEqual(o.duration, 1); assertEqual(o.startAnim, true)
+    assertEqual(o.xOffset, 0);  assertEqual(o.yOffset, 0)
+end)
+
 test("a stored knob out of range is clamped, and a wrong type reads the default", function()
     -- red under: handing a hand-edited SavedVariable straight to the library
     local icon, lcg = glowIcon()
@@ -202,7 +232,7 @@ test("a stored knob out of range is clamped, and a wrong type reads the default"
     assertEqual(c[3], 20, "lines clamp to the slider's max")
     assertEqual(c[6], 1, "thickness clamps to the slider's min")
     assertEqual(c[4], 0.25, "a string frequency reads the default")
-    assertEqual(c[9], false, "a non-boolean border reads the default")
+    assertEqual(c[9], true, "a non-boolean border reads the default")
 end)
 
 test("a moved knob restarts a running glow; an unchanged re-apply does not", function()
