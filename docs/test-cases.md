@@ -687,6 +687,18 @@ Total.
 - a friendly cast moves the gate for the target_casting trigger
 - an unmoved friendly-cast gate still short-circuits
 
+### test_icongrid_glow_knobs.lua (9)
+
+- every glow knob's default is defaults/Profile.lua's, for both slots
+- the Ready glow tab draws each knob as a primary | secondary pair with the knob's range
+- a knob row is dimmed under another style and under Never, and live under its own
+- the style dropdown is dimmed while its slot's trigger is Never; the swatch never is
+- each style's _Start receives its own knobs, the slot's and not the other's
+- the knob defaults draw the glow the library drew before the knobs existed
+- a stored knob out of range is clamped, and a wrong type reads the default
+- a moved knob restarts a running glow; an unchanged re-apply does not
+- UpdateGlow hands the icon's slot config to StartGlow
+
 ### test_icongrid_handle.lua (13)
 
 - the grid carries a drag strip once its frame exists
@@ -1592,6 +1604,7 @@ Total.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 10 |
+| test_icongrid_glow_knobs.lua | 9 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
@@ -1638,4 +1651,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1320** |
+| **Total** | **1329** |

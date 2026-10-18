@@ -79,6 +79,41 @@ NS.MSG = Bus and Bus.Catalog(addonName, MSG) or MSG
 Const.GCD_UPPER = 1.6
 
 -- ---------------------------------------------------------------------------
+-- IconGrid: ready-glow knobs
+-- ---------------------------------------------------------------------------
+
+-- The per-style knobs of a ready glow, one entry per knob, in the order the
+-- Ready glow tab draws them. Read by settings/Icons.lua (one row per knob per
+-- slot, `units.<unit>.icons.{primary,secondary}Glow<leaf>`) and by
+-- modules/IconGrid_Render.lua (the clamp, the fallback, and which argument of
+-- LibCustomGlow-1.0's _Start the value is). `styles` names the glow types a
+-- knob applies to; under any other type its row is dimmed and the value unused.
+--
+-- The set, the ranges and the defaults are shared with Ka0s Drop Watcher's
+-- upgrade glow, so both addons read the same. The defaults restate
+-- defaults/Profile.lua's, which stays the profile's source (savedvariables-§2);
+-- tests/test_icongrid_glow_knobs.lua holds the two equal. PixelLength 0 means
+-- "automatic": the library sizes the lines from the frame. Every default is
+-- the value the library takes for nil (ButtonFrequency 0.25 is its nil
+-- throttle of 0.01), so a profile that never touched a knob keeps the look it
+-- had before the knobs existed.
+Const.GLOW_KNOBS = {
+    { leaf = "ButtonFrequency",   styles = { button = true },   kind = "number", min = 0.05, max = 2,  step = 0.05, default = 0.25 },
+    { leaf = "ProcDuration",      styles = { proc = true },     kind = "number", min = 0.25, max = 3,  step = 0.25, default = 1 },
+    { leaf = "ProcStartAnim",     styles = { proc = true },     kind = "bool",   default = true },
+    { leaf = "PixelLines",        styles = { pixel = true },    kind = "number", min = 1,    max = 20, step = 1,    default = 8 },
+    { leaf = "PixelFrequency",    styles = { pixel = true },    kind = "number", min = 0.05, max = 2,  step = 0.05, default = 0.25 },
+    { leaf = "PixelLength",       styles = { pixel = true },    kind = "number", min = 0,    max = 20, step = 1,    default = 0 },
+    { leaf = "PixelThickness",    styles = { pixel = true },    kind = "number", min = 1,    max = 6,  step = 1,    default = 1 },
+    { leaf = "PixelBorder",       styles = { pixel = true },    kind = "bool",   default = true },
+    { leaf = "AutocastParticles", styles = { autocast = true }, kind = "number", min = 1,    max = 12, step = 1,    default = 4 },
+    { leaf = "AutocastFrequency", styles = { autocast = true }, kind = "number", min = 0.05, max = 2,  step = 0.05, default = 0.125 },
+    { leaf = "AutocastScale",     styles = { autocast = true }, kind = "number", min = 0.5,  max = 3,  step = 0.1,  default = 1 },
+    { leaf = "XOffset", styles = { pixel = true, autocast = true, proc = true }, kind = "number", min = -10, max = 10, step = 1, default = 0 },
+    { leaf = "YOffset", styles = { pixel = true, autocast = true, proc = true }, kind = "number", min = -10, max = 10, step = 1, default = 0 },
+}
+
+-- ---------------------------------------------------------------------------
 -- Castbar: spell-name FontString insets
 -- ---------------------------------------------------------------------------
 

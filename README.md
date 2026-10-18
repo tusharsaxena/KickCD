@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1320%2F1320_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1329%2F1329_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -70,6 +70,8 @@ This is one setting with four values, and the master switch outranks all of them
 | `target_casting_interruptible` | Only while that unit is hostile and casting something you can interrupt. Casts you can't interrupt stay hidden. (Default.) |
 
 The ready glow has its own copy of this setting on Grid → Icons → Ready glow, with the same four choices plus `never` to switch the glow off entirely. Primary and secondary icons can use different triggers.
+
+The same tab sets each glow's style (button, proc, pixel or auto cast), its color, and that style's own controls: how fast it moves, how many lines or sparkles it draws, how thick or long they are, how far the glow reaches past the icon, and whether the proc glow opens with a burst. Only the chosen style's controls are active, and a change shows on a glowing icon straight away. Primary and secondary icons each have their own set.
 
 #### Cast bar placement (Grid → Cast bar → Size and position)
 
