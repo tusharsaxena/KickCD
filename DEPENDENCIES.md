@@ -146,6 +146,8 @@ The exact commands this repo is verified with. All run from the repo root.
 luacheck .                                          # must be 0 warnings, 0 errors
 lua tests/run.lua                                   # must exit 0, all cases passing
 bash tests/_kit/run-automated-tests.sh --suite complexity   # the sighted complexity suite (kit 35); recorded in each run bundle
+                                                    # from kit 41 a crashed or bounded lizard run is a complexity fail with
+                                                    # zeroed figures and a crashed bucket (crashedFiles), never a pass
 ```
 
 The first two are the **green commit gate**. The third is a **release** checkpoint and is

@@ -408,6 +408,9 @@ if not lib then
         -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Grid page's
         -- render (settings/Grid.lua), which never runs here, so the same inert no-op applies.
         "NavRail",
+        -- Drawer, new at LibKa0s v1.73.0 (OptionsDrawer minor 1): this addon draws no drawer, so the
+        -- same inert no-op applies.
+        "Drawer",
     }) do
         Helpers[name] = function() end
     end
@@ -463,7 +466,8 @@ if not lib then
     Helpers.MasterControls = function() return {}, function() end end
     -- ONE of the library's `__` internals, and the list used to be eleven.
     --
-    -- The ten that left -- __panels, __bannerBand, __layoutTabs, __releaseChrome, __scrollTopInset,
+    -- The ten that left -- __panels, __bannerBand, __layoutTabs, __releaseChrome (LibKa0s v1.75.0
+    -- removed __releaseChrome from the library too), __scrollTopInset,
     -- __tabBand, __tabPlacement, __releaseSubTabs, __tabArtHeight, __resetTabArtHeight -- were
     -- mirrored for ONE reason, and it was stated here: the parity gate read the WHOLE live surface,
     -- so a member that existed live and not here was reported as a hole. M4-09 moved

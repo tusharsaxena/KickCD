@@ -14,8 +14,8 @@
 -- collection whose addons stop looking like one author's work the first time
 -- one copy is replaced and the other is not.
 --
--- Both the face and the 113-name icon catalog now ship inside LibKa0s
--- (`LibKa0s-Media-1.0`) and arrive with the vendored library payload under
+-- Both the face and the icon catalog (pruned to this addon's LibKa0s icons:
+-- line in CLAUDE.md) now ship inside LibKa0s (`LibKa0s-Media-1.0`) and arrive with the vendored library payload under
 -- `libs/LibKa0s/media/`. Nothing under `media/` in this repo is art any more —
 -- `media/logos/` and `media/screenshots/` are this addon's own branding and
 -- stay exactly where they are.

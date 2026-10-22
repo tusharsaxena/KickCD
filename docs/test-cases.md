@@ -58,7 +58,7 @@ Total.
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (9)
+### test_mediasetup.lua (10)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
@@ -66,8 +66,9 @@ Total.
 - MediaSetup: the font this addon names is a face the library actually registers
 - MediaSetup: the face is registered with LibSharedMedia at file load
 - MediaSetup: the LSM fake carries LibSharedMedia's real locale bits
-- MediaSetup: every mark this addon's windows draw is one the library ships
-- MediaSetup: every name the library ships has a file in the vendored copy
+- MediaSetup: every declared mark is one the library's catalog carries
+- MediaSetup: every literal NS.Icon name in authored code is declared
+- MediaSetup: the library-drawn marks are declared, because the debug console is wired
 - MediaSetup: with no library there is no art and no face, and that is not an error
 
 ### test_envsetup.lua (6)
@@ -1164,7 +1165,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1575,7 +1576,7 @@ Total.
 |-------|------:|
 | test_util.lua | 15 |
 | test_coresetup.lua | 29 |
-| test_mediasetup.lua | 9 |
+| test_mediasetup.lua | 10 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 26 |
@@ -1651,4 +1652,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1329** |
+| **Total** | **1330** |

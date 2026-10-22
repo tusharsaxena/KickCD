@@ -324,8 +324,10 @@ Which checks to run for a partial change:
 - **PANEL-30. The Options descriptor names the folder.** `/kcd debug on`, then `/kcd config` and open
   every page in turn → each renders exactly as before, with no Lua error, and the console logs no
   `[Cfg] help art:` line. The descriptor now passes `addonName` (LibKa0s v1.67.0, LibKa0s#42), the folder
-  name an IdList help mark builds the library's `info` art from. No page here has a help mark yet, so
-  this only proves nothing broke; `tests/test_options_panel.lua` pins the field. `/kcd debug off`. Result: pass (owner-marked 2026-10-10)
+  name an IdList help mark builds the library's `info` art from. No page here draws an `O.IdList`, so
+  `info` is not declared on the `LibKa0s icons:` line and its art does not ship (LibKa0s v1.75.0's
+  icon prune); this only proves nothing broke. `tests/test_options_panel.lua` pins the field and
+  that `info` is declared exactly when an `O.IdList` is drawn. `/kcd debug off`. Result: pass (owner-marked 2026-10-10)
 
 ## PROFILE
 
