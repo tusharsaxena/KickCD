@@ -4,7 +4,7 @@ A headless Lua unit harness lives under `tests/` — run `lua tests/run.lua` fro
 
 ## Local toolchain
 
-`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, and the only runner beyond `tests/run.lua` is the vendored `tests/_kit/run-automated-tests.sh`, which shells out to the same two commands. Both run from the repo root and are the green commit gate: run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third, **optional** tool, driven by the non-gating `complexity` suite of that runner (see [Automated test records — the consolidated run](#automated-test-records--the-consolidated-run)).
+`lua` (5.1-compatible) and `luacheck` on `PATH` are the whole toolchain — no build step, and the only runner beyond `tests/run.lua` is the vendored `tests/_kit/run-automated-tests.sh`, which shells out to the same two commands. Both run from the repo root and are the green commit gate: run them before every commit, alongside the four vendored-copy diffs below (two pairs — the library and the test kit). `lizard` is a third tool, driven by that runner's `complexity` suite, which never fails a run and never gates a commit; the **tag** is gated on all four suites at `pass` plus zero functions above CCN 15 (`automated-tests-§3`), so a missing `lizard` is a skip that leaves a release NOT EVALUATED — optional for a commit, required for a release (see [Automated test records — the consolidated run](#automated-test-records--the-consolidated-run)).
 
 Install instructions for all three, with the WSL2/Ubuntu commands that actually work, live in the root [DEPENDENCIES.md](../DEPENDENCIES.md). That file says *what to install*; this one says *how to verify*.
 
@@ -200,6 +200,12 @@ diff -r --strip-trailing-cr "/tmp/libka0s-$tag/LibKa0s" libs/LibKa0s   # MUST be
 diff -r --strip-trailing-cr "/tmp/libka0s-$tag/testkit" tests/_kit     # MUST be empty
 ```
 
+One kind of line is expected in the first diff and is not a fork: `Only in
+/tmp/libka0s-$tag/LibKa0s/media/icons: <name>` lines for the icons this addon does not declare.
+From LibKa0s v1.75.0 the copy ships only the names on `CLAUDE.md`'s `LibKa0s icons:` line, directly
+under the provenance line, so those lines are the declaration working; the kit's vendor_sync case
+gates `media/icons` against the line (declared present and byte-identical, undeclared absent).
+
 `tests/test_vendor_sync.lua` asks exactly this question inside the suite — it greps the tag out of
 `CLAUDE.md` and reads that blob out of git — so **a green suite has already answered it**, and the
 block above is only the by-eye version for when you want to see the hunks. Which leaves the
@@ -213,7 +219,8 @@ as a follow-up.
 
 
 The payload carries **art as well as code** now: `libs/LibKa0s/media/` holds the shared
-icon set and the JetBrains Mono face (this addon shipped its own copy of that face under
+icon set, pruned after the copy to the `LibKa0s icons:` line by the tag's own
+`tools/prune-icons.lua` (LibKa0s v1.75.0 on), and the JetBrains Mono face (this addon shipped its own copy of that face under
 `media/fonts/` until the LibKa0s-Media adoption; it does not any more). `diff -r` recurses
 into it, and `--strip-trailing-cr` is meaningless on a `.tga` or a `.ttf` — the plain
 byte diff is the one that matters for those, so a re-vendor that dropped a texture shows
@@ -254,7 +261,7 @@ them, so the table names both:
 | `lint` | `luacheck .` | **yes** | **yes** |
 | `tests` | `lua tests/run.lua` | **yes** | **yes** |
 | `perf` | `lua tests/perf.lua` | no — recorded only | **yes** |
-| `complexity` | `bash tests/_kit/run-automated-tests.sh --suite complexity` (lizard over the kit's sighted shadow, with function-count parity; kit revision 35) | no — recorded only | **yes** |
+| `complexity` | `bash tests/_kit/run-automated-tests.sh --suite complexity` (lizard over the kit's sighted shadow, with function-count parity; kit revision 35; from kit 41 a crashed or bounded lizard run is a complexity fail with zeroed figures and a crashed bucket (`crashedFiles`), never a pass) | no — recorded only | **yes** |
 
 **`perf` and `complexity` never fail a run and never block a commit** — they are measured, recorded
 and diffed, not thresholded. A threshold that fails a run teaches everyone to reach for

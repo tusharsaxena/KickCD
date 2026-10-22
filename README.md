@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1329%2F1329_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1335%2F1335_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -149,6 +149,10 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 ## Credits
 
 The debug console uses [JetBrains Mono](https://www.jetbrains.com/lp/mono/), licensed under the SIL
-Open Font License 1.1, and the **?** on the icon grid's and cast bar's handles, and the drag handles
-and remove marks on the Spells page, are drawn from [Open Iconic](https://github.com/iconic/open-iconic) (MIT). Both ship inside the bundled LibKa0s payload,
-with their license text beside them.
+Open Font License 1.1.
+
+The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
+on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
+and the debug console's close, copy and clear buttons.
+
+Both ship inside the bundled payload under `libs/`, with their license text beside them.

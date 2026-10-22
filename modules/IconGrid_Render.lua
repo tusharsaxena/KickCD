@@ -322,10 +322,12 @@ end
 -- Ready glow
 -- ---------------------------------------------------------------------------
 --
--- Glow rendering is delegated to LibCustomGlow-1.0 (vendored under
--- libs/LibCustomGlow-1.0). The library handles the textures, animations,
--- and frame-level management for each effect; we only own the trigger
--- decision and the per-slot config plumbing.
+-- Glow rendering is delegated to LibKa0s-Glow-1.0 (core/GlowSetup.lua's
+-- NS.GlowLib), the stateless driver over LibCustomGlow-1.0 (vendored under
+-- libs/LibCustomGlow-1.0), which it resolves at call time. The driver owns the
+-- knob-to-argument mapping and its traps; LibCustomGlow owns the textures,
+-- animations and frame levels. We own the trigger decision, the per-slot
+-- config plumbing, the knob ranges and clamp, and the unchanged-repaint gate.
 --
 -- Trigger values (units.<unit>.icons.{primary,secondary}GlowTrigger):
 --   * "never"                       — glow off
@@ -333,22 +335,23 @@ end
 --   * "target_casting"              — only while target is casting (any spell)
 --   * "target_casting_interruptible" — only for interruptible target casts
 --
--- Type values map 1:1 to LibCustomGlow's four glow effects:
---   * "button"   — LCG.ButtonGlow_Start   (Blizzard rotating rays + spark)
---   * "proc"     — LCG.ProcGlow_Start     (modern Blizzard proc flipbook)
---   * "pixel"    — LCG.PixelGlow_Start    (animated pixel border)
---   * "autocast" — LCG.AutoCastGlow_Start (pet auto-cast sparkles)
+-- Type values are the driver's closed style vocabulary, 1:1 with
+-- LibCustomGlow's four glow effects:
+--   * "button"   — Blizzard rotating rays + spark
+--   * "proc"     — modern Blizzard proc flipbook
+--   * "pixel"    — animated pixel border
+--   * "autocast" — pet auto-cast sparkles
 --
 -- Primary and secondary icons read independent trigger / type / color
 -- settings and their own copy of each style's knobs (Const.GLOW_KNOBS:
 -- lines, frequency, scale, offsets, ...) — Layout stamps `_isPrimary` on
 -- each icon so UpdateGlow knows which slot it's in.
 
-local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
--- Per-frame key passed to LCG so addons sharing a button (e.g. Masque
--- ports) can coexist without each other's glow effects. ButtonGlow_Stop
--- doesn't take a key (only one Blizzard-style glow per frame); the
--- other three Stop fns do.
+-- Per-frame key the driver's Start/Stop take, so addons sharing a button
+-- (e.g. Masque ports) can coexist without each other's glow effects. The
+-- button style takes no key (only one Blizzard-style glow per frame); the
+-- other three styles do. A stop-all (style nil) is safe here because
+-- self.glow is KickCD's own child frame, never a shared one.
 --
 -- Single-key constraint: today every glow trigger / type writes to the
 -- same `"KickCD"` slot, so an icon can host at most one KickCD-managed
@@ -364,7 +367,7 @@ local LCG = LibStub and LibStub("LibCustomGlow-1.0", true)
 --      or similar — pick names that describe the role, not the visual).
 --   2. StartGlow / StopGlow take an explicit key argument; the per-slot
 --      decision in UpdateGlow picks which key it's writing to.
---   3. ButtonGlow_Start still has no key (one Blizzard-style glow per
+--   3. The button style still has no key (one Blizzard-style glow per
 --      frame, period) — that constraint is on Blizzard's side, not LCG's,
 --      so a combined-glow scenario will need to pick one of the three
 --      keyed effects (proc / pixel / autocast) for at least one slot.
@@ -387,27 +390,26 @@ end
 
 function Icon:StopGlow()
     local g = self.glow
-    if not (g and LCG) then return end
-    -- Stop every effect kind unconditionally so a stale glow from a
-    -- previous type doesn't linger when the user switches types.
-    LCG.ButtonGlow_Stop(g)
-    LCG.PixelGlow_Stop(g, LCG_KEY)
-    LCG.AutoCastGlow_Stop(g, LCG_KEY)
-    LCG.ProcGlow_Stop(g, LCG_KEY)
-    self._glowKind = nil
-    self._glowColor = nil
+    if not g then return end
+    -- Stop every effect kind unconditionally (style nil) so a stale glow from
+    -- a previous type doesn't linger when the user switches types.
+    NS.GlowLib.Stop(g, nil, LCG_KEY)
+    self._glowKind, self._glowColor = nil, nil
 end
 
 -- The per-style knobs (core/Constants.lua's Const.GLOW_KNOBS), by slot. The
 -- stored keys are built ONCE here, so the gate below indexes the config with
--- interned strings and concatenates nothing on the SPELL_STATE path.
+-- interned strings and concatenates nothing on the SPELL_STATE path. FIELD[i]
+-- is the driver's knob name for knob i, the leaf with its first letter
+-- lowered (XOffset -> xOffset, ButtonFrequency -> buttonFrequency): all
+-- thirteen leaves map exactly onto LibKa0s-Glow-1.0's vocabulary.
 local GLOW_KNOBS = NS.Const.GLOW_KNOBS
 local KNOB_KEYS  = { primary = {}, secondary = {} }
-local KNOB_INDEX = {}
+local FIELD      = {}
 for i, knob in ipairs(GLOW_KNOBS) do
     KNOB_KEYS.primary[i]   = "primaryGlow" .. knob.leaf
     KNOB_KEYS.secondary[i] = "secondaryGlow" .. knob.leaf
-    KNOB_INDEX[knob.leaf]  = i
+    FIELD[i] = knob.leaf:sub(1, 1):lower() .. knob.leaf:sub(2)
 end
 
 --- One knob's value for the glow call: the stored value clamped into the
@@ -426,60 +428,34 @@ local function knobValue(cfg, key, knob)
     return v
 end
 
---- Read this slot's knobs into `vals` (the icon's own reused array). Truthy
---- when any of them moved since the last read, which is what restarts a
---- running glow for a knob edit as a swatch edit does.
+--- Read this slot's knobs into `vals` (the icon's own reused table, keyed by
+--- the driver's knob names, so it is handed to the driver as it stands).
+--- Truthy when any of them moved since the last read, which is what restarts
+--- a running glow for a knob edit as a swatch edit does.
 local function readKnobs(vals, cfg, keys)
     local moved = false
     for i, knob in ipairs(GLOW_KNOBS) do
         local v = knobValue(cfg, keys[i], knob)
-        if vals[i] ~= v then
-            vals[i] = v
+        local f = FIELD[i]
+        if vals[f] ~= v then
+            vals[f] = v
             moved = true
         end
     end
     return moved
 end
 
---- Start the LibCustomGlow effect `kind` on `g` with color `c` and the knob
---- values `vals` (indexed as Const.GLOW_KNOBS). Each style passes only the
---- knobs its _Start takes; PixelLength 0 is "automatic", which the library
---- spells nil.
-local function startEffect(g, kind, c, vals)
-    local function k(leaf) return vals[KNOB_INDEX[leaf]] end
-    if kind == "button" then
-        -- (frame, color, frequency, frameLevel)
-        LCG.ButtonGlow_Start(g, c, k("ButtonFrequency"))
-    elseif kind == "proc" then
-        LCG.ProcGlow_Start(g, {
-            color = c, key = LCG_KEY,
-            duration = k("ProcDuration"), startAnim = k("ProcStartAnim"),
-            xOffset = k("XOffset"), yOffset = k("YOffset"),
-        })
-    elseif kind == "pixel" then
-        -- (frame, color, N, frequency, length, th, xOffset, yOffset, border, key, frameLevel)
-        local length = k("PixelLength")
-        if length == 0 then length = nil end
-        LCG.PixelGlow_Start(g, c, k("PixelLines"), k("PixelFrequency"), length,
-            k("PixelThickness"), k("XOffset"), k("YOffset"), k("PixelBorder"), LCG_KEY)
-    elseif kind == "autocast" then
-        -- (frame, color, N, frequency, scale, xOffset, yOffset, key, frameLevel)
-        LCG.AutoCastGlow_Start(g, c, k("AutocastParticles"), k("AutocastFrequency"),
-            k("AutocastScale"), k("XOffset"), k("YOffset"), LCG_KEY)
-    end
-end
-
 --- Start (or keep) this icon's glow. `cfg` and `isPrimary` pick the slot's
 --- knobs; both may be nil, and every knob then reads its default.
 function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary)
     local g = self.glow
-    if not (g and LCG) then return end
+    if not g then return end
     -- Resolved HERE rather than in glowConfig so nothing allocates a table on a
     -- path that re-enters on every SPELL_STATE: the idempotency gate below
     -- compares the four resolved numbers, so a class-color toggle restarts the
     -- glow exactly as a swatch edit does and a no-op change still costs nothing.
     local r, gr, b, a = unpackGlowColor(color, useClassColor)
-    -- The knobs ride the same gate: read into the icon's own array (made once),
+    -- The knobs ride the same gate: read into the icon's own table (made once),
     -- and a moved knob restarts the glow so a slider edit shows at once.
     local vals = self._glowKnobs
     if not vals then
@@ -499,10 +475,16 @@ function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary)
     then
         return
     end
-    local c = { r, gr, b, a }
     -- Stop first so a kind change (e.g. button → pixel) doesn't stack.
     self:StopGlow()
-    startEffect(g, kind, c, vals)
+    -- A FRESH color array per restart, never mutated after hand-over: the
+    -- button style keeps it by reference (driver trap 4). It doubles as the
+    -- gate's record of what is drawing.
+    local c = { r, gr, b, a }
+    vals.color = c
+    -- false when LibCustomGlow-1.0 (or the driver) is absent: no glow is
+    -- drawing, so no state is recorded and the next apply tries again.
+    if not NS.GlowLib.Start(g, kind, vals, LCG_KEY) then return end
     self._glowKind = kind
     self._glowColor = c
 end

@@ -1,7 +1,7 @@
 -- tests/test_surface_parity.lua — one stub-surface parity case per adopted LibKa0s seam
 -- (testing-§8, anti-pattern #56).
 --
--- KickCD adopts fourteen LibKa0s majors (docs/ARCHITECTURE.md, External dependencies); these seven
+-- KickCD adopts fifteen LibKa0s majors (docs/ARCHITECTURE.md, External dependencies); these eight
 -- have a degradation stub this file holds to the live surface:
 --
 --   Core      core/CoreSetup.lua        NS.IsConcatSafe / NS.SafeToString / NS.Util.print
@@ -11,6 +11,7 @@
 --   Schema    settings/SchemaSetup.lua  NS.Settings.Store / NS.Settings.HostSchemaStub
 --   Perf      core/PerfSetup.lua        NS.Perf
 --   Compat    core/Compat.lua           NS.Compat (reader and guard arms, member by member)
+--   Glow      core/GlowSetup.lua        NS.GlowLib
 --
 -- WHY THIS FILE EXISTS. Three of the collection's surviving High findings are one omitted stub
 -- member: a stub returns without assigning a function the addon calls, and the command raises on
@@ -68,7 +69,7 @@ test("sanity: the degraded arm really has no LibKa0s", function()
     -- boring possible reason.
     for _, major in ipairs({ "LibKa0s-Core-1.0", "LibKa0s-DebugLog-1.0", "LibKa0s-Slash-1.0",
                              "LibKa0s-Options-1.0", "LibKa0s-Schema-1.0", "LibKa0s-Perf-1.0",
-                             "LibKa0s-Compat-1.0" }) do
+                             "LibKa0s-Compat-1.0", "LibKa0s-Glow-1.0" }) do
         assertTrue(live.mocks.LibStub(major, true) ~= nil, major .. " must be live in the live arm")
         assertTrue(degraded.mocks.LibStub(major, true) == nil,
             major .. " is registered in the DEGRADED arm — the partial file list did not take")
@@ -294,4 +295,15 @@ test("the Compat stub carries every LibKa0s-Compat-1.0 member the host wires", f
         -- does route; no call site asks for the name alone.
         "GetSpellName",
     })
+end)
+
+-- ── Glow ────────────────────────────────────────────────────────────────────
+--
+-- LibKa0s-Glow-1.0 is stateless: the live half is the LIBRARY table LibStub answers. The stub is
+-- core/GlowSetup.lua's two-member table; Start answers false (no glow drawn) and Stop does nothing,
+-- which is the absent-LibCustomGlow outcome. Nothing is ignored: both members are host calls.
+
+test("the Glow stub carries the whole LibKa0s-Glow-1.0 surface", function()
+    -- red under: deleting `Stop` from core/GlowSetup.lua's stub table
+    assertSurfaceParity(degraded.NS.GlowLib, "LibKa0s-Glow-1.0", {})
 end)

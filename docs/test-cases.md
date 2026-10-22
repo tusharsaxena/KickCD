@@ -58,7 +58,7 @@ Total.
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (9)
+### test_mediasetup.lua (10)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
@@ -66,8 +66,9 @@ Total.
 - MediaSetup: the font this addon names is a face the library actually registers
 - MediaSetup: the face is registered with LibSharedMedia at file load
 - MediaSetup: the LSM fake carries LibSharedMedia's real locale bits
-- MediaSetup: every mark this addon's windows draw is one the library ships
-- MediaSetup: every name the library ships has a file in the vendored copy
+- MediaSetup: every declared mark is one the library's catalog carries
+- MediaSetup: every literal NS.Icon name in authored code is declared
+- MediaSetup: the library-drawn marks are declared, because the debug console is wired
 - MediaSetup: with no library there is no art and no face, and that is not an error
 
 ### test_envsetup.lua (6)
@@ -687,7 +688,7 @@ Total.
 - a friendly cast moves the gate for the target_casting trigger
 - an unmoved friendly-cast gate still short-circuits
 
-### test_icongrid_glow_knobs.lua (9)
+### test_icongrid_glow_knobs.lua (13)
 
 - every glow knob's default is defaults/Profile.lua's, for both slots
 - the Ready glow tab draws each knob as a primary | secondary pair with the knob's range
@@ -698,6 +699,10 @@ Total.
 - a stored knob out of range is clamped, and a wrong type reads the default
 - a moved knob restarts a running glow; an unchanged re-apply does not
 - UpdateGlow hands the icon's slot config to StartGlow
+- StopGlow stops all four styles under the KickCD key, the button style keyless
+- a glow start hands the driver a fresh color array every restart
+- no authored file drives LibCustomGlow-1.0 itself
+- a LibKa0s-less load draws no glow and raises nothing
 
 ### test_icongrid_handle.lua (13)
 
@@ -1164,7 +1169,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1493,7 +1498,7 @@ Total.
 - --list per-suite header counts match their bullet counts
 - --list Totals row plus the Skipped row equals the grand total of bullets
 
-### test_surface_parity.lua (8)
+### test_surface_parity.lua (9)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1503,6 +1508,7 @@ Total.
 - the Options stub carries every member the host calls
 - the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
+- the Glow stub carries the whole LibKa0s-Glow-1.0 surface
 
 ### test_doc_structure.lua (4)
 
@@ -1575,7 +1581,7 @@ Total.
 |-------|------:|
 | test_util.lua | 15 |
 | test_coresetup.lua | 29 |
-| test_mediasetup.lua | 9 |
+| test_mediasetup.lua | 10 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 26 |
@@ -1604,7 +1610,7 @@ Total.
 | test_icongrid_gcd_classify.lua | 5 |
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 10 |
-| test_icongrid_glow_knobs.lua | 9 |
+| test_icongrid_glow_knobs.lua | 13 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
@@ -1642,7 +1648,7 @@ Total.
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 8 |
+| test_surface_parity.lua | 9 |
 | test_doc_structure.lua | 4 |
 | test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
@@ -1651,4 +1657,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1329** |
+| **Total** | **1335** |

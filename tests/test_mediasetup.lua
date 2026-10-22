@@ -19,13 +19,26 @@ local NS, mocks = T.NS, T.mocks
 
 local VENDORED = "Interface\\AddOns\\KickCD\\libs\\LibKa0s\\media\\"
 
--- The marks this addon puts on screen. It never calls NS.Icon itself: the two
--- seams that say who is asking — core/CoreSetup.lua's MakeCloseButton wrapper and
--- core/DebugLogSetup.lua's `addonName` — hand the folder name to the library, and
--- the library resolves these three names against ITS OWN catalog using it. Which
--- is precisely why they are pinned here rather than left implicit: nothing else in
--- this repo would notice `copy` being renamed upstream.
-local DRAWN = { "close", "copy", "clear" }
+-- The marks this addon puts on screen are the names CLAUDE.md's `LibKa0s icons:`
+-- line declares (LibKa0s v1.75.0, library-stack-§7's icon subset): the copy ships
+-- exactly those, and the kit's vendor_sync gate holds declared == shipped. The
+-- line is read with the kit's own parser (VendorSync.iconDeclaration), never a
+-- second one here. A hand list stood in this place once, said this addon "never
+-- calls NS.Icon itself", and had drifted: settings/Spells_Rows.lua, settings/Spells.lua
+-- and the two drag-strip handles do. Two halves now keep the line honest: every
+-- literal NS.Icon("<name>") in authored code must be declared, and the names the
+-- LIBRARY draws for this addon (close via core/CoreSetup.lua's MakeCloseButton
+-- wrapper; copy and clear on the debug console wired by core/DebugLogSetup.lua)
+-- must be declared too, because no NS.Icon call of ours names them.
+local VendorSync = dofile(T.root .. "/tests/_kit/vendor_sync.lua")
+local function declaredIcons()
+    local fh = assert(io.open(T.root .. "/CLAUDE.md", "r"))
+    local decl, why = VendorSync.iconDeclaration(fh:read("*a"))
+    fh:close()
+    assertTrue(decl ~= nil and decl.mode == "list",
+        "CLAUDE.md carries no usable `LibKa0s icons:` list: " .. tostring(why))
+    return decl and decl.names or {}
+end
 
 -- ── the seam ────────────────────────────────────────────────────────────────
 
@@ -88,31 +101,65 @@ end)
 
 -- ── the catalog, against what this addon actually puts on screen ─────────────
 
-test("MediaSetup: every mark this addon's windows draw is one the library ships", function()
-    -- red under: any name here the catalog does not carry — an upstream rename, or
+test("MediaSetup: every declared mark is one the library's catalog carries", function()
+    -- red under: any declared name the catalog does not carry — an upstream rename, or
     -- a mark this addon asked for that was never shipped.
     local Media = mocks.LibStub("LibKa0s-Media-1.0", true)
     local known = {}
     for _, name in ipairs(Media.ICONS) do known[name] = true end
-    for _, name in ipairs(DRAWN) do
+    local names = declaredIcons()
+    assertTrue(#names > 0, "the `LibKa0s icons:` line declares nothing")
+    for _, name in ipairs(names) do
         assertTrue(known[name] == true,
             "this addon draws '" .. name .. "', which LibKa0s-Media does not ship")
         assertTrue(NS.Icon(name) ~= nil, "NS.Icon answered nil for " .. name)
     end
 end)
 
-test("MediaSetup: every name the library ships has a file in the vendored copy", function()
-    -- The library's own suite checks its catalog against its own directory. This
-    -- checks THE COPY: a re-vendor that dropped a file, or a packaging step that
-    -- filtered media/ out, leaves a catalog naming art this build does not carry.
-    local Media = mocks.LibStub("LibKa0s-Media-1.0", true)
-    local root = (T.root or ".") .. "/libs/LibKa0s/media/icons/"
-    local missing = {}
-    for _, name in ipairs(Media.ICONS) do
-        local fh = io.open(root .. name .. ".tga", "rb")
-        if fh then fh:close() else missing[#missing + 1] = name end
+test("MediaSetup: every literal NS.Icon name in authored code is declared", function()
+    -- The whole-catalog file loop that stood here went red by design at LibKa0s
+    -- v1.75.0: the copy is pruned to the declaration, and tests/test_vendor_sync.lua
+    -- (the kit's gate) now holds declared == shipped. What is left for this file is
+    -- the other direction: a name this addon asks for that the line forgot draws
+    -- blank, and no gate but this one sees it.
+    -- red under: adding NS.Icon("star") without declaring it.
+    local declared = {}
+    for _, name in ipairs(declaredIcons()) do declared[name] = true end
+    local used, undeclared = 0, {}
+    for _, dir in ipairs({ "core", "modules", "settings" }) do
+        local pipe = assert(io.popen("ls " .. T.root .. "/" .. dir .. "/*.lua 2>/dev/null"))
+        for path in pipe:lines() do
+            local fh = assert(io.open(path, "r"))
+            local code = fh:read("*a"):gsub("%-%-[^\r\n]*", "")
+            fh:close()
+            for name in code:gmatch('NS%.Icon%("([%w:%-_]+)"%)') do
+                used = used + 1
+                if not declared[name] then
+                    undeclared[#undeclared + 1] = path:gsub("^.*/(%w+/[%w_]+%.lua)$", "%1") .. ": " .. name
+                end
+            end
+        end
+        pipe:close()
     end
-    assertEqual(table.concat(missing, ", "), "")
+    assertTrue(used > 0, "no literal NS.Icon call was found, so the scan proved nothing")
+    assertEqual(table.concat(undeclared, ", "), "")
+end)
+
+test("MediaSetup: the library-drawn marks are declared, because the debug console is wired", function()
+    -- close (Core.MakeCloseButton given this addon's name: the debug console, the
+    -- perf panel, the copy window) and copy / clear (the debug console's title bar)
+    -- are drawn by LibKa0s, so no NS.Icon call here names them. A pruned icon still
+    -- resolves to a path and draws blank; only the declaration keeps them shipped.
+    -- red under: dropping close, copy or clear from the `LibKa0s icons:` line.
+    local fh = io.open(T.root .. "/core/DebugLogSetup.lua", "r")
+    assertTrue(fh ~= nil, "core/DebugLogSetup.lua is gone; revisit which marks the library draws")
+    if fh then fh:close() end
+    local declared = {}
+    for _, name in ipairs(declaredIcons()) do declared[name] = true end
+    for _, name in ipairs({ "close", "copy", "clear" }) do
+        assertTrue(declared[name] == true,
+            "the library draws '" .. name .. "' for this addon, but CLAUDE.md does not declare it")
+    end
 end)
 
 -- ── degraded ────────────────────────────────────────────────────────────────

@@ -23,7 +23,8 @@ Neither repeats the other (documentation-§7).
   `libs/LibCustomGlow-1.0/`), so `OptionalDeps` only affects **load order** when the player happens
   to have a standalone copy — it is not an install instruction. `libs/LibKa0s/` is vendored the
   same way and is deliberately absent from `OptionalDeps`, because no standalone copy of it exists
-  to defer to.
+  to defer to. LibCustomGlow-1.0 is never called directly: `LibKa0s-Glow-1.0`
+  (`core/GlowSetup.lua`) resolves it at call time.
 - Client version: `KickCD.toc:1` is `## Interface: 120105` — WoW 12.1.5 (Midnight).
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
@@ -146,6 +147,8 @@ The exact commands this repo is verified with. All run from the repo root.
 luacheck .                                          # must be 0 warnings, 0 errors
 lua tests/run.lua                                   # must exit 0, all cases passing
 bash tests/_kit/run-automated-tests.sh --suite complexity   # the sighted complexity suite (kit 35); recorded in each run bundle
+                                                    # from kit 41 a crashed or bounded lizard run is a complexity fail with
+                                                    # zeroed figures and a crashed bucket (crashedFiles), never a pass
 ```
 
 The first two are the **green commit gate**. The third is a **release** checkpoint and is

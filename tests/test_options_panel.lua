@@ -591,7 +591,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- LibKa0s v1.39.0. A typed list does not redden when a file joins the major,
     -- it just stops covering it. OptionsWidgets.lua is still where the rendered
     -- labels come from, so an `L` hook growing there is the likeliest and the one
-    -- that would show on screen first.
+    -- that would show on screen first. OptionsDrawer.lua (LibKa0s v1.73.0) made
+    -- it eleven: the count below moved, and the derived scan already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
         "Options owning its own strings is why this tripwire is not shaped like "
@@ -611,8 +612,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 10,
-        "the major is ten files at LibKa0s v1.62.0 -- a count that moved means a file "
+    assertEqual(scanned, 11,
+        "the major is eleven files at LibKa0s v1.73.0 (OptionsDrawer.lua joined) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.
@@ -622,7 +623,7 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
 end)
 
-test("OptionsSetup: the Options descriptor is told the FOLDER name, and the art is on disk", function()
+test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn", function()
     -- LibKa0s#42 (Options 28 / OptionsIdList 3). An IdList help mark draws this
     -- library's own white `info` art only when the descriptor names the host's
     -- FOLDER; with no `addonName` it falls back to Blizzard's blue disc and a
@@ -631,8 +632,15 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and the art 
     -- the same value core/DebugLogSetup.lua passes -- never a display label.
     -- KickCD has no IdList with help today, so this is latent: it protects the
     -- first help line anyone adds.
+    --
+    -- From LibKa0s v1.75.0 the copy ships only the icons CLAUDE.md's
+    -- `LibKa0s icons:` line declares (library-stack-§7, the icon subset), and
+    -- `info` is library-drawn only by an O.IdList help mark. KickCD draws no
+    -- O.IdList (settings/Spells_Header.lua uses H.IdInput), so `info` is not
+    -- declared and not shipped. The declaration is read with the kit's own parser
+    -- (VendorSync.iconDeclaration), never a second one in this repo.
     -- red under: `local _, NS = ...` with no `addonName = addonName,` in the
-    -- descriptor, or a vendor that dropped media/icons/info.tga.
+    -- descriptor, or adding an O.IdList call without declaring info.
     local fh = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
     local src = fh:read("*a"); fh:close()
     src = src:gsub("%-%-[^\r\n]*", "")
@@ -642,9 +650,38 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and the art 
     assertTrue(body ~= nil, "the Options descriptor table was not found")
     assertTrue(body:match("\n%s*addonName%s*=%s*addonName%s*,") ~= nil,
         "the Options descriptor does not pass addonName, so help marks draw the client glyph")
+
+    local drawsIdList = {}
+    for _, dir in ipairs({ "core", "modules", "settings" }) do
+        local pipe = assert(io.popen("ls " .. T.root .. "/" .. dir .. "/*.lua 2>/dev/null"))
+        for path in pipe:lines() do
+            local f = assert(io.open(path, "r"))
+            local code = f:read("*a"):gsub("%-%-[^\r\n]*", "")
+            f:close()
+            if code:match("IdList%(") then drawsIdList[#drawsIdList + 1] = path end
+        end
+        pipe:close()
+    end
+
+    local VendorSync = dofile(T.root .. "/tests/_kit/vendor_sync.lua")
+    local fhc = assert(io.open(T.root .. "/CLAUDE.md", "r"))
+    local decl, why = VendorSync.iconDeclaration(fhc:read("*a"))
+    fhc:close()
+    assertTrue(decl ~= nil and decl.mode == "list",
+        "CLAUDE.md carries no usable `LibKa0s icons:` list: " .. tostring(why))
+    local declared = {}
+    for _, name in ipairs(decl.names) do declared[name] = true end
     local art = io.open(T.root .. "/libs/LibKa0s/media/icons/info.tga", "rb")
-    assertTrue(art ~= nil, "libs/LibKa0s/media/icons/info.tga is not vendored, so the path would be dead")
     if art then art:close() end
+    if #drawsIdList == 0 then
+        assertTrue(not declared.info,
+            "KickCD draws no O.IdList, so `info` must not be on the `LibKa0s icons:` line")
+        assertTrue(art == nil,
+            "libs/LibKa0s/media/icons/info.tga ships although `info` is not declared")
+    else
+        assertTrue(declared.info == true, "an IdList is drawn (" .. table.concat(drawsIdList, ", ")
+            .. ") but `info` is not on the `LibKa0s icons:` line, so its help mark draws blank")
+    end
 end)
 
 -- ── the LSM30_Border fixup, promoted out of core/LSMPatch.lua ────────────────
