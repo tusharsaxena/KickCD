@@ -85,12 +85,13 @@ Const.GCD_UPPER = 1.6
 -- The per-style knobs of a ready glow, one entry per knob, in the order the
 -- Ready glow tab draws them. Read by settings/Icons.lua (one row per knob per
 -- slot, `units.<unit>.icons.{primary,secondary}Glow<leaf>`) and by
--- modules/IconGrid_Render.lua (the clamp, the fallback, and which argument of
--- LibCustomGlow-1.0's _Start the value is). `styles` names the glow types a
+-- modules/IconGrid_Render.lua (the clamp, the fallback, and the driver's knob
+-- name, the leaf with its first letter lowered). `styles` names the glow types a
 -- knob applies to; under any other type its row is dimmed and the value unused.
 --
 -- The set, the ranges and the defaults are shared with Ka0s Drop Watcher's
--- upgrade glow, so both addons read the same. The defaults restate
+-- upgrade glow, so both addons read the same; this one is driven through
+-- LibKa0s-Glow-1.0. The defaults restate
 -- defaults/Profile.lua's, which stays the profile's source (savedvariables-§2);
 -- tests/test_icongrid_glow_knobs.lua holds the two equal. PixelLength 0 means
 -- "automatic": the library sizes the lines from the frame. Every default is

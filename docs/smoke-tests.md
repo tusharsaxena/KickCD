@@ -19,7 +19,7 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 20 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp |
+| GRID-1 – 21 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
 | CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
@@ -556,6 +556,19 @@ Which checks to run for a partial change:
   `primaryGlowPixelLines = 900` and `primaryGlowPixelThickness = -5` into the SavedVariables file
   while logged out, log in with a pixel-style primary glow showing → the glow draws twenty one-pixel
   lines and no Lua error. Result:
+- **GRID-21. The ready glow draws through LibKa0s-Glow-1.0 as it did before.** Grid → Icons → Ready
+  glow, primary trigger `always`, an interrupt off cooldown. Cycle the primary style through
+  `Button (rotating rays)`, `Proc (flipbook)`, `Pixel border` and `Auto cast sparkles`, then do the
+  same for the secondary slot → each style draws as it did before the change, the proc opening burst
+  plays once per start, and switching style leaves no stale glow of the previous style. With a
+  pixel-style primary glow showing, move Primary lines, frequency and thickness and untick Primary
+  dark border → the running glow restarts at once with the new values (GRID-19 again), and
+  `/kcd set units.target.icons.primaryGlowPixelLines 900` still clamps to `20` (GRID-20). Primary
+  trigger `target_casting_interruptible`, target a hostile caster → the glow lights only on
+  interruptible casts; an uninterruptible cast neither glows nor shows. Rename
+  `libs/LibCustomGlow-1.0` aside, `/reload`, `/kcd debug on` → one
+  `[Init] LibCustomGlow-1.0 absent; no icon glows` line and no Lua error with a ready interrupt;
+  restore the folder. Result:
 
 ## CAST
 
@@ -1033,3 +1046,4 @@ off on its own `Result:` line, then remove its row here.
 |---|---|---|
 | GRID-19 | feature/glow-options (DropWatcher feedback-21 K1) | New: the per-style glow knobs, their dimming and their live restart |
 | GRID-20 | feature/glow-options (DropWatcher feedback-21 K1) | New: the glow knobs' clamp on a hand-set value |
+| GRID-21 | KC-01 LibKa0s-Glow-1.0 | New: the four styles × two slots, the knob restart and the interruptible-only mask through the driver |

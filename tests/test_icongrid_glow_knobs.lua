@@ -5,23 +5,30 @@
 -- defaults (shared with Ka0s Drop Watcher's upgrade glow), settings/Icons.lua
 -- draws one row per knob per slot on Grid -> Icons -> Ready glow, and
 -- modules/IconGrid_Render.lua's StartGlow hands the chosen style's knobs to
--- LibCustomGlow-1.0. Three things are pinned here:
+-- LibKa0s-Glow-1.0 (core/GlowSetup.lua's NS.GlowLib), which maps them onto
+-- LibCustomGlow-1.0. The recorder below stands in for LibCustomGlow, so the
+-- positional cases pin the driver's output. Four things are pinned here:
 --
 --   * the three restatements agree: the constant, defaults/Profile.lua and the
 --     schema rows (default, range, interleaved primary | secondary order);
 --   * a knob row is dimmed under any other style and under trigger Never, and
 --     enabled for its own style;
 --   * the render passes each knob to the right argument, clamps a bad stored
---     value, and restarts a running glow when a knob moves (but not otherwise).
+--     value, and restarts a running glow when a knob moves (but not otherwise);
+--   * the glow goes through the driver and nowhere else: no authored file
+--     calls a LibCustomGlow _Start/_Stop itself (design-glow §8, the no-fork
+--     check), and a LibKa0s-less load draws no glow and raises nothing.
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertFalse, T.assertNil
 
 local SLOTS = { "primary", "secondary" }
 
---- A LibCustomGlow stand-in that records every _Start call's arguments.
+--- A LibCustomGlow stand-in that records every _Start call's arguments in
+--- `calls` and every _Stop call's in `stops` (kept apart, so a case counting
+--- starts is not thrown by the stop-before-start every restart does).
 local function recordingLCG()
-    local lcg = { calls = {} }
+    local lcg = { calls = {}, stops = {} }
     for _, name in ipairs({ "ButtonGlow_Start", "ProcGlow_Start",
                             "PixelGlow_Start", "AutoCastGlow_Start" }) do
         lcg[name] = function(...)
@@ -30,7 +37,9 @@ local function recordingLCG()
     end
     for _, name in ipairs({ "ButtonGlow_Stop", "ProcGlow_Stop",
                             "PixelGlow_Stop", "AutoCastGlow_Stop" }) do
-        lcg[name] = function() end
+        lcg[name] = function(...)
+            lcg.stops[#lcg.stops + 1] = { name = name, n = select("#", ...), ... }
+        end
     end
     return lcg
 end
@@ -263,4 +272,103 @@ test("UpdateGlow hands the icon's slot config to StartGlow", function()
     local c = lcg.calls[#lcg.calls]
     assertEqual(c.name, "AutoCastGlow_Start")
     assertEqual(c[3], 9)
+end)
+
+-- ── through LibKa0s-Glow-1.0 (KC-01, LibKa0s#56) ────────────────────────────
+
+test("StopGlow stops all four styles under the KickCD key, the button style keyless", function()
+    -- red under: StopGlow stopping only the running style, or passing the key
+    -- to ButtonGlow_Stop (which takes none: one Blizzard-style glow per frame)
+    local icon, lcg = glowIcon()
+    icon:StartGlow("pixel", RED, false, {}, true)
+    lcg.stops = {}
+    icon:StopGlow()
+    local s = lcg.stops
+    assertEqual(#s, 4, "one stop per style")
+    assertEqual(s[1].name, "ButtonGlow_Stop"); assertEqual(s[1].n, 1, "the button stop is keyless")
+    assertTrue(s[1][1] == icon.glow, "on the icon's own glow child")
+    local rest = { "PixelGlow_Stop", "AutoCastGlow_Stop", "ProcGlow_Stop" }
+    for i, name in ipairs(rest) do
+        assertEqual(s[i + 1].name, name)
+        assertTrue(s[i + 1][1] == icon.glow, name .. " on the glow child")
+        assertEqual(s[i + 1][2], "KickCD", name .. " under the KickCD key")
+    end
+    assertNil(icon._glowKind, "a stopped glow records no kind")
+    assertNil(icon._glowColor, "nor a color")
+end)
+
+test("a glow start hands the driver a fresh color array every restart", function()
+    -- driver trap 4: the button style keeps the color by reference, so the
+    -- host must never mutate one it handed over.
+    -- red under: StartGlow reusing one color table across restarts
+    local icon, lcg = glowIcon()
+    icon:StartGlow("pixel", RED, false, {}, true)
+    icon:StartGlow("pixel", { r = 0, g = 1, b = 0, a = 1 }, false, {}, true)
+    assertEqual(#lcg.calls, 2, "the color change restarted the glow")
+    local c1, c2 = lcg.calls[1][2], lcg.calls[2][2]
+    assertTrue(type(c1) == "table" and type(c2) == "table", "both starts carry a color")
+    assertFalse(rawequal(c1, c2), "each restart hands over a new color array")
+    assertEqual(c1[1], 1, "the first array still reads the first color")
+    assertEqual(c2[2], 1)
+end)
+
+test("no authored file drives LibCustomGlow-1.0 itself", function()
+    -- design-glow §8, the no-fork check (anti-pattern #47): the style mapping is
+    -- LibKa0s-Glow-1.0's alone. core/DebugLogSetup.lua's OPTIONAL_LIBS probe is
+    -- the one place allowed to resolve the library, and it does so by table
+    -- entry, never by a literal LibStub("LibCustomGlow-1.0") call.
+    -- red under: re-adding LCG.PixelGlow_Start in modules/IconGrid_Render.lua
+    assertTrue(io.popen ~= nil, "io.popen is unavailable; this gate must not pass blind")
+    local pipe = io.popen("git -C '" .. T.root .. "' ls-files --cached --others --exclude-standard '*.lua'")
+    assertTrue(pipe ~= nil, "io.popen returned no handle for `git ls-files`")
+    local paths, seen = {}, {}
+    for path in pipe:lines() do
+        if not path:match("^libs/") and not path:match("^tests/") and not seen[path] then
+            seen[path] = true
+            paths[#paths + 1] = path
+        end
+    end
+    pipe:close()
+    assertTrue(#paths > 0, "`git ls-files` reported no Lua files; this gate cannot run")
+    local offenders = {}
+    for _, rel in ipairs(paths) do
+        local fh = io.open(T.root .. "/" .. rel, "r")
+        if fh then
+            local n = 0
+            for line in fh:lines() do
+                n = n + 1
+                if line:find("Glow_Start", 1, true) or line:find("Glow_Stop", 1, true)
+                   or (rel ~= "core/DebugLogSetup.lua"
+                       and line:match("LibStub%s*%(?%s*[\"']LibCustomGlow%-1%.0")) then
+                    offenders[#offenders + 1] = rel .. ":" .. n
+                end
+            end
+            fh:close()
+        end
+    end
+    assertTrue(#offenders == 0,
+        "LibCustomGlow-1.0 driven outside LibKa0s-Glow-1.0 at: " .. table.concat(offenders, ", "))
+end)
+
+test("a LibKa0s-less load draws no glow and raises nothing", function()
+    -- NS.GlowLib's stub answers Start with false, so StartGlow records no
+    -- state: the same outcome as an absent LibCustomGlow-1.0.
+    -- red under: StartGlow recording _glowKind without asking the driver
+    local lcg = recordingLCG()
+    local inst = T.load(true, false, function(mocks)
+        mocks.__libs["LibCustomGlow-1.0"] = lcg
+    end, { libFiles = {} })
+    assertTrue(inst.mocks.LibStub("LibKa0s-Glow-1.0", true) == nil, "sanity: the driver is absent")
+    local IconGrid = inst.NS:GetModule("IconGrid")
+    local mk = inst.mocks.CreateFrame
+    local icon = mk("Button")
+    icon.glow = mk("Frame")
+    icon.unit = "target"
+    inst.mocks.Mixin(icon, IconGrid.Icon)
+    local ok, err = pcall(icon.StartGlow, icon, "pixel", RED, false, {}, true)
+    assertTrue(ok, "StartGlow raised on the degraded path: " .. tostring(err))
+    assertNil(icon._glowKind, "no glow kind is recorded")
+    assertEqual(#lcg.calls, 0, "nothing reached LibCustomGlow")
+    ok, err = pcall(icon.StopGlow, icon)
+    assertTrue(ok, "StopGlow raised on the degraded path: " .. tostring(err))
 end)

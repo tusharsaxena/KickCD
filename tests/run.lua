@@ -294,6 +294,9 @@ Kit.setSurfaceSource{
     -- names it carries, so without this row the by-name call raises "the live surface never
     -- loaded" (LibKa0s docs/api/Compat/version-1-docs.md, "How a host wires it").
     ["LibKa0s-Compat-1.0"]   = shared.mocks.LibStub("LibKa0s-Compat-1.0", true),
+    -- LibKa0s-Glow-1.0 is stateless too, a library table for the same reason: core/GlowSetup.lua
+    -- publishes it whole as NS.GlowLib, and its stub is held to it by name.
+    ["LibKa0s-Glow-1.0"]     = shared.mocks.LibStub("LibKa0s-Glow-1.0", true),
 }
 
 -- ---------------------------------------------------------------------------
