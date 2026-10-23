@@ -602,6 +602,22 @@ Total.
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 
+### test_sim_strip.lua (13)
+
+- TOC: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
+- SimStrip: idle, no strip frame exists (it is built lazily on the first start)
+- SimStrip: on start the strip is shown, built with the sim flavor, and names the scenario
+- SimStrip: with the default label above the grid, the strip sits BOTTOM to the label's TOP, 2 up
+- SimStrip: one strip per enabled grid: the focus grid carries its own
+- SimStrip: with the target label off, the strip anchors to the target grid frame
+- SimStrip: with the target disabled, the strip marks the focus grid
+- SimStrip: with both units disabled mid-session, the strip floats at UIParent CENTER 0, 180
+- SimStrip: visibility target_casting with no cast hides the grid, not the strip
+- SimStrip: a GRID_LAYOUT or a CONFIG_CHANGED (units) re-places it
+- SimStrip: the width is max(220, the grid's width)
+- SimStrip: on stop it hides and releases its bus subscriptions
+- SimStrip: without the library's sim flavor, no strip, no error, and the session runs
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1761,6 +1777,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 9 |
+| test_sim_strip.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1821,4 +1838,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1467** |
+| **Total** | **1480** |

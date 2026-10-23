@@ -220,7 +220,8 @@ function Host.Prepare(_, _, _, ready)
     -- The watched set re-polls through the seam, so every icon answers from the world: ready.
     local Cooldowns = module("Cooldowns")
     if Cooldowns then Cooldowns:Rebuild() end
-    -- The strip arrives in KC-09 (modules/SimStrip.lua).
+    -- The sim strip over each enabled grid (modules/SimStrip.lua, KC-09). Guarded: the TOC loads it,
+    -- but a partial headless load may not.
     if NS.SimStrip then NS.SimStrip:Refresh() end
     -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo).
     if NS.Sim and NS.Sim.ShowPanel then NS.Sim:ShowPanel() end

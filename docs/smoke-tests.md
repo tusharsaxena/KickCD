@@ -14,7 +14,7 @@ and a retired one leaves its number unused.
 | ID range | Theme | What it covers |
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 22 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows, the `sim` verb's row and its refusal while disabled, what stops a simulation, and the four simulator scenarios |
+| SLASH-1 – 24 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows, the `sim` verb's row and its refusal while disabled, what stops a simulation, the four simulator scenarios, and the sim strip over the grids |
 | PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
@@ -245,6 +245,16 @@ Which checks to run for a partial change:
 - **SLASH-22. The `leave` scenario (KC-08, SM-KC-12).** `/kcd sim start leave` → after Valeera leaves,
   the focus bar clears and the target bar picks up Bonecaller's cast mid-way, and your kick interrupts
   it. Result:
+- **SLASH-23. The sim strip marks the grids (KC-09, SM-KC-13).** `/kcd set visibility target_casting`,
+  then `/kcd sim start pull` → a cyan strip with an info icon sits above the Target label (and one above
+  the Focus label), reading `Simulation: Mythic+ pull, several kickers - /kcd sim stop ends it.`; it
+  stays visible between casts while the visibility mode hides the grid. `/kcd sim stop`, then
+  `/kcd set units.target.label.show false` and start again → the strip sits on the grid's top edge.
+  `/kcd sim stop` → every strip disappears. Result:
+- **SLASH-24. The sim strip follows the enabled grids (KC-09, SM-KC-14).** During `/kcd sim start pull`,
+  untick Target in the settings → the Target strip goes and the Focus grid keeps its strip; untick Focus
+  too → one strip floats near the screen center; no Lua error. Re-tick both and `/kcd sim stop`.
+  Result:
 
 ## PANEL
 
@@ -1092,3 +1102,5 @@ off on its own `Result:` line, then remove its row here.
 - SLASH-20 (KC-08): the `pull` scenario plays on the real grid.
 - SLASH-21 (KC-08): the `boss` charges and the `miss` uninterruptible cast.
 - SLASH-22 (KC-08): the `leave` scenario's target swap onto a cast in progress.
+- SLASH-23 (KC-09): the sim strip marks the grids, above the label or the grid, and goes on the stop.
+- SLASH-24 (KC-09): the sim strip follows the enabled grids, and floats with none.
