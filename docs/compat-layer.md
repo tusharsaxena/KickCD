@@ -46,6 +46,25 @@ Two dumps stay on the raw client on purpose: `Compat.DebugInterrupt` and `module
 
 The seam itself is `core/SimSetup.lua` (`LibKa0s-Sim-1.0`'s `NewSeam`), loaded straight after this file: it wraps every function member of `NS.Compat` in place, once, except the four PURE ones (`IsSecret`, `_firstReturn`, `NewDuration`, `DebugInterrupt`). So a member added to this table must be defined in this file, never assigned onto `NS.Compat` from a later one: a late member escapes the wrap, and `tests/test_sim_seam.lua` fails on `NS.SimSeam:Unwrapped()`.
 
+### Which members the simulator answers
+
+While a simulation session runs, `modules/SimWorld.lua` answers these members from the world on `NS.SimHost.world` (KickCD#38, the Sim major's host contract H1). Its providers are registered once, at file load, through `NS.SimSeam:SetProvider`; each reads the world at call time and answers `fallback(...)`, the live member, when there is none. Idle, every member answers the live client.
+
+| Member | Simulated answer |
+|---|---|
+| `GetSpellCooldown(id)` | `start, duration, true, 1, true` while the spell's own cooldown, a 0-charge lockout or (for an on-GCD spell) the GCD runs, the later-ending one winning; `0, 0, false, 1, false` when ready |
+| `GetSpellCooldownDuration(id)` | `NewDuration(start, duration)` of the same cooldown; an idle spell answers `NewDuration(0, 0)`, the client's live but zeroed shape |
+| `GetSpellCharges(id)` | `charges, max, chargeStart, chargeDuration` for a spell given charges (`0, 0` for the last two when full); `nil` for any other |
+| `IsSpellUsable(id)` | `true, false` |
+| `UnitExists(unit)` | `true` for `player` and for a target/focus set to an enemy; `false` for any other unit, party units included |
+| `UnitCanAttack(unit)` | whether the unit's enemy is hostile |
+| `UnitIsDead(unit)` | whether the unit's enemy was killed |
+| `UnitCastingInfo(unit)` | the client's nine positions for a cast (name 1, texture 3, start/end ms 4-5, castID 7, `notInterruptible` 8, spellID 9); `nil` for a channel or no cast |
+| `UnitChannelInfo(unit)` | the client's eight positions for a channel (`notInterruptible` 7, spellID 8); `nil` otherwise |
+| `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)` | `NewDuration(start, duration)` of the cast or channel; `nil` otherwise |
+
+`GetCastingInfo` / `GetChannelInfo` have no provider: they compose from the raw readers above. Spell identity is not simulated: `GetSpellInfo`, `GetSpellTexture`, `IsSpellAvailable` and `GetSpecialization*` answer live, the player's real spells (design D4).
+
 ## State helpers (visibility / policy)
 
 The visibility helpers were formerly in this layer; they were relocated to `core/State.lua` in CR-27 because they're addon-policy decisions, not API normalization:

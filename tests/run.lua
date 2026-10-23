@@ -185,6 +185,7 @@ local SUITES = {
     "test_compat_debug",
     "test_compat_units",
     "test_sim_seam",
+    "test_sim_world",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",

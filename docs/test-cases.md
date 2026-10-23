@@ -504,6 +504,26 @@ Total.
 - LibKa0s absent: `/kcd sim` reaches the stub through the degraded dispatcher
 - `/kcd sim` while disabled is refused with the library's line and does not reach NS.Sim
 
+### test_sim_world.lua (17)
+
+- SimWorld: Build answers the empty world shape
+- TOC: modules/SimWorld.lua loads straight after modules/UnitLabel.lua
+- SimWorld cooldowns: an idle spell answers ready, usable and a zeroed duration
+- SimWorld cooldowns: StartCooldown answers t, 12, true, 1, true and a 12 s duration
+- SimWorld cooldowns: the expiry timer clears the cooldown and fires SPELL_UPDATE_COOLDOWN once
+- SimWorld cooldowns: ClearCooldown ends it at once and cancels the expiry timer
+- SimWorld GCD: an on-GCD spell answers the GCD, an offGcd spell answers ready
+- SimWorld GCD: an on-GCD spell's own longer cooldown wins over the GCD
+- SimWorld charges: SetCharges, UseCharge, the recharge timer and the 0-charge lockout
+- SimWorld units: target exists, is attackable and alive; party1 is absent; player exists
+- SimWorld casts: UnitCastingInfo answers the client's nine positions and a 3 s duration
+- SimWorld casts: a channel answers through UnitChannelInfo and nil through UnitCastingInfo
+- SimWorld casts: the same enemy set as focus answers the same cast on focus
+- SimWorld idle: with no session every member answers the live client
+- SimWorld no world while active: the providers answer fallback(...)
+- SimWorld.CanBuild: true with a duration constructor, false when NewDuration answers nil
+- SimWorld: the mutators are no-ops with no world installed
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1658,6 +1678,7 @@ Total.
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
 | test_sim_seam.lua | 9 |
+| test_sim_world.lua | 17 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1718,4 +1739,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1384** |
+| **Total** | **1401** |
