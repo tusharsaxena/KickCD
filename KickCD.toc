@@ -139,6 +139,11 @@ modules\UnitLabel.lua
 # The simulator (KickCD#38): first of the sim block. modules/SimWorld.lua registers
 # its seam providers on NS.SimSeam at file load, so it follows core\SimSetup.lua.
 modules\SimWorld.lua
+# LOAD-BEARING POSITION: modules/Sim.lua binds NS.SimSeam to the live session (Sim:New) and
+# overwrites core/SimSetup.lua's stub NS.Sim, so every later sim file (and any NS.Sim:OnStop
+# registration) meets the live instance. It follows modules\SimWorld.lua, whose providers it
+# builds the world for, and creates NS.SimHost.SCENARIOS, which modules\SimScenario.lua fills.
+modules\Sim.lua
 # The sections of `/kcd diagnostics` (debug-logging-§14). Last in this block by
 # convention only: every module it reads it resolves at CALL time, when the
 # report runs, and core\DebugLogSetup.lua asks it for its sections the same way.

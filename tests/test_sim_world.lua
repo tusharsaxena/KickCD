@@ -6,8 +6,8 @@
 -- enemies with their casts. Spell identity (GetSpellInfo, the texture, availability, the spec) is
 -- not provided: it answers live, the player's real spells (design D4).
 --
--- Until modules/Sim.lua (KC-05) builds the live host, the session these cases run under is
--- tests/sim_support.lua's throwaway one (S.testSession), on each environment's own seam.
+-- The session these cases run under is the addon's own NS.Sim on tests/sim_support.lua's injected
+-- `test` scenario (S.testSession), with the fixture's bare prepare: a world a case installs stays.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse, assertNil =

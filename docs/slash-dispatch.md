@@ -191,6 +191,29 @@ failure it guards against.
 
 Pinned by `tests/test_slash_degraded.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
+## `/kcd sim` refusals
+
+A `/kcd sim start <scenario>` (and the step panel's Start) that cannot run prints exactly one line
+and starts nothing: no world, no rebuild, no panel. The library refuses an unknown scenario and a
+second session first; then the host's `refusal` (`NS.SimHost.Refusal`, `modules/Sim.lua`), run
+inside `NS.SimSeam:Live` so every read answers the real client, checks these in order and prints
+the first that holds. The guard is the word its `Sim` debug line names.
+
+| # | Condition | Line | Guard |
+|---|---|---|---|
+| 1 | The addon is stood down (`NS.IsDown()`) | The library's disabled line, `NS.Slash.cli:DisabledLine()`; while a perf capture holds the latch, the perf line below instead | `stood down` / `perf capture` |
+| 2 | A perf capture is running (`NS.Perf.on`) | `A performance capture is running: finish it first (/kcd perf finish).` | `perf capture` |
+| 3 | The grids are unlocked (`locked = false`): unlocking is KickCD's preview | `Lock the grids first (/kcd lock): unlocking is KickCD's preview.` | `unlocked` |
+| 4 | In combat (`NS.State.inCombat`, or `InCombatLockdown()`) | `A simulation cannot start in combat.` | `combat` |
+| 5 | In an instance (`IsInInstance()`) | `A simulation cannot start in an instance.` | `instance` |
+| 6 | In a group (`IsInGroup()`) | `A simulation cannot start in a group.` | `group` |
+| 7 | Neither the Target nor the Focus grid is enabled | `Enable the Target or the Focus grid first: the simulation plays on them.` | `no unit` |
+| 8 | The current spec's list has no enabled spell the player can use | `Your current spec tracks no spell you can use: add one with /kcd spells add, then start again.` | `no spell` |
+| 9 | The client cannot build a duration object (`NS.SimWorld.CanBuild()`) | `This client cannot build simulated cooldowns, so the simulator cannot run.` | `no durations` |
+
+The library's own backstop, the stand-down, runs after these. Pinned by `tests/test_sim_session.lua`,
+each condition alone and all nine peeled off in order.
+
 ## Degraded verbs: a load without LibKa0s
 
 `/kcd` is registered unconditionally, so a load whose `libs/LibKa0s/` is missing still answers it,
@@ -253,7 +276,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 | `diagnostics` | Write the diagnostic report into the debug console. | **Reserved** (`slash-commands-§2`) and live while disabled (`LibKa0s-Slash-1.0` minor 16). Calls `NS.DebugLog:RunDiagnostics()`; the library writes the markers, the identity header and the cap, and `modules/Diagnostics.lua` supplies the sections (`debug-logging-§14`). A run turns debug logging on for the session first when it is off. `/kcd debug diagnostics` is the same report, tested before every other `debug` word. No other name runs it. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
-| `sim [args]` | Run a simulation of interrupts and cooldowns. | The simulator's **one** row (`LibKa0s-Sim-1.0`'s host contract H7, KickCD#38): `NS.Sim:RunVerb(rest)`, read at call time, and the library's verbs parse the rest. A **feature verb**: refused while the addon is disabled (see above), and on `NS.FEATURE_VERBS` so the degraded stub refuses it too. **Slash-only**: no launcher entry and no key binding (the major's own ruling). `core/SimSetup.lua` publishes `NS.Sim`; with `LibKa0s-Sim-1.0` absent, or until the simulator module builds the live instance, `NS.Sim` is the library's reference stub, which prints `The simulator needs LibKa0s-Sim-1.0.` Pinned by `tests/test_sim_seam.lua` and `tests/test_slash_degraded.lua`. |
+| `sim [args]` | Run a simulation of interrupts and cooldowns. | The simulator's **one** row (`LibKa0s-Sim-1.0`'s host contract H7, KickCD#38): `NS.Sim:RunVerb(rest)`, read at call time, and the library's verbs parse the rest. A **feature verb**: refused while the addon is disabled (see above), and on `NS.FEATURE_VERBS` so the degraded stub refuses it too. **Slash-only**: no launcher entry and no key binding (the major's own ruling). `modules/Sim.lua` builds the live `NS.Sim`, and its host refuses a start for the reasons in [`/kcd sim` refusals](#kcd-sim-refusals); with `LibKa0s-Sim-1.0` absent, `NS.Sim` stays `core/SimSetup.lua`'s reference stub, which prints `The simulator needs LibKa0s-Sim-1.0.` Pinned by `tests/test_sim_seam.lua` and `tests/test_slash_degraded.lua`. |
 
 `list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 

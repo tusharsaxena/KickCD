@@ -66,6 +66,72 @@ L["Run a simulation of interrupts and cooldowns — try `/kcd sim`"] =
 L["The simulator needs LibKa0s-Sim-1.0."] =
     "The simulator needs LibKa0s-Sim-1.0."
 
+-- The simulator's session host (modules/Sim.lua, KC-05): the start refusals in CHECKS order,
+-- the STARTED line, the stop lines by reason, the role words a step label carries, and the step
+-- panel's tooltip lines.
+L["A performance capture is running: finish it first (/kcd perf finish)."] =
+    "A performance capture is running: finish it first (/kcd perf finish)."
+L["Lock the grids first (/kcd lock): unlocking is KickCD's preview."] =
+    "Lock the grids first (/kcd lock): unlocking is KickCD's preview."
+L["A simulation cannot start in combat."] =
+    "A simulation cannot start in combat."
+L["A simulation cannot start in an instance."] =
+    "A simulation cannot start in an instance."
+L["A simulation cannot start in a group."] =
+    "A simulation cannot start in a group."
+L["Enable the Target or the Focus grid first: the simulation plays on them."] =
+    "Enable the Target or the Focus grid first: the simulation plays on them."
+L["Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."] =
+    "Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."
+L["This client cannot build simulated cooldowns, so the simulator cannot run."] =
+    "This client cannot build simulated cooldowns, so the simulator cannot run."
+L["Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."] =
+    "Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."
+L["Simulation stopped: you entered combat."] =
+    "Simulation stopped: you entered combat."
+L["Simulation stopped: a loading screen."] =
+    "Simulation stopped: a loading screen."
+L["Simulation stopped: you joined a group."] =
+    "Simulation stopped: you joined a group."
+L["Simulation stopped: the profile changed."] =
+    "Simulation stopped: the profile changed."
+L["Simulation stopped: the grids were unlocked."] =
+    "Simulation stopped: the grids were unlocked."
+L["Simulation stopped: the addon stood down."] =
+    "Simulation stopped: the addon stood down."
+L["your kick"] =
+    "your kick"
+L["your CC"] =
+    "your CC"
+L["Fires"] =
+    "Fires"
+L["Through"] =
+    "Through"
+L["the real cooldown and cast engine"] =
+    "the real cooldown and cast engine"
+L["Did"] =
+    "Did"
+L["Builds"] =
+    "Builds"
+L["a simulated world: enemy casts and your cooldowns"] =
+    "a simulated world: enemy casts and your cooldowns"
+L["Uses"] =
+    "Uses"
+L["your real grids, cast bars and spell list"] =
+    "your real grids, cast bars and spell list"
+L["Saves"] =
+    "Saves"
+L["nothing: your settings are not touched"] =
+    "nothing: your settings are not touched"
+L["Ends"] =
+    "Ends"
+L["the simulation"] =
+    "the simulation"
+L["Restores"] =
+    "Restores"
+L["your real target, focus and cooldowns"] =
+    "your real target, focus and cooldowns"
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

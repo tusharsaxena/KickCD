@@ -524,6 +524,27 @@ Total.
 - SimWorld.CanBuild: true with a duration constructor, false when NewDuration answers nil
 - SimWorld: the mutators are no-ops with no world installed
 
+### test_sim_session.lua (18)
+
+- TOC: modules/Sim.lua loads straight after modules/SimWorld.lua, under a LOAD-BEARING comment
+- Sim session: NS.Sim is the live instance bound to NS.SimSeam, not core/SimSetup.lua's stub
+- Sim refusals: each condition alone refuses with exactly its line and builds nothing
+- Sim refusals: InCombatLockdown alone refuses as combat
+- Sim refusals: with every condition set they refuse in CHECKS order, one by one
+- Sim refusals: the library refuses an unknown scenario and a second session first
+- Host.ResolveSpells: the first watched interrupt is the kick, the first other kept spell the CC
+- Sim start: STARTED, the engine rebuilt on the world, the spells resolved, the panel asked, ready
+- Sim deliver: NS.Sim:Fire('SPELL_UPDATE_COOLDOWN') runs Cooldowns' handler
+- Sim stop: the world dropped, combat cleared, and the engine re-synced with the seam OFF
+- Sim stop: reason `combat` with simulated combat delivers NO PLAYER_REGEN_ENABLED
+- Sim stop: no simulated combat, no PLAYER_REGEN_ENABLED
+- Sim saved data: KickCDDB is identical before a start and after a start, a step and a stop
+- Host.Play: an unknown step kind raises a clear error, and the run pauses
+- Sim panel: PanelRows while idle previews the first scenario's steps
+- Sim panel: stepLabel names `your kick` by the real spell while running, the role word idle
+- Sim panel: stepTip names the events, the engine and, once played, the detail
+- Sim panel: anchorTo is the target grid while shown, else the focus grid, else nil
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1679,6 +1700,7 @@ Total.
 | test_compat_units.lua | 27 |
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
+| test_sim_session.lua | 18 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1739,4 +1761,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1401** |
+| **Total** | **1419** |

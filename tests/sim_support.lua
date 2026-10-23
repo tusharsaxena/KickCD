@@ -157,81 +157,92 @@ function S.load(opts)
     return env
 end
 
--- ── a throwaway session (PLAN-REVIEW RESOLUTION) ──────────────────────────────────────────────
+-- ── a test session on the live host ──────────────────────────────────────────────────────────
 --
--- Until modules/Sim.lua (KC-05) builds the live host, NS.Sim is core/SimSetup.lua's stub, so a suite
--- that needs a RUNNING session builds its own here: a real LibStub("LibKa0s-Sim-1.0"):New bound to
--- the environment's own NS.SimSeam and delivering through NS.DeliverEvent, the LibKa0s
--- tests/test_sim_host.lua shape. One scenario, `test`, whose timeline is the steps the caller passes
--- (copied per session: the library stamps `ranAt`, `detail` and `index` onto a step that ran).
+-- modules/Sim.lua (KC-05) binds NS.SimSeam to the addon's own NS.Sim at load, and one seam binds one
+-- session for good, so a suite cannot build a second instance: it injects a scenario, `test`, into
+-- the live host's NS.SimHost.SCENARIOS (read at call time by the library) and starts NS.Sim on it.
+-- The timeline is the steps the caller passes, copied per session (the library stamps `ranAt`,
+-- `detail` and `index` onto a step that ran). Injected once per environment; a later call swaps in
+-- new steps and hooks.
 --
--- One seam binds one session for good, so the instance is built once per environment and kept on
--- it; a later call swaps in new steps and hooks. Once KC-05 binds the seam at load, a second New on
--- it raises, and this fixture must move to injecting its scenario into the live host instead.
+-- BARE (the default). The host's own Prepare, Refusal and Play are swapped for the fixture's for
+-- the session's life, as the throwaway instance KC-03 built had them: no refusal, a prepare that
+-- builds nothing (a world the caller installed stays), and play = opts.play or the host's own.
+-- `opts.host = true` keeps the host's real hooks, which tests/test_sim_session.lua drives.
 
---- Build (once per env) and, unless `opts.start == false`, start a throwaway session over `steps`,
---- pointing env.NS.Sim at it. Answers the instance and a restore() that stops the session, drains
---- its timers and puts the previous NS.Sim back. Always call restore (S.withTestSession does).
---- @param opts table|nil  { start = false } builds without starting; { play = fn(step, session) }
----        drives each step (default: NS.SimHost.Play when a host publishes one, else nothing);
+--- Inject the `test` scenario into env's live host once; answers the fixture state.
+local function inject(env)
+    local state = env.__testSim
+    if state then return state end
+    local Host = env.NS.SimHost
+    assert(Host and Host.SCENARIOS and Host.Prepare, "the environment has no live simulator host")
+    state = { steps = {} }
+    local defs, names = Host.SCENARIOS.defs, Host.SCENARIOS.names
+    defs.test = { label = "Test", timeline = function()
+        local out = {}
+        for i, step in ipairs(state.steps) do
+            local copy = {}
+            for k, v in pairs(step) do copy[k] = v end
+            out[i] = copy
+        end
+        return out
+    end }
+    names[#names + 1] = "test"
+    env.__testSim = state
+    return state
+end
+
+--- Swap the host's hooks for the fixture's (bare mode); answers the function that puts them back.
+local function swapHooks(Host, state)
+    local saved = { Prepare = Host.Prepare, Refusal = Host.Refusal, Play = Host.Play, DelayAfter = Host.DelayAfter }
+    Host.Prepare = function(session, _, startOpts, ready)
+        if state.prepare then state.prepare(session, startOpts) end
+        ready()
+    end
+    Host.Refusal = function() return nil end
+    Host.Play = function(step, session)
+        if state.play then return state.play(step, session) end
+        return saved.Play(step, session)
+    end
+    if state.stepDelay ~= nil then
+        Host.DelayAfter = function(step)
+            local d = state.stepDelay
+            if type(d) == "function" then return d(step) end
+            return d
+        end
+    end
+    return function()
+        for k, v in pairs(saved) do Host[k] = v end
+    end
+end
+
+--- Inject the `test` scenario over `steps` and, unless `opts.start == false`, start NS.Sim on it
+--- with the member Start (nothing plays until a Step or Run). Answers the live instance and a
+--- restore() that stops the session, drains its timers and puts the host's hooks back. Always call
+--- restore (S.withTestSession does).
+--- @param opts table|nil  { start = false } injects without starting; { host = true } keeps the
+---        host's real Prepare/Refusal/Play; { play = fn(step, session) } drives each step;
 ---        { prepare = fn(session, opts) } runs before ready(); { stepDelay = n|fn } paces Run.
 function S.testSession(env, steps, opts)
     opts = opts or {}
     local NS, mocks = env.NS, env.mocks
-    local state = env.__testSim
-    if not state then
-        local Sim = mocks.LibStub("LibKa0s-Sim-1.0", true)
-        assert(Sim, "the environment has no LibKa0s-Sim-1.0")
-        state = { steps = {} }
-        state.sim = Sim:New{
-            name = "KickCD",
-            seam = NS.SimSeam,
-            slash = "/kcd sim",
-            deliver = function(event, ...) return NS.DeliverEvent(event, ...) end,
-            isStoodDown = function() return NS.IsDown and NS.IsDown() or false end,
-            scenarios = {
-                names = { "test" },
-                defs = { test = { label = "Test", timeline = function()
-                    local out = {}
-                    for i, step in ipairs(state.steps) do
-                        local copy = {}
-                        for k, v in pairs(step) do copy[k] = v end
-                        out[i] = copy
-                    end
-                    return out
-                end } },
-            },
-            prepare = function(session, _, startOpts, ready)
-                if state.prepare then state.prepare(session, startOpts) end
-                ready()
-            end,
-            play = function(step, session)
-                local fn = state.play or (NS.SimHost and NS.SimHost.Play)
-                if fn then return fn(step, session) end
-            end,
-            stepDelay = function(step)
-                local d = state.stepDelay
-                if type(d) == "function" then return d(step) end
-                return d or (step and step.wait) or 1
-            end,
-            print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
-        }
-        env.__testSim = state
-    end
+    local state = inject(env)
     state.steps = steps or {}
     state.play, state.prepare, state.stepDelay = opts.play, opts.prepare, opts.stepDelay
 
-    local sim = state.sim
-    local previous = NS.Sim
-    NS.Sim = sim
+    local unswap = function() end
+    if not opts.host then unswap = swapHooks(NS.SimHost, state) end
+    local sim = NS.Sim
     if opts.start ~= false then
         local ok, line = sim:Start{ scenario = "test" }
+        if not ok then unswap() end
         assert(ok, "the test session did not start: " .. tostring(line))
     end
     local function restore()
         if sim:IsActive() then sim:Stop("stop") end
         flush(mocks)
-        NS.Sim = previous
+        unswap()
     end
     return sim, restore
 end
