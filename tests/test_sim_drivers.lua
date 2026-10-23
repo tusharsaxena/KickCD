@@ -83,8 +83,8 @@ test("SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per dr
     local NS = fresh().NS
     local D = NS.SimDrivers
     assertTrue(type(D) == "table" and type(D.DRIVERS) == "table" and type(D.EVENTS) == "table")
-    for _, kind in ipairs({ "Combat", "Target", "Focus", "CastStart", "ChannelStart", "Interruptible", "Kick",
-        "PartyKick", "Complete", "Cc", "Die", "Leave", "Expire" }) do
+    for _, kind in ipairs({ "Setup", "Combat", "Target", "Focus", "CastStart", "ChannelStart", "Interruptible",
+        "Kick", "PartyKick", "Complete", "Cc", "Die", "Leave", "Expire" }) do
         assertTrue(type(D.DRIVERS[kind]) == "function", "no driver for " .. kind)
         assertTrue(type(D.EVENTS[kind]) == "table" and #D.EVENTS[kind] > 0, "no EVENTS row for " .. kind)
     end
@@ -129,6 +129,24 @@ test("SimDrivers Combat: on fires PLAYER_REGEN_DISABLED, marks the session, and 
         assertEqual(NS.Sim:Session().simCombat, false)
         assertEqual(NS.State.inCombat, false)
         assertEqual(#ctx.lines, 0)
+    end)
+end)
+
+test("SimDrivers Setup: your kick gets the step's charges, all ready, then SPELL_UPDATE_CHARGES", function()
+    inSession(function(ctx)
+        local NS = ctx.NS
+        local detail = ctx.play({ kind = "Setup", charges = 2 })
+        assertEqual(ctx.names(), "SPELL_UPDATE_CHARGES")
+        local s = ctx.world.spells[KICK]
+        assertEqual(s.maxCharges, 2); assertEqual(s.charges, 2)
+        assertEqual(s.offGcd, true, "the kick stays off the GCD")
+        assertEqual((NS.Compat.GetSpellCharges(KICK)), 2)
+        assertEqual(detail, NS.L["%s: %d charges"]:format(spellName(NS, KICK), 2))
+        assertEqual(#ctx.lines, 0)
+        ctx.reset()
+        NS.SimHost.kick = nil
+        assertEqual(ctx.play({ kind = "Setup", charges = 2 }), NS.L["no kick tracked"])
+        assertEqual(ctx.names(), "", "with no kick resolved Setup fires nothing")
     end)
 end)
 

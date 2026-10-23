@@ -148,6 +148,10 @@ modules\SimDrivers.lua
 # registration) meets the live instance. It follows modules\SimWorld.lua, whose providers it
 # builds the world for, and creates NS.SimHost.SCENARIOS, which modules\SimScenario.lua fills.
 modules\Sim.lua
+# LOAD-BEARING POSITION: modules/SimScenario.lua fills NS.SimHost.SCENARIOS in place (the party and
+# KickCD#38's four scenarios, KC-08), and modules/Sim.lua creates that table and hands it to Sim:New,
+# so this line follows modules\Sim.lua.
+modules\SimScenario.lua
 # The sections of `/kcd diagnostics` (debug-logging-§14). Last in this block by
 # convention only: every module it reads it resolves at CALL time, when the
 # report runs, and core\DebugLogSetup.lua asks it for its sections the same way.

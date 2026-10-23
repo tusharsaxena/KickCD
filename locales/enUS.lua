@@ -207,6 +207,93 @@ L["no spell"] =
     "no spell"
 L["%s ready"] =
     "%s ready"
+L["%s: %d charges"] =
+    "%s: %d charges"
+-- The scenarios (modules/SimScenario.lua, KC-08): the made-up party, the enemies, each scenario's
+-- label and every step label. The role words "your kick" and "your CC" stay literal in a label:
+-- modules/Sim.lua's StepLabel names the real spell while a session runs.
+L["Thrall"] =
+    "Thrall"
+L["Jaina"] =
+    "Jaina"
+L["Uther"] =
+    "Uther"
+L["Valeera"] =
+    "Valeera"
+L["Enhancement"] =
+    "Enhancement"
+L["Frost"] =
+    "Frost"
+L["Protection"] =
+    "Protection"
+L["Subtlety"] =
+    "Subtlety"
+L["Shadowcaster"] =
+    "Shadowcaster"
+L["Bonecaller"] =
+    "Bonecaller"
+L["Hollow King"] =
+    "Hollow King"
+L["Mythic+ pull, several kickers"] =
+    "Mythic+ pull, several kickers"
+L["Boss kick rotation"] =
+    "Boss kick rotation"
+L["Kick on cooldown, uninterruptible cast"] =
+    "Kick on cooldown, uninterruptible cast"
+L["Party member leaves mid-pull"] =
+    "Party member leaves mid-pull"
+L["Interrupt %s with your kick"] =
+    "Interrupt %s with your kick"
+L["%s interrupts %s"] =
+    "%s interrupts %s"
+L["The pull starts"] =
+    "The pull starts"
+L["The pull ends"] =
+    "The pull ends"
+L["Target %s"] =
+    "Target %s"
+L["Focus %s"] =
+    "Focus %s"
+L["%s starts a cast"] =
+    "%s starts a cast"
+L["%s starts a channel"] =
+    "%s starts a channel"
+L["%s casts again while your kick cools"] =
+    "%s casts again while your kick cools"
+L["Stop %s with your CC"] =
+    "Stop %s with your CC"
+L["Your kick gets two charges"] =
+    "Your kick gets two charges"
+L["%s: cast 1"] =
+    "%s: cast 1"
+L["%s: cast 2"] =
+    "%s: cast 2"
+L["%s: cast 3, a channel"] =
+    "%s: cast 3, a channel"
+L["%s: cast 4"] =
+    "%s: cast 4"
+L["%s: cast 5"] =
+    "%s: cast 5"
+L["Your kick's charges come back"] =
+    "Your kick's charges come back"
+L["%s starts an uninterruptible cast"] =
+    "%s starts an uninterruptible cast"
+L["%s's shield breaks"] =
+    "%s's shield breaks"
+L["%s casts again"] =
+    "%s casts again"
+L["%s's cast completes"] =
+    "%s's cast completes"
+L["Your kick comes back"] =
+    "Your kick comes back"
+L["%s starts a cast %s is assigned to"] =
+    "%s starts a cast %s is assigned to"
+L["%s leaves the party"] =
+    "%s leaves the party"
+L["Clear your focus"] =
+    "Clear your focus"
+L["Target %s mid-cast"] =
+    "Target %s mid-cast"
 
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"

@@ -189,6 +189,7 @@ local SUITES = {
     "test_sim_session",
     "test_sim_interference",
     "test_sim_drivers",
+    "test_sim_e2e",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",

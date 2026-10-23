@@ -177,6 +177,17 @@ local function setUnit(unit, key)
     return UNIT_TEXT[unit].set:format(enemyName(key))
 end
 
+EVENTS.Setup = { "SPELL_UPDATE_CHARGES" }
+--- The scenario's opening state: your kick gets step.charges charges (the `boss` scenario's two),
+--- all ready, then SPELL_UPDATE_CHARGES so the badge shows them.
+function DRIVERS.Setup(step)
+    local id = resolveSpell("kick")
+    if not id then return L["no kick tracked"] end
+    W.SetCharges(id, tonumber(step.charges) or 2)
+    fire("SPELL_UPDATE_CHARGES")
+    return L["%s: %d charges"]:format(spellName(id), tonumber(step.charges) or 2)
+end
+
 EVENTS.Target = { "PLAYER_TARGET_CHANGED" }
 function DRIVERS.Target(step) return setUnit("target", step.enemy) end
 

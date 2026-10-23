@@ -143,10 +143,11 @@ A stood-down addon therefore delivers nothing (every target unregistered, every 
 
 ### The drivers' event sequences
 
-Each simulator step is one driver call (`modules/SimDrivers.lua`, KC-07). The driver reads the world, edits it through the `NS.SimWorld` mutators, then fires these events through `NS.Sim:Fire`, in this order. "Per unit" means once for each of `target` then `focus` that shows the enemy, with the payload `(unit, castGUID, spellID)`. A refused step narrates one `[sim]` line and fires nothing.
+Each simulator step is one driver call (`modules/SimDrivers.lua`, KC-07; `Setup` KC-08). The driver reads the world, edits it through the `NS.SimWorld` mutators, then fires these events through `NS.Sim:Fire`, in this order. "Per unit" means once for each of `target` then `focus` that shows the enemy, with the payload `(unit, castGUID, spellID)`. A refused step narrates one `[sim]` line and fires nothing.
 
 | Kind | World edit | Events, in order | Refused (narration only) |
 |---|---|---|---|
+| `Setup {charges}` | `SetCharges(kick, charges)`: all ready, still off the GCD | `SPELL_UPDATE_CHARGES` | no kick tracked (detail only) |
 | `Combat {on}` | `SetCombat`; the session's `simCombat` | `PLAYER_REGEN_DISABLED` (on) or `PLAYER_REGEN_ENABLED` (off) | - |
 | `Target {enemy}` / `Focus {enemy\|nil}` | `SetUnit` | `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` | - |
 | `CastStart {enemy, spell, duration, uninterruptible?}` | `StartCast` | `UNIT_SPELLCAST_START` per unit | - |

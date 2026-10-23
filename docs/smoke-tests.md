@@ -14,7 +14,7 @@ and a retired one leaves its number unused.
 | ID range | Theme | What it covers |
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 15 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows, the `sim` verb's row and its refusal while disabled |
+| SLASH-1 – 22 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows, the `sim` verb's row and its refusal while disabled, what stops a simulation, and the four simulator scenarios |
 | PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
@@ -234,6 +234,17 @@ Which checks to run for a partial change:
   During a simulation, target a real mob and cast at it → the simulation keeps running, and the grid
   and the cast bar keep showing the simulated world. `/kcd diagnostics` has a `[Sim]` section naming
   the scenario and the step (`sim: step=<pos>/<total>`). Result:
+- **SLASH-20. The `pull` scenario plays on the real grid (KC-08, SM-KC-10).** `/kcd set visibility
+  target_casting`, then `/kcd sim start pull` → the grid appears as Shadowcaster starts its cast, your
+  kick's swipe starts when you kick, Thrall's and Jaina's `[sim]` lines print, the CC step dims the
+  other spells for a GCD, and when combat ends the grid returns to its idle state. Result:
+- **SLASH-21. The `boss` and `miss` scenarios (KC-08, SM-KC-11).** `/kcd sim start boss` → a 2-charge
+  badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
+  `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
+  the interruptible ones after the shield breaks. Result:
+- **SLASH-22. The `leave` scenario (KC-08, SM-KC-12).** `/kcd sim start leave` → after Valeera leaves,
+  the focus bar clears and the target bar picks up Bonecaller's cast mid-way, and your kick interrupts
+  it. Result:
 
 ## PANEL
 
@@ -1078,3 +1089,6 @@ off on its own `Result:` line, then remove its row here.
 - SLASH-17 (KC-06): unlock and resetall refuse during a simulation; the Lock frame checkbox stops it.
 - SLASH-18 (KC-06): `disable` stops a simulation first.
 - SLASH-19 (KC-06): targeting and casting are absorbed; diagnostics name the session.
+- SLASH-20 (KC-08): the `pull` scenario plays on the real grid.
+- SLASH-21 (KC-08): the `boss` charges and the `miss` uninterruptible cast.
+- SLASH-22 (KC-08): the `leave` scenario's target swap onto a cast in progress.

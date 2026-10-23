@@ -560,12 +560,13 @@ Total.
 - Sim interference: the watch target registers only while a session runs
 - Sim diagnostics: the sim section says idle, then names the running session
 
-### test_sim_drivers.lua (26)
+### test_sim_drivers.lua (27)
 
 - SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per driver
 - TOC: modules/SimDrivers.lua loads between modules/SimWorld.lua and modules/Sim.lua
 - SimDrivers: the host's Play runs the driver and the step tip names its events
 - SimDrivers Combat: on fires PLAYER_REGEN_DISABLED, marks the session, and the engine enters combat
+- SimDrivers Setup: your kick gets the step's charges, all ready, then SPELL_UPDATE_CHARGES
 - SimDrivers Target / Focus: set the unit (named from the scenario's enemies) and fire the change
 - SimDrivers CastStart: fires UNIT_SPELLCAST_START for every unit showing the enemy
 - SimDrivers CastStart: an uninterruptible cast, shown on no unit, fires nothing
@@ -588,6 +589,18 @@ Total.
 - SimDrivers Leave: narrates, then fires GROUP_ROSTER_UPDATE to no handler without raising
 - SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
 - SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
+
+### test_sim_e2e.lua (9)
+
+- SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
+- TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
+- SimScenario: every timeline is pure: two calls answer equal steps and fire nothing
+- SimScenario: the panel's idle preview lists exactly the first scenario's step labels
+- Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GCD, a death
+- Sim e2e boss: your kick's charges go 2 -> 1 -> 0, and the expire step brings both back
+- Sim e2e miss: the shield refuses a kick, breaks, the kick lands, the next cast completes
+- Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
+- Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 
 ### test_debuglog.lua (13)
 
@@ -1746,7 +1759,8 @@ Total.
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 18 |
 | test_sim_interference.lua | 12 |
-| test_sim_drivers.lua | 26 |
+| test_sim_drivers.lua | 27 |
+| test_sim_e2e.lua | 9 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1807,4 +1821,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1457** |
+| **Total** | **1467** |
