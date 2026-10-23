@@ -20,7 +20,7 @@ local _, NS = ...
 -- A registration made through NS.SafeRegisterEvent DIRECTLY is not a route: it is not in the list,
 -- so it is not replayed. That is deliberate and tests/test_event_routes.lua pins it.
 --
--- No behaviour change while no simulation runs: nothing calls DeliverEvent outside a simulation.
+-- No behavior change while no simulation runs: nothing calls DeliverEvent outside a simulation.
 
 local Routes = { targets = {}, byTarget = {}, filters = {} }
 NS.EventRoutes = Routes
