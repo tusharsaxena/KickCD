@@ -85,8 +85,10 @@ local function fresh(profile)
     function ctx.bar(unit) return NS:GetModule("Castbar"):GetInstance(unit) end
     function ctx.grid(unit) return NS:GetModule("IconGrid"):GetGridFrame(unit) end
     function ctx.state(id) return NS:GetModule("Cooldowns"):StateFor(id) end
+    ctx.spies = {}
     function ctx.spy(target, method)
         local calls, real = {}, target[method]
+        ctx.spies[#ctx.spies + 1] = calls
         target[method] = function(...)
             calls[#calls + 1] = { select(2, ...) }
             return real(...)
@@ -120,8 +122,10 @@ local function nth(steps, kind, n)
     error("no step " .. kind .. " #" .. tostring(n or 1))
 end
 
---- Play scenario `name` step by step. `checks(steps)` answers { [index] = fn(ctx, step, from) },
---- where `from` is the first event index the step delivered. Then the session's end: FINISHED,
+--- Play scenario `name` step by step. `checks(steps)` answers { [index] = fn(ctx, step, from, mark) },
+--- where `from` is the first event index the step delivered and `mark` maps each ctx.spy call
+--- list to its length before the step, so `#calls > mark[calls]` means the step itself reached
+--- the spied method. Then the session's end: FINISHED,
 --- the stop, KickCDDB unchanged, no live timer.
 local function play(ctx, name, checks)
     local NS, env = ctx.NS, ctx.env
@@ -134,11 +138,13 @@ local function play(ctx, name, checks)
     local byIndex = checks(steps)
     for i = 1, #steps do
         local from = #ctx.events + 1
+        local mark = {}
+        for _, calls in ipairs(ctx.spies) do mark[calls] = #calls end
         local played = NS.Sim:Step()
         assertTrue(played ~= nil, ("%s step %d did not play"):format(name, i))
         env.advance(0)
         assertTrue(played.detail ~= nil, ("%s step %d has no detail"):format(name, i))
-        if byIndex[i] then byIndex[i](ctx, played, from) end
+        if byIndex[i] then byIndex[i](ctx, played, from, mark) end
     end
     assertEqual(ctx.lines[#ctx.lines], finishedLine(ctx), name .. ": FINISHED is the last line")
     NS.Sim:Stop()
@@ -228,10 +234,15 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
             assertTrue(ctx.bar("target").current ~= nil, "the target bar shows no cast")
             assertTrue(ctx.grid("target"):IsShown(), "target_casting did not show the target grid")
         end
-        c[nth(steps, "Kick", 1)] = function()
+        c[nth(steps, "Kick", 1)] = function(_, _, _, mark)
             assertTrue(ctx.state(KICK).isActive, "your kick is not cooling")
             assertNil(ctx.bar("target").current, "the kicked cast is still on the bar")
-            assertTrue(#spellStates > 0, "no SPELL_STATE reached IconGrid:OnSpellState")
+            local kicked = false
+            for k = mark[spellStates] + 1, #spellStates do
+                local payload = spellStates[k][2]
+                if payload and payload.spellID == KICK and payload.isActive then kicked = true end
+            end
+            assertTrue(kicked, "the kick's SPELL_STATE did not reach IconGrid:OnSpellState")
         end
         c[nth(steps, "ChannelStart", 1)] = function()
             local cur = ctx.bar("focus").current
@@ -357,8 +368,9 @@ test("Sim e2e leave: the roster update reaches no handler; the target swap snaps
             assertFalse(NS.Compat.UnitExists("focus"), "the focus was not cleared")
             assertNil(ctx.bar("focus").current)
         end
-        c[nth(steps, "Target", 2)] = function()
-            assertTrue(#reevaluated > 0, "the target swap did not reach Castbar:Reevaluate")
+        c[nth(steps, "Target", 2)] = function(_, _, _, mark)
+            assertTrue(#reevaluated > mark[reevaluated], "the target swap did not reach Castbar:Reevaluate")
+            assertTrue(reevaluated[#reevaluated][1] == ctx.bar("target"), "Reevaluate ran on another bar")
             local cur = ctx.bar("target").current
             assertTrue(cur ~= nil, "the target bar did not snap onto the cast in progress")
             assertEqual(cur.spellID, NS.SimScenario.ENEMIES.casterB.cast)
