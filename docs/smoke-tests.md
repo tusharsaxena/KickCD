@@ -568,7 +568,7 @@ Which checks to run for a partial change:
   interruptible casts; an uninterruptible cast neither glows nor shows. Rename
   `libs/LibCustomGlow-1.0` aside, `/reload`, `/kcd debug on` → one
   `[Init] LibCustomGlow-1.0 absent; no icon glows` line and no Lua error with a ready interrupt;
-  restore the folder. Result:
+  restore the folder. Result: pass (owner-marked 2026-10-23)
 
 ## CAST
 
@@ -1046,4 +1046,3 @@ off on its own `Result:` line, then remove its row here.
 |---|---|---|
 | GRID-19 | feature/glow-options (DropWatcher feedback-21 K1) | New: the per-style glow knobs, their dimming and their live restart |
 | GRID-20 | feature/glow-options (DropWatcher feedback-21 K1) | New: the glow knobs' clamp on a hand-set value |
-| GRID-21 | KC-01 LibKa0s-Glow-1.0 | New: the four styles × two slots, the knob restart and the interruptible-only mask through the driver |
