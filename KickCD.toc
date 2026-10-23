@@ -139,6 +139,10 @@ modules\UnitLabel.lua
 # The simulator (KickCD#38): first of the sim block. modules/SimWorld.lua registers
 # its seam providers on NS.SimSeam at file load, so it follows core\SimSetup.lua.
 modules\SimWorld.lua
+# The step drivers (KC-07): between the world, whose mutators they call, and the session host,
+# whose play hands them each step. Nothing resolves at load: NS.Sim, NS.SimHost and NS.SimScenario
+# are read at call time, so this position is conventional within the sim block.
+modules\SimDrivers.lua
 # LOAD-BEARING POSITION: modules/Sim.lua binds NS.SimSeam to the live session (Sim:New) and
 # overwrites core/SimSetup.lua's stub NS.Sim, so every later sim file (and any NS.Sim:OnStop
 # registration) meets the live instance. It follows modules\SimWorld.lua, whose providers it

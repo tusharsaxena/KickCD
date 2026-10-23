@@ -526,7 +526,7 @@ Total.
 
 ### test_sim_session.lua (18)
 
-- TOC: modules/Sim.lua loads straight after modules/SimWorld.lua, under a LOAD-BEARING comment
+- TOC: modules/Sim.lua loads straight after modules/SimDrivers.lua, under a LOAD-BEARING comment
 - Sim session: NS.Sim is the live instance bound to NS.SimSeam, not core/SimSetup.lua's stub
 - Sim refusals: each condition alone refuses with exactly its line and builds nothing
 - Sim refusals: InCombatLockdown alone refuses as combat
@@ -559,6 +559,35 @@ Total.
 - Sim interference: a REAL target change and a REAL cast start are absorbed
 - Sim interference: the watch target registers only while a session runs
 - Sim diagnostics: the sim section says idle, then names the running session
+
+### test_sim_drivers.lua (26)
+
+- SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per driver
+- TOC: modules/SimDrivers.lua loads between modules/SimWorld.lua and modules/Sim.lua
+- SimDrivers: the host's Play runs the driver and the step tip names its events
+- SimDrivers Combat: on fires PLAYER_REGEN_DISABLED, marks the session, and the engine enters combat
+- SimDrivers Target / Focus: set the unit (named from the scenario's enemies) and fire the change
+- SimDrivers CastStart: fires UNIT_SPELLCAST_START for every unit showing the enemy
+- SimDrivers CastStart: an uninterruptible cast, shown on no unit, fires nothing
+- SimDrivers ChannelStart: fires UNIT_SPELLCAST_CHANNEL_START with (unit, castGUID, spellID)
+- SimDrivers Interruptible: flips the flag and fires UNIT_SPELLCAST_INTERRUPTIBLE
+- SimDrivers Kick (a): no cast narrates, fires nothing, and answers `no cast`
+- SimDrivers Kick (b): an uninterruptible cast narrates and fires nothing
+- SimDrivers Kick (d): lands: cooldown, then SUCCEEDED, SPELL_UPDATE_COOLDOWN and INTERRUPTED per unit
+- SimDrivers Kick (d): a channel ends with UNIT_SPELLCAST_CHANNEL_STOP
+- SimDrivers Kick (c): on cooldown narrates the seconds left, fires nothing, and the cast goes on
+- SimDrivers Kick (d): a charge spell spends a charge and also fires SPELL_UPDATE_CHARGES
+- SimDrivers Kick: with no kick resolved it narrates and fires nothing
+- SimDrivers PartyKick: narrates the member, spec, enemy and spell, then fires INTERRUPTED
+- SimDrivers PartyKick: with no cast only narrates
+- SimDrivers Complete: fires SUCCEEDED then STOP for each unit and ends the cast
+- SimDrivers Cc: starts the 30 s CC cooldown and a 1.5 s GCD, fires SUCCEEDED and the cooldown update
+- SimDrivers Cc: no CC resolved narrates only; a CC still cooling refuses truthfully
+- SimDrivers Die: kills, ends the cast with STOP, and clears target and focus that show it
+- SimDrivers Die: an enemy shown on no unit and not casting fires nothing
+- SimDrivers Leave: narrates, then fires GROUP_ROSTER_UPDATE to no handler without raising
+- SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
+- SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
 
 ### test_debuglog.lua (13)
 
@@ -1717,6 +1746,7 @@ Total.
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 18 |
 | test_sim_interference.lua | 12 |
+| test_sim_drivers.lua | 26 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1777,4 +1807,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1431** |
+| **Total** | **1457** |

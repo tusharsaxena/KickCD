@@ -7,7 +7,7 @@ local _, NS = ...
 --
 --   units    { target = enemyKey|nil, focus = enemyKey|nil }
 --   enemies  [key] = { key, name, hostile, dead, cast = nil|{ spellID, name, texture,
---                      notInterruptible, isChannel, start, duration, castID } }
+--                      notInterruptible, isChannel, start, duration, castID, castGUID } }
 --            shared by key, so target and focus can be the same mob
 --   spells   [id] = { start, duration, offGcd, maxCharges, charges, chargeStart, chargeDuration,
 --                     recharge }
@@ -109,7 +109,8 @@ function W.Kill(key)
     e.dead, e.cast = true, nil
 end
 
---- Enemy `key` starts `cast` = { spellID, name, texture, duration, notInterruptible, isChannel } now.
+--- Enemy `key` starts `cast` = { spellID, name, texture, duration, notInterruptible, isChannel,
+--- castGUID } now. `castGUID` is the string the drivers fire with the cast's events.
 function W.StartCast(key, cast)
     local w = world()
     local e = w and w.enemies[key]
@@ -118,7 +119,7 @@ function W.StartCast(key, cast)
     e.cast = {
         spellID = cast.spellID, name = cast.name or "?", texture = cast.texture or DEFAULT_TEXTURE,
         notInterruptible = cast.notInterruptible and true or false, isChannel = cast.isChannel and true or false,
-        start = now(), duration = tonumber(cast.duration) or 0, castID = w.castSeq,
+        start = now(), duration = tonumber(cast.duration) or 0, castID = w.castSeq, castGUID = cast.castGUID,
     }
 end
 
@@ -134,6 +135,12 @@ function W.SetInterruptible(key, interruptible)
     local w = world()
     local e = w and w.enemies[key]
     if e and e.cast then e.cast.notInterruptible = not interruptible end
+end
+
+--- The simulation puts the player in combat (true) or takes them out of it (false).
+function W.SetCombat(on)
+    local w = world()
+    if w then w.combat = on and true or false end
 end
 
 -- ── cooldowns, the GCD and charges ────────────────────────────────────────────────────────────

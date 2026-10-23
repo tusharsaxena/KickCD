@@ -65,10 +65,10 @@ end
 
 -- ── the module ──────────────────────────────────────────────────────────────
 
-test("TOC: modules/Sim.lua loads straight after modules/SimWorld.lua, under a LOAD-BEARING comment", function()
+test("TOC: modules/Sim.lua loads straight after modules/SimDrivers.lua, under a LOAD-BEARING comment", function()
     local at
-    for i, rel in ipairs(T.tocFiles) do if rel == "modules/SimWorld.lua" then at = i end end
-    assertTrue(at ~= nil, "modules/SimWorld.lua is not in KickCD.toc")
+    for i, rel in ipairs(T.tocFiles) do if rel == "modules/SimDrivers.lua" then at = i end end
+    assertTrue(at ~= nil, "modules/SimDrivers.lua is not in KickCD.toc")
     assertEqual(T.tocFiles[at + 1], "modules/Sim.lua")
     local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
     local prev, found

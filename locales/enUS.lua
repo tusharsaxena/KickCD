@@ -135,6 +135,78 @@ L["Restores"] =
     "Restores"
 L["your real target, focus and cooldowns"] =
     "your real target, focus and cooldowns"
+-- The step drivers (modules/SimDrivers.lua, KC-07): the `[sim]` narration, each a format key,
+-- and the one-line details the step panel shows on a played step's "Did" line.
+L["[sim] %s"] =
+    "[sim] %s"
+L["in combat"] =
+    "in combat"
+L["out of combat"] =
+    "out of combat"
+L["target: %s"] =
+    "target: %s"
+L["target cleared"] =
+    "target cleared"
+L["focus: %s"] =
+    "focus: %s"
+L["focus cleared"] =
+    "focus cleared"
+L["no enemy"] =
+    "no enemy"
+L["%s casts %s"] =
+    "%s casts %s"
+L["%s channels %s"] =
+    "%s channels %s"
+L["no cast"] =
+    "no cast"
+L["interruptible"] =
+    "interruptible"
+L["not interruptible"] =
+    "not interruptible"
+L["kicked %s"] =
+    "kicked %s"
+L["No kick is tracked, so nothing is kicked."] =
+    "No kick is tracked, so nothing is kicked."
+L["no kick tracked"] =
+    "no kick tracked"
+L["%s: %s is not casting, so there is nothing to kick."] =
+    "%s: %s is not casting, so there is nothing to kick."
+L["%s: %s's cast is uninterruptible."] =
+    "%s: %s's cast is uninterruptible."
+L["uninterruptible"] =
+    "uninterruptible"
+L["%s: your kick is on cooldown (%ds)."] =
+    "%s: your kick is on cooldown (%ds)."
+L["on cooldown"] =
+    "on cooldown"
+L["%s (%s) has nothing to interrupt on %s."] =
+    "%s (%s) has nothing to interrupt on %s."
+L["%s (%s) interrupts %s with %s."] =
+    "%s (%s) interrupts %s with %s."
+L["%s interrupts"] =
+    "%s interrupts"
+L["%s completes %s"] =
+    "%s completes %s"
+L["No crowd control is tracked, so nothing is cast on %s."] =
+    "No crowd control is tracked, so nothing is cast on %s."
+L["no crowd control tracked"] =
+    "no crowd control tracked"
+L["%s is on cooldown (%ds)."] =
+    "%s is on cooldown (%ds)."
+L["You use %s on %s."] =
+    "You use %s on %s."
+L["%s used"] =
+    "%s used"
+L["%s dies"] =
+    "%s dies"
+L["%s (%s) leaves the party."] =
+    "%s (%s) leaves the party."
+L["%s left"] =
+    "%s left"
+L["no spell"] =
+    "no spell"
+L["%s ready"] =
+    "%s ready"
 
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
