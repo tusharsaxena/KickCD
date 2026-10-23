@@ -805,17 +805,17 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   combat, run `/run local d=C_DurationUtil and C_DurationUtil.CreateDuration and C_DurationUtil.CreateDuration(); print(d ~= nil, d and pcall(d.SetTimeFromStart, d, GetTime(), 10), d and d.GetRemainingDuration and d:GetRemainingDuration())`
   → it prints `true true` and a number close to `10`. Anything else means `Compat.NewDuration`'s
   constructor or setter name is wrong and it answers nil in the client, and the simulator refuses with
-  `This client cannot build simulated cooldowns, so the simulator cannot run.` Result:
+  `This client cannot build simulated cooldowns, so the simulator cannot run.` Result: pass (owner, 2026-10-23)
 - **SIM-2. No behavior change from the Compat unit readers (KC-01, SM-KC-2).** No simulation running.
   `/kcd set visibility target_casting_interruptible`. Target a hostile caster casting an interruptible
   spell → the grid shows and the cast bar fills in its interruptible colors; an uninterruptible cast
   masks the grid exactly as before the move; a friendly caster does not open the grid. No Lua error.
-  Result:
+  Result: pass (owner, 2026-10-23)
 - **SIM-3. The `sim` verb is listed, and refused while disabled (KC-03, SM-KC-3).** `/kcd help` → the
   index lists `/kcd sim` with `Run a simulation of interrupts and cooldowns — try `/kcd sim``.
   `/kcd disable`, then `/kcd sim` → one tagged line, the library's disabled line naming `/kcd enable`,
   and nothing else. `/kcd enable`, then `/kcd sim` → it answers again (SIM-4). There is no launcher
-  entry and no key binding for it. Result:
+  entry and no key binding for it. Result: pass (owner, 2026-10-23)
 - **SIM-4. The panel, the usage and the auto-run (KC-05, SM-KC-4, SM-KC-15).** `/kcd set visibility
   always`, then `/kcd sim` → chat prints `Simulation: idle. Scenarios: pull, boss, miss, leave.` and the
   usage lines (`start <scenario>`, `run`, `step`, `pause`, `resume`, `restart`, `stop`, `status`,
@@ -828,7 +828,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   run pauses, every step up to the clicked one plays, and it waits. The panel's Resume → it plays on to
   `Simulation finished: /kcd sim stop ends it.` `/kcd sim stop`, then `/kcd sim start boss` → it too
   plays on its own. Drag the panel, `/kcd sim stop`, `/reload` and `/kcd sim` → the panel is docked
-  again (its position was session-only). `/kcd sim stop`, `/kcd reset visibility`. Result:
+  again (its position was session-only). `/kcd sim stop`, `/kcd reset visibility`. Result: pass (owner, 2026-10-23)
 - **SIM-5. Each refusal prints its one line and starts nothing (KC-05, SM-KC-5).** Run
   `/kcd sim start pull` in each state below → exactly the line shown, no `Simulation started`, no
   strip, no step played, and the grid shows your real cooldowns:
@@ -843,31 +843,31 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
     `A performance capture is running: finish it first (/kcd perf finish).` (`/kcd perf finish`);
   - with a simulation already running → `A simulation is already running.`
 
-  Result:
+  Result: pass (owner, 2026-10-23)
 - **SIM-6. Real combat stops a simulation (KC-06, SM-KC-6).** `/kcd sim start pull`, then attack a
   training dummy → the simulation stops with `Simulation stopped: you entered combat.`, the strip and
-  the step panel clear, and the real grid shows your real cooldowns. Result:
+  the step panel clear, and the real grid shows your real cooldowns. Result: pass (owner, 2026-10-23)
 - **SIM-7. Unlock and resetall refuse during a simulation (KC-06, SM-KC-7).** During a simulation,
   `/kcd unlock` and the launcher's *Locked* entry each print `End the simulation first (/kcd sim stop).`
   and the grids stay locked; `/kcd resetall` prints the same line and resets nothing. Unticking
   General → *Lock frame* in the settings stops the simulation with
-  `Simulation stopped: the grids were unlocked.` Result:
+  `Simulation stopped: the grids were unlocked.` Result: pass (owner, 2026-10-23)
 - **SIM-8. `disable` stops a simulation first (KC-06, SM-KC-8).** During a simulation,
   `/kcd disable` → `Simulation stopped: the addon stood down.` comes first, then the addon stands down.
-  `/kcd enable` brings the grid back with your real cooldowns. Result:
+  `/kcd enable` brings the grid back with your real cooldowns. Result: pass (owner, 2026-10-23)
 - **SIM-9. Targeting and casting are absorbed; diagnostics name the session (KC-06, SM-KC-9).**
   During a simulation, target a real mob and cast at it → the simulation keeps running, and the grid
   and the cast bar keep showing the simulated world. `/kcd diagnostics` has a `[Sim]` section naming
   the scenario and the step (`sim: step=<pos>/<total>`); after `/kcd sim stop` it reads `sim: idle`.
-  Result:
+  Result: pass (owner, 2026-10-23)
 - **SIM-10. The `pull` scenario plays on the real grid (KC-08, SM-KC-10).** `/kcd set visibility
   target_casting`, then `/kcd sim start pull` → the grid appears as Shadowcaster starts its cast, your
   kick's swipe starts when you kick, Thrall's and Jaina's `[sim]` lines print, the CC step dims the
-  other spells for a GCD, and when combat ends the grid returns to its idle state. Result:
+  other spells for a GCD, and when combat ends the grid returns to its idle state. Result: pass (owner, 2026-10-23)
 - **SIM-11. The `boss` and `miss` scenarios (KC-08, SM-KC-11).** `/kcd sim start boss` → a 2-charge
   badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
   `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
-  the interruptible ones after the shield breaks. Result:
+  the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
 - **SIM-12. The `leave` scenario, and where the sim strip sits (KC-08, KC-09, SM-KC-12 – 14).**
   `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the target bar picks up
   Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
@@ -878,7 +878,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   the Focus grid keeps its strip; untick Focus too → one strip floats near the screen center; no Lua
   error. Re-tick both, `/kcd sim stop`, `/kcd set units.target.label.show false` and start again → the
   strip sits on the grid's top edge. `/kcd sim stop` → every strip disappears
-  (`/kcd reset units.target.label.show` after). Result:
+  (`/kcd reset units.target.label.show` after). Result: pass (owner, 2026-10-23)
 
 ## DIAG
 
@@ -1134,15 +1134,4 @@ On 2026-10-10 the owner marked every check in this file as passed, recorded on i
 added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
 off on its own `Result:` line, then remove its row here.
 
-- SIM-1 (KC-01): the duration constructor probe.
-- SIM-2 (KC-01): no behavior change from the Compat unit readers.
-- SIM-3 (KC-03): the `sim` verb is listed, and refused while disabled.
-- SIM-4 (KC-05, KC-10): the panel, the usage against README's Simulator paragraph, and the auto-run.
-- SIM-5 (KC-05): each start refusal prints its one line and starts nothing.
-- SIM-6 (KC-06): real combat stops a simulation.
-- SIM-7 (KC-06): unlock and resetall refuse during a simulation; the Lock frame checkbox stops it.
-- SIM-8 (KC-06): `disable` stops a simulation first.
-- SIM-9 (KC-06): targeting and casting are absorbed; diagnostics name the session.
-- SIM-10 (KC-08): the `pull` scenario plays on the real grid.
-- SIM-11 (KC-08): the `boss` charges and the `miss` uninterruptible cast.
-- SIM-12 (KC-08, KC-09): the `leave` scenario, and the sim strip's placement, follow and float.
+None.
