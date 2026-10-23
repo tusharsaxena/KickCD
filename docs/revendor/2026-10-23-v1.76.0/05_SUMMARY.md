@@ -30,3 +30,8 @@ Gate after the copy and prune:
 
 The standard reference was swept against v2.87.0 in the same item (`wow-revendor-standards`) and
 needed no edit; that sweep is recorded in the commit message, not here.
+
+Addendum (KC-RV2): the local tag moved `9949368` -> `e692491` for LibKa0s LK-91 (step-panel labels
+truncate before the command column). Re-vendored whole from it: `SimPanel.lua` (minor 5 kept) and
+`PerfPanel.lua` (minor 7 -> 8) changed; the kit did not. The prune kept the declared 7 icons plus
+`LICENSE-open-iconic.txt`. Details in `01_DELTA.md`.

@@ -136,3 +136,31 @@ lua <scratch>/v176/tools/prune-icons.lua <abs KickCD path>
 3j: the whole-catalog test loops were removed in the v1.75.0 re-vendor; nothing in `tests/`
 outside `_kit/` opens an undeclared icon. No README credit changes (the same Open Iconic set ships),
 and no `__releaseChrome` mirror exists.
+
+## Addendum: the tag moved (KC-RV2)
+
+The local tag `v1.76.0` was moved after `KC-RV` copied it: `9949368` -> `e692491` (LK-91, then
+LK-92, README only). `KC-RV2` re-vendored both payloads whole from the moved tag, with no new
+bundle:
+
+```sh
+git -C ../LibKa0s rev-parse 'v1.76.0^{commit}'   # e692491 (annotated, LOCAL)
+git -C ../LibKa0s diff --stat 9949368 e692491 -- LibKa0s testkit
+#  LibKa0s/PerfPanel.lua | 19 +++++++++++++------
+#  LibKa0s/SimPanel.lua  | 26 +++++++++++++++++++++++---
+```
+
+- `SimPanel.lua` stays at `SIM_PANEL_MINOR` 5 (Sim key 2.3.5): a step-panel label is anchored
+  LEFT and RIGHT short of the command column, so a long label truncates with an ellipsis instead
+  of running under the command (LK-91).
+- `PerfPanel.lua` moves `PANEL_MINOR` 7 -> **8** (Perf key 15.1.1.8), the same label fix.
+- The kit is unchanged (41). No other file moved.
+
+```sh
+lua <scratch>/tools/prune-icons.lua <abs KickCD path>
+# prune-icons: ...KickCD: 7 icon(s) declared; kept 8 file(s), removed 5832
+```
+
+After the prune, `diff -r` against the tag shows only `Only in <scratch>/LibKa0s/media/icons`
+lines, and `diff -r` of `tests/_kit` is empty. KickCD draws neither panel's labels itself, so
+nothing needs adoption or a test change.
