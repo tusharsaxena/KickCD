@@ -820,8 +820,19 @@ function IconGrid:OnSpellState(_evt, payload)
     end
 end
 
+--- Unlocking IS KickCD's preview (ARCHITECTURE.md *launcher*), and the two never run together: a
+--- General edit that leaves the grids unlocked (the settings panel's Lock frame checkbox) stops a
+--- running simulation (KickCD#38, KC-06). The CLI refuses its own unlock instead (core/KickCD.lua).
+local function stopSimOnUnlock()
+    local profile = NS.db and NS.db.profile
+    if profile and profile.locked == false and NS.Sim and NS.Sim:IsActive() then
+        NS.Sim:Stop("unlocked")
+    end
+end
+
 function IconGrid:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
+    if section == "general" then stopSimOnUnlock() end
     if section == "icons" then
         -- Re-layout only — widgets and their textures don't need to change
         -- when only sizing/colors/alphas changed. Layout() also calls

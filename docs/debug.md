@@ -191,6 +191,7 @@ tag shown.
 | `unitlabel` | `UnitLabel` | this addon | Per unit: show, text, attach point, shown |
 | `events` | `Events` | this addon | `rejected events: <names>`, or `rejected events: -` when there are none |
 | `perf` | `Perf` | this addon | Whether a perf capture is running and whether it is suspended |
+| `sim` | `Sim` | this addon | `sim: idle`, or while a simulation runs one line each: the scenario, the step `pos/total`, the events fired, the kick and CC spell ids, and simulated combat `on`/`off` (KickCD#38 H8) |
 | `truncated` line | `Diag` | the library | Only when a cap bit: `truncated: N line(s) omitted, per-list caps hit=yes/no` |
 | End marker | `Diag` | the library | `==== Ka0s KickCD diagnostics end: N line(s) ====`, counting both markers |
 
@@ -213,7 +214,7 @@ sections below it say so rather than describe released machinery. Then:
 
 **Stood down.** While the addon is disabled every section still runs. `cooldowns`, `icongrid`,
 `castbar` and `unitlabel` each print one `stood down: …` line rather than an empty list that reads
-like a bug. `state`, `settings`, `units`, `spells`, `cmcache`, `interrupt`, `events` and `perf`
+like a bug. `state`, `settings`, `units`, `spells`, `cmcache`, `interrupt`, `events`, `perf` and `sim`
 print in full.
 
 **Caps.**

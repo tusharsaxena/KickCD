@@ -187,6 +187,7 @@ local SUITES = {
     "test_sim_seam",
     "test_sim_world",
     "test_sim_session",
+    "test_sim_interference",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",

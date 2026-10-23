@@ -120,7 +120,7 @@ test("the addon hands the library its sections with the lifecycle first", functi
         names[i] = s[1]
     end
     assertEqual(table.concat(names, ","),
-        "state,settings,units,spells,cooldowns,cmcache,icongrid,castbar,interrupt,unitlabel,events,perf")
+        "state,settings,units,spells,cooldowns,cmcache,icongrid,castbar,interrupt,unitlabel,events,perf,sim")
 end)
 
 test("the report runs every section and none of them fails on a live load", function()

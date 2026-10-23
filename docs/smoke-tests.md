@@ -219,6 +219,21 @@ Which checks to run for a partial change:
   and nothing else. `/kcd enable`, then `/kcd sim` → it answers again (until the simulator itself
   lands it prints `The simulator needs LibKa0s-Sim-1.0.`; after that, the library's usage). There is no
   launcher entry and no key binding for it. Result:
+- **SLASH-16. Real combat stops a simulation (KC-06, SM-KC-6).** `/kcd sim start pull`, then attack a
+  training dummy → the simulation stops with `Simulation stopped: you entered combat.`, the strip and
+  the step panel clear, and the real grid shows your real cooldowns. Result:
+- **SLASH-17. Unlock and resetall refuse during a simulation (KC-06, SM-KC-7).** During a simulation,
+  `/kcd unlock` and the launcher's *Locked* entry each print `End the simulation first (/kcd sim stop).`
+  and the grids stay locked; `/kcd resetall` prints the same line and resets nothing. Unticking
+  General → *Lock frame* in the settings stops the simulation with
+  `Simulation stopped: the grids were unlocked.` Result:
+- **SLASH-18. `disable` stops a simulation first (KC-06, SM-KC-8).** During a simulation,
+  `/kcd disable` → `Simulation stopped: the addon stood down.` comes first, then the addon stands down.
+  `/kcd enable` brings the grid back with your real cooldowns. Result:
+- **SLASH-19. Targeting and casting are absorbed; diagnostics name the session (KC-06, SM-KC-9).**
+  During a simulation, target a real mob and cast at it → the simulation keeps running, and the grid
+  and the cast bar keep showing the simulated world. `/kcd diagnostics` has a `[Sim]` section naming
+  the scenario and the step (`sim: step=<pos>/<total>`). Result:
 
 ## PANEL
 
@@ -1059,3 +1074,7 @@ off on its own `Result:` line, then remove its row here.
 - CAST-17 (KC-01): the duration constructor probe.
 - CAST-18 (KC-01): no behavior change from the Compat unit readers.
 - SLASH-15 (KC-03): the `sim` verb is listed, and refused while disabled.
+- SLASH-16 (KC-06): real combat stops a simulation.
+- SLASH-17 (KC-06): unlock and resetall refuse during a simulation; the Lock frame checkbox stops it.
+- SLASH-18 (KC-06): `disable` stops a simulation first.
+- SLASH-19 (KC-06): targeting and casting are absorbed; diagnostics name the session.

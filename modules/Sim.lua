@@ -165,6 +165,50 @@ function Host.Refusal(opts)
     return nil
 end
 
+-- ── the real world's interference (design D10; KC-06) ────────────────────────────────────────
+--
+-- While a session runs, three REAL client events end it: combat, a loading screen and joining a
+-- group. The watch is its own AceEvent target, registered in Prepare and released in the stop, so
+-- it holds nothing while idle (tests/test_disabled.lua's empty registration set). It registers
+-- through NS.SafeRegisterEvent DIRECTLY, never NS.RegisterEventList, so it is never a deliver route
+-- (core/Events.lua; KC-02): a simulated event, fired through NS.Sim:Fire, cannot reach it, and the
+-- handler's IsDelivering test is the belt to that pair of braces. A target change or a cast start
+-- is not watched: the seam answers every read it makes from the world, so it is absorbed.
+Host.watch = Host.watch or {}
+local AceEvent = LibStub and LibStub("AceEvent-3.0", true)
+if AceEvent and not Host.watch.RegisterEvent then AceEvent:Embed(Host.watch) end
+
+-- The watched events and the stop reason each raises (STOP_TEXT below).
+Host.WATCH = {
+    PLAYER_REGEN_DISABLED = "combat",
+    PLAYER_ENTERING_WORLD = "world",
+    GROUP_ROSTER_UPDATE   = "group",
+}
+
+local function inRealGroup()
+    return NS.SimSeam:Live(function() return _G.IsInGroup ~= nil and _G.IsInGroup() == true end)
+end
+
+--- The watch's handler: a real event that ends the session stops it with its reason. A roster
+--- update stops it only when the REAL client says the player is in a group.
+function Host.OnWatchEvent(event)
+    if NS.Sim:IsDelivering() then return end
+    local reason = Host.WATCH[event]
+    if not reason or not NS.Sim:IsActive() then return end
+    if reason == "group" and not inRealGroup() then return end
+    debug("real %s: stopping (%s)", tostring(event), reason)
+    NS.Sim:Stop(reason)
+end
+
+local function onWatch(event, ...) return Host.OnWatchEvent(event, ...) end
+
+--- Register the watch (Prepare). Rejected names land in NS.State.rejectedEvents like any other.
+function Host.ArmWatch()
+    if not Host.watch.RegisterEvent then return end
+    local rejected = NS.State and NS.State.rejectedEvents
+    for event in pairs(Host.WATCH) do NS.SafeRegisterEvent(Host.watch, event, onWatch, rejected) end
+end
+
 -- ── the start and the steps ──────────────────────────────────────────────────────────────────
 
 --- The descriptor's prepare: the world, the two spells, the engine re-polled through the seam, the
@@ -180,6 +224,8 @@ function Host.Prepare(_, _, _, ready)
     if NS.SimStrip then NS.SimStrip:Refresh() end
     -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo).
     if NS.Sim and NS.Sim.ShowPanel then NS.Sim:ShowPanel() end
+    -- The real world's interference: combat, a loading screen and a group now stop the session.
+    Host.ArmWatch()
     debug("world built: kick %s, cc %s", tostring(Host.kick), tostring(Host.cc))
     ready()
 end
@@ -276,7 +322,8 @@ Host.PANEL = PANEL
 
 -- ── the session (LibKa0s-Sim-1.0) ────────────────────────────────────────────────────────────
 
--- The stop lines for the host's own reasons (KC-06 raises them) and the stand-down.
+-- The stop lines for the host's own reasons (the watch, core/Database.lua's profile switch,
+-- modules/IconGrid.lua's unlock; KC-06) and the stand-down (core/LifecycleSetup.lua).
 local STOP_TEXT = {
     combat    = L["Simulation stopped: you entered combat."],
     world     = L["Simulation stopped: a loading screen."],
@@ -321,6 +368,11 @@ end
 -- (a) The world and the spells.
 NS.Sim:OnStop(function()
     Host.world, Host.kick, Host.cc = nil, nil, nil
+end)
+
+-- (a2) The watch: nothing stays registered once the session ends.
+NS.Sim:OnStop(function()
+    if Host.watch.UnregisterAllEvents then Host.watch:UnregisterAllEvents() end
 end)
 
 -- (b) The strip (KC-09).

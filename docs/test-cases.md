@@ -545,6 +545,21 @@ Total.
 - Sim panel: stepTip names the events, the engine and, once played, the detail
 - Sim panel: anchorTo is the target grid while shown, else the focus grid, else nil
 
+### test_sim_interference.lua (12)
+
+- Sim interference: a REAL PLAYER_REGEN_DISABLED stops with `combat`, and real combat stays
+- Sim interference: a REAL PLAYER_ENTERING_WORLD stops with `world`
+- Sim interference: a REAL GROUP_ROSTER_UPDATE stops with `group` only when the player is in a group
+- Sim interference: a SIMULATED GROUP_ROSTER_UPDATE never reaches the watch target
+- Sim interference: a profile switch stops with `profile`
+- Sim interference: unticking Lock frame (Store.Set locked false) stops with `unlocked`
+- Sim interference: /kcd unlock, /kcd toggle and NS.ToggleLock refuse while a session runs
+- Sim interference: /kcd resetall refuses while a session runs, and KickCDDB is unchanged
+- Sim interference: /kcd disable stops the session FIRST, before any module suspends
+- Sim interference: a REAL target change and a REAL cast start are absorbed
+- Sim interference: the watch target registers only while a session runs
+- Sim diagnostics: the sim section says idle, then names the running session
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1701,6 +1716,7 @@ Total.
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 18 |
+| test_sim_interference.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1761,4 +1777,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1419** |
+| **Total** | **1431** |

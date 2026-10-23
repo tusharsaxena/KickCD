@@ -255,7 +255,8 @@ state](slash-dispatch.md#the-disabled-state)), so a disabled KickCD is registere
 capture's suspended arm are two named holds (`disabled`, `perf`) on one `LibKa0s-Lifecycle-1.0` latch in
 `core/LifecycleSetup.lua`; while either is taken every registration, bus subscription and timer is released
 and nothing is drawn, and the dispatcher, the settings panel and the launcher stay up because they are
-setup. The full account is [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state).
+setup. The stand-down's first step stops a running simulation (`NS.Sim:Stop("standDown")`, KickCD#38
+H6), while every module its cleanup re-syncs is still up. The full account is [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state).
 
 ## Taint notes
 

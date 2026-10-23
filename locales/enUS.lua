@@ -99,6 +99,10 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
+-- The CLI's refusal while a session runs (KC-06): unlock, toggle, the launcher's Locked entry and
+-- resetall (core/KickCD.lua).
+L["End the simulation first (/kcd sim stop)."] =
+    "End the simulation first (/kcd sim stop)."
 L["your kick"] =
     "your kick"
 L["your CC"] =

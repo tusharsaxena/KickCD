@@ -174,6 +174,11 @@ local function setLocked(self, value)
     if not (self.db and self.db.profile) then
         return refuse(self, "Set", verb, nil, "db not ready", "db not initialized yet")
     end
+    -- Unlocking is KickCD's preview and never runs beside a simulation (KickCD#38 H5, KC-06): unlock,
+    -- toggle and the launcher's Locked entry all land here and refuse. Locking stays allowed.
+    if not value and NS.Sim and NS.Sim:IsActive() then
+        return refuse(self, "Set", verb, nil, "simulation running", NS.L["End the simulation first (/kcd sim stop)."])
+    end
     local v = value and true or false
     local S = self.Settings and self.Settings.Store
     if not (S and S.Set and S.Set("locked", v)) then
@@ -585,6 +590,10 @@ function runReset(self, rest)
 end
 
 function runResetAll(self)
+    -- Destructive while a simulation runs (KickCD#38 H5, KC-06): refuse, writing nothing.
+    if NS.Sim and NS.Sim:IsActive() then
+        return refuse(self, "Set", "resetall", nil, "simulation running", NS.L["End the simulation first (/kcd sim stop)."])
+    end
     local H = helpers()
     if not (H and H.ResetAll) then
         return refuse(self, "Set", "resetall", nil, "settings layer not ready", "Settings layer not ready yet")
