@@ -118,10 +118,10 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - AceConsole-3.0
 - AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
 - AceGUI-3.0
-- LibKa0s, the Ka0s shared library. **Fifteen majors are adopted**; what each one supplies, how
+- LibKa0s, the Ka0s shared library. **Sixteen majors are adopted**; what each one supplies, how
   each seam degrades and the one shared cause clause are
   [module-map.md → The LibKa0s majors](module-map.md#the-libka0s-majors).
-  - Twelve have a setup file: `Core`, `Env`, `Pool`, `Glow`, `Media`, `DebugLog`, `Launcher`,
+  - Thirteen have a setup file: `Core`, `Sim`, `Env`, `Pool`, `Glow`, `Media`, `DebugLog`, `Launcher`,
     `Lifecycle` and `Perf` in `core/<Major>Setup.lua`; `Slash`, `Options` and `Schema` in `settings/Slash.lua`,
     `settings/OptionsSetup.lua` and `settings/SchemaSetup.lua`.
   - `Widgets` is resolved inline by its two callers; `Compat` is wired onto `NS.Compat` by
@@ -177,6 +177,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `spells` | Spell-list editor (try `/kcd spells` for the list) |
 | `debug` | Debug subcommands (try `/kcd debug` for the list) |
 | `diagnostics` | Write the diagnostic report into the debug console (`debug-logging-§14`); reserved, and live while disabled |
+| `sim` | Run a simulation of interrupts and cooldowns (`LibKa0s-Sim-1.0`, KickCD#38): `NS.Sim:RunVerb(rest)`. A feature verb, refused while disabled; slash-only, with no launcher entry and no key binding. With the major absent it prints `The simulator needs LibKa0s-Sim-1.0.` |
 
 With LibKa0s absent, `/kcd` still answers through the degradation stub in `settings/Slash.lua` (`slash-commands-§1`, WS-02): minimal dispatch with the same disabled gate, the library's `DISABLED_LINE_FORMAT` carried verbatim and pinned by `Kit.assertLibraryConstant`, and no formatter or parser copy. `enable`, `disable`, `lock`, `unlock` and `toggle` keep working because `enabled` and `locked` are on `NS.Settings.WRITE_THROUGH` (route (a)); every other schema verb, and `profile`, prints `/kcd <verb> is unavailable: the LibKa0s library did not load.` `/kcd debug` and `/kcd spells` still list their sub-verbs, as plain `cmd  desc` rows from the stub's `NS.Slash.CommandRows`. Detail in [slash-dispatch.md](slash-dispatch.md#degraded-verbs-a-load-without-libka0s).
 
@@ -384,7 +385,7 @@ Nothing is over the cap today.
 
 1. `libs/` — vendored Ace3 + LibKa0s + LibSharedMedia + AceGUI-3.0-SharedMediaWidgets + LibCustomGlow + LibDataBroker-1.1 + LibDBIcon-1.0 (the last two after `CallbackHandler-1.0`, which both need; nothing fixes their order relative to `LibKa0s.xml`, which is why `LibKa0s-Launcher-1.0` resolves them at Register time rather than at load)
 2. `locales/enUS.lua`
-3. `core/Compat.lua` (hangs `NS.Compat` on the shared private `NS` table — WoW's addon vararg; `NS` is not `_G.KickCD`)
+3. `core/Compat.lua` (hangs `NS.Compat` on the shared private `NS` table — WoW's addon vararg; `NS` is not `_G.KickCD`) → `core/SimSetup.lua` (`LibKa0s-Sim-1.0` seam, KickCD#38 — `Sim:NewSeam` wraps every `NS.Compat` function member in place at load, so a simulation session can answer the client reads and an idle seam calls straight through; publishes `NS.SimSeam`, `NS.SimHost` and, until the simulator module builds the live instance, the reference stub as `NS.Sim`. **Load-bearing position**: straight after `core/Compat.lua` and before any file that reads a Compat member, because a member added or replaced after the wrap escapes it; `tests/test_sim_seam.lua` asserts `NS.SimSeam:Unwrapped()` is empty after the whole addon loads)
 4. `core/EnvSetup.lua` (`LibKa0s-Env-1.0` seam — publishes `NS.Meta(field)` and `NS.Version()`: this addon's own TOC manifest, read in one place instead of three. Position is conventional rather than load-bearing — nothing here resolves at load, and both callers that resolve a version AT load sit far below it)
 5. `core/PoolSetup.lua` (`LibKa0s-Pool-1.0` seam — publishes `NS.Pool`: `NewKeyed` / `AcquireKeyed` / `ReleaseAllKeyed` / `CountsKeyed`, the spellID-keyed widget pool `modules/IconGrid.lua` builds every instance's icon pool from. Adopted at the library's minor 2, which added the keyed members — minor 1's array-shaped `active` would have iterated nothing on release and leaked a widget per rebuild. Position is conventional: anywhere after the libs block and before `modules/IconGrid.lua`, its only caller. With the library absent it falls back to the same four members locally, keyed, rather than making the grid leak only on a broken install)
 6. `core/GlowSetup.lua` (`LibKa0s-Glow-1.0` seam — publishes `NS.GlowLib`: `Start(frame, style, knobs, key)` / `Stop(frame, style, key)`, the stateless driver that maps the ready glow's style and named knobs onto LibCustomGlow-1.0, resolving it at call time. `modules/IconGrid_Render.lua`'s `StartGlow` / `StopGlow` are its only callers; the triggers, the knob ranges and clamp and the unchanged-repaint gate stay there. Position is conventional: anywhere after the libs block and before `modules/IconGrid_Render.lua`. With the library absent the stub's `Start` answers false, so no glow is drawn and no state recorded — the same outcome as an absent LibCustomGlow-1.0)

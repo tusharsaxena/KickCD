@@ -178,7 +178,9 @@ The **live set** is a union, built in `settings/Slash.lua` and never a typed cop
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
 unlocking *is* this addon's preview (the launcher menu's *Locked* entry), and with the addon off there is no
 grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
-live grids move, and then echoes *icon grid positions reset* at a player who can see no grid.
+live grids move, and then echoes *icon grid positions reset* at a player who can see no grid —
+and **`sim`**, which plays simulated casts and cooldowns through the live grids and cast bars that a
+disabled addon has stood down (the `LibKa0s-Sim-1.0` host contract H7 makes it a refused feature verb).
 
 `isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
 reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
@@ -198,8 +200,8 @@ degradation stub") prescribe:
 
 * **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
   unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
-  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
-  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
+  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, `sim`, listed in
+  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same five the live gate refuses:
   the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
   copy, so it names the host's own feature verbs instead. `tests/test_slash_degraded.lua` pins the list
   against the live union (`COMMANDS` minus the live set).
@@ -251,6 +253,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 | `diagnostics` | Write the diagnostic report into the debug console. | **Reserved** (`slash-commands-§2`) and live while disabled (`LibKa0s-Slash-1.0` minor 16). Calls `NS.DebugLog:RunDiagnostics()`; the library writes the markers, the identity header and the cap, and `modules/Diagnostics.lua` supplies the sections (`debug-logging-§14`). A run turns debug logging on for the session first when it is off. `/kcd debug diagnostics` is the same report, tested before every other `debug` word. No other name runs it. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
+| `sim [args]` | Run a simulation of interrupts and cooldowns. | The simulator's **one** row (`LibKa0s-Sim-1.0`'s host contract H7, KickCD#38): `NS.Sim:RunVerb(rest)`, read at call time, and the library's verbs parse the rest. A **feature verb**: refused while the addon is disabled (see above), and on `NS.FEATURE_VERBS` so the degraded stub refuses it too. **Slash-only**: no launcher entry and no key binding (the major's own ruling). `core/SimSetup.lua` publishes `NS.Sim`; with `LibKa0s-Sim-1.0` absent, or until the simulator module builds the live instance, `NS.Sim` is the library's reference stub, which prints `The simulator needs LibKa0s-Sim-1.0.` Pinned by `tests/test_sim_seam.lua` and `tests/test_slash_degraded.lua`. |
 
 `list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 

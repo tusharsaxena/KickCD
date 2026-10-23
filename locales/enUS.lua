@@ -58,6 +58,14 @@ L["Write the full diagnostic report (same as /kcd diagnostics)"] =
 L["List profiles, or switch to one: profile <name>"] =
     "List profiles, or switch to one: profile <name>"
 
+-- The simulator (LibKa0s-Sim-1.0, KickCD#38): the `/kcd sim` COMMANDS row, and the
+-- one line core/SimSetup.lua's degradation stub prints when the major is absent.
+-- Every other simulator line is the library's (lib.STRINGS) or the host's own.
+L["Run a simulation of interrupts and cooldowns — try `/kcd sim`"] =
+    "Run a simulation of interrupts and cooldowns — try `/kcd sim`"
+L["The simulator needs LibKa0s-Sim-1.0."] =
+    "The simulator needs LibKa0s-Sim-1.0."
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

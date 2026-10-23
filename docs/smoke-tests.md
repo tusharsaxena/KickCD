@@ -14,7 +14,7 @@ and a retired one leaves its number unused.
 | ID range | Theme | What it covers |
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows |
+| SLASH-1 – 15 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows, the `sim` verb's row and its refusal while disabled |
 | PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
@@ -213,6 +213,12 @@ Which checks to run for a partial change:
   rows the same way, then the `(default class/spec when omitted: …)` line. `/kcd debug EVENTS` → the
   events answer (the verb is case-insensitive); `/kcd debug nosuch` → `unknown debug subcommand
   'nosuch'`, then the list again, and the console neither opens nor closes. Result: pass (owner-marked 2026-10-10)
+- **SLASH-15. The `sim` verb is listed, and refused while disabled (KC-03, SM-KC-3).** `/kcd help` →
+  the index lists `/kcd sim` with `Run a simulation of interrupts and cooldowns — try `/kcd sim``.
+  `/kcd disable`, then `/kcd sim` → one tagged line, the library's disabled line naming `/kcd enable`,
+  and nothing else. `/kcd enable`, then `/kcd sim` → it answers again (until the simulator itself
+  lands it prints `The simulator needs LibKa0s-Sim-1.0.`; after that, the library's usage). There is no
+  launcher entry and no key binding for it. Result:
 
 ## PANEL
 
@@ -1052,3 +1058,4 @@ off on its own `Result:` line, then remove its row here.
 
 - CAST-17 (KC-01): the duration constructor probe.
 - CAST-18 (KC-01): no behavior change from the Compat unit readers.
+- SLASH-15 (KC-03): the `sim` verb is listed, and refused while disabled.

@@ -44,6 +44,9 @@ locales\enUS.lua
 # A line in this block without a LOAD-BEARING POSITION comment is conventional:
 # free to move within the block.
 core\Compat.lua
+# LOAD-BEARING: wraps every NS.Compat member at load (LibKa0s-Sim-1.0's seam). It must load straight
+# after the Compat files and before any file that reads a Compat member.
+core\SimSetup.lua
 # The LibKa0s-Env seam: this addon's own version, read from its TOC manifest.
 # After Compat; nothing here resolves at load, so this line is free to move.
 core\EnvSetup.lua

@@ -492,6 +492,18 @@ Total.
 - IconGrid's interruptible resolve reads positions 8 and 7 through NS.Compat
 - Castbar:Reevaluate starts the bar from the swapped NS.Compat members
 
+### test_sim_seam.lua (9)
+
+- Sim seam: NS.SimSeam is the library's seam and NS.SimHost the host's own table
+- Sim seam: Unwrapped() is EMPTY after the whole addon loads (host contract H2)
+- Sim seam: Keys() carries every read the simulator answers, and no PURE member
+- Sim seam: idle, a wrapped member answers exactly what the client answers
+- TOC: core/SimSetup.lua loads straight after core/Compat.lua, under a LOAD-BEARING comment
+- Sim stubs: surface parity with a live instance and the live seam, both ways
+- Sim absent: NS.Sim:RunVerb prints the needs-library line once and answers absent
+- LibKa0s absent: `/kcd sim` reaches the stub through the degraded dispatcher
+- `/kcd sim` while disabled is refused with the library's line and does not reach NS.Sim
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1214,7 +1226,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1382,7 +1394,7 @@ Total.
 - bare `/kcd spells` names the default spec by SpecDisplay
 - a spells sub-verb is matched case-insensitively and its remainder keeps its case
 
-### test_slash_degraded.lua (20)
+### test_slash_degraded.lua (21)
 
 - a disabled feature verb says so on ONE line, and does NOT act
 - every feature verb refuses, and NONE of them reaches the write seam
@@ -1395,6 +1407,7 @@ Total.
 - the stub carries no copy of the library's reserved verbs
 - the host's feature verbs are exactly the verbs the live gate refuses
 - degraded gate while disabled refuses feature verbs and nothing else
+- degraded gate while disabled refuses `sim`, the simulator's feature verb
 - degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising
 - the degraded sub-command vocabulary splits, finds and renders like the library
@@ -1644,6 +1657,7 @@ Total.
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
+| test_sim_seam.lua | 9 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1687,7 +1701,7 @@ Total.
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 53 |
-| test_slash_degraded.lua | 20 |
+| test_slash_degraded.lua | 21 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
@@ -1704,4 +1718,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1374** |
+| **Total** | **1384** |

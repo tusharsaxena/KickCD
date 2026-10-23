@@ -165,6 +165,17 @@ path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.
 on and pins that it logs exactly one `[Set]` line, the profile handler's
 (`debug-logging-§10`), as the live path does.
 
+The simulator's seam (`LibKa0s-Sim-1.0`, KickCD#38) has its own suite and fixture:
+
+| File | What it pins |
+|---|---|
+| `tests/test_sim_seam.lua` | `core/SimSetup.lua`: `NS.SimSeam:Unwrapped()` empty after the whole addon loads (host contract H2), the wrapped and PURE key sets, an idle member answering live, the TOC slot under its `# LOAD-BEARING:` comment, both stubs held to a live instance and the live seam in both directions (H9), and the `sim` row (H7) with the major absent, with LibKa0s absent, and while disabled |
+| `tests/sim_support.lua` | Not a suite: the fixture the simulator suites share. `S.load()` builds a fresh enabled instance as an Enhancement Shaman (Wind Shear and Capacitor Totem on the default list, every spell known) with `GetTime` on the kit clock and a Lua `C_DurationUtil.CreateDuration` fake read off it, and answers `NS`, `mocks`, `advance(sec)` (time-ordered timer firing), `flush()` and `snapshotDB()`. `S.testSession(env, steps)` / `S.withTestSession` build a throwaway `Sim:New` on the environment's own seam, delivering through `NS.DeliverEvent`, and point `NS.Sim` at it for one case |
+
+Every simulator case builds its own environment: a session binds its seam for good, and an earlier
+suite may have replaced a Compat member by assignment on the shared instance, which is exactly what
+`Unwrapped()` reports.
+
 ## Verifying the vendored copies
 
 ```
@@ -357,6 +368,7 @@ For end-to-end test scenarios — fresh install, visibility modes, lock/drag, ca
 - `/kcd resetposition` — restore every unit's icon grid (target and focus) to its default screen position; a free-moving cast bar keeps its place. Mirrors the General → "Reset position" button.
 - `/kcd spells <subcmd>` — per-class+spec spell-list editor (CLI parity for the Spells panel). Subcommands: `list`, `add`, `remove`, `enable`, `disable`, `category`, `reset`, `resetall`. Every subcommand accepts an optional trailing `[CLASS SPEC]`; both default to the player's current spec when omitted. Note: `/kcd spells reset` rebuilds **one** spec's list, while `/kcd spells resetall` (the new home of the old `/kcd reset spells`) calls `Database:ResetAllSpells` and rebuilds every spec's.
 - `/kcd diagnostics` — write the diagnostic report into the debug console (`debug-logging-§14`), appended after the trace, whether logging is on or off and whether the addon is enabled or not; one chat line gives the line count. A run that finds logging off turns it on for the session first (`debug-logging-§14`), so a `debug logging ON` line precedes it; a `/reload` turns it off again. The console's orange **Diagnostics** link runs the same report. `/kcd debug diagnostics` is the same report, and there is no `diag` alias. Covered headlessly by `test_diagnostics` (sections, order, budget, read-only, stood down, the chat lines and the flag turned on), the kit's `test_diagnostics_contract` run against `/kcd`'s dispatcher (logging turned on for the session, no second enable line when it is already on), and `test_disabled` (both forms while disabled). The sections are in [debug.md](debug.md#kcd-diagnostics-the-report-debug-logging-14).
+- `/kcd sim` — the simulator's one row (`LibKa0s-Sim-1.0`, KickCD#38), `NS.Sim:RunVerb(rest)`. A feature verb: it refuses on the library's one line while the addon is disabled, and it has no launcher entry and no key binding. With the major absent it prints `The simulator needs LibKa0s-Sim-1.0.` Covered headlessly by `test_sim_seam` and `test_slash_degraded`.
 - `/kcd perf` — the guided A/B performance capture (`LibKa0s-Perf-1.0`, wired in `core/PerfSetup.lua`), driven from a clickable step panel. `perf` is a **reserved verb across the collection** and is registered by the addon, never by the library: the lib returns lines and `core/KickCD.lua` prints them through the tagged printer. Records land in the `KickCDPerfDB` saved variable, stamped with the TOC version so a capture is attributable once it leaves the session. The instrumented paths are the poll and emit chain and, since KickCD#9, the `cdText` ticker pass that owns the icons' time-varying render; `NS.Perf.suspended` is consulted by the two show decisions so a capture doesn't measure itself.
 
 ## Debug subcommands

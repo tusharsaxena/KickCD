@@ -44,6 +44,8 @@ The callers are `Compat.GetCastingInfo` / `GetChannelInfo` (and `effectiveNotInt
 
 Two dumps stay on the raw client on purpose: `Compat.DebugInterrupt` and `modules/Castbar_Debug.lua`'s unit header. They exist to show what the REAL client says, which is what a bug report wants, even while a simulation runs.
 
+The seam itself is `core/SimSetup.lua` (`LibKa0s-Sim-1.0`'s `NewSeam`), loaded straight after this file: it wraps every function member of `NS.Compat` in place, once, except the four PURE ones (`IsSecret`, `_firstReturn`, `NewDuration`, `DebugInterrupt`). So a member added to this table must be defined in this file, never assigned onto `NS.Compat` from a later one: a late member escapes the wrap, and `tests/test_sim_seam.lua` fails on `NS.SimSeam:Unwrapped()`.
+
 ## State helpers (visibility / policy)
 
 The visibility helpers were formerly in this layer; they were relocated to `core/State.lua` in CR-27 because they're addon-policy decisions, not API normalization:
