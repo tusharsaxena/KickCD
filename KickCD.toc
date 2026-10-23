@@ -44,6 +44,9 @@ locales\enUS.lua
 # A line in this block without a LOAD-BEARING POSITION comment is conventional:
 # free to move within the block.
 core\Compat.lua
+# LOAD-BEARING: wraps every NS.Compat member at load (LibKa0s-Sim-1.0's seam). It must load straight
+# after the Compat files and before any file that reads a Compat member.
+core\SimSetup.lua
 # The LibKa0s-Env seam: this addon's own version, read from its TOC manifest.
 # After Compat; nothing here resolves at load, so this line is free to move.
 core\EnvSetup.lua
@@ -68,6 +71,9 @@ core\Util.lua
 # file survives the reversed order without an error, which is what makes the
 # order worth stating here rather than only in the file.
 core\CoreSetup.lua
+# Conventional position: defines nothing another file reads at load; the recorders
+# NS.RegisterEventList and Util.NewUnitCastFilter call are reached at runtime.
+core\Events.lua
 core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua
@@ -130,6 +136,27 @@ modules\Castbar_Skin.lua
 modules\Castbar_Events.lua
 modules\Castbar_Debug.lua
 modules\UnitLabel.lua
+# The simulator (KickCD#38): first of the sim block. modules/SimWorld.lua registers
+# its seam providers on NS.SimSeam at file load, so it follows core\SimSetup.lua.
+modules\SimWorld.lua
+# The step drivers (KC-07): between the world, whose mutators they call, and the session host,
+# whose play hands them each step. Nothing resolves at load: NS.Sim, NS.SimHost and NS.SimScenario
+# are read at call time, so this position is conventional within the sim block.
+modules\SimDrivers.lua
+# LOAD-BEARING POSITION: modules/Sim.lua binds NS.SimSeam to the live session (Sim:New) and
+# overwrites core/SimSetup.lua's stub NS.Sim, so every later sim file (and any NS.Sim:OnStop
+# registration) meets the live instance. It follows modules\SimWorld.lua, whose providers it
+# builds the world for, and creates NS.SimHost.SCENARIOS, which modules\SimScenario.lua fills.
+modules\Sim.lua
+# LOAD-BEARING POSITION: modules/SimScenario.lua fills NS.SimHost.SCENARIOS in place (the party and
+# KickCD#38's four scenarios, KC-08), and modules/Sim.lua creates that table and hands it to Sim:New,
+# so this line follows modules\Sim.lua.
+modules\SimScenario.lua
+# The simulation strip over each icon grid (KC-09). Last of the sim block, before
+# modules\Diagnostics.lua: NS.Sim, NS.SimHost, IconGrid and UnitLabel are read at call time, and
+# modules/Sim.lua reaches NS.SimStrip only when a session starts or stops, so the position is
+# conventional within the sim block.
+modules\SimStrip.lua
 # The sections of `/kcd diagnostics` (debug-logging-§14). Last in this block by
 # convention only: every module it reads it resolves at CALL time, when the
 # report runs, and core\DebugLogSetup.lua asks it for its sections the same way.

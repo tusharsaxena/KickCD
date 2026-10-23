@@ -126,6 +126,43 @@ Castbar instances[unit]:Reevaluate ──► Compat.GetCastingInfo(unit)
 
 Each `IconGrid` instance emits its own `Ka0s_KickCD_GridLayout { unit, gridFrame, primaryIcon, width, height }` after every `Layout()` pass. Each `Castbar` instance listens, filters on `payload.unit`, and — only for its own unit's payload — re-anchors under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `NS:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-runs `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`). A focus instance ignores a target `GRID_LAYOUT` payload and vice versa.
 
+## Simulated delivery
+
+A simulation must reach exactly the handlers the client's own registration would, and no others (KickCD#38, the simulator's H3). `NS.DeliverEvent(event, ...)` (`core/Events.lua`) is that one deliver. It answers how many handlers ran.
+
+**What it replays.** KickCD registers through two choke points, and both record into `NS.EventRoutes` at runtime: `NS.RegisterEventList` (`core/CoreSetup.lua`) records each AceEvent target once, in registration order, and `Util.NewUnitCastFilter` (`core/Util.lua`) records each per-(module, unit) cast filter once, when it is built. The record says who registered, never what is registered now. So `DeliverEvent` replays:
+
+- for a `UNIT_SPELLCAST_*` event, every recorded filter that is **armed**, whose unit is the event's first payload argument and whose route map names the event, calling `module[method](module, event, unit, ...)` as the filter frame's `OnEvent` does;
+- for every event, every recorded target AceEvent **still holds** the event for, calling the callable CallbackHandler stored as `fn(event, ...)`, the way its `Fire` calls it.
+
+A stood-down addon therefore delivers nothing (every target unregistered, every filter disarmed) without `DeliverEvent` reading the latch, and a disabled focus unit's filters stay silent. A registration made through `NS.SafeRegisterEvent` directly is not in the list, so it is not a route and is not replayed. Each handler is pcall'd, so one that raises costs only itself; it still counts, and it writes one `Events` debug line naming the event and the error.
+
+**Order.** The client dispatches an event's AceEvent targets in CallbackHandler's `pairs` order, which is unspecified. `DeliverEvent` uses registration order instead, which is deterministic. No KickCD event depends on the order between two of its handlers: each module's handler refreshes only that module's own state and frames, and cross-module effects travel on the message bus (`PLAYER_TARGET_CHANGED` reaches `IconGrid` and `Castbar`, and neither reads what the other's handler wrote).
+
+**The registry read.** The still-registered check reads AceEvent's CallbackHandler registry, `LibStub("AceEvent-3.0").events.events[event][target]`. If that table is unreadable (a CallbackHandler that changed its shape), `DeliverEvent` answers 0 and writes `deliver: AceEvent registry unreadable` on the `Events` debug channel, once per session, rather than raising.
+
+### The drivers' event sequences
+
+Each simulator step is one driver call (`modules/SimDrivers.lua`, KC-07; `Setup` KC-08). The driver reads the world, edits it through the `NS.SimWorld` mutators, then fires these events through `NS.Sim:Fire`, in this order. "Per unit" means once for each of `target` then `focus` that shows the enemy, with the payload `(unit, castGUID, spellID)`. A refused step narrates one `[sim]` line and fires nothing.
+
+| Kind | World edit | Events, in order | Refused (narration only) |
+|---|---|---|---|
+| `Setup {charges}` | `SetCharges(kick, charges)`: all ready, still off the GCD | `SPELL_UPDATE_CHARGES` | no kick tracked (detail only) |
+| `Combat {on}` | `SetCombat`; the session's `simCombat` | `PLAYER_REGEN_DISABLED` (on) or `PLAYER_REGEN_ENABLED` (off) | - |
+| `Target {enemy}` / `Focus {enemy\|nil}` | `SetUnit` | `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` | - |
+| `CastStart {enemy, spell, duration, uninterruptible?}` | `StartCast` | `UNIT_SPELLCAST_START` per unit | - |
+| `ChannelStart` | `StartCast` (a channel) | `UNIT_SPELLCAST_CHANNEL_START` per unit | - |
+| `Interruptible {enemy}` | `SetInterruptible` | `UNIT_SPELLCAST_INTERRUPTIBLE` per unit (`_NOT_INTERRUPTIBLE` with `interruptible = false`) | no cast |
+| `Kick {enemy}` | `StartCooldown` (15 s) or `UseCharge` (15 s recharge); `EndCast` | `UNIT_SPELLCAST_SUCCEEDED` (`player`), `SPELL_UPDATE_COOLDOWN`, `SPELL_UPDATE_CHARGES` (a charge spell), then `UNIT_SPELLCAST_INTERRUPTED` (a channel: `_CHANNEL_STOP`) per unit | no kick tracked; no cast; uninterruptible; on cooldown with no charge (`(Ns)` left) |
+| `PartyKick {member, enemy}` | `EndCast` | `UNIT_SPELLCAST_INTERRUPTED` (a channel: `_CHANNEL_STOP`) per unit, after the `[sim]` line | no cast |
+| `Complete {enemy}` | `EndCast` | `UNIT_SPELLCAST_SUCCEEDED` per unit, then `UNIT_SPELLCAST_STOP` (a channel: `_CHANNEL_STOP`) per unit | no cast (detail only) |
+| `Cc {enemy}` | `StartCooldown` (30 s), `StartGcd` (1.5 s) | `UNIT_SPELLCAST_SUCCEEDED` (`player`), `SPELL_UPDATE_COOLDOWN` | no CC tracked; the CC on cooldown |
+| `Die {enemy}` | `Kill`; `SetUnit(unit, nil)` for each unit showing it | `UNIT_SPELLCAST_STOP` (a channel: `_CHANNEL_STOP`) per unit while casting, then `PLAYER_TARGET_CHANGED` / `PLAYER_FOCUS_CHANGED` for each unit cleared | - |
+| `Leave {member}` | - | `GROUP_ROSTER_UPDATE`, after the `[sim]` line: no KickCD handler, so it reaches 0, and the interference watch is not a route | - |
+| `Expire {spell = "kick"\|"cc"}` | `ClearCooldown` (the timer canceled, a charge spell back to full) | `SPELL_UPDATE_CHARGES` (a charge spell), `SPELL_UPDATE_COOLDOWN` | - |
+
+Expiries that run out on their own (a cooldown, a recharge, the GCD) fire from `NS.Sim:After` timers the world scheduled: `SPELL_UPDATE_COOLDOWN`, with `SPELL_UPDATE_CHARGES` first for a recharge.
+
 ## Lock and anchor
 
 Each enabled unit's icon grid and cast bar instance has its own single anchor in `db.profile.units.<unit>.anchors`, always relative to UIParent — anchors are never link-resolved, so a linked focus still tracks its own independent position. `Util.SaveAnchor(frame)` snapshots `{ point, relativePoint, x, y }`; `Util.ApplyAnchor(frame, anchor)` restores it. `NS.Units.Anchor(unit, which)` / `.SetAnchor(unit, which, a)` are the read/write helpers (`core/Units.lua`). `Units` owns the anchors as named non-setting state (`architecture-§5`), and [ARCHITECTURE.md](ARCHITECTURE.md#settings-schema) names every writer: the two drag-stops through `SetAnchor`, and `Helpers.ResetIconPosition` directly.

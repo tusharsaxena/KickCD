@@ -14,16 +14,17 @@ and a retired one leaves its number unused.
 | ID range | Theme | What it covers |
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows |
+| SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows (15 – 24 retired into SIM) |
 | PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
 | GRID-1 – 21 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid |
+| CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
+| SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
@@ -213,6 +214,9 @@ Which checks to run for a partial change:
   rows the same way, then the `(default class/spec when omitted: …)` line. `/kcd debug EVENTS` → the
   events answer (the verb is case-insensitive); `/kcd debug nosuch` → `unknown debug subcommand
   'nosuch'`, then the list again, and the console neither opens nor closes. Result: pass (owner-marked 2026-10-10)
+- **SLASH-15 – 24. Retired 2026-10-23: now in [SIM](#sim).** The `sim` verb's row and refusal is SIM-3,
+  the combat stop SIM-6, unlock and resetall SIM-7, `disable` SIM-8, absorbed input and diagnostics SIM-9,
+  the scenarios SIM-10 – 12 and the strip SIM-12.
 
 ## PANEL
 
@@ -625,6 +629,8 @@ Which checks to run for a partial change:
   draws at the grid's position (anchored to the grid frame), not hidden and not stranded where the old
   first icon sat; drag the grid while unlocked and the bar follows it. Re-enable one spell → the bar
   re-anchors under that icon. Result: pass (owner-marked 2026-10-10)
+- **CAST-17. Retired 2026-10-23: now SIM-1** (the duration constructor probe).
+- **CAST-18. Retired 2026-10-23: now SIM-2** (no change from the Compat unit readers).
 
 ## FOCUS
 
@@ -787,6 +793,92 @@ Which checks to run for a partial change:
 - **SPELLS-16. Racials survive a reset.** On a race with a racial cast-stopper, reset one of your own
   class's specs (Defaults or `/kcd spells reset`) → the racial is the last row. Reset another class's
   spec → no racial. Result: pass (owner-marked 2026-10-10)
+
+## SIM
+
+The simulator (`/kcd sim`, `LibKa0s-Sim-1.0`, KickCD#38). Unless a check says otherwise: solo, out of
+combat, in the open world, the grids locked (`/kcd lock`), Target and Focus both enabled. Between
+checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any check leaves a change in
+`KickCDDB`, a cast, or a chat message to anyone, that is the failure.
+
+- **SIM-1. The duration constructor exists under the names Compat uses (KC-01, SM-KC-1).** Out of
+  combat, run `/run local d=C_DurationUtil and C_DurationUtil.CreateDuration and C_DurationUtil.CreateDuration(); print(d ~= nil, d and pcall(d.SetTimeFromStart, d, GetTime(), 10), d and d.GetRemainingDuration and d:GetRemainingDuration())`
+  → it prints `true true` and a number close to `10`. Anything else means `Compat.NewDuration`'s
+  constructor or setter name is wrong and it answers nil in the client, and the simulator refuses with
+  `This client cannot build simulated cooldowns, so the simulator cannot run.` Result: pass (owner, 2026-10-23)
+- **SIM-2. No behavior change from the Compat unit readers (KC-01, SM-KC-2).** No simulation running.
+  `/kcd set visibility target_casting_interruptible`. Target a hostile caster casting an interruptible
+  spell → the grid shows and the cast bar fills in its interruptible colors; an uninterruptible cast
+  masks the grid exactly as before the move; a friendly caster does not open the grid. No Lua error.
+  Result: pass (owner, 2026-10-23)
+- **SIM-3. The `sim` verb is listed, and refused while disabled (KC-03, SM-KC-3).** `/kcd help` → the
+  index lists `/kcd sim` with `Run a simulation of interrupts and cooldowns — try `/kcd sim``.
+  `/kcd disable`, then `/kcd sim` → one tagged line, the library's disabled line naming `/kcd enable`,
+  and nothing else. `/kcd enable`, then `/kcd sim` → it answers again (SIM-4). There is no launcher
+  entry and no key binding for it. Result: pass (owner, 2026-10-23)
+- **SIM-4. The panel, the usage and the auto-run (KC-05, SM-KC-4, SM-KC-15).** `/kcd set visibility
+  always`, then `/kcd sim` → chat prints `Simulation: idle. Scenarios: pull, boss, miss, leave.` and the
+  usage lines (`start <scenario>`, `run`, `step`, `pause`, `resume`, `restart`, `stop`, `status`,
+  `panel`), and the step panel opens docked beside the Target grid with the `pull` steps previewed and
+  inert. Read those lines against README's *Simulator* paragraph: they agree on the four scenarios, on
+  nothing being cast, sent or saved, and on `/kcd sim stop` ending it. Press the panel's Start →
+  `Simulation started (Mythic+ pull, several kickers): nothing is cast, nothing is saved, and your
+  settings are not touched.`, and the run plays a step about every second on its own, each with
+  `Simulation step <n> of <total>: <label>.` While it plays, click a step row two or more ahead → the
+  run pauses, every step up to the clicked one plays, and it waits. The panel's Resume → it plays on to
+  `Simulation finished: /kcd sim stop ends it.` `/kcd sim stop`, then `/kcd sim start boss` → it too
+  plays on its own. Drag the panel, `/kcd sim stop`, `/reload` and `/kcd sim` → the panel is docked
+  again (its position was session-only). `/kcd sim stop`, `/kcd reset visibility`. Result: pass (owner, 2026-10-23)
+- **SIM-5. Each refusal prints its one line and starts nothing (KC-05, SM-KC-5).** Run
+  `/kcd sim start pull` in each state below → exactly the line shown, no `Simulation started`, no
+  strip, no step played, and the grid shows your real cooldowns:
+  - `/kcd unlock` → `Lock the grids first (/kcd lock): unlocking is KickCD's preview.` (`/kcd lock`
+    after);
+  - attacking a training dummy → `A simulation cannot start in combat.`;
+  - in a party → `A simulation cannot start in a group.`;
+  - inside a dungeon, solo → `A simulation cannot start in an instance.`;
+  - Target and Focus both unticked on General → Units →
+    `Enable the Target or the Focus grid first: the simulation plays on them.` (re-tick both);
+  - during `/kcd perf start` →
+    `A performance capture is running: finish it first (/kcd perf finish).` (`/kcd perf finish`);
+  - with a simulation already running → `A simulation is already running.`
+
+  Result: pass (owner, 2026-10-23)
+- **SIM-6. Real combat stops a simulation (KC-06, SM-KC-6).** `/kcd sim start pull`, then attack a
+  training dummy → the simulation stops with `Simulation stopped: you entered combat.`, the strip and
+  the step panel clear, and the real grid shows your real cooldowns. Result: pass (owner, 2026-10-23)
+- **SIM-7. Unlock and resetall refuse during a simulation (KC-06, SM-KC-7).** During a simulation,
+  `/kcd unlock` and the launcher's *Locked* entry each print `End the simulation first (/kcd sim stop).`
+  and the grids stay locked; `/kcd resetall` prints the same line and resets nothing. Unticking
+  General → *Lock frame* in the settings stops the simulation with
+  `Simulation stopped: the grids were unlocked.` Result: pass (owner, 2026-10-23)
+- **SIM-8. `disable` stops a simulation first (KC-06, SM-KC-8).** During a simulation,
+  `/kcd disable` → `Simulation stopped: the addon stood down.` comes first, then the addon stands down.
+  `/kcd enable` brings the grid back with your real cooldowns. Result: pass (owner, 2026-10-23)
+- **SIM-9. Targeting and casting are absorbed; diagnostics name the session (KC-06, SM-KC-9).**
+  During a simulation, target a real mob and cast at it → the simulation keeps running, and the grid
+  and the cast bar keep showing the simulated world. `/kcd diagnostics` has a `[Sim]` section naming
+  the scenario and the step (`sim: step=<pos>/<total>`); after `/kcd sim stop` it reads `sim: idle`.
+  Result: pass (owner, 2026-10-23)
+- **SIM-10. The `pull` scenario plays on the real grid (KC-08, SM-KC-10).** `/kcd set visibility
+  target_casting`, then `/kcd sim start pull` → the grid appears as Shadowcaster starts its cast, your
+  kick's swipe starts when you kick, Thrall's and Jaina's `[sim]` lines print, the CC step dims the
+  other spells for a GCD, and when combat ends the grid returns to its idle state. Result: pass (owner, 2026-10-23)
+- **SIM-11. The `boss` and `miss` scenarios (KC-08, SM-KC-11).** `/kcd sim start boss` → a 2-charge
+  badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
+  `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
+  the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
+- **SIM-12. The `leave` scenario, and where the sim strip sits (KC-08, KC-09, SM-KC-12 – 14).**
+  `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the target bar picks up
+  Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
+  `/kcd set visibility target_casting` and `/kcd sim start pull` → a cyan strip with an info icon sits
+  above the Target label (and one above the Focus label), reading
+  `Simulation: Mythic+ pull, several kickers - /kcd sim stop ends it.`; it stays visible between casts
+  while the visibility mode hides the grid. Untick Target in the settings → the Target strip goes and
+  the Focus grid keeps its strip; untick Focus too → one strip floats near the screen center; no Lua
+  error. Re-tick both, `/kcd sim stop`, `/kcd set units.target.label.show false` and start again → the
+  strip sits on the grid's top edge. `/kcd sim stop` → every strip disappears
+  (`/kcd reset units.target.label.show` after). Result: pass (owner, 2026-10-23)
 
 ## DIAG
 

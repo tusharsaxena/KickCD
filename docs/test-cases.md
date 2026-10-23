@@ -186,6 +186,21 @@ Total.
 - the [Init] line is unchanged when nothing was rejected
 - a frame RegisterEvent honors __badEvents
 
+### test_event_routes.lua (12)
+
+- DeliverEvent: SPELL_UPDATE_COOLDOWN runs Cooldowns' OnCooldownEvent once and answers 1
+- DeliverEvent: PLAYER_TARGET_CHANGED runs every module that registered it, and counts them
+- DeliverEvent: PLAYER_REGEN_DISABLED reaches core/State.lua's boot listener
+- DeliverEvent: a UNIT_SPELLCAST_ event reaches only the filters for its unit
+- DeliverEvent: a disarmed filter runs nothing
+- DeliverEvent: a stood-down addon delivers nothing, with no latch check of its own
+- DeliverEvent: an event nobody registered answers 0
+- DeliverEvent: a handler that raises costs only itself and names itself on the console
+- DeliverEvent: a raising cast handler costs only itself
+- EventRoutes: a registration made through NS.SafeRegisterEvent directly is not a route
+- EventRoutes: a target is recorded once, and a filter once per (module, unit)
+- DeliverEvent: an unreadable AceEvent registry answers 0 and says so once
+
 ### test_locale.lua (15)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
@@ -446,6 +461,162 @@ Total.
 - DebugInterrupt skips the casting block entirely when the API is absent
 - DebugInterrupt closes with the addon's own visibility and glow decisions
 - DebugInterrupt writes every line through a caller's emit sink, and nothing to chat
+
+### test_compat_units.lua (27)
+
+- Compat.UnitExists passes the unit through and answers the API's value
+- Compat.UnitIsDead passes the unit through and answers the API's value
+- Compat.UnitCanAttack asks the client with the player as the first argument
+- Compat.UnitCastingInfo returns every value, nil holes included
+- Compat.UnitChannelInfo returns every value, nil holes included
+- Compat.UnitCastingDuration returns every value, nil holes included
+- Compat.UnitChannelDuration returns every value, nil holes included
+- Compat.UnitExists answers false with the API absent
+- Compat.UnitCanAttack answers true with the API absent
+- Compat.UnitIsDead answers false with the API absent
+- Compat.UnitCastingInfo answers nil with the API absent
+- Compat.UnitChannelInfo answers nil with the API absent
+- Compat.UnitCastingDuration answers nil with the API absent
+- Compat.UnitChannelDuration answers nil with the API absent
+- Compat.NewDuration answers nil with C_DurationUtil absent
+- Compat.NewDuration builds a duration and sets it from start and length
+- Compat.NewDuration answers nil, without raising, when the constructor raises
+- Compat.NewDuration answers nil, without raising, when the setter raises
+- Compat.NewDuration answers nil when the constructor yields nothing
+- GetCastingInfo builds its record from the swapped NS.Compat members
+- GetCastingInfo falls through to the swapped channel members
+- GetCastingInfo forces uninterruptible through the swapped UnitCanAttack
+- State.IsHostileUnitCasting reads the unit through NS.Compat
+- State.ApplyInterruptibleAlpha feeds the swapped member's flag to SetAlphaFromBoolean
+- IconGrid.InstanceCasting reads the unit through NS.Compat
+- IconGrid's interruptible resolve reads positions 8 and 7 through NS.Compat
+- Castbar:Reevaluate starts the bar from the swapped NS.Compat members
+
+### test_sim_seam.lua (9)
+
+- Sim seam: NS.SimSeam is the library's seam and NS.SimHost the host's own table
+- Sim seam: Unwrapped() is EMPTY after the whole addon loads (host contract H2)
+- Sim seam: Keys() carries every read the simulator answers, and no PURE member
+- Sim seam: idle, a wrapped member answers exactly what the client answers
+- TOC: core/SimSetup.lua loads straight after core/Compat.lua, under a LOAD-BEARING comment
+- Sim stubs: surface parity with a live instance and the live seam, both ways
+- Sim absent: NS.Sim:RunVerb prints the needs-library line once and answers absent
+- LibKa0s absent: `/kcd sim` reaches the stub through the degraded dispatcher
+- `/kcd sim` while disabled is refused with the library's line and does not reach NS.Sim
+
+### test_sim_world.lua (17)
+
+- SimWorld: Build answers the empty world shape
+- TOC: modules/SimWorld.lua loads straight after modules/UnitLabel.lua
+- SimWorld cooldowns: an idle spell answers ready, usable and a zeroed duration
+- SimWorld cooldowns: StartCooldown answers t, 12, true, 1, true and a 12 s duration
+- SimWorld cooldowns: the expiry timer clears the cooldown and fires SPELL_UPDATE_COOLDOWN once
+- SimWorld cooldowns: ClearCooldown ends it at once and cancels the expiry timer
+- SimWorld GCD: an on-GCD spell answers the GCD, an offGcd spell answers ready
+- SimWorld GCD: an on-GCD spell's own longer cooldown wins over the GCD
+- SimWorld charges: SetCharges, UseCharge, the recharge timer and the 0-charge lockout
+- SimWorld units: target exists, is attackable and alive; party1 is absent; player exists
+- SimWorld casts: UnitCastingInfo answers the client's nine positions and a 3 s duration
+- SimWorld casts: a channel answers through UnitChannelInfo and nil through UnitCastingInfo
+- SimWorld casts: the same enemy set as focus answers the same cast on focus
+- SimWorld idle: with no session every member answers the live client
+- SimWorld no world while active: the providers answer fallback(...)
+- SimWorld.CanBuild: true with a duration constructor, false when NewDuration answers nil
+- SimWorld: the mutators are no-ops with no world installed
+
+### test_sim_session.lua (18)
+
+- TOC: modules/Sim.lua loads straight after modules/SimDrivers.lua, under a LOAD-BEARING comment
+- Sim session: NS.Sim is the live instance bound to NS.SimSeam, not core/SimSetup.lua's stub
+- Sim refusals: each condition alone refuses with exactly its line and builds nothing
+- Sim refusals: InCombatLockdown alone refuses as combat
+- Sim refusals: with every condition set they refuse in CHECKS order, one by one
+- Sim refusals: the library refuses an unknown scenario and a second session first
+- Host.ResolveSpells: the first watched interrupt is the kick, the first other kept spell the CC
+- Sim start: STARTED, the engine rebuilt on the world, the spells resolved, the panel asked, ready
+- Sim deliver: NS.Sim:Fire('SPELL_UPDATE_COOLDOWN') runs Cooldowns' handler
+- Sim stop: the world dropped, combat cleared, and the engine re-synced with the seam OFF
+- Sim stop: reason `combat` with simulated combat delivers NO PLAYER_REGEN_ENABLED
+- Sim stop: no simulated combat, no PLAYER_REGEN_ENABLED
+- Sim saved data: KickCDDB is identical before a start and after a start, a step and a stop
+- Host.Play: an unknown step kind raises a clear error, and the run pauses
+- Sim panel: PanelRows while idle previews the first scenario's steps
+- Sim panel: stepLabel names `your kick` by the real spell while running, the role word idle
+- Sim panel: stepTip names the events, the engine and, once played, the detail
+- Sim panel: anchorTo is the target grid while shown, else the focus grid, else nil
+
+### test_sim_interference.lua (12)
+
+- Sim interference: a REAL PLAYER_REGEN_DISABLED stops with `combat`, and real combat stays
+- Sim interference: a REAL PLAYER_ENTERING_WORLD stops with `world`
+- Sim interference: a REAL GROUP_ROSTER_UPDATE stops with `group` only when the player is in a group
+- Sim interference: a SIMULATED GROUP_ROSTER_UPDATE never reaches the watch target
+- Sim interference: a profile switch stops with `profile`
+- Sim interference: unticking Lock frame (Store.Set locked false) stops with `unlocked`
+- Sim interference: /kcd unlock, /kcd toggle and NS.ToggleLock refuse while a session runs
+- Sim interference: /kcd resetall refuses while a session runs, and KickCDDB is unchanged
+- Sim interference: /kcd disable stops the session FIRST, before any module suspends
+- Sim interference: a REAL target change and a REAL cast start are absorbed
+- Sim interference: the watch target registers only while a session runs
+- Sim diagnostics: the sim section says idle, then names the running session
+
+### test_sim_drivers.lua (27)
+
+- SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per driver
+- TOC: modules/SimDrivers.lua loads between modules/SimWorld.lua and modules/Sim.lua
+- SimDrivers: the host's Play runs the driver and the step tip names its events
+- SimDrivers Combat: on fires PLAYER_REGEN_DISABLED, marks the session, and the engine enters combat
+- SimDrivers Setup: your kick gets the step's charges, all ready, then SPELL_UPDATE_CHARGES
+- SimDrivers Target / Focus: set the unit (named from the scenario's enemies) and fire the change
+- SimDrivers CastStart: fires UNIT_SPELLCAST_START for every unit showing the enemy
+- SimDrivers CastStart: an uninterruptible cast, shown on no unit, fires nothing
+- SimDrivers ChannelStart: fires UNIT_SPELLCAST_CHANNEL_START with (unit, castGUID, spellID)
+- SimDrivers Interruptible: flips the flag and fires UNIT_SPELLCAST_INTERRUPTIBLE
+- SimDrivers Kick (a): no cast narrates, fires nothing, and answers `no cast`
+- SimDrivers Kick (b): an uninterruptible cast narrates and fires nothing
+- SimDrivers Kick (d): lands: cooldown, then SUCCEEDED, SPELL_UPDATE_COOLDOWN and INTERRUPTED per unit
+- SimDrivers Kick (d): a channel ends with UNIT_SPELLCAST_CHANNEL_STOP
+- SimDrivers Kick (c): on cooldown narrates the seconds left, fires nothing, and the cast goes on
+- SimDrivers Kick (d): a charge spell spends a charge and also fires SPELL_UPDATE_CHARGES
+- SimDrivers Kick: with no kick resolved it narrates and fires nothing
+- SimDrivers PartyKick: narrates the member, spec, enemy and spell, then fires INTERRUPTED
+- SimDrivers PartyKick: with no cast only narrates
+- SimDrivers Complete: fires SUCCEEDED then STOP for each unit and ends the cast
+- SimDrivers Cc: starts the 30 s CC cooldown and a 1.5 s GCD, fires SUCCEEDED and the cooldown update
+- SimDrivers Cc: no CC resolved narrates only; a CC still cooling refuses truthfully
+- SimDrivers Die: kills, ends the cast with STOP, and clears target and focus that show it
+- SimDrivers Die: an enemy shown on no unit and not casting fires nothing
+- SimDrivers Leave: narrates, then fires GROUP_ROSTER_UPDATE to no handler without raising
+- SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
+- SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
+
+### test_sim_e2e.lua (9)
+
+- SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
+- TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
+- SimScenario: every timeline is pure: two calls answer equal steps and fire nothing
+- SimScenario: the panel's idle preview lists exactly the first scenario's step labels
+- Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GCD, a death
+- Sim e2e boss: your kick's charges go 2 -> 1 -> 0, and the expire step brings both back
+- Sim e2e miss: the shield refuses a kick, breaks, the kick lands, the next cast completes
+- Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
+- Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
+
+### test_sim_strip.lua (13)
+
+- TOC: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
+- SimStrip: idle, no strip frame exists (it is built lazily on the first start)
+- SimStrip: on start the strip is shown, built with the sim flavor, and names the scenario
+- SimStrip: with the default label above the grid, the strip sits BOTTOM to the label's TOP, 2 up
+- SimStrip: one strip per enabled grid: the focus grid carries its own
+- SimStrip: with the target label off, the strip anchors to the target grid frame
+- SimStrip: with the target disabled, the strip marks the focus grid
+- SimStrip: with both units disabled mid-session, the strip floats at UIParent CENTER 0, 180
+- SimStrip: visibility target_casting with no cast hides the grid, not the strip
+- SimStrip: a GRID_LAYOUT or a CONFIG_CHANGED (units) re-places it
+- SimStrip: the width is max(220, the grid's width)
+- SimStrip: on stop it hides and releases its bus subscriptions
+- SimStrip: without the library's sim flavor, no strip, no error, and the session runs
 
 ### test_debuglog.lua (13)
 
@@ -1169,7 +1340,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1337,7 +1508,7 @@ Total.
 - bare `/kcd spells` names the default spec by SpecDisplay
 - a spells sub-verb is matched case-insensitively and its remainder keeps its case
 
-### test_slash_degraded.lua (20)
+### test_slash_degraded.lua (21)
 
 - a disabled feature verb says so on ONE line, and does NOT act
 - every feature verb refuses, and NONE of them reaches the write seam
@@ -1350,6 +1521,7 @@ Total.
 - the stub carries no copy of the library's reserved verbs
 - the host's feature verbs are exactly the verbs the live gate refuses
 - degraded gate while disabled refuses feature verbs and nothing else
+- degraded gate while disabled refuses `sim`, the simulator's feature verb
 - degraded help rows print `cmd  desc` plainly, with no em dash
 - degraded `/kcd debug` and `/kcd spells` print their sub-lists without raising
 - the degraded sub-command vocabulary splits, finds and renders like the library
@@ -1587,6 +1759,7 @@ Total.
 | test_constants.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
+| test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
 | test_schema.lua | 38 |
@@ -1597,6 +1770,14 @@ Total.
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 13 |
+| test_compat_units.lua | 27 |
+| test_sim_seam.lua | 9 |
+| test_sim_world.lua | 17 |
+| test_sim_session.lua | 18 |
+| test_sim_interference.lua | 12 |
+| test_sim_drivers.lua | 27 |
+| test_sim_e2e.lua | 9 |
+| test_sim_strip.lua | 13 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1640,7 +1821,7 @@ Total.
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 53 |
-| test_slash_degraded.lua | 20 |
+| test_slash_degraded.lua | 21 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 6 |
@@ -1657,4 +1838,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1335** |
+| **Total** | **1480** |

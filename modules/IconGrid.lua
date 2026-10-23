@@ -174,9 +174,11 @@ end
 -- `current.name and ...` relies on in modules/Castbar.lua).
 local function instanceCasting(inst)
     local unit = inst.unit
-    if not (_G.UnitExists and _G.UnitExists(unit)) then return false end
-    if NS.Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
-    if NS.Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
+    -- Through NS.Compat at call time (host contract H1), so the simulator's seam answers.
+    local Compat = NS.Compat
+    if not Compat.UnitExists(unit) then return false end
+    if Compat._firstReturn(Compat.UnitCastingInfo, unit) then return true end
+    if Compat._firstReturn(Compat.UnitChannelInfo, unit) then return true end
     return false
 end
 
@@ -818,8 +820,19 @@ function IconGrid:OnSpellState(_evt, payload)
     end
 end
 
+--- Unlocking IS KickCD's preview (ARCHITECTURE.md *launcher*), and the two never run together: a
+--- General edit that leaves the grids unlocked (the settings panel's Lock frame checkbox) stops a
+--- running simulation (KickCD#38, KC-06). The CLI refuses its own unlock instead (core/KickCD.lua).
+local function stopSimOnUnlock()
+    local profile = NS.db and NS.db.profile
+    if profile and profile.locked == false and NS.Sim and NS.Sim:IsActive() then
+        NS.Sim:Stop("unlocked")
+    end
+end
+
 function IconGrid:OnConfigChanged(_evt, payload)
     local section = payload and payload.section
+    if section == "general" then stopSimOnUnlock() end
     if section == "icons" then
         -- Re-layout only — widgets and their textures don't need to change
         -- when only sizing/colors/alphas changed. Layout() also calls

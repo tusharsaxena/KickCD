@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1335%2F1335_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1480%2F1480_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -37,6 +37,10 @@ Setting it up takes four steps, in this order.
 The minimap button opens the settings on a left-click, and a right-click gives you a menu with **Enabled** and **Locked**. `/kcd disable` turns the addon off without opening anything, and `/kcd enable` turns it back on. `/kcd resetall` puts every page, position and spec's spell list back to defaults, so keep it for when you really want a fresh start. To see every setting and its value without clicking through the pages, run `/kcd list`.
 
 Everything else is on the addon's page under Settings → AddOns, and `/kcd` on its own opens it. `/kcd help` (or `/kickcd help`) lists every command.
+
+### Simulator
+
+`/kcd sim` opens a step panel and runs one of four scenarios against your real grid and cast bar: a Mythic+ pull, a boss kick rotation, an uninterruptible cast while your kick is on cooldown, and a party member leaving mid-pull. Start one with `/kcd sim start pull` (or `boss`, `miss`, `leave`) or from the panel, and it plays on its own. You can pause it and click any step to play up to it. Nothing is cast, sent or saved, and your settings aren't touched. It won't start in combat, in a group or an instance, or while the grids are unlocked, and combat, a loading screen or joining a group stops it. `/kcd sim stop` ends it and brings back your real target, focus and cooldowns. The party in a scenario is made up and only narrates in chat, because KickCD tracks your own cooldowns, not your party's.
 
 ## How interrupt tracking works
 
@@ -103,6 +107,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. `/kcd profile` lists your profiles, and `/kcd profile <name>` switches to one without opening the panel. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
 | How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace. It covers the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. If you only need one of those, the single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat. `castbar` and `interrupt` show your target, or your focus if you add `focus`. The window resets on every reload. |
+| Why does the simulator not show my party's kicks? | KickCD tracks your own cooldowns; the simulated party only narrates. Their kicks print as `[sim]` lines in chat and never appear on your grid. |
 | Can I measure how much KickCD costs my frame rate? | Yes. `/kcd perf start` begins a run. Play for a while, then `/kcd perf finish` ends and saves it, and `/kcd perf report` writes the summary and a JSON line to copy into the debug window. `/kcd perf` on its own shows where a run stands and lists every step, and the same steps are on a small panel. |
 
 ## Troubleshooting
@@ -153,6 +158,6 @@ Open Font License 1.1.
 
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
-and the debug console's close, copy and clear buttons.
+the debug console's close, copy and clear buttons, and the simulator's done check and info mark.
 
 Both ship inside the bundled payload under `libs/`, with their license text beside them.

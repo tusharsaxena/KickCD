@@ -623,7 +623,7 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
 end)
 
-test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList is drawn", function()
+test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it", function()
     -- LibKa0s#42 (Options 28 / OptionsIdList 3). An IdList help mark draws this
     -- library's own white `info` art only when the descriptor names the host's
     -- FOLDER; with no `addonName` it falls back to Blizzard's blue disc and a
@@ -636,8 +636,9 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     -- From LibKa0s v1.75.0 the copy ships only the icons CLAUDE.md's
     -- `LibKa0s icons:` line declares (library-stack-§7, the icon subset), and
     -- `info` is library-drawn only by an O.IdList help mark. KickCD draws no
-    -- O.IdList (settings/Spells_Header.lua uses H.IdInput), so `info` is not
-    -- declared and not shipped. The declaration is read with the kit's own parser
+    -- O.IdList (settings/Spells_Header.lua uses H.IdInput), so an IdList is not
+    -- why `info` is declared; the simulator's mode strip is (KC-03, below). The
+    -- declaration is read with the kit's own parser
     -- (VendorSync.iconDeclaration), never a second one in this repo.
     -- red under: `local _, NS = ...` with no `addonName = addonName,` in the
     -- descriptor, or adding an O.IdList call without declaring info.
@@ -673,11 +674,21 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     for _, name in ipairs(decl.names) do declared[name] = true end
     local art = io.open(T.root .. "/libs/LibKa0s/media/icons/info.tga", "rb")
     if art then art:close() end
-    if #drawsIdList == 0 then
+    -- KC-03 (KickCD#38): the simulator's mode strip draws `info` too (design-kc-sim; the
+    -- strip itself lands in a later item), so a wired simulator is the second reason the
+    -- name is declared. core/SimSetup.lua in the TOC is what "wired" means here.
+    local simWired = false
+    for _, rel in ipairs(T.tocFiles) do
+        if rel == "core/SimSetup.lua" then simWired = true end
+    end
+    if #drawsIdList == 0 and not simWired then
         assertTrue(not declared.info,
-            "KickCD draws no O.IdList, so `info` must not be on the `LibKa0s icons:` line")
+            "KickCD draws no O.IdList and no simulator strip, so `info` must not be on the `LibKa0s icons:` line")
         assertTrue(art == nil,
             "libs/LibKa0s/media/icons/info.tga ships although `info` is not declared")
+    elseif #drawsIdList == 0 then
+        assertTrue(declared.info == true, "the simulator is wired (core/SimSetup.lua) but `info` "
+            .. "is not on the `LibKa0s icons:` line, so its mode strip's mark draws blank")
     else
         assertTrue(declared.info == true, "an IdList is drawn (" .. table.concat(drawsIdList, ", ")
             .. ") but `info` is not on the `LibKa0s icons:` line, so its help mark draws blank")

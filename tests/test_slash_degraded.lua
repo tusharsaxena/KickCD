@@ -278,6 +278,17 @@ test("degraded gate while disabled refuses feature verbs and nothing else", func
     assertTrue(not joined(lines):find(refusal, 1, true), "spells answers: " .. joined(lines))
 end)
 
+test("degraded gate while disabled refuses `sim`, the simulator's feature verb", function()
+    -- NS.FEATURE_VERBS carries `sim` (the Sim major's host contract H7), so the degraded
+    -- stub refuses it exactly as the live gate does, and never reaches NS.Sim.
+    -- red under: `sim` left off NS.FEATURE_VERBS
+    local inst = degraded()
+    degradedRun(inst, "disable")
+    assertEqual(inst.NS.db.profile.enabled, false, "sanity: disabled")
+    local _, _, lines = degradedRun(inst, "sim")
+    assertEqual(joined(lines), T.NS.Slash.cli:DisabledLine(), "sim is a feature verb")
+end)
+
 test("degraded help rows print `cmd  desc` plainly, with no em dash", function()
     -- slash-commands-§1: no FormatRow copy, so no gold command and no ` — `.
     -- red under: the stub's LandingRows joining with the library's separator

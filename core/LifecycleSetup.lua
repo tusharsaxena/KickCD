@@ -116,6 +116,9 @@ end
 --- addon that GROWS a secure frame must hold its teardown pending instead of
 --- extending this function.
 local function standDown()
+    -- A running simulation stops FIRST (KickCD#38 H6, KC-06), while every module it re-syncs is
+    -- still up to take the cleanup. Covers `disable` and the perf hold alike.
+    if NS.Sim and NS.Sim.IsActive and NS.Sim:IsActive() then NS.Sim:Stop("standDown") end
     if NS.State and NS.State.StandDown then NS.State.StandDown() end
     eachModule(true, function(m) if m.Suspend then m:Suspend() end end)
     -- The Spells editor is a settings page rather than an AceAddon module, so it

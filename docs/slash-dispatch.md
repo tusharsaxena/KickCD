@@ -178,7 +178,9 @@ The **live set** is a union, built in `settings/Slash.lua` and never a typed cop
 What is left refuses: **`lock`, `unlock`, `toggle`** — the preview switch, since `launcher-§2` puts
 unlocking *is* this addon's preview (the launcher menu's *Locked* entry), and with the addon off there is no
 grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
-live grids move, and then echoes *icon grid positions reset* at a player who can see no grid.
+live grids move, and then echoes *icon grid positions reset* at a player who can see no grid —
+and **`sim`**, which plays simulated casts and cooldowns through the live grids and cast bars that a
+disabled addon has stood down (the `LibKa0s-Sim-1.0` host contract H7 makes it a refused feature verb).
 
 `isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
 reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
@@ -189,6 +191,55 @@ failure it guards against.
 
 Pinned by `tests/test_slash_degraded.lua` and, end to end with the stand-down, by `tests/test_disabled.lua`.
 
+## `/kcd sim` refusals
+
+A `/kcd sim start <scenario>` (and the step panel's Start) that cannot run prints exactly one line
+and starts nothing: no world, no rebuild, no panel. The library refuses an unknown scenario and a
+second session first; then the host's `refusal` (`NS.SimHost.Refusal`, `modules/Sim.lua`), run
+inside `NS.SimSeam:Live` so every read answers the real client, checks these in order and prints
+the first that holds. The guard is the word its `Sim` debug line names.
+
+| # | Condition | Line | Guard |
+|---|---|---|---|
+| 1 | The addon is stood down (`NS.IsDown()`) | The library's disabled line, `NS.Slash.cli:DisabledLine()`; while a perf capture holds the latch, the perf line below instead | `stood down` / `perf capture` |
+| 2 | A perf capture is running (`NS.Perf.on`) | `A performance capture is running: finish it first (/kcd perf finish).` | `perf capture` |
+| 3 | The grids are unlocked (`locked = false`): unlocking is KickCD's preview | `Lock the grids first (/kcd lock): unlocking is KickCD's preview.` | `unlocked` |
+| 4 | In combat (`NS.State.inCombat`, or `InCombatLockdown()`) | `A simulation cannot start in combat.` | `combat` |
+| 5 | In an instance (`IsInInstance()`) | `A simulation cannot start in an instance.` | `instance` |
+| 6 | In a group (`IsInGroup()`) | `A simulation cannot start in a group.` | `group` |
+| 7 | Neither the Target nor the Focus grid is enabled | `Enable the Target or the Focus grid first: the simulation plays on them.` | `no unit` |
+| 8 | The current spec's list has no enabled spell the player can use | `Your current spec tracks no spell you can use: add one with /kcd spells add, then start again.` | `no spell` |
+| 9 | The client cannot build a duration object (`NS.SimWorld.CanBuild()`) | `This client cannot build simulated cooldowns, so the simulator cannot run.` | `no durations` |
+
+The library's own backstop, the stand-down, runs after these. Pinned by `tests/test_sim_session.lua`,
+each condition alone and all nine peeled off in order.
+
+## While a simulation runs: what stops it, what refuses
+
+A session stops by itself when the real world interferes (KickCD#38, KC-06), printing the stop line
+for its reason:
+
+| Reason | What happens | Raised by | Line |
+|---|---|---|---|
+| `combat` | A REAL `PLAYER_REGEN_DISABLED` | the watch target `NS.SimHost.watch` (`modules/Sim.lua`) | `Simulation stopped: you entered combat.` |
+| `world` | A REAL `PLAYER_ENTERING_WORLD` (a loading screen) | the watch target | `Simulation stopped: a loading screen.` |
+| `group` | A REAL `GROUP_ROSTER_UPDATE` while `IsInGroup()` (read live) | the watch target | `Simulation stopped: you joined a group.` |
+| `profile` | A profile switch, copy or reset | `Database:OnProfileChanged` (`core/Database.lua`), first line | `Simulation stopped: the profile changed.` |
+| `unlocked` | A General edit that leaves `locked = false` (the *Lock frame* checkbox) | `IconGrid:OnConfigChanged` (`modules/IconGrid.lua`) | `Simulation stopped: the grids were unlocked.` |
+| `standDown` | `disable`, or a perf capture taking the latch | `standDown()` (`core/LifecycleSetup.lua`), its **first** step | `Simulation stopped: the addon stood down.` |
+
+The watch is its own AceEvent target, registered in the session's prepare and released in its stop,
+so it holds nothing while idle. It registers through `NS.SafeRegisterEvent` directly, never
+`NS.RegisterEventList`, so it is not a deliver route: an event the simulation fires through
+`NS.Sim:Fire` never reaches it. A `combat` stop delivers no cleanup `PLAYER_REGEN_ENABLED`, so the
+real combat flag stays set. A real target change or cast start is not watched: the seam answers
+every read its handlers make from the simulated world, so it is absorbed.
+
+The destructive CLI verbs refuse instead, with `End the simulation first (/kcd sim stop).` and a
+`[Set]` debug line naming the guard `simulation running`: `unlock`, `toggle` and the launcher's
+*Locked* entry (all through `setLocked`, when the write would unlock) and `resetall`. `lock` still
+runs. Pinned by `tests/test_sim_interference.lua`.
+
 ## Degraded verbs: a load without LibKa0s
 
 `/kcd` is registered unconditionally, so a load whose `libs/LibKa0s/` is missing still answers it,
@@ -198,8 +249,8 @@ degradation stub") prescribe:
 
 * **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
   unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
-  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, listed in
-  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same four the live gate refuses:
+  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, `sim`, listed in
+  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same five the live gate refuses:
   the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
   copy, so it names the host's own feature verbs instead. `tests/test_slash_degraded.lua` pins the list
   against the live union (`COMMANDS` minus the live set).
@@ -239,18 +290,19 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
 | `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get `slash-commands-§5`'s `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
-| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
+| `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). **`unlock`, and a `toggle` that would unlock, refuse while a simulation runs** (`End the simulation first (/kcd sim stop).`; unlocking is KickCD's preview, [While a simulation runs](#while-a-simulation-runs-what-stops-it-what-refuses)); `lock` still runs. Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |
 | `get <path>` | Print one setting's current value. | Schema-driven; the descriptor's `findRow` and `get` are the schema seam's `Store.FindRow` and `Store.Get`. |
 | `set <path> <value>` | Type-aware write to one setting. | Schema-driven; clamps numbers, validates dropdown values, parses `r g b [a]` for colors, then writes through `Helpers.SetAndRefresh` (`Store.Set`). A path no schema row declares is refused and never stored (`Setting not found: <path>`), and a refusal the seam answers with `false, err, why` is printed instead of an echo (LibKa0s-Slash-1.0 minor 15). On invalid string values, surfaces the option list — and if the schema row carries `valueGate`, also reports the gating sibling and its current value (e.g. `units.target.castbar.growDirection` reporting that the option list depends on `units.target.castbar.orientation = VERTICAL`). |
 | `reset <path>` | Reset **one setting** to its default. | `LibKa0s-Slash-1.0`'s `CliReset`, through the schema seam's `Store.ApplyDefault` (outside any bulk bracket, so `/kcd reset global.minimap.shown` still resets the one row every sweep leaves alone). **Breaking change:** this used to take a page (`general`/`icons`/`castbar`/`label`/`spells`). A page is a property of a settings panel, not of the data, so page-scoped reset now lives only on each panel's **Defaults** button, and the every-spec spell rebuild moved to `/kcd spells resetall`. Each retired page name is answered with a line naming its replacement rather than a bare "Setting not found". |
-| `resetall` | Reset the **active profile** to the shipped defaults — panels, anchors, `link` flags and every spec's spell list, all of which live in the profile (`options-ui-§12`). | Calls `Helpers.ResetAll`, the same helper behind the General → "Reset all settings" popup, which is now one `db:ResetProfile()`. No CLI confirmation. |
+| `resetall` | Reset the **active profile** to the shipped defaults — panels, anchors, `link` flags and every spec's spell list, all of which live in the profile (`options-ui-§12`). | Calls `Helpers.ResetAll`, the same helper behind the General → "Reset all settings" popup, which is now one `db:ResetProfile()`. No CLI confirmation. **Refuses while a simulation runs** (`End the simulation first (/kcd sim stop).`), writing nothing ([While a simulation runs](#while-a-simulation-runs-what-stops-it-what-refuses)). |
 | `profile [name]` | List the stored profiles, or switch to an existing one. | `LibKa0s-Slash-1.0`'s `CliProfile` (minor 17), through the descriptor's `profiles = function() return NS.db end`. Bare lists every stored profile, sorted case-insensitively, the current one marked `(current)`, then a `/kcd profile <name>` hint. With a name it strips one pair of surrounding quotes and keeps case and inner spaces, so `/kcd profile "My Raid"` works. An exact match switches (`Switched to profile '<name>'.`); the current profile answers `Already on profile '<name>'.`; an unknown name is refused (`No profile named '<name>'.`, a did-you-mean when exactly one stored name matches case-insensitively, then the list) and is **never created**; a switch in combat is refused. **Live while disabled** (see above). The switch fires AceDB's `OnProfileChanged`, so `Database:OnProfileChanged` logs the one `[Profile] switched to '<name>'` line and rebuilds, as for a switch on the Profiles page. With LibKa0s absent it prints the library-absent line and switches nothing. Pinned by `tests/test_slash_profile.lua`. |
 | `resetposition` | Restore the icon grids to their default screen positions. | **Refuses while the addon is disabled** (see above). Calls `Helpers.ResetIconPosition`. |
 | `spells <subcmd>` | Per-class+spec spell-list editor (CLI parity for the Spells panel). | See subtable below. |
 | `debug <subcmd>` | Diagnostic subcommands. | See subtable below. |
 | `diagnostics` | Write the diagnostic report into the debug console. | **Reserved** (`slash-commands-§2`) and live while disabled (`LibKa0s-Slash-1.0` minor 16). Calls `NS.DebugLog:RunDiagnostics()`; the library writes the markers, the identity header and the cap, and `modules/Diagnostics.lua` supplies the sections (`debug-logging-§14`). A run turns debug logging on for the session first when it is off. `/kcd debug diagnostics` is the same report, tested before every other `debug` word. No other name runs it. |
 | `perf [args]` | Guided A/B performance capture. | `LibKa0s-Perf-1.0`'s (`core/PerfSetup.lua`), driven from a clickable step panel; records persist in the `KickCDPerfDB` saved variable. `perf` is a **reserved verb across the collection** (slash-commands-§2) and must be registered by the addon, never the library: `NS.Perf.OnCommand(rest)` returns lines and `core/KickCD.lua` prints them through the tagged printer. |
+| `sim [args]` | Run a simulation of interrupts and cooldowns. | The simulator's **one** row (`LibKa0s-Sim-1.0`'s host contract H7, KickCD#38): `NS.Sim:RunVerb(rest)`, read at call time, and the library's verbs parse the rest. A **feature verb**: refused while the addon is disabled (see above), and on `NS.FEATURE_VERBS` so the degraded stub refuses it too. **Slash-only**: no launcher entry and no key binding (the major's own ruling). `modules/Sim.lua` builds the live `NS.Sim`, and its host refuses a start for the reasons in [`/kcd sim` refusals](#kcd-sim-refusals); with `LibKa0s-Sim-1.0` absent, `NS.Sim` stays `core/SimSetup.lua`'s reference stub, which prints `The simulator needs LibKa0s-Sim-1.0.` Pinned by `tests/test_sim_seam.lua` and `tests/test_slash_degraded.lua`. |
 
 `list`, `get`, and `set` gain new entries automatically as schema rows are added — see [settings-panel.md](settings-panel.md). Adding a regular command is a one-row append; help text is generated from the same rows that drive dispatch.
 

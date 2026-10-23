@@ -61,6 +61,7 @@ end
 --- Who the unit is and whether we can attack it.
 --- @return boolean true when the unit exists and the dump should continue
 local function dumpUnitHeader(emit, inst)
+    -- Raw _G.Unit* reads on purpose, not NS.Compat: this dumps the REAL client.
     if not _G.UnitExists(inst.unit) then
         emit("  no " .. inst.unit)
         return false

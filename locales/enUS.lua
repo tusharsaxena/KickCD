@@ -58,6 +58,249 @@ L["Write the full diagnostic report (same as /kcd diagnostics)"] =
 L["List profiles, or switch to one: profile <name>"] =
     "List profiles, or switch to one: profile <name>"
 
+-- Simulator
+-- Every key from here to the settings block below is the simulator's (core/SimSetup.lua,
+-- modules/Sim*.lua, KickCD#38).
+-- The simulator (LibKa0s-Sim-1.0, KickCD#38): the `/kcd sim` COMMANDS row, and the
+-- one line core/SimSetup.lua's degradation stub prints when the major is absent.
+-- Every other simulator line is the library's (lib.STRINGS) or the host's own.
+L["Run a simulation of interrupts and cooldowns — try `/kcd sim`"] =
+    "Run a simulation of interrupts and cooldowns — try `/kcd sim`"
+L["The simulator needs LibKa0s-Sim-1.0."] =
+    "The simulator needs LibKa0s-Sim-1.0."
+
+-- The simulator's session host (modules/Sim.lua, KC-05): the start refusals in CHECKS order,
+-- the STARTED line, the stop lines by reason, the role words a step label carries, and the step
+-- panel's tooltip lines.
+L["A performance capture is running: finish it first (/kcd perf finish)."] =
+    "A performance capture is running: finish it first (/kcd perf finish)."
+L["Lock the grids first (/kcd lock): unlocking is KickCD's preview."] =
+    "Lock the grids first (/kcd lock): unlocking is KickCD's preview."
+L["A simulation cannot start in combat."] =
+    "A simulation cannot start in combat."
+L["A simulation cannot start in an instance."] =
+    "A simulation cannot start in an instance."
+L["A simulation cannot start in a group."] =
+    "A simulation cannot start in a group."
+L["Enable the Target or the Focus grid first: the simulation plays on them."] =
+    "Enable the Target or the Focus grid first: the simulation plays on them."
+L["Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."] =
+    "Your current spec tracks no spell you can use: add one with /kcd spells add, then start again."
+L["This client cannot build simulated cooldowns, so the simulator cannot run."] =
+    "This client cannot build simulated cooldowns, so the simulator cannot run."
+L["Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."] =
+    "Simulation started (%s): nothing is cast, nothing is saved, and your settings are not touched."
+L["Simulation stopped: you entered combat."] =
+    "Simulation stopped: you entered combat."
+L["Simulation stopped: a loading screen."] =
+    "Simulation stopped: a loading screen."
+L["Simulation stopped: you joined a group."] =
+    "Simulation stopped: you joined a group."
+L["Simulation stopped: the profile changed."] =
+    "Simulation stopped: the profile changed."
+L["Simulation stopped: the grids were unlocked."] =
+    "Simulation stopped: the grids were unlocked."
+L["Simulation stopped: the addon stood down."] =
+    "Simulation stopped: the addon stood down."
+-- The simulation strip over each icon grid (modules/SimStrip.lua, KC-09); %s is the scenario label.
+L["Simulation: %s - /kcd sim stop ends it."] =
+    "Simulation: %s - /kcd sim stop ends it."
+-- The CLI's refusal while a session runs (KC-06): unlock, toggle, the launcher's Locked entry and
+-- resetall (core/KickCD.lua).
+L["End the simulation first (/kcd sim stop)."] =
+    "End the simulation first (/kcd sim stop)."
+L["your kick"] =
+    "your kick"
+L["your CC"] =
+    "your CC"
+L["Fires"] =
+    "Fires"
+L["Through"] =
+    "Through"
+L["the real cooldown and cast engine"] =
+    "the real cooldown and cast engine"
+L["Did"] =
+    "Did"
+L["Builds"] =
+    "Builds"
+L["a simulated world: enemy casts and your cooldowns"] =
+    "a simulated world: enemy casts and your cooldowns"
+L["Uses"] =
+    "Uses"
+L["your real grids, cast bars and spell list"] =
+    "your real grids, cast bars and spell list"
+L["Saves"] =
+    "Saves"
+L["nothing: your settings are not touched"] =
+    "nothing: your settings are not touched"
+L["Ends"] =
+    "Ends"
+L["the simulation"] =
+    "the simulation"
+L["Restores"] =
+    "Restores"
+L["your real target, focus and cooldowns"] =
+    "your real target, focus and cooldowns"
+-- The step drivers (modules/SimDrivers.lua, KC-07): the `[sim]` narration, each a format key,
+-- and the one-line details the step panel shows on a played step's "Did" line.
+L["[sim] %s"] =
+    "[sim] %s"
+L["in combat"] =
+    "in combat"
+L["out of combat"] =
+    "out of combat"
+L["target: %s"] =
+    "target: %s"
+L["target cleared"] =
+    "target cleared"
+L["focus: %s"] =
+    "focus: %s"
+L["focus cleared"] =
+    "focus cleared"
+L["no enemy"] =
+    "no enemy"
+L["%s casts %s"] =
+    "%s casts %s"
+L["%s channels %s"] =
+    "%s channels %s"
+L["no cast"] =
+    "no cast"
+L["interruptible"] =
+    "interruptible"
+L["not interruptible"] =
+    "not interruptible"
+L["kicked %s"] =
+    "kicked %s"
+L["No kick is tracked, so nothing is kicked."] =
+    "No kick is tracked, so nothing is kicked."
+L["no kick tracked"] =
+    "no kick tracked"
+L["%s: %s is not casting, so there is nothing to kick."] =
+    "%s: %s is not casting, so there is nothing to kick."
+L["%s: %s's cast is uninterruptible."] =
+    "%s: %s's cast is uninterruptible."
+L["uninterruptible"] =
+    "uninterruptible"
+L["%s: your kick is on cooldown (%ds)."] =
+    "%s: your kick is on cooldown (%ds)."
+L["on cooldown"] =
+    "on cooldown"
+L["%s (%s) has nothing to interrupt on %s."] =
+    "%s (%s) has nothing to interrupt on %s."
+L["%s (%s) interrupts %s with %s."] =
+    "%s (%s) interrupts %s with %s."
+L["%s interrupts"] =
+    "%s interrupts"
+L["%s completes %s"] =
+    "%s completes %s"
+L["No crowd control is tracked, so nothing is cast on %s."] =
+    "No crowd control is tracked, so nothing is cast on %s."
+L["no crowd control tracked"] =
+    "no crowd control tracked"
+L["%s is on cooldown (%ds)."] =
+    "%s is on cooldown (%ds)."
+L["You use %s on %s."] =
+    "You use %s on %s."
+L["%s used"] =
+    "%s used"
+L["%s dies"] =
+    "%s dies"
+L["%s (%s) leaves the party."] =
+    "%s (%s) leaves the party."
+L["%s left"] =
+    "%s left"
+L["no spell"] =
+    "no spell"
+L["%s ready"] =
+    "%s ready"
+L["%s: %d charges"] =
+    "%s: %d charges"
+-- The scenarios (modules/SimScenario.lua, KC-08): the made-up party, the enemies, each scenario's
+-- label and every step label. The role words "your kick" and "your CC" stay literal in a label:
+-- modules/Sim.lua's StepLabel names the real spell while a session runs.
+L["Thrall"] =
+    "Thrall"
+L["Jaina"] =
+    "Jaina"
+L["Uther"] =
+    "Uther"
+L["Valeera"] =
+    "Valeera"
+L["Enhancement"] =
+    "Enhancement"
+L["Frost"] =
+    "Frost"
+L["Protection"] =
+    "Protection"
+L["Subtlety"] =
+    "Subtlety"
+L["Shadowcaster"] =
+    "Shadowcaster"
+L["Bonecaller"] =
+    "Bonecaller"
+L["Hollow King"] =
+    "Hollow King"
+L["Mythic+ pull, several kickers"] =
+    "Mythic+ pull, several kickers"
+L["Boss kick rotation"] =
+    "Boss kick rotation"
+L["Kick on cooldown, uninterruptible cast"] =
+    "Kick on cooldown, uninterruptible cast"
+L["Party member leaves mid-pull"] =
+    "Party member leaves mid-pull"
+L["Interrupt %s with your kick"] =
+    "Interrupt %s with your kick"
+L["%s interrupts %s"] =
+    "%s interrupts %s"
+L["The pull starts"] =
+    "The pull starts"
+L["The pull ends"] =
+    "The pull ends"
+L["Target %s"] =
+    "Target %s"
+L["Focus %s"] =
+    "Focus %s"
+L["%s starts a cast"] =
+    "%s starts a cast"
+L["%s starts a channel"] =
+    "%s starts a channel"
+L["%s casts again while your kick cools"] =
+    "%s casts again while your kick cools"
+L["Stop %s with your CC"] =
+    "Stop %s with your CC"
+L["Your kick gets two charges"] =
+    "Your kick gets two charges"
+L["%s: cast 1"] =
+    "%s: cast 1"
+L["%s: cast 2"] =
+    "%s: cast 2"
+L["%s: cast 3, a channel"] =
+    "%s: cast 3, a channel"
+L["%s: cast 4"] =
+    "%s: cast 4"
+L["%s: cast 5"] =
+    "%s: cast 5"
+L["Your kick's charges come back"] =
+    "Your kick's charges come back"
+L["%s starts an uninterruptible cast"] =
+    "%s starts an uninterruptible cast"
+L["%s's shield breaks"] =
+    "%s's shield breaks"
+L["%s casts again"] =
+    "%s casts again"
+L["%s's cast completes"] =
+    "%s's cast completes"
+L["Your kick comes back"] =
+    "Your kick comes back"
+L["%s starts a cast %s is assigned to"] =
+    "%s starts a cast %s is assigned to"
+L["%s leaves the party"] =
+    "%s leaves the party"
+L["Clear your focus"] =
+    "Clear your focus"
+L["Target %s mid-cast"] =
+    "Target %s mid-cast"
+
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"

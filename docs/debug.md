@@ -73,7 +73,7 @@ and the stub says so once. It renders no line of its own (`debug-logging-§3`).
 | `Cmd` | LibKa0s-Slash-1.0, through `settings/Slash.lua`'s `debug` sink | A `/kcd` verb the dispatcher refused, `refused <verb>[ <arg>]: <guard>`: a feature verb while disabled, an unknown verb, `get` / `set` / `reset` usage or not-found, a `set` value it could not parse or the seam refused, a reset with no default, a profile switch refused (unavailable, already current, in combat, unknown profile) |
 | `Combat` | `core/State.lua` | Entering and leaving combat |
 | `Open` | `core/KickCD.lua`, `settings/Panel_Widgets.lua` | The settings panel opening, or refused (in combat, or the options layer did not load); a settings-page link whose click raised, with the error |
-| `Events` | `core/CoreSetup.lua` | Each event name the client refused to register |
+| `Events` | `core/CoreSetup.lua`, `core/Events.lua` | Each event name the client refused to register; during a simulation, a delivered handler that raised, `handler for <event> failed: <error>`, and once per session `deliver: AceEvent registry unreadable` when the delivery cannot read AceEvent's registry |
 | `Launcher` | LibKa0s-Launcher-1.0, through `core/LauncherSetup.lua`'s `debug` and `debugAtEnable` sinks | Launcher registration (or the missing library that skipped it), held for the first enable, and the minimap button shown or hidden |
 | `Cfg` | LibKa0s-Options-1.0, through `settings/OptionsSetup.lua`'s `debug` sink | The settings panel opening and registering, including an open refused, a register parked in combat and its `register flushed (combat ended)`; each act the combat lock refuses, `<what> refused (in combat)`, once per combat (a write, Defaults, a button, a tab; the Grid page's `section <key>` and `defaults grid/<entry>` among them) |
 
@@ -119,7 +119,7 @@ even when nothing changed. The addon keeps no signature of its own.
 | Combat | `Combat` | `PLAYER_REGEN_DISABLED` / `_ENABLED` | No, one line per edge |
 | Settings panel | `Open`, `Cfg` (library) | The panel opens, registers, or is refused (in combat, or the options layer missing); a registration parked in combat and flushed at its end; an act on an open panel the combat lock refused; a page link's click raised (`settings link click raised: <error>`) | No, once per combat per act |
 | Debug verbs | `Debug` | A `/kcd debug` word refused: an unknown subcommand, or a topic whose module is missing | No, user-driven |
-| Events | `Events` | The client refuses an event name, once per name per session | No |
+| Events | `Events` | The client refuses an event name, once per name per session; a simulated delivery's handler raises (one line per raise), or the delivery cannot read AceEvent's registry (once per session) | No, simulation-driven only |
 | Launcher | `Launcher` (library) | The minimap button shown or hidden; its state lines (`registered`, a broker library absent, no minimap table), written at login and held in the at-enable queue until logging is first turned on | No |
 
 **Deliberately not logged:**
@@ -191,6 +191,7 @@ tag shown.
 | `unitlabel` | `UnitLabel` | this addon | Per unit: show, text, attach point, shown |
 | `events` | `Events` | this addon | `rejected events: <names>`, or `rejected events: -` when there are none |
 | `perf` | `Perf` | this addon | Whether a perf capture is running and whether it is suspended |
+| `sim` | `Sim` | this addon | `sim: idle`, or while a simulation runs one line each: the scenario, the step `pos/total`, the events fired, the kick and CC spell ids, and simulated combat `on`/`off` (KickCD#38 H8) |
 | `truncated` line | `Diag` | the library | Only when a cap bit: `truncated: N line(s) omitted, per-list caps hit=yes/no` |
 | End marker | `Diag` | the library | `==== Ka0s KickCD diagnostics end: N line(s) ====`, counting both markers |
 
@@ -213,7 +214,7 @@ sections below it say so rather than describe released machinery. Then:
 
 **Stood down.** While the addon is disabled every section still runs. `cooldowns`, `icongrid`,
 `castbar` and `unitlabel` each print one `stood down: …` line rather than an empty list that reads
-like a bug. `state`, `settings`, `units`, `spells`, `cmcache`, `interrupt`, `events` and `perf`
+like a bug. `state`, `settings`, `units`, `spells`, `cmcache`, `interrupt`, `events`, `perf` and `sim`
 print in full.
 
 **Caps.**

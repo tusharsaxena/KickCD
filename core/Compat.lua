@@ -259,6 +259,76 @@ Compat.GetSpecializationInfo = CompatLib and CompatLib.GetSpecializationInfo
     or function() return nil end
 
 -- ---------------------------------------------------------------------------
+-- Unit and cast readers (the simulator's seam answers these; docs/compat-layer.md)
+-- ---------------------------------------------------------------------------
+--
+-- Host contract H1: every client read the simulator has to answer goes through
+-- NS.Compat and is read off the table at CALL time, never captured in a local at
+-- load. Each reader is a raw passthrough that answers its documented absent value
+-- when the client API is missing. Values pass through untouched: a secret-tainted
+-- return reaches the caller exactly as the inline `_G.Unit*` read used to hand it
+-- over (docs/midnight-quirks.md), and no reader compares or formats anything.
+-- Compat.DebugInterrupt and modules/Castbar_Debug.lua stay on the raw client on
+-- purpose: they dump the REAL client, which is what a bug report wants.
+
+--- Does `unit` exist? Absent API: false.
+function Compat.UnitExists(unit)
+    if not _G.UnitExists then return false end
+    return _G.UnitExists(unit)
+end
+
+--- Can the player attack `unit`? The player is always the first argument at every
+--- call site. Absent API: TRUE, which preserves the old
+--- `if _G.UnitCanAttack and not _G.UnitCanAttack(...)` gate: a missing API never vetoed.
+function Compat.UnitCanAttack(unit)
+    if not _G.UnitCanAttack then return true end
+    return _G.UnitCanAttack("player", unit)
+end
+
+--- Is `unit` dead? Absent API: false.
+function Compat.UnitIsDead(unit)
+    if not _G.UnitIsDead then return false end
+    return _G.UnitIsDead(unit)
+end
+
+--- Raw multi-return passthrough of UnitCastingInfo (notInterruptible at 8). Absent: nil.
+function Compat.UnitCastingInfo(unit)
+    if not _G.UnitCastingInfo then return nil end
+    return _G.UnitCastingInfo(unit)
+end
+
+--- Raw multi-return passthrough of UnitChannelInfo (notInterruptible at 7). Absent: nil.
+function Compat.UnitChannelInfo(unit)
+    if not _G.UnitChannelInfo then return nil end
+    return _G.UnitChannelInfo(unit)
+end
+
+--- The cast's CastingDuration object (plain-number methods). Absent: nil.
+function Compat.UnitCastingDuration(unit)
+    if not _G.UnitCastingDuration then return nil end
+    return _G.UnitCastingDuration(unit)
+end
+
+--- The channel's CastingDuration object. Absent: nil.
+function Compat.UnitChannelDuration(unit)
+    if not _G.UnitChannelDuration then return nil end
+    return _G.UnitChannelDuration(unit)
+end
+
+--- A fresh duration object running `duration` seconds from `startTime`, or nil on any
+--- failure (namespace missing, constructor or setter raising). PURE in the simulator's
+--- seam: a constructor answers for nobody, so the seam never replaces it. The setter
+--- name `SetTimeFromStart` is to be confirmed in the client by smoke check SM-KC-1.
+function Compat.NewDuration(startTime, duration)
+    local du = _G.C_DurationUtil
+    if not (du and du.CreateDuration) then return nil end
+    local ok, d = pcall(du.CreateDuration)
+    if not (ok and d) then return nil end
+    if not pcall(d.SetTimeFromStart, d, startTime, duration) then return nil end
+    return d
+end
+
+-- ---------------------------------------------------------------------------
 -- Cast / channel info (target cast bar)
 -- ---------------------------------------------------------------------------
 --
@@ -320,25 +390,27 @@ end
 -- This catches mount casts on yourself, friendly NPC casts, etc.
 -- For hostile units the raw API flag is returned unchanged.
 local function effectiveNotInterruptible(unit, raw)
-    if _G.UnitCanAttack and unit and not _G.UnitCanAttack("player", unit) then
+    -- Compat.UnitCanAttack answers true with the API absent, so an absent API still never
+    -- forces the override. Read through the table at call time (H1).
+    if unit and not Compat.UnitCanAttack(unit) then
         return true
     end
     return raw
 end
 
---- Casting info for a unit, secret-value safe.
+--- Casting info for a unit, secret-value safe. Reads Compat.UnitCastingInfo /
+--- Compat.UnitCastingDuration through the table at call time, so a swapped member
+--- (the simulator's seam) answers here too.
 -- @param unit string ("target", "focus", ...)
 -- @return record (table)|nil   nil when the unit isn't casting AND isn't channeling.
 function Compat.GetCastingInfo(unit)
-    if _G.UnitCastingInfo then
-        local name, _, texture, _, _, _, _, notInterruptible, spellID =
-            _G.UnitCastingInfo(unit)
-        if name then
-            local duration = _G.UnitCastingDuration and _G.UnitCastingDuration(unit) or nil
-            return buildCastRecord(
-                name, texture, effectiveNotInterruptible(unit, notInterruptible),
-                spellID, false, duration)
-        end
+    local name, _, texture, _, _, _, _, notInterruptible, spellID =
+        Compat.UnitCastingInfo(unit)
+    if name then
+        local duration = Compat.UnitCastingDuration(unit)
+        return buildCastRecord(
+            name, texture, effectiveNotInterruptible(unit, notInterruptible),
+            spellID, false, duration)
     end
     return Compat.GetChannelInfo(unit)
 end
@@ -446,6 +518,8 @@ end
 --- @param unit string|nil  default "target"
 --- @param emit function|nil  (line) -> (), default NS.Util.print
 function Compat.DebugInterrupt(unit, emit)
+    -- Reads the raw client (_G.Unit*) on purpose, NOT the Compat unit readers: this dumps
+    -- the REAL client, which is what a bug report wants, even while a simulation runs.
     local out = emit or NS.Util.print
     unit = unit or "target"
 
@@ -479,14 +553,14 @@ end
 --- cast variant. Channels run total → 0 (full to empty); the consumer
 --- chooses elapsed-vs-remaining for the bar value.
 function Compat.GetChannelInfo(unit)
-    if not _G.UnitChannelInfo then return nil end
     -- UnitChannelInfo's signature is one position shorter than
     -- UnitCastingInfo: there's no isTradeSkill at position 6, so
     -- notInterruptible lands at 7 (not 8) and spellID at 8 (not 9).
+    -- Read through the table at call time (H1); absent API answers nil.
     local name, _, texture, _, _, _, notInterruptible, spellID =
-        _G.UnitChannelInfo(unit)
+        Compat.UnitChannelInfo(unit)
     if not name then return nil end
-    local duration = _G.UnitChannelDuration and _G.UnitChannelDuration(unit) or nil
+    local duration = Compat.UnitChannelDuration(unit)
     return buildCastRecord(
         name, texture, effectiveNotInterruptible(unit, notInterruptible),
         spellID, true, duration)

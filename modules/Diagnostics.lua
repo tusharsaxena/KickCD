@@ -254,6 +254,24 @@ function X.Perf(out)
     out:add("Perf", "perf: capturing=%s suspended=%s", P.on, P.suspended)
 end
 
+-- ── the simulator (KickCD#38 H8, KC-06) ──────────────────────────────────────────────────────
+
+--- Idle: one line. Running: the scenario, the step, the events fired, the two spells and whether
+--- the session is in simulated combat, one line each. Read-only: Status and Session only.
+function X.Sim(out)
+    local sim = NS.Sim
+    local st = sim and sim.Status and sim:Status() or { active = false }
+    if not st.active then return out:add("Sim", "sim: idle") end
+    local host = NS.SimHost or {}
+    local session = sim:Session() or {}
+    out:add("Sim", "sim: scenario=%s", st.scenario)
+    out:add("Sim", "sim: step=%s/%s", st.pos or 0, st.total or 0)
+    out:add("Sim", "sim: events=%s", st.events or 0)
+    out:add("Sim", "sim: kick=%s", host.kick)
+    out:add("Sim", "sim: cc=%s", host.cc)
+    out:add("Sim", "sim: simulated combat=%s", session.simCombat and "on" or "off")
+end
+
 --- The section list the console descriptor hands the library, in report order. Built on each
 --- call so a test (or a later module) sees the live functions.
 function X.Sections()
@@ -270,5 +288,6 @@ function X.Sections()
         { "unitlabel", X.UnitLabel },
         { "events",    X.Events },
         { "perf",      X.Perf },
+        { "sim",       X.Sim },
     }
 end

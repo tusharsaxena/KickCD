@@ -15,5 +15,11 @@ return {
         -- survey can never see as canceled, and a stand-down suite whose timer assertion is
         -- unfalsifiable is exactly what slash-commands-7 says a conformance suite must not be.
         ["tests/wow_mock.lua"] = { ["cancel" .. "led"] = true },
+        -- The same FIELD NAME, read. tests/sim_support.lua's clock skips a queue entry the way
+        -- the kit's own __fireTimers does, by reading that flag off the entry and its handle.
+        ["tests/sim_support.lua"] = { ["cancel" .. "led"] = true },
+        -- The same FIELD NAME, read once more: tests/test_sim_e2e.lua counts the live timers left
+        -- after a session stops, skipping an entry whose flag (or whose handle's) says it was canceled.
+        ["tests/test_sim_e2e.lua"] = { ["cancel" .. "led"] = true },
     },
 }

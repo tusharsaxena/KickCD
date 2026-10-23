@@ -642,6 +642,9 @@ local function traceProfileEvent(event, key, source)
 end
 
 function Database:OnProfileChanged(event, db, arg)
+    -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
+    -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
+    if NS.Sim and NS.Sim:IsActive() then NS.Sim:Stop("profile") end
     -- AceDB hands (event, db, newProfileKey) for OnProfileChanged,
     -- (event, db, sourceProfileKey) for OnProfileCopied and (event, db) for
     -- OnProfileReset. Only a switch names the profile that is now active: a copy

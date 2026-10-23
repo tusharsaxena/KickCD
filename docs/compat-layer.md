@@ -20,10 +20,50 @@ Everything in the table below is KickCD's own shim and stays hand-written.
 | `Compat.GetSpellCharges(id)` | `C_Spell.GetSpellCharges` (table) → `_G.GetSpellCharges` (tuple) | Charges may be secret on guarded spells. |
 | `Compat.IsSpellUsable(id)` | `C_Spell.IsSpellUsable` → `_G.IsUsableSpell` | Returns `(usable, noMana)` regardless of underlying shape. Some 12.0 builds return a `SpellUsabilityInfo` table; the shim covers both paths. |
 | `Compat.IsSpellAvailable(id)` | `_G.IsPlayerSpell` + `_G.IsSpellKnown(id)` + `_G.IsSpellKnown(id, true)` | "Can the player actually cast this *right now*" — distinct from `GetSpellInfo` (which only proves the ID exists in the spell DB). `IsPlayerSpell` covers talent choice nodes (only the chosen branch returns true); `IsSpellKnown(id)` catches racials / profession spells; `IsSpellKnown(id, true)` catches pet spells like Counter Shot / Spell Lock / Optical Blast (only true while the matching pet is summoned). Used by `Cooldowns:PollSpell` and `IconGrid:BuildActiveList` to hide unavailable entries from default lists (e.g. Blood DK's Gorefiend's Grasp ↔ Abomination Limb choice node only renders the picked branch). |
-| `Compat.GetCastingInfo(unit)` | `_G.UnitCastingInfo` + `_G.UnitCastingDuration` (falls through to `Compat.GetChannelInfo` when not casting) | Returns a record `{ name, texture, spellID, notInterruptible, isChannel, duration }`. `name` / `texture` / `notInterruptible` / `spellID` may be secret-tainted in combat — pass through to `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` only; never compare or format. `notInterruptible` is post-processed by `effectiveNotInterruptible` so friendly / self casts always force "uninterruptible" visuals regardless of the API flag. |
-| `Compat.GetChannelInfo(unit)` | `_G.UnitChannelInfo` + `_G.UnitChannelDuration` | Same record shape as the cast variant with `isChannel = true`. The signature is one position shorter than `UnitCastingInfo` (no `isTradeSkill` slot) — the shim hides that. |
-| `Compat.DebugInterrupt(unit, emit)` | n/a — diagnostic over `_G.UnitCastingInfo` / `_G.UnitChannelInfo` | Backs `/kcd debug interrupt`. `emit` is an optional line sink; without it the lines go to chat through `NS.Util.print`. Prints every positional return with its `type()` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the visibility/glow logic decided. Renders through a `safeRender` helper that short-circuits secret values to `NS.SECRET` (`LibKa0s-Core-1.0`'s `lib.SECRET`, `<secret>`, published by `core/CoreSetup.lua` on both paths), so the dump never `tostring`s a secret and spells the sentinel the way every `NS.SafeToString` line does. |
-| `Compat._firstReturn(fn, ...)` | n/a — internal helper | Returns the first return of `fn(...)` or `nil` if `fn` is missing. Used to taint-safely truthy-check `_G.UnitCastingInfo(unit)` and `_G.UnitChannelInfo(unit)` (whose first return is `name`, the only position that's reliably truthy) without binding the multi-return to a Lua local that might capture a secret-tainted positional return. |
+| `Compat.GetCastingInfo(unit)` | `Compat.UnitCastingInfo` + `Compat.UnitCastingDuration`, read through the table at call time (falls through to `Compat.GetChannelInfo` when not casting) | Returns a record `{ name, texture, spellID, notInterruptible, isChannel, duration }`. `name` / `texture` / `notInterruptible` / `spellID` may be secret-tainted in combat — pass through to `Texture:SetTexture` / `FontString:SetText` / `C_CurveUtil.EvaluateColorValueFromBoolean` only; never compare or format. `notInterruptible` is post-processed by `effectiveNotInterruptible` so friendly / self casts always force "uninterruptible" visuals regardless of the API flag. |
+| `Compat.GetChannelInfo(unit)` | `Compat.UnitChannelInfo` + `Compat.UnitChannelDuration`, read at call time | Same record shape as the cast variant with `isChannel = true`. The signature is one position shorter than `UnitCastingInfo` (no `isTradeSkill` slot) — the shim hides that. |
+| `Compat.DebugInterrupt(unit, emit)` | n/a — diagnostic over the raw `_G.UnitCastingInfo` / `_G.UnitChannelInfo` (deliberately not the readers below) | Backs `/kcd debug interrupt`. `emit` is an optional line sink; without it the lines go to chat through `NS.Util.print`. Prints every positional return with its `type()` and `issecretvalue()` flag, plus what `NS.State.IsHostileUnitCasting` and the visibility/glow logic decided. Renders through a `safeRender` helper that short-circuits secret values to `NS.SECRET` (`LibKa0s-Core-1.0`'s `lib.SECRET`, `<secret>`, published by `core/CoreSetup.lua` on both paths), so the dump never `tostring`s a secret and spells the sentinel the way every `NS.SafeToString` line does. |
+| `Compat._firstReturn(fn, ...)` | n/a — internal helper | Returns the first return of `fn(...)` or `nil` if `fn` is missing. Used to taint-safely truthy-check `Compat.UnitCastingInfo(unit)` and `Compat.UnitChannelInfo(unit)` (whose first return is `name`, the only position that's reliably truthy) without binding the multi-return to a Lua local that might capture a secret-tainted positional return. |
+
+## Unit and cast readers
+
+Host contract H1 (KickCD#38, the simulator's prerequisite): every client unit read the simulator has to answer goes through `NS.Compat`, and every caller reads the member **off the table at call time**, never `_G` and never a local captured at load. That is what lets the simulator's seam swap a member and have every caller see it. Each reader is a raw passthrough of the client API with the same arguments and every return, nil holes included, and answers a fixed value when the API is absent:
+
+| Reader | Wraps | Absent API answers |
+|---|---|---|
+| `Compat.UnitExists(unit)` | `_G.UnitExists(unit)` | `false` |
+| `Compat.UnitCanAttack(unit)` | `_G.UnitCanAttack("player", unit)`; the player is always the first argument | `true`, which keeps the old `if _G.UnitCanAttack and not ...` gate: a missing API never vetoed |
+| `Compat.UnitIsDead(unit)` | `_G.UnitIsDead(unit)` | `false` |
+| `Compat.UnitCastingInfo(unit)` | `_G.UnitCastingInfo(unit)`, multi-return (`notInterruptible` at 8) | `nil` |
+| `Compat.UnitChannelInfo(unit)` | `_G.UnitChannelInfo(unit)`, multi-return (`notInterruptible` at 7) | `nil` |
+| `Compat.UnitCastingDuration(unit)` | `_G.UnitCastingDuration(unit)` | `nil` |
+| `Compat.UnitChannelDuration(unit)` | `_G.UnitChannelDuration(unit)` | `nil` |
+| `Compat.NewDuration(startTime, duration)` | `C_DurationUtil.CreateDuration()` then `:SetTimeFromStart(startTime, duration)`, each pcall'd | `nil`, also on any raise. Pure: a constructor answers for nobody, so the simulator's seam never replaces it. The setter name is confirmed in the client by smoke check SM-KC-1 |
+
+The callers are `Compat.GetCastingInfo` / `GetChannelInfo` (and `effectiveNotInterruptible`), `NS.State.IsHostileUnitCasting` and `ApplyInterruptibleAlpha`, IconGrid's `instanceCasting` and `resolveInterruptible`, and `Castbar:Reevaluate`. `tests/test_compat_units.lua` swaps the members for fakes while the `_G` APIs answer nothing, so a caller that slips back to `_G` goes red.
+
+Two dumps stay on the raw client on purpose: `Compat.DebugInterrupt` and `modules/Castbar_Debug.lua`'s unit header. They exist to show what the REAL client says, which is what a bug report wants, even while a simulation runs.
+
+The seam itself is `core/SimSetup.lua` (`LibKa0s-Sim-1.0`'s `NewSeam`), loaded straight after this file: it wraps every function member of `NS.Compat` in place, once, except the four PURE ones (`IsSecret`, `_firstReturn`, `NewDuration`, `DebugInterrupt`). So a member added to this table must be defined in this file, never assigned onto `NS.Compat` from a later one: a late member escapes the wrap, and `tests/test_sim_seam.lua` fails on `NS.SimSeam:Unwrapped()`.
+
+### Which members the simulator answers
+
+While a simulation session runs, `modules/SimWorld.lua` answers these members from the world on `NS.SimHost.world` (KickCD#38, the Sim major's host contract H1). Its providers are registered once, at file load, through `NS.SimSeam:SetProvider`; each reads the world at call time and answers `fallback(...)`, the live member, when there is none. Idle, every member answers the live client.
+
+| Member | Simulated answer |
+|---|---|
+| `GetSpellCooldown(id)` | `start, duration, true, 1, true` while the spell's own cooldown, a 0-charge lockout or (for an on-GCD spell) the GCD runs, the later-ending one winning; `0, 0, false, 1, false` when ready |
+| `GetSpellCooldownDuration(id)` | `NewDuration(start, duration)` of the same cooldown; an idle spell answers `NewDuration(0, 0)`, the client's live but zeroed shape |
+| `GetSpellCharges(id)` | `charges, max, chargeStart, chargeDuration` for a spell given charges (`0, 0` for the last two when full); `nil` for any other |
+| `IsSpellUsable(id)` | `true, false` |
+| `UnitExists(unit)` | `true` for `player` and for a target/focus set to an enemy; `false` for any other unit, party units included |
+| `UnitCanAttack(unit)` | whether the unit's enemy is hostile |
+| `UnitIsDead(unit)` | whether the unit's enemy was killed |
+| `UnitCastingInfo(unit)` | the client's nine positions for a cast (name 1, texture 3, start/end ms 4-5, castID 7, `notInterruptible` 8, spellID 9); `nil` for a channel or no cast |
+| `UnitChannelInfo(unit)` | the client's eight positions for a channel (`notInterruptible` 7, spellID 8); `nil` otherwise |
+| `UnitCastingDuration(unit)` / `UnitChannelDuration(unit)` | `NewDuration(start, duration)` of the cast or channel; `nil` otherwise |
+
+`GetCastingInfo` / `GetChannelInfo` have no provider: they compose from the raw readers above. Spell identity is not simulated: `GetSpellInfo`, `GetSpellTexture`, `IsSpellAvailable` and `GetSpecialization*` answer live, the player's real spells (design D4).
 
 ## State helpers (visibility / policy)
 
@@ -39,4 +79,4 @@ The visibility helpers were formerly in this layer; they were relocated to `core
 
 Modules call into `Compat.*` for spell-API normalization and `NS.State.*` for visibility decisions. **Direct calls to `C_Spell.*` or `_G.GetSpell*` outside `Compat.lua` are a smell.**
 
-The IconGrid and Castbar modules read `_G.UnitCastingInfo` / `_G.UnitChannelInfo` directly for the addon-wide visibility gate — they only check whether the first return is non-nil through `Compat._firstReturn`, which is a taint-safe truthy check, and never inspect the secret positions themselves. The full secret-value rules live in [midnight-quirks.md](midnight-quirks.md).
+The IconGrid and Castbar modules read the unit through `Compat.UnitExists` / `Compat.UnitCastingInfo` / `Compat.UnitChannelInfo` for the addon-wide visibility gate — they only check whether the first return is non-nil through `Compat._firstReturn`, which is a taint-safe truthy check, and never inspect the secret positions themselves. The full secret-value rules live in [midnight-quirks.md](midnight-quirks.md).
