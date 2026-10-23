@@ -68,6 +68,9 @@ core\Util.lua
 # file survives the reversed order without an error, which is what makes the
 # order worth stating here rather than only in the file.
 core\CoreSetup.lua
+# Conventional position: defines nothing another file reads at load; the recorders
+# NS.RegisterEventList and Util.NewUnitCastFilter call are reached at runtime.
+core\Events.lua
 core\DebugLogSetup.lua
 core\Units.lua
 core\Database.lua

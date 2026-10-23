@@ -172,6 +172,7 @@ local SUITES = {
     "test_constants",
     "test_state",
     "test_events",
+    "test_event_routes",
     "test_locale",
     "test_units",
     "test_schema",

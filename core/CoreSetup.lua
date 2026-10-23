@@ -83,6 +83,9 @@ local lib = LibStub and LibStub("LibKa0s-Core-1.0", true)
 --- The lists are FILE-SCOPE constants at every call site, so a stand-up
 --- allocates nothing (anti-patterns #43).
 function NS.RegisterEventList(target, list)
+    -- Record the route for NS.DeliverEvent (core/Events.lua). Resolved at call time:
+    -- that file loads after this one, and this runs only at runtime.
+    if NS.EventRoutes then NS.EventRoutes.RecordList(target, list) end
     local rejected = NS.State.rejectedEvents
     for i = 1, #list do
         local event, before = list[i][1], #rejected

@@ -186,6 +186,21 @@ Total.
 - the [Init] line is unchanged when nothing was rejected
 - a frame RegisterEvent honors __badEvents
 
+### test_event_routes.lua (12)
+
+- DeliverEvent: SPELL_UPDATE_COOLDOWN runs Cooldowns' OnCooldownEvent once and answers 1
+- DeliverEvent: PLAYER_TARGET_CHANGED runs every module that registered it, and counts them
+- DeliverEvent: PLAYER_REGEN_DISABLED reaches core/State.lua's boot listener
+- DeliverEvent: a UNIT_SPELLCAST_ event reaches only the filters for its unit
+- DeliverEvent: a disarmed filter runs nothing
+- DeliverEvent: a stood-down addon delivers nothing, with no latch check of its own
+- DeliverEvent: an event nobody registered answers 0
+- DeliverEvent: a handler that raises costs only itself and names itself on the console
+- DeliverEvent: a raising cast handler costs only itself
+- EventRoutes: a registration made through NS.SafeRegisterEvent directly is not a route
+- EventRoutes: a target is recorded once, and a filter once per (module, unit)
+- DeliverEvent: an unreadable AceEvent registry answers 0 and says so once
+
 ### test_locale.lua (15)
 
 - frFR Elemental Shaman seeds a non-empty default spell list (issue #8)
@@ -1617,6 +1632,7 @@ Total.
 | test_constants.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
+| test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
 | test_schema.lua | 38 |
@@ -1688,4 +1704,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1362** |
+| **Total** | **1374** |

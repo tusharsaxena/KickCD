@@ -126,6 +126,21 @@ Castbar instances[unit]:Reevaluate ──► Compat.GetCastingInfo(unit)
 
 Each `IconGrid` instance emits its own `Ka0s_KickCD_GridLayout { unit, gridFrame, primaryIcon, width, height }` after every `Layout()` pass. Each `Castbar` instance listens, filters on `payload.unit`, and — only for its own unit's payload — re-anchors under the `PRIMARY` anchor mode (the primary icon button reference may have moved — read directly from the payload's `primaryIcon`, with a fallback to `NS:GetModule("IconGrid", true):GetPrimaryIcon` for the first tick after enable) and re-runs `Reskin` when `castbar.autoSize` is on (the grid frame's footprint may have changed — read from the payload's `gridFrame` / `width` / `height`). A focus instance ignores a target `GRID_LAYOUT` payload and vice versa.
 
+## Simulated delivery
+
+A simulation must reach exactly the handlers the client's own registration would, and no others (KickCD#38, the simulator's H3). `NS.DeliverEvent(event, ...)` (`core/Events.lua`) is that one deliver. It answers how many handlers ran.
+
+**What it replays.** KickCD registers through two choke points, and both record into `NS.EventRoutes` at runtime: `NS.RegisterEventList` (`core/CoreSetup.lua`) records each AceEvent target once, in registration order, and `Util.NewUnitCastFilter` (`core/Util.lua`) records each per-(module, unit) cast filter once, when it is built. The record says who registered, never what is registered now. So `DeliverEvent` replays:
+
+- for a `UNIT_SPELLCAST_*` event, every recorded filter that is **armed**, whose unit is the event's first payload argument and whose route map names the event, calling `module[method](module, event, unit, ...)` as the filter frame's `OnEvent` does;
+- for every event, every recorded target AceEvent **still holds** the event for, calling the callable CallbackHandler stored as `fn(event, ...)`, the way its `Fire` calls it.
+
+A stood-down addon therefore delivers nothing (every target unregistered, every filter disarmed) without `DeliverEvent` reading the latch, and a disabled focus unit's filters stay silent. A registration made through `NS.SafeRegisterEvent` directly is not in the list, so it is not a route and is not replayed. Each handler is pcall'd, so one that raises costs only itself; it still counts, and it writes one `Events` debug line naming the event and the error.
+
+**Order.** The client dispatches an event's AceEvent targets in CallbackHandler's `pairs` order, which is unspecified. `DeliverEvent` uses registration order instead, which is deterministic. No KickCD event depends on the order between two of its handlers: each module's handler refreshes only that module's own state and frames, and cross-module effects travel on the message bus (`PLAYER_TARGET_CHANGED` reaches `IconGrid` and `Castbar`, and neither reads what the other's handler wrote).
+
+**The registry read.** The still-registered check reads AceEvent's CallbackHandler registry, `LibStub("AceEvent-3.0").events.events[event][target]`. If that table is unreadable (a CallbackHandler that changed its shape), `DeliverEvent` answers 0 and writes `deliver: AceEvent registry unreadable` on the `Events` debug channel, once per session, rather than raising.
+
 ## Lock and anchor
 
 Each enabled unit's icon grid and cast bar instance has its own single anchor in `db.profile.units.<unit>.anchors`, always relative to UIParent — anchors are never link-resolved, so a linked focus still tracks its own independent position. `Util.SaveAnchor(frame)` snapshots `{ point, relativePoint, x, y }`; `Util.ApplyAnchor(frame, anchor)` restores it. `NS.Units.Anchor(unit, which)` / `.SetAnchor(unit, which, a)` are the read/write helpers (`core/Units.lua`). `Units` owns the anchors as named non-setting state (`architecture-§5`), and [ARCHITECTURE.md](ARCHITECTURE.md#settings-schema) names every writer: the two drag-stops through `SetAnchor`, and `Helpers.ResetIconPosition` directly.

@@ -524,6 +524,9 @@ function Util.NewUnitCastFilter(module, unit, routes)
         if fn then fn(module, event, evUnit, ...) end
     end)
     local filter = { frame = f, armed = false }
+    -- Recorded once for NS.DeliverEvent (core/Events.lua): the filter is built once per
+    -- (module, unit) and re-armed, never rebuilt, so the record never duplicates.
+    if NS.EventRoutes then NS.EventRoutes.RecordFilter(module, unit, routes, filter) end
     function filter.Arm()
         if filter.armed then return end
         local rejected = NS.State and NS.State.rejectedEvents
