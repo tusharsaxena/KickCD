@@ -20,7 +20,7 @@ and a retired one leaves its number unused.
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
 | GRID-1 – 21 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid |
+| CAST-1 – 18 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid, the duration constructor probe, no change from the Compat unit readers |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
@@ -625,6 +625,14 @@ Which checks to run for a partial change:
   draws at the grid's position (anchored to the grid frame), not hidden and not stranded where the old
   first icon sat; drag the grid while unlocked and the bar follows it. Re-enable one spell → the bar
   re-anchors under that icon. Result: pass (owner-marked 2026-10-10)
+- **CAST-17. The duration constructor exists under the names Compat uses (KC-01, SM-KC-1).** Out of
+  combat, run `/run local d=C_DurationUtil and C_DurationUtil.CreateDuration and C_DurationUtil.CreateDuration(); print(d ~= nil, d and pcall(d.SetTimeFromStart, d, GetTime(), 10), d and d.GetRemainingDuration and d:GetRemainingDuration())`
+  → it prints `true true` and a number close to `10`. Anything else means `Compat.NewDuration`'s
+  constructor or setter name is wrong and it answers nil in the client. Result:
+- **CAST-18. No behavior change from the Compat unit readers (KC-01, SM-KC-2).** `/kcd set visibility
+  target_casting_interruptible`, `/kcd lock`. Target a hostile caster casting an interruptible spell →
+  the grid shows and the cast bar fills in its interruptible colors; an uninterruptible cast masks the
+  grid exactly as before the move; a friendly caster does not open the grid. No Lua error. Result:
 
 ## FOCUS
 
@@ -1042,4 +1050,5 @@ On 2026-10-10 the owner marked every check in this file as passed, recorded on i
 added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
 off on its own `Result:` line, then remove its row here.
 
-None.
+- CAST-17 (KC-01): the duration constructor probe.
+- CAST-18 (KC-01): no behavior change from the Compat unit readers.

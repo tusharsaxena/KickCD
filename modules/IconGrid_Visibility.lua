@@ -195,10 +195,12 @@ local GATE_LABEL = {
 --- (treat any secret reading as "moved" and re-run iteration —
 --- correctness over efficiency for the rare interruptibility flip).
 local function resolveInterruptible(unit, hostileCasting)
-    if not (hostileCasting and _G.UnitCastingInfo) then return nil end
-    local _, _, _, _, _, _, _, notInterruptible = _G.UnitCastingInfo(unit)
-    if notInterruptible == nil and _G.UnitChannelInfo then
-        local _, _, _, _, _, _, ni = _G.UnitChannelInfo(unit)
+    if not hostileCasting then return nil end
+    -- Through NS.Compat at call time (host contract H1); cast notInterruptible at 8,
+    -- channel at 7. The readers answer nil when the client API is absent.
+    local _, _, _, _, _, _, _, notInterruptible = NS.Compat.UnitCastingInfo(unit)
+    if notInterruptible == nil then
+        local _, _, _, _, _, _, ni = NS.Compat.UnitChannelInfo(unit)
         notInterruptible = ni
     end
     if NS.Compat.IsSecret(notInterruptible) then

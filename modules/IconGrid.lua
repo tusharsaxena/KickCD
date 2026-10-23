@@ -174,9 +174,11 @@ end
 -- `current.name and ...` relies on in modules/Castbar.lua).
 local function instanceCasting(inst)
     local unit = inst.unit
-    if not (_G.UnitExists and _G.UnitExists(unit)) then return false end
-    if NS.Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
-    if NS.Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
+    -- Through NS.Compat at call time (host contract H1), so the simulator's seam answers.
+    local Compat = NS.Compat
+    if not Compat.UnitExists(unit) then return false end
+    if Compat._firstReturn(Compat.UnitCastingInfo, unit) then return true end
+    if Compat._firstReturn(Compat.UnitChannelInfo, unit) then return true end
     return false
 end
 

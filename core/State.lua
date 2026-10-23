@@ -87,11 +87,13 @@ end
 --- arithmetic. Compat._firstReturn collapses the multi-return to
 --- position 1 so the truthy check is on a single value.
 function State.IsHostileUnitCasting(unit)
-    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
-    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+    -- Every unit read goes through NS.Compat at call time (host contract H1), so the
+    -- simulator's seam answers it. The readers pass secrets through untouched.
     local Compat = NS.Compat
-    if Compat and Compat._firstReturn(_G.UnitCastingInfo, unit) then return true end
-    if Compat and Compat._firstReturn(_G.UnitChannelInfo, unit) then return true end
+    if not (unit and Compat.UnitExists(unit)) then return false end
+    if not Compat.UnitCanAttack(unit) then return false end
+    if Compat._firstReturn(Compat.UnitCastingInfo, unit) then return true end
+    if Compat._firstReturn(Compat.UnitChannelInfo, unit) then return true end
     return false
 end
 
@@ -115,17 +117,19 @@ end
 --- @return bool whether the mask was applied
 function State.ApplyInterruptibleAlpha(frame, unit, alpha)
     if not (frame and frame.SetAlphaFromBoolean) then return false end
-    if not (unit and _G.UnitExists and _G.UnitExists(unit)) then return false end
-    if _G.UnitCanAttack and not _G.UnitCanAttack("player", unit) then return false end
+    -- Unit reads through NS.Compat at call time (host contract H1); the readers answer
+    -- nil / false / true-for-UnitCanAttack when the client API is absent, matching the
+    -- old inline guards. notInterruptible is still never compared here.
+    local Compat = NS.Compat
+    if not (unit and Compat.UnitExists(unit)) then return false end
+    if not Compat.UnitCanAttack(unit) then return false end
 
     local notInterruptible, hasCast
-    if _G.UnitCastingInfo then
-        local castName, _, _, _, _, _, _, n = _G.UnitCastingInfo(unit)
-        if castName then notInterruptible, hasCast = n, true end
-    end
-    if not hasCast and _G.UnitChannelInfo then
-        local chName, _, _, _, _, _, n = _G.UnitChannelInfo(unit)
-        if chName then notInterruptible, hasCast = n, true end
+    local castName, _, _, _, _, _, _, n = Compat.UnitCastingInfo(unit)
+    if castName then notInterruptible, hasCast = n, true end
+    if not hasCast then
+        local chName, _, _, _, _, _, cn = Compat.UnitChannelInfo(unit)
+        if chName then notInterruptible, hasCast = cn, true end
     end
     if not hasCast then return false end
 

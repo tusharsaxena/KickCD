@@ -182,6 +182,7 @@ local SUITES = {
     "test_compat",
     "test_compat_api",
     "test_compat_debug",
+    "test_compat_units",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",

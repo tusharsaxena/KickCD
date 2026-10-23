@@ -755,8 +755,9 @@ function Castbar:ShowPreview(inst)
 end
 
 function Castbar:Reevaluate(inst)
-    if not _G.UnitExists(inst.unit) then return self:Stop(inst) end
-    if _G.UnitIsDead and _G.UnitIsDead(inst.unit) then return self:Stop(inst) end
+    -- Through NS.Compat at call time (host contract H1), so the simulator's seam answers.
+    if not NS.Compat.UnitExists(inst.unit) then return self:Stop(inst) end
+    if NS.Compat.UnitIsDead(inst.unit) then return self:Stop(inst) end
     local rec = NS.Compat.GetCastingInfo(inst.unit)
     if rec then
         self:Start(inst, rec)

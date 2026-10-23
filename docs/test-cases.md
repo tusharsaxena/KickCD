@@ -447,6 +447,36 @@ Total.
 - DebugInterrupt closes with the addon's own visibility and glow decisions
 - DebugInterrupt writes every line through a caller's emit sink, and nothing to chat
 
+### test_compat_units.lua (27)
+
+- Compat.UnitExists passes the unit through and answers the API's value
+- Compat.UnitIsDead passes the unit through and answers the API's value
+- Compat.UnitCanAttack asks the client with the player as the first argument
+- Compat.UnitCastingInfo returns every value, nil holes included
+- Compat.UnitChannelInfo returns every value, nil holes included
+- Compat.UnitCastingDuration returns every value, nil holes included
+- Compat.UnitChannelDuration returns every value, nil holes included
+- Compat.UnitExists answers false with the API absent
+- Compat.UnitCanAttack answers true with the API absent
+- Compat.UnitIsDead answers false with the API absent
+- Compat.UnitCastingInfo answers nil with the API absent
+- Compat.UnitChannelInfo answers nil with the API absent
+- Compat.UnitCastingDuration answers nil with the API absent
+- Compat.UnitChannelDuration answers nil with the API absent
+- Compat.NewDuration answers nil with C_DurationUtil absent
+- Compat.NewDuration builds a duration and sets it from start and length
+- Compat.NewDuration answers nil, without raising, when the constructor raises
+- Compat.NewDuration answers nil, without raising, when the setter raises
+- Compat.NewDuration answers nil when the constructor yields nothing
+- GetCastingInfo builds its record from the swapped NS.Compat members
+- GetCastingInfo falls through to the swapped channel members
+- GetCastingInfo forces uninterruptible through the swapped UnitCanAttack
+- State.IsHostileUnitCasting reads the unit through NS.Compat
+- State.ApplyInterruptibleAlpha feeds the swapped member's flag to SetAlphaFromBoolean
+- IconGrid.InstanceCasting reads the unit through NS.Compat
+- IconGrid's interruptible resolve reads positions 8 and 7 through NS.Compat
+- Castbar:Reevaluate starts the bar from the swapped NS.Compat members
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -1597,6 +1627,7 @@ Total.
 | test_compat.lua | 8 |
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 13 |
+| test_compat_units.lua | 27 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1657,4 +1688,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1335** |
+| **Total** | **1362** |
