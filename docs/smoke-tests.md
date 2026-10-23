@@ -550,12 +550,12 @@ Which checks to run for a partial change:
   loop; untick Primary start animation, then flip the trigger to `never` and back → the glow returns
   with no opening burst. Primary trigger `never` → the primary style and every primary knob dim, and
   the primary glow color stays live. Defaults on the page → every knob back to the defaults in
-  `docs/schema.md`, and the glow looks as it did before the knobs (one-pixel lines with the dark edge). Result:
+  `docs/schema.md`, and the glow looks as it did before the knobs (one-pixel lines with the dark edge). Result: pass (owner-marked 2026-10-23)
 - **GRID-20. A hand-set glow knob is clamped.** `/kcd set units.target.icons.primaryGlowPixelLines 900`
   → clamps to `20`, the slider's maximum, as GRID-13's offset does. Edit
   `primaryGlowPixelLines = 900` and `primaryGlowPixelThickness = -5` into the SavedVariables file
   while logged out, log in with a pixel-style primary glow showing → the glow draws twenty one-pixel
-  lines and no Lua error. Result:
+  lines and no Lua error. Result: pass (owner-marked 2026-10-23)
 - **GRID-21. The ready glow draws through LibKa0s-Glow-1.0 as it did before.** Grid → Icons → Ready
   glow, primary trigger `always`, an interrupt off cooldown. Cycle the primary style through
   `Button (rotating rays)`, `Proc (flipbook)`, `Pixel border` and `Auto cast sparkles`, then do the
@@ -1042,7 +1042,4 @@ On 2026-10-10 the owner marked every check in this file as passed, recorded on i
 added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
 off on its own `Result:` line, then remove its row here.
 
-| ID | Origin | Why it is owed |
-|---|---|---|
-| GRID-19 | feature/glow-options (DropWatcher feedback-21 K1) | New: the per-style glow knobs, their dimming and their live restart |
-| GRID-20 | feature/glow-options (DropWatcher feedback-21 K1) | New: the glow knobs' clamp on a hand-set value |
+None.
