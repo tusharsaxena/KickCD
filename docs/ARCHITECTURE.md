@@ -106,6 +106,7 @@ local F = NS.Foo
 - **Persisted keys are never derived from a localized string.** The spell-list key is the numeric specID (`Const.SPEC`); the class key is `UnitClass()`'s file token. `GetSpecializationInfo`'s second return is the *localized display name* and is display-only — routing it into a lookup key is what broke every non-English client in issue #8, silently and with no error, because a missing spec list is indistinguishable from a deliberately emptied one. Localized names may be accepted as slash-command input (`Util.ResolveSpecID`) and shown as UI labels (`Util.SpecDisplayName`); they may not be stored, compared, or used as identity. The same rule applies to any future per-something table.
 - **Module publishing pattern:** every file does `NS.Foo = NS.Foo or {}; local F = NS.Foo`. Never shadow the local over the global (`local KickCD = {}` would break everything downstream). Full idiom above.
 - **Every client read the simulator answers is a Compat member read at call time** (`NS.Compat.Member(...)`, the Sim major's host contract H1). A captured member (`local x = NS.Compat.Member`) is the live one and escapes the seam, so a simulation would silently show real data there; `tests/test_sim_seam.lua` asserts nothing escaped the wrap.
+- **The simulator writes no SavedVariables; its panel position is session-only** (the Sim major's host contract H10, with H4's byte-identical store). A session lives on `NS.SimHost.world` and the live `NS.Sim` instance and is dropped on the stop; the step panel's dragged point is held in the library instance's memory and forgotten on `/reload`. Nothing a simulation does reaches `KickCDDB`, and `tests/test_sim_session.lua` and `tests/test_sim_e2e.lua` compare it byte for byte across a start, the steps and the stop.
 - **Frame mixin, not setmetatable.** Use `Mixin(frame, t)` to copy fields onto a Blizzard widget. `setmetatable` nils the C-side frame methods.
 
 ## External dependencies
@@ -248,6 +249,7 @@ state](slash-dispatch.md#the-disabled-state)), so a disabled KickCD is registere
 
 **One cast-filter frame per module per unit, re-armed and never rebuilt.** `Util.NewUnitCastFilter(module, unit, routes)` builds a single private frame per (module, unit) the first time that unit enables, from a file-scope route map (`ICON_CAST_ROUTES` / `CASTBAR_CAST_ROUTES`) that is the frame's fixed event set; it refuses any route that is not `UNIT_SPELLCAST_*`, so it is not a general frame factory (events-frames-taint-§1). `Arm()` registers exactly that set through `NS.SafeRegisterUnitEvent` (one name the client refuses costs only its own route and lands once in `NS.State.rejectedEvents`) and is idempotent; `Disarm()` is `UnregisterAllEvents()`. `DisableUnit`, `Suspend` and every disable/enable, per-unit toggle, profile switch or perf suspend/resume disarm and re-arm the same frame, so a cycle creates no frames (`tests/test_disabled.lua` counts them).
 - **`UnitLabel`** — `PLAYER_ENTERING_WORLD` plus its three inbound `Ka0s_KickCD_*` messages (`CONFIG_CHANGED` / `PROFILE_CHANGED` / `GRID_LAYOUT`). No cast-event or combat registration — the label has no state of its own beyond what those messages already trigger a re-`Apply` for.
+- **The simulator's watch** (`modules/Sim.lua`, `NS.SimHost.watch`, its own AceEvent target, KickCD#38) — `PLAYER_REGEN_DISABLED`, `PLAYER_ENTERING_WORLD` and `GROUP_ROSTER_UPDATE`, registered through `NS.SafeRegisterEvent` directly (so never a simulated-delivery route) only while a simulation runs, and released on its stop. Idle, and so on a stand-down, which stops a session first, it holds nothing. `modules/SimStrip.lua`'s strip likewise subscribes to `GRID_LAYOUT` and `CONFIG_CHANGED` only while it is shown.
 
 ## The stand-down: disabled is total
 
@@ -268,6 +270,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 - Retail / Midnight only — a single `## Interface` line, no Classic support.
 - No automated in-client tests — headless unit tests plus manual in-game smoke tests only (see [smoke-tests.md](smoke-tests.md)).
 - Debug logging is session-only (`NS.State.debug`) and resets on every `/reload`.
+- The simulator's party only narrates. KickCD tracks the player's own cooldowns and has no party tracking, so a scenario's party kicks are `[sim]` chat lines and step labels, never icons (`/kcd sim`, KickCD#38).
 
 ## Documentation map
 
@@ -296,13 +299,13 @@ when in doubt, which fetches the living standard and writes a fresh one.
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 19 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees |
+| `slash-dispatch.md` | Present | 20 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
 | `perf-analysis/README.md` | Present | `/kcd perf` exists (`LibKa0s-Perf-1.0`, `core/PerfSetup.lua`), so in-game captures have a store to describe |
-| `debug.md` | Present | The console's tags and its Coverage map (what each flow logs, and how each repeating path stays quiet, `debug-logging-§8`/`§9`); debug surfaces beyond the LibKa0s console: the `/kcd diagnostics` report and its twelve sections (`debug-logging-§14`), and four chat topics (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
+| `debug.md` | Present | The console's tags and its Coverage map (what each flow logs, and how each repeating path stays quiet, `debug-logging-§8`/`§9`); debug surfaces beyond the LibKa0s console: the `/kcd diagnostics` report and its thirteen sections (`debug-logging-§14`), and four chat topics (`/kcd debug spells`, `castbar`, `interrupt`, `events`) |
 
 ### Verification and record
 

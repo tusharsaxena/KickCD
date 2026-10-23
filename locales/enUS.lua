@@ -58,6 +58,9 @@ L["Write the full diagnostic report (same as /kcd diagnostics)"] =
 L["List profiles, or switch to one: profile <name>"] =
     "List profiles, or switch to one: profile <name>"
 
+-- Simulator
+-- Every key from here to the settings block below is the simulator's (core/SimSetup.lua,
+-- modules/Sim*.lua, KickCD#38).
 -- The simulator (LibKa0s-Sim-1.0, KickCD#38): the `/kcd sim` COMMANDS row, and the
 -- one line core/SimSetup.lua's degradation stub prints when the major is absent.
 -- Every other simulator line is the library's (lib.STRINGS) or the host's own.

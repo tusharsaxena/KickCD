@@ -38,6 +38,10 @@ The minimap button opens the settings on a left-click, and a right-click gives y
 
 Everything else is on the addon's page under Settings → AddOns, and `/kcd` on its own opens it. `/kcd help` (or `/kickcd help`) lists every command.
 
+### Simulator
+
+`/kcd sim` opens a step panel and runs one of four scenarios against your real grid and cast bar: a Mythic+ pull, a boss kick rotation, an uninterruptible cast while your kick is on cooldown, and a party member leaving mid-pull. Start one with `/kcd sim start pull` (or `boss`, `miss`, `leave`) or from the panel, and it plays on its own. You can pause it and click any step to play up to it. Nothing is cast, sent or saved, and your settings aren't touched. It won't start in combat, in a group or an instance, or while the grids are unlocked, and combat, a loading screen or joining a group stops it. `/kcd sim stop` ends it and brings back your real target, focus and cooldowns. The party in a scenario is made up and only narrates in chat, because KickCD tracks your own cooldowns, not your party's.
+
 ## How interrupt tracking works
 
 In Midnight the game hides two things from addons during combat: how long is left on a cooldown, and whether an enemy's cast can be interrupted. KickCD doesn't need to read either one. It passes them straight to the game's own drawing (the cooldown sweep, the countdown text, the bar's color and fade), which is allowed to use them, so the grid and the bar stay accurate in the middle of a fight.
@@ -103,6 +107,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. `/kcd profile` lists your profiles, and `/kcd profile <name>` switches to one without opening the panel. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
 | How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace. It covers the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. If you only need one of those, the single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat. `castbar` and `interrupt` show your target, or your focus if you add `focus`. The window resets on every reload. |
+| Why does the simulator not show my party's kicks? | KickCD tracks your own cooldowns; the simulated party only narrates. Their kicks print as `[sim]` lines in chat and never appear on your grid. |
 | Can I measure how much KickCD costs my frame rate? | Yes. `/kcd perf start` begins a run. Play for a while, then `/kcd perf finish` ends and saves it, and `/kcd perf report` writes the summary and a JSON line to copy into the debug window. `/kcd perf` on its own shows where a run stands and lists every step, and the same steps are on a small panel. |
 
 ## Troubleshooting
