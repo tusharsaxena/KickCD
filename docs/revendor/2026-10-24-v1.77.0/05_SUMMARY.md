@@ -60,3 +60,26 @@ from `git -C ../LibKa0s archive v1.77.0 LibKa0s testkit`.
 Gate: tests 1495 passed, 0 failed, 1 skipped, 1496 total (1494 / 1 failed before the stub fix);
 `docs/test-cases.md` matches `--list`; luacheck 0 warnings / 0 errors in 147 files; largest authored
 `.lua` is `modules/IconGrid.lua` at 1013 lines.
+
+## Re-vendor after the tag moved again (one key button)
+
+LK-96 moved the local annotated tag v1.77.0 again, for the owner's one-key-button follow-up to 015.
+Old target: tag object `b2b8ee2`, commit `afae2f7` (LK-95). New target: tag object `e9b126d`, commit
+`2f2b2e22b4c9219cd8a4101d7e894681c7aea16e` (`2f2b2e2`, LK-96). Both payloads were copied whole again
+from `git -C ../LibKa0s archive v1.77.0 LibKa0s testkit`.
+
+- **Per-file minors that moved:** OptionsKeybinds 3 -> 4 (one key button and Clear per row: the
+  button binds and right-click clears slot 1, reads "<first key> +N" when the action holds more, and
+  its tooltip names every key; `KEY1` / `KEY2` gone, `KEY`, `KEY_MORE`, `KEYS_ALL`, `KEYS_OTHER` new).
+  Every other library file is byte-identical. The kit stays revision 42; `bindings_xml.lua` and its
+  README row changed (`Kit.keybindThroughTab` slot 2 on a one-button row writes through
+  `lib.__keybindSet`).
+- No new public `O.*` member, so kit surface parity passes and the Options degradation stub in
+  `settings/OptionsSetup.lua` is unchanged. KickCD does not draw a Keybindings tab, so nothing to adopt.
+- The CLAUDE.md provenance line stays v1.77.0; the `LibKa0s icons:` declaration is unchanged, and the
+  tag's `tools/prune-icons.lua` again keeps 8 files and removes 5,832.
+
+Gate: tests 1497 passed, 0 failed, 1 skipped, 1498 total; the README badge (1497/1497) and
+`docs/test-cases.md` match `--list`; luacheck 0 warnings / 0 errors in 148 files; largest authored
+`.lua` is `tests/test_schema.lua` at 1016 lines; `diff -r --strip-trailing-cr ../LibKa0s/LibKa0s
+libs/LibKa0s` (icons excluded) is empty.
