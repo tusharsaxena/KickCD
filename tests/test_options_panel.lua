@@ -81,7 +81,7 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
         assertEqual(type(H[m]), "function", "library member missing: " .. m)
     end
     -- ...and the host's own decorations sit on the SAME table.
-    for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
+    for _, m in ipairs({ "SetAndRefresh", "ResetAll", "AddComposed",
                          "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
                          "BuildMainContent", "SchemaForPanel", "FireConfigChanged",
                          "RegisterGridSection", "GridSection", "RenderGridPage" }) do
@@ -371,42 +371,9 @@ end)
 -- (InlinePair went with the bespoke Debug-console toggle it existed for: that
 -- line is H.MasterControls' now and both halves are ordinary schema rows, which
 -- the flow engine pairs by itself. A host widget maker with no caller is the
--- thing options-ui-§1 says must not sit in this addon.)
-
-test("SessionToggle adapts this addon's argument order onto the library's", function()
-    -- Host order (ctx, spec, parent, relativeWidth) -> library order
-    -- (ctx, parent, relWidth, spec). Getting it wrong hands the library a spec
-    -- where it expects a parent, and fails on a page the user opens rather than
-    -- in the suite.
-    -- red under: swapping the two arguments in Helpers.SessionToggle
-    panelSeq = panelSeq + 1
-    local ctx = H.CreatePanel("KickCDTestPanelST" .. panelSeq, "T", { pageKey = "test" })
-    local flipped
-    local cb = H.SessionToggle(ctx, {
-        label = "Debug console",
-        get   = function() return false end,
-        set   = function(v) flipped = v end,
-    })
-    assertEqual(cb.type, "CheckBox")
-    assertEqual(cb.labelText, "Debug console")
-    cb:__fire("OnValueChanged", true)
-    assertEqual(flipped, true, "the session setter must have been called")
-end)
-
-test("a session toggle never becomes a saved setting", function()
-    -- It is runtime-only state (the console's visibility). Through a schema path
-    -- it would persist, which is exactly what it must not do.
-    panelSeq = panelSeq + 1
-    local ctx = H.CreatePanel("KickCDTestPanelST2" .. panelSeq, "T", { pageKey = "test" })
-    local schemaBefore = #NS.Settings.Schema
-    local cb = H.SessionToggle(ctx, {
-        label = "Debug console",
-        get   = function() return false end,
-        set   = function() end,
-    })
-    cb:__fire("OnValueChanged", true)
-    assertEqual(#NS.Settings.Schema, schemaBefore, "no schema row may appear")
-end)
+-- thing options-ui-§1 says must not sit in this addon. SessionToggle and
+-- LinkRow went the same way in item 020, when the General page's Units tab
+-- they drew moved into the Units page's band.)
 
 -- ── reset ───────────────────────────────────────────────────────────────────
 

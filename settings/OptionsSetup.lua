@@ -492,7 +492,7 @@ if not lib then
     -- file boundary, and a degradation stub does not mirror it.
     --
     -- __panelFor STAYS, because this addon is the exception to that rule and the kit cannot know
-    -- it: settings/Panel_Widgets.lua:138's OpenPageTab reads
+    -- it: settings/Panel_Widgets.lua:69's OpenPageTab reads
     -- `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination page's
     -- tab. A member the host calls is a member the stub owes -- the same sentence SetRenderer
     -- joined the no-op list under. The guard means losing it costs a tab selection rather than a

@@ -16,94 +16,20 @@
 -- With its one caller gone it was a host widget maker with no consumer, which is
 -- precisely what options-ui-§1 says must not sit here.
 --
--- WHAT STAYS, and why it could not generalize:
+-- ALSO GONE, with item 020 (KIC-L01/L04): SessionToggle, an argument-order
+-- adapter over the library's SessionCheckbox, and LinkText / LinkRow, a
+-- clickable full-width line. Their last caller was the General page's Units tab
+-- -- the Focus link tick and the linked-Focus note's link to it -- and the tick
+-- is the schema row itself, drawn by the Units page's band through RenderField,
+-- while the note is plain text now. A host widget maker with no consumer is the
+-- thing options-ui-§1 says must not sit here.
 --
---   * SessionToggle — a checkbox over caller-supplied get/set rather than a
---     settings path, for a runtime-only flag that must never persist. The
---     library has this as SessionCheckbox, but with the argument order
---     (ctx, parent, relWidth, spec) rather than this addon's
---     (ctx, spec, parent, relativeWidth). Kept as a thin adapter rather than
---     re-ordering the call sites, and it forwards to the library so there is
---     still only ONE implementation.
+-- WHAT STAYS: OpenPageTab, the one seam that opens one of this addon's pages on
+-- a named tab (and a Units entry key on that entry). It is navigation, not a
+-- widget maker.
 
 local _, NS = ...
 local Helpers = NS.Settings.Helpers
-
---- A checkbox wired to caller-supplied get/set instead of a settings path, for
---- runtime-only toggles that must NOT become saved settings.
----
---- A pure argument-order adapter over the library's SessionCheckbox. This
---- addon's call sites pass (ctx, spec, parent, relativeWidth); the library takes
---- (ctx, parent, relWidth, spec). Adapting here keeps one implementation of the
---- widget instead of forking it to match a signature.
----
---- `parent` given (an InlinePair row) renders inline in that row; otherwise the
---- library renders into the page's scroll.
-function Helpers.SessionToggle(ctx, spec, parent, relativeWidth)
-    return Helpers.SessionCheckbox(ctx, parent, relativeWidth or 0.5, spec)
-end
-
---- Blizzard's link blue, the color a player already reads as "this goes
---- somewhere". Not the collection's gold, which every heading and every label on
---- these pages is already wearing -- a link that shares its color with the
---- static text around it is not a link, it is a sentence.
-local LINK_COLOR = "|cff71d5ff"
-
---- Wrap `text` so it reads as a hyperlink.
-function Helpers.LinkText(text)
-    return LINK_COLOR .. (text or "") .. "|r"
-end
-
---- A full-width line of text that navigates somewhere when clicked.
----
---- An AceGUI InteractiveLabel: the whole line takes the click, because AceGUI has
---- no widget that mixes clickable and static runs inside one string. The caller
---- therefore colors the ACTIONABLE PHRASE with Helpers.LinkText and leaves the
---- rest plain, which is what tells the reader where the sentence leads even
---- though the hit area is the whole of it.
----
---- Returns the widget, or nil having drawn nothing when there is no AceGUI or no
---- scroll -- the same contract every maker on these pages has.
-function Helpers.LinkRow(ctx, text, onClick, tooltip)
-    -- The INSTANCE's handle, not NS.AceGUI (library-stack-§4): the library
-    -- re-resolves AceGUI at CreateOptionsPanel and hands the host a copy through
-    -- onAceGUI, so the two agree in a live client -- but only the instance's is
-    -- set when a page is rendered directly, which is how every suite drives one.
-    local AceGUI = Helpers.AceGUI or NS.AceGUI
-    local scroll = Helpers.EnsureScroll and Helpers.EnsureScroll(ctx)
-    if not (AceGUI and scroll) then return nil end
-
-    local w = AceGUI:Create("InteractiveLabel")
-    w:SetFullWidth(true)
-    w:SetText(text or "")
-    -- NO SetHighlight, deliberately. AceGUI's InteractiveLabel forwards it to
-    -- Texture:SetTexture, and the four-number form is the deprecated color API:
-    -- the client answered `(1, 1, 1, 0.12)` with a solid BRIGHT GREEN block over
-    -- the whole line on mouseover. The color on the link phrase is what marks the
-    -- line as clickable; a hover highlight is not needed to say so, and there is
-    -- no correct number to pass here -- a texture path would be, and this line
-    -- wants no plate behind it either.
-    w:SetCallback("OnClick", function()
-        if not onClick then return end
-        -- pcall'd for the reason every host callback on these pages is: this body
-        -- reaches into live addon state and Blizzard's category switch, and a
-        -- raise inside AceGUI's dispatch takes the click handling of every widget
-        -- on the frame with it.
-        -- The chat line is the player's; the [Open] line is the pasted log's
-        -- (debug-logging-§8, diagnosis: an error caught by an owned pcall names
-        -- the site and the message). Behind the flag, so an off log builds nothing.
-        local ok, err = pcall(onClick)
-        if not ok then
-            if NS.State and NS.State.debug and NS.Debug then
-                NS.Debug("Open", "settings link click raised: %s", err)
-            end
-            if NS.Util then NS.Util.print("link failed: " .. tostring(err)) end
-        end
-    end)
-    if tooltip then Helpers.AttachTooltip(w, nil, tooltip) end
-    scroll:AddChild(w)
-    return w
-end
 
 --- Open one of this addon's own settings pages, on a named tab.
 ---

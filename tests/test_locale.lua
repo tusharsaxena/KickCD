@@ -426,8 +426,6 @@ local RESIDUE = {
     {"settings/SchemaSetup.lua", ", so the settings schema was not checked.", "DEGRADED STEM"},
 
     -- settings/Panel_Widgets.lua
-    {"settings/Panel_Widgets.lua", "link failed: ", "DIAGNOSTIC"},
-    {"settings/Panel_Widgets.lua", "settings link click raised: %s", "DIAGNOSTIC"},
     {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the

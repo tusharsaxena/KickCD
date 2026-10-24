@@ -1329,7 +1329,7 @@ Total.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (35)
+### test_options_panel.lua (33)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1352,8 +1352,6 @@ Total.
 - a color drag commits once per throttle window
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
-- SessionToggle adapts this addon's argument order onto the library's
-- a session toggle never becomes a saved setting
 - the Profiles page is vetoed from a global reset
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
@@ -1406,7 +1404,7 @@ Total.
 - RefreshAllPanels never runs a refresher from a cleared render
 - ClearScroll is safe on a ctx that never rendered
 
-### test_flow_traces.lua (13)
+### test_flow_traces.lua (12)
 
 - OnProfileChanged logs a [Profile] line
 - BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds
@@ -1418,7 +1416,6 @@ Total.
 - a Clear re-arms the change-gated lines, so the next pass says where it stands
 - a settings open refused in combat names the guard in the log
 - the Cooldown Manager walk logs one build line, with the calls that raised
-- a settings link whose click raises names the site and the error in the log
 - a refused spell-list write names its guard, once, from the writer or the verb
 - an optional library that did not load is named when logging is first turned on
 
@@ -1836,12 +1833,12 @@ Total.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 35 |
+| test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
-| test_flow_traces.lua | 13 |
+| test_flow_traces.lua | 12 |
 | test_library_lines.lua | 9 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
@@ -1865,4 +1862,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1499** |
+| **Total** | **1496** |
