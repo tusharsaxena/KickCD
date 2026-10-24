@@ -19,6 +19,8 @@ local Perf = NS.Perf
 local IconGrid = NS:GetModule("IconGrid")
 
 local GCD_UPPER = NS.Const.GCD_UPPER
+-- The icon's level ladder over its button (frame-layering-§3; core/Constants.lua LAYERS).
+local ICON_LEVEL = NS.Const.LAYERS.LEVEL.ICON
 
 -- Step-shaped curves (assigned by BuildCurves) read by Icon:Apply /
 -- applyGcdSuppressionAlpha. Render-local state, formerly file-locals in IconGrid.lua.
@@ -212,13 +214,14 @@ local function CreateIconWidget(parent)
     btn.icon = tex
 
     -- Per-icon border. A BackdropTemplate child sized over the button so
-    -- the edgeFile slices render on top of the icon texture; the cooldown
-    -- swipe lives on a separate child frame and so isn't affected. Same
+    -- the edgeFile slices render on top of the icon texture. It sits one rung
+    -- ABOVE the cooldown swipe (BORDER over FILL): the two used to tie at
+    -- button + 1, which left their order to creation order (KIC-S02). Same
     -- approach used by modules/Castbar.lua so the two pieces of UI share
     -- one LSM "border" texture surface.
     local border = CreateFrame("Frame", nil, btn, "BackdropTemplate")
     border:SetAllPoints(btn)
-    border:SetFrameLevel(btn:GetFrameLevel() + 1)
+    border:SetFrameLevel(btn:GetFrameLevel() + ICON_LEVEL.BORDER)
     border:Hide()
     btn.border = border
 
@@ -227,6 +230,9 @@ local function CreateIconWidget(parent)
     -- attach its own text overlay to this frame.
     local cd = CreateFrame("Cooldown", nil, btn, "CooldownFrameTemplate")
     cd:SetAllPoints(btn)
+    -- Explicit, never the implicit parent + 1 (frame-layering-§3): the same
+    -- value, now named, under the border.
+    cd:SetFrameLevel(btn:GetFrameLevel() + ICON_LEVEL.FILL)
     cd:SetDrawBling(false)
     cd:SetDrawEdge(false)
     -- Hide the built-in CooldownFrameTemplate text so it doesn't fight with
@@ -251,7 +257,22 @@ local function CreateIconWidget(parent)
     -- for secret-protected interrupts where SetCooldown is skipped.
     -- Owning the text also lets us honor cooldownTextFont/Size/Flags and
     -- inherit the parent button's alpha (so the text dims with cooldownAlpha).
-    local cdText = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    --
+    -- It and the charges badge live on their own TEXT OVERLAY frame, the top
+    -- rung of the icon (KIC-Z01). A FontString on the button itself draws
+    -- under every child frame of the button whatever its layer name, so the
+    -- swipe darkened the countdown exactly while it counted and the border
+    -- edge cut the badge's corner (KIC-S01). The overlay sits above the glow
+    -- too (owner CALL-06), so the numbers stay legible over a proc glow. A
+    -- plain child: it inherits the button's alpha, and it takes no mouse, so
+    -- the icon's hover tooltip still reaches the button.
+    local textLayer = CreateFrame("Frame", nil, btn)
+    textLayer:SetAllPoints(btn)
+    textLayer:SetFrameLevel(btn:GetFrameLevel() + ICON_LEVEL.OVERLAY)
+    textLayer:EnableMouse(false)
+    btn.textLayer = textLayer
+
+    local cdText = textLayer:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     cdText:SetPoint("CENTER", btn, "CENTER", 0, 0)
     cdText:Hide()
     btn.cooldownText = cdText
@@ -260,18 +281,20 @@ local function CreateIconWidget(parent)
     -- used to be the literal `-2, 2` here; it is icons.chargesOffsetX /
     -- chargesOffsetY now, defaulted to exactly those two numbers, and re-applied
     -- by ApplyChargesAnchor below on every config change.
-    local charges = btn:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+    local charges = textLayer:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     charges:Hide()
     btn.chargesText = charges
 
     -- Ready glow. A plain child Frame sized to the icon; LibCustomGlow
     -- attaches its own animated children (textures + AnimationGroups)
-    -- when StartGlow runs. Frame level is bumped above the cooldown
-    -- swipe and the per-icon border frame so the glow always renders
-    -- on top.
+    -- when StartGlow runs. The host sits on the EFFECT rung, above the
+    -- cooldown swipe and the per-icon border and under the text overlay,
+    -- and StartGlow passes LibCustomGlow a small explicit frame level
+    -- (ICON_LEVEL.GLOW) so its default +8 no longer leaps over the text
+    -- (KIC-Z03, KIC-S08).
     local glow = CreateFrame("Frame", nil, btn)
     glow:SetAllPoints(btn)
-    glow:SetFrameLevel(btn:GetFrameLevel() + 5)
+    glow:SetFrameLevel(btn:GetFrameLevel() + ICON_LEVEL.EFFECT)
     btn.glow = glow
 
     -- Per-widget state: cfg points at the owning unit's resolved appearance
@@ -484,7 +507,7 @@ function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary)
     vals.color = c
     -- false when LibCustomGlow-1.0 (or the driver) is absent: no glow is
     -- drawing, so no state is recorded and the next apply tries again.
-    if not NS.GlowLib.Start(g, kind, vals, LCG_KEY) then return end
+    if not NS.GlowLib.Start(g, kind, vals, LCG_KEY, ICON_LEVEL.GLOW) then return end
     self._glowKind = kind
     self._glowColor = c
 end

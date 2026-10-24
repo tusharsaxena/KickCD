@@ -81,7 +81,7 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
         assertEqual(type(H[m]), "function", "library member missing: " .. m)
     end
     -- ...and the host's own decorations sit on the SAME table.
-    for _, m in ipairs({ "SessionToggle", "SetAndRefresh", "ResetAll", "AddComposed",
+    for _, m in ipairs({ "SetAndRefresh", "ResetAll", "AddComposed",
                          "RenderUnitPanel", "PartitionUnitRows", "AnchorValues", "AnchorOrder",
                          "BuildMainContent", "SchemaForPanel", "FireConfigChanged",
                          "RegisterGridSection", "GridSection", "RenderGridPage" }) do
@@ -371,42 +371,9 @@ end)
 -- (InlinePair went with the bespoke Debug-console toggle it existed for: that
 -- line is H.MasterControls' now and both halves are ordinary schema rows, which
 -- the flow engine pairs by itself. A host widget maker with no caller is the
--- thing options-ui-§1 says must not sit in this addon.)
-
-test("SessionToggle adapts this addon's argument order onto the library's", function()
-    -- Host order (ctx, spec, parent, relativeWidth) -> library order
-    -- (ctx, parent, relWidth, spec). Getting it wrong hands the library a spec
-    -- where it expects a parent, and fails on a page the user opens rather than
-    -- in the suite.
-    -- red under: swapping the two arguments in Helpers.SessionToggle
-    panelSeq = panelSeq + 1
-    local ctx = H.CreatePanel("KickCDTestPanelST" .. panelSeq, "T", { pageKey = "test" })
-    local flipped
-    local cb = H.SessionToggle(ctx, {
-        label = "Debug console",
-        get   = function() return false end,
-        set   = function(v) flipped = v end,
-    })
-    assertEqual(cb.type, "CheckBox")
-    assertEqual(cb.labelText, "Debug console")
-    cb:__fire("OnValueChanged", true)
-    assertEqual(flipped, true, "the session setter must have been called")
-end)
-
-test("a session toggle never becomes a saved setting", function()
-    -- It is runtime-only state (the console's visibility). Through a schema path
-    -- it would persist, which is exactly what it must not do.
-    panelSeq = panelSeq + 1
-    local ctx = H.CreatePanel("KickCDTestPanelST2" .. panelSeq, "T", { pageKey = "test" })
-    local schemaBefore = #NS.Settings.Schema
-    local cb = H.SessionToggle(ctx, {
-        label = "Debug console",
-        get   = function() return false end,
-        set   = function() end,
-    })
-    cb:__fire("OnValueChanged", true)
-    assertEqual(#NS.Settings.Schema, schemaBefore, "no schema row may appear")
-end)
+-- thing options-ui-§1 says must not sit in this addon. SessionToggle and
+-- LinkRow went the same way in item 020, when the General page's Units tab
+-- they drew moved into the Units page's band.)
 
 -- ── reset ───────────────────────────────────────────────────────────────────
 
@@ -473,43 +440,36 @@ test("a global reset also clears the state no schema row owns", function()
     assertTrue(a.x ~= 999, "afterRestoreAll must have cleared the dragged position")
 end)
 
-test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", function()
+test("General's builder draws no bespoke control, and the band's Copy button keeps its tooltip", function()
     -- The library reads a SCHEMA row's body through tooltipBody(), which accepts
     -- either key. Its bespoke makers do NOT: O.SessionCheckbox reads
     -- `spec.tooltip` directly, so a spec that says `desc` renders the label with
-    -- an EMPTY body -- silently, and only in game. ONE spec in
-    -- settings/General.lua's builder is affected: "Use same styling as Target".
-    -- The other three — the Debug console toggle and the two reset buttons — are
-    -- H.MasterControls' (options-ui-§15), so their bodies are the composer's and
-    -- are keyed correctly there by construction.
-    --
-    -- "Copy styling from Target" left this count when it moved onto the tick's
-    -- line: it is no longer an InlineButtonPair spec but a button built by
-    -- `copyStylingButton`, above Build, whose body goes to H.AttachTooltip
-    -- POSITIONALLY -- a call that cannot key it wrongly. That it still HAS a body
-    -- is asserted separately below, so the move cannot have quietly dropped it.
+    -- an EMPTY body -- silently, and only in game. General's builder used to
+    -- carry one such spec, the Focus link tick on its Units tab. Item 020
+    -- (KIC-L01/L02) moved the tick to the Units page's band, where it is the
+    -- schema row itself drawn through RenderField, and the Copy from Target
+    -- button with it, whose body goes to H.AttachTooltip POSITIONALLY.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
-    -- deliberately has none. The builder is the whole region after `local
-    -- function Build` -- every schema row on this page is declared above it, so
-    -- a `desc` key below that line is always a bespoke spec.
-    -- red under: reverting the key to `desc`, or dropping either body.
-    local fh = assert(io.open(T.root .. "/settings/General.lua", "r"))
-    local src = fh:read("*a")
-    fh:close()
+    -- deliberately has none.
+    -- red under: a bespoke spec back in General's builder, or the Copy button
+    -- losing its body.
+    local function read(path)
+        local fh = assert(io.open(T.root .. "/" .. path, "r"))
+        local src = fh:read("*a")
+        fh:close()
+        return src
+    end
+    local src = read("settings/General.lua")
     local at = src:find("local function Build", 1, true)
     assertTrue(at ~= nil, "settings/General.lua must still declare Build")
     local builder = src:sub(at)
-    assertNil(builder:match("desc%s*="),
-        "a bespoke spec in General's builder keys its tooltip `desc`; the library reads `tooltip` and draws no body")
-    -- ...and the bodies are really there, so the rule above cannot be satisfied
-    -- by deleting them instead.
-    local n = 0
-    for _ in builder:gmatch("tooltip%s*=") do n = n + 1 end
-    assertEqual(n, 1, "General's builder must carry the surviving bespoke tooltip body")
-    assertTrue(src:find("H.AttachTooltip(btn", 1, true) ~= nil,
-        "the Copy styling button must still attach a tooltip body of its own")
+    assertNil(builder:match("desc%s*="), "a bespoke spec in General's builder keys its tooltip `desc`")
+    assertNil(builder:match("SessionToggle"), "General's builder draws a bespoke control again")
+    local render = read("settings/Panel_Render.lua")
+    assertTrue(render:find('Helpers.AttachTooltip(btn, L["Copy from Target"],', 1, true) ~= nil,
+        "the Copy from Target button must attach a tooltip body of its own")
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────
@@ -592,7 +552,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- it just stops covering it. OptionsWidgets.lua is still where the rendered
     -- labels come from, so an `L` hook growing there is the likeliest and the one
     -- that would show on screen first. OptionsDrawer.lua (LibKa0s v1.73.0) made
-    -- it eleven: the count below moved, and the derived scan already covered it.
+    -- it eleven, and OptionsKeybinds.lua (LibKa0s v1.77.0) twelve: the count below moved, and
+    -- the derived scan already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
         "Options owning its own strings is why this tripwire is not shaped like "
@@ -612,8 +573,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 11,
-        "the major is eleven files at LibKa0s v1.73.0 (OptionsDrawer.lua joined) -- a count that moved means a file "
+    assertEqual(scanned, 12,
+        "the major is twelve files at LibKa0s v1.77.0 (OptionsKeybinds.lua joined) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.

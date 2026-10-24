@@ -225,13 +225,14 @@ end
 -- Removals ship with a message, not silently: each old page name is answered
 -- with where its capability went, because "Setting not found: general" is a bug
 -- report waiting to happen.
--- Where each old page's reset went. Icons, Cast bar and Text Label are entries of the
--- Grid page (KickCD#33), whose Defaults restores the entry for the unit in the band.
+-- Where each old page's reset went. Icons, Cast bar and Text label are entries of the
+-- Units page (KickCD#33; key `grid`), whose Defaults restores the entry for the unit in
+-- the band. Location strings are options-ui-§21's "<Page> > <Entry>", ASCII " > ".
 local RETIRED_RESET_PAGES = {
     general = "the General page's |cFFFFFF00Defaults|r button to reset the whole page",
-    icons   = "Grid \226\134\146 Icons' |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
-    castbar = "Grid \226\134\146 Cast bar's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
-    label   = "Grid \226\134\146 Text Label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
+    icons   = "Units > Icons' |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
+    castbar = "Units > Cast bar's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
+    label   = "Units > Text label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band",
 }
 
 local function runReset(rest)

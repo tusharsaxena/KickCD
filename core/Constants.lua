@@ -237,3 +237,50 @@ Const.SPEC_TOKEN = {}
 for token, specID in pairs(Const.SPEC) do
     Const.SPEC_TOKEN[specID] = (token:gsub("_[A-Z]+$", ""))
 end
+
+-- ---------------------------------------------------------------------------
+-- Frame layering: the one layers table (frame-layering-§5, item 030)
+-- ---------------------------------------------------------------------------
+--
+-- Every SetFrameStrata and SetFrameLevel in core/, modules/ and settings/ reads this table, and
+-- every level is relative: `base:GetFrameLevel() + LEVEL.<NAME>`, never an absolute number
+-- (frame-layering-§3; tests/test_layers.lua holds both rules and the order below). The addon's
+-- whole stack, bottom to top:
+--
+--   MEDIUM (STRATA.HUD), one band per unit, over UIParent (LEVEL.HUD):
+--     +1   the icon grid root (GRID). Inside each icon (LEVEL.ICON, over the button, itself grid + 1):
+--            texture (button regions) < swipe +1 (FILL) < border +2 (BORDER) < glow host +3 (EFFECT)
+--            < LibCustomGlow's frames, glow host + 1 (GLOW) < countdown and charges on a mouse-off
+--            text overlay +5 (OVERLAY). Text over the glow is the owner's CALL-06 (2026-10-24).
+--     +21  the cast bar root (CASTBAR): it draws over its grid wherever the two overlap, the live
+--          thing on top. Inside it (LEVEL.CASTBAR): backgrounds and icon (root regions) < the bar
+--          container root + 1 (CONTAINER) < the two StatusBars container + 1 (FILL) < the borders
+--          root + 3 (BORDER) < spark, name and time on the overlay container + 3 (OVERLAY).
+--     +26  the unit label, grid + 25 (LABEL): parented to the grid for visibility, it clears the
+--          cast bar's content too, so a label attached to the bar draws on it. Re-set after every
+--          SetParent, which re-derives the level.
+--     +40  both drag handles (HANDLE), each as a DragHandle `level` offset over its own parent, so
+--          a handle is never under the other display of its unit; the help mark rides at + 1.
+--     +41  the sim strip (MARKER). It sits over the handles' slot because the two never show
+--          together: modules/Sim.lua refuses a sim while unlocked and stops one on unlock.
+--   The Target and Focus bands are equal; the two units are placed apart by default.
+--
+--   Library- and Blizzard-owned, relied on and never set here (frame-layering-§6): the debug
+--   console, perf panel and sim panel DIALOG and toplevel (raised on click, re-raising a shown
+--   StaticPopup); the console's copy window FULLSCREEN; the library menu, autocomplete, AceGUI
+--   pullouts and color picker FULLSCREEN_DIALOG; the reorder ghost and GameTooltip TOOLTIP; the
+--   library resize grip window + 10, reorder drop line row + 20 and row box row - 1; the Settings
+--   panel HIGH; StaticPopups DIALOG; the LibDBIcon minimap button MEDIUM / 8, fixed.
+Const.LAYERS = {
+    STRATA = {
+        HUD = "MEDIUM",
+    },
+    LEVEL = {
+        -- Over UIParent: one unit's HUD band.
+        HUD = { GRID = 1, CASTBAR = 21, LABEL = 25, HANDLE = 40, MARKER = 41 },
+        -- Over the icon button (the glow's GLOW is over its host, LibCustomGlow's frameLevel).
+        ICON = { FILL = 1, BORDER = 2, EFFECT = 3, GLOW = 1, OVERLAY = 5 },
+        -- Over the cast bar root (CONTAINER, BORDER) or its bar container (FILL, OVERLAY).
+        CASTBAR = { CONTAINER = 1, FILL = 1, BORDER = 3, OVERLAY = 3 },
+    },
+}

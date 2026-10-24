@@ -39,6 +39,7 @@ local Castbar = NS:GetModule("Castbar")
 -- strip, which is what buildHandle returns and what ApplyLock's
 -- `if frame.dragHandle` guard already tolerates.
 local KW = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
+local HUD_LEVEL = NS.Const.LAYERS.LEVEL.HUD   -- frame-layering-§2 (core/Constants.lua LAYERS)
 
 --- The strip's label: the UNIT's, not the addon's.
 ---
@@ -98,6 +99,10 @@ local function buildHandle(inst, frame)
         -- (core/LauncherSetup.lua:131, core/KickCD.lua:200). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
+        -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
+        -- the widget's offset over the cast bar, so the strip and its help mark
+        -- clear the grid of the same unit as well as the bar (KIC-Z07, S06).
+        level        = HUD_LEVEL.HANDLE - HUD_LEVEL.CASTBAR,
         tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = L["KickCD castbar"],

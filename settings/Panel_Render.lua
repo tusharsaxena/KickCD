@@ -15,11 +15,10 @@ local Helpers = NS.Settings.Helpers
 -- Framework helpers published by settings/Panel.lua, rebound to a file-local so
 -- the moved code below reads exactly as it did in place.
 --
--- AceGUI, Helpers.AddSpacer and Helpers.ROW_VSPACER used to be bound here too.
--- They were the hand-built unit-selector header's: the dropdown, the Focus
--- link/copy row, and the gap under each. The picker is the library's PageBanner
--- now and the link controls moved to the General page, so this file creates no
--- widget of its own and measures no gap of its own.
+-- Helpers.AddSpacer and Helpers.ROW_VSPACER used to be bound here too. They were
+-- the old hand-built unit-selector header's gaps. The band is one library
+-- PageHeader block now (below), whose height is the library's BANNER_H, so this
+-- file measures no gap of its own.
 local ensureScroll      = Helpers.EnsureScroll
 
 -- (Helpers.RerenderUnitPanel is GONE. It cleared the scroll and re-ran
@@ -31,8 +30,8 @@ local ensureScroll      = Helpers.EnsureScroll
 -- to "how does this page redraw?".)
 
 -- Split a unit panel's rows into those that stay editable even when Focus
--- is linked (alwaysPerUnit — e.g. label show/text, which are per-unit by
--- design) and the appearance rows the link hides. Pure; unit-tested.
+-- is linked (alwaysPerUnit — the label's text, which is per-unit by design)
+-- and the appearance rows the link hides. Pure; unit-tested.
 function Helpers.PartitionUnitRows(rows)
     local perUnit, styled = {}, {}
     for _, def in ipairs(rows) do
@@ -46,33 +45,45 @@ function Helpers.PartitionUnitRows(rows)
 end
 
 -- ---------------------------------------------------------------------
--- Per-unit page chrome -- the Unit picker, and what a linked Focus shows
+-- Per-unit page chrome -- the Unit band, and what a linked Focus shows
 -- ---------------------------------------------------------------------
 --
--- THE UNIT DROPDOWN IS THE PAGE BANNER (options-ui-§14), pinned in the chrome
--- band ABOVE the tab strip rather than added to the scroll. That is not a
--- cosmetic move. The strip's own re-render on a tab click clears the SCROLL and
--- redraws the rows; anything a page parks in the scroll ahead of the strip is
--- gone the first time the reader clicks a tab. The chrome band survives it, and
--- the picker scopes the whole page -- every tab on it edits the selected unit --
--- so the band is where it belongs.
+-- THE BAND IS ONE PageHeader BLOCK (options-ui-§14), pinned in the chrome band
+-- ABOVE the tab strip rather than added to the scroll. That is not a cosmetic
+-- move. The strip's own re-render on a tab click clears the SCROLL and redraws
+-- the rows; anything a page parks in the scroll ahead of the strip is gone the
+-- first time the reader clicks a tab. The chrome band survives it, and the
+-- picker scopes the whole page -- every tab on it edits the selected unit -- so
+-- the band is where it belongs.
 --
--- It is also the ONLY picker on the page, which is the other half of options-ui-§14: two
--- controls over one piece of state is a synchronization problem invented by the
--- design and owned forever. There is one value, read at render time, and the
--- re-render the selection triggers repaints everything below it.
+-- ONE ROW, four cells (KIC-L01, item 020):
+--     [Unit] [Enable this unit] [Link to Target]* [Copy from Target]*
+-- (* while Focus is the unit in the band). Everything about one unit sits on
+-- the page that picks it; the enable and the link used to be a trip to the
+-- General page's Units tab. The library's PageBanner draws exactly one Dropdown
+-- (and at most one action), so a picker with acts beside it is a PageHeader
+-- block with the picker inside it -- "at most one such block" per page. The
+-- cells' widths are fixed, so the band is the same height and the picker sits
+-- in the same place for both units.
 --
--- Full rebuild on every call rather than a persistent widget: AceGUI's pool
--- exists to make release-and-recreate cheap, and PageBanner drains both chrome
--- ledgers (the banner's and the strip's) before it draws, so a unit switch
--- cannot leave the previous unit's tabs stranded under the new one's.
+-- The picker is still the ONLY picker on the page, which is the other half of
+-- options-ui-§14: two controls over one piece of state is a synchronization
+-- problem invented by the design and owned forever. There is one value, read at
+-- render time, and the re-render the selection triggers repaints everything
+-- below it.
 --
--- The Focus "Use same styling as Target" tick and the "Copy styling from
--- Target" button used to be drawn here, once per unit page. They are on the
--- General page's Units tab now (settings/General.lua): they are one relationship
--- between two units rather than three per-page copies of it, and the scroll --
--- the only place left to draw them -- is cleared out from under them by every
--- tab click.
+-- The enable and the link are SCHEMA ROWS (settings/General.lua, skipRender,
+-- stamped to the General page) drawn through the library's RenderField, so they
+-- write through the one seam and refresh like any row. The copy is an act.
+--
+-- Full rebuild on every call rather than persistent widgets: AceGUI's pool
+-- exists to make release-and-recreate cheap. The block's frame is the library's
+-- (one per page); the AceGUI widgets inside it are ours, so the previous
+-- render's are released once the new ones exist.
+
+-- The four cells' shares of the band's width.
+local BAND_CELLS = { picker = 0.30, enable = 0.23, link = 0.21, copy = 0.26 }
+
 --- Which unit every Grid entry is editing, and the only writer of it.
 ---
 --- ONE value for the three entries rather than one per ctx, which is what it was:
@@ -96,6 +107,91 @@ function Helpers.SetViewedUnit(unit)
     if NS.State then NS.State.viewedUnit = unit end
 end
 
+--- The "Copy from Target" act, built into the band's flow host. Refused in
+--- combat as the picker is: it rewrites a whole unit's rows.
+local function copyFromTargetButton(AceGUI, host)
+    local btn = AceGUI:Create("Button")
+    btn:SetText(L["Copy from Target"])
+    btn:SetRelativeWidth(BAND_CELLS.copy)
+    -- CopyStyling is the whole act: every row through the helper, the bus
+    -- announced once per section, and the one structural refresh from the link
+    -- row it writes last.
+    btn:SetCallback("OnClick", function()
+        if Helpers.__combatRefused and Helpers.__combatRefused("button", "copy") then return end
+        NS.Units.CopyStyling("target", "focus")
+    end)
+    Helpers.AttachTooltip(btn, L["Copy from Target"],
+        L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
+    host:AddChild(btn)
+    return btn
+end
+
+--- The Unit picker, built into the band's flow host.
+local function unitPicker(ctx, AceGUI, host)
+    local items, order = {}, {}
+    for i, u in ipairs(NS.Units.LIST) do
+        items[u] = (u == "target") and L["Target"] or L["Focus"]
+        order[i] = u
+    end
+    local dd = AceGUI:Create("Dropdown")
+    dd:SetLabel(L["Unit"])
+    dd:SetList(items, order)
+    dd:SetValue(ctx.unit)
+    dd:SetRelativeWidth(BAND_CELLS.picker)
+    dd:SetCallback("OnValueChanged", function(_, _, value)
+        -- A change of subject, so refused in combat and put back, as the
+        -- library's own banner refuses it.
+        if Helpers.__combatRefused and Helpers.__combatRefused("select", value) then
+            dd:SetValue(ctx.unit)
+            return
+        end
+        if not value or value == ctx.unit then return end
+        Helpers.SetViewedUnit(value)
+        -- STRUCTURAL, not a re-render of this page alone. The selection is
+        -- shared, so the Units page must redraw on the new unit;
+        -- RefreshAllPanels re-renders the ones on screen and marks the hidden
+        -- ones dirty so they repaint on their next OnShow.
+        Helpers.RefreshAllPanels()
+    end)
+    Helpers.AttachTooltip(dd, L["Unit"],
+        L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."])
+    host:AddChild(dd)
+    return dd
+end
+
+--- Draw the band's cells into the PageHeader frame `frame`.
+local function buildUnitBand(ctx, frame)
+    local AceGUI = Helpers.AceGUI or NS.AceGUI
+    if not (AceGUI and frame) then return end
+    local Store = NS.Settings.Store
+    local stale = ctx.__unitBand
+
+    local host = AceGUI:Create("SimpleGroup")
+    host:SetLayout("Flow")
+    host.frame:SetParent(frame)
+    host.frame:ClearAllPoints()
+    host.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    host.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+    host.frame:Show()
+    ctx.__unitBand = host
+
+    -- Parked on the ctx so a suite can drive the selection the way a click
+    -- would; the band's widgets are otherwise private to this function.
+    ctx.__bannerWidget = unitPicker(ctx, AceGUI, host)
+    local enableRow = Store.FindRow("units." .. ctx.unit .. ".enabled")
+    if enableRow then Helpers.RenderField(ctx, enableRow, host, BAND_CELLS.enable) end
+    if ctx.unit == "focus" then
+        local linkRow = Store.FindRow("units.focus.link")
+        if linkRow then Helpers.RenderField(ctx, linkRow, host, BAND_CELLS.link) end
+        copyFromTargetButton(AceGUI, host)
+    end
+    if host.DoLayout then host:DoLayout() end
+
+    -- After the new band exists, never before: the picker's own callback may be
+    -- what is re-rendering, and its widget must outlive the call.
+    if stale and stale.Release then stale:Release() end
+end
+
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     -- Read, never defaulted from the ctx: the shared value is the source of
     -- truth, and a ctx that kept its own would be the second copy this exists to
@@ -104,46 +200,32 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     ctx.unit = Helpers.ViewedUnit()
     Helpers.ClearScroll(ctx)
 
-    local items, order = {}, {}
-    for i, u in ipairs(NS.Units.LIST) do
-        items[u] = (u == "target") and L["Target"] or L["Focus"]
-        order[i] = u
-    end
-
-    local dd = Helpers.PageBanner(ctx, {
-        label   = L["Unit"],
-        tooltip = L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."],
-        list    = items,
-        order   = order,
-        value   = ctx.unit,
-        onSelect = function(value)
-            if not value or value == ctx.unit then return end
-            Helpers.SetViewedUnit(value)
-            -- STRUCTURAL, not a re-render of this page alone. The selection is
-            -- shared, so the Grid page must redraw on the new unit;
-            -- RefreshAllPanels re-renders the ones on screen and marks the hidden
-            -- ones dirty so they repaint on their next OnShow. Re-rendering only
-            -- this page -- which is what this used to do -- is what let the three
-            -- pages disagree in the first place.
-            Helpers.RefreshAllPanels()
-        end,
+    Helpers.PageHeader(ctx, {
+        height = Helpers.BANNER_H,
+        build  = function(c, frame) buildUnitBand(c, frame) end,
     })
-    -- Parked on the ctx so a suite can drive the selection the way a click
-    -- would; the library keeps its own chrome widgets private.
-    ctx.__bannerWidget = dd
 
-    -- The Grid page's nav rail (KickCD#33) goes in HERE: after the band, whose
+    -- The Units page's nav rail (KickCD#33) goes in HERE: after the band, whose
     -- height it reads for its top, and before EITHER strip path below, which reads
     -- the inset it records. So a linked Focus keeps the rail too. A caller that
     -- passes no chrome draws exactly what it drew before.
     if chrome then chrome(ctx) end
 
+    -- A tab click redraws the WHOLE panel, band included, on both strip paths.
+    -- The band is chrome and outlives a strip-only redraw, but its Enable and
+    -- Link ticks register their refreshers through RenderField, and ClearScroll
+    -- reassigns ctx.refreshers: a strip-only redraw would leave the band's ticks
+    -- on screen with no refresher, so a `/kcd set units.<u>.enabled` typed after
+    -- any tab click left them stale. Pinned by tests/test_grid.lua ("the band's
+    -- ticks still follow a scalar write after a tab click").
+    local function rerender(c) Helpers.RenderUnitPanel(c, panelKey, afterGroup, chrome) end
+
     if NS.Units.IsLinked(ctx.unit) then
-        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup, rerender)
         return
     end
 
-    Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup)
+    Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup, nil, { rerender = rerender })
 end
 
 --- A linked Focus: the STRIP FIRST, always, and the link note as content.
@@ -158,7 +240,9 @@ end
 --- Editable-but-ignored appearance widgets are still worse than none -- a linked
 --- Focus renders with Target's tables, so a styled row here would write to a
 --- table nothing reads -- so the tab's CONTENT is still only its alwaysPerUnit
---- rows plus the note. What changed is that the strip is above them.
+--- rows plus the note. What changed is that the strip is above them. One row is
+--- alwaysPerUnit since item 020 (KIC-L05): Text label > General's Label text,
+--- which is per-unit by design and still renders while linked.
 ---
 --- The strip is drawn by hand rather than by RenderTabbedSchema because that
 --- function renders the active tab's rows itself, and the whole point here is
@@ -169,22 +253,27 @@ end
 --- were evaluated for this page and DECLINED (KC-20, issue #23, closed as
 --- will-not-do). The gap: `disabledFor` draws `disabledNotice` ABOVE the rows and
 --- still draws every row disabled, where this page must show the note INSTEAD of
---- them, and the notice is a plain TextRow, not the LinkRow below. The strip is
---- not made inert by the library either, and `chrome(ctx)` could reach its
---- buttons only through the private `ctx.__tabLayout`. Pinned by
---- tests/test_options_panel_degraded.lua ("a linked Focus page draws the full strip,
---- inert, and only the link note").
+--- them (and, since KIC-L05, the alwaysPerUnit rows beside it). The strip is not
+--- made inert by the library either, and `chrome(ctx)` could reach its buttons
+--- only through the private `ctx.__tabLayout`. Pinned by
+--- tests/test_options_panel_degraded.lua ("a linked Focus page draws the full
+--- strip and only the link note, plus its alwaysPerUnit rows").
 --- Make a drawn strip inert: every button disabled, every one of its textures
 --- desaturated.
 ---
---- ONLY for the linked-Focus page, and the reason is that its tabs have nothing
---- to switch BETWEEN. No schema row is `alwaysPerUnit`, so every group's linked
---- content is the same: the note and nothing else. A strip you can click that
---- redraws the identical page is a control that appears to do something and does
---- not -- the same defect the ↑/↓ arrows had before the reorder lists took a
---- drag. The strip still draws, because the page must not change shape when the
---- picker flips (options-ui-§13); it just cannot be operated, and the desaturation
---- is what makes that read as deliberate rather than broken.
+--- ONLY for a linked-Focus entry whose tabs have nothing to switch BETWEEN: no
+--- row of any of its tabs is `alwaysPerUnit`, so every group's linked content is
+--- the same, the note and nothing else. A strip you can click that redraws the
+--- identical page is a control that appears to do something and does not -- the
+--- same defect the up/down arrows had before the reorder lists took a drag. The
+--- strip still draws, because the page must not change shape when the picker
+--- flips (options-ui-§13); it just cannot be operated, and the desaturation is
+--- what makes that read as deliberate rather than broken.
+---
+--- An entry with an alwaysPerUnit row on any tab (Text label, whose General tab
+--- holds Label text: KIC-L05) keeps a LIVE strip, or the row would be
+--- unreachable from any other tab of the entry -- and a unit switch must leave
+--- the entry's tab alone (options-ui-§14), so the page cannot jump to it.
 ---
 --- Done on the buttons TabStrip returns rather than through a flag on the tab
 --- spec, because the spec has no such flag: the library owns the strip and this is
@@ -204,15 +293,18 @@ local function deadenStrip(buttons)
     end
 end
 
-function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+--- `rerender` (optional) is RenderUnitPanel's whole-panel redraw, which a tab
+--- click calls in place of the strip-only redraw below, for the band's sake.
+function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup, rerender)
     local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
 
-    local groups, seen = {}, {}
+    local groups, seen, perUnitTabs = {}, {}, false
     for _, def in ipairs(rows) do
         if def.group and not seen[def.group] then
             seen[def.group] = true
             groups[#groups + 1] = def.group
         end
+        if def.alwaysPerUnit then perUnitTabs = true end
     end
     -- A tab pointing at a group this page no longer has renders a blank page
     -- under a strip, so a stale pointer heals to the first rather than being
@@ -227,11 +319,12 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
         onSelect = function(key)
             if key == ctx.activeTab then return end
             ctx.activeTab = key
+            if rerender then return rerender(ctx) end
             Helpers.ClearScroll(ctx)
             Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
         end,
     })
-    deadenStrip(buttons)
+    if not perUnitTabs then deadenStrip(buttons) end
 
     local active = {}
     for _, def in ipairs(rows) do
@@ -241,27 +334,19 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
     -- noHeadings, because the tab label already carries the section's name and
     -- drawing a Heading under it is the same label twice (options-ui-§7).
     Helpers.RenderRows(ctx, perUnit, afterGroup, nil, { noHeadings = true })
-    -- A LINK, not a sentence about where to go. The note named the control and
-    -- the page holding it and then left the reader to find both by hand, two
-    -- categories away in Blizzard's list -- so the phrase naming the destination
-    -- now IS the way there. The whole line takes the click (AceGUI has no widget
-    -- that mixes clickable and static runs in one string); the color on the
-    -- middle phrase is what says so.
-    Helpers.LinkRow(ctx,
-        L["Linked to Target. Untick 'Use same styling as Target' on the "]
-            .. Helpers.LinkText(L["General page's Units tab"])
-            .. L[" to give Focus its own."],
-        function() Helpers.OpenPageTab("general", L["Units"]) end,
-        L["Open the General page's Units tab."])
+    -- PLAIN TEXT, no link (KIC-L04, item 020). The tick it names is in this
+    -- page's own band now, a few pixels up, so there is nowhere to go: the note
+    -- used to be a link to the General page's Units tab, two categories away.
+    Helpers.TextRow(ctx, L["Linked to Target. Untick Link to Target above to give this unit its own look."])
     local scroll = ensureScroll(ctx)
     if scroll and scroll.DoLayout then scroll:DoLayout() end
 end
 
 -- ---------------------------------------------------------------------
--- The Grid page: the Unit band, the nav rail, the selected entry (#33)
+-- The Units page: the Unit band, the nav rail, the selected entry (#33)
 -- ---------------------------------------------------------------------
 --
--- Icons, Cast bar and Text Label are one page (settings/Grid.lua). The Unit
+-- Icons, Cast bar and Text label are one page (settings/Grid.lua). The Unit
 -- picker is the band, a nav rail (LibKa0s-Options' O.NavRail, options-ui-§13)
 -- chooses the entry, and each entry keeps the tab strip its own page had. An
 -- entry IS the old page key: every row keeps `panel`, `section`, `unit` and its
@@ -278,10 +363,10 @@ end
 local gridEntries = {}
 -- The rail's order, fixed here rather than taken from the TOC.
 local GRID_ORDER = { "icons", "castbar", "label" }
--- The Grid page's ctx, bound by its builder: the one page SelectSection moves.
+-- The Units page's ctx, bound by its builder: the one page SelectSection moves.
 local gridCtx
 
---- Register one entry of the Grid page. Called at FILE LOAD by settings/Icons.lua,
+--- Register one entry of the Units page. Called at FILE LOAD by settings/Icons.lua,
 --- Castbar.lua and Label.lua.
 --- @param key string    the entry's page key: the `panel` its schema rows carry
 --- @param label string  the rail entry's label
@@ -321,14 +406,14 @@ local function stashTab(ctx)
     ctx.__renderedSection = nil
 end
 
---- Bind the Grid page's ctx (settings/Grid.lua's builder). The page opens on Icons.
+--- Bind the Units page's ctx (settings/Grid.lua's builder). The page opens on Icons.
 function Helpers.__bindGridPage(ctx)
     gridCtx = ctx
     ctx.sectionTabs = {}
     ctx.activeSection = GRID_ORDER[1]
 end
 
---- Render the Grid page: the Unit band, the nav rail, then the entry's strip and
+--- Render the Units page: the Unit band, the nav rail, then the entry's strip and
 --- rows -- the library's draw order, PageBanner, NavRail, TabStrip. The band and
 --- both strip paths are Helpers.RenderUnitPanel's; the rail goes in through its
 --- chrome hook.
@@ -356,7 +441,7 @@ function Helpers.RenderGridPage(ctx)
     ctx.__renderedSection = entry.key
 end
 
---- The Grid page's Defaults: the active entry's rows FOR THE UNIT IN THE BAND, and
+--- The Units page's Defaults: the active entry's rows FOR THE UNIT IN THE BAND, and
 --- no other unit's. The owner's ruling for KickCD#33, and a documented deviation
 --- (docs/ARCHITECTURE.md, options-ui-§13): the library's O.RestoreDefaults resets
 --- every unit of a page on purpose, and it still does when called directly.
@@ -381,7 +466,7 @@ function Helpers.RestoreGridSection(ctx)
     if Helpers.RefreshScalars then Helpers.RefreshScalars() end
 end
 
---- Select entry `key` on the Grid page, and optionally its tab: the one seam a
+--- Select entry `key` on the Units page, and optionally its tab: the one seam a
 --- link, a deep link or a suite moves the entry through. A hidden page is marked
 --- owed a render and draws the entry on its next show. Refused in combat, as a tab
 --- switch is (options-ui-§2, §13), and named in the library's one

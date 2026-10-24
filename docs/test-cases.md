@@ -241,14 +241,14 @@ Total.
 - CopyStyling logs ONE [Set] summary line counting the rows it changed
 - CopyStyling still runs onChange per row with the log muted
 - a CopyStyling the seam refuses writes nothing at all
-- units.focus.link is a General > Units row, drawn by the tab's own tick
+- units.focus.link is a General-stamped row, drawn by the Units page's band
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
-- the Units tab's tick writes the link through Helpers.SetAndRefresh
+- the band's Link to Target tick writes the link through Helpers.SetAndRefresh
 - General's Defaults re-links Focus and survives the refresh raised inside the library's loop
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (38)
+### test_schema.lua (41)
 
 - Settings.Schema is assembled from the settings/* files
 - Validate reports 0 errors on the shipped schema
@@ -263,6 +263,8 @@ Total.
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: it is a row, and it never reaches the db
+- Text label > Placement pairs the attached widget's point first, then the label's
+- every pinned tab draws its subsection headings in the designed order
 - every page partitions into the designed tab strip, in strip order
 - no page draws a tab twice: every group's rows are contiguous
 - every schema page names at least one tab, so every one draws a strip
@@ -279,6 +281,7 @@ Total.
 - a linked Focus's tab strip is disabled and desaturated
 - an unlinked Focus's tab strip is left operable and undimmed
 - the General page's FIRST tab is named exactly `Master controls`
+- Lock frame carries the library's unlocked-is-the-preview tooltip (lockIsPreview)
 - Master controls holds exactly the canonical rows, in canonical order
 - every canonical Master control is declared exactly ONCE in the repo
 - the tab's closing button pair is the composer's afterGroup, not a page hook
@@ -783,6 +786,24 @@ Total.
 - a finished swipe on a still-active spell is re-armed on the next tick
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
+
+### test_layers.lua (15)
+
+- LAYERS names the HUD strata once, as MEDIUM
+- LAYERS orders the icon ladder fill < border < effect < effect frames < overlay
+- LAYERS puts the cast bar band above every grid level and the handles above both
+- the grid is a MEDIUM, clamped root at UIParent + HUD.GRID
+- an icon's swipe, border, glow host and text overlay sit on the named rungs
+- the countdown and the charges badge draw on the text overlay, which takes no mouse
+- the glow is started with the named ICON.GLOW frame level, not LibCustomGlow's +8
+- the cast bar is a MEDIUM, clamped root at UIParent + HUD.CASTBAR, above its grid
+- the cast bar's spark and text overlay sit above its borders, which sit above the fill
+- both drag handles sit at UIParent + HUD.HANDLE, above the cast bar's content
+- a label attached to the cast bar draws over the cast bar, not under it
+- a label attached to the grid draws over the grid's text, and re-levels after each reparent
+- the sim strip is MEDIUM at UIParent + HUD.MARKER, above every HUD element
+- every SetFrameStrata in core/, modules/ and settings/ reads LAYERS.STRATA
+- every SetFrameLevel in core/, modules/ and settings/ names a LAYERS.LEVEL member
 
 ### test_icongrid_curves.lua (13)
 
@@ -1308,7 +1329,7 @@ Total.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (35)
+### test_options_panel.lua (33)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1331,12 +1352,10 @@ Total.
 - a color drag commits once per throttle window
 - an external write re-syncs an open widget through its refresher
 - releasing a page's widgets drops that page's refreshers
-- SessionToggle adapts this addon's argument order onto the library's
-- a session toggle never becomes a saved setting
 - the Profiles page is vetoed from a global reset
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
-- General's bespoke controls key their tooltip body `tooltip`, not `desc`
+- General's builder draws no bespoke control, and the band's Copy button keeps its tooltip
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
@@ -1352,26 +1371,31 @@ Total.
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
-- the linked-Focus note has no hover highlight but is still clickable
-- the linked-Focus note opens General on its Units tab
-- a linked Focus page draws the full strip, inert, and only the link note
-- the Focus link's tick and its Copy button share one row
+- the linked-Focus note is plain text naming the band's Link to Target
+- the General page draws Master controls alone, with no empty Units tab
+- a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
+- the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
 
-### test_grid.lua (12)
+### test_grid.lua (13)
 
-- grid: Icons, Cast bar and Text Label register as Grid entries under their page keys, on both builds
-- grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, opening on Icons
-- grid: the draw order is PageBanner, NavRail, TabStrip
+- grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
+- grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
+- grid: the draw order is PageHeader, NavRail, TabStrip
 - grid: a rail click draws that entry's own strip under the same band
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
-- grid: a linked Focus keeps the rail; each entry draws its full strip, inert, over the link note alone
+- grid: a linked Focus keeps the rail; each entry draws its full strip over the link note, inert unless it has a per-unit row
+- grid: the band's ticks still follow a scalar write after a tab click, unlinked and linked
 - grid: Defaults restores only the active entry's rows, for the unit in the band
-- grid: the Defaults tooltip says it acts on the unit in the band
-- grid: a former page key opens Grid on that entry and tab, drawn on its next show
+- grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band
+- grid: a former page key opens Units on that entry and tab, drawn on its next show
 - grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
 - grid: selecting an entry is refused in combat and moves nothing
+
+### test_settings_layout_guard.lua (1)
+
+- layout guard: every stored path, type, default and range is the one it was before item 020
 
 ### test_settings_refreshers.lua (5)
 
@@ -1381,7 +1405,7 @@ Total.
 - RefreshAllPanels never runs a refresher from a cleared render
 - ClearScroll is safe on a ctx that never rendered
 
-### test_flow_traces.lua (13)
+### test_flow_traces.lua (12)
 
 - OnProfileChanged logs a [Profile] line
 - BuildActiveList writes ONE list summary for an unchanged list, however often it rebuilds
@@ -1393,7 +1417,6 @@ Total.
 - a Clear re-arms the change-gated lines, so the next pass says where it stands
 - a settings open refused in combat names the guard in the log
 - the Cooldown Manager walk logs one build line, with the calls that raised
-- a settings link whose click raises names the site and the error in the log
 - a refused spell-list write names its guard, once, from the writer or the verb
 - an optional library that did not load is named when logging is first turned on
 
@@ -1762,7 +1785,7 @@ Total.
 | test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
-| test_schema.lua | 38 |
+| test_schema.lua | 41 |
 | test_schema_store.lua | 10 |
 | test_database.lua | 26 |
 | test_color_shape.lua | 28 |
@@ -1786,6 +1809,7 @@ Total.
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 28 |
+| test_layers.lua | 15 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
@@ -1810,11 +1834,12 @@ Total.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 35 |
+| test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
-| test_grid.lua | 12 |
+| test_grid.lua | 13 |
+| test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
-| test_flow_traces.lua | 13 |
+| test_flow_traces.lua | 12 |
 | test_library_lines.lua | 9 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
@@ -1838,4 +1863,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1480** |
+| **Total** | **1497** |

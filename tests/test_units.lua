@@ -497,7 +497,7 @@ test("a CopyStyling the seam refuses writes nothing at all", function()
     T.assertTrue(deepEqual(NS.db.profile.units.focus, before), "focus is exactly as it was")
 end)
 
-test("units.focus.link is a General > Units row, drawn by the tab's own tick", function()
+test("units.focus.link is a General-stamped row, drawn by the Units page's band", function()
     -- red under: `link` going back to a plain profile field with no row, which
     -- leaves it outside /kcd get|set|list|reset and the page's Defaults.
     local NS = T.load(true).NS
@@ -510,7 +510,7 @@ test("units.focus.link is a General > Units row, drawn by the tab's own tick", f
     assertEqual(def.section, "units")
     assertEqual(def.group, NS.L["Units"])
     assertEqual(def.default, NS.DEFAULT_PROFILE.units.focus.link)
-    assertEqual(def.skipRender, true, "the tab draws the tick itself, paired with Copy styling")
+    assertEqual(def.skipRender, true, "the band draws the tick, beside Copy from Target")
     assertEqual(type(def.onChange), "function", "the structural refresh is the row's")
     T.assertNil(S.FindRow("units.target.link"), "target is never linked, so it has no row")
     T.assertNil(H.RestoreUnitLinks, "the profile reset and the row's own reset replace RestoreUnitLinks")
@@ -538,22 +538,31 @@ test("`/kcd set units.focus.link` writes it, announces units and repaints struct
     if not ok then error(err, 0) end
 end)
 
-test("the Units tab's tick writes the link through Helpers.SetAndRefresh", function()
+--- The Units page shown with Focus in the band (KIC-L01, item 020), and a finder for
+--- the band's Link to Target tick.
+local function unitsBand(inst)
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    H.SetViewedUnit("focus")
+    local ctx = H.__panelFor("grid")
+    ctx.panel:Show()
+    H.RefreshPanel(ctx, true)
+    local function tick()
+        for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+            if w.labelText == NS.L["Link to Target"] then return w end
+        end
+    end
+    return ctx, tick
+end
+
+test("the band's Link to Target tick writes the link through Helpers.SetAndRefresh", function()
     -- red under: the tick writing `cfg.link` itself and firing `units` by hand.
     local inst = T.load(true, true)
     local NS = inst.NS
     local H = NS.Settings.Helpers
-    local ctx = H.__panelFor("general")
-    ctx.activeTab = NS.L["Units"]
-    ctx.panel:Show()
-    H.RefreshPanel(ctx, true)
-    local tick
-    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
-        for _, w in ipairs(child.children or {}) do
-            if w.labelText == NS.L["Use same styling as Target"] then tick = w end
-        end
-    end
-    T.assertTrue(tick ~= nil, "the Units tab must draw the tick")
+    local _, find = unitsBand(inst)
+    local tick = find()
+    T.assertTrue(tick ~= nil, "the Units page's band must draw the tick while Focus is in it")
     local paths = {}
     local real = H.SetAndRefresh
     H.SetAndRefresh = function(path, ...) paths[#paths + 1] = path; return real(path, ...) end
@@ -564,23 +573,6 @@ test("the Units tab's tick writes the link through Helpers.SetAndRefresh", funct
     assertEqual(NS.db.profile.units.focus.link, false)
 end)
 
---- The General page, shown on its Units tab, and the tick it draws there.
-local function generalUnitsTab(inst)
-    local NS = inst.NS
-    local H = NS.Settings.Helpers
-    local ctx = H.__panelFor("general")
-    ctx.activeTab = NS.L["Units"]
-    ctx.panel:Show()
-    H.RefreshPanel(ctx, true)
-    local function tick()
-        for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
-            for _, w in ipairs(child.children or {}) do
-                if w.labelText == NS.L["Use same styling as Target"] then return w end
-            end
-        end
-    end
-    return ctx, tick
-end
 
 --- Count H.RefreshAllPanels calls made while `fn` runs.
 local function countRefreshes(H, fn)
@@ -601,7 +593,9 @@ test("General's Defaults re-links Focus and survives the refresh raised inside t
     local inst = T.load(true, true)
     local NS = inst.NS
     local H = NS.Settings.Helpers
-    local ctx, tick = generalUnitsTab(inst)
+    local grid, tick = unitsBand(inst)
+    local ctx = H.__panelFor("general")
+    ctx.panel:Show()
     H.SetAndRefresh("units.focus.link", false)
     assertEqual(NS.db.profile.units.focus.link, false, "setup: Focus unlinked")
     T.assertTrue(type(ctx.panel.defaultsOnClick) == "function", "General parks a Defaults handler")
@@ -610,10 +604,12 @@ test("General's Defaults re-links Focus and survives the refresh raised inside t
 
     assertEqual(NS.db.profile.units.focus.link, true, "Defaults must re-link Focus")
     T.assertTrue(refreshes >= 1, "flipping the link back repaints structurally")
-    T.assertTrue(tick() ~= nil, "the Units tab is drawn again after the refresh")
-    for i, fn in ipairs(ctx.refreshers or {}) do
-        local ok, err = pcall(fn)
-        T.assertTrue(ok, "refresher #" .. i .. " raised after the reset: " .. tostring(err))
+    T.assertTrue(tick() ~= nil, "the band's tick is drawn again after the refresh")
+    for _, page in ipairs({ ctx, grid }) do
+        for i, fn in ipairs(page.refreshers or {}) do
+            local ok, err = pcall(fn)
+            T.assertTrue(ok, "refresher #" .. i .. " raised after the reset: " .. tostring(err))
+        end
     end
 end)
 
@@ -623,7 +619,7 @@ test("the link row repaints structurally only when the link actually changes", f
     local inst = T.load(true, true)
     local NS = inst.NS
     local H = NS.Settings.Helpers
-    generalUnitsTab(inst)
+    unitsBand(inst)
     assertEqual(NS.db.profile.units.focus.link, true, "setup: Focus linked by default")
     assertEqual(countRefreshes(H, function() H.SetAndRefresh("units.focus.link", true) end), 0,
         "writing the value it already has repaints nothing")

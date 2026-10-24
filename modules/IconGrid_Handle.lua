@@ -41,6 +41,7 @@ local onDragStop = IconGrid._OnDragStop
 -- stub-parity case: there is no stub, because there is nothing to degrade TO.
 local KW   = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
 local DRAG = KW and KW.DRAG_HANDLE
+local HUD_LEVEL = NS.Const.LAYERS.LEVEL.HUD   -- frame-layering-§2 (core/Constants.lua LAYERS)
 
 --- The strip's label: this addon, then which grid the strip moves.
 ---
@@ -138,6 +139,11 @@ local function buildHandle(inst, grid)
         end,
         onDragStop   = function() onDragStop(inst, grid) end,
         onRightClick = function() NS:OpenSettings() end,
+        -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
+        -- the widget's offset over the grid so its help mark is born above it:
+        -- above the grid's icons and glow AND above this unit's cast bar, which
+        -- can sit on the grid's TOP edge where this strip hangs (KIC-Z07, S06, S12).
+        level        = HUD_LEVEL.HANDLE - HUD_LEVEL.GRID,
         tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = label,

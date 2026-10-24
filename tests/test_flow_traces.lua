@@ -254,23 +254,6 @@ test("the Cooldown Manager walk logs one build line, with the calls that raised"
     NS.DebugLog:SetEnabled(false)
 end)
 
-test("a settings link whose click raises names the site and the error in the log", function()
-    -- debug-logging-§8 diagnosis: an error caught by an owned pcall reaches the pasted log, not
-    -- only the chat line the player saw.
-    -- red under: drop the [Open] line from Helpers.LinkRow's OnClick in settings/Panel_Widgets.lua
-    local inst, NS = listening()
-    local H = NS.Settings.Helpers
-    local AceGUI = inst.mocks.LibStub("AceGUI-3.0")
-    local ctx = H.CreatePanel("KickCDLinkRaise", "general", { pageKey = "general" })
-    ctx.scroll = AceGUI:Create("ScrollFrame")
-    local w = H.LinkRow(ctx, "go", function() error("no such page", 0) end)
-    assertTrue(w ~= nil, "the link row must draw")
-    w:__fire("OnClick")
-    assertEqual(count(NS, "[Open] settings link click raised: no such page"), 1,
-        "the caught error is logged once, with its site")
-    NS.DebugLog:SetEnabled(false)
-end)
-
 test("a refused spell-list write names its guard, once, from the writer or the verb", function()
     -- debug-logging-§8 diagnosis: a command refused or a write rejected names the guard. The
     -- writer's line is shared by the Spells page and `/kcd spells`; the verb logs

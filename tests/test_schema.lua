@@ -4,6 +4,7 @@
 -- check) is LibKa0s-Schema-1.0's, as NS.Settings.Store (settings/SchemaSetup.lua).
 local T = _G.KICKCD_TEST
 local NS = T.NS
+local L = NS.L
 local test, assertEqual, assertTrue, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertNil
 
@@ -267,12 +268,11 @@ end)
 local STRIP = {
     general = { { "Master controls", 7 }, { "Units", 3 } },
     icons   = {
-        { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
-        { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 34 },
+        { "Size and layout", 10 }, { "Appearance", 10 }, { "Annotations", 11 },
+        { "Ready glow", 34 },
     },
     castbar = {
-        { "General", 5 }, { "Size and position", 7 }, { "Icon", 2 }, { "Font", 6 },
-        { "Spell name", 5 }, { "Cast time", 4 },
+        { "General", 4 }, { "Size and position", 10 }, { "Text", 15 },
         { "Interruptible", 13 }, { "Non-interruptible", 13 },
     },
     label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 6 } },
@@ -281,6 +281,58 @@ local STRIP = {
 -- The filter each page renders with: nil is "every unit's rows", which is what
 -- a page with no unit picker gets.
 local STRIP_FILTER = { general = nil, icons = "target", castbar = "target", label = "target" }
+
+-- The subsection headings each tab draws, in order: item 020's layout (KIC-L08, L12, L14
+-- onward). A tab missing here draws no heading, or is not pinned yet.
+local SUBSECTIONS = {
+    icons = {
+        ["Size and layout"] = { "Size", "Secondary block" },
+        ["Appearance"]      = { "States", "Border" },
+        ["Annotations"]     = { "Cooldown text", "Charges", "Tooltip" },
+    },
+    castbar = {
+        ["Size and position"] = { "Size", "Position", "Spell icon" },
+        ["Text"]              = { "Spell name", "Cast time", "Font (both texts)" },
+        ["Interruptible"]     = { "Bar", "Background", "Spell name", "Border" },
+        ["Non-interruptible"] = { "Bar", "Background", "Spell name", "Border" },
+    },
+    label = {
+        ["Placement"] = { "Position", "Alignment" },
+    },
+}
+
+test("Text label > Placement pairs the attached widget's point first, then the label's", function()
+    -- KIC-L24 (XC-32): a two-point anchor names both elements, target first.
+    -- red under: point declared before relPoint again, or the alignment rows
+    -- drifting back above the offsets
+    local want = { "attach", "relPoint", "point", "offsetX", "offsetY", "justifyH", "justifyV",
+                   "rotation" }
+    local got = {}
+    for _, def in ipairs(T.NS.Settings.Helpers.SchemaForPanel("label", "target")) do
+        if def.group == L["Placement"] then got[#got + 1] = def.path:match("([^.]+)$") end
+    end
+    assertEqual(table.concat(got, ","), table.concat(want, ","))
+end)
+
+test("every pinned tab draws its subsection headings in the designed order", function()
+    -- red under: a row filed under the wrong heading, a heading renamed, or the
+    -- Tooltip row back above the Charges block
+    local H = T.NS.Settings.Helpers
+    for page, tabs in pairs(SUBSECTIONS) do
+        for tab, want in pairs(tabs) do
+            local got, last = {}, nil
+            for _, def in ipairs(H.SchemaForPanel(page, STRIP_FILTER[page])) do
+                if def.group == L[tab] and def.subgroup ~= last then
+                    got[#got + 1] = def.subgroup
+                    last = def.subgroup
+                end
+            end
+            local names = {}
+            for i, w in ipairs(want) do names[i] = L[w] end
+            assertEqual(table.concat(got, "|"), table.concat(names, "|"), page .. " > " .. tab)
+        end
+    end
+end)
 
 --- The page's groups in declaration order, with a count each — the same walk
 --- RenderTabbedSchema does.
@@ -606,23 +658,18 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
             "a linked Focus draws the same strip an unlinked one does")
         assertTrue(unlinked > 1, "sanity: the unlinked page really drew a strip")
 
-        -- ...and the note is IN THE SCROLL, under the strip -- as a LINK that opens
-        -- the page holding the tick it names. It used to be a plain line naming a
-        -- control and a page and leaving the reader to find both by hand, two
-        -- categories away in Blizzard's list.
+        -- ...and the note is IN THE SCROLL, under the strip -- as PLAIN TEXT
+        -- naming the tick in this page's own band (KIC-L04, item 020). It used to
+        -- be a link to the General page's Units tab, where the tick lived.
         local note
         for _, child in ipairs(ctx.scroll.children) do
             if type(child.text) == "string"
                and child.text:find("Linked to Target", 1, true) then note = child end
         end
         assertTrue(note ~= nil, "the link note must be drawn as page content")
-        assertEqual(note.type, "InteractiveLabel", "the note must be clickable")
-        assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
-            "the destination must be named in the note")
-        assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
-            "and colored, or nothing on screen says it is a link")
-        assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-            "the note names a destination but goes nowhere")
+        assertEqual(note.text,
+            NS.L["Linked to Target. Untick Link to Target above to give this unit its own look."])
+        assertTrue(note.type ~= "InteractiveLabel", "the note no longer goes anywhere: the tick is on this page")
     end)
 end)
 
@@ -691,6 +738,19 @@ test("the General page's FIRST tab is named exactly `Master controls`", function
         "the General page opens on '" .. tostring(order[1]) .. "'")
     assertEqual(order[1], H.MASTER_GROUP,
         "and it must be the library's own literal, not a lookalike")
+end)
+
+test("Lock frame carries the library's unlocked-is-the-preview tooltip (lockIsPreview)", function()
+    -- KIC-L-new4 (item 020): unlocking IS KickCD's test mode, so the composer's
+    -- lockIsPreview variant replaces the plain Lock frame sentence. The host
+    -- writes no text of its own -- notes.locked is deliberately absent until the
+    -- combat behavior is verified in game.
+    -- red under: dropping `lockIsPreview = true` from settings/General.lua's spec
+    local row = T.NS.Settings.Store.FindRow("locked")
+    assertTrue(row ~= nil, "Lock frame is a composed row")
+    local body = tostring(row.desc or row.tooltip)
+    assertTrue(body:find("this is the addon's test mode", 1, true) ~= nil,
+        "Lock frame's tooltip is the library's lockIsPreview sentence: " .. body)
 end)
 
 test("Master controls holds exactly the canonical rows, in canonical order", function()
@@ -840,9 +900,11 @@ end)
 --- `subgroup`: half-heading a tab is worse than none, because the reader gets a
 --- divider partway down and no name for what came before it.
 local TAB_MIXED = {
-    icons   = { ["Annotations"] = true, ["Ready glow"] = true },
-    castbar = { ["Size and position"] = true, ["Interruptible"] = true,
+    icons   = { ["Size and layout"] = true, ["Appearance"] = true, ["Annotations"] = true,
+                ["Ready glow"] = true },
+    castbar = { ["Size and position"] = true, ["Text"] = true, ["Interruptible"] = true,
                 ["Non-interruptible"] = true },
+    label   = { ["Placement"] = true },
 }
 
 --- Tabs that are ONE subject. Every row on one MUST carry NO `subgroup` -- the
@@ -854,33 +916,16 @@ local TAB_SINGLE_SUBJECT = {
         ["Master controls"] = "options-ui-§15's canonical block. One subject by definition -- the "
             .. "addon as a whole -- and the section forbids reordering or splitting it anyway.",
         ["Units"] = "which grids exist and whether Focus is its own thing: one enable toggle per "
-            .. "tracked unit, and the Focus styling link (drawn by the tab beside Copy styling).",
-    },
-    icons = {
-        ["Sizing"] = "four pixel sizes for the grid's icons.",
-        ["Layout"] = "where the grid sits and how the secondary block grows out of it. Anchor, "
-            .. "grow direction, rows, columns and the two offsets are one placement answer.",
-        ["Visual states"] = "how ONE icon body looks in each state of the spell it watches: ready "
-            .. "alpha, cooldown alpha, cooldown tint, and the GCD sub-state's swipe. The alpha "
-            .. "sliders and the tint swatch are not two KINDS of control here, they are two "
-            .. "channels of the same answer to 'what does this icon look like right now', which "
-            .. "is the tab's entire question. Headings would read Opacity / Tint over two rows "
-            .. "each and name properties of one subject rather than separate subjects.",
-        ["Border"] = "options-ui-§16's composed border block and nothing beside it.",
+            .. "tracked unit, and the Focus link. Every row is skipRender and drawn by the Units "
+            .. "page's band (item 020), so General draws no tab for it.",
     },
     castbar = {
-        ["General"] = "what the bar IS: enabled, orientation, growth, auto-size, spark. The two "
-            .. "size rows and the two icon rows that used to sit here are what made it mixed, "
-            .. "and they are on 'Size and position' and 'Icon' now.",
-        ["Icon"] = "the spell icon's position and size -- one piece of the bar, two properties.",
-        ["Font"] = "options-ui-§16's composed font block and nothing beside it.",
-        ["Spell name"] = "one FontString: whether it shows, where it sits, and where it truncates.",
-        ["Cast time"] = "one FontString: whether it shows and where it sits.",
+        ["General"] = "what the bar IS: enabled, orientation, growth, spark. The size rows, the "
+            .. "icon rows and (item 020) auto-size that used to sit here are what made it mixed, "
+            .. "and they are on 'Size and position' now.",
     },
     label = {
         ["General"] = "whether the label shows, and what it says.",
-        ["Placement"] = "one anchor answer, spelled out -- attach, point, relative point, the two "
-            .. "offsets, both justifications and the rotation.",
         ["Font"] = "options-ui-§16's composed font block and nothing beside it.",
     },
 }

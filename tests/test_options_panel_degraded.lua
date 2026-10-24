@@ -158,19 +158,12 @@ test("the degraded stub opens no panel and says so once", function()
         "the stub must name the missing library")
 end)
 
--- The link note draws NO hover highlight, and that is a fix rather than a
--- preference: it shipped with `SetHighlight(1, 1, 1, 0.12)`, which AceGUI forwards
--- to Texture:SetTexture -- whose four-number form is the deprecated color API --
--- and the client painted a solid BRIGHT GREEN block over the whole line on
--- mouseover. The line stays clickable; it simply does not light up.
+-- The link note is PLAIN TEXT (KIC-L04, item 020). It used to be a link to the
+-- General page's Units tab, where the Link tick lived; the tick is in the Units
+-- page's own band now, a few pixels above the note, so there is nowhere to go.
 --
--- red under: re-adding SetHighlight in any form, or dropping the OnClick with it.
-test("the linked-Focus note has no hover highlight but is still clickable", function()
-    -- Both parked pieces of shared state go through the runner's guaranteed-run
-    -- wrappers. They used to be put back by the last two statements of this body,
-    -- which tests/_kit/framework.lua pcalls -- so the case could only clean up
-    -- after itself on the green path, which is the path where cleaning up matters
-    -- least.
+-- red under: the note going back to a LinkRow, or naming the old label or page.
+test("the linked-Focus note is plain text naming the band's Link to Target", function()
     T.withFocusLink(true, function()
         T.withViewedUnit(function()
             local AceGUI = T.mocks.LibStub("AceGUI-3.0")
@@ -185,71 +178,41 @@ test("the linked-Focus note has no hover highlight but is still clickable", func
                    and child.text:find("Linked to Target", 1, true) then note = child end
             end
             assertTrue(note ~= nil, "the linked page must draw the note")
-            assertNil(note.__highlight,
-                "the note must set no hover highlight; AceGUI paints a solid green block for one")
-            assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-                "…and it must still be clickable")
+            assertEqual(note.text,
+                NS.L["Linked to Target. Untick Link to Target above to give this unit its own look."])
+            assertTrue(note.type ~= "InteractiveLabel", "the note is not a link any more")
+            assertNil(note.callbacks and note.callbacks.OnClick, "…and takes no click")
         end)
     end)
 end)
 
--- The link note GOES somewhere. Naming a destination and not being able to reach
--- it is the failure this replaced -- the note named a control and a page and left
--- the reader to find both by hand, two categories away in Blizzard's list.
+-- The General page has ONE tab now (KIC-L02, item 020). Its `Units` group is
+-- three skipRender rows the Units page's band draws, and a group of only
+-- skipRender rows must not become an empty tab.
 --
--- Driven through the real click: the assertion is that Blizzard's category switch
--- is called with the General page's OWN category id, and that the page is put on
--- the Units tab BEFORE the switch rather than a frame later.
---
--- red under: dropping the OpenPageTab wiring, opening the parent category instead
--- of the page's own, or setting the tab after the switch.
-test("the linked-Focus note opens General on its Units tab", function()
-    local opened
-    local inst = T.load(true, true, function(mocks)
-        local Stg = mocks.Settings
-        Stg.OpenToCategory = function(id) opened = id end
-    end)
-    local iNS = inst.NS
-    local iH  = iNS.Settings.Helpers
-
-    local general = iNS.Settings.categoryFor and iNS.Settings.categoryFor.general
-    assertTrue(general ~= nil, "the General page's category must be recorded")
-
-    local cfg = iNS.Units.Config("focus")
-    if cfg then cfg.link = true end
-    iH.SetViewedUnit("focus")
-
-    local ctx = iH.__panelFor("grid")
-    assertTrue(ctx ~= nil, "the Grid page must be registered")
-    assertTrue(iH.SelectSection("castbar"), "the Grid page lists no Cast bar entry")
+-- red under: dropping `untabbedSkipRender` from General's RenderTabbedSchema, or
+-- a row of the group losing its skipRender.
+test("the General page draws Master controls alone, with no empty Units tab", function()
+    local inst = T.load(true, true)
+    local iH = inst.NS.Settings.Helpers
+    local ctx = iH.__panelFor("general")
+    assertTrue(ctx ~= nil, "the General page must be registered")
     ctx.panel:Show()
     iH.RefreshPanel(ctx, true)
-
-    local note
-    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
-        if type(child.text) == "string"
-           and child.text:find("Linked to Target", 1, true) then note = child end
-    end
-    assertTrue(note ~= nil, "the linked page must draw the note")
-
-    note:__fire("OnClick")
-
-    assertEqual(opened, general:GetID(),
-        "the click must open the General page's own category")
-    local generalCtx = iH.__panelFor("general")
-    assertEqual(generalCtx and generalCtx.activeTab, iNS.L["Units"],
-        "…already on the Units tab, not on whatever it was last left on")
-
-    if cfg then cfg.link = false end
-    iH.SetViewedUnit("target")
+    local buttons = (ctx.__tabLayout or {}).buttons or {}
+    assertEqual(#buttons, 1, "one tab on the General page")
+    assertEqual(ctx.activeTab, iH.MASTER_GROUP, "and it is Master controls")
 end)
 
 -- KC-20's characterization: the whole linked-Focus page in one case, on all three
 -- unit pages. The strip is FULL (one tab per schema group, as the unlinked page
--- draws), every tab is INERT (disabled and desaturated), and the content is the
--- link note ALONE -- one LinkRow and no schema widget, because a linked Focus
--- renders with Target's tables and an editable row here would write to a table
--- nothing reads.
+-- draws), and the content is the link note plus the tab's alwaysPerUnit rows --
+-- no styled widget, because a linked Focus renders with Target's tables and an
+-- editable styled row here would write to a table nothing reads. Icons and Cast
+-- bar have no alwaysPerUnit row, so their strips are INERT (disabled and
+-- desaturated) and the note is all they draw. Text label's General tab holds
+-- Label text, alwaysPerUnit since KIC-L05 (item 020), so that entry's strip
+-- stays live and its first tab draws the one EditBox.
 --
 -- It pins the page's behavior independently of who draws it. KC-20 evaluated
 -- moving this page onto the library's RenderTabbedSchema(opts) and declined: its
@@ -259,12 +222,12 @@ end)
 -- keep this case green unchanged.
 --
 -- red under: rendering the page's styled rows, dropping the note, drawing a
--- partial strip, or dropping the disable pass.
+-- partial strip, dropping the disable pass, or deadening Text label's strip.
 local SCHEMA_WIDGET_TYPES = {
     CheckBox = true, Slider = true, Dropdown = true, ColorPicker = true,
     EditBox = true, MultiLineEditBox = true, Button = true,
 }
-test("a linked Focus page draws the full strip, inert, and only the link note", function()
+test("a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows", function()
     T.withFocusLink(true, function()
         T.withViewedUnit(function()
             local AceGUI = T.mocks.LibStub("AceGUI-3.0")
@@ -284,13 +247,18 @@ test("a linked Focus page draws the full strip, inert, and only the link note", 
                 local buttons = (ctx.__tabLayout or {}).buttons or {}
                 assertTrue(groups > 0, page .. ": sanity, the page has schema groups")
                 assertEqual(#buttons, groups, page .. ": one tab per schema group")
+                local live = page == "label"
                 for i, b in ipairs(buttons) do
                     local dim = false
                     for _, r in ipairs(b.__regions or {}) do
                         if r.__desaturated then dim = true end
                     end
-                    assertTrue(b.__enabled == false or dim,
-                        page .. ": tab " .. i .. " is operable and undimmed")
+                    if live then
+                        assertTrue(not dim, page .. ": tab " .. i .. " is dimmed on a live strip")
+                    else
+                        assertTrue(b.__enabled == false or dim,
+                            page .. ": tab " .. i .. " is operable and undimmed")
+                    end
                 end
 
                 -- Walked recursively: paired rows sit inside flow groups, so the
@@ -309,47 +277,49 @@ test("a linked Focus page draws the full strip, inert, and only the link note", 
                 end
                 walk(ctx.scroll)
                 assertEqual(links, 1, page .. ": exactly one link note")
-                assertEqual(widgets, 0, page .. ": no schema widget on a linked page")
+                -- The page opens on its first tab: Text label > General holds Label text.
+                assertEqual(widgets, live and 1 or 0,
+                    page .. ": only the first tab's alwaysPerUnit rows on a linked page")
             end
         end)
     end)
 end)
 
--- The Focus link's two controls are ONE LINE: [Use same styling as Target]
--- [Copy styling from Target]. They were two -- a half-width tick, then a button
--- pair holding a single button -- and a button on its own line reads as belonging
--- to whatever follows it rather than to the tick above.
+-- The Units page's band is ONE ROW (KIC-L01, item 020): [Unit] [Enable this
+-- unit], and while Focus is in the band [Link to Target] [Copy from Target] on
+-- the same line. Driven through a real render rather than scanned, because the
+-- claim is about LAYOUT: every cell must be a child of the band's one flow host.
 --
--- Driven through a real render rather than scanned, because the claim is about
--- LAYOUT: both must land in ONE Flow row, which is a fact about the widget tree
--- and not about the source.
---
--- red under: going back to SessionToggle + InlineButtonPair (two rows), or
--- dropping either cell's `make` return, which leaves RenderGrid counting the row
--- half-filled and puts the next item beside the tick.
-test("the Focus link's tick and its Copy button share one row", function()
+-- red under: drawing the acts into the scroll (a tab click clears them), back
+-- on the General page, or the Focus acts on Target's band.
+test("the Units band is one row: picker and enable, plus link and copy for Focus", function()
     local inst = T.load(true, true)
-    local iH = inst.NS.Settings.Helpers
-    local ctx = iH.__panelFor("general")
-    assertTrue(ctx ~= nil, "the General page must be registered")
+    local iNS = inst.NS
+    local iH = iNS.Settings.Helpers
+    local L = iNS.L
+    local ctx = iH.__panelFor("grid")
+    assertTrue(ctx ~= nil, "the Units page must be registered")
 
-    ctx.activeTab = inst.NS.L["Units"]
-    ctx.panel:Show()            -- the body is built lazily, on first OnShow
-    iH.RefreshPanel(ctx, true)
-
-    local tickLabel = inst.NS.L["Use same styling as Target"]
-    local btnLabel  = inst.NS.L["Copy styling from Target"]
-    local paired
-    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
-        local sawTick, sawBtn = false, false
-        for _, w in ipairs(child.children or {}) do
-            if w.labelText == tickLabel then sawTick = true end
-            if w.text == btnLabel then sawBtn = true end
+    local function cells()
+        local out = {}
+        for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+            out[#out + 1] = w.labelText or w.text
         end
-        if sawTick and sawBtn then paired = child end
+        return table.concat(out, "|")
     end
-    assertTrue(paired ~= nil,
-        "the tick and the Copy button must be two children of ONE row")
+
+    iH.SetViewedUnit("target")
+    ctx.panel:Show()
+    iH.RefreshPanel(ctx, true)
+    assertEqual(cells(), L["Unit"] .. "|" .. L["Enable this unit"], "Target's band")
+
+    iH.SetViewedUnit("focus")
+    iH.RefreshPanel(ctx, true)
+    assertEqual(cells(), table.concat({ L["Unit"], L["Enable this unit"], L["Link to Target"],
+        L["Copy from Target"] }, "|"), "Focus's band, one row")
+    for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
+        assertTrue(child.labelText ~= L["Link to Target"], "the tick is band content, never scroll content")
+    end
 end)
 
 test("the degraded stub carries no widget maker or layout constant", function()

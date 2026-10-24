@@ -1,16 +1,17 @@
 -- settings/Castbar.lua
 --
--- The Grid page's Cast bar entry (KickCD#33). Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
+-- The Units page's Cast bar entry (KickCD#33). Pure schema: every widget is a row in
+-- KickCD.Settings.Schema; the Units page (settings/Grid.lua) draws it through
 -- Helpers.RenderGridPage: the Unit band, the rail, then the rows handed to
 -- Helpers.RenderTabbedSchema. Adding a new castbar option means adding one
 -- schema row here -- into the run of rows its `group` already owns, because
 -- the strip is partitioned by group in declaration order (options-ui-§13) and
 -- a row filed after the page has left its group prints that tab twice.
 --
--- EIGHT TABS: General, Size and position, Icon, Font, Spell name, Cast time,
--- Interruptible, Non-interruptible. The middle two are new and General is five
--- rows lighter for it -- see the comment on each.
+-- FIVE TABS since item 020: General, Size and position, Text, Interruptible,
+-- Non-interruptible. The Icon tab folded into Size and position (KIC-L17), and
+-- Font, Spell name and Cast time merged into Text (KIC-L18) -- see the comment
+-- on each.
 --
 -- The font block and both per-state appearance blocks are COMPOSED
 -- (libs/LibKa0s/OptionsCompose.lua): options-ui-§16 makes the bar, border and
@@ -84,28 +85,23 @@ local STAMP  = { panel = "castbar", section = "castbar", unit = unit }
 
 -- General --------------------------------------------------------------
 -- The page's master toggle and the axis the bar runs on. NINE ROWS BECAME
--- FIVE: this tab had grown into the drawer everything landed in, and four of
--- its rows were two other subjects wearing its name. The two size sliders went
--- to the tab that already held the bar's placement -- which is now "Size and
--- position", because that is what it answers -- and the two icon rows became a
--- tab of their own, since the spell icon is a piece of the bar you can turn off
--- entirely rather than a property of the bar's geometry.
+-- FOUR: this tab had grown into the drawer everything landed in, and its other
+-- rows were other subjects wearing its name. The size sliders, the spell icon
+-- and (item 020, KIC-L16) Auto-size to icon grid are on "Size and position".
 --
 -- Order produces:
 --     [Enable cast bar]                                (solo)
 --     [Orientation]           | [Growth direction]
---     [Auto-size to icon grid]| [Show spark]
+--     [Show spark]
 --
 -- The enable is solo because everything under it is inert without it. Then the
 -- mode beside the thing it modes (growth direction's option list IS
--- orientation's axis), and the auto-size toggle beside the other bar-wide
--- boolean. `autoSize` still governs the two width/height sliders a tab away,
--- and its own tooltip is where that is said.
+-- orientation's axis).
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["General"],
     path  = "units."..unit..".castbar.enabled", type = "bool",
     label = L["Enable cast bar"],
-    desc = L["Show the target cast bar."],
+    desc = L["Show this unit's cast bar."],
     default = true,
     solo    = true,
 }
@@ -195,14 +191,6 @@ add{
 
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["General"],
-    path  = "units."..unit..".castbar.autoSize", type = "bool",
-    label = L["Auto-size to icon grid"],
-    desc = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
-    default = true,
-}
-
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["General"],
     path  = "units."..unit..".castbar.showSpark", type = "bool",
     label = L["Show spark"],
     desc = L["Render the leading-edge spark on the bar."],
@@ -225,15 +213,22 @@ local POSITION_ANCHOR_VALUES_ORDER = H.AnchorOrder()
 
 -- "Size and position" -- renamed from "Position", because the two width/height
 -- sliders moved here from the overloaded General tab and the tab now answers
--- both halves of "how big is this bar and where does it sit". Two kinds of
--- control on one tab, so each block carries a subsection heading
--- (options-ui-§7); neither heading repeats the tab's own name.
+-- both halves of "how big is this bar and where does it sit". Three subjects on
+-- one tab, so each block carries a subsection heading (options-ui-§7); no
+-- heading repeats the tab's own name.
 --
 -- Layout produces:
---     Size      [Cast bar width]         | [Cast bar height]
---     Position  [Anchor mode]                                (solo)
---               [Anchor on primary icon] | [Anchor on cast bar]
---               [X offset]               | [Y offset]
+--     Size        [Auto-size to icon grid]                     (solo)
+--                 [Cast bar width (px)]    | [Cast bar height (px)]
+--     Position    [Anchor mode]                                (solo)
+--                 [Anchor on primary icon] | [Anchor on cast bar]
+--                 [X offset (px)]          | [Y offset (px)]
+--     Spell icon  [Icon position]          | [Icon size (px)]
+--
+-- Item 020 put Auto-size directly above the two sliders it overrides (KIC-L16;
+-- its onChange and the sliders' wiring are unchanged) and folded the two-row
+-- Icon tab in as "Spell icon" (KIC-L17): the icon's position and size are the
+-- same question as the bar's own geometry.
 --
 -- Anchor mode is a higher-level pivot than the two attach-point dropdowns it
 -- controls, hence the row of its own.
@@ -245,8 +240,19 @@ local POSITION_ANCHOR_VALUES_ORDER = H.AnchorOrder()
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Size"],
+    path  = "units."..unit..".castbar.autoSize", type = "bool",
+    label = L["Auto-size to icon grid"],
+    desc = L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."],
+    default = true,
+    -- Solo, so the two sliders it overrides read across the line below it.
+    solo    = true,
+}
+
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Size"],
     path  = "units."..unit..".castbar.width", type = "number",
-    label = L["Cast bar width (in px)"],
+    label = L["Cast bar width (px)"],
     desc = L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."],
     default = 250, min = 100, max = 500, step = 5, fmt = "%d px",
 }
@@ -254,7 +260,7 @@ add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Size"],
     path  = "units."..unit..".castbar.height", type = "number",
-    label = L["Cast bar height (in px)"],
+    label = L["Cast bar height (px)"],
     desc = L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."],
     default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
 }
@@ -294,30 +300,31 @@ add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorOffsetX", type = "number",
-    label = L["X offset (in px)"],
-    desc = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."],
+    label = L["X offset (px)"],
+    desc = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."],
     default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
     path  = "units."..unit..".castbar.anchorOffsetY", type = "number",
-    label = L["Y offset (in px)"],
-    desc = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."],
+    label = L["Y offset (px)"],
+    -- Passed to SetPoint unflipped (modules/Castbar_Frame.lua's ApplyAnchor), so
+    -- positive is up, as for every other Y offset but the icon block's.
+    desc = L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point (positive = up)."],
     default = -1, min = -200, max = 200, step = 1, fmt = "%d px",
 }
 
--- Icon -----------------------------------------------------------------
+-- Size and position > Spell icon ----------------------------------------
 -- The spell icon beside the bar: whether it is drawn at all, on which side, and
--- how big. A tab rather than two more rows on General, because "Off" makes the
--- whole thing vanish -- the icon is a piece of the cast bar you can turn off,
--- not a property of the bar's own geometry, and it was the pair that pushed
--- General to nine rows.
+-- how big. Its own tab until item 020 (KIC-L17). The two hide paths name each
+-- other in their tooltips (KIC-L28).
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Icon"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Spell icon"],
     path  = "units."..unit..".castbar.iconPosition", type = "string",
     label = L["Icon position"],
-    desc = L["Where to place the spell icon, or hide it entirely."],
+    desc = L["Where to place the spell icon, or hide it entirely. Off hides the icon; so does Icon size 0."],
     default = "OFF",
     values  = {
         ["LEFT"] = L["Left"],
@@ -327,27 +334,34 @@ add{
     sorting = { "LEFT", "RIGHT", "OFF" },
 }
 add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Icon"],
+    panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
+    subgroup = L["Spell icon"],
     path  = "units."..unit..".castbar.iconSize", type = "number",
-    label = L["Icon size (in px)"],
+    label = L["Icon size (px)"],
     desc = L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."],
     default = 24, min = 0, max = 60, step = 1, fmt = "%d px",
 }
 
--- Font -----------------------------------------------------------------
--- The typography the spell name and the cast time SHARE. Named Font rather
--- than Text so it agrees with the Text Label entry's Font tab and so it is not
--- mistaken for the two tabs beside it, which are the text ELEMENTS. The "Show
--- spell name" and "Show cast time" toggles each sit with their own anchor and
--- offsets on those tabs -- that decision is older than the strip and it holds:
--- a reader asking "where does the spell name go?" wants the on/off switch in
--- front of the placement controls, not on a third tab.
+-- Text -----------------------------------------------------------------
+-- ONE TAB since item 020 (KIC-L18): Font, Spell name and Cast time were three
+-- tabs for one surface. Three subjects, three headings (options-ui-§7), in the
+-- order a reader styles them:
+--     Spell name         [Show spell name]  | [Anchor]
+--                        [X offset (px)]    | [Y offset (px)]
+--                        [Truncate after (characters)]
+--     Cast time          [Show cast time]   | [Anchor]
+--                        [X offset (px)]    | [Y offset (px)]
+--     Font (both texts)  [Font]             | [Font size]
+--                        [Cast time color]  | [Use class color]
+--                        [Font flags]       | [Font shadow]
+-- Each text's show toggle sits with its own anchor and offsets: a reader asking
+-- "where does the spell name go?" wants the on/off switch in front of the
+-- placement controls. The font block is shared by both texts, and its heading
+-- says so (review P39); its color still colors only the cast time, now directly
+-- under the Cast time block it colors.
 --
--- COMPOSED (options-ui-§16), which is what brings the two rows this tab did not
--- have: a color and a font shadow.
---     [Font]            | [Font size]
---     [Cast time color] | [Use class color]
---     [Font flags]      | [Font shadow]
+-- The font block is COMPOSED (options-ui-§16), which is what brings the two
+-- rows the old Font tab did not have: a color and a font shadow.
 --
 -- WHY THE COLOR IS LABELED "Cast time color" AND NOT "Font color". The spell
 -- name already has two writers, one per cast state -- the `nameTextColor`
@@ -374,8 +388,97 @@ local TEXT_POSITION_VALUES_ORDER = {
 }
 
 
+-- Spell name -----------------------------------------------------------
+-- Renamed from "Spell name position" — now bundles the show-toggle with
+-- the anchor + offsets so a user looking for "where does the spell name
+-- go?" finds the on/off switch alongside the placement controls. Order:
+--     [Show spell name] | [Anchor]
+--     [X offset]        | [Y offset]
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Spell name"],
+    path  = "units."..unit..".castbar.showName", type = "bool",
+    label = L["Show spell name"],
+    desc = L["Display the cast spell's name on the bar."],
+    default = true,
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Spell name"],
+    path  = "units."..unit..".castbar.namePosition", type = "string",
+    label = L["Anchor"],
+    desc = L["Where to anchor the spell name relative to the bar."],
+    default = "CENTER",
+    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Spell name"],
+    path  = "units."..unit..".castbar.nameOffsetX", type = "number",
+    label = L["X offset (px)"],
+    desc = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
+    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Spell name"],
+    path  = "units."..unit..".castbar.nameOffsetY", type = "number",
+    label = L["Y offset (px)"],
+    desc = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
+    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Spell name"],
+    path  = "units."..unit..".castbar.nameTruncate", type = "number",
+    label = L["Truncate after (characters)"],
+    desc = L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."],
+    default = 0, min = 0, max = 60, step = 1, fmt = "%d",
+}
+
+-- Cast time ------------------------------------------------------------
+-- Renamed from "Cast time position". Same shape as Spell name: the show-
+-- toggle joins the placement controls so they're configured together.
+-- Order:
+--     [Show cast time] | [Anchor]
+--     [X offset]       | [Y offset]
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Cast time"],
+    path  = "units."..unit..".castbar.showTime", type = "bool",
+    label = L["Show cast time"],
+    desc = L["Display the remaining / total cast time on the bar."],
+    default = true,
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Cast time"],
+    path  = "units."..unit..".castbar.timePosition", type = "string",
+    label = L["Anchor"],
+    desc = L["Where to anchor the remaining-time text relative to the bar."],
+    default = "CENTER",
+    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Cast time"],
+    path  = "units."..unit..".castbar.timeOffsetX", type = "number",
+    label = L["X offset (px)"],
+    desc = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
+    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
+}
+add{
+    panel = "castbar", section = "castbar", unit = unit, group = L["Text"],
+    subgroup = L["Cast time"],
+    path  = "units."..unit..".castbar.timeOffsetY", type = "number",
+    label = L["Y offset (px)"],
+    desc = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
+    default = -20, min = -100, max = 100, step = 1, fmt = "%d px",
+}
+
 H.AddComposed(H.FontGroup{
-    prefix = PREFIX, page = "castbar", group = L["Font"],
+    prefix = PREFIX, page = "castbar", group = L["Text"],
+    subgroup = L["Font (both texts)"],
     keys = {
         fontColor         = "textColor",
         useClassColorFont = "useClassColorText",
@@ -395,85 +498,6 @@ H.AddComposed(H.FontGroup{
     classColor = { source = "unit", unit = unit },
 }, STAMP)
 
--- Spell name -----------------------------------------------------------
--- Renamed from "Spell name position" — now bundles the show-toggle with
--- the anchor + offsets so a user looking for "where does the spell name
--- go?" finds the on/off switch alongside the placement controls. Order:
---     [Show spell name] | [Anchor]
---     [X offset]        | [Y offset]
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
-    path  = "units."..unit..".castbar.showName", type = "bool",
-    label = L["Show spell name"],
-    desc = L["Display the cast spell's name on the bar."],
-    default = true,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
-    path  = "units."..unit..".castbar.namePosition", type = "string",
-    label = L["Anchor"],
-    desc = L["Where to anchor the spell name relative to the bar."],
-    default = "CENTER",
-    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
-    path  = "units."..unit..".castbar.nameOffsetX", type = "number",
-    label = L["X offset (in px)"],
-    desc = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
-    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
-    path  = "units."..unit..".castbar.nameOffsetY", type = "number",
-    label = L["Y offset (in px)"],
-    desc = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
-    default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Spell name"],
-    path  = "units."..unit..".castbar.nameTruncate", type = "number",
-    label = L["Truncate after (characters)"],
-    desc = L["Maximum visible characters in the spell name before replacing the tail with an ellipsis. 0 disables truncation."],
-    default = 0, min = 0, max = 60, step = 1, fmt = "%d",
-}
-
--- Cast time ------------------------------------------------------------
--- Renamed from "Cast time position". Same shape as Spell name: the show-
--- toggle joins the placement controls so they're configured together.
--- Order:
---     [Show cast time] | [Anchor]
---     [X offset]       | [Y offset]
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
-    path  = "units."..unit..".castbar.showTime", type = "bool",
-    label = L["Show cast time"],
-    desc = L["Display the remaining / total cast time on the bar."],
-    default = true,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
-    path  = "units."..unit..".castbar.timePosition", type = "string",
-    label = L["Anchor"],
-    desc = L["Where to anchor the remaining-time text relative to the bar."],
-    default = "CENTER",
-    values  = TEXT_POSITION_VALUES, sorting = TEXT_POSITION_VALUES_ORDER,
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
-    path  = "units."..unit..".castbar.timeOffsetX", type = "number",
-    label = L["X offset (in px)"],
-    desc = L["Horizontal pixel shift on top of the anchor (positive = right, negative = left)."],
-    default = 0, min = -200, max = 200, step = 1, fmt = "%d px",
-}
-add{
-    panel = "castbar", section = "castbar", unit = unit, group = L["Cast time"],
-    path  = "units."..unit..".castbar.timeOffsetY", type = "number",
-    label = L["Y offset (in px)"],
-    desc = L["Vertical pixel shift on top of the anchor (positive = up, negative = down)."],
-    default = -20, min = -100, max = 100, step = 1, fmt = "%d px",
-}
-
 -- Per-state appearance (interruptible vs uninterruptible casts) -------
 --
 -- Switching between the two states uses
@@ -489,7 +513,7 @@ add{
 --     Bar         [Bar texture]        | [Bar opacity]
 --                 [Bar color]          | [Use class color]
 --     Background  [Background color]   | [Use class color]
---     Text        [Spell name color]   | [Use class color]
+--     Spell name  [Spell name color]   | [Use class color]
 --     Border      [Show border]
 --                 [Border style]       | [Border thickness (px)]
 --                 [Border color]       | [Use class color]
@@ -526,7 +550,7 @@ H.AddComposed(H.ColorPair{
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
-    subgroup = L["Text"],
+    subgroup = L["Spell name"],
     key      = "nameTextColor", label = L["Spell name color"],
     defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
     classColor = { source = "unit", unit = unit },
@@ -559,7 +583,7 @@ H.AddComposed(H.ColorPair{
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
-    subgroup = L["Text"],
+    subgroup = L["Spell name"],
     key      = "nameTextColor", label = L["Spell name color"],
     defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
     classColor = { source = "unit", unit = unit },
@@ -577,7 +601,8 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
--- The Cast bar entry of the Grid page (KickCD#33).
+-- The Cast bar entry of the Units page (KickCD#33). The tooltip names the tabs as
+-- they stand after item 020's merges (KIC-L32).
 H.RegisterGridSection("castbar", L["Cast bar"], {
-    tooltip = L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."],
+    tooltip = L["The cast bar: size and position, text, and the colors for casts you can and cannot interrupt."],
 })

@@ -304,7 +304,6 @@ L["Target %s mid-cast"] =
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"
-L["Grid"]                        = "Grid"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
@@ -332,89 +331,87 @@ L["Scale multiplier applied to the entire icon grid."] =
 L["Master alpha"]                = "Master alpha"
 L["Global opacity for the icon grid."] =
     "Global opacity for the icon grid."
-L["Enable Target grid"]          = "Enable Target grid"
-L["Enable Focus grid"]           = "Enable Focus grid"
+-- The per-unit enable, drawn in the Units page's band (item 020, KIC-L03).
+L["Enable this unit"]            = "Enable this unit"
+L["Track this unit: its icon grid, cast bar and label. Off hides all three."] =
+    "Track this unit: its icon grid, cast bar and label. Off hides all three."
 L["Show Target label"]           = "Show Target label"
 L["Show Focus label"]            = "Show Focus label"
 L["Target label text"]           = "Target label text"
 L["Focus label text"]            = "Focus label text"
 
--- Icons / Cast bar tabs — unit selector + Focus link/copy header (Task 8)
+-- The Units page's band: the Unit picker, and Focus's link and copy (item 020,
+-- KIC-L01 / KIC-L-new1: the XC-15 link vocabulary).
 L["Unit"]                        = "Unit"
 L["Target"]                      = "Target"
 L["Focus"]                       = "Focus"
-L["Use same styling as Target"]  = "Use same styling as Target"
-L["Copy styling from Target"]    = "Copy styling from Target"
+L["Link to Target"]              = "Link to Target"
+L["Copy from Target"]            = "Copy from Target"
 L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."] =
     "Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
--- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
--- the second is the phrase that carries the color and names where the click
--- lands. Kept as two strings rather than one with a format slot so a translator
--- can move the link phrase within the sentence -- in a language where it belongs
--- first, "%s" in the middle of the English word order would fight them.
-L["Linked to Target. Untick 'Use same styling as Target' on the "] =
-    "Linked to Target. Untick 'Use same styling as Target' on the "
-L["General page's Units tab"] = "General page's Units tab"
-L[" to give Focus its own."] = " to give Focus its own."
-L["Open the General page's Units tab."] = "Open the General page's Units tab."
-L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
-    "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
+-- Plain text since item 020 (KIC-L04): the tick it names is in the same band.
+L["Linked to Target. Untick Link to Target above to give this unit its own look."] =
+    "Linked to Target. Untick Link to Target above to give this unit its own look."
+L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."] =
+    "Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."
 L["Reset position"]              = "Reset position"
 L["Restore the icon grids to their default screen positions."] =
     "Restore the icon grids to their default screen positions."
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
 L["General visibility"]          = "General visibility"
-L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."] =
-    "When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."
+L["When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD still wins: off hides everything."] =
+    "When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD still wins: off hides everything."
 L["Always"]                      = "Always"
 L["In combat"]                   = "In combat"
-L["When target is casting"]      = "When target is casting"
-L["When target is casting an interruptible spell"] =
-    "When target is casting an interruptible spell"
+L["When the tracked unit is casting"] = "When the tracked unit is casting"
+L["When the tracked unit is casting an interruptible spell"] =
+    "When the tracked unit is casting an interruptible spell"
 
 -- Icons tab — section headers
-L["Sizing"]                      = "Sizing"
-L["Visual states"]               = "Visual states"
+L["Size and layout"]             = "Size and layout"
+L["Appearance"]                  = "Appearance"
 L["Annotations"]                 = "Annotations"
 
 -- Icons tab — controls
 L["Pixel size of the primary interrupt icon."] =
     "Pixel size of the primary interrupt icon."
-L["Secondary size"]              = "Secondary size"
+L["Secondary size (fraction of primary)"] =
+    "Secondary size (fraction of primary)"
 L["Secondary icon size as a fraction of the primary."] =
     "Secondary icon size as a fraction of the primary."
-L["Layout"]                      = "Layout"
+L["Secondary block"]             = "Secondary block"
 L["Horizontal"]                  = "Horizontal"
 L["Vertical"]                    = "Vertical"
 L["Left"]                        = "Left"
 L["Right"]                       = "Right"
 L["Pixel gap between adjacent icons."] =
     "Pixel gap between adjacent icons."
-L["Ready alpha"]                 = "Ready alpha"
+L["Ready opacity"]               = "Ready opacity"
 L["Icon alpha when the spell is off cooldown."] =
     "Icon alpha when the spell is off cooldown."
-L["Cooldown alpha"]              = "Cooldown alpha"
+L["Cooldown opacity"]            = "Cooldown opacity"
 L["Icon alpha while the spell is on cooldown."] =
     "Icon alpha while the spell is on cooldown."
 L["Cooldown tint"]               = "Cooldown tint"
 L["RGB tint applied to icons during cooldown."] =
     "RGB tint applied to icons during cooldown."
-L["Suppress GCD swipe + text"]   = "Suppress GCD swipe + text"
+L["Suppress GCD swipe and text"] = "Suppress GCD swipe and text"
 -- "1.6s remaining or less", never the ≤ sign: U+2264 is not ASCII and a glyph
 -- the settings-panel font does not carry draws as an empty box in game, which
 -- no test can see.
 L["Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."] =
     "Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."
-L["Charges X offset (in px)"]    = "Charges X offset (in px)"
+L["Charges X offset (px)"]       = "Charges X offset (px)"
 L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."] =
     "Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."
-L["Charges Y offset (in px)"]    = "Charges Y offset (in px)"
+L["Charges Y offset (px)"]       = "Charges Y offset (px)"
 L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."] =
     "Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."
 L["Show cooldown text"]          = "Show cooldown text"
+L["Cooldown text"]               = "Cooldown text"
 L["Render numeric seconds remaining on each icon."] =
     "Render numeric seconds remaining on each icon."
 L["Font"]                        = "Font"
@@ -449,9 +446,8 @@ L["Primary frequency"]           = "Primary frequency"
 L["Secondary frequency"]         = "Secondary frequency"
 L["How fast the rays turn. Higher is faster. Button style only."] =
     "How fast the rays turn. Higher is faster. Button style only."
-L["Primary duration (in seconds)"] = "Primary duration (in seconds)"
-L["Secondary duration (in seconds)"] =
-    "Secondary duration (in seconds)"
+L["Primary duration (seconds)"]  = "Primary duration (seconds)"
+L["Secondary duration (seconds)"] = "Secondary duration (seconds)"
 L["Seconds one loop of the flipbook takes. Proc style only."] =
     "Seconds one loop of the flipbook takes. Proc style only."
 L["Primary start animation"]     = "Primary start animation"
@@ -470,8 +466,8 @@ L["Secondary line length (0 = automatic)"] =
     "Secondary line length (0 = automatic)"
 L["Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."] =
     "Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."
-L["Primary thickness (in px)"]   = "Primary thickness (in px)"
-L["Secondary thickness (in px)"] = "Secondary thickness (in px)"
+L["Primary thickness (px)"]      = "Primary thickness (px)"
+L["Secondary thickness (px)"]    = "Secondary thickness (px)"
 L["Thickness of each line in pixels. Pixel style only."] =
     "Thickness of each line in pixels. Pixel style only."
 L["Primary dark border"]         = "Primary dark border"
@@ -489,12 +485,12 @@ L["Secondary scale"]             = "Secondary scale"
 L["Size of the sparkles. Auto cast style only."] =
     "Size of the sparkles. Auto cast style only."
 L["Offset"]                      = "Offset"
-L["Primary X offset (in px)"]    = "Primary X offset (in px)"
-L["Secondary X offset (in px)"]  = "Secondary X offset (in px)"
+L["Primary X offset (px)"]       = "Primary X offset (px)"
+L["Secondary X offset (px)"]     = "Secondary X offset (px)"
 L["How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."] =
     "How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."
-L["Primary Y offset (in px)"]    = "Primary Y offset (in px)"
-L["Secondary Y offset (in px)"]  = "Secondary Y offset (in px)"
+L["Primary Y offset (px)"]       = "Primary Y offset (px)"
+L["Secondary Y offset (px)"]     = "Secondary Y offset (px)"
 L["How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."] =
     "How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."
 L["Button (rotating rays)"]      = "Button (rotating rays)"
@@ -518,7 +514,7 @@ L["Allowed values: %s"]          = "Allowed values: %s"
 L["Cannot open settings during combat."] = "cannot open settings during combat — Blizzard's category-switch is protected"
 
 -- Spells editor
-L["Specialization"]              = "Specialization"
+L["Class and specialization"]    = "Class and specialization"
 L["Add a spell"] = "Add a spell"
 L["Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."] = "Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."
 L["not tracked"] = "not tracked"
@@ -569,21 +565,18 @@ L["Reset this profile to the addon's defaults? Everything you have configured or
 -- Icons tab — sizing and layout. ("Sizing and Layout" retired as a tab name
 -- when the cast bar folded it into General beside the Auto-size toggle that
 -- decides whether its width and height are read at all.)
-L["Primary size (in px)"]        = "Primary size (in px)"
-L["Gap (in px)"]                 = "Gap (in px)"
+L["Primary size (px)"]           = "Primary size (px)"
+L["Gap (px)"]                    = "Gap (px)"
 L["Columns"]                     = "Columns"
 L["Rows"]                        = "Rows"
 L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."] =
     "Horizontal extent of the secondary block — number of vertical lines arranged left/right."
 L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."] =
     "Vertical extent of the secondary block — number of horizontal lines stacked up/down."
-L["Anchor point (of secondary icons relative to primary)"] =
-    "Anchor point (of secondary icons relative to primary)"
+L["Primary icon anchor point"]   = "Primary icon anchor point"
 L["Side and alignment of the primary icon the secondary block attaches to."] =
     "Side and alignment of the primary icon the secondary block attaches to."
 L["Growth direction"]            = "Growth direction"
-L["Growth direction (of secondary icons)"] =
-    "Growth direction (of secondary icons)"
 L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."] =
     "Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."
 L["First left then down"]        = "First left then down"
@@ -608,13 +601,13 @@ L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remo
 L["Show border"]                 = "Show border"
 L["Draw a thin border around each icon."] =
     "Draw a thin border around each icon."
-L["Border thickness (in px)"]    = "Border thickness (in px)"
 L["Border thickness in pixels."] = "Border thickness in pixels."
 L["Border color"]                = "Border color"
 L["Border color (RGBA)."]        = "Border color (RGBA)."
 L["LibSharedMedia border texture (edge style) used to draw each icon's border."] =
     "LibSharedMedia border texture (edge style) used to draw each icon's border."
 L["Show tooltip on hover"]       = "Show tooltip on hover"
+L["Tooltip"]                     = "Tooltip"
 L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."] =
     "Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."
 L["Truncate after (characters)"] = "Truncate after (characters)"
@@ -643,7 +636,7 @@ L["Outside right"]               = "Outside right"
 -- Cast bar tab
 L["Cast bar"]                    = "Cast bar"
 L["Enable cast bar"]             = "Enable cast bar"
-L["Show the target cast bar."]   = "Show the target cast bar."
+L["Show this unit's cast bar."]  = "Show this unit's cast bar."
 L["Anchor"]                      = "Anchor"
 L["Anchor mode"]                 = "Anchor mode"
 L["Free (drag to move)"]         = "Free (drag to move)"
@@ -656,12 +649,13 @@ L["Which point on the primary icon the cast bar attaches to (only used when Anch
 L["Anchor on cast bar"]          = "Anchor on cast bar"
 L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."] =
     "Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."
-L["X offset (in px)"]            = "X offset (in px)"
-L["Y offset (in px)"]            = "Y offset (in px)"
-L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."] =
-    "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."
-L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."] =
-    "Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."
+L["X offset (px)"]               = "X offset (px)"
+L["Y offset (px)"]               = "Y offset (px)"
+L["Y offset (px, positive = down)"] = "Y offset (px, positive = down)"
+L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."] =
+    "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."
+L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point (positive = up)."] =
+    "Vertical pixel offset between the cast bar's anchor point and the icon's anchor point (positive = up)."
 L["Orientation"]                 = "Orientation"
 L["Horizontal: bar stretches across width. Vertical: bar runs up/down."] =
     "Horizontal: bar stretches across width. Vertical: bar runs up/down."
@@ -674,16 +668,16 @@ L["Which side the cast bar fills toward. Options change with Orientation: horizo
 L["Auto-size to icon grid"]      = "Auto-size to icon grid"
 L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
     "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
-L["Cast bar width (in px)"]      = "Cast bar width (in px)"
+L["Cast bar width (px)"]         = "Cast bar width (px)"
 L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."] =
     "Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."
-L["Cast bar height (in px)"]     = "Cast bar height (in px)"
+L["Cast bar height (px)"]        = "Cast bar height (px)"
 L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."] =
     "Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."
 L["Icon position"]               = "Icon position"
-L["Where to place the spell icon, or hide it entirely."] =
-    "Where to place the spell icon, or hide it entirely."
-L["Icon size (in px)"]           = "Icon size (in px)"
+L["Where to place the spell icon, or hide it entirely. Off hides the icon; so does Icon size 0."] =
+    "Where to place the spell icon, or hide it entirely. Off hides the icon; so does Icon size 0."
+L["Icon size (px)"]              = "Icon size (px)"
 L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."] =
     "Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."
 L["Show spark"]                  = "Show spark"
@@ -767,9 +761,9 @@ L["Focus castbar"]               = "Focus castbar"
 L["Drag to move. Right-click for settings."] =
     "Drag to move. Right-click for settings."
 
--- Text Label tab. Its first tab is "General" (already keyed above), not
--- "Label": on a page called Text Label the word was the page's, not the tab's.
-L["Text Label"]                  = "Text Label"
+-- Text label entry. Its first tab is "General" (already keyed above), not
+-- "Label": on an entry called Text label the word was the entry's, not the tab's.
+L["Text label"]                  = "Text label"
 L["Show label"]                  = "Show label"
 L["Show this unit's identity label."] =
     "Show this unit's identity label."
@@ -777,6 +771,7 @@ L["Label text"]                  = "Label text"
 L["Text shown on this unit's label."] =
     "Text shown on this unit's label."
 L["Placement"]                   = "Placement"
+L["Alignment"]                   = "Alignment"
 L["Attach to"]                   = "Attach to"
 L["Which widget the label anchors to."] =
     "Which widget the label anchors to."
@@ -784,16 +779,16 @@ L["Icon grid"]                   = "Icon grid"
 L["Label anchor point"]          = "Label anchor point"
 L["Which point of the label attaches."] =
     "Which point of the label attaches."
-L["Attach point"]                = "Attach point"
-L["Which point of the target widget the label attaches to."] =
-    "Which point of the target widget the label attaches to."
+L["Attached widget anchor point"] = "Attached widget anchor point"
+L["Which point of the widget chosen in Attach to the label attaches to."] =
+    "Which point of the widget chosen in Attach to the label attaches to."
 L["Horizontal pixel shift (positive = right)."] =
     "Horizontal pixel shift (positive = right)."
 L["Vertical pixel shift (positive = up)."] =
     "Vertical pixel shift (positive = up)."
-L["Horizontal justify"]          = "Horizontal justify"
+L["Horizontal alignment"]        = "Horizontal alignment"
 L["Horizontal text alignment."]  = "Horizontal text alignment."
-L["Vertical justify"]            = "Vertical justify"
+L["Vertical alignment"]          = "Vertical alignment"
 L["Vertical text alignment."]    = "Vertical text alignment."
 L["Rotation (degrees)"]          = "Rotation (degrees)"
 L["Rotate the label. 0 = upright."] =
@@ -820,7 +815,8 @@ L["Category for future filtering. Currently informational only."] =
 -- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,
 -- never a repeat of its tab's own name.
 L["Size and position"]           = "Size and position"
-L["Icon"]                        = "Icon"
+L["Spell icon"]                  = "Spell icon"
+L["States"]                      = "States"
 L["Size"]                        = "Size"
 L["Bar"]                         = "Bar"
 L["Background"]                  = "Background"
@@ -831,17 +827,16 @@ L["The tracked spells for the selected specialization, in priority order."] =
     "The tracked spells for the selected specialization, in priority order."
 L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
-L["Track cooldowns for your current target."] =
-    "Track cooldowns for your current target."
-L["Track cooldowns for your current focus."] =
-    "Track cooldowns for your current focus."
+L["Font (both texts)"]           = "Font (both texts)"
 
--- The Grid page's rail (KickCD#33): one tooltip per entry.
-L["The interrupt icons: their size, layout, states, border, annotations and ready glow."] =
-    "The interrupt icons: their size, layout, states, border, annotations and ready glow."
-L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."] =
-    "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
+-- The Units page's rail (KickCD#33): one tooltip per entry, and its Defaults.
+L["The interrupt icons: size and layout, appearance, annotations and ready glow."] =
+    "The interrupt icons: size and layout, appearance, annotations and ready glow."
+L["The cast bar: size and position, text, and the colors for casts you can and cannot interrupt."] =
+    "The cast bar: size and position, text, and the colors for casts you can and cannot interrupt."
 L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
-L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."] =
-    "Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."
+L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."] =
+    "Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."
+L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
+    "Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."

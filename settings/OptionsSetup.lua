@@ -405,15 +405,28 @@ if not lib then
         -- SelectTab, new at LibKa0s v1.36.0: reached only from a tab click on an already-rendered
         -- page. This addon does not adopt tab-scoped refresh, so the same inert no-op applies.
         "SelectTab",
-        -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Grid page's
+        -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Units page's
         -- render (settings/Grid.lua), which never runs here, so the same inert no-op applies.
         "NavRail",
         -- Drawer, new at LibKa0s v1.73.0 (OptionsDrawer minor 1): this addon draws no drawer, so the
         -- same inert no-op applies.
         "Drawer",
+        -- KeybindingsTab and KeybindRows, new at LibKa0s v1.77.0 (OptionsKeybinds minor 2): the
+        -- settings-panel Keybindings tab. Both are reached only while a page renders, which never
+        -- happens here, so the same inert no-op applies.
+        "KeybindingsTab", "KeybindRows",
     }) do
         Helpers[name] = function() end
     end
+    -- Value-answering members new at LibKa0s v1.77.0: StrataTooltip (OptionsCompose minor 8) is read
+    -- when a strata row is declared, and KEYBINDS_UNCHANGED (OptionsKeybinds minor 2) is a tooltip
+    -- sentence. With no library both answer an empty string, a tooltip with nothing to add, rather
+    -- than a copy of the library's words (options-ui-§1).
+    Helpers.StrataTooltip      = function() return "" end
+    Helpers.KEYBINDS_UNCHANGED = ""
+    -- ResetAllTooltip (OptionsCompose minor 11, after LK-95 moved the v1.77.0 tag) is the General
+    -- page's Reset all tooltip, read only while a page renders; it answers "" for the same reason.
+    Helpers.ResetAllTooltip    = function() return "" end
     -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
     -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
     -- host copy of library content exactly as it forbids a copy of a layout constant. A reader
@@ -479,7 +492,7 @@ if not lib then
     -- file boundary, and a degradation stub does not mirror it.
     --
     -- __panelFor STAYS, because this addon is the exception to that rule and the kit cannot know
-    -- it: settings/Panel_Widgets.lua:138's OpenPageTab reads
+    -- it: settings/Panel_Widgets.lua:69's OpenPageTab reads
     -- `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination page's
     -- tab. A member the host calls is a member the stub owes -- the same sentence SetRenderer
     -- joined the no-op list under. The guard means losing it costs a tab selection rather than a

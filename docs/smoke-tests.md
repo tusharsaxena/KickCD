@@ -15,7 +15,7 @@ and a retired one leaves its number unused.
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
 | SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows (15 – 24 retired into SIM) |
-| PANEL-1 – 30 | Settings panel | The tree, the Grid page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name |
+| PANEL-1 – 36 | Settings panel | The tree, the Units page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name, item 020's layout on every page (31 – 36) |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
@@ -27,6 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
+| LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips and the sim strip on top, the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
 ## Before you start
@@ -220,6 +221,14 @@ Which checks to run for a partial change:
 
 ## PANEL
 
+**Item 020 (settings layout, 2026-10-24) changed every page's labels and tabs.** PANEL-31 – 36
+describe the layout it shipped. An older check below that names a pre-020 label (the *Grid* page,
+*General > Units*, *Use same styling as Target*, *Copy styling from Target*, Icons' *Sizing* /
+*Layout* / *Visual states* / *Border* tabs, Cast bar's *Icon* / *Font* / *Spell name* / *Cast time*
+tabs, *Text Label*, *Horizontal justify*) means the same control under its new name and place, and
+PANEL-31 – 36 govern where the two disagree. No setting's key, default or range moved: every value
+you had before the update is still yours.
+
 - **PANEL-1. The Settings tree.** Settings → AddOns → Ka0s KickCD → exactly **General · Grid ·
   Spells · Profiles**, each once, and no Icons, Cast bar or Text Label entries. Same after `/reload`.
   Result: pass (owner-marked 2026-10-10)
@@ -332,6 +341,59 @@ Which checks to run for a partial change:
   `info` is not declared on the `LibKa0s icons:` line and its art does not ship (LibKa0s v1.75.0's
   icon prune); this only proves nothing broke. `tests/test_options_panel.lua` pins the field and
   that `info` is declared exactly when an `O.IdList` is drawn. `/kcd debug off`. Result: pass (owner-marked 2026-10-10)
+
+- **PANEL-31. General after item 020.** Open General → one tab, `Master controls`, and no `Units`
+  tab. Hover Defaults → it says it restores the Master controls tab and also resets both units'
+  *Enable this unit* and Focus's *Link to Target*, which sit in the Units page's band. Hover General
+  visibility → *"When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD
+  still wins: off hides everything."*; its list reads `Always`, `In combat`, `When the tracked unit is
+  casting`, `When the tracked unit is casting an interruptible spell`. Hover Lock frame → the
+  library's unlocked-is-the-preview sentence (*"... this is the addon's test mode."*). Set General
+  visibility to a non-default value, `/reload` → still set (`/kcd get visibility`). Result:
+- **PANEL-32. The Units page's band.** The tree reads **General · Units · Spells · Profiles** (no
+  *Grid*). Open Units with Target in the band → one row: `[Unit] [Enable this unit]`, the enable at the
+  same height as the picker's control. Pick Focus → `[Unit] [Enable this unit] [Link to Target] [Copy
+  from Target]` on the same one row, the band no taller, the picker not moved. Hover the picker → the
+  tooltip ends *"Focus follows Target while Link to Target, beside this picker, is ticked."* Hover
+  Defaults → it names the entry selected on the left and the unit in the band, and says the band's
+  Enable this unit and Link to Target are reset by the General page's Defaults. With Focus linked,
+  every entry draws its strip and the plain note *"Linked to Target. Untick Link to Target above to
+  give this unit its own look."* (not a link, nothing happens on click); Icons' and Cast bar's strips
+  are grayed, Text label's is live. Untick *Link to Target* → the entries fill in at once; tick it →
+  they collapse. Untick *Enable this unit* on Focus → the Focus grid, bar and label go; tick → back;
+  `/kcd get units.focus.enabled` agrees each time. General → Defaults → Focus enabled and linked again
+  and the band shows it. Leave Focus unlinked, `/reload` → still unlinked. Result:
+- **PANEL-33. Units > Icons after item 020.** Tabs `Size and layout | Appearance | Annotations | Ready
+  glow`. Size and layout → `Size` (`Primary size (px)` | `Secondary size (fraction of primary)`, `Gap
+  (px)` | `Icon zoom`) then `Secondary block` (`Primary icon anchor point` | `Growth direction`, `Rows`
+  | `Columns`, `X offset (px)` | `Y offset (px, positive = down)`). Appearance → `States` (`Ready
+  opacity` | `Cooldown opacity`, `Cooldown tint` | `Use class color`, `Suppress GCD swipe and text`)
+  then `Border`. Annotations → `Cooldown text` (`Show cooldown text` alone, then the font block),
+  `Charges`, `Tooltip` (`Show tooltip on hover`). Ready glow's triggers read `When the tracked unit is
+  casting ...`, its knobs say `(px)` / `(seconds)`, its last heading is still `Offset`. Hover the Icons
+  rail entry → *"The interrupt icons: size and layout, appearance, annotations and ready glow."* Change
+  one row on each tab, `/reload` → each value kept. Result:
+- **PANEL-34. Units > Cast bar after item 020.** Tabs `General | Size and position | Text |
+  Interruptible | Non-interruptible`. General → `Enable cast bar` (tooltip *"Show this unit's cast
+  bar."*), `Orientation` | `Growth direction`, `Show spark`. Size and position → `Size` (`Auto-size to
+  icon grid` alone, then `Cast bar width (px)` | `Cast bar height (px)`; auto-size still dims the
+  overridden slider), `Position` (the X / Y offset tooltips end `(positive = right)` / `(positive =
+  up)`), `Spell icon` (`Icon position` | `Icon size (px)`; Icon position's tooltip ends *"Off hides the
+  icon; so does Icon size 0."*). Text → `Spell name`, `Cast time`, `Font (both texts)` with `Cast time
+  color`. Interruptible and Non-interruptible → `Bar`, `Background`, `Spell name`, `Border`. Hover the
+  rail entry → *"The cast bar: size and position, text, and the colors for casts you can and cannot
+  interrupt."* Change one row on each tab, `/reload` → each value kept. Result:
+- **PANEL-35. Units > Text label after item 020.** The rail entry reads `Text label`. Placement →
+  `Position` (`Attach to` alone, `Attached widget anchor point` | `Label anchor point`, `X offset (px)`
+  | `Y offset (px)`) then `Alignment` (`Horizontal alignment` | `Vertical alignment`, `Rotation
+  (degrees)`). Hover `Attached widget anchor point` → it says *"the widget chosen in Attach to"*. With
+  Focus linked and picked → Text label > General shows `Label text` above the note; rename Focus's
+  label → the Focus tag on screen changes, Target's does not, Focus stays linked. Swap the two anchor
+  points' values, `/reload` → kept, and the label sits where they say. Result:
+- **PANEL-36. Spells after item 020.** The picker above the list is captioned `Class and
+  specialization`; picking an entry still switches the list. `/kcd reset icons`, `/kcd reset castbar`
+  and `/kcd reset label` → each redirect names `Units > Icons'`, `Units > Cast bar's` and `Units > Text
+  label's` Defaults button, with an ASCII `>`. Result:
 
 ## PROFILE
 
@@ -654,9 +716,8 @@ Which checks to run for a partial change:
   every tab grayed and not clickable, and only the note *"Linked to Target. Untick 'Use same styling as
   Target' on the General page's Units tab to give Focus its own."* The page keeps its shape; picking
   Target restores color and clicks. Result: pass (owner-marked 2026-10-10)
-- **FOCUS-7. The note's link.** *General page's Units tab* is in link blue. Mouse along the line →
-  nothing lights up behind it (no plate, no bright-green block). Click anywhere on it → General opens
-  on its Units tab. Result: pass (owner-marked 2026-10-10)
+- **FOCUS-7. Retired by item 020.** The linked-Focus note is plain text now and links nowhere; the tick
+  it names is in the Units page's band. PANEL-32 checks the note.
 - **FOCUS-8. Linked Focus mirrors Target live.** Change Target's `primarySize` → the linked Focus grid
   matches at once. Result: pass (owner-marked 2026-10-10)
 - **FOCUS-9. Unlinking.** Untick General → Units → "Use same styling as Target", then open Grid → Icons
@@ -1101,6 +1162,47 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
   `NS.SECRET`), with no Lua error. Result: pass (owner-marked 2026-10-10)
 
+## LAYER
+
+Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.Const.LAYERS`. Use
+`/fstack` over a frame to read its strata and level where a check is hard to judge by eye.
+
+- **LAYER-1. Icon text over the swipe and the border (KIC-Z01, Z02).** Annotations → Show cooldown
+  text and Show charges on, a border of thickness 2 or more, a charged spell on cooldown → the
+  countdown reads at full brightness while the swipe darkens the icon under it, and the charges badge
+  draws over the border edge in its corner, not under it. The border edge is crisp over the swipe's
+  sweep, never covered by it. Result:
+- **LAYER-2. Charges and countdown draw above the proc glow (KIC-Z03, owner CALL-06).** Glow trigger
+  `always`, then each of the four glow styles in turn, on a charged spell with the countdown showing →
+  the glow draws over the icon, the swipe and the border, and the countdown and the charges badge draw
+  over the glow and stay legible. Result:
+- **LAYER-3. The cast bar's spark and text over its border (KIC-Z04).** A border of thickness 2 or
+  more, name and time text at their inside edges, target a hostile caster → the spark and the text
+  draw over the border edge rather than being cut by it, and the border is still not tinted by the
+  fill color. Result:
+- **LAYER-4. The cast bar draws over its grid (KIC-Z05).** `/kcd set units.target.castbar.anchorMode
+  FREE`, `/kcd unlock`, drag the bar over the icon grid, `/kcd lock`, target a hostile caster with a
+  glow showing → the bar draws over the icons and their glow wherever they overlap. `/kcd reset
+  units.target.castbar.anchorMode`. Result:
+- **LAYER-5. A label attached to the cast bar draws on it (KIC-Z06).** Label Attach to → Cast bar,
+  anchor and relative point `CENTER` on `CENTER`, target a hostile caster → the label reads over the
+  bar's fill and border during the cast; `/reload` and repeat → still on top. Attach to → Icons →
+  the label draws over the icons too. Result:
+- **LAYER-6. The drag strips are on top while unlocked (KIC-Z07).** `/kcd unlock` with the cast bar
+  anchored above the grid (a `TOP_*` primary anchor), then with a FREE cast bar dragged over the grid
+  → both strips and their `?` marks draw over the icons, the glow and the cast bar; each strip still
+  takes the drag and its tooltip, and the `?` mark is not hidden under its strip. Result:
+- **LAYER-7. The sim strip is over every display (KIC-Z08).** `/kcd sim` a scenario, then disable
+  both units mid-session so the target's strip floats at `UIParent CENTER 0, 180`, with a cast bar or
+  grid moved under that point beforehand → the cyan strip draws over them. Result:
+- **LAYER-8. Tool windows raise on click and never bury a confirmation (KIC-Z10, LibKa0s LK-01).**
+  Open the debug console (`/kcd debug window`), the perf panel (`/kcd perf`) and the sim panel
+  (`/kcd sim`) together → clicking each raises it over the other two. General → Reset all settings
+  (the confirmation shows), then
+  `/kcd debug window` → the confirmation stays above the console. Result:
+- **LAYER-9. The icon hover tooltip still works (KIC-Z01).** `/kcd lock`, icons Show tooltip on, hover
+  an icon → the spell tooltip opens; the text overlay does not take the hover. Result:
+
 ## Non-English client
 
 A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
@@ -1134,4 +1236,18 @@ On 2026-10-10 the owner marked every check in this file as passed, recorded on i
 added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
 off on its own `Result:` line, then remove its row here.
 
-None.
+- LAYER-1 (KC-ZS): icon text over the swipe and the border.
+- LAYER-2 (KC-ZS): charges and countdown draw above the proc glow.
+- LAYER-3 (KC-ZS): the cast bar's spark and text over its border.
+- LAYER-4 (KC-ZS): the cast bar draws over its grid.
+- LAYER-5 (KC-ZS): a label attached to the cast bar draws on it.
+- LAYER-6 (KC-ZS): the drag strips are on top while unlocked.
+- LAYER-7 (KC-ZS): the sim strip is over every display.
+- LAYER-8 (KC-ZS): tool windows raise on click and never bury a confirmation.
+- LAYER-9 (KC-ZS): the icon hover tooltip still works.
+- PANEL-31 (KC-LY): General after item 020.
+- PANEL-32 (KC-LY): the Units page's band.
+- PANEL-33 (KC-LY): Units > Icons after item 020.
+- PANEL-34 (KC-LY): Units > Cast bar after item 020.
+- PANEL-35 (KC-LY): Units > Text label after item 020, including a linked Focus's label text.
+- PANEL-36 (KC-LY): Spells after item 020, and the reset redirect's location strings.

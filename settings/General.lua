@@ -1,7 +1,9 @@
 -- settings/General.lua
 --
--- General canvas panel. Two tabs, Master controls and Units, partitioned from
--- the `group` field in declaration order (options-ui-§13).
+-- General canvas panel. ONE tab, Master controls (options-ui-§13: a one-tab strip).
+-- The per-unit rows filed under the `Units` group below are skipRender and drawn
+-- by the Units page's band instead (KIC-L01/L02, item 020), so that group is no
+-- tab here (RenderTabbedSchema's untabbedSkipRender).
 --
 -- The first tab is the collection's canonical Master controls block
 -- (options-ui-§15) and it is COMPOSED, not written out: H.MasterControls emits
@@ -24,13 +26,13 @@
 -- with one: the composer drops its `startsLine` only when a test mode is there
 -- to pair with.
 --
--- WHY TWO TABS AND NOT THREE. "Appearance" used to be a section of its own,
--- holding master scale and master alpha. Two rows whose LABELS both say Master
--- is not a second subject, it is the same subject broken over a click: enable,
--- visibility, lock, scale and alpha are all the addon-as-a-whole, and options-ui-§15 puts
--- all five under one tab anyway. Units is the one genuinely different question
--- on this page -- which grids exist, and whether Focus is its own thing -- and
--- it is what a player sets once, so it sits last.
+-- WHY ONE TAB. "Appearance" used to be a section of its own, holding master
+-- scale and master alpha. Two rows whose LABELS both say Master is not a second
+-- subject, it is the same subject broken over a click: enable, visibility, lock,
+-- scale and alpha are all the addon-as-a-whole, and options-ui-§15 puts all five
+-- under one tab anyway. The Units tab that followed it -- the per-unit enables
+-- and the Focus link -- moved to the Units page's band in item 020 (KIC-L01/L02):
+-- everything about one unit now sits on the page that picks the unit.
 --
 -- Every schema entry here is automatically wired into /kcd get|set,
 -- so adding a new General option = one row in this file.
@@ -86,6 +88,12 @@ local masterRows, masterTail = H.MasterControls{
         visibility   = "target_casting_interruptible",
         debugConsole = false,
     },
+    -- Unlocking IS this addon's test mode (no Test mode row, above), so Lock
+    -- frame takes the library's one tooltip for that shape (KIC-L-new4, XC-05).
+    -- No host text and no `notes.locked`: the combat clause the library leaves
+    -- to the host is added only once KickCD's lock behavior in combat has been
+    -- verified in game.
+    lockIsPreview    = true,
     onResetPosition  = function() H.ResetIconPosition() end,
     onResetAll       = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
 }
@@ -104,13 +112,13 @@ if visibilityRow then
     visibilityRow.values  = {
         ["always"] = L["Always"],
         ["in_combat"] = L["In combat"],
-        ["target_casting"] = L["When target is casting"],
-        ["target_casting_interruptible"] = L["When target is casting an interruptible spell"],
+        ["target_casting"] = L["When the tracked unit is casting"],
+        ["target_casting_interruptible"] = L["When the tracked unit is casting an interruptible spell"],
     }
     visibilityRow.sorting = {
         "always", "in_combat", "target_casting", "target_casting_interruptible",
     }
-    visibilityRow.tooltip = L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."]
+    visibilityRow.tooltip = L["When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD still wins: off hides everything."]
 end
 
 -- ── The three composed rows that carry this addon's own behavior ──────────
@@ -185,42 +193,53 @@ end
 -- Per-unit ENABLE toggles (§Task 6). One row per NS.Units.LIST entry, driving
 -- `/kcd set units.<unit>.enabled` and (via the seam's announce firing
 -- Ka0s_KickCD_ConfigChanged{section="units"}) IconGrid/Castbar's
--- ReconcileUnits. The label/selector/link/copy UI (Task 8) lives in its own
--- panel; this is deliberately just the enable bool so both rows render
--- under SchemaForPanel("general") regardless of which unit is "selected".
+-- ReconcileUnits.
+--
+-- DRAWN BY THE UNITS PAGE'S BAND, beside the Unit picker (KIC-L01, item 020):
+-- `skipRender` here, and Helpers.RenderUnitPanel (settings/Panel_Render.lua)
+-- draws the selected unit's row through the library's own RenderField. The
+-- STAMP STAYS `panel = "general"`, `section = "units"`, on purpose: the
+-- General page's Defaults, Reset all and `/kcd list` (grouped by panel) behave
+-- exactly as before, and both pages' Defaults tooltips say so (the WS-33
+-- disclosure: settings/General.lua's Build below, settings/Grid.lua's).
+--
+-- ONE label for both units, "Enable this unit" (XC-16): it reads with the
+-- band's Unit picker, whose noun it borrows. The switch gates the unit's icon
+-- grid, cast bar (modules/Castbar.lua) and label (modules/UnitLabel.lua), so
+-- the tooltip names all three.
 for _, u in ipairs(NS.Units.LIST) do
     add{
         panel   = "general", section = "units", group = L["Units"],
         path    = "units." .. u .. ".enabled", unit = u, type = "bool",
-        label   = (u == "target" and L["Enable Target grid"] or L["Enable Focus grid"]),
-        desc    = (u == "target"
-                   and L["Track cooldowns for your current target."]
-                   or L["Track cooldowns for your current focus."]),
+        label   = L["Enable this unit"],
+        desc    = L["Track this unit: its icon grid, cast bar and label. Off hides all three."],
         default = true,
+        skipRender = true,
     }
 end
 
 -- The Focus styling link. A real row, so `/kcd get|set|list|reset` reach it and
--- the page's Defaults restores it (architecture-§5: a toggle the player sets is
--- a setting, and a setting with no row is a missing row). Only Focus has one;
--- Target is never linked.
+-- the General page's Defaults restores it (architecture-§5: a toggle the player
+-- sets is a setting, and a setting with no row is a missing row). Only Focus has
+-- one; Target is never linked.
 --
--- `skipRender`: the row stays in the schema but the library does not draw it.
--- The Units tab's afterGroup below draws the tick instead, PAIRED with the Copy
--- styling button on one line, and the tick writes through H.SetAndRefresh like
--- any row widget would.
+-- `skipRender`: the row stays in the schema but the library does not draw it in
+-- the flow. The Units page's band draws it beside the picker while Focus is the
+-- unit in the band, paired with the Copy from Target button, through the
+-- library's RenderField -- so the tick writes through the seam like any row.
 --
 -- The onChange is STRUCTURAL, which no other row's is. Flipping the link changes
--- what the Grid page's Icons, Cast bar and Text Label entries DRAW (a linked
--- Focus entry is just the note), so every page that declared a renderer re-renders and the hidden
--- ones repaint on their next show. The CONFIG_CHANGED `units` that IconGrid /
--- Castbar reconcile on comes from the seam's announce, through the row's section.
+-- what the Units page's Icons, Cast bar and Text label entries DRAW (a linked
+-- Focus entry is just the note, plus its alwaysPerUnit rows), so every page that
+-- declared a renderer re-renders and the hidden ones repaint on their next show.
+-- The CONFIG_CHANGED `units` that IconGrid / Castbar reconcile on comes from the
+-- seam's announce, through the row's section.
 --
 -- ONLY WHEN THE LINK MOVED. A write that leaves it where it was (a Defaults on
 -- an already-linked Focus, a repeated `/kcd set`) changes nothing any page
--- draws, so it skips the rebuild of every rendered page. Copy styling relies on
--- this row for its refresh, and repaints by itself when the link does not move
--- (core/Units.lua).
+-- draws, so it skips the rebuild of every rendered page. Copy from Target relies
+-- on this row for its refresh, and repaints by itself when the link does not
+-- move (core/Units.lua).
 --
 -- The seam hands onChange the new value and nothing else, so the row stores
 -- through its own `set`, which notes whether the stored link moved before it
@@ -230,7 +249,7 @@ local linkMoved = false
 add{
     panel   = "general", section = "units", group = L["Units"],
     path    = "units.focus.link", type = "bool",
-    label   = L["Use same styling as Target"],
+    label   = L["Link to Target"],
     desc    = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
     default = NS.DEFAULT_PROFILE.units.focus.link,
     skipRender = true,
@@ -266,36 +285,6 @@ StaticPopupDialogs["KICKCD_RESET_ALL"] = {
     OnAccept     = function() H.ResetAll() end,
 }
 
---- The "Copy styling from Target" button, built into a caller-supplied Flow cell.
----
---- Hand-built rather than through H.InlineButtonPair, which is what drew it
---- before: that helper owns its own full-width row, so a button from it can never
---- share a line with anything. This is one button in one cell of a row the flow
---- engine is already assembling, which is the shape the pairing needs.
----
---- Returns the widget, because RenderGrid counts a cell as filled only when its
---- `make` answers one -- a cell that returns nothing leaves the row half-empty
---- and the next item lands beside the tick instead of below it.
-local function copyStylingButton(parent, relativeWidth)
-    -- The instance's handle for the reason Helpers.LinkRow gives.
-    local AceGUI = H.AceGUI or NS.AceGUI
-    if not (AceGUI and parent) then return nil end
-
-    local btn = AceGUI:Create("Button")
-    btn:SetText(L["Copy styling from Target"])
-    btn:SetRelativeWidth(relativeWidth or 0.5)
-    -- CopyStyling is the whole act: every row through the helper, the bus
-    -- announced once per section, and the one structural refresh from the link
-    -- row it writes last.
-    btn:SetCallback("OnClick", function()
-        NS.Units.CopyStyling("target", "focus")
-    end)
-    H.AttachTooltip(btn, L["Copy styling from Target"],
-        L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
-    parent:AddChild(btn)
-    return btn
-end
-
 local function Build(mainCategory)
     if not (Settings and Settings.RegisterCanvasLayoutSubcategory) then
         return nil
@@ -308,8 +297,14 @@ local function Build(mainCategory)
     -- page, and the library's render-failure line naming "?" instead of the page
     -- that raised. Inert until something asked, which is exactly why it survived.
     ctx = H.CreatePanel("KickCDGeneralPanel", L["General"], {
-        pageKey        = "general",
-        defaultsButton = true,
+        pageKey         = "general",
+        defaultsButton  = true,
+        -- A PAGE reset, not the global one (that is Reset all settings), so not
+        -- H.ResetAllTooltip. Its last sentence is this page's half of the WS-33
+        -- disclosure: the three rows the Units page's band draws keep their
+        -- `panel = "general"` stamp, so this button resets them (settings/Grid.lua
+        -- carries the other half).
+        defaultsTooltip = L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."],
     })
     -- Parked, not wired: the Defaults button doesn't exist until the
     -- panel's first OnShow (H.EnsureDefaultsButton).
@@ -323,51 +318,12 @@ local function Build(mainCategory)
     -- because registration happens at PLAYER_LOGIN.
     H.SetRenderer(ctx, function(c)
         H.ClearScroll(c)
+        -- untabbedSkipRender: the `Units` group's rows are all skipRender (the
+        -- Units page's band draws them), so the group must not become an empty
+        -- tab here (LibKa0s OptionsTabs minor 8).
         H.RenderTabbedSchema(c, "general", {
             [H.MASTER_GROUP] = masterTail,
-            -- The Focus styling link. It used to be drawn three times over, once
-            -- in each unit page's hand-built header, and there is exactly one of
-            -- it: whether Focus keeps its own appearance or mirrors Target's.
-            -- The tick is the `units.focus.link` row, drawn here rather than by
-            -- the library (the row is `skipRender`), and the copy is an action,
-            -- so both hang off the Units group.
-            --
-            -- The write is STRUCTURAL, and that is the whole reason it can live
-            -- on another page at all: the row's onChange runs H.RefreshAllPanels,
-            -- which re-renders every page that declared a renderer and marks the
-            -- hidden ones dirty so they repaint on their next OnShow. Ticking
-            -- this here really does change what Icons / Cast bar / Text Label draw.
-            -- THE TWO ARE ONE LINE, [tick][button], through the flow engine's
-            -- caller-driven sibling. They were two lines -- a half-width tick,
-            -- then a button pair holding one button -- which read as a button
-            -- belonging to whatever came next rather than to the tick above it.
-            -- They are two halves of one decision (does Focus follow Target, and
-            -- if not, start it from Target's current look), so they pair.
-            --
-            -- RenderGrid rather than a hand-built Flow row: the 50/50 split, the
-            -- row's spacer and the per-cell pcall are the library's, and a row
-            -- assembled here would be a fourth copy of that arithmetic.
-            [L["Units"]] = function(ctxRef)
-                H.RenderGrid(ctxRef, {
-                    { make = function(gridCtx, parent, relWidth)
-                        return H.SessionToggle(gridCtx, {
-                            label = L["Use same styling as Target"],
-                            tooltip = L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."],
-                            get   = function()
-                                local cfg = NS.Units.Config("focus")
-                                return cfg ~= nil and cfg.link == true
-                            end,
-                            set   = function(on)
-                                H.SetAndRefresh("units.focus.link", on and true or false)
-                            end,
-                        }, parent, relWidth)
-                    end },
-                    { make = function(_, parent, relWidth)
-                        return copyStylingButton(parent, relWidth)
-                    end },
-                })
-            end,
-        })
+        }, nil, { untabbedSkipRender = true })
     end)
 
     return Settings.RegisterCanvasLayoutSubcategory(

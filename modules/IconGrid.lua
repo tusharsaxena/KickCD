@@ -568,7 +568,10 @@ function IconGrid:EnsureGrid(inst)
     local grid = CreateFrame("Frame", frameName, UIParent)
     inst.grid = grid
     grid:SetSize(48, 48)
-    grid:SetFrameStrata("MEDIUM")
+    grid:SetFrameStrata(NS.Const.LAYERS.STRATA.HUD)
+    -- The grid's band root, explicit (frame-layering-§3): the cast bar's band
+    -- (HUD.CASTBAR) is placed over it, so the two never tie (KIC-Z05).
+    grid:SetFrameLevel(UIParent:GetFrameLevel() + NS.Const.LAYERS.LEVEL.HUD.GRID)
     grid:SetClampedToScreen(true)
     grid:SetMovable(true)
 

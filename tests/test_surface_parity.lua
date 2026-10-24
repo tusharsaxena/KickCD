@@ -179,7 +179,7 @@ test("the Options stub carries every member the host calls", function()
     -- red under: deleting `RenderRows` from settings/OptionsSetup.lua's stub no-op list
     --
     -- ONE `__` MEMBER IS PINNED BY HAND, below the parity call, and it is the one thing the kit's
-    -- filter cannot decide for this repo: settings/Panel_Widgets.lua:138 CALLS Helpers.__panelFor.
+    -- filter cannot decide for this repo: settings/Panel_Widgets.lua:80 CALLS Helpers.__panelFor.
     -- The kit drops the prefix because a `__` member is normally the library talking to itself and
     -- no host reaches it; here one does, and this file's own rule is that a member the host calls
     -- is a member the stub owes. Without the pin the stub could lose it in silence.
@@ -247,7 +247,7 @@ test("the Options stub carries every member the host calls", function()
         -- vanished reason went with them, in this commit — settings/OptionsSetup.lua says which
         -- one stayed and why.
     })
-    -- The exception the filter cannot make for us. settings/Panel_Widgets.lua:138's OpenPageTab
+    -- The exception the filter cannot make for us. settings/Panel_Widgets.lua:69's OpenPageTab
     -- reads `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination
     -- page's tab, so the degraded path reaches this member — guarded, so losing it costs a tab
     -- selection rather than a raise, which is exactly the kind of quiet degradation nothing else
@@ -255,7 +255,7 @@ test("the Options stub carries every member the host calls", function()
     -- back for this repo alone.
     -- red under: deleting `Helpers.__panelFor` from settings/OptionsSetup.lua's stub
     assertTrue(type(degraded.NS.Settings.Helpers.__panelFor) == "function",
-        "the stub owes __panelFor: settings/Panel_Widgets.lua:138 calls it")
+        "the stub owes __panelFor: settings/Panel_Widgets.lua:80 calls it")
 end)
 
 -- ── Schema ──────────────────────────────────────────────────────────────────
