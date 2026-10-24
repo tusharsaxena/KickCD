@@ -160,7 +160,7 @@ test("grid: a rail click draws that entry's own strip under the same band", func
     assertEqual(P.railValue(), "castbar")
     -- red under: every entry rendered under one fixed page key (Icons' strip on Cast bar)
     assertEqual(P.tabLabels(), table.concat(want, "|"))
-    assertEqual(want[4], P.L["Font"], "sanity: Cast bar's fourth tab is Font")
+    assertEqual(want[3], P.L["Text"], "sanity: Cast bar's third tab is Text")
     assertEqual(ctx.__bannerWidget.labelText, P.L["Unit"], "the band is drawn with the entry")
     assertEqual(ctx.unit, "target")
 end)
@@ -171,8 +171,8 @@ test("grid: each entry keeps its own tab, including one chosen by the library's 
     P.show()
     local L = P.L
     local ctx = P.rail("castbar")
-    ctx.__tabKids[4]:_run("OnClick")                -- the library's own strip click: no host render
-    assertEqual(ctx.activeTab, L["Font"])
+    ctx.__tabKids[3]:_run("OnClick")                -- the library's own strip click: no host render
+    assertEqual(ctx.activeTab, L["Text"])
     P.rail("label")
     assertEqual(ctx.activeTab, L["General"], "Text label opens on its first tab")
     ctx.__tabKids[2]:_run("OnClick")
@@ -181,7 +181,7 @@ test("grid: each entry keeps its own tab, including one chosen by the library's 
     P.rail("castbar")
     -- red under: one scalar activeTab for the page, or a stash only on host renders (the strip
     -- click above never reaches the host)
-    assertEqual(ctx.activeTab, L["Font"])
+    assertEqual(ctx.activeTab, L["Text"])
     P.rail("label")
     assertEqual(ctx.activeTab, L["Placement"])
 end)
@@ -191,13 +191,13 @@ test("grid: choosing the other unit in the band keeps the entry and its tab", fu
     focusLink(P, false)
     P.show()
     local ctx = P.rail("castbar")
-    ctx.__tabKids[4]:_run("OnClick")
-    assertEqual(ctx.activeTab, P.L["Font"])
+    ctx.__tabKids[3]:_run("OnClick")
+    assertEqual(ctx.activeTab, P.L["Text"])
     ctx.__bannerWidget:__fire("OnValueChanged", "focus")
     assertEqual(P.H.ViewedUnit(), "focus")
     -- red under: a unit switch resetting the entry or the tab (options-ui-§14: the rail is not a picker)
     assertEqual(ctx.activeSection, "castbar")
-    assertEqual(ctx.activeTab, P.L["Font"])
+    assertEqual(ctx.activeTab, P.L["Text"])
     assertEqual(ctx.unit, "focus", "the page now edits Focus")
 end)
 
@@ -313,12 +313,12 @@ test("grid: a former page key opens Units on that entry and tab, drawn on its ne
     ctx.panel:Hide()                                -- the settings window is closed
     -- red under: OpenPageTab looking "castbar" up in NS.Settings.categoryFor alone (the Cast bar
     -- page today, nothing once it retires)
-    assertTrue(P.H.OpenPageTab("castbar", P.L["Font"]))
+    assertTrue(P.H.OpenPageTab("castbar", P.L["Text"]))
     assertEqual(opened[#opened], P.L["Units"])
     assertEqual(ctx.activeSection, "castbar", "selected before the show")
     ctx.panel:Show()
     assertEqual(P.railValue(), "castbar", "and drawn on it")
-    assertEqual(ctx.activeTab, P.L["Font"], "on the named tab")
+    assertEqual(ctx.activeTab, P.L["Text"], "on the named tab")
     assertTrue(P.H.OpenPageTab("general", P.H.MASTER_GROUP), "a General page key is the library's page")
     assertEqual(opened[#opened], P.L["General"])
 end)

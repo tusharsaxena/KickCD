@@ -272,8 +272,7 @@ local STRIP = {
         { "Ready glow", 34 },
     },
     castbar = {
-        { "General", 5 }, { "Size and position", 7 }, { "Icon", 2 }, { "Font", 6 },
-        { "Spell name", 5 }, { "Cast time", 4 },
+        { "General", 4 }, { "Size and position", 10 }, { "Text", 15 },
         { "Interruptible", 13 }, { "Non-interruptible", 13 },
     },
     label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 6 } },
@@ -290,6 +289,12 @@ local SUBSECTIONS = {
         ["Size and layout"] = { "Size", "Secondary block" },
         ["Appearance"]      = { "States", "Border" },
         ["Annotations"]     = { "Cooldown text", "Charges", "Tooltip" },
+    },
+    castbar = {
+        ["Size and position"] = { "Size", "Position", "Spell icon" },
+        ["Text"]              = { "Spell name", "Cast time", "Font (both texts)" },
+        ["Interruptible"]     = { "Bar", "Background", "Spell name", "Border" },
+        ["Non-interruptible"] = { "Bar", "Background", "Spell name", "Border" },
     },
 }
 
@@ -881,7 +886,7 @@ end)
 local TAB_MIXED = {
     icons   = { ["Size and layout"] = true, ["Appearance"] = true, ["Annotations"] = true,
                 ["Ready glow"] = true },
-    castbar = { ["Size and position"] = true, ["Interruptible"] = true,
+    castbar = { ["Size and position"] = true, ["Text"] = true, ["Interruptible"] = true,
                 ["Non-interruptible"] = true },
 }
 
@@ -898,13 +903,9 @@ local TAB_SINGLE_SUBJECT = {
             .. "page's band (item 020), so General draws no tab for it.",
     },
     castbar = {
-        ["General"] = "what the bar IS: enabled, orientation, growth, auto-size, spark. The two "
-            .. "size rows and the two icon rows that used to sit here are what made it mixed, "
-            .. "and they are on 'Size and position' and 'Icon' now.",
-        ["Icon"] = "the spell icon's position and size -- one piece of the bar, two properties.",
-        ["Font"] = "options-ui-§16's composed font block and nothing beside it.",
-        ["Spell name"] = "one FontString: whether it shows, where it sits, and where it truncates.",
-        ["Cast time"] = "one FontString: whether it shows and where it sits.",
+        ["General"] = "what the bar IS: enabled, orientation, growth, spark. The size rows, the "
+            .. "icon rows and (item 020) auto-size that used to sit here are what made it mixed, "
+            .. "and they are on 'Size and position' now.",
     },
     label = {
         ["General"] = "whether the label shows, and what it says.",

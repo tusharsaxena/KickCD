@@ -637,7 +637,7 @@ L["Outside right"]               = "Outside right"
 -- Cast bar tab
 L["Cast bar"]                    = "Cast bar"
 L["Enable cast bar"]             = "Enable cast bar"
-L["Show the target cast bar."]   = "Show the target cast bar."
+L["Show this unit's cast bar."]  = "Show this unit's cast bar."
 L["Anchor"]                      = "Anchor"
 L["Anchor mode"]                 = "Anchor mode"
 L["Free (drag to move)"]         = "Free (drag to move)"
@@ -653,11 +653,12 @@ L["Which point on the cast bar attaches to the primary icon (only used when Anch
 L["X offset (in px)"]            = "X offset (in px)"
 L["X offset (px)"]               = "X offset (px)"
 L["Y offset (in px)"]            = "Y offset (in px)"
+L["Y offset (px)"]               = "Y offset (px)"
 L["Y offset (px, positive = down)"] = "Y offset (px, positive = down)"
-L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."] =
-    "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."
-L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."] =
-    "Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."
+L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."] =
+    "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."
+L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point (positive = up)."] =
+    "Vertical pixel offset between the cast bar's anchor point and the icon's anchor point (positive = up)."
 L["Orientation"]                 = "Orientation"
 L["Horizontal: bar stretches across width. Vertical: bar runs up/down."] =
     "Horizontal: bar stretches across width. Vertical: bar runs up/down."
@@ -670,16 +671,16 @@ L["Which side the cast bar fills toward. Options change with Orientation: horizo
 L["Auto-size to icon grid"]      = "Auto-size to icon grid"
 L["When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."] =
     "When on, a horizontal bar's width matches the icon grid's width and a vertical bar's height matches the icon grid's height. The orthogonal dimension stays as configured below."
-L["Cast bar width (in px)"]      = "Cast bar width (in px)"
+L["Cast bar width (px)"]         = "Cast bar width (px)"
 L["Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."] =
     "Cast bar width in pixels. Overridden by Auto-size to icon grid while the bar is horizontal."
-L["Cast bar height (in px)"]     = "Cast bar height (in px)"
+L["Cast bar height (px)"]        = "Cast bar height (px)"
 L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."] =
     "Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."
 L["Icon position"]               = "Icon position"
-L["Where to place the spell icon, or hide it entirely."] =
-    "Where to place the spell icon, or hide it entirely."
-L["Icon size (in px)"]           = "Icon size (in px)"
+L["Where to place the spell icon, or hide it entirely. Off hides the icon; so does Icon size 0."] =
+    "Where to place the spell icon, or hide it entirely. Off hides the icon; so does Icon size 0."
+L["Icon size (px)"]              = "Icon size (px)"
 L["Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."] =
     "Spell icon size in pixels (0 hides the icon). Capped at the bar's short axis so the icon never overflows it."
 L["Show spark"]                  = "Show spark"
@@ -816,7 +817,7 @@ L["Category for future filtering. Currently informational only."] =
 -- mixes kinds of control (options-ui-§7). A subgroup names the KIND of control,
 -- never a repeat of its tab's own name.
 L["Size and position"]           = "Size and position"
-L["Icon"]                        = "Icon"
+L["Spell icon"]                  = "Spell icon"
 L["States"]                      = "States"
 L["Size"]                        = "Size"
 L["Bar"]                         = "Bar"
@@ -828,12 +829,13 @@ L["The tracked spells for the selected specialization, in priority order."] =
     "The tracked spells for the selected specialization, in priority order."
 L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
+L["Font (both texts)"]           = "Font (both texts)"
 
 -- The Units page's rail (KickCD#33): one tooltip per entry, and its Defaults.
 L["The interrupt icons: size and layout, appearance, annotations and ready glow."] =
     "The interrupt icons: size and layout, appearance, annotations and ready glow."
-L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."] =
-    "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
+L["The cast bar: size and position, text, and the colors for casts you can and cannot interrupt."] =
+    "The cast bar: size and position, text, and the colors for casts you can and cannot interrupt."
 L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
 L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."] =
