@@ -68,7 +68,12 @@ local function stripFor(unit)
         icon = NS.Icon and NS.Icon("info") or nil,
     })
     if not frame then return nil end
-    frame:SetFrameStrata("MEDIUM")
+    -- The HUD's strata, at the top of the HUD band (HUD.MARKER): the marker that
+    -- the display under it is fake never draws under that display, the floating
+    -- case included (KIC-Z08). It shares the handles' slot only because the two
+    -- never show together (modules/Sim.lua refuses a sim unlocked, stops on unlock).
+    frame:SetFrameStrata(NS.Const.LAYERS.STRATA.HUD)
+    frame:SetFrameLevel(UIParent:GetFrameLevel() + NS.Const.LAYERS.LEVEL.HUD.MARKER)
     if frame.EnableMouse then frame:EnableMouse(false) end
     SimStrip.__frames[unit] = frame
     return frame

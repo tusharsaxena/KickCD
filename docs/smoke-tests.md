@@ -27,6 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
+| LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips and the sim strip on top, the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
 ## Before you start
@@ -1101,6 +1102,47 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
   `NS.SECRET`), with no Lua error. Result: pass (owner-marked 2026-10-10)
 
+## LAYER
+
+Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.Const.LAYERS`. Use
+`/fstack` over a frame to read its strata and level where a check is hard to judge by eye.
+
+- **LAYER-1. Icon text over the swipe and the border (KIC-Z01, Z02).** Annotations → Show cooldown
+  text and Show charges on, a border of thickness 2 or more, a charged spell on cooldown → the
+  countdown reads at full brightness while the swipe darkens the icon under it, and the charges badge
+  draws over the border edge in its corner, not under it. The border edge is crisp over the swipe's
+  sweep, never covered by it. Result:
+- **LAYER-2. Charges and countdown draw above the proc glow (KIC-Z03, owner CALL-06).** Glow trigger
+  `always`, then each of the four glow styles in turn, on a charged spell with the countdown showing →
+  the glow draws over the icon, the swipe and the border, and the countdown and the charges badge draw
+  over the glow and stay legible. Result:
+- **LAYER-3. The cast bar's spark and text over its border (KIC-Z04).** A border of thickness 2 or
+  more, name and time text at their inside edges, target a hostile caster → the spark and the text
+  draw over the border edge rather than being cut by it, and the border is still not tinted by the
+  fill color. Result:
+- **LAYER-4. The cast bar draws over its grid (KIC-Z05).** `/kcd set units.target.castbar.anchorMode
+  FREE`, `/kcd unlock`, drag the bar over the icon grid, `/kcd lock`, target a hostile caster with a
+  glow showing → the bar draws over the icons and their glow wherever they overlap. `/kcd reset
+  units.target.castbar.anchorMode`. Result:
+- **LAYER-5. A label attached to the cast bar draws on it (KIC-Z06).** Label Attach to → Cast bar,
+  anchor and relative point `CENTER` on `CENTER`, target a hostile caster → the label reads over the
+  bar's fill and border during the cast; `/reload` and repeat → still on top. Attach to → Icons →
+  the label draws over the icons too. Result:
+- **LAYER-6. The drag strips are on top while unlocked (KIC-Z07).** `/kcd unlock` with the cast bar
+  anchored above the grid (a `TOP_*` primary anchor), then with a FREE cast bar dragged over the grid
+  → both strips and their `?` marks draw over the icons, the glow and the cast bar; each strip still
+  takes the drag and its tooltip, and the `?` mark is not hidden under its strip. Result:
+- **LAYER-7. The sim strip is over every display (KIC-Z08).** `/kcd sim` a scenario, then disable
+  both units mid-session so the target's strip floats at `UIParent CENTER 0, 180`, with a cast bar or
+  grid moved under that point beforehand → the cyan strip draws over them. Result:
+- **LAYER-8. Tool windows raise on click and never bury a confirmation (KIC-Z10, LibKa0s LK-01).**
+  Open the debug console (`/kcd debug window`), the perf panel (`/kcd perf`) and the sim panel
+  (`/kcd sim`) together → clicking each raises it over the other two. General → Reset all settings
+  (the confirmation shows), then
+  `/kcd debug window` → the confirmation stays above the console. Result:
+- **LAYER-9. The icon hover tooltip still works (KIC-Z01).** `/kcd lock`, icons Show tooltip on, hover
+  an icon → the spell tooltip opens; the text overlay does not take the hover. Result:
+
 ## Non-English client
 
 A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
@@ -1134,4 +1176,12 @@ On 2026-10-10 the owner marked every check in this file as passed, recorded on i
 added or rewritten after that date is listed here until its `Result:` line records a pass. Sign one
 off on its own `Result:` line, then remove its row here.
 
-None.
+- LAYER-1 (KC-ZS): icon text over the swipe and the border.
+- LAYER-2 (KC-ZS): charges and countdown draw above the proc glow.
+- LAYER-3 (KC-ZS): the cast bar's spark and text over its border.
+- LAYER-4 (KC-ZS): the cast bar draws over its grid.
+- LAYER-5 (KC-ZS): a label attached to the cast bar draws on it.
+- LAYER-6 (KC-ZS): the drag strips are on top while unlocked.
+- LAYER-7 (KC-ZS): the sim strip is over every display.
+- LAYER-8 (KC-ZS): tool windows raise on click and never bury a confirmation.
+- LAYER-9 (KC-ZS): the icon hover tooltip still works.

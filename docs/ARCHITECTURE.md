@@ -260,6 +260,23 @@ and nothing is drawn, and the dispatcher, the settings panel and the launcher st
 setup. The stand-down's first step stops a running simulation (`NS.Sim:Stop("standDown")`, KickCD#38
 H6), while every module its cleanup re-syncs is still up. The full account is [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state).
 
+## Frame layering
+
+The addon's strata and levels are declared once, in `NS.Const.LAYERS` (`core/Constants.lua`), whose
+header comment is the full stack with its numbers; every `SetFrameStrata` and `SetFrameLevel` reads it,
+relative to the frame's parent (frame-layering, standard v2.88.0; `tests/test_layers.lua`). The tiers:
+
+- **HUD (`MEDIUM`)**, one band per unit over `UIParent`, bottom to top: the icon grid (each icon
+  ordered swipe < border < glow < countdown and charges); the cast bar, above its grid (fill < border
+  < spark and text); the unit label, over both; the two drag handles (edit chrome, the band's top);
+  the sim strip, which shares the handles' slot because the two never show together.
+- **Library and Blizzard tiers**, relied on and never set here: the debug console, perf panel and
+  sim panel (`DIALOG`, toplevel), the copy window (`FULLSCREEN`), menus, autocomplete and AceGUI
+  pullouts (`FULLSCREEN_DIALOG`), the reorder ghost and tooltips (`TOOLTIP`), the Settings panel
+  (`HIGH`), StaticPopups (`DIALOG`) and the LibDBIcon minimap button (`MEDIUM` / 8, fixed).
+
+KickCD has no player-chosen strata setting.
+
 ## Taint notes
 
 Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `UnitChannelInfo` `notInterruptible` / `name` / `texture` come back **secret** in combat for protected interrupts. Secret values must be passed straight into Blizzard C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `SetAlphaFromBoolean`, `EvaluateColorValueFromBoolean`) — never bound to a Lua local for compare / format / `tostring` / arithmetic, which errors in tainted scope. Visibility and interruptibility decisions that depend on `notInterruptible` go through the two-step gate `State.IsHostileUnitCasting` (show) + `State.ApplyInterruptibleAlpha` (filter). Full pattern catalog in [midnight-quirks.md](midnight-quirks.md).

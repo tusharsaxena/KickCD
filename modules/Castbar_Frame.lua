@@ -23,6 +23,10 @@ local resolvePrimaryIcon = Castbar.ResolvePrimaryIcon
 local resolveGridFrame   = Castbar.ResolveGridFrame
 local isVisible          = Castbar.IsVisible
 local onUpdate           = Castbar._OnUpdate
+-- The HUD strata and the cast bar's level ladder (frame-layering-§3, §5; core/Constants.lua LAYERS).
+local LAYERS             = NS.Const.LAYERS
+local HUD_LEVEL          = LAYERS.LEVEL.HUD
+local BAR_LEVEL          = LAYERS.LEVEL.CASTBAR
 
 -- ---------------------------------------------------------------------------
 -- Lock / drag persistence + anchoring
@@ -220,7 +224,13 @@ function Castbar:EnsureFrame(inst)
     local frame = CreateFrame("Frame",
         inst.unit == "target" and "KickCDCastbar" or "KickCDCastbarFocus", UIParent)
     inst.frame = frame
-    frame:SetFrameStrata("MEDIUM")
+    frame:SetFrameStrata(LAYERS.STRATA.HUD)
+    -- The cast bar's own band, HUD.CASTBAR over UIParent, above every level of
+    -- its unit's grid (HUD.GRID): where the two overlap the bar, the live thing,
+    -- draws on top (KIC-Z05). Without it both roots were UIParent + 1 and the
+    -- overlap was creation order (KIC-S04). Set BEFORE the children below are
+    -- built, so every level under it is born relative to the new base.
+    frame:SetFrameLevel(UIParent:GetFrameLevel() + HUD_LEVEL.CASTBAR)
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
 
@@ -246,11 +256,13 @@ function Castbar:EnsureFrame(inst)
     -- live inside it side-by-side (same anchors, alpha-switched).
     -- ----------------------------------------------------------------
     frame.bar = CreateFrame("Frame", nil, frame)
+    frame.bar:SetFrameLevel(frame:GetFrameLevel() + BAR_LEVEL.CONTAINER)
 
     frame.bar.interruptible   = CreateFrame("StatusBar", nil, frame.bar)
     frame.bar.uninterruptible = CreateFrame("StatusBar", nil, frame.bar)
     for _, sb in ipairs({ frame.bar.interruptible, frame.bar.uninterruptible }) do
         sb:SetAllPoints(frame.bar)
+        sb:SetFrameLevel(frame.bar:GetFrameLevel() + BAR_LEVEL.FILL)
         sb:SetMinMaxValues(0, 1)
         sb:SetValue(0)
     end
@@ -260,11 +272,12 @@ function Castbar:EnsureFrame(inst)
     -- otherwise the StatusBar children of frame.bar would render on top
     -- of any FontString/Texture parented to frame.bar at OVERLAY layer
     -- (child frames always draw above their parent's draw layers,
-    -- regardless of layer name). frame.overlay sits at a higher
-    -- FrameLevel than the bars, so its OVERLAY-layer children win.
+    -- regardless of layer name). frame.overlay is the bar's top rung, above
+    -- the bars AND the borders below (KIC-Z04), so the 30 px spark and
+    -- inside-edge text draw over the border edge instead of under it.
     frame.overlay = CreateFrame("Frame", nil, frame.bar)
     frame.overlay:SetAllPoints(frame.bar)
-    frame.overlay:SetFrameLevel(frame.bar.interruptible:GetFrameLevel() + 1)
+    frame.overlay:SetFrameLevel(frame.bar:GetFrameLevel() + BAR_LEVEL.OVERLAY)
 
     -- Spark texture (overlay at the right edge of the inner status texture).
     -- We anchor it to the interruptible bar's status texture: both bars
@@ -296,19 +309,18 @@ function Castbar:EnsureFrame(inst)
     -- into the curve directly so disabled-side stays alpha=0.
     --
     -- Frame level must be HIGHER than the stacked StatusBars; otherwise
-    -- the bar's filled status texture (which sits at level +2 because
-    -- it's a grandchild of frame) renders ON TOP of the border's edge
-    -- and makes the border look like it's tinted by the bar color.
-    -- Bumping borders to bar level + 2 puts them above both the bars
-    -- (level +2) and the overlay text/spark layer (level +3).
+    -- the bar's filled status texture (root + 2: container + FILL) renders
+    -- ON TOP of the border's edge and makes the border look like it's tinted
+    -- by the bar color. BAR_LEVEL.BORDER puts them at root + 3: above both
+    -- bars, and under the spark/text overlay at root + 4 (KIC-Z04; until
+    -- then the borders sat over the overlay and cut across the spark, KIC-S03).
     -- ----------------------------------------------------------------
     frame.borderInterruptible   = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     frame.borderUninterruptible = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     frame.borderInterruptible:SetAllPoints(frame)
     frame.borderUninterruptible:SetAllPoints(frame)
-    local barLevel = frame.bar.interruptible:GetFrameLevel()
-    frame.borderInterruptible:SetFrameLevel(barLevel + 2)
-    frame.borderUninterruptible:SetFrameLevel(barLevel + 2)
+    frame.borderInterruptible:SetFrameLevel(frame:GetFrameLevel() + BAR_LEVEL.BORDER)
+    frame.borderUninterruptible:SetFrameLevel(frame:GetFrameLevel() + BAR_LEVEL.BORDER)
 
     -- The drag strip, shown only where a drag would actually move the bar
     -- (ApplyLock). It REPLACES the plain "KickCD castbar — drag to move"

@@ -141,7 +141,15 @@ local function applyLabelPlacement(f, unit, style)
 
     f:ClearAllPoints()
     if anchorFrame then
-        f:SetParent(visFrame or anchorFrame)  -- grid drives visibility; fall back to the anchor only if the grid isn't up yet
+        local parent = visFrame or anchorFrame
+        f:SetParent(parent)  -- grid drives visibility; fall back to the anchor only if the grid isn't up yet
+        -- AFTER the SetParent, every Apply: the reparent re-derives the level from
+        -- the new parent, so a level set once at build would be lost (XS-18). The
+        -- label band (HUD.LABEL over its parent) clears the cast bar's content as
+        -- well as the grid's, so a label attached to the bar draws ON it, not
+        -- under its fill and borders as it did from the grid's tree (KIC-Z06, S05).
+        -- A plain non-secure Frame, so this is legal in combat.
+        f:SetFrameLevel(parent:GetFrameLevel() + NS.Const.LAYERS.LEVEL.HUD.LABEL)
         f:SetPoint(sv(style, "point"), anchorFrame, sv(style, "relPoint"),
                    sv(style, "offsetX"), sv(style, "offsetY"))
     end

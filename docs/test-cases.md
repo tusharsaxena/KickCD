@@ -784,6 +784,24 @@ Total.
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
 
+### test_layers.lua (15)
+
+- LAYERS names the HUD strata once, as MEDIUM
+- LAYERS orders the icon ladder fill < border < effect < effect frames < overlay
+- LAYERS puts the cast bar band above every grid level and the handles above both
+- the grid is a MEDIUM, clamped root at UIParent + HUD.GRID
+- an icon's swipe, border, glow host and text overlay sit on the named rungs
+- the countdown and the charges badge draw on the text overlay, which takes no mouse
+- the glow is started with the named ICON.GLOW frame level, not LibCustomGlow's +8
+- the cast bar is a MEDIUM, clamped root at UIParent + HUD.CASTBAR, above its grid
+- the cast bar's spark and text overlay sit above its borders, which sit above the fill
+- both drag handles sit at UIParent + HUD.HANDLE, above the cast bar's content
+- a label attached to the cast bar draws over the cast bar, not under it
+- a label attached to the grid draws over the grid's text, and re-levels after each reparent
+- the sim strip is MEDIUM at UIParent + HUD.MARKER, above every HUD element
+- every SetFrameStrata in core/, modules/ and settings/ reads LAYERS.STRATA
+- every SetFrameLevel in core/, modules/ and settings/ names a LAYERS.LEVEL member
+
 ### test_icongrid_curves.lua (13)
 
 - each unit gets its own curve pair
@@ -1786,6 +1804,7 @@ Total.
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 28 |
+| test_layers.lua | 15 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
@@ -1838,4 +1857,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1480** |
+| **Total** | **1495** |

@@ -24,9 +24,11 @@ test("Castbar:GetCastbarFrame does not create an instance for an unknown unit", 
 end)
 
 test("UnitLabel:Apply parents the label to the icon grid, not the cast bar (General-visibility, not cast-gated)", function()
-    local ns = T.load(true).NS
+    local loaded = T.load(true)
+    local ns = loaded.NS
     local grid, castbar, label = ns:GetModule("IconGrid", true), ns:GetModule("Castbar", true), ns:GetModule("UnitLabel", true)
-    local gridF, castF = {}, {}
+    -- Mock frames, not bare tables: Apply re-levels the label over its new parent (KC-ZS, XS-18).
+    local gridF, castF = loaded.mocks.CreateFrame("Frame"), loaded.mocks.CreateFrame("Frame")
     local origGetGridFrame, origGetCastbarFrame = grid.GetGridFrame, castbar.GetCastbarFrame
     grid.GetGridFrame = function(_, unit) return unit == "target" and gridF or nil end
     castbar.GetCastbarFrame = function(_, unit) return unit == "target" and castF or nil end

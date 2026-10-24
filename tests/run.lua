@@ -199,6 +199,7 @@ local SUITES = {
     "test_icongrid_apply",
     "test_icongrid_visibility",
     "test_icongrid_render",
+    "test_layers",
     "test_icongrid_curves",
     "test_icongrid_curve_link",
     "test_icongrid_gcd_classify",

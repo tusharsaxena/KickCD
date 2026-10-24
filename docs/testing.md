@@ -165,6 +165,16 @@ path (`SetAndRefresh` then `RestoreAllDefaults`), not only a read.
 on and pins that it logs exactly one `[Set]` line, the profile handler's
 (`debug-logging-§10`), as the live path does.
 
+`tests/test_layers.lua` pins the frame-layering map (frame-layering, item 030). It installs the kit's
+frame-layer recorder (`tests/_kit/mock_layers.lua`) on a fresh instance before any source loads,
+clearing the base mock's `__level = 0` seed so a frame with no explicit level reads as parent + 1,
+and asserts each frame class's strata and level against `NS.Const.LAYERS`: the icon ladder (swipe <
+border < glow host < glow < text overlay, the glow started with `ICON.GLOW`), the cast bar ladder
+(fill < border < spark and text overlay), the cast bar above its grid, both drag handles above the
+cast bar, the label over the bar it is attached to and re-leveled after each reparent, and the sim
+strip over all of it. Two static gates close it: no `SetFrameStrata` literal, and no unnamed or
+absolute `SetFrameLevel`, in `core/`, `modules/` or `settings/`.
+
 The simulator (`LibKa0s-Sim-1.0`, KickCD#38) has its own suites and a shared fixture. The first two
 pin the prerequisites the seam stands on (the Compat readers and the one dispatch), the rest the
 simulator itself:
