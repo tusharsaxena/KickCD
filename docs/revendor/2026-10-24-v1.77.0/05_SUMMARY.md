@@ -38,3 +38,25 @@ Gate after the copy, prune and blocker fix:
 
 The standard reference was swept against v2.88.0 in the same item (`wow-revendor-standards`) and
 needed no edit; that sweep is recorded in the commit message, not here.
+
+## Re-vendor after the tag moved (M3)
+
+LK-95 moved the local annotated tag v1.77.0 to carry the settings-layout surfaces. Old target:
+commit `78240f7` (LK-90). New target: tag object `b2b8ee2`, commit
+`afae2f75cb7ff61c57156d9a3d8a6b2b9f4c5e10` (`afae2f7`, LK-95). Both payloads were copied whole again
+from `git -C ../LibKa0s archive v1.77.0 LibKa0s testkit`.
+
+- **Per-file minors that moved:** OptionsCompose 8 -> 11 (minor 9: MasterControls `notes`,
+  `resetPositionTooltip`, `lockIsPreview`, the Master opacity label and the packed Minimap button;
+  minor 10: the group composers' `tooltips`; minor 11: `O.ResetAllTooltip`). Every other payload file
+  is byte-identical; the kit is unchanged (revision 42).
+- The CLAUDE.md provenance line stays v1.77.0 (it records no sha or kit revision); the
+  `LibKa0s icons:` declaration is unchanged, and the tag's `tools/prune-icons.lua` again keeps 8 files
+  and removes 5,832.
+- **Contract blocker:** kit surface parity failed on `ResetAllTooltip` (live: function). Fixed in
+  `settings/OptionsSetup.lua`: the Options stub answers `""`, inert, like `StrataTooltip`.
+- No adoption here (KC-LY adopts). The standard reference is unversioned and needed no edit.
+
+Gate: tests 1495 passed, 0 failed, 1 skipped, 1496 total (1494 / 1 failed before the stub fix);
+`docs/test-cases.md` matches `--list`; luacheck 0 warnings / 0 errors in 147 files; largest authored
+`.lua` is `modules/IconGrid.lua` at 1013 lines.

@@ -424,6 +424,9 @@ if not lib then
     -- than a copy of the library's words (options-ui-§1).
     Helpers.StrataTooltip      = function() return "" end
     Helpers.KEYBINDS_UNCHANGED = ""
+    -- ResetAllTooltip (OptionsCompose minor 11, after LK-95 moved the v1.77.0 tag) is the General
+    -- page's Reset all tooltip, read only while a page renders; it answers "" for the same reason.
+    Helpers.ResetAllTooltip    = function() return "" end
     -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
     -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
     -- host copy of library content exactly as it forbids a copy of a layout constant. A reader
