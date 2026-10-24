@@ -606,23 +606,18 @@ test("a linked Focus draws the strip FIRST and the note as content", function()
             "a linked Focus draws the same strip an unlinked one does")
         assertTrue(unlinked > 1, "sanity: the unlinked page really drew a strip")
 
-        -- ...and the note is IN THE SCROLL, under the strip -- as a LINK that opens
-        -- the page holding the tick it names. It used to be a plain line naming a
-        -- control and a page and leaving the reader to find both by hand, two
-        -- categories away in Blizzard's list.
+        -- ...and the note is IN THE SCROLL, under the strip -- as PLAIN TEXT
+        -- naming the tick in this page's own band (KIC-L04, item 020). It used to
+        -- be a link to the General page's Units tab, where the tick lived.
         local note
         for _, child in ipairs(ctx.scroll.children) do
             if type(child.text) == "string"
                and child.text:find("Linked to Target", 1, true) then note = child end
         end
         assertTrue(note ~= nil, "the link note must be drawn as page content")
-        assertEqual(note.type, "InteractiveLabel", "the note must be clickable")
-        assertTrue(note.text:find(NS.L["General page's Units tab"], 1, true) ~= nil,
-            "the destination must be named in the note")
-        assertTrue(note.text:find("|cff71d5ff", 1, true) ~= nil,
-            "and colored, or nothing on screen says it is a link")
-        assertTrue(note.callbacks and note.callbacks.OnClick ~= nil,
-            "the note names a destination but goes nowhere")
+        assertEqual(note.text,
+            NS.L["Linked to Target. Untick Link to Target above to give this unit its own look."])
+        assertTrue(note.type ~= "InteractiveLabel", "the note no longer goes anywhere: the tick is on this page")
     end)
 end)
 
@@ -691,6 +686,19 @@ test("the General page's FIRST tab is named exactly `Master controls`", function
         "the General page opens on '" .. tostring(order[1]) .. "'")
     assertEqual(order[1], H.MASTER_GROUP,
         "and it must be the library's own literal, not a lookalike")
+end)
+
+test("Lock frame carries the library's unlocked-is-the-preview tooltip (lockIsPreview)", function()
+    -- KIC-L-new4 (item 020): unlocking IS KickCD's test mode, so the composer's
+    -- lockIsPreview variant replaces the plain Lock frame sentence. The host
+    -- writes no text of its own -- notes.locked is deliberately absent until the
+    -- combat behavior is verified in game.
+    -- red under: dropping `lockIsPreview = true` from settings/General.lua's spec
+    local row = T.NS.Settings.Store.FindRow("locked")
+    assertTrue(row ~= nil, "Lock frame is a composed row")
+    local body = tostring(row.desc or row.tooltip)
+    assertTrue(body:find("this is the addon's test mode", 1, true) ~= nil,
+        "Lock frame's tooltip is the library's lockIsPreview sentence: " .. body)
 end)
 
 test("Master controls holds exactly the canonical rows, in canonical order", function()
@@ -854,7 +862,8 @@ local TAB_SINGLE_SUBJECT = {
         ["Master controls"] = "options-ui-§15's canonical block. One subject by definition -- the "
             .. "addon as a whole -- and the section forbids reordering or splitting it anyway.",
         ["Units"] = "which grids exist and whether Focus is its own thing: one enable toggle per "
-            .. "tracked unit, and the Focus styling link (drawn by the tab beside Copy styling).",
+            .. "tracked unit, and the Focus link. Every row is skipRender and drawn by the Units "
+            .. "page's band (item 020), so General draws no tab for it.",
     },
     icons = {
         ["Sizing"] = "four pixel sizes for the grid's icons.",

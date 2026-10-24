@@ -340,8 +340,8 @@ add{
 local GLOW_TRIGGER_VALUES = {
     ["never"] = L["Never"],
     ["always"] = L["Always"],
-    ["target_casting"] = L["When target is casting"],
-    ["target_casting_interruptible"] = L["When target is casting an interruptible spell"],
+    ["target_casting"] = L["When the tracked unit is casting"],
+    ["target_casting_interruptible"] = L["When the tracked unit is casting an interruptible spell"],
 }
 local GLOW_TRIGGER_VALUES_ORDER = {
     "never",

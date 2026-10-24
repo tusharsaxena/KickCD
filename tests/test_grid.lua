@@ -1,7 +1,8 @@
 -- tests/test_grid.lua
 --
--- The Grid page (KickCD#33): Icons, Cast bar and Text Label as one page. The Unit band across the
--- top, the nav rail (Icons, Cast bar, Text Label), each entry's own tab strip, the tab each entry
+-- The Units page (KickCD#33; key `grid`, labeled "Grid" until item 020): Icons, Cast bar and Text
+-- label as one page. The Unit band across the top (one PageHeader block since KIC-L01), the nav rail
+-- (Icons, Cast bar, Text label), each entry's own tab strip, the tab each entry
 -- keeps, and a linked Focus under the rail -- and, from NR-KC-03, Defaults for the unit in the band
 -- and the deep links. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
 -- O.NavRail. Pinned from the outside: a fresh instance per case, the page shown the way Blizzard
@@ -20,7 +21,7 @@ local function env(mutate)
     local NS = inst.NS
     local H = NS.Settings.Helpers
     local rails, strips, calls = {}, {}, {}
-    local navRail, tabStrip, pageBanner = H.NavRail, H.TabStrip, H.PageBanner
+    local navRail, tabStrip, pageHeader = H.NavRail, H.TabStrip, H.PageHeader
     H.NavRail = function(ctx, spec, ...)
         calls[#calls + 1] = "NavRail"
         rails[ctx] = spec
@@ -31,9 +32,9 @@ local function env(mutate)
         strips[ctx] = spec
         return tabStrip(ctx, spec, ...)
     end
-    H.PageBanner = function(ctx, spec, ...)
-        calls[#calls + 1] = "PageBanner"
-        return pageBanner(ctx, spec, ...)
+    H.PageHeader = function(ctx, spec, ...)
+        calls[#calls + 1] = "PageHeader"
+        return pageHeader(ctx, spec, ...)
     end
 
     local P = { inst = inst, NS = NS, H = H, L = NS.L, calls = calls }
@@ -108,9 +109,9 @@ end
 
 -- ── the registry ─────────────────────────────────────────────────────────────────────────────
 
-test("grid: Icons, Cast bar and Text Label register as Grid entries under their page keys, on both builds", function()
+test("grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds", function()
     local L = T.NS.L
-    local LABELS = { icons = "Icons", castbar = "Cast bar", label = "Text Label" }
+    local LABELS = { icons = "Icons", castbar = "Cast bar", label = "Text label" }
     local builds = {
         live = T.NS.Settings.Helpers,
         ["library-absent"] = T.load(true, false, nil, { libFiles = {} }).NS.Settings.Helpers,
@@ -130,7 +131,7 @@ end)
 
 -- ── the page ─────────────────────────────────────────────────────────────────────────────────
 
-test("grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, opening on Icons", function()
+test("grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons", function()
     local P = env()
     local ctx = P.show()
     -- red under: the rail in TOC order or missing an entry, or the page opening elsewhere
@@ -142,12 +143,12 @@ test("grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, 
     assertEqual(P.tabLabels(), table.concat(groupsOf(P.H, "icons", "target"), "|"))
 end)
 
-test("grid: the draw order is PageBanner, NavRail, TabStrip", function()
+test("grid: the draw order is PageHeader, NavRail, TabStrip", function()
     local P = env()
     P.show()
     -- red under: the rail drawn before the band (its top ignores the band) or after the strip (the
     -- strip places itself with no inset)
-    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageBanner,NavRail,TabStrip")
+    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageHeader,NavRail,TabStrip")
 end)
 
 test("grid: a rail click draws that entry's own strip under the same band", function()
@@ -173,7 +174,7 @@ test("grid: each entry keeps its own tab, including one chosen by the library's 
     ctx.__tabKids[4]:_run("OnClick")                -- the library's own strip click: no host render
     assertEqual(ctx.activeTab, L["Font"])
     P.rail("label")
-    assertEqual(ctx.activeTab, L["General"], "Text Label opens on its first tab")
+    assertEqual(ctx.activeTab, L["General"], "Text label opens on its first tab")
     ctx.__tabKids[2]:_run("OnClick")
     assertEqual(ctx.activeTab, L["Placement"])
     P.rail("icons")
@@ -200,7 +201,7 @@ test("grid: choosing the other unit in the band keeps the entry and its tab", fu
     assertEqual(ctx.unit, "focus", "the page now edits Focus")
 end)
 
-test("grid: a linked Focus keeps the rail; each entry draws its full strip, inert, over the link note alone", function()
+test("grid: a linked Focus keeps the rail; each entry draws its full strip over the link note, inert unless it has a per-unit row", function()
     local P = env()
     focusLink(P, true)
     P.H.SetViewedUnit("focus")
@@ -213,8 +214,11 @@ test("grid: a linked Focus keeps the rail; each entry draws its full strip, iner
         assertEqual(ctx.activeSection, key)
         local buttons = (ctx.__tabLayout or {}).buttons or {}
         assertEqual(#buttons, #groupsOf(P.H, key, "focus"), key .. ": one tab per schema group")
-        for i, b in ipairs(buttons) do
-            assertEqual(b.__enabled, false, key .. ": tab " .. i .. " is operable on a linked Focus")
+        -- Text label keeps a live strip: its General tab holds Label text, alwaysPerUnit (KIC-L05).
+        if key ~= "label" then
+            for i, b in ipairs(buttons) do
+                assertEqual(b.__enabled, false, key .. ": tab " .. i .. " is operable on a linked Focus")
+            end
         end
         local notes = 0
         for _, child in ipairs(ctx.scroll and ctx.scroll.children or {}) do
@@ -270,11 +274,17 @@ test("grid: Defaults restores only the active entry's rows, for the unit in the 
     assertEqual(S.Get(fc.path), fc.default, "with Focus in the band, Focus's row")
 end)
 
-test("grid: the Defaults tooltip says it acts on the unit in the band", function()
+test("grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band", function()
     local P = env()
     local ctx = P.show()
+    -- red under: the old "section on screen" wording, or dropping the WS-33 sentence that says the
+    -- band's General-stamped rows are reset by the General page's Defaults
     assertEqual(ctx.panel.defaultsTooltip,
-        P.L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."])
+        P.L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."])
+    local general = P.H.__panelFor("general")
+    general.panel:Show()
+    assertTrue(tostring(general.panel.defaultsTooltip):find("Enable this unit", 1, true) ~= nil,
+        "the General page's Defaults says it resets the band's rows too")
 end)
 
 --- A fresh Grid page whose subcategories answer GetID (KickCD's mock categories do not), recording
@@ -297,19 +307,19 @@ local function recordingOpens()
 end
 
 -- Review Focus 5.
-test("grid: a former page key opens Grid on that entry and tab, drawn on its next show", function()
+test("grid: a former page key opens Units on that entry and tab, drawn on its next show", function()
     local P, opened = recordingOpens()
     local ctx = P.show()
     ctx.panel:Hide()                                -- the settings window is closed
     -- red under: OpenPageTab looking "castbar" up in NS.Settings.categoryFor alone (the Cast bar
     -- page today, nothing once it retires)
     assertTrue(P.H.OpenPageTab("castbar", P.L["Font"]))
-    assertEqual(opened[#opened], P.L["Grid"])
+    assertEqual(opened[#opened], P.L["Units"])
     assertEqual(ctx.activeSection, "castbar", "selected before the show")
     ctx.panel:Show()
     assertEqual(P.railValue(), "castbar", "and drawn on it")
     assertEqual(ctx.activeTab, P.L["Font"], "on the named tab")
-    assertTrue(P.H.OpenPageTab("general", P.L["Units"]), "the linked-Focus note's own link is unchanged")
+    assertTrue(P.H.OpenPageTab("general", P.H.MASTER_GROUP), "a General page key is the library's page")
     assertEqual(opened[#opened], P.L["General"])
 end)
 
@@ -322,8 +332,8 @@ test("grid: SelectTab on an entry key selects the entry and its tab; other pages
     assertTrue(H.SelectTab("label", L["Placement"]))
     assertEqual(ctx.activeSection, "label")
     assertEqual(ctx.activeTab, L["Placement"])
-    assertTrue(H.SelectTab("general", L["Units"]), "the General page is the library's")
-    assertEqual(H.__panelFor("general").activeTab, L["Units"])
+    assertTrue(H.SelectTab("general", H.MASTER_GROUP), "the General page is the library's")
+    assertEqual(H.__panelFor("general").activeTab, H.MASTER_GROUP)
 end)
 
 test("grid: selecting an entry is refused in combat and moves nothing", function()

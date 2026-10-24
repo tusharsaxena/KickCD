@@ -304,7 +304,6 @@ L["Target %s mid-cast"] =
 -- Settings: top-level subcategory titles
 L["General"]                     = "General"
 L["Icons"]                       = "Icons"
-L["Grid"]                        = "Grid"
 L["Spells"]                      = "Spells"
 L["Profiles"]                    = "Profiles"
 
@@ -332,48 +331,44 @@ L["Scale multiplier applied to the entire icon grid."] =
 L["Master alpha"]                = "Master alpha"
 L["Global opacity for the icon grid."] =
     "Global opacity for the icon grid."
-L["Enable Target grid"]          = "Enable Target grid"
-L["Enable Focus grid"]           = "Enable Focus grid"
+-- The per-unit enable, drawn in the Units page's band (item 020, KIC-L03).
+L["Enable this unit"]            = "Enable this unit"
+L["Track this unit: its icon grid, cast bar and label. Off hides all three."] =
+    "Track this unit: its icon grid, cast bar and label. Off hides all three."
 L["Show Target label"]           = "Show Target label"
 L["Show Focus label"]            = "Show Focus label"
 L["Target label text"]           = "Target label text"
 L["Focus label text"]            = "Focus label text"
 
--- Icons / Cast bar tabs — unit selector + Focus link/copy header (Task 8)
+-- The Units page's band: the Unit picker, and Focus's link and copy (item 020,
+-- KIC-L01 / KIC-L-new1: the XC-15 link vocabulary).
 L["Unit"]                        = "Unit"
 L["Target"]                      = "Target"
 L["Focus"]                       = "Focus"
-L["Use same styling as Target"]  = "Use same styling as Target"
-L["Copy styling from Target"]    = "Copy styling from Target"
+L["Link to Target"]              = "Link to Target"
+L["Copy from Target"]            = "Copy from Target"
 L["Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."] =
     "Focus mirrors Target's icon grid, cast bar and label appearance. Untick to give Focus its own."
 L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."] =
     "Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."
--- SPLIT IN TWO, and the split is the hyperlink: the first half is the sentence,
--- the second is the phrase that carries the color and names where the click
--- lands. Kept as two strings rather than one with a format slot so a translator
--- can move the link phrase within the sentence -- in a language where it belongs
--- first, "%s" in the middle of the English word order would fight them.
-L["Linked to Target. Untick 'Use same styling as Target' on the "] =
-    "Linked to Target. Untick 'Use same styling as Target' on the "
-L["General page's Units tab"] = "General page's Units tab"
-L[" to give Focus its own."] = " to give Focus its own."
-L["Open the General page's Units tab."] = "Open the General page's Units tab."
-L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."] =
-    "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling."
+-- Plain text since item 020 (KIC-L04): the tick it names is in the same band.
+L["Linked to Target. Untick Link to Target above to give this unit its own look."] =
+    "Linked to Target. Untick Link to Target above to give this unit its own look."
+L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling. Focus follows Target while Link to Target, beside this picker, is ticked."] =
+    "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling. Focus follows Target while Link to Target, beside this picker, is ticked."
 L["Reset position"]              = "Reset position"
 L["Restore the icon grids to their default screen positions."] =
     "Restore the icon grids to their default screen positions."
 L["Print every internal message to chat. Useful for diagnosing module wiring."] =
     "Print every internal message to chat. Useful for diagnosing module wiring."
 L["General visibility"]          = "General visibility"
-L["When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."] =
-    "When the addon (icon grid + cast bar) should be visible. Master enable still wins — disabled hides everything."
+L["When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD still wins: off hides everything."] =
+    "When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD still wins: off hides everything."
 L["Always"]                      = "Always"
 L["In combat"]                   = "In combat"
-L["When target is casting"]      = "When target is casting"
-L["When target is casting an interruptible spell"] =
-    "When target is casting an interruptible spell"
+L["When the tracked unit is casting"] = "When the tracked unit is casting"
+L["When the tracked unit is casting an interruptible spell"] =
+    "When the tracked unit is casting an interruptible spell"
 
 -- Icons tab — section headers
 L["Sizing"]                      = "Sizing"
@@ -767,9 +762,9 @@ L["Focus castbar"]               = "Focus castbar"
 L["Drag to move. Right-click for settings."] =
     "Drag to move. Right-click for settings."
 
--- Text Label tab. Its first tab is "General" (already keyed above), not
--- "Label": on a page called Text Label the word was the page's, not the tab's.
-L["Text Label"]                  = "Text Label"
+-- Text label entry. Its first tab is "General" (already keyed above), not
+-- "Label": on an entry called Text label the word was the entry's, not the tab's.
+L["Text label"]                  = "Text label"
 L["Show label"]                  = "Show label"
 L["Show this unit's identity label."] =
     "Show this unit's identity label."
@@ -831,17 +826,15 @@ L["The tracked spells for the selected specialization, in priority order."] =
     "The tracked spells for the selected specialization, in priority order."
 L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
-L["Track cooldowns for your current target."] =
-    "Track cooldowns for your current target."
-L["Track cooldowns for your current focus."] =
-    "Track cooldowns for your current focus."
 
--- The Grid page's rail (KickCD#33): one tooltip per entry.
+-- The Units page's rail (KickCD#33): one tooltip per entry, and its Defaults.
 L["The interrupt icons: their size, layout, states, border, annotations and ready glow."] =
     "The interrupt icons: their size, layout, states, border, annotations and ready glow."
 L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."] =
     "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
 L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
-L["Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."] =
-    "Restore the selected unit's settings in the section on screen to their defaults. The other unit keeps its own."
+L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."] =
+    "Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."
+L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
+    "Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."

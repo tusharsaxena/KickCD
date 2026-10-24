@@ -241,14 +241,14 @@ Total.
 - CopyStyling logs ONE [Set] summary line counting the rows it changed
 - CopyStyling still runs onChange per row with the log muted
 - a CopyStyling the seam refuses writes nothing at all
-- units.focus.link is a General > Units row, drawn by the tab's own tick
+- units.focus.link is a General-stamped row, drawn by the Units page's band
 - `/kcd set units.focus.link` writes it, announces units and repaints structurally
-- the Units tab's tick writes the link through Helpers.SetAndRefresh
+- the band's Link to Target tick writes the link through Helpers.SetAndRefresh
 - General's Defaults re-links Focus and survives the refresh raised inside the library's loop
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (38)
+### test_schema.lua (39)
 
 - Settings.Schema is assembled from the settings/* files
 - Validate reports 0 errors on the shipped schema
@@ -279,6 +279,7 @@ Total.
 - a linked Focus's tab strip is disabled and desaturated
 - an unlinked Focus's tab strip is left operable and undimmed
 - the General page's FIRST tab is named exactly `Master controls`
+- Lock frame carries the library's unlocked-is-the-preview tooltip (lockIsPreview)
 - Master controls holds exactly the canonical rows, in canonical order
 - every canonical Master control is declared exactly ONCE in the repo
 - the tab's closing button pair is the composer's afterGroup, not a page hook
@@ -1354,7 +1355,7 @@ Total.
 - the Profiles page is vetoed from a global reset
 - the Profiles page SHOWS the container AceConfigDialog fills, even a pooled (hidden) one
 - a global reset also clears the state no schema row owns
-- General's bespoke controls key their tooltip body `tooltip`, not `desc`
+- General's builder draws no bespoke control, and the band's Copy button keeps its tooltip
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
@@ -1370,24 +1371,24 @@ Total.
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
-- the linked-Focus note has no hover highlight but is still clickable
-- the linked-Focus note opens General on its Units tab
-- a linked Focus page draws the full strip, inert, and only the link note
-- the Focus link's tick and its Copy button share one row
+- the linked-Focus note is plain text naming the band's Link to Target
+- the General page draws Master controls alone, with no empty Units tab
+- a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
+- the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
 
 ### test_grid.lua (12)
 
-- grid: Icons, Cast bar and Text Label register as Grid entries under their page keys, on both builds
-- grid: the Unit band, then the rail Icons, Cast bar, Text Label, 120 wide, opening on Icons
-- grid: the draw order is PageBanner, NavRail, TabStrip
+- grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
+- grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
+- grid: the draw order is PageHeader, NavRail, TabStrip
 - grid: a rail click draws that entry's own strip under the same band
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
-- grid: a linked Focus keeps the rail; each entry draws its full strip, inert, over the link note alone
+- grid: a linked Focus keeps the rail; each entry draws its full strip over the link note, inert unless it has a per-unit row
 - grid: Defaults restores only the active entry's rows, for the unit in the band
-- grid: the Defaults tooltip says it acts on the unit in the band
-- grid: a former page key opens Grid on that entry and tab, drawn on its next show
+- grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band
+- grid: a former page key opens Units on that entry and tab, drawn on its next show
 - grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
 - grid: selecting an entry is refused in combat and moves nothing
 
@@ -1784,7 +1785,7 @@ Total.
 | test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
-| test_schema.lua | 38 |
+| test_schema.lua | 39 |
 | test_schema_store.lua | 10 |
 | test_database.lua | 26 |
 | test_color_shape.lua | 28 |
@@ -1862,4 +1863,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1496** |
+| **Total** | **1497** |

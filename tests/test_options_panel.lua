@@ -473,43 +473,36 @@ test("a global reset also clears the state no schema row owns", function()
     assertTrue(a.x ~= 999, "afterRestoreAll must have cleared the dragged position")
 end)
 
-test("General's bespoke controls key their tooltip body `tooltip`, not `desc`", function()
+test("General's builder draws no bespoke control, and the band's Copy button keeps its tooltip", function()
     -- The library reads a SCHEMA row's body through tooltipBody(), which accepts
     -- either key. Its bespoke makers do NOT: O.SessionCheckbox reads
     -- `spec.tooltip` directly, so a spec that says `desc` renders the label with
-    -- an EMPTY body -- silently, and only in game. ONE spec in
-    -- settings/General.lua's builder is affected: "Use same styling as Target".
-    -- The other three — the Debug console toggle and the two reset buttons — are
-    -- H.MasterControls' (options-ui-§15), so their bodies are the composer's and
-    -- are keyed correctly there by construction.
-    --
-    -- "Copy styling from Target" left this count when it moved onto the tick's
-    -- line: it is no longer an InlineButtonPair spec but a button built by
-    -- `copyStylingButton`, above Build, whose body goes to H.AttachTooltip
-    -- POSITIONALLY -- a call that cannot key it wrongly. That it still HAS a body
-    -- is asserted separately below, so the move cannot have quietly dropped it.
+    -- an EMPTY body -- silently, and only in game. General's builder used to
+    -- carry one such spec, the Focus link tick on its Units tab. Item 020
+    -- (KIC-L01/L02) moved the tick to the Units page's band, where it is the
+    -- schema row itself drawn through RenderField, and the Copy from Target
+    -- button with it, whose body goes to H.AttachTooltip POSITIONALLY.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
-    -- deliberately has none. The builder is the whole region after `local
-    -- function Build` -- every schema row on this page is declared above it, so
-    -- a `desc` key below that line is always a bespoke spec.
-    -- red under: reverting the key to `desc`, or dropping either body.
-    local fh = assert(io.open(T.root .. "/settings/General.lua", "r"))
-    local src = fh:read("*a")
-    fh:close()
+    -- deliberately has none.
+    -- red under: a bespoke spec back in General's builder, or the Copy button
+    -- losing its body.
+    local function read(path)
+        local fh = assert(io.open(T.root .. "/" .. path, "r"))
+        local src = fh:read("*a")
+        fh:close()
+        return src
+    end
+    local src = read("settings/General.lua")
     local at = src:find("local function Build", 1, true)
     assertTrue(at ~= nil, "settings/General.lua must still declare Build")
     local builder = src:sub(at)
-    assertNil(builder:match("desc%s*="),
-        "a bespoke spec in General's builder keys its tooltip `desc`; the library reads `tooltip` and draws no body")
-    -- ...and the bodies are really there, so the rule above cannot be satisfied
-    -- by deleting them instead.
-    local n = 0
-    for _ in builder:gmatch("tooltip%s*=") do n = n + 1 end
-    assertEqual(n, 1, "General's builder must carry the surviving bespoke tooltip body")
-    assertTrue(src:find("H.AttachTooltip(btn", 1, true) ~= nil,
-        "the Copy styling button must still attach a tooltip body of its own")
+    assertNil(builder:match("desc%s*="), "a bespoke spec in General's builder keys its tooltip `desc`")
+    assertNil(builder:match("SessionToggle"), "General's builder draws a bespoke control again")
+    local render = read("settings/Panel_Render.lua")
+    assertTrue(render:find('Helpers.AttachTooltip(btn, L["Copy from Target"],', 1, true) ~= nil,
+        "the Copy from Target button must attach a tooltip body of its own")
 end)
 
 -- ── the L trap ──────────────────────────────────────────────────────────────

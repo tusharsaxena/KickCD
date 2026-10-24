@@ -6,10 +6,13 @@
 -- unit-scoped path (units.<unit>.label.*). label.show FOLLOWS the styling link
 -- (spec 2b, resolved via NS.Units.LabelShow) — a linked Focus mirrors Target's
 -- show, so the show row is a normal styled row and correctly collapses into the
--- "Linked to Target" note when linked. label.text stays per-unit (spec 2a);
--- while linked its row also collapses (unlink to edit the text — the stored
--- per-unit text still renders). Uses the shared Unit banner + tab strip via
--- RenderUnitPanel, under the Grid page's rail.
+-- "Linked to Target" note when linked. label.text stays per-unit (spec 2a), and
+-- since item 020 (KIC-L05) its row is `alwaysPerUnit`: a linked Focus still
+-- draws it, on General above the note, so renaming Focus's label no longer means
+-- unlinking (which forks Focus's whole look). The flag changes the UI only --
+-- Units.CopyStyling copies by path prefix and leaves label.text out, and only
+-- Helpers.PartitionUnitRows reads alwaysPerUnit. Uses the shared Unit band + tab
+-- strip via RenderUnitPanel, under the Units page's rail.
 
 local _, NS = ...
 local L      = NS.L
@@ -108,7 +111,8 @@ local function addUnitRows(unit)
          dialogControl = "EditBox", maxLetters = 32,
          label = L["Label text"],
          desc = L["Text shown on this unit's label."],
-         default = (unit == "target" and "Target" or "Focus") }
+         default = (unit == "target" and "Target" or "Focus"),
+         alwaysPerUnit = true }
 
     -- Placement -------------------------------------------------------------
     -- Order produces:
@@ -208,7 +212,7 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
--- The Text Label entry of the Grid page (KickCD#33).
-H.RegisterGridSection("label", L["Text Label"], {
+-- The Text label entry of the Units page (KickCD#33). Sentence case (KIC-L07).
+H.RegisterGridSection("label", L["Text label"], {
     tooltip = L["The unit's identity label: what it says, where it sits and its font."],
 })

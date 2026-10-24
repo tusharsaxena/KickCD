@@ -398,9 +398,9 @@ local RESIDUE = {
     {"settings/Slash.lua", "\\226\\128\\148 it rebuilds every spec's list.", "SPLIT COLOR"},
     {"settings/Slash.lua", "`/kcd reset %s` is gone \\226\\128\\148 `reset` now takes a setting path. ", "SPLIT COLOR"},
     {"settings/Slash.lua", "the General page's |cFFFFFF00Defaults|r button to reset the whole page", "SPLIT COLOR"},
-    {"settings/Slash.lua", "Grid \\226\\134\\146 Icons' |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
-    {"settings/Slash.lua", "Grid \\226\\134\\146 Cast bar's |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
-    {"settings/Slash.lua", "Grid \\226\\134\\146 Text Label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
+    {"settings/Slash.lua", "Units > Icons' |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
+    {"settings/Slash.lua", "Units > Cast bar's |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
+    {"settings/Slash.lua", "Units > Text label's |cFFFFFF00Defaults|r button to reset that section for the unit in the band", "SPLIT COLOR"},
     {"settings/Slash.lua", ", or |cFFFFFF00/kcd reset <path>|r for one setting (try /kcd list).", "SPLIT COLOR"},
     -- The degradation stub's one verbatim library string (slash-commands-§1),
     -- pinned byte for byte in tests/test_slash_degraded.lua.
