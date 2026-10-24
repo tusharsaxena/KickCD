@@ -1377,7 +1377,7 @@ Total.
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
 
-### test_grid.lua (12)
+### test_grid.lua (13)
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
 - grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
@@ -1386,6 +1386,7 @@ Total.
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
 - grid: a linked Focus keeps the rail; each entry draws its full strip over the link note, inert unless it has a per-unit row
+- grid: the band's ticks still follow a scalar write after a tab click, unlinked and linked
 - grid: Defaults restores only the active entry's rows, for the unit in the band
 - grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band
 - grid: a former page key opens Units on that entry and tab, drawn on its next show
@@ -1835,7 +1836,7 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
-| test_grid.lua | 12 |
+| test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 12 |
@@ -1862,4 +1863,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1496** |
+| **Total** | **1497** |
