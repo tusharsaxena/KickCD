@@ -276,8 +276,10 @@ KickCD (AceAddon)
                         load right after it (KCD-24 — all three publish onto
                         the one NS.Settings.Helpers table):
     ├── Panel_Widgets.lua — what is LEFT of the host widget layer: the
-                        SessionToggle argument-order adapter over the
-                        library's SessionCheckbox, and nothing else.
+                        OpenPageTab navigation seam, and nothing else.
+                        (SessionToggle, its SessionCheckbox adapter, went
+                        with item 020: its last caller was General's
+                        Units tab, now the Units page's band.)
                         (InlinePair went with the bespoke Debug-console
                         toggle it existed for — that line is
                         H.MasterControls' now and both halves are ordinary

@@ -230,6 +230,39 @@ test("grid: a linked Focus keeps the rail; each entry draws its full strip over 
     end
 end)
 
+--- The band's checkbox labeled `label` on the page's current band, or nil.
+local function bandTick(P, ctx, label)
+    for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+        if w.labelText == P.L[label] then return w end
+    end
+end
+
+-- KC-LY review: the band lives in the chrome and outlives a tab click, so its refreshers must too.
+test("grid: the band's ticks still follow a scalar write after a tab click, unlinked and linked", function()
+    local P = env()
+    focusLink(P, false)
+    local ctx = P.show()
+    ctx.__tabKids[2]:_run("OnClick")
+    assertEqual(ctx.activeTab, groupsOf(P.H, "icons", "target")[2], "sanity: the strip click landed")
+    P.H.SetAndRefresh("units.target.enabled", false)
+    -- red under: a tab click that resets ctx.refreshers while the band's widgets stay on screen
+    assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), false, "unlinked: the band's Enable tick")
+    P.H.SetAndRefresh("units.target.enabled", true)
+    assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), true, "unlinked: and back")
+
+    -- A linked Focus draws its strip by hand; Text label's strip stays live (KIC-L05).
+    focusLink(P, true)
+    P.H.SetViewedUnit("focus")
+    P.rail("label")
+    assertEqual(ctx.unit, "focus")
+    ctx.__tabKids[2]:_run("OnClick")
+    assertEqual(ctx.activeTab, groupsOf(P.H, "label", "focus")[2], "sanity: the linked strip click landed")
+    P.H.SetAndRefresh("units.focus.enabled", false)
+    assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), false, "linked: the band's Enable tick")
+    P.H.SetAndRefresh("units.focus.enabled", true)
+    assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), true, "linked: and back")
+end)
+
 -- ── Defaults, deep links, SelectTab (NR-KC-03) ─────────────────────────────────────────────
 
 --- The first stored boolean row of `panel` for `unit`: one to move off its default.

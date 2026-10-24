@@ -154,7 +154,7 @@ local function unitPicker(ctx, AceGUI, host)
         Helpers.RefreshAllPanels()
     end)
     Helpers.AttachTooltip(dd, L["Unit"],
-        L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling. Focus follows Target while Link to Target, beside this picker, is ticked."])
+        L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."])
     host:AddChild(dd)
     return dd
 end
@@ -211,12 +211,21 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     -- passes no chrome draws exactly what it drew before.
     if chrome then chrome(ctx) end
 
+    -- A tab click redraws the WHOLE panel, band included, on both strip paths.
+    -- The band is chrome and outlives a strip-only redraw, but its Enable and
+    -- Link ticks register their refreshers through RenderField, and ClearScroll
+    -- reassigns ctx.refreshers: a strip-only redraw would leave the band's ticks
+    -- on screen with no refresher, so a `/kcd set units.<u>.enabled` typed after
+    -- any tab click left them stale. Pinned by tests/test_grid.lua ("the band's
+    -- ticks still follow a scalar write after a tab click").
+    local function rerender(c) Helpers.RenderUnitPanel(c, panelKey, afterGroup, chrome) end
+
     if NS.Units.IsLinked(ctx.unit) then
-        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+        Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup, rerender)
         return
     end
 
-    Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup)
+    Helpers.RenderTabbedSchema(ctx, panelKey, afterGroup, nil, { rerender = rerender })
 end
 
 --- A linked Focus: the STRIP FIRST, always, and the link note as content.
@@ -284,7 +293,9 @@ local function deadenStrip(buttons)
     end
 end
 
-function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
+--- `rerender` (optional) is RenderUnitPanel's whole-panel redraw, which a tab
+--- click calls in place of the strip-only redraw below, for the band's sake.
+function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup, rerender)
     local rows = Helpers.SchemaForPanel(panelKey, ctx.unit)
 
     local groups, seen, perUnitTabs = {}, {}, false
@@ -308,6 +319,7 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
         onSelect = function(key)
             if key == ctx.activeTab then return end
             ctx.activeTab = key
+            if rerender then return rerender(ctx) end
             Helpers.ClearScroll(ctx)
             Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
         end,

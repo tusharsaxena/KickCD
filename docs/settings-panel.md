@@ -281,8 +281,8 @@ A bulk copy or reset is logged as **one** `[Set] <act> <scope>: N rows` line, ne
     label    = L["Master scale"],
     desc     = L["..."],                     -- the tooltip BODY. A schema row may key it
                                              --   `desc` OR `tooltip`; the library reads either.
-                                             --   A BESPOKE spec (SessionToggle, InlineButtonPair,
-                                             --   PageBanner) must key it `tooltip` -- those makers
+                                             --   A BESPOKE spec (InlineButtonPair, PageBanner)
+                                             --   must key it `tooltip` -- those makers
                                              --   read spec.tooltip and nothing else, so `desc`
                                              --   there draws the label with an empty body,
                                              --   silently and only in game.

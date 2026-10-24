@@ -354,8 +354,8 @@ L["Copy Target's current appearance onto Focus once, and unlink so the two can d
 -- Plain text since item 020 (KIC-L04): the tick it names is in the same band.
 L["Linked to Target. Untick Link to Target above to give this unit its own look."] =
     "Linked to Target. Untick Link to Target above to give this unit its own look."
-L["Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling. Focus follows Target while Link to Target, beside this picker, is ticked."] =
-    "Which unit every tab on this page is editing. Target and Focus are configured independently unless Focus is set to use Target's styling. Focus follows Target while Link to Target, beside this picker, is ticked."
+L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."] =
+    "Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."
 L["Reset position"]              = "Reset position"
 L["Restore the icon grids to their default screen positions."] =
     "Restore the icon grids to their default screen positions."
