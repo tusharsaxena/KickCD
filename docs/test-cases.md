@@ -248,7 +248,7 @@ Total.
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (40)
+### test_schema.lua (41)
 
 - Settings.Schema is assembled from the settings/* files
 - Validate reports 0 errors on the shipped schema
@@ -263,6 +263,7 @@ Total.
 - every label-panel row's default is a member of its static values list
 - PartitionUnitRows splits alwaysPerUnit rows from styled rows
 - debug console stays session-only: it is a row, and it never reaches the db
+- Text label > Placement pairs the attached widget's point first, then the label's
 - every pinned tab draws its subsection headings in the designed order
 - every page partitions into the designed tab strip, in strip order
 - no page draws a tab twice: every group's rows are contiguous
@@ -1786,7 +1787,7 @@ Total.
 | test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
-| test_schema.lua | 40 |
+| test_schema.lua | 41 |
 | test_schema_store.lua | 10 |
 | test_database.lua | 26 |
 | test_color_shape.lua | 28 |
@@ -1864,4 +1865,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1498** |
+| **Total** | **1499** |

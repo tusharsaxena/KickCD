@@ -158,7 +158,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     end
 
     local specDD = AceGUI:Create("Dropdown")
-    specDD:SetLabel(L["Specialization"])
+    specDD:SetLabel(L["Class and specialization"])
     specDD:SetList(items, order)
     if selectedClass and selectedSpec then
         specDD:SetValue(selectedClass .. "/" .. selectedSpec)
@@ -199,7 +199,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     addHost.frame:ClearAllPoints()
     -- Anchor LEFT…RIGHT against specDD.dropdown (the inner UIDropDownMenu
     -- frame) instead of specDD.frame (the outer AceGUI frame that
-    -- includes the "Specialization" label above the dropdown control).
+    -- includes the "Class and specialization" label above the dropdown control).
     -- The outer frame is 40 px tall when labeled (label 18 + dropdown
     -- 26) so a vertical-center anchor against it landed the button on
     -- the seam between the two — visually misaligned. Anchoring against
@@ -209,7 +209,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     -- the inner dropdown extends +17 px past the outer frame's right
     -- (decorative texture overhang), so -5 nets back to +12.
     -- AGAINST THE OUTER FRAME, NOT THE INNER DROPDOWN. The button this replaced had no label, so
-    -- it anchored to specDD.dropdown -- the control below the "Specialization" caption -- to sit on
+    -- it anchored to specDD.dropdown -- the control below the "Class and specialization" caption -- to sit on
     -- the control's own vertical center. The add box HAS a label, so anchoring it there started its
     -- caption where the dropdown control starts and pushed its box a whole caption lower than the
     -- dropdown beside it. Aligned frame to frame, the two captions share a line and the two

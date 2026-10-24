@@ -84,8 +84,8 @@ local ATTACH_VALUES_ORDER = {
 -- the reader nothing the page had not already said; it is General now, the way
 -- every first tab in this addon is.
 --
--- Orientation used to be a tab of its own — horizontal justify, vertical
--- justify, rotation. It is inside Placement now. Two tabs next to each other,
+-- Orientation used to be a tab of its own — horizontal alignment, vertical
+-- alignment, rotation. It is inside Placement now, under its own heading. Two tabs next to each other,
 -- both answering "where does this text sit and which way does it face", is the
 -- reader crossing the same question twice to find out which half holds the
 -- control they want.
@@ -115,59 +115,68 @@ local function addUnitRows(unit)
          alwaysPerUnit = true }
 
     -- Placement -------------------------------------------------------------
-    -- Order produces:
-    --     [Attach to]                                (solo)
-    --     [Label anchor point]  | [Attach point]
-    --     [X offset]            | [Y offset]
-    --     [Horizontal justify]  | [Vertical justify]
-    --     [Rotation]
+    -- Two subjects since item 020 (KIC-L23), so two headings (options-ui-§7):
+    --     Position   [Attach to]                                          (solo)
+    --                [Attached widget anchor point] | [Label anchor point]
+    --                [X offset (px)]                | [Y offset (px)]
+    --     Alignment  [Horizontal alignment]         | [Vertical alignment]
+    --                [Rotation (degrees)]
     --
     -- `attach` is solo because it is a genuine pivot rather than spacing: which
     -- widget the label hangs off decides what the two anchor points underneath
-    -- it even refer to. Below it every line is a pair read ACROSS — the two
-    -- anchor points, the two offsets, the two justifications — because in each
-    -- case the reader's question is how the two compare, not what one of them
-    -- is on its own.
+    -- it even refer to. Below it every line is a pair read ACROSS -- the two
+    -- anchor points, the two offsets, the two alignments -- because in each case
+    -- the reader's question is how the two compare, not what one of them is on
+    -- its own. The anchor pair names both elements, target first (XC-32,
+    -- KIC-L24): the attached widget's point, then the label's own.
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Position"],
          path = "units." .. unit .. ".label.style.attach", type = "string",
          label = L["Attach to"],
          desc = L["Which widget the label anchors to."],
          default = "icons", values = ATTACH_VALUES, sorting = ATTACH_VALUES_ORDER,
          solo = true }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Position"],
+         path = "units." .. unit .. ".label.style.relPoint", type = "string",
+         label = L["Attached widget anchor point"],
+         desc = L["Which point of the widget chosen in Attach to the label attaches to."],
+         default = "TOP", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
+    add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Position"],
          path = "units." .. unit .. ".label.style.point", type = "string",
          label = L["Label anchor point"],
          desc = L["Which point of the label attaches."],
          default = "BOTTOM", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
-         path = "units." .. unit .. ".label.style.relPoint", type = "string",
-         label = L["Attach point"],
-         desc = L["Which point of the target widget the label attaches to."],
-         default = "TOP", values = POINT_VALUES, sorting = POINT_VALUES_ORDER }
-    add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Position"],
          path = "units." .. unit .. ".label.style.offsetX", type = "number",
-         label = L["X offset (in px)"],
+         label = L["X offset (px)"],
          desc = L["Horizontal pixel shift (positive = right)."],
          default = 0, min = -200, max = 200, step = 1, fmt = "%d px" }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Position"],
          path = "units." .. unit .. ".label.style.offsetY", type = "number",
-         label = L["Y offset (in px)"],
+         label = L["Y offset (px)"],
          desc = L["Vertical pixel shift (positive = up)."],
          default = 12, min = -200, max = 200, step = 1, fmt = "%d px" }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Alignment"],
          path = "units." .. unit .. ".label.style.justifyH", type = "string",
-         label = L["Horizontal justify"],
+         label = L["Horizontal alignment"],
          desc = L["Horizontal text alignment."],
          default = "CENTER", values = JUSTIFY_H_VALUES, sorting = JUSTIFY_H_VALUES_ORDER }
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Alignment"],
          path = "units." .. unit .. ".label.style.justifyV", type = "string",
-         label = L["Vertical justify"],
+         label = L["Vertical alignment"],
          desc = L["Vertical text alignment."],
          default = "MIDDLE", values = JUSTIFY_V_VALUES, sorting = JUSTIFY_V_VALUES_ORDER }
     -- "deg", never the degree SIGN. U+00B0 is not ASCII, and a glyph the
     -- settings-panel font does not carry renders as an empty box in game and
     -- nowhere else — it cannot fail in a test.
     add{ panel = "label", section = "label", unit = unit, group = L["Placement"],
+         subgroup = L["Alignment"],
          path = "units." .. unit .. ".label.style.rotation", type = "number",
          label = L["Rotation (degrees)"],
          desc = L["Rotate the label. 0 = upright."],

@@ -514,7 +514,7 @@ L["Allowed values: %s"]          = "Allowed values: %s"
 L["Cannot open settings during combat."] = "cannot open settings during combat — Blizzard's category-switch is protected"
 
 -- Spells editor
-L["Specialization"]              = "Specialization"
+L["Class and specialization"]    = "Class and specialization"
 L["Add a spell"] = "Add a spell"
 L["Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."] = "Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."
 L["not tracked"] = "not tracked"
@@ -650,9 +650,7 @@ L["Which point on the primary icon the cast bar attaches to (only used when Anch
 L["Anchor on cast bar"]          = "Anchor on cast bar"
 L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."] =
     "Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."
-L["X offset (in px)"]            = "X offset (in px)"
 L["X offset (px)"]               = "X offset (px)"
-L["Y offset (in px)"]            = "Y offset (in px)"
 L["Y offset (px)"]               = "Y offset (px)"
 L["Y offset (px, positive = down)"] = "Y offset (px, positive = down)"
 L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."] =
@@ -774,6 +772,7 @@ L["Label text"]                  = "Label text"
 L["Text shown on this unit's label."] =
     "Text shown on this unit's label."
 L["Placement"]                   = "Placement"
+L["Alignment"]                   = "Alignment"
 L["Attach to"]                   = "Attach to"
 L["Which widget the label anchors to."] =
     "Which widget the label anchors to."
@@ -781,16 +780,16 @@ L["Icon grid"]                   = "Icon grid"
 L["Label anchor point"]          = "Label anchor point"
 L["Which point of the label attaches."] =
     "Which point of the label attaches."
-L["Attach point"]                = "Attach point"
-L["Which point of the target widget the label attaches to."] =
-    "Which point of the target widget the label attaches to."
+L["Attached widget anchor point"] = "Attached widget anchor point"
+L["Which point of the widget chosen in Attach to the label attaches to."] =
+    "Which point of the widget chosen in Attach to the label attaches to."
 L["Horizontal pixel shift (positive = right)."] =
     "Horizontal pixel shift (positive = right)."
 L["Vertical pixel shift (positive = up)."] =
     "Vertical pixel shift (positive = up)."
-L["Horizontal justify"]          = "Horizontal justify"
+L["Horizontal alignment"]        = "Horizontal alignment"
 L["Horizontal text alignment."]  = "Horizontal text alignment."
-L["Vertical justify"]            = "Vertical justify"
+L["Vertical alignment"]          = "Vertical alignment"
 L["Vertical text alignment."]    = "Vertical text alignment."
 L["Rotation (degrees)"]          = "Rotation (degrees)"
 L["Rotate the label. 0 = upright."] =

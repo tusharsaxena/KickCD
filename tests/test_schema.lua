@@ -296,7 +296,23 @@ local SUBSECTIONS = {
         ["Interruptible"]     = { "Bar", "Background", "Spell name", "Border" },
         ["Non-interruptible"] = { "Bar", "Background", "Spell name", "Border" },
     },
+    label = {
+        ["Placement"] = { "Position", "Alignment" },
+    },
 }
+
+test("Text label > Placement pairs the attached widget's point first, then the label's", function()
+    -- KIC-L24 (XC-32): a two-point anchor names both elements, target first.
+    -- red under: point declared before relPoint again, or the alignment rows
+    -- drifting back above the offsets
+    local want = { "attach", "relPoint", "point", "offsetX", "offsetY", "justifyH", "justifyV",
+                   "rotation" }
+    local got = {}
+    for _, def in ipairs(T.NS.Settings.Helpers.SchemaForPanel("label", "target")) do
+        if def.group == L["Placement"] then got[#got + 1] = def.path:match("([^.]+)$") end
+    end
+    assertEqual(table.concat(got, ","), table.concat(want, ","))
+end)
 
 test("every pinned tab draws its subsection headings in the designed order", function()
     -- red under: a row filed under the wrong heading, a heading renamed, or the
@@ -888,6 +904,7 @@ local TAB_MIXED = {
                 ["Ready glow"] = true },
     castbar = { ["Size and position"] = true, ["Text"] = true, ["Interruptible"] = true,
                 ["Non-interruptible"] = true },
+    label   = { ["Placement"] = true },
 }
 
 --- Tabs that are ONE subject. Every row on one MUST carry NO `subgroup` -- the
@@ -909,8 +926,6 @@ local TAB_SINGLE_SUBJECT = {
     },
     label = {
         ["General"] = "whether the label shows, and what it says.",
-        ["Placement"] = "one anchor answer, spelled out -- attach, point, relative point, the two "
-            .. "offsets, both justifications and the rotation.",
         ["Font"] = "options-ui-§16's composed font block and nothing beside it.",
     },
 }
