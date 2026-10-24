@@ -1391,6 +1391,10 @@ Total.
 - grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
 - grid: selecting an entry is refused in combat and moves nothing
 
+### test_settings_layout_guard.lua (1)
+
+- layout guard: every stored path, type, default and range is the one it was before item 020
+
 ### test_settings_refreshers.lua (5)
 
 - rendering rows registers refreshers
@@ -1832,6 +1836,7 @@ Total.
 | test_options_panel.lua | 35 |
 | test_options_panel_degraded.lua | 9 |
 | test_grid.lua | 12 |
+| test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 13 |
 | test_library_lines.lua | 9 |
@@ -1857,4 +1862,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1495** |
+| **Total** | **1496** |

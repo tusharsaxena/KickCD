@@ -227,6 +227,7 @@ local SUITES = {
     "test_options_panel",
     "test_options_panel_degraded",
     "test_grid",
+    "test_settings_layout_guard",
     "test_settings_refreshers",
     "test_flow_traces",
     "test_library_lines",
