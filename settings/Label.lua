@@ -1,6 +1,6 @@
 -- settings/Label.lua
 --
--- The Grid page's "Text Label" entry (KickCD#33). One identity label per unit (target/focus),
+-- The Units page's "Text label" entry (KickCD#33). One identity label per unit (target/focus),
 -- rendered by modules/UnitLabel.lua. Pure schema: every widget is a row in
 -- KickCD.Settings.Schema, generated once per NS.Units.LIST entry with a
 -- unit-scoped path (units.<unit>.label.*). label.show FOLLOWS the styling link
@@ -80,7 +80,7 @@ local ATTACH_VALUES_ORDER = {
 -- (libs/LibKa0s/OptionsCompose.lua), which is what brings the class-color
 -- companion beside the label color and the font shadow this page did not have.
 --
--- The first used to be called "Label" on a page called Text Label, which told
+-- The first used to be called "Label" on a page called Text label, which told
 -- the reader nothing the page had not already said; it is General now, the way
 -- every first tab in this addon is.
 --

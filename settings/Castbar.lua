@@ -1,7 +1,7 @@
 -- settings/Castbar.lua
 --
--- The Grid page's Cast bar entry (KickCD#33). Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
+-- The Units page's Cast bar entry (KickCD#33). Pure schema: every widget is a row in
+-- KickCD.Settings.Schema; the Units page (settings/Grid.lua) draws it through
 -- Helpers.RenderGridPage: the Unit band, the rail, then the rows handed to
 -- Helpers.RenderTabbedSchema. Adding a new castbar option means adding one
 -- schema row here -- into the run of rows its `group` already owns, because

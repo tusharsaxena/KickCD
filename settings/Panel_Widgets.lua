@@ -43,7 +43,7 @@ local Helpers = NS.Settings.Helpers
 --- named tab on the render the switch triggers rather than opening on whatever it
 --- was last left on and jumping a frame later.
 ---
---- An entry key of the Grid page (`icons`, `castbar`, `label`) opens Grid on that entry and tab.
+--- An entry key of the Units page (`icons`, `castbar`, `label`) opens Units on that entry and tab.
 --- Refuse and say so, or answer false. Its own function because each guard in
 --- the ladder counts as a decision and the two halves together measured past the
 --- release gate's complexity cap (performance-§10).
@@ -69,7 +69,7 @@ end
 function Helpers.OpenPageTab(pageKey, tabKey)
     if refusedInCombat() then return false end
 
-    -- A former page key is an entry of the Grid page now (KickCD#33): select the
+    -- A former page key is an entry of the Units page now (KickCD#33): select the
     -- entry and its tab there, then open Grid. SelectSection marks a hidden page owed
     -- a render, so the entry is what the switch below draws.
     if Helpers.GridSection and Helpers.GridSection(pageKey) then

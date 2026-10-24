@@ -29,10 +29,10 @@ A fresh install puts an icon grid and a placeholder cast bar on screen for your 
 
 Setting it up takes four steps, in this order.
 
-- Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Grid → Cast bar → Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back.
+- Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Units > Cast bar > Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back.
 - Check your spells. The grid starts from a list for your class and spec, and it only shows what you can cast right now, so it changes when you respec. The Spells page is where you add to that list, disable rows you never use, or drag a row by its handle to reorder the icons. Enable more than the grid has room for and the extras are left off, with one warning in chat.
-- Pick when it shows. Once you lock, a set only appears while its unit is casting something you can interrupt. **General visibility** on General → Master controls changes that to always, in combat only, or any cast. The ready glow has its own trigger on Grid → Icons → Ready glow.
-- Make it look right. The Grid page's rail holds Icons, Cast bar and Text Label, and the Target / Focus picker across the top says which unit you're editing. Focus copies your target's look until you untick "Use same styling as Target" on General → Units, which is also where you turn focus off. Text Label renames, restyles or hides the "Target" and "Focus" tags beside each grid.
+- Pick when it shows. Once you lock, a set only appears while its unit is casting something you can interrupt. **General visibility** on General > Master controls changes that to always, in combat only, or any cast. The ready glow has its own trigger on Units > Icons > Ready glow.
+- Make it look right. The Units page's rail holds Icons, Cast bar and Text label, and the band across the top picks which unit you're editing. Beside the picker are **Enable this unit**, which turns that unit off, and, for Focus, **Link to Target** and **Copy from Target**. Focus copies your target's look until you untick **Link to Target**. Text label renames, restyles or hides the "Target" and "Focus" tags beside each grid.
 
 The minimap button opens the settings on a left-click, and a right-click gives you a menu with **Enabled** and **Locked**. `/kcd disable` turns the addon off without opening anything, and `/kcd enable` turns it back on. `/kcd resetall` puts every page, position and spec's spell list back to defaults, so keep it for when you really want a fresh start. To see every setting and its value without clicking through the pages, run `/kcd list`.
 
@@ -58,11 +58,11 @@ These are the settings that change the most about how KickCD looks and behaves.
 
 #### Target and focus
 
-Target is tracked whenever the addon is on. Focus is tracked by default and starts linked, copying target's icon and cast-bar styling live. Turn it off in General → Units, or untick "Use same styling as Target" there to give it a look of its own.
+Target is tracked whenever the addon is on. Focus is tracked by default and starts linked, copying target's icon and cast-bar styling live. Turn it off with **Enable this unit** in the Units page's band while Focus is picked, or untick **Link to Target** beside it to give it a look of its own.
 
 Position and label text are per-unit whether the link is on or off, and that's why the two sets start well apart. While focus is linked it also mirrors target's label styling and whether the label shows at all. The drag lock, the visibility mode, and overall size and transparency are always shared across both units.
 
-#### Visibility (General → Master controls → General visibility)
+#### Visibility (General > Master controls > General visibility)
 
 This is one setting with four values, and the master switch outranks all of them.
 
@@ -73,19 +73,19 @@ This is one setting with four values, and the master switch outranks all of them
 | `target_casting` | Only while that unit is casting or channeling. |
 | `target_casting_interruptible` | Only while that unit is hostile and casting something you can interrupt. Casts you can't interrupt stay hidden. (Default.) |
 
-The ready glow has its own copy of this setting on Grid → Icons → Ready glow, with the same four choices plus `never` to switch the glow off entirely. Primary and secondary icons can use different triggers.
+The ready glow has its own copy of this setting on Units > Icons > Ready glow, with the same four choices plus `never` to switch the glow off entirely. Primary and secondary icons can use different triggers.
 
 The same tab sets each glow's style (button, proc, pixel or auto cast), its color, and that style's own controls: how fast it moves, how many lines or sparkles it draws, how thick or long they are, how far the glow reaches past the icon, and whether the proc glow opens with a burst. Only the chosen style's controls are active, and a change shows on a glowing icon straight away. Primary and secondary icons each have their own set.
 
-#### Cast bar placement (Grid → Cast bar → Size and position)
+#### Cast bar placement (Units > Cast bar > Size and position)
 
 The default is anchored to the primary icon. The bar sticks to the main icon in the grid and moves with it, and you choose which points connect plus a small offset. You can't drag the bar itself in this mode. The other option is free, where the bar floats on its own: unlock, drag, lock, and the position is saved. Out of the box the bar sits just below the icon grid, lined up with its left edge.
 
-#### Cast bar direction and auto-size (Grid → Cast bar → General)
+#### Cast bar direction and auto-size (Units > Cast bar > General, and Size and position > Size)
 
-Orientation is horizontal or vertical, and growth direction picks which way the bar fills: right or left when it's horizontal, up or down when it's vertical. Auto-size to icon grid matches the bar's length to the grid and keeps it matched, so adding, removing or disabling icons resizes the bar in place. The bar's other dimension stays wherever you set it.
+Orientation is horizontal or vertical, and growth direction picks which way the bar fills: right or left when it's horizontal, up or down when it's vertical. Auto-size to icon grid, at the head of Size and position, matches the bar's length to the grid and keeps it matched, so adding, removing or disabling icons resizes the bar in place. The bar's other dimension stays wherever you set it.
 
-#### Icon grid layout (Grid → Icons → Layout)
+#### Icon grid layout (Units > Icons > Size and layout)
 
 The primary anchor sets where the block of secondary icons sits relative to the main icon. The grow direction sets the order they fill in, and Rows × Cols sets how many fit. Any anchor works with any grow direction.
 
@@ -96,9 +96,9 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | Question | Answer |
 | --- | --- |
 | Does this replace Blizzard's cast bars? | No. It adds its own and leaves Blizzard's alone. If you don't want to see both, hide Blizzard's target and focus cast bars in Edit Mode. |
-| Does it track my focus too? | Yes, out of the box, with its own grid and cast bar copying your target set's look. Turn focus off in General → Units if you only want your target. |
-| How do I make focus look different from target? | On General → Units, untick "Use same styling as Target" (or press "Copy styling from Target" first, then edit). Then switch the Grid page's unit picker to Focus. |
-| I see a "Target" (or "Focus") label on my grid. What is it, and can I change or hide it? | That's the unit's identity label, and Grid → Text Label controls it. You can set its text, restyle it, attach it to the icon grid or the cast bar, or turn it off. Each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows, but the text stays independent. |
+| Does it track my focus too? | Yes, out of the box, with its own grid and cast bar copying your target set's look. Turn focus off with **Enable this unit** in the Units page's band, with Focus picked, if you only want your target. |
+| How do I make focus look different from target? | On the Units page, pick Focus in the band and untick **Link to Target** beside the picker (or press **Copy from Target** first, then edit). |
+| I see a "Target" (or "Focus") label on my grid. What is it, and can I change or hide it? | That's the unit's identity label, and Units > Text label controls it. You can set its text, restyle it, attach it to the icon grid or the cast bar, or turn it off. Each unit has its own. While focus is linked it mirrors target's label styling and whether the label shows, but the text stays independent, and Text label > General still lets you edit it. |
 | How do I move the grids or cast bars? | Run `/kcd unlock`, drag, then `/kcd lock`. One lock covers every unit. An icon grid always drags when unlocked. A cast bar drags only when it's set to move freely; when it's anchored, it follows its grid. `/kcd resetposition` puts both icon grids back in their default spots. A cast bar that moves freely stays where you left it, and `/kcd resetall` resets that too. |
 | Where do my spell defaults come from, and why isn't every spell there? | Each class and spec comes with a starter list, set up the first time you use that character. The grid then shows only the spells you can cast right now, so spells from talents you didn't pick, spells you haven't learned and pet abilities without a pet are hidden. To start over, use `/kcd spells resetall` (all specs) or `/kcd spells reset` (one spec). |
 | Can I add my own spells? | Yes, in Settings → Spells or with `/kcd spells add`. For the spec you're currently playing, you can only add spells the game already tracks as cooldowns. |
@@ -117,13 +117,13 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | The icon grid never appears. | Check three things: the addon is on (`/kcd get enabled` is `true`), your visibility setting fits the situation (`/kcd get visibility`; some modes need combat or a casting target), and your spec has at least one enabled spell that you know. `/kcd diagnostics` lists what it's watching. |
 | The icon grid won't drag. | It's locked. Run `/kcd unlock`, drag it, then `/kcd lock`. If unlocking doesn't seem to take, run `/kcd toggle`. |
 | The focus set sits on top of my target set. | They start apart, but you can drag them into each other. Run `/kcd unlock`, move one out of the way, then `/kcd lock`. `/kcd resetall` puts every unit back in its starting position. |
-| I only want my target, not focus. | Turn focus off in General → Units, or run `/kcd set units.focus.enabled false`. Everything focus-related disappears. |
+| I only want my target, not focus. | On the Units page, pick Focus and untick **Enable this unit**, or run `/kcd set units.focus.enabled false`. Everything focus-related disappears. |
 | The cast bar still shows on casts I can't interrupt, even in "interruptible only" mode. | If the bar fades out on those casts, it's working as intended: the frame is still there, just invisible. For anything else, run `/kcd diagnostics` while the target is casting and follow [Reporting a bug](#reporting-a-bug). |
-| Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | This was fixed and shouldn't come back. If it does, first check that cooldown text is on (Grid → Icons → Annotations), then run `/kcd diagnostics` during the stuck moment and follow [Reporting a bug](#reporting-a-bug). |
+| Cooldown text sticks at `0.0` for a few seconds after a spell finishes. | This was fixed and shouldn't come back. If it does, first check that cooldown text is on (Units > Icons > Annotations), then run `/kcd diagnostics` during the stuck moment and follow [Reporting a bug](#reporting-a-bug). |
 | The glow on secondary icons flickers or restarts constantly. | That shouldn't happen any more. If it still does, check that the glow trigger is set to one of the "target casting" options, then send a short video with your settings. |
 | The settings panel won't open mid-fight. | That's deliberate: the game blocks it in combat. Run `/kcd config` again after the fight. |
 | The cast bar won't auto-size to the grid. | Toggle Auto-size off and on, or run `/kcd resetposition`, which puts both icon grids back and refreshes the bar. Auto-size only controls the bar's length; its other dimension stays where you set it. |
-| I want a clean slate. | For one page, use that page's **Defaults** button. For one setting, `/kcd reset setting`. For everything but profiles, `/kcd resetall` or General → Reset all settings. For just the icon grids' positions, `/kcd resetposition` puts both back. For one spec's spell list, `/kcd spells reset` or the Spells page's Defaults button; for every spec's, `/kcd spells resetall`. |
+| I want a clean slate. | For one page, use that page's **Defaults** button. For one setting, `/kcd reset setting`. For everything but profiles, `/kcd resetall` or General > Master controls > Reset all settings. For just the icon grids' positions, `/kcd resetposition` puts both back. For one spec's spell list, `/kcd spells reset` or the Spells page's Defaults button; for every spec's, `/kcd spells resetall`. |
 | Something looks wrong and I want to report it. | Follow [Reporting a bug](#reporting-a-bug) below. |
 
 ## Reporting a bug

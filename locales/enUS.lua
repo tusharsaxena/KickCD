@@ -601,7 +601,6 @@ L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remo
 L["Show border"]                 = "Show border"
 L["Draw a thin border around each icon."] =
     "Draw a thin border around each icon."
-L["Border thickness (in px)"]    = "Border thickness (in px)"
 L["Border thickness in pixels."] = "Border thickness in pixels."
 L["Border color"]                = "Border color"
 L["Border color (RGBA)."]        = "Border color (RGBA)."

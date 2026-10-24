@@ -1,7 +1,7 @@
 -- settings/Icons.lua
 --
--- The Grid page's Icons entry (KickCD#33). Pure schema: every widget is a row in
--- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
+-- The Units page's Icons entry (KickCD#33). Pure schema: every widget is a row in
+-- KickCD.Settings.Schema; the Units page (settings/Grid.lua) draws it through
 -- Helpers.RenderGridPage, which pins the Unit picker into the band, draws the rail, and hands the rows to
 -- Helpers.RenderTabbedSchema -- four tabs (Size and layout, Appearance,
 -- Annotations, Ready glow; item 020 merged Sizing with Layout and Visual states

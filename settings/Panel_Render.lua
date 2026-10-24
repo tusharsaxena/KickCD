@@ -331,10 +331,10 @@ function Helpers.RenderLinkedUnit(ctx, panelKey, afterGroup)
 end
 
 -- ---------------------------------------------------------------------
--- The Grid page: the Unit band, the nav rail, the selected entry (#33)
+-- The Units page: the Unit band, the nav rail, the selected entry (#33)
 -- ---------------------------------------------------------------------
 --
--- Icons, Cast bar and Text Label are one page (settings/Grid.lua). The Unit
+-- Icons, Cast bar and Text label are one page (settings/Grid.lua). The Unit
 -- picker is the band, a nav rail (LibKa0s-Options' O.NavRail, options-ui-§13)
 -- chooses the entry, and each entry keeps the tab strip its own page had. An
 -- entry IS the old page key: every row keeps `panel`, `section`, `unit` and its
@@ -351,10 +351,10 @@ end
 local gridEntries = {}
 -- The rail's order, fixed here rather than taken from the TOC.
 local GRID_ORDER = { "icons", "castbar", "label" }
--- The Grid page's ctx, bound by its builder: the one page SelectSection moves.
+-- The Units page's ctx, bound by its builder: the one page SelectSection moves.
 local gridCtx
 
---- Register one entry of the Grid page. Called at FILE LOAD by settings/Icons.lua,
+--- Register one entry of the Units page. Called at FILE LOAD by settings/Icons.lua,
 --- Castbar.lua and Label.lua.
 --- @param key string    the entry's page key: the `panel` its schema rows carry
 --- @param label string  the rail entry's label
@@ -394,14 +394,14 @@ local function stashTab(ctx)
     ctx.__renderedSection = nil
 end
 
---- Bind the Grid page's ctx (settings/Grid.lua's builder). The page opens on Icons.
+--- Bind the Units page's ctx (settings/Grid.lua's builder). The page opens on Icons.
 function Helpers.__bindGridPage(ctx)
     gridCtx = ctx
     ctx.sectionTabs = {}
     ctx.activeSection = GRID_ORDER[1]
 end
 
---- Render the Grid page: the Unit band, the nav rail, then the entry's strip and
+--- Render the Units page: the Unit band, the nav rail, then the entry's strip and
 --- rows -- the library's draw order, PageBanner, NavRail, TabStrip. The band and
 --- both strip paths are Helpers.RenderUnitPanel's; the rail goes in through its
 --- chrome hook.
@@ -429,7 +429,7 @@ function Helpers.RenderGridPage(ctx)
     ctx.__renderedSection = entry.key
 end
 
---- The Grid page's Defaults: the active entry's rows FOR THE UNIT IN THE BAND, and
+--- The Units page's Defaults: the active entry's rows FOR THE UNIT IN THE BAND, and
 --- no other unit's. The owner's ruling for KickCD#33, and a documented deviation
 --- (docs/ARCHITECTURE.md, options-ui-§13): the library's O.RestoreDefaults resets
 --- every unit of a page on purpose, and it still does when called directly.
@@ -454,7 +454,7 @@ function Helpers.RestoreGridSection(ctx)
     if Helpers.RefreshScalars then Helpers.RefreshScalars() end
 end
 
---- Select entry `key` on the Grid page, and optionally its tab: the one seam a
+--- Select entry `key` on the Units page, and optionally its tab: the one seam a
 --- link, a deep link or a suite moves the entry through. A hidden page is marked
 --- owed a render and draws the entry on its next show. Refused in combat, as a tab
 --- switch is (options-ui-§2, §13), and named in the library's one
