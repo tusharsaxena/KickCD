@@ -411,9 +411,19 @@ if not lib then
         -- Drawer, new at LibKa0s v1.73.0 (OptionsDrawer minor 1): this addon draws no drawer, so the
         -- same inert no-op applies.
         "Drawer",
+        -- KeybindingsTab and KeybindRows, new at LibKa0s v1.77.0 (OptionsKeybinds minor 2): the
+        -- settings-panel Keybindings tab. Both are reached only while a page renders, which never
+        -- happens here, so the same inert no-op applies.
+        "KeybindingsTab", "KeybindRows",
     }) do
         Helpers[name] = function() end
     end
+    -- Value-answering members new at LibKa0s v1.77.0: StrataTooltip (OptionsCompose minor 8) is read
+    -- when a strata row is declared, and KEYBINDS_UNCHANGED (OptionsKeybinds minor 2) is a tooltip
+    -- sentence. With no library both answer an empty string, a tooltip with nothing to add, rather
+    -- than a copy of the library's words (options-ui-§1).
+    Helpers.StrataTooltip      = function() return "" end
+    Helpers.KEYBINDS_UNCHANGED = ""
     -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
     -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
     -- host copy of library content exactly as it forbids a copy of a layout constant. A reader
