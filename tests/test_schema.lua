@@ -4,6 +4,7 @@
 -- check) is LibKa0s-Schema-1.0's, as NS.Settings.Store (settings/SchemaSetup.lua).
 local T = _G.KICKCD_TEST
 local NS = T.NS
+local L = NS.L
 local test, assertEqual, assertTrue, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertNil
 
@@ -267,8 +268,8 @@ end)
 local STRIP = {
     general = { { "Master controls", 7 }, { "Units", 3 } },
     icons   = {
-        { "Sizing", 4 }, { "Layout", 6 }, { "Visual states", 5 },
-        { "Border", 5 }, { "Annotations", 11 }, { "Ready glow", 34 },
+        { "Size and layout", 10 }, { "Appearance", 10 }, { "Annotations", 11 },
+        { "Ready glow", 34 },
     },
     castbar = {
         { "General", 5 }, { "Size and position", 7 }, { "Icon", 2 }, { "Font", 6 },
@@ -281,6 +282,36 @@ local STRIP = {
 -- The filter each page renders with: nil is "every unit's rows", which is what
 -- a page with no unit picker gets.
 local STRIP_FILTER = { general = nil, icons = "target", castbar = "target", label = "target" }
+
+-- The subsection headings each tab draws, in order: item 020's layout (KIC-L08, L12, L14
+-- onward). A tab missing here draws no heading, or is not pinned yet.
+local SUBSECTIONS = {
+    icons = {
+        ["Size and layout"] = { "Size", "Secondary block" },
+        ["Appearance"]      = { "States", "Border" },
+        ["Annotations"]     = { "Cooldown text", "Charges", "Tooltip" },
+    },
+}
+
+test("every pinned tab draws its subsection headings in the designed order", function()
+    -- red under: a row filed under the wrong heading, a heading renamed, or the
+    -- Tooltip row back above the Charges block
+    local H = T.NS.Settings.Helpers
+    for page, tabs in pairs(SUBSECTIONS) do
+        for tab, want in pairs(tabs) do
+            local got, last = {}, nil
+            for _, def in ipairs(H.SchemaForPanel(page, STRIP_FILTER[page])) do
+                if def.group == L[tab] and def.subgroup ~= last then
+                    got[#got + 1] = def.subgroup
+                    last = def.subgroup
+                end
+            end
+            local names = {}
+            for i, w in ipairs(want) do names[i] = L[w] end
+            assertEqual(table.concat(got, "|"), table.concat(names, "|"), page .. " > " .. tab)
+        end
+    end
+end)
 
 --- The page's groups in declaration order, with a count each — the same walk
 --- RenderTabbedSchema does.
@@ -848,7 +879,8 @@ end)
 --- `subgroup`: half-heading a tab is worse than none, because the reader gets a
 --- divider partway down and no name for what came before it.
 local TAB_MIXED = {
-    icons   = { ["Annotations"] = true, ["Ready glow"] = true },
+    icons   = { ["Size and layout"] = true, ["Appearance"] = true, ["Annotations"] = true,
+                ["Ready glow"] = true },
     castbar = { ["Size and position"] = true, ["Interruptible"] = true,
                 ["Non-interruptible"] = true },
 }
@@ -864,18 +896,6 @@ local TAB_SINGLE_SUBJECT = {
         ["Units"] = "which grids exist and whether Focus is its own thing: one enable toggle per "
             .. "tracked unit, and the Focus link. Every row is skipRender and drawn by the Units "
             .. "page's band (item 020), so General draws no tab for it.",
-    },
-    icons = {
-        ["Sizing"] = "four pixel sizes for the grid's icons.",
-        ["Layout"] = "where the grid sits and how the secondary block grows out of it. Anchor, "
-            .. "grow direction, rows, columns and the two offsets are one placement answer.",
-        ["Visual states"] = "how ONE icon body looks in each state of the spell it watches: ready "
-            .. "alpha, cooldown alpha, cooldown tint, and the GCD sub-state's swipe. The alpha "
-            .. "sliders and the tint swatch are not two KINDS of control here, they are two "
-            .. "channels of the same answer to 'what does this icon look like right now', which "
-            .. "is the tab's entire question. Headings would read Opacity / Tint over two rows "
-            .. "each and name properties of one subject rather than separate subjects.",
-        ["Border"] = "options-ui-§16's composed border block and nothing beside it.",
     },
     castbar = {
         ["General"] = "what the bar IS: enabled, orientation, growth, auto-size, spark. The two "

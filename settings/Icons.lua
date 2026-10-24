@@ -3,9 +3,9 @@
 -- The Grid page's Icons entry (KickCD#33). Pure schema: every widget is a row in
 -- KickCD.Settings.Schema; the Grid page (settings/Grid.lua) draws it through
 -- Helpers.RenderGridPage, which pins the Unit picker into the band, draws the rail, and hands the rows to
--- Helpers.RenderTabbedSchema -- six tabs (Sizing, Layout, Visual states,
--- Border, Annotations, Ready glow), partitioned from `group` in declaration
--- order (options-ui-§13). Adding an option means adding one row INSIDE the run
+-- Helpers.RenderTabbedSchema -- four tabs (Size and layout, Appearance,
+-- Annotations, Ready glow; item 020 merged Sizing with Layout and Visual states
+-- with Border), partitioned from `group` in declaration order (options-ui-§13). Adding an option means adding one row INSIDE the run
 -- its group already owns: a row filed after the array has left that group
 -- prints the tab a second time further down.
 --
@@ -79,94 +79,125 @@ local GROW_VALUES_ORDER = {
     "up_left",
 }
 
--- Sizing -------------------------------------------------------------
+-- Size and layout ----------------------------------------------------
+-- ONE TAB since item 020 (KIC-L08): how big the block is and where it sits is
+-- one question, and the Cast bar entry already answers its own version on one
+-- "Size and position" tab. Two subjects, so two subsection headings
+-- (options-ui-§7):
+--     Size             [Primary size (px)]          | [Secondary size (fraction of primary)]
+--                      [Gap (px)]                   | [Icon zoom]
+--     Secondary block  [Primary icon anchor point]  | [Growth direction]
+--                      [Rows]                       | [Columns]
+--                      [X offset (px)]              | [Y offset (px, positive = down)]
+-- The Secondary block heading carries the context the two long labels used to
+-- spell out in parentheses (KIC-L09).
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Size"],
     path  = "units."..unit..".icons.primarySize", type = "number",
-    label = L["Primary size (in px)"],
+    label = L["Primary size (px)"],
     desc = L["Pixel size of the primary interrupt icon."],
     default = 64, min = 24, max = 96, step = 2, fmt = "%d px",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Size"],
     path  = "units."..unit..".icons.secondarySize", type = "number",
-    label = L["Secondary size"],
+    label = L["Secondary size (fraction of primary)"],
     desc = L["Secondary icon size as a fraction of the primary."],
     default = 0.5, min = 0.4, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Size"],
     path  = "units."..unit..".icons.gap", type = "number",
-    label = L["Gap (in px)"],
+    label = L["Gap (px)"],
     desc = L["Pixel gap between adjacent icons."],
     default = 0, min = 0, max = 24, step = 1, fmt = "%d px",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Sizing"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Size"],
     path  = "units."..unit..".icons.zoom", type = "number",
     label = L["Icon zoom"],
     desc = L["Crop the inner area of each icon (0 = no crop, 0.25 = aggressive crop to remove the Blizzard border)."],
     default = 0.10, min = 0.0, max = 0.25, step = 0.01, fmt = "%.2f",
 }
 
--- Layout -------------------------------------------------------------
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.anchor", type = "string",
-    label = L["Anchor point (of secondary icons relative to primary)"],
+    label = L["Primary icon anchor point"],
     desc = L["Side and alignment of the primary icon the secondary block attaches to."],
     default = "RIGHT_MIDDLE",
     values  = ANCHOR_VALUES, sorting = ANCHOR_VALUES_ORDER,
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.secondaryGrow", type = "string",
-    label = L["Growth direction (of secondary icons)"],
+    label = L["Growth direction"],
     desc = L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."],
     default = "down_right",
     values  = GROW_VALUES, sorting = GROW_VALUES_ORDER,
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.secondaryRows", type = "number",
     label = L["Rows"],
     desc = L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."],
     default = 2, min = 1, max = 6, step = 1, fmt = "%d",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.secondaryCols", type = "number",
     label = L["Columns"],
     desc = L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."],
     default = 3, min = 1, max = 12, step = 1, fmt = "%d",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.secondaryOffsetX", type = "number",
-    label = L["X offset (in px)"],
+    label = L["X offset (px)"],
     desc = L["Horizontal pixel shift applied to the secondary block (positive = right, negative = left)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Layout"],
+    panel = "icons", section = "icons", unit = unit, group = L["Size and layout"],
+    subgroup = L["Secondary block"],
     path  = "units."..unit..".icons.secondaryOffsetY", type = "number",
-    label = L["Y offset (in px)"],
+    -- The sign is the opposite of every other Y slider in the addon
+    -- (IconGrid_Layout.lua: positive = down), and only the label can warn
+    -- without a behavior change (KIC-L11).
+    label = L["Y offset (px, positive = down)"],
     desc = L["Vertical pixel shift applied to the secondary block (positive = down, negative = up)."],
     default = 0, min = -100, max = 100, step = 1, fmt = "%d px",
 }
 
--- Visual states ------------------------------------------------------
+-- Appearance -----------------------------------------------------------
+-- ONE TAB since item 020 (KIC-L12): Visual states and Border were two five-row
+-- tabs about how one icon looks. Two subjects, two headings (options-ui-§7):
+--     States  [Ready opacity]  | [Cooldown opacity]
+--             [Cooldown tint]  | [Use class color]
+--             [Suppress GCD swipe and text]
+--     Border  the composed block, unchanged
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
+    panel = "icons", section = "icons", unit = unit, group = L["Appearance"],
+    subgroup = L["States"],
     path  = "units."..unit..".icons.readyAlpha", type = "number",
-    label = L["Ready alpha"],
+    label = L["Ready opacity"],
     desc = L["Icon alpha when the spell is off cooldown."],
     default = 1.0, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
+    panel = "icons", section = "icons", unit = unit, group = L["Appearance"],
+    subgroup = L["States"],
     path  = "units."..unit..".icons.cooldownAlpha", type = "number",
-    label = L["Cooldown alpha"],
+    label = L["Cooldown opacity"],
     desc = L["Icon alpha while the spell is on cooldown."],
     default = 0.25, min = 0.0, max = 1.0, step = 0.05, fmt = "%.2f",
 }
@@ -182,20 +213,22 @@ add{
 -- UnitClass("player") -- so the class this tint means is the player's, on the
 -- Focus page exactly as on the Target one.
 H.AddComposed(H.ColorPair{
-    prefix     = PREFIX,   page  = "icons", group = L["Visual states"],
+    prefix     = PREFIX,   page  = "icons", group = L["Appearance"],
+    subgroup   = L["States"],
     key        = "cooldownTint", label = L["Cooldown tint"],
     defaults   = { cooldownTint = { r = 1, g = 0.4, b = 0.4, a = 1 } },
     classColor = { source = "player" },
 }, STAMP)
 add{
-    panel = "icons", section = "icons", unit = unit, group = L["Visual states"],
+    panel = "icons", section = "icons", unit = unit, group = L["Appearance"],
+    subgroup = L["States"],
     path  = "units."..unit..".icons.suppressGCDSwipe", type = "bool",
-    label = L["Suppress GCD swipe + text"],
+    label = L["Suppress GCD swipe and text"],
     desc = L["Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."],
     default = true,
 }
 
--- Border -------------------------------------------------------------
+-- Appearance > Border ---------------------------------------------------
 -- The canonical border block (options-ui-§16), composed. Four mandated rows,
 -- led by this addon's own Show-border toggle (`spec.show`):
 --     [Show border]
@@ -207,7 +240,8 @@ add{
 -- The border is drawn around the player's own cooldown icons, so it is
 -- player-scoped for the same reason the cooldown tint above is.
 H.AddComposed(H.BorderGroup{
-    prefix   = PREFIX, page = "icons", group = L["Border"],
+    prefix   = PREFIX, page = "icons", group = L["Appearance"],
+    subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     defaults = {
@@ -221,15 +255,19 @@ H.AddComposed(H.BorderGroup{
 
 -- Annotations --------------------------------------------------------
 -- Everything drawn ON TOP of an icon: the countdown, the charges badge and the
--- hover tooltip. Three kinds of control on one tab, so each carries a subsection
--- heading (options-ui-§7) -- the tab label names the section, the headings name
--- what each block is:
---     Icon     [Show cooldown text] | [Show tooltip on hover]
---     Font     [Font]               | [Font size]
---              [Font color]         | [Use class color]
---              [Font flags]         | [Font shadow]
---     Charges  [Show charges]
---              [Charges X offset]   | [Charges Y offset]
+-- hover tooltip. Three subjects on one tab, so each carries a subsection heading
+-- (options-ui-§7) -- the tab label names the section, the headings name what
+-- each block is (item 020, KIC-L14: the font heading names the text it styles,
+-- and that text's switch heads its own block):
+--     Cooldown text  [Show cooldown text]                       (solo)
+--                    [Font]               | [Font size]
+--                    [Font color]         | [Use class color]
+--                    [Font flags]         | [Font shadow]
+--     Charges        [Show charges]                             (solo)
+--                    [Charges X offset]   | [Charges Y offset]
+--     Tooltip        [Show tooltip on hover]
+-- The font block styles the countdown only: the charges badge is
+-- NumberFontNormal (modules/IconGrid_Render.lua).
 --
 -- The font block is R1d's canonical six (options-ui-§16), so it brings a font
 -- COLOR and a font SHADOW this addon did not have. Both are honored:
@@ -237,19 +275,12 @@ H.AddComposed(H.BorderGroup{
 -- FontString from them.
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    subgroup = L["Icon"],
+    subgroup = L["Cooldown text"],
     path  = "units."..unit..".icons.showCooldownText", type = "bool",
     label = L["Show cooldown text"],
     desc = L["Render numeric seconds remaining on each icon."],
     default = true,
-}
-add{
-    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
-    subgroup = L["Icon"],
-    path  = "units."..unit..".icons.showTooltip", type = "bool",
-    label = L["Show tooltip on hover"],
-    desc = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
-    default = false,
+    solo    = true,
 }
 
 -- `keys` on all six leaves, because every one of them already had a stored name
@@ -259,7 +290,7 @@ add{
 -- five rows the screenshot showed.
 H.AddComposed(H.FontGroup{
     prefix = PREFIX, page = "icons", group = L["Annotations"],
-    subgroup = L["Font"],
+    subgroup = L["Cooldown text"],
     keys = {
         font              = "cooldownTextFont",
         fontSize          = "cooldownTextSize",
@@ -302,7 +333,7 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     subgroup = L["Charges"],
     path  = "units."..unit..".icons.chargesOffsetX", type = "number",
-    label = L["Charges X offset (in px)"],
+    label = L["Charges X offset (px)"],
     desc = L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."],
     default = -2, min = -32, max = 32, step = 1, fmt = "%d px",
 }
@@ -310,9 +341,19 @@ add{
     panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
     subgroup = L["Charges"],
     path  = "units."..unit..".icons.chargesOffsetY", type = "number",
-    label = L["Charges Y offset (in px)"],
+    label = L["Charges Y offset (px)"],
     desc = L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."],
     default = 2, min = -32, max = 32, step = 1, fmt = "%d px",
+}
+-- Interaction rather than something drawn on the icon, so its own heading
+-- rather than a pairing with the cooldown text's switch (KIC-L14).
+add{
+    panel = "icons", section = "icons", unit = unit, group = L["Annotations"],
+    subgroup = L["Tooltip"],
+    path  = "units."..unit..".icons.showTooltip", type = "bool",
+    label = L["Show tooltip on hover"],
+    desc = L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."],
+    default = false,
 }
 
 -- Ready glow ---------------------------------------------------------
@@ -489,7 +530,7 @@ local KNOB_TEXT = {
     },
     ProcDuration = {
         heading = L["Proc (flipbook)"], fmt = "%.2f s",
-        labels  = { L["Primary duration (in seconds)"], L["Secondary duration (in seconds)"] },
+        labels  = { L["Primary duration (seconds)"], L["Secondary duration (seconds)"] },
         desc    = L["Seconds one loop of the flipbook takes. Proc style only."],
     },
     ProcStartAnim = {
@@ -514,7 +555,7 @@ local KNOB_TEXT = {
     },
     PixelThickness = {
         heading = L["Pixel border"], fmt = "%d px",
-        labels  = { L["Primary thickness (in px)"], L["Secondary thickness (in px)"] },
+        labels  = { L["Primary thickness (px)"], L["Secondary thickness (px)"] },
         desc    = L["Thickness of each line in pixels. Pixel style only."],
     },
     PixelBorder = {
@@ -539,12 +580,12 @@ local KNOB_TEXT = {
     },
     XOffset = {
         heading = L["Offset"], fmt = "%d px",
-        labels  = { L["Primary X offset (in px)"], L["Secondary X offset (in px)"] },
+        labels  = { L["Primary X offset (px)"], L["Secondary X offset (px)"] },
         desc    = L["How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."],
     },
     YOffset = {
         heading = L["Offset"], fmt = "%d px",
-        labels  = { L["Primary Y offset (in px)"], L["Secondary Y offset (in px)"] },
+        labels  = { L["Primary Y offset (px)"], L["Secondary Y offset (px)"] },
         desc    = L["How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."],
     },
 }
@@ -569,7 +610,8 @@ end
 
 for _, u in ipairs(NS.Units.LIST) do addUnitRows(u) end
 
--- The Icons entry of the Grid page (KickCD#33).
+-- The Icons entry of the Units page (KickCD#33). The tooltip names the tabs as
+-- they stand after item 020's merges (KIC-L32).
 H.RegisterGridSection("icons", L["Icons"], {
-    tooltip = L["The interrupt icons: their size, layout, states, border, annotations and ready glow."],
+    tooltip = L["The interrupt icons: size and layout, appearance, annotations and ready glow."],
 })

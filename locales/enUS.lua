@@ -371,45 +371,47 @@ L["When the tracked unit is casting an interruptible spell"] =
     "When the tracked unit is casting an interruptible spell"
 
 -- Icons tab — section headers
-L["Sizing"]                      = "Sizing"
-L["Visual states"]               = "Visual states"
+L["Size and layout"]             = "Size and layout"
+L["Appearance"]                  = "Appearance"
 L["Annotations"]                 = "Annotations"
 
 -- Icons tab — controls
 L["Pixel size of the primary interrupt icon."] =
     "Pixel size of the primary interrupt icon."
-L["Secondary size"]              = "Secondary size"
+L["Secondary size (fraction of primary)"] =
+    "Secondary size (fraction of primary)"
 L["Secondary icon size as a fraction of the primary."] =
     "Secondary icon size as a fraction of the primary."
-L["Layout"]                      = "Layout"
+L["Secondary block"]             = "Secondary block"
 L["Horizontal"]                  = "Horizontal"
 L["Vertical"]                    = "Vertical"
 L["Left"]                        = "Left"
 L["Right"]                       = "Right"
 L["Pixel gap between adjacent icons."] =
     "Pixel gap between adjacent icons."
-L["Ready alpha"]                 = "Ready alpha"
+L["Ready opacity"]               = "Ready opacity"
 L["Icon alpha when the spell is off cooldown."] =
     "Icon alpha when the spell is off cooldown."
-L["Cooldown alpha"]              = "Cooldown alpha"
+L["Cooldown opacity"]            = "Cooldown opacity"
 L["Icon alpha while the spell is on cooldown."] =
     "Icon alpha while the spell is on cooldown."
 L["Cooldown tint"]               = "Cooldown tint"
 L["RGB tint applied to icons during cooldown."] =
     "RGB tint applied to icons during cooldown."
-L["Suppress GCD swipe + text"]   = "Suppress GCD swipe + text"
+L["Suppress GCD swipe and text"] = "Suppress GCD swipe and text"
 -- "1.6s remaining or less", never the ≤ sign: U+2264 is not ASCII and a glyph
 -- the settings-panel font does not carry draws as an empty box in game, which
 -- no test can see.
 L["Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."] =
     "Hide the cooldown swipe and countdown text during the global cooldown period (1.6s remaining or less). The icon body still pops back to ready alpha/tint regardless of this setting."
-L["Charges X offset (in px)"]    = "Charges X offset (in px)"
+L["Charges X offset (px)"]       = "Charges X offset (px)"
 L["Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."] =
     "Horizontal pixel shift of the charges badge from the icon's bottom-right corner (positive = right)."
-L["Charges Y offset (in px)"]    = "Charges Y offset (in px)"
+L["Charges Y offset (px)"]       = "Charges Y offset (px)"
 L["Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."] =
     "Vertical pixel shift of the charges badge from the icon's bottom-right corner (positive = up)."
 L["Show cooldown text"]          = "Show cooldown text"
+L["Cooldown text"]               = "Cooldown text"
 L["Render numeric seconds remaining on each icon."] =
     "Render numeric seconds remaining on each icon."
 L["Font"]                        = "Font"
@@ -444,9 +446,8 @@ L["Primary frequency"]           = "Primary frequency"
 L["Secondary frequency"]         = "Secondary frequency"
 L["How fast the rays turn. Higher is faster. Button style only."] =
     "How fast the rays turn. Higher is faster. Button style only."
-L["Primary duration (in seconds)"] = "Primary duration (in seconds)"
-L["Secondary duration (in seconds)"] =
-    "Secondary duration (in seconds)"
+L["Primary duration (seconds)"]  = "Primary duration (seconds)"
+L["Secondary duration (seconds)"] = "Secondary duration (seconds)"
 L["Seconds one loop of the flipbook takes. Proc style only."] =
     "Seconds one loop of the flipbook takes. Proc style only."
 L["Primary start animation"]     = "Primary start animation"
@@ -465,8 +466,8 @@ L["Secondary line length (0 = automatic)"] =
     "Secondary line length (0 = automatic)"
 L["Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."] =
     "Length of each line in pixels. 0 sizes the lines from the icon. Pixel style only."
-L["Primary thickness (in px)"]   = "Primary thickness (in px)"
-L["Secondary thickness (in px)"] = "Secondary thickness (in px)"
+L["Primary thickness (px)"]      = "Primary thickness (px)"
+L["Secondary thickness (px)"]    = "Secondary thickness (px)"
 L["Thickness of each line in pixels. Pixel style only."] =
     "Thickness of each line in pixels. Pixel style only."
 L["Primary dark border"]         = "Primary dark border"
@@ -484,12 +485,12 @@ L["Secondary scale"]             = "Secondary scale"
 L["Size of the sparkles. Auto cast style only."] =
     "Size of the sparkles. Auto cast style only."
 L["Offset"]                      = "Offset"
-L["Primary X offset (in px)"]    = "Primary X offset (in px)"
-L["Secondary X offset (in px)"]  = "Secondary X offset (in px)"
+L["Primary X offset (px)"]       = "Primary X offset (px)"
+L["Secondary X offset (px)"]     = "Secondary X offset (px)"
 L["How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."] =
     "How far the glow reaches past the icon's sides, in pixels. Pixel, Proc and Auto cast styles."
-L["Primary Y offset (in px)"]    = "Primary Y offset (in px)"
-L["Secondary Y offset (in px)"]  = "Secondary Y offset (in px)"
+L["Primary Y offset (px)"]       = "Primary Y offset (px)"
+L["Secondary Y offset (px)"]     = "Secondary Y offset (px)"
 L["How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."] =
     "How far the glow reaches past the icon's top and bottom, in pixels. Pixel, Proc and Auto cast styles."
 L["Button (rotating rays)"]      = "Button (rotating rays)"
@@ -564,21 +565,18 @@ L["Reset this profile to the addon's defaults? Everything you have configured or
 -- Icons tab — sizing and layout. ("Sizing and Layout" retired as a tab name
 -- when the cast bar folded it into General beside the Auto-size toggle that
 -- decides whether its width and height are read at all.)
-L["Primary size (in px)"]        = "Primary size (in px)"
-L["Gap (in px)"]                 = "Gap (in px)"
+L["Primary size (px)"]           = "Primary size (px)"
+L["Gap (px)"]                    = "Gap (px)"
 L["Columns"]                     = "Columns"
 L["Rows"]                        = "Rows"
 L["Horizontal extent of the secondary block — number of vertical lines arranged left/right."] =
     "Horizontal extent of the secondary block — number of vertical lines arranged left/right."
 L["Vertical extent of the secondary block — number of horizontal lines stacked up/down."] =
     "Vertical extent of the secondary block — number of horizontal lines stacked up/down."
-L["Anchor point (of secondary icons relative to primary)"] =
-    "Anchor point (of secondary icons relative to primary)"
+L["Primary icon anchor point"]   = "Primary icon anchor point"
 L["Side and alignment of the primary icon the secondary block attaches to."] =
     "Side and alignment of the primary icon the secondary block attaches to."
 L["Growth direction"]            = "Growth direction"
-L["Growth direction (of secondary icons)"] =
-    "Growth direction (of secondary icons)"
 L["Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."] =
     "Fill order inside the secondary block. The first axis is the within-line direction; the second axis picks which way the next row/column wraps."
 L["First left then down"]        = "First left then down"
@@ -610,6 +608,7 @@ L["Border color (RGBA)."]        = "Border color (RGBA)."
 L["LibSharedMedia border texture (edge style) used to draw each icon's border."] =
     "LibSharedMedia border texture (edge style) used to draw each icon's border."
 L["Show tooltip on hover"]       = "Show tooltip on hover"
+L["Tooltip"]                     = "Tooltip"
 L["Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."] =
     "Show the in-game spell tooltip when hovering over an icon. Only active while the grid is locked — unlock to drag."
 L["Truncate after (characters)"] = "Truncate after (characters)"
@@ -652,7 +651,9 @@ L["Anchor on cast bar"]          = "Anchor on cast bar"
 L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."] =
     "Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."
 L["X offset (in px)"]            = "X offset (in px)"
+L["X offset (px)"]               = "X offset (px)"
 L["Y offset (in px)"]            = "Y offset (in px)"
+L["Y offset (px, positive = down)"] = "Y offset (px, positive = down)"
 L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."] =
     "Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point."
 L["Vertical pixel offset between the cast bar's anchor point and the icon's anchor point."] =
@@ -816,6 +817,7 @@ L["Category for future filtering. Currently informational only."] =
 -- never a repeat of its tab's own name.
 L["Size and position"]           = "Size and position"
 L["Icon"]                        = "Icon"
+L["States"]                      = "States"
 L["Size"]                        = "Size"
 L["Bar"]                         = "Bar"
 L["Background"]                  = "Background"
@@ -828,8 +830,8 @@ L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
 
 -- The Units page's rail (KickCD#33): one tooltip per entry, and its Defaults.
-L["The interrupt icons: their size, layout, states, border, annotations and ready glow."] =
-    "The interrupt icons: their size, layout, states, border, annotations and ready glow."
+L["The interrupt icons: size and layout, appearance, annotations and ready glow."] =
+    "The interrupt icons: size and layout, appearance, annotations and ready glow."
 L["The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."] =
     "The cast bar: its size, position, icon, fonts and the colors for casts you can and cannot interrupt."
 L["The unit's identity label: what it says, where it sits and its font."] =
