@@ -358,7 +358,13 @@ local function build()
     end
     function LSM.List() return {} end
     function LSM.HashTable() return {} end
-    function LSM.IsValid() return true end
+    -- IsValid answers from the record, as LibSharedMedia's does: LibKa0s-Media minor 7
+    -- (v1.78.0) never offers a key LSM already holds, so a fake that held every key
+    -- would leave the library's faces unregistered.
+    function LSM.IsValid(_, mediaType, key)
+        local byType = LSM.__registered[mediaType]
+        return (byType and byType[key]) ~= nil
+    end
 
     -- ── the launcher's two libraries (launcher-§1) ──────────────────────────
     --

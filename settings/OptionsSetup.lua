@@ -427,6 +427,17 @@ if not lib then
     -- ResetAllTooltip (OptionsCompose minor 11, after LK-95 moved the v1.77.0 tag) is the General
     -- page's Reset all tooltip, read only while a page renders; it answers "" for the same reason.
     Helpers.ResetAllTooltip    = function() return "" end
+    -- The Skin tab (LibKa0s v1.78.0, OptionsAppearance minor 1; skinning-§3), labeled "Skin" since
+    -- OptionsAppearance minor 3 (v1.79.0) while its key stays "Appearance". Every Options stub owes
+    -- both members. On this path RenderTabbedSchema draws nothing, so the tab is inert, and
+    -- AppearanceRows answers nil, as the live one does when it cannot draw.
+    Helpers.AppearanceTab  = function() return { key = "Appearance", label = "Skin", render = function() end } end
+    Helpers.AppearanceRows = function() return nil end
+    -- The first-run skin picker (LibKa0s v1.79.0, OptionsSkinPicker minor 1). Without the library
+    -- there is no skin to pick: SkinPicker draws nothing and answers nil (never the live one's
+    -- second value, "queued": there is no queue), and HideSkinPicker is a no-op.
+    Helpers.SkinPicker     = function() return nil end
+    Helpers.HideSkinPicker = function() end
     -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
     -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
     -- host copy of library content exactly as it forbids a copy of a layout constant. A reader
