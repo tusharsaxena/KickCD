@@ -1,0 +1,12 @@
+Independent review of KickCD's skinning adoption (KC-RV..KC-05), 2026-10-29.
+Verdict before fixes: gate green (1553/0/1), payload = local v1.80.0, one major (D1) + five minors.
+
+Findings and outcome:
+1. MAJOR cast-bar borders follow bar.borderStyle ("None" in every skin), companions default true and in the O2 reset, so the cast-bar border disappears under every skin; inventory D1 was a stop-and-ask. NOT CHANGED IN CODE, OWNER RULING STILL OWED: X3 (companions default true, KC named) and X5 (the skin's border in place of Blizzard Tooltip) are the lead's cross-cutting calls and override the inventory; PartyFrameEnhanced's cast bar does the same. Recorded in docs/ARCHITECTURE.md (Skins) with the two one-line alternatives (fromSkin = "icon", or companions default false and out of HUD_SKIN_COMPANIONS); SKIN-1/SKIN-6 put it before the owner. Commit 2b11c13 (KC-05).
+2. minor icon-border thickness follows icon.borderSize, against X4. DECLINED code change: it is the library's icon-family contract (Options C13: fromSkin="icon" governs and grays the thickness slider), so resolving only the style would draw a value the panel shows disabled. Recorded as an accepted departure from X4 in ARCHITECTURE (2b11c13).
+3. minor settings-page token reads (close.hot, sem.warn, gtip.title) ignored "Ignore settings panel". FIXED 16cbf73 (KC-02): NS.SkinColor/NS.SkinEscape answer NS.SKIN_FALLBACK while Skin:GetIgnore(owner) says the panel is ignored; new test under Azeroth with the panel ignored (red before the fix); SKIN-10, ARCHITECTURE, module map updated.
+4. minor no-eye reasoning said "no test mode" although /kcd sim exists. FIXED wording 0b0c525 (KC-04): the call stands (simulator is a scripted session with its own panel/strip, refused in combat/instance/group/unlocked); SkinSetup.lua, ARCHITECTURE, SKIN-22 corrected. Wiring onPreview to the simulator declined: not cheap and not clearly right.
+5. minor tool-window face change on Ka0s Default unrecorded. FIXED 2b11c13 (KC-05): ARCHITECTURE's "What Ka0s Default looks like" now names the inherited v1.79.0 faces on the console, copy window, perf and sim panels.
+6. minor KC-RV commit eb98c7d carries Claude-Session session_01JV4dmMQQ4HwqVN5saduTPG. DECLINED: rewriting history is the owner's call; noted here for the run record.
+
+Gate after fixes: ka0s-bounded lua tests/run.lua 1554 passed, 0 failed, 1 skipped (1555); ka0s-bounded luacheck . 0 warnings / 0 errors in 153 files.
