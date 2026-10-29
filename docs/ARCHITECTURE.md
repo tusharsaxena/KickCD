@@ -340,7 +340,10 @@ collection's reference adopter, and every piece below copies its shape.
   Units band through the Options proxy (`NS.AceGUI`). The typed looks are tokens equal on Ka0s Default
   to the literals they replaced: the Spells rows' Remove mark (`close.hot`), the add box's *not tracked*
   tag (`sem.warn`, through `NS.SkinEscape`), the rows' tooltip hint titles (`gtip.title`) and the
-  AceGUI-missing label (`text.accent`).
+  AceGUI-missing label (`text.accent`). `NS.SkinColor` and `NS.SkinEscape` answer the Ka0s Default host
+  copy (`NS.SKIN_FALLBACK`) while the Scope's **Ignore settings panel** is on (`Skin:GetIgnore`), so
+  those token colors stay the client's with the rest of the page; `S.Color` itself does not consult the
+  Scope.
 - **The tool surfaces (KC-01, KC-04).** The drag handles, the sim strip, the Spells reorder list and the
   sim session are handed `owner = addonName`; the debug console, its copy window and the perf panel take
   the owner from their descriptors' `addonName`, and neither descriptor passes `skin` or `applySkin`.

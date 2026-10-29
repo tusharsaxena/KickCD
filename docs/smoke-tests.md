@@ -1330,7 +1330,9 @@ after each check. Every check also fails on a Lua error or a taint warning.
   Remove mark rests in the same soft red, the add box's *not tracked* tag is the same orange, and
   hovering a row's Remove mark or its known mark opens a tooltip whose first line is the same gold as
   before this build. Under **Azeroth** with Ignore settings panel off → the Remove mark, the tag and the
-  hint titles take Azeroth's colors; the tooltip frame itself stays Blizzard's. Result:
+  hint titles take Azeroth's colors; the tooltip frame itself stays Blizzard's. Tick **Ignore settings
+  panel** (still Azeroth) → all three are back to the Ka0s Default red, orange and gold, like the rest
+  of the page. Fail: any of the three in Azeroth's colors with the panel ignored. Result:
 - **SKIN-11. The tool surfaces follow the skin (KC-01, KC-04).** Under **Azeroth**, `/kcd unlock` → both
   drag strips and their `?` marks wear Azeroth; open the debug console (`/kcd debug window`) and its copy
   window, the perf panel (`/kcd perf`), the sim panel and the cyan sim strip (`/kcd sim` a scenario),

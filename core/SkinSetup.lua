@@ -30,9 +30,11 @@ local addonName, NS = ...
 --                           the shape every KickCD dropdown row carries. settings/General.lua
 --                           reads all four.
 --   NS.SKIN_FALLBACK        the host copy of the Ka0s Default tokens the degraded facade answers.
---   NS.SkinColor(name)      a color token as a call site writes it (three components when opaque),
---                           so a literal that became a token keeps its arity on Ka0s Default.
---   NS.SkinEscape(name)     a color token as a "|cffrrggbb" escape, rounded to the byte, so markup
+--   NS.SkinColor(name)      a SETTINGS PAGE color token as a call site writes it (three components
+--                           when opaque), so a literal that became a token keeps its arity on Ka0s
+--                           Default. While the Scope's "Ignore settings panel" is on it answers the
+--                           Ka0s Default host copy (NS.SKIN_FALLBACK): the pages stay the client's.
+--   NS.SkinEscape(name)     the same token as a "|cffrrggbb" escape, rounded to the byte, so markup
 --                           written as a literal keeps its bytes on Ka0s Default.
 --   NS.SkinResolve(k,v,f)   a HUD media pick as drawn: the skin's token `k` while the companion `f`
 --                           is true, else (or when the skin answers nothing) the stored pick `v`.
@@ -106,11 +108,23 @@ NS.SKIN_FALLBACK = {
     ["gtip.title"]  = { 1, 0.82, 0, 1 },    -- the Spells rows' own tooltip hints
 }
 
+--- A settings page's color token, as drawn: the skin's while this owner's settings panel is skinned,
+--- and the Ka0s Default host copy while the Scope ignores it (Skin:GetIgnore, the APPLIED pair, so a
+--- toggle answers at once; SetIgnore fires OnLooksChanged and the page re-renders). Every caller of
+--- NS.SkinColor / NS.SkinEscape is a settings page, which is why the gate lives here.
+local function pageColor(name)
+    if Skin and type(Skin.GetIgnore) == "function" and Skin:GetIgnore(addonName) == true then
+        local c = NS.SKIN_FALLBACK[name]
+        if c then return c[1], c[2], c[3], c[4] or 1 end
+    end
+    return NS.Skin.Color(name)
+end
+
 --- A color token's components AS A CALL SITE WRITES THEM: r, g, b for an opaque color and r, g, b,
 --- a otherwise, so a site that passed three components before it read a token still passes three
---- on Ka0s Default. nil for a token the skin leaves alone. Read through NS.Skin at call time.
+--- on Ka0s Default. nil for a token the skin leaves alone. Read through pageColor at call time.
 function NS.SkinColor(name)
-    local r, g, b, a = NS.Skin.Color(name)
+    local r, g, b, a = pageColor(name)
     if r == nil then return nil end
     if a == nil or a == 1 then return r, g, b end
     return r, g, b, a
@@ -120,7 +134,7 @@ end
 --- call site wrote as a literal keeps its bytes on Ka0s Default. nil for a token the skin leaves
 --- alone.
 function NS.SkinEscape(name)
-    local r, g, b = NS.Skin.Color(name)
+    local r, g, b = pageColor(name)
     if r == nil then return nil end
     local function byte(v) return math.floor(v * 255 + 0.5) end
     return ("|cff%02x%02x%02x"):format(byte(r), byte(g), byte(b))

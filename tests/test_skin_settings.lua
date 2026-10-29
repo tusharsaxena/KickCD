@@ -243,13 +243,14 @@ test("skin settings: the not-tracked tag is sem.warn, ff8000 on Ka0s Default", f
     end)
     -- Every shipped skin inherits Ka0s Default's sem.warn, so a skin that draws it otherwise is
     -- stood in for by the facade's Color, which the tag reads at call time.
+    -- With the settings panel skinned: while the Scope ignores it the page stays the client's.
     local S = NS.Skin
     local color = S.Color
     S.Color = function(name)
         if name == "sem.warn" then return 0, 1, 0, 1 end
         return color(name)
     end
-    local ok, err = pcall(function()
+    local ok, err = pcall(onSkin, "ka0s", false, function()
         assertEqual(Spells.SuggestTag(12345), "|cff00ff00" .. NS.L["not tracked"] .. "|r",
             "the tag follows the skin's sem.warn")
     end)
@@ -277,4 +278,39 @@ test("skin settings: the host copy carries every token the settings pages read",
     for _, name in ipairs({ "close.hot", "sem.warn", "gtip.title", "text.accent" }) do
         assertTrue(NS.SKIN_FALLBACK[name] ~= nil, name .. " is in NS.SKIN_FALLBACK")
     end
+end)
+
+test("skin settings: with Ignore settings panel on, the page's tokens stay Ka0s Default's", function()
+    -- red under: NS.SkinColor / NS.SkinEscape reading the skin straight through S.Color, which does
+    -- not consult the Scope: under Azeroth with the panel ignored, the Remove mark took Azeroth's
+    -- close.hot while every other widget on the page stayed stock (the KC-02 review, finding 3).
+    onSkin("azeroth", true, function()
+        local r = NS.Skin.Color("close.hot")
+        assertTrue(r ~= nil, "Azeroth answers close.hot")
+        local btn = removeButton()
+        assertTrue(btn ~= nil, "a row drew its Remove mark")
+        local vr, vg, vb = btn.image:GetVertexColor()
+        assertEqual(vr, 1, "the Remove mark keeps Ka0s Default's red"); assertEqual(vg, 0.3); assertEqual(vb, 0.3)
+        local tip = mocks.GameTooltip
+        local realSet, got = tip.SetText, nil
+        tip.SetText = function(_, text, tr, tg, tb) got = { text, tr, tg, tb } end
+        btn:__fire("OnEnter")
+        tip.SetText = realSet
+        assertTrue(got ~= nil, "the hint was drawn")
+        assertEqual(got[2], 1); assertEqual(got[3], 0.82); assertEqual(got[4], 0)
+        -- A skin whose sem.warn differs, stood in for by the facade's Color: the tag keeps ff8000.
+        local S = NS.Skin
+        local color = S.Color
+        S.Color = function(name)
+            if name == "sem.warn" or name == "gtip.title" then return 0, 1, 0, 1 end
+            return color(name)
+        end
+        local ok, err = pcall(function()
+            assertEqual(NS.SkinEscape("sem.warn"), "|cffff8000", "the tag keeps Ka0s Default's bytes")
+            local gr, gg, gb = NS.SkinColor("gtip.title")
+            assertEqual(gr, 1); assertEqual(gg, 0.82); assertEqual(gb, 0)
+        end)
+        S.Color = color
+        if not ok then error(err, 0) end
+    end)
 end)
