@@ -17,14 +17,18 @@ Neither repeats the other (documentation-§7).
 
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
 - `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
-  LibDataBroker-1.1, LibDBIcon-1.0, LibCustomGlow-1.0`.
-  Every one of those is **vendored** under `libs/` and committed (`KickCD.toc:19-37`,
+  LibDataBroker-1.1, LibDBIcon-1.0, LibCustomGlow-1.0, EllesmereUI`.
+  Every one of those but EllesmereUI is **vendored** under `libs/` and committed (`KickCD.toc:19-37`,
   `libs/AceAddon-3.0/`, `libs/LibStub/`, `libs/CallbackHandler-1.0/`, `libs/LibSharedMedia-3.0/`,
   `libs/LibCustomGlow-1.0/`), so `OptionalDeps` only affects **load order** when the player happens
   to have a standalone copy — it is not an install instruction. `libs/LibKa0s/` is vendored the
   same way and is deliberately absent from `OptionalDeps`, because no standalone copy of it exists
   to defer to. LibCustomGlow-1.0 is never called directly: `LibKa0s-Glow-1.0`
   (`core/GlowSetup.lua`) resolves it at call time.
+- EllesmereUI is a separate addon, never vendored and never required: it is listed only so it
+  loads first when the player has it, because the vendored `LibKa0s-Skin-1.0` offers it the owner
+  at file load (`core/SkinSetup.lua`) and its skin provider reads it only when the Skin tab's
+  source is set to it. Without it, every other skin still works.
 - Client version: `KickCD.toc:1` is `## Interface: 120105` — WoW 12.1.5 (Midnight).
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
@@ -43,9 +47,9 @@ The whole contributor toolchain. There is no build step and no compiler.
 | **git** | any recent | The repo, obviously — but also a **test dependency**, inside the green gate itself: three suites read the tracked file set with `git ls-files` (`tests/test_lintconfig.lua:219`, `tests/test_source_style.lua:142`, `tests/test_doc_structure.lua:100`) and fail rather than pass when they cannot. The vendored gate `tests/_kit/vendor_sync.lua` (driven by `tests/test_vendor_sync.lua`, four statements under its header) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
 | **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:238` and `tests/test_slash_style.lua:134` enumerate source files with `io.popen("ls ...")`, and `tests/test_doc_structure.lua:181` lists the audit bundles the same way; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
 | **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
-| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (`tests/run.lua:255`), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
+| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (`tests/run.lua:273`), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:232` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md:300` uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
