@@ -1,0 +1,1 @@
+Lead review of KC-A1 (owner ruling R-1): diff read in full; Castbar.BorderStyle/BorderSize resolve icon.borderStyle/icon.borderSize under the companion, panel BorderGroups fromSkin='icon', structure signature signs the resolved size so a skin switch rebuilds. Tests red before/green after per implementer; gate 1555/0/1, luacheck 0/0 (153). No findings.
