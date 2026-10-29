@@ -34,6 +34,9 @@ local addonName, NS = ...
 --                           so a literal that became a token keeps its arity on Ka0s Default.
 --   NS.SkinEscape(name)     a color token as a "|cffrrggbb" escape, rounded to the byte, so markup
 --                           written as a literal keeps its bytes on Ka0s Default.
+--   NS.SkinResolve(k,v,f)   a HUD media pick as drawn: the skin's token `k` while the companion `f`
+--                           is true, else (or when the skin answers nothing) the stored pick `v`.
+--   NS.OnSkinLooksChanged(fn) a HUD module's repaint, run after a skin, source or override change.
 --   NS.SkinPaintAce(w)      an AceGUI widget this addon acquired itself, painted for this owner:
 --   NS.SkinPaintAceTree(c)  `Skin:PaintAce` / `Skin:PaintAceTree` with the owner bound (the facade
 --                           carries neither). Release restores stock.
@@ -112,6 +115,27 @@ function NS.SkinEscape(name)
     if r == nil then return nil end
     local function byte(v) return math.floor(v * 255 + 0.5) end
     return ("|cff%02x%02x%02x"):format(byte(r), byte(g), byte(b))
+end
+
+--- A HUD media pick as the HUD draws it (KC-03, skinning-§6): the skin's token `kind` while the
+--- pick's "Use the skin's ..." companion is true, the stored pick otherwise, and the stored pick
+--- again when the skin answers nothing (the degraded facade's host copy holds no HUD token), so
+--- the HUD never draws a nil face, texture or border. Read in the config paths only (Layout,
+--- Reskin, Apply), never in a ticker: it is a token read per call.
+function NS.SkinResolve(kind, value, fromSkin)
+    local S = NS.Skin
+    if fromSkin ~= true or not (S and S.Resolve) then return value end
+    local v = S.Resolve(kind, value, true)
+    if v == nil then return value end
+    return v
+end
+
+--- Subscribe a HUD module's repaint to the owner's looks (a skin switch, a source switch, a font
+--- or texture override): the listener runs after the library has resolved the new skin. Nothing
+--- without the library, whose skin never changes.
+function NS.OnSkinLooksChanged(fn)
+    local S = NS.Skin
+    if S and S.OnLooksChanged then return S.OnLooksChanged(fn) end
 end
 
 NS.SKIN_SOURCE_VALUES = { ka0s = L["Ka0s skins"], eui = L["EllesmereUI"] }

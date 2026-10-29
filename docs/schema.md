@@ -10,7 +10,7 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 
 ```lua
 db.global = {
-    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 5).
+    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 6).
                                  -- DECLARED DEFAULT 0 (savedvariables-§1): AceDB's
                                  -- removeDefaults strips a stored value equal to its
                                  -- default, and backfills a default onto a legacy
@@ -32,7 +32,9 @@ db.global = {
                                  -- (migrations[3]) runs Database:MigrateColorShape (see
                                  -- the color-shape migration below). v4 -> v5
                                  -- (migrations[4]) runs Database:MigrateFontFlags (see
-                                 -- the font-flag migration below).
+                                 -- the font-flag migration below). v5 -> v6
+                                 -- (migrations[5]) runs Database:MigrateHudSkin (see
+                                 -- the one-time HUD style reset below).
     minimap = {                  -- LibDBIcon-1.0's OWN table (launcher-§3). The
         hide = false,            -- `hide` boolean is the `Minimap button` row's;
     },                           -- `minimapPos` is the library's, written when the
@@ -298,7 +300,7 @@ Pre-dual-tracking profiles stored `db.profile.icons`, `db.profile.castbar`, and 
 
 It is **shape-driven, not version-gated**: it checks `p.icons == nil and p.castbar == nil and p.anchors == nil` and returns immediately (no-op) when all three are already absent — which is true for both a fresh v2 install and an already-migrated account. Version-gating on `db.global.schemaVersion` was considered and rejected for the same reason the account-adoption code above avoids trusting a bare `schemaVersion == nil` check: AceDB's `copyDefaults` rawsets `db.global.schemaVersion` to `NS.SCHEMA_VERSION` the moment `db.global` is first touched, which would make a legacy account that never had a chance to run the migrator look "already current" and silently strand its customized icons/castbar/anchors data under the old top-level keys forever. Keying on the presence of the old tables instead detects exactly (and only) the accounts that carry legacy data, regardless of what `schemaVersion` claims.
 
-The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits`, and the runner then stamps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `NS.SCHEMA_VERSION = 5` — see the spec-key rekey, the color-shape migration and the font-flag migration below.
+The `migrations[1]` step (`Database:MigrateProfile`'s registered v1→v2 migrator) also calls `FoldLegacyUnits`, and the runner then stamps `db.global.schemaVersion` to 2, so the fold happens exactly once from the schema-version path too — `FoldLegacyUnits`'s own idempotency means running it from both call sites is safe, not redundant-in-a-bad-way. Schema generation 2 is the `units.*` restructure (v1 was the pre-migration baseline). The current constant is `NS.SCHEMA_VERSION = 6` — see the spec-key rekey, the color-shape migration, the font-flag migration and the one-time HUD style reset below.
 
 **Deviation recorded as intentional** — ratified in [ARCHITECTURE.md § Documented deviations](ARCHITECTURE.md#documented-deviations) against `savedvariables-§1`; this paragraph is the reasoning, that row is the record. Restructuring `DEFAULT_PROFILE` (a rename/nest, not a pure addition) departs from a "profile shape never changes shape, only grows" expectation some Ace3-based addons hold — it was necessary because target/focus each need independently-customizable `icons`/`castbar`, and the alternative (flat `icons`, `focusIcons`, `castbar`, `focusCastbar`, …) doesn't scale to a third unit later and duplicates the anchor/label bookkeeping. The shape-driven (not version-gated) migration is the mitigation that makes the restructure safe for existing installs.
 
@@ -367,3 +369,20 @@ Schema **v5** stores `""` instead, which is what `FontString:SetFont` actually s
 `Database:MigrateFontFlags(db)` is the v4→v5 step (`migrations[4]`), and like `MigrateColorShape` it also runs from `Database:Init` and every `OnProfileChanged`, for the same per-profile reason. Unlike `MigrateColorShape` it walks an **explicit path list** rather than the whole profile: a bare `"NONE"` string is not distinguishable from a legitimate user value anywhere else in the tree, and three known leaves per unit is not a list that needs deriving. It is idempotent, and it survives a half-built profile (a unit mid-backfill with no `label` table yet).
 
 This is the one **stored-value type change** in the settings-revamp-v2 pass, and it takes the full treatment `options-ui-§15` describes for one: a bumped `NS.SCHEMA_VERSION` and a registered step in the migration runner, in the same change as the row's new value list. The `Master controls` tab RENAME beside it needed neither — a `group` is not a stored path.
+
+## Migration: the one-time HUD style reset (v5 → v6)
+
+KickCD adopted skins in the 2026-10-29 skinning rollout (Ka0sAddonsCommonTasks `docs/2026-10-29-SKINNING_ROLLOUT/`, item KC-03). Each HUD media pick gained a **"Use the skin's ..."** companion bool beside it, emitted by the composer's `fromSkin` (LibKa0s-Options-1.0, OptionsCompose minors 12 and 13), eight per unit:
+
+| Companion (under `units.<unit>.`) | Governs | Skin token (Ka0s Default) |
+|---|---|---|
+| `icons.borderTextureFromSkin` | the icon border's style **and thickness** (the icon family, `fromSkin = "icon"`) | `icon.borderStyle` `"Solid"`, `icon.borderSize` 2 |
+| `icons.cooldownTextFontFromSkin` | the countdown's face | `hud.font` `"Ka0s Oxanium SemiBold"` |
+| `castbar.fontFromSkin` | the face of both cast-bar texts | `hud.font` |
+| `castbar.interruptible.statusBarTextureFromSkin`, `castbar.uninterruptible.statusBarTextureFromSkin` | each state's bar texture | `bar.texture` `"Ka0s Default"` |
+| `castbar.interruptible.borderTextureFromSkin`, `castbar.uninterruptible.borderTextureFromSkin` | each state's border style | `bar.borderStyle` `"None"` |
+| `label.style.fontFromSkin` | the label's face | `hud.font` |
+
+Every one **defaults true** (rollout decision X3), in `defaults/Profile.lua` and in the composer row alike. While one is set its picker is disabled and shows the skin's value, and the HUD draws `NS.SkinResolve(token, pick, companion)` (`core/SkinSetup.lua`); the stored pick is never overwritten, so turning the companion off draws exactly what the player had. Only the face, the texture and the border follow (X4): every color, size (the cast bar's border thickness included), flag and shadow stays the player's. The charges badge, which has no setting, takes the skin's `hud.font` face with `NumberFontNormal`'s size and flags.
+
+`Database:MigrateHudSkin(db)` is the v5→v6 step (`migrations[5]`), the owner's ruling O2: adopting skins puts every companion on the skin **once, for every player**, through `LibKa0s-Skin-1.0`'s `Skin.ResetToSkin` (set directly when the library is absent). It runs from `Database:Init` and every `OnProfileChanged`, like the shape-driven steps, because the stamp is per account and the data per profile. It cannot be shape-driven, though: "follows the skin" is not a shape a later run could tell from the player's own choice. So each profile carries its own record, `skin.hudReset` (default false, no schema row): false, the step sets the sixteen companions and the record; true, it does nothing, so a companion the player turns off afterwards stays off for good. A profile reset puts the record back to false, and the step then re-runs against defaults that already follow the skin, which changes nothing a player can see. Only a companion that reads a boolean is named, because `ResetToSkin` writes the `FROM_SKIN` sentinel into a key it finds neither a table nor a bool.

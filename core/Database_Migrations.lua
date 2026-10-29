@@ -1,7 +1,7 @@
 -- core/Database_Migrations.lua -- the profile migrations (peeled from core/Database.lua, #29)
 --
 -- Every shape-driven migrator (FoldLegacyUnits, BackfillLabelStyle,
--- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags), the `migrations` ladder
+-- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin), the `migrations` ladder
 -- and its runner, Database:MigrateProfile, kept together so the step order reads
 -- in one place. A pure move: core/Database.lua had grown to 1121 lines, inside
 -- layout-§1's 1000-1500 band.
@@ -28,15 +28,16 @@ local copy               = Database._copy
 -- This is the extension point. Each step in `migrations` is a PURE,
 -- idempotent function of the db and writes no stamp: MigrateProfile owns
 -- db.global.schemaVersion and advances it only past a step that returned
--- without raising (savedvariables-§1). Adding a v6 step means: append
--- `migrations[5] = function(db) ... end` below and bump NS.SCHEMA_VERSION
+-- without raising (savedvariables-§1). Adding a v7 step means: append
+-- `migrations[6] = function(db) ... end` below and bump NS.SCHEMA_VERSION
 -- at the top of core/Database.lua. No bootstrap changes required.
 --
 -- A step whose data is per-PROFILE must not rely on the per-ACCOUNT stamp
 -- alone: it would convert only the profile active on the day the account
 -- crossed that version. Such a step is also shape-driven and runs from
 -- Database:Init and every OnProfileChanged (FoldLegacyUnits,
--- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags).
+-- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags,
+-- MigrateHudSkin; the last is gated on a per-profile record, not on shape).
 
 -- The legacy top-level tables that fold into units.target. The same two names
 -- appear one level down under `p.anchors`, which folds separately because it
@@ -318,6 +319,86 @@ function NS.Database:MigrateFontFlags(db)
     end
 end
 
+--- v5 -> v6: the one-time HUD style reset (owner ruling O2 of Ka0sAddonsCommonTasks
+--- docs/2026-10-29-SKINNING_ROLLOUT, the leg-1 ruling R3 kept for the published addons).
+---
+--- KickCD's HUD media picks gained a "Use the skin's ..." companion each (settings/Icons.lua,
+--- settings/Castbar.lua, settings/Label.lua): the icon border and countdown font, the cast bar's
+--- font and both states' bar texture and border, the label font. Adopting skins puts every one on
+--- the skin ONCE, for every player, through LibKa0s-Skin-1.0's Skin.ResetToSkin: the companion
+--- goes to true and the stored pick is KEPT, so a player who turns the companion off gets back
+--- exactly the pick they had. Only the face, the texture and the border (DECISIONS X4): colors,
+--- sizes, flags and shadows are not touched.
+---
+--- PER PROFILE, RECORDED PER PROFILE. The stamp is per account (KICKCD-R-01), so this runs from
+--- Database:Init and every OnProfileChanged like the shape-driven steps; but "follows the skin" is
+--- not a shape a later run could tell from the player's own choice, so a profile carries its own
+--- record, skin.hudReset. False: the step resets the sixteen companions and sets it. True: the
+--- step does nothing, so a companion the player turned off afterwards stays off for good. A
+--- profile reset puts the record back to false, and the step then re-runs against defaults that
+--- already follow the skin (X3), which writes nothing a player could see.
+---
+--- Only a companion that reads a boolean is named: ResetToSkin writes the FROM_SKIN sentinel into
+--- a key it finds neither a table nor a bool, and a sentinel in a bool is nothing the HUD reads.
+--- Without the library the companions are set here directly, the same write.
+local HUD_SKIN_COMPANIONS = {
+    "icons.borderTextureFromSkin",
+    "icons.cooldownTextFontFromSkin",
+    "castbar.fontFromSkin",
+    "castbar.interruptible.statusBarTextureFromSkin",
+    "castbar.interruptible.borderTextureFromSkin",
+    "castbar.uninterruptible.statusBarTextureFromSkin",
+    "castbar.uninterruptible.borderTextureFromSkin",
+    "label.style.fontFromSkin",
+}
+Database.HUD_SKIN_COMPANIONS = HUD_SKIN_COMPANIONS
+
+--- The table holding a dotted path's last segment under `t`, and that segment; nil when a table
+--- on the way is missing (nothing is created).
+local function walkPath(t, path)
+    local parent, leaf = t, nil
+    for seg in path:gmatch("[^%.]+") do
+        if leaf ~= nil then
+            parent = parent[leaf]
+            if type(parent) ~= "table" then return nil end
+        end
+        leaf = seg
+    end
+    return parent, leaf
+end
+
+function NS.Database:MigrateHudSkin(db)
+    local p = db and db.profile
+    if not (p and type(p.units) == "table" and type(p.skin) == "table") then return end
+    if p.skin.hudReset == true then return end
+
+    local keys = {}
+    for unit, u in pairs(p.units) do
+        if type(u) == "table" then
+            for _, rel in ipairs(HUD_SKIN_COMPANIONS) do
+                local parent, leaf = walkPath(u, rel)
+                if parent and type(parent[leaf]) == "boolean" then
+                    keys[#keys + 1] = "units." .. unit .. "." .. rel
+                end
+            end
+        end
+    end
+
+    local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
+    local n
+    if Skin and type(Skin.ResetToSkin) == "function" then
+        n = Skin.ResetToSkin(p, keys)
+    else
+        n = 0
+        for _, path in ipairs(keys) do
+            local parent, leaf = walkPath(p, path)
+            if parent then parent[leaf] = true; n = n + 1 end
+        end
+    end
+    p.skin.hudReset = true
+    migrateDebug("put %s HUD style pick(s) on the skin (one-time reset)", tostring(n))
+end
+
 local migrations = {
     -- [from-version] = function(db) ... end: a pure step from `from` to
     -- `from + 1`. It writes NO stamp: MigrateProfile advances
@@ -326,6 +407,7 @@ local migrations = {
     [2] = function(db) NS.Database:MigrateSpecKeys(db) end,
     [3] = function(db) NS.Database:MigrateColorShape(db) end,
     [4] = function(db) NS.Database:MigrateFontFlags(db) end,
+    [5] = function(db) NS.Database:MigrateHudSkin(db) end,
 }
 
 -- A step that raised: one chat line the player sees, plus the gated trace.

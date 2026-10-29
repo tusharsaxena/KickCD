@@ -89,7 +89,10 @@ end
 local function applyLabelFont(fs, style)
     local fontPath
     if LSM and LSM.Fetch then
-        fontPath = LSM:Fetch("font", sv(style, "font"), true)
+        -- "Use the skin's font" (label.style.fontFromSkin, default true): the face is hud.font
+        -- while it is set. Read straight off the table, not through sv(), whose truthiness test
+        -- would turn a player's false into the fallback.
+        fontPath = LSM:Fetch("font", NS.SkinResolve("hud.font", sv(style, "font"), style.fontFromSkin), true)
     end
     fs:SetFont(fontPath or _G.STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
 
@@ -262,6 +265,14 @@ function UnitLabel:OnProfileChanged() self:ApplyAll() end
 -- A grid (re)created after we first anchored needs a fresh SetPoint target.
 function UnitLabel:OnGridLayout() self:ApplyAll() end
 function UnitLabel:OnPlayerEnteringWorld() self:ApplyAll() end
+-- A skin, source or override change (the owner's OnLooksChanged, core/SkinSetup.lua) moves the
+-- face a following label draws in. Never while the addon is stood down: Apply shows the frames,
+-- and Suspend's promise is that nothing re-shows them behind the latch's back.
+function UnitLabel:OnSkinLooksChanged()
+    if NS.IsDown and NS.IsDown() then return end
+    self:ApplyAll()
+end
+if NS.OnSkinLooksChanged then NS.OnSkinLooksChanged(function() UnitLabel:OnSkinLooksChanged() end) end
 
 -- The module's one GAME event, as a `{ event, method }` row for
 -- NS.RegisterEventList: FILE SCOPE so a stand-up allocates nothing (anti-patterns

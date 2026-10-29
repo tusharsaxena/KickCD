@@ -244,11 +244,17 @@ H.AddComposed(H.BorderGroup{
     subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
+    -- "Use the skin's border" (OptionsCompose minor 13): the skin's ICON border family, style and
+    -- thickness both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color
+    -- staying the swatch's. The companion is `icons.borderTextureFromSkin`, defaulting true (X3);
+    -- modules/IconGrid_Render.lua's ApplyAppearance resolves both through NS.Skin.Resolve.
+    fromSkin = "icon",
     defaults = {
         borderShow  = true,
         borderStyle = "Blizzard Tooltip",
         borderSize  = 2,
         borderColor = { r = 0, g = 0, b = 0, a = 1 },
+        borderStyleFromSkin = true,
     },
     classColor = { source = "player" },
 }, STAMP)
@@ -299,12 +305,16 @@ H.AddComposed(H.FontGroup{
         fontFlags         = "cooldownTextFlags",
         fontShadow        = "cooldownTextShadow",
     },
+    -- "Use the skin's font" (`icons.cooldownTextFontFromSkin`, default true, X3): the face only
+    -- (hud.font); size, flags, color and shadow stay the player's (X4).
+    fromSkin = true,
     defaults = {
         font       = "Friz Quadrata TT",
         fontSize   = 14,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
         fontFlags  = "OUTLINE",
         fontShadow = false,
+        fontFromSkin = true,
     },
     classColor = { source = "player" },
 }, STAMP)

@@ -269,17 +269,20 @@ end)
 -- unit selector, so its Units tab shows both units' toggles, plus the Focus
 -- `link` row, which the tab draws itself (`skipRender`): 3. The Skin tab's group is the library's
 -- tab key, "Appearance": the seven skin.* rows, every one skipRender and drawn by O.AppearanceTab.
+-- KC-03 (the 2026-10-29 skinning rollout) adds one "Use the skin's ..." companion after each HUD
+-- media block: Icons > Appearance and Annotations one each, Cast bar > Text one, each state two
+-- (the bar texture's and the border's), Text label > Font one.
 local STRIP = {
     general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 7 } },
     icons   = {
-        { "Size and layout", 10 }, { "Appearance", 10 }, { "Annotations", 11 },
+        { "Size and layout", 10 }, { "Appearance", 11 }, { "Annotations", 12 },
         { "Ready glow", 34 },
     },
     castbar = {
-        { "General", 4 }, { "Size and position", 10 }, { "Text", 15 },
-        { "Interruptible", 13 }, { "Non-interruptible", 13 },
+        { "General", 4 }, { "Size and position", 10 }, { "Text", 16 },
+        { "Interruptible", 15 }, { "Non-interruptible", 15 },
     },
-    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 6 } },
+    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 7 } },
 }
 
 -- The filter each page renders with: nil is "every unit's rows", which is what

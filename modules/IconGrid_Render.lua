@@ -59,7 +59,8 @@ local function fetchBorderTexture(name)
         local t = LSM:Fetch("border", name or "Blizzard Tooltip", true)
         if t then return t end
     end
-    return "Interface\\Tooltips\\UI-Tooltip-Border"
+    -- The flat edge or none for the two keys no file backs (core/MediaSetup.lua).
+    return (NS.BORDER_EDGES and NS.BORDER_EDGES[name]) or "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
 --- The three inputs an alpha/tint curve pair is built from, flattened into a
@@ -801,14 +802,21 @@ function Icon:ApplyAppearance(cfg)
 
     local show = cfg.borderShow and true or false
     if show then
-        local size = cfg.borderSize or 1
+        -- "Use the skin's border" (settings/Icons.lua, OptionsCompose's icon family): while the
+        -- companion is set, the style AND the thickness are the skin's icon border
+        -- (icon.borderStyle, icon.borderSize; Ka0s Default's Solid 2px), the stored picks kept for
+        -- when it is off. Resolved here, in the layout pass, never per SPELL_STATE: the icon is
+        -- pooled, so nothing is recorded on it (no S.IconBorder), it is re-resolved on every
+        -- Layout and on the owner's OnLooksChanged (modules/IconGrid.lua).
+        local follow = cfg.borderTextureFromSkin
+        local size = tonumber(NS.SkinResolve("icon.borderSize", cfg.borderSize, follow)) or 1
         if size < 1 then size = 1 end
         -- BackdropTemplate's SetBackdrop wants the table verbatim each call.
         -- edgeFile is an LSM border texture; edgeSize is the thickness of
         -- that texture's edge slices. Color tints the texture via
         -- SetBackdropBorderColor.
         self.border:SetBackdrop({
-            edgeFile = fetchBorderTexture(cfg.borderTexture),
+            edgeFile = fetchBorderTexture(NS.SkinResolve("icon.borderStyle", cfg.borderTexture, follow)),
             edgeSize = size,
         })
         -- Through NS.ResolveColor so the border's "Use class color" companion is
@@ -842,6 +850,18 @@ local function chargesOffset(v, fallback)
     return v
 end
 
+--- The charges badge's face: the skin's HUD face (hud.font), with the size and flags of the
+--- NumberFontNormal it was built from (DECISIONS D4: it has no setting of its own, so it follows
+--- the skin as the rest of the HUD text does). Read off the font OBJECT, never the FontString,
+--- which carries the last face set here. A face LibSharedMedia cannot fetch keeps the template's.
+local function applyChargesFont(icon, LSM)
+    local fobj = _G.NumberFontNormal
+    if not (fobj and fobj.GetFont and icon.chargesText and icon.chargesText.SetFont) then return end
+    local base, size, flags = fobj:GetFont()
+    local face = LSM and LSM.Fetch and LSM:Fetch("font", NS.SkinResolve("hud.font", nil, true) or "", true)
+    if face or base then icon.chargesText:SetFont(face or base, size or 14, flags or "OUTLINE") end
+end
+
 --- Re-anchor the charges badge from this unit's configured inset.
 function Icon:ApplyChargesAnchor(cfg)
     cfg = cfg or NS.Units.Icons(self.unit or "target")
@@ -865,8 +885,12 @@ function Icon:ApplyTextConfig(cfg)
     local mediaFont = nil
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     if LSM then
-        mediaFont = LSM:Fetch("font", cfg.cooldownTextFont or "")
+        -- "Use the skin's font" (icons.cooldownTextFontFromSkin): the face is hud.font while it
+        -- is set; size, flags, color and shadow below stay the player's.
+        mediaFont = LSM:Fetch("font", NS.SkinResolve("hud.font", cfg.cooldownTextFont,
+            cfg.cooldownTextFontFromSkin) or "")
     end
+    applyChargesFont(self, LSM)
     local fontPath = mediaFont
     if not fontPath then
         fontPath = self.cooldownText:GetFont()

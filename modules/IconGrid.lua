@@ -931,6 +931,16 @@ function IconGrid:OnProfileChanged(_evt, _payload)
     end)
 end
 
+--- A skin, source or override change (the owner's OnLooksChanged, core/SkinSetup.lua): a grid
+--- whose borders or countdown follow the skin re-resolves them. Layout runs ApplyAppearance and
+--- ApplyTextConfig per icon, the one place the HUD reads a token (never the 10 Hz ticker). Only
+--- live grids, and never while stood down.
+function IconGrid:OnSkinLooksChanged()
+    if NS.IsDown and NS.IsDown() then return end
+    forEachEnabled(function(inst) self:Layout(inst) end)
+end
+if NS.OnSkinLooksChanged then NS.OnSkinLooksChanged(function() IconGrid:OnSkinLooksChanged() end) end
+
 -- RefreshVisibility, the cast / target / focus handlers and the glow gate
 -- (RefreshAllGlows) live in modules/IconGrid_Visibility.lua (#25).
 

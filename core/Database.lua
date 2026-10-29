@@ -33,10 +33,13 @@ NS.Database = Database
 -- { r =, g =, b =, a = } shape (migrations[3] / Database:MigrateColorShape).
 -- v5 rewrites the "NONE" font-flag token to the empty string the client's
 -- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
+-- v6 is the one-time HUD style reset (owner ruling O2 of the 2026-10-29 skinning
+-- rollout): every HUD media pick's "Use the skin's ..." companion set, once per
+-- profile, recorded in skin.hudReset (migrations[5] / Database:MigrateHudSkin).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 5
+NS.SCHEMA_VERSION = 6
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -675,6 +678,9 @@ function Database:OnProfileChanged(event, db, arg)
     self:MigrateSpecKeys(self.db)
     self:MigrateColorShape(self.db)
     self:MigrateFontFlags(self.db)
+    -- The one-time HUD style reset, once per PROFILE (its own skin.hudReset record): a profile
+    -- that was not active at the upgrade is put on the skin the first time it becomes active.
+    self:MigrateHudSkin(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -747,6 +753,10 @@ function Database:Init()
     -- profiles that were not active then (KICKCD-R-01). Both idempotent.
     self:MigrateColorShape(db)
     self:MigrateFontFlags(db)
+
+    -- The one-time HUD style reset (owner ruling O2), per profile for the same reason, and
+    -- recorded per profile (skin.hudReset), so it runs once on each and never again.
+    self:MigrateHudSkin(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

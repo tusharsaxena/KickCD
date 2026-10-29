@@ -484,12 +484,15 @@ H.AddComposed(H.FontGroup{
         useClassColorFont = "useClassColorText",
     },
     labels   = { fontColor = L["Cast time color"] },
+    -- "Use the skin's font" (`castbar.fontFromSkin`, default true, X3): the face of both texts.
+    fromSkin = true,
     defaults = {
         font       = "Friz Quadrata TT",
         fontSize   = 10,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
         fontFlags  = "OUTLINE",
         fontShadow = false,
+        fontFromSkin = true,
     },
     -- The bar DESCRIBES the tracked unit, so its text takes that unit's class
     -- (options-ui-§17). Against an NPC boss -- which is most of the time -- the
@@ -537,7 +540,8 @@ H.AddComposed(H.BarGroup{
     prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
-    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1,
+    fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
+    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 1, g = 0.85, b = 0.05, a = 1 } },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
@@ -560,8 +564,12 @@ H.AddComposed(H.BorderGroup{
     subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
+    -- "Use the skin's border": the BAR family, the style only (bar.borderStyle); the thickness
+    -- and color stay the player's (X4). borderTextureFromSkin, default true (X3).
+    fromSkin = true,
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
-                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 } },
+                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
+                 borderStyleFromSkin = true },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
 
@@ -570,7 +578,8 @@ H.AddComposed(H.BarGroup{
     prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
-    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1,
+    fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
+    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 0.85, g = 0.10, b = 0.10, a = 1 } },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
@@ -593,8 +602,12 @@ H.AddComposed(H.BorderGroup{
     subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
+    -- "Use the skin's border": the BAR family, the style only (bar.borderStyle); the thickness
+    -- and color stay the player's (X4). borderTextureFromSkin, default true (X3).
+    fromSkin = true,
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
-                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 } },
+                 borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
+                 borderStyleFromSkin = true },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
 end

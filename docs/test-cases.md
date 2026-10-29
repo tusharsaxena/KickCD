@@ -352,7 +352,7 @@ Total.
 - a second stored profile has its 'NONE' font flags rewritten when it becomes active
 - a hybrid whose keys differ from the default keeps its keys and loses its array
 - AceDB defaults declare schemaVersion 0
-- a fresh install ends at v5 with no step raising
+- a fresh install ends at v6 with no step raising
 - a raising step leaves the stamp where it was
 - the slash layer needs no color codec now the shapes agree
 - set and get round-trip a color through the library with no translation
@@ -1404,6 +1404,25 @@ Total.
 - skin settings: a row's own tooltip hint is titled in gtip.title
 - skin settings: the host copy carries every token the settings pages read
 
+### test_skin_hud.lua (16)
+
+- HUD skin: every HUD media pick has a companion row, default true in the row and the defaults
+- HUD skin: the icon border follows the ICON family, governing its thickness too
+- HUD skin: the cast bar draws the skin's face, texture and border while following
+- HUD skin: a companion turned off draws the player's stored pick again
+- HUD skin: the icon border takes the skin's icon family, style and thickness
+- HUD skin: "Solid" is registered as a LibSharedMedia border, the flat edge
+- HUD skin: the countdown follows hud.font and the charges badge takes the skin's face
+- HUD skin: the unit label follows hud.font, and a false companion is the player's face
+- HUD skin: a skin switch repaints the HUD with no stored value moved
+- HUD skin: no repaint while the addon is stood down
+- HUD skin: the reset puts every companion on the skin once, keeps the picks, and stamps v6
+- HUD skin: a pick turned off after the reset is never reset again
+- HUD skin: a profile that was not active at the upgrade is reset when it becomes active
+- HUD skin: without the library the step still sets the companions
+- HUD skin: the step names only companions that read a boolean
+- HUD skin: Copy from Target carries the companions with the pickers
+
 ### test_grid.lua (13)
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
@@ -1867,6 +1886,7 @@ Total.
 | test_options_panel_degraded.lua | 9 |
 | test_skinsetup.lua | 12 |
 | test_skin_settings.lua | 9 |
+| test_skin_hud.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1894,4 +1914,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1520** |
+| **Total** | **1536** |

@@ -89,7 +89,7 @@ end
 --- call and reloads a texture.
 local function applyBorderBackdrop(borderFrame, sc)
     borderFrame:SetBackdrop({
-        edgeFile = Castbar.FetchBorderTexture(sc.borderTexture),
+        edgeFile = Castbar.FetchBorderTexture(Castbar.BorderStyle(sc)),
         edgeSize = math.max(1, sc.borderSize or 1),
     })
 end
@@ -157,19 +157,33 @@ end
 ---
 --- All plain values out of SavedVariables plus the resolved dimensions; nothing
 --- here is ever secret.
+--- The three media picks the skin can own (KC-03), as the bar draws them: each the stored pick, or
+--- the skin's token while its "Use the skin's ..." companion is set (NS.SkinResolve). The
+--- signature below signs these RESOLVED keys, not the stored ones, so a skin switch, an override
+--- or a companion toggle moves it although no stored pick did.
+function Castbar.LabelFont(c)
+    return NS.SkinResolve("hud.font", c.font, c.fontFromSkin)
+end
+function Castbar.BorderStyle(sc)
+    return NS.SkinResolve("bar.borderStyle", sc.borderTexture, sc.borderTextureFromSkin)
+end
+function Castbar.BarTexture(sc)
+    return NS.SkinResolve("bar.texture", sc.statusBarTexture, sc.statusBarTextureFromSkin)
+end
+
 local function structureSignature(c, intCfg, unintCfg, barLong, barThick)
     return table.concat({
         barLong, barThick,
         tostring(c.orientation), tostring(c.growDirection),
         tostring(c.iconPosition), tostring(c.iconSize),
         tostring(c.showSpark),
-        tostring(c.font), tostring(c.fontSize), tostring(c.fontFlags),
+        tostring(Castbar.LabelFont(c)), tostring(c.fontSize), tostring(c.fontFlags),
         tostring(c.fontShadow),
         tostring(c.namePosition), tostring(c.nameOffsetX), tostring(c.nameOffsetY),
         tostring(c.timePosition), tostring(c.timeOffsetX), tostring(c.timeOffsetY),
         tostring(c.showName), tostring(c.showTime),
-        tostring(intCfg.borderTexture),   tostring(intCfg.borderSize),
-        tostring(unintCfg.borderTexture), tostring(unintCfg.borderSize),
+        tostring(Castbar.BorderStyle(intCfg)),   tostring(intCfg.borderSize),
+        tostring(Castbar.BorderStyle(unintCfg)), tostring(unintCfg.borderSize),
     }, "|")
 end
 
@@ -290,7 +304,7 @@ end
 --- both mean "no outline / no monochrome", which SetFont spells as the empty
 --- string.
 local function applyLabelFonts(frame, c)
-    local fontPath = Castbar.FetchFont(c.font)
+    local fontPath = Castbar.FetchFont(Castbar.LabelFont(c))
     local fontSize = c.fontSize or 12
     local fontFlags = c.fontFlags
     -- "NONE" is the PRE-v5 token and core/Database.lua rewrites it, but a
@@ -406,11 +420,11 @@ local function ReskinColors(inst, intCfg, unintCfg)
     -- the spark anchor (to the interruptible inner status texture) is
     -- always at the correct fill edge regardless of which one is visible.
     frame.bar.interruptible:SetStatusBarTexture(
-        Castbar.FetchStatusBarTexture(intCfg.statusBarTexture))
+        Castbar.FetchStatusBarTexture(Castbar.BarTexture(intCfg)))
     frame.bar.interruptible:SetStatusBarColor(
         NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit))
     frame.bar.uninterruptible:SetStatusBarTexture(
-        Castbar.FetchStatusBarTexture(unintCfg.statusBarTexture))
+        Castbar.FetchStatusBarTexture(Castbar.BarTexture(unintCfg)))
     frame.bar.uninterruptible:SetStatusBarColor(
         NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit))
 
