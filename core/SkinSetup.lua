@@ -89,6 +89,9 @@ NS.SKIN_PATHS = {
 NS.SKIN_FALLBACK = {
     ["title.text"]  = { 1, 0.82, 0, 1 },
     ["text.accent"] = { 1, 0.82, 0, 1 },
+    ["close.hot"]   = { 1, 0.3, 0.3, 1 },   -- the Spells rows' Remove mark
+    ["sem.warn"]    = { 1, 0.5, 0, 1 },     -- the add box's "not tracked" tag
+    ["gtip.title"]  = { 1, 0.82, 0, 1 },    -- the Spells rows' own tooltip hints
 }
 
 --- A color token's components AS A CALL SITE WRITES THEM: r, g, b for an opaque color and r, g, b,

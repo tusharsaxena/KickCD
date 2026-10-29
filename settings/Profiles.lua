@@ -81,6 +81,13 @@ local function Build(mainCategory)
         -- hidden one, AceConfigDialog fills a hidden frame, and the page is blank.
         container.frame:Show()
         AceConfigDialog:Open("KickCD-Profiles", container)
+        -- AceConfigDialog acquires the manager's widgets from AceGUI itself, past the Options
+        -- instance's owner proxy, so the tree is painted for this addon's skin right after it is
+        -- drawn (skinning-§3; nothing while the Scope's Ignore settings panel is on), as
+        -- LootHistory's Profiles page does. Each widget goes back to the shared pool stock when
+        -- the next Open releases it, and a skin switch re-renders the page, which paints the
+        -- fresh rows.
+        NS.SkinPaintAceTree(container)
     end)
     ctx.panel:SetScript("OnHide", function()
         H.RefreshPanel(ctx, true)

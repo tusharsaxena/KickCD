@@ -1392,6 +1392,18 @@ Total.
 - Skin seam: a profile reset takes the skin back to Ka0s Default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 
+### test_skin_settings.lua (9)
+
+- skin settings: under a non-default skin the Spells rows and chrome block paint, past the proxy
+- skin settings: a release hands the Spells widgets back stock
+- skin settings: under the defaults nothing on the Spells page is painted
+- skin settings: the Units band's picker and Copy from Target paint through the proxy
+- skin settings: the Profiles page paints the tree AceConfigDialog drew
+- skin settings: the Remove mark is close.hot, { 1, 0.3, 0.3 } on Ka0s Default
+- skin settings: the not-tracked tag is sem.warn, ff8000 on Ka0s Default
+- skin settings: a row's own tooltip hint is titled in gtip.title
+- skin settings: the host copy carries every token the settings pages read
+
 ### test_grid.lua (13)
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
@@ -1854,6 +1866,7 @@ Total.
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
 | test_skinsetup.lua | 12 |
+| test_skin_settings.lua | 9 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1881,4 +1894,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1511** |
+| **Total** | **1520** |
