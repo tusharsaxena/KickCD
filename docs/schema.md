@@ -77,6 +77,19 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
                                  -- (event-driven), not InCombatLockdown() (lags
                                  -- the regen events by a frame).
 
+    -- The skin this addon wears (skinning-§2: per addon, per profile;
+    -- core/SkinSetup.lua). See "skin.*" below.
+    skin = {
+        source      = "ka0s",        -- "ka0s" | "eui" (EllesmereUI)
+        skin        = "ka0s",        -- a registered skin key; "ka0s" is Ka0s Default
+        ignorePanel = true,          -- the Scope: the settings pages stay the client's
+        ignoreFonts = false,         -- the Scope: every string keeps its own face
+        font        = "",            -- an LSM font key over the skin's, "" = the skin's own
+        texture     = "",            -- an LSM statusbar key over the skin's, "" = the skin's own
+        pickerSeen  = false,         -- the first-run skin picker was closed on this profile
+        hudReset    = false,         -- the one-time HUD style reset's record (no schema row)
+    },
+
     -- Per-unit widgets (target/focus dual tracking). Appearance (icons/
     -- castbar) is duplicated per unit; NS.Units is the single place that
     -- resolves "focus.link" into "read target's appearance instead" — see
@@ -101,6 +114,22 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
     },
 }
 ```
+
+## `skin.*` — the skin this addon wears
+
+Seven of the eight keys are schema rows on the General page's Skin tab (`settings/General.lua`), every
+one `skipRender` and drawn by the library's `O.AppearanceTab`, so `/kcd get|set skin.<key>` validates
+them (`skin.skin` refuses a key no skin registered) and Reset all settings, a profile reset, takes them
+back to the defaults above. The General page's own Defaults leaves them alone (the schema seam's
+`resetExempt`): it restores Master controls. `skin.font` and `skin.texture` are free text rather than a
+dropdown, because a media pack may register its keys after the settings files load. Each row's
+`onChange` moves only its own half of the applied skin through `LibKa0s-Skin-1.0`
+([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves,
+so a profile that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
+old and new (owner ruling O3), so the first-run skin picker shows once on each. `skin.hudReset` is the
+one-time HUD style reset's record and has no row (see the v5 → v6 migration below). Adding the block
+moved no stored path and needed no step of its own: AceDB merges the declared defaults into every
+profile.
 
 ## Spell list lifecycle
 
@@ -155,6 +184,9 @@ units[unit] = {
         -- Border. The composed block (options-ui-§16); borderTexture keeps its
         -- shipped name while the composer calls that leaf `borderStyle`.
         borderShow, borderTexture, borderColor, useClassColorBorder, borderSize,
+        borderTextureFromSkin,   -- "Use the skin's border": style AND thickness
+                                 -- follow the skin's icon family (see the v5 -> v6
+                                 -- migration below); default true
         -- Annotations. chargesOffsetX/Y are the charges badge's inset from the
         -- icon's bottom-right corner, in pixels (positive X = right, positive
         -- Y = up). They WERE the hardcoded `-2, 2` in modules/IconGrid_Render's
@@ -167,6 +199,7 @@ units[unit] = {
         -- through the composer's `keys` map.
         showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
         cooldownTextColor, useClassColorCooldownText, cooldownTextShadow,
+        cooldownTextFontFromSkin,  -- "Use the skin's font" (hud.font); default true
         showCharges, chargesOffsetX, chargesOffsetY,
         -- Per-slot ready glow (LibCustomGlow). Trigger ∈
         --   { never, always, target_casting, target_casting_interruptible }
@@ -205,6 +238,8 @@ units[unit] = {
         -- "Cast time color" in the panel for that reason.
         font, fontSize, fontFlags, fontShadow,
         textColor, useClassColorText,
+        fontFromSkin,                           -- "Use the skin's font" for both texts
+                                                -- (hud.font); default true
         -- Anchor: FREE = drag-positioned (saved to anchors.castbar);
         -- PRIMARY = SetPoint to this unit's icon grid primary icon button at
         -- (anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY).
@@ -242,18 +277,23 @@ units[unit] = {
         -- every color carries a useClassColor* companion and the bar carries
         -- barAlpha -- which folds into the per-state alpha CURVE in
         -- modules/Castbar.lua's ApplyState, never a SetAlpha of its own.
+        -- Each state's statusBarTextureFromSkin ("Use the skin's texture",
+        -- bar.texture) and borderTextureFromSkin ("Use the skin's border", the
+        -- style only, bar.borderStyle) default true.
         interruptible   = { statusBarTexture, barColor, useClassColorBar,
-                            barAlpha,
+                            barAlpha, statusBarTextureFromSkin,
                             bgColor, useClassColorBgColor,
                             nameTextColor, useClassColorNameTextColor,
                             borderShow, borderTexture,
-                            borderColor, useClassColorBorder, borderSize },
+                            borderColor, useClassColorBorder, borderSize,
+                            borderTextureFromSkin },
         uninterruptible = { statusBarTexture, barColor, useClassColorBar,
-                            barAlpha,
+                            barAlpha, statusBarTextureFromSkin,
                             bgColor, useClassColorBgColor,
                             nameTextColor, useClassColorNameTextColor,
                             borderShow, borderTexture,
-                            borderColor, useClassColorBorder, borderSize },
+                            borderColor, useClassColorBorder, borderSize,
+                            borderTextureFromSkin },
     },
 }
 ```
@@ -279,6 +319,8 @@ units[unit].label.style = {
                                       --    is "None" and is a real stored value; the
                                       --    pre-v5 token for it was "NONE"
     shadow   = false,                 -- drop shadow behind the text
+    fontFromSkin = true,              -- "Use the skin's font" (hud.font): while true the
+                                      --    label draws the skin's face, `font` is kept
     color    = { r = 1, g = 0.82, b = 0, a = 1 },  -- label text color (Blizzard gold)
     useClassColor = false,            -- the color's class-color companion. UNIT-scoped:
                                       --    a label names the unit it is drawn beside, and

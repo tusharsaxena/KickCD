@@ -6,7 +6,7 @@ Four pages sit under **Ka0s KickCD** in the game's own settings. This is the pag
 
 | Page | Covers |
 |---|---|
-| **General** | The master on/off switch, when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. |
+| **General** | The master on/off switch, when the UI shows, the drag lock, and overall size and transparency. The "Reset position" and "Reset all settings" buttons live here too, plus a "Debug console" checkbox that shows or hides the on-screen debug window for this session. A second tab, **Skin**, picks the skin the addon wears: where the look comes from (Ka0s skins or EllesmereUI), the nine skins, a font and a bar texture over the skin's own, the Scope (keep the settings panel in the game's look, keep every font) and a copy to every Ka0s addon. |
 | **Units** (page key `grid`; labeled *Grid* before item 020) | A band across the top: the **Unit** picker (Target / Focus), **Enable this unit**, and while Focus is picked **Link to Target** and **Copy from Target**. Under it, three entries on a nav rail: **Icons** (icon size and grid layout, ready and cooldown looks, borders, cooldown text and charges, tooltips, the ready glow and each glow style's own knobs), **Cast bar** (turn it on, place and size it, its spell icon, its direction, its two texts and their font, and separate colors for casts you can and can't interrupt) and **Text label** (a custom identity label on a unit's icon grid or cast bar: its text, where it attaches, its offset, alignment, rotation and font). |
 | **Spells** | Choose which spells to track for each class and spec, and drag a row by its handle to change its priority order. Only spells you can actually cast right now show up. |
 | **Profiles** | Save separate settings per character, class, realm, or faction. |
@@ -23,10 +23,10 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 
 | Page | Tabs, in strip order (rows per tab) | Rows |
 |---|---|---|
-| **General** | Master controls (7). The `Units` group's 3 rows (two enables and the Focus `link` row) are `skipRender` and drawn by the Units page's band, so they make no tab here (`untabbedSkipRender`) | 10 |
-| **Units > Icons** | Size and layout (10) \| Appearance (10) \| Annotations (11) \| Ready glow (34) | 65 per unit |
-| **Units > Cast bar** | General (4) \| Size and position (10) \| Text (15) \| Interruptible (13) \| Non-interruptible (13) | 55 per unit |
-| **Units > Text label** | General (2) \| Placement (8) \| Font (6) | 16 per unit |
+| **General** | Master controls (7) \| Skin (7: the group is the library tab's key, `Appearance`, and every row is `skipRender`, drawn by `O.AppearanceTab`). The `Units` group's 3 rows (two enables and the Focus `link` row) are `skipRender` and drawn by the Units page's band, so they make no tab here (`untabbedSkipRender`) | 17 |
+| **Units > Icons** | Size and layout (10) \| Appearance (11) \| Annotations (12) \| Ready glow (34) | 67 per unit |
+| **Units > Cast bar** | General (4) \| Size and position (10) \| Text (16) \| Interruptible (15) \| Non-interruptible (15) | 60 per unit |
+| **Units > Text label** | General (2) \| Placement (8) \| Font (7) | 17 per unit |
 | **Spells** | Spell list (1 tab, hand-drawn — the page has no schema rows) | — |
 | **Profiles** | **no strip** — AceDBOptions draws the whole page, so it never reaches the flow engine | — |
 
@@ -92,21 +92,29 @@ Two things about this tab are this addon's rather than the composer's:
 
   **No reset may touch it, and `launcher-§3` (v2.54.0) states that as a property of the setting** rather than deriving it from the store: whether the button is shown is a per-installation display preference, like the position LibDBIcon keeps in the same table. *Reset all settings* never reached it here — it is a profile reset and the table is global, and the walk narrows to `sessionOnly` rows besides — but **the General page's *Defaults* button did**, because `RestoreDefaults` walks every row on the page and reads no veto. The schema seam's `resetExempt` (`settings/SchemaSetup.lua`) now refuses the row inside `Store.ApplyDefault` **while a bulk bracket is open**, and both resets write through `applyDefault` inside the bracket the Options descriptor hands them, so the one row is exempt from both from one place while `/kcd reset global.minimap.shown` — one row named out loud, outside any bracket — still resets it. The object behind it is `core/LauncherSetup.lua`; see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## The Skin tab (`skinning-§3`)
+
+General's second and last tab (the page has no Keybindings tab) is the library's own entry, `H.AppearanceTab({ owner, get, set })` (`settings/General.lua`), passed in `RenderTabbedSchema`'s `opts.tabs`. Its key is `Appearance` and its label **Skin**; the seven `skin.*` rows ([schema.md](schema.md#skin--the-skin-this-addon-wears)) take that key as their `group`, so the host tab takes the group's place in the strip instead of adding a second one. The library draws the whole tab from `LibKa0s-Skin-1.0` for the owner `core/SkinSetup.lua` registered: a **Skin source** heading (*Ka0s skins*, *EllesmereUI* with the reason when it cannot skin this addon), a **Look** heading over the nine skins with their swatches, **Font and texture** (*Skin's own* first), the Scope (**Ignore settings panel**, on by default, and **Ignore fonts**), **Copy to every Ka0s addon…** and the note. `get` and `set` are the seam's read and write (`NS.SkinChoice`, `NS.WriteSkinChoice`), so a pick lands through `Store.Set` like every other setting; the tab moves the applied skin first and each row's `onChange` then finds its half already applied.
+
+With **Ignore settings panel** off, the panel's own chrome and every AceGUI widget the addon acquires follow the skin: the library paints what it builds, the Units band reads AceGUI through the Options proxy (`NS.AceGUI`), the Spells page acquires through `Spells.Acquire` (`AceGUI:Create`, then `NS.SkinPaintAce`), and the Profiles page paints the tree AceConfigDialog drew (`NS.SkinPaintAceTree`). A released widget goes back to AceGUI's shared pool stock, so another addon never inherits KickCD's skin.
+
 ## The composed control groups (`options-ui-§16`)
 
 Font, border and bar blocks are **emitted by the library**, never typed out — a hand-written copy is anti-pattern #73. Each composer returns an array of ordinary schema rows, so `rowsForPage`, `applyDefault`, `RestoreDefaults`, the CLI and the reset sweep all keep working with nothing added to them. `Helpers.AddComposed(rows, stamp)` (`settings/Panel.lua`) stamps this addon's own `panel` / `section` / `unit` onto what comes back and appends it in declaration order.
 
 | Composer | Emits | Used by |
 |---|---|---|
-| `H.FontGroup` | Font · Font size · Font color · Use class color · Font flags · Font shadow | Icons > Annotations > Cooldown text, Cast bar > Text > Font (both texts), Text label > Font |
-| `H.BorderGroup` | *(Show border)* · Border style · Border thickness (px) · Border color · Use class color | Icons > Appearance > Border, Cast bar > Interruptible / Non-interruptible |
-| `H.BarGroup` | Bar texture · Bar opacity · Bar color · Use class color | Cast bar > Interruptible / Non-interruptible |
+| `H.FontGroup` | Font · Font size · Font color · Use class color · Font flags · Font shadow · *(Use the skin's font)* | Icons > Annotations > Cooldown text, Cast bar > Text > Font (both texts), Text label > Font |
+| `H.BorderGroup` | *(Show border)* · Border style · Border thickness (px) · Border color · Use class color · *(Use the skin's border)* | Icons > Appearance > Border, Cast bar > Interruptible / Non-interruptible |
+| `H.BarGroup` | Bar texture · Bar opacity · Bar color · Use class color · *(Use the skin's texture)* | Cast bar > Interruptible / Non-interruptible |
 | `H.ColorPair` | a swatch and its companion, and nothing else | the cooldown tint, the two glow colors, both background swatches, both spell-name swatches |
 | `H.MasterControls` | the **seven** canonical rows above, plus the button-pair hook that draws the two resets | General > Master controls |
 
 **`keys` and `defaults` are what keep the stored shape this addon's.** Every composer call passes the leaf names this addon already shipped — `borderStyle` → `borderTexture`, `fontSize` → `size` on the label, `fontColor` → `textColor` on the cast bar — so the composer changes what is *declared* and how it is *laid out*, never what is *stored*.
 
 Rows a composer does not emit but this addon legitimately has go in `spec.extra` and are appended **after** the mandated block, never interleaved.
+
+**The "Use the skin's ..." companion (`fromSkin`, skinning-§6).** Every HUD media pick asks its composer for one (OptionsCompose minors 12 and 13; the 2026-10-29 skinning rollout's KC-03): the icon border (`fromSkin = "icon"`, the icon family, so it also grays and governs the thickness slider), the countdown font, the cast bar's font (both texts) and each state's bar texture and border (style only), and the label font — eight per unit. Each defaults **true**, in the row and in `defaults/Profile.lua`. While it is set the composer grays the picker beside it and shows the skin's value, and the HUD draws the skin's token through `NS.SkinResolve`; the stored pick is never overwritten, so unticking it draws exactly what the player had. Colors, sizes, flags and shadows carry no companion and stay the player's. Copy from Target carries the companions with the pickers. The one-time reset that ticked them on adoption is [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)'s.
 
 **A group over a background is not a bar group.** The cast bar's `bgColor` is a `SetColorTexture` with no fill, so it takes the swatch and its companion and nothing else — inventing a texture picker for a surface with no texture is a control wired to nothing.
 
@@ -332,7 +340,7 @@ Spells and Profiles share the unified header but render custom bodies:
   The chrome block is drawn **before** the strip: the strip's own band reservation reads `ctx.__bannerHeight`, and the other way round it would not know about it. The header `Defaults` button opens the existing `KICKCD_RESET_SPELLS` StaticPopup, which resets only the currently selected class+spec.
 
   **The rows drag** (`LibKa0s-Widgets-1.0`'s `ReorderList`, `options-ui-§18`) — see below.
-* **Profiles** — AceDBOptions options table rendered into an AceGUI `SimpleGroup` parented to `ctx.body`. `AceConfigDialog:Open("KickCD-Profiles", container)` is called on first show. **No Defaults button** — profile management has its own destructive controls inside the AceDBOptions UI.
+* **Profiles** — AceDBOptions options table rendered into an AceGUI `SimpleGroup` parented to `ctx.body`. `AceConfigDialog:Open("KickCD-Profiles", container)` is called on first show, then `NS.SkinPaintAceTree(container)`: AceConfigDialog acquires its widgets past the Options proxy, so the tree is painted for the skin right after it is drawn (nothing while Ignore settings panel is on). **No Defaults button** — profile management has its own destructive controls inside the AceDBOptions UI.
 
 ## The Spells reorder list (`options-ui-§18`)
 

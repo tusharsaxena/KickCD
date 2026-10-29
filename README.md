@@ -91,6 +91,10 @@ The primary anchor sets where the block of secondary icons sits relative to the 
 
 If you enable more spells than the grid can hold, the extras are left off and you get one warning in chat, so you can make room or trim the list.
 
+#### Skins (General > Skin)
+
+KickCD wears one of nine skins, Ka0s Default to start with. A skin changes the settings pages, the drag strips and the debug and simulator windows, and on the grids, cast bars and labels it changes only three things: the font, the cast bar's texture and the borders. Your colors, sizes and positions stay yours. Every font, texture and border picker on the Units page has a **Use the skin's ...** box beside it. Untick one to keep your own pick for that piece. The Skin tab can also lay one font or one bar texture over the skin's own, leave the settings panel in the game's look (the default), copy the skin to your other Ka0s addons, or hand the look to EllesmereUI. Each profile has its own skin, and a small window offers you one the first time each profile loads.
+
 ## FAQ
 
 | Question | Answer |
@@ -107,6 +111,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 | Are there per-character settings? | Yes, see Settings → Profiles. Every character starts on a shared default, and you can split off a per-character, per-class, per-realm or per-faction profile whenever you like. `/kcd profile` lists your profiles, and `/kcd profile <name>` switches to one without opening the panel. |
 | Does the fill direction change for channels? | Yes. A channel drains the way the matching cast would fill, so a bar that fills to the right during a cast drains to the left during a channel. |
 | How do I capture debug info for a bug report? | Follow [Reporting a bug](#reporting-a-bug) below. `/kcd diagnostics` writes one report into the debug window, after your trace. It covers the spell list, cooldowns, both grids and cast bars, the interrupt checks and any events your client refused to register. If you only need one of those, the single snapshots (`/kcd debug spells`, `/kcd debug castbar`, `/kcd debug interrupt`, `/kcd debug events`) still print to chat. `castbar` and `interrupt` show your target, or your focus if you add `focus`. The window resets on every reload. |
+| My fonts, cast bar and borders changed after an update. Can I have the old look back? | Since skins arrived, the grids, cast bars and labels follow the skin's font, bar texture and border, and that update switched every profile over once. On Ka0s Default that means the Oxanium font, the Ka0s Default bar and a flat icon border with no cast-bar border. Your own picks are still saved: untick **Use the skin's ...** beside any picker on the Units page and that piece goes back to what you had. |
 | Why does the simulator not show my party's kicks? | KickCD tracks your own cooldowns; the simulated party only narrates. Their kicks print as `[sim]` lines in chat and never appear on your grid. |
 | Can I measure how much KickCD costs my frame rate? | Yes. `/kcd perf start` begins a run. Play for a while, then `/kcd perf finish` ends and saves it, and `/kcd perf report` writes the summary and a JSON line to copy into the debug window. `/kcd perf` on its own shows where a run stands and lists every step, and the same steps are on a small panel. |
 

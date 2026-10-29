@@ -26,7 +26,8 @@ and a retired one leaves its number unused.
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
 | SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
-| DEGRADED-1 – 15 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel |
+| DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
+| SKIN-1 – 29 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts, EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips and the sim strip on top, the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -51,6 +52,11 @@ and a retired one leaves its number unused.
 - Back up `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` before INSTALL-1, INSTALL-7, INSTALL-9
   and LOC-6: each deletes or edits it.
 - A frFR (or other non-English) client for LOC.
+- For SKIN: a **full client start** (not `/reload`) after installing this build, because the client
+  loads new font and texture files only at start and a `/reload` leaves the skins' faces as fallback
+  squares and their bars blank. SKIN-1 and SKIN-2 need a `KickCDDB` saved by an earlier build (back it
+  up); SKIN-15 – 17 need EllesmereUI; SKIN-18 and SKIN-27 a second Ka0s addon that uses skins (Ka0s
+  Loot History, or the Ka0s Skin Tester).
 - For DEGRADED, first `/kcd set units.target.castbar.anchorMode FREE` (DEGRADED-12 needs it, and nothing
   can change it once the library is gone), then rename `Interface/AddOns/KickCD/libs/LibKa0s` to
   `libs/LibKa0s_off` and `/reload`; DEGRADED-13 renames it back. A folder left renamed ships a silently degraded addon.
@@ -99,6 +105,10 @@ Which checks to run for a partial change:
   raises nothing, so no gate reports it.
 - **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
   PANEL-1 – 13, PANEL-17, PANEL-29, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
+- **Skins** (`core/SkinSetup.lua`, an `NS.Skin` / `NS.SkinResolve` / `NS.SkinColor` call site, a
+  "Use the skin's ..." companion, `Database:MigrateHudSkin`, an `owner` handed to a LibKa0s factory, or
+  a re-vendor that moves `libs/LibKa0s/Skin*.lua`, `OptionsAppearance.lua` or `OptionsSkinPicker.lua`):
+  SKIN, then DIAG-20, DEGRADED-16, PANEL-31, PANEL-33 – 35 and LAYER-1.
 - **A release or a TOC bump:** everything.
 
 ## INSTALL
@@ -342,15 +352,16 @@ you had before the update is still yours.
   icon prune); this only proves nothing broke. `tests/test_options_panel.lua` pins the field and
   that `info` is declared exactly when an `O.IdList` is drawn. `/kcd debug off`. Result: pass (owner-marked 2026-10-10)
 
-- **PANEL-31. General after item 020.** Open General → one tab, `Master controls`, and no `Units`
-  tab. Hover Defaults → it says it restores the Master controls tab and also resets both units'
+- **PANEL-31. General after item 020.** Open General → two tabs, `Master controls` and `Skin`
+  (SKIN-4), and no `Units` tab. Hover Defaults → it says it restores the Master controls tab and also resets both units'
   *Enable this unit* and Focus's *Link to Target*, which sit in the Units page's band. Hover General
   visibility → *"When KickCD's displays (icon grids, cast bars and labels) are shown. Enable KickCD
   still wins: off hides everything."*; its list reads `Always`, `In combat`, `When the tracked unit is
   casting`, `When the tracked unit is casting an interruptible spell`. Hover Lock frame → the
   library's unlocked-is-the-preview sentence (*"... this is the addon's test mode."*). Set General
-  visibility to a non-default value, `/reload` → still set (`/kcd get visibility`).
-  Result: pass (owner, 2026-10-24)
+  visibility to a non-default value, `/reload` → still set (`/kcd get visibility`). (Amended by
+  KC-05, 2026-10-29: the Skin tab.) Result: owed (amended 2026-10-29; passed as first written, owner,
+  2026-10-24)
 - **PANEL-32. The Units page's band.** The tree reads **General · Units · Spells · Profiles** (no
   *Grid*). Open Units with Target in the band → one row: `[Unit] [Enable this unit]`, the enable at the
   same height as the picker's control. Pick Focus → `[Unit] [Enable this unit] [Link to Target] [Copy
@@ -370,11 +381,14 @@ you had before the update is still yours.
   (px)` | `Icon zoom`) then `Secondary block` (`Primary icon anchor point` | `Growth direction`, `Rows`
   | `Columns`, `X offset (px)` | `Y offset (px, positive = down)`). Appearance → `States` (`Ready
   opacity` | `Cooldown opacity`, `Cooldown tint` | `Use class color`, `Suppress GCD swipe and text`)
-  then `Border`. Annotations → `Cooldown text` (`Show cooldown text` alone, then the font block),
+  then `Border` (ending in `Use the skin's border`). Annotations → `Cooldown text` (`Show cooldown
+  text` alone, then the font block with `Use the skin's font`),
   `Charges`, `Tooltip` (`Show tooltip on hover`). Ready glow's triggers read `When the tracked unit is
   casting ...`, its knobs say `(px)` / `(seconds)`, its last heading is still `Offset`. Hover the Icons
   rail entry → *"The interrupt icons: size and layout, appearance, annotations and ready glow."* Change
-  one row on each tab, `/reload` → each value kept. Result: pass (owner, 2026-10-24)
+  one row on each tab, `/reload` → each value kept. (Amended by KC-05, 2026-10-29: the two `Use the
+  skin's ...` boxes, SKIN-7.) Result: owed (amended 2026-10-29; passed as first written, owner,
+  2026-10-24)
 - **PANEL-34. Units > Cast bar after item 020.** Tabs `General | Size and position | Text |
   Interruptible | Non-interruptible`. General → `Enable cast bar` (tooltip *"Show this unit's cast
   bar."*), `Orientation` | `Growth direction`, `Show spark`. Size and position → `Size` (`Auto-size to
@@ -382,16 +396,22 @@ you had before the update is still yours.
   overridden slider), `Position` (the X / Y offset tooltips end `(positive = right)` / `(positive =
   up)`), `Spell icon` (`Icon position` | `Icon size (px)`; Icon position's tooltip ends *"Off hides the
   icon; so does Icon size 0."*). Text → `Spell name`, `Cast time`, `Font (both texts)` with `Cast time
-  color`. Interruptible and Non-interruptible → `Bar`, `Background`, `Spell name`, `Border`. Hover the
+  color` and `Use the skin's font`. Interruptible and Non-interruptible → `Bar` (with `Use the skin's
+  texture`), `Background`, `Spell name`, `Border` (with `Use the skin's border`). Hover the
   rail entry → *"The cast bar: size and position, text, and the colors for casts you can and cannot
-  interrupt."* Change one row on each tab, `/reload` → each value kept. Result: pass (owner, 2026-10-24)
-- **PANEL-35. Units > Text label after item 020.** The rail entry reads `Text label`. Placement →
+  interrupt."* Change one row on each tab, `/reload` → each value kept. (Amended by KC-05, 2026-10-29:
+  the five `Use the skin's ...` boxes, SKIN-7.) Result: owed (amended 2026-10-29; passed as first
+  written, owner, 2026-10-24)
+- **PANEL-35. Units > Text label after item 020.** The rail entry reads `Text label`; its Font tab
+  ends in `Use the skin's font` (SKIN-7). Placement →
   `Position` (`Attach to` alone, `Attached widget anchor point` | `Label anchor point`, `X offset (px)`
   | `Y offset (px)`) then `Alignment` (`Horizontal alignment` | `Vertical alignment`, `Rotation
   (degrees)`). Hover `Attached widget anchor point` → it says *"the widget chosen in Attach to"*. With
   Focus linked and picked → Text label > General shows `Label text` above the note; rename Focus's
   label → the Focus tag on screen changes, Target's does not, Focus stays linked. Swap the two anchor
-  points' values, `/reload` → kept, and the label sits where they say. Result: pass (owner, 2026-10-24)
+  points' values, `/reload` → kept, and the label sits where they say. (Amended by KC-05, 2026-10-29:
+  the `Use the skin's font` box.) Result: owed (amended 2026-10-29; passed as first written, owner,
+  2026-10-24)
 - **PANEL-36. Spells after item 020.** The picker above the list is captioned `Class and
   specialization`; picking an entry still switches the list. `/kcd reset icons`, `/kcd reset castbar`
   and `/kcd reset label` → each redirect names `Units > Icons'`, `Units > Cast bar's` and `Units > Text
@@ -1004,11 +1024,14 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   Result: pass (owner-marked 2026-10-10)
 - **DIAG-19. Inert when it fits.** After Clear → the scrollbar still shows, thumb parked, ignoring wheel
   and drag, and the right gutter keeps its width. Result: pass (owner-marked 2026-10-10)
-- **DIAG-20. The shared window edge.** The console reads as a flat 1px black border with a 1px light-gray
-  highlight inside it, a gold "Ka0s KickCD — Debug" title and a gray divider. Beside a second Ka0s
-  addon's console → border, highlight, divider and title are indistinguishable. A difference means
-  a host passing `applySkin` again or `libs/LibKa0s` drifting from `../LibKa0s` (fix upstream and
-  re-vendor, never in `libs/`). Result: pass (owner-marked 2026-10-10)
+- **DIAG-20. The shared window edge.** On **Ka0s Default**, the console reads as a flat 1px black border
+  with a 1px light-gray highlight inside it, a gold "Ka0s KickCD — Debug" title and a gray divider.
+  Beside a second Ka0s addon's console on Ka0s Default → border, highlight, divider and title are
+  indistinguishable. A difference means a host passing `applySkin` again or `libs/LibKa0s` drifting
+  from `../LibKa0s` (fix upstream and re-vendor, never in `libs/`). Under any other skin the console
+  wears KickCD's skin (SKIN-11). (Amended by KC-05, 2026-10-29: the console paints for the skin owner,
+  its descriptor's `addonName`.) Result: owed (amended 2026-10-29; passed as first written,
+  owner-marked 2026-10-10)
 - **DIAG-21. The title bar marks.** → copy, clear and close are three small white glyphs from
   `libs/LibKa0s/media/icons/`, with no tooltips. A `×`, or the words Copy and Clear, means
   `addonName = addonName` fell out of `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10)
@@ -1163,6 +1186,11 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   combat, target a hostile caster whose cast flags are secret, `/kcd debug interrupt` → the dump prints,
   every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
   `NS.SECRET`), with no Lua error. Result: pass (owner-marked 2026-10-10)
+- **DEGRADED-16. The HUD on its stored picks (KC-03).** Run this before DEGRADED-13's restore.
+  `/kcd unlock` → the grids, cast bar and labels draw what each profile stores, with no skin engine to
+  follow: on default picks Friz Quadrata, Blizzard Raid Bar and the 2 px Blizzard Tooltip edges, the
+  pre-skin look; no face, texture or border is missing, and no skin picker opens at login. `/kcd lock`.
+  Result:
 
 ## LAYER
 
@@ -1208,6 +1236,191 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   an icon → the spell tooltip opens; the text overlay does not take the hover.
   Result: pass (owner, 2026-10-24)
 
+## SKIN
+
+The skinning rollout's checks (Ka0sAddonsCommonTasks `docs/2026-10-29-SKINNING_ROLLOUT/`, items KC-01 to
+KC-05; owner rulings O2 and O3, decisions X3 to X6). Start from a **full client start** after installing
+this build (see *Before you start*), and pick skins on `/kcd config` → General → **Skin**. The HUD is
+the icon grids, cast bars and unit labels: `/kcd unlock` shows every enabled unit's grid and cast-bar
+placeholder whatever the visibility mode, and a hostile caster shows the two cast states. `/kcd lock`
+after each check. Every check also fails on a Lua error or a taint warning.
+
+- **SKIN-1. Ka0s Default after the upgrade: the HUD's one visible change (O2, X5; KC-03).** On a
+  profile saved by a build before this one, with every HUD font, texture and border left at its
+  default, log in on **Ka0s Default** → the HUD changes in exactly these ways and no others: the
+  countdown text, the cast bar's spell name and cast time, both unit labels and the charges badge read
+  in **Oxanium** (a squared, technical face) instead of Friz Quadrata (the badge's was the client's
+  number font); both cast-bar states fill with the **Ka0s Default** bar texture (dim at the top, a
+  highlight low on the bar and a short lip) instead of Blizzard Raid Bar, in the same yellow and red;
+  the cast bar draws **no border** where it drew a 2 px Blizzard Tooltip edge; and each icon's border is
+  a **flat 2 px edge** in the border color (black) where it was the Blizzard Tooltip edge. Sizes, colors,
+  opacity, the glow, the layout and every position are as before. The settings pages are as before
+  (the Skin tab's **Ignore settings panel** is on). The debug console, perf panel and sim panel keep
+  their edge and colors; their text reads in Oxanium, the log lines in JetBrains Mono. Fail: any other
+  changed color, size or position, a HUD string still in Friz Quadrata, a cast bar on Blizzard Raid
+  Bar, or a cast-bar border left on. Result:
+- **SKIN-2. The reset runs once per profile and keeps your own picks (O2; KC-03).** Before installing
+  this build, set Target's cast-bar font to a face that looks clearly different (Arial Narrow) on a
+  profile `SkinA`, and give a second profile `SkinB` a different label font. Install, log in on
+  `SkinA` → the cast bar reads in Oxanium; Units > Cast bar > Text → **Use the skin's font** is ticked
+  and the font picker beside it is grayed and shows the skin's face. Untick it → Arial Narrow comes
+  back at once. `/reload` → still Arial Narrow, the box still unticked (`/kcd get
+  units.target.castbar.fontFromSkin` prints false). Switch to `SkinB` → its label is in Oxanium now
+  (its first activation ran the reset); untick that label's companion → its own face. Switch back to
+  `SkinA` → still Arial Narrow. `/kcd get skin.hudReset` is not a setting and answers *Setting not
+  found*. Fail: the reset running again after a reload or a profile switch, a stored pick lost, or a
+  profile that was not active at the upgrade left off the skin. Result:
+- **SKIN-3. A new or reset profile follows the skin from the start (X3).** Create a profile `SkinNew`
+  → every **Use the skin's ...** box on Units > Icons, Cast bar and Text label is ticked for both
+  units, and the HUD looks as SKIN-1 describes. Untick one, then Profiles → Reset Profile → ticked
+  again. Delete `SkinNew`. Result:
+- **SKIN-4. The Skin tab (KC-01).** General → the strip reads `Master controls | Skin`, Skin last
+  (there is no Keybindings tab). Skin shows a **Skin source** heading over *Ka0s skins* (on) and
+  *EllesmereUI* (disabled with a line saying why, unless EllesmereUI is loaded and can skin this
+  addon), a **Look** heading over the nine skins three to a line, each with its color swatches, a
+  **Font and texture** heading (**Font** and **Texture**, both *Skin's own*), the Scope (**Ignore
+  settings panel** on, **Ignore fonts** off), **Copy to every Ka0s addon…** and the note that skins
+  change every visual element. Pick **Obsidian** → no reload, no Lua error; `/kcd get skin.skin`
+  prints `obsidian`. `/kcd set skin.skin nosuchskin` is refused and nothing moves; `/kcd set skin.skin
+  ka0s` → back to Ka0s Default, and the tab shows it. General → **Defaults** → Master controls reset,
+  the skin untouched. Result:
+- **SKIN-5. Each skin, live, on the HUD (KC-03).** `/kcd unlock` with both units enabled, Focus
+  unlinked, then pick each skin in turn: Obsidian, Azeroth, Glass, High Contrast, Ember, WoW Default,
+  WoW Midnight, WoW Forever, then Ka0s Default again → with **no reload** every grid, cast bar and
+  label repaints (SKIN-6 lists what each skin draws); the cast bar's yellow and red, the label's gold,
+  the border color, the glow, the sizes and the positions never move. Back on Ka0s Default the HUD
+  is exactly as SKIN-1 left it. Target a hostile caster under two skins → the live bar wears the skin
+  in both states. Fail: a piece that keeps the old skin until `/reload`, or a color that changed with
+  the skin. Result:
+- **SKIN-6. What each skin draws on the HUD (KC-03; LibKa0s SkinDefs).** With every **Use the skin's
+  ...** box ticked and no Font or Texture override: the HUD text reads in **Oxanium** under Ka0s
+  Default and in **Friz Quadrata** under every other skin (the library gives only Ka0s Default a HUD
+  face of its own; the settings pages and tool windows take each skin's family, SKIN-9). The cast bar's
+  texture: Ka0s Default **Ka0s Default**; Obsidian **Ka0s Matte**; Azeroth **Ka0s Parchment**; Glass
+  **Ka0s Glass Bar**; High Contrast **Ka0s Solid**; Ember **Ka0s Forge**; WoW Midnight **Ka0s Satin**;
+  WoW Forever **Ka0s Classic**; WoW Default **Blizzard**. The cast bar draws no border under any skin.
+  The icon border: a flat 1 px edge under Obsidian, Glass and WoW Forever, a flat 2 px edge under Ka0s
+  Default, Azeroth, High Contrast, Ember and WoW Midnight, and the 2 px Blizzard Tooltip edge under
+  WoW Default. Fail: a bar on another skin's texture, a white or missing fill, a border where the list
+  says none, or an empty square where a letter should be. Result:
+- **SKIN-7. The "Use the skin's ..." boxes (KC-03).** On a non-default skin (Azeroth), Units > Icons
+  → Appearance → Border and Annotations → Cooldown text, Cast bar → Text → Font (both texts) and each
+  state's Bar and Border, and Text label → Font each carry one **Use the skin's ...** box (eight per
+  unit). Ticked, the picker beside it is grayed and shows the skin's value, and the icon border's box
+  also grays its thickness slider (the skin sets both). Untick each in turn → that one piece goes back
+  to your own pick at once, the rest stay on the skin; tick it → back on the skin. Your colors, sizes,
+  flags and shadows are never grayed and never move. Fail: a box that changes another piece, a picker
+  that stays live while ticked, or a color, size or flag that follows the skin. Result:
+- **SKIN-8. A linked Focus and Copy from Target (KC-03).** Focus linked → it draws exactly what Target
+  draws under every skin, and its entries are inert as before. Unlink, untick Target's **Use the skin's
+  font** on the cast bar, then Units → Focus → **Copy from Target** → Focus's box is unticked too and its
+  bar draws Target's face. Result:
+- **SKIN-9. The settings pages follow the skin (KC-01, KC-02).** On the Skin tab untick **Ignore
+  settings panel**, pick **Obsidian**, then walk General, every Units entry (with the band's Unit
+  picker, Enable this unit, Link to Target and Copy from Target), Spells (the class and spec picker,
+  Add spell, every row's handle, icon, name, enable box, known mark, category dropdown and Remove mark)
+  and Profiles (its dropdowns, edit box and buttons) → the nav rail, tabs, headings, check boxes,
+  sliders, dropdowns, edit boxes, buttons and drawers wear Obsidian, in Inter. Pick **Ka0s Default** →
+  the first look is back, with no reload. Tick **Ignore settings panel** → every page is stock again,
+  live. Open another Ka0s addon's and another AceGUI addon's settings between KickCD's pages a few
+  times → theirs stay as they were every time (the AceGUI pool leak check). Fail: a control that keeps
+  the old skin until `/reload`, a skinned control with Ignore settings panel on, or another addon's
+  widget wearing KickCD's skin. Result:
+- **SKIN-10. The Spells page's own colors and hints (KC-02; D5).** On Ka0s Default, Spells → the
+  Remove mark rests in the same soft red, the add box's *not tracked* tag is the same orange, and
+  hovering a row's Remove mark or its known mark opens a tooltip whose first line is the same gold as
+  before this build. Under **Azeroth** with Ignore settings panel off → the Remove mark, the tag and the
+  hint titles take Azeroth's colors; the tooltip frame itself stays Blizzard's. Result:
+- **SKIN-11. The tool surfaces follow the skin (KC-01, KC-04).** Under **Azeroth**, `/kcd unlock` → both
+  drag strips and their `?` marks wear Azeroth; open the debug console (`/kcd debug window`) and its copy
+  window, the perf panel (`/kcd perf`), the sim panel and the cyan sim strip (`/kcd sim` a scenario),
+  and drag a Spells row (the reorder ghost and drop line) → each wears Azeroth: edge, title, buttons,
+  log lines, line counter and scroll bars; the console's log keeps JetBrains Mono, and the sim strip
+  stays cyan (its meaning, the skin changes only its legibility). Switch to **Ka0s Default** with the
+  console open → it repaints with no reload and looks as SKIN-1 says. Result:
+- **SKIN-12. A font override (KC-01; LibKa0s#63).** Skin tab → **Font** → a clearly different face →
+  with no reload every HUD text whose **Use the skin's font** is ticked takes it, at the sizes it had,
+  and so do the skinned settings pages and the tool windows (the console's log keeps its monospace
+  face); an unticked HUD text keeps your pick. Switch skins → the override stays. **Font** → *Skin's
+  own* → the skin's face is back. `/kcd get skin.font` shows the key while set and an empty value after.
+  Result:
+- **SKIN-13. A texture override (KC-01; LibKa0s#63).** **Texture** → a clearly different status bar →
+  with no reload both cast-bar states take it (where their **Use the skin's texture** is ticked), each
+  in its own color; the icons and the label do not change. *Skin's own* → the skin's texture is back.
+  Result:
+- **SKIN-14. Ignore fonts (KC-01).** With Ignore settings panel off and a font override set, tick
+  **Ignore fonts** → with no reload the settings pages and tool windows go back to the game's own
+  faces; the override stays selected in **Font**. The HUD is not one of those strings: its faces are
+  the **Use the skin's ...** boxes' to decide, so it keeps drawing the skin's (or the override's) face
+  while they are ticked. Untick Ignore fonts → the override's face is back on the panel. Result:
+- **SKIN-15. EllesmereUI on (KC-01; LibKa0s SkinEUI).** With EllesmereUI loaded, its third-party
+  skinning on and KickCD on in its Third-Party list → Skin → **Skin source** offers **EllesmereUI**;
+  choose it → the settings pages (with Ignore settings panel off) and the tool windows take EllesmereUI's
+  accent, panel color and font, live; the HUD draws Ka0s Default's HUD media (SKIN-1's look) while its
+  boxes are ticked. Result:
+- **SKIN-16. EllesmereUI off (KC-01).** Turn KickCD off in EllesmereUI's Third-Party list (or disable
+  EllesmereUI) and `/reload` → the EllesmereUI choice is disabled with the failing condition and its
+  fix listed, and KickCD wears its Ka0s skin, HUD included. Result:
+- **SKIN-17. Back from EllesmereUI needs a reload (KC-01).** With EllesmereUI as the source, pick **Ka0s
+  skins** → a reload is offered; after it the Ka0s skin shows. Switching to a profile whose source is
+  Ka0s while EllesmereUI painted this session prints one line asking for `/reload`. Result:
+- **SKIN-18. Copy to every Ka0s addon (KC-01).** With a second Ka0s addon that uses skins loaded, set a
+  skin, a font and a texture here and press **Copy to every Ka0s addon…** → the confirmation names the
+  font and texture; accept → the other addon wears them with no reload and its Skin tab shows them, and
+  KickCD repaints once. With no other adopter loaded the button is disabled with *No other loaded Ka0s
+  addon uses skins yet.* Result:
+- **SKIN-19. Profiles (KC-01).** Give two profiles different skins, Font overrides and Scope, then
+  switch between them on Profiles → each brings its own, HUD included, with no reload. Copy one onto
+  the other → the copy's skin. Reset one → Ka0s Default, the overrides cleared, Ignore settings panel
+  back on. General → Reset all settings → the same for the active profile. Result:
+- **SKIN-20. Combat (KC-01, KC-03).** On a target dummy in combat, change the skin on the Skin tab and
+  with `/kcd set skin.skin azeroth` → no Lua error and no taint warning; the HUD repaints at once and the
+  interrupt still lands from your bars; the settings pages behave as for any other setting in combat.
+  Result:
+- **SKIN-21. The minimap button, tooltips and popups stay stock (E2, E3).** Under every skin, hover the
+  minimap button and an icon on the grid (Show tooltip on), and open General → Reset all settings → the
+  button, its tooltip, the spell tooltip frame and the confirmation popup look as before this build.
+  Result:
+- **SKIN-22. The first-run skin picker (KC-04; O3, X6).** On a character that never ran this build, log
+  in → shortly after the world loads a small window titled **Choose a skin for Ka0s KickCD** opens about
+  three quarters of the way up the screen, already in the profile's skin: a dropdown showing the skin
+  worn now, a gear button beside it (and **no eye**: KickCD has no window or test mode to preview in),
+  **Apply** under it and a close mark. Close it, `/reload` → it does not come back on that profile.
+  Create a new profile → it opens again; reset that profile after closing it → again. Every existing
+  profile shows it once too. Fail: an eye button, a title that does not name Ka0s KickCD, no window on a
+  new or reset profile, or one on a profile that already closed it. Result:
+- **SKIN-23. A pick previews; Apply saves; a close puts it back (KC-04).** With `/kcd unlock` (so the HUD
+  shows) and the picker up on a fresh profile, pick **Obsidian** in its dropdown → the HUD, the drag
+  strips and the picker repaint in Obsidian with no reload, and nothing is saved (`/kcd get skin.skin`
+  still prints the skin it opened with). Press **Apply** → it closes and Obsidian stays; `/reload` →
+  still Obsidian. On another fresh profile preview **Azeroth** and close with the close mark → back to
+  the old skin, nothing saved, and the picker stays closed on that profile; the same with **Escape**.
+  On a third, preview a skin, then `/kcd set skin.skin glass`, then close → the addon wears Glass, the
+  stored skin. Result:
+- **SKIN-24. The picker's gear (KC-04).** On a fresh profile preview **Obsidian** and press the gear →
+  the settings panel opens on **General** with its **Skin** tab selected, showing Obsidian, and the
+  picker closes; `/reload` → still Obsidian, no picker. In combat the gear says the panel cannot open
+  and the picker stays up. Result:
+- **SKIN-25. The picker and the addon switched off (KC-04).** With the picker up, `/kcd disable` → it
+  closes without being marked seen, and a pending preview goes back to the stored skin; `/kcd enable`,
+  `/reload` → it opens again. On a profile with the addon disabled, log in → no picker. Result:
+- **SKIN-26. The picker and combat (KC-04).** Reset the profile, then `/reload` while in combat on a
+  target dummy → no picker during combat; leave combat → it opens then, once. With the picker up and a
+  preview pending, enter combat → picking, **Apply** and the gear each say they cannot be done in combat,
+  the preview stays pending, and the close mark still closes it and puts the old skin back. Result:
+- **SKIN-27. One picker across Ka0s addons (KC-04; LibKa0s PK-02).** With a second Ka0s addon that uses
+  skins also on a fresh profile, `/reload` → one picker opens; close it → the other's opens. Reset both
+  and `/reload` → on the first picker **Apply to all Ka0s addons** shows beside Apply; preview
+  **Azeroth** and press it → both addons wear Azeroth with no reload, each keeps its own font, texture
+  and Scope, and no second picker opens. Result:
+- **SKIN-28. A profile switch with a preview pending (KC-04).** Give a profile `SkinB` **Azeroth** and
+  close its picker. On a fresh profile on Ka0s Default preview **Obsidian**, then switch to `SkinB` → the
+  picker closes and the addon wears Azeroth (never Obsidian or Ka0s Default). Switch back → Ka0s
+  Default, and the picker opens there again. Result:
+- **SKIN-29. Other Ka0s addons unchanged.** With KickCD on a non-default skin, open two other Ka0s
+  addons' settings pages, consoles and HUDs → each looks exactly as before this build. Disable KickCD,
+  `/reload` → still unchanged. Result:
+
 ## Non-English client
 
 A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
@@ -1243,4 +1456,12 @@ off on its own `Result:` line, then remove its row here.
 
 On 2026-10-24 the owner reported that every check of the keybindings, settings layout and frame
 layering run passed (LAYER-1 – 9 and PANEL-31 – 36), recorded on each one's `Result:` line as
-`pass (owner, 2026-10-24)`. None is owed now.
+`pass (owner, 2026-10-24)`. None was owed after that run.
+
+Owed from the skinning rollout (KC-01 to KC-05 of Ka0sAddonsCommonTasks
+`docs/2026-10-29-SKINNING_ROLLOUT/`, 2026-10-29): SKIN-1 – 29 (new: Ka0s Default's one HUD change, the
+one-time reset, the Skin tab, each skin on the HUD, the companions, the settings pages and tool
+surfaces on the skin, the overrides, Ignore fonts, EllesmereUI on and off, the copy, profiles, combat
+and the first-run skin picker), DEGRADED-16 (new: the HUD on its stored picks), DIAG-20 (amended: the
+console paints for the skin owner), PANEL-31 (amended: the Skin tab) and PANEL-33 – 35 (amended: the
+`Use the skin's ...` boxes).

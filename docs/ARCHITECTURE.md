@@ -17,7 +17,7 @@ Both widgets honor the master enable, **plus their own unit's per-unit `enabled`
 
 Each unit can also show a single configurable identity label (`units.<unit>.label`), rendered by `modules/UnitLabel.lua` — a per-unit instance manager, mirroring `IconGrid`/`Castbar`'s pattern, that owns one `FontString` per unit in a holder frame parented to `UIParent` (`KickCDUnitLabelTarget` / `KickCDUnitLabelFocus`) and `SetPoint`-anchors it to that unit's chosen widget (`label.style.attach`: cast bar or icon grid). Only `text` stays per-unit while linked (`NS.Units.Label`); both `show` (`NS.Units.LabelShow`) and `label.style` (position, font, justify, rotation, color — `NS.Units.LabelStyle`) follow the Focus link like `icons`/`castbar` do. See [schema.md](schema.md#unitsunitlabelstyle-shape).
 
-An on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`. The console and the `/kcd perf` step panel are the **library's** windows and wear the **shared Ka0s window edge** (`Core.SKIN` applied by `Core.ApplySkin`: a flat 1px black outer border, a 1px light-gray highlight synthesized inside it, a gold title, a gray divider) — this addon passes neither `applySkin` nor `makeCloseButton`, so both track the library and stay identical to their counterparts in the sibling Ka0s addons. The addon's own on-screen widgets — the icon grids, cast bars and unit labels in `modules/` — are not windows and carry no Ka0s edge; their look is entirely profile-driven (`modules/Castbar_Skin.lua`, `modules/IconGrid_Render.lua`). Don't reach for `Core.SKIN` there.
+An on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`. The console and the `/kcd perf` step panel are the **library's** windows, painted for this addon's skin owner (their descriptors' `addonName`): under Ka0s Default they wear the **shared Ka0s window edge** (a flat 1px black outer border, a 1px light-gray highlight synthesized inside it, a gold title, a gray divider), and under any other skin they wear that skin. This addon passes neither `applySkin` nor `makeCloseButton`, so both track the library and stay identical to their counterparts in the sibling Ka0s addons on the same skin. The addon's own on-screen widgets — the icon grids, cast bars and unit labels in `modules/` — are not windows and carry no Ka0s edge; their look is profile-driven (`modules/Castbar_Skin.lua`, `modules/IconGrid_Render.lua`), and each media pick follows the skin while its "Use the skin's ..." companion is set ([Skins](#skins)). Don't reach for `Core.SKIN` there.
 
 ## Module map
 
@@ -59,6 +59,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | The one dispatch table for simulated delivery: the routes `NS.RegisterEventList` and `Util.NewUnitCastFilter` record, and `NS.DeliverEvent`, which replays exactly the handlers the client would call (KickCD#38) | `core/Events.lua` | [data-flow.md → Simulated delivery](data-flow.md#simulated-delivery), [module-map.md](module-map.md) |
 | The simulated world a session answers from: the player's cooldowns, GCD and charges and the target/focus enemies and their casts, on `NS.SimHost.world`, and the seam providers that answer the client reads from it (KickCD#38) | `modules/SimWorld.lua` | [compat-layer.md → Which members the simulator answers](compat-layer.md#which-members-the-simulator-answers), [module-map.md](module-map.md) |
 | Simulator (`/kcd sim`, `LibKa0s-Sim-1.0`, KickCD#38): the seam over `NS.Compat`, the one dispatch, the world and its providers, the session host (descriptor, refusals, prepare, the two-phase stop that re-syncs the real engine, the step panel's presentation), the drivers, the scenarios (KickCD#38's four: `pull`, a Mythic+ pull with several kickers; `boss`, a boss kick rotation on two charges; `miss`, a kick on cooldown and an uninterruptible cast; `leave`, a party member leaving mid-pull) and the strip | `core/SimSetup.lua`, `core/Events.lua`, `modules/SimWorld.lua`, `modules/SimDrivers.lua`, `modules/Sim.lua`, `modules/SimScenario.lua`, `modules/SimStrip.lua` | [slash-dispatch.md → `/kcd sim` refusals](slash-dispatch.md#kcd-sim-refusals), [module-map.md](module-map.md) |
+| Skins: the `LibKa0s-Skin-1.0` seam, the seven `skin.*` keys and the Skin tab, the HUD's "Use the skin's ..." companions, the one-time HUD style reset, the first-run skin picker | `core/SkinSetup.lua`, `settings/General.lua`, `core/Database_Migrations.lua` (`MigrateHudSkin`), the HUD's config paths in `modules/` | [Skins](#skins), [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6), [settings-panel.md](settings-panel.md) |
 | Slash dispatch tables and command catalog | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | Adding a spell: the one resolver (id or name, multi-word names, validated `[CLASS SPEC]`), the Cooldown Manager gate and its cached set, shared by the Spells page and `/kcd spells add` | `core/SpellInput.lua` | [module-map.md](module-map.md) |
 | The launcher: one LibDataBroker object, the minimap button, the `Minimap button` row | `core/LauncherSetup.lua`, `settings/General.lua` (`minimapPath`, and the row's own get/set) | [settings-panel.md](settings-panel.md) |
@@ -122,16 +123,17 @@ All vendored under `libs/` and pulled in by `KickCD.toc`:
 - AceConsole-3.0
 - AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
 - AceGUI-3.0
-- LibKa0s, the Ka0s shared library. **Sixteen majors are adopted**; what each one supplies, how
+- LibKa0s, the Ka0s shared library. **Seventeen majors are adopted**; what each one supplies, how
   each seam degrades and the one shared cause clause are
   [module-map.md → The LibKa0s majors](module-map.md#the-libka0s-majors).
-  - Thirteen have a setup file: `Core`, `Sim`, `Env`, `Pool`, `Glow`, `Media`, `DebugLog`, `Launcher`,
-    `Lifecycle` and `Perf` in `core/<Major>Setup.lua`; `Slash`, `Options` and `Schema` in `settings/Slash.lua`,
-    `settings/OptionsSetup.lua` and `settings/SchemaSetup.lua`.
-  - `Widgets` is resolved inline by its two callers; `Compat` is wired onto `NS.Compat` by
+  - Fourteen have a setup file: `Core`, `Sim`, `Env`, `Pool`, `Glow`, `Media`, `Skin`, `DebugLog`,
+    `Launcher`, `Lifecycle` and `Perf` in `core/<Major>Setup.lua`; `Slash`, `Options` and `Schema` in
+    `settings/Slash.lua`, `settings/OptionsSetup.lua` and `settings/SchemaSetup.lua`.
+  - `Widgets` is resolved inline by the four files that call it; `Compat` is wired onto `NS.Compat` by
     `core/Compat.lua` ([compat-layer.md](compat-layer.md)); `Bus` is taken for its `Catalog` alone.
   - **Never edit `libs/LibKa0s`**: fix it upstream and re-vendor. The vendoring gate is [testing.md](testing.md).
 - LibSharedMedia-3.0
+- EllesmereUI, optional and never vendored: named in the TOC's `## OptionalDeps` so it loads first, and read only by the library's skin provider ([Skins](#skins)).
 - AceGUI-3.0-SharedMediaWidgets (vendored upstream r65; provides the `LSM30_Statusbar` / `LSM30_Border` / `LSM30_Font` dropdowns used by the Units page's Cast bar / Icons entries). The fixup that hides the 42×42 Border `displayButton` preview tile and re-anchors the dropdown bar is **`lib.__PatchLSM30Border()`, a LibKa0s-Options-1.0 member** (minor 15), called from `settings/OptionsSetup.lua`'s live wiring. It used to be `core/LSMPatch.lua` here and in four sibling addons; AceGUI's widget registry is process-global, so five private registrations in one client meant the last addon loaded owned everyone's Border dropdown. One idempotent library member behind `lib.__lsmBorderPatched` is one registration however many copies of the library are vendored.
 - LibCustomGlow-1.0, driven through LibKa0s-Glow-1.0 (`core/GlowSetup.lua`, `NS.GlowLib`), which resolves it at call time
 - LibDataBroker-1.1 and LibDBIcon-1.0 — the launcher's two libraries (`launcher-§1`), vendored here rather than arriving inside the LibKa0s payload. `LibKa0s-Launcher-1.0` resolves both with `LibStub(..., true)` at **Register** time, not at load, and degrades by name: a host with neither gets a launcher that reports itself absent, and one with the broker but no LibDBIcon still gets the plugin row in a broker display. Call time rather than load time is deliberate — nothing fixes the relative order of `LibKa0s.xml` and these two inside the TOC's `# Libraries` block.
@@ -277,6 +279,92 @@ relative to the frame's parent (frame-layering, standard v2.88.0; `tests/test_la
 
 KickCD has no player-chosen strata setting.
 
+## Skins
+
+KickCD wears a skin (skinning-§1 to §7), adopted in the 2026-10-29 skinning rollout
+(Ka0sAddonsCommonTasks `docs/2026-10-29-SKINNING_ROLLOUT/`, KC-01 to KC-04). LootHistory is the
+collection's reference adopter, and every piece below copies its shape.
+
+- **The seam.** `core/SkinSetup.lua` registers the owner `"KickCD"` (the folder name) at file load with
+  its read and write seams (`NS.SkinChoice`, `NS.WriteSkinChoice`, both through `NS.Settings.Store`, so
+  a pick lands like any other setting) and publishes `NS.Skin`, the owner's facade (`Skin:For`). Its
+  call-site helpers: `NS.SkinColor` (a color token with the arity the literal had), `NS.SkinEscape` (a
+  token as a `|cffrrggbb` escape, byte-rounded, so markup keeps its bytes on Ka0s Default),
+  `NS.SkinResolve` (a HUD media pick as drawn), `NS.OnSkinLooksChanged` (a HUD module's repaint) and
+  `NS.SkinPaintAce` / `NS.SkinPaintAceTree` / `NS.SkinOnRelease` (the AceGUI widgets this addon acquires
+  itself). It registers **no owner tokens**: the M0 inventory found no color this addon draws that a
+  library token does not hold exactly. Without the library its degraded arm answers every facade name
+  (painting names are no-ops) from `NS.SKIN_FALLBACK`, the host copy of the Ka0s Default tokens it
+  reads, which `tests/test_surface_parity.lua` holds to the live library key for key and value for
+  value.
+- **The stored choice.** Seven profile keys, `skin.source`, `.skin`, `.ignorePanel`, `.ignoreFonts`,
+  `.font`, `.texture` and `.pickerSeen` ([schema.md](schema.md)), each a `skipRender` schema row (so
+  `/kcd get|set` validate them) drawn by the library's Skin tab (`H.AppearanceTab`, key `Appearance`,
+  labeled *Skin*), the General page's second and last tab ([settings-panel.md](settings-panel.md)).
+  Each row's `onChange` applies only its own half, so a tab pick or another addon's copy is one
+  effective `Skin:SetChoice`. The seven are on the schema seam's `resetExempt`: the General page's
+  Defaults restores Master controls and leaves the skin; *Reset all settings*, a profile reset, takes it
+  back to Ka0s Default.
+- **Repaint flow.** `NS.ApplySkinChoice()` applies the stored pair, Scope and overrides right after
+  `Database:Init` in `NS:OnInitialize` (before any module builds a frame) and in every
+  `Database:OnProfileChanged`, before anything rebuilds. `Skin:SetChoice` resolves the skin, repaints
+  every frame recorded for this owner and then fires `OnLooksChanged`. Nothing skin-related keys off
+  `Ka0s_KickCD_ConfigChanged`; the bus stays five messages.
+- **The HUD (skinning-§6, KC-03).** The icon grids, cast bars and labels are config-driven and never
+  recorded: a pooled icon, or a bar whose tint a curve writes on a secret value, must not be handed to a
+  recording primitive. Each HUD media pick has a **"Use the skin's ..."** companion beside it (eight per
+  unit, from the composers' `fromSkin`, default true, decision X3), and the config paths
+  (`IconGrid:Layout` → `ApplyAppearance` / `ApplyTextConfig`, `Castbar:Reskin`, `UnitLabel:Apply`, never
+  the 0.1 s ticker) draw `NS.SkinResolve(token, pick, companion)`: the skin's token while the companion
+  is set, the stored pick otherwise. Only the face, the texture and the border follow (X4); every color,
+  size, flag and shadow stays the player's. The icon border follows the icon family (`icon.borderStyle`
+  and `icon.borderSize`, so the skin sets its thickness too); the cast-bar borders follow
+  `bar.borderStyle`, style only, which is `None` in every skin; the texts follow `hud.font`, which is
+  Oxanium under Ka0s Default and Friz Quadrata under every other skin; the charges badge, which has no
+  setting, takes `hud.font`'s face at `NumberFontNormal`'s size. `core/MediaSetup.lua` registers
+  LibSharedMedia's `"Solid"` border (the flat `WHITE8X8` edge the skins name). `IconGrid`, `Castbar` and
+  `UnitLabel` subscribe to `OnLooksChanged` and re-run their config path, guarded on the stand-down; the
+  cast bar's structure signature signs the resolved picks, so a skin switch rebuilds what moved.
+- **The one-time HUD style reset (owner ruling O2).** Adopting skins put every companion on the skin
+  once, for every player: `Database:MigrateHudSkin`, the v5→v6 step, per profile and recorded per
+  profile in `skin.hudReset`, so a companion the player turns off afterwards stays off
+  ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)).
+- **What Ka0s Default looks like.** As before skins, except the HUD after the reset (X5): Oxanium on
+  every HUD text, the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon border in the
+  player's border color, and no cast-bar border. The settings pages are the client's while the Scope's
+  **Ignore settings panel** is on, the default.
+- **The settings pages (KC-02).** The library's chrome (header, rail, tabs, drawers, every `O.*` row,
+  the Skin tab) follows the owner the Options descriptor names. The AceGUI widgets this addon acquires
+  itself are painted for it: the Spells page through `Spells.Acquire` (`AceGUI:Create`, then
+  `NS.SkinPaintAce`), the Profiles page with `NS.SkinPaintAceTree` after `AceConfigDialog:Open`, and the
+  Units band through the Options proxy (`NS.AceGUI`). The typed looks are tokens equal on Ka0s Default
+  to the literals they replaced: the Spells rows' Remove mark (`close.hot`), the add box's *not tracked*
+  tag (`sem.warn`, through `NS.SkinEscape`), the rows' tooltip hint titles (`gtip.title`) and the
+  AceGUI-missing label (`text.accent`).
+- **The tool surfaces (KC-01, KC-04).** The drag handles, the sim strip, the Spells reorder list and the
+  sim session are handed `owner = addonName`; the debug console, its copy window and the perf panel take
+  the owner from their descriptors' `addonName`, and neither descriptor passes `skin` or `applySkin`.
+  The launcher, the minimap button and its tooltip frame and every `GameTooltip` frame stay stock, and
+  chat output is not a skinned surface (X7).
+- **The first-run skin picker (owner ruling O3, KC-04).** `NS.MaybeShowSkinPicker` shows the library's
+  picker (`O.SkinPicker`) while the profile's `skin.pickerSeen` is false and the addon stands up: from
+  `NS:OnEnable` once a session, and after every profile event, so a new or reset profile shows it once;
+  a start in combat waits for `PLAYER_REGEN_ENABLED`. A pick only previews; **Apply** and the gear save
+  through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
+  Escape put the stored skin back. The library's `onClose`, by any of those routes, sets `pickerSeen`;
+  `NS.HideSkinPicker` (the stand-down, and first on every profile event) takes it down without setting
+  it. **No eye** (X6): KickCD has no window or test mode, and its preview is unlocking, a stored write,
+  so `onPreview` is omitted; a pick still previews live on the HUD.
+- **The EllesmereUI provider.** The library's (`SkinEUI.lua`). The TOC lists EllesmereUI in
+  `## OptionalDeps`, so it loads first and is offered the owner at file load. With source `eui` and its
+  gate holding, the settings pages and tool windows take EllesmereUI's accent, panel color and font, and
+  the HUD's tokens are Ka0s Default's; without the gate the addon wears its Ka0s skin and the Skin tab
+  names the failing condition. Leaving EllesmereUI after it painted needs a reload.
+- **What a skin never touches** (skinning-§7; the inventory's E1 to E10): the cooldown swipe, the spell
+  icons, the cast bar's spark, the interruptible and non-interruptible fill colors, class colors and the
+  class and spec icons, the ready-check glyphs, the cooldown tint and the ready and cooldown alphas, the
+  sim strip's amber and cyan, and the `[KCD]` chat banner.
+
 ## Taint notes
 
 Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `UnitChannelInfo` `notInterruptible` / `name` / `texture` come back **secret** in combat for protected interrupts. Secret values must be passed straight into Blizzard C methods (`SetCooldownFromDurationObject`, `SetFormattedText`, `SetAlphaFromBoolean`, `EvaluateColorValueFromBoolean`) — never bound to a Lua local for compare / format / `tostring` / arithmetic, which errors in tainted scope. Visibility and interruptibility decisions that depend on `notInterruptible` go through the two-step gate `State.IsHostileUnitCasting` (show) + `State.ApplyInterruptibleAlpha` (filter). Full pattern catalog in [midnight-quirks.md](midnight-quirks.md).
@@ -417,7 +505,7 @@ Nothing is over the cap today.
 8. `core/Constants.lua` (`NS.Const`)
 9. `core/State.lua` (`NS.State`; the combat listener, an AceEvent target for `PLAYER_REGEN_*` / `PLAYER_LOGIN`, registered by `State.Arm` from `NS:OnInitialize`)
 10. `core/Util.lua`
-11. `core/CoreSetup.lua` (`LibKa0s-Core-1.0` descriptor — publishes the secret-safe, `NS.PREFIX`-tagged `NS.Util.print`, `NS.SECRET` (the library's `<secret>` sentinel, read at call time by `core/Compat.lua`'s `safeRender`), and `NS.LIBKA0S_MISSING`, the one cause clause the other five reading seams (`DebugLogSetup`, `PerfSetup`, `LauncherSetup`, `SchemaSetup`, `OptionsSetup`) append their own consequence to; after `Constants` for the prefix and after `Util` so the latter's table assignment can't replace it. It also loads ahead of every seam that reads the clause, which is why the clause lives here)
+11. `core/CoreSetup.lua` (`LibKa0s-Core-1.0` descriptor — publishes the secret-safe, `NS.PREFIX`-tagged `NS.Util.print`, `NS.SECRET` (the library's `<secret>` sentinel, read at call time by `core/Compat.lua`'s `safeRender`), and `NS.LIBKA0S_MISSING`, the one cause clause the other five reading seams (`DebugLogSetup`, `PerfSetup`, `LauncherSetup`, `SchemaSetup`, `OptionsSetup`) append their own consequence to; after `Constants` for the prefix and after `Util` so the latter's table assignment can't replace it. It also loads ahead of every seam that reads the clause, which is why the clause lives here) → `core/SkinSetup.lua` (`LibKa0s-Skin-1.0` seam — registers the owner `"KickCD"` and publishes `NS.Skin`. **Load-bearing position**: at file load, so EllesmereUI is offered the owner before it dispatches its skins, below `core/CoreSetup.lua` for the printer and above every file that builds a frame; `settings/General.lua` reads its value tables at load)
 12. `core/Events.lua` (`NS.EventRoutes` and `NS.DeliverEvent`, the one dispatch table a simulation delivers through: `NS.RegisterEventList` and `Util.NewUnitCastFilter` record into it at runtime, and `NS.DeliverEvent` replays exactly the still-registered AceEvent routes and armed cast filters for an event. Position is conventional: it defines nothing another file reads at load, and both recorders resolve `NS.EventRoutes` at call time, so it sits directly after `core/CoreSetup.lua` only beside the list helper it records for)
 13. `core/DebugLogSetup.lua` (`LibKa0s-DebugLog-1.0` descriptor — publishes `NS.DebugLog` and binds the sink bare as `NS.Debug(tag, fmt, …)`)
 14. `core/Units.lua` (`NS.Units`; unit identity + per-unit config resolution — loads after `Util`, before `Database`)
