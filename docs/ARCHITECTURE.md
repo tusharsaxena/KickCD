@@ -318,8 +318,17 @@ collection's reference adopter, and every piece below copies its shape.
   the 0.1 s ticker) draw `NS.SkinResolve(token, pick, companion)`: the skin's token while the companion
   is set, the stored pick otherwise. Only the face, the texture and the border follow (X4); every color,
   size, flag and shadow stays the player's. The icon border follows the icon family (`icon.borderStyle`
-  and `icon.borderSize`, so the skin sets its thickness too); the cast-bar borders follow
-  `bar.borderStyle`, style only, which is `None` in every skin; the texts follow `hud.font`, which is
+  and `icon.borderSize`, so the skin sets its thickness too). That thickness is the one size that
+  follows the skin, a departure from X4 taken with the library's icon-family contract
+  (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
+  ticked): a player who chose a 3 or 4 px icon border draws the skin's 1 or 2 px until they untick
+  the box. The cast-bar borders follow `bar.borderStyle`, style only, which is `None` in every skin, so
+  the reset removes the cast-bar border under every skin. Inventory D1 asked the owner about exactly
+  this; the run's cross-cutting X3 (companions default true) and X5 (the skin's border in place of
+  Blizzard Tooltip) settle it as the collection does (PartyFrameEnhanced's cast bar is the same), and
+  SKIN-1 and SKIN-6 put it in front of the owner. Should the owner rule otherwise, either the two
+  cast-bar `BorderGroup`s take `fromSkin = "icon"` (a flat 2 px edge on Ka0s Default) or their
+  companions default false and leave the reset. The texts follow `hud.font`, which is
   Oxanium under Ka0s Default and Friz Quadrata under every other skin; the charges badge, which has no
   setting, takes `hud.font`'s face at `NumberFontNormal`'s size. `core/MediaSetup.lua` registers
   LibSharedMedia's `"Solid"` border (the flat `WHITE8X8` edge the skins name). `IconGrid`, `Castbar` and
@@ -329,10 +338,13 @@ collection's reference adopter, and every piece below copies its shape.
   once, for every player: `Database:MigrateHudSkin`, the v5→v6 step, per profile and recorded per
   profile in `skin.hudReset`, so a companion the player turns off afterwards stays off
   ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)).
-- **What Ka0s Default looks like.** As before skins, except the HUD after the reset (X5): Oxanium on
-  every HUD text, the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon border in the
-  player's border color, and no cast-bar border. The settings pages are the client's while the Scope's
-  **Ignore settings panel** is on, the default.
+- **What Ka0s Default looks like.** As before skins, except two things. The HUD after the reset (X5):
+  Oxanium on every HUD text, the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
+  border in the player's border color, and no cast-bar border. And the tool windows, now that the
+  owner is registered: the debug console, its copy window, the perf panel and the sim panel keep their
+  edge and colors but take v1.79.0's Ka0s Default faces (Oxanium, the log lines JetBrains Mono), where
+  before they were stock; that is the library's Ka0s Default, inherited, not a KickCD choice (SKIN-1).
+  The settings pages are the client's while the Scope's **Ignore settings panel** is on, the default.
 - **The settings pages (KC-02).** The library's chrome (header, rail, tabs, drawers, every `O.*` row,
   the Skin tab) follows the owner the Options descriptor names. The AceGUI widgets this addon acquires
   itself are painted for it: the Spells page through `Spells.Acquire` (`AceGUI:Create`, then
