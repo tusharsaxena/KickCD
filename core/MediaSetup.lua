@@ -103,3 +103,26 @@ end
 -- consumer at one set of bytes under one key, which is what makes two Ka0s
 -- addons registering "JetBrains Mono" agree rather than collide.
 if Media then Media.RegisterLSM(addonName) end
+
+-- ---------------------------------------------------------------------------
+-- THE TWO BORDER KEYS A SKIN CAN NAME THAT NO FILE BACKS (KC-03)
+-- ---------------------------------------------------------------------------
+--
+-- The HUD's borders follow the skin (settings/Icons.lua, settings/Castbar.lua: "Use the skin's
+-- border"), and the skins name two LibSharedMedia border keys that are not art: "Solid", the icon
+-- border family's flat edge (icon.borderStyle, Ka0s Default's), and "None" (bar.borderStyle on
+-- Ka0s Default). "None" is LibSharedMedia's own default; "Solid" is not, so this file registers it
+-- as the client's WHITE8X8 stretched to the edge's thickness, under the name AuraMaster and Drop
+-- Watcher register it with (the first registration of a name wins, and every one is the same
+-- texture), which LibKa0s v1.80.0's "What a consumer owes" asks of a host that fetches the key
+-- itself. The border dropdowns then offer it too. NS.BORDER_EDGES is the two keys' paths for the
+-- fetchers' fallback (modules/IconGrid_Render.lua, modules/Castbar.lua), so a load without the
+-- media library still draws the flat edge, or none, rather than the tooltip edge.
+NS.BORDER_EDGES = {
+    Solid = "Interface\\Buttons\\WHITE8X8",
+    None  = "",   -- LibSharedMedia's own "None" border path
+}
+do
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM and LSM.Register then LSM:Register("border", "Solid", NS.BORDER_EDGES.Solid) end
+end

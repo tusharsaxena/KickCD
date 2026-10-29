@@ -192,7 +192,7 @@ end)
 --
 -- red under: dropping `untabbedSkipRender` from General's RenderTabbedSchema, or
 -- a row of the group losing its skipRender.
-test("the General page draws Master controls alone, with no empty Units tab", function()
+test("the General page draws Master controls and the Skin tab, with no empty Units tab", function()
     local inst = T.load(true, true)
     local iH = inst.NS.Settings.Helpers
     local ctx = iH.__panelFor("general")
@@ -200,8 +200,10 @@ test("the General page draws Master controls alone, with no empty Units tab", fu
     ctx.panel:Show()
     iH.RefreshPanel(ctx, true)
     local buttons = (ctx.__tabLayout or {}).buttons or {}
-    assertEqual(#buttons, 1, "one tab on the General page")
-    assertEqual(ctx.activeTab, iH.MASTER_GROUP, "and it is Master controls")
+    -- The Skin tab (skinning-§3) is the stub's AppearanceTab entry here: inert, but on the strip,
+    -- after Master controls.
+    assertEqual(#buttons, 2, "two tabs on the General page")
+    assertEqual(ctx.activeTab, iH.MASTER_GROUP, "and the first is Master controls")
 end)
 
 -- KC-20's characterization: the whole linked-Focus page in one case, on all three

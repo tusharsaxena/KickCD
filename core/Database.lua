@@ -33,10 +33,13 @@ NS.Database = Database
 -- { r =, g =, b =, a = } shape (migrations[3] / Database:MigrateColorShape).
 -- v5 rewrites the "NONE" font-flag token to the empty string the client's
 -- SetFont actually spells it with (migrations[4] / Database:MigrateFontFlags).
+-- v6 is the one-time HUD style reset (owner ruling O2 of the 2026-10-29 skinning
+-- rollout): every HUD media pick's "Use the skin's ..." companion set, once per
+-- profile, recorded in skin.hudReset (migrations[5] / Database:MigrateHudSkin).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 5
+NS.SCHEMA_VERSION = 6
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -645,6 +648,17 @@ function Database:OnProfileChanged(event, db, arg)
     -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
     -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
     if NS.Sim and NS.Sim:IsActive() then NS.Sim:Stop("profile") end
+    -- Then the first-run skin picker down, quietly (core/SkinSetup.lua): a showing belongs to the
+    -- profile it opened on, and taking it down puts back a pending preview (the stored skin,
+    -- through the library's revert), so it lands before NS.ApplySkinChoice below and the new
+    -- profile's whole pair, exceptions and overrides with it, is the last skin written. A new or
+    -- reset profile still shows it, fresh, further down.
+    if NS.HideSkinPicker then NS.HideSkinPicker() end
+    -- Then the new profile's skin (core/SkinSetup.lua), before anything below rebuilds:
+    -- Skin:SetChoice repaints every frame recorded for this owner and fires OnLooksChanged, so a
+    -- switch, a copy and a reset (back to Ka0s Default) all repaint live (skinning-§2). AceDB has
+    -- already merged the new profile's defaults, so the stored pair is whole.
+    if NS.ApplySkinChoice then NS.ApplySkinChoice() end
     -- AceDB hands (event, db, newProfileKey) for OnProfileChanged,
     -- (event, db, sourceProfileKey) for OnProfileCopied and (event, db) for
     -- OnProfileReset. Only a switch names the profile that is now active: a copy
@@ -670,6 +684,9 @@ function Database:OnProfileChanged(event, db, arg)
     self:MigrateSpecKeys(self.db)
     self:MigrateColorShape(self.db)
     self:MigrateFontFlags(self.db)
+    -- The one-time HUD style reset, once per PROFILE (its own skin.hudReset record): a profile
+    -- that was not active at the upgrade is put on the skin the first time it becomes active.
+    self:MigrateHudSkin(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -688,6 +705,12 @@ function Database:OnProfileChanged(event, db, arg)
     -- gives: the modules re-render off that message, and re-rendering an addon
     -- that is about to stand down draws a frame of something that is already off.
     if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
+
+    -- The first-run skin picker (core/SkinSetup.lua, owner ruling O3): a new or reset profile
+    -- starts from the defaults, `skin.pickerSeen` false, so it shows, a fresh showing over the new
+    -- profile's skin; one that has seen it stays down. After the latch re-read the new profile's
+    -- switch, so a profile with the addon switched off shows nothing.
+    if NS.MaybeShowSkinPicker then NS.MaybeShowSkinPicker() end
 
     -- Fire the closed internal message — see docs/message-bus.md, through
     -- the file's single fireProfileChanged emitter.
@@ -742,6 +765,10 @@ function Database:Init()
     -- profiles that were not active then (KICKCD-R-01). Both idempotent.
     self:MigrateColorShape(db)
     self:MigrateFontFlags(db)
+
+    -- The one-time HUD style reset (owner ruling O2), per profile for the same reason, and
+    -- recorded per profile (skin.hudReset), so it runs once on each and never again.
+    self:MigrateHudSkin(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

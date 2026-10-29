@@ -65,11 +65,21 @@ local ICONS_DEFAULT = {
         -- uses the same default for visual consistency between the two
         -- pieces of UI.
         borderTexture    = "Blizzard Tooltip",
+        -- "Use the skin's border" (settings/Icons.lua's BorderGroup, `fromSkin = "icon"`): while
+        -- true the border's style AND thickness are the skin's icon border (`icon.borderStyle`,
+        -- `icon.borderSize`; Ka0s Default's is Solid 2px), and the two pickers above keep the
+        -- player's pick for when it is turned off. Every *FromSkin companion in this file defaults
+        -- TRUE (Ka0sAddonsCommonTasks docs/2026-10-29-SKINNING_ROLLOUT DECISIONS X3), so a new or
+        -- reset profile follows the skin exactly as an adopted one does after the one-time reset
+        -- (core/Database_Migrations.lua's MigrateHudSkin). Only the face, the texture and the
+        -- border follow (X4): every color, size, flag and shadow stays the player's.
+        borderTextureFromSkin = true,
         borderColor      = { r = 0, g = 0, b = 0, a = 1 },
         useClassColorBorder = false,
         borderSize       = 2,
         showCooldownText = true,
         cooldownTextFont = "Friz Quadrata TT",
+        cooldownTextFontFromSkin = true,   -- "Use the skin's font": the HUD face, hud.font
         cooldownTextSize = 14,
         -- ""|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"|"OUTLINE, MONOCHROME" -- the
         -- library's canonical set, where the EMPTY STRING is "None" and is a
@@ -181,6 +191,7 @@ local CASTBAR_DEFAULT = {
         showName     = true,
         showTime     = true,
         font         = "Friz Quadrata TT",
+        fontFromSkin = true,        -- "Use the skin's font" for both texts: hud.font
         fontSize     = 10,
         fontFlags    = "OUTLINE",
         fontShadow   = false,
@@ -256,6 +267,7 @@ local CASTBAR_DEFAULT = {
         -- on the cast's secret notInterruptible bool — see modules/Castbar.lua.
         interruptible = {
             statusBarTexture = "Blizzard Raid Bar",
+            statusBarTextureFromSkin = true,   -- "Use the skin's texture": bar.texture
             barColor         = { r = 1, g = 0.85, b = 0.05, a = 1 },  -- yellow
             useClassColorBar = false,
             -- How opaque the bar's FILL is. Folded into the per-state alpha
@@ -270,12 +282,16 @@ local CASTBAR_DEFAULT = {
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
+            -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
+            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
+            borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             useClassColorBorder = false,
             borderSize       = 2,
         },
         uninterruptible = {
             statusBarTexture = "Blizzard Raid Bar",
+            statusBarTextureFromSkin = true,   -- "Use the skin's texture": bar.texture
             barColor         = { r = 0.85, g = 0.10, b = 0.10, a = 1 },  -- red
             useClassColorBar = false,
             -- How opaque the bar's FILL is. Folded into the per-state alpha
@@ -290,6 +306,9 @@ local CASTBAR_DEFAULT = {
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
+            -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
+            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
+            borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             useClassColorBorder = false,
             borderSize       = 2,
@@ -309,6 +328,7 @@ local LABELSTYLE_DEFAULT = {
         justifyV = "MIDDLE",      -- TOP  | MIDDLE | BOTTOM
         rotation = 0,             -- degrees
         font     = "Friz Quadrata TT",
+        fontFromSkin = true,      -- "Use the skin's font": hud.font
         size     = 14,
         flags    = "OUTLINE",     -- "" | OUTLINE | THICKOUTLINE | MONOCHROME | "OUTLINE, MONOCHROME"
         shadow   = false,
@@ -333,6 +353,28 @@ local DEFAULT_PROFILE = {
     -- additionally hides during uninterruptible casts via the C-side alpha
     -- mask. Master enable still wins — disabled = always hidden.
     visibility = "target_casting_interruptible",
+
+    -- The skin this addon wears (skinning-§2: per addon, per profile; core/SkinSetup.lua). Ka0s
+    -- Default from both halves, so a profile that never opened the Skin tab looks as it did before
+    -- skins. The Scope's exceptions: the settings panel stays the client's, the fonts follow the
+    -- skin. `font` and `texture` are the owner's overrides, "" for the skin's own. `pickerSeen` is
+    -- false on every profile, old and new (owner ruling O3): the first-run picker shows once each.
+    skin = {
+        source      = "ka0s",
+        skin        = "ka0s",
+        ignorePanel = true,
+        ignoreFonts = false,
+        font        = "",
+        texture     = "",
+        pickerSeen  = false,
+        -- The one-time HUD style reset's per-profile record (owner ruling O2,
+        -- core/Database_Migrations.lua's MigrateHudSkin): false until the step has put this
+        -- profile's sixteen HUD media picks on the skin, true after, so a pick the player turns
+        -- off later is never reset again. No schema row: nothing draws or sets it but the step,
+        -- and a profile reset puts it back to false (the step then re-runs against defaults that
+        -- already follow the skin, a no-op).
+        hudReset    = false,
+    },
 
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live

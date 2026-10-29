@@ -235,6 +235,21 @@ function Castbar:OnProfileChanged()
     end)
 end
 
+--- A skin, source or override change (the owner's OnLooksChanged, core/SkinSetup.lua): the face,
+--- the bar texture and the border style a following bar draws in may have moved with no stored
+--- value moving. Reskin's structure signature signs the RESOLVED picks (Castbar_Skin.lua), so a
+--- plain Reskin rebuilds exactly what moved. Only live bars, and never while stood down.
+function Castbar:OnSkinLooksChanged()
+    if NS.IsDown and NS.IsDown() then return end
+    forEachEnabled(function(inst)
+        if inst.frame then
+            self:Reskin(inst)
+            if inst.current then self:RenderCast(inst, inst.current) end
+        end
+    end)
+end
+if NS.OnSkinLooksChanged then NS.OnSkinLooksChanged(function() Castbar:OnSkinLooksChanged() end) end
+
 --- Fired by IconGrid after every Layout()/BuildActiveList() pass. Payload shape
 --- (CR-29): { unit, gridFrame, primaryIcon (Button|nil), width, height }. The
 --- grid frame may have resized (auto-size tracks it) and the primary icon ref

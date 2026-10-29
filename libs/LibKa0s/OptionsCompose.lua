@@ -26,7 +26,7 @@
 local lib = LibStub and LibStub("LibKa0s-Options-1.0", true)
 if not lib then return end
 
-local COMPOSE_MINOR = 11
+local COMPOSE_MINOR = 13
 -- Minor 8: O.StrataTooltip(values[, strings]), the one tooltip every player strata row carries
 -- (frame-layering-§1, options-ui-§16).
 -- Minor 9: MasterControls takes `notes`, `resetPositionTooltip` and `lockIsPreview`, the only ways a
@@ -37,6 +37,14 @@ local COMPOSE_MINOR = 11
 -- and MasterControls ignores the field (options-ui-§16, v2.88.0).
 -- Minor 11: O.ResetAllTooltip(tail), the Reset all settings tooltip for the General page's header
 -- Defaults, read from the descriptor exactly as the button reads it (options-ui-§12, U-04).
+-- Minor 12: FontGroup, BorderGroup and BarGroup take an opt-in `fromSkin = true`, which adds one
+-- companion bool `<key>FromSkin` ("Use the skin's font / border / texture", default false) after the
+-- canonical rows. While it is set the media picker is disabled and shows the skin's value, read at
+-- call time (LK-07 of the skinning run, the owner's ruling R3). No sentinel enters a media list.
+-- Minor 13: BorderGroup takes `fromSkin = "icon"` (LK-04 of Ka0sAddonsCommonTasks
+-- docs/2026-10-29-SKINNING_ROLLOUT, gap DW-G14): the same companion, following the skin's icon
+-- border family (`icon.borderStyle`, `icon.borderSize`, SkinDefs minor 15) rather than the bar's,
+-- and governing the thickness slider as well as the style picker. `fromSkin = true` is unchanged.
 -- Paired on the SHELL's minor as well as this file's own — see OptionsScroll.lua for why the
 -- file's own counter is not enough.
 if lib.__composeMinor and lib.__composeMinor >= COMPOSE_MINOR
@@ -303,6 +311,42 @@ local function companionRow(spec, tooltip)
   }
 end
 
+-- ── FOLLOWING THE SKIN (compose minor 12) ───────────────────────────────────────────────────
+--
+-- A HUD setting can follow the owner's skin instead of a stored pick (the owner's ruling R3). A
+-- SENTINEL value in the picker cannot say so: an LSM30 picker shows its list's KEY as the label and
+-- uses the list's value as the media path, and the same list is the CLI's allowed values, so a
+-- "From skin" entry would draw no preview and be a value the CLI accepts and nothing can render. A
+-- companion bool says it instead, beside the picker it governs: `<key>FromSkin`, emitted only when
+-- the spec opts in. While it is true the picker is disabled (`disabledIf`, the companion's own key,
+-- so a record-backed row reads its record) and shows the skin's value (`skinValue`, the row field the
+-- flow engine reads before the stored one, OptionsWidgets minor 35); the host draws with
+-- `S.Resolve(token, stored, fromSkin)`, which answers the skin's value while the companion is set.
+-- `Skin.ResetToSkin` sets the companions to true. Without `fromSkin` a composer emits exactly what
+-- minor 11 emitted.
+
+-- The three media pickers that can follow the skin, by canonical leaf: the token the skin answers
+-- with and the companion's words.
+local FROM_SKIN = {
+  font = { token = "hud.font", label = "Use the skin's font",
+    tooltip = "Draw this text in the skin's font. The font picker is not read while this is on." },
+  borderStyle = { token = "bar.borderStyle", label = "Use the skin's border",
+    tooltip = "Draw this border in the skin's border style. The border picker is not read while this is on." },
+  barTexture = { token = "bar.texture", label = "Use the skin's texture",
+    tooltip = "Draw this bar in the skin's texture. The texture picker is not read while this is on." },
+}
+
+-- The other families a picker can follow, by `spec.fromSkin` value (minor 13); `true`, and any value
+-- not named here, is FROM_SKIN's. `sizeToken` makes the companion govern the group's thickness row
+-- too (`disabledIf` it, showing that token while it is set).
+local FROM_SKIN_FAMILY = {
+  icon = {
+    borderStyle = { token = "icon.borderStyle", sizeToken = "icon.borderSize", label = "Use the skin's border",
+      tooltip = "Draw this border in the skin's icon border style and thickness. The border style and "
+        .. "thickness pickers are not read while this is on." },
+  },
+}
+
 --- Attach the composers to one instance, beside the widget makers and the flow engine.
 ---
 --- Takes no descriptor: a composer reads no state and writes none, so there is nothing of the
@@ -465,6 +509,49 @@ end
 --- older than that passes none, and every descriptor read below then answers as absent.
 function lib.__AttachCompose(O, d)
   local desc = type(d) == "table" and d or EMPTY
+
+  --- The skin's value of `token` for this instance's owner (the descriptor's `addonName`; an
+  --- unregistered one reads Ka0s Default), or nil with no Skin major or no owner.
+  local function skinValue(token)
+    local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
+    local owner = desc.addonName
+    if not (Skin and type(Skin.For) == "function" and type(owner) == "string" and owner ~= "") then return nil end
+    local S = Skin:For(owner)
+    return type(S.Resolve) == "function" and S.Resolve(token, nil, true) or nil
+  end
+
+  --- Put row `r` under `companion`: disabled while it is set, showing the skin's `token` meanwhile.
+  local function governed(r, companion, token)
+    r.disabledIf = companion
+    r.skinValue = function(row)
+      local on
+      if row.path == nil and type(row.get) == "function" then
+        on = row.get(companion)
+      elseif type(desc.get) == "function" then
+        on = desc.get(companion)
+      end
+      if on ~= true then return nil end
+      return skinValue(token)
+    end
+  end
+
+  --- The `<key>FromSkin` companion of `picker` (the row emit returned for canonical `leaf`), when
+  --- `spec.fromSkin` asks for it and the caller did not omit either row. Appended after the
+  --- canonical rows, on a line of its own, so the block's pairs stay as they are. `size` is the
+  --- group's thickness row, governed too when the family names a size token (minor 13).
+  local function fromSkinRow(spec, rows, picker, leaf, size)
+    local family = FROM_SKIN_FAMILY[spec.fromSkin]
+    local f = family and family[leaf] or FROM_SKIN[leaf]
+    if not (spec.fromSkin and picker and f) then return end
+    local companion = (picker.path or picker.field) .. "FromSkin"
+    local row = emit(spec, rows, leaf .. "FromSkin", {
+      path = companion, type = "bool", label = f.label, tooltip = f.tooltip, default = false,
+      startsLine = true,
+    })
+    if not row then return end
+    governed(picker, companion, f.token)
+    if size and f.sizeToken then governed(size, companion, f.sizeToken) end
+  end
   -- Published on the INSTANCE, not on the lib table, for the reason Options.lua's layout block
   -- gives: a lib-level table is shared by every instance, so handing it out lets one host's
   -- mutation retune every other host's dropdowns.
@@ -550,7 +637,7 @@ function lib.__AttachCompose(O, d)
     spec = spec or EMPTY
     local rows = {}
 
-    emit(spec, rows, "font", {
+    local picker = emit(spec, rows, "font", {
       type = "string", label = "Font", tooltip = "The face this text is drawn in.",
       dialogControl = "LSM30_Font", default = "Friz Quadrata TT", startsLine = true,
       values = O.LSMValues("font"),
@@ -572,6 +659,7 @@ function lib.__AttachCompose(O, d)
       tooltip = "Draw a soft shadow behind the text, for legibility over bright art.",
       default = false,
     })
+    fromSkinRow(spec, rows, picker, "font")
     return appendExtra(spec, rows)
   end
 
@@ -594,12 +682,12 @@ function lib.__AttachCompose(O, d)
         default = true, startsLine = true,
       })
     end
-    emit(spec, rows, "borderStyle", {
+    local picker = emit(spec, rows, "borderStyle", {
       type = "string", label = "Border style", tooltip = "The border texture.",
       dialogControl = "LSM30_Border", default = "None", startsLine = true,
       values = O.LSMValues("border"),
     })
-    emit(spec, rows, "borderSize", {
+    local size = emit(spec, rows, "borderSize", {
       type = "number", label = "Border thickness (px)", tooltip = "Border edge width, in pixels.",
       min = 0, max = 16, step = 1, default = 1,
     })
@@ -607,6 +695,7 @@ function lib.__AttachCompose(O, d)
       swatchRow(spec, "Border color", "The color the border is drawn in.", spec.hasAlpha))
     emit(spec, rows, "useClassColorBorder",
       companionRow(spec, "Draw this border in the class color instead of the swatch beside it."))
+    fromSkinRow(spec, rows, picker, "borderStyle", size)
     return appendExtra(spec, rows)
   end
 
@@ -623,7 +712,7 @@ function lib.__AttachCompose(O, d)
     spec = spec or EMPTY
     local rows = {}
 
-    emit(spec, rows, "barTexture", {
+    local picker = emit(spec, rows, "barTexture", {
       type = "string", label = "Bar texture", tooltip = "The bar's fill texture.",
       dialogControl = "LSM30_Statusbar", default = "Blizzard", startsLine = true,
       values = O.LSMValues("statusbar"),
@@ -636,6 +725,7 @@ function lib.__AttachCompose(O, d)
       swatchRow(spec, "Bar color", "The color the bar's fill is drawn in.", spec.hasAlpha))
     emit(spec, rows, "useClassColorBar",
       companionRow(spec, "Draw this bar in the class color instead of the swatch beside it."))
+    fromSkinRow(spec, rows, picker, "barTexture")
     return appendExtra(spec, rows)
   end
 

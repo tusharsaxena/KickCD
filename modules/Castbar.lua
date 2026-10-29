@@ -316,8 +316,9 @@ local function fetchBorderTexture(name)
         local t = LSM:Fetch("border", name or "Blizzard Tooltip", true)
         if t then return t end
     end
-    -- Fallback: a Blizzard-shipped tooltip-style border texture.
-    return "Interface\\Tooltips\\UI-Tooltip-Border"
+    -- Fallback: the flat edge or none for the two keys no file backs (core/MediaSetup.lua), else
+    -- a Blizzard-shipped tooltip-style border texture.
+    return (NS.BORDER_EDGES and NS.BORDER_EDGES[name]) or "Interface\\Tooltips\\UI-Tooltip-Border"
 end
 
 -- The first `cap` characters of a UTF-8 string, or the string itself when it

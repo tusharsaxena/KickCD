@@ -157,7 +157,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
         order[i]       = e.value
     end
 
-    local specDD = AceGUI:Create("Dropdown")
+    local specDD = Spells.Acquire(AceGUI, "Dropdown")
     specDD:SetLabel(L["Class and specialization"])
     specDD:SetList(items, order)
     if selectedClass and selectedSpec then
@@ -193,7 +193,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     -- aligning the controls left the captions off. Stacking removes the question -- each block
     -- owns a full row and has nothing to line up with -- and it gives the box the whole width,
     -- which is what a box for typing names wants anyway. The band pays one more row for it.
-    local addHost = AceGUI:Create("SimpleGroup")
+    local addHost = Spells.Acquire(AceGUI, "SimpleGroup")
     addHost:SetLayout("Flow")
     addHost.frame:SetParent(parent)
     addHost.frame:ClearAllPoints()

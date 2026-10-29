@@ -454,5 +454,12 @@ NS.Settings.Store = SchemaLib:New({
     -- player dragged it to. The library honors this only while a bracket is
     -- open, so the General page's Defaults and Reset all leave it alone while
     -- `/kcd reset global.minimap.shown`, one row named out loud, still works.
-    resetExempt = { ["global.minimap.shown"] = true },
+    resetExempt = (function()
+        local t = { ["global.minimap.shown"] = true }
+        -- The skin's seven keys (core/SkinSetup.lua): the General page's Defaults restores its
+        -- Master controls, never the skin the Skin tab beside it chose. Reset all settings is a
+        -- profile reset and still takes the skin back to Ka0s Default.
+        for _, path in ipairs(NS.SKIN_PATHS or {}) do t[path] = true end
+        return t
+    end)(),
 })

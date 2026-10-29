@@ -62,6 +62,11 @@ function NS:OnInitialize()
         self.Database:Init()
     end
 
+    -- The skin the active profile names (core/SkinSetup.lua), right after the store exists: the
+    -- owner registered at file load, before AceDB, and has worn Ka0s Default since. Before any
+    -- module builds a frame (they enable at PLAYER_LOGIN), so the first paint is the profile's.
+    if NS.ApplySkinChoice then NS.ApplySkinChoice() end
+
     -- The combat listener (core/State.lua). Armed here rather than at State.lua's
     -- file load because it registers through NS.RegisterEventList, which
     -- core/CoreSetup.lua defines after State.lua loads. ADDON_LOADED always
@@ -112,6 +117,12 @@ function NS:OnEnable()
     -- whose db had just been built and whose modules had not run at all; taken
     -- after the cascade there is no such moment to take it in.
     if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
+
+    -- The first-run skin picker (core/SkinSetup.lua), once per session, on a profile that has not
+    -- closed it (owner ruling O3). After the panel is registered, so its gear has the General page
+    -- to open, and after the hold above, so a disabled addon brings up no window; the stored skin
+    -- was applied in OnInitialize. In combat it holds for PLAYER_REGEN_ENABLED.
+    if NS.MaybeShowSkinPicker then NS.MaybeShowSkinPicker() end
 end
 
 -- ---------------------------------------------------------------------------

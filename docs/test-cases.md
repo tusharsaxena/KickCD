@@ -352,7 +352,7 @@ Total.
 - a second stored profile has its 'NONE' font flags rewritten when it becomes active
 - a hybrid whose keys differ from the default keeps its keys and loses its array
 - AceDB defaults declare schemaVersion 0
-- a fresh install ends at v5 with no step raising
+- a fresh install ends at v6 with no step raising
 - a raising step leaves the stamp where it was
 - the slash layer needs no color codec now the shapes agree
 - set and get round-trip a color through the library with no translation
@@ -1372,10 +1372,78 @@ Total.
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note is plain text naming the band's Link to Target
-- the General page draws Master controls alone, with no empty Units tab
+- the General page draws Master controls and the Skin tab, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
+
+### test_skinsetup.lua (13)
+
+- Skin seam: the owner is the folder name, and NS.Skin is its facade
+- Skin seam: the read answers Ka0s Default before the profile store exists
+- Skin seam: the seven skin keys default to Ka0s Default and today's Scope
+- Skin seam: every skin key is a skipRender row of the General page's Skin tab
+- Skin seam: the skin row's values are every registered skin, in the library's order
+- Skin seam: /kcd set refuses an unregistered skin and applies a registered one
+- Skin seam: the registered setter writes through the store, and a copy repaints once
+- Skin seam: /kcd set reaches an exception, and only its own half
+- Skin seam: /kcd set reaches an override, and an empty one is the skin's own
+- Skin seam: a profile switch applies the new profile's skin, Scope and overrides
+- Skin seam: a profile reset takes the skin back to Ka0s Default
+- Skin seam: every LibKa0s-Widgets factory call names the owner
+- Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
+
+### test_skin_settings.lua (10)
+
+- skin settings: under a non-default skin the Spells rows and chrome block paint, past the proxy
+- skin settings: a release hands the Spells widgets back stock
+- skin settings: under the defaults nothing on the Spells page is painted
+- skin settings: the Units band's picker and Copy from Target paint through the proxy
+- skin settings: the Profiles page paints the tree AceConfigDialog drew
+- skin settings: the Remove mark is close.hot, { 1, 0.3, 0.3 } on Ka0s Default
+- skin settings: the not-tracked tag is sem.warn, ff8000 on Ka0s Default
+- skin settings: a row's own tooltip hint is titled in gtip.title
+- skin settings: the host copy carries every token the settings pages read
+- skin settings: with Ignore settings panel on, the page's tokens stay Ka0s Default's
+
+### test_skin_hud.lua (17)
+
+- HUD skin: every HUD media pick has a companion row, default true in the row and the defaults
+- HUD skin: the icon border follows the ICON family, governing its thickness too
+- HUD skin: the cast bar draws the skin's face, texture and border while following
+- HUD skin: a companion turned off draws the player's stored pick again
+- HUD skin: the icon border takes the skin's icon family, style and thickness
+- HUD skin: a following cast bar draws the skin's flat icon edge, style and thickness
+- HUD skin: "Solid" is registered as a LibSharedMedia border, the flat edge
+- HUD skin: the countdown follows hud.font and the charges badge takes the skin's face
+- HUD skin: the unit label follows hud.font, and a false companion is the player's face
+- HUD skin: a skin switch repaints the HUD with no stored value moved
+- HUD skin: no repaint while the addon is stood down
+- HUD skin: the reset puts every companion on the skin once, keeps the picks, and stamps v6
+- HUD skin: a pick turned off after the reset is never reset again
+- HUD skin: a profile that was not active at the upgrade is reset when it becomes active
+- HUD skin: without the library the step still sets the companions
+- HUD skin: the step names only companions that read a boolean
+- HUD skin: Copy from Target carries the companions with the pickers
+
+### test_skin_picker.lua (16)
+
+- Skin picker: the spec names this owner, its seams, General's Skin tab, and no eye
+- Skin picker: the login showing happened on the unseen default profile
+- Skin picker: an unseen profile shows it; a seen one does not
+- Skin picker: it shows from NS:OnEnable
+- Skin picker: in combat a start waits for PLAYER_REGEN_ENABLED, once
+- Skin picker: the combat edge shows it even while State still reads in combat
+- Skin picker: a held start is dropped by HideSkinPicker
+- Skin picker: never while the addon is switched off
+- Skin picker: a new profile and a reset profile show it again
+- Skin picker: the title names this addon, and the eye is hidden
+- Skin picker: the player's close marks it seen; this addon's own hide does not
+- Skin picker: a profile that has seen it takes a shown picker down, unmarked
+- Skin picker: the stand-down takes the picker down, unseen
+- Skin picker: a pick previews, unsaved; Apply saves it and marks the picker seen
+- Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
+- Skin picker: the gear saves the pick and opens General on its Skin tab
 
 ### test_grid.lua (13)
 
@@ -1693,7 +1761,7 @@ Total.
 - --list per-suite header counts match their bullet counts
 - --list Totals row plus the Skipped row equals the grand total of bullets
 
-### test_surface_parity.lua (9)
+### test_surface_parity.lua (11)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1704,6 +1772,8 @@ Total.
 - the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 - the Glow stub carries the whole LibKa0s-Glow-1.0 surface
+- the degraded Skin facade answers every name the live facade carries
+- each host-copy skin token is the live library's Ka0s Default value
 
 ### test_doc_structure.lua (4)
 
@@ -1836,6 +1906,10 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
+| test_skinsetup.lua | 13 |
+| test_skin_settings.lua | 10 |
+| test_skin_hud.lua | 17 |
+| test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1854,7 +1928,7 @@ Total.
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 9 |
+| test_surface_parity.lua | 11 |
 | test_doc_structure.lua | 4 |
 | test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
@@ -1863,4 +1937,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1497** |
+| **Total** | **1555** |

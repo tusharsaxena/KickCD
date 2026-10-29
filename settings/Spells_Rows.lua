@@ -67,13 +67,25 @@ end
 -- "X". opts.image is a texture path -- normally a LibKa0s catalog mark through
 -- NS.Icon -- and wins when given. opts.atlas is a Blizzard atlas drawn through
 -- the inner texture's SetAtlas, for the degraded install only, where NS.Icon
--- answers nil (library-stack-§8, AP #63). opts.tint {r, g, b} colors an enabled
+-- answers nil (library-stack-§8, AP #63). opts.tint {r, g, b} colors the
 -- button's art: catalog marks are white in the alpha and carry no color of
--- their own.
+-- their own. Every button is enabled: the gray "disabled" arm this builder
+-- carried had no caller and is gone rather than given a token (D7).
 local WHITE = { 1, 1, 1 }
 
+-- A row's own hint (the Remove button, the known glyph) titled in the skin's
+-- tooltip title color: gtip.title, NORMAL_FONT_COLOR on Ka0s Default, which is
+-- the color GameTooltip:SetText draws a line it is handed no color for (X8,
+-- D5). The frame stays Blizzard's (skinning-§7). Read at hover time, so a skin
+-- switch reaches the next hover.
+local function showHint(owner, text)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetText(text, NS.SkinColor("gtip.title"))
+    GameTooltip:Show()
+end
+
 local function makeRowIconBtn(AceGUI, opts)
-    local btn = AceGUI:Create("Icon")
+    local btn = Spells.Acquire(AceGUI, "Icon")
     alignIconArt(btn, 22)
     btn:SetImageSize(22, 22)
     btn:SetWidth(30)
@@ -83,25 +95,14 @@ local function makeRowIconBtn(AceGUI, opts)
     elseif opts.atlas and btn.image and btn.image.SetAtlas then
         btn.image:SetAtlas(opts.atlas)
     end
-    if opts.disabled then
-        if btn.image then
-            if btn.image.SetDesaturated then btn.image:SetDesaturated(true) end
-            if btn.image.SetVertexColor then btn.image:SetVertexColor(0.45, 0.45, 0.45) end
-        end
-    else
-        if btn.image then
-            if btn.image.SetDesaturated then btn.image:SetDesaturated(false) end
-            local tint = opts.tint or WHITE
-            if btn.image.SetVertexColor then btn.image:SetVertexColor(tint[1], tint[2], tint[3]) end
-        end
-        btn:SetCallback("OnClick", opts.onClick)
+    if btn.image then
+        if btn.image.SetDesaturated then btn.image:SetDesaturated(false) end
+        local tint = opts.tint or WHITE
+        if btn.image.SetVertexColor then btn.image:SetVertexColor(tint[1], tint[2], tint[3]) end
     end
+    btn:SetCallback("OnClick", opts.onClick)
     if opts.tooltip then
-        btn:SetCallback("OnEnter", function(widget)
-            GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-            GameTooltip:SetText(opts.tooltip)
-            GameTooltip:Show()
-        end)
+        btn:SetCallback("OnEnter", function(widget) showHint(widget.frame, opts.tooltip) end)
         btn:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     end
     return btn
@@ -114,7 +115,7 @@ end
 -- The spell icon, plus the two tooltip closures the name label reuses so
 -- hovering either one shows the same spell tooltip.
 local function rowSpellIcon(AceGUI, entry)
-    local icon = AceGUI:Create("Icon")
+    local icon = Spells.Acquire(AceGUI, "Icon")
     icon:SetImage(getSpellIcon(entry.spellID) or 134400)
     alignIconArt(icon, 20)
     icon:SetImageSize(20, 20)
@@ -142,7 +143,7 @@ end
 -- stray KickCD spell tooltip and a label that ate clicks (KICKCD-R-02). Widget
 -- callbacks are cleared by Release.
 local function rowNameLabel(AceGUI, entry, showSpellTooltip, hideSpellTooltip)
-    local label = AceGUI:Create("InteractiveLabel")
+    local label = Spells.Acquire(AceGUI, "InteractiveLabel")
     local name = getSpellName(entry.spellID) or ("#" .. tostring(entry.spellID))
     label:SetText(name)
     -- Was 190 (trimmed from 220 to make room for the known/unknown
@@ -160,7 +161,7 @@ end
 -- The enable checkbox. It desaturates the icon it was handed, which is why the
 -- icon has to be built first.
 local function rowEnableCheck(AceGUI, entry, icon)
-    local check = AceGUI:Create("CheckBox")
+    local check = Spells.Acquire(AceGUI, "CheckBox")
     check:SetLabel("")
     check:SetValue(entry.enabled ~= false)
     check:SetWidth(40)
@@ -188,7 +189,7 @@ end
 local function rowKnownGlyph(AceGUI, entry)
     local known = Compat.IsSpellAvailable
         and Compat.IsSpellAvailable(entry.spellID) or false
-    local statusIcon = AceGUI:Create("Icon")
+    local statusIcon = Spells.Acquire(AceGUI, "Icon")
     statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
     alignIconArt(statusIcon, 20)
     statusIcon:SetImageSize(20, 20)
@@ -202,11 +203,7 @@ local function rowKnownGlyph(AceGUI, entry)
     -- still renders a clickable region without a callback, but the
     -- click is a no-op which matches what we want.
     local statusTooltip = known and L["Spell known"] or L["Spell not known"]
-    statusIcon:SetCallback("OnEnter", function(widget)
-        GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetText(statusTooltip)
-        GameTooltip:Show()
-    end)
+    statusIcon:SetCallback("OnEnter", function(widget) showHint(widget.frame, statusTooltip) end)
     statusIcon:SetCallback("OnLeave", function() GameTooltip:Hide() end)
     return statusIcon
 end
@@ -218,14 +215,14 @@ end
 -- padding from the narrowed icon box plus the requested extra gap
 -- before the category dropdown.
 local function rowSpacer(AceGUI, width)
-    local spacer = AceGUI:Create("Label")
+    local spacer = Spells.Acquire(AceGUI, "Label")
     spacer:SetText("")
     spacer:SetWidth(width)
     return spacer
 end
 
 local function rowCategoryDropdown(AceGUI, entry)
-    local dd = AceGUI:Create("Dropdown")
+    local dd = Spells.Acquire(AceGUI, "Dropdown")
     dd:SetList(categoryList())
     dd:SetValue(entry.category or "other")
     dd:SetWidth(120)
@@ -243,17 +240,23 @@ local function rowCategoryDropdown(AceGUI, entry)
     return dd
 end
 
--- The catalog's white "close" mark, tinted red so it still reads as "remove".
--- The Blizzard atlas is the degraded install's fallback only, and it is red
--- already, so it takes no tint.
-local REMOVE_TINT = { 1, 0.3, 0.3 }
+-- The catalog's white "close" mark, tinted in the skin's close-hot red so it
+-- still reads as "remove": close.hot, { 1, 0.3, 0.3 } on Ka0s Default, the
+-- literal it replaced (sem.danger would have moved a pixel). Read at build
+-- time, and every skin switch re-renders the page. The Blizzard atlas is the
+-- degraded install's fallback only, and it is red already, so it takes no tint.
+local function removeTint()
+    local r, g, b = NS.SkinColor("close.hot")
+    if r == nil then return nil end
+    return { r, g, b }
+end
 
 local function rowRemoveButton(AceGUI, list, index)
     local mark = NS.Icon and NS.Icon("close")
     return makeRowIconBtn(AceGUI, {
         image   = mark,
         atlas   = not mark and "transmog-icon-remove" or nil,
-        tint    = mark and REMOVE_TINT or nil,
+        tint    = mark and removeTint() or nil,
         tooltip = L["Remove"],
         -- By the spellID the row showed, read at click time. `index` is only
         -- valid until the next rebuild, so a stale click past the end of a list
@@ -279,7 +282,7 @@ local function buildRow(AceGUI, list, index, into)
     local entry = list[index]
     if not entry then return end
 
-    local row = into or AceGUI:Create("SimpleGroup")
+    local row = into or Spells.Acquire(AceGUI, "SimpleGroup")
     row:SetLayout("Flow")
     row:SetFullWidth(true)
     row:SetHeight(ROW_HEIGHT)

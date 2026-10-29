@@ -1,4 +1,4 @@
-local _, NS = ...
+local addonName, NS = ...
 -- modules/Sim.lua — the simulator's session host, on LibKa0s-Sim-1.0 (KickCD#38, KC-05; the Sim
 -- major's host contract H4, H5 and H10; design-kc-sim §6; OWNER_SCOPE B4). Binds NS.SimSeam
 -- (core/SimSetup.lua) to one session with Sim:New and publishes it as NS.Sim, overwriting the stub.
@@ -343,7 +343,8 @@ local LINES = {
 local Lib = LibStub and LibStub("LibKa0s-Sim-1.0", true)
 if Lib then
     NS.Sim = Lib:New({
-        name = "KickCD",
+        -- The folder name, which is also the skin owner the sim panel wears (skinning-§1).
+        name = addonName,
         seam = NS.SimSeam,
         slash = "/kcd sim",
         -- KC-02's one dispatch: the AceEvent routes and the armed cast filters, in client order.

@@ -23,7 +23,7 @@
 -- commitSoon, a 50 ms throttle that fires Ka0s_KickCD_ConfigChanged
 -- { section = "spells" }; the page's own subscriber re-renders the rows.
 
-local _, NS = ...
+local addonName, NS = ...
 
 local L      = NS.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = NS.Compat or {}
@@ -408,7 +408,9 @@ function Spells.SuggestTag(id)
     if not editorIsActiveSpec() then return nil end
     local cmSet = SpellInput.CooldownManagerSet()
     if not cmSet or cmSet[id] then return nil end
-    return "|cffff8000" .. L["not tracked"] .. "|r"
+    -- The skin's warning orange (sem.warn: ff8000 on Ka0s Default, the bytes this tag was written
+    -- in), read at call time so the tag follows a skin switch.
+    return (NS.SkinEscape("sem.warn") or "") .. L["not tracked"] .. "|r"
 end
 
 --- The add box's accept path: the same two steps the StaticPopup ran, minus the parsing the
@@ -512,6 +514,19 @@ local function releaseAceGUITree()
     end
 end
 
+--- Every AceGUI widget this page acquires itself, painted for this addon's skin (skinning-§3), as
+--- LootHistory's settings/Panel.lua acquires its own. The page reads AceGUI straight from LibStub,
+--- past the Options instance's owner proxy, so the host's own NS.SkinPaintAce is what paints the
+--- rows and the chrome block. Nothing is painted while the Scope's Ignore settings panel is on
+--- (the default), and a release puts the widget back in AceGUI's shared pool stock: the library
+--- chains its restore onto the widget's OnRelease. settings/Spells_Rows.lua and
+--- settings/Spells_Header.lua read it at call time.
+function Spells.Acquire(AceGUI, wtype)
+    local w = AceGUI:Create(wtype)
+    NS.SkinPaintAce(w)
+    return w
+end
+
 -- The chrome block's builders (the class / spec labels and icons, the spec
 -- entries, the picker and the add box) live in settings/Spells_Header.lua (#28),
 -- published as Spells.BuildHeader; renderRows below calls it at render time.
@@ -523,6 +538,8 @@ local function showAceGUIMissing()
         fallbackLabel = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fallbackLabel:SetPoint("CENTER", body, "CENTER", 0, 0)
         fallbackLabel:SetText("AceGUI not loaded")
+        -- The skin's accent role: gold on Ka0s Default, GameFontNormal's own color (D8).
+        NS.Skin.Text(fallbackLabel, "accent")
     end
     fallbackLabel:Show()
 end
@@ -565,7 +582,7 @@ end
 -- would have sent a player looking for a button.
 local function emptyListItem(AceGUI)
     return { wide = true, path = "spells.empty", make = function(_, into)
-        local lbl = AceGUI:Create("Label")
+        local lbl = Spells.Acquire(AceGUI, "Label")
         lbl:SetText(L["No spells tracked. Type one into Add a spell above, or press Defaults."])
         lbl:SetFullWidth(true)
         into:AddChild(lbl)
@@ -595,6 +612,8 @@ local function newReorder()
     local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
     if not (W and W.ReorderList) then return nil end
     return W.ReorderList{
+        -- The skin owner (skinning-§1): the drag ghost and drop line wear KickCD's skin.
+        owner         = addonName,
         -- Uniform rows, so the stride IS the row height: AceGUI's List layout stacks children
         -- with no gap of its own, and RenderGrid is called with `gap = false` so it adds none.
         stride        = Spells.ROW_HEIGHT,

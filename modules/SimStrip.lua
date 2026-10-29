@@ -1,4 +1,4 @@
-local _, NS = ...
+local addonName, NS = ...
 -- modules/SimStrip.lua — the simulation strip over the icon grids (KickCD#38, KC-09; OWNER_SCOPE B2).
 --
 -- While a simulation runs, every icon grid it plays on carries LibKa0s-Widgets-1.0's mode strip in
@@ -64,6 +64,9 @@ local function stripFor(unit)
     if not W then return nil end
     frame = W.TestStrip(UIParent, {
         kind = "sim",
+        -- The skin owner (skinning-§1): the strip's legibility follows KickCD's skin; amber and
+        -- cyan stay the library's meaning colors under every skin (skinning-§7).
+        owner = addonName,
         text = "",
         icon = NS.Icon and NS.Icon("info") or nil,
     })

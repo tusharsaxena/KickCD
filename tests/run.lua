@@ -226,6 +226,12 @@ local SUITES = {
     "test_settings_widgets",
     "test_options_panel",
     "test_options_panel_degraded",
+    "test_skinsetup",
+    "test_skin_settings",
+    "test_skin_hud",
+    -- The first-run skin picker (KC-04): its spec, when it shows (login, the profile events, never
+    -- stood down, held through combat), what marks it seen, the real window. Its own instance.
+    "test_skin_picker",
     "test_grid",
     "test_settings_layout_guard",
     "test_settings_refreshers",

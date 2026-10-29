@@ -175,6 +175,22 @@ cast bar, the label over the bar it is attached to and re-leveled after each rep
 strip over all of it. Two static gates close it: no `SetFrameStrata` literal, and no unnamed or
 absolute `SetFrameLevel`, in `core/`, `modules/` or `settings/`.
 
+The skin (`LibKa0s-Skin-1.0`, the 2026-10-29 skinning rollout) has four suites, each on a real load
+with the vendored library. `tests/test_skinsetup.lua` pins `core/SkinSetup.lua`: the owner and its
+facade, the seven `skin.*` keys and their `skipRender` rows on the Skin tab, `/kcd set` refusing an
+unregistered skin and reaching each half, a copy repainting once, a profile switch and reset, and the
+owner handed to every `LibKa0s-Widgets-1.0` factory and tool descriptor. `tests/test_skin_settings.lua`
+pins the settings pages: the AceGUI widgets the addon acquires painted past the proxy under a
+non-default skin and released stock, nothing painted under the defaults, and each token equal on Ka0s
+Default to the literal it replaced. `tests/test_skin_hud.lua` pins the HUD: the sixteen companions and
+their defaults, the HUD drawing `NS.SkinResolve`'s answer (each `LibSharedMedia` fetch is recorded), a
+skin switch repainting with no stored value moved, and the one-time reset running once per profile.
+`tests/test_skin_picker.lua` pins the first-run picker: its spec, the login and profile-event showings,
+the combat hold, the stand-down, and the real window's title, Apply, close and gear, with no eye.
+`tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
+host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
+is [smoke-tests.md](smoke-tests.md)'s SKIN checks.
+
 The simulator (`LibKa0s-Sim-1.0`, KickCD#38) has its own suites and a shared fixture. The first two
 pin the prerequisites the seam stands on (the Compat readers and the one dispatch), the rest the
 simulator itself:
