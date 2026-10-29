@@ -1386,7 +1386,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
 - **SKIN-22. The first-run skin picker (KC-04; O3, X6).** On a character that never ran this build, log
   in → shortly after the world loads a small window titled **Choose a skin for Ka0s KickCD** opens about
   three quarters of the way up the screen, already in the profile's skin: a dropdown showing the skin
-  worn now, a gear button beside it (and **no eye**: KickCD has no window or test mode to preview in),
+  worn now, a gear button beside it (and **no eye**: KickCD has no window, and its simulator is a scripted session, not a preview mode),
   **Apply** under it and a close mark. Close it, `/reload` → it does not come back on that profile.
   Create a new profile → it opens again; reset that profile after closing it → again. Every existing
   profile shows it once too. Fail: an eye button, a title that does not name Ka0s KickCD, no window on a

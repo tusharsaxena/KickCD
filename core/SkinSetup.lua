@@ -258,10 +258,14 @@ end
 -- `skin.pickerSeen`, through NS.Settings.Store.Set. A close this addon makes itself
 -- (NS.HideSkinPicker: the stand-down, a profile event) is not the player's and writes nothing.
 --
--- NO EYE (the rollout's X6). KickCD draws no window and has no test mode: its preview is
--- unlocking the grid and the cast bars, which is a stored write (`locked`) and refuses a running
--- simulation. So `onPreview` is absent and the library hides the button; a pick still previews
--- live on the HUD (OnLooksChanged), the drag handles and the settings chrome.
+-- NO EYE (the rollout's X6). KickCD draws no window of its own. It has a simulator (`/kcd sim`,
+-- modules/Sim.lua), but that is a scripted session, not a preview mode: it swaps the world the
+-- HUD reads for a timed story, opens its own step panel and strip, ends on combat, a loading
+-- screen or a group, and refuses a start in combat, an instance, a group or while unlocked. Starting one from the picker would play
+-- a story the player did not ask for. The other preview, unlocking the grid and the cast bars, is
+-- a stored write (`locked`) and refuses a running simulation. So `onPreview` is absent and the
+-- library hides the button; a pick still previews live on the HUD (OnLooksChanged), the drag
+-- handles and the settings chrome, and a simulation the player started wears the pick too.
 --
 -- PREVIEW. A pick only previews: the Skin major moves and the HUD repaints, but `set`
 -- (NS.WriteSkinChoice) runs only on Apply, the gear or Apply to all. The close control and Escape

@@ -356,8 +356,11 @@ collection's reference adopter, and every piece below copies its shape.
   through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
   Escape put the stored skin back. The library's `onClose`, by any of those routes, sets `pickerSeen`;
   `NS.HideSkinPicker` (the stand-down, and first on every profile event) takes it down without setting
-  it. **No eye** (X6): KickCD has no window or test mode, and its preview is unlocking, a stored write,
-  so `onPreview` is omitted; a pick still previews live on the HUD.
+  it. **No eye** (X6): KickCD has no window of its own, and neither of its previews fits the eye. The
+  simulator (`/kcd sim`) is a scripted session, not a test mode: it plays a timed story with its own
+  step panel and strip and refuses a start in combat, an instance, a group or while unlocked; unlocking
+  is a stored write. So `onPreview` is omitted; a pick still previews live on the HUD, and on a
+  simulation the player already started.
 - **The EllesmereUI provider.** The library's (`SkinEUI.lua`). The TOC lists EllesmereUI in
   `## OptionalDeps`, so it loads first and is offered the owner at file load. With source `eui` and its
   gate holding, the settings pages and tool windows take EllesmereUI's accent, panel color and font, and
