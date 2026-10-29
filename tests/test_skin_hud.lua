@@ -6,10 +6,10 @@
 --     font, the cast bar's font and both states' bar texture and border, the label font) exist as
 --     schema rows from the composers' `fromSkin`, default TRUE (DECISIONS X3) in the rows and in
 --     defaults/Profile.lua alike, and the icon border's companion is the ICON family, so it
---     governs the thickness slider too;
---   * the HUD draws what NS.SkinResolve answers: the skin's hud.font, bar.texture, bar.borderStyle
---     and icon.borderStyle / icon.borderSize while a companion is set, the stored pick when it is
---     off, and the charges badge in the skin's face (D4);
+--     governs the thickness slider too, and so are the cast bar's two (KC-A1);
+--   * the HUD draws what NS.SkinResolve answers: the skin's hud.font, bar.texture and
+--     icon.borderStyle / icon.borderSize (the icon border AND both cast-bar borders, KC-A1) while a
+--     companion is set, the stored pick when it is off, and the charges badge in the skin's face (D4);
 --   * a skin switch reaches the HUD through the owner's OnLooksChanged, with no stored value moved;
 --   * the one-time reset (owner ruling O2): NS.SCHEMA_VERSION 6, migrations[5], once per profile
 --     and recorded per profile (skin.hudReset), so a pick the player turns off later is kept; a
@@ -102,11 +102,14 @@ test("HUD skin: the icon border follows the ICON family, governing its thickness
     assertEqual(Store.FindRow("units.target.icons.borderTexture").disabledIf, companion)
     assertEqual(Store.FindRow("units.target.icons.borderSize").disabledIf, companion,
         "the icon family governs the thickness slider")
-    -- The cast bar's border is the bar family: the style picker only.
-    local cb = "units.target.castbar.interruptible."
-    assertEqual(Store.FindRow(cb .. "borderTexture").disabledIf, cb .. "borderTextureFromSkin")
-    assertEqual(Store.FindRow(cb .. "borderSize").disabledIf, nil,
-        "a cast bar's border thickness stays the player's (X4)")
+    -- The cast bar's borders are the icon family too (KC-A1, the owner's ruling): every skin's
+    -- bar.borderStyle is "None", so the bar family would leave the cast bar with no edge.
+    for _, state in ipairs({ "interruptible", "uninterruptible" }) do
+        local cb = "units.target.castbar." .. state .. "."
+        assertEqual(Store.FindRow(cb .. "borderTexture").disabledIf, cb .. "borderTextureFromSkin", state)
+        assertEqual(Store.FindRow(cb .. "borderSize").disabledIf, cb .. "borderTextureFromSkin",
+            state .. ": the icon family governs the cast bar's thickness slider too")
+    end
 end)
 
 -- ── the draw ────────────────────────────────────────────────────────────────
@@ -122,7 +125,8 @@ test("HUD skin: the cast bar draws the skin's face, texture and border while fol
     Castbar:Reskin(cb, true)
     assertTrue(has(fetched, "font:Ka0s Oxanium SemiBold"), "hud.font on Ka0s Default")
     assertTrue(has(fetched, "statusbar:Ka0s Default"), "bar.texture on Ka0s Default")
-    assertTrue(has(fetched, "border:None"), "bar.borderStyle on Ka0s Default")
+    assertTrue(has(fetched, "border:Solid"), "icon.borderStyle on Ka0s Default (KC-A1)")
+    assertFalse(has(fetched, "border:None"), "not bar.borderStyle, which draws no edge")
     assertFalse(has(fetched, "statusbar:Blizzard Raid Bar"), "the stored pick is not drawn")
 end)
 
@@ -161,6 +165,51 @@ test("HUD skin: the icon border takes the skin's icon family, style and thicknes
     cfg.borderSize = 5
     icon:ApplyAppearance(cfg)
     assertEqual(bd.edgeSize, 5, "off: the player's thickness")
+end)
+
+test("HUD skin: a following cast bar draws the skin's flat icon edge, style and thickness", function()
+    -- red under: Castbar_Skin.lua resolving bar.borderStyle (None on every skin, so no edge) or
+    -- drawing sc.borderSize while the companion is set (KC-A1)
+    local inst, fetched = boot()
+    local NS = inst.NS
+    local Skin = inst.mocks.LibStub("LibKa0s-Skin-1.0")
+    local Castbar = NS:GetModule("Castbar")
+    local cb = Castbar:GetInstance("target")
+    local frame = cb.frame
+    local drawn = {}
+    for _, key in ipairs({ "borderInterruptible", "borderUninterruptible" }) do
+        frame[key].SetBackdrop = function(_, t) drawn[key] = t end
+    end
+    local c = NS.db.profile.units.target.castbar
+    c.interruptible.borderSize, c.uninterruptible.borderSize = 7, 7   -- the player's, not drawn
+    Castbar:Reskin(cb, true)
+    for _, key in ipairs({ "borderInterruptible", "borderUninterruptible" }) do
+        local bd = drawn[key]
+        assertTrue(bd ~= nil, key .. " drew a backdrop")
+        assertEqual(bd.edgeFile, "Interface\\Buttons\\WHITE8X8", key .. ": Solid, Ka0s Default's icon edge")
+        assertEqual(bd.edgeSize, 2, key .. ": icon.borderSize on Ka0s Default")
+    end
+
+    -- Another skin: its own icon edge, through the same tokens.
+    local obsidian = Skin:ResolveSkin("obsidian")
+    assertEqual(obsidian["bar.borderStyle"], "None", "sanity: the bar family draws no edge on Obsidian")
+    Skin:SetChoice(OWNER, "ka0s", "obsidian")
+    clear(fetched)
+    drawn = {}
+    Castbar:Reskin(cb, true)
+    assertTrue(has(fetched, "border:" .. obsidian["icon.borderStyle"]), "Obsidian's icon.borderStyle")
+    for _, key in ipairs({ "borderInterruptible", "borderUninterruptible" }) do
+        assertEqual(drawn[key].edgeFile, "Interface\\Buttons\\WHITE8X8", key .. ": Obsidian's flat edge")
+        assertEqual(drawn[key].edgeSize, obsidian["icon.borderSize"], key .. ": Obsidian's icon.borderSize")
+    end
+
+    -- Off: the player's own style and thickness again.
+    c.interruptible.borderTextureFromSkin = false
+    drawn = {}
+    Castbar:Reskin(cb, true)
+    assertEqual(drawn.borderInterruptible.edgeSize, 7, "off: the player's thickness")
+    assertEqual(drawn.borderUninterruptible.edgeSize, obsidian["icon.borderSize"], "the other state still follows")
+    Skin:SetChoice(OWNER, "ka0s", "ka0s")
 end)
 
 test("HUD skin: \"Solid\" is registered as a LibSharedMedia border, the flat edge", function()

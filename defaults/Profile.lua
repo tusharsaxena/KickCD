@@ -282,8 +282,8 @@ local CASTBAR_DEFAULT = {
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
-            -- "Use the skin's border": the style only (bar.borderStyle, None on Ka0s Default);
-            -- the thickness and color stay the player's.
+            -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
+            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             useClassColorBorder = false,
@@ -306,8 +306,8 @@ local CASTBAR_DEFAULT = {
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
-            -- "Use the skin's border": the style only (bar.borderStyle, None on Ka0s Default);
-            -- the thickness and color stay the player's.
+            -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
+            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             useClassColorBorder = false,

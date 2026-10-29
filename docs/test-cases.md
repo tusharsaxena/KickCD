@@ -1393,7 +1393,7 @@ Total.
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 
-### test_skin_settings.lua (9)
+### test_skin_settings.lua (10)
 
 - skin settings: under a non-default skin the Spells rows and chrome block paint, past the proxy
 - skin settings: a release hands the Spells widgets back stock
@@ -1404,14 +1404,16 @@ Total.
 - skin settings: the not-tracked tag is sem.warn, ff8000 on Ka0s Default
 - skin settings: a row's own tooltip hint is titled in gtip.title
 - skin settings: the host copy carries every token the settings pages read
+- skin settings: with Ignore settings panel on, the page's tokens stay Ka0s Default's
 
-### test_skin_hud.lua (16)
+### test_skin_hud.lua (17)
 
 - HUD skin: every HUD media pick has a companion row, default true in the row and the defaults
 - HUD skin: the icon border follows the ICON family, governing its thickness too
 - HUD skin: the cast bar draws the skin's face, texture and border while following
 - HUD skin: a companion turned off draws the player's stored pick again
 - HUD skin: the icon border takes the skin's icon family, style and thickness
+- HUD skin: a following cast bar draws the skin's flat icon edge, style and thickness
 - HUD skin: "Solid" is registered as a LibSharedMedia border, the flat edge
 - HUD skin: the countdown follows hud.font and the charges badge takes the skin's face
 - HUD skin: the unit label follows hud.font, and a false companion is the player's face
@@ -1905,8 +1907,8 @@ Total.
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
 | test_skinsetup.lua | 13 |
-| test_skin_settings.lua | 9 |
-| test_skin_hud.lua | 16 |
+| test_skin_settings.lua | 10 |
+| test_skin_hud.lua | 17 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
@@ -1935,4 +1937,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1553** |
+| **Total** | **1555** |

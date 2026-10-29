@@ -1252,13 +1252,13 @@ after each check. Every check also fails on a Lua error or a taint warning.
   in **Oxanium** (a squared, technical face) instead of Friz Quadrata (the badge's was the client's
   number font); both cast-bar states fill with the **Ka0s Default** bar texture (dim at the top, a
   highlight low on the bar and a short lip) instead of Blizzard Raid Bar, in the same yellow and red;
-  the cast bar draws **no border** where it drew a 2 px Blizzard Tooltip edge; and each icon's border is
-  a **flat 2 px edge** in the border color (black) where it was the Blizzard Tooltip edge. Sizes, colors,
+  both cast-bar states and each icon draw a **flat 2 px edge** in the border color (black) where each
+  drew the 2 px Blizzard Tooltip edge (the cast bar keeps an edge under every skin, KC-A1). Sizes, colors,
   opacity, the glow, the layout and every position are as before. The settings pages are as before
   (the Skin tab's **Ignore settings panel** is on). The debug console, perf panel and sim panel keep
   their edge and colors; their text reads in Oxanium, the log lines in JetBrains Mono. Fail: any other
   changed color, size or position, a HUD string still in Friz Quadrata, a cast bar on Blizzard Raid
-  Bar, or a cast-bar border left on. Result:
+  Bar, or a cast bar with no border or still on the Blizzard Tooltip edge. Result:
 - **SKIN-2. The reset runs once per profile and keeps your own picks (O2; KC-03).** Before installing
   this build, set Target's cast-bar font to a face that looks clearly different (Arial Narrow) on a
   profile `SkinA`, and give a second profile `SkinB` a different label font. Install, log in on
@@ -1298,19 +1298,21 @@ after each check. Every check also fails on a Lua error or a taint warning.
   face of its own; the settings pages and tool windows take each skin's family, SKIN-9). The cast bar's
   texture: Ka0s Default **Ka0s Default**; Obsidian **Ka0s Matte**; Azeroth **Ka0s Parchment**; Glass
   **Ka0s Glass Bar**; High Contrast **Ka0s Solid**; Ember **Ka0s Forge**; WoW Midnight **Ka0s Satin**;
-  WoW Forever **Ka0s Classic**; WoW Default **Blizzard**. The cast bar draws no border under any skin.
-  The icon border: a flat 1 px edge under Obsidian, Glass and WoW Forever, a flat 2 px edge under Ka0s
-  Default, Azeroth, High Contrast, Ember and WoW Midnight, and the 2 px Blizzard Tooltip edge under
-  WoW Default. Fail: a bar on another skin's texture, a white or missing fill, a border where the list
-  says none, or an empty square where a letter should be. Result:
+  WoW Forever **Ka0s Classic**; WoW Default **Blizzard**. The icon border and both cast-bar states'
+  borders take the skin's icon edge (KC-A1): a flat 1 px edge under Obsidian, Glass and WoW Forever, a
+  flat 2 px edge under Ka0s Default, Azeroth, High Contrast, Ember and WoW Midnight, and the 2 px
+  Blizzard Tooltip edge under WoW Default. Fail: a bar on another skin's texture, a white or missing
+  fill, a cast bar or icon with no border, an edge of the wrong thickness, or an empty square where a
+  letter should be. Result:
 - **SKIN-7. The "Use the skin's ..." boxes (KC-03).** On a non-default skin (Azeroth), Units > Icons
   → Appearance → Border and Annotations → Cooldown text, Cast bar → Text → Font (both texts) and each
   state's Bar and Border, and Text label → Font each carry one **Use the skin's ...** box (eight per
   unit). Ticked, the picker beside it is grayed and shows the skin's value, and the icon border's box
-  also grays its thickness slider (the skin sets both). Untick each in turn → that one piece goes back
-  to your own pick at once, the rest stay on the skin; tick it → back on the skin. Your colors, sizes,
-  flags and shadows are never grayed and never move. Fail: a box that changes another piece, a picker
-  that stays live while ticked, or a color, size or flag that follows the skin. Result:
+  and each cast-bar state's Border box also gray the thickness slider (the skin sets both). Untick
+  each in turn → that one piece goes back to your own pick at once, the rest stay on the skin; tick
+  it → back on the skin. Your colors, sizes, flags and shadows are never grayed and never move. Fail:
+  a box that changes another piece, a picker that stays live while ticked, or a color, size or flag
+  that follows the skin. Result:
 - **SKIN-8. A linked Focus and Copy from Target (KC-03).** Focus linked → it draws exactly what Target
   draws under every skin, and its entries are inert as before. Unlink, untick Target's **Use the skin's
   font** on the cast bar, then Units → Focus → **Copy from Target** → Focus's box is unticked too and its

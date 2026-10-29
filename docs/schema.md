@@ -279,7 +279,7 @@ units[unit] = {
         -- modules/Castbar.lua's ApplyState, never a SetAlpha of its own.
         -- Each state's statusBarTextureFromSkin ("Use the skin's texture",
         -- bar.texture) and borderTextureFromSkin ("Use the skin's border", the
-        -- style only, bar.borderStyle) default true.
+        -- icon family: icon.borderStyle and icon.borderSize, KC-A1) default true.
         interruptible   = { statusBarTexture, barColor, useClassColorBar,
                             barAlpha, statusBarTextureFromSkin,
                             bgColor, useClassColorBgColor,
@@ -422,9 +422,9 @@ KickCD adopted skins in the 2026-10-29 skinning rollout (Ka0sAddonsCommonTasks `
 | `icons.cooldownTextFontFromSkin` | the countdown's face | `hud.font` `"Ka0s Oxanium SemiBold"` |
 | `castbar.fontFromSkin` | the face of both cast-bar texts | `hud.font` |
 | `castbar.interruptible.statusBarTextureFromSkin`, `castbar.uninterruptible.statusBarTextureFromSkin` | each state's bar texture | `bar.texture` `"Ka0s Default"` |
-| `castbar.interruptible.borderTextureFromSkin`, `castbar.uninterruptible.borderTextureFromSkin` | each state's border style | `bar.borderStyle` `"None"` |
+| `castbar.interruptible.borderTextureFromSkin`, `castbar.uninterruptible.borderTextureFromSkin` | each state's border style **and thickness** (the icon family, `fromSkin = "icon"`, KC-A1) | `icon.borderStyle` `"Solid"`, `icon.borderSize` 2 |
 | `label.style.fontFromSkin` | the label's face | `hud.font` |
 
-Every one **defaults true** (rollout decision X3), in `defaults/Profile.lua` and in the composer row alike. While one is set its picker is disabled and shows the skin's value, and the HUD draws `NS.SkinResolve(token, pick, companion)` (`core/SkinSetup.lua`); the stored pick is never overwritten, so turning the companion off draws exactly what the player had. Only the face, the texture and the border follow (X4): every color, size (the cast bar's border thickness included), flag and shadow stays the player's. The charges badge, which has no setting, takes the skin's `hud.font` face with `NumberFontNormal`'s size and flags.
+Every one **defaults true** (rollout decision X3), in `defaults/Profile.lua` and in the composer row alike. While one is set its picker is disabled and shows the skin's value, and the HUD draws `NS.SkinResolve(token, pick, companion)` (`core/SkinSetup.lua`); the stored pick is never overwritten, so turning the companion off draws exactly what the player had. Only the face, the texture and the border follow (X4): every color, size (but the borders' thickness, which the icon family sets), flag and shadow stays the player's. The charges badge, which has no setting, takes the skin's `hud.font` face with `NumberFontNormal`'s size and flags.
 
 `Database:MigrateHudSkin(db)` is the v5→v6 step (`migrations[5]`), the owner's ruling O2: adopting skins puts every companion on the skin **once, for every player**, through `LibKa0s-Skin-1.0`'s `Skin.ResetToSkin` (set directly when the library is absent). It runs from `Database:Init` and every `OnProfileChanged`, like the shape-driven steps, because the stamp is per account and the data per profile. It cannot be shape-driven, though: "follows the skin" is not a shape a later run could tell from the player's own choice. So each profile carries its own record, `skin.hudReset` (default false, no schema row): false, the step sets the sixteen companions and the record; true, it does nothing, so a companion the player turns off afterwards stays off for good. A profile reset puts the record back to false, and the step then re-runs against defaults that already follow the skin, which changes nothing a player can see. Only a companion that reads a boolean is named, because `ResetToSkin` writes the `FROM_SKIN` sentinel into a key it finds neither a table nor a bool.

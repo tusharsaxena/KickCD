@@ -564,9 +564,11 @@ H.AddComposed(H.BorderGroup{
     subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
-    -- "Use the skin's border": the BAR family, the style only (bar.borderStyle); the thickness
-    -- and color stay the player's (X4). borderTextureFromSkin, default true (X3).
-    fromSkin = true,
+    -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color staying the
+    -- player's. The bar family's bar.borderStyle is "None" on every skin, so the cast bar would
+    -- draw no edge (KC-A1, the owner's ruling). borderTextureFromSkin, default true (X3).
+    fromSkin = "icon",
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
                  borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
                  borderStyleFromSkin = true },
@@ -602,9 +604,11 @@ H.AddComposed(H.BorderGroup{
     subgroup = L["Border"],
     show     = true,
     keys     = { borderStyle = "borderTexture" },
-    -- "Use the skin's border": the BAR family, the style only (bar.borderStyle); the thickness
-    -- and color stay the player's (X4). borderTextureFromSkin, default true (X3).
-    fromSkin = true,
+    -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color staying the
+    -- player's. The bar family's bar.borderStyle is "None" on every skin, so the cast bar would
+    -- draw no edge (KC-A1, the owner's ruling). borderTextureFromSkin, default true (X3).
+    fromSkin = "icon",
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
                  borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
                  borderStyleFromSkin = true },
