@@ -12,7 +12,7 @@
 -- IconGrid._OnDragStop and read here at file load. IconGrid.lua loads first
 -- (KickCD.toc's LOAD-BEARING note).
 
-local _, NS = ...
+local addonName, NS = ...
 local IconGrid = NS:GetModule("IconGrid")
 local onDragStop = IconGrid._OnDragStop
 
@@ -131,6 +131,8 @@ local function buildHandle(inst, grid)
     if not (KW and KW.DragHandle) then return nil end
     local label = handleText(inst.unit)
     local handle = KW.DragHandle(grid, {
+        -- The skin owner (skinning-§1): the strip and its help mark wear KickCD's skin.
+        owner        = addonName,
         label        = label,
         moveFrame    = grid,
         helpIcon     = NS.Icon and NS.Icon("help") or nil,

@@ -334,6 +334,21 @@ local DEFAULT_PROFILE = {
     -- mask. Master enable still wins — disabled = always hidden.
     visibility = "target_casting_interruptible",
 
+    -- The skin this addon wears (skinning-§2: per addon, per profile; core/SkinSetup.lua). Ka0s
+    -- Default from both halves, so a profile that never opened the Skin tab looks as it did before
+    -- skins. The Scope's exceptions: the settings panel stays the client's, the fonts follow the
+    -- skin. `font` and `texture` are the owner's overrides, "" for the skin's own. `pickerSeen` is
+    -- false on every profile, old and new (owner ruling O3): the first-run picker shows once each.
+    skin = {
+        source      = "ka0s",
+        skin        = "ka0s",
+        ignorePanel = true,
+        ignoreFonts = false,
+        font        = "",
+        texture     = "",
+        pickerSeen  = false,
+    },
+
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live
     -- (NS.Units resolves the link). enabled/anchors/label.text stay per-unit

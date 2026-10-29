@@ -35,6 +35,9 @@ local PANELS = {
 }
 local SECTIONS = {
     general = true, icons = true, castbar = true, label = true, spells = true, debug = true, units = true,
+    -- The skin's seven rows (settings/General.lua): a section no module reacts to, because the
+    -- repaint is each row's onChange through LibKa0s-Skin-1.0 (core/SkinSetup.lua).
+    skin = true,
 }
 
 test("Settings.Schema is assembled from the settings/* files", function()
@@ -264,9 +267,10 @@ end)
 -- Counts are PER UNIT for the three unit-scoped pages, because that is what a
 -- reader sees: the page renders only the selected unit's rows. General has no
 -- unit selector, so its Units tab shows both units' toggles, plus the Focus
--- `link` row, which the tab draws itself (`skipRender`): 3.
+-- `link` row, which the tab draws itself (`skipRender`): 3. The Skin tab's group is the library's
+-- tab key, "Appearance": the seven skin.* rows, every one skipRender and drawn by O.AppearanceTab.
 local STRIP = {
-    general = { { "Master controls", 7 }, { "Units", 3 } },
+    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 7 } },
     icons   = {
         { "Size and layout", 10 }, { "Appearance", 10 }, { "Annotations", 11 },
         { "Ready glow", 34 },
@@ -918,6 +922,9 @@ local TAB_SINGLE_SUBJECT = {
         ["Units"] = "which grids exist and whether Focus is its own thing: one enable toggle per "
             .. "tracked unit, and the Focus link. Every row is skipRender and drawn by the Units "
             .. "page's band (item 020), so General draws no tab for it.",
+        ["Appearance"] = "the skin this addon wears (skinning-§3). Every row is skipRender: the "
+            .. "library's O.AppearanceTab draws the whole tab, its own headings included, so the "
+            .. "rows carry no subgroup.",
     },
     castbar = {
         ["General"] = "what the bar IS: enabled, orientation, growth, spark. The size rows, the "

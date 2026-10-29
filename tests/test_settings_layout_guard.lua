@@ -37,12 +37,20 @@ local function snapshot(NS)
 end
 
 -- Generated from the schema at 82bf009 (KC-RV2), before the first layout edit. Sorted by path.
+-- The seven skin.* rows joined with the skin seam (KC-01 of the 2026-10-29 skinning rollout).
 local PIN = {
     "alpha number 1 0 1 0.050000000000000003",
     "enabled bool true nil nil nil",
     "global.minimap.shown bool true nil nil nil",
     "locked bool false nil nil nil",
     "scale number 1 0.5 2 0.050000000000000003",
+    "skin.font string \"\" nil nil nil",
+    "skin.ignoreFonts bool false nil nil nil",
+    "skin.ignorePanel bool true nil nil nil",
+    "skin.pickerSeen bool false nil nil nil",
+    "skin.skin string \"ka0s\" nil nil nil",
+    "skin.source string \"ka0s\" nil nil nil",
+    "skin.texture string \"\" nil nil nil",
     "state.debugConsole bool false nil nil nil",
     "units.focus.castbar.anchorMode string \"PRIMARY\" nil nil nil",
     "units.focus.castbar.anchorOffsetX number 0 -200 200 1",

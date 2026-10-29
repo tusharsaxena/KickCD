@@ -5,7 +5,7 @@
 ## Version: 1.5.0
 ## IconTexture: Interface\AddOns\KickCD\media\logos\kickcd.logo.128.tga
 ## SavedVariables: KickCDDB, KickCDPerfDB
-## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0, LibDataBroker-1.1, LibDBIcon-1.0, LibCustomGlow-1.0
+## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0, LibDataBroker-1.1, LibDBIcon-1.0, LibCustomGlow-1.0, EllesmereUI
 ## DefaultState: enabled
 ## Category-enUS: Combat
 ## X-License: MIT
@@ -71,6 +71,11 @@ core\Util.lua
 # file survives the reversed order without an error, which is what makes the
 # order worth stating here rather than only in the file.
 core\CoreSetup.lua
+# LOAD-BEARING POSITION: the LibKa0s-Skin-1.0 seam registers the owner "KickCD" at FILE LOAD
+# (skinning-§1: EllesmereUI is offered the owner before it dispatches its skins) and publishes
+# NS.Skin, which every module that builds a frame reads. Below core\CoreSetup.lua for
+# NS.Util.print and above every frame-building file; settings\General.lua reads its value tables.
+core\SkinSetup.lua
 # Conventional position: defines nothing another file reads at load; the recorders
 # NS.RegisterEventList and Util.NewUnitCastFilter call are reached at runtime.
 core\Events.lua

@@ -840,3 +840,30 @@ L["Restore every tab of the entry selected on the left, for the unit in the band
     "Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."
 L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
     "Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."
+
+-- The skin (core/SkinSetup.lua, settings/General.lua's Skin tab rows; skinning-§2, §3)
+L["Ka0s skins"]                  = "Ka0s skins"
+L["EllesmereUI"]                 = "EllesmereUI"
+L["Ka0s Default"]                = "Ka0s Default"
+L["Reload your interface (/reload) to finish changing the skin."] =
+    "Reload your interface (/reload) to finish changing the skin."
+L["Skin source"]                 = "Skin source"
+L["Where this addon's look comes from: the Ka0s skin chosen below, or EllesmereUI."] =
+    "Where this addon's look comes from: the Ka0s skin chosen below, or EllesmereUI."
+L["Skin"]                        = "Skin"
+L["The Ka0s skin this addon wears. Changes the icon grids, cast bars, labels and settings pages right away."] =
+    "The Ka0s skin this addon wears. Changes the icon grids, cast bars, labels and settings pages right away."
+L["Ignore settings panel"]       = "Ignore settings panel"
+L["Keep this addon's settings panel in the game's own look. The rest still wears the skin."] =
+    "Keep this addon's settings panel in the game's own look. The rest still wears the skin."
+L["Ignore fonts"]                = "Ignore fonts"
+L["Keep every font in this addon as the game draws it. The skin still colors the text."] =
+    "Keep every font in this addon as the game draws it. The skin still colors the text."
+L["The font this addon's text uses, over the skin's own. Empty keeps the skin's."] =
+    "The font this addon's text uses, over the skin's own. Empty keeps the skin's."
+L["Texture"]                     = "Texture"
+L["The texture this addon's bars use, over the skin's own. Empty keeps the skin's."] =
+    "The texture this addon's bars use, over the skin's own. Empty keeps the skin's."
+L["Skin picker seen"]            = "Skin picker seen"
+L["Whether the first-run skin picker was closed on this profile."] =
+    "Whether the first-run skin picker was closed on this profile."

@@ -62,6 +62,11 @@ function NS:OnInitialize()
         self.Database:Init()
     end
 
+    -- The skin the active profile names (core/SkinSetup.lua), right after the store exists: the
+    -- owner registered at file load, before AceDB, and has worn Ka0s Default since. Before any
+    -- module builds a frame (they enable at PLAYER_LOGIN), so the first paint is the profile's.
+    if NS.ApplySkinChoice then NS.ApplySkinChoice() end
+
     -- The combat listener (core/State.lua). Armed here rather than at State.lua's
     -- file load because it registers through NS.RegisterEventList, which
     -- core/CoreSetup.lua defines after State.lua loads. ADDON_LOADED always

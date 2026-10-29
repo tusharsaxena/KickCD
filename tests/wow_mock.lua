@@ -165,11 +165,18 @@ local function build()
     -- question. It removes on unregister in both halves -- the kit's registry
     -- does, and UnregisterEvent / UnregisterAllEvents above clear `__events` --
     -- which is the half that makes "the registration set is empty" falsifiable.
+    -- THE ADDON'S registrations, not the library's. LibKa0s-Skin-1.0 makes one retry frame at the
+    -- first RegisterOwner (SkinEUI.lua's ensureEvents) for ADDON_LOADED("EllesmereUI") and
+    -- PLAYER_LOGIN, and drops both itself at PLAYER_LOGIN. It is process-global library state, held
+    -- on the Skin major, whoever registered first: no stand-down of this addon owns it or may
+    -- unregister it, so a survey of what KickCD is registered for leaves it out.
     mocks.__registrationSet = function()
         local out = {}
+        local Skin = mocks.LibStub and mocks.LibStub("LibKa0s-Skin-1.0", true)
+        local libFrame = Skin and rawget(Skin, "__euiEventFrame")
         for _, reg in ipairs(mocks.__registrations()) do out[#out + 1] = reg end
         for _, f in ipairs(mocks.__frames or {}) do
-            for event, unit in pairs(f.__events or {}) do
+            for event, unit in pairs(f ~= libFrame and f.__events or {}) do
                 out[#out + 1] = {
                     target = f,
                     kind   = unit == true and "frame" or "unit",

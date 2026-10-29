@@ -1,6 +1,7 @@
 -- settings/General.lua
 --
--- General canvas panel. ONE tab, Master controls (options-ui-§13: a one-tab strip).
+-- General canvas panel. TWO tabs: Master controls, then Skin (skinning-§3, the library's
+-- O.AppearanceTab, keyed "Appearance" and labeled "Skin"; last, as the page has no Keybindings tab).
 -- The per-unit rows filed under the `Units` group below are skipRender and drawn
 -- by the Units page's band instead (KIC-L01/L02, item 020), so that group is no
 -- tab here (RenderTabbedSchema's untabbedSkipRender).
@@ -263,6 +264,65 @@ add{
     end,
 }
 
+-- ── The Skin tab (skinning-§3) ─────────────────────────────────────────────
+--
+-- The library's own entry (O.AppearanceTab): the skin source, the nine skins, Font and texture,
+-- the Scope, "Copy to every Ka0s addon..." and the note, drawn from LibKa0s-Skin-1.0 for the owner
+-- core/SkinSetup.lua registered. `get` and `set` are that file's read and write seams, so a pick
+-- lands through Store.Set like every other setting; the tab calls Skin:SetChoice first, so the
+-- live repaint is the library's and the rows' onChange finds nothing left to apply. Built once, at
+-- file load: the rows below take its key as their group, so the host tab takes that group's place
+-- in the strip (OptionsTabs' collectTabs) instead of adding a second one. On the degraded path the
+-- stub's entry draws nothing, and the tab is still there.
+local skinTab = H.AppearanceTab({ owner = NS.Skin and NS.Skin.owner,
+                                  get = NS.SkinChoice, set = NS.WriteSkinChoice })
+
+-- The seven stored keys of the choice, as schema rows: the defaults resolve from them, a profile
+-- reset reaches them, and `/kcd get|set skin.<key>` validates against them. ALL `skipRender`: the
+-- tab draws every one as its own control. `section = "skin"`, which no module reacts to; the
+-- repaint is the onChange's, through Skin:SetChoice / SetIgnore / SetOverride. Each onChange
+-- applies only its own half (core/SkinSetup.lua says why). The General page's Defaults leaves them
+-- alone (the seam's resetExempt, settings/SchemaSetup.lua): it restores Master controls, and the
+-- skin is reset by Reset all settings, a profile reset, like every other profile value.
+local SK = NS.DEFAULT_PROFILE.skin
+local function skinRow(t)
+    t.panel, t.section, t.group, t.skipRender = "general", "skin", skinTab.key, true
+    add(t)
+end
+skinRow{ path = "skin.source", type = "string", default = SK.source,
+         values = NS.SKIN_SOURCE_VALUES, sorting = NS.SKIN_SOURCE_ORDER,
+         label = L["Skin source"],
+         desc = L["Where this addon's look comes from: the Ka0s skin chosen below, or EllesmereUI."],
+         onChange = function(v) NS.ApplySkinChoice(v, nil) end }
+skinRow{ path = "skin.skin", type = "string", default = SK.skin,
+         values = NS.SKIN_VALUES, sorting = NS.SKIN_ORDER,
+         label = L["Skin"],
+         desc = L["The Ka0s skin this addon wears. Changes the icon grids, cast bars, labels and settings pages right away."],
+         onChange = function(v) NS.ApplySkinChoice(nil, v) end }
+skinRow{ path = "skin.ignorePanel", type = "bool", default = SK.ignorePanel,
+         label = L["Ignore settings panel"],
+         desc = L["Keep this addon's settings panel in the game's own look. The rest still wears the skin."],
+         onChange = function(v) NS.ApplySkinIgnore(v, nil) end }
+skinRow{ path = "skin.ignoreFonts", type = "bool", default = SK.ignoreFonts,
+         label = L["Ignore fonts"],
+         desc = L["Keep every font in this addon as the game draws it. The skin still colors the text."],
+         onChange = function(v) NS.ApplySkinIgnore(nil, v) end }
+-- Free text, not a dropdown of `values`: a media pack may register its keys after this file loads,
+-- and `/kcd set` takes any LibSharedMedia key. "" is the skin's own.
+skinRow{ path = "skin.font", type = "string", dialogControl = "EditBox", default = SK.font,
+         label = L["Font"],
+         desc = L["The font this addon's text uses, over the skin's own. Empty keeps the skin's."],
+         onChange = function(v) NS.ApplySkinOverride(v, nil) end }
+skinRow{ path = "skin.texture", type = "string", dialogControl = "EditBox", default = SK.texture,
+         label = L["Texture"],
+         desc = L["The texture this addon's bars use, over the skin's own. Empty keeps the skin's."],
+         onChange = function(v) NS.ApplySkinOverride(nil, v) end }
+-- The first-run skin picker's memory: set when the picker closes, so it shows once per profile.
+-- Drawn by nothing; a profile reset puts it back to false.
+skinRow{ path = "skin.pickerSeen", type = "bool", default = SK.pickerSeen,
+         label = L["Skin picker seen"],
+         desc = L["Whether the first-run skin picker was closed on this profile."] }
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------
@@ -323,7 +383,7 @@ local function Build(mainCategory)
         -- tab here (LibKa0s OptionsTabs minor 8).
         H.RenderTabbedSchema(c, "general", {
             [H.MASTER_GROUP] = masterTail,
-        }, nil, { untabbedSkipRender = true })
+        }, nil, { untabbedSkipRender = true, tabs = { skinTab } })
     end)
 
     return Settings.RegisterCanvasLayoutSubcategory(

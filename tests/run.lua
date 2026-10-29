@@ -226,6 +226,7 @@ local SUITES = {
     "test_settings_widgets",
     "test_options_panel",
     "test_options_panel_degraded",
+    "test_skinsetup",
     "test_grid",
     "test_settings_layout_guard",
     "test_settings_refreshers",

@@ -19,7 +19,7 @@
 -- tooltip, a right-click and two gates, so the file grew. That is the honest
 -- shape of this trade and it is why the peel came with it.
 
-local _, NS = ...
+local addonName, NS = ...
 local L = NS.L
 local Castbar = NS:GetModule("Castbar")
 
@@ -90,6 +90,8 @@ end
 local function buildHandle(inst, frame)
     if not (KW and KW.DragHandle) then return nil end
     local handle = KW.DragHandle(frame, {
+        -- The skin owner (skinning-§1): the strip and its help mark wear KickCD's skin.
+        owner        = addonName,
         label        = handleLabel(inst.unit),
         moveFrame    = frame,
         helpIcon     = NS.Icon and NS.Icon("help") or nil,

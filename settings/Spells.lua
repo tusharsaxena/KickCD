@@ -23,7 +23,7 @@
 -- commitSoon, a 50 ms throttle that fires Ka0s_KickCD_ConfigChanged
 -- { section = "spells" }; the page's own subscriber re-renders the rows.
 
-local _, NS = ...
+local addonName, NS = ...
 
 local L      = NS.L      or setmetatable({}, { __index = function(_, k) return k end })
 local Compat = NS.Compat or {}
@@ -595,6 +595,8 @@ local function newReorder()
     local W = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
     if not (W and W.ReorderList) then return nil end
     return W.ReorderList{
+        -- The skin owner (skinning-§1): the drag ghost and drop line wear KickCD's skin.
+        owner         = addonName,
         -- Uniform rows, so the stride IS the row height: AceGUI's List layout stacks children
         -- with no gap of its own, and RenderGrid is called with `gap = false` so it adds none.
         stride        = Spells.ROW_HEIGHT,

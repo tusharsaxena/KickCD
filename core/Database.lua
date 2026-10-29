@@ -645,6 +645,11 @@ function Database:OnProfileChanged(event, db, arg)
     -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
     -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
     if NS.Sim and NS.Sim:IsActive() then NS.Sim:Stop("profile") end
+    -- Then the new profile's skin (core/SkinSetup.lua), before anything below rebuilds:
+    -- Skin:SetChoice repaints every frame recorded for this owner and fires OnLooksChanged, so a
+    -- switch, a copy and a reset (back to Ka0s Default) all repaint live (skinning-§2). AceDB has
+    -- already merged the new profile's defaults, so the stored pair is whole.
+    if NS.ApplySkinChoice then NS.ApplySkinChoice() end
     -- AceDB hands (event, db, newProfileKey) for OnProfileChanged,
     -- (event, db, sourceProfileKey) for OnProfileCopied and (event, db) for
     -- OnProfileReset. Only a switch names the profile that is now active: a copy

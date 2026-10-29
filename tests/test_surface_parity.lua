@@ -308,3 +308,31 @@ test("the Glow stub carries the whole LibKa0s-Glow-1.0 surface", function()
     -- red under: deleting `Stop` from core/GlowSetup.lua's stub table
     assertSurfaceParity(degraded.NS.GlowLib, "LibKa0s-Glow-1.0", {})
 end)
+
+-- ── Skin ────────────────────────────────────────────────────────────────────
+--
+-- core/SkinSetup.lua: live, NS.Skin is LibKa0s-Skin-1.0's `Skin:For("KickCD")`; without the library
+-- it is the host's table, whose painting names are no-ops and whose Token / Color / Text answer the
+-- host copy NS.SKIN_FALLBACK. A facade is per owner and built by `For`, not a major's lib-level
+-- surface, so this is the two-table form, key for key, with nothing ignored: a vocabulary name the
+-- library adds fails here until the stub answers it.
+
+test("the degraded Skin facade answers every name the live facade carries", function()
+    assertSurfaceParity(live.NS.Skin, degraded.NS.Skin, "Skin facade vs host stub", {})
+end)
+
+test("each host-copy skin token is the live library's Ka0s Default value", function()
+    -- red under: a token added to the copy with a value of its own, or the library moving a value.
+    local resolved = live.mocks.LibStub("LibKa0s-Skin-1.0"):ResolveSkin("ka0s")
+    local n = 0
+    for name, c in pairs(degraded.NS.SKIN_FALLBACK) do
+        n = n + 1
+        local want = resolved[name]
+        assertTrue(type(want) == "table", name .. " is not a Ka0s Default color token in the library")
+        for i = 1, 4 do
+            local a, b = c[i] or 1, want[i] or 1
+            assertTrue(math.abs(a - b) < 1e-6, ("%s[%d]: host copy %s, library %s"):format(name, i, a, b))
+        end
+    end
+    assertTrue(n > 0, "the host copy is empty, so this case asserts nothing")
+end)

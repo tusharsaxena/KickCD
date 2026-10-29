@@ -156,8 +156,9 @@ local function dirty(H, page)
 end
 
 -- The four schema pages whose Defaults button is LibKa0s' RestoreDefaults, and
--- the rows each one walks.
-for _, case in ipairs({ { "castbar", 110 }, { "icons", 130 }, { "label", 32 }, { "general", 10 } }) do
+-- the rows each one walks. General's 17 include the seven skin.* rows, which the walk passes
+-- over (the seam's resetExempt, settings/SchemaSetup.lua).
+for _, case in ipairs({ { "castbar", 110 }, { "icons", 130 }, { "label", 32 }, { "general", 17 } }) do
     local page, rows = case[1], case[2]
     test("the " .. page .. " page's Defaults logs ONE [Set] reset line counting the rows it changed",
     function()

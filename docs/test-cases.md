@@ -1372,10 +1372,25 @@ Total.
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note is plain text naming the band's Link to Target
-- the General page draws Master controls alone, with no empty Units tab
+- the General page draws Master controls and the Skin tab, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
+
+### test_skinsetup.lua (12)
+
+- Skin seam: the owner is the folder name, and NS.Skin is its facade
+- Skin seam: the read answers Ka0s Default before the profile store exists
+- Skin seam: the seven skin keys default to Ka0s Default and today's Scope
+- Skin seam: every skin key is a skipRender row of the General page's Skin tab
+- Skin seam: the skin row's values are every registered skin, in the library's order
+- Skin seam: /kcd set refuses an unregistered skin and applies a registered one
+- Skin seam: the registered setter writes through the store, and a copy repaints once
+- Skin seam: /kcd set reaches an exception, and only its own half
+- Skin seam: /kcd set reaches an override, and an empty one is the skin's own
+- Skin seam: a profile switch applies the new profile's skin, Scope and overrides
+- Skin seam: a profile reset takes the skin back to Ka0s Default
+- Skin seam: every LibKa0s-Widgets factory call names the owner
 
 ### test_grid.lua (13)
 
@@ -1693,7 +1708,7 @@ Total.
 - --list per-suite header counts match their bullet counts
 - --list Totals row plus the Skipped row equals the grand total of bullets
 
-### test_surface_parity.lua (9)
+### test_surface_parity.lua (11)
 
 - sanity: the degraded arm really has no LibKa0s
 - the whole namespace survives a LibKa0s-less load
@@ -1704,6 +1719,8 @@ Total.
 - the Schema stub carries the whole live surface, instance and library
 - the Compat stub carries every LibKa0s-Compat-1.0 member the host wires
 - the Glow stub carries the whole LibKa0s-Glow-1.0 surface
+- the degraded Skin facade answers every name the live facade carries
+- each host-copy skin token is the live library's Ka0s Default value
 
 ### test_doc_structure.lua (4)
 
@@ -1836,6 +1853,7 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
+| test_skinsetup.lua | 12 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1854,7 +1872,7 @@ Total.
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
 | test_list_mode.lua | 5 |
-| test_surface_parity.lua | 9 |
+| test_surface_parity.lua | 11 |
 | test_doc_structure.lua | 4 |
 | test_lintconfig.lua | 5 |
 | test_vendor_sync.lua | 3 |
@@ -1863,4 +1881,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1497** |
+| **Total** | **1511** |
