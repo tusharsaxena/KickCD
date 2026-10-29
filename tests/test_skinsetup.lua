@@ -200,3 +200,25 @@ test("Skin seam: every LibKa0s-Widgets factory call names the owner", function()
         assertTrue((head:find("owner%s*=%s*addonName") or head:find("name%s*=%s*addonName")) ~= nil, site[1] .. ": the factory is not handed the owner")
     end
 end)
+
+test("Skin seam: the debug console, its copy window and the perf panel take the owner from addonName", function()
+    -- red under: a descriptor that drops `addonName` (KC-04). LibKa0s-DebugLog and -Perf take the
+    -- skin owner from the descriptor's `addonName` (the console's copy window with it), so a
+    -- descriptor without it would paint those windows in no addon's skin. A source scan of each
+    -- descriptor's body, up to its closing `})`.
+    for _, site in ipairs({
+        { "core/DebugLogSetup.lua", "NS%.DebugLog = lib:New%(" },
+        { "core/PerfSetup.lua", "NS%.Perf = lib:New%(" },
+    }) do
+        local fh = assert(io.open(T.root .. "/" .. site[1], "r"))
+        local src = fh:read("*a")
+        fh:close()
+        local at = src:find(site[2])
+        assertTrue(at ~= nil, site[1] .. ": the descriptor moved; update this list")
+        local stop = src:find("\n})", at, true)
+        assertTrue(stop ~= nil, site[1] .. ": the descriptor's end was not found")
+        local body = src:sub(at, stop)
+        assertTrue(body:find("\n%s*addonName%s*=%s*addonName") ~= nil,
+            site[1] .. ": the descriptor does not carry addonName = addonName")
+    end
+end)

@@ -648,6 +648,12 @@ function Database:OnProfileChanged(event, db, arg)
     -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
     -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
     if NS.Sim and NS.Sim:IsActive() then NS.Sim:Stop("profile") end
+    -- Then the first-run skin picker down, quietly (core/SkinSetup.lua): a showing belongs to the
+    -- profile it opened on, and taking it down puts back a pending preview (the stored skin,
+    -- through the library's revert), so it lands before NS.ApplySkinChoice below and the new
+    -- profile's whole pair, exceptions and overrides with it, is the last skin written. A new or
+    -- reset profile still shows it, fresh, further down.
+    if NS.HideSkinPicker then NS.HideSkinPicker() end
     -- Then the new profile's skin (core/SkinSetup.lua), before anything below rebuilds:
     -- Skin:SetChoice repaints every frame recorded for this owner and fires OnLooksChanged, so a
     -- switch, a copy and a reset (back to Ka0s Default) all repaint live (skinning-§2). AceDB has
@@ -699,6 +705,12 @@ function Database:OnProfileChanged(event, db, arg)
     -- gives: the modules re-render off that message, and re-rendering an addon
     -- that is about to stand down draws a frame of something that is already off.
     if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
+
+    -- The first-run skin picker (core/SkinSetup.lua, owner ruling O3): a new or reset profile
+    -- starts from the defaults, `skin.pickerSeen` false, so it shows, a fresh showing over the new
+    -- profile's skin; one that has seen it stays down. After the latch re-read the new profile's
+    -- switch, so a profile with the addon switched off shows nothing.
+    if NS.MaybeShowSkinPicker then NS.MaybeShowSkinPicker() end
 
     -- Fire the closed internal message — see docs/message-bus.md, through
     -- the file's single fireProfileChanged emitter.

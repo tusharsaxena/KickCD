@@ -1377,7 +1377,7 @@ Total.
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the degraded stub carries no widget maker or layout constant
 
-### test_skinsetup.lua (12)
+### test_skinsetup.lua (13)
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
@@ -1391,6 +1391,7 @@ Total.
 - Skin seam: a profile switch applies the new profile's skin, Scope and overrides
 - Skin seam: a profile reset takes the skin back to Ka0s Default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
+- Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 
 ### test_skin_settings.lua (9)
 
@@ -1422,6 +1423,25 @@ Total.
 - HUD skin: without the library the step still sets the companions
 - HUD skin: the step names only companions that read a boolean
 - HUD skin: Copy from Target carries the companions with the pickers
+
+### test_skin_picker.lua (16)
+
+- Skin picker: the spec names this owner, its seams, General's Skin tab, and no eye
+- Skin picker: the login showing happened on the unseen default profile
+- Skin picker: an unseen profile shows it; a seen one does not
+- Skin picker: it shows from NS:OnEnable
+- Skin picker: in combat a start waits for PLAYER_REGEN_ENABLED, once
+- Skin picker: the combat edge shows it even while State still reads in combat
+- Skin picker: a held start is dropped by HideSkinPicker
+- Skin picker: never while the addon is switched off
+- Skin picker: a new profile and a reset profile show it again
+- Skin picker: the title names this addon, and the eye is hidden
+- Skin picker: the player's close marks it seen; this addon's own hide does not
+- Skin picker: a profile that has seen it takes a shown picker down, unmarked
+- Skin picker: the stand-down takes the picker down, unseen
+- Skin picker: a pick previews, unsaved; Apply saves it and marks the picker seen
+- Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
+- Skin picker: the gear saves the pick and opens General on its Skin tab
 
 ### test_grid.lua (13)
 
@@ -1884,9 +1904,10 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
 | test_options_panel_degraded.lua | 9 |
-| test_skinsetup.lua | 12 |
+| test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 9 |
 | test_skin_hud.lua | 16 |
+| test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1914,4 +1935,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1536** |
+| **Total** | **1553** |

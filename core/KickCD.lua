@@ -117,6 +117,12 @@ function NS:OnEnable()
     -- whose db had just been built and whose modules had not run at all; taken
     -- after the cascade there is no such moment to take it in.
     if NS.RefreshEnabledHold then NS.RefreshEnabledHold() end
+
+    -- The first-run skin picker (core/SkinSetup.lua), once per session, on a profile that has not
+    -- closed it (owner ruling O3). After the panel is registered, so its gear has the General page
+    -- to open, and after the hold above, so a disabled addon brings up no window; the stored skin
+    -- was applied in OnInitialize. In combat it holds for PLAYER_REGEN_ENABLED.
+    if NS.MaybeShowSkinPicker then NS.MaybeShowSkinPicker() end
 end
 
 -- ---------------------------------------------------------------------------

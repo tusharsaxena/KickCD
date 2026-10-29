@@ -133,6 +133,10 @@ local function standDown()
     -- The Cooldown Manager cache's invalidator (core/SpellInput.lua) is the same
     -- kind of registration, owned by the resolver both add surfaces share.
     if NS.SpellInput and NS.SpellInput.StandDown then NS.SpellInput.StandDown() end
+    -- The first-run skin picker is a window this addon shows; it goes down unmarked (its pending
+    -- preview put back, a held combat start dropped), so it comes back on the next login the
+    -- addon stands up for (core/SkinSetup.lua).
+    if NS.HideSkinPicker then NS.HideSkinPicker() end
 end
 
 --- Stand the addon back up, FROM CURRENT STATE rather than from a snapshot
