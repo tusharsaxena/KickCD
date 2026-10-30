@@ -1,0 +1,30 @@
+Independent review (skin-library-followups M2, KickCD): I found no blocking problems in KickCD feat/2026-10-30-skin-library-followups (a383f30 KC-RV, aac3237 KC-01, 4e46415 KC-02) and have three nits. Each commit subject carries its id and ends with the session trailers. Nothing was pushed, tagged or bumped.
+
+**Gate.** I re-ran it at 4e46415. `ka0s-bounded lua tests/run.lua` gives 1557 passed, 0 failed, 1 skipped (1558 total). `ka0s-bounded luacheck .` gives 0 warnings / 0 errors in 153 files. The largest authored Lua file is IconGrid.lua at 1023 lines, and docs/smoke-tests.md is 1488 lines. Both are under the 1500 cap.
+
+**Vendor.** I compared against `git archive v1.81.0` (56ebc24) with `diff -r --strip-trailing-cr`. libs/LibKa0s differs only in media/icons, where the 8 declared icons and the license are kept. tests/_kit is identical. The CLAUDE.md provenance line reads v1.81.0.
+
+**Inventory and rulings.** The inventory found no workaround to delete, and the code confirms it.
+- **Ignore fonts on the HUD (R-1).** Every HUD face goes through NS.SkinResolve to S.Resolve. At the tag, Skin.lua:896-903 returns the stored value for hud.font while the owner ignores fonts, so Ignore fonts reaches the HUD with no gate in KickCD. The charges badge has no pick of its own, so it now draws the client's number font. The change to applyChargesFont only hardens the harness, and the commit message says so.
+- **Scope (D-01 to D-03).**
+  - The AceGUI-missing label now passes `{ panel = true }` (D-02, as "What a consumer owes" asks).
+  - The ReorderList keeps the library's panel-scoped default.
+  - The drag handles and the sim strip are HUD windows and correctly get no panel flag.
+  - The pageColor guard still applies (D-03), because S.Color is not Scope-aware.
+  - The settings pages use no other owned Dropdown, SearchBox, TestStrip, Autocomplete or LineChart; the Spells category dropdown is AceGUI.
+- **ResetToSkin (R-6).** MigrateHudSkin names the FromSkin companions directly, which is the opt-in path in Skin minor 8. Its boolean filter stays under D-19, and only the comment and the test comment were reworded. Both are accurate.
+- **Ka0s Default.** KickCD has no stockDefault or stock caller. SKIN-9 now expects the Ka0s look under Ka0s Default with the panel skinned.
+
+**Tests.** I checked that each new or changed test goes red without its behaviour change:
+- The Ignore-fonts HUD test, the picker title and ownerLabel test, and the panel-label test all fail against a scratch copy with the v1.80.0 library.
+- The rewritten stand-down test (it now counts NS.SkinResolve calls) fails when the HUD modules' IsDown guards are commented out.
+- The panel-label test also checks the opts flag directly, so dropping `{ panel = true }` turns it red.
+
+**Smoke checks.** SKIN-6, 9, 11, 12, 14 and 22 were amended in place to match the v1.81.0 CHANGELOG: the per-skin HUD faces, the picker title "Choose a skin" with the addon's name on its own line, tool windows staying skinned under Ignore settings panel, and the reorder list following it. Each is listed under the owed follow-ups, and none is marked passed. SKIN-1 and SKIN-15 rightly stay unchanged. The docs (ARCHITECTURE, schema, module-map, castbar, testing, test-cases) match the code.
+
+**Nits.**
+1. SKIN-14 asks for Arial Narrow on a ticked "Use the skin's font" box, but the font picker is disabled while that box is ticked. The check should say to untick, pick Arial Narrow, then tick again.
+2. A test comment and docs/testing.md say every skin's hud.font is also its title face. That is false for Ka0s Default and eui (SemiBold for the HUD, Bold for titles).
+3. The panel-label test depends on being the first in its file to create the cached fallbackLabel.
+Findings: [nit] KC-02 /mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/docs/smoke-tests.md:1360-1367 (SKIN-14): The setup line asks for "Target's cast-bar font set to Arial Narrow with its Use the skin's font ticked". While that box is ticked the font picker is disabled, and D-09 keeps it disabled under Ignore fonts, so a tester cannot pick Arial Narrow in that state. The check never says to untick the box, choose the face, and tick it again. A tester following it literally will stop at the setup step or leave the stored face at Friz, and then the check cannot tell the stored face from the skin's. | [nit] KC-01 / KC-02 /mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/tests/test_skin_hud.lua:320 and docs/testing.md:191: The rationale says "since v1.81.0 every skin's hud.font is also its title face". That is not true at the tag. Ka0s Default's font.title is "Ka0s Oxanium Bold" and its hud.font is "Ka0s Oxanium SemiBold" (SkinDefs.lua:234 compared with :593-601). eui is the same. It holds for the eight other skins, Obsidian included, which is the skin the test switches to. The test change itself is sound. With the stand-down guards commented out it went red, confirmed in a scratch copy. | [nit] KC-01 /mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD/tests/test_skin_settings.lua:319-345: settings/Spells.lua calls S.Text only when the module-level fallbackLabel is first created (showAceGUIMissing, :537-545). The new test depends on being the first test in its file to drive the AceGUI-absent arm. If an earlier test ever reaches that arm, the spy sees no call and the test fails on "the AceGUI-missing label was colored through S.Text". That would be a false red, not a hidden pass, so the risk is low. The ordering dependency is just not written down.
+Fix round: none needed
