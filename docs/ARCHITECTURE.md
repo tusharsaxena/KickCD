@@ -327,9 +327,14 @@ collection's reference adopter, and every piece below copies its shape.
   follows the skin, a departure from X4 taken with the library's icon-family contract
   (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
   ticked): a player who chose a 3 or 4 px border draws the skin's 1 or 2 px until they untick
-  the box. The texts follow `hud.font`, which is
-  Oxanium under Ka0s Default and Friz Quadrata under every other skin; the charges badge, which has no
-  setting, takes `hud.font`'s face at `NumberFontNormal`'s size. `core/MediaSetup.lua` registers
+  the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4):
+  Oxanium SemiBold under Ka0s Default, Inter SemiBold under Obsidian, Vollkorn Bold under Azeroth,
+  Nunito SemiBold under Glass, Atkinson Bold under High Contrast, Bitter Bold under Ember, Philosopher
+  Bold under WoW Midnight, Fira Sans SemiBold under WoW Forever and Friz Quadrata under WoW Default;
+  the charges badge, which has no setting, takes `hud.font`'s face at `NumberFontNormal`'s size. While
+  the Scope's **Ignore fonts** is on, the library's `S.Resolve` answers each text's stored pick for
+  `hud.font` whatever its box says (R-1), so every HUD text draws its own face and the badge, with no
+  pick, keeps `NumberFontNormal`'s; `NS.SkinResolve` needs no gate of its own. `core/MediaSetup.lua` registers
   LibSharedMedia's `"Solid"` border (the flat `WHITE8X8` edge the skins name). `IconGrid`, `Castbar` and
   `UnitLabel` subscribe to `OnLooksChanged` and re-run their config path, guarded on the stand-down; the
   cast bar's structure signature signs the resolved picks, so a skin switch rebuilds what moved.
@@ -342,9 +347,12 @@ collection's reference adopter, and every piece below copies its shape.
   border and the same flat 2 px edge on both cast-bar states, each in the player's border color. And
   the tool windows, now that the
   owner is registered: the debug console, its copy window, the perf panel and the sim panel keep their
-  edge and colors but take v1.79.0's Ka0s Default faces (Oxanium, the log lines JetBrains Mono), where
-  before they were stock; that is the library's Ka0s Default, inherited, not a KickCD choice (SKIN-1).
+  edge and colors but take Ka0s Default's faces (Oxanium, the log lines JetBrains Mono), where before
+  they were stock, and since LibKa0s v1.81.0 that reaches their title-bar, column, row and button
+  labels too (D-13); that is the library's Ka0s Default, inherited, not a KickCD choice (SKIN-1).
   The settings pages are the client's while the Scope's **Ignore settings panel** is on, the default.
+  With it off, Ka0s Default is the Ka0s look there too: v1.81.0 retired the stock look under Ka0s
+  Default (R-2), and a player who wants the client's look picks WoW Default.
 - **The settings pages (KC-02).** The library's chrome (header, rail, tabs, drawers, every `O.*` row,
   the Skin tab) follows the owner the Options descriptor names. The AceGUI widgets this addon acquires
   itself are painted for it: the Spells page through `Spells.Acquire` (`AceGUI:Create`, then
@@ -352,7 +360,8 @@ collection's reference adopter, and every piece below copies its shape.
   Units band through the Options proxy (`NS.AceGUI`). The typed looks are tokens equal on Ka0s Default
   to the literals they replaced: the Spells rows' Remove mark (`close.hot`), the add box's *not tracked*
   tag (`sem.warn`, through `NS.SkinEscape`), the rows' tooltip hint titles (`gtip.title`) and the
-  AceGUI-missing label (`text.accent`). `NS.SkinColor` and `NS.SkinEscape` answer the Ka0s Default host
+  AceGUI-missing label (`text.accent`, through `S.Text` with `panel = true`, so the Scope gives it back
+  stock). `NS.SkinColor` and `NS.SkinEscape` answer the Ka0s Default host
   copy (`NS.SKIN_FALLBACK`) while the Scope's **Ignore settings panel** is on (`Skin:GetIgnore`), so
   those token colors stay the client's with the rest of the page; `S.Color` itself does not consult the
   Scope.
@@ -360,9 +369,13 @@ collection's reference adopter, and every piece below copies its shape.
   sim session are handed `owner = addonName`; the debug console, its copy window and the perf panel take
   the owner from their descriptors' `addonName`, and neither descriptor passes `skin` or `applySkin`.
   The launcher, the minimap button and its tooltip frame and every `GameTooltip` frame stay stock, and
-  chat output is not a skinned surface (X7).
+  chat output is not a skinned surface (X7). They obey the Scope as LibKa0s v1.81.0 defines it (D-01):
+  **Ignore fonts** reaches every string they draw; **Ignore settings panel** reaches only the reorder
+  list, which sits on the Spells page and is panel-scoped by default, while the drag handles, the sim
+  strip and the tool windows are windows and wear the skin whatever it says.
 - **The first-run skin picker (owner ruling O3, KC-04).** `NS.MaybeShowSkinPicker` shows the library's
-  picker (`O.SkinPicker`) while the profile's `skin.pickerSeen` is false and the addon stands up: from
+  picker (`O.SkinPicker`), titled *Choose a skin* with **Ka0s KickCD** on its own line above the
+  dropdown (`frame.ownerLabel`, LibKa0s v1.81.0), while the profile's `skin.pickerSeen` is false and the addon stands up: from
   `NS:OnEnable` once a session, and after every profile event, so a new or reset profile shows it once;
   a start in combat waits for `PLAYER_REGEN_ENABLED`. A pick only previews; **Apply** and the gear save
   through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
