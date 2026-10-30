@@ -70,8 +70,10 @@ end
 --- (modules/Castbar_Skin.lua's applyBarGeometry: VERTICAL sets
 --- frame:SetSize(barThick, barLong)), so a VERTICAL bar would floor the strip at
 --- its ~20px thickness and the label would truncate inside its own reserve. The
---- label is static per unit, so the measurement is taken once here and never has
---- to be hooked into Reskin.
+--- strip is fitted once here; from LibKa0s v1.82.0 (WidgetsDragHandle minor 8, LK-09)
+--- the library re-fits every fitted strip it owns on each repaint of its skin, in
+--- the strip's own font with 2 px of slack, so a skin or font change re-measures
+--- the title with no hook of this addon's.
 ---
 --- NO `edge` AND NO `number`: this addon has no house edge painter, and the bar is
 --- a plain UIParent child -- nothing here is parented to a protected frame, so no

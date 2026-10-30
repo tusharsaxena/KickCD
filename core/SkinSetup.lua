@@ -317,7 +317,7 @@ end
 --
 -- NO EYE (the rollout's X6). KickCD draws no window of its own. It has a simulator (`/kcd sim`,
 -- modules/Sim.lua), but that is a scripted session, not a preview mode: it swaps the world the
--- HUD reads for a timed story, opens its own step panel and strip, ends on combat, a loading
+-- HUD reads for a timed story, opens its own step panel, ends on combat, a loading
 -- screen or a group, and refuses a start in combat, an instance, a group or while unlocked. Starting one from the picker would play
 -- a story the player did not ask for. The other preview, unlocking the grid and the cast bars, is
 -- a stored write (`locked`) and refuses a running simulation. So `onPreview` is absent and the

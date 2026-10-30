@@ -24,11 +24,11 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
+| SIM-1 – 13 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 35 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity |
-| LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips and the sim strip on top, the tool windows raising on click, the icon tooltip |
+| LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
 ## Before you start
@@ -947,17 +947,19 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
   `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
   the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
-- **SIM-12. The `leave` scenario, and where the sim strip sits (KC-08, KC-09, SM-KC-12 – 14).**
-  `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the target bar picks up
-  Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
-  `/kcd set visibility target_casting` and `/kcd sim start pull` → a cyan strip with an info icon sits
-  above the Target label (and one above the Focus label), reading
-  `Simulation: Mythic+ pull, several kickers - /kcd sim stop ends it.`; it stays visible between casts
-  while the visibility mode hides the grid. Untick Target in the settings → the Target strip goes and
-  the Focus grid keeps its strip; untick Focus too → one strip floats near the screen center; no Lua
-  error. Re-tick both, `/kcd sim stop`, `/kcd set units.target.label.show false` and start again → the
-  strip sits on the grid's top edge. `/kcd sim stop` → every strip disappears
-  (`/kcd reset units.target.label.show` after). Result: pass (owner, 2026-10-23)
+- **SIM-12. The `leave` scenario, and no strip over the grids (KC-08; KC-02 of the 2026-10-30 skin
+  fonts run, D-13).** `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the
+  target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
+  `/kcd set visibility target_casting` and `/kcd sim start pull` → **no** cyan strip appears over
+  either grid or label, before, between or during casts (image-46's "Simulation: Mythic+ pull, ..."
+  bars are gone); the step panel beside the grid is the only sign a simulation runs. Untick Target,
+  then Focus, in the settings → still no floating strip; no Lua error. Re-tick both, `/kcd sim stop`
+  (`/kcd reset visibility` after). Re-opened: the strip was removed. Result:
+- **SIM-13. The step panel stays up for the whole session (KC-02, D-13).** `/kcd sim start pull` → the
+  step panel opens beside the grid with **no close mark** at its top right. Press **Escape** → the
+  panel stays. Let the steps run → it stays up throughout. Its Stop row (or `/kcd sim stop`) ends the
+  session. `/kcd sim panel` still hides and shows it on purpose. Fail: a close mark, Escape taking it
+  down, or the panel closing on its own mid-session. Result:
 
 ## DIAG
 
@@ -1218,10 +1220,8 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   → both strips and their `?` marks draw over the icons, the glow and the cast bar; each strip still
   takes the drag and its tooltip, and the `?` mark is not hidden under its strip.
   Result: pass (owner, 2026-10-24)
-- **LAYER-7. The sim strip is over every display (KIC-Z08).** `/kcd sim` a scenario, then disable
-  both units mid-session so the target's strip floats at `UIParent CENTER 0, 180`, with a cast bar or
-  grid moved under that point beforehand → the cyan strip draws over them.
-  Result: pass (owner, 2026-10-24)
+- **LAYER-7. Retired 2026-10-30: the sim strip it layered was removed** (KC-02 of the skin fonts run,
+  ruling D-13; SIM-12 checks that no strip draws, SIM-13 that the step panel stays up).
 - **LAYER-8. Tool windows raise on click and never bury a confirmation (KIC-Z10, LibKa0s LK-01).**
   Open the debug console (`/kcd debug window`), the perf panel (`/kcd perf`) and the sim panel
   (`/kcd sim`) together → clicking each raises it over the other two. General → Reset all settings
@@ -1339,14 +1339,15 @@ after each check. Every check also fails on a Lua error or a taint warning.
   of the page. Fail: any of the three in Azeroth's colors with the panel ignored. Result: pass (owner-marked 2026-10-30)
 - **SKIN-11. The tool surfaces follow the skin (KC-01, KC-04).** Under **Azeroth**, `/kcd unlock` → both
   drag strips and their `?` marks wear Azeroth; open the debug console (`/kcd debug window`) and its copy
-  window, the perf panel (`/kcd perf`), the sim panel and the cyan sim strip (`/kcd sim` a scenario)
+  window, the perf panel (`/kcd perf`) and the sim panel (`/kcd sim` a scenario)
   → each wears Azeroth: edge, title, buttons, labels, log lines, line counter, scroll bars, resize grip
   and the sim panel's dropdowns; a drag strip's tooltip takes Azeroth's tooltip colors; the console's
-  log keeps JetBrains Mono, and the sim strip stays cyan (the skin changes only its legibility). These
+  log keeps JetBrains Mono. These
   are windows: ticking **Ignore settings panel** leaves them on Azeroth. With it unticked, drag a Spells
   row → the reorder ghost and drop line wear Azeroth; tick it → stock, like the rest of the page. Switch
   to **Ka0s Default** with the console open → it repaints with no reload and looks as SKIN-1 says.
-  Result: pass (owner-marked 2026-10-30)
+  Re-opened for KC-02: the sim strip is
+  gone. Result:
 - **SKIN-12. A font override (KC-01; LibKa0s#63).** With **Ignore fonts** off, Skin tab → **Font** →
   a clearly different face → with no reload every HUD text whose **Use the skin's font** is ticked
   takes it, at the sizes it had, and so do the skinned settings pages and the tool windows (the
@@ -1521,5 +1522,5 @@ SKIN-1 – 29, DEGRADED-16, DIAG-20, PANEL-31 and PANEL-33 – 35, each recorded
 `pass (owner-marked 2026-10-30)`. None is owed after those runs.
 
 LibKa0s v1.82.0 (KC-01 to KC-03 of `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/`) re-opens SKIN-1, SKIN-2,
-SKIN-6 and SKIN-9 (their expected faces moved: Prototype for Oxanium, Expressway for Inter) and adds
-SKIN-30 – 35. Each is owed until its `Result:` line records a pass.
+SKIN-6 and SKIN-9 (their expected faces moved: Prototype for Oxanium, Expressway for Inter), SKIN-11
+and SIM-12 (the sim strip was removed, KC-02), and adds SKIN-30 – 35 and SIM-13; LAYER-7 is retired. Each is owed until its `Result:` line records a pass.

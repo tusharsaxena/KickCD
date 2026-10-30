@@ -187,7 +187,6 @@ test("Skin seam: every LibKa0s-Widgets factory call names the owner", function()
     local SITES = {
         { "modules/Castbar_Handle.lua", "KW%.DragHandle%(" },
         { "modules/IconGrid_Handle.lua", "KW%.DragHandle%(" },
-        { "modules/SimStrip.lua", "W%.TestStrip%(UIParent" },
         { "settings/Spells.lua", "W%.ReorderList%s*{" },
         { "modules/Sim.lua", "Lib:New%(" },
     }

@@ -212,7 +212,7 @@ end
 -- ── the start and the steps ──────────────────────────────────────────────────────────────────
 
 --- The descriptor's prepare: the world, the two spells, the engine re-polled through the seam, the
---- strip and the panel, then ready() once. The seam is already on.
+--- panel (pinned up), then ready() once. The seam is already on.
 function Host.Prepare(_, _, _, ready)
     Host.world = NS.SimWorld.Build()
     Host.kick, Host.cc = Host.ResolveSpells()
@@ -220,11 +220,9 @@ function Host.Prepare(_, _, _, ready)
     -- The watched set re-polls through the seam, so every icon answers from the world: ready.
     local Cooldowns = module("Cooldowns")
     if Cooldowns then Cooldowns:Rebuild() end
-    -- The sim strip over each enabled grid (modules/SimStrip.lua, KC-09). Guarded: the TOC loads it,
-    -- but a partial headless load may not.
-    if NS.SimStrip then NS.SimStrip:Refresh() end
-    -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo).
-    if NS.Sim and NS.Sim.ShowPanel then NS.Sim:ShowPanel() end
+    -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo), and it is
+    -- the session's on-screen sign (ruling D-13): pinned up for the whole session.
+    if NS.Sim and NS.Sim.ShowPanel and NS.Sim:ShowPanel() then Host.PinPanel() end
     -- The real world's interference: combat, a loading screen and a group now stop the session.
     Host.ArmWatch()
     debug("world built: kick %s, cc %s", tostring(Host.kick), tostring(Host.cc))
@@ -304,6 +302,33 @@ function Host.PanelAnchor()
     return nil
 end
 
+--- Keep the step panel up while a session runs (ruling D-13 of Ka0sAddonsCommonTasks
+--- docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK, image-46). The floating sim strip KC-09 hung over each
+--- grid is gone, so the panel is the session's on-screen sign (the preview-mode MUST) and must not
+--- be closed by accident: its close mark is hidden, and its frame comes off UISpecialFrames, so
+--- Escape leaves it. Its Stop row and `/kcd sim stop` end the session; `/kcd sim panel` still
+--- toggles it on purpose.
+---
+--- COMPOSED, NOT A DESCRIPTOR FIELD. The step panel's renderer takes `close = false`, but
+--- LibKa0s-Sim-1.0 (SimPanel.lua at v1.82.0) does not forward a host's `panel.close` to it and
+--- puts the frame on UISpecialFrames whatever; so this reaches the frame by its documented name,
+--- `<name>SimPanel`, after the first ShowPanel built it. Idempotent; a frame or close mark that is
+--- not there is left alone.
+function Host.PinPanel()
+    local name = addonName .. "SimPanel"
+    local frame = _G[name]
+    if type(frame) ~= "table" then return false end
+    local close = frame.closeButton
+    if type(close) == "table" and close.Hide then close:Hide() end
+    local special = _G.UISpecialFrames
+    if type(special) == "table" then
+        for i = #special, 1, -1 do
+            if special[i] == name then table.remove(special, i) end
+        end
+    end
+    return true
+end
+
 local PANEL = {
     stepLabel = function(step, i, steps) return Host.StepLabel(step, i, steps) end,
     stepTip = function(step, i) return Host.StepTip(step, i) end,
@@ -377,12 +402,7 @@ NS.Sim:OnStop(function()
     if Host.watch.UnregisterAllEvents then Host.watch:UnregisterAllEvents() end
 end)
 
--- (b) The strip (KC-09).
-NS.Sim:OnStop(function()
-    if NS.SimStrip then NS.SimStrip:Hide() end
-end)
-
--- (c) Re-sync the engine to the real client: the cast bars and grids re-read the real target and
+-- (b) Re-sync the engine to the real client: the cast bars and grids re-read the real target and
 -- focus, the cooldowns re-poll, and the watched set is rebuilt from the real reads.
 local CLEANUP_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "SPELL_UPDATE_COOLDOWN",
     "SPELL_UPDATE_CHARGES" }
@@ -392,20 +412,10 @@ NS.Sim:OnStop(function()
     if Cooldowns then Cooldowns:Rebuild() end
 end)
 
--- (d) End a simulated combat. Not on a `combat` stop: real combat set the flag, and it stays set.
+-- (c) End a simulated combat. Not on a `combat` stop: real combat set the flag, and it stays set.
 -- The drivers set `simCombat` on the session when they fire PLAYER_REGEN_DISABLED (KC-07).
 NS.Sim:OnStop(function(session, reason)
     if session and session.simCombat and reason ~= "combat" then
         NS.Sim:DeliverForCleanup("PLAYER_REGEN_ENABLED")
     end
-end)
-
--- The strip repaints on the start and the stop: a listener runs on every transition, and only a
--- change in IsActive moves it.
-local wasActive = false
-NS.Sim:AddListener(function(sim)
-    local active = sim:IsActive()
-    if active == wasActive then return end
-    wasActive = active
-    if NS.SimStrip then NS.SimStrip:Refresh() end
 end)

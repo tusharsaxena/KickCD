@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1577%2F1577_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1568%2F1568_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -40,7 +40,7 @@ Everything else is on the addon's page under Settings → AddOns, and `/kcd` on 
 
 ### Simulator
 
-`/kcd sim` opens a step panel and runs one of four scenarios against your real grid and cast bar: a Mythic+ pull, a boss kick rotation, an uninterruptible cast while your kick is on cooldown, and a party member leaving mid-pull. Start one with `/kcd sim start pull` (or `boss`, `miss`, `leave`) or from the panel, and it plays on its own. You can pause it and click any step to play up to it. Nothing is cast, sent or saved, and your settings aren't touched. It won't start in combat, in a group or an instance, or while the grids are unlocked, and combat, a loading screen or joining a group stops it. `/kcd sim stop` ends it and brings back your real target, focus and cooldowns. The party in a scenario is made up and only narrates in chat, because KickCD tracks your own cooldowns, not your party's.
+`/kcd sim` opens a step panel and runs one of four scenarios against your real grid and cast bar: a Mythic+ pull, a boss kick rotation, an uninterruptible cast while your kick is on cooldown, and a party member leaving mid-pull. Start one with `/kcd sim start pull` (or `boss`, `miss`, `leave`) or from the panel, and it plays on its own. You can pause it and click any step to play up to it. The panel stays open while the simulation runs, so you can always see one is on; nothing else is drawn over your grid. Nothing is cast, sent or saved, and your settings aren't touched. It won't start in combat, in a group or an instance, or while the grids are unlocked, and combat, a loading screen or joining a group stops it. `/kcd sim stop` ends it and brings back your real target, focus and cooldowns. The party in a scenario is made up and only narrates in chat, because KickCD tracks your own cooldowns, not your party's.
 
 ## How interrupt tracking works
 
@@ -185,7 +185,7 @@ variable fonts.
 
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
-the debug console's close, copy and clear buttons, the simulator's done check and info mark, and the
+the debug console's close, copy and clear buttons, the simulator's done check, and the
 skin picker's settings gear.
 
 The fonts and the icons ship inside the bundled payload under `libs/`, with their license text beside them.

@@ -40,4 +40,4 @@ Start here, then read the docs:
 Green gate before every commit: `lua tests/run.lua` and `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` (0/0; the kit bounds the suite on load, and `luacheck` loads no kit, so it runs through the bounded runner, testing-§15). Never auto-stage/commit/push and never bump the version without an explicit instruction.
 
 Bundles [LibKa0s](https://github.com/tusharsaxena/LibKa0s) v1.82.0 (MIT).
-LibKa0s icons: clear, close, confirm, copy, help, info, segment, settings.
+LibKa0s icons: clear, close, confirm, copy, help, segment, settings.

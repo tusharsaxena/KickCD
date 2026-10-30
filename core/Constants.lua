@@ -261,8 +261,6 @@ end
 --          SetParent, which re-derives the level.
 --     +40  both drag handles (HANDLE), each as a DragHandle `level` offset over its own parent, so
 --          a handle is never under the other display of its unit; the help mark rides at + 1.
---     +41  the sim strip (MARKER). It sits over the handles' slot because the two never show
---          together: modules/Sim.lua refuses a sim while unlocked and stops one on unlock.
 --   The Target and Focus bands are equal; the two units are placed apart by default.
 --
 --   Library- and Blizzard-owned, relied on and never set here (frame-layering-§6): the debug
@@ -277,7 +275,7 @@ Const.LAYERS = {
     },
     LEVEL = {
         -- Over UIParent: one unit's HUD band.
-        HUD = { GRID = 1, CASTBAR = 21, LABEL = 25, HANDLE = 40, MARKER = 41 },
+        HUD = { GRID = 1, CASTBAR = 21, LABEL = 25, HANDLE = 40 },
         -- Over the icon button (the glow's GLOW is over its host, LibCustomGlow's frameLevel).
         ICON = { FILL = 1, BORDER = 2, EFFECT = 3, GLOW = 1, OVERLAY = 5 },
         -- Over the cast bar root (CONTAINER, BORDER) or its bar container (FILL, OVERLAY).

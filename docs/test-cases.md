@@ -605,21 +605,13 @@ Total.
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 
-### test_sim_strip.lua (13)
+### test_sim_marker.lua (5)
 
-- TOC: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
-- SimStrip: idle, no strip frame exists (it is built lazily on the first start)
-- SimStrip: on start the strip is shown, built with the sim flavor, and names the scenario
-- SimStrip: with the default label above the grid, the strip sits BOTTOM to the label's TOP, 2 up
-- SimStrip: one strip per enabled grid: the focus grid carries its own
-- SimStrip: with the target label off, the strip anchors to the target grid frame
-- SimStrip: with the target disabled, the strip marks the focus grid
-- SimStrip: with both units disabled mid-session, the strip floats at UIParent CENTER 0, 180
-- SimStrip: visibility target_casting with no cast hides the grid, not the strip
-- SimStrip: a GRID_LAYOUT or a CONFIG_CHANGED (units) re-places it
-- SimStrip: the width is max(220, the grid's width)
-- SimStrip: on stop it hides and releases its bus subscriptions
-- SimStrip: without the library's sim flavor, no strip, no error, and the session runs
+- sim marker: the floating strip is gone: no module, no TOC line, no strip at a start
+- sim marker: the scenario's strip line is out of the locale
+- sim marker: a start opens the step panel with no close mark
+- sim marker: Escape does not take the panel down while a session runs
+- sim marker: the panel stays up across the session's steps
 
 ### test_debuglog.lua (13)
 
@@ -787,7 +779,7 @@ Total.
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
 
-### test_layers.lua (15)
+### test_layers.lua (14)
 
 - LAYERS names the HUD strata once, as MEDIUM
 - LAYERS orders the icon ladder fill < border < effect < effect frames < overlay
@@ -801,7 +793,6 @@ Total.
 - both drag handles sit at UIParent + HUD.HANDLE, above the cast bar's content
 - a label attached to the cast bar draws over the cast bar, not under it
 - a label attached to the grid draws over the grid's text, and re-levels after each reparent
-- the sim strip is MEDIUM at UIParent + HUD.MARKER, above every HUD element
 - every SetFrameStrata in core/, modules/ and settings/ reads LAYERS.STRATA
 - every SetFrameLevel in core/, modules/ and settings/ names a LAYERS.LEVEL member
 
@@ -1359,7 +1350,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList draws it
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1895,7 +1886,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 9 |
-| test_sim_strip.lua | 13 |
+| test_sim_marker.lua | 5 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1904,7 +1895,7 @@ Total.
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 28 |
-| test_layers.lua | 15 |
+| test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
@@ -1963,4 +1954,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1577** |
+| **Total** | **1568** |
