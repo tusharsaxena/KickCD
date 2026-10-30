@@ -307,7 +307,7 @@ end
 --- grid is gone, so the panel is the session's on-screen sign (the preview-mode MUST) and must not
 --- be closed by accident: its close mark is hidden, and its frame comes off UISpecialFrames, so
 --- Escape leaves it. Its Stop row and `/kcd sim stop` end the session; `/kcd sim panel` still
---- toggles it on purpose.
+--- toggles it on purpose. Host.UnpinPanel reverses it at the stop.
 ---
 --- COMPOSED, NOT A DESCRIPTOR FIELD. The step panel's renderer takes `close = false`, but
 --- LibKa0s-Sim-1.0 (SimPanel.lua at v1.82.0) does not forward a host's `panel.close` to it and
@@ -325,6 +325,26 @@ function Host.PinPanel()
         for i = #special, 1, -1 do
             if special[i] == name then table.remove(special, i) end
         end
+    end
+    return true
+end
+
+--- Undo Host.PinPanel when the session ends (KC-01's review). The library keeps the panel open
+--- after a stop (Sim.lua's leaveCleanup refreshes it back to the idle picker) and puts the frame on
+--- UISpecialFrames only once, when it builds it, so without this the idle panel would keep no close
+--- mark and ignore Escape for the rest of the UI session. Idempotent: the name goes back once.
+function Host.UnpinPanel()
+    local name = addonName .. "SimPanel"
+    local frame = _G[name]
+    if type(frame) ~= "table" then return false end
+    local close = frame.closeButton
+    if type(close) == "table" and close.Show then close:Show() end
+    local special = _G.UISpecialFrames
+    if type(special) == "table" then
+        for i = 1, #special do
+            if special[i] == name then return true end
+        end
+        special[#special + 1] = name
     end
     return true
 end
@@ -396,6 +416,9 @@ end
 NS.Sim:OnStop(function()
     Host.world, Host.kick, Host.cc = nil, nil, nil
 end)
+
+-- (a1) The step panel is an ordinary window again: its close mark and Escape come back.
+NS.Sim:OnStop(function() Host.UnpinPanel() end)
 
 -- (a2) The watch: nothing stays registered once the session ends.
 NS.Sim:OnStop(function()

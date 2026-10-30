@@ -111,3 +111,32 @@ test("sim marker: the panel stays up across the session's steps", function()
     assertTrue(ctx.NS.Sim:IsPanelShown(), "the panel went away mid-session")
     stop(ctx)
 end)
+
+-- ── after the stop, the panel is an ordinary window again ───────────────────
+
+test("sim marker: a stop gives the idle panel its close mark back", function()
+    -- red under: Host.PinPanel never reversed, so the idle picker the library leaves open after a
+    -- stop has no close mark for the rest of the UI session
+    local ctx = ready()
+    start(ctx)
+    stop(ctx)
+    local f = panelFrame(ctx)
+    assertTrue(f ~= nil, "the panel frame is " .. PANEL_NAME)
+    assertTrue(f.closeButton ~= nil and f.closeButton:IsShown(), "the close mark is still hidden")
+end)
+
+test("sim marker: a stop puts the panel back on UISpecialFrames, once", function()
+    -- red under: the name left off UISpecialFrames, so Escape no longer closes the idle panel
+    local ctx = ready()
+    start(ctx)
+    stop(ctx)
+    assertTrue(special(ctx, PANEL_NAME), "the panel is not back on UISpecialFrames")
+    start(ctx)
+    assertFalse(special(ctx, PANEL_NAME), "a second session did not pin the panel again")
+    stop(ctx)
+    local n = 0
+    for _, name in ipairs(ctx.env.mocks.UISpecialFrames or {}) do
+        if name == PANEL_NAME then n = n + 1 end
+    end
+    assertTrue(n == 1, "the panel is on UISpecialFrames " .. n .. " times")
+end)

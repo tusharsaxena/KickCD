@@ -958,8 +958,11 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
 - **SIM-13. The step panel stays up for the whole session (KC-02, D-13).** `/kcd sim start pull` → the
   step panel opens beside the grid with **no close mark** at its top right. Press **Escape** → the
   panel stays. Let the steps run → it stays up throughout. Its Stop row (or `/kcd sim stop`) ends the
-  session. `/kcd sim panel` still hides and shows it on purpose. Fail: a close mark, Escape taking it
-  down, or the panel closing on its own mid-session. Result:
+  session. `/kcd sim panel` still hides and shows it on purpose. After the stop the panel shows its
+  idle picker again with its **close mark back**; press **Escape** → it closes. `/kcd sim` → it opens
+  idle with the close mark, and the mark closes it. Fail: a close mark, Escape taking it down, or the
+  panel closing on its own mid-session; or, after the stop, no close mark or Escape leaving the idle
+  panel up. Result:
 
 ## DIAG
 
@@ -1256,17 +1259,21 @@ after each check. Every check also fails on a Lua error or a taint warning.
   Bar, or a cast bar with no border or still on the Blizzard Tooltip edge. Re-opened for LibKa0s
   v1.82.0 (KC-01): Ka0s Default's face is Prototype. Result:
 - **SKIN-2. The reset runs once per profile and keeps your own picks (O2; KC-03).** Before installing
-  this build, set Target's cast-bar font to a face that looks clearly different (Arial Narrow) on a
-  profile `SkinA`, and give a second profile `SkinB` a different label font. Install, log in on
-  `SkinA` → the cast bar reads in Prototype; Units > Cast bar > Text → **Use the skin's font** is ticked
-  and the font picker beside it is grayed and shows the skin's face. Untick it → Arial Narrow comes
-  back at once. `/reload` → still Arial Narrow, the box still unticked (`/kcd get
-  units.target.castbar.fontFromSkin` prints false). Switch to `SkinB` → its label is in Prototype now
-  (its first activation ran the reset); untick that label's companion → its own face. Switch back to
-  `SkinA` → still Arial Narrow. `/kcd get skin.hudReset` is not a setting and answers *Setting not
-  found*. Fail: the reset running again after a reload or a profile switch, a stored pick lost, or a
-  profile that was not active at the upgrade left off the skin. Re-opened for LibKa0s v1.82.0 (KC-01):
-  Ka0s Default's face is Prototype. Result:
+  this build, on a profile `SkinA` set Target's interruptible cast-bar texture to a bar that looks
+  clearly different (Blizzard Raid Bar) and its cast-bar font to Arial Narrow, and give a second
+  profile `SkinB` a different label font. Install, log in on `SkinA` → the interruptible bar wears the
+  skin's texture; Units > Cast bar → its **Use the skin's texture** is ticked and the picker beside it
+  is grayed and shows the skin's bar. The cast-bar text still reads in **Arial Narrow** with its **Use
+  the skin's font** unticked: on the same load KC-03 hands a picked face back (SKIN-36), so only the
+  texture and border picks follow the skin. Untick the texture box → Blizzard Raid Bar comes back at
+  once. `/reload` → still Raid Bar, the box still unticked (`/kcd get
+  units.target.castbar.interruptible.statusBarTextureFromSkin` prints false). Switch to `SkinB` → its
+  label keeps its own face with its box unticked, and its textures and borders follow the skin (its
+  first activation ran both steps). Switch back to `SkinA` → still Raid Bar and Arial Narrow. `/kcd get
+  skin.hudReset` is not a setting and answers *Setting not found*. Fail: the reset running again after
+  a reload or a profile switch, a stored pick lost, a picked face drawing the skin's font, or a profile
+  that was not active at the upgrade left off the skin. Re-opened for LibKa0s v1.82.0 (KC-01, KC-03):
+  Ka0s Default's face is Prototype, and a picked face now comes back unticked. Result:
 - **SKIN-3. A new or reset profile follows the skin from the start (X3).** Create a profile `SkinNew`
   → every **Use the skin's ...** box on Units > Icons, Cast bar and Text label is ticked for both
   units, and the HUD looks as SKIN-1 describes. Untick one, then Profiles → Reset Profile → ticked
