@@ -1437,7 +1437,7 @@ Total.
 - Skin picker: a held start is dropped by HideSkinPicker
 - Skin picker: never while the addon is switched off
 - Skin picker: a new profile and a reset profile show it again
-- Skin picker: the title names this addon, and the eye is hidden
+- Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye is hidden
 - Skin picker: the player's close marks it seen; this addon's own hide does not
 - Skin picker: a profile that has seen it takes a shown picker down, unmarked
 - Skin picker: the stand-down takes the picker down, unseen

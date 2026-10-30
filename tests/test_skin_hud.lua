@@ -275,17 +275,22 @@ end)
 
 test("HUD skin: no repaint while the addon is stood down", function()
     -- red under: an OnLooksChanged handler without the NS.IsDown guard, which would re-show
-    -- the labels Suspend hid
-    local inst, fetched = boot()
+    -- the labels Suspend hid. Counted at NS.SkinResolve, the HUD's one token seam: since LibKa0s
+    -- v1.81.0 every skin's hud.font is also its title face, which the library's own tool
+    -- surfaces fetch on a switch, so a font fetch no longer tells the HUD apart.
+    local inst = boot()
     local NS = inst.NS
     local Skin = inst.mocks.LibStub("LibKa0s-Skin-1.0")
+    local resolve, calls = NS.SkinResolve, 0
+    NS.SkinResolve = function(...) calls = calls + 1; return resolve(...) end
     local down = NS.IsDown
     NS.IsDown = function() return true end
-    clear(fetched)
     Skin:SetChoice(OWNER, "ka0s", "obsidian")
     NS.IsDown = down
-    assertFalse(has(fetched, "font:" .. Skin:ResolveSkin("obsidian")["hud.font"]), "nothing redrew")
+    assertEqual(calls, 0, "nothing redrew")
     Skin:SetChoice(OWNER, "ka0s", "ka0s")
+    NS.SkinResolve = resolve
+    assertTrue(calls > 0, "sanity: standing up, the same switch does redraw")
 end)
 
 -- ── the one-time reset (O2) ─────────────────────────────────────────────────

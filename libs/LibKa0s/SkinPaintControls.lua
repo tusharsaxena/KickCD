@@ -48,7 +48,20 @@ if lib.__paintShellMinor ~= lib.MINOR or not lib.__P then return end   -- no hel
 -- button). Then, still minor 9: IconBorder's `opts.fromSkin` draws the skin's icon border family
 -- (`icon.borderStyle`, `icon.borderSize`; LK-04), and a target kept stock by `opts.stockDefault`
 -- (SkinPaint minor 11's P.keepStock; LK-05) is not live to its hover pair.
-local CONTROLS_MINOR = 9
+-- Minor 10 (LK-02 of Ka0sAddonsCommonTasks docs/2026-10-30-SKIN_LIBRARY_FOLLOWUPS, ruling R-2): the
+-- stock look is retired. Button, EditBox, Dropdown, Slider, Tab, CloseButton and PageButton ignore a
+-- stale `opts.stockDefault` and paint under Ka0s Default as under every skin, their hooks live
+-- (SkinPaint minor 12's P.markStock); and PageButton takes `opts` (`stock`, `noBg`, `noBorder`).
+-- Still minor 10 (LK-03, ruling R-3): CloseButton tints its art through P.tint, so the art's own
+-- color is recorded on the first paint and given back by P.unpaint; and an `own` button keeps the
+-- host's OnEnter / OnLeave (Core's) and falls back to them once it is no longer painted.
+-- Still minor 10 (LK-06a, ruling R-5, decision D-02): Dropdown and EditBox take `opts.panel` as
+-- S.Text does: a control on its owner's settings panel is given back while the owner ignores its
+-- panel (SkinPaintExtras' P.panelIgnored), live both ways, its focus hooks standing down with it.
+-- Still minor 10 (LK-06c, ruling R-5, decisions D-13 and D-14): Drawer labels its label and summary
+-- through P.label (the body face, so Ignore fonts reaches them), colors `opts.chevron` with
+-- `icon.arrow` and `opts.hover` with `list.hoverArt`; NavItem colors `opts.hover` the same way.
+local CONTROLS_MINOR = 10
 if lib.__controlsMinor and lib.__controlsMinor >= CONTROLS_MINOR
   and lib.__controlsShellMinor == lib.MINOR then return end
 lib.__controlsMinor      = CONTROLS_MINOR
@@ -73,12 +86,7 @@ local INPUT = { fill = "input.bg", border = "input.border", style = "input.borde
                 size = "input.borderSize" }
 
 --- The live record of `frame`, for a hook: nil once the frame was released.
--- A painted target's record, or nil while it is kept stock (`opts.stockDefault`, SkinPaint minor 11).
-local function live(frame)
-  local r = lib.painted[frame]
-  if r and r.regions.stockKept then return nil end
-  return r
-end
+local function live(frame) return lib.painted[frame] end
 
 --- Recolor a box's edge: the backdrop's, or the holder's flat edges.
 local function edgeColor(rec, frame, c)
@@ -155,15 +163,15 @@ local function buttonHover(btn, rec, on) buttonLabel(btn, rec, on) end
 --- S.Button(btn, keepKeys | opts): a push button. The flat-control box from `btn.*` (or
 --- `btnPrimary.*` with `opts.primary`): backdrop, gradient, non-flat edge on the holder; the stock
 --- textures faded unless kept (`keepKeys == true` or `opts.keep`); the label in `btn.text` and the
---- body font, `btn.hover` under the pointer; `btn.icon` (a texture) in `btn.icon`. Ka0s Default
---- leaves a stock-template button stock. `opts.tokens` (minor 9) remaps `bg`, `border`, `text`,
+--- body font, `btn.hover` under the pointer; `btn.icon` (a texture) in `btn.icon`, under every
+--- skin, Ka0s Default included. `opts.tokens` (minor 9) remaps `bg`, `border`, `text`,
 --- `hover`, `icon` and `disabled` to a library or owner token by NAME (a danger button), for the
 --- first paint, every repaint and the hover and enable hooks. Draws no Media icon.
 prim.Button = function(owner, btn, a)
   if not P.isFrame(btn) then return end
   local rec = P.track(owner, btn, "Button", a)
   local opts = buttonOpts(a)
-  if P.stockDefault(owner, rec, btn, opts) then return end
+  P.markStock(rec, btn, opts)
   rec.regions.primary = opts.primary == true
   rec.regions.btnTokens = type(opts.tokens) == "table" and opts.tokens or nil
   local T = buttonTokens(owner, rec)
@@ -214,12 +222,15 @@ end
 --- Left/Middle/Right faded, the typed text in `input.text` (nil in Ka0s Default: left alone) and
 --- the body font, the hint (`opts.placeholder`, else `eb.hint`) in `input.placeholder`, and the
 --- edge in `input.focus` while it has the keys. `opts.padInput` sets 6px text insets;
---- `opts.noBorder` draws no edge. Draws no Media icon.
+--- `opts.noBorder` draws no edge. `opts.panel = true` (minor 10, LK-06a): the box is on its owner's
+--- settings panel, so it is given back while the owner ignores its panel (P.panelIgnored), its focus
+--- hooks inert. Draws no Media icon.
 prim.EditBox = function(owner, eb, opts)
   if not P.isFrame(eb) then return end
   local rec = P.track(owner, eb, "EditBox", opts)
+  if P.panelIgnored(owner, rec, eb, opts) then return end
   opts = type(opts) == "table" and opts or {}
-  if P.stockDefault(owner, rec, eb, opts) then return end
+  P.markStock(rec, eb, opts)
   local T = P.T(owner)
   P.fadeAll(rec, P.stockRegions(eb, opts))
   P.box(rec, eb, T, INPUT, opts)
@@ -298,7 +309,7 @@ prim.Checkbox = function(owner, cb, opts)
   if not P.isFrame(cb) then return end
   local rec = P.track(owner, cb, "Checkbox", opts)
   opts = type(opts) == "table" and opts or {}
-  -- No stockDefault here (minor 2): Ka0s Default draws its own square box too.
+  -- Ka0s Default draws its own square box too (minor 2), as every skin does.
   local T = P.T(owner)
   P.fadeAll(rec, P.stockRegions(cb, opts, CHECK_GETTERS))
   local inset = type(opts.borderInset) == "number" and opts.borderInset or 0
@@ -321,12 +332,14 @@ end
 --- S.Dropdown(dd, opts): a dropdown button. The flat-control box from `input.*` (Widgets'
 --- dropdown: its backdrop, fill and edge, call for call), the template's pieces faded, the arrow
 --- (`dd.arrow` / `dd.Arrow`) in `icon.tint`, the label (`dd.text` / `dd.Text`) in `input.text` and
---- the body font. Draws no Media icon.
+--- the body font. `opts.panel = true` (minor 10, LK-06a): given back while the owner ignores its
+--- settings panel (P.panelIgnored), live both ways. Draws no Media icon.
 prim.Dropdown = function(owner, dd, opts)
   if not P.isFrame(dd) then return end
   local rec = P.track(owner, dd, "Dropdown", opts)
+  if P.panelIgnored(owner, rec, dd, opts) then return end
   opts = type(opts) == "table" and opts or {}
-  if P.stockDefault(owner, rec, dd, opts) then return end
+  P.markStock(rec, dd, opts)
   local T = P.T(owner)
   P.fadeAll(rec, P.stockRegions(dd, opts))
   P.box(rec, dd, T, INPUT, opts)
@@ -425,7 +438,7 @@ prim.Slider = function(owner, slider, opts)
   if not P.isFrame(slider) then return end
   local rec = P.track(owner, slider, "Slider", opts)
   opts = type(opts) == "table" and opts or {}
-  if P.stockDefault(owner, rec, slider, opts) then return end
+  P.markStock(rec, slider, opts)
   local T = P.T(owner)
   if T["slider.track"] then
     P.fadeAll(rec, P.stockRegions(slider, opts))
@@ -481,7 +494,7 @@ end
 --- `tab.onTexture` / `tab.texture` art, else `tab.onBg` / `tab.bg` and its gradient; a `tab.onLine`
 --- underline on the holder while selected; the label (`opts.text`, else the tab's own) in
 --- `tab.onText` / `tab.text` and the body font. `opts.selected` is the first state;
---- `S.SetTabSelection` moves it. Ka0s Default leaves a stock tab stock. Draws no Media icon.
+--- `S.SetTabSelection` moves it. Draws no Media icon.
 prim.Tab = function(owner, tab, opts)
   if not P.isFrame(tab) then return end
   local rec = P.track(owner, tab, "Tab", opts)
@@ -490,7 +503,7 @@ prim.Tab = function(owner, tab, opts)
     or not (lib.__repainting or rec.regions.keepSelection)) then
     rec.regions.selected = opts.selected == true
   end
-  if P.stockDefault(owner, rec, tab, opts) then return end
+  P.markStock(rec, tab, opts)
   local T, selected = P.T(owner), rec.regions.selected == true
   P.fadeAll(rec, P.stockRegions(tab, opts))
   tabFill(rec, tab, T, opts, selected)
@@ -531,7 +544,7 @@ local function closeHover(btn, rec, on)
   if art and c then art[method](art, rgb(c)) end
 end
 
--- A stock close button away from Ka0s Default: its art faded, an ASCII "x" drawn in its place
+-- A stock close button, under every skin: its art faded, an ASCII "x" drawn in its place
 -- (the shipped library's player-facing strings stay ASCII; Core's multiplication sign is the one
 -- ratified exception, tests/test_prose.lua).
 local function closeGlyph(rec, btn)
@@ -542,28 +555,46 @@ local function closeGlyph(rec, btn)
   fs:Show()
 end
 
+--- An `own` button's hover script: the skin's color while the button is painted, else the script
+--- the host set before the first paint (Core's CLOSE_REST / CLOSE_HOT), so a button handed back
+--- (unpainted and untracked) hovers as it did before (minor 10, LK-03).
+local function ownHover(host, on)
+  return function(self, ...)
+    local r = live(self)
+    if r then return closeHover(self, r, on) end
+    if host then return host(self, ...) end
+  end
+end
+
 --- S.CloseButton(btn, opts): a window's close control. Its art (`btn.icon`, a texture, or
---- `btn.glyph`, a font string) in `close.rest`, `close.hot` under the pointer. A stock close button
---- (the client's template) is left stock in Ka0s Default; elsewhere its art is faded and an "x"
---- glyph drawn. `opts.own` (a button the library built, Core.MakeCloseButton's) SetScripts the hover pair
---- as Core does; otherwise it is HookScript'd. `opts.stockDefault` (minor 9, LK-05) leaves a stock
---- close button the client's while the owner draws Ka0s Default, its hover inert. Draws no Media
---- icon (Core's `close` icon is the caller's).
+--- `btn.glyph`, a font string) in `close.rest`, `close.hot` under the pointer, under every skin,
+--- Ka0s Default included. The art's own tint is recorded on the first paint (P.tint) and given back
+--- when the button is unpainted (minor 10). A stock close button (the client's template) has its
+--- art faded and an "x" glyph drawn, under every skin. `opts.own` (a button the library built,
+--- Core.MakeCloseButton's) SetScripts the hover pair as Core does, keeping the host's pair to fall
+--- back to once the button is no longer painted; otherwise it is HookScript'd. Draws no Media icon
+--- (Core's `close` icon is the caller's).
 prim.CloseButton = function(owner, btn, opts)
   if not P.isFrame(btn) then return end
   local rec = P.track(owner, btn, "CloseButton", opts)
   opts = type(opts) == "table" and opts or {}
-  if P.stockDefault(owner, rec, btn, opts) then return end
+  P.markStock(rec, btn, opts)
   if rec.regions.stock then
     P.fadeAll(rec, P.stockRegions(btn, opts))
     closeGlyph(rec, btn)
   end
   local art, method = closeArt(btn, rec)
-  local c = P.T(owner)["close.rest"]
-  if art and c then art[method](art, rgb(c)) end
+  if art then P.tint(rec, art, P.T(owner), "close.rest", method) end
   if opts.own then
-    btn:SetScript("OnEnter", function(self) local r = live(self); if r then closeHover(self, r, true) end end)
-    btn:SetScript("OnLeave", function(self) local r = live(self); if r then closeHover(self, r, false) end end)
+    -- The host's pair, kept once per button (a repaint, or a new record after an Untrack, must
+    -- never keep the library's own closures as the host's).
+    local host = lib.__closeHost
+    if not host then host = setmetatable({}, { __mode = "k" }); lib.__closeHost = host end
+    if not host[btn] then
+      host[btn] = { enter = btn:GetScript("OnEnter"), leave = btn:GetScript("OnLeave") }
+      btn:SetScript("OnEnter", ownHover(host[btn].enter, true))
+      btn:SetScript("OnLeave", ownHover(host[btn].leave, false))
+    end
     return
   end
   P.hook(rec, btn, "OnEnter", function(self, r) closeHover(self, r, true) end)
@@ -573,16 +604,18 @@ end
 local PAGE_ROTATION = { prev = math.pi, left = math.pi, next = 0, right = 0,
                         up = math.pi / 2, down = -math.pi / 2 }
 
---- S.PageButton(btn, dir): a paging arrow ("prev", "next", "up", "down"; "left", "right"). The
---- Button look, plus an in-client arrow (`ChatFrameExpandArrow`, turned to `dir`) in `btn.icon`.
---- Ka0s Default leaves a stock-template arrow button stock. Draws no Media icon.
-prim.PageButton = function(owner, btn, dir)
+--- S.PageButton(btn, dir, opts): a paging arrow ("prev", "next", "up", "down"; "left", "right").
+--- The Button look, plus an in-client arrow (`ChatFrameExpandArrow`, turned to `dir`) in
+--- `btn.icon`. `opts` (minor 10) is Button's box options: `stock` (more art to fade), `noBg`,
+--- `noBorder`, replayed on a repaint. Draws no Media icon.
+prim.PageButton = function(owner, btn, dir, opts)
   if not P.isFrame(btn) then return end
-  local rec = P.track(owner, btn, "PageButton", dir)
-  if P.stockDefault(owner, rec, btn) then return end
+  local rec = P.track(owner, btn, "PageButton", dir, opts)
+  opts = type(opts) == "table" and opts or {}
+  P.markStock(rec, btn, opts)
   local T = P.T(owner)
-  P.fadeAll(rec, P.stockRegions(btn))
-  P.box(rec, btn, T, BTN)
+  P.fadeAll(rec, P.stockRegions(btn, opts))
+  P.box(rec, btn, T, BTN, opts)
   local t = P.tex(rec, "arrow", btn, "OVERLAY")
   if not t then return end
   t:ClearAllPoints()
@@ -667,7 +700,9 @@ end
 --- S.NavItem(item, opts): a nav-rail entry. Its label (`opts.label`) in `nav.selText` while
 --- `opts.selected`, `nav.text` otherwise (OptionsNav's white and gold); its selection texture
 --- (`opts.sel`) in `nav.selBg` (OptionsNav's select tint); a `nav.selBar` on the holder while
---- selected (nil in Ka0s Default). Draws no Media icon.
+--- selected (nil in Ka0s Default); its hover art (`opts.hover`, minor 10) desaturated and colored
+--- `list.hoverArt`, left as the client draws it where that is `false` (Ka0s Default, WoW Default).
+--- Draws no Media icon.
 prim.NavItem = function(owner, item, opts)
   if type(item) ~= "table" then return end
   local rec = P.track(owner, item, "NavItem", opts)
@@ -675,6 +710,7 @@ prim.NavItem = function(owner, item, opts)
   local T = P.T(owner)
   if P.isFS(opts.label) then P.label(owner, rec, opts.label, T, opts.selected and "nav.selText" or "nav.text") end
   if P.isTexture(opts.sel) then P.tint(rec, opts.sel, T, "nav.selBg", "SetVertexColor") end
+  if P.isTexture(opts.hover) then P.glyph(rec, opts.hover, T, "list.hoverArt") end
   local c = opts.selected and T["nav.selBar"] or nil
   P.edges(rec, item, c, "flat", 2)
 end
@@ -698,15 +734,20 @@ local DRAWER_HEAD_OPEN = { fill = "drawer.bgOpen", border = "drawer.borderOpen",
 
 --- S.Drawer(head, opts): a settings drawer's header (and box). Its label (`opts.label`) in
 --- `drawer.textSet` when `opts.set`, `drawer.text` otherwise; its summary (`opts.summary`) in
---- `drawer.summarySet` / `drawer.summary`; then its edge set (`opts.edges`, OptionsDrawer's
+--- `drawer.summarySet` / `drawer.summary`, both in the body face (minor 10, LK-06c: so Ignore fonts
+--- reaches them; the summary keeps its smaller stock size, scaled); its chevron (`opts.chevron`)
+--- desaturated and colored `icon.arrow`, as every arrow; its hover art (`opts.hover`) in
+--- `list.hoverArt`, the client's art where that is `false`; then its edge set (`opts.edges`, OptionsDrawer's
 --- `{ fill, left, right, bottom, top }`) in `drawer.bgOpen` / `drawer.borderOpen` while `opts.open`,
 --- else `drawer.bg` / `drawer.border`, and the box's (`opts.box`) in `drawer.boxBg` /
 --- `drawer.boxBorder`. A header with no edge set is boxed on its holders (the fill under its text,
 --- the edge over it). Draws no Media icon.
-local function drawerText(rec, T, opts)
+local function drawerText(owner, rec, T, opts)
   local set = opts.set and true or false
-  if P.isFS(opts.label) then P.tint(rec, opts.label, T, set and "drawer.textSet" or "drawer.text") end
-  if P.isFS(opts.summary) then P.tint(rec, opts.summary, T, set and "drawer.summarySet" or "drawer.summary") end
+  P.label(owner, rec, opts.label, T, set and "drawer.textSet" or "drawer.text")
+  P.label(owner, rec, opts.summary, T, set and "drawer.summarySet" or "drawer.summary")
+  if P.isTexture(opts.chevron) then P.glyph(rec, opts.chevron, T, "icon.arrow") end
+  if P.isTexture(opts.hover) then P.glyph(rec, opts.hover, T, "list.hoverArt") end
 end
 
 prim.Drawer = function(owner, head, opts)
@@ -714,7 +755,7 @@ prim.Drawer = function(owner, head, opts)
   local rec = P.track(owner, head, "Drawer", opts)
   opts = type(opts) == "table" and opts or {}
   local T, open = P.T(owner), opts.open and true or false
-  drawerText(rec, T, opts)
+  drawerText(owner, rec, T, opts)
   if type(opts.edges) == "table" then
     paintEdgeSet(opts.edges, T[open and "drawer.bgOpen" or "drawer.bg"],
       T[open and "drawer.borderOpen" or "drawer.border"])
