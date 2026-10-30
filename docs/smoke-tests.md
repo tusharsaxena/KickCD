@@ -27,7 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 12 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the strip, auto-stops, destructive refusals, stand-down, diagnostics |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
-| SKIN-1 – 29 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue |
+| SKIN-1 – 35 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips and the sim strip on top, the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -1244,27 +1244,29 @@ after each check. Every check also fails on a Lua error or a taint warning.
   profile saved by a build before this one, with every HUD font, texture and border left at its
   default, log in on **Ka0s Default** → the HUD changes in exactly these ways and no others: the
   countdown text, the cast bar's spell name and cast time, both unit labels and the charges badge read
-  in **Oxanium** (a squared, technical face) instead of Friz Quadrata (the badge's was the client's
+  in **Prototype** (a squared, technical face; Oxanium before LibKa0s v1.82.0) instead of Friz Quadrata (the badge's was the client's
   number font); both cast-bar states fill with the **Ka0s Default** bar texture (dim at the top, a
   highlight low on the bar and a short lip) instead of Blizzard Raid Bar, in the same yellow and red;
   both cast-bar states and each icon draw a **flat 2 px edge** in the border color (black) where each
   drew the 2 px Blizzard Tooltip edge (the cast bar keeps an edge under every skin, KC-A1). Sizes, colors,
   opacity, the glow, the layout and every position are as before. The settings pages are as before
   (the Skin tab's **Ignore settings panel** is on). The debug console, perf panel and sim panel keep
-  their edge and colors; their text reads in Oxanium, the log lines in JetBrains Mono. Fail: any other
+  their edge and colors; their text reads in Prototype, the log lines in JetBrains Mono. Fail: any other
   changed color, size or position, a HUD string still in Friz Quadrata, a cast bar on Blizzard Raid
-  Bar, or a cast bar with no border or still on the Blizzard Tooltip edge. Result: pass (owner-marked 2026-10-30)
+  Bar, or a cast bar with no border or still on the Blizzard Tooltip edge. Re-opened for LibKa0s
+  v1.82.0 (KC-01): Ka0s Default's face is Prototype. Result:
 - **SKIN-2. The reset runs once per profile and keeps your own picks (O2; KC-03).** Before installing
   this build, set Target's cast-bar font to a face that looks clearly different (Arial Narrow) on a
   profile `SkinA`, and give a second profile `SkinB` a different label font. Install, log in on
-  `SkinA` → the cast bar reads in Oxanium; Units > Cast bar > Text → **Use the skin's font** is ticked
+  `SkinA` → the cast bar reads in Prototype; Units > Cast bar > Text → **Use the skin's font** is ticked
   and the font picker beside it is grayed and shows the skin's face. Untick it → Arial Narrow comes
   back at once. `/reload` → still Arial Narrow, the box still unticked (`/kcd get
-  units.target.castbar.fontFromSkin` prints false). Switch to `SkinB` → its label is in Oxanium now
+  units.target.castbar.fontFromSkin` prints false). Switch to `SkinB` → its label is in Prototype now
   (its first activation ran the reset); untick that label's companion → its own face. Switch back to
   `SkinA` → still Arial Narrow. `/kcd get skin.hudReset` is not a setting and answers *Setting not
   found*. Fail: the reset running again after a reload or a profile switch, a stored pick lost, or a
-  profile that was not active at the upgrade left off the skin. Result: pass (owner-marked 2026-10-30)
+  profile that was not active at the upgrade left off the skin. Re-opened for LibKa0s v1.82.0 (KC-01):
+  Ka0s Default's face is Prototype. Result:
 - **SKIN-3. A new or reset profile follows the skin from the start (X3).** Create a profile `SkinNew`
   → every **Use the skin's ...** box on Units > Icons, Cast bar and Text label is ticked for both
   units, and the HUD looks as SKIN-1 describes. Untick one, then Profiles → Reset Profile → ticked
@@ -1289,7 +1291,8 @@ after each check. Every check also fails on a Lua error or a taint warning.
   the skin. Result: pass (owner-marked 2026-10-30)
 - **SKIN-6. What each skin draws on the HUD (KC-03; LibKa0s SkinDefs).** With every **Use the skin's
   ...** box ticked and no Font or Texture override: the HUD text reads in each skin's own HUD face, a
-  heavier weight of its text family (LibKa0s v1.81.0): Ka0s Default **Oxanium**, Obsidian **Inter**,
+  heavier weight of its text family (LibKa0s v1.81.0; LibKa0s v1.82.0 moved two): Ka0s Default
+  **Prototype**, Obsidian **Expressway**,
   Azeroth **Vollkorn**, Glass **Nunito**, High Contrast **Atkinson Hyperlegible**, Ember **Bitter**, WoW
   Midnight **Philosopher**, WoW Forever **Fira Sans**, WoW Default **Friz Quadrata**. The cast bar's
   texture: Ka0s Default **Ka0s Default**; Obsidian **Ka0s Matte**; Azeroth **Ka0s Parchment**; Glass
@@ -1299,7 +1302,8 @@ after each check. Every check also fails on a Lua error or a taint warning.
   flat 2 px edge under Ka0s Default, Azeroth, High Contrast, Ember and WoW Midnight, and the 2 px
   Blizzard Tooltip edge under WoW Default. Fail: a bar on another skin's texture, a white or missing
   fill, a cast bar or icon with no border, an edge of the wrong thickness, HUD text in Friz Quadrata
-  under any skin but WoW Default, or an empty square where a letter should be. Result: pass (owner-marked 2026-10-30)
+  under any skin but WoW Default, or an empty square where a letter should be. Re-opened for LibKa0s
+  v1.82.0 (KC-01): the Ka0s Default and Obsidian faces moved. Result:
 - **SKIN-7. The "Use the skin's ..." boxes (KC-03).** On a non-default skin (Azeroth), Units > Icons
   → Appearance → Border and Annotations → Cooldown text, Cast bar → Text → Font (both texts) and each
   state's Bar and Border, and Text label → Font each carry one **Use the skin's ...** box (eight per
@@ -1318,13 +1322,14 @@ after each check. Every check also fails on a Lua error or a taint warning.
   picker, Enable this unit, Link to Target and Copy from Target), Spells (the class and spec picker,
   Add spell, every row's handle, icon, name, enable box, known mark, category dropdown and Remove mark)
   and Profiles (its dropdowns, edit box and buttons) → the nav rail, tabs, headings, check boxes,
-  sliders, dropdowns, edit boxes, buttons and drawers wear Obsidian, in Inter. Pick **Ka0s Default** →
+  sliders, dropdowns, edit boxes, buttons and drawers wear Obsidian, in Expressway. Pick **Ka0s Default** →
   with no reload the pages wear the Ka0s look, not the game's: the tab strip, the drawer heads and the
-  nav entries in Oxanium (LibKa0s v1.81.0 retired the stock look under Ka0s Default). Tick **Ignore
+  nav entries in Prototype (LibKa0s v1.81.0 retired the stock look under Ka0s Default). Tick **Ignore
   settings panel** → every page is stock again, live, the drawer heads back in the game's face. Open another Ka0s addon's and another AceGUI addon's settings between KickCD's pages a few
   times → theirs stay as they were every time (the AceGUI pool leak check). Fail: a control that keeps
   the old skin until `/reload`, a skinned control with Ignore settings panel on, or another addon's
-  widget wearing KickCD's skin. Result: pass (owner-marked 2026-10-30)
+  widget wearing KickCD's skin. Re-opened for LibKa0s v1.82.0 (KC-01): the
+  Obsidian and Ka0s Default faces moved. Result:
 - **SKIN-10. The Spells page's own colors and hints (KC-02; D5).** On Ka0s Default, Spells → the
   Remove mark rests in the same soft red, the add box's *not tracked* tag is the same orange, and
   hovering a row's Remove mark or its known mark opens a tooltip whose first line is the same gold as
@@ -1430,6 +1435,48 @@ after each check. Every check also fails on a Lua error or a taint warning.
   addons' settings pages, consoles and HUDs → each looks exactly as before this build. Disable KickCD,
   `/reload` → still unchanged. Result: pass (owner-marked 2026-10-30)
 
+- **SKIN-30. The Font outline (KC-01; LibKa0s v1.82.0, D-06).** General → Skin → under the Font and
+  Texture menus and their Reset buttons, a **Font outline** dropdown reads **All text**. With
+  `/kcd unlock`, pick **HUD text only** → the grids', cast bars' and labels' text stays outlined, and
+  the debug console's and sim panel's text loses its outline. Pick **Off** → every HUD text loses its
+  outline too, live. `/kcd get skin.outline` prints `off`; `/kcd set skin.outline thick` is refused;
+  `/kcd set skin.outline all` → outlined again. `/reload` → the mode stays. Tick **Ignore fonts** → the
+  dropdown grays and the HUD keeps its outline whatever the mode. Switch profiles → each keeps its own
+  mode. Fail: a mode that needs a reload, text outlined under Off, or a mode lost at `/reload`. Result:
+- **SKIN-31. From skin on every Font flags menu (KC-01; D-07).** Units > Icons > Annotations > Cooldown
+  text, Cast bar > Text > Font (both texts) and Text label > Font → each **Font flags** menu lists
+  **From skin** first and shows it on a profile you never changed a flag on. With Font outline **Off**
+  → those texts lose their outline; pick **Thick outline** on the cast bar's menu → that bar keeps a
+  thick outline under Off, the rest follow the mode. Fail: a menu without From skin, a picked flag that
+  follows the mode, or a From skin text that keeps its outline under Off. Result:
+- **SKIN-32. The one-time flags step keeps your picks (KC-01; Addendum 01).** Before installing this
+  build, on a profile `FlagsA` set Focus's cast-bar Font flags to **Monochrome** (Target's left at
+  Outline) and leave a second profile `FlagsB` untouched. Install, log in on `FlagsA` → Target's menu
+  shows **From skin**, Focus's still **Monochrome**. Switch to `FlagsB` → every menu on From skin. On
+  `FlagsA` pick **Outline** on Target's menu, `/reload` → still **Outline**. Fail: a changed flag moved
+  to From skin, or a menu put back on From skin after a reload. Result:
+- **SKIN-33. `/kcd skin` (KC-01; D-16).** On a profile that has closed the skin picker, `/kcd help` → a
+  `skin` row right after `config`, "Choose a skin: open the skin picker". `/kcd skin` → the picker a
+  new profile shows opens (**Choose a skin**, **Ka0s KickCD** above the dropdown); a pick previews on
+  the HUD, **Apply** saves, the close mark puts the skin back. In combat, `/kcd skin` twice → no picker
+  and a gray line each time. Out of combat `/kcd disable`, then `/kcd skin` → one tagged line naming
+  `/kcd enable` and no picker; `/kcd enable` after. Fail: "unknown command", a picker in combat or while
+  disabled, or a single gray line for two tries. Result:
+- **SKIN-34. HUD text is as wide in every skin (KC-01; D-08, D-09).** With `/kcd unlock` and every **Use
+  the skin's font** box ticked, note how wide the cast bar's spell name, the countdown and the
+  "Target" label read under **Ka0s Default**, then pick **Obsidian**, **Glass** and **WoW Forever** → the
+  same strings take about the same width in each (Obsidian's text a point larger, Glass's and WoW
+  Forever's a little smaller), and `/kcd get units.target.castbar.fontSize` prints the size you set.
+  Untick the cast bar's box → under Obsidian it draws your font at your stored size. Fail: a text
+  clearly wider or narrower than under Ka0s Default, or a stored size that changed. Result:
+- **SKIN-35. The width parity of this addon's windows and strips (KC-01; D-08, D-12).** Under each of
+  the nine skins with Font outline **All text**: the debug console (`/kcd debug`), its copy window, the
+  sim step panel (`/kcd sim start pull`, then `/kcd sim stop`), the perf panel (`/kcd perf`) and the
+  unlocked drag strips ("Ka0s KickCD — Target", "— Focus" and both cast bars) → no title, button label,
+  row or strip title cut off or overrunning its frame, and each strip as wide as its title plus its
+  help mark. Fail: an ellipsis or a clipped letter anywhere, or a strip whose title is cut short.
+  Result:
+
 ## Non-English client
 
 A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
@@ -1472,3 +1519,7 @@ Ka0sAddonsCommonTasks `docs/2026-10-29-SKINNING_ROLLOUT/`), the skin overrides a
 follow-ups (KC-RV to KC-02 of `docs/2026-10-30-SKIN_LIBRARY_FOLLOWUPS/`, LibKa0s v1.81.0) passed:
 SKIN-1 – 29, DEGRADED-16, DIAG-20, PANEL-31 and PANEL-33 – 35, each recorded on its `Result:` line as
 `pass (owner-marked 2026-10-30)`. None is owed after those runs.
+
+LibKa0s v1.82.0 (KC-01 to KC-03 of `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/`) re-opens SKIN-1, SKIN-2,
+SKIN-6 and SKIN-9 (their expected faces moved: Prototype for Oxanium, Expressway for Inter) and adds
+SKIN-30 – 35. Each is owed until its `Result:` line records a pass.

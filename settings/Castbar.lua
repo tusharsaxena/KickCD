@@ -486,11 +486,14 @@ H.AddComposed(H.FontGroup{
     labels   = { fontColor = L["Cast time color"] },
     -- "Use the skin's font" (`castbar.fontFromSkin`, default true, X3): the face of both texts.
     fromSkin = true,
+    -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
+    -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
+    flagsFromSkin = true,
     defaults = {
         font       = "Friz Quadrata TT",
         fontSize   = 10,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
-        fontFlags  = "OUTLINE",
+        fontFlags  = "@skin",
         fontShadow = false,
         fontFromSkin = true,
     },

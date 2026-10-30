@@ -6,6 +6,10 @@
 -- relabel that slips a key, or a merge that touches a default fails this case instead of reaching
 -- a player's profile. The page, tab, subsection, label and tooltip are deliberately NOT pinned:
 -- those are what the pass is allowed to change.
+--
+-- Moved since, on purpose, and only by a change that is not a layout pass: LibKa0s v1.82.0 (KC-01
+-- of the 2026-10-30 skin fonts run) added skin.outline, the Font outline, and moved the three Font
+-- flags defaults from OUTLINE to "@skin", From skin (ruling D-07).
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
@@ -48,6 +52,7 @@ local PIN = {
     "skin.font string \"\" nil nil nil",
     "skin.ignoreFonts bool false nil nil nil",
     "skin.ignorePanel bool true nil nil nil",
+    "skin.outline string \"all\" nil nil nil",
     "skin.pickerSeen bool false nil nil nil",
     "skin.skin string \"ka0s\" nil nil nil",
     "skin.source string \"ka0s\" nil nil nil",
@@ -61,7 +66,7 @@ local PIN = {
     "units.focus.castbar.castbarPoint string \"TOP_LEFT\" nil nil nil",
     "units.focus.castbar.enabled bool true nil nil nil",
     "units.focus.castbar.font string \"Friz Quadrata TT\" nil nil nil",
-    "units.focus.castbar.fontFlags string \"OUTLINE\" nil nil nil",
+    "units.focus.castbar.fontFlags string \"@skin\" nil nil nil",
     "units.focus.castbar.fontFromSkin bool true nil nil nil",
     "units.focus.castbar.fontShadow bool false nil nil nil",
     "units.focus.castbar.fontSize number 10 6 32 1",
@@ -124,7 +129,7 @@ local PIN = {
     "units.focus.icons.chargesOffsetY number 2 -32 32 1",
     "units.focus.icons.cooldownAlpha number 0.25 0 1 0.050000000000000003",
     "units.focus.icons.cooldownTextColor color {1,1,1,1} nil nil nil",
-    "units.focus.icons.cooldownTextFlags string \"OUTLINE\" nil nil nil",
+    "units.focus.icons.cooldownTextFlags string \"@skin\" nil nil nil",
     "units.focus.icons.cooldownTextFont string \"Friz Quadrata TT\" nil nil nil",
     "units.focus.icons.cooldownTextFontFromSkin bool true nil nil nil",
     "units.focus.icons.cooldownTextShadow bool false nil nil nil",
@@ -184,7 +189,7 @@ local PIN = {
     "units.focus.label.show bool true nil nil nil",
     "units.focus.label.style.attach string \"icons\" nil nil nil",
     "units.focus.label.style.color color {1,0.81999999999999995,0,1} nil nil nil",
-    "units.focus.label.style.flags string \"OUTLINE\" nil nil nil",
+    "units.focus.label.style.flags string \"@skin\" nil nil nil",
     "units.focus.label.style.font string \"Friz Quadrata TT\" nil nil nil",
     "units.focus.label.style.fontFromSkin bool true nil nil nil",
     "units.focus.label.style.justifyH string \"CENTER\" nil nil nil",
@@ -207,7 +212,7 @@ local PIN = {
     "units.target.castbar.castbarPoint string \"TOP_LEFT\" nil nil nil",
     "units.target.castbar.enabled bool true nil nil nil",
     "units.target.castbar.font string \"Friz Quadrata TT\" nil nil nil",
-    "units.target.castbar.fontFlags string \"OUTLINE\" nil nil nil",
+    "units.target.castbar.fontFlags string \"@skin\" nil nil nil",
     "units.target.castbar.fontFromSkin bool true nil nil nil",
     "units.target.castbar.fontShadow bool false nil nil nil",
     "units.target.castbar.fontSize number 10 6 32 1",
@@ -270,7 +275,7 @@ local PIN = {
     "units.target.icons.chargesOffsetY number 2 -32 32 1",
     "units.target.icons.cooldownAlpha number 0.25 0 1 0.050000000000000003",
     "units.target.icons.cooldownTextColor color {1,1,1,1} nil nil nil",
-    "units.target.icons.cooldownTextFlags string \"OUTLINE\" nil nil nil",
+    "units.target.icons.cooldownTextFlags string \"@skin\" nil nil nil",
     "units.target.icons.cooldownTextFont string \"Friz Quadrata TT\" nil nil nil",
     "units.target.icons.cooldownTextFontFromSkin bool true nil nil nil",
     "units.target.icons.cooldownTextShadow bool false nil nil nil",
@@ -330,7 +335,7 @@ local PIN = {
     "units.target.label.show bool true nil nil nil",
     "units.target.label.style.attach string \"icons\" nil nil nil",
     "units.target.label.style.color color {1,0.81999999999999995,0,1} nil nil nil",
-    "units.target.label.style.flags string \"OUTLINE\" nil nil nil",
+    "units.target.label.style.flags string \"@skin\" nil nil nil",
     "units.target.label.style.font string \"Friz Quadrata TT\" nil nil nil",
     "units.target.label.style.fontFromSkin bool true nil nil nil",
     "units.target.label.style.justifyH string \"CENTER\" nil nil nil",

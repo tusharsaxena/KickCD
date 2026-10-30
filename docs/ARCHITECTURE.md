@@ -59,7 +59,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | The one dispatch table for simulated delivery: the routes `NS.RegisterEventList` and `Util.NewUnitCastFilter` record, and `NS.DeliverEvent`, which replays exactly the handlers the client would call (KickCD#38) | `core/Events.lua` | [data-flow.md → Simulated delivery](data-flow.md#simulated-delivery), [module-map.md](module-map.md) |
 | The simulated world a session answers from: the player's cooldowns, GCD and charges and the target/focus enemies and their casts, on `NS.SimHost.world`, and the seam providers that answer the client reads from it (KickCD#38) | `modules/SimWorld.lua` | [compat-layer.md → Which members the simulator answers](compat-layer.md#which-members-the-simulator-answers), [module-map.md](module-map.md) |
 | Simulator (`/kcd sim`, `LibKa0s-Sim-1.0`, KickCD#38): the seam over `NS.Compat`, the one dispatch, the world and its providers, the session host (descriptor, refusals, prepare, the two-phase stop that re-syncs the real engine, the step panel's presentation), the drivers, the scenarios (KickCD#38's four: `pull`, a Mythic+ pull with several kickers; `boss`, a boss kick rotation on two charges; `miss`, a kick on cooldown and an uninterruptible cast; `leave`, a party member leaving mid-pull) and the strip | `core/SimSetup.lua`, `core/Events.lua`, `modules/SimWorld.lua`, `modules/SimDrivers.lua`, `modules/Sim.lua`, `modules/SimScenario.lua`, `modules/SimStrip.lua` | [slash-dispatch.md → `/kcd sim` refusals](slash-dispatch.md#kcd-sim-refusals), [module-map.md](module-map.md) |
-| Skins: the `LibKa0s-Skin-1.0` seam, the seven `skin.*` keys and the Skin tab, the HUD's "Use the skin's ..." companions, the one-time HUD style reset, the first-run skin picker | `core/SkinSetup.lua`, `settings/General.lua`, `core/Database_Migrations.lua` (`MigrateHudSkin`), the HUD's config paths in `modules/` | [Skins](#skins), [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6), [settings-panel.md](settings-panel.md) |
+| Skins: the `LibKa0s-Skin-1.0` seam, the eight `skin.*` keys and the Skin tab, the HUD's "Use the skin's ..." companions, the one-time HUD style reset, the first-run skin picker | `core/SkinSetup.lua`, `settings/General.lua`, `core/Database_Migrations.lua` (`MigrateHudSkin`), the HUD's config paths in `modules/` | [Skins](#skins), [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6), [settings-panel.md](settings-panel.md) |
 | Slash dispatch tables and command catalog | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | Adding a spell: the one resolver (id or name, multi-word names, validated `[CLASS SPEC]`), the Cooldown Manager gate and its cached set, shared by the Spells page and `/kcd spells add` | `core/SpellInput.lua` | [module-map.md](module-map.md) |
 | The launcher: one LibDataBroker object, the minimap button, the `Minimap button` row | `core/LauncherSetup.lua`, `settings/General.lua` (`minimapPath`, and the row's own get/set) | [settings-panel.md](settings-panel.md) |
@@ -167,6 +167,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `help` | List available commands |
 | `version` | Print the addon version |
 | `config` | Open the settings panel |
+| `skin` | Choose a skin: open the skin picker (LibKa0s v1.82.0's `O.SkinVerb`, ruling D-16), whatever `skin.pickerSeen` says. Reserved; a feature verb, refused while disabled |
 | `enable` | Turn the addon on. A **reserved alias** (`slash-commands-§2`): it writes the Master-controls `enabled` row's own stored path through the same single write seam the checkbox writes through, and holds no state of its own |
 | `disable` | Turn the addon off — **totally**: every registration released, every timer canceled, nothing drawn and nothing written from a game event ([The disabled state](slash-dispatch.md#the-disabled-state)). The same alias in reverse. Every reserved verb keeps answering while it is off, and the bare `/kcd` still opens the panel — the dispatcher and the settings registration are **setup, not features** — so the pair is never one-way |
 | `lock` | Lock the icon grid in place |
@@ -327,8 +328,8 @@ collection's reference adopter, and every piece below copies its shape.
   follows the skin, a departure from X4 taken with the library's icon-family contract
   (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
   ticked): a player who chose a 3 or 4 px border draws the skin's 1 or 2 px until they untick
-  the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4):
-  Oxanium SemiBold under Ka0s Default, Inter SemiBold under Obsidian, Vollkorn Bold under Azeroth,
+  the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4), as
+  LibKa0s v1.82.0 left them (D-02): Prototype under Ka0s Default, Expressway under Obsidian, Vollkorn Bold under Azeroth,
   Nunito SemiBold under Glass, Atkinson Bold under High Contrast, Bitter Bold under Ember, Philosopher
   Bold under WoW Midnight, Fira Sans SemiBold under WoW Forever and Friz Quadrata under WoW Default;
   the charges badge, which has no setting, takes `hud.font`'s face at `NumberFontNormal`'s size. While
@@ -338,16 +339,29 @@ collection's reference adopter, and every piece below copies its shape.
   LibSharedMedia's `"Solid"` border (the flat `WHITE8X8` edge the skins name). `IconGrid`, `Castbar` and
   `UnitLabel` subscribe to `OnLooksChanged` and re-run their config path, guarded on the stand-down; the
   cast bar's structure signature signs the resolved picks, so a skin switch rebuilds what moved.
+- **Font outline, From skin and the HUD size (LibKa0s v1.82.0, KC-01).** The Skin tab's Font outline
+  is `skin.outline` (`all`, the default; `hud`; `off`), stored through the write seam's
+  `media.outline` and applied with `Skin:SetOutline` beside the pair, the Scope and the overrides
+  (`NS.ApplySkinOutline`, at load and on every profile event). Every Font flags row leads with
+  **From skin** (`"@skin"`, the composer's `flagsFromSkin`) and defaults to it; the HUD draws a
+  stored flag through `NS.SkinFontFlags` (the facade's `S.FontFlags`: From skin follows the Font
+  outline, a pick wins), and the one-time v6→v7 step moved a stored `OUTLINE`, the old default, onto
+  From skin per profile ([schema.md](schema.md)). A text on the skin's face draws its stored size
+  through `NS.SkinHudSize` (`S.HudFontSize`), scaled to the skin's HUD face so it is as wide in
+  every skin as in Ka0s Default; on its own face, or under Ignore fonts, it draws the stored size.
+  The charges badge takes the Font outline's flags and the scaled `NumberFontNormal` size. The
+  cast bar's signature signs the resolved size and flags too. `/kcd skin` (a feature verb, refused
+  while disabled) opens the picker through `O.SkinVerb` (`NS.RunSkinVerb`).
 - **The one-time HUD style reset (owner ruling O2).** Adopting skins put every companion on the skin
   once, for every player: `Database:MigrateHudSkin`, the v5→v6 step, per profile and recorded per
   profile in `skin.hudReset`, so a companion the player turns off afterwards stays off
   ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)).
 - **What Ka0s Default looks like.** As before skins, except two things. The HUD after the reset (X5):
-  Oxanium on every HUD text, the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
+  Prototype on every HUD text (Oxanium before LibKa0s v1.82.0), the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
   border and the same flat 2 px edge on both cast-bar states, each in the player's border color. And
   the tool windows, now that the
   owner is registered: the debug console, its copy window, the perf panel and the sim panel keep their
-  edge and colors but take Ka0s Default's faces (Oxanium, the log lines JetBrains Mono), where before
+  edge and colors but take Ka0s Default's faces (Prototype, the log lines JetBrains Mono), where before
   they were stock, and since LibKa0s v1.81.0 that reaches their title-bar, column, row and button
   labels too (D-13); that is the library's Ka0s Default, inherited, not a KickCD choice (SKIN-1).
   The settings pages are the client's while the Scope's **Ignore settings panel** is on, the default.
@@ -435,7 +449,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 20 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
+| `slash-dispatch.md` | Present | 21 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |

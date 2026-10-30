@@ -850,9 +850,11 @@ local function chargesOffset(v, fallback)
     return v
 end
 
---- The charges badge's face: the skin's HUD face (hud.font), with the size and flags of the
---- NumberFontNormal it was built from (DECISIONS D4: it has no setting of its own, so it follows
---- the skin as the rest of the HUD text does). Read off the font OBJECT, never the FontString,
+--- The charges badge's face: the skin's HUD face (hud.font), with the size of the NumberFontNormal
+--- it was built from (DECISIONS D4: it has no setting of its own, so it follows the skin as the rest
+--- of the HUD text does), scaled to the skin's HUD face (LibKa0s v1.82.0, D-09), and the Font
+--- outline's flags (From skin, D-07: the template's OUTLINE under All text and HUD text only).
+--- Read off the font OBJECT, never the FontString,
 --- which carries the last face set here. A face LibSharedMedia cannot fetch keeps the template's,
 --- and so does no face at all: while the Scope's Ignore fonts is on, the skin answers nil for
 --- hud.font (LibKa0s v1.81.0, R-1) and the badge, having no pick of its own, draws the client's
@@ -860,10 +862,12 @@ end
 local function applyChargesFont(icon, LSM)
     local fobj = _G.NumberFontNormal
     if not (fobj and fobj.GetFont and icon.chargesText and icon.chargesText.SetFont) then return end
-    local base, size, flags = fobj:GetFont()
+    local base, size = fobj:GetFont()
     local key = NS.SkinResolve("hud.font", nil, true)
     local face = key and LSM and LSM.Fetch and LSM:Fetch("font", key, true)
-    if face or base then icon.chargesText:SetFont(face or base, size or 14, flags or "OUTLINE") end
+    if face or base then
+        icon.chargesText:SetFont(face or base, NS.SkinHudSize(size or 14, true), NS.SkinFontFlags(nil))
+    end
 end
 
 --- Re-anchor the charges badge from this unit's configured inset.
@@ -900,12 +904,13 @@ function Icon:ApplyTextConfig(cfg)
         fontPath = self.cooldownText:GetFont()
     end
     if fontPath then
-        -- "NONE" is the PRE-v5 stored token; core/Database.lua rewrites it to
-        -- the empty string the client's SetFont actually spells, and this arm
-        -- covers the frame or two before that migration lands.
-        local flags = cfg.cooldownTextFlags or "OUTLINE"
-        if flags == "NONE" then flags = "" end
-        self.cooldownText:SetFont(fontPath, cfg.cooldownTextSize or 14, flags)
+        -- NS.SkinFontFlags: "NONE", the PRE-v5 stored token core/Database.lua rewrites, is the
+        -- empty string the client's SetFont spells, for the frame or two before that migration
+        -- lands; From skin (the default since LibKa0s v1.82.0) follows the Font outline. The size
+        -- scales to the skin's HUD face while the face follows it (D-09).
+        self.cooldownText:SetFont(fontPath,
+            NS.SkinHudSize(cfg.cooldownTextSize or 14, cfg.cooldownTextFontFromSkin),
+            NS.SkinFontFlags(cfg.cooldownTextFlags))
     end
 
     -- The countdown's COLOR and its drop shadow — the two rows options-ui-§16's

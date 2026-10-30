@@ -86,8 +86,10 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
         ignoreFonts = false,         -- the Scope: every string keeps its own face, HUD too
         font        = "",            -- an LSM font key over the skin's, "" = the skin's own
         texture     = "",            -- an LSM statusbar key over the skin's, "" = the skin's own
+        outline     = "all",         -- the Font outline: "all" text | "hud" text only | "off"
         pickerSeen  = false,         -- the first-run skin picker was closed on this profile
         hudReset    = false,         -- the one-time HUD style reset's record (no schema row)
+        flagsReset  = false,         -- the one-time Font flags step's record (no schema row)
     },
 
     -- Per-unit widgets (target/focus dual tracking). Appearance (icons/
@@ -117,17 +119,21 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
 
 ## `skin.*` — the skin this addon wears
 
-Seven of the eight keys are schema rows on the General page's Skin tab (`settings/General.lua`), every
+Eight of the ten keys are schema rows on the General page's Skin tab (`settings/General.lua`), every
 one `skipRender` and drawn by the library's `O.AppearanceTab`, so `/kcd get|set skin.<key>` validates
 them (`skin.skin` refuses a key no skin registered) and Reset all settings, a profile reset, takes them
 back to the defaults above. The General page's own Defaults leaves them alone (the schema seam's
 `resetExempt`): it restores Master controls. `skin.font` and `skin.texture` are free text rather than a
-dropdown, because a media pack may register its keys after the settings files load. Each row's
+dropdown, because a media pack may register its keys after the settings files load. `skin.outline`
+(LibKa0s v1.82.0, Skin minor 9, ruling D-06) is the Skin tab's Font outline, one of the library's
+three modes, `all` by default; every Font flags row left at From skin follows it, and the write
+seam stores it from `media.outline` (the tab's dropdown and another addon's copy). Each row's
 `onChange` moves only its own half of the applied skin through `LibKa0s-Skin-1.0`
 ([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves,
 so a profile that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
 old and new (owner ruling O3), so the first-run skin picker shows once on each. `skin.hudReset` is the
-one-time HUD style reset's record and has no row (see the v5 → v6 migration below). Adding the block
+one-time HUD style reset's record and `skin.flagsReset` the Font flags step's, neither with a row
+(see the v5 → v6 and v6 → v7 migrations below). Adding the block
 moved no stored path and needed no step of its own: AceDB merges the declared defaults into every
 profile.
 
@@ -314,7 +320,9 @@ units[unit].label.style = {
     rotation = 0,                     -- degrees; FontString:SetRotation (radians internally)
     font     = "Friz Quadrata TT",   -- LSM font name
     size     = 14,
-    flags    = "OUTLINE",             -- "" | "OUTLINE" | "THICKOUTLINE" | "MONOCHROME"
+    flags    = "@skin",               -- "@skin" (From skin, the default since LibKa0s
+                                      --    v1.82.0: the Font outline decides) | "" |
+                                      --    "OUTLINE" | "THICKOUTLINE" | "MONOCHROME"
                                       --    | "OUTLINE, MONOCHROME". The EMPTY STRING
                                       --    is "None" and is a real stored value; the
                                       --    pre-v5 token for it was "NONE"
@@ -419,7 +427,7 @@ KickCD adopted skins in the 2026-10-29 skinning rollout (Ka0sAddonsCommonTasks `
 | Companion (under `units.<unit>.`) | Governs | Skin token (Ka0s Default) |
 |---|---|---|
 | `icons.borderTextureFromSkin` | the icon border's style **and thickness** (the icon family, `fromSkin = "icon"`) | `icon.borderStyle` `"Solid"`, `icon.borderSize` 2 |
-| `icons.cooldownTextFontFromSkin` | the countdown's face | `hud.font` `"Ka0s Oxanium SemiBold"` |
+| `icons.cooldownTextFontFromSkin` | the countdown's face | `hud.font` `"Ka0s Prototype"` |
 | `castbar.fontFromSkin` | the face of both cast-bar texts | `hud.font` |
 | `castbar.interruptible.statusBarTextureFromSkin`, `castbar.uninterruptible.statusBarTextureFromSkin` | each state's bar texture | `bar.texture` `"Ka0s Default"` |
 | `castbar.interruptible.borderTextureFromSkin`, `castbar.uninterruptible.borderTextureFromSkin` | each state's border style **and thickness** (the icon family, `fromSkin = "icon"`, KC-A1) | `icon.borderStyle` `"Solid"`, `icon.borderSize` 2 |
@@ -428,3 +436,11 @@ KickCD adopted skins in the 2026-10-29 skinning rollout (Ka0sAddonsCommonTasks `
 Every one **defaults true** (rollout decision X3), in `defaults/Profile.lua` and in the composer row alike. While one is set its picker is disabled and shows the skin's value, and the HUD draws `NS.SkinResolve(token, pick, companion)` (`core/SkinSetup.lua`), except that while the Scope's `ignoreFonts` is on the stored pick wins for `hud.font` whatever the companion says (LibKa0s v1.81.0, R-1); the stored pick is never overwritten, so turning the companion off draws exactly what the player had. Only the face, the texture and the border follow (X4): every color, size (but the borders' thickness, which the icon family sets), flag and shadow stays the player's. The charges badge, which has no setting, takes the skin's `hud.font` face with `NumberFontNormal`'s size and flags, and `NumberFontNormal`'s own face while `ignoreFonts` is on.
 
 `Database:MigrateHudSkin(db)` is the v5→v6 step (`migrations[5]`), the owner's ruling O2: adopting skins puts every companion on the skin **once, for every player**, through `LibKa0s-Skin-1.0`'s `Skin.ResetToSkin` (set directly when the library is absent). It runs from `Database:Init` and every `OnProfileChanged`, like the shape-driven steps, because the stamp is per account and the data per profile. It cannot be shape-driven, though: "follows the skin" is not a shape a later run could tell from the player's own choice. So each profile carries its own record, `skin.hudReset` (default false, no schema row): false, the step sets the sixteen companions and the record; true, it does nothing, so a companion the player turns off afterwards stays off for good. A profile reset puts the record back to false, and the step then re-runs against defaults that already follow the skin, which changes nothing a player can see. Only a companion that reads a boolean is named. The reason was `ResetToSkin` writing the `FROM_SKIN` sentinel into a key it found neither a table nor a bool; LibKa0s v1.81.0 (Skin minor 8) sets a listed `FromSkin` key true stored or not, but the shipped step keeps its filter so a profile that migrates late gets what an early one got (decision D-19), and an absent companion already reads AceDB's default, true.
+
+## Migration: Font flags onto From skin (v6 → v7)
+
+LibKa0s v1.82.0 (Ka0sAddonsCommonTasks `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/`, item KC-01, ruling D-07) gave every Font flags row a **From skin** value, `"@skin"`, and made it the default where `OUTLINE` was: `units.<unit>.icons.cooldownTextFlags`, `units.<unit>.castbar.fontFlags` and `units.<unit>.label.style.flags` (the composer's `flagsFromSkin`). The HUD draws From skin through the facade's `S.FontFlags`, which follows the Skin tab's Font outline (`skin.outline`: All text and HUD text only draw `OUTLINE`, Off draws none); any other flag is drawn as picked (`NS.SkinFontFlags`, `core/SkinSetup.lua`, which also keeps reading the pre-v5 `"NONE"` as none).
+
+`Database:MigrateFlagsFromSkin(db)` is the v6→v7 step (`migrations[6]`): a flag still at the old default, `OUTLINE`, moves onto From skin **once**, so the Font outline reaches it; any other flag stays (Addendum 01 of that bundle: only a flag the player changed counts as picked). An `OUTLINE` picked on purpose cannot be told from the old default, because AceDB never stored a value equal to its default; All text, the Font outline's default, draws it the same. Like the HUD style reset it runs from `Database:Init` and every `OnProfileChanged` and is recorded per profile in `skin.flagsReset` (default false, no schema row), so an `OUTLINE` picked afterwards is never moved; a profile reset puts the record back, and the step then finds defaults already on From skin.
+
+While a HUD text uses the skin's face, its stored size is drawn through `S.HudFontSize` (`NS.SkinHudSize`, ruling D-09), scaled by the skin's `hud.fontSize` over Ka0s Default's so the text is as wide in every skin; a text on its own face, and every text while Ignore fonts is on, draws its stored size. No stored size is ever rewritten, so this needs no step.

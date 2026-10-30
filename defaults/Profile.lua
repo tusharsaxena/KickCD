@@ -81,12 +81,14 @@ local ICONS_DEFAULT = {
         cooldownTextFont = "Friz Quadrata TT",
         cooldownTextFontFromSkin = true,   -- "Use the skin's font": the HUD face, hud.font
         cooldownTextSize = 14,
-        -- ""|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"|"OUTLINE, MONOCHROME" -- the
+        -- "@skin"|""|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"|"OUTLINE, MONOCHROME" -- the
         -- library's canonical set, where the EMPTY STRING is "None" and is a
         -- real stored value. The pre-v5 token for that was the literal "NONE",
         -- which SetFont ignored rather than honored; core/Database.lua's v4 -> v5
-        -- step rewrites it.
-        cooldownTextFlags = "OUTLINE",
+        -- step rewrites it. "@skin" is From skin, the default since LibKa0s v1.82.0
+        -- (D-07): the Skin tab's Font outline decides; core/Database_Migrations.lua's
+        -- MigrateFlagsFromSkin moves the old default, OUTLINE, onto it once per profile.
+        cooldownTextFlags = "@skin",
         cooldownTextColor = { r = 1, g = 1, b = 1, a = 1 },
         useClassColorCooldownText = false,
         -- A soft drop shadow behind the countdown, for legibility over bright
@@ -193,7 +195,7 @@ local CASTBAR_DEFAULT = {
         font         = "Friz Quadrata TT",
         fontFromSkin = true,        -- "Use the skin's font" for both texts: hud.font
         fontSize     = 10,
-        fontFlags    = "OUTLINE",
+        fontFlags    = "@skin",     -- From skin (LibKa0s v1.82.0, D-07); see icons.cooldownTextFlags
         fontShadow   = false,
         -- The CAST TIME text's color. The spell name's is per-state and lives
         -- in the two tables below, because the interruptible flag that picks
@@ -330,7 +332,7 @@ local LABELSTYLE_DEFAULT = {
         font     = "Friz Quadrata TT",
         fontFromSkin = true,      -- "Use the skin's font": hud.font
         size     = 14,
-        flags    = "OUTLINE",     -- "" | OUTLINE | THICKOUTLINE | MONOCHROME | "OUTLINE, MONOCHROME"
+        flags    = "@skin",       -- "@skin" (From skin, D-07) | "" | OUTLINE | THICKOUTLINE | MONOCHROME | "OUTLINE, MONOCHROME"
         shadow   = false,
         color    = { r = 1, g = 0.82, b = 0, a = 1 }, -- Blizzard gold, matches GameFontNormal
         -- Unit-scoped, unlike the icon grid's companions: a label NAMES the unit
@@ -366,6 +368,10 @@ local DEFAULT_PROFILE = {
         ignoreFonts = false,
         font        = "",
         texture     = "",
+        -- The Font outline (LibKa0s v1.82.0, Skin minor 9, ruling D-06): where the skin outlines
+        -- this addon's text, "all" of it (the library's default), "hud" text only, or "off". The
+        -- Skin tab draws it; every Font flags row left at From skin follows it.
+        outline     = "all",
         pickerSeen  = false,
         -- The one-time HUD style reset's per-profile record (owner ruling O2,
         -- core/Database_Migrations.lua's MigrateHudSkin): false until the step has put this
@@ -374,6 +380,11 @@ local DEFAULT_PROFILE = {
         -- and a profile reset puts it back to false (the step then re-runs against defaults that
         -- already follow the skin, a no-op).
         hudReset    = false,
+        -- The one-time Font flags step's per-profile record (LibKa0s v1.82.0, D-07,
+        -- core/Database_Migrations.lua's MigrateFlagsFromSkin): false until the step has moved
+        -- this profile's flags still at the old default, OUTLINE, onto From skin. No schema row,
+        -- as hudReset.
+        flagsReset  = false,
     },
 
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;

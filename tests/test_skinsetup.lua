@@ -76,7 +76,7 @@ end)
 
 -- ── the keys and the rows ────────────────────────────────────────────────────────────────────
 
-test("Skin seam: the seven skin keys default to Ka0s Default and today's Scope", function()
+test("Skin seam: the eight skin keys default to Ka0s Default, today's Scope and All text", function()
     -- red under: a default other than today's look, or pickerSeen true (owner ruling O3: the
     -- first-run picker shows once on every profile, old and new).
     local d = NS.DEFAULT_PROFILE.skin
@@ -86,12 +86,13 @@ test("Skin seam: the seven skin keys default to Ka0s Default and today's Scope",
     assertEqual(d.ignoreFonts, false)
     assertEqual(d.font, "")
     assertEqual(d.texture, "")
+    assertEqual(d.outline, "all", "the Font outline: All text, the library's default (D-06)")
     assertEqual(d.pickerSeen, false)
 end)
 
 test("Skin seam: every skin key is a skipRender row of the General page's Skin tab", function()
     local Store = NS.Settings.Store
-    assertEqual(#NS.SKIN_PATHS, 7, "seven stored keys")
+    assertEqual(#NS.SKIN_PATHS, 8, "eight stored keys")
     for _, path in ipairs(NS.SKIN_PATHS) do
         local row = Store.FindRow(path)
         assertTrue(row ~= nil, path .. " is not a schema row")

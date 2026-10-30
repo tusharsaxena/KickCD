@@ -553,7 +553,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- labels come from, so an `L` hook growing there is the likeliest and the one
     -- that would show on screen first. OptionsDrawer.lua (LibKa0s v1.73.0) made
     -- it eleven, OptionsKeybinds.lua (LibKa0s v1.77.0) twelve, and OptionsAppearance.lua (v1.78.0)
-    -- and OptionsSkinPicker.lua (v1.79.0) fourteen: the count below moved, and the derived scan
+    -- and OptionsSkinPicker.lua (v1.79.0) fourteen, and OptionsSwitch.lua (v1.82.0, the switched
+    -- sections peeled out of OptionsWidgets) fifteen: the count below moved, and the derived scan
     -- already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
@@ -574,8 +575,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 14,
-        "the major is fourteen files at LibKa0s v1.79.0 (OptionsAppearance.lua and OptionsSkinPicker.lua joined) -- a count that moved means a file "
+    assertEqual(scanned, 15,
+        "the major is fifteen files at LibKa0s v1.82.0 (OptionsSwitch.lua joined) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.

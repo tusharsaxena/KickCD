@@ -1089,7 +1089,7 @@ Total.
 - showSpark=false hides the spark outright
 - showSpark defaults to shown when unset
 - both labels share the config font, and NONE flags normalize to empty
-- absent fontFlags normalize to empty too
+- absent fontFlags read as From skin: the Font outline's flags, OUTLINE under All text
 - showName / showTime false hide their labels, and only theirs
 - the labels default to shown when the flags are unset
 - name and time labels anchor per their independent position settings
@@ -1381,7 +1381,7 @@ Total.
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
-- Skin seam: the seven skin keys default to Ka0s Default and today's Scope
+- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and All text
 - Skin seam: every skin key is a skipRender row of the General page's Skin tab
 - Skin seam: the skin row's values are every registered skin, in the library's order
 - Skin seam: /kcd set refuses an unregistered skin and applies a registered one
@@ -1421,12 +1421,35 @@ Total.
 - HUD skin: the unit label follows hud.font, and a false companion is the player's face
 - HUD skin: a skin switch repaints the HUD with no stored value moved
 - HUD skin: no repaint while the addon is stood down
-- HUD skin: the reset puts every companion on the skin once, keeps the picks, and stamps v6
+- HUD skin: the reset puts every companion on the skin once, keeps the picks, and walks past v6
 - HUD skin: a pick turned off after the reset is never reset again
 - HUD skin: a profile that was not active at the upgrade is reset when it becomes active
 - HUD skin: without the library the step still sets the companions
 - HUD skin: the step names only companions that read a boolean
 - HUD skin: Copy from Target carries the companions with the pickers
+
+### test_skin_fonts.lua (20)
+
+- outline: a fresh profile stores All text, the library's default, and wears it
+- outline: the schema row offers the library's three modes, in its order
+- outline: the write seam stores media.outline, and leaves it alone when it is nil
+- outline: another addon's copy reaches the store through WriteChoice
+- outline: the row's write applies the mode live
+- outline: /kcd set refuses a mode the library does not know
+- outline: the stored mode is applied at load and on a profile switch
+- outline: without the skin engine the apply is a quiet no-op
+- skin verb: the row sits right after config, with the library's help words
+- skin verb: NS.RunSkinVerb hands O.SkinVerb this addon's picker spec
+- skin verb: /kcd skin shows the picker on a profile that has closed it
+- skin verb: without LibKa0s it prints the library-absent line
+- From skin: every Font flags row leads with @skin and defaults to it, in the row and the defaults
+- From skin: the HUD draws the Font outline's flags, and a picked flag wins
+- From skin: without the library From skin draws OUTLINE, a pick as stored
+- From skin: the step moves a stored OUTLINE onto From skin once, and keeps a pick
+- From skin: an OUTLINE picked after the step is never moved again
+- From skin: a profile that was not active at the upgrade is moved when it becomes active
+- HUD size: on the skin's face 12 draws at 13 under Obsidian, 12 on its own face or under Ignore fonts
+- HUD size: without the library a size is drawn as stored
 
 ### test_skin_picker.lua (16)
 
@@ -1911,6 +1934,7 @@ Total.
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
+| test_skin_fonts.lua | 20 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
@@ -1939,4 +1963,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1557** |
+| **Total** | **1577** |

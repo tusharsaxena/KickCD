@@ -251,6 +251,11 @@ local COMMANDS = {
         function() p(NS, "v" .. NS.Version()) end},
     {"config",        "Open the settings panel",
         function() NS:OpenSettings() end},
+    -- `skin` is RESERVED (slash-commands-§2, LibKa0s v1.82.0's O.SkinVerb, ruling D-16): the picker
+    -- a new profile shows, on demand (core/SkinSetup.lua's NS.RunSkinVerb). A feature verb: refused
+    -- while the addon is disabled (NS.FEATURE_VERBS below).
+    {"skin",          NS.L["Choose a skin: open the skin picker"],
+        function() NS.RunSkinVerb() end},
     -- RESERVED verbs (slash-commands-§2), and ALIASES rather than a switch of
     -- their own. Every addon already carries the addon-wide `Enable KickCD`
     -- checkbox as the first row of General > Master controls (options-ui-§15);
@@ -378,7 +383,7 @@ local COMMANDS = {
 -- master switch from the new profile (Database:OnProfileChanged), so it can
 -- bring a disabled addon back up.
 --
--- WHAT IS LEFT REFUSED IS FIVE, and each really does drive the display. `lock`,
+-- WHAT IS LEFT REFUSED IS SIX, and each really does drive the display. `lock`,
 -- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- unlocking IS this
 -- addon's preview, the launcher menu's Locked entry (launcher-§2) -- and
 -- with the addon off there is no grid and no placeholder to unlock
@@ -387,16 +392,17 @@ local COMMANDS = {
 -- "icon grid positions reset" at a player who can see no grid: an acknowledgment
 -- of something that visibly did not happen. `sim` plays simulated casts and
 -- cooldowns through the live grids and cast bars, which a disabled addon has stood
--- down (the Sim major's host contract H7 makes it a refused feature verb).
+-- down (the Sim major's host contract H7 makes it a refused feature verb). `skin` opens the
+-- skin picker, a window a disabled addon does not bring up (ruling D-16).
 NS.EXTRA_LIVE_VERBS = { "spells", "profile" }
 
--- THE SAME FIVE, NAMED, for the one load where there is no library to union
+-- THE SAME SIX, NAMED, for the one load where there is no library to union
 -- with: settings/Slash.lua's degradation stub refuses exactly these while the
 -- addon is disabled. It is this addon's own list of its own feature verbs, not a
 -- copy of the library's reserved thirteen (slash-commands-§1 lets a stub carry one
 -- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash_degraded.lua pins it
 -- against the live gate: COMMANDS minus the live union MUST be this list.
-NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition", "sim" }
+NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition", "sim", "skin" }
 
 NS.COMMANDS = COMMANDS
 

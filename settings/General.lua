@@ -277,10 +277,10 @@ add{
 local skinTab = H.AppearanceTab({ owner = NS.Skin and NS.Skin.owner,
                                   get = NS.SkinChoice, set = NS.WriteSkinChoice })
 
--- The seven stored keys of the choice, as schema rows: the defaults resolve from them, a profile
+-- The eight stored keys of the choice, as schema rows: the defaults resolve from them, a profile
 -- reset reaches them, and `/kcd get|set skin.<key>` validates against them. ALL `skipRender`: the
 -- tab draws every one as its own control. `section = "skin"`, which no module reacts to; the
--- repaint is the onChange's, through Skin:SetChoice / SetIgnore / SetOverride. Each onChange
+-- repaint is the onChange's, through Skin:SetChoice / SetIgnore / SetOverride / SetOutline. Each onChange
 -- applies only its own half (core/SkinSetup.lua says why). The General page's Defaults leaves them
 -- alone (the seam's resetExempt, settings/SchemaSetup.lua): it restores Master controls, and the
 -- skin is reset by Reset all settings, a profile reset, like every other profile value.
@@ -317,6 +317,14 @@ skinRow{ path = "skin.texture", type = "string", dialogControl = "EditBox", defa
          label = L["Texture"],
          desc = L["The texture this addon's bars use, over the skin's own. Empty keeps the skin's."],
          onChange = function(v) NS.ApplySkinOverride(nil, v) end }
+-- The Font outline (LibKa0s v1.82.0, Skin minor 9, ruling D-06), drawn by the Skin tab as its
+-- "Font outline" dropdown; the library's three modes in its order, so `/kcd set skin.outline hud`
+-- validates against them.
+skinRow{ path = "skin.outline", type = "string", default = SK.outline,
+         values = NS.SKIN_OUTLINE_VALUES, sorting = NS.SKIN_OUTLINE_ORDER,
+         label = L["Font outline"],
+         desc = L["Where the skin outlines this addon's text: all of it, its HUD text only, or nowhere."],
+         onChange = function(v) NS.ApplySkinOutline(v) end }
 -- The first-run skin picker's memory: set when the picker closes, so it shows once per profile.
 -- Drawn by nothing; a profile reset puts it back to false.
 skinRow{ path = "skin.pickerSeen", type = "bool", default = SK.pickerSeen,

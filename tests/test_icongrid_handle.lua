@@ -103,9 +103,13 @@ test("the strip is sized to its label plus the widget's reserve", function()
     -- frame less the gutter its art is centered in and the clearance in front of that art; on the
     -- left it is the matching gap that keeps the label optically centered. Read off the widget
     -- rather than typed here, because a copy is a second number to keep in step.
-    local RESERVE = mocks.LibStub(WIDGETS, true).DRAG_HANDLE.RESERVE
-    assertEqual(inst.handle:GetWidth(), 100 + RESERVE * 2,
-        "the strip is its label plus what it keeps clear on each side")
+    -- FIT_SLACK (WidgetsDragHandle minor 8, LibKa0s v1.82.0) is the 2 px Measure() adds to the
+    -- label, so an exact fit never truncates; read off the widget for the same reason.
+    local DH = mocks.LibStub(WIDGETS, true).DRAG_HANDLE
+    local RESERVE, SLACK = DH.RESERVE, DH.FIT_SLACK
+    assertEqual(SLACK, 2, "the widget's slack")
+    assertEqual(inst.handle:GetWidth(), 100 + SLACK + RESERVE * 2,
+        "the strip is its label, its slack and what it keeps clear on each side")
 end)
 
 test("dragging the strip moves the GRID and saves its anchor", function()

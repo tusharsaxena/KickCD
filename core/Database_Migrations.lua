@@ -1,7 +1,8 @@
 -- core/Database_Migrations.lua -- the profile migrations (peeled from core/Database.lua, #29)
 --
 -- Every shape-driven migrator (FoldLegacyUnits, BackfillLabelStyle,
--- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin), the `migrations` ladder
+-- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin, MigrateFlagsFromSkin), the
+-- `migrations` ladder
 -- and its runner, Database:MigrateProfile, kept together so the step order reads
 -- in one place. A pure move: core/Database.lua had grown to 1121 lines, inside
 -- layout-§1's 1000-1500 band.
@@ -37,7 +38,8 @@ local copy               = Database._copy
 -- crossed that version. Such a step is also shape-driven and runs from
 -- Database:Init and every OnProfileChanged (FoldLegacyUnits,
 -- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags,
--- MigrateHudSkin; the last is gated on a per-profile record, not on shape).
+-- MigrateHudSkin, MigrateFlagsFromSkin; the last two are gated on a per-profile record, not on
+-- shape).
 
 -- The legacy top-level tables that fold into units.target. The same two names
 -- appear one level down under `p.anchors`, which folds separately because it
@@ -403,6 +405,45 @@ function NS.Database:MigrateHudSkin(db)
     migrateDebug("put %s HUD style pick(s) on the skin (one-time reset)", tostring(n))
 end
 
+--- v6 -> v7: Font flags onto From skin (LibKa0s v1.82.0, ruling D-07 of Ka0sAddonsCommonTasks
+--- docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK, Addendum 01).
+---
+--- Every Font flags row (the countdown, the cast bar's two texts, the label) gained "From skin"
+--- ("@skin"), which follows the Skin tab's Font outline, and made it the default where OUTLINE was.
+--- A flag still at the OLD default, OUTLINE, moves onto From skin once, so the Font outline reaches
+--- it; any other flag the player picked ("", THICKOUTLINE, MONOCHROME, ...) stays as stored. An
+--- OUTLINE the player picked on purpose cannot be told from the old default (AceDB strips a value
+--- equal to its default, so it was never stored apart from it); the Font outline's All text, the
+--- default, draws it the same.
+---
+--- PER PROFILE, RECORDED PER PROFILE, as MigrateHudSkin: the stamp is per account, so this runs from
+--- Database:Init and every OnProfileChanged too, and a profile carries its own record,
+--- skin.flagsReset. False: the step moves the flags and sets it. True: nothing, so an OUTLINE the
+--- player picks afterwards is never moved. A profile reset puts the record back to false, and the
+--- step re-runs against defaults already on From skin, a no-op.
+local FLAG_RELS = { "icons.cooldownTextFlags", "castbar.fontFlags", "label.style.flags" }
+local FLAGS_OLD_DEFAULT, FROM_SKIN = "OUTLINE", "@skin"
+
+function NS.Database:MigrateFlagsFromSkin(db)
+    local p = db and db.profile
+    if not (p and type(p.units) == "table" and type(p.skin) == "table") then return end
+    if p.skin.flagsReset == true then return end
+    local n = 0
+    for _, u in pairs(p.units) do
+        if type(u) == "table" then
+            for _, rel in ipairs(FLAG_RELS) do
+                local parent, leaf = walkPath(u, rel)
+                if parent and parent[leaf] == FLAGS_OLD_DEFAULT then
+                    parent[leaf] = FROM_SKIN
+                    n = n + 1
+                end
+            end
+        end
+    end
+    p.skin.flagsReset = true
+    migrateDebug("put %s Font flags pick(s) on From skin (one-time)", tostring(n))
+end
+
 local migrations = {
     -- [from-version] = function(db) ... end: a pure step from `from` to
     -- `from + 1`. It writes NO stamp: MigrateProfile advances
@@ -412,6 +453,7 @@ local migrations = {
     [3] = function(db) NS.Database:MigrateColorShape(db) end,
     [4] = function(db) NS.Database:MigrateFontFlags(db) end,
     [5] = function(db) NS.Database:MigrateHudSkin(db) end,
+    [6] = function(db) NS.Database:MigrateFlagsFromSkin(db) end,
 }
 
 -- A step that raised: one chat line the player sees, plus the gated trace.

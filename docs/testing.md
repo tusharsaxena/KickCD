@@ -175,9 +175,9 @@ cast bar, the label over the bar it is attached to and re-leveled after each rep
 strip over all of it. Two static gates close it: no `SetFrameStrata` literal, and no unnamed or
 absolute `SetFrameLevel`, in `core/`, `modules/` or `settings/`.
 
-The skin (`LibKa0s-Skin-1.0`, the 2026-10-29 skinning rollout) has four suites, each on a real load
+The skin (`LibKa0s-Skin-1.0`, the 2026-10-29 skinning rollout) has five suites, each on a real load
 with the vendored library. `tests/test_skinsetup.lua` pins `core/SkinSetup.lua`: the owner and its
-facade, the seven `skin.*` keys and their `skipRender` rows on the Skin tab, `/kcd set` refusing an
+facade, the eight `skin.*` keys and their `skipRender` rows on the Skin tab, `/kcd set` refusing an
 unregistered skin and reaching each half, a copy repainting once, a profile switch and reset, and the
 owner handed to every `LibKa0s-Widgets-1.0` factory and tool descriptor. `tests/test_skin_settings.lua`
 pins the settings pages: the AceGUI widgets the addon acquires painted past the proxy under a
@@ -191,7 +191,12 @@ and nothing resolved while stood down (counted at `NS.SkinResolve`, since every 
 its title face, which the library's tool surfaces fetch), and the one-time reset running once per
 profile. `tests/test_skin_picker.lua` pins the first-run picker: its spec, the login and profile-event
 showings, the combat hold, the stand-down, and the real window's title (*Choose a skin*) and owner line
-(`frame.ownerLabel`, *Ka0s KickCD*), Apply, close and gear, with no eye.
+(`frame.ownerLabel`, *Ka0s KickCD*), Apply, close and gear, with no eye. `tests/test_skin_fonts.lua`
+pins what LibKa0s v1.82.0 asks of the seam: the Font outline (`skin.outline`, stored through the write
+seam and applied at load, on a profile event and on its row's write), `/kcd skin` (its row after
+`config`, the spec it hands `O.SkinVerb`, the library-absent line), From skin on every Font flags row
+and the one-time v6 → v7 step, and the HUD size scale (13 under Obsidian for a stored 12 on the
+skin's face, 12 on its own face or under Ignore fonts).
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

@@ -36,10 +36,13 @@ NS.Database = Database
 -- v6 is the one-time HUD style reset (owner ruling O2 of the 2026-10-29 skinning
 -- rollout): every HUD media pick's "Use the skin's ..." companion set, once per
 -- profile, recorded in skin.hudReset (migrations[5] / Database:MigrateHudSkin).
+-- v7 moves every Font flags row still at the old default, OUTLINE, onto From skin (LibKa0s
+-- v1.82.0, ruling D-07), once per profile, recorded in skin.flagsReset (migrations[6] /
+-- Database:MigrateFlagsFromSkin).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 6
+NS.SCHEMA_VERSION = 7
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -687,6 +690,8 @@ function Database:OnProfileChanged(event, db, arg)
     -- The one-time HUD style reset, once per PROFILE (its own skin.hudReset record): a profile
     -- that was not active at the upgrade is put on the skin the first time it becomes active.
     self:MigrateHudSkin(self.db)
+    -- Font flags onto From skin, once per PROFILE (skin.flagsReset), the same way.
+    self:MigrateFlagsFromSkin(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -769,6 +774,10 @@ function Database:Init()
     -- The one-time HUD style reset (owner ruling O2), per profile for the same reason, and
     -- recorded per profile (skin.hudReset), so it runs once on each and never again.
     self:MigrateHudSkin(db)
+
+    -- Font flags still at the old default onto From skin (LibKa0s v1.82.0, D-07), per profile and
+    -- recorded per profile (skin.flagsReset), for the same reason.
+    self:MigrateFlagsFromSkin(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

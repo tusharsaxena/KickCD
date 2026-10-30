@@ -171,8 +171,8 @@ test("the migration bumps the stored schema version so it runs once", function()
     inst.mocks.KickCDDB = { global = { schemaVersion = 3 }, profiles = { Default = {} } }
     pcall(NS2.OnInitialize, NS2)
     -- The runner owns the stamp and advances it past each step that returned,
-    -- so a v3 account ends at the current version, 6.
-    assertEqual(NS2.db.global.schemaVersion, 6)
+    -- so a v3 account ends at the current version, 7.
+    assertEqual(NS2.db.global.schemaVersion, 7)
 end)
 
 test("an already-keyed color passes through the migration untouched", function()
@@ -291,9 +291,9 @@ test("a fresh install ends at v6 with no step raising", function()
     local ns, lines = loadTwoProfiles({})
     ns.db.global.schemaVersion = 0
     ns.Database:MigrateProfile()
-    assertEqual(ns.db.global.schemaVersion, 6)
+    assertEqual(ns.db.global.schemaVersion, 7)
     local fresh = T.load(true).NS
-    assertEqual(fresh.db.global.schemaVersion, 6, "a fresh account walks 0 -> 6 on its first load")
+    assertEqual(fresh.db.global.schemaVersion, 7, "a fresh account walks 0 -> 7 on its first load")
     for _, l in ipairs(lines) do
         assertNil(l:find("migration", 1, true), "no step may fail; printed: " .. l)
     end
