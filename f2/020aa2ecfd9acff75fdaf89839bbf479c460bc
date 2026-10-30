@@ -1,0 +1,9 @@
+Review of KickCD feat/2026-10-30-skin-fonts-feedback (KC-01 b761254, KC-02 38de9ae, KC-03 6f15e09) against master, DECISIONS.md, ADDENDUM-01 and the owner's SavedVariables. Gate re-run: vendor diffs clean, 1573/0/1 then 1575/0/1 after fixes, luacheck 0/0 in 153 files, under the 1500-line cap.
+FIXED in f2020aa (KC-01: Address the review):
+- medium: Host.PinPanel was never reversed, so after a stop the idle panel had no close mark and ignored Escape. Added Host.UnpinPanel as an OnStop step (close mark shown, the name back on UISpecialFrames once), two test_sim_marker cases (red before the fix), and an after-stop step in SIM-13 (Result empty).
+- medium: SKIN-2 expected picked faces to read in Prototype with the box ticked, which KC-03 contradicts. Rewritten: the reset is checked on a texture pick, and a picked face comes back unticked (SKIN-36). Result empty.
+- low: stale docs. SimStrip.lua dropped from ARCHITECTURE.md and message-bus.md; SCHEMA_VERSION = 8 with the v6->v7 and v7->v8 steps in ARCHITECTURE.md, module-map.md and schema.md.
+- low (KickCD part): schema.md no longer calls KC-03 'the same step as AM-03' and names the retired-face difference. KickCD keeps its PRE_V182_FACES exemption as the safer rule.
+DECLINED / HANDED UP (outside this repo):
+- Making AM-03 exempt the retired faces belongs in AuraMaster (or a shared LibKa0s constant), and the decision belongs in the bundle's execution record. Not done from KickCD.
+- Recording the SimPanel gap (panel.close not passed through, UISpecialFrames always added, unpin at stop) as an LK follow-up is a bundle or LibKa0s task. In KickCD the PinPanel comment already documents the gap and test_sim_marker guards both internals.
