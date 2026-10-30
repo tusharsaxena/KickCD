@@ -605,13 +605,15 @@ Total.
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 
-### test_sim_marker.lua (5)
+### test_sim_marker.lua (7)
 
 - sim marker: the floating strip is gone: no module, no TOC line, no strip at a start
 - sim marker: the scenario's strip line is out of the locale
 - sim marker: a start opens the step panel with no close mark
 - sim marker: Escape does not take the panel down while a session runs
 - sim marker: the panel stays up across the session's steps
+- sim marker: a stop gives the idle panel its close mark back
+- sim marker: a stop puts the panel back on UISpecialFrames, once
 
 ### test_debuglog.lua (13)
 
@@ -1533,6 +1535,10 @@ Total.
 - no module reads profile.enabled directly
 - no authored file falls back to the global print
 
+### test_glyphs.lua (1)
+
+- glyphs: display strings use only characters every shipped skin face draws
+
 ### test_prose.lua (15)
 
 - prose: no authored file carries a British spelling from localization-§5's published list
@@ -1891,7 +1897,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 9 |
-| test_sim_marker.lua | 5 |
+| test_sim_marker.lua | 7 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1939,6 +1945,7 @@ Total.
 | test_library_lines.lua | 9 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
+| test_glyphs.lua | 1 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 53 |
@@ -1959,4 +1966,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1573** |
+| **Total** | **1576** |

@@ -240,6 +240,7 @@ local SUITES = {
     "test_library_lines",
     "test_version",
     "test_source_style",
+    "test_glyphs",
     { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",
