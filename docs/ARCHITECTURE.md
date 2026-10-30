@@ -356,7 +356,11 @@ collection's reference adopter, and every piece below copies its shape.
 - **The one-time HUD style reset (owner ruling O2).** Adopting skins put every companion on the skin
   once, for every player: `Database:MigrateHudSkin`, the v5→v6 step, per profile and recorded per
   profile in `skin.hudReset`, so a companion the player turns off afterwards stays off
-  ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)).
+  ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)). The v7→v8 step
+  (`Database:MigrateSkinFontPicks`, KC-03 of the 2026-10-30 skin fonts run, the owner's ruling D-15)
+  then turns "Use the skin's font" back off, once per profile (`skin.fontPicksKept`), on every HUD
+  text whose stored face is the player's own pick (not the default, not the worn skin's HUD face,
+  not a pre-v1.82.0 skin face), so a face such as the owner's Ka0s Kait comes back.
 - **What Ka0s Default looks like.** As before skins, except two things. The HUD after the reset (X5):
   Prototype on every HUD text (Oxanium before LibKa0s v1.82.0), the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
   border and the same flat 2 px edge on both cast-bar states, each in the player's border color. And

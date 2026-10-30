@@ -304,3 +304,72 @@ test("HUD size: without the library a size is drawn as stored", function()
     assertEqual(NS.SkinHudSize(14, true), 14)
     assertEqual(NS.SkinHudSize(nil, true), 12)
 end)
+
+-- ── the skin's font kept off a face the player picked (KC-03, D-15) ────────────────────────
+
+--- A v7 account (the Font flags step already run) whose Default profile follows the skin's font on
+--- every text, with picks: Ka0s Kait on Target's label (the owner's pick), Arial Narrow on Focus's cast
+--- bar, Ka0s Default's own face on Focus's countdown, a retired skin face on Target's countdown, and
+--- the stored default, Friz Quadrata, on Target's cast bar.
+local function v7Saved(extraProfiles, skinKey)
+    local profile = { skin = { hudReset = true, flagsReset = true, skin = skinKey }, units = {
+        target = { icons = { cooldownTextFont = "Ka0s Oxanium SemiBold", cooldownTextFontFromSkin = true },
+                   castbar = { font = "Friz Quadrata TT", fontFromSkin = true },
+                   label = { style = { font = "Ka0s Kait", fontFromSkin = true } } },
+        focus  = { link = false,
+                   icons = { cooldownTextFont = "Ka0s Prototype", cooldownTextFontFromSkin = true },
+                   castbar = { font = "Arial Narrow", fontFromSkin = true },
+                   label = { style = { fontFromSkin = true } } },
+    } }
+    local profiles = { Default = profile }
+    for k, v in pairs(extraProfiles or {}) do profiles[k] = v end
+    return { global = { schemaVersion = 7 }, profiles = profiles }
+end
+
+test("skin font kept: a picked face other than the skin's turns Use the skin's font off, once", function()
+    -- red under: no step, a step that also turned off the default or the skin's own face, or one
+    -- that rewrote a stored pick
+    local NS = boot(v7Saved()).NS
+    local u = NS.db.profile.units
+    assertEqual(u.target.label.style.fontFromSkin, false, "Ka0s Kait comes back")
+    assertEqual(u.target.label.style.font, "Ka0s Kait", "the pick is kept")
+    assertEqual(u.focus.castbar.fontFromSkin, false, "Arial Narrow comes back")
+    assertEqual(u.focus.icons.cooldownTextFontFromSkin, true, "Ka0s Default's own face keeps following")
+    assertEqual(u.target.castbar.fontFromSkin, true, "the stored default is not a pick")
+    assertEqual(u.target.icons.cooldownTextFontFromSkin, true, "a retired skin face keeps following")
+    assertEqual(NS.db.profile.skin.fontPicksKept, true, "the profile records the step")
+    assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION)
+    assertTrue(NS.SCHEMA_VERSION >= 8, "migrations[7] is on the ladder")
+end)
+
+test("skin font kept: the skin's own face is the one the profile wears", function()
+    -- Under Obsidian its own face, Expressway, keeps following; Ka0s Default's Prototype is a pick.
+    local saved = v7Saved(nil, "obsidian")
+    saved.profiles.Default.units.target.castbar.font = "Ka0s Expressway"
+    local NS = boot(saved).NS
+    local u = NS.db.profile.units
+    assertEqual(u.target.castbar.fontFromSkin, true, "Obsidian's own face")
+    assertEqual(u.focus.icons.cooldownTextFontFromSkin, false, "Prototype is not Obsidian's face")
+end)
+
+test("skin font kept: a box ticked again after the step is never turned off again", function()
+    local NS = boot(v7Saved()).NS
+    NS.db.profile.units.target.label.style.fontFromSkin = true
+    NS.Database:MigrateSkinFontPicks(NS.db)
+    NS.Database:OnProfileChanged("OnProfileChanged", NS.db, "Default")
+    assertEqual(NS.db.profile.units.target.label.style.fontFromSkin, true, "kept across a profile event")
+end)
+
+test("skin font kept: a profile that was not active at the upgrade is stepped when it becomes active", function()
+    local alt = { units = { target = { label = { style = { font = "Ka0s Kait", fontFromSkin = true } } } } }
+    local NS = boot(v7Saved({ Alt = alt })).NS
+    NS.db:SetProfile("Alt")
+    assertEqual(NS.db.profile.units.target.label.style.fontFromSkin, false)
+    assertEqual(NS.db.profile.skin.fontPicksKept, true)
+end)
+
+test("skin font kept: without the library the step still keeps the picks", function()
+    local NS = boot(v7Saved(), { libFiles = {} }).NS
+    assertEqual(NS.db.profile.units.target.label.style.fontFromSkin, false)
+    assertEqual(NS.db.profile.units.focus.icons.cooldownTextFontFromSkin, true, "Ka0s Default's face")
+end)

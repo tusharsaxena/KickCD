@@ -196,7 +196,8 @@ pins what LibKa0s v1.82.0 asks of the seam: the Font outline (`skin.outline`, st
 seam and applied at load, on a profile event and on its row's write), `/kcd skin` (its row after
 `config`, the spec it hands `O.SkinVerb`, the library-absent line), From skin on every Font flags row
 and the one-time v6 → v7 step, and the HUD size scale (13 under Obsidian for a stored 12 on the
-skin's face, 12 on its own face or under Ignore fonts).
+skin's face, 12 on its own face or under Ignore fonts), and the one-time v7 → v8 step that keeps a
+picked HUD face off the skin's font (D-15).
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

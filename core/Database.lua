@@ -38,11 +38,13 @@ NS.Database = Database
 -- profile, recorded in skin.hudReset (migrations[5] / Database:MigrateHudSkin).
 -- v7 moves every Font flags row still at the old default, OUTLINE, onto From skin (LibKa0s
 -- v1.82.0, ruling D-07), once per profile, recorded in skin.flagsReset (migrations[6] /
--- Database:MigrateFlagsFromSkin).
+-- Database:MigrateFlagsFromSkin). v8 turns "Use the skin's font" off on every HUD text whose
+-- stored face is the player's own pick (ruling D-15), once per profile, recorded in
+-- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 7
+NS.SCHEMA_VERSION = 8
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -690,8 +692,10 @@ function Database:OnProfileChanged(event, db, arg)
     -- The one-time HUD style reset, once per PROFILE (its own skin.hudReset record): a profile
     -- that was not active at the upgrade is put on the skin the first time it becomes active.
     self:MigrateHudSkin(self.db)
-    -- Font flags onto From skin, once per PROFILE (skin.flagsReset), the same way.
+    -- Font flags onto From skin, once per PROFILE (skin.flagsReset), the same way; then a picked
+    -- face kept off the skin's font (skin.fontPicksKept), after the reset that put it on.
     self:MigrateFlagsFromSkin(self.db)
+    self:MigrateSkinFontPicks(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -778,6 +782,10 @@ function Database:Init()
     -- Font flags still at the old default onto From skin (LibKa0s v1.82.0, D-07), per profile and
     -- recorded per profile (skin.flagsReset), for the same reason.
     self:MigrateFlagsFromSkin(db)
+
+    -- "Use the skin's font" off where the player picked another face (D-15), per profile and
+    -- recorded per profile (skin.fontPicksKept); after MigrateHudSkin, which put it on.
+    self:MigrateSkinFontPicks(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

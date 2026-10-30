@@ -90,6 +90,7 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
         pickerSeen  = false,         -- the first-run skin picker was closed on this profile
         hudReset    = false,         -- the one-time HUD style reset's record (no schema row)
         flagsReset  = false,         -- the one-time Font flags step's record (no schema row)
+        fontPicksKept = false,       -- the one-time picked-face step's record (no schema row)
     },
 
     -- Per-unit widgets (target/focus dual tracking). Appearance (icons/
@@ -119,7 +120,7 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
 
 ## `skin.*` — the skin this addon wears
 
-Eight of the ten keys are schema rows on the General page's Skin tab (`settings/General.lua`), every
+Eight of the eleven keys are schema rows on the General page's Skin tab (`settings/General.lua`), every
 one `skipRender` and drawn by the library's `O.AppearanceTab`, so `/kcd get|set skin.<key>` validates
 them (`skin.skin` refuses a key no skin registered) and Reset all settings, a profile reset, takes them
 back to the defaults above. The General page's own Defaults leaves them alone (the schema seam's
@@ -132,8 +133,8 @@ seam stores it from `media.outline` (the tab's dropdown and another addon's copy
 ([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves,
 so a profile that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
 old and new (owner ruling O3), so the first-run skin picker shows once on each. `skin.hudReset` is the
-one-time HUD style reset's record and `skin.flagsReset` the Font flags step's, neither with a row
-(see the v5 → v6 and v6 → v7 migrations below). Adding the block
+one-time HUD style reset's record, `skin.flagsReset` the Font flags step's and `skin.fontPicksKept`
+the picked-face step's, none with a row (see the v5 → v6, v6 → v7 and v7 → v8 migrations below). Adding the block
 moved no stored path and needed no step of its own: AceDB merges the declared defaults into every
 profile.
 
@@ -444,3 +445,7 @@ LibKa0s v1.82.0 (Ka0sAddonsCommonTasks `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/
 `Database:MigrateFlagsFromSkin(db)` is the v6→v7 step (`migrations[6]`): a flag still at the old default, `OUTLINE`, moves onto From skin **once**, so the Font outline reaches it; any other flag stays (Addendum 01 of that bundle: only a flag the player changed counts as picked). An `OUTLINE` picked on purpose cannot be told from the old default, because AceDB never stored a value equal to its default; All text, the Font outline's default, draws it the same. Like the HUD style reset it runs from `Database:Init` and every `OnProfileChanged` and is recorded per profile in `skin.flagsReset` (default false, no schema row), so an `OUTLINE` picked afterwards is never moved; a profile reset puts the record back, and the step then finds defaults already on From skin.
 
 While a HUD text uses the skin's face, its stored size is drawn through `S.HudFontSize` (`NS.SkinHudSize`, ruling D-09), scaled by the skin's `hud.fontSize` over Ka0s Default's so the text is as wide in every skin; a text on its own face, and every text while Ignore fonts is on, draws its stored size. No stored size is ever rewritten, so this needs no step.
+
+## Migration: a picked face kept off the skin's font (v7 → v8)
+
+The v5 → v6 HUD style reset put every "Use the skin's font" box on the skin and kept the stored face, so a face the player had picked (the owner's Ka0s Kait on the target label, Ka0sAddonsCommonTasks `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/inputs/inventory/Z_CRITIC.md` R5) has drawn the skin's face since. `Database:MigrateSkinFontPicks(db)` is the v7→v8 step (`migrations[7]`, item KC-03, the owner's ruling D-15, the same step as AuraMaster's AM-03): on each unit's countdown (`icons.cooldownTextFont`), cast bar (`castbar.font`) and label (`label.style.font`), a box that is on goes off when the stored face is the player's pick, so the face comes back. Not a pick: the stored default, Friz Quadrata TT (AceDB never told it apart from an unchanged row); the HUD face of the skin the profile wears (`Skin:ResolveSkin(skin.skin)["hud.font"]`, Ka0s Default's Prototype without the library); and a face a Ka0s skin drew before LibKa0s v1.82.0 (Oxanium, Inter, Fira Sans Regular), which no longer ships, so following the skin is the only way it draws. The stored face is never written. Like the steps above it runs from `Database:Init` and every `OnProfileChanged`, after `MigrateHudSkin`, and is recorded per profile in `skin.fontPicksKept`, so a box the player ticks again afterwards stays ticked. A text kept on its own face draws its stored size, unscaled (`S.HudFontSize`).

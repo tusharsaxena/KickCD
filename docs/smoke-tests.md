@@ -27,7 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 13 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
-| SKIN-1 – 35 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity |
+| SKIN-1 – 36 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -1478,6 +1478,18 @@ after each check. Every check also fails on a Lua error or a taint warning.
   help mark. Fail: an ellipsis or a clipped letter anywhere, or a strip whose title is cut short.
   Result:
 
+- **SKIN-36. Your own HUD fonts come back (KC-03; D-15).** Before installing this build, on a profile
+  `KeepA` on Ka0s Default, give Target's label the font **Ka0s Kait** (or any face from a media pack),
+  Focus's cast bar **Arial Narrow**, and leave Target's cast bar and countdown at their defaults; check
+  that each **Use the skin's font** box is ticked (they draw the skin's face). Install, log in on
+  `KeepA` → the label draws in Kait and Focus's cast bar in Arial Narrow, each with its box unticked;
+  Target's cast bar and countdown still follow the skin (boxes ticked, Prototype). Pick **Obsidian** →
+  the two picked texts keep their faces and sizes; the others turn Expressway. Tick the label's box
+  again, `/reload` and switch profiles back and forth → it stays ticked. A second profile `KeepB` with
+  a picked face is changed the same way the first time it loads. Fail: a picked face still drawing the
+  skin's font after the upgrade, a default text taken off the skin, or a re-ticked box unticked again.
+  Result:
+
 ## Non-English client
 
 A client set to a non-English locale; frFR is the reported case (issue #8), and an Elemental Shaman
@@ -1523,4 +1535,4 @@ SKIN-1 – 29, DEGRADED-16, DIAG-20, PANEL-31 and PANEL-33 – 35, each recorded
 
 LibKa0s v1.82.0 (KC-01 to KC-03 of `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/`) re-opens SKIN-1, SKIN-2,
 SKIN-6 and SKIN-9 (their expected faces moved: Prototype for Oxanium, Expressway for Inter), SKIN-11
-and SIM-12 (the sim strip was removed, KC-02), and adds SKIN-30 – 35 and SIM-13; LAYER-7 is retired. Each is owed until its `Result:` line records a pass.
+and SIM-12 (the sim strip was removed, KC-02), and adds SKIN-30 – 36 and SIM-13; LAYER-7 is retired. Each is owed until its `Result:` line records a pass.

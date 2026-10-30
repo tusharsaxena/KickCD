@@ -385,6 +385,11 @@ local DEFAULT_PROFILE = {
         -- this profile's flags still at the old default, OUTLINE, onto From skin. No schema row,
         -- as hudReset.
         flagsReset  = false,
+        -- The one-time picked-face step's per-profile record (ruling D-15,
+        -- core/Database_Migrations.lua's MigrateSkinFontPicks): false until the step has turned
+        -- "Use the skin's font" off on every HUD text whose stored face is the player's pick. No
+        -- schema row, as hudReset.
+        fontPicksKept = false,
     },
 
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;

@@ -1,8 +1,8 @@
 -- core/Database_Migrations.lua -- the profile migrations (peeled from core/Database.lua, #29)
 --
 -- Every shape-driven migrator (FoldLegacyUnits, BackfillLabelStyle,
--- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin, MigrateFlagsFromSkin), the
--- `migrations` ladder
+-- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin, MigrateFlagsFromSkin,
+-- MigrateSkinFontPicks), the `migrations` ladder
 -- and its runner, Database:MigrateProfile, kept together so the step order reads
 -- in one place. A pure move: core/Database.lua had grown to 1121 lines, inside
 -- layout-§1's 1000-1500 band.
@@ -38,8 +38,8 @@ local copy               = Database._copy
 -- crossed that version. Such a step is also shape-driven and runs from
 -- Database:Init and every OnProfileChanged (FoldLegacyUnits,
 -- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags,
--- MigrateHudSkin, MigrateFlagsFromSkin; the last two are gated on a per-profile record, not on
--- shape).
+-- MigrateHudSkin, MigrateFlagsFromSkin, MigrateSkinFontPicks; the last three are gated on a
+-- per-profile record, not on shape).
 
 -- The legacy top-level tables that fold into units.target. The same two names
 -- appear one level down under `p.anchors`, which folds separately because it
@@ -444,6 +444,73 @@ function NS.Database:MigrateFlagsFromSkin(db)
     migrateDebug("put %s Font flags pick(s) on From skin (one-time)", tostring(n))
 end
 
+--- v7 -> v8: "Use the skin's font" off where the player picked another face (ruling D-15 of
+--- Ka0sAddonsCommonTasks docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK, the owner's call; AuraMaster's
+--- AM-03 is the same step).
+---
+--- The v5 -> v6 HUD style reset put every "Use the skin's font" box on the skin and kept the stored
+--- face, so a player's own pick (the owner's Ka0s Kait on the target label) has drawn the skin's
+--- face since. This step turns the box off, once, on every text whose stored face is a pick: not
+--- the stored default (Friz Quadrata, which AceDB never told apart from an unchanged row), not the
+--- HUD face of the skin the profile wears (Skin:ResolveSkin(skin)["hud.font"]; Ka0s Default's when
+--- the skin is unknown or the library is absent), and not a face a Ka0s skin drew before v1.82.0
+--- (PRE_V182_FACES; no longer shipped, so following the skin is the only way it draws). So the stored
+--- face comes back. Only a box that is on is turned off; the stored face is never written.
+---
+--- PER PROFILE, RECORDED PER PROFILE (skin.fontPicksKept), as the two steps above: a box the player
+--- ticks again afterwards stays ticked. A profile reset puts the record back, and the step then finds
+--- the defaults, which hold no pick.
+local FONT_PICKS = {
+    { "icons.cooldownTextFont", "icons.cooldownTextFontFromSkin" },
+    { "castbar.font",           "castbar.fontFromSkin" },
+    { "label.style.font",       "label.style.fontFromSkin" },
+}
+local FONT_DEFAULT = "Friz Quadrata TT"
+local KA0S_DEFAULT_FACE = "Ka0s Prototype"
+local PRE_V182_FACES = {
+    ["Ka0s Oxanium SemiBold"] = true, ["Ka0s Oxanium Bold"] = true,
+    ["Ka0s Inter SemiBold"] = true, ["Ka0s Inter"] = true, ["Ka0s Fira Sans"] = true,
+}
+
+--- The HUD face of the skin a profile wears: the library's resolved token, Ka0s Default's face
+--- without the library or for a skin it does not know.
+local function wornHudFace(p)
+    local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
+    local key = type(p.skin) == "table" and p.skin.skin or nil
+    if Skin and type(Skin.ResolveSkin) == "function" then
+        local tokens = Skin:ResolveSkin(type(key) == "string" and key or "ka0s")
+        if type(tokens) == "table" and type(tokens["hud.font"]) == "string" then return tokens["hud.font"] end
+    end
+    return KA0S_DEFAULT_FACE
+end
+
+--- True when a stored face is the player's own pick rather than the default or a skin's face.
+local function isPick(face, worn)
+    if type(face) ~= "string" or face == "" or face == "@skin" then return false end
+    return face ~= FONT_DEFAULT and face ~= worn and not PRE_V182_FACES[face]
+end
+
+function NS.Database:MigrateSkinFontPicks(db)
+    local p = db and db.profile
+    if not (p and type(p.units) == "table" and type(p.skin) == "table") then return end
+    if p.skin.fontPicksKept == true then return end
+    local worn, n = wornHudFace(p), 0
+    for _, u in pairs(p.units) do
+        if type(u) == "table" then
+            for _, pair in ipairs(FONT_PICKS) do
+                local fParent, fLeaf = walkPath(u, pair[1])
+                local cParent, cLeaf = walkPath(u, pair[2])
+                if fParent and cParent and cParent[cLeaf] == true and isPick(fParent[fLeaf], worn) then
+                    cParent[cLeaf] = false
+                    n = n + 1
+                end
+            end
+        end
+    end
+    p.skin.fontPicksKept = true
+    migrateDebug("kept %s picked HUD face(s) off the skin's font (one-time)", tostring(n))
+end
+
 local migrations = {
     -- [from-version] = function(db) ... end: a pure step from `from` to
     -- `from + 1`. It writes NO stamp: MigrateProfile advances
@@ -454,6 +521,7 @@ local migrations = {
     [4] = function(db) NS.Database:MigrateFontFlags(db) end,
     [5] = function(db) NS.Database:MigrateHudSkin(db) end,
     [6] = function(db) NS.Database:MigrateFlagsFromSkin(db) end,
+    [7] = function(db) NS.Database:MigrateSkinFontPicks(db) end,
 }
 
 -- A step that raised: one chat line the player sees, plus the gated trace.

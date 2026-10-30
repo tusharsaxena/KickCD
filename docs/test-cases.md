@@ -1419,7 +1419,7 @@ Total.
 - HUD skin: the step names only companions that read a boolean
 - HUD skin: Copy from Target carries the companions with the pickers
 
-### test_skin_fonts.lua (20)
+### test_skin_fonts.lua (25)
 
 - outline: a fresh profile stores All text, the library's default, and wears it
 - outline: the schema row offers the library's three modes, in its order
@@ -1441,6 +1441,11 @@ Total.
 - From skin: a profile that was not active at the upgrade is moved when it becomes active
 - HUD size: on the skin's face 12 draws at 13 under Obsidian, 12 on its own face or under Ignore fonts
 - HUD size: without the library a size is drawn as stored
+- skin font kept: a picked face other than the skin's turns Use the skin's font off, once
+- skin font kept: the skin's own face is the one the profile wears
+- skin font kept: a box ticked again after the step is never turned off again
+- skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
+- skin font kept: without the library the step still keeps the picks
 
 ### test_skin_picker.lua (16)
 
@@ -1925,7 +1930,7 @@ Total.
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
-| test_skin_fonts.lua | 20 |
+| test_skin_fonts.lua | 25 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
@@ -1954,4 +1959,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1568** |
+| **Total** | **1573** |

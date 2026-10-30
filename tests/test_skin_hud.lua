@@ -365,10 +365,14 @@ test("HUD skin: the reset puts every companion on the skin once, keeps the picks
     local NS = inst.NS
     assertTrue(NS.SCHEMA_VERSION >= 6, "migrations[5] is on the ladder")
     assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION)
+    -- The one exception is the player's own face: Target's cast bar stores Arial Narrow, so the
+    -- v7 -> v8 step that runs on the same load (KC-03 of the 2026-10-30 skin fonts run, D-15) turns
+    -- its "Use the skin's font" back off and the pick draws again.
+    local KEPT = "units.target.castbar.fontFromSkin"
     for _, unit in ipairs(UNITS) do
         for _, rel in ipairs(NS.Database.HUD_SKIN_COMPANIONS) do
             local path = "units." .. unit .. "." .. rel
-            assertEqual(at(NS.db.profile, path), true, path)
+            assertEqual(at(NS.db.profile, path), path ~= KEPT, path)
         end
     end
     assertEqual(NS.db.profile.units.target.castbar.font, "Arial Narrow", "the stored pick is kept")
@@ -401,7 +405,7 @@ test("HUD skin: a profile that was not active at the upgrade is reset when it be
     -- the profile active at the upgrade)
     local alt = { units = { target = { castbar = { fontFromSkin = false } } } }
     local NS = boot(v5Saved({ Alt = alt })).NS
-    assertEqual(NS.db.global.schemaVersion, 7, "sanity: the account stamp is already current")
+    assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION, "sanity: the account stamp is already current")
     NS.db:SetProfile("Alt")
     assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, true, "Alt was put on the skin")
     assertEqual(NS.db.profile.skin.hudReset, true)
@@ -412,7 +416,10 @@ test("HUD skin: without the library the step still sets the companions", functio
     -- or the companions where they were
     local inst = boot(v5Saved(), { libFiles = {} })
     local NS = inst.NS
-    assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, true)
+    -- Target's cast bar stores the player's Arial Narrow, which the v7 -> v8 step (D-15) keeps off
+    -- the skin's font again on the same load; every other companion is on.
+    assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, false)
+    assertEqual(NS.db.profile.units.target.castbar.interruptible.statusBarTextureFromSkin, true)
     assertEqual(NS.db.profile.units.focus.label.style.fontFromSkin, true)
     assertEqual(NS.db.profile.skin.hudReset, true)
     -- And the degraded HUD draws the stored pick, the host copy holding no HUD token.
