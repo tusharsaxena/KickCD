@@ -241,6 +241,47 @@ test("HUD skin: the countdown follows hud.font and the charges badge takes the s
     assertEqual(flags, "OUTLINE", "and its flags")
 end)
 
+test("HUD skin: with Ignore fonts on, every HUD text draws its own pick and the badge the client's number face", function()
+    -- red under: LibKa0s before v1.81.0 (Skin minor 8, R-1), whose Resolve answered the skin's
+    -- hud.font whatever the Scope said, or an NS.SkinResolve that answers the token itself rather
+    -- than through S.Resolve. The charges badge has no pick of its own (D4): Resolve answers nil
+    -- for it, so it keeps NumberFontNormal's face (Fonts\\ARIALN.TTF in this file's boot).
+    local inst, fetched = boot()
+    local NS = inst.NS
+    local Skin = inst.mocks.LibStub("LibKa0s-Skin-1.0")
+    Skin:SetIgnore(OWNER, nil, true)
+    local ok, err = pcall(function()
+        local Castbar, IG, UL = NS:GetModule("Castbar"), NS:GetModule("IconGrid"), NS:GetModule("UnitLabel")
+        local icon = IG.CreateIconWidget(inst.mocks.CreateFrame("Frame"))
+        icon.unit = "target"
+        local badge
+        icon.chargesText.SetFont = function(_, ...) badge = { ... } end
+        local unit = NS.db.profile.units.target
+        assertEqual(unit.castbar.fontFromSkin, true, "sanity: the cast bar follows the skin")
+        assertEqual(unit.icons.cooldownTextFontFromSkin, true, "sanity: so does the countdown")
+        assertEqual(unit.label.style.fontFromSkin, true, "sanity: and the label")
+
+        clear(fetched)
+        Castbar:Reskin(Castbar:GetInstance("target"), true)
+        assertTrue(has(fetched, "font:Friz Quadrata TT"), "the cast bar draws its stored face")
+        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+
+        clear(fetched)
+        icon:ApplyTextConfig(unit.icons)
+        assertTrue(has(fetched, "font:Friz Quadrata TT"), "the countdown draws its stored face")
+        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+        assertTrue(badge ~= nil, "the badge's font was set")
+        assertEqual(badge[1], "Fonts\\ARIALN.TTF", "the badge keeps NumberFontNormal's face")
+
+        clear(fetched)
+        UL:Apply(UL:GetInstance("target"))
+        assertTrue(has(fetched, "font:Friz Quadrata TT"), "the label draws its stored face")
+        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+    end)
+    Skin:SetIgnore(OWNER, nil, false)
+    if not ok then error(err, 0) end
+end)
+
 test("HUD skin: the unit label follows hud.font, and a false companion is the player's face", function()
     -- red under: reading the companion through sv(), whose truthiness test turns false into
     -- the fallback
@@ -275,17 +316,22 @@ end)
 
 test("HUD skin: no repaint while the addon is stood down", function()
     -- red under: an OnLooksChanged handler without the NS.IsDown guard, which would re-show
-    -- the labels Suspend hid
-    local inst, fetched = boot()
+    -- the labels Suspend hid. Counted at NS.SkinResolve, the HUD's one token seam: since LibKa0s
+    -- v1.81.0 every skin's hud.font is also its title face, which the library's own tool
+    -- surfaces fetch on a switch, so a font fetch no longer tells the HUD apart.
+    local inst = boot()
     local NS = inst.NS
     local Skin = inst.mocks.LibStub("LibKa0s-Skin-1.0")
+    local resolve, calls = NS.SkinResolve, 0
+    NS.SkinResolve = function(...) calls = calls + 1; return resolve(...) end
     local down = NS.IsDown
     NS.IsDown = function() return true end
-    clear(fetched)
     Skin:SetChoice(OWNER, "ka0s", "obsidian")
     NS.IsDown = down
-    assertFalse(has(fetched, "font:" .. Skin:ResolveSkin("obsidian")["hud.font"]), "nothing redrew")
+    assertEqual(calls, 0, "nothing redrew")
     Skin:SetChoice(OWNER, "ka0s", "ka0s")
+    NS.SkinResolve = resolve
+    assertTrue(calls > 0, "sanity: standing up, the same switch does redraw")
 end)
 
 -- ── the one-time reset (O2) ─────────────────────────────────────────────────
@@ -374,8 +420,10 @@ test("HUD skin: without the library the step still sets the companions", functio
 end)
 
 test("HUD skin: the step names only companions that read a boolean", function()
-    -- red under: handing ResetToSkin a missing companion, which writes the FROM_SKIN sentinel
-    -- into it
+    -- red under: naming a companion the profile does not store. Under LibKa0s Skin minor 7 that
+    -- wrote the FROM_SKIN sentinel into it; minor 8 (v1.81.0, R-6) sets it true instead, which an
+    -- absent companion already reads from AceDB's defaults. The shipped step keeps its filter
+    -- (D-19), so a late-migrating profile gets exactly what an early one got.
     local NS = boot().NS
     local db = { profile = {
         skin = { hudReset = false },
@@ -383,7 +431,7 @@ test("HUD skin: the step names only companions that read a boolean", function()
     } }
     NS.Database:MigrateHudSkin(db)
     assertEqual(db.profile.units.target.castbar.fontFromSkin, true, "a present companion is set")
-    assertEqual(db.profile.units.target.label.style.fontFromSkin, nil, "no sentinel written")
+    assertEqual(db.profile.units.target.label.style.fontFromSkin, nil, "an absent companion is left absent")
     assertEqual(db.profile.skin.hudReset, true)
 end)
 

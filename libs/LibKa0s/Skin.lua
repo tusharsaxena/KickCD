@@ -62,7 +62,8 @@ if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary
 
 -- Minor 3: ResetToSkin sets a setting's `<key>FromSkin` companion where it has one, and a bool key
 -- (a companion named directly) to true, so the sentinel never lands in a media pick or a bool
--- (OptionsCompose minor 12's companions; LK-07 of the skinning run).
+-- (OptionsCompose minor 12's companions; LK-07 of the skinning run). Only a STORED companion was
+-- seen until minor 8, which recognizes one by its name.
 -- Minor 4: OwnerLabel and WriteChoice, the read and the write of a registration the Appearance tab's copy to
 -- every Ka0s addon needs (OptionsAppearance.lua; LK-10 of the skinning run).
 -- Minor 5: each owner's two exceptions, the Appearance tab's "Ignore settings panel" and "Ignore
@@ -85,7 +86,18 @@ if not core or (core.MINOR or 0) < NEEDS_CORE then return end   -- no NewLibrary
 -- name with no dot, a schema name or a malformed definition is refused and logged once. And
 -- `__RemapName`, the check a primitive's `opts.tokens` slot remap makes of each name (LK-02).
 -- And `__DrawsKey`, the key an owner draws by, which a primitive's `opts.stockDefault` asks (LK-05).
-local MAJOR, MINOR = "LibKa0s-Skin-1.0", 7
+-- Minor 8: ResetToSkin sets a companion named directly (a key ending in `FromSkin`) to true whether
+-- it is stored or not, where minor 3 recognized one only when it already held a bool and wrote the
+-- sentinel into an absent one, which Resolve reads as not following (AceDB strips a companion equal
+-- to its default). `opts.companions` sets every listed pick's companion, stored or not, for a host
+-- that names its picks (LK-07 of Ka0sAddonsCommonTasks docs/2026-10-30-SKIN_LIBRARY_FOLLOWUPS, R-6).
+-- And `DrawsKey`, minor 7's `__DrawsKey` made public (lib-level, not a facade member; LK-10, R-9):
+-- `__DrawsKey` stays one release as its alias. And Ignore fonts reaches the HUD (LK-01, R-1, D-09):
+-- while the owner ignores fonts, `Token` answers nil for `hud.font` and `hud.outline` and `Resolve`
+-- answers the stored value for them (nil for a stored FROM_SKIN), whatever the companion says.
+-- And the stock look is retired (LK-02, R-2): no primitive reads `opts.stockDefault` any more
+-- (SkinPaint minor 12), so the library itself no longer asks `DrawsKey`; a host may.
+local MAJOR, MINOR = "LibKa0s-Skin-1.0", 8
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
 if not lib then return end
 
@@ -636,6 +648,15 @@ function lib:__FontsIgnored(owner)
   return o ~= nil and o.ignoreFonts == true
 end
 
+-- The HUD's two font tokens: while the owner ignores fonts, the stored value wins for them in
+-- `Resolve` and `Token` (minor 8, R-1). `hud.fontSize` is out of scope; `__Tokens` is unchanged,
+-- since P.font already hands every painted string back through `__FontsIgnored`.
+local HUD_FONT = { ["hud.font"] = true, ["hud.outline"] = true }
+
+local function hudFontIgnored(self, owner, name)
+  return HUD_FONT[name] == true and self:__FontsIgnored(owner)
+end
+
 -- ── the owner's font and texture ─────────────────────────────────────────────────────────────
 
 --- The owner's overrides: font, texture, each an LSM key (a `font` and a `statusbar` key), or nil
@@ -751,12 +772,15 @@ end
 
 --- The key `owner` draws by: "eui" while EllesmereUI paints it (its derived tokens, the library's
 --- technique when EllesmereUI is refused included), else the skin key it wears (`lib.DEFAULT` for
---- Ka0s Default, and for an owner on `eui` before EllesmereUI paints it: the live fallback). What a
---- primitive's `opts.stockDefault` asks (minor 7, LK-05 of the skinning rollout). Internal.
-function lib:__DrawsKey(owner)
+--- Ka0s Default, for a key no skin registers, and for an owner on `eui` before EllesmereUI paints
+--- it: the live fallback). An unregistered owner answers `lib.DEFAULT`. Minor 7 (LK-05 of the
+--- skinning rollout); public since minor 8 (R-9), lib-level and never a facade member.
+function lib:DrawsKey(owner)
   local _, key = baseOf(owner)
   return key
 end
+--- Minor 7's internal name, kept one release as an alias for a copy or test that still names it.
+lib.__DrawsKey = lib.DrawsKey
 
 --- One owner token's value under `key` (a skin key, or "eui"), reading the follow token from `t`.
 --- Ka0s Default answers the default, unless the owner's font or texture override moved the follow
@@ -807,8 +831,10 @@ function lib:__Tokens(owner)
 end
 
 --- The owner's resolved token `name` (from `__Tokens`): a color is `{ r, g, b, a }`, shared, never
---- written to. An unregistered owner reads Ka0s Default. nil for a token the skin leaves alone.
+--- written to. An unregistered owner reads Ka0s Default. nil for a token the skin leaves alone,
+--- which `hud.font` and `hud.outline` are while the owner ignores fonts (minor 8, R-1).
 function lib:Token(owner, name)
+  if hudFontIgnored(self, owner, name) then return nil end
   return self:__Tokens(owner)[name]
 end
 
@@ -864,8 +890,14 @@ function lib.IsFromSkin(value)
 end
 
 --- `value`, or the owner's token `kind` when `value` is the FROM_SKIN sentinel or `fromSkin` (a
---- setting's companion "follow the skin" bool) is true.
+--- setting's companion "follow the skin" bool) is true. While the owner ignores fonts, `hud.font`
+--- and `hud.outline` answer the stored `value` whatever the companion says, and nil for a stored
+--- FROM_SKIN, which names no face of its own (minor 8, R-1): the host's own setting stands.
 function lib:Resolve(owner, kind, value, fromSkin)
+  if hudFontIgnored(self, owner, kind) then
+    if value == self.FROM_SKIN then return nil end
+    return value
+  end
   if value == self.FROM_SKIN or fromSkin == true then return self:Token(owner, kind) end
   return value
 end
@@ -883,21 +915,26 @@ local function walk(t, path)
   return parent, segs[#segs]
 end
 
---- Put every listed key of `profile` back on the skin (the owner's ruling R3). A key holding a
---- color (a table), or one with a `<key>FromSkin` companion beside it (OptionsCompose's `fromSkin`
---- pickers, minor 3), keeps its value and gets the companion set to true; a bool key (a companion
---- named directly) is set to true; any other key takes the FROM_SKIN sentinel. Keys may be dotted
---- paths into nested tables; a path whose table does not exist is skipped. Answers how many keys it
---- set. Called as `Skin.ResetToSkin(p, keys)`.
-function lib.ResetToSkin(profile, keys, extra)
-  if profile == lib then profile, keys = keys, extra end
+--- Put every listed key of `profile` back on the skin (the owner's ruling R3). A key whose name
+--- ends in `FromSkin` is a companion named directly and is set to true, stored or not and whatever
+--- it held (minor 8). A key holding a color (a table), or one with a `<key>FromSkin` companion
+--- beside it (OptionsCompose's `fromSkin` pickers, minor 3), keeps its value and gets the companion
+--- set to true; with `opts.companions` every listed key does, stored or not (minor 8); any other
+--- bool key is set to true; any other key takes the FROM_SKIN sentinel. Keys may be dotted paths
+--- into nested tables; a path whose table does not exist is skipped. Answers how many keys it set.
+--- Called as `Skin.ResetToSkin(p, keys[, opts])`.
+function lib.ResetToSkin(profile, keys, opts, extra)
+  if profile == lib then profile, keys, opts = keys, opts, extra end
   if type(profile) ~= "table" or type(keys) ~= "table" then return 0 end
+  local companions = type(opts) == "table" and opts.companions == true
   local n = 0
   for _, path in ipairs(keys) do
     local parent, leaf = walk(profile, tostring(path))
     if type(parent) == "table" then
       local v = parent[leaf]
-      if type(v) == "table" or parent[leaf .. "FromSkin"] ~= nil then
+      if leaf:match("FromSkin$") then
+        parent[leaf] = true
+      elseif companions or type(v) == "table" or parent[leaf .. "FromSkin"] ~= nil then
         parent[leaf .. "FromSkin"] = true
       elseif type(v) == "boolean" then
         parent[leaf] = true

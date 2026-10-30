@@ -242,14 +242,22 @@ local function pickRow(f, key)
     error("no row for " .. key, 0)
 end
 
-test("Skin picker: the title names this addon, and the eye is hidden", onWindow(function(f)
-    -- The shared mock's FontString keeps no text, so the title is read off its SetText: a repeat
-    -- call while the window is up re-reads the spec and sets it again.
-    local text, own = nil, rawget(f.title, "SetText")
+test("Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye is hidden",
+    onWindow(function(f)
+    -- The shared mock's FontString keeps no text, so the title and the owner line are read off
+    -- their SetText: a repeat call while the window is up re-reads the spec and sets both again.
+    -- LibKa0s v1.81.0 (OptionsSkinPicker minor 2, R-11) moved the name off the title, which a
+    -- long label overran, onto frame.ownerLabel above the dropdown.
+    assertTrue(f.ownerLabel ~= nil, "the window carries the owner line")
+    local text, label = nil, nil
+    local ownTitle, ownLabel = rawget(f.title, "SetText"), rawget(f.ownerLabel, "SetText")
     f.title.SetText = function(_, v) text = v end
+    f.ownerLabel.SetText = function(_, v) label = v end
     assertTrue(rawequal(NS.MaybeShowSkinPicker(), f), "a repeat call answers the same window")
-    rawset(f.title, "SetText", own)
-    assertEqual(text, "Choose a skin for Ka0s KickCD")
+    rawset(f.title, "SetText", ownTitle)
+    rawset(f.ownerLabel, "SetText", ownLabel)
+    assertEqual(text, "Choose a skin")
+    assertEqual(label, "Ka0s KickCD")
     assertTrue(f.preview == nil or not f.preview:IsShown(), "no onPreview: the eye is hidden")
 end))
 

@@ -181,12 +181,17 @@ facade, the seven `skin.*` keys and their `skipRender` rows on the Skin tab, `/k
 unregistered skin and reaching each half, a copy repainting once, a profile switch and reset, and the
 owner handed to every `LibKa0s-Widgets-1.0` factory and tool descriptor. `tests/test_skin_settings.lua`
 pins the settings pages: the AceGUI widgets the addon acquires painted past the proxy under a
-non-default skin and released stock, nothing painted under the defaults, and each token equal on Ka0s
-Default to the literal it replaced. `tests/test_skin_hud.lua` pins the HUD: the sixteen companions and
-their defaults, the HUD drawing `NS.SkinResolve`'s answer (each `LibSharedMedia` fetch is recorded), a
-skin switch repainting with no stored value moved, and the one-time reset running once per profile.
-`tests/test_skin_picker.lua` pins the first-run picker: its spec, the login and profile-event showings,
-the combat hold, the stand-down, and the real window's title, Apply, close and gear, with no eye.
+non-default skin and released stock, nothing painted under the defaults, each token equal on Ka0s
+Default to the literal it replaced, and the AceGUI-missing label put on the settings panel (`S.Text`'s
+`panel`), so Ignore settings panel gives it back stock, live. `tests/test_skin_hud.lua` pins the HUD:
+the sixteen companions and their defaults, the HUD drawing `NS.SkinResolve`'s answer (each
+`LibSharedMedia` fetch is recorded), Ignore fonts drawing every HUD text's stored face and the charges
+badge's `NumberFontNormal` face (LibKa0s v1.81.0), a skin switch repainting with no stored value moved
+and nothing resolved while stood down (counted at `NS.SkinResolve`, since every skin's HUD face is also
+its title face, which the library's tool surfaces fetch), and the one-time reset running once per
+profile. `tests/test_skin_picker.lua` pins the first-run picker: its spec, the login and profile-event
+showings, the combat hold, the stand-down, and the real window's title (*Choose a skin*) and owner line
+(`frame.ownerLabel`, *Ka0s KickCD*), Apply, close and gear, with no eye.
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

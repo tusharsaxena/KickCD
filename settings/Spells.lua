@@ -538,8 +538,10 @@ local function showAceGUIMissing()
         fallbackLabel = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         fallbackLabel:SetPoint("CENTER", body, "CENTER", 0, 0)
         fallbackLabel:SetText("AceGUI not loaded")
-        -- The skin's accent role: gold on Ka0s Default, GameFontNormal's own color (D8).
-        NS.Skin.Text(fallbackLabel, "accent")
+        -- The skin's accent role: gold on Ka0s Default, GameFontNormal's own color (D8). The label
+        -- is on the settings panel, so while the Scope's Ignore settings panel is on (the default)
+        -- it keeps GameFontNormal's own look (LibKa0s v1.81.0's `panel`, decision D-02).
+        NS.Skin.Text(fallbackLabel, "accent", { panel = true })
     end
     fallbackLabel:Show()
 end

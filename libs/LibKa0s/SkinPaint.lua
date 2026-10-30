@@ -104,10 +104,18 @@ if not lib then return end   -- the shell refused (no Core, or below its floor):
 -- caller names instead of the primitive's own, a fill slot carrying that token's gradient pair or
 -- none. No `opts.tokens` paints exactly as before. The faders moved, unchanged, to
 -- SkinPaintExtras.lua (minor 5) so this file stays out of layout-§1's 1000-line band; P.NINE_KEYS.
--- Then (LK-05, still minor 11): `opts.stockDefault` (P.keepStock, P.stockDefault): a template-built
--- target stays the client's while its owner draws Ka0s Default and its hooks stand down; Panel and
--- Inset moved, unchanged, to SkinPaintExtras.lua (P.FILL_SLOTS shared) to stay out of the band.
-local PAINT_MINOR = 11
+-- Then (LK-05, still minor 11): Panel and Inset moved, unchanged, to SkinPaintExtras.lua
+-- (P.FILL_SLOTS shared) to stay out of the band.
+-- Minor 12 (LK-02 of Ka0sAddonsCommonTasks docs/2026-10-30-SKIN_LIBRARY_FOLLOWUPS, ruling R-2): the
+-- stock look is retired. `opts.stockDefault` (minor 11's P.keepStock and its `stockKept` mark) is
+-- ignored, so Ka0s Default paints the Ka0s look everywhere; `opts.stock` stays the fade list it is
+-- under every skin. P.markStock keeps the `stock` mark. And P.unpaint gives back the text alignment
+-- a TitleBar set (D-08). And (LK-06a of the same run, ruling R-5, D-02, still minor 12): a hook laid
+-- by P.hook does nothing while its record is given back on a settings panel (`rec.panelOff`,
+-- SkinPaintExtras' P.panelIgnored), so a panel-scoped search box's focus line stays its own.
+-- And (LK-A1, still minor 12): P.fontSize reads a stock size of 0 or below as none, and P.unfont
+-- gives no such size back, so SetFont never gets an invalid font height.
+local PAINT_MINOR = 12
 if lib.__paintMinor and lib.__paintMinor >= PAINT_MINOR
   and lib.__paintShellMinor == lib.MINOR then return end
 lib.__paintMinor      = PAINT_MINOR
@@ -440,7 +448,7 @@ function P.hook(rec, frame, script, fn)
   hooks[script] = true
   frame:HookScript(script, function(self, ...)
     local r = lib.painted[self]
-    if r and not r.regions.stockKept then fn(self, r, ...) end   -- inert while kept stock (minor 11)
+    if r and not r.panelOff then fn(self, r, ...) end   -- given back on a settings panel (P.panelIgnored)
   end)
 end
 
@@ -495,7 +503,7 @@ function P.unfont(rec, fs)
   local obj = namedFont(fs, s.obj)
   if obj then
     fs:SetFontObject(obj)
-  elseif s.path then
+  elseif s.path and type(s.size) == "number" and s.size > 0 then   -- never a height SetFont refuses
     fs:SetFont(s.path, s.size, s.flags)
     if s.shadowOffset and type(fs.SetShadowOffset) == "function" then
       fs:SetShadowOffset(unpack(s.shadowOffset))
@@ -516,11 +524,14 @@ end
 
 --- The size a target of stock size `stock` takes under the owner's skin: `stock` scaled by the
 --- skin's size token over Ka0s Default's (minor 4). A target with no stock size reads the reference
---- itself; a skin or a reference without the token leaves the stock size alone.
+--- itself; a skin or a reference without the token leaves the stock size alone. A stock size that is
+--- not a number above 0 (a string with no font yet reports 0) counts as none, so the answer is never
+--- a height SetFont refuses (minor 12, LK-A1).
 function P.fontSize(owner, token, stock)
   local want = P.T(owner)[token]
   local ref = lib:ResolveSkin(lib.DEFAULT)[token]
   stock = tonumber(stock)
+  if stock and stock <= 0 then stock = nil end
   if type(want) ~= "number" then return stock or ref or 12 end
   if not stock or type(ref) ~= "number" or ref <= 0 then return want end
   return stock * want / ref
@@ -756,12 +767,14 @@ local function restoreColors(rec, method)
 end
 
 --- Undo everything a primitive did to a target: faded art back to its alpha, fonts, text and vertex
---- colors and a backdrop back to what they were, every Ka0s region and both holders hidden. The
---- regions are kept for reuse.
+--- colors, text alignment (minor 12) and a backdrop back to what they were, every Ka0s region and
+--- both holders hidden. The regions are kept for reuse.
 function P.unpaint(rec, frame)
   local s = rec.regions.saved or {}
   for region, a in pairs(s.alpha or {}) do region:SetAlpha(a) end
   s.alpha = nil
+  for fs, align in pairs(s.justify or {}) do fs:SetJustifyH(align) end
+  s.justify = nil
   for fs in pairs(s.font or {}) do P.unfont(rec, fs) end
   restoreColors(rec, "SetTextColor")
   restoreColors(rec, "SetVertexColor")
@@ -773,39 +786,13 @@ function P.unpaint(rec, frame)
     if key ~= "holder" and lib.__ours[r] then r:Hide() end
   end
   if rec.regions.holder then rec.regions.holder:Hide() end
-  rec.regions.stockKept = nil   -- given back: no mark outlives the paint it stood for
 end
 
---- The caller's `opts.stockDefault` (minor 11, LK-05 of the skinning rollout): true when it asks
---- for the client's stock look and `owner` draws Ka0s Default (`Skin:__DrawsKey`; never under
---- EllesmereUI's tokens, so a refused EllesmereUI is painted, failing closed). Then everything the
---- target wears from the library is given back (P.unpaint, so a live switch back to Ka0s Default is
---- the stock target again), the record marks it `stockKept` so its hover and enable hooks stand
---- down, and the caller paints nothing. Otherwise clears the mark and answers false. The target
---- stays recorded either way, so a skin switch replays the call. The mark and the give-back are the
---- TARGET's, shared by every primitive that paints it, so every call on a stock-kept target passes
---- `stockDefault` (a second call without it paints, and clears the mark). An owner change, an
---- Untrack and P.unpaint clear it.
-function P.keepStock(owner, rec, frame, opts)
-  if not rec then return false end
-  local want = type(opts) == "table" and opts.stockDefault == true
-  if want and type(lib.__DrawsKey) == "function" and lib:__DrawsKey(owner) == lib.DEFAULT then
-    P.unpaint(rec, frame)
-    rec.regions.stockKept = true
-    return true
-  end
-  rec.regions.stockKept = nil
-  return false
-end
-
---- Mark a stock target (one wearing the client's template art) on its record, so its art is faded
---- under every skin. Since minor 6 no skin leaves a stock target as the client draws it, Ka0s
---- Default included, so the caller paints, unless the caller asked for `opts.stockDefault` and the
---- owner draws Ka0s Default (P.keepStock, minor 11): then it answers true and the caller returns.
-function P.stockDefault(owner, rec, frame, opts)
-  if not rec then return false end
-  if P.hasStock(frame, opts) then rec.regions.stock = true end
-  return P.keepStock(owner, rec, frame, opts)
+--- Mark a stock target (one wearing the client's template art, or naming some in `opts.stock`) on
+--- its record, so the caller fades that art. No skin leaves a stock target as the client draws it,
+--- Ka0s Default included (minor 6); minor 12 retired `opts.stockDefault`, the one exception.
+function P.markStock(rec, frame, opts)
+  if rec and P.hasStock(frame, opts) then rec.regions.stock = true end
 end
 
 --- Record that `prim` painted `target` for `owner` (Skin:Track), and answer the record. A target
@@ -818,7 +805,6 @@ function P.track(owner, target, name, ...)
   if not rec then return nil end
   local regions = lib.__regions[target]
   if regions then
-    if not old then regions.stockKept = nil end   -- Untracked meanwhile: its stock mark goes with it
     rec.regions = regions
   else
     lib.__regions[target] = rec.regions
@@ -965,14 +951,13 @@ P.FILL_SLOTS = FILL_SLOTS   -- Panel and Inset's too (SkinPaintExtras.lua since 
 --- `opts.tokens` (minor 11) remaps a slot to a library or owner token by NAME: `bg` (`win.bg`, and
 --- its gradient pair), `border` (`win.border`), `inner` (`win.inner`), `top` (the top bar's
 --- `title.bg`), `bottom` (the bottom bar's `foot.bg`), `text` (`title.text`), `divider` (`divider`).
---- `opts.stockDefault` (minor 11) keeps a template-built window (its art in `NineSlice` and the
---- regions `opts.stock` names) as the client draws it while the owner draws Ka0s Default, and paints
---- it under every other skin (P.keepStock). Draws no Media icon.
+--- A template-built window has its art (`NineSlice` and the textures `opts.stock` names) faded under
+--- every skin, Ka0s Default included. Draws no Media icon.
 prim.Shell = function(owner, frame, opts)
   if type(frame) ~= "table" then return end
   local rec = P.track(owner, frame, "Shell", opts)
   opts = type(opts) == "table" and opts or {}
-  if P.stockDefault(owner, rec, frame, opts) then return end
+  P.markStock(rec, frame, opts)
   local T = P.T(owner)
   -- A payload with no SkinDefs.lua registers no skin, so no token resolves: the window is left as
   -- it is rather than painted with nothing (the header's degraded engine).

@@ -9,7 +9,8 @@
 -- AceConfigDialog drew; nothing is painted under the defaults (Ka0s Default, the settings panel
 -- left the client's); and the typed look values the pages carried are tokens now, each equal on
 -- Ka0s Default to the literal it replaced: the Remove mark's close.hot red, the add box's sem.warn
--- "not tracked" tag, the rows' tooltip hints in gtip.title, and the AceGUI-missing label's accent.
+-- "not tracked" tag, the rows' tooltip hints in gtip.title, and the AceGUI-missing label's accent,
+-- which is on the settings panel (S.Text's `panel`), so Ignore settings panel leaves it stock.
 --
 -- The kit's widgets are recorders without AceGUI's regions, so "painted" is read where the library
 -- keeps it: `Skin.__ace[widget].owner` (SkinAce.lua's weak state table), set while owned and
@@ -312,5 +313,33 @@ test("skin settings: with Ignore settings panel on, the page's tokens stay Ka0s 
         end)
         S.Color = color
         if not ok then error(err, 0) end
+    end)
+end)
+
+test("skin settings: the AceGUI-missing label is on the settings panel, so Ignore settings panel leaves it stock", function()
+    -- red under: NS.Skin.Text(fallbackLabel, "accent") without { panel = true }. S.Text paints
+    -- window strings too, so it wears the skin whatever the Scope says unless the host puts the
+    -- string on its settings panel (LibKa0s v1.81.0, SkinPaintExtras minor 6, decision D-02).
+    onSkin("azeroth", true, function()
+        local ar, ag, ab = NS.Skin.Color("text.accent")
+        assertTrue(ar ~= nil and not (ar == 1 and ag == 1 and ab == 1), "sanity: Azeroth's accent is a color")
+        local S, text, label, opts = NS.Skin, NS.Skin.Text, nil, nil
+        S.Text = function(fs, role, o) label, opts = fs, o; return text(fs, role, o) end
+        local stub = mocks.LibStub
+        mocks.LibStub = setmetatable({}, { __index = stub, __call = function(_, name, silent)
+            if name == "AceGUI-3.0" then return nil end
+            return stub(name, silent)
+        end })
+        local ok, err = pcall(function() Spells:RefreshRows() end)
+        mocks.LibStub = stub
+        S.Text = text
+        if not ok then error(err, 0) end
+        assertTrue(label ~= nil, "the AceGUI-missing label was colored through S.Text")
+        assertTrue(type(opts) == "table" and opts.panel == true, "it is put on the settings panel")
+        local r, g, b = label:GetTextColor()
+        assertTrue(not (r == ar and g == ag and b == ab), "the panel ignored: not Azeroth's accent")
+        Skin:SetIgnore(OWNER, false, false)
+        r, g, b = label:GetTextColor()
+        assertEqual(r, ar, "the panel skinned: Azeroth's accent, live"); assertEqual(g, ag); assertEqual(b, ab)
     end)
 end)

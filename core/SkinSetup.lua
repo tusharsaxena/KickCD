@@ -38,6 +38,8 @@ local addonName, NS = ...
 --                           written as a literal keeps its bytes on Ka0s Default.
 --   NS.SkinResolve(k,v,f)   a HUD media pick as drawn: the skin's token `k` while the companion `f`
 --                           is true, else (or when the skin answers nothing) the stored pick `v`.
+--                           While the Scope's Ignore fonts is on, S.Resolve answers the stored
+--                           pick for hud.font (LibKa0s v1.81.0, R-1), so the HUD draws its own face.
 --   NS.OnSkinLooksChanged(fn) a HUD module's repaint, run after a skin, source or override change.
 --   NS.SkinPaintAce(w)      an AceGUI widget this addon acquired itself, painted for this owner:
 --   NS.SkinPaintAceTree(c)  `Skin:PaintAce` / `Skin:PaintAceTree` with the owner bound (the facade
@@ -143,8 +145,11 @@ end
 --- A HUD media pick as the HUD draws it (KC-03, skinning-§6): the skin's token `kind` while the
 --- pick's "Use the skin's ..." companion is true, the stored pick otherwise, and the stored pick
 --- again when the skin answers nothing (the degraded facade's host copy holds no HUD token), so
---- the HUD never draws a nil face, texture or border. Read in the config paths only (Layout,
---- Reskin, Apply), never in a ticker: it is a token read per call.
+--- the HUD never draws a nil face, texture or border. While the Scope's Ignore fonts is on, the
+--- library's Resolve answers the stored pick for hud.font whatever the companion says (LibKa0s
+--- v1.81.0, R-1), so Ignore fonts reaches the HUD here with no gate of this addon's own; a nil
+--- stored pick (the charges badge) answers nil, and the caller keeps its template's face. Read
+--- in the config paths only (Layout, Reskin, Apply), never in a ticker: it is a token read per call.
 function NS.SkinResolve(kind, value, fromSkin)
     local S = NS.Skin
     if fromSkin ~= true or not (S and S.Resolve) then return value end
