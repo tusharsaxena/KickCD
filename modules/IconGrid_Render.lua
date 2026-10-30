@@ -853,12 +853,16 @@ end
 --- The charges badge's face: the skin's HUD face (hud.font), with the size and flags of the
 --- NumberFontNormal it was built from (DECISIONS D4: it has no setting of its own, so it follows
 --- the skin as the rest of the HUD text does). Read off the font OBJECT, never the FontString,
---- which carries the last face set here. A face LibSharedMedia cannot fetch keeps the template's.
+--- which carries the last face set here. A face LibSharedMedia cannot fetch keeps the template's,
+--- and so does no face at all: while the Scope's Ignore fonts is on, the skin answers nil for
+--- hud.font (LibKa0s v1.81.0, R-1) and the badge, having no pick of its own, draws the client's
+--- number face. Nothing is fetched then, so no LibSharedMedia default can stand in for it.
 local function applyChargesFont(icon, LSM)
     local fobj = _G.NumberFontNormal
     if not (fobj and fobj.GetFont and icon.chargesText and icon.chargesText.SetFont) then return end
     local base, size, flags = fobj:GetFont()
-    local face = LSM and LSM.Fetch and LSM:Fetch("font", NS.SkinResolve("hud.font", nil, true) or "", true)
+    local key = NS.SkinResolve("hud.font", nil, true)
+    local face = key and LSM and LSM.Fetch and LSM:Fetch("font", key, true)
     if face or base then icon.chargesText:SetFont(face or base, size or 14, flags or "OUTLINE") end
 end
 

@@ -338,8 +338,12 @@ end
 --- profile reset puts the record back to false, and the step then re-runs against defaults that
 --- already follow the skin (X3), which writes nothing a player could see.
 ---
---- Only a companion that reads a boolean is named: ResetToSkin writes the FROM_SKIN sentinel into
---- a key it finds neither a table nor a bool, and a sentinel in a bool is nothing the HUD reads.
+--- Only a companion that reads a boolean is named. The filter was written because ResetToSkin
+--- (LibKa0s Skin minor 7) wrote the FROM_SKIN sentinel into a key it found neither a table nor a
+--- bool; since Skin minor 8 (v1.81.0, R-6) a listed key ending in FromSkin is set true stored or
+--- not, so that reason is gone. The filter stays (decision D-19: a step that already shipped keeps
+--- producing the same result for a profile that migrates late), and it writes nothing a player
+--- could see either way: an absent companion already reads AceDB's default, true.
 --- Without the library the companions are set here directly, the same write.
 local HUD_SKIN_COMPANIONS = {
     "icons.borderTextureFromSkin",
