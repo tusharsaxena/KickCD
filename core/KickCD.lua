@@ -166,6 +166,24 @@ end
 -- same refusal to touch the deprecated global. settings/Slash.lua and
 -- core/PerfSetup.lua went the same way, so the three cannot disagree.)
 
+-- The guards before the write, as refuse's (guard, message) pair; nil when the write may go ahead.
+local function lockRefusal(self, value)
+    if not (self.db and self.db.profile) then
+        return "db not ready", "db not initialized yet"
+    end
+    -- Unlocking is KickCD's preview and never runs beside a simulation (KickCD#38 H5, KC-06): unlock,
+    -- toggle and the launcher's Locked entry all land here and refuse. Locking stays allowed.
+    if not value and NS.Sim and NS.Sim:IsActive() then
+        return "simulation running", NS.L["End the simulation first (/kcd sim stop)."]
+    end
+end
+
+-- The write itself, through the seam: true when the Store took it.
+local function storeLocked(self, v)
+    local S = self.Settings and self.Settings.Store
+    return S and S.Set and S.Set("locked", v)
+end
+
 -- Set db.profile.locked through the schema seam (NS.Settings.Store.Set), then
 -- repaint an open panel's widgets (Helpers.RefreshScalars) -- the same two steps
 -- Helpers.SetAndRefresh takes for `/kcd set locked true` and the General >
@@ -182,17 +200,10 @@ end
 -- never falls back to `db.profile.locked = v` around the seam.
 local function setLocked(self, value)
     local verb = value and "lock" or "unlock"
-    if not (self.db and self.db.profile) then
-        return refuse(self, "Set", verb, nil, "db not ready", "db not initialized yet")
-    end
-    -- Unlocking is KickCD's preview and never runs beside a simulation (KickCD#38 H5, KC-06): unlock,
-    -- toggle and the launcher's Locked entry all land here and refuse. Locking stays allowed.
-    if not value and NS.Sim and NS.Sim:IsActive() then
-        return refuse(self, "Set", verb, nil, "simulation running", NS.L["End the simulation first (/kcd sim stop)."])
-    end
+    local guard, msg = lockRefusal(self, value)
+    if guard then return refuse(self, "Set", verb, nil, guard, msg) end
     local v = value and true or false
-    local S = self.Settings and self.Settings.Store
-    if not (S and S.Set and S.Set("locked", v)) then
+    if not storeLocked(self, v) then
         return refuse(self, "Set", verb, nil, "settings layer not ready", "Settings layer not ready yet")
     end
     local H = self.Settings.Helpers

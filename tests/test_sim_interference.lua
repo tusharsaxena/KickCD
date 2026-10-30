@@ -147,11 +147,12 @@ test("Sim interference: /kcd unlock, /kcd toggle and NS.ToggleLock refuse while 
     local env = running()
     local NS = env.NS
     local line = NS.L[REFUSE]
-    for _, run in ipairs({
+    local runs = {
         function() NS:OnSlashCommand("unlock") end,
         function() NS:OnSlashCommand("toggle") end,
         function() NS.ToggleLock() end,
-    }) do
+    }
+    for _, run in ipairs(runs) do
         local lines = said(NS, run)
         assertTrue(#lines >= 1 and lines[#lines]:find(line, 1, true) ~= nil, table.concat(lines, " || "))
         assertEqual(NS.db.profile.locked, true, "the lock moved")

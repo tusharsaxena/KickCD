@@ -373,13 +373,10 @@ local function walkPath(t, path)
     return parent, leaf
 end
 
-function NS.Database:MigrateHudSkin(db)
-    local p = db and db.profile
-    if not (p and type(p.units) == "table" and type(p.skin) == "table") then return end
-    if p.skin.hudReset == true then return end
-
+--- Every unit's HUD companion flag that holds a stored boolean, as profile-relative paths.
+local function hudSkinKeys(units)
     local keys = {}
-    for unit, u in pairs(p.units) do
+    for unit, u in pairs(units) do
         if type(u) == "table" then
             for _, rel in ipairs(HUD_SKIN_COMPANIONS) do
                 local parent, leaf = walkPath(u, rel)
@@ -389,18 +386,30 @@ function NS.Database:MigrateHudSkin(db)
             end
         end
     end
+    return keys
+end
 
+--- Put `keys` back on the skin: the library's ResetToSkin when it is loaded, else each flag to
+--- true by hand. Answers how many it reset.
+local function resetHudKeys(p, keys)
     local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
-    local n
     if Skin and type(Skin.ResetToSkin) == "function" then
-        n = Skin.ResetToSkin(p, keys)
-    else
-        n = 0
-        for _, path in ipairs(keys) do
-            local parent, leaf = walkPath(p, path)
-            if parent then parent[leaf] = true; n = n + 1 end
-        end
+        return Skin.ResetToSkin(p, keys)
     end
+    local n = 0
+    for _, path in ipairs(keys) do
+        local parent, leaf = walkPath(p, path)
+        if parent then parent[leaf] = true; n = n + 1 end
+    end
+    return n
+end
+
+function NS.Database:MigrateHudSkin(db)
+    local p = db and db.profile
+    if not (p and type(p.units) == "table" and type(p.skin) == "table") then return end
+    if p.skin.hudReset == true then return end
+
+    local n = resetHudKeys(p, hudSkinKeys(p.units))
     p.skin.hudReset = true
     migrateDebug("put %s HUD style pick(s) on the skin (one-time reset)", tostring(n))
 end
