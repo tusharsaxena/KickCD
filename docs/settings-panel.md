@@ -98,7 +98,7 @@ Two things about this tab are this addon's rather than the composer's:
 
 General's second and last tab (the page has no Keybindings tab) is the library's own entry, `H.AppearanceTab({ owner, get, set })` (`settings/General.lua`), passed in `RenderTabbedSchema`'s `opts.tabs`. Its key is `Appearance` and its label **Skin**; the eight `skin.*` rows ([schema.md](schema.md#skin--the-skin-this-addon-wears)) take that key as their `group`, so the host tab takes the group's place in the strip instead of adding a second one. The library draws the whole tab from `LibKa0s-Skin-1.0` for the owner `core/SkinSetup.lua` registered: a **Skin source** heading (*Ka0s skins*, *EllesmereUI* with the reason when it cannot skin this addon), a **Look** heading over the nine skins with their swatches, **Font and texture** (*Skin's default* first; each row is the library's media preview picker, `Ka0sMedia_Font` and `Ka0sMedia_Statusbar`, LibKa0s v1.83.0, or the stock `Dropdown` without it), the **Font outline**, the Scope (**Ignore settings panel**, on by default, and **Ignore fonts**), **Copy to every Ka0s addon…** and the note. `get` and `set` are the seam's read and write (`NS.SkinChoice`, `NS.WriteSkinChoice`), so a pick lands through `Store.Set` like every other setting; the tab moves the applied skin first and each row's `onChange` then finds its half already applied.
 
-With **Ignore settings panel** off, the panel's own chrome and every AceGUI widget the addon acquires follow the skin: the library paints what it builds, the Units band reads AceGUI through the Options proxy (`NS.AceGUI`), the Spells page acquires through `Spells.Acquire` (`AceGUI:Create`, then `NS.SkinPaintAce`), and the Profiles page paints the tree AceConfigDialog drew (`NS.SkinPaintAceTree`). A released widget goes back to AceGUI's shared pool stock, so another addon never inherits KickCD's skin.
+With **Ignore settings panel** off, the panel's own chrome and every AceGUI widget the addon acquires follow the skin: the library paints what it builds, the Units band with it (`O.PageBanner` draws the picker and the acts), the Spells page acquires through `Spells.Acquire` (`AceGUI:Create`, then `NS.SkinPaintAce`), and the Profiles page paints the tree AceConfigDialog drew (`NS.SkinPaintAceTree`). A released widget goes back to AceGUI's shared pool stock, so another addon never inherits KickCD's skin.
 
 ## The composed control groups (`options-ui-§16`)
 
@@ -207,7 +207,7 @@ page's Defaults."*
 
 **The band's rows keep their General stamp.** `units.<u>.enabled` and `units.focus.link` are General
 rows (`settings/General.lua`), `skipRender`, with `panel = "general"`, `section = "units"`. The band
-draws them through the library's `RenderField`, so they write through the one seam. General's
+draws them as `Helpers.PageBanner` acts that read `Store.Get` and write `Helpers.SetAndRefresh`, so they write through the one seam. General's
 Defaults, *Reset all settings* and `/kcd list` (grouped by panel) reach them exactly as before item
 020, and General's Defaults tooltip says it resets them. Re-stamping them to the Units page was a
 SHOULD that this run did not take (the item's binding note over LAYOUT_CROSS_ADDON's XC-14).

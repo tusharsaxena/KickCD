@@ -352,6 +352,33 @@ test("the band's acts carry each row's label and body, and the copy act its own"
     assertEqual(spec.value, "focus")
 end)
 
+-- The click, through the button the library drew and into the store. The band's
+-- other cases read the act and CopyStyling's own cases call it directly, so
+-- neither reaches the closure between them.
+--
+-- red under: the act's onClick doing nothing, or copying the wrong way round.
+test("clicking the band's Copy from Target copies Target onto Focus and unlinks", function()
+    local inst = T.load(true, true)
+    local iNS = inst.NS
+    local iH = iNS.Settings.Helpers
+    local ctx = iH.__panelFor("grid")
+    local units = iNS.db.profile.units
+    units.target.icons.primarySize = 55
+    units.focus.icons.primarySize = 77
+    units.focus.link = true
+    iH.SetViewedUnit("focus")
+    ctx.panel:Show()
+    iH.RefreshPanel(ctx, true)
+
+    local copy = ctx.__unitActs[3]
+    assertEqual(copy.text, iNS.L["Copy from Target"], "the third act is the copy button")
+    copy:__fire("OnClick")
+
+    assertEqual(units.focus.icons.primarySize, 55, "Focus took Target's value")
+    assertEqual(units.target.icons.primarySize, 55, "Target is the source and keeps its value")
+    assertEqual(units.focus.link, false, "the copy unlinks")
+end)
+
 test("the degraded stub carries no widget maker or layout constant", function()
     -- options-ui-§1 is explicit: MUST NOT carry a copy of a widget maker, the
     -- flow engine, the header, or any of the library's layout constants.

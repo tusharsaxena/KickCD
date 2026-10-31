@@ -1365,7 +1365,7 @@ Total.
 - the panel's schema reader hands back a stored FALSE as false, not nil
 - the landing page is drawn by the library's BuildLandingPage, logo and commands
 
-### test_options_panel_degraded.lua (10)
+### test_options_panel_degraded.lua (11)
 
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
@@ -1376,6 +1376,7 @@ Total.
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the band's acts carry each row's label and body, and the copy act its own
+- clicking the band's Copy from Target copies Target onto Focus and unlinks
 - the degraded stub carries no widget maker or layout constant
 
 ### test_skinsetup.lua (13)
@@ -1941,7 +1942,7 @@ Total.
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
-| test_options_panel_degraded.lua | 10 |
+| test_options_panel_degraded.lua | 11 |
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
@@ -1975,4 +1976,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1581** |
+| **Total** | **1582** |

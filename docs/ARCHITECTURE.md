@@ -374,10 +374,10 @@ collection's reference adopter, and every piece below copies its shape.
   With it off, Ka0s Default is the Ka0s look there too: v1.81.0 retired the stock look under Ka0s
   Default (R-2), and a player who wants the client's look picks WoW Default.
 - **The settings pages (KC-02).** The library's chrome (header, rail, tabs, drawers, every `O.*` row,
-  the Skin tab) follows the owner the Options descriptor names. The AceGUI widgets this addon acquires
-  itself are painted for it: the Spells page through `Spells.Acquire` (`AceGUI:Create`, then
-  `NS.SkinPaintAce`), the Profiles page with `NS.SkinPaintAceTree` after `AceConfigDialog:Open`, and the
-  Units band through the Options proxy (`NS.AceGUI`). The typed looks are tokens equal on Ka0s Default
+  the Units band's `O.PageBanner`, the Skin tab) follows the owner the Options descriptor names. The
+  AceGUI widgets this addon acquires itself are painted for it: the Spells page through
+  `Spells.Acquire` (`AceGUI:Create`, then `NS.SkinPaintAce`), and the Profiles page with
+  `NS.SkinPaintAceTree` after `AceConfigDialog:Open`. The typed looks are tokens equal on Ka0s Default
   to the literals they replaced: the Spells rows' Remove mark (`close.hot`), the add box's *not tracked*
   tag (`sem.warn`, through `NS.SkinEscape`), the rows' tooltip hint titles (`gtip.title`) and the
   AceGUI-missing label (`text.accent`, through `S.Text` with `panel = true`, so the Scope gives it back
