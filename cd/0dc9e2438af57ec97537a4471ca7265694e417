@@ -1,0 +1,5 @@
+Independent review of the KickCD leg (KC-F01, KC-F02) on feat/2026-10-31-font-pickers-skin-faces.
+One finding, low severity, comment-only, verified real and fixed at this head:
+- core/SkinSetup.lua ApplySkinOutline comment said an unknown outline mode reads as "all"; vendored Skin minor 10 resolves it to OUTLINE_DEFAULT, "hud". Fixed.
+- core/Database_Migrations.lua said PRE_V182_FACES are no longer shipped; v1.83.0 ships them again (libs/LibKa0s/Media.lua), matching docs/schema.md. Fixed.
+None rejected. No test added: no runtime change. Gate at this head: tests 1577 passed, 0 failed, 1 skipped; luacheck 0/0.
