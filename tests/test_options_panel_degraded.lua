@@ -88,7 +88,7 @@ function()
     -- on a load where the only three things that read it -- the CLI, the panel and
     -- RestoreAllDefaults' sessionOnly walk -- are respectively absent, absent, and
     -- looking for `state.debugConsole`, whose console window is unavailable on
-    -- this path too (core/DebugLogSetup.lua:70-72).
+    -- this path too (core/DebugLogSetup.lua:74).
     --
     -- red under: settings/Slash.lua's stub CliSet widening past the writeThrough
     -- list (a host-declared row written), or narrowing below it (`enabled`

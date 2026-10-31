@@ -79,13 +79,13 @@ end)
 
 test("Constants: a rendered unit panel spaces its rows by a real number of pixels", function()
     -- The user-visible end of the same guarantee, and the reason the type check
-    -- above is not enough on its own: settings/Panel_Render.lua:20 binds
-    -- `local ROW_VSPACER = Helpers.ROW_VSPACER` AT FILE LOAD and forwards that
-    -- binding at :83 and :117. A nil arriving there is silent — AddSpacer
+    -- above is not enough on its own: the rows are spaced by the library's
+    -- renderer, which reads L.ROW_VSPACER and hands it to AddSpacer
+    -- (libs/LibKa0s/OptionsWidgets.lua). A nil arriving there is silent — AddSpacer
     -- creates a full-width SimpleGroup with no height, every options row loses
     -- its spacing in game, and nothing raises.
     --
-    -- red under: `O.ROW_VSPACER = nil` at libs/LibKa0s/Options.lua's `O.ROW_VSPACER = L.ROW_VSPACER` export.
+    -- red under: `ROW_VSPACER` missing from libs/LibKa0s/Options.lua's layout table.
     local H = NS.Settings.Helpers
     local AceGUI = T.mocks.LibStub("AceGUI-3.0")
     local ctx = H.CreatePanel("KickCDRowSpacing", "Row spacing", { pageKey = "castbar" })

@@ -24,7 +24,7 @@ local onDragStop = IconGrid._OnDragStop
 -- and RegisterForDrag on the grid frame itself and nothing on screen says so: the grab target is
 -- whatever icons happen to be laid out, which with a one-spell list is a single 48px square and
 -- with an EMPTY list is nothing at all. That last case is why Layout keeps an empty grid visible at
--- primary-icon size in the first place -- "a small invisible square", :454-457 -- a wart written
+-- primary-icon size in the first place -- "a small invisible square", modules/IconGrid.lua:493-497 -- a wart written
 -- down as a wart because losing the only grab target was the worse of the two.
 --
 -- THE STRIP IS THE LIBRARY'S, NOT OURS. libs/LibKa0s/WidgetsDragHandle.lua (minor 4 vendored) ships the dark
@@ -36,7 +36,7 @@ local onDragStop = IconGrid._OnDragStop
 --
 -- Resolved at file load like every other library seam in this addon. ABSENT, buildHandle answers
 -- nil, inst.handle stays nil, and every use of it below is guarded -- so a degraded install loses
--- the affordance and nothing else: the grid is still SetMovable(true) (:597), still registers for
+-- the affordance and nothing else: the grid is still SetMovable(true) (modules/IconGrid.lua:576), still registers for
 -- drag while unlocked, and still saves through IconGrid.lua's onDragStop. That is why this seam needs no
 -- stub-parity case: there is no stub, because there is nothing to degrade TO.
 local KW   = LibStub and LibStub("LibKa0s-Widgets-1.0", true)
@@ -48,7 +48,7 @@ local HUD_LEVEL = NS.Const.LAYERS.LEVEL.HUD   -- frame-layering-§2 (core/Consta
 --- THE UNIT HAS TO BE IN THE TEXT. Both instances draw the same 18px gold-on-black strip and both
 --- are on screen at once whenever Focus is enabled, so a strip that said only the addon's name
 --- would leave the player guessing which of two identical strips moves which grid. The unit is
---- spelled the way the options panel already spells it -- settings/Panel_Render.lua:109's
+--- spelled the way the options panel already spells it -- settings/Panel_Render.lua:133's
 --- `(u == "target") and L["Target"] or L["Focus"]` -- rather than a second wording of the same two
 --- words, and the title is the key the TOC's `## Title` already carries (locales/enUS.lua).
 ---
@@ -66,7 +66,7 @@ end
 --- the primary icon -- the same reason AuraMaster puts its handle outside its anchor. It sits
 --- DRAG.GAP above the top edge instead and nothing inside the grid moves to make room. Parenting is
 --- what makes it inherit the grid's master scale and alpha for free (ApplyGeneral's SetScale /
---- SetAlpha, :531-532) and hide with it when DisableUnit hides the grid, so there is nothing for
+--- SetAlpha, modules/IconGrid.lua:528-529) and hide with it when DisableUnit hides the grid, so there is nothing for
 --- teardown to do. The point is set ONCE here because it never changes; ApplyLock only sizes and
 --- shows.
 ---
@@ -77,11 +77,11 @@ end
 --- on a frame that is no longer moving -- which the client treats as a no-op. One save path is
 --- worth more than one saved line.
 ---
---- `canDrag` REPEATS THE LOCK CHECK onDragStart makes (:540) even though ApplyLock hides the strip
+--- `canDrag` REPEATS THE LOCK CHECK onDragStart makes (modules/IconGrid.lua:537) even though ApplyLock hides the strip
 --- while locked. The widget asks on every OnDragStart, and the guard is what keeps a locked grid
 --- immovable on a path nobody has written yet -- a strip left shown by some future caller must
 --- still move nothing. It deliberately does NOT add a combat gate: the grid is a plain frame on
---- UIParent (:592) and dragging it in combat works today, so adding one here would be a behavior
+--- UIParent (modules/IconGrid.lua:568) and dragging it in combat works today, so adding one here would be a behavior
 --- change smuggled in under a widget adoption.
 ---
 --- NO `number` GUARD AND NO `edge` PAINTER, because this addon needs neither. Both exist for
@@ -181,7 +181,7 @@ function IconGrid:ApplyLock(inst)
         --
         -- FLOORED AT ZERO, i.e. the label's own natural width, and NOT at the grid's. The tempting
         -- version is ApplyWidth(grid:GetWidth()), so the strip spans the frame it moves -- but
-        -- EnableUnit runs EnsureGrid (where the grid is still the 48x48 of :594) before
+        -- EnableUnit runs EnsureGrid (where the grid is still the 48x48 of modules/IconGrid.lua:570) before
         -- BuildActiveList and Layout, and never returns here afterwards; the "spells" branch of
         -- OnConfigChanged rebuilds and re-lays-out without calling ApplyLock at all. A grid-floored
         -- width would therefore be stale on both paths, and closing them means touching two more

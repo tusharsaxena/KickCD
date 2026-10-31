@@ -170,7 +170,7 @@ add{
     -- VERTICAL gets a hint about why the value list is UP/DOWN.
     valueGate = "units."..unit..".castbar.orientation",
     -- Function so the dropdown re-evaluates its options every time
-    -- it refreshes (Panel.lua's makeDropdown re-runs `applyList`
+    -- it refreshes (libs/LibKa0s/OptionsWidgets.lua's makeDropdown re-runs `applyList`
     -- inside its refresh closure). Pulled together with the
     -- orientation onChange above this gives the dropdown a single
     -- valid pair of options at all times — no "(horizontal)" /

@@ -49,7 +49,7 @@ local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 --- frame IS the middle of the art.
 ---
 --- An Icon is different, and it is the difference that made these rows look crooked: its texture is
---- hung 5px below the frame's top (`image:SetPoint("TOP", 0, -5)`, widgets/AceGUIWidget-Icon.lua)
+--- hung 5px below the frame's top (`image:SetPoint("TOP", 0, -5)`, libs/AceGUI-3.0/widgets/AceGUIWidget-Icon.lua)
 --- and is SMALLER than the frame, so the art's middle sits at `5 + art/2` -- 15 in a 24px frame
 --- carrying 20px of art, where the frame's own middle is 12. Every Icon in the row therefore rode
 --- three pixels lower than the checkbox and the dropdown beside it.

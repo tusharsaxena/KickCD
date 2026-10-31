@@ -164,7 +164,7 @@ end)
 -- state, right-click opens the client's context menu built from the pairs this
 -- addon passes. What is ours is WHICH pairs, and what each toggle calls. KickCD
 -- has two states the menu can show, Enabled and Locked (WowAddonStandards
--- ADDONS.md's row): no Test mode, since unlocking IS the preview
+-- WowAddonStandards standards/ADDONS.md's row): no Test mode, since unlocking IS the preview
 -- (options-ui-§15's exemption), and no primary window. Each toggle is the SAME
 -- function the slash verb runs: Enabled -> NS.SetMasterEnabled (`/kcd enable` /
 -- `disable`), Locked -> NS.ToggleLock (`/kcd toggle`).
@@ -213,7 +213,7 @@ test("LEFT click opens the settings panel and touches nothing else", function()
 end)
 
 test("RIGHT click opens the options menu: the label, then Enabled and Locked, nothing else", function()
-    -- The menu entries are ADDONS.md's row for KickCD, in the library's order.
+    -- The menu entries are WowAddonStandards standards/ADDONS.md's row for KickCD, in the library's order.
     -- red under: passing a test-mode or window pair, dropping setEnabled or
     -- toggleLock, or a right click that still opens the panel
     local inst = T.load(true, true)

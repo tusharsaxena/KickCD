@@ -710,20 +710,20 @@ end)
 
 test("every castTick exit is measured, including the teardown frame", function()
     -- The Castbar half of the leak the case below was written for, driven
-    -- instead of source-scanned. `onUpdate` (modules/Castbar.lua:682) opens the
-    -- bracket and has two exits: the no-duration guard at :692, taken once per
+    -- instead of source-scanned. `onUpdate` (modules/Castbar.lua:520) opens the
+    -- bracket and has two exits: the no-duration guard at :525, taken once per
     -- cast on the frame that tears the handler down, and the normal tick at
-    -- :713. An unclosed guard exit is silent — the bucket still reports, just
+    -- :552. An unclosed guard exit is silent — the bucket still reports, just
     -- with `calls` short by one per cast, which reads as a cheap path.
     --
     -- Same shape as the PollSpell case above: drive every exit through a real
     -- entry point and assert the live count off P.__buckets(). The OnUpdate
-    -- script IS reachable headlessly — tests/test_castbar_frame.lua:251-259
+    -- script IS reachable headlessly — tests/test_castbar_frame.lua:290-296
     -- already drives exactly this teardown frame — so the source scan below is
     -- not the only thing that can see it.
     --
     -- red under: deleting the `Perf.Note` line from onUpdate's no-duration
-    -- guard exit (modules/Castbar.lua:692).
+    -- guard exit (modules/Castbar.lua:531).
     local inst = T.load(true, true)
     local NS = inst.NS
     local P = NS.Perf

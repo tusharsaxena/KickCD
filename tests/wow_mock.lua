@@ -28,8 +28,8 @@
 -- Production embeds no AceTimer, so the kit's __fireTimers and its table-shaped
 -- entries are never used here.
 --
--- MEASURED, not assumed: of the base's 60 keys, this file reassigns 27 and
--- inherits 33, LibStub, __libs, __msgRegistry, __fireEvent and __badEvents
+-- MEASURED, not assumed: of the base's 74 keys, this file reassigns 25 and
+-- inherits 49, LibStub, __libs, __msgRegistry, __fireEvent and __badEvents
 -- among them.
 --
 -- The overrides are NOT the base being wrong. The base's own header states the

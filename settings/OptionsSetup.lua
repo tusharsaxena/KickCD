@@ -552,7 +552,7 @@ end
 --
 -- HERE, AT FILE LOAD, is early enough. KickCD.toc pulls
 -- libs\AceGUI-3.0-SharedMediaWidgets\widget.xml in with the other libraries
--- (:28), well before settings\OptionsSetup.lua (:72), so the slot already holds
+-- (:30), well before settings\OptionsSetup.lua (:175), so the slot already holds
 -- AGSMW's own constructor when this line runs. AceGUI refuses a registration
 -- whose version is not strictly higher than the one it already holds, so
 -- another addon's later copy of AGSMW cannot take the slot back at its own

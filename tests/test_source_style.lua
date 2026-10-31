@@ -14,7 +14,7 @@
 -- `DEFAULT_CHAT_FRAME`, `C_CooldownViewer` and `RAID_CLASS_COLORS` are all guarded
 -- (`X and X(...)`) and all bare, at about seventy sites. A gate over that half would be
 -- red the moment it was written, and its only green state is the blanket `_G.` sweep
--- 03_SPEC.md § C31 names as a non-goal. So the guard half stays advisory, the standing
+-- Ka0sAddonsCommonTasks docs/2026-09-07-REVIEW_AND_STANDARDS_AUDIT_REMEDIATION/03_SPEC.md § C31 names as a non-goal. So the guard half stays advisory, the standing
 -- list is what is measured, and the doc says which is which.
 --
 -- This is a SOURCE SCAN, and here that is forced rather than chosen. tests/run.lua:117-126

@@ -53,7 +53,7 @@ test("Refresh marks a line the global cooldown explains (#15)", function()
     -- From a live 45-second fight: seventeen [Cooldowns] lines, and only two were cooldowns.
     -- Every global cooldown flips `ready` and `isActive` for every watched spell, because
     -- buildSpellState derives both from the legacy active flag and that flag covers "real CD or
-    -- just GCD" (modules/Cooldowns.lua:50). MaterialChange keys on exactly those two fields, so
+    -- just GCD" (modules/Cooldowns.lua:54). MaterialChange keys on exactly those two fields, so
     -- the churn is material by its own test and gets a line.
     --
     -- Suppression is not available: the C-side curve evaluation that separates a GCD from a real

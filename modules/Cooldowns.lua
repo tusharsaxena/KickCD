@@ -524,7 +524,7 @@ end
 ---
 --- MARK WHAT THE GLOBAL COOLDOWN EXPLAINS (#15). Every GCD flips `ready` and `isActive` for every
 --- watched spell, because both are derived from the legacy active flag and that flag covers "real
---- CD or just GCD" (header, :50). MaterialChange keys on exactly those two fields, so the churn is
+--- CD or just GCD" (header, :54). MaterialChange keys on exactly those two fields, so the churn is
 --- material by its own test. In a live 45-second fight that was fifteen lines of GCD against two
 --- real cooldown transitions, with the two in the middle.
 ---

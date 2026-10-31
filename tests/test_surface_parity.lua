@@ -100,7 +100,7 @@ end)
 
 -- ── DebugLog ────────────────────────────────────────────────────────────────
 --
--- The live half is the LibKa0s-DebugLog-1.0 instance core/DebugLogSetup.lua:129 builds, which
+-- The live half is the LibKa0s-DebugLog-1.0 instance core/DebugLogSetup.lua:168 builds, which
 -- tests/run.lua registers under that name. Read off the built instance rather than the file, which
 -- is the same list as
 --   grep -nE "^\s+function D[:.]|^\s+D\.[A-Za-z_]+\s*=" libs/LibKa0s/DebugLog.lua
