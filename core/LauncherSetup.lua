@@ -22,7 +22,7 @@ local addonName, NS = ...
 -- launcher-§2 (standard v2.67.0): LEFT-click opens the settings panel, in either
 -- state; RIGHT-click opens the client's context menu, one checkbox per pair the
 -- descriptor passes, in the library's order. KickCD passes two pairs, so its
--- menu is `Enabled` and `Locked` (ADDONS.md's row): it has no test mode --
+-- menu is `Enabled` and `Locked` (WowAddonStandards standards/ADDONS.md's row): it has no test mode --
 -- since v2.49.0 Lock frame alone is the preview switch, unlocking IS the
 -- preview, which is why there is no Test mode row and no `/kcd test` verb
 -- (options-ui-§15's exemption, recorded in settings/General.lua's header) --

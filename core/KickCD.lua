@@ -306,8 +306,8 @@ local COMMANDS = {
         function(rest) runReset(NS, rest) end},
     {"resetall",      "Reset every schema-driven panel AND every spec's spell list to defaults",
         function() runResetAll(NS) end},
-    -- `profile` is a HOST verb (slash-commands.md:7), and what it does is
-    -- LibKa0s-Slash-1.0's (minor 17): bare lists the stored profiles with the
+    -- `profile` is a HOST verb (not on slash-commands-§2's reserved list); what it
+    -- does is LibKa0s-Slash-1.0's (minor 17): bare lists the stored profiles with the
     -- current one marked, `profile <name>` switches to an EXISTING profile only
     -- (quotes stripped, case and inner spaces kept, a typo refused with the list
     -- rather than created), and a switch in combat is refused. The library reads

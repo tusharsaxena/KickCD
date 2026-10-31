@@ -198,7 +198,7 @@ end
 --
 -- DRAWN BY THE UNITS PAGE'S BAND, beside the Unit picker (KIC-L01, item 020):
 -- `skipRender` here, and Helpers.RenderUnitPanel (settings/Panel_Render.lua)
--- draws the selected unit's row through the library's own RenderField. The
+-- draws the selected unit's row as a PageBanner act over this row. The
 -- STAMP STAYS `panel = "general"`, `section = "units"`, on purpose: the
 -- General page's Defaults, Reset all and `/kcd list` (grouped by panel) behave
 -- exactly as before, and both pages' Defaults tooltips say so (the WS-33
@@ -226,8 +226,8 @@ end
 --
 -- `skipRender`: the row stays in the schema but the library does not draw it in
 -- the flow. The Units page's band draws it beside the picker while Focus is the
--- unit in the band, paired with the Copy from Target button, through the
--- library's RenderField -- so the tick writes through the seam like any row.
+-- unit in the band, paired with the Copy from Target button, as a PageBanner act
+-- over this row -- so the tick writes through the seam like any row.
 --
 -- The onChange is STRUCTURAL, which no other row's is. Flipping the link changes
 -- what the Units page's Icons, Cast bar and Text label entries DRAW (a linked

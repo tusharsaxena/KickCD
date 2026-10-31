@@ -248,7 +248,7 @@ Total.
 - the link row repaints structurally only when the link actually changes
 - CopyStyling onto an already-unlinked Focus still refreshes the panels once
 
-### test_schema.lua (41)
+### test_schema.lua (42)
 
 - Settings.Schema is assembled from the settings/* files
 - Validate reports 0 errors on the shipped schema
@@ -287,6 +287,7 @@ Total.
 - the tab's closing button pair is the composer's afterGroup, not a page hook
 - Label text declares itself an EditBox, so it is not an empty dropdown
 - no string row in the addon is a dropdown over nothing
+- every media row draws Ka0sMedia_*, and the TOC loads no second picker
 - every tab on every page is classified as mixed-kind or single-subject
 - a tab that mixes kinds of control carries a subgroup on every row
 - a single-subject tab draws NO subsection heading
@@ -889,6 +890,13 @@ Total.
 - no authored file drives LibCustomGlow-1.0 itself
 - a LibKa0s-less load draws no glow and raises nothing
 
+### test_switched_sections.lua (4)
+
+- Ready glow draws only the styles a dropdown picks, and a hidden one comes back
+- a column inside a shown glow group keeps dimming, and Never keeps its picked group
+- Anchor mode draws the anchor rows only while the bar is anchored
+- a switched row stays reachable while hidden
+
 ### test_icongrid_handle.lua (13)
 
 - the grid carries a drag strip once its frame exists
@@ -1322,7 +1330,7 @@ Total.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (33)
+### test_options_panel.lua (32)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1353,12 +1361,11 @@ Total.
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
 - OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList draws it
-- the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
 - the landing page is drawn by the library's BuildLandingPage, logo and commands
 
-### test_options_panel_degraded.lua (9)
+### test_options_panel_degraded.lua (11)
 
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
@@ -1368,6 +1375,8 @@ Total.
 - the General page draws Master controls and the Skin tab, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
+- the band's acts carry each row's label and body, and the copy act its own
+- clicking the band's Copy from Target copies Target onto Focus and unlinks
 - the degraded stub carries no widget maker or layout constant
 
 ### test_skinsetup.lua (13)
@@ -1469,11 +1478,11 @@ Total.
 - Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
 - Skin picker: the gear saves the pick and opens General on its Skin tab
 
-### test_grid.lua (13)
+### test_grid.lua (12)
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
 - grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
-- grid: the draw order is PageHeader, NavRail, TabStrip
+- grid: the draw order is PageBanner, NavRail, TabStrip
 - grid: a rail click draws that entry's own strip under the same band
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
@@ -1481,7 +1490,6 @@ Total.
 - grid: the band's ticks still follow a scalar write after a tab click, unlinked and linked
 - grid: Defaults restores only the active entry's rows, for the unit in the band
 - grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band
-- grid: a former page key opens Units on that entry and tab, drawn on its next show
 - grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
 - grid: selecting an entry is refused in combat and moves nothing
 
@@ -1883,7 +1891,7 @@ Total.
 | test_event_routes.lua | 12 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
-| test_schema.lua | 41 |
+| test_schema.lua | 42 |
 | test_schema_store.lua | 10 |
 | test_database.lua | 26 |
 | test_color_shape.lua | 28 |
@@ -1914,6 +1922,7 @@ Total.
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 10 |
 | test_icongrid_glow_knobs.lua | 13 |
+| test_switched_sections.lua | 4 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
@@ -1932,14 +1941,14 @@ Total.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 33 |
-| test_options_panel_degraded.lua | 9 |
+| test_options_panel.lua | 32 |
+| test_options_panel_degraded.lua | 11 |
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_picker.lua | 16 |
-| test_grid.lua | 13 |
+| test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 12 |
@@ -1967,4 +1976,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1577** |
+| **Total** | **1582** |

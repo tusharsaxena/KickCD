@@ -1,11 +1,11 @@
 -- settings/Panel.lua
 --
--- Settings UI framework — the canvas/layout core. The widget-maker
--- primitives and the schema render/reset layer were peeled into siblings
--- (KCD-24, layout-§1): settings/Panel_Widgets.lua (the makers) and
--- settings/Panel_Render.lua (RenderRows / RenderSchema / Restore* / Reset*).
--- All three publish onto the one NS.Settings.Helpers table, so call order
--- across the trio is irrelevant; the siblings load right after this file.
+-- Settings UI framework — the canvas/layout core. The widget makers are the
+-- library's now, and the schema render/reset layer was peeled into a sibling
+-- (KCD-24, layout-§1): settings/Panel_Render.lua (RenderRows / RenderSchema /
+-- Restore* / Reset*). Both publish onto the one NS.Settings.Helpers table, so
+-- call order across the pair is irrelevant; the sibling loads right after this
+-- file.
 --
 -- Settings UI framework. Every tab — General, Icons, Spells, Profiles —
 -- is registered as a canvas-layout subcategory and shares one header

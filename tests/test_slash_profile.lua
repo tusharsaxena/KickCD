@@ -189,7 +189,7 @@ end)
 -- ── while disabled ──────────────────────────────────────────────────────────
 
 test("`profile` is on the addon's own live verbs, not the library's reserved list", function()
-    -- `profile` is a host verb (slash-commands.md:7), so it is not in
+    -- `profile` is a host verb (off slash-commands-§2's reserved list), so it is not in
     -- lib.LIVE_VERBS; the host widens its own set to keep it live.
     -- red under: `profile` missing from NS.EXTRA_LIVE_VERBS
     local live = {}

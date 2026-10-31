@@ -10,7 +10,7 @@ local addonName, NS = ...
 -- what "reset everything" has to clear that no schema row owns.
 --
 -- NS.Settings.Helpers IS the library instance, decorated in place by
--- settings/Panel.lua, Panel_Widgets.lua and Panel_Render.lua with the pieces
+-- settings/Panel.lua and Panel_Render.lua with the pieces
 -- that did not generalize (options-ui-§1). Never a fresh table that copies
 -- members across: a host page helper added later has to be able to call
 -- Helpers.RenderRows like any other page does, and a suite that swaps a member
@@ -484,16 +484,17 @@ if not lib then
     -- "with LibKa0s absent the schema loads complete BAR the composed blocks"
     -- fingerprints the delta, and "the hollow composers cost the degraded path no
     -- CLI reach it otherwise has" pins the blast radius.
-    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup" }) do
+    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup", "PositionBlock" }) do
         Helpers[name] = function() return {} end
     end
     -- Two returns, because the live one has two: the rows, and the afterGroup
     -- that draws the tab's closing button pair. settings/General.lua keys its
     -- afterGroup table with the second, inside a renderer that never runs here.
     Helpers.MasterControls = function() return {}, function() end end
-    -- ONE of the library's `__` internals, and the list used to be eleven.
+    -- NONE of the library's `__` internals, and the list used to be eleven.
     --
-    -- The ten that left -- __panels, __bannerBand, __layoutTabs, __releaseChrome (LibKa0s v1.75.0
+    -- The eleventh, __panelFor, stayed only because Helpers.OpenPageTab called it, and left with
+    -- that helper. The ten that left before it -- __panels, __bannerBand, __layoutTabs, __releaseChrome (LibKa0s v1.75.0
     -- removed __releaseChrome from the library too), __scrollTopInset,
     -- __tabBand, __tabPlacement, __releaseSubTabs, __tabArtHeight, __resetTabArtHeight -- were
     -- mirrored for ONE reason, and it was stated here: the parity gate read the WHOLE live surface,
@@ -505,19 +506,10 @@ if not lib then
     -- the rule the kit now enforces: a `__` member is the library talking to itself across its own
     -- file boundary, and a degradation stub does not mirror it.
     --
-    -- __panelFor STAYS, because this addon is the exception to that rule and the kit cannot know
-    -- it: settings/Panel_Widgets.lua:69's OpenPageTab reads
-    -- `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination page's
-    -- tab. A member the host calls is a member the stub owes -- the same sentence SetRenderer
-    -- joined the no-op list under. The guard means losing it costs a tab selection rather than a
-    -- raise, which is why tests/test_surface_parity.lua pins it BY HAND beside the parity call
-    -- rather than trusting the filter.
-    --
     -- The three layout CONSTANTS that arrived with the departed ten -- BANNER_H, CHROME_GAP, TAB_H
     -- -- never appeared here and still must not: options-ui-§8 forbids a host copy of a library
     -- constant, the copy is the one that goes stale, and tests/test_options_panel_degraded.lua scans this
     -- file for exactly that.
-    Helpers.__panelFor = function() return nil end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end
@@ -531,44 +523,6 @@ end
 -- ---------------------------------------------------------------------
 -- The live wiring
 -- ---------------------------------------------------------------------
-
--- The LSM30_Border fixup, and why it is a call rather than a file.
---
--- A LIBRARY ACT, NOT AN ADDON ONE. AceGUI's WidgetRegistry is process-global:
--- one slot named "LSM30_Border" that every addon in the client shares, Ka0s or
--- not. This addon carried the fixup privately in core/LSMPatch.lua, and so did
--- AbsorbTracker, ConsumableMaster, MultiMeters and PanelMaster -- five copies,
--- five distinct md5s, each registering its wrapper at whatever version it found
--- plus one. Load all five in one session and the wrapper a Border dropdown
--- actually gets belongs to whichever addon the loader reached last. Nothing in
--- any of the five repos could see it: each suite loads one copy, registers once
--- and passes.
---
--- lib.__PatchLSM30Border (LibKa0s-Options-1.0 minor 15) is the same wrapper
--- published once, guarded by lib.__lsmBorderPatched. Five vendored copies of
--- the library are still ONE instance to LibStub, so five callers produce one
--- registration and the return value says which call made it. Calling it is
--- unconditional and needs no agreement with any sibling addon.
---
--- HERE, AT FILE LOAD, is early enough. KickCD.toc pulls
--- libs\AceGUI-3.0-SharedMediaWidgets\widget.xml in with the other libraries
--- (:28), well before settings\OptionsSetup.lua (:72), so the slot already holds
--- AGSMW's own constructor when this line runs. AceGUI refuses a registration
--- whose version is not strictly higher than the one it already holds, so
--- another addon's later copy of AGSMW cannot take the slot back at its own
--- fixed version. (Written without naming the AceGUI entry point, so that
--- C02's acceptance grep for it over core/, modules/ and settings/ keeps
--- returning nothing rather than one comment an auditor has to re-read.)
--- It sits in this file because this is where the addon's options
--- surface is wired, which is where the library's own note on the member says to
--- call it from.
---
--- core/LSMPatch.lua IS GONE, deleted in the same commit that added this line.
--- Keeping it would have been a second registration of a wrapper the library has
--- already installed -- harmless in effect, since both hide the same tile and
--- re-anchor the same two regions, but it is the exact shape the promotion
--- exists to remove.
-lib.__PatchLSM30Border()
 
 NS.Settings = NS.Settings or {}
 NS.Settings.Helpers = lib:New(descriptor)

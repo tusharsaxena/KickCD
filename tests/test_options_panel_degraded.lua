@@ -88,7 +88,7 @@ function()
     -- on a load where the only three things that read it -- the CLI, the panel and
     -- RestoreAllDefaults' sessionOnly walk -- are respectively absent, absent, and
     -- looking for `state.debugConsole`, whose console window is unavailable on
-    -- this path too (core/DebugLogSetup.lua:70-72).
+    -- this path too (core/DebugLogSetup.lua:74).
     --
     -- red under: settings/Slash.lua's stub CliSet widening past the writeThrough
     -- list (a host-declared row written), or narrowing below it (`enabled`
@@ -290,7 +290,7 @@ end)
 -- The Units page's band is ONE ROW (KIC-L01, item 020): [Unit] [Enable this
 -- unit], and while Focus is in the band [Link to Target] [Copy from Target] on
 -- the same line. Driven through a real render rather than scanned, because the
--- claim is about LAYOUT: every cell must be a child of the band's one flow host.
+-- claim is about LAYOUT: every cell must be the picker or one of the banner's acts.
 --
 -- red under: drawing the acts into the scroll (a tab click clears them), back
 -- on the General page, or the Focus acts on Target's band.
@@ -303,8 +303,8 @@ test("the Units band is one row: picker and enable, plus link and copy for Focus
     assertTrue(ctx ~= nil, "the Units page must be registered")
 
     local function cells()
-        local out = {}
-        for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+        local out = { ctx.__bannerWidget and ctx.__bannerWidget.labelText }
+        for _, w in ipairs(ctx.__unitActs or {}) do
             out[#out + 1] = w.labelText or w.text
         end
         return table.concat(out, "|")
@@ -322,6 +322,61 @@ test("the Units band is one row: picker and enable, plus link and copy for Focus
     for _, child in ipairs((ctx.scroll and ctx.scroll.children) or {}) do
         assertTrue(child.labelText ~= L["Link to Target"], "the tick is band content, never scroll content")
     end
+end)
+
+-- PageBanner reads an act's `tooltip` and never a row's `desc`, so the acts must
+-- hand the row's body across. The band's look is the library's; what this addon owes
+-- is the words and the write.
+--
+-- red under: rowAct passing `desc` through unrenamed, or a tick writing past the seam.
+test("the band's acts carry each row's label and body, and the copy act its own", function()
+    local inst = T.load(true, true)
+    local iH, L = inst.NS.Settings.Helpers, inst.NS.L
+    local Store = inst.NS.Settings.Store
+    local ctx = iH.__panelFor("grid")
+    local spec
+    local real = iH.PageBanner
+    iH.PageBanner = function(c, s, ...) spec = s; return real(c, s, ...) end
+    iH.SetViewedUnit("focus")
+    ctx.panel:Show()
+    iH.RefreshPanel(ctx, true)
+    iH.PageBanner = real
+    assertEqual(#spec.acts, 3, "Focus's band has three acts")
+    assertEqual(spec.acts[1].label, L["Enable this unit"])
+    assertEqual(spec.acts[1].tooltip, Store.FindRow("units.focus.enabled").desc)
+    assertEqual(spec.acts[2].label, L["Link to Target"])
+    assertEqual(spec.acts[2].tooltip, Store.FindRow("units.focus.link").desc)
+    assertEqual(spec.acts[3].text, L["Copy from Target"])
+    assertTrue(#spec.acts[3].tooltip > 0, "the copy act keeps its body")
+    assertEqual(spec.label, L["Unit"])
+    assertEqual(spec.value, "focus")
+end)
+
+-- The click, through the button the library drew and into the store. The band's
+-- other cases read the act and CopyStyling's own cases call it directly, so
+-- neither reaches the closure between them.
+--
+-- red under: the act's onClick doing nothing, or copying the wrong way round.
+test("clicking the band's Copy from Target copies Target onto Focus and unlinks", function()
+    local inst = T.load(true, true)
+    local iNS = inst.NS
+    local iH = iNS.Settings.Helpers
+    local ctx = iH.__panelFor("grid")
+    local units = iNS.db.profile.units
+    units.target.icons.primarySize = 55
+    units.focus.icons.primarySize = 77
+    units.focus.link = true
+    iH.SetViewedUnit("focus")
+    ctx.panel:Show()
+    iH.RefreshPanel(ctx, true)
+
+    local copy = ctx.__unitActs[3]
+    assertEqual(copy.text, iNS.L["Copy from Target"], "the third act is the copy button")
+    copy:__fire("OnClick")
+
+    assertEqual(units.focus.icons.primarySize, 55, "Focus took Target's value")
+    assertEqual(units.target.icons.primarySize, 55, "Target is the source and keeps its value")
+    assertEqual(units.focus.link, false, "the copy unlinks")
 end)
 
 test("the degraded stub carries no widget maker or layout constant", function()

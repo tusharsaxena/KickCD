@@ -798,7 +798,7 @@ end
 -- ---------------------------------------------------------------------------
 
 function IconGrid:OnSpellState(_evt, payload)
-    -- Payload contract per CLAUDE.md:
+    -- Payload contract per docs/message-bus.md:
     --   { spellID, ready, isActive, cdObject, chargeCdObject, charges, rebuild }
     -- The player's cooldown state applies to every live unit's icon for
     -- that spell, so fan out to each enabled instance's active pool. We

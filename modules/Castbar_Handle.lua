@@ -53,7 +53,7 @@ local HUD_LEVEL = NS.Const.LAYERS.LEVEL.HUD   -- frame-layering-§2 (core/Consta
 --- TWO WHOLE KEYS, not ("%s castbar"):format(unitWord). localization-§1/localization-§2 make
 --- the key the English source string, and a sentence assembled at runtime is not
 --- one -- it is two fragments no translator can see the shape of. The inline
---- unit test is settings/Panel_Render.lua:109's, which picks L["Target"] /
+--- unit test is settings/Panel_Render.lua:133's, which picks L["Target"] /
 --- L["Focus"] the same way.
 local function handleLabel(unit)
     return (unit == "focus") and L["Focus castbar"] or L["Target castbar"]
@@ -100,7 +100,7 @@ local function buildHandle(inst, frame)
         canDrag      = function() return Castbar.DragAllowed(inst) end,
         onDragStop   = function() Castbar.SaveAnchor(inst, frame) end,
         -- The same open the launcher's left button and `/kcd config` reach
-        -- (core/LauncherSetup.lua:131, core/KickCD.lua:200). It refuses itself
+        -- (core/LauncherSetup.lua:137, core/KickCD.lua:264). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as

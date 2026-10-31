@@ -1,0 +1,14 @@
+Ka0s KickCD — offline perf  (v1.5.0, label 'findings-remediation')
+6 spells watched, 2 units enabled, spell 19577 measured
+
+scenario                iters      ms/iter     api/iter   bytes/iter
+spellPoll                2000      0.02061         18.0        517.3
+spellState               2000      0.00082          0.0          1.5
+iconApply                2000      0.00023          0.0          0.0
+probeOverheadOff         2000      0.00024          0.0          0.0
+probeOverheadOn          2000      0.00048          0.0          0.1
+castStart                2000      0.00560          0.0        208.0
+cdText                   2000      0.00318          2.0        800.0
+
+timings are for orientation only — compare scenarios within a run, never across machines
+wrote docs/automated-tests/20261031-212139/perf.json

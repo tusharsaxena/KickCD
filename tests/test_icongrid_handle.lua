@@ -4,7 +4,7 @@
 -- EnableMouse and RegisterForDrag on the frame and nothing on screen said so: the grab target was
 -- whatever icons happened to be laid out, which with a one-spell list is a single square and with
 -- an EMPTY list is nothing at all — the wart IconGrid:Layout still works around by keeping an empty
--- grid at primary-icon size (modules/IconGrid.lua:454-457, "a small invisible square").
+-- grid at primary-icon size (modules/IconGrid.lua:493-497, "a small invisible square").
 --
 -- THE STRIP ITSELF IS NOT TESTED HERE. It is LibKa0s-Widgets-1.0's
 -- (libs/LibKa0s/WidgetsDragHandle.lua) and its fill, edge, label face, help mark and tooltip bands
@@ -146,7 +146,7 @@ test("the strip refuses to move a LOCKED grid", function()
     -- Fired directly rather than through a cursor, because ApplyLock has just hidden the strip and
     -- in the live client this is unreachable today. That is the point: the guard is what keeps it
     -- unreachable from a path nobody has written yet, and it is the same check the grid frame's own
-    -- onDragStart makes (modules/IconGrid.lua:540).
+    -- onDragStart makes (modules/IconGrid.lua:537).
     inst.handle:GetScript("OnDragStart")(inst.handle)
     assertEqual(started, 0, "a locked grid must not move, whoever asks")
 end)

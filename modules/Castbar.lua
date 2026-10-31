@@ -487,7 +487,7 @@ end
 --     values to a Lua local; we pass them DIRECTLY as arguments to Blizzard
 --     C methods (StatusBar:SetMinMaxValues / SetValue, FontString:
 --     SetFormattedText) which accept secret args without erroring. This is
---     the one and only safe pattern — see CLAUDE.md "Cast bar module".
+--     the one and only safe pattern — see docs/castbar.md.
 --
 --   * Bar fills 0 → total for casts, drains total → 0 for channels. We feed
 --     d:GetElapsedDuration() vs d:GetRemainingDuration() to SetValue based

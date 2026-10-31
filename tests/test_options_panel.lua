@@ -90,10 +90,10 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
 end)
 
 test("the host ships no widget maker, flow engine or layout constant of its own", function()
-    -- red under: restoring makeCheckbox to settings/Panel_Widgets.lua
+    -- red under: restoring makeCheckbox to settings/Panel_Render.lua
     -- anti-patterns #47, and options-ui-§8 on the constants: a host copy of a
     -- library constant is the copy that goes stale.
-    local fh = assert(io.open(T.root .. "/settings/Panel_Widgets.lua", "r"))
+    local fh = assert(io.open(T.root .. "/settings/Panel_Render.lua", "r"))
     local src = fh:read("*a")
     fh:close()
     assertNil(src:match('AceGUI:Create%("CheckBox"%)'), "a checkbox maker came back")
@@ -446,9 +446,9 @@ test("General's builder draws no bespoke control, and the band's Copy button kee
     -- `spec.tooltip` directly, so a spec that says `desc` renders the label with
     -- an EMPTY body -- silently, and only in game. General's builder used to
     -- carry one such spec, the Focus link tick on its Units tab. Item 020
-    -- (KIC-L01/L02) moved the tick to the Units page's band, where it is the
-    -- schema row itself drawn through RenderField, and the Copy from Target
-    -- button with it, whose body goes to H.AttachTooltip POSITIONALLY.
+    -- (KIC-L01/L02) moved the tick to the Units page's band, an act over the
+    -- schema row, and the Copy from Target button with it, an act whose body is
+    -- its `tooltip`. PageBanner reads `tooltip` directly too.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
@@ -468,7 +468,7 @@ test("General's builder draws no bespoke control, and the band's Copy button kee
     assertNil(builder:match("desc%s*="), "a bespoke spec in General's builder keys its tooltip `desc`")
     assertNil(builder:match("SessionToggle"), "General's builder draws a bespoke control again")
     local render = read("settings/Panel_Render.lua")
-    assertTrue(render:find('Helpers.AttachTooltip(btn, L["Copy from Target"],', 1, true) ~= nil,
+    assertTrue(render:find('tooltip = L["Copy Target\'s current appearance', 1, true) ~= nil,
         "the Copy from Target button must attach a tooltip body of its own")
 end)
 
@@ -555,7 +555,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- it eleven, OptionsKeybinds.lua (LibKa0s v1.77.0) twelve, and OptionsAppearance.lua (v1.78.0)
     -- and OptionsSkinPicker.lua (v1.79.0) fourteen, and OptionsSwitch.lua (v1.82.0, the switched
     -- sections peeled out of OptionsWidgets) fifteen, and OptionsMedia.lua (v1.83.0, the media
-    -- pickers) sixteen: the count below moved, and the derived scan already covered it.
+    -- pickers) sixteen, and the four peels of v1.84.0 (OptionsFlow, OptionsIdSuggest, OptionsTabbed,
+    -- OptionsSkinPickerRows) twenty: the count below moved, and the derived scan already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
         "Options owning its own strings is why this tripwire is not shaped like "
@@ -575,8 +576,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 16,
-        "the major is sixteen files at LibKa0s v1.83.0 (OptionsMedia.lua joined) -- a count that moved means a file "
+    assertEqual(scanned, 20,
+        "the major is twenty files at LibKa0s v1.84.0 (four peels joined) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.
@@ -648,49 +649,6 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
         assertTrue(declared.info == true, "an IdList is drawn (" .. table.concat(drawsIdList, ", ")
             .. ") but `info` is not on the `LibKa0s icons:` line, so its help mark draws blank")
     end
-end)
-
--- ── the LSM30_Border fixup, promoted out of core/LSMPatch.lua ────────────────
-
-test("the live wiring patches LSM30_Border through the library, not a private copy", function()
-    -- AceGUI's WidgetRegistry is PROCESS-GLOBAL: one slot named "LSM30_Border"
-    -- shared by every addon in the client. This addon and four siblings each
-    -- carried the same wrapper in their own core/LSMPatch.lua, each registering
-    -- at whatever version it found plus one, so a session running all five
-    -- stacked five wrappers and the outermost belonged to whichever addon the
-    -- loader reached last. No suite in any of the five could see that — each one
-    -- loads a single copy, registers once and passes, which is exactly what this
-    -- addon's own test_options_panel.lua did through the whole defect.
-    --
-    -- lib.__PatchLSM30Border (LibKa0s-Options-1.0 minor 15) is that wrapper
-    -- published once, behind lib.__lsmBorderPatched. LibStub hands five vendored
-    -- copies the same instance, so five callers make one registration.
-    --
-    -- WHY A FRESH INSTANCE WITH A SEEDED REGISTRY. The mock's WidgetRegistry
-    -- starts empty, which models AGSMW being absent; the call then finds nothing
-    -- to wrap, returns false without arming the sentinel, and proves nothing. The
-    -- `mutate` hook runs BEFORE any source loads, which is the only window in
-    -- which a stand-in constructor can be in the slot when settings/OptionsSetup
-    -- .lua's live arm executes.
-    -- red under: dropping the lib.__PatchLSM30Border() call from the live wiring.
-    local upstream = function() return { frame = {} } end
-    local inst = T.load(true, false, function(m)
-        m.LibStub("AceGUI-3.0"):RegisterWidgetType("LSM30_Border", upstream, 20)
-    end)
-
-    local AceGUI = inst.mocks.LibStub("AceGUI-3.0")
-    assertTrue(AceGUI.WidgetRegistry["LSM30_Border"] ~= upstream,
-        "the live wiring never called lib.__PatchLSM30Border(): the slot still holds "
-        .. "the constructor the registry was seeded with")
-    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
-        "the wrapper must register one version above what it wrapped, to win the race")
-
-    -- The sentinel is armed, so a sibling addon's copy of the library — the same
-    -- instance, as far as LibStub is concerned — registers nothing on top.
-    local lib = inst.mocks.LibStub("LibKa0s-Options-1.0")
-    assertFalse(lib.__PatchLSM30Border(), "a second call must be a no-op")
-    assertEqual(AceGUI:GetWidgetVersion("LSM30_Border"), 21,
-        "and must leave the one registration alone")
 end)
 
 -- The Reset all settings tooltip names Profiles → Reset Profile.

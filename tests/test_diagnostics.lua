@@ -89,7 +89,7 @@ test("`diagnostics` is a COMMANDS row and a `debug` word, and nothing else runs 
 end)
 
 test("no source file under core, modules or settings spells a report alias", function()
-    -- The plan's grep (03_EXECUTION_PLAN.md section 4) as a case, so it stays true after this item.
+    -- The plan's grep (Ka0sAddonsCommonTasks docs/2026-09-25-DIAGNOSTICS_COMMAND/03_EXECUTION_PLAN.md section 4) as a case, so it stays true after this item.
     -- red under: a `{"diag", ...}` row, a `diag = "diagnostics"` alias, or a `dump` debug word
     local files = {}
     for _, rel in ipairs(T.tocFiles) do
@@ -127,7 +127,7 @@ test("the report runs every section and none of them fails on a live load", func
     local lines, built = report(fresh())
     assertFalse(built.capped, "a default report fits the cap: " .. #lines .. " lines")
     assertNil(find(lines, "failed:"), "no section may fail:\n" .. joined(lines))
-    -- Budget from 02_SPEC.md (DX-KC): 100 to 200 lines. Well under the cap either way, but a report
+    -- Budget from Ka0sAddonsCommonTasks docs/2026-09-25-DIAGNOSTICS_COMMAND/02_SPEC.md (DX-KC): 100 to 200 lines. Well under the cap either way, but a report
     -- that grew past it has started dumping something it should summarize.
     assertTrue(#lines <= 200, "the report stays inside its budget: " .. #lines .. " lines")
     local state = find(lines, "[State] ")

@@ -206,6 +206,7 @@ local SUITES = {
     "test_icongrid_buildlist",
     "test_icongrid_glowgate",
     "test_icongrid_glow_knobs",
+    "test_switched_sections",
     "test_icongrid_handle",
     "test_lifecycle",
     "test_unitlabel",
@@ -334,7 +335,7 @@ Kit.setSurfaceSource{
 -- What a reader would otherwise get wrong: this is prophylaxis, not the repair of a
 -- live symptom, and the measurement rather than the argument is what says so.
 --
--- defaults/Profile.lua:322 ships `units.focus.link = true`, so two of the three
+-- defaults/Profile.lua:414 ships `units.focus.link = true`, so two of the three
 -- linked-Focus cases park the DEFAULT and force the DEFAULT: their skipped restore
 -- put back exactly what was already there. Only the unlinked case leaves a value
 -- that differs -- `false` -- and a probe that leaked `false` on purpose, once at the

@@ -40,13 +40,13 @@ local function said(ns, fn)
     return lines
 end
 
---- T.libFiles with the three Sim files left out: the payload loads, LibKa0s-Sim-1.0 does not.
+--- T.libFiles with the four Sim files left out: the payload loads, LibKa0s-Sim-1.0 does not.
 local function libFilesWithoutSim()
     local out = {}
     for _, path in ipairs(T.libFiles) do
         if not path:match("/Sim[%a]*%.lua$") then out[#out + 1] = path end
     end
-    assertTrue(#out == #T.libFiles - 3, "expected to drop Sim.lua, SimTimeline.lua and SimPanel.lua")
+    assertTrue(#out == #T.libFiles - 4, "expected to drop Sim.lua, SimTimeline.lua, SimPanel.lua and SimPanelRender.lua")
     return out
 end
 

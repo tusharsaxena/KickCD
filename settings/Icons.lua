@@ -438,7 +438,8 @@ local GLOW_TYPE_VALUES_ORDER = {
 
 -- A slot's own trigger and style, read live, for its rows' `disabledIf`
 -- predicates. The panel re-runs them on every write, so a style or trigger
--- change re-dims the tab on the same frame.
+-- change re-dims the tab on the same frame. Which groups are drawn at all is
+-- pickedStyles' below.
 local function slotGlow(slot)
     local get = Store.Get
     return get(PREFIX .. slot .. "GlowTrigger"), get(PREFIX .. slot .. "GlowType")
@@ -450,12 +451,28 @@ local function styleOff(slot)
 end
 
 --- A knob row is dimmed while its slot glows not at all, or in a style the
---- knob does not apply to (Const.GLOW_KNOBS' `styles`).
+--- knob does not apply to (Const.GLOW_KNOBS' `styles`): the column of a shown
+--- group that only the other slot picks (options-ui-§22, "Hidden is not disabled").
 local function knobOff(slot, styles)
     return function()
         local trigger, kind = slotGlow(slot)
         return trigger == "never" or not styles[kind]
     end
+end
+
+--- A style's group is drawn while either slot's Style dropdown picks a style
+--- the knob applies to, and dropped otherwise, heading included (options-ui-§22,
+--- LibKa0s#67). Style only: a trigger of Never leaves the picked group shown and
+--- dimmed, as "Hidden is not disabled" asks.
+local function pickedStyles(styles)
+    local equals = {}
+    for _, kind in ipairs(GLOW_TYPE_VALUES_ORDER) do
+        if styles[kind] then equals[#equals + 1] = kind end
+    end
+    return { any = {
+        { path = PREFIX .. "primaryGlowType", equals = equals },
+        { path = PREFIX .. "secondaryGlowType", equals = equals },
+    } }
 end
 
 -- Trigger row -----------------------------------------------------
@@ -605,6 +622,7 @@ local KNOB_TEXT = {
 
 for _, knob in ipairs(NS.Const.GLOW_KNOBS) do
     local text = KNOB_TEXT[knob.leaf]
+    local shownWhen = pickedStyles(knob.styles)
     for i, slot in ipairs({ "primary", "secondary" }) do
         add{
             panel = "icons", section = "icons", unit = unit, group = L["Ready glow"],
@@ -615,6 +633,7 @@ for _, knob in ipairs(NS.Const.GLOW_KNOBS) do
             default = knob.default,
             min = knob.min, max = knob.max, step = knob.step, fmt = text.fmt,
             disabledIf = knobOff(slot, knob.styles),
+            shownWhen = shownWhen,
         }
     end
 end

@@ -1,10 +1,10 @@
 -- tests/test_grid.lua
 --
 -- The Units page (KickCD#33; key `grid`, labeled "Grid" until item 020): Icons, Cast bar and Text
--- label as one page. The Unit band across the top (one PageHeader block since KIC-L01), the nav rail
+-- label as one page. The Unit band across the top (one PageBanner since LibKa0s#59), the nav rail
 -- (Icons, Cast bar, Text label), each entry's own tab strip, the tab each entry
 -- keeps, and a linked Focus under the rail -- and, from NR-KC-03, Defaults for the unit in the band
--- and the deep links. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
+-- and SelectTab on an entry key. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
 -- O.NavRail. Pinned from the outside: a fresh instance per case, the page shown the way Blizzard
 -- shows it, the rail clicked through the library's own entry buttons.
 
@@ -21,7 +21,7 @@ local function env(mutate)
     local NS = inst.NS
     local H = NS.Settings.Helpers
     local rails, strips, calls = {}, {}, {}
-    local navRail, tabStrip, pageHeader = H.NavRail, H.TabStrip, H.PageHeader
+    local navRail, tabStrip, pageBanner = H.NavRail, H.TabStrip, H.PageBanner
     H.NavRail = function(ctx, spec, ...)
         calls[#calls + 1] = "NavRail"
         rails[ctx] = spec
@@ -32,9 +32,9 @@ local function env(mutate)
         strips[ctx] = spec
         return tabStrip(ctx, spec, ...)
     end
-    H.PageHeader = function(ctx, spec, ...)
-        calls[#calls + 1] = "PageHeader"
-        return pageHeader(ctx, spec, ...)
+    H.PageBanner = function(ctx, spec, ...)
+        calls[#calls + 1] = "PageBanner"
+        return pageBanner(ctx, spec, ...)
     end
 
     local P = { inst = inst, NS = NS, H = H, L = NS.L, calls = calls }
@@ -143,12 +143,12 @@ test("grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, 
     assertEqual(P.tabLabels(), table.concat(groupsOf(P.H, "icons", "target"), "|"))
 end)
 
-test("grid: the draw order is PageHeader, NavRail, TabStrip", function()
+test("grid: the draw order is PageBanner, NavRail, TabStrip", function()
     local P = env()
     P.show()
     -- red under: the rail drawn before the band (its top ignores the band) or after the strip (the
     -- strip places itself with no inset)
-    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageHeader,NavRail,TabStrip")
+    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageBanner,NavRail,TabStrip")
 end)
 
 test("grid: a rail click draws that entry's own strip under the same band", function()
@@ -232,7 +232,7 @@ end)
 
 --- The band's checkbox labeled `label` on the page's current band, or nil.
 local function bandTick(P, ctx, label)
-    for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+    for _, w in ipairs(ctx.__unitActs or {}) do
         if w.labelText == P.L[label] then return w end
     end
 end
@@ -263,7 +263,7 @@ test("grid: the band's ticks still follow a scalar write after a tab click, unli
     assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), true, "linked: and back")
 end)
 
--- ── Defaults, deep links, SelectTab (NR-KC-03) ─────────────────────────────────────────────
+-- ── Defaults, SelectTab (NR-KC-03) ─────────────────────────────────────────────
 
 --- The first stored boolean row of `panel` for `unit`: one to move off its default.
 local function boolRow(H, panel, unit)
@@ -318,42 +318,6 @@ test("grid: the Defaults tooltip names the rail entry, the unit in the band, and
     general.panel:Show()
     assertTrue(tostring(general.panel.defaultsTooltip):find("Enable this unit", 1, true) ~= nil,
         "the General page's Defaults says it resets the band's rows too")
-end)
-
---- A fresh Grid page whose subcategories answer GetID (KickCD's mock categories do not), recording
---- by tree label the category every OpenToCategory lands on.
-local function recordingOpens()
-    local byId, opened, count = {}, {}, 0
-    local P = env(function(mocks)
-        local register = mocks.Settings.RegisterCanvasLayoutSubcategory
-        mocks.Settings.RegisterCanvasLayoutSubcategory = function(parent, panel, name)
-            local cat = register(parent, panel, name)
-            count = count + 1
-            local id = 100 + count
-            byId[id] = name
-            cat.GetID = function() return id end
-            return cat
-        end
-        mocks.Settings.OpenToCategory = function(id) opened[#opened + 1] = byId[id] or "main" end
-    end)
-    return P, opened
-end
-
--- Review Focus 5.
-test("grid: a former page key opens Units on that entry and tab, drawn on its next show", function()
-    local P, opened = recordingOpens()
-    local ctx = P.show()
-    ctx.panel:Hide()                                -- the settings window is closed
-    -- red under: OpenPageTab looking "castbar" up in NS.Settings.categoryFor alone (the Cast bar
-    -- page today, nothing once it retires)
-    assertTrue(P.H.OpenPageTab("castbar", P.L["Text"]))
-    assertEqual(opened[#opened], P.L["Units"])
-    assertEqual(ctx.activeSection, "castbar", "selected before the show")
-    ctx.panel:Show()
-    assertEqual(P.railValue(), "castbar", "and drawn on it")
-    assertEqual(ctx.activeTab, P.L["Text"], "on the named tab")
-    assertTrue(P.H.OpenPageTab("general", P.H.MASTER_GROUP), "a General page key is the library's page")
-    assertEqual(opened[#opened], P.L["General"])
 end)
 
 test("grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's", function()

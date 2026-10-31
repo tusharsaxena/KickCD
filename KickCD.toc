@@ -27,7 +27,6 @@ libs\AceGUI-3.0\AceGUI-3.0.xml
 libs\AceConfig-3.0\AceConfig-3.0.xml
 libs\LibKa0s\LibKa0s.xml
 libs\LibSharedMedia-3.0\lib.xml
-libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 libs\LibCustomGlow-1.0\LibCustomGlow-1.0.xml
 # The launcher's two libraries (launcher-§1). LibDataBroker-1.1 first: it is
 # what LibDBIcon-1.0 reads the object out of, and both need CallbackHandler-1.0
@@ -168,7 +167,7 @@ settings\SchemaSetup.lua
 settings\Slash.lua
 # LOAD-BEARING POSITION: this file creates NS.Settings and publishes the
 # LibKa0s-Options-1.0 instance on it as NS.Settings.Helpers. settings/Panel.lua,
-# settings/Panel_Widgets.lua, settings/Panel_Render.lua and the page and entry files
+# settings/Panel_Render.lua and the page and entry files
 # General/Icons/Castbar/Label/Grid all take that member as a file-scope upvalue, and
 # General and Icons then CALL H.AddComposed at file scope — so a position below
 # any of them raises during load, not on first open.
@@ -184,7 +183,6 @@ settings\Panel.lua
 # each other, bar two notes: settings\Grid.lua's and the Spells siblings'. The
 # Icons, Cast bar and Text Label files call Helpers.RegisterGridSection, which
 # settings\Panel_Render.lua publishes, at file scope, so they stay below it.
-settings\Panel_Widgets.lua
 settings\Panel_Render.lua
 settings\General.lua
 settings\Icons.lua
