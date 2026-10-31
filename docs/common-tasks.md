@@ -54,7 +54,7 @@ so **do not** write a parallel mutator for a field that already has a row.
    preserved. It does **not** take `self`: `LibKa0s-Slash-1.0`'s dispatcher calls it with the
    remainder alone, and a handler still expecting `self` silently reads the rest of the line as its
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
-3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:376` and is the single source
+3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:418` and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
    in the UI.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered
@@ -238,11 +238,11 @@ LibCustomGlow.
 
 ### Linting
 
-`luacheck .` must report **0 warnings and 0 errors**. The tree is clean on both counts, so a new
+`~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` must report **0 warnings and 0 errors**. The tree is clean on both counts, so a new
 warning is a regression rather than background noise to scroll past — fix the code first, and reach
 for a suppression only when the warning is wrong about this file.
 
-**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (lint.md, `M4-11`).
+**There is no top-level `ignore` in `.luacheckrc`, and none is coming back** (WowAddonStandards lint.md, `M4-11`).
 This page used to describe one — `212/self`, `212/event`, `211/addonName` — and to call it
 "allowances true everywhere". They were not true everywhere. `M4c-06` removed the three lines and
 `luacheck .` went from 0/0 to **61 warnings**, of which **32 were defects rather than conventions**:
@@ -265,7 +265,7 @@ Suppressions come in two forms, and the choice between them is about scope:
   **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua`, `wow_mock.lua` and `wow_mock_frames.lua` are this
   addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside
   that tree, because it is a byte copy of LibKa0s' `testkit/` and is linted there as source. A run
-  reporting fewer files than `luacheck . --formatter plain | tail -1` says today is a run that has
+  reporting fewer files than `~/.claude/dev-copilot/bin/ka0s-bounded luacheck . --formatter plain | tail -1` says today is a run that has
   stopped checking half the Lua in the repo.
 - **One line → an inline directive.** Write `-- luacheck: ignore <code>/<name>` immediately above the
   offending line, with a comment saying why the warning doesn't apply. Never the bare
