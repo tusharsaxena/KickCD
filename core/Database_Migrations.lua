@@ -422,8 +422,8 @@ end
 --- A flag still at the OLD default, OUTLINE, moves onto From skin once, so the Font outline reaches
 --- it; any other flag the player picked ("", THICKOUTLINE, MONOCHROME, ...) stays as stored. An
 --- OUTLINE the player picked on purpose cannot be told from the old default (AceDB strips a value
---- equal to its default, so it was never stored apart from it); the Font outline's All text, the
---- default, draws it the same.
+--- equal to its default, so it was never stored apart from it); the Font outline's HUD text only,
+--- the default, and All text both draw it the same on the HUD.
 ---
 --- PER PROFILE, RECORDED PER PROFILE, as MigrateHudSkin: the stamp is per account, so this runs from
 --- Database:Init and every OnProfileChanged too, and a profile carries its own record,

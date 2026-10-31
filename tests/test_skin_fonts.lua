@@ -3,7 +3,7 @@
 -- flags' From skin and the HUD size scale.
 --
 -- What this pins:
---   * the Font outline (ruling D-06): skin.outline ("all" by default, "hud", "off") stored through
+--   * the Font outline (ruling D-06): skin.outline ("hud" by default, "all", "off") stored through
 --     the skin write seam (NS.WriteSkinChoice's media.outline), applied with Skin:SetOutline at load,
 --     on every profile event and on the row's own write, and a quiet no-op without the skin engine;
 --   * `/kcd skin` (D-16): the row right after config with the library's help words, NS.RunSkinVerb
@@ -59,10 +59,17 @@ end
 
 -- ── the Font outline ────────────────────────────────────────────────────────────────────────
 
-test("outline: a fresh profile stores All text, the library's default, and wears it", function()
+test("outline: a fresh profile stores HUD text only, the library's default, and wears it", function()
     local inst = boot()
-    assertEqual(inst.NS.db.profile.skin.outline, "all")
+    assertEqual(inst.NS.db.profile.skin.outline, "hud")
     assertEqual(inst.NS.db.profile.skin.outline, skinLib(inst).OUTLINE_DEFAULT)
+    assertEqual(skinLib(inst):GetOutline(OWNER), "hud")
+end)
+
+test("outline: a stored All text stays, the default's move migrates nothing (D-10)", function()
+    -- red under: a migration, or a load that writes the default over a stored mode
+    local inst = boot({ profiles = { Default = { skin = { outline = "all" } } } })
+    assertEqual(inst.NS.db.profile.skin.outline, "all")
     assertEqual(skinLib(inst):GetOutline(OWNER), "all")
 end)
 
@@ -95,8 +102,8 @@ end)
 test("outline: the row's write applies the mode live", function()
     local inst = boot()
     local H, Skin = inst.NS.Settings.Helpers, skinLib(inst)
-    H.SetAndRefresh("skin.outline", "hud")
-    assertEqual(Skin:GetOutline(OWNER), "hud")
+    H.SetAndRefresh("skin.outline", "all")
+    assertEqual(Skin:GetOutline(OWNER), "all")
     assertEqual(inst.NS.Skin.Token("hud.outline"), "OUTLINE", "the HUD keeps it")
     H.SetAndRefresh("skin.outline", "off")
     assertEqual(inst.NS.Skin.Token("hud.outline"), "", "Off takes it")
@@ -105,7 +112,7 @@ end)
 test("outline: /kcd set refuses a mode the library does not know", function()
     local inst = boot()
     say(inst, function() inst.NS:OnSlashCommand("set skin.outline thick") end)
-    assertEqual(inst.NS.db.profile.skin.outline, "all")
+    assertEqual(inst.NS.db.profile.skin.outline, "hud")
 end)
 
 test("outline: the stored mode is applied at load and on a profile switch", function()
@@ -115,7 +122,7 @@ test("outline: the stored mode is applied at load and on a profile switch", func
     local Skin = skinLib(inst)
     assertEqual(Skin:GetOutline(OWNER), "off", "the load")
     inst.NS.db:SetProfile("Alt")
-    assertEqual(Skin:GetOutline(OWNER), "all", "Alt keeps the default")
+    assertEqual(Skin:GetOutline(OWNER), "hud", "Alt keeps the default")
     inst.NS.db:SetProfile("Default")
     assertEqual(Skin:GetOutline(OWNER), "off", "Default's is back")
 end)
@@ -123,7 +130,7 @@ end)
 test("outline: without the skin engine the apply is a quiet no-op", function()
     local NS = boot(nil, { libFiles = {} }).NS
     assertEqual(NS.ApplySkinOutline(), false)
-    assertEqual(NS.SkinOutline(), "all")
+    assertEqual(NS.SkinOutline(), "hud")
 end)
 
 -- ── /kcd skin ───────────────────────────────────────────────────────────────────────────────

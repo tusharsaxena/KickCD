@@ -9,7 +9,8 @@
 --
 -- Moved since, on purpose, and only by a change that is not a layout pass: LibKa0s v1.82.0 (KC-01
 -- of the 2026-10-30 skin fonts run) added skin.outline, the Font outline, and moved the three Font
--- flags defaults from OUTLINE to "@skin", From skin (ruling D-07).
+-- flags defaults from OUTLINE to "@skin", From skin (ruling D-07). LibKa0s v1.83.0 (KC-F01 of the
+-- 2026-10-31 font pickers run) moved skin.outline's default from "all" to "hud" (ruling D-10).
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
@@ -52,7 +53,7 @@ local PIN = {
     "skin.font string \"\" nil nil nil",
     "skin.ignoreFonts bool false nil nil nil",
     "skin.ignorePanel bool true nil nil nil",
-    "skin.outline string \"all\" nil nil nil",
+    "skin.outline string \"hud\" nil nil nil",
     "skin.pickerSeen bool false nil nil nil",
     "skin.skin string \"ka0s\" nil nil nil",
     "skin.source string \"ka0s\" nil nil nil",

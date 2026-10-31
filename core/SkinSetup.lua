@@ -21,7 +21,7 @@ local addonName, NS = ...
 --                           skin's own; false, false before the store exists.
 --   NS.ApplySkinOverride(f,t) moves the applied overrides: `Skin:SetOverride`, live; no argument
 --                           applies the stored pair, a nil half keeps that half, false or "" clears.
---   NS.SkinOutline()        the stored Font outline: "all", "hud" or "off"; "all" before the store
+--   NS.SkinOutline()        the stored Font outline: "all", "hud" or "off"; "hud" before the store
 --                           exists.
 --   NS.ApplySkinOutline(m)  moves the applied Font outline: `Skin:SetOutline`, live (Skin minor 9,
 --                           ruling D-06 of Ka0sAddonsCommonTasks docs/2026-10-30-SKIN_FONTS_AND_
@@ -107,7 +107,7 @@ local SOURCE_PATH, SKIN_PATH = "skin.source", "skin.skin"
 local PANEL_PATH, FONTS_PATH = "skin.ignorePanel", "skin.ignoreFonts"
 local FONT_PATH, TEXTURE_PATH = "skin.font", "skin.texture"
 local OUTLINE_PATH = "skin.outline"
-local DEFAULT, OUTLINE_DEFAULT = "ka0s", "all"
+local DEFAULT, OUTLINE_DEFAULT = "ka0s", "hud"
 
 -- Every stored skin path, for settings/General.lua's rows and the seam's resetExempt
 -- (settings/SchemaSetup.lua): the General page's Defaults restores Master controls, never the skin.
@@ -265,7 +265,7 @@ function NS.WriteSkinChoice(source, skin, ignore, media)
     end
 end
 
---- The stored Font outline, nil-safely: "all" (the library's default) until the store exists.
+--- The stored Font outline, nil-safely: "hud" (the library's default) until the store exists.
 function NS.SkinOutline()
     local v = stored(OUTLINE_PATH)
     if type(v) == "string" and v ~= "" then return v end

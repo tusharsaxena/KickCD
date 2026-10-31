@@ -76,7 +76,7 @@ end)
 
 -- ── the keys and the rows ────────────────────────────────────────────────────────────────────
 
-test("Skin seam: the eight skin keys default to Ka0s Default, today's Scope and All text", function()
+test("Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only", function()
     -- red under: a default other than today's look, or pickerSeen true (owner ruling O3: the
     -- first-run picker shows once on every profile, old and new).
     local d = NS.DEFAULT_PROFILE.skin
@@ -86,7 +86,7 @@ test("Skin seam: the eight skin keys default to Ka0s Default, today's Scope and 
     assertEqual(d.ignoreFonts, false)
     assertEqual(d.font, "")
     assertEqual(d.texture, "")
-    assertEqual(d.outline, "all", "the Font outline: All text, the library's default (D-06)")
+    assertEqual(d.outline, "hud", "the Font outline: HUD text only, the library's default (D-10)")
     assertEqual(d.pickerSeen, false)
 end)
 

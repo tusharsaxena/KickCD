@@ -330,9 +330,10 @@ collection's reference adopter, and every piece below copies its shape.
   (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
   ticked): a player who chose a 3 or 4 px border draws the skin's 1 or 2 px until they untick
   the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4), as
-  LibKa0s v1.82.0 left them (D-02): Prototype under Ka0s Default, Expressway under Obsidian, Vollkorn Bold under Azeroth,
-  Nunito SemiBold under Glass, Atkinson Bold under High Contrast, Bitter Bold under Ember, Philosopher
-  Bold under WoW Midnight, Fira Sans SemiBold under WoW Forever and Friz Quadrata under WoW Default;
+  LibKa0s v1.83.0 left them (D-06): Prototype under Ka0s Default, Expressway under Obsidian, Open Sans
+  Semibold under Azeroth, Avant Garde under Glass, Doris PP under High Contrast, Emblem under Ember,
+  Segoe UI Semibold under WoW Midnight, Fira Sans SemiBold under WoW Forever and the shipped Ka0s Friz
+  Quadrata TT under WoW Default;
   the charges badge, which has no setting, takes `hud.font`'s face at `NumberFontNormal`'s size. While
   the Scope's **Ignore fonts** is on, the library's `S.Resolve` answers each text's stored pick for
   `hud.font` whatever its box says (R-1), so every HUD text draws its own face and the badge, with no
@@ -341,7 +342,7 @@ collection's reference adopter, and every piece below copies its shape.
   `UnitLabel` subscribe to `OnLooksChanged` and re-run their config path, guarded on the stand-down; the
   cast bar's structure signature signs the resolved picks, so a skin switch rebuilds what moved.
 - **Font outline, From skin and the HUD size (LibKa0s v1.82.0, KC-01).** The Skin tab's Font outline
-  is `skin.outline` (`all`, the default; `hud`; `off`), stored through the write seam's
+  is `skin.outline` (`hud`, the default since LibKa0s v1.83.0, D-10; `all`; `off`), stored through the write seam's
   `media.outline` and applied with `Skin:SetOutline` beside the pair, the Scope and the overrides
   (`NS.ApplySkinOutline`, at load and on every profile event). Every Font flags row leads with
   **From skin** (`"@skin"`, the composer's `flagsFromSkin`) and defaults to it; the HUD draws a

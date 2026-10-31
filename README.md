@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1576%2F1576_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1577%2F1577_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -93,7 +93,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 
 #### Skins (General > Skin)
 
-KickCD wears one of nine skins, Ka0s Default to start with. A skin changes the settings pages, the drag strips and the debug and simulator windows, and on the grids, cast bars and labels it changes only the font, the cast bar's texture and the borders, plus the outline and the text size that go with its font. Your colors and positions stay yours. Every font, texture and border picker on the Units page has a **Use the skin's ...** box beside it. Untick one to keep your own pick for that piece. While a text uses the skin's font, its size is scaled so it reads as wide in every skin as it does in Ka0s Default; your stored size never changes. Each **Font flags** menu starts on **From skin**, which follows the Skin tab's **Font outline**: on all text (the default), on HUD text only, or off. Pick any other flag and it stays. The Skin tab can also lay one font or one bar texture over the skin's own (choosing another skin puts both back to that skin's own), leave the settings panel in the game's look (the default), copy the skin to your other Ka0s addons, or hand the look to EllesmereUI. Each profile has its own skin, and a small window offers you one the first time each profile loads. `/kcd skin` opens that window again whenever you want it.
+KickCD wears one of nine skins, Ka0s Default to start with. A skin changes the settings pages, the drag strips and the debug and simulator windows, and on the grids, cast bars and labels it changes only the font, the cast bar's texture and the borders, plus the outline and the text size that go with its font. Your colors and positions stay yours. Every font, texture and border picker on the Units page has a **Use the skin's ...** box beside it. Untick one to keep your own pick for that piece. While a text uses the skin's font, its size is scaled so it reads as wide in every skin as it does in Ka0s Default; your stored size never changes. Each **Font flags** menu starts on **From skin**, which follows the Skin tab's **Font outline**: on HUD text only (the default), on all text, or off. Pick any other flag and it stays. The Skin tab can also lay one font or one bar texture over the skin's own (choosing another skin puts both back to that skin's own), leave the settings panel in the game's look (the default), copy the skin to your other Ka0s addons, or hand the look to EllesmereUI. Each profile has its own skin, and a small window offers you one the first time each profile loads. `/kcd skin` opens that window again whenever you want it.
 
 ## FAQ
 
@@ -158,34 +158,9 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 
 ## Credits
 
-The debug console uses [JetBrains Mono](https://www.jetbrains.com/lp/mono/), licensed under the SIL
-Open Font License 1.1.
-
-Ka0s Default, the skin every profile starts on, draws
-[Prototype](https://www.dafont.com/prototype.font) v2.0 (2001). It is **not** under the OFL: "free
-for personal use, freely distributed with Prototype.txt", so the author's `Prototype.txt` ships
-beside it unchanged. Shipped on the owner's ruling of 2026-10-30.
-
-Obsidian draws [Expressway](https://www.dafont.com/expressway.font) Rg Bold 2.100 (2005) by Ray
-Larabie, Typodermic. It is **not** under the OFL either, and ships against its terms: its name table
-reads "Do not distribute", and the Typodermic Desktop EULA 2026 puts embedding in software outside
-the free license. It ships on the owner's ruling of 2026-10-30, "Ship it anyways.", with the EULA
-(`Expressway-EULA.pdf`) and its quick guide (`Expressway-EULA-Guide.html`) beside it as the record of
-the terms that ruling overrode. Expressway is a trademark of Typodermic.
-
-The other skins draw on six SIL Open Font License 1.1 families, one per skin:
-[Nunito](https://github.com/googlefonts/nunito) by The Nunito Project Authors,
-[Vollkorn](https://github.com/FAlthausen/Vollkorn-Typeface) by The Vollkorn Project Authors,
-[Bitter](https://github.com/solmatas/BitterPro) by The Bitter Project Authors,
-[Philosopher](https://github.com/alexeiva/philosopher) by The Philosopher Project Authors,
-[Fira Sans](https://github.com/mozilla/Fira) (Medium and SemiBold) by The Mozilla Foundation and
-Telefonica S.A., and [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) by the
-Braille Institute of America. Nunito, Vollkorn and Bitter are static weights cut from upstream's
-variable fonts.
-
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
 the debug console's close, copy and clear buttons, the simulator's done check, and the
 skin picker's settings gear.
 
-The fonts and the icons ship inside the bundled payload under `libs/`, with their license text beside them.
+The icons ship inside the bundled payload under `libs/`, with their license text beside them.

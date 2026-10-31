@@ -1082,7 +1082,7 @@ Total.
 - showSpark=false hides the spark outright
 - showSpark defaults to shown when unset
 - both labels share the config font, and NONE flags normalize to empty
-- absent fontFlags read as From skin: the Font outline's flags, OUTLINE under All text
+- absent fontFlags read as From skin: the Font outline's flags, OUTLINE under HUD text only
 - showName / showTime false hide their labels, and only theirs
 - the labels default to shown when the flags are unset
 - name and time labels anchor per their independent position settings
@@ -1374,7 +1374,7 @@ Total.
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
-- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and All text
+- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only
 - Skin seam: every skin key is a skipRender row of the General page's Skin tab
 - Skin seam: the skin row's values are every registered skin, in the library's order
 - Skin seam: /kcd set refuses an unregistered skin and applies a registered one
@@ -1421,9 +1421,10 @@ Total.
 - HUD skin: the step names only companions that read a boolean
 - HUD skin: Copy from Target carries the companions with the pickers
 
-### test_skin_fonts.lua (25)
+### test_skin_fonts.lua (26)
 
-- outline: a fresh profile stores All text, the library's default, and wears it
+- outline: a fresh profile stores HUD text only, the library's default, and wears it
+- outline: a stored All text stays, the default's move migrates nothing (D-10)
 - outline: the schema row offers the library's three modes, in its order
 - outline: the write seam stores media.outline, and leaves it alone when it is nil
 - outline: another addon's copy reaches the store through WriteChoice
@@ -1936,7 +1937,7 @@ Total.
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
-| test_skin_fonts.lua | 25 |
+| test_skin_fonts.lua | 26 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
@@ -1966,4 +1967,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1576** |
+| **Total** | **1577** |

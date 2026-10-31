@@ -369,9 +369,10 @@ local DEFAULT_PROFILE = {
         font        = "",
         texture     = "",
         -- The Font outline (LibKa0s v1.82.0, Skin minor 9, ruling D-06): where the skin outlines
-        -- this addon's text, "all" of it (the library's default), "hud" text only, or "off". The
-        -- Skin tab draws it; every Font flags row left at From skin follows it.
-        outline     = "all",
+        -- this addon's text, "hud" text only (the library's default since v1.83.0, ruling D-10),
+        -- "all" of it, or "off". The Skin tab draws it; every Font flags row left at From skin
+        -- follows it.
+        outline     = "hud",
         pickerSeen  = false,
         -- The one-time HUD style reset's per-profile record (owner ruling O2,
         -- core/Database_Migrations.lua's MigrateHudSkin): false until the step has put this
