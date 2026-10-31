@@ -1329,7 +1329,7 @@ Total.
 - TitleCaseToken returns an empty string for nil rather than erroring
 - every shipped class token produces a non-empty display name
 
-### test_options_panel.lua (33)
+### test_options_panel.lua (32)
 
 - the canvas frame carries OnCommit, OnDefault and OnRefresh from the library
 - OnDefault reaches a defaultsOnClick parked AFTER the panel is built
@@ -1360,7 +1360,6 @@ Total.
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
 - OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList draws it
-- the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
 - the landing page is drawn by the library's BuildLandingPage, logo and commands
@@ -1941,7 +1940,7 @@ Total.
 | test_settings_spells_grid.lua | 5 |
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
-| test_options_panel.lua | 33 |
+| test_options_panel.lua | 32 |
 | test_options_panel_degraded.lua | 11 |
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
@@ -1976,4 +1975,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1582** |
+| **Total** | **1581** |
