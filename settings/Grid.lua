@@ -15,7 +15,7 @@
 --
 -- The library owns WHEN this draws (H.SetRenderer): first show, and again when a
 -- refresh marked it dirty while it was hidden -- which is what makes the Unit
--- band, the General page's Focus link and a deep link reach this page at all.
+-- band and the General page's Focus link reach this page at all.
 
 local _, NS = ...
 local L = NS.L

@@ -237,8 +237,8 @@ test("the Options stub carries every member the host calls", function()
         -- not mirror it and citing Kit.publicMembers by name. That filter is what this case runs
         -- through now, so the whole prefix is the kit's business and the next internal a re-vendor
         -- publishes needs no entry here. The ten no-op `__` mirrors the STUB carried for the same
-        -- vanished reason went with them, in this commit — settings/OptionsSetup.lua says which
-        -- one stayed and why.
+        -- vanished reason went with them, in this commit; the eleventh followed once its one
+        -- caller was deleted. settings/OptionsSetup.lua tells both halves.
     })
 end)
 

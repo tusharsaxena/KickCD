@@ -468,7 +468,7 @@ function Helpers.RestoreGridSection(ctx)
 end
 
 --- Select entry `key` on the Units page, and optionally its tab: the one seam a
---- link, a deep link or a suite moves the entry through. A hidden page is marked
+--- link or a suite moves the entry through. A hidden page is marked
 --- owed a render and draws the entry on its next show. Refused in combat, as a tab
 --- switch is (options-ui-§2, §13), and named in the library's one
 --- `[Cfg] section <key> refused (in combat)` line.

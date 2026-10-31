@@ -491,9 +491,10 @@ if not lib then
     -- that draws the tab's closing button pair. settings/General.lua keys its
     -- afterGroup table with the second, inside a renderer that never runs here.
     Helpers.MasterControls = function() return {}, function() end end
-    -- ONE of the library's `__` internals, and the list used to be eleven.
+    -- NONE of the library's `__` internals, and the list used to be eleven.
     --
-    -- The ten that left -- __panels, __bannerBand, __layoutTabs, __releaseChrome (LibKa0s v1.75.0
+    -- The eleventh, __panelFor, stayed only because Helpers.OpenPageTab called it, and left with
+    -- that helper. The ten that left before it -- __panels, __bannerBand, __layoutTabs, __releaseChrome (LibKa0s v1.75.0
     -- removed __releaseChrome from the library too), __scrollTopInset,
     -- __tabBand, __tabPlacement, __releaseSubTabs, __tabArtHeight, __resetTabArtHeight -- were
     -- mirrored for ONE reason, and it was stated here: the parity gate read the WHOLE live surface,

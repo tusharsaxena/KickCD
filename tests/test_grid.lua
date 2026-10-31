@@ -4,7 +4,7 @@
 -- label as one page. The Unit band across the top (one PageHeader block since KIC-L01), the nav rail
 -- (Icons, Cast bar, Text label), each entry's own tab strip, the tab each entry
 -- keeps, and a linked Focus under the rail -- and, from NR-KC-03, Defaults for the unit in the band
--- and the deep links. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
+-- and SelectTab on an entry key. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
 -- O.NavRail. Pinned from the outside: a fresh instance per case, the page shown the way Blizzard
 -- shows it, the rail clicked through the library's own entry buttons.
 
@@ -263,7 +263,7 @@ test("grid: the band's ticks still follow a scalar write after a tab click, unli
     assertEqual(bandTick(P, ctx, "Enable this unit"):GetValue(), true, "linked: and back")
 end)
 
--- ── Defaults, deep links, SelectTab (NR-KC-03) ─────────────────────────────────────────────
+-- ── Defaults, SelectTab (NR-KC-03) ─────────────────────────────────────────────
 
 --- The first stored boolean row of `panel` for `unit`: one to move off its default.
 local function boolRow(H, panel, unit)
