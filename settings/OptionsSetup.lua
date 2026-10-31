@@ -484,7 +484,7 @@ if not lib then
     -- "with LibKa0s absent the schema loads complete BAR the composed blocks"
     -- fingerprints the delta, and "the hollow composers cost the degraded path no
     -- CLI reach it otherwise has" pins the blast radius.
-    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup" }) do
+    for _, name in ipairs({ "ColorPair", "FontGroup", "BorderGroup", "BarGroup", "PositionBlock" }) do
         Helpers[name] = function() return {} end
     end
     -- Two returns, because the live one has two: the rows, and the afterGroup
