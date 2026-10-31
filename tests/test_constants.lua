@@ -138,7 +138,7 @@ test("Constants: no host copy of a LibKa0s-Options layout constant", function()
                         "HEADER_TOP", "HEADER_HEIGHT" }
     local offenders = {}
     for _, rel in ipairs({ "core/Constants.lua", "settings/Panel.lua",
-                           "settings/Panel_Render.lua", "settings/Panel_Widgets.lua" }) do
+                           "settings/Panel_Render.lua" }) do
         local fh = assert(io.open(T.root .. "/" .. rel, "r"))
         local ln = 0
         for line in fh:lines() do

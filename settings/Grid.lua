@@ -2,7 +2,7 @@
 --
 -- The Units page (KickCD#33; labeled "Grid" until item 020's KIC-L06): Icons,
 -- Cast bar and Text label as one page. The page KEY is still `grid` -- the panel
--- stamps, deep links and Helpers.__panelFor("grid") are unchanged; only the
+-- stamps and Helpers.__panelFor("grid") are unchanged; only the
 -- label moved, because the page edits one unit's grid, cast bar and label. The
 -- Unit picker and the unit's own acts (Enable this unit, and for Focus Link to
 -- Target and Copy from Target) are the band across the top, the nav rail on the

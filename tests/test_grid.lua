@@ -320,42 +320,6 @@ test("grid: the Defaults tooltip names the rail entry, the unit in the band, and
         "the General page's Defaults says it resets the band's rows too")
 end)
 
---- A fresh Grid page whose subcategories answer GetID (KickCD's mock categories do not), recording
---- by tree label the category every OpenToCategory lands on.
-local function recordingOpens()
-    local byId, opened, count = {}, {}, 0
-    local P = env(function(mocks)
-        local register = mocks.Settings.RegisterCanvasLayoutSubcategory
-        mocks.Settings.RegisterCanvasLayoutSubcategory = function(parent, panel, name)
-            local cat = register(parent, panel, name)
-            count = count + 1
-            local id = 100 + count
-            byId[id] = name
-            cat.GetID = function() return id end
-            return cat
-        end
-        mocks.Settings.OpenToCategory = function(id) opened[#opened + 1] = byId[id] or "main" end
-    end)
-    return P, opened
-end
-
--- Review Focus 5.
-test("grid: a former page key opens Units on that entry and tab, drawn on its next show", function()
-    local P, opened = recordingOpens()
-    local ctx = P.show()
-    ctx.panel:Hide()                                -- the settings window is closed
-    -- red under: OpenPageTab looking "castbar" up in NS.Settings.categoryFor alone (the Cast bar
-    -- page today, nothing once it retires)
-    assertTrue(P.H.OpenPageTab("castbar", P.L["Text"]))
-    assertEqual(opened[#opened], P.L["Units"])
-    assertEqual(ctx.activeSection, "castbar", "selected before the show")
-    ctx.panel:Show()
-    assertEqual(P.railValue(), "castbar", "and drawn on it")
-    assertEqual(ctx.activeTab, P.L["Text"], "on the named tab")
-    assertTrue(P.H.OpenPageTab("general", P.H.MASTER_GROUP), "a General page key is the library's page")
-    assertEqual(opened[#opened], P.L["General"])
-end)
-
 test("grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's", function()
     local P = env()
     local ctx = P.show()

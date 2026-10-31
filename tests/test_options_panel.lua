@@ -90,10 +90,10 @@ test("NS.Settings.Helpers IS the library instance, decorated in place", function
 end)
 
 test("the host ships no widget maker, flow engine or layout constant of its own", function()
-    -- red under: restoring makeCheckbox to settings/Panel_Widgets.lua
+    -- red under: restoring makeCheckbox to settings/Panel_Render.lua
     -- anti-patterns #47, and options-ui-§8 on the constants: a host copy of a
     -- library constant is the copy that goes stale.
-    local fh = assert(io.open(T.root .. "/settings/Panel_Widgets.lua", "r"))
+    local fh = assert(io.open(T.root .. "/settings/Panel_Render.lua", "r"))
     local src = fh:read("*a")
     fh:close()
     assertNil(src:match('AceGUI:Create%("CheckBox"%)'), "a checkbox maker came back")

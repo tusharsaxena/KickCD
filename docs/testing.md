@@ -144,9 +144,6 @@ The three library-backed seams — DebugLog, Slash and Options — call the kit'
   `MODULES` and every `__`-prefixed key are the library talking to itself across
   its own file boundary, and a stub does not mirror them. That rule is the kit's
   now, so a re-vendor that publishes a new internal needs no edit in this repo.
-  The one exception is pinned by hand — `settings/Panel_Widgets.lua:154` calls
-  `Helpers.__panelFor`, so the stub owes it and a line beside the parity call
-  says so.
 
 Core keeps the four-argument form (`assertSurfaceParity(live, degraded, label,
 ignore)`) because `NS` and `NS.Util` are this addon's own namespace, not a

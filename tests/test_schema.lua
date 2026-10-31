@@ -1017,7 +1017,7 @@ test("no page draws a hand-rolled heading in place of H.Section", function()
     -- library exists to end. `ffffd100` is the gold a colored full-width Label
     -- standing in for a Heading is written with.
     for _, file in ipairs({ "General", "Icons", "Castbar", "Label", "Spells",
-                            "Panel", "Panel_Render", "Panel_Widgets" }) do
+                            "Panel", "Panel_Render" }) do
         local fh = assert(io.open(T.root .. "/settings/" .. file .. ".lua", "r"))
         local src = fh:read("*a")
         fh:close()

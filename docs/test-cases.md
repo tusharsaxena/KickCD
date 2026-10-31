@@ -1469,7 +1469,7 @@ Total.
 - Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
 - Skin picker: the gear saves the pick and opens General on its Skin tab
 
-### test_grid.lua (13)
+### test_grid.lua (12)
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
 - grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
@@ -1481,7 +1481,6 @@ Total.
 - grid: the band's ticks still follow a scalar write after a tab click, unlinked and linked
 - grid: Defaults restores only the active entry's rows, for the unit in the band
 - grid: the Defaults tooltip names the rail entry, the unit in the band, and who resets the band
-- grid: a former page key opens Units on that entry and tab, drawn on its next show
 - grid: SelectTab on an entry key selects the entry and its tab; other pages stay the library's
 - grid: selecting an entry is refused in combat and moves nothing
 
@@ -1939,7 +1938,7 @@ Total.
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_picker.lua | 16 |
-| test_grid.lua | 13 |
+| test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
 | test_flow_traces.lua | 12 |
@@ -1967,4 +1966,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1577** |
+| **Total** | **1576** |

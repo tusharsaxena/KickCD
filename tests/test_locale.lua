@@ -245,7 +245,7 @@ end
 -- the quote, because a key may be built by concatenation across lines and a
 -- check on the preceding few characters calls the second fragment of such a key
 -- unrouted. The `L` has to be a whole word, so `SPELL_KNOWN_LABEL[field]` is
--- not a locale lookup, and `NS.L["…"]` is (settings/Panel_Widgets.lua uses
+-- not a locale lookup, and `NS.L["…"]` is (settings/Slash.lua uses
 -- exactly that spelling, with no `L` upvalue in the file).
 local function trackSubscript(src, i, depth)
     local c = src:sub(i, i)
@@ -424,9 +424,6 @@ local RESIDUE = {
     -- cause half is NS.LIBKA0S_MISSING (the collection's shared clause). The
     -- schema's own shape errors are LibKa0s-Schema-1.0's Validate now.
     {"settings/SchemaSetup.lua", ", so the settings schema was not checked.", "DEGRADED STEM"},
-
-    -- settings/Panel_Widgets.lua
-    {"settings/Panel_Widgets.lua", "cannot open settings during combat", "DEGRADED FALLBACK"},
 
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.

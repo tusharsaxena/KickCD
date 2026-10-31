@@ -4,8 +4,8 @@
 -- panel, peeled out of settings/Panel.lua (KCD-24, layout-§1) so each file
 -- stays under the LOC cap. Turns schema rows into two-column Flow rows
 -- (RenderRows / RenderSchema / RenderUnitPanel) and owns the Defaults /
--- reset-all / reset-position helpers. Loads AFTER settings/Panel.lua and
--- settings/Panel_Widgets.lua (it uses the makers via Helpers.RenderField)
+-- reset-all / reset-position helpers. Loads AFTER settings/Panel.lua
+-- (it uses the library's makers via Helpers.RenderField)
 -- and BEFORE the per-tab files that call RenderSchema / Restore* / Reset*.
 
 local _, NS = ...
@@ -377,6 +377,7 @@ function Helpers.RegisterGridSection(key, label, spec)
 end
 
 --- The registered entry `key`, or nil.
+--- A read of one entry, for the headless suites: no shipped code calls it.
 function Helpers.GridSection(key) return gridEntries[key] end
 
 --- The entries the rail lists, in rail order. Every unit has all three.
@@ -484,7 +485,7 @@ function Helpers.SelectSection(key, tabKey)
 end
 
 -- The library's SelectTab moves one PAGE's tab. An entry key is no page of its own
--- (KickCD#33): it routes to SelectSection, so a link written against the old page
+-- (KickCD#33): it routes to SelectSection, so a caller using the old page
 -- keys still lands. Any other key -- General, Spells -- is the library's.
 local selectTab = Helpers.SelectTab
 function Helpers.SelectTab(pageKey, tabKey)

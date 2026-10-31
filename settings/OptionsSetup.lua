@@ -10,7 +10,7 @@ local addonName, NS = ...
 -- what "reset everything" has to clear that no schema row owns.
 --
 -- NS.Settings.Helpers IS the library instance, decorated in place by
--- settings/Panel.lua, Panel_Widgets.lua and Panel_Render.lua with the pieces
+-- settings/Panel.lua and Panel_Render.lua with the pieces
 -- that did not generalize (options-ui-§1). Never a fresh table that copies
 -- members across: a host page helper added later has to be able to call
 -- Helpers.RenderRows like any other page does, and a suite that swaps a member
@@ -505,19 +505,10 @@ if not lib then
     -- the rule the kit now enforces: a `__` member is the library talking to itself across its own
     -- file boundary, and a degradation stub does not mirror it.
     --
-    -- __panelFor STAYS, because this addon is the exception to that rule and the kit cannot know
-    -- it: settings/Panel_Widgets.lua:69's OpenPageTab reads
-    -- `Helpers.__panelFor and Helpers.__panelFor(pageKey)` to pre-select the destination page's
-    -- tab. A member the host calls is a member the stub owes -- the same sentence SetRenderer
-    -- joined the no-op list under. The guard means losing it costs a tab selection rather than a
-    -- raise, which is why tests/test_surface_parity.lua pins it BY HAND beside the parity call
-    -- rather than trusting the filter.
-    --
     -- The three layout CONSTANTS that arrived with the departed ten -- BANNER_H, CHROME_GAP, TAB_H
     -- -- never appeared here and still must not: options-ui-§8 forbids a host copy of a library
     -- constant, the copy is the one that goes stale, and tests/test_options_panel_degraded.lua scans this
     -- file for exactly that.
-    Helpers.__panelFor = function() return nil end
 
     NS.RegisterOptionsPage = function() end
     NS.RefreshOptionsPanel = function() end

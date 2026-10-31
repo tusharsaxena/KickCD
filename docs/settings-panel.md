@@ -169,7 +169,7 @@ Every panel ctx is stashed in `NS.Settings._panels` so `Helpers.RefreshAllPanels
 
 **Icons, Cast bar and Text label are one page, Units** (KickCD#33, `options-ui-§13` and
 `options-ui-§14`; the page was labeled *Grid* until item 020's KIC-L06 and its key is still `grid`, so
-the panel stamps, the deep links and `Helpers.__panelFor("grid")` are unchanged). It has three pinned
+the panel stamps and `Helpers.__panelFor("grid")` are unchanged). It has three pinned
 pieces, drawn in the library's order on every full render: `PageHeader`, `NavRail`, `TabStrip`.
 
 - **The band** is one `O.PageHeader` block (KIC-L01), drawn by `Helpers.RenderUnitPanel`: one row of
@@ -211,10 +211,9 @@ Defaults, *Reset all settings* and `/kcd list` (grouped by panel) reach them exa
 020, and General's Defaults tooltip says it resets them. Re-stamping them to the Units page was a
 SHOULD that this run did not take (the item's binding note over LAYOUT_CROSS_ADDON's XC-14).
 
-**Deep links.** `Helpers.OpenPageTab("icons"|"castbar"|"label", tab)` opens Units on that entry and
-tab, and the other page keys open their own page as before. `Helpers.SelectSection(entry, tab)` is the
-one seam that moves the entry, and the host's `Helpers.SelectTab` routes an entry key to it. A hidden
-page is marked owed a render and draws the entry on its next show. Both refuse under combat.
+**Selecting an entry.** `Helpers.SelectSection(entry, tab)` is the one seam that moves the entry, and
+the host's `Helpers.SelectTab` routes an entry key to it. A hidden page is marked owed a render and
+draws the entry on its next show. Both refuse under combat.
 
 ## The Units page's entries (Icons / Cast bar / Text label)
 
