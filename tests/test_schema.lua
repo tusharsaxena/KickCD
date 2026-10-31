@@ -887,6 +887,27 @@ test("no string row in the addon is a dropdown over nothing", function()
     end
 end)
 
+test("every media row draws Ka0sMedia_*, and the TOC loads no second picker", function()
+    -- The owner's ruling of 2026-11-01: Ka0sMedia_* is the only media picker,
+    -- because it is the one a skin can paint. LibSharedMedia-3.0 stays: the
+    -- picker reads it.
+    -- red under: a row naming LSM30_*, or the widgets' line back in the TOC
+    local media = 0
+    for _, def in ipairs(T.NS.Settings.Schema) do
+        local control = def.dialogControl
+        assertTrue(not (control and control:find("^LSM30_")),
+            tostring(def.path) .. " names " .. tostring(control))
+        if control and control:find("^Ka0sMedia_") then media = media + 1 end
+    end
+    assertTrue(media > 0, "no row draws a media picker, so this test proved nothing")
+
+    local fh = assert(io.open(T.root .. "/KickCD.toc", "r"))
+    local toc = fh:read("*a")
+    fh:close()
+    assertTrue(toc:find("LibSharedMedia-3.0\\lib.xml", 1, true) ~= nil, "the picker's list is gone")
+    assertNil(toc:find("SharedMediaWidgets", 1, true), "the TOC still loads the LSM30_* widgets")
+end)
+
 -- ── subsection headings (options-ui-§7) ─────────────────────────────────────
 --
 -- THE CLASSIFICATION IS TOTAL, AND THAT IS THE POINT. This gate used to be a

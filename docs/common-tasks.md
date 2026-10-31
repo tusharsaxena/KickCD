@@ -276,8 +276,8 @@ Suppressions come in two forms, and the choice between them is about scope:
   once): returning on the first iteration is how you take an arbitrary element of a set in Lua, so
   the warning is right about the control flow and wrong about the intent. The one before it was
   `core/LSMPatch.lua`, which kept the bootstrap header while using neither name half nor `NS` and so
-  suppressed `211/NS` locally rather than widening a repo-wide allowance; that file is gone — its
-  wrapper is `lib.__PatchLSM30Border()` in LibKa0s now.
+  suppressed `211/NS` locally rather than widening a repo-wide allowance; that file is gone, and
+  the wrapper it held was retired with the `LSM30_*` widgets.
 
 Prefer the inline form for anything genuinely local, and prefer FIXING the code to either. An unused
 variable is usually a real defect or dead code, and a `542` is usually a missing case — reach for a
