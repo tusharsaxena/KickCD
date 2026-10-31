@@ -399,7 +399,7 @@ collection's reference adopter, and every piece below copies its shape.
   `NS:OnEnable` once a session, and after every profile event, so a new or reset profile shows it once;
   a start in combat waits for `PLAYER_REGEN_ENABLED`. A pick only previews; **Apply** and the gear save
   through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
-  Escape put the stored skin back. The library's `onClose`, by any of those routes, sets `pickerSeen`;
+  Escape put the stored skin back. Since LibKa0s v1.83.0 (LK-A3) the window also carries the Skin tab's Font, Texture, Font outline and Scope rows under the same contract: a change previews and writes nothing, Apply and the gear write what moved, and a dismissal puts back what the window opened with. The library's `onClose`, by any of those routes, sets `pickerSeen`;
   `NS.HideSkinPicker` (the stand-down, and first on every profile event) takes it down without setting
   it. **No eye** (X6): KickCD has no window of its own, and neither of its previews fits the eye. The
   simulator (`/kcd sim`) is a scripted session, not a test mode: it plays a timed story with its own
