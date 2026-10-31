@@ -446,9 +446,9 @@ test("General's builder draws no bespoke control, and the band's Copy button kee
     -- `spec.tooltip` directly, so a spec that says `desc` renders the label with
     -- an EMPTY body -- silently, and only in game. General's builder used to
     -- carry one such spec, the Focus link tick on its Units tab. Item 020
-    -- (KIC-L01/L02) moved the tick to the Units page's band, where it is the
-    -- schema row itself drawn through RenderField, and the Copy from Target
-    -- button with it, whose body goes to H.AttachTooltip POSITIONALLY.
+    -- (KIC-L01/L02) moved the tick to the Units page's band, an act over the
+    -- schema row, and the Copy from Target button with it, an act whose body is
+    -- its `tooltip`. PageBanner reads `tooltip` directly too.
     --
     -- Scanned rather than driven because the failure is the absence of a
     -- tooltip line, which no widget mock can distinguish from a spec that
@@ -468,7 +468,7 @@ test("General's builder draws no bespoke control, and the band's Copy button kee
     assertNil(builder:match("desc%s*="), "a bespoke spec in General's builder keys its tooltip `desc`")
     assertNil(builder:match("SessionToggle"), "General's builder draws a bespoke control again")
     local render = read("settings/Panel_Render.lua")
-    assertTrue(render:find('Helpers.AttachTooltip(btn, L["Copy from Target"],', 1, true) ~= nil,
+    assertTrue(render:find('tooltip = L["Copy Target\'s current appearance', 1, true) ~= nil,
         "the Copy from Target button must attach a tooltip body of its own")
 end)
 

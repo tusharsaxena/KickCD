@@ -1,7 +1,7 @@
 -- tests/test_grid.lua
 --
 -- The Units page (KickCD#33; key `grid`, labeled "Grid" until item 020): Icons, Cast bar and Text
--- label as one page. The Unit band across the top (one PageHeader block since KIC-L01), the nav rail
+-- label as one page. The Unit band across the top (one PageBanner since LibKa0s#59), the nav rail
 -- (Icons, Cast bar, Text label), each entry's own tab strip, the tab each entry
 -- keeps, and a linked Focus under the rail -- and, from NR-KC-03, Defaults for the unit in the band
 -- and SelectTab on an entry key. The pattern is AuraMaster's Containers page (#6) on LibKa0s v1.61.0's
@@ -21,7 +21,7 @@ local function env(mutate)
     local NS = inst.NS
     local H = NS.Settings.Helpers
     local rails, strips, calls = {}, {}, {}
-    local navRail, tabStrip, pageHeader = H.NavRail, H.TabStrip, H.PageHeader
+    local navRail, tabStrip, pageBanner = H.NavRail, H.TabStrip, H.PageBanner
     H.NavRail = function(ctx, spec, ...)
         calls[#calls + 1] = "NavRail"
         rails[ctx] = spec
@@ -32,9 +32,9 @@ local function env(mutate)
         strips[ctx] = spec
         return tabStrip(ctx, spec, ...)
     end
-    H.PageHeader = function(ctx, spec, ...)
-        calls[#calls + 1] = "PageHeader"
-        return pageHeader(ctx, spec, ...)
+    H.PageBanner = function(ctx, spec, ...)
+        calls[#calls + 1] = "PageBanner"
+        return pageBanner(ctx, spec, ...)
     end
 
     local P = { inst = inst, NS = NS, H = H, L = NS.L, calls = calls }
@@ -143,12 +143,12 @@ test("grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, 
     assertEqual(P.tabLabels(), table.concat(groupsOf(P.H, "icons", "target"), "|"))
 end)
 
-test("grid: the draw order is PageHeader, NavRail, TabStrip", function()
+test("grid: the draw order is PageBanner, NavRail, TabStrip", function()
     local P = env()
     P.show()
     -- red under: the rail drawn before the band (its top ignores the band) or after the strip (the
     -- strip places itself with no inset)
-    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageHeader,NavRail,TabStrip")
+    assertEqual(table.concat({ P.calls[1], P.calls[2], P.calls[3] }, ","), "PageBanner,NavRail,TabStrip")
 end)
 
 test("grid: a rail click draws that entry's own strip under the same band", function()
@@ -232,7 +232,7 @@ end)
 
 --- The band's checkbox labeled `label` on the page's current band, or nil.
 local function bandTick(P, ctx, label)
-    for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+    for _, w in ipairs(ctx.__unitActs or {}) do
         if w.labelText == P.L[label] then return w end
     end
 end

@@ -548,7 +548,7 @@ local function unitsBand(inst)
     ctx.panel:Show()
     H.RefreshPanel(ctx, true)
     local function tick()
-        for _, w in ipairs((ctx.__unitBand and ctx.__unitBand.children) or {}) do
+        for _, w in ipairs(ctx.__unitActs or {}) do
             if w.labelText == NS.L["Link to Target"] then return w end
         end
     end

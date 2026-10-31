@@ -283,7 +283,7 @@ KickCD (AceAddon)
                         loads right after it (KCD-24 — both publish onto
                         the one NS.Settings.Helpers table):
     ├── Panel_Render.lua — schema render + reset layer: Helpers.RenderUnitPanel
-                        (the Units page's BAND, one H.PageHeader block in the
+                        (the Units page's BAND, one H.PageBanner with acts in the
                         chrome band ABOVE the tab strip: [Unit] [Enable this
                         unit], plus [Link to Target] [Copy from Target] for
                         Focus (item 020); then the linked-Focus note or
@@ -304,8 +304,8 @@ KickCD (AceAddon)
                         RestoreAllDefaults, ResetAll, ResetIconPosition),
                         and the Units page's entry registry and renderer
                         (RegisterGridSection, RenderGridPage).
-                        Creates the band's AceGUI widgets (the picker and the
-                        Copy from Target button) inside the PageHeader frame
+                        The band's widgets are the library's, from the
+                        spec RenderUnitPanel hands H.PageBanner
     ├── General.lua   — 1 tab. Master controls (7): the CANONICAL block
                         (options-ui-§15), COMPOSED by H.MasterControls —
                         enable / visibility / scale / alpha / lock / the

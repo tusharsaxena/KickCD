@@ -17,7 +17,7 @@ local Helpers = NS.Settings.Helpers
 --
 -- Helpers.AddSpacer and Helpers.ROW_VSPACER used to be bound here too. They were
 -- the old hand-built unit-selector header's gaps. The band is one library
--- PageHeader block now (below), whose height is the library's BANNER_H, so this
+-- PageBanner now (below), whose height is the library's BANNER_H, so this
 -- file measures no gap of its own.
 local ensureScroll      = Helpers.EnsureScroll
 
@@ -48,23 +48,19 @@ end
 -- Per-unit page chrome -- the Unit band, and what a linked Focus shows
 -- ---------------------------------------------------------------------
 --
--- THE BAND IS ONE PageHeader BLOCK (options-ui-§14), pinned in the chrome band
--- ABOVE the tab strip rather than added to the scroll. That is not a cosmetic
--- move. The strip's own re-render on a tab click clears the SCROLL and redraws
--- the rows; anything a page parks in the scroll ahead of the strip is gone the
--- first time the reader clicks a tab. The chrome band survives it, and the
--- picker scopes the whole page -- every tab on it edits the selected unit -- so
--- the band is where it belongs.
+-- THE BAND IS ONE PageBanner (options-ui-§14), pinned in the chrome band ABOVE
+-- the tab strip rather than added to the scroll. That is not a cosmetic move.
+-- The strip's own re-render on a tab click clears the SCROLL and redraws the
+-- rows; anything a page parks in the scroll ahead of the strip is gone the first
+-- time the reader clicks a tab. The chrome band survives it, and the picker
+-- scopes the whole page -- every tab on it edits the selected unit -- so the
+-- band is where it belongs.
 --
--- ONE ROW, four cells (KIC-L01, item 020):
+-- ONE ROW (KIC-L01, item 020), in the banner's equal cells (LibKa0s#59):
 --     [Unit] [Enable this unit] [Link to Target]* [Copy from Target]*
 -- (* while Focus is the unit in the band). Everything about one unit sits on
 -- the page that picks it; the enable and the link used to be a trip to the
--- General page's Units tab. The library's PageBanner draws exactly one Dropdown
--- (and at most one action), so a picker with acts beside it is a PageHeader
--- block with the picker inside it -- "at most one such block" per page. The
--- cells' widths are fixed, so the band is the same height and the picker sits
--- in the same place for both units.
+-- General page's Units tab.
 --
 -- The picker is still the ONLY picker on the page, which is the other half of
 -- options-ui-§14: two controls over one piece of state is a synchronization
@@ -73,16 +69,11 @@ end
 -- below it.
 --
 -- The enable and the link are SCHEMA ROWS (settings/General.lua, skipRender,
--- stamped to the General page) drawn through the library's RenderField, so they
--- write through the one seam and refresh like any row. The copy is an act.
---
--- Full rebuild on every call rather than persistent widgets: AceGUI's pool
--- exists to make release-and-recreate cheap. The block's frame is the library's
--- (one per page); the AceGUI widgets inside it are ours, so the previous
--- render's are released once the new ones exist.
-
--- The four cells' shares of the band's width.
-local BAND_CELLS = { picker = 0.30, enable = 0.23, link = 0.21, copy = 0.26 }
+-- stamped to the General page). Each act reads its row and writes through
+-- Helpers.SetAndRefresh, so the tick writes through the one seam and follows
+-- every write. The copy is a button. The library releases each widget after its
+-- replacement exists, refuses all of them in combat, and keeps the ticks'
+-- refresher across a strip-only redraw.
 
 --- Which unit every Grid entry is editing, and the only writer of it.
 ---
@@ -107,89 +98,63 @@ function Helpers.SetViewedUnit(unit)
     if NS.State then NS.State.viewedUnit = unit end
 end
 
---- The "Copy from Target" act, built into the band's flow host. Refused in
---- combat as the picker is: it rewrites a whole unit's rows.
-local function copyFromTargetButton(AceGUI, host)
-    local btn = AceGUI:Create("Button")
-    btn:SetText(L["Copy from Target"])
-    btn:SetRelativeWidth(BAND_CELLS.copy)
-    -- CopyStyling is the whole act: every row through the helper, the bus
-    -- announced once per section, and the one structural refresh from the link
-    -- row it writes last.
-    btn:SetCallback("OnClick", function()
-        if Helpers.__combatRefused and Helpers.__combatRefused("button", "copy") then return end
-        NS.Units.CopyStyling("target", "focus")
-    end)
-    Helpers.AttachTooltip(btn, L["Copy from Target"],
-        L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."])
-    host:AddChild(btn)
-    return btn
+--- A banner checkbox over the schema row at `path`, or nil when the row is gone.
+local function rowAct(path)
+    local Store = NS.Settings.Store
+    local row = Store.FindRow(path)
+    if not row then return nil end
+    return {
+        label = row.label,
+        tooltip = row.desc,
+        get = function() return Store.Get(path) end,
+        set = function(value) Helpers.SetAndRefresh(path, value) end,
+    }
 end
 
---- The Unit picker, built into the band's flow host.
-local function unitPicker(ctx, AceGUI, host)
+--- The acts beside the picker: Enable, and while Focus is the unit in the band
+--- Link to Target and Copy from Target.
+local function bandActs(unit)
+    local acts = { rowAct("units." .. unit .. ".enabled") }
+    if unit == "focus" then
+        acts[#acts + 1] = rowAct("units.focus.link")
+        acts[#acts + 1] = {
+            text = L["Copy from Target"],
+            tooltip = L["Copy Target's current appearance onto Focus once, and unlink so the two can drift apart from here."],
+            -- CopyStyling is the whole act: every row through the helper, the bus
+            -- announced once per section, and the one structural refresh from the
+            -- link row it writes last.
+            onClick = function() NS.Units.CopyStyling("target", "focus") end,
+        }
+    end
+    return acts
+end
+
+--- Draw the Units page's band. The picker and the acts are parked on the ctx so a
+--- suite can drive them the way a click would.
+local function drawUnitBand(ctx)
     local items, order = {}, {}
     for i, u in ipairs(NS.Units.LIST) do
         items[u] = (u == "target") and L["Target"] or L["Focus"]
         order[i] = u
     end
-    local dd = AceGUI:Create("Dropdown")
-    dd:SetLabel(L["Unit"])
-    dd:SetList(items, order)
-    dd:SetValue(ctx.unit)
-    dd:SetRelativeWidth(BAND_CELLS.picker)
-    dd:SetCallback("OnValueChanged", function(_, _, value)
-        -- A change of subject, so refused in combat and put back, as the
-        -- library's own banner refuses it.
-        if Helpers.__combatRefused and Helpers.__combatRefused("select", value) then
-            dd:SetValue(ctx.unit)
-            return
-        end
-        if not value or value == ctx.unit then return end
-        Helpers.SetViewedUnit(value)
-        -- STRUCTURAL, not a re-render of this page alone. The selection is
-        -- shared, so the Units page must redraw on the new unit;
-        -- RefreshAllPanels re-renders the ones on screen and marks the hidden
-        -- ones dirty so they repaint on their next OnShow.
-        Helpers.RefreshAllPanels()
-    end)
-    Helpers.AttachTooltip(dd, L["Unit"],
-        L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."])
-    host:AddChild(dd)
-    return dd
-end
-
---- Draw the band's cells into the PageHeader frame `frame`.
-local function buildUnitBand(ctx, frame)
-    local AceGUI = Helpers.AceGUI or NS.AceGUI
-    if not (AceGUI and frame) then return end
-    local Store = NS.Settings.Store
-    local stale = ctx.__unitBand
-
-    local host = AceGUI:Create("SimpleGroup")
-    host:SetLayout("Flow")
-    host.frame:SetParent(frame)
-    host.frame:ClearAllPoints()
-    host.frame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    host.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-    host.frame:Show()
-    ctx.__unitBand = host
-
-    -- Parked on the ctx so a suite can drive the selection the way a click
-    -- would; the band's widgets are otherwise private to this function.
-    ctx.__bannerWidget = unitPicker(ctx, AceGUI, host)
-    local enableRow = Store.FindRow("units." .. ctx.unit .. ".enabled")
-    if enableRow then Helpers.RenderField(ctx, enableRow, host, BAND_CELLS.enable) end
-    if ctx.unit == "focus" then
-        local linkRow = Store.FindRow("units.focus.link")
-        if linkRow then Helpers.RenderField(ctx, linkRow, host, BAND_CELLS.link) end
-        copyFromTargetButton(AceGUI, host)
-    end
-    if host.DoLayout then host:DoLayout() end
-
-    -- After the new band exists, never before: the picker's own callback may be
-    -- what is re-rendering, and its widget must outlive the call.
-    if stale and stale.Release then stale:Release() end
+    local dd, _, acts = Helpers.PageBanner(ctx, {
+        label = L["Unit"],
+        tooltip = L["Which unit every tab on this page is editing. Target and Focus are configured independently, except that Focus follows Target while Link to Target, beside this picker, is ticked."],
+        list = items,
+        order = order,
+        value = ctx.unit,
+        acts = bandActs(ctx.unit),
+        onSelect = function(value)
+            if not value or value == ctx.unit then return end
+            Helpers.SetViewedUnit(value)
+            -- STRUCTURAL, not a re-render of this page alone. The selection is
+            -- shared, so the Units page must redraw on the new unit;
+            -- RefreshAllPanels re-renders the ones on screen and marks the hidden
+            -- ones dirty so they repaint on their next OnShow.
+            Helpers.RefreshAllPanels()
+        end,
+    })
+    ctx.__bannerWidget, ctx.__unitActs = dd, acts or {}
 end
 
 function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
@@ -200,10 +165,7 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     ctx.unit = Helpers.ViewedUnit()
     Helpers.ClearScroll(ctx)
 
-    Helpers.PageHeader(ctx, {
-        height = Helpers.BANNER_H,
-        build  = function(c, frame) buildUnitBand(c, frame) end,
-    })
+    drawUnitBand(ctx)
 
     -- The Units page's nav rail (KickCD#33) goes in HERE: after the band, whose
     -- height it reads for its top, and before EITHER strip path below, which reads
@@ -212,12 +174,10 @@ function Helpers.RenderUnitPanel(ctx, panelKey, afterGroup, chrome)
     if chrome then chrome(ctx) end
 
     -- A tab click redraws the WHOLE panel, band included, on both strip paths.
-    -- The band is chrome and outlives a strip-only redraw, but its Enable and
-    -- Link ticks register their refreshers through RenderField, and ClearScroll
-    -- reassigns ctx.refreshers: a strip-only redraw would leave the band's ticks
-    -- on screen with no refresher, so a `/kcd set units.<u>.enabled` typed after
-    -- any tab click left them stale. Pinned by tests/test_grid.lua ("the band's
-    -- ticks still follow a scalar write after a tab click").
+    -- The band is chrome and outlives a strip-only redraw, and the library keeps
+    -- its ticks' refresher across one, so a `/kcd set units.<u>.enabled` typed
+    -- after any tab click reaches them. Pinned by tests/test_grid.lua ("the
+    -- band's ticks still follow a scalar write after a tab click").
     local function rerender(c) Helpers.RenderUnitPanel(c, panelKey, afterGroup, chrome) end
 
     if NS.Units.IsLinked(ctx.unit) then

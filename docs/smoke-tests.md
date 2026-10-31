@@ -15,7 +15,7 @@ and a retired one leaves its number unused.
 |---|---|---|
 | INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
 | SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows (15 – 24 retired into SIM) |
-| PANEL-1 – 37 | Settings panel | The tree, the Units page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name, item 020's layout on every page (31 – 36) |
+| PANEL-1 – 38 | Settings panel | The tree, the Units page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name, item 020's layout on every page (31 – 36) |
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
@@ -416,6 +416,13 @@ you had before the update is still yours.
   2026-10-31). `/reload`, open every page in the tree (General, Units with each rail entry, Spells,
   Profiles) → each draws with no Lua error, and `/kcd config` opens the panel. In combat `/kcd config`
   refuses with the gray line. Result:
+- **PANEL-38. The Units band on the library's banner.** Open Units with Target in the band → one row:
+  Unit, then *Enable this unit*, the picker filling the left half. Flip to Focus → Unit, *Enable this
+  unit*, *Link to Target* and *Copy from Target* in four equal cells on the same row, the picker starting
+  where it did and the band the same height, no label clipped in any skin. Hover each → its tooltip. Tick
+  each box and click Copy → they act as before, and a tab click then `/kcd set units.focus.enabled false`
+  moves the tick. In combat each refuses and the box goes back. Resize the Settings window → the cells
+  follow. Result:
 
 ## PROFILE
 
@@ -1563,4 +1570,4 @@ On 2026-10-31 the owner reported that every check of those two runs passed: SKIN
 SKIN-6, SKIN-9, SKIN-11 – 13, SKIN-30 – 36, SIM-12 and SIM-13, each recorded on its `Result:` line as
 `Owner reported pass, 2026-10-31`. None is owed after those runs.
 
-The 2026-10-31 findings remediation adds PANEL-37, owed until its `Result:` line records a pass.
+The 2026-10-31 findings remediation adds PANEL-37 and PANEL-38, owed until its `Result:` line records a pass.

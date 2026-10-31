@@ -1358,7 +1358,7 @@ Total.
 - the panel's schema reader hands back a stored FALSE as false, not nil
 - the landing page is drawn by the library's BuildLandingPage, logo and commands
 
-### test_options_panel_degraded.lua (9)
+### test_options_panel_degraded.lua (10)
 
 - with LibKa0s absent the schema loads complete BAR the composed blocks
 - the hollow composers cost the degraded path no CLI reach beyond WS-02's route (a)
@@ -1368,6 +1368,7 @@ Total.
 - the General page draws Master controls and the Skin tab, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
+- the band's acts carry each row's label and body, and the copy act its own
 - the degraded stub carries no widget maker or layout constant
 
 ### test_skinsetup.lua (13)
@@ -1473,7 +1474,7 @@ Total.
 
 - grid: Icons, Cast bar and Text label register as Units entries under their page keys, on both builds
 - grid: the Unit band, then the rail Icons, Cast bar, Text label, 120 wide, opening on Icons
-- grid: the draw order is PageHeader, NavRail, TabStrip
+- grid: the draw order is PageBanner, NavRail, TabStrip
 - grid: a rail click draws that entry's own strip under the same band
 - grid: each entry keeps its own tab, including one chosen by the library's own strip click
 - grid: choosing the other unit in the band keeps the entry and its tab
@@ -1932,7 +1933,7 @@ Total.
 | test_spell_registry.lua | 30 |
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 33 |
-| test_options_panel_degraded.lua | 9 |
+| test_options_panel_degraded.lua | 10 |
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
@@ -1966,4 +1967,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1576** |
+| **Total** | **1577** |
