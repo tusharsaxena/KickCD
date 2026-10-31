@@ -91,11 +91,19 @@ local function measureHost(inst)
     return (select(2, W.__DragHandleMeasurer()))
 end
 
+--- The other one is the font preload's host (LibKa0s v1.83.0, OptionsScroll): shared, 1x1, parked off
+--- screen and kept shown so the client loads a face, and the first-run skin picker reaches it now.
+local function preloadHost(inst)
+    local O = inst.mocks.LibStub and inst.mocks.LibStub("LibKa0s-Options-1.0", true)
+    return O and O.__fontPreload and O.__fontPreload.frame
+end
+
 local function shownFrames(inst)
     local out = {}
     local skip = measureHost(inst)
+    local host = preloadHost(inst)
     for _, f in ipairs(inst.mocks.__frames or {}) do
-        if f ~= skip and f.__points and #f.__points > 0 and f.IsVisible and f:IsVisible() then
+        if f ~= skip and f ~= host and f.__points and #f.__points > 0 and f.IsVisible and f:IsVisible() then
             out[#out + 1] = f
         end
     end
