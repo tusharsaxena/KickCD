@@ -308,11 +308,14 @@ H.AddComposed(H.FontGroup{
     -- "Use the skin's font" (`icons.cooldownTextFontFromSkin`, default true, X3): the face only
     -- (hud.font); size, flags, color and shadow stay the player's (X4).
     fromSkin = true,
+    -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
+    -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
+    flagsFromSkin = true,
     defaults = {
         font       = "Friz Quadrata TT",
         fontSize   = 14,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
-        fontFlags  = "OUTLINE",
+        fontFlags  = "@skin",
         fontShadow = false,
         fontFromSkin = true,
     },

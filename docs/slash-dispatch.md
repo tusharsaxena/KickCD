@@ -180,7 +180,9 @@ unlocking *is* this addon's preview (the launcher menu's *Locked* entry), and wi
 grid to unlock — and **`resetposition`**, which re-anchors the grids, fires `CONFIG_CHANGED` so the
 live grids move, and then echoes *icon grid positions reset* at a player who can see no grid —
 and **`sim`**, which plays simulated casts and cooldowns through the live grids and cast bars that a
-disabled addon has stood down (the `LibKa0s-Sim-1.0` host contract H7 makes it a refused feature verb).
+disabled addon has stood down (the `LibKa0s-Sim-1.0` host contract H7 makes it a refused feature verb) —
+and **`skin`**, which opens the skin picker, a window a disabled addon does not bring up (LibKa0s
+v1.82.0's `O.SkinVerb`, ruling D-16).
 
 `isEnabled` reads `NS.MasterEnabled()` (`core/LifecycleSetup.lua`), which is the addon's **one**
 reader of `db.profile.enabled` — the same function the stand-down latch takes its hold from, so the
@@ -249,8 +251,8 @@ degradation stub") prescribe:
 
 * **Minimal dispatch, with the same gate.** Bare `/kcd` runs `config`; a known verb runs its row; an
   unknown one gets `unknown command '<verb>'` and a plain help list. While the addon is disabled, a
-  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, `sim`, listed in
-  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same five the live gate refuses:
+  verb on `NS.FEATURE_VERBS` (`lock`, `unlock`, `toggle`, `resetposition`, `sim`, `skin`, listed in
+  `core/KickCD.lua`) is refused with `DisabledLine`. That is the same six the live gate refuses:
   the stub cannot read `lib.LIVE_VERBS`, and re-typing the reserved verbs would be a second library
   copy, so it names the host's own feature verbs instead. `tests/test_slash_degraded.lua` pins the list
   against the live union (`COMMANDS` minus the live set).
@@ -289,6 +291,7 @@ Pinned on a real library-less load (`T.load(..., { libFiles = {} })`) by `tests/
 | `help` | Print the help index. | Iterates `COMMANDS`. |
 | `version` | Print the addon version. | `v<X.Y.Z>` from `C_AddOns.GetAddOnMetadata` with the `NS.VERSION` stamp as fallback (slash-commands-§3). |
 | `config` | Open the settings panel. | Combat-gated; lands on the parent page with the subcategory tree expanded in the left nav. |
+| `skin` | Choose a skin: open the skin picker. | **Reserved** (`slash-commands-§2`, LibKa0s v1.82.0, ruling D-16): `NS.RunSkinVerb` (`core/SkinSetup.lua`) hands `O.SkinVerb` this addon's picker spec (`NS.SkinPickerSpec()`), so it shows the picker a new profile shows whatever `skin.pickerSeen` says; a close marks the profile seen. The help text is the library's `SKIN_PICKER_STRINGS.VERB_HELP`. In combat the library prints its gray refusal on every call. A **feature verb**: refused while the addon is disabled, and on `NS.FEATURE_VERBS`. Without LibKa0s the Options stub answers `nil, "absent"` and the verb prints the library-absent line. Pinned by `tests/test_skin_fonts.lua`. |
 | `enable` / `disable` | Turn the addon on / off. | **Reserved aliases** (`slash-commands-§2`), never a second switch. Both dispatch into `setSetting(NS, "enabled <bool>")` — which IS `/kcd set` — so they write the Master-controls `Enable KickCD` row's own stored path through the same single write seam the checkbox writes through (`options-ui-§1`), run the same `onChange`, and get `slash-commands-§5`'s `set` confirmation line for free. They hold **no state of their own**: no second key, no session flag, no `NS.enabled`. `/kcd` and every verb on the live set keep working while the addon is **disabled** — `RegisterChatCommand` is unconditional in `OnInitialize` and nothing tears down `COMMANDS` or the dispatcher, so the pair is never one-way. Pinned by `tests/test_launcher.lua` and `tests/test_slash_degraded.lua`. |
 | `lock` / `unlock` / `toggle` | Set / clear / flip `db.profile.locked`. | **Refuses while the addon is disabled** (see above). **`unlock`, and a `toggle` that would unlock, refuse while a simulation runs** (`End the simulation first (/kcd sim stop).`; unlocking is KickCD's preview, [While a simulation runs](#while-a-simulation-runs-what-stops-it-what-refuses)); `lock` still runs. Writes through the schema seam, `NS.Settings.Store.Set("locked", ...)`, then `Helpers.RefreshScalars` when a panel exists — the same two steps `Helpers.SetAndRefresh` takes for the General → "Lock frame" checkbox — so the checkbox repaints and any onChange wired onto the schema row fires. A LibKa0s-less load composes no `locked` row, and `locked` is on the seam's `writeThrough` list (`settings/SchemaSetup.lua`, `options-ui-§1` route (a)), so the degraded stub still stores it ([Degraded verbs](#degraded-verbs-a-load-without-libka0s)). Only when there is no `Store` at all does it print "Settings layer not ready yet" and write nothing; there is no direct-write fallback. `toggle` is published as **`NS.ToggleLock`**, because the launcher menu's *Locked* entry is its second caller — `launcher-§2` drives the addon's EXISTING preview switch through the same handler rather than holding a copy of it. `enable` / `disable` likewise run **`NS.SetMasterEnabled`**, the menu's *Enabled* entry. |
 | `list` | Dump every schema-driven setting grouped by panel, with current values. | Schema-driven. |

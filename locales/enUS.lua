@@ -102,9 +102,6 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
--- The simulation strip over each icon grid (modules/SimStrip.lua, KC-09); %s is the scenario label.
-L["Simulation: %s - /kcd sim stop ends it."] =
-    "Simulation: %s - /kcd sim stop ends it."
 -- The CLI's refusal while a session runs (KC-06): unlock, toggle, the launcher's Locked entry and
 -- resetall (core/KickCD.lua).
 L["End the simulation first (/kcd sim stop)."] =
@@ -864,6 +861,14 @@ L["The font this addon's text uses, over the skin's own. Empty keeps the skin's.
 L["Texture"]                     = "Texture"
 L["The texture this addon's bars use, over the skin's own. Empty keeps the skin's."] =
     "The texture this addon's bars use, over the skin's own. Empty keeps the skin's."
+-- The Font outline (LibKa0s v1.82.0, Skin minor 9, ruling D-06): the schema row and its three modes.
+L["Font outline"]                = "Font outline"
+L["Where the skin outlines this addon's text: all of it, its HUD text only, or nowhere."] =
+    "Where the skin outlines this addon's text: all of it, its HUD text only, or nowhere."
+L["All text"]                    = "All text"
+L["HUD text only"]               = "HUD text only"
+-- The reserved `skin` verb's help: LibKa0s's SKIN_PICKER_STRINGS.VERB_HELP, one wording for every host.
+L["Choose a skin: open the skin picker"] = "Choose a skin: open the skin picker"
 L["Skin picker seen"]            = "Skin picker seen"
 L["Whether the first-run skin picker was closed on this profile."] =
     "Whether the first-run skin picker was closed on this profile."

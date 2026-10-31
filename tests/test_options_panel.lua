@@ -553,8 +553,9 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- labels come from, so an `L` hook growing there is the likeliest and the one
     -- that would show on screen first. OptionsDrawer.lua (LibKa0s v1.73.0) made
     -- it eleven, OptionsKeybinds.lua (LibKa0s v1.77.0) twelve, and OptionsAppearance.lua (v1.78.0)
-    -- and OptionsSkinPicker.lua (v1.79.0) fourteen: the count below moved, and the derived scan
-    -- already covered it.
+    -- and OptionsSkinPicker.lua (v1.79.0) fourteen, and OptionsSwitch.lua (v1.82.0, the switched
+    -- sections peeled out of OptionsWidgets) fifteen, and OptionsMedia.lua (v1.83.0, the media
+    -- pickers) sixteen: the count below moved, and the derived scan already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
         "Options owning its own strings is why this tripwire is not shaped like "
@@ -574,8 +575,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 14,
-        "the major is fourteen files at LibKa0s v1.79.0 (OptionsAppearance.lua and OptionsSkinPicker.lua joined) -- a count that moved means a file "
+    assertEqual(scanned, 16,
+        "the major is sixteen files at LibKa0s v1.83.0 (OptionsMedia.lua joined) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.
@@ -585,7 +586,7 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     assertNil(src2:match("\n%s*L%s*="), "the Options descriptor grew an L the library never reads")
 end)
 
-test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it", function()
+test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList draws it", function()
     -- LibKa0s#42 (Options 28 / OptionsIdList 3). An IdList help mark draws this
     -- library's own white `info` art only when the descriptor names the host's
     -- FOLDER; with no `addonName` it falls back to Blizzard's blue disc and a
@@ -599,7 +600,9 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     -- `LibKa0s icons:` line declares (library-stack-§7, the icon subset), and
     -- `info` is library-drawn only by an O.IdList help mark. KickCD draws no
     -- O.IdList (settings/Spells_Header.lua uses H.IdInput), so an IdList is not
-    -- why `info` is declared; the simulator's mode strip is (KC-03, below). The
+    -- why `info` is declared. The simulator's mode strip was (KC-03), until KC-02 of the
+    -- 2026-10-30 skin fonts run removed the strip (ruling D-13), so `info` is declared iff an
+    -- IdList is drawn, and otherwise neither declared nor shipped. The
     -- declaration is read with the kit's own parser
     -- (VendorSync.iconDeclaration), never a second one in this repo.
     -- red under: `local _, NS = ...` with no `addonName = addonName,` in the
@@ -636,21 +639,11 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     for _, name in ipairs(decl.names) do declared[name] = true end
     local art = io.open(T.root .. "/libs/LibKa0s/media/icons/info.tga", "rb")
     if art then art:close() end
-    -- KC-03 (KickCD#38): the simulator's mode strip draws `info` too (design-kc-sim; the
-    -- strip itself lands in a later item), so a wired simulator is the second reason the
-    -- name is declared. core/SimSetup.lua in the TOC is what "wired" means here.
-    local simWired = false
-    for _, rel in ipairs(T.tocFiles) do
-        if rel == "core/SimSetup.lua" then simWired = true end
-    end
-    if #drawsIdList == 0 and not simWired then
+    if #drawsIdList == 0 then
         assertTrue(not declared.info,
-            "KickCD draws no O.IdList and no simulator strip, so `info` must not be on the `LibKa0s icons:` line")
+            "KickCD draws no O.IdList, so `info` must not be on the `LibKa0s icons:` line")
         assertTrue(art == nil,
             "libs/LibKa0s/media/icons/info.tga ships although `info` is not declared")
-    elseif #drawsIdList == 0 then
-        assertTrue(declared.info == true, "the simulator is wired (core/SimSetup.lua) but `info` "
-            .. "is not on the `LibKa0s icons:` line, so its mode strip's mark draws blank")
     else
         assertTrue(declared.info == true, "an IdList is drawn (" .. table.concat(drawsIdList, ", ")
             .. ") but `info` is not on the `LibKa0s icons:` line, so its help mark draws blank")

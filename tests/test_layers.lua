@@ -6,7 +6,9 @@
 --
 --   * inside an icon:     swipe < border < glow host < glow effect < text overlay  (KIC-Z01..Z03, CALL-06)
 --   * inside a cast bar:  fill < border < spark/name/time overlay                  (KIC-Z04)
---   * across one unit:    grid content < cast bar < label < drag handles < sim strip (KIC-Z05..Z08)
+--   * across one unit:    grid content < cast bar < label < drag handles             (KIC-Z05..Z07)
+--     (the sim strip over them, KIC-Z08, went with modules/SimStrip.lua in KC-02 of the 2026-10-30
+--     skin fonts run: the step panel is the session's sign, ruling D-13)
 --
 -- WHY THE RECORDER AND NOT THE PLAIN MOCK. tests/wow_mock_frames.lua answers GetFrameLevel with the
 -- frame's OWN stored level, 0 at birth, so a child is never "parent + 1" and a level set before a
@@ -63,7 +65,7 @@ test("LAYERS puts the cast bar band above every grid level and the handles above
     assertTrue(L.HUD.CASTBAR > gridTop, "the cast bar must clear the grid's whole content band")
     assertTrue(L.HUD.GRID + L.HUD.LABEL > barTop, "the label must clear the cast bar's content")
     assertTrue(L.HUD.HANDLE > L.HUD.GRID + L.HUD.LABEL, "the drag handles must clear the label")
-    assertTrue(L.HUD.MARKER > barTop, "the sim strip must clear every display")
+    assertTrue(L.HUD.MARKER == nil, "the sim strip's slot went with the strip (KC-02, D-13)")
 end)
 
 -- ── the icon grid ───────────────────────────────────────────────────────────
@@ -194,25 +196,6 @@ test("a label attached to the grid draws over the grid's text, and re-levels aft
     -- SetParent drops an explicit level (the client re-derives it); a second Apply must put it back.
     NS:GetModule("UnitLabel"):Apply(NS:GetModule("UnitLabel"):GetInstance("target"))
     assertEqual(level(f), level(grid) + NS.Const.LAYERS.LEVEL.HUD.LABEL)
-end)
-
--- ── the sim strip ───────────────────────────────────────────────────────────
-
-test("the sim strip is MEDIUM at UIParent + HUD.MARKER, above every HUD element", function()
-    local NS, mocks = fresh()
-    local frame = castbar(NS)
-    local prev = NS.Sim.IsActive
-    NS.Sim.IsActive = function() return true end
-    local ok, err = pcall(NS.SimStrip.Refresh, NS.SimStrip)
-    local strip = NS.SimStrip.__frames.target
-    NS.SimStrip:Hide()
-    NS.Sim.IsActive = prev
-    if not ok then error(err, 0) end
-    assertTrue(strip ~= nil, "the strip is built")
-    local s = mocks.__layers(strip)
-    assertEqual(s.strata, "MEDIUM")
-    assertEqual(s.level, level(mocks.UIParent) + NS.Const.LAYERS.LEVEL.HUD.MARKER)
-    assertTrue(s.level > level(frame.overlay))
 end)
 
 -- ── the source reads the table ──────────────────────────────────────────────

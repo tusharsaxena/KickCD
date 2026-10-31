@@ -11,7 +11,7 @@
 --     icon.borderStyle / icon.borderSize (the icon border AND both cast-bar borders, KC-A1) while a
 --     companion is set, the stored pick when it is off, and the charges badge in the skin's face (D4);
 --   * a skin switch reaches the HUD through the owner's OnLooksChanged, with no stored value moved;
---   * the one-time reset (owner ruling O2): NS.SCHEMA_VERSION 6, migrations[5], once per profile
+--   * the one-time reset (owner ruling O2): migrations[5] (v5 -> v6), once per profile
 --     and recorded per profile (skin.hudReset), so a pick the player turns off later is kept; a
 --     profile that was not active at the upgrade is reset when it becomes active; and without the
 --     library the step still sets the companions;
@@ -123,7 +123,7 @@ test("HUD skin: the cast bar draws the skin's face, texture and border while fol
     local cb = Castbar:GetInstance("target")
     clear(fetched)
     Castbar:Reskin(cb, true)
-    assertTrue(has(fetched, "font:Ka0s Oxanium SemiBold"), "hud.font on Ka0s Default")
+    assertTrue(has(fetched, "font:Ka0s Prototype"), "hud.font on Ka0s Default")
     assertTrue(has(fetched, "statusbar:Ka0s Default"), "bar.texture on Ka0s Default")
     assertTrue(has(fetched, "border:Solid"), "icon.borderStyle on Ka0s Default (KC-A1)")
     assertFalse(has(fetched, "border:None"), "not bar.borderStyle, which draws no edge")
@@ -232,11 +232,11 @@ test("HUD skin: the countdown follows hud.font and the charges badge takes the s
     local cfg = NS.db.profile.units.target.icons
     clear(fetched)
     icon:ApplyTextConfig(cfg)
-    assertTrue(has(fetched, "font:Ka0s Oxanium SemiBold"), "hud.font for the countdown")
+    assertTrue(has(fetched, "font:Ka0s Prototype"), "hud.font for the countdown")
     assertFalse(has(fetched, "font:Friz Quadrata TT"), "not the stored pick")
     assertTrue(badge ~= nil, "the badge's font was set")
     local path, size, flags = badge[1], badge[2], badge[3]
-    assertTrue(tostring(path):find("Oxanium", 1, true) ~= nil, "the badge's face is the skin's: " .. tostring(path))
+    assertTrue(tostring(path):find("Prototype", 1, true) ~= nil, "the badge's face is the skin's: " .. tostring(path))
     assertEqual(size, 13, "the badge keeps NumberFontNormal's size")
     assertEqual(flags, "OUTLINE", "and its flags")
 end)
@@ -264,19 +264,19 @@ test("HUD skin: with Ignore fonts on, every HUD text draws its own pick and the 
         clear(fetched)
         Castbar:Reskin(Castbar:GetInstance("target"), true)
         assertTrue(has(fetched, "font:Friz Quadrata TT"), "the cast bar draws its stored face")
-        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+        assertFalse(has(fetched, "font:Ka0s Prototype"), "not the skin's")
 
         clear(fetched)
         icon:ApplyTextConfig(unit.icons)
         assertTrue(has(fetched, "font:Friz Quadrata TT"), "the countdown draws its stored face")
-        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+        assertFalse(has(fetched, "font:Ka0s Prototype"), "not the skin's")
         assertTrue(badge ~= nil, "the badge's font was set")
         assertEqual(badge[1], "Fonts\\ARIALN.TTF", "the badge keeps NumberFontNormal's face")
 
         clear(fetched)
         UL:Apply(UL:GetInstance("target"))
         assertTrue(has(fetched, "font:Friz Quadrata TT"), "the label draws its stored face")
-        assertFalse(has(fetched, "font:Ka0s Oxanium SemiBold"), "not the skin's")
+        assertFalse(has(fetched, "font:Ka0s Prototype"), "not the skin's")
     end)
     Skin:SetIgnore(OWNER, nil, false)
     if not ok then error(err, 0) end
@@ -290,7 +290,7 @@ test("HUD skin: the unit label follows hud.font, and a false companion is the pl
     local UL = NS:GetModule("UnitLabel")
     clear(fetched)
     UL:Apply(UL:GetInstance("target"))
-    assertTrue(has(fetched, "font:Ka0s Oxanium SemiBold"))
+    assertTrue(has(fetched, "font:Ka0s Prototype"))
     NS.db.profile.units.target.label.style.fontFromSkin = false
     clear(fetched)
     UL:Apply(UL:GetInstance("target"))
@@ -358,17 +358,21 @@ local function v5Saved(extraProfiles)
     return { global = { schemaVersion = 5 }, profiles = profiles }
 end
 
-test("HUD skin: the reset puts every companion on the skin once, keeps the picks, and stamps v6", function()
+test("HUD skin: the reset puts every companion on the skin once, keeps the picks, and walks past v6", function()
     -- red under: no migrations[5], NS.SCHEMA_VERSION left at 5, a reset that overwrote the
     -- stored pick, or one that missed a unit
     local inst = boot(v5Saved())
     local NS = inst.NS
-    assertEqual(NS.SCHEMA_VERSION, 6)
-    assertEqual(NS.db.global.schemaVersion, 6)
+    assertTrue(NS.SCHEMA_VERSION >= 6, "migrations[5] is on the ladder")
+    assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION)
+    -- The one exception is the player's own face: Target's cast bar stores Arial Narrow, so the
+    -- v7 -> v8 step that runs on the same load (KC-03 of the 2026-10-30 skin fonts run, D-15) turns
+    -- its "Use the skin's font" back off and the pick draws again.
+    local KEPT = "units.target.castbar.fontFromSkin"
     for _, unit in ipairs(UNITS) do
         for _, rel in ipairs(NS.Database.HUD_SKIN_COMPANIONS) do
             local path = "units." .. unit .. "." .. rel
-            assertEqual(at(NS.db.profile, path), true, path)
+            assertEqual(at(NS.db.profile, path), path ~= KEPT, path)
         end
     end
     assertEqual(NS.db.profile.units.target.castbar.font, "Arial Narrow", "the stored pick is kept")
@@ -401,7 +405,7 @@ test("HUD skin: a profile that was not active at the upgrade is reset when it be
     -- the profile active at the upgrade)
     local alt = { units = { target = { castbar = { fontFromSkin = false } } } }
     local NS = boot(v5Saved({ Alt = alt })).NS
-    assertEqual(NS.db.global.schemaVersion, 6, "sanity: the account stamp is already current")
+    assertEqual(NS.db.global.schemaVersion, NS.SCHEMA_VERSION, "sanity: the account stamp is already current")
     NS.db:SetProfile("Alt")
     assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, true, "Alt was put on the skin")
     assertEqual(NS.db.profile.skin.hudReset, true)
@@ -412,7 +416,10 @@ test("HUD skin: without the library the step still sets the companions", functio
     -- or the companions where they were
     local inst = boot(v5Saved(), { libFiles = {} })
     local NS = inst.NS
-    assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, true)
+    -- Target's cast bar stores the player's Arial Narrow, which the v7 -> v8 step (D-15) keeps off
+    -- the skin's font again on the same load; every other companion is on.
+    assertEqual(NS.db.profile.units.target.castbar.fontFromSkin, false)
+    assertEqual(NS.db.profile.units.target.castbar.interruptible.statusBarTextureFromSkin, true)
     assertEqual(NS.db.profile.units.focus.label.style.fontFromSkin, true)
     assertEqual(NS.db.profile.skin.hudReset, true)
     -- And the degraded HUD draws the stored pick, the host copy holding no HUD token.

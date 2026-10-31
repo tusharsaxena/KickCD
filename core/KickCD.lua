@@ -166,6 +166,24 @@ end
 -- same refusal to touch the deprecated global. settings/Slash.lua and
 -- core/PerfSetup.lua went the same way, so the three cannot disagree.)
 
+-- The guards before the write, as refuse's (guard, message) pair; nil when the write may go ahead.
+local function lockRefusal(self, value)
+    if not (self.db and self.db.profile) then
+        return "db not ready", "db not initialized yet"
+    end
+    -- Unlocking is KickCD's preview and never runs beside a simulation (KickCD#38 H5, KC-06): unlock,
+    -- toggle and the launcher's Locked entry all land here and refuse. Locking stays allowed.
+    if not value and NS.Sim and NS.Sim:IsActive() then
+        return "simulation running", NS.L["End the simulation first (/kcd sim stop)."]
+    end
+end
+
+-- The write itself, through the seam: true when the Store took it.
+local function storeLocked(self, v)
+    local S = self.Settings and self.Settings.Store
+    return S and S.Set and S.Set("locked", v)
+end
+
 -- Set db.profile.locked through the schema seam (NS.Settings.Store.Set), then
 -- repaint an open panel's widgets (Helpers.RefreshScalars) -- the same two steps
 -- Helpers.SetAndRefresh takes for `/kcd set locked true` and the General >
@@ -182,17 +200,10 @@ end
 -- never falls back to `db.profile.locked = v` around the seam.
 local function setLocked(self, value)
     local verb = value and "lock" or "unlock"
-    if not (self.db and self.db.profile) then
-        return refuse(self, "Set", verb, nil, "db not ready", "db not initialized yet")
-    end
-    -- Unlocking is KickCD's preview and never runs beside a simulation (KickCD#38 H5, KC-06): unlock,
-    -- toggle and the launcher's Locked entry all land here and refuse. Locking stays allowed.
-    if not value and NS.Sim and NS.Sim:IsActive() then
-        return refuse(self, "Set", verb, nil, "simulation running", NS.L["End the simulation first (/kcd sim stop)."])
-    end
+    local guard, msg = lockRefusal(self, value)
+    if guard then return refuse(self, "Set", verb, nil, guard, msg) end
     local v = value and true or false
-    local S = self.Settings and self.Settings.Store
-    if not (S and S.Set and S.Set("locked", v)) then
+    if not storeLocked(self, v) then
         return refuse(self, "Set", verb, nil, "settings layer not ready", "Settings layer not ready yet")
     end
     local H = self.Settings.Helpers
@@ -251,6 +262,11 @@ local COMMANDS = {
         function() p(NS, "v" .. NS.Version()) end},
     {"config",        "Open the settings panel",
         function() NS:OpenSettings() end},
+    -- `skin` is RESERVED (slash-commands-§2, LibKa0s v1.82.0's O.SkinVerb, ruling D-16): the picker
+    -- a new profile shows, on demand (core/SkinSetup.lua's NS.RunSkinVerb). A feature verb: refused
+    -- while the addon is disabled (NS.FEATURE_VERBS below).
+    {"skin",          NS.L["Choose a skin: open the skin picker"],
+        function() NS.RunSkinVerb() end},
     -- RESERVED verbs (slash-commands-§2), and ALIASES rather than a switch of
     -- their own. Every addon already carries the addon-wide `Enable KickCD`
     -- checkbox as the first row of General > Master controls (options-ui-§15);
@@ -378,7 +394,7 @@ local COMMANDS = {
 -- master switch from the new profile (Database:OnProfileChanged), so it can
 -- bring a disabled addon back up.
 --
--- WHAT IS LEFT REFUSED IS FIVE, and each really does drive the display. `lock`,
+-- WHAT IS LEFT REFUSED IS SIX, and each really does drive the display. `lock`,
 -- `unlock` and `toggle` flip the addon's PREVIEW SWITCH -- unlocking IS this
 -- addon's preview, the launcher menu's Locked entry (launcher-§2) -- and
 -- with the addon off there is no grid and no placeholder to unlock
@@ -387,16 +403,17 @@ local COMMANDS = {
 -- "icon grid positions reset" at a player who can see no grid: an acknowledgment
 -- of something that visibly did not happen. `sim` plays simulated casts and
 -- cooldowns through the live grids and cast bars, which a disabled addon has stood
--- down (the Sim major's host contract H7 makes it a refused feature verb).
+-- down (the Sim major's host contract H7 makes it a refused feature verb). `skin` opens the
+-- skin picker, a window a disabled addon does not bring up (ruling D-16).
 NS.EXTRA_LIVE_VERBS = { "spells", "profile" }
 
--- THE SAME FIVE, NAMED, for the one load where there is no library to union
+-- THE SAME SIX, NAMED, for the one load where there is no library to union
 -- with: settings/Slash.lua's degradation stub refuses exactly these while the
 -- addon is disabled. It is this addon's own list of its own feature verbs, not a
 -- copy of the library's reserved thirteen (slash-commands-§1 lets a stub carry one
 -- library string, and it is DISABLED_LINE_FORMAT). tests/test_slash_degraded.lua pins it
 -- against the live gate: COMMANDS minus the live union MUST be this list.
-NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition", "sim" }
+NS.FEATURE_VERBS = { "lock", "unlock", "toggle", "resetposition", "sim", "skin" }
 
 NS.COMMANDS = COMMANDS
 

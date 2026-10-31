@@ -57,9 +57,9 @@ test("COMMANDS carries `profile` beside the settings verbs, in a pinned order", 
     local order = {}
     for _, e in ipairs(T.NS.COMMANDS) do order[#order + 1] = e[1] end
     assertEqual(table.concat(order, " "),
-        "help version config enable disable lock unlock toggle list get set reset resetall "
+        "help version config skin enable disable lock unlock toggle list get set reset resetall "
         .. "profile resetposition spells debug diagnostics perf sim")
-    assertEqual(#T.NS.COMMANDS, 20, "twenty verbs")
+    assertEqual(#T.NS.COMMANDS, 21, "twenty-one verbs")
 end)
 
 test("the `profile` description is the locale's, and names the <name> form", function()

@@ -164,6 +164,15 @@ end
 function Castbar.LabelFont(c)
     return NS.SkinResolve("hud.font", c.font, c.fontFromSkin)
 end
+-- The size and flags both texts draw at (LibKa0s v1.82.0): the stored size scaled to the skin's HUD
+-- face while the face follows the skin (D-09), and the stored flags with From skin resolved through
+-- the Font outline (D-07). Resolved, so a skin switch or an outline change moves the signature.
+function Castbar.LabelSize(c)
+    return NS.SkinHudSize(c.fontSize or 12, c.fontFromSkin)
+end
+function Castbar.LabelFlags(c)
+    return NS.SkinFontFlags(c.fontFlags)
+end
 -- The border is the skin's ICON border family, style and thickness both (KC-A1, the owner's
 -- ruling: bar.borderStyle is "None" on every skin, so the bar family would draw no edge), as
 -- settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
@@ -183,7 +192,7 @@ local function structureSignature(c, intCfg, unintCfg, barLong, barThick)
         tostring(c.orientation), tostring(c.growDirection),
         tostring(c.iconPosition), tostring(c.iconSize),
         tostring(c.showSpark),
-        tostring(Castbar.LabelFont(c)), tostring(c.fontSize), tostring(c.fontFlags),
+        tostring(Castbar.LabelFont(c)), tostring(Castbar.LabelSize(c)), tostring(Castbar.LabelFlags(c)),
         tostring(c.fontShadow),
         tostring(c.namePosition), tostring(c.nameOffsetX), tostring(c.nameOffsetY),
         tostring(c.timePosition), tostring(c.timeOffsetX), tostring(c.timeOffsetY),
@@ -306,17 +315,14 @@ local function applySpark(frame, c, barOrient, reverseFill, barThick)
     end
 end
 
---- Font for both labels (shared across states). "NONE" and an absent value
---- both mean "no outline / no monochrome", which SetFont spells as the empty
---- string.
+--- Font for both labels (shared across states). The flags are NS.SkinFontFlags': "NONE" (the
+--- PRE-v5 token, which core/Database.lua rewrites, still reaching here on the first frame after
+--- login on a profile not yet migrated) is "", and From skin, the default since LibKa0s v1.82.0,
+--- follows the Font outline. The size is scaled to the skin's HUD face while the face follows it.
 local function applyLabelFonts(frame, c)
     local fontPath = Castbar.FetchFont(Castbar.LabelFont(c))
-    local fontSize = c.fontSize or 12
-    local fontFlags = c.fontFlags
-    -- "NONE" is the PRE-v5 token and core/Database.lua rewrites it, but a
-    -- profile that has not been through the migration yet still reaches here on
-    -- the first frame after login.
-    if fontFlags == "NONE" or fontFlags == nil then fontFlags = "" end
+    local fontSize = Castbar.LabelSize(c)
+    local fontFlags = Castbar.LabelFlags(c)
 
     frame.nameText:SetFont(fontPath, fontSize, fontFlags)
     frame.timeText:SetFont(fontPath, fontSize, fontFlags)

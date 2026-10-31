@@ -268,12 +268,12 @@ end)
 -- reader sees: the page renders only the selected unit's rows. General has no
 -- unit selector, so its Units tab shows both units' toggles, plus the Focus
 -- `link` row, which the tab draws itself (`skipRender`): 3. The Skin tab's group is the library's
--- tab key, "Appearance": the seven skin.* rows, every one skipRender and drawn by O.AppearanceTab.
+-- tab key, "Appearance": the eight skin.* rows (skin.outline joined at LibKa0s v1.82.0), every one skipRender and drawn by O.AppearanceTab.
 -- KC-03 (the 2026-10-29 skinning rollout) adds one "Use the skin's ..." companion after each HUD
 -- media block: Icons > Appearance and Annotations one each, Cast bar > Text one, each state two
 -- (the bar texture's and the border's), Text label > Font one.
 local STRIP = {
-    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 7 } },
+    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 8 } },
     icons   = {
         { "Size and layout", 10 }, { "Appearance", 11 }, { "Annotations", 12 },
         { "Ready glow", 34 },

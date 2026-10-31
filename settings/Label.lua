@@ -210,11 +210,14 @@ local function addUnitRows(unit)
         labels   = { fontColor = L["Label color"] },
         -- "Use the skin's font" (`label.style.fontFromSkin`, default true, X3): the face only.
         fromSkin = true,
+        -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
+        -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
+        flagsFromSkin = true,
         defaults = {
             font       = "Friz Quadrata TT",
             fontSize   = 14,
             fontColor  = { r = 1, g = 0.82, b = 0, a = 1 },
-            fontFlags  = "OUTLINE",
+            fontFlags  = "@skin",
             fontShadow = false,
             fontFromSkin = true,
         },

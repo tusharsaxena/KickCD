@@ -415,10 +415,12 @@ test("both labels share the config font, and NONE flags normalize to empty", fun
     assertEqual(size2, 16, "the time label shares the name label's font")
 end)
 
-test("absent fontFlags normalize to empty too", function()
+test("absent fontFlags read as From skin: the Font outline's flags, OUTLINE under HUD text only", function()
+    -- LibKa0s v1.82.0 (D-07): nothing stored is From skin, which S.FontFlags resolves through the
+    -- Font outline; it used to normalize to "" (no outline) when "" was the only empty answer.
     local inst = skinned({}, { "fontFlags" })
     local _, _, flags = inst.frame.nameText:GetFont()
-    assertEqual(flags, "")
+    assertEqual(flags, "OUTLINE")
 end)
 
 test("showName / showTime false hide their labels, and only theirs", function()

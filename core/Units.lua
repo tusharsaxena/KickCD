@@ -158,7 +158,8 @@ function Units.CopyStyling(fromUnit, toUnit)
     -- Whether the link row's onChange will repaint: only when the copy flips it.
     local linkFlips = linkRow ~= nil and Store.Get(linkRow.path) ~= false
     if linkRow then entries[#entries + 1] = { path = linkRow.path, value = false } end
-    local ok = Store.SetMany(entries, { act = "copy", scope = fromUnit .. "→" .. toUnit })
+    -- The scope reaches only the debug log's bracket line, which draws in the mono face.
+    local ok = Store.SetMany(entries, { act = "copy", scope = fromUnit .. "→" .. toUnit }) -- glyph: mono
     if not ok then return false end
     if not linkFlips then H.RefreshAllPanels() end
     return true

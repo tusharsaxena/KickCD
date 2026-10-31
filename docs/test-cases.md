@@ -605,21 +605,15 @@ Total.
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
 
-### test_sim_strip.lua (13)
+### test_sim_marker.lua (7)
 
-- TOC: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
-- SimStrip: idle, no strip frame exists (it is built lazily on the first start)
-- SimStrip: on start the strip is shown, built with the sim flavor, and names the scenario
-- SimStrip: with the default label above the grid, the strip sits BOTTOM to the label's TOP, 2 up
-- SimStrip: one strip per enabled grid: the focus grid carries its own
-- SimStrip: with the target label off, the strip anchors to the target grid frame
-- SimStrip: with the target disabled, the strip marks the focus grid
-- SimStrip: with both units disabled mid-session, the strip floats at UIParent CENTER 0, 180
-- SimStrip: visibility target_casting with no cast hides the grid, not the strip
-- SimStrip: a GRID_LAYOUT or a CONFIG_CHANGED (units) re-places it
-- SimStrip: the width is max(220, the grid's width)
-- SimStrip: on stop it hides and releases its bus subscriptions
-- SimStrip: without the library's sim flavor, no strip, no error, and the session runs
+- sim marker: the floating strip is gone: no module, no TOC line, no strip at a start
+- sim marker: the scenario's strip line is out of the locale
+- sim marker: a start opens the step panel with no close mark
+- sim marker: Escape does not take the panel down while a session runs
+- sim marker: the panel stays up across the session's steps
+- sim marker: a stop gives the idle panel its close mark back
+- sim marker: a stop puts the panel back on UISpecialFrames, once
 
 ### test_debuglog.lua (13)
 
@@ -787,7 +781,7 @@ Total.
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
 
-### test_layers.lua (15)
+### test_layers.lua (14)
 
 - LAYERS names the HUD strata once, as MEDIUM
 - LAYERS orders the icon ladder fill < border < effect < effect frames < overlay
@@ -801,7 +795,6 @@ Total.
 - both drag handles sit at UIParent + HUD.HANDLE, above the cast bar's content
 - a label attached to the cast bar draws over the cast bar, not under it
 - a label attached to the grid draws over the grid's text, and re-levels after each reparent
-- the sim strip is MEDIUM at UIParent + HUD.MARKER, above every HUD element
 - every SetFrameStrata in core/, modules/ and settings/ reads LAYERS.STRATA
 - every SetFrameLevel in core/, modules/ and settings/ names a LAYERS.LEVEL member
 
@@ -1089,7 +1082,7 @@ Total.
 - showSpark=false hides the spark outright
 - showSpark defaults to shown when unset
 - both labels share the config font, and NONE flags normalize to empty
-- absent fontFlags normalize to empty too
+- absent fontFlags read as From skin: the Font outline's flags, OUTLINE under HUD text only
 - showName / showTime false hide their labels, and only theirs
 - the labels default to shown when the flags are unset
 - name and time labels anchor per their independent position settings
@@ -1359,7 +1352,7 @@ Total.
 - every schema row the panel renders is labeled with prose, not with a key
 - the panel's group and section headings are prose too
 - libs/LibKa0s/Options.lua takes no locale override, so none can be mis-passed
-- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList or the simulator draws it
+- OptionsSetup: the Options descriptor is told the FOLDER name, and `info` is declared iff an IdList draws it
 - the live wiring patches LSM30_Border through the library, not a private copy
 - General's Reset all settings tooltip says it is the same act as Profiles -> Reset Profile
 - the panel's schema reader hands back a stored FALSE as false, not nil
@@ -1381,7 +1374,7 @@ Total.
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
-- Skin seam: the seven skin keys default to Ka0s Default and today's Scope
+- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only
 - Skin seam: every skin key is a skipRender row of the General page's Skin tab
 - Skin seam: the skin row's values are every registered skin, in the library's order
 - Skin seam: /kcd set refuses an unregistered skin and applies a registered one
@@ -1421,12 +1414,41 @@ Total.
 - HUD skin: the unit label follows hud.font, and a false companion is the player's face
 - HUD skin: a skin switch repaints the HUD with no stored value moved
 - HUD skin: no repaint while the addon is stood down
-- HUD skin: the reset puts every companion on the skin once, keeps the picks, and stamps v6
+- HUD skin: the reset puts every companion on the skin once, keeps the picks, and walks past v6
 - HUD skin: a pick turned off after the reset is never reset again
 - HUD skin: a profile that was not active at the upgrade is reset when it becomes active
 - HUD skin: without the library the step still sets the companions
 - HUD skin: the step names only companions that read a boolean
 - HUD skin: Copy from Target carries the companions with the pickers
+
+### test_skin_fonts.lua (26)
+
+- outline: a fresh profile stores HUD text only, the library's default, and wears it
+- outline: a stored All text stays, the default's move migrates nothing (D-10)
+- outline: the schema row offers the library's three modes, in its order
+- outline: the write seam stores media.outline, and leaves it alone when it is nil
+- outline: another addon's copy reaches the store through WriteChoice
+- outline: the row's write applies the mode live
+- outline: /kcd set refuses a mode the library does not know
+- outline: the stored mode is applied at load and on a profile switch
+- outline: without the skin engine the apply is a quiet no-op
+- skin verb: the row sits right after config, with the library's help words
+- skin verb: NS.RunSkinVerb hands O.SkinVerb this addon's picker spec
+- skin verb: /kcd skin shows the picker on a profile that has closed it
+- skin verb: without LibKa0s it prints the library-absent line
+- From skin: every Font flags row leads with @skin and defaults to it, in the row and the defaults
+- From skin: the HUD draws the Font outline's flags, and a picked flag wins
+- From skin: without the library From skin draws OUTLINE, a pick as stored
+- From skin: the step moves a stored OUTLINE onto From skin once, and keeps a pick
+- From skin: an OUTLINE picked after the step is never moved again
+- From skin: a profile that was not active at the upgrade is moved when it becomes active
+- HUD size: on the skin's face 12 draws at 13 under Obsidian, 12 on its own face or under Ignore fonts
+- HUD size: without the library a size is drawn as stored
+- skin font kept: a picked face other than the skin's turns Use the skin's font off, once
+- skin font kept: the skin's own face is the one the profile wears
+- skin font kept: a box ticked again after the step is never turned off again
+- skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
+- skin font kept: without the library the step still keeps the picks
 
 ### test_skin_picker.lua (16)
 
@@ -1513,6 +1535,10 @@ Total.
 - a WoW global on the standing _G. list is never read bare
 - no module reads profile.enabled directly
 - no authored file falls back to the global print
+
+### test_glyphs.lua (1)
+
+- glyphs: display strings use only characters every shipped skin face draws
 
 ### test_prose.lua (15)
 
@@ -1872,7 +1898,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 9 |
-| test_sim_strip.lua | 13 |
+| test_sim_marker.lua | 7 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1881,7 +1907,7 @@ Total.
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
 | test_icongrid_render.lua | 28 |
-| test_layers.lua | 15 |
+| test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
 | test_icongrid_gcd_classify.lua | 5 |
@@ -1911,6 +1937,7 @@ Total.
 | test_skinsetup.lua | 13 |
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
+| test_skin_fonts.lua | 26 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 13 |
 | test_settings_layout_guard.lua | 1 |
@@ -1919,6 +1946,7 @@ Total.
 | test_library_lines.lua | 9 |
 | test_version.lua | 3 |
 | test_source_style.lua | 3 |
+| test_glyphs.lua | 1 |
 | test_prose.lua | 15 |
 | test_slash_style.lua | 10 |
 | test_slash.lua | 53 |
@@ -1939,4 +1967,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1557** |
+| **Total** | **1577** |

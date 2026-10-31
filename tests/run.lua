@@ -190,7 +190,7 @@ local SUITES = {
     "test_sim_interference",
     "test_sim_drivers",
     "test_sim_e2e",
-    "test_sim_strip",
+    "test_sim_marker",
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",
@@ -229,6 +229,7 @@ local SUITES = {
     "test_skinsetup",
     "test_skin_settings",
     "test_skin_hud",
+    "test_skin_fonts",
     -- The first-run skin picker (KC-04): its spec, when it shows (login, the profile events, never
     -- stood down, held through combat), what marks it seen, the real window. Its own instance.
     "test_skin_picker",
@@ -239,6 +240,7 @@ local SUITES = {
     "test_library_lines",
     "test_version",
     "test_source_style",
+    "test_glyphs",
     { name = "test_prose", dir = "tests/_kit/" },
     "test_slash_style",
     "test_slash",

@@ -491,6 +491,12 @@ local function build()
         -- The owning build, so the frame's RegisterEvent can read THIS build's
         -- __badEvents at call time (see refuseUnknown above).
         f.__mocks = mocks
+        -- A named frame is a global, as in the client (`_G[name]`), so a host that reaches a
+        -- library frame by its documented name (modules/Sim.lua's Host.PinPanel, the step panel's
+        -- `<name>SimPanel`) reads the frame here too. A name already on the mock set is left alone.
+        if type(name) == "string" and name ~= "" and rawget(mocks, name) == nil then
+            mocks[name] = f
+        end
         created[#created + 1] = f
         return f
     end

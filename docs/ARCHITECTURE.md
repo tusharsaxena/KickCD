@@ -58,8 +58,8 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | Schema-driven canvas-layout settings panel; widget primitives | `settings/Panel.lua`, `settings/Panel_Widgets.lua`, `settings/Panel_Render.lua`, `settings/{General,Grid,Icons,Castbar,Label,Spells,Spells_Rows,Spells_Header,Profiles}.lua` | [settings-panel.md](settings-panel.md) |
 | The one dispatch table for simulated delivery: the routes `NS.RegisterEventList` and `Util.NewUnitCastFilter` record, and `NS.DeliverEvent`, which replays exactly the handlers the client would call (KickCD#38) | `core/Events.lua` | [data-flow.md → Simulated delivery](data-flow.md#simulated-delivery), [module-map.md](module-map.md) |
 | The simulated world a session answers from: the player's cooldowns, GCD and charges and the target/focus enemies and their casts, on `NS.SimHost.world`, and the seam providers that answer the client reads from it (KickCD#38) | `modules/SimWorld.lua` | [compat-layer.md → Which members the simulator answers](compat-layer.md#which-members-the-simulator-answers), [module-map.md](module-map.md) |
-| Simulator (`/kcd sim`, `LibKa0s-Sim-1.0`, KickCD#38): the seam over `NS.Compat`, the one dispatch, the world and its providers, the session host (descriptor, refusals, prepare, the two-phase stop that re-syncs the real engine, the step panel's presentation), the drivers, the scenarios (KickCD#38's four: `pull`, a Mythic+ pull with several kickers; `boss`, a boss kick rotation on two charges; `miss`, a kick on cooldown and an uninterruptible cast; `leave`, a party member leaving mid-pull) and the strip | `core/SimSetup.lua`, `core/Events.lua`, `modules/SimWorld.lua`, `modules/SimDrivers.lua`, `modules/Sim.lua`, `modules/SimScenario.lua`, `modules/SimStrip.lua` | [slash-dispatch.md → `/kcd sim` refusals](slash-dispatch.md#kcd-sim-refusals), [module-map.md](module-map.md) |
-| Skins: the `LibKa0s-Skin-1.0` seam, the seven `skin.*` keys and the Skin tab, the HUD's "Use the skin's ..." companions, the one-time HUD style reset, the first-run skin picker | `core/SkinSetup.lua`, `settings/General.lua`, `core/Database_Migrations.lua` (`MigrateHudSkin`), the HUD's config paths in `modules/` | [Skins](#skins), [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6), [settings-panel.md](settings-panel.md) |
+| Simulator (`/kcd sim`, `LibKa0s-Sim-1.0`, KickCD#38): the seam over `NS.Compat`, the one dispatch, the world and its providers, the session host (descriptor, refusals, prepare, the two-phase stop that re-syncs the real engine, the step panel's presentation), the drivers, the scenarios (KickCD#38's four: `pull`, a Mythic+ pull with several kickers; `boss`, a boss kick rotation on two charges; `miss`, a kick on cooldown and an uninterruptible cast; `leave`, a party member leaving mid-pull) and the step panel pinned up as the session's sign (KC-02, D-13) | `core/SimSetup.lua`, `core/Events.lua`, `modules/SimWorld.lua`, `modules/SimDrivers.lua`, `modules/Sim.lua`, `modules/SimScenario.lua` | [slash-dispatch.md → `/kcd sim` refusals](slash-dispatch.md#kcd-sim-refusals), [module-map.md](module-map.md) |
+| Skins: the `LibKa0s-Skin-1.0` seam, the eight `skin.*` keys and the Skin tab, the HUD's "Use the skin's ..." companions, the one-time HUD style reset, the first-run skin picker | `core/SkinSetup.lua`, `settings/General.lua`, `core/Database_Migrations.lua` (`MigrateHudSkin`), the HUD's config paths in `modules/` | [Skins](#skins), [schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6), [settings-panel.md](settings-panel.md) |
 | Slash dispatch tables and command catalog | `core/KickCD.lua` | [slash-dispatch.md](slash-dispatch.md) |
 | Adding a spell: the one resolver (id or name, multi-word names, validated `[CLASS SPEC]`), the Cooldown Manager gate and its cached set, shared by the Spells page and `/kcd spells add` | `core/SpellInput.lua` | [module-map.md](module-map.md) |
 | The launcher: one LibDataBroker object, the minimap button, the `Minimap button` row | `core/LauncherSetup.lua`, `settings/General.lua` (`minimapPath`, and the row's own get/set) | [settings-panel.md](settings-panel.md) |
@@ -167,6 +167,7 @@ Receivers each register on their **own** AceEvent target: AceAddon modules use t
 | `help` | List available commands |
 | `version` | Print the addon version |
 | `config` | Open the settings panel |
+| `skin` | Choose a skin: open the skin picker (LibKa0s v1.82.0's `O.SkinVerb`, ruling D-16), whatever `skin.pickerSeen` says. Reserved; a feature verb, refused while disabled |
 | `enable` | Turn the addon on. A **reserved alias** (`slash-commands-§2`): it writes the Master-controls `enabled` row's own stored path through the same single write seam the checkbox writes through, and holds no state of its own |
 | `disable` | Turn the addon off — **totally**: every registration released, every timer canceled, nothing drawn and nothing written from a game event ([The disabled state](slash-dispatch.md#the-disabled-state)). The same alias in reverse. Every reserved verb keeps answering while it is off, and the bare `/kcd` still opens the panel — the dispatcher and the settings registration are **setup, not features** — so the pair is never one-way |
 | `lock` | Lock the icon grid in place |
@@ -251,7 +252,7 @@ state](slash-dispatch.md#the-disabled-state)), so a disabled KickCD is registere
 
 **One cast-filter frame per module per unit, re-armed and never rebuilt.** `Util.NewUnitCastFilter(module, unit, routes)` builds a single private frame per (module, unit) the first time that unit enables, from a file-scope route map (`ICON_CAST_ROUTES` / `CASTBAR_CAST_ROUTES`) that is the frame's fixed event set; it refuses any route that is not `UNIT_SPELLCAST_*`, so it is not a general frame factory (events-frames-taint-§1). `Arm()` registers exactly that set through `NS.SafeRegisterUnitEvent` (one name the client refuses costs only its own route and lands once in `NS.State.rejectedEvents`) and is idempotent; `Disarm()` is `UnregisterAllEvents()`. `DisableUnit`, `Suspend` and every disable/enable, per-unit toggle, profile switch or perf suspend/resume disarm and re-arm the same frame, so a cycle creates no frames (`tests/test_disabled.lua` counts them).
 - **`UnitLabel`** — `PLAYER_ENTERING_WORLD` plus its three inbound `Ka0s_KickCD_*` messages (`CONFIG_CHANGED` / `PROFILE_CHANGED` / `GRID_LAYOUT`). No cast-event or combat registration — the label has no state of its own beyond what those messages already trigger a re-`Apply` for.
-- **The simulator's watch** (`modules/Sim.lua`, `NS.SimHost.watch`, its own AceEvent target, KickCD#38) — `PLAYER_REGEN_DISABLED`, `PLAYER_ENTERING_WORLD` and `GROUP_ROSTER_UPDATE`, registered through `NS.SafeRegisterEvent` directly (so never a simulated-delivery route) only while a simulation runs, and released on its stop. Idle, and so on a stand-down, which stops a session first, it holds nothing. `modules/SimStrip.lua`'s strip likewise subscribes to `GRID_LAYOUT` and `CONFIG_CHANGED` only while it is shown.
+- **The simulator's watch** (`modules/Sim.lua`, `NS.SimHost.watch`, its own AceEvent target, KickCD#38) — `PLAYER_REGEN_DISABLED`, `PLAYER_ENTERING_WORLD` and `GROUP_ROSTER_UPDATE`, registered through `NS.SafeRegisterEvent` directly (so never a simulated-delivery route) only while a simulation runs, and released on its stop. Idle, and so on a stand-down, which stops a session first, it holds nothing. (The floating sim strip, `modules/SimStrip.lua`, which subscribed to `GRID_LAYOUT` and `CONFIG_CHANGED` while shown, was removed by KC-02 of the 2026-10-30 skin fonts run.)
 
 ## The stand-down: disabled is total
 
@@ -271,7 +272,8 @@ relative to the frame's parent (frame-layering, standard v2.88.0; `tests/test_la
 - **HUD (`MEDIUM`)**, one band per unit over `UIParent`, bottom to top: the icon grid (each icon
   ordered swipe < border < glow < countdown and charges); the cast bar, above its grid (fill < border
   < spark and text); the unit label, over both; the two drag handles (edit chrome, the band's top);
-  the sim strip, which shares the handles' slot because the two never show together.
+  no sim strip since KC-02 of the 2026-10-30 skin fonts run (ruling D-13): the step panel, pinned up
+  for the session, is the simulation's on-screen sign.
 - **Library and Blizzard tiers**, relied on and never set here: the debug console, perf panel and
   sim panel (`DIALOG`, toplevel), the copy window (`FULLSCREEN`), menus, autocomplete and AceGUI
   pullouts (`FULLSCREEN_DIALOG`), the reorder ghost and tooltips (`TOOLTIP`), the Settings panel
@@ -327,10 +329,11 @@ collection's reference adopter, and every piece below copies its shape.
   follows the skin, a departure from X4 taken with the library's icon-family contract
   (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
   ticked): a player who chose a 3 or 4 px border draws the skin's 1 or 2 px until they untick
-  the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4):
-  Oxanium SemiBold under Ka0s Default, Inter SemiBold under Obsidian, Vollkorn Bold under Azeroth,
-  Nunito SemiBold under Glass, Atkinson Bold under High Contrast, Bitter Bold under Ember, Philosopher
-  Bold under WoW Midnight, Fira Sans SemiBold under WoW Forever and Friz Quadrata under WoW Default;
+  the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4), as
+  LibKa0s v1.83.0 left them (D-06): Prototype under Ka0s Default, Expressway under Obsidian, Open Sans
+  Semibold under Azeroth, Avant Garde under Glass, Doris PP under High Contrast, Emblem under Ember,
+  Segoe UI Semibold under WoW Midnight, Fira Sans SemiBold under WoW Forever and the shipped Ka0s Friz
+  Quadrata TT under WoW Default;
   the charges badge, which has no setting, takes `hud.font`'s face at `NumberFontNormal`'s size. While
   the Scope's **Ignore fonts** is on, the library's `S.Resolve` answers each text's stored pick for
   `hud.font` whatever its box says (R-1), so every HUD text draws its own face and the badge, with no
@@ -338,16 +341,33 @@ collection's reference adopter, and every piece below copies its shape.
   LibSharedMedia's `"Solid"` border (the flat `WHITE8X8` edge the skins name). `IconGrid`, `Castbar` and
   `UnitLabel` subscribe to `OnLooksChanged` and re-run their config path, guarded on the stand-down; the
   cast bar's structure signature signs the resolved picks, so a skin switch rebuilds what moved.
+- **Font outline, From skin and the HUD size (LibKa0s v1.82.0, KC-01).** The Skin tab's Font outline
+  is `skin.outline` (`hud`, the default since LibKa0s v1.83.0, D-10; `all`; `off`), stored through the write seam's
+  `media.outline` and applied with `Skin:SetOutline` beside the pair, the Scope and the overrides
+  (`NS.ApplySkinOutline`, at load and on every profile event). Every Font flags row leads with
+  **From skin** (`"@skin"`, the composer's `flagsFromSkin`) and defaults to it; the HUD draws a
+  stored flag through `NS.SkinFontFlags` (the facade's `S.FontFlags`: From skin follows the Font
+  outline, a pick wins), and the one-time v6→v7 step moved a stored `OUTLINE`, the old default, onto
+  From skin per profile ([schema.md](schema.md)). A text on the skin's face draws its stored size
+  through `NS.SkinHudSize` (`S.HudFontSize`), scaled to the skin's HUD face so it is as wide in
+  every skin as in Ka0s Default; on its own face, or under Ignore fonts, it draws the stored size.
+  The charges badge takes the Font outline's flags and the scaled `NumberFontNormal` size. The
+  cast bar's signature signs the resolved size and flags too. `/kcd skin` (a feature verb, refused
+  while disabled) opens the picker through `O.SkinVerb` (`NS.RunSkinVerb`).
 - **The one-time HUD style reset (owner ruling O2).** Adopting skins put every companion on the skin
   once, for every player: `Database:MigrateHudSkin`, the v5→v6 step, per profile and recorded per
   profile in `skin.hudReset`, so a companion the player turns off afterwards stays off
-  ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)).
+  ([schema.md](schema.md#migration-the-one-time-hud-style-reset-v5--v6)). The v7→v8 step
+  (`Database:MigrateSkinFontPicks`, KC-03 of the 2026-10-30 skin fonts run, the owner's ruling D-15)
+  then turns "Use the skin's font" back off, once per profile (`skin.fontPicksKept`), on every HUD
+  text whose stored face is the player's own pick (not the default, not the worn skin's HUD face,
+  not a pre-v1.82.0 skin face), so a face such as the owner's Ka0s Kait comes back.
 - **What Ka0s Default looks like.** As before skins, except two things. The HUD after the reset (X5):
-  Oxanium on every HUD text, the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
+  Prototype on every HUD text (Oxanium before LibKa0s v1.82.0), the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
   border and the same flat 2 px edge on both cast-bar states, each in the player's border color. And
   the tool windows, now that the
   owner is registered: the debug console, its copy window, the perf panel and the sim panel keep their
-  edge and colors but take Ka0s Default's faces (Oxanium, the log lines JetBrains Mono), where before
+  edge and colors but take Ka0s Default's faces (Prototype, the log lines JetBrains Mono), where before
   they were stock, and since LibKa0s v1.81.0 that reaches their title-bar, column, row and button
   labels too (D-13); that is the library's Ka0s Default, inherited, not a KickCD choice (SKIN-1).
   The settings pages are the client's while the Scope's **Ignore settings panel** is on, the default.
@@ -365,7 +385,7 @@ collection's reference adopter, and every piece below copies its shape.
   copy (`NS.SKIN_FALLBACK`) while the Scope's **Ignore settings panel** is on (`Skin:GetIgnore`), so
   those token colors stay the client's with the rest of the page; `S.Color` itself does not consult the
   Scope.
-- **The tool surfaces (KC-01, KC-04).** The drag handles, the sim strip, the Spells reorder list and the
+- **The tool surfaces (KC-01, KC-04).** The drag handles, the Spells reorder list and the
   sim session are handed `owner = addonName`; the debug console, its copy window and the perf panel take
   the owner from their descriptors' `addonName`, and neither descriptor passes `skin` or `applySkin`.
   The launcher, the minimap button and its tooltip frame and every `GameTooltip` frame stay stock, and
@@ -379,11 +399,11 @@ collection's reference adopter, and every piece below copies its shape.
   `NS:OnEnable` once a session, and after every profile event, so a new or reset profile shows it once;
   a start in combat waits for `PLAYER_REGEN_ENABLED`. A pick only previews; **Apply** and the gear save
   through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
-  Escape put the stored skin back. The library's `onClose`, by any of those routes, sets `pickerSeen`;
+  Escape put the stored skin back. Since LibKa0s v1.83.0 (LK-A3) the window also carries the Skin tab's Font, Texture, Font outline and Scope rows under the same contract: a change previews and writes nothing, Apply and the gear write what moved, and a dismissal puts back what the window opened with. The library's `onClose`, by any of those routes, sets `pickerSeen`;
   `NS.HideSkinPicker` (the stand-down, and first on every profile event) takes it down without setting
   it. **No eye** (X6): KickCD has no window of its own, and neither of its previews fits the eye. The
   simulator (`/kcd sim`) is a scripted session, not a test mode: it plays a timed story with its own
-  step panel and strip and refuses a start in combat, an instance, a group or while unlocked; unlocking
+  step panel and refuses a start in combat, an instance, a group or while unlocked; unlocking
   is a stored write. So `onPreview` is omitted; a pick still previews live on the HUD, and on a
   simulation the player already started.
 - **The EllesmereUI provider.** The library's (`SkinEUI.lua`). The TOC lists EllesmereUI in
@@ -393,8 +413,8 @@ collection's reference adopter, and every piece below copies its shape.
   names the failing condition. Leaving EllesmereUI after it painted needs a reload.
 - **What a skin never touches** (skinning-§7; the inventory's E1 to E10): the cooldown swipe, the spell
   icons, the cast bar's spark, the interruptible and non-interruptible fill colors, class colors and the
-  class and spec icons, the ready-check glyphs, the cooldown tint and the ready and cooldown alphas, the
-  sim strip's amber and cyan, and the `[KCD]` chat banner.
+  class and spec icons, the ready-check glyphs, the cooldown tint and the ready and cooldown alphas, and
+  the `[KCD]` chat banner.
 
 ## Taint notes
 
@@ -435,7 +455,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 
 | Doc | Status | Trigger |
 |---|---|---|
-| `slash-dispatch.md` | Present | 20 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
+| `slash-dispatch.md` | Present | 21 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
 | `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
@@ -548,7 +568,7 @@ Nothing is over the cap today.
 20. `core/PerfSetup.lua` (`LibKa0s-Perf-1.0` descriptor — publishes `NS.Perf`, backing `/kcd perf`. **Last** in the core block: it needs `NS.Util.print`, the debug-log sink, and `NS.VERSION`, and it must precede every module that takes `local Perf = NS.Perf` as a load-time upvalue)
 21. `defaults/Profile.lua` (sets `NS.C` / `NS.DEFAULT_PROFILE` — the profile defaults tree, and the only place a profile default is hardcoded, `savedvariables-§2`)
 22. `defaults/Spells.lua` (sets `NS.DefaultSpells`)
-23. `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves) → `modules/IconGrid_Ticker.lua` (peeled, then given the curves by KickCD#9: the icon's time-varying render and the shared 0.1 s ticker) → `modules/IconGrid_Visibility.lua` (peeled: the visibility gate, the interruptible mask, the cast / target / focus handlers and the glow gate) → `modules/IconGrid_Handle.lua` (peeled: the grid's drag strip and `IconGrid:ApplyLock`, the strip published back as `IconGrid._BuildHandle`) → `modules/Castbar.lua` (per-unit instance manager) → `modules/Castbar_Frame.lua` (peeled: lock / drag / anchor and the frame build, `EnsureFrame`) → `modules/Castbar_Handle.lua` (peeled: the cast bar's drag strip, `LibKa0s-Widgets-1.0`'s `DragHandle` published back as `Castbar.BuildHandle`) → `modules/Castbar_Skin.lua` (peeled: the config-driven `Castbar:Reskin` — sizing, orientation, insets, spark, fonts, text anchors, per-state textures/colors/borders) → `modules/Castbar_Events.lua` (peeled: the event and message handlers — unit changes, combat / world, the `UNIT_SPELLCAST_*` routes and the three bus messages) → `modules/Castbar_Debug.lua` (peeled: the `Castbar:DebugDump(unit)` diagnostic behind `/kcd debug castbar`, re-opening the already-registered module) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame) → `modules/SimWorld.lua` (the simulated world and its seam providers, KickCD#38: first of the sim block, registering its providers on `NS.SimSeam` at load, so it must follow `core/SimSetup.lua`) → `modules/SimDrivers.lua` (the step drivers, KickCD#38: one per step kind, read by the host's `play` at call time; conventional position) → `modules/Sim.lua` (the session host, KickCD#38: binds `NS.SimSeam` to the live instance with `Sim:New`, overwriting the stub `NS.Sim`, and creates `NS.SimHost.SCENARIOS`. **Load-bearing position**: after `modules/SimWorld.lua`, and before any file that registers on `NS.Sim` or fills the scenarios) → `modules/SimScenario.lua` (the made-up party and the four scenarios, KickCD#38: fills `NS.SimHost.SCENARIOS` in place. **Load-bearing position**: straight after `modules/Sim.lua`, which creates that table) → `modules/SimStrip.lua` (the sim strip over each enabled icon grid while a simulation runs, KickCD#38, KC-09: `LibKa0s-Widgets-1.0`'s `TestStrip` in its sim flavor, built lazily; last of the sim block, conventional position) → `modules/Diagnostics.lua` (the sections of `/kcd diagnostics`, read by the library's report helper at run time). `modules/IconGrid.lua` was split into flat siblings (`IconGrid_Layout` / `IconGrid_Render` / `IconGrid_Ticker` / `IconGrid_Visibility` / `IconGrid_Handle`), and `Reskin`, `DebugDump`, the drag strip and the event/message handlers peeled off `Castbar.lua`, to stay under the 1500-LOC cap.
+23. `modules/Cooldowns.lua` → `modules/IconGrid.lua` (per-unit instance manager) → `modules/IconGrid_Layout.lua` (peeled: anchor/grow parsing + block geometry) → `modules/IconGrid_Render.lua` (peeled: per-icon widget rendering, curves) → `modules/IconGrid_Ticker.lua` (peeled, then given the curves by KickCD#9: the icon's time-varying render and the shared 0.1 s ticker) → `modules/IconGrid_Visibility.lua` (peeled: the visibility gate, the interruptible mask, the cast / target / focus handlers and the glow gate) → `modules/IconGrid_Handle.lua` (peeled: the grid's drag strip and `IconGrid:ApplyLock`, the strip published back as `IconGrid._BuildHandle`) → `modules/Castbar.lua` (per-unit instance manager) → `modules/Castbar_Frame.lua` (peeled: lock / drag / anchor and the frame build, `EnsureFrame`) → `modules/Castbar_Handle.lua` (peeled: the cast bar's drag strip, `LibKa0s-Widgets-1.0`'s `DragHandle` published back as `Castbar.BuildHandle`) → `modules/Castbar_Skin.lua` (peeled: the config-driven `Castbar:Reskin` — sizing, orientation, insets, spark, fonts, text anchors, per-state textures/colors/borders) → `modules/Castbar_Events.lua` (peeled: the event and message handlers — unit changes, combat / world, the `UNIT_SPELLCAST_*` routes and the three bus messages) → `modules/Castbar_Debug.lua` (peeled: the `Castbar:DebugDump(unit)` diagnostic behind `/kcd debug castbar`, re-opening the already-registered module) → `modules/UnitLabel.lua` (per-unit instance manager; one identity FontString per unit, `SetPoint`-anchored to that unit's `IconGrid` or `Castbar` frame) → `modules/SimWorld.lua` (the simulated world and its seam providers, KickCD#38: first of the sim block, registering its providers on `NS.SimSeam` at load, so it must follow `core/SimSetup.lua`) → `modules/SimDrivers.lua` (the step drivers, KickCD#38: one per step kind, read by the host's `play` at call time; conventional position) → `modules/Sim.lua` (the session host, KickCD#38: binds `NS.SimSeam` to the live instance with `Sim:New`, overwriting the stub `NS.Sim`, and creates `NS.SimHost.SCENARIOS`. **Load-bearing position**: after `modules/SimWorld.lua`, and before any file that registers on `NS.Sim` or fills the scenarios) → `modules/SimScenario.lua` (the made-up party and the four scenarios, KickCD#38: fills `NS.SimHost.SCENARIOS` in place. **Load-bearing position**: straight after `modules/Sim.lua`, which creates that table) → `modules/Diagnostics.lua` (the sections of `/kcd diagnostics`, read by the library's report helper at run time). `modules/IconGrid.lua` was split into flat siblings (`IconGrid_Layout` / `IconGrid_Render` / `IconGrid_Ticker` / `IconGrid_Visibility` / `IconGrid_Handle`), and `Reskin`, `DebugDump`, the drag strip and the event/message handlers peeled off `Castbar.lua`, to stay under the 1500-LOC cap.
 24. `settings/SchemaSetup.lua` (`LibKa0s-Schema-1.0` descriptor — first in the settings block: it creates `NS.Settings.Schema` and `NS.Settings.Store`, which both descriptors and every page file's `add` / `Helpers.AddComposed` reach at load) → `settings/Slash.lua` (`LibKa0s-Slash-1.0` descriptor — the `/kcd` dispatcher and schema CLI; loads after `core/KickCD.lua` has defined `NS.COMMANDS`, which is passed in) → `settings/OptionsSetup.lua` (`LibKa0s-Options-1.0` descriptor — **is** `NS.Settings.Helpers`, decorated in place by the three `Panel*` files; must precede every `settings/<page>.lua`, which call `Helpers.LSMValues` / `Helpers.AnchorValues` inside schema-row literals at file load) → `settings/Panel.lua` → `settings/Panel_Widgets.lua` → `settings/Panel_Render.lua` → `settings/{General, Icons, Castbar, Label, Grid, Spells, Spells_Rows, Spells_Header, Profiles}.lua` in that order (`Icons`, `Castbar` and `Label` register Grid entries rather than pages, above `Grid.lua`, which binds them; `Spells_Rows.lua` and `Spells_Header.lua` follow `Spells.lua`, whose table they take at file scope) (the two `Panel_*` siblings were peeled from `Panel.lua` to stay under the 1500-LOC cap — KCD-24; they must load before the per-tab files that call the makers / renderers)
 
-`NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the five shape-driven migrators unconditionally (`Database:FoldLegacyUnits` → `Database:BackfillLabelStyle` → `Database:MigrateSpecKeys` → `Database:MigrateColorShape` → `Database:MigrateFontFlags`, again on every `OnProfileChanged`) and the one-time HUD style reset `Database:MigrateHudSkin` (gated on its per-profile record `skin.hudReset`), then the version ladder `Database:MigrateProfile` (`NS.SCHEMA_VERSION = 6`, declared default 0; registered pure steps v1→v2 `FoldLegacyUnits`, v2→v3 `MigrateSpecKeys`, v3→v4 `MigrateColorShape`, v4→v5 `MigrateFontFlags`, v5→v6 `MigrateHudSkin`, the stamp advancing only past a step that returned without raising), and seeds spells on first profile creation. `<Module>:OnEnable` calls `ReconcileUnits()`, which registers messages and game events **per currently-enabled unit** (target by default; focus only if `units.focus.enabled`). `NS:OnEnable` — which AceAddon fires at `PLAYER_LOGIN` — calls `NS.CreateOptionsPanel()` once, which is where the library registers the Blizzard category and drains its page-builder queue, so per-tab builders run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).
+`NS:OnInitialize` (Ace lifecycle on `ADDON_LOADED`) builds the AceDB instance, runs the five shape-driven migrators unconditionally (`Database:FoldLegacyUnits` → `Database:BackfillLabelStyle` → `Database:MigrateSpecKeys` → `Database:MigrateColorShape` → `Database:MigrateFontFlags`, again on every `OnProfileChanged`) and the three record-gated per-profile steps, the one-time HUD style reset `Database:MigrateHudSkin` (`skin.hudReset`), `Database:MigrateFlagsFromSkin` (`skin.flagsReset`) and `Database:MigrateSkinFontPicks` (`skin.fontPicksKept`), again on every `OnProfileChanged`, then the version ladder `Database:MigrateProfile` (`NS.SCHEMA_VERSION = 8`, declared default 0; registered pure steps v1→v2 `FoldLegacyUnits`, v2→v3 `MigrateSpecKeys`, v3→v4 `MigrateColorShape`, v4→v5 `MigrateFontFlags`, v5→v6 `MigrateHudSkin`, v6→v7 `MigrateFlagsFromSkin`, v7→v8 `MigrateSkinFontPicks`, the stamp advancing only past a step that returned without raising), and seeds spells on first profile creation. `<Module>:OnEnable` calls `ReconcileUnits()`, which registers messages and game events **per currently-enabled unit** (target by default; focus only if `units.focus.enabled`). `NS:OnEnable` — which AceAddon fires at `PLAYER_LOGIN` — calls `NS.CreateOptionsPanel()` once, which is where the library registers the Blizzard category and drains its page-builder queue, so per-tab builders run with their full schema available. Full lifecycle in [module-map.md](module-map.md#aceaddon-lifecycle).

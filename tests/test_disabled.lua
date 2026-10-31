@@ -80,10 +80,30 @@ end
 --- it uses purely to receive events -- there is nothing to hide, they draw nothing and they carry no
 --- anchor. Asking for a SetPoint is how this suite says "the things the player can see" without
 --- reaching into the modules for their instance tables.
+---
+--- One library frame is left out by name: the drag handle's measurer host (LibKa0s v1.82.0,
+--- WidgetsDragHandle minor 8, LK-09), a shared 1x1 frame the library parks off screen and keeps shown
+--- so a strip title measures in the font it draws in. It is the library's, for every Ka0s addon, and
+--- draws nothing, so it is not a frame this addon stands down.
+local function measureHost(inst)
+    local W = inst.mocks.LibStub and inst.mocks.LibStub("LibKa0s-Widgets-1.0", true)
+    if not (W and W.__DragHandleMeasurer) then return nil end
+    return (select(2, W.__DragHandleMeasurer()))
+end
+
+--- The other one is the font preload's host (LibKa0s v1.83.0, OptionsScroll): shared, 1x1, parked off
+--- screen and kept shown so the client loads a face, and the first-run skin picker reaches it now.
+local function preloadHost(inst)
+    local O = inst.mocks.LibStub and inst.mocks.LibStub("LibKa0s-Options-1.0", true)
+    return O and O.__fontPreload and O.__fontPreload.frame
+end
+
 local function shownFrames(inst)
     local out = {}
+    local skip = measureHost(inst)
+    local host = preloadHost(inst)
     for _, f in ipairs(inst.mocks.__frames or {}) do
-        if f.__points and #f.__points > 0 and f.IsVisible and f:IsVisible() then
+        if f ~= skip and f ~= host and f.__points and #f.__points > 0 and f.IsVisible and f:IsVisible() then
             out[#out + 1] = f
         end
     end

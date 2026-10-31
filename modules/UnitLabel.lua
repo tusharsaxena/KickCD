@@ -21,20 +21,14 @@ local UnitLabel = NS:NewModule("UnitLabel", "AceEvent-3.0")
 
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
--- OUTLINE-family flag string fed to FontString:SetFont. The library's canonical
--- set spells "no flags" as the EMPTY STRING, which is a real stored value and
--- has to map to itself -- `FLAG_MAP[""] or "OUTLINE"` would otherwise fall
--- through to an outline nobody asked for. "NONE" is the pre-v5 token and stays
--- mapped for the frame or two before core/Database.lua's migration lands.
-local FLAG_MAP = {
-    [""] = "", NONE = "",
-    OUTLINE = "OUTLINE", THICKOUTLINE = "THICKOUTLINE", MONOCHROME = "MONOCHROME",
-    ["OUTLINE, MONOCHROME"] = "OUTLINE, MONOCHROME",
-}
+-- The OUTLINE-family flag string fed to FontString:SetFont is NS.SkinFontFlags' (core/SkinSetup.lua):
+-- the library's canonical set spells "no flags" as the EMPTY STRING, a real stored value that maps to
+-- itself; "NONE", the pre-v5 token, is "" for the frame or two before core/Database.lua's migration
+-- lands; and From skin ("@skin", the default since LibKa0s v1.82.0) follows the Font outline.
 
 -- Fallback for every style field Apply reads, in one place. `flags` is
--- deliberately absent: it defaults through FLAG_MAP above, which maps the
--- stored token rather than the field itself.
+-- deliberately absent: it resolves through NS.SkinFontFlags, which reads the
+-- stored token (nil is From skin) rather than the field itself.
 local STYLE_DEFAULTS = {
     font     = "Friz Quadrata TT",
     size     = 14,
@@ -94,7 +88,10 @@ local function applyLabelFont(fs, style)
         -- would turn a player's false into the fallback.
         fontPath = LSM:Fetch("font", NS.SkinResolve("hud.font", sv(style, "font"), style.fontFromSkin), true)
     end
-    fs:SetFont(fontPath or _G.STANDARD_TEXT_FONT, sv(style, "size"), FLAG_MAP[style.flags] or "OUTLINE")
+    -- The size scales to the skin's HUD face while the face follows it (LibKa0s v1.82.0, D-09); the
+    -- stored size is never rewritten.
+    fs:SetFont(fontPath or _G.STANDARD_TEXT_FONT, NS.SkinHudSize(sv(style, "size"), style.fontFromSkin),
+        NS.SkinFontFlags(style.flags))
 
     -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED on every
     -- apply: the FontString outlives a config change, so leaving the old offset
