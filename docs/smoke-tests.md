@@ -46,9 +46,8 @@ and a retired one leaves its number unused.
   and Intimidating Shout) for GRID.
 - An Evoker to duel for CAST-14 (a duel partner counts as hostile).
 - Other addons: a second Ka0s addon with a debug console (DIAG-20, DIAG-36), AbsorbTracker and
-  ConsumableMaster (DEGRADED-7), PanelMaster, AbsorbTracker, ConsumableMaster and MultiMeters
-  (PANEL-23), a media addon such as SharedMedia (PANEL-19 – 22), and Titan Panel, Bazooka or ElvUI's
-  data texts (INSTALL-14, PANEL-26).
+  ConsumableMaster (DEGRADED-7), a media addon such as SharedMedia (PANEL-19 – 22), and Titan Panel,
+  Bazooka or ElvUI's data texts (INSTALL-14, PANEL-26).
 - Back up `WTF/Account/<ACCOUNT>/SavedVariables/KickCD.lua` before INSTALL-1, INSTALL-7, INSTALL-9
   and LOC-6: each deletes or edits it.
 - A frFR (or other non-English) client for LOC.
@@ -63,8 +62,8 @@ and a retired one leaves its number unused.
 
 Which checks to run for a partial change:
 
-- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19, PANEL-23 and PANEL-30. PANEL-23 is
-  the only check that loads five addons into one AceGUI registry; PANEL-19 alone cannot see its defect.
+- **Border dropdown, or `settings/OptionsSetup.lua`'s live wiring:** PANEL-19, PANEL-23, PANEL-30 and
+  PANEL-39.
 - **LibKa0s re-vendor, or a seam file** (`core/CoreSetup.lua`, `core/DebugLogSetup.lua`,
   `core/PerfSetup.lua`, `core/MediaSetup.lua`, `settings/OptionsSetup.lua`, `settings/Slash.lua`):
   DEGRADED; PANEL-3, PANEL-8 – 16 and PANEL-19 – 28; SLASH-3 – 6; DIAG-1 – 6 and DIAG-16 – 40;
@@ -310,13 +309,10 @@ you had before the update is still yours.
 - **PANEL-22. Media registered later shows up.** Enable a media addon that was off, `/reload`, reopen
   Cast bar → Bar texture → its textures are listed. An unchanged list means `Helpers.LSMValues`
   (`settings/Panel.lua`) went back to returning a table frozen at file load. Result: pass (owner-marked 2026-10-10)
-- **PANEL-23. The Border dropdown, alone and with five addons.** Open Cast bar → Border style → no
-  42×42 black preview tile left of the bar. Then enable KickCD, PanelMaster, AbsorbTracker,
-  ConsumableMaster and MultiMeters, log in, and open each one's Border dropdown → in all five the closed
-  control's left edge is flush with the controls stacked with it (no ~42px gap), and the open list still
-  previews each row. Change which addon loads last (toggle addons or rename a folder), `/reload`, walk
-  all five again → nothing differs. A dropdown unlike the other four, or one that changes with load
-  order, is the failure. Result: pass (owner-marked 2026-10-10)
+- **PANEL-23. The Border dropdown lines up.** Open Cast bar → Border style → the closed control's left
+  edge is flush with the controls stacked with it, with the chosen style's swatch inside the bar and
+  no gap or tile to its left. The open list previews each row. Rewritten for the one media picker
+  (PANEL-39): the 2026-10-10 pass covered the retired widget. Result:
 - **PANEL-24. The pooled tab strip.** On General, Grid → Icons and Grid → Cast bar, cycle every tab three
   times, ending on the first → each pass shows each tab's own label, the tab you pressed selected, the
   body under the right tab, and a band that never changes height. Result: pass (owner-marked 2026-10-10)
@@ -1587,4 +1583,4 @@ On 2026-10-31 the owner reported that every check of those two runs passed: SKIN
 SKIN-6, SKIN-9, SKIN-11 – 13, SKIN-30 – 36, SIM-12 and SIM-13, each recorded on its `Result:` line as
 `Owner reported pass, 2026-10-31`. None is owed after those runs.
 
-The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, PANEL-39, GRID-22 and CAST-19, owed until its `Result:` line records a pass.
+The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, PANEL-39, GRID-22 and CAST-19, and rewrites PANEL-23, each owed until its `Result:` line records a pass.
