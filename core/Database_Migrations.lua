@@ -463,8 +463,9 @@ end
 --- the stored default (Friz Quadrata, which AceDB never told apart from an unchanged row), not the
 --- HUD face of the skin the profile wears (Skin:ResolveSkin(skin)["hud.font"]; Ka0s Default's when
 --- the skin is unknown or the library is absent), and not a face a Ka0s skin drew before v1.82.0
---- (PRE_V182_FACES; no longer shipped, so following the skin is the only way it draws). So the stored
---- face comes back. Only a box that is on is turned off; the stored face is never written.
+--- (PRE_V182_FACES; v1.82.0 dropped them and v1.83.0 ships them again, but a skin stored them, so
+--- they are no pick). So the stored face comes back. Only a box that is on is turned off; the stored
+--- face is never written.
 ---
 --- PER PROFILE, RECORDED PER PROFILE (skin.fontPicksKept), as the two steps above: a box the player
 --- ticks again afterwards stays ticked. A profile reset puts the record back, and the step then finds
