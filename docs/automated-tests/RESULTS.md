@@ -32,6 +32,7 @@ archaeology, for the same reason a skip is never a pass (`automated-tests-§4`).
 
 | Run | Commit | Tree | Version | Lint w/e | Files | Tests | Perf | NLOC | Funcs | Avg NLOC | Avg CCN | Max CCN | CCN warn | Verdict |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| [`20261101-025914`](20261101-025914/) | `e15d81b` | clean | 1.5.0 | 0/0 | 154 | 1582/1/1583 | pass | 33159 | 4572 | 6.8 | 2.1 | 15 | 0 | **green** |
 | [`20261101-001951`](20261101-001951/) | `3a1837b` | clean | 1.5.0 | 0/0 | 154 | 1582/1/1583 | pass | 33161 | 4574 | 6.8 | 2.1 | 15 | 0 | **green** |
 | [`20261031-212139`](20261031-212139/) | `9085fff` | clean | 1.5.0 | 0/0 | 153 | 1576/1/1577 | pass | 33031 | 4560 | 6.7 | 2.1 | 15 | 0 | **green** |
 | [`20261031-202020`](20261031-202020/) | `f97114c` | clean | 1.5.0 | 0/0 | 154 | 1577/1/1578 | pass | 33092 | 4570 | 6.7 | 2.1 | 15 | 0 | **green** |
@@ -55,10 +56,10 @@ archaeology, for the same reason a skip is never a pass (`automated-tests-§4`).
 ## Test suite
 
 **1583 cases** — 1582 passed, 0 failed, 1 skipped. The generated inventory
-[`20261101-001951/test-cases.md`](20261101-001951/test-cases.md) is the authority on which cases existed at this run;
+[`20261101-025914/test-cases.md`](20261101-025914/test-cases.md) is the authority on which cases existed at this run;
 `docs/test-cases.md` is that same list at HEAD.
 
-Moved **1577 → 1583** since the previous run.
+Unchanged from the previous run at 1583 cases.
 
 **1 case(s) reported a `skip`.** A skip is counted in the total and never in `passed`, and at
 the release gate it is NOT EVALUATED rather than passed (`automated-tests-§3`).
@@ -75,24 +76,24 @@ to whoever thinks to open `.luacheckrc`.
 ## Perf
 
 **7 scenarios** from `tests/perf.lua`; the measurements are in
-[`20261101-001951/perf.json`](20261101-001951/perf.json).
+[`20261101-025914/perf.json`](20261101-025914/perf.json).
 
 | `scenario` | `iters` | `ms/iter` | `api/iter` | `bytes/iter` |
 |---|---|---|---|---|
-| `spellPoll` | 2000 | 0.01953 | 18.0 | 411.3 |
-| `spellState` | 2000 | 0.00078 | 0.0 | 1.5 |
+| `spellPoll` | 2000 | 0.02520 | 18.0 | 412.0 |
+| `spellState` | 2000 | 0.00081 | 0.0 | 1.5 |
 | `iconApply` | 2000 | 0.00026 | 0.0 | 0.0 |
-| `probeOverheadOff` | 2000 | 0.00025 | 0.0 | 0.0 |
-| `probeOverheadOn` | 2000 | 0.00048 | 0.0 | 0.1 |
-| `castStart` | 2000 | 0.00547 | 0.0 | 208.0 |
-| `cdText` | 2000 | 0.00311 | 2.0 | 800.0 |
+| `probeOverheadOff` | 2000 | 0.00024 | 0.0 | 0.0 |
+| `probeOverheadOn` | 2000 | 0.00039 | 0.0 | 0.1 |
+| `castStart` | 2000 | 0.00596 | 0.0 | 208.0 |
+| `cdText` | 2000 | 0.00361 | 2.0 | 800.0 |
 
 `perf` never fails a run and never blocks a commit — it is recorded, read and compared, not
 thresholded (`performance-§9`). It does gate the **tag** (`automated-tests-§3`).
 
 ## Complexity watch list
 
-Current as of [`20261101-001951`](20261101-001951/) — **this run's measurement, not its diff.** Max CCN **15** across 4574
+Current as of [`20261101-025914`](20261101-025914/) — **this run's measurement, not its diff.** Max CCN **15** across 4572
 functions, **0** of them warned on; 2 file(s) in the 1000–1500 band and 0 over the 1500 cap
 (`layout-§1`).
 
@@ -113,7 +114,7 @@ None.
 | Band | File | LOC | Disposition |
 |---|---|---|---|
 | 1000–1500 (on notice) | `modules/IconGrid.lua` | 1023 | Accepted — 475 NLOC in 60 functions; the rest is comments and blanks, one cohesive per-unit grid manager already peeled twice |
-| 1000–1500 (on notice) | `tests/test_schema.lua` | 1026 | Accepted — case count, not tangle: 648 NLOC of individual schema cases |
+| 1000–1500 (on notice) | `tests/test_schema.lua` | 1047 | Accepted — case count, not tangle: 648 NLOC of individual schema cases |
 
 `lizard` counts every `and`/`or` short-circuit as a decision, so in Lua a run of
 `t.k = rec.k or D.k` defaulting lines scores high with no visible branching at all: a large CCN
