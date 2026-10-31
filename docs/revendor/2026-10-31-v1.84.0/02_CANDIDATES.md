@@ -20,7 +20,7 @@ an interview. Candidates beyond the brief are declined here, and no GitHub issue
 - **`O.PageBanner{ acts }`** (OptionsTabs 13, LibKa0s#59): replaces the Units page's `PageHeader` band,
   KIC-L01. Replaces code the host owns. Commit prefix `KC-ADOPT`.
 - **`shownWhen`** (OptionsSwitch 1, already vendored; LibKa0s#67): the glow knob subsections of
-  `settings/Icons.lua`. Commit prefix `KC-67`.
+  `settings/Icons.lua` and the anchor rows of `settings/Castbar.lua`. Commit prefix `KC-67`.
 
 ## C. Declined (outside the run's brief)
 

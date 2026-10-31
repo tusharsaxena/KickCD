@@ -264,6 +264,9 @@ add{
     desc = L["Cast bar height in pixels. Overridden by Auto-size to icon grid while the bar is vertical."],
     default = 24, min = 10, max = 60, step = 1, fmt = "%d px",
 }
+-- The anchor rows are the group Anchor mode picks (options-ui-§22, LibKa0s#67):
+-- Free uses none of them, so they drop from the page while the bar is Free.
+local anchored = { path = "units." .. unit .. ".castbar.anchorMode", equals = "PRIMARY" }
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
@@ -281,6 +284,7 @@ add{
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
+    shownWhen = anchored,
     path  = "units."..unit..".castbar.anchorPoint", type = "string",
     label = L["Anchor on primary icon"],
     desc = L["Which point on the primary icon the cast bar attaches to (only used when Anchor mode is set to Anchored to primary icon)."],
@@ -290,6 +294,7 @@ add{
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
+    shownWhen = anchored,
     path  = "units."..unit..".castbar.castbarPoint", type = "string",
     label = L["Anchor on cast bar"],
     desc = L["Which point on the cast bar attaches to the primary icon (only used when Anchor mode is set to Anchored to primary icon)."],
@@ -299,6 +304,7 @@ add{
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
+    shownWhen = anchored,
     path  = "units."..unit..".castbar.anchorOffsetX", type = "number",
     label = L["X offset (px)"],
     desc = L["Horizontal pixel offset between the cast bar's anchor point and the icon's anchor point (positive = right)."],
@@ -307,6 +313,7 @@ add{
 add{
     panel = "castbar", section = "castbar", unit = unit, group = L["Size and position"],
     subgroup = L["Position"],
+    shownWhen = anchored,
     path  = "units."..unit..".castbar.anchorOffsetY", type = "number",
     label = L["Y offset (px)"],
     -- Passed to SetPoint unflipped (modules/Castbar_Frame.lua's ApplyAnchor), so

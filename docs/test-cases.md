@@ -889,6 +889,13 @@ Total.
 - no authored file drives LibCustomGlow-1.0 itself
 - a LibKa0s-less load draws no glow and raises nothing
 
+### test_switched_sections.lua (4)
+
+- Ready glow draws only the styles a dropdown picks, and a hidden one comes back
+- a column inside a shown glow group keeps dimming, and Never keeps its picked group
+- Anchor mode draws the anchor rows only while the bar is anchored
+- a switched row stays reachable while hidden
+
 ### test_icongrid_handle.lua (13)
 
 - the grid carries a drag strip once its frame exists
@@ -1914,6 +1921,7 @@ Total.
 | test_icongrid_buildlist.lua | 26 |
 | test_icongrid_glowgate.lua | 10 |
 | test_icongrid_glow_knobs.lua | 13 |
+| test_switched_sections.lua | 4 |
 | test_icongrid_handle.lua | 13 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
@@ -1967,4 +1975,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1577** |
+| **Total** | **1581** |

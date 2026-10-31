@@ -13,8 +13,8 @@ In the same commit as both payloads:
 - `tests/test_sim_seam.lua` drops four Sim files, not three (`SimPanelRender.lua` joined).
 
 - **Delivered free (class A):** the drag handle's fit and allocation fix, and the peels.
-- **Adopted, in later commits of this run:** `PageBanner{ acts }` (`KC-ADOPT`), and the glow knobs on
-  `shownWhen` (`KC-67`).
+- **Adopted, in later commits of this run:** `PageBanner{ acts }` (`KC-ADOPT`), and the glow knobs and
+  the cast bar's anchor rows on `shownWhen` (`KC-67`).
 - **Declined:** the flow seams, the `note` row, `O.PositionBlock` and Charts, in `02_CANDIDATES.md`. No
   issue filed, by the run's brief.
 - No span bundle; no base correction; README credits unchanged (the same sets ship); no dead stub

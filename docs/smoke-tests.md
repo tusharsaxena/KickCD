@@ -19,8 +19,8 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 21 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 16 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| GRID-1 – 22 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 19 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
@@ -633,7 +633,7 @@ you had before the update is still yours.
   the trigger to `target_casting_interruptible` and repeat → no glow on the friendly cast. With
   `/kcd diagnostics`, the `IconGrid` section's `gate` line ends `any=true` while the friendly cast
   runs. Result: pass (owner-marked 2026-10-10)
-- **GRID-19. The glow's style knobs apply at once, and only their own style's are live.** Grid → Icons →
+- **GRID-19. The glow's style knobs apply at once, and only their own style's are live.** (Amended by KC-67, 2026-11-01: a group no Style dropdown picks is hidden, not dimmed; GRID-22 checks that.) Grid → Icons →
   Ready glow, primary trigger `always`, an interrupt off cooldown, style `Pixel border` → under
   *Pixel border* and *Offset* the primary rows are live and every other style's primary rows are dimmed;
   the secondary column follows the secondary trigger and style on its own. Move Primary lines to `3`,
@@ -664,6 +664,14 @@ you had before the update is still yours.
   `libs/LibCustomGlow-1.0` aside, `/reload`, `/kcd debug on` → one
   `[Init] LibCustomGlow-1.0 absent; no icon glows` line and no Lua error with a ready interrupt;
   restore the folder. Result: pass (owner-marked 2026-10-23)
+- **GRID-22. Glow groups no style picks are hidden.** Units → Icons → Ready glow, both Style dropdowns on
+  `Pixel border` → the tab shows *Effect*, *Pixel border* and *Offset*, and no *Button (rotating rays)*,
+  *Proc (flipbook)* or *Auto cast sparkles* heading. Set the secondary style to `Auto cast sparkles` →
+  its group appears on the next frame with no flicker of the open dropdown, *Pixel border* stays, and in
+  each group the column of the slot that did not pick it is dimmed. Set the primary style to `Button
+  (rotating rays)` → *Pixel border* goes, *Offset* stays. Set the secondary to Button too → *Offset* goes
+  and the Button group shows once. Both triggers `never` → the picked group stays, dimmed. `/kcd get` on
+  a hidden knob still answers. Repeat on Focus, unlinked. Result:
 
 ## CAST
 
@@ -722,6 +730,11 @@ you had before the update is still yours.
   re-anchors under that icon. Result: pass (owner-marked 2026-10-10)
 - **CAST-17. Retired 2026-10-23: now SIM-1** (the duration constructor probe).
 - **CAST-18. Retired 2026-10-23: now SIM-2** (no change from the Compat unit readers).
+- **CAST-19. The anchor rows follow Anchor mode.** Units → Cast bar → Size and position, *Anchor mode*
+  `Anchored to primary icon` → *Anchor on primary icon*, *Anchor on cast bar* and the X and Y offsets show.
+  `Free (drag to move)` → those four go on the next frame, *Anchor mode* and the Spell icon section stay,
+  and the bar still drags. Back to Anchored → they return with their values and the bar anchors where it
+  did. Result:
 
 ## FOCUS
 
@@ -1570,4 +1583,4 @@ On 2026-10-31 the owner reported that every check of those two runs passed: SKIN
 SKIN-6, SKIN-9, SKIN-11 – 13, SKIN-30 – 36, SIM-12 and SIM-13, each recorded on its `Result:` line as
 `Owner reported pass, 2026-10-31`. None is owed after those runs.
 
-The 2026-10-31 findings remediation adds PANEL-37 and PANEL-38, owed until its `Result:` line records a pass.
+The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, GRID-22 and CAST-19, owed until its `Result:` line records a pass.
