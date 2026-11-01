@@ -276,6 +276,10 @@ local SUITES = {
     -- Kit revision 35's sighted-complexity gate (automated-tests-§3): pins the sanitizer and the
     -- parity reader the runner's complexity suite measures through.
     { name = "test_lizard_sighted", dir = "tests/_kit/" },
+    -- Kit revision 50's two skin gates (skinning-§1): the typed-value check and the probe-skin
+    -- switch test, fed by Kit.skinValues and Kit.skinSwitch below.
+    { name = "test_skin_values", dir = "tests/_kit/" },
+    { name = "test_skin_switch", dir = "tests/_kit/" },
 }
 
 -- ---------------------------------------------------------------------------
@@ -435,5 +439,15 @@ Kit.diagnostics = {
     setDebug    = function(on) diagNS().State.debug = on and true or false end,
     setDisabled = function(off) muted(function(NS) NS.SetMasterEnabled(not off) end) end,
 }
+
+-- ---------------------------------------------------------------------------
+-- The two skin gates' facts (skinning-§1, kit revision 50)
+-- ---------------------------------------------------------------------------
+--
+-- The typed-value check's rows and the switch test's painted surfaces. Their own file because the
+-- surfaces are most of a suite in themselves; handed the factory for an enabled instance of their own.
+local skinFacts = assert(loadfile(root .. "/tests/skin_facts.lua"))(loadInstance)
+Kit.skinValues = skinFacts.values
+Kit.skinSwitch = skinFacts.switch
 
 Kit.run{ dir = root .. "/tests/", suites = SUITES }

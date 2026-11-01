@@ -89,8 +89,8 @@ local addonName, NS = ...
 --
 -- `kc.glow`. Every other HUD color KickCD follows is a library token's exact value under Ka0s Default
 -- (hud.text white, hud.label gold, bar.bg, icon.border). The ready glow is not: it draws yellow, and
--- glow.color is the skin's gold, so the owner token keeps yellow under Ka0s Default and answers
--- glow.color everywhere else (FS-KC-FLIP, cause D5). NS.SKIN_FALLBACK does not carry it: without the
+-- glow.color is gold under Ka0s Default, so the owner token keeps yellow there and answers each
+-- skin's own glow.color everywhere else (FS-KC-FLIP, cause D5). NS.SKIN_FALLBACK does not carry it: without the
 -- library the stored swatch draws.
 --
 -- ── WHY A ROW'S onChange PASSES ONE HALF ─────────────────────────────────────────────────────
@@ -470,7 +470,7 @@ if not Skin then
         "GetAccentColor", "GetPanelColor", "GetFont",
         "TitleBar", "Divider", "Footer", "Card", "Slider", "NavItem", "Drawer", "ListRow", "MenuFrame",
         "Tooltip", "Strip", "Cover", "Text", "ChartStyle", "BarStyle", "IconBorder", "GlowColor",
-        "BarTexture", "FontFlags", "HudFontSize", "Mark",
+        "BarTexture", "FontFlags", "HudFontSize", "Mark", "HoverArt",
         -- LibKa0s v1.85.0: nil is each getter's degraded answer. The three colors answer nothing,
         -- so the stored color draws; HudShadow's nil is "the stored shadow stands". BarGloss draws
         -- nothing: no skin, no gloss.
@@ -497,6 +497,9 @@ if not Skin then
         if r and fs and fs.SetTextColor then fs:SetTextColor(r, g, b, a) end
     end
     S.GetFont = function() return _G.STANDARD_TEXT_FONT end
+    -- LibKa0s v1.85.0 (SkinPaintExtras minor 16): no skin, so the stored three stand. Never a no-op:
+    -- a host drawing on its answer would lose the player's border.
+    S.BarBorder = function(style, show, size) return style, show, size end
     S.ChartStyle = function() return {} end
     S.BarStyle = function() return {} end
     -- Never nil, as the live ones (a nil reads as "no flags" to SetFont, and SetFont refuses a nil

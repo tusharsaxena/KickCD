@@ -1911,6 +1911,36 @@ Total.
 - lizard sighted: parity names every file whose counts differ, and only those
 - lizard sighted: lizard lists every function of a hazard fixture once it is sanitized
 
+### test_skin_values.lua (3)
+
+- skin values: every host row carries its file, substring, why and cause id
+- skin values: no typed value outside the kit's categories and the host's rows
+- skin values: the check is falsifiable, a planted value of each shape is reported
+
+### test_skin_switch.lua (21)
+
+- skin switch: the check is falsifiable, a surface that redraws a literal is reported
+- skin switch: an icon's border changes
+- skin switch: an icon's countdown changes
+- skin switch: an icon's charges badge changes
+- skin switch: an icon's charges badge changes with the Scope ignored
+- skin switch: the primary icon's ready glow changes
+- skin switch: a secondary icon's ready glow changes
+- skin switch: the cast time changes
+- skin switch: the spell name on a live cast changes
+- skin switch: the unit label changes
+- skin switch: a Spells row's known glyph changes
+- skin switch: a Spells row's Remove mark changes
+- skin switch: a Spells row's own tooltip hint changes
+- skin switch: the add box's not-tracked tag changes
+- skin switch: the Spells page's no-AceGUI line changes
+- skin switch: the interruptible background changes
+- skin switch: the interruptible border changes
+- skin switch: the interruptible fill's texture changes
+- skin switch: the uninterruptible background changes
+- skin switch: the uninterruptible border changes
+- skin switch: the uninterruptible fill's texture changes
+
 ## Totals
 
 | Suite | Cases |
@@ -2011,5 +2041,7 @@ Total.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
+| test_skin_values.lua | 3 |
+| test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1614** |
+| **Total** | **1638** |

@@ -172,7 +172,7 @@ cast bar, the label over the bar it is attached to and re-leveled after each rep
 strip over all of it. Two static gates close it: no `SetFrameStrata` literal, and no unnamed or
 absolute `SetFrameLevel`, in `core/`, `modules/` or `settings/`.
 
-The skin (`LibKa0s-Skin-1.0`, the 2026-10-29 skinning rollout) has five suites, each on a real load
+The skin (`LibKa0s-Skin-1.0`, the 2026-10-29 skinning rollout) has six suites of its own, each on a real load
 with the vendored library. `tests/test_skinsetup.lua` pins `core/SkinSetup.lua`: the owner and its
 facade, the eight `skin.*` keys and their `skipRender` rows on the Skin tab, `/kcd set` refusing an
 unregistered skin and reaching each half, a copy repainting once, a profile switch and reset, and the
@@ -198,7 +198,12 @@ picked HUD face off the skin's font (D-15). `tests/test_skin_flip.lua` pins the 
 the skin (FS-KC-FLIP): the fifteen companions, Ka0s Default's pixels, a skin switch through spies on the
 drawing setters, the shadow's font object and cache, the v8 → v9 step on stored partial profiles, gloss
 on the kit's paint recorder (`tests/_kit/mock_paint.lua`, or it passes vacuously) and the Spells rows'
-status mark.
+status mark. The kit's two gates (revision 50, `skinning-§1`) take this addon's facts from
+`tests/skin_facts.lua`: `tests/_kit/test_skin_values.lua` fails a typed color or texture no kit category
+or cause-naming row takes, and `tests/_kit/test_skin_switch.lua` flips a probe skin, whose every token
+has a value of its own, and fails a declared surface that draws the same. The surfaces run on one
+enabled instance, so the real `OnSkinLooksChanged` listeners do the redraw. Coverage is that list: a
+surface left out of it is not tested.
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

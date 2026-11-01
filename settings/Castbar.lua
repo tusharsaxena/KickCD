@@ -583,9 +583,9 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px). The bar family's
-    -- bar.borderStyle is "None" on every skin, so the cast bar would draw no edge (KC-A1, the
-    -- owner's ruling). borderTextureFromSkin, default true (X3). The color has a companion too.
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), not the bar family, whose
+    -- bar.borderStyle is "None" on Ka0s Default and most skins (KC-A1, the owner's ruling).
+    -- borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
     extra    = { SkinRow(PREFIX .. "interruptible.borderColorFromSkin", L["Use the skin's color"], L["Border color"]) },
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
@@ -626,9 +626,9 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px). The bar family's
-    -- bar.borderStyle is "None" on every skin, so the cast bar would draw no edge (KC-A1, the
-    -- owner's ruling). borderTextureFromSkin, default true (X3). The color has a companion too.
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), not the bar family, whose
+    -- bar.borderStyle is "None" on Ka0s Default and most skins (KC-A1, the owner's ruling).
+    -- borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
     extra    = { SkinRow(PREFIX .. "uninterruptible.borderColorFromSkin", L["Use the skin's color"], L["Border color"]) },
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",

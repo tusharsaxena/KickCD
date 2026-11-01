@@ -1540,11 +1540,16 @@ after each check. Every check also fails on a Lua error or a taint warning.
   cast time and charges badge turn slightly cooler (`hud.text`), and the label turns blue (`hud.label`).
   **Ember** → the label turns orange. **High Contrast** → the text stays white and the label turns a
   brighter yellow. **WoW Default** → the text and label read as on Ka0s Default. On any skin but Ka0s
-  Default a ready glow is the skin's gold, not yellow: `glow.color` is the same gold in every skin, so
-  it does not change between skins. The cast bar's background and every border stay as they were in
-  every skin: `bar.bg` and `icon.border` hold one value across all nine, and no skin moves them today.
-  The cast bar's yellow and red and the cooldown tint never move. Fail: any of those moving, or a text
-  left in another skin's color.
+  Default a ready glow, the cast bar's background and every border take that skin's own `glow.color`,
+  `bar.bg` and `icon.border`: **Obsidian** a blue glow and a gray border, **Azeroth** a gold glow and a
+  brown-gold border, **Glass** a violet glow and a pale translucent border, **High Contrast** a yellow
+  glow and a light gray border, **Ember** an orange glow and a rust border, **WoW Default** a gold glow
+  and a gray border, **WoW Midnight** a violet glow and a dark gold border, **WoW Forever** a tan glow
+  and a dark gray border, each background a translucent dark of that skin (Glass's a faint white).
+  A real `bar.borderStyle` in a skin does not reach the cast bar, whose edge is the icon family's
+  (KC-A1). The cast bar's yellow and red and the cooldown tint never move. Fail: any of those moving,
+  a text left in another skin's color, or a glow, background or border left on another skin's value.
+  Rewritten for the re-cut of LibKa0s v1.85.0: each skin now states its own values.
 - **SKIN-38. The new boxes (FS-KC-FLIP).** On **Azeroth**, Units > Icons → Border, Cooldown text and each
   glow color; Cast bar → Font (both texts) and each state's Background, Spell name and Border; Text
   label → Font: `Use the skin's color` beside each color, `Use the skin's shadow` beside each Font shadow,
@@ -1639,4 +1644,4 @@ SKIN-6, SKIN-9, SKIN-11 – 13, SKIN-30 – 36, SIM-12 and SIM-13, each recorded
 
 The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, PANEL-39, GRID-22 and CAST-19, and rewrites PANEL-23, each owed until its `Result:` line records a pass.
 
-The 2026-11-01 full skinning run (FS-KC-RV to FS-KC-FIX of Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/`, LibKa0s v1.85.0) adds SKIN-37 – 42 and moves the expected result of SKIN-2, SKIN-5, SKIN-7, SKIN-36, GRID-10, LABEL-8, PANEL-33, PANEL-34 and DEGRADED-16, whose owner passes are withdrawn. Owed: all fifteen. The simulator's step panel also changes on the copy, for the owner to see on any run of it: its Steps title band is 30 high and an owned tooltip title takes `gtip.title`. KickCD hosts no library strip, so the strip's `icon.tint` does not reach it.
+The 2026-11-01 full skinning run (FS-KC-RV to FS-KC-FIX of Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/`, LibKa0s v1.85.0) adds SKIN-37 – 42 and moves the expected result of SKIN-2, SKIN-5, SKIN-7, SKIN-36, GRID-10, LABEL-8, PANEL-33, PANEL-34 and DEGRADED-16, whose owner passes are withdrawn. Owed: all fifteen. The simulator's step panel also changes on the copy, for the owner to see on any run of it: its Steps title band is 30 high and an owned tooltip title takes `gtip.title`. KickCD hosts no library strip, so the strip's `icon.tint` does not reach it. The re-cut of LibKa0s v1.85.0 (FS-KC-GATE) rewrites SKIN-37, still owed, because each skin now states its own glow, bar background and icon border.

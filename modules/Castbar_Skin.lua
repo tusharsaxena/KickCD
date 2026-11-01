@@ -183,8 +183,8 @@ function Castbar.ShadowKey(c)
         tostring(r), tostring(g), tostring(b), tostring(a) }, ",")
 end
 -- The border is the skin's ICON border family, style and thickness both (KC-A1, the owner's
--- ruling: bar.borderStyle is "None" on every skin, so the bar family would draw no edge), as
--- settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
+-- ruling: bar.borderStyle is "None" on Ka0s Default and most skins, which would leave this bar's
+-- edge to the bar family's deferral), as settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
 function Castbar.BorderStyle(sc)
     return NS.SkinResolve("icon.borderStyle", sc.borderTexture, sc.borderTextureFromSkin)
 end

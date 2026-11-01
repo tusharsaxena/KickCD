@@ -102,8 +102,8 @@ test("HUD skin: the icon border follows the ICON family, governing its thickness
     assertEqual(Store.FindRow("units.target.icons.borderTexture").disabledIf, companion)
     assertEqual(Store.FindRow("units.target.icons.borderSize").disabledIf, companion,
         "the icon family governs the thickness slider")
-    -- The cast bar's borders are the icon family too (KC-A1, the owner's ruling): every skin's
-    -- bar.borderStyle is "None", so the bar family would leave the cast bar with no edge.
+    -- The cast bar's borders are the icon family too (KC-A1, the owner's ruling), not the bar family,
+    -- whose bar.borderStyle is "None" on Ka0s Default and most skins.
     for _, state in ipairs({ "interruptible", "uninterruptible" }) do
         local cb = "units.target.castbar." .. state .. "."
         assertEqual(Store.FindRow(cb .. "borderTexture").disabledIf, cb .. "borderTextureFromSkin", state)
@@ -169,7 +169,7 @@ test("HUD skin: the icon border takes the skin's icon family, style and thicknes
 end)
 
 test("HUD skin: a following cast bar draws the skin's flat icon edge, style and thickness", function()
-    -- red under: Castbar_Skin.lua resolving bar.borderStyle (None on every skin, so no edge) or
+    -- red under: Castbar_Skin.lua resolving bar.borderStyle (None on Ka0s Default and most skins) or
     -- drawing sc.borderSize while the companion is set (KC-A1)
     local inst, fetched = boot()
     local NS = inst.NS

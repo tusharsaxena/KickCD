@@ -205,7 +205,7 @@ end)
 -- ── what the HUD draws ──────────────────────────────────────────────────────
 
 test("skin flip: Ka0s Default keeps this addon's pixels, with no shadow", function()
-    -- red under: an owner token dropped (the glow reads the skin's gold) or a companion on the wrong token
+    -- red under: an owner token dropped (the glow reads glow.color's gold) or a companion on the wrong token
     local inst = boot()
     local NS = inst.NS
     local Castbar, cb, s = castbar(inst)
@@ -433,10 +433,14 @@ test("skin flip: the shadow lands on a font object on all three texts", function
             assertEqual(o.SetShadowOffsetArgs, rgba(1, -1), key .. "'s shadow")
             assertEqual(o.SetShadowColorArgs, rgba(0, 0, 0, 1), key .. "'s shadow color")
         end
-        assertTrue(handed.name ~= handed.time, "one object per string")
+        -- One object per look, shared (SkinPaintExtras minor 16): the bar's two strings are one look.
+        assertTrue(handed.name == handed.time, "two strings of one look share an object")
+        unit.label.style.size = 31
+        UL:Apply(li)
+        assertTrue(handed.label ~= handed.name, "another look takes another object")
     end)
     rawset(_G, "CreateFont", saved)
-    assertTrue(#objects >= 4, "one font object per string")
+    assertTrue(#objects >= 2, "a font object per look")
     if not ok then error(err, 0) end
 end)
 
