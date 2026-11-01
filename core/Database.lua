@@ -40,11 +40,13 @@ NS.Database = Database
 -- v1.82.0, ruling D-07), once per profile, recorded in skin.flagsReset (migrations[6] /
 -- Database:MigrateFlagsFromSkin). v8 turns "Use the skin's font" off on every HUD text whose
 -- stored face is the player's own pick (ruling D-15), once per profile, recorded in
--- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks).
+-- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks). v9 is the one step onto the
+-- skin (the owner's rulings of 2026-11-01): every HUD companion and Font flags row, once per
+-- profile, recorded in skin.fullSkinReset (migrations[8] / Database:MigrateFullSkin).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 8
+NS.SCHEMA_VERSION = 9
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -696,6 +698,8 @@ function Database:OnProfileChanged(event, db, arg)
     -- face kept off the skin's font (skin.fontPicksKept), after the reset that put it on.
     self:MigrateFlagsFromSkin(self.db)
     self:MigrateSkinFontPicks(self.db)
+    -- The one step onto the skin, last of the four: its own record, skin.fullSkinReset.
+    self:MigrateFullSkin(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -786,6 +790,10 @@ function Database:Init()
     -- "Use the skin's font" off where the player picked another face (D-15), per profile and
     -- recorded per profile (skin.fontPicksKept); after MigrateHudSkin, which put it on.
     self:MigrateSkinFontPicks(db)
+
+    -- The one step onto the skin (FS-KC-FLIP), per profile and recorded per profile
+    -- (skin.fullSkinReset); last, so the box the step above turned off comes back on.
+    self:MigrateFullSkin(db)
 
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes

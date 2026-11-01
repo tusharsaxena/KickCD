@@ -204,6 +204,16 @@ end
 -- a live instance and its library half against the major by name.
 local L = NS.L or setmetatable({}, { __index = function(_, k) return k end })
 
+--- The bool row beside a color or a shadow that follows the skin, for a composed block's `extra`
+--- (the LibKa0s Options doc, Moving to this version, section 3): `path` in full, default on, its
+--- tooltip naming the row `governs`. The swatch it governs keeps no `disabledIf` (options-ui-§17).
+function NS.Settings.SkinCompanionRow(path, label, governs)
+    return {
+        path = path, type = "bool", label = label, default = true,
+        desc = L["Draw this in the skin's look. %s is not read while this is on."]:format(governs),
+    }
+end
+
 local stubLib = {}
 
 local function copy(v)

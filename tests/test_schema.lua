@@ -275,14 +275,14 @@ end)
 local STRIP = {
     general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 8 } },
     icons   = {
-        { "Size and layout", 10 }, { "Appearance", 11 }, { "Annotations", 12 },
-        { "Ready glow", 34 },
+        { "Size and layout", 10 }, { "Appearance", 12 }, { "Annotations", 14 },
+        { "Ready glow", 36 },
     },
     castbar = {
-        { "General", 4 }, { "Size and position", 10 }, { "Text", 16 },
-        { "Interruptible", 15 }, { "Non-interruptible", 15 },
+        { "General", 4 }, { "Size and position", 10 }, { "Text", 18 },
+        { "Interruptible", 18 }, { "Non-interruptible", 18 },
     },
-    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 7 } },
+    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 9 } },
 }
 
 -- The filter each page renders with: nil is "every unit's rows", which is what

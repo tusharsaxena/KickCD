@@ -2,7 +2,7 @@
 --
 -- Every shape-driven migrator (FoldLegacyUnits, BackfillLabelStyle,
 -- MigrateSpecKeys, MigrateColorShape, MigrateFontFlags, MigrateHudSkin, MigrateFlagsFromSkin,
--- MigrateSkinFontPicks), the `migrations` ladder
+-- MigrateSkinFontPicks, MigrateFullSkin), the `migrations` ladder
 -- and its runner, Database:MigrateProfile, kept together so the step order reads
 -- in one place. A pure move: core/Database.lua had grown to 1121 lines, inside
 -- layout-§1's 1000-1500 band.
@@ -38,8 +38,8 @@ local copy               = Database._copy
 -- crossed that version. Such a step is also shape-driven and runs from
 -- Database:Init and every OnProfileChanged (FoldLegacyUnits,
 -- BackfillLabelStyle, MigrateSpecKeys, MigrateColorShape, MigrateFontFlags,
--- MigrateHudSkin, MigrateFlagsFromSkin, MigrateSkinFontPicks; the last three are gated on a
--- per-profile record, not on shape).
+-- MigrateHudSkin, MigrateFlagsFromSkin, MigrateSkinFontPicks, MigrateFullSkin; the last four are
+-- gated on a per-profile record, not on shape).
 
 -- The legacy top-level tables that fold into units.target. The same two names
 -- appear one level down under `p.anchors`, which folds separately because it
@@ -521,6 +521,65 @@ function NS.Database:MigrateSkinFontPicks(db)
     migrateDebug("kept %s picked HUD face(s) off the skin's font (one-time)", tostring(n))
 end
 
+--- v8 -> v9: the one step onto the skin (FS-KC-FLIP; the owner's rulings of 2026-11-01). Existing
+--- profiles follow the skin, not new profiles only, and a player's choices may be overwritten.
+---
+--- PER PROFILE, RECORDED PER PROFILE through the library's Skin.FollowOnce (skin.fullSkinReset), so it
+--- runs from Database:Init and every OnProfileChanged like the three steps above, after them, so a
+--- box MigrateSkinFontPicks turned off comes back on. A companion turned off afterwards stays off.
+---
+--- It names every companion, the eight HUD_SKIN_COMPANIONS and the new colors' and shadows', and the
+--- three Font flags keys, whose readers are on S.FontFlags. Never a stored color or pick, so turning
+--- a companion off brings the player's own back; never a class color or toggle, a size, the cooldown
+--- tint, the cast bar's fill colors or skin.ignore*. The paths are dotted from the profile's root,
+--- one list per call, because FollowOnce always takes the root. Without the library the same write
+--- by hand: a path through a missing table is skipped, and `skin` is the one table it may create.
+local FULL_SKIN_RELS = {
+    "icons.borderColorFromSkin",
+    "icons.cooldownTextColorFromSkin",
+    "icons.cooldownTextShadowFromSkin",
+    "icons.primaryGlowColorFromSkin",
+    "icons.secondaryGlowColorFromSkin",
+    "castbar.textColorFromSkin",
+    "castbar.fontShadowFromSkin",
+    "castbar.interruptible.bgColorFromSkin",
+    "castbar.interruptible.nameTextColorFromSkin",
+    "castbar.interruptible.borderColorFromSkin",
+    "castbar.uninterruptible.bgColorFromSkin",
+    "castbar.uninterruptible.nameTextColorFromSkin",
+    "castbar.uninterruptible.borderColorFromSkin",
+    "label.style.colorFromSkin",
+    "label.style.shadowFromSkin",
+}
+for _, rel in ipairs(HUD_SKIN_COMPANIONS) do FULL_SKIN_RELS[#FULL_SKIN_RELS + 1] = rel end
+for _, rel in ipairs(FLAG_RELS) do FULL_SKIN_RELS[#FULL_SKIN_RELS + 1] = rel end
+Database.FULL_SKIN_RELS = FULL_SKIN_RELS
+
+local FULL_SKIN_PATHS = {}
+for _, unit in ipairs({ "target", "focus" }) do
+    for _, rel in ipairs(FULL_SKIN_RELS) do
+        FULL_SKIN_PATHS[#FULL_SKIN_PATHS + 1] = "units." .. unit .. "." .. rel
+    end
+end
+Database.FULL_SKIN_PATHS = FULL_SKIN_PATHS
+
+function NS.Database:MigrateFullSkin(db)
+    local p = db and db.profile
+    if type(p) ~= "table" then return false end
+    local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
+    if Skin and type(Skin.FollowOnce) == "function" then
+        return Skin.FollowOnce(p, FULL_SKIN_PATHS)
+    end
+    if type(p.skin) == "table" and p.skin.fullSkinReset == true then return false end
+    for _, path in ipairs(FULL_SKIN_PATHS) do
+        local parent, leaf = walkPath(p, path)
+        if parent then parent[leaf] = leaf:match("FromSkin$") and true or FROM_SKIN end
+    end
+    if type(p.skin) ~= "table" then p.skin = {} end
+    p.skin.fullSkinReset = true
+    return true
+end
+
 local migrations = {
     -- [from-version] = function(db) ... end: a pure step from `from` to
     -- `from + 1`. It writes NO stamp: MigrateProfile advances
@@ -532,6 +591,7 @@ local migrations = {
     [5] = function(db) NS.Database:MigrateHudSkin(db) end,
     [6] = function(db) NS.Database:MigrateFlagsFromSkin(db) end,
     [7] = function(db) NS.Database:MigrateSkinFontPicks(db) end,
+    [8] = function(db) NS.Database:MigrateFullSkin(db) end,
 }
 
 -- A step that raised: one chat line the player sees, plus the gated trace.

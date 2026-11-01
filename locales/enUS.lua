@@ -600,6 +600,12 @@ L["Draw a thin border around each icon."] =
     "Draw a thin border around each icon."
 L["Border thickness in pixels."] = "Border thickness in pixels."
 L["Border color"]                = "Border color"
+L["Font color"]                  = "Font color"
+L["Font shadow"]                 = "Font shadow"
+L["Use the skin's color"]        = "Use the skin's color"
+L["Use the skin's shadow"]       = "Use the skin's shadow"
+L["Draw this in the skin's look. %s is not read while this is on."] =
+    "Draw this in the skin's look. %s is not read while this is on."
 L["Border color (RGBA)."]        = "Border color (RGBA)."
 L["LibSharedMedia border texture (edge style) used to draw each icon's border."] =
     "LibSharedMedia border texture (edge style) used to draw each icon's border."

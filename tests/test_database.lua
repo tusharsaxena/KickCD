@@ -25,7 +25,7 @@ test("Schema version lives in db.global, not the profile (KCD-20)", function()
     assertTrue(NS.db.global ~= nil, "db.global must exist")
     -- The declared default is 0 (savedvariables-§1); the runner walks a fresh
     -- account through every step and stamps the current version, 8.
-    assertEqual(NS.db.global.schemaVersion, 8, "the runner must stamp the current version")
+    assertEqual(NS.db.global.schemaVersion, 9, "the runner must stamp the current version")
     assertEqual(NS.db.profile.dbVersion, nil, "profile must NOT carry a schema version")
 end)
 
@@ -35,7 +35,7 @@ test("NS.SCHEMA_VERSION is the migration target and a fresh install ends on it",
     -- savedvariables-§1 names the runner's target NS.SCHEMA_VERSION, the
     -- spelling every other Ka0s addon uses; no second alias survives.
     local ns = T.load(true).NS
-    assertEqual(ns.SCHEMA_VERSION, 8, "the target is published as NS.SCHEMA_VERSION")
+    assertEqual(ns.SCHEMA_VERSION, 9, "the target is published as NS.SCHEMA_VERSION")
     assertEqual(ns.db.global.schemaVersion, ns.SCHEMA_VERSION,
         "a fresh install is stamped with NS.SCHEMA_VERSION")
     assertEqual(ns.Database.CURRENT_DB_VERSION, nil, "the retired alias is gone")
@@ -56,7 +56,7 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     -- NS.SCHEMA_VERSION is 8 (units fold, spec-key rekey, color reshape, font-flag
     -- token) — an unversioned account is treated as v1 and walked forward through
     -- every step.
-    assertEqual(ns.db.global.schemaVersion, 8, "migration must stamp v1 then walk to current")
+    assertEqual(ns.db.global.schemaVersion, 9, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -74,7 +74,7 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     -- NS.SCHEMA_VERSION is 8 — the adopted v1 account walks forward through
     -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys), [3]
     -- (MigrateColorShape) and [4] (MigrateFontFlags) to the current version.
-    assertEqual(ns.db.global.schemaVersion, 8, "adopted version migrates forward to the current version")
+    assertEqual(ns.db.global.schemaVersion, 9, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
@@ -289,9 +289,11 @@ test("a stored NONE font flag reads back as the empty string after migration", f
         u.label.style.flags       = "NONE"
     end
     ns.db.global.schemaVersion = 4
+    -- The one step onto the skin (v9) writes "@skin" to these same keys; this case is v5's.
+    ns.db.profile.skin.fullSkinReset = true
     ns.Database:MigrateProfile()
 
-    assertEqual(ns.db.global.schemaVersion, 8)
+    assertEqual(ns.db.global.schemaVersion, 9)
     for _, unit in ipairs({ "target", "focus" }) do
         local u = ns.db.profile.units[unit]
         assertEqual(u.icons.cooldownTextFlags, "", unit .. " icons")

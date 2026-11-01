@@ -240,7 +240,8 @@ local function oldFlagsSaved(extraProfiles)
                         label = { style = { flags = "OUTLINE" } } }
     end
     units.focus.castbar.fontFlags = "THICKOUTLINE"
-    local profiles = { Default = { skin = { hudReset = true }, units = units } }
+    -- The record: the one step onto the skin (v9) writes "@skin" to every flags key.
+    local profiles = { Default = { skin = { hudReset = true, fullSkinReset = true }, units = units } }
     for k, v in pairs(extraProfiles or {}) do profiles[k] = v end
     return { global = { schemaVersion = 6 }, profiles = profiles }
 end
@@ -319,7 +320,8 @@ end)
 --- bar, Ka0s Default's own face on Focus's countdown, a retired skin face on Target's countdown, and
 --- the stored default, Friz Quadrata, on Target's cast bar.
 local function v7Saved(extraProfiles, skinKey)
-    local profile = { skin = { hudReset = true, flagsReset = true, skin = skinKey }, units = {
+    -- The record: the one step onto the skin (v9) turns every box back on, and this file pins v8.
+    local profile = { skin = { hudReset = true, flagsReset = true, fullSkinReset = true, skin = skinKey }, units = {
         target = { icons = { cooldownTextFont = "Ka0s Oxanium SemiBold", cooldownTextFontFromSkin = true },
                    castbar = { font = "Friz Quadrata TT", fontFromSkin = true },
                    label = { style = { font = "Ka0s Kait", fontFromSkin = true } } },
@@ -368,7 +370,8 @@ test("skin font kept: a box ticked again after the step is never turned off agai
 end)
 
 test("skin font kept: a profile that was not active at the upgrade is stepped when it becomes active", function()
-    local alt = { units = { target = { label = { style = { font = "Ka0s Kait", fontFromSkin = true } } } } }
+    local alt = { skin = { fullSkinReset = true },
+        units = { target = { label = { style = { font = "Ka0s Kait", fontFromSkin = true } } } } }
     local NS = boot(v7Saved({ Alt = alt })).NS
     NS.db:SetProfile("Alt")
     assertEqual(NS.db.profile.units.target.label.style.fontFromSkin, false)

@@ -54,6 +54,8 @@ local addonName, NS = ...
 --   NS.SkinHudSize(n, f)    a HUD text's stored size as drawn (D-09): S.HudFontSize scales it to the
 --                           skin's HUD face while the text follows the skin's font (`f` not false),
 --                           so it is as wide in every skin; the stored value is never rewritten.
+--   NS.SkinHudColor(...)    a HUD color as drawn (FS-KC-FLIP): a class color first, then the skin's
+--                           while the row's companion is on, else the stored swatch.
 --   NS.OnSkinLooksChanged(fn) a HUD module's repaint, run after a skin, source or override change.
 --   NS.SkinPaintAce(w)      an AceGUI widget this addon acquired itself, painted for this owner:
 --   NS.SkinPaintAceTree(c)  `Skin:PaintAce` / `Skin:PaintAceTree` with the owner bound (the facade
@@ -81,11 +83,13 @@ local addonName, NS = ...
 -- RegisterOwner calls `get` once, before AceDB exists, and it answers Ka0s Default; the profile's
 -- pair is applied by NS.ApplySkinChoice right after Database:Init (core/KickCD.lua).
 --
--- ── NO OWNER TOKENS ──────────────────────────────────────────────────────────────────────────
+-- ── ONE OWNER TOKEN ──────────────────────────────────────────────────────────────────────────
 --
--- The M0 inventory found no color KickCD draws that a library token does not hold exactly
--- (Ka0sAddonsCommonTasks docs/2026-10-29-SKINNING_ROLLOUT/inputs/inventory/KickCD.md §5: no
--- gaps), so RegisterOwner carries no `tokens` table (X1, X2, X12 have nothing to name here).
+-- `kc.glow`. Every other HUD color KickCD follows is a library token's exact value under Ka0s Default
+-- (hud.text white, hud.label gold, bar.bg, icon.border). The ready glow is not: it draws yellow, and
+-- glow.color is the skin's gold, so the owner token keeps yellow under Ka0s Default and answers
+-- glow.color everywhere else (FS-KC-FLIP, cause D5). NS.SKIN_FALLBACK does not carry it: without the
+-- library the stored swatch draws.
 --
 -- ── WHY A ROW'S onChange PASSES ONE HALF ─────────────────────────────────────────────────────
 --
@@ -200,6 +204,24 @@ function NS.SkinHudSize(size, fromSkin)
     if S and S.HudFontSize then return S.HudFontSize(size, fromSkin ~= false) end
     local n = tonumber(size)
     return (n and n > 0) and n or 12
+end
+
+--- A HUD color as drawn (causes D2, D4 and D5). `useClass` first and left alone: while it is set the
+--- class color answers, whatever the companion says. Then the skin's, while the row's companion
+--- `fromSkin` is true: `read` is the facade member (HudTextColor, HudLabelColor, Color) and `token` its
+--- argument where it takes one. A degraded facade answers nothing, so the stored swatch `color` is
+--- the fallback. Four plain numbers, so a curve can switch between two of them on a secret bool.
+--- Read in the config paths and the per-cast paint, never in a ticker.
+function NS.SkinHudColor(color, useClass, unit, fromSkin, read, token)
+    if fromSkin == true and useClass ~= true then
+        local S = NS.Skin
+        local fn = S and S[read]
+        if fn then
+            local r, g, b, a = fn(token)
+            if r then return r, g, b, a end
+        end
+    end
+    return NS.ResolveColor(color, useClass, unit)
 end
 
 --- Subscribe a HUD module's repaint to the owner's looks (a skin switch, a source switch, a font
@@ -526,6 +548,11 @@ Skin:RegisterOwner(addonName, {
     label = L["Ka0s KickCD"],
     get = NS.SkinChoice,
     set = NS.WriteSkinChoice,
+    -- The ready glow's yellow under Ka0s Default; every other skin answers glow.color (this file's
+    -- header, "ONE OWNER TOKEN").
+    tokens = {
+        ["kc.glow"] = { default = { 1, 1, 0, 1 }, follow = "glow.color" },
+    },
 })
 
 -- The one line a reload request earns on the path that has no popup of its own (a profile event

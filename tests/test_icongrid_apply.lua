@@ -174,6 +174,7 @@ test("the countdown takes its configured color, which it never had before", func
     -- red under: deleting the SetTextColor call from Icon:ApplyTextConfig
     local _, icon, cfg = classyIcon("target")
     cfg.cooldownTextColor = { r = 0.25, g = 0.5, b = 0.75, a = 0.6 }
+    cfg.cooldownTextColorFromSkin = false
     cfg.useClassColorCooldownText = false
     icon:ApplyTextConfig(cfg)
     local r, g, b, a = icon.cooldownText:GetTextColor()
@@ -200,6 +201,7 @@ end)
 test("the countdown's drop shadow is applied, and CLEARED again", function()
     -- red under: making the shadow branch a one-way `if cfg.cooldownTextShadow then`
     local _, icon, cfg = classyIcon("target")
+    cfg.cooldownTextShadowFromSkin = false
     cfg.cooldownTextShadow = true
     icon:ApplyTextConfig(cfg)
     local x, y = icon.cooldownText:GetShadowOffset()

@@ -28,6 +28,9 @@ local Store  = NS.Settings.Store
 -- indexes the row the moment it lands.
 local function add(t) Store.AddRows({ t }) end
 
+-- A color's or a shadow's "Use the skin's ..." row (settings/SchemaSetup.lua), for a block's `extra`.
+local SkinRow = NS.Settings.SkinCompanionRow
+
 -- Every schema row's write goes through NS.Settings.Store.Set, which fires
 -- Ka0s_KickCD_ConfigChanged { section = "castbar" }; the Castbar module
 -- subscribes and re-applies its config from the bus listener. So no
@@ -493,14 +496,17 @@ H.AddComposed(H.FontGroup{
     labels   = { fontColor = L["Cast time color"] },
     -- "Use the skin's font" (`castbar.fontFromSkin`, default true, X3): the face of both texts.
     fromSkin = true,
+    -- The cast time's color and both texts' shadow have a companion each (FS-KC-FLIP).
+    extra = {
+        SkinRow(PREFIX .. "textColorFromSkin", L["Use the skin's color"], L["Cast time color"]),
+        SkinRow(PREFIX .. "fontShadowFromSkin", L["Use the skin's shadow"], L["Font shadow"]),
+    },
     -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
     -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
     flagsFromSkin = true,
     defaults = {
-        font       = "Friz Quadrata TT",
         fontSize   = 10,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
-        fontFlags  = "@skin",
         fontShadow = false,
         fontFromSkin = true,
     },
@@ -551,7 +557,7 @@ H.AddComposed(H.BarGroup{
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
     fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
-    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1, barTextureFromSkin = true,
+    defaults = { barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 1, g = 0.85, b = 0.05, a = 1 } },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
@@ -561,6 +567,7 @@ H.AddComposed(H.ColorPair{
     key      = "bgColor", label = L["Background color"],
     defaults = { bgColor = { r = 0, g = 0, b = 0, a = 0.5 } },
     classColor = { source = "unit", unit = unit },
+    extra    = { SkinRow(PREFIX .. "interruptible.bgColorFromSkin", L["Use the skin's color"], L["Background color"]) },
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
@@ -568,6 +575,7 @@ H.AddComposed(H.ColorPair{
     key      = "nameTextColor", label = L["Spell name color"],
     defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
     classColor = { source = "unit", unit = unit },
+    extra    = { SkinRow(PREFIX .. "interruptible.nameTextColorFromSkin", L["Use the skin's color"], L["Spell name color"]) },
 }, STAMP)
 H.AddComposed(H.BorderGroup{
     prefix   = PREFIX .. "interruptible.", page = "castbar", group = L["Interruptible"],
@@ -575,10 +583,11 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color staying the
-    -- player's. The bar family's bar.borderStyle is "None" on every skin, so the cast bar would
-    -- draw no edge (KC-A1, the owner's ruling). borderTextureFromSkin, default true (X3).
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px). The bar family's
+    -- bar.borderStyle is "None" on every skin, so the cast bar would draw no edge (KC-A1, the
+    -- owner's ruling). borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
+    extra    = { SkinRow(PREFIX .. "interruptible.borderColorFromSkin", L["Use the skin's color"], L["Border color"]) },
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
                  borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
                  borderStyleFromSkin = true },
@@ -591,7 +600,7 @@ H.AddComposed(H.BarGroup{
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
     fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
-    defaults = { barTexture = "Blizzard Raid Bar", barAlpha = 1, barTextureFromSkin = true,
+    defaults = { barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 0.85, g = 0.10, b = 0.10, a = 1 } },
     classColor = { source = "unit", unit = unit },
 }, STAMP)
@@ -601,6 +610,7 @@ H.AddComposed(H.ColorPair{
     key      = "bgColor", label = L["Background color"],
     defaults = { bgColor = { r = 0, g = 0, b = 0, a = 0.5 } },
     classColor = { source = "unit", unit = unit },
+    extra    = { SkinRow(PREFIX .. "uninterruptible.bgColorFromSkin", L["Use the skin's color"], L["Background color"]) },
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
@@ -608,6 +618,7 @@ H.AddComposed(H.ColorPair{
     key      = "nameTextColor", label = L["Spell name color"],
     defaults = { nameTextColor = { r = 1, g = 1, b = 1, a = 1 } },
     classColor = { source = "unit", unit = unit },
+    extra    = { SkinRow(PREFIX .. "uninterruptible.nameTextColorFromSkin", L["Use the skin's color"], L["Spell name color"]) },
 }, STAMP)
 H.AddComposed(H.BorderGroup{
     prefix   = PREFIX .. "uninterruptible.", page = "castbar", group = L["Non-interruptible"],
@@ -615,10 +626,11 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color staying the
-    -- player's. The bar family's bar.borderStyle is "None" on every skin, so the cast bar would
-    -- draw no edge (KC-A1, the owner's ruling). borderTextureFromSkin, default true (X3).
+    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px). The bar family's
+    -- bar.borderStyle is "None" on every skin, so the cast bar would draw no edge (KC-A1, the
+    -- owner's ruling). borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
+    extra    = { SkinRow(PREFIX .. "uninterruptible.borderColorFromSkin", L["Use the skin's color"], L["Border color"]) },
     defaults = { borderShow = true, borderStyle = "Blizzard Tooltip",
                  borderSize = 2, borderColor = { r = 0, g = 0, b = 0, a = 1 },
                  borderStyleFromSkin = true },

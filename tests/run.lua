@@ -231,6 +231,8 @@ local SUITES = {
     "test_skin_settings",
     "test_skin_hud",
     "test_skin_fonts",
+    -- The colors and shadows on the skin, and the one step that moves stored profiles (FS-KC-FLIP).
+    "test_skin_flip",
     -- The first-run skin picker (KC-04): its spec, when it shows (login, the profile events, never
     -- stood down, held through combat), what marks it seen, the real window. Its own instance.
     "test_skin_picker",
