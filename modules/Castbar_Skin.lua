@@ -440,10 +440,14 @@ local function ReskinColors(inst, intCfg, unintCfg)
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(intCfg)))
     frame.bar.interruptible:SetStatusBarColor(
         NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit))
+    -- The skin's gloss (cause A3), once the bar has its texture. It belongs to the skin's texture, so
+    -- a state on the player's own stays plain; a skin change reaches it with no call of ours.
+    NS.Skin.BarGloss(frame.bar.interruptible, intCfg.statusBarTextureFromSkin == true)
     frame.bar.uninterruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(unintCfg)))
     frame.bar.uninterruptible:SetStatusBarColor(
         NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit))
+    NS.Skin.BarGloss(frame.bar.uninterruptible, unintCfg.statusBarTextureFromSkin == true)
 
     -- The CAST TIME text. Shared across the two states and hardcoded white until
     -- the Font tab grew a swatch for it (options-ui-§16); the spell name's color

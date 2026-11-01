@@ -433,6 +433,109 @@ test("skin flip: with no library HudFont still draws and the stored colors stand
     assertEqual(S.MarkText("p", 12), "|Tp:12:12|t", "a string a caller concatenates")
 end)
 
+-- ── gloss (FS-KC-FIX, cause A3) ─────────────────────────────────────────────
+
+--- A live cast bar on the kit's paint recorder: the base mock's bars are no StatusBar, and the
+--- library leaves those alone, so a gloss test without it passes vacuously.
+local function paintedBars()
+    local inst = boot()
+    local NS = inst.NS
+    local Castbar = NS:GetModule("Castbar")
+    local cb = Castbar:GetInstance("target")
+    Castbar:EnsureFrame(cb)
+    -- After the load, because the recorder is strict about regions the HUD's own build touches: two
+    -- real status bars in place of the base mock's.
+    local restore = dofile("tests/_kit/mock_paint.lua")(inst.mocks)
+    cb.frame.bar.interruptible = inst.mocks.CreateFrame("StatusBar")
+    cb.frame.bar.uninterruptible = inst.mocks.CreateFrame("StatusBar")
+    restore()
+    Castbar:Reskin(cb, true)
+    local Skin = lib(inst)
+    local function gloss(state)
+        local rec = Skin.painted[cb.frame.bar[state]]
+        return rec and rec.regions.gloss
+    end
+    return inst, Castbar, cb, gloss
+end
+
+test("skin gloss: a glossy skin shines both states' fills; Ka0s Default does not", function()
+    -- red under: a bar that never reads bar.gloss, or only one of the two stacked bars called
+    local inst, Castbar, cb, gloss = paintedBars()
+    assertEqual(cb.frame.bar.interruptible:GetObjectType(), "StatusBar", "sanity: the recorder took")
+    assertEqual(gloss("interruptible"), nil, "Ka0s Default has none")
+    onSkin(inst, "glass", function()
+        Castbar:Reskin(cb)
+        assertTrue(gloss("interruptible") ~= nil, "Glass shines the interruptible fill")
+        assertTrue(gloss("uninterruptible") ~= nil, "and the uninterruptible one")
+        assertEqual(gloss("interruptible"):IsShown(), true)
+    end)
+    assertEqual(gloss("interruptible"):IsShown(), false, "a switch away takes it off")
+end)
+
+test("skin gloss: a player's own texture stays plain, per state and through a replay", function()
+    -- red under: S.BarGloss called without the state's companion, which a replay would shine again
+    local inst, Castbar, cb, gloss = paintedBars()
+    local c = inst.NS.db.profile.units.target.castbar
+    onSkin(inst, "glass", function()
+        c.interruptible.statusBarTextureFromSkin = false
+        Castbar:Reskin(cb)
+        assertEqual(gloss("uninterruptible"):IsShown(), true, "the other state still follows")
+        local own = gloss("interruptible")
+        assertTrue(own == nil or own:IsShown() == false, "the player's own texture stays plain")
+        lib(inst):SetChoice(OWNER, "ka0s", "obsidian")
+        lib(inst):SetChoice(OWNER, "ka0s", "glass")
+        own = gloss("interruptible")
+        assertTrue(own == nil or own:IsShown() == false, "and through a skin switch's replay")
+        c.interruptible.statusBarTextureFromSkin = true
+        Castbar:Reskin(cb)
+        assertEqual(gloss("interruptible"):IsShown(), true, "the companion back on")
+    end)
+end)
+
+-- ── the Spells rows' status glyph (FS-KC-FIX, cause L6) ─────────────────────
+
+test("skin marks: the known glyph is the Ka0s mark in its meaning's color, the client's while ignored", function()
+    -- red under: the glyph left on ReadyCheck art with the Scope cleared, or S.Mark without `panel`,
+    -- which would restyle the default, stock settings panel
+    local NS = T.load(true, true).NS
+    local marks, released, forgotten = {}, {}, {}
+    local mark, onRelease, forget = NS.Skin.Mark, NS.SkinOnRelease, NS.SkinForget
+    NS.Skin.Mark = function(tex, opts) marks[#marks + 1] = { tex = tex, opts = opts } end
+    NS.SkinOnRelease = function(_, fn) released[#released + 1] = fn end
+    NS.SkinForget = function(tex) forgotten[#forgotten + 1] = tex end
+    local ok, err = pcall(function()
+        local Rows = NS.Settings.SpellsPanel
+        local yes = Rows.StatusGlyphMark({ image = { name = "known" } }, true)
+        local no = Rows.StatusGlyphMark({ image = { name = "unknown" } }, false)
+        assertTrue(yes and no, "both rows were marked")
+        assertEqual(marks[1].opts.token, "sem.good")
+        assertEqual(marks[2].opts.token, "sem.bad")
+        assertEqual(marks[1].opts.art, NS.Icon("confirm"), "the Ka0s tick")
+        assertEqual(marks[2].opts.art, NS.Icon("close"), "the Ka0s cross")
+        assertEqual(marks[1].opts.panel, true, "on the settings panel, so it obeys the Scope")
+        local set
+        marks[2].opts.stock({ SetTexture = function(_, art) set = art end })
+        assertEqual(set, [[Interface\RaidFrame\ReadyCheck-NotReady]], "stock puts the client's art back")
+        -- AceGUI pools widgets across addons, so a released row must not stay on the skin's replay.
+        local white
+        released[1]({ image = { SetVertexColor = function(_, ...) white = rgba(...) end } })
+        assertEqual(#forgotten, 1, "a released row is forgotten")
+        assertEqual(white, rgba(1, 1, 1, 1), "and its tint given back")
+    end)
+    NS.Skin.Mark, NS.SkinOnRelease, NS.SkinForget = mark, onRelease, forget
+    if not ok then error(err, 0) end
+end)
+
+test("skin marks: the seam forgets a texture, with the library and without", function()
+    local inst = boot()
+    local Skin = lib(inst)
+    local tex = inst.mocks.CreateFrame("Frame")
+    Skin.painted[tex] = { owner = OWNER, calls = {}, order = {} }
+    inst.NS.SkinForget(tex)
+    assertEqual(Skin.painted[tex], nil, "no replay reaches it")
+    boot(nil, { libFiles = {} }).NS.SkinForget({})
+end)
+
 -- ── the one step ────────────────────────────────────────────────────────────
 
 local function partial()

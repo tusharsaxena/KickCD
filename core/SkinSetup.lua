@@ -62,6 +62,8 @@ local addonName, NS = ...
 --                           carries neither). Release restores stock.
 --   NS.SkinOnRelease(w, fn) host release work chained onto the widget's own OnRelease
 --                           (`Skin:OnRelease`), so it and the skin's restore both run.
+--   NS.SkinForget(frame)    a pooled region off the skin's replay (`Skin:Untrack`): AceGUI's pool is
+--                           every addon's, so a released widget must not stay ours to repaint.
 --   NS.MaybeShowSkinPicker() the first-run skin picker (LibKa0s OptionsSkinPicker 1, owner ruling
 --                           O3): the Options instance's SkinPicker while the profile's
 --                           `skin.pickerSeen` is false and the addon stands up; held to
@@ -538,6 +540,7 @@ if not Skin then
     function NS.SkinPaintAce() return false end
     function NS.SkinPaintAceTree() return 0 end
     NS.SkinOnRelease = releaseByCallback
+    function NS.SkinForget() end
     return
 end
 
@@ -579,6 +582,10 @@ end
 function NS.SkinOnRelease(widget, fn)
     if type(Skin.OnRelease) ~= "function" then return releaseByCallback(widget, fn) end
     return Skin:OnRelease(widget, fn)
+end
+
+function NS.SkinForget(frame)
+    if type(Skin.Untrack) == "function" then Skin:Untrack(frame) end
 end
 
 function NS.ApplySkinIgnore(panel, fonts)

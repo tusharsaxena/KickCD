@@ -32,7 +32,10 @@ local function categoryList() return deps().categoryList() end
 -- Status-glyph textures for the "known to the player?" indicator on each
 -- row. Matches the In-bags / Not-in-bags glyphs ConsumableMaster uses
 -- (Interface\RaidFrame\ReadyCheck-Ready / -NotReady) so the visual
--- vocabulary is consistent across the user's addons.
+-- vocabulary is consistent across the user's addons. That is the stock look:
+-- with the Scope's Ignore settings panel cleared the glyph is the Ka0s tick or
+-- cross in the skin's sem.good or sem.bad (Spells.StatusGlyphMark, cause L6). The
+-- color says known or not, so it keeps its meaning under every skin.
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
@@ -186,11 +189,32 @@ end
 -- browsing another class's spec list, every spell will read as red,
 -- which is the correct fact ("you can't cast any of these"). The
 -- glyph is informational only; it doesn't gate enable/disable.
+---
+--- The mark lives on a texture of AceGUI's shared pool, so the release takes it off the skin's
+--- replay and gives the tint back. Answers true when a texture took it.
+function Spells.StatusGlyphMark(statusIcon, known)
+    local tex = statusIcon.image
+    if not tex then return false end
+    local stockArt = known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON
+    NS.Skin.Mark(tex, {
+        art   = NS.Icon and NS.Icon(known and "confirm" or "close") or nil,
+        token = known and "sem.good" or "sem.bad",
+        panel = true,
+        stock = function(t) t:SetTexture(stockArt) end,
+    })
+    NS.SkinOnRelease(statusIcon, function(w)
+        NS.SkinForget(tex)
+        if w.image and w.image.SetVertexColor then w.image:SetVertexColor(1, 1, 1, 1) end
+    end)
+    return true
+end
+
 local function rowKnownGlyph(AceGUI, entry)
     local known = Compat.IsSpellAvailable
         and Compat.IsSpellAvailable(entry.spellID) or false
     local statusIcon = Spells.Acquire(AceGUI, "Icon")
     statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
+    Spells.StatusGlyphMark(statusIcon, known)
     alignIconArt(statusIcon, 20)
     statusIcon:SetImageSize(20, 20)
     -- Box width hugs the 20 px image (1 px padding each side instead of 4).
