@@ -10,7 +10,7 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 
 ```lua
 db.global = {
-    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 8).
+    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 9).
                                  -- DECLARED DEFAULT 0 (savedvariables-§1): AceDB's
                                  -- removeDefaults strips a stored value equal to its
                                  -- default, and backfills a default onto a legacy
@@ -36,8 +36,9 @@ db.global = {
                                  -- (migrations[5]) runs Database:MigrateHudSkin (see
                                  -- the one-time HUD style reset below). v6 -> v7
                                  -- (migrations[6]) runs Database:MigrateFlagsFromSkin,
-                                 -- v7 -> v8 (migrations[7]) Database:MigrateSkinFontPicks
-                                 -- (see the two steps after the HUD style reset).
+                                 -- v7 -> v8 (migrations[7]) Database:MigrateSkinFontPicks,
+                                 -- v8 -> v9 (migrations[8]) Database:MigrateFullSkin
+                                 -- (see the three steps after the HUD style reset).
     minimap = {                  -- LibDBIcon-1.0's OWN table (launcher-§3). The
         hide = false,            -- `hide` boolean is the `Minimap button` row's;
     },                           -- `minimapPos` is the library's, written when the
@@ -94,6 +95,7 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
         hudReset    = false,         -- the one-time HUD style reset's record (no schema row)
         flagsReset  = false,         -- the one-time Font flags step's record (no schema row)
         fontPicksKept = false,       -- the one-time picked-face step's record (no schema row)
+        fullSkinReset = false,       -- the one step onto the skin's record (no schema row)
     },
 
     -- Per-unit widgets (target/focus dual tracking). Appearance (icons/
@@ -136,8 +138,9 @@ seam stores it from `media.outline` (the tab's dropdown and another addon's copy
 ([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves,
 so a profile that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
 old and new (owner ruling O3), so the first-run skin picker shows once on each. `skin.hudReset` is the
-one-time HUD style reset's record, `skin.flagsReset` the Font flags step's and `skin.fontPicksKept`
-the picked-face step's, none with a row (see the v5 → v6, v6 → v7 and v7 → v8 migrations below). Adding the block
+one-time HUD style reset's record, `skin.flagsReset` the Font flags step's, `skin.fontPicksKept`
+the picked-face step's and `skin.fullSkinReset` the one step onto the skin's, none with a row (see the
+v5 → v6, v6 → v7, v7 → v8 and v8 → v9 migrations below). Adding the block
 moved no stored path and needed no step of its own: AceDB merges the declared defaults into every
 profile.
 
@@ -210,6 +213,8 @@ units[unit] = {
         showCooldownText, cooldownTextFont, cooldownTextSize, cooldownTextFlags,
         cooldownTextColor, useClassColorCooldownText, cooldownTextShadow,
         cooldownTextFontFromSkin,  -- "Use the skin's font" (hud.font); default true
+        cooldownTextColorFromSkin, -- "Use the skin's color" (hud.text); default true
+        cooldownTextShadowFromSkin, -- "Use the skin's shadow" (hud.shadow); default true
         showCharges, chargesOffsetX, chargesOffsetY,
         -- Per-slot ready glow (LibCustomGlow). Trigger ∈
         --   { never, always, target_casting, target_casting_interruptible }
@@ -250,6 +255,9 @@ units[unit] = {
         textColor, useClassColorText,
         fontFromSkin,                           -- "Use the skin's font" for both texts
                                                 -- (hud.font); default true
+        textColorFromSkin,                      -- "Use the skin's color" (hud.text); default true
+        fontShadowFromSkin,                     -- "Use the skin's shadow" for both texts
+                                                -- (hud.shadow); default true
         -- Anchor: FREE = drag-positioned (saved to anchors.castbar);
         -- PRIMARY = SetPoint to this unit's icon grid primary icon button at
         -- (anchorPoint, castbarPoint, anchorOffsetX, anchorOffsetY).
@@ -290,20 +298,25 @@ units[unit] = {
         -- Each state's statusBarTextureFromSkin ("Use the skin's texture",
         -- bar.texture) and borderTextureFromSkin ("Use the skin's border", the
         -- icon family: icon.borderStyle and icon.borderSize, KC-A1) default true.
+        -- So do bgColorFromSkin (bar.bg), nameTextColorFromSkin (hud.text) and
+        -- borderColorFromSkin (icon.border). barColor has no companion: the hue
+        -- says whether the cast can be kicked.
         interruptible   = { statusBarTexture, barColor, useClassColorBar,
                             barAlpha, statusBarTextureFromSkin,
                             bgColor, useClassColorBgColor,
                             nameTextColor, useClassColorNameTextColor,
                             borderShow, borderTexture,
                             borderColor, useClassColorBorder, borderSize,
-                            borderTextureFromSkin },
+                            borderTextureFromSkin, bgColorFromSkin,
+                            nameTextColorFromSkin, borderColorFromSkin },
         uninterruptible = { statusBarTexture, barColor, useClassColorBar,
                             barAlpha, statusBarTextureFromSkin,
                             bgColor, useClassColorBgColor,
                             nameTextColor, useClassColorNameTextColor,
                             borderShow, borderTexture,
                             borderColor, useClassColorBorder, borderSize,
-                            borderTextureFromSkin },
+                            borderTextureFromSkin, bgColorFromSkin,
+                            nameTextColorFromSkin, borderColorFromSkin },
     },
 }
 ```
@@ -322,7 +335,7 @@ units[unit].label.style = {
     offsetX  = 0, offsetY  = 12,     -- pixel offset from that point
     justifyH = "CENTER", justifyV = "MIDDLE",
     rotation = 0,                     -- degrees; FontString:SetRotation (radians internally)
-    font     = "Friz Quadrata TT",   -- LSM font name
+    font     = "Ka0s Prototype",     -- LSM font name
     size     = 14,
     flags    = "@skin",               -- "@skin" (From skin, the default since LibKa0s
                                       --    v1.82.0: the Font outline decides) | "" |
@@ -331,9 +344,11 @@ units[unit].label.style = {
                                       --    is "None" and is a real stored value; the
                                       --    pre-v5 token for it was "NONE"
     shadow   = false,                 -- drop shadow behind the text
+    shadowFromSkin = true,            -- "Use the skin's shadow" (hud.shadow): `shadow` is kept
     fontFromSkin = true,              -- "Use the skin's font" (hud.font): while true the
                                       --    label draws the skin's face, `font` is kept
     color    = { r = 1, g = 0.82, b = 0, a = 1 },  -- label text color (Blizzard gold)
+    colorFromSkin = true,             -- "Use the skin's color" (hud.label): `color` is kept
     useClassColor = false,            -- the color's class-color companion. UNIT-scoped:
                                       --    a label names the unit it is drawn beside, and
                                       --    a linked focus still resolves on FOCUS
@@ -436,6 +451,14 @@ KickCD adopted skins in the 2026-10-29 skinning rollout (Ka0sAddonsCommonTasks `
 | `castbar.interruptible.statusBarTextureFromSkin`, `castbar.uninterruptible.statusBarTextureFromSkin` | each state's bar texture | `bar.texture` `"Ka0s Default"` |
 | `castbar.interruptible.borderTextureFromSkin`, `castbar.uninterruptible.borderTextureFromSkin` | each state's border style **and thickness** (the icon family, `fromSkin = "icon"`, KC-A1) | `icon.borderStyle` `"Solid"`, `icon.borderSize` 2 |
 | `label.style.fontFromSkin` | the label's face | `hud.font` |
+| `icons.cooldownTextColorFromSkin`, `castbar.textColorFromSkin`, each state's `nameTextColorFromSkin` | the countdown, cast time and spell name colors | `hud.text`, white |
+| `label.style.colorFromSkin` | the label's color | `hud.label`, gold |
+| `icons.borderColorFromSkin`, each state's `borderColorFromSkin` | the icon and cast-bar border colors | `icon.border`, black |
+| each state's `bgColorFromSkin` | the cast bar's background | `bar.bg`, black at 0.5 |
+| `icons.primaryGlowColorFromSkin`, `icons.secondaryGlowColorFromSkin` | each slot's ready glow | the owner token `kc.glow`, yellow, then `glow.color` in every other skin |
+| `icons.cooldownTextShadowFromSkin`, `castbar.fontShadowFromSkin`, `label.style.shadowFromSkin` | each text's drop shadow | `hud.shadow`, none |
+
+The last six rows arrived with FS-KC-FLIP (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/`). A class color comes first and has no companion, and the cooldown tint and the cast bar's fills carry a meaning and have none either. The font and bar texture picks default to `Ka0s Prototype` and `Ka0s Default` since then, so a box turned off lands on a Ka0s pick; a stored pick is never rewritten.
 
 Every one **defaults true** (rollout decision X3), in `defaults/Profile.lua` and in the composer row alike. While one is set its picker is disabled and shows the skin's value, and the HUD draws `NS.SkinResolve(token, pick, companion)` (`core/SkinSetup.lua`), except that while the Scope's `ignoreFonts` is on the stored pick wins for `hud.font` whatever the companion says (LibKa0s v1.81.0, R-1); the stored pick is never overwritten, so turning the companion off draws exactly what the player had. Only the face, the texture and the border follow (X4): every color, size (but the borders' thickness, which the icon family sets), flag and shadow stays the player's. The charges badge, which has no setting, takes the skin's `hud.font` face with `NumberFontNormal`'s size and flags, and `NumberFontNormal`'s own face while `ignoreFonts` is on.
 
@@ -452,3 +475,9 @@ While a HUD text uses the skin's face, its stored size is drawn through `S.HudFo
 ## Migration: a picked face kept off the skin's font (v7 → v8)
 
 The v5 → v6 HUD style reset put every "Use the skin's font" box on the skin and kept the stored face, so a face the player had picked (the owner's Ka0s Kait on the target label, Ka0sAddonsCommonTasks `docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK/inputs/inventory/Z_CRITIC.md` R5) has drawn the skin's face since. `Database:MigrateSkinFontPicks(db)` is the v7→v8 step (`migrations[7]`, item KC-03, the owner's ruling D-15; AuraMaster's AM-03 is the same rule over its own texts, except that AM-03 does not exempt the pre-v1.82.0 skin faces named below; KickCD keeps that exemption): on each unit's countdown (`icons.cooldownTextFont`), cast bar (`castbar.font`) and label (`label.style.font`), a box that is on goes off when the stored face is the player's pick, so the face comes back. Not a pick: the stored default, Friz Quadrata TT (AceDB never told it apart from an unchanged row); the HUD face of the skin the profile wears (`Skin:ResolveSkin(skin.skin)["hud.font"]`, Ka0s Default's Prototype without the library); and a face a Ka0s skin drew before LibKa0s v1.82.0 (Oxanium, Inter, Fira Sans Regular), which a skin stored and the player never picked. v1.82.0 dropped those faces and v1.83.0 ships them again, so the exemption is no longer what keeps them drawing, and it stays because such a face is still no pick. The stored face is never written. Like the steps above it runs from `Database:Init` and every `OnProfileChanged`, after `MigrateHudSkin`, and is recorded per profile in `skin.fontPicksKept`, so a box the player ticks again afterwards stays ticked. A text kept on its own face draws its stored size, unscaled (`S.HudFontSize`).
+
+## Migration: the one step onto the skin (v8 → v9)
+
+The owner's rulings of 2026-11-01 (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/00_PLAN.md`) reverse "HUD colors are the player's" and accept overwriting player choices: existing profiles follow the skin, not new profiles only. `Database:MigrateFullSkin(db)` is the v8→v9 step (`migrations[8]`), and it also runs from `Database:Init` and every `OnProfileChanged`, after the three steps above it, because the stamp is per account and following the skin leaves no shape to read.
+
+It calls `Skin.FollowOnce(profile, Database.FULL_SKIN_PATHS)`, which reads and writes the record `skin.fullSkinReset`: true moves nothing, anything else sets the listed keys and the record. The list is dotted from the profile's root, for target and focus: the eight companions of the v5 → v6 step, the fifteen color and shadow companions and the three Font flags keys, which take `"@skin"` whatever the player picked. A box the v7 → v8 step turned off goes back on. It names no stored color, pick or size, no class color or its toggle, not the cooldown tint or the cast bar's fills, and not `skin.ignorePanel` or `skin.ignoreFonts`, so a stored face or swatch draws again the moment its box is unticked. A companion unticked afterwards stays off for good. The record has no schema row, so no Defaults button walks it; a profile reset puts it back to false and the step then writes nothing a player can see. Without the library the same write runs by hand: a path through a missing table is skipped, and `skin` is the one table it may create.

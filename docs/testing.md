@@ -194,7 +194,11 @@ seam and applied at load, on a profile event and on its row's write), `/kcd skin
 `config`, the spec it hands `O.SkinVerb`, the library-absent line), From skin on every Font flags row
 and the one-time v6 → v7 step, and the HUD size scale (13 under Obsidian for a stored 12 on the
 skin's face, 12 on its own face or under Ignore fonts), and the one-time v7 → v8 step that keeps a
-picked HUD face off the skin's font (D-15).
+picked HUD face off the skin's font (D-15). `tests/test_skin_flip.lua` pins the colors and shadows on
+the skin (FS-KC-FLIP): the fifteen companions, Ka0s Default's pixels, a skin switch through spies on the
+drawing setters, the shadow's font object and cache, the v8 → v9 step on stored partial profiles, gloss
+on the kit's paint recorder (`tests/_kit/mock_paint.lua`, or it passes vacuously) and the Spells rows'
+status mark.
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

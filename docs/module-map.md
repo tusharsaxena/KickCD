@@ -61,12 +61,13 @@ KickCD (AceAddon)
 │                       per profile, recorded in skin.hudReset) +
 │                       MigrateFlagsFromSkin (skin.flagsReset) +
 │                       MigrateSkinFontPicks (skin.fontPicksKept) +
-│                       db.global.schemaVersion (NS.SCHEMA_VERSION = 8)
+│                       MigrateFullSkin (skin.fullSkinReset) +
+│                       db.global.schemaVersion (NS.SCHEMA_VERSION = 9)
 │                       / MigrateProfile scaffold — the migrators and the
 │                       ladder live in Database_Migrations.lua (#29)
 │   ├── Database_Migrations.lua — the five shape-driven migrators,
 │                       MigrateHudSkin, MigrateFlagsFromSkin,
-│                       MigrateSkinFontPicks, the `migrations` ladder and MigrateProfile, defined on
+│                       MigrateSkinFontPicks, MigrateFullSkin, the `migrations` ladder and MigrateProfile, defined on
 │                       NS.Database; directly after Database.lua (#29)
 │   ├── KickCD.lua    — AceAddon bootstrap + the slash VERB TABLES (COMMANDS /
 │                       DEBUG_COMMANDS / SPELLS_COMMANDS) and their handlers

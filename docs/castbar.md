@@ -49,6 +49,8 @@ Two things the guard has to get right, both covered by `tests/test_castbar_skin.
 
 `nameText`'s color is in neither half: it's per-state and applied in `ApplyState` through curve-evaluated channels, because the `notInterruptible` flag that selects it can be secret in combat.
 
+**Colors, shadow and gloss on the skin (FS-KC-FLIP, FS-KC-FIX).** The background, border, spell name and cast time draw through `NS.SkinHudColor`, the skin's while their "Use the skin's color" box is ticked; the fills stay the stored yellow and red, because the hue says whether the cast can be kicked. Both texts take `S.HudFont` in `applyLabelFonts`, and `Castbar.ShadowKey` signs `S.HudShadow`'s answers into the signature, because `S.HudFont` is not recorded and the structural half is its only path. `ReskinColors` calls `S.BarGloss` on both stacked bars with each state's texture companion.
+
 `Castbar:onUpdate` is similarly minimal: `SetMinMaxValues` is hoisted to `Start` / `OnCastDelayed` (the duration's max only changes on those events), and `cfg().showTime` is cached on `current.showTime` at cast start so the per-frame loop is just two `SetValue` calls plus a conditional `SetFormattedText`.
 
 **Don't push config-driven work back into `Start` or per-frame work** — that was the pre-CR-10/CR-17 shape and it was wasteful.
