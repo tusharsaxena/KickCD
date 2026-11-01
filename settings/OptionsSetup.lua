@@ -441,6 +441,9 @@ if not lib then
     -- `/kcd skin`'s act (LibKa0s v1.82.0, OptionsSkinPicker minor 3, ruling D-16): nothing to pick
     -- without the library, so nil, "absent", and NS.RunSkinVerb prints the library-absent line.
     Helpers.SkinVerb       = function() return nil, "absent" end
+    -- A label's font (LibKa0s v1.85.0, OptionsWidgets minor 43), owed by every Options stub. No
+    -- library, no widget to set it on.
+    Helpers.LabelFont      = function() end
     -- The id editor's per-kind name hints. EMPTY, not a copy: the live table is built from the
     -- library's own kind text (libs/LibKa0s/OptionsWidgets.lua), and options-ui-§1 forbids a
     -- host copy of library content exactly as it forbids a copy of a layout constant. A reader

@@ -160,7 +160,7 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
-the debug console's close, copy and clear buttons, the simulator's done check, and the
-skin picker's settings gear.
+the debug console's close, copy and clear buttons, the simulator's done check, the
+skin picker's settings gear, and the small marks LibKa0s draws beside skinned controls.
 
 The icons ship inside the bundled payload under `libs/`, with their license text beside them.
