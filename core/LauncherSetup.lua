@@ -145,6 +145,7 @@ NS.Launcher = Launcher:New({
     --
     -- Enabled: the Master-controls row's one reader, and the handler
     -- `/kcd enable` / `/kcd disable` run, handed the state to move TO.
+    openSkinPicker = function() if NS.RunSkinVerb then NS.RunSkinVerb() end end,
     isEnabled  = function() return NS.MasterEnabled == nil or NS.MasterEnabled() end,
     setEnabled = function(on) if NS.SetMasterEnabled then NS.SetMasterEnabled(on) end end,
     -- Locked: the path the `Lock frame` row writes, and the handler `/kcd toggle`

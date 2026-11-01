@@ -254,6 +254,7 @@ local SUITES = {
     "test_perfsetup",
     "test_perfsetup_latch",
     "test_launcher",
+    "test_launcher_skin_entry",
     "test_list_mode",
     "test_surface_parity",
     "test_doc_structure",
