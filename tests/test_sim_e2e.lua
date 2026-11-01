@@ -253,7 +253,11 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
             assertTrue(cur ~= nil and cur.isChannel == true, "the focus bar shows no channel")
         end
         c[nth(steps, "PartyKick", 1)] = function()
-            assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar running")
+            assertTrue(ctx.bar("target").current == nil or ctx.bar("focus").current ~= nil,
+                "Uther's kick on the target cast took the focus bar's cast with it")
+        end
+        c[nth(steps, "PartyKick", 2)] = function()
+            assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar's channel running")
         end
         c[nth(steps, "PartyKick", 3)] = function()
             assertTrue(ctx.state(KICK).isActive, "your kick came back too soon")
