@@ -1459,14 +1459,15 @@ Total.
 - skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
 - skin font kept: without the library the step still keeps the picks
 
-### test_skin_flip.lua (27)
+### test_skin_flip.lua (32)
 
 - skin flip: every color and shadow companion is a bool row defaulting on, in both places
 - skin flip: a meaning color has no companion, and no class toggle has one
 - skin flip: the picks' defaults moved to the Ka0s picks, in both places
 - skin flip: Ka0s Default keeps this addon's pixels, with no shadow
 - skin flip: a skin switch redraws every flipped surface with the skin's tokens
-- skin flip: the glow follows a switch through the idempotency gate
+- skin flip: a live cast's spell name follows the skin through the curve, per state
+- skin flip: each slot's glow reaches the driver in the skin's color through UpdateGlow
 - skin flip: the meaning colors do not move with the skin
 - skin flip: a companion off draws the stored swatch under every skin
 - skin flip: a class color comes first, whatever the companion says
@@ -1476,15 +1477,19 @@ Total.
 - skin flip: the companion toggle moves the signature too
 - skin flip: with no library HudFont still draws and the stored colors stand
 - skin gloss: a glossy skin shines both states' fills; Ka0s Default does not
-- skin gloss: a player's own texture stays plain, per state and through a replay
+- skin gloss: a player's own interruptible texture stays plain, through a replay
+- skin gloss: a player's own uninterruptible texture stays plain, through a replay
 - skin marks: the known glyph is the Ka0s mark in its meaning's color, the client's while ignored
+- skin marks: a built Spells row marks its known glyph
 - skin marks: the seam forgets a texture, with the library and without
 - the step: every listed key follows and every stored pick and color is byte-identical
 - the step holds the sentinel to the flags keys alone
 - the step names no size, meaning color, class toggle, Scope key, color or pick
 - a second run writes nothing, and a companion turned off afterwards stays off
 - no schema row walks the record, so a companion off survives another page's Defaults
-- the ladder's v8 -> v9 step moves the active profile, and a profile change moves another
+- the v8 -> v9 upgrade moves the active profile, and a profile change moves another
+- the ladder's v8 row runs the step
+- a stamp already at 9 still moves a login profile with no record
 - a player's picked face goes back on the skin, the pick kept, with the rulings of 2026-11-01
 - the step creates the record's table on a raw profile with none
 - the step is the same write with the library absent
@@ -1977,7 +1982,7 @@ Total.
 | test_skin_settings.lua | 11 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
-| test_skin_flip.lua | 27 |
+| test_skin_flip.lua | 32 |
 | test_skin_picker.lua | 16 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
@@ -2007,4 +2012,4 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | Skipped | 1 |
-| **Total** | **1609** |
+| **Total** | **1614** |

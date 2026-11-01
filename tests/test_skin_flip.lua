@@ -105,6 +105,37 @@ local function icon(inst)
     }
 end
 
+--- The live primary icon of Target's enabled grid, ready and glowing, its setters spied on. Nothing
+--- here calls the icon again: a skin switch has to reach it through IconGrid:OnSkinLooksChanged.
+local function liveIcon(inst)
+    local NS = inst.NS
+    local gi = NS:GetModule("IconGrid"):GetInstance("target")
+    assertTrue(gi.enabled, "sanity: the grid is up")
+    local i = gi.ordered[1]
+    assertTrue(i ~= nil, "sanity: the grid has an icon")
+    NS.db.profile.units.target.icons.primaryGlowTrigger = "always"
+    i:Apply({ ready = true }, true)
+    return i, {
+        text = spy(i.cooldownText, "SetTextColor"), charges = spy(i.chargesText, "SetTextColor"),
+        border = spy(i.border, "SetBackdropBorderColor"),
+    }
+end
+
+--- Run `body` with NS.GlowLib.Start recording the color it is handed; `body` gets the record, whose
+--- `n` counts the starts and whose `last` is the last color.
+local function onGlowSpy(NS, body)
+    local rec = { n = 0 }
+    local start = NS.GlowLib.Start
+    NS.GlowLib.Start = function(_, _, opts)
+        rec.n = rec.n + 1
+        rec.last = rgba(unpack(opts.color))
+        return true
+    end
+    local ok, err = pcall(body, rec)
+    NS.GlowLib.Start = start
+    if not ok then error(err, 0) end
+end
+
 -- ── the rows and the defaults ───────────────────────────────────────────────
 
 local COLOR_ROWS = {
@@ -201,7 +232,8 @@ test("skin flip: Ka0s Default keeps this addon's pixels, with no shadow", functi
 end)
 
 test("skin flip: a skin switch redraws every flipped surface with the skin's tokens", function()
-    -- red under: a surface still reading the stored swatch, or a looks-changed path that skips it
+    -- red under: a surface still reading the stored swatch, or IconGrid:OnSkinLooksChanged not reaching
+    -- the live grid: nothing below calls an icon by hand
     local inst = boot()
     local NS = inst.NS
     local T2 = lib(inst):ResolveSkin("obsidian")
@@ -209,56 +241,106 @@ test("skin flip: a skin switch redraws every flipped surface with the skin's tok
     assertTrue(token(T2["hud.text"]) ~= rgba(1, 1, 1, 1), "sanity: Obsidian's HUD text is not white")
     assertTrue(token(T2["hud.label"]) ~= rgba(1, 0.82, 0, 1), "sanity: its label is not gold")
     assertTrue(token(T2["glow.color"]) ~= rgba(1, 1, 0, 1), "sanity: its glow is not yellow")
-    local i, cfg, is = icon(inst)
     local UL = NS:GetModule("UnitLabel")
     local li = UL:GetInstance("target")
     UL:Apply(li)
     local label = spy(li.text, "SetTextColor")
-    onSkin(inst, "obsidian", function()
-        assertEqual(s.name.last, token(T2["hud.text"]), "the spell name")
-        assertEqual(s.time.last, token(T2["hud.text"]), "the cast time")
-        assertEqual(s.bgInt.last, token(T2["bar.bg"]), "the interruptible background")
-        assertEqual(s.bgUnint.last, token(T2["bar.bg"]), "the uninterruptible background")
-        assertEqual(s.borderInt.last, token(T2["icon.border"]), "the interruptible border")
-        assertEqual(s.borderUnint.last, token(T2["icon.border"]), "the uninterruptible border")
-        assertEqual(label.last, token(T2["hud.label"]), "the label")
-        i:ApplyAppearance(cfg)
-        i:ApplyTextConfig(cfg)
-        assertEqual(is.border.last, token(T2["icon.border"]), "the icon border")
-        assertEqual(is.text.last, token(T2["hud.text"]), "the countdown")
-        assertEqual(is.charges.last, token(T2["hud.text"]), "the charges badge")
-        assertEqual(rgba(NS:GetModule("IconGrid").UnpackGlowColor(cfg.primaryGlowColor, false, true)),
-            token(T2["glow.color"]), "the ready glow")
+    onGlowSpy(NS, function(glow)
+        local _, is = liveIcon(inst)
+        onSkin(inst, "obsidian", function()
+            assertEqual(s.name.last, token(T2["hud.text"]), "the spell name")
+            assertEqual(s.time.last, token(T2["hud.text"]), "the cast time")
+            assertEqual(s.bgInt.last, token(T2["bar.bg"]), "the interruptible background")
+            assertEqual(s.bgUnint.last, token(T2["bar.bg"]), "the uninterruptible background")
+            assertEqual(s.borderInt.last, token(T2["icon.border"]), "the interruptible border")
+            assertEqual(s.borderUnint.last, token(T2["icon.border"]), "the uninterruptible border")
+            assertEqual(label.last, token(T2["hud.label"]), "the label")
+            assertEqual(is.border.last, token(T2["icon.border"]), "the icon border")
+            assertEqual(is.text.last, token(T2["hud.text"]), "the countdown")
+            assertEqual(is.charges.last, token(T2["hud.text"]), "the charges badge")
+            assertEqual(glow.last, token(T2["glow.color"]), "the running ready glow")
+        end)
     end)
 end)
 
-test("skin flip: the glow follows a switch through the idempotency gate", function()
-    -- red under: StartGlow never handed the companion, where the gate compares the stored yellow and
-    -- a skin switch leaves the old glow running
+test("skin flip: a live cast's spell name follows the skin through the curve, per state", function()
+    -- red under: applyLiveVisuals reading the stored color on either state, where only a real cast
+    -- shows it: the preview branch never reaches the curve
     local inst = boot()
     local NS = inst.NS
-    local i, cfg = icon(inst)
-    i.cfg, i._isPrimary = cfg, true
-    i.glow = inst.mocks.CreateFrame("Frame")
-    local started = {}
-    local start = NS.GlowLib.Start
-    NS.GlowLib.Start = function(_, _, opts)
-        started[#started + 1] = opts and opts.color
-        return true
+    local T2 = lib(inst):ResolveSkin("obsidian")
+    local Castbar, cb, s = castbar(inst)
+    local c = NS.db.profile.units.target.castbar
+    local curve = inst.mocks.C_CurveUtil
+    local eval = curve.EvaluateColorValueFromBoolean
+    local pairsSeen = {}
+    curve.EvaluateColorValueFromBoolean = function(flag, whenTrue, whenFalse)
+        pairsSeen[#pairsSeen + 1] = { whenTrue, whenFalse }
+        return eval(flag, whenTrue, whenFalse)
+    end
+    --- The last four pairs are the name's channels: whenTrue is the uninterruptible state's.
+    local function channels(which)
+        local out = {}
+        for n = #pairsSeen - 3, #pairsSeen do out[#out + 1] = pairsSeen[n][which] end
+        return rgba(unpack(out))
     end
     local ok, err = pcall(function()
-        i:StartGlow("pixel", cfg.primaryGlowColor, false, cfg, true, true)
-        local n = #started
-        assertTrue(n > 0, "sanity: the glow started")
-        i:StartGlow("pixel", cfg.primaryGlowColor, false, cfg, true, true)
-        assertEqual(#started, n, "the gate holds on a repeat")
+        cb.current = { notInterruptible = false }
         onSkin(inst, "obsidian", function()
-            i:StartGlow("pixel", cfg.primaryGlowColor, false, cfg, true, true)
-            assertTrue(#started > n, "a skin switch restarts it in the skin's color")
+            Castbar:ApplyState(cb)
+            assertEqual(channels(1), token(T2["hud.text"]), "the uninterruptible name, on the curve")
+            assertEqual(channels(2), token(T2["hud.text"]), "the interruptible name, on the curve")
+            assertEqual(s.name.last, token(T2["hud.text"]), "and what the string took")
+            c.interruptible.nameTextColorFromSkin = false
+            c.interruptible.nameTextColor = { r = 0.1, g = 0.2, b = 0.3, a = 0.4 }
+            c.uninterruptible.nameTextColorFromSkin = false
+            c.uninterruptible.nameTextColor = { r = 0.5, g = 0.6, b = 0.7, a = 0.8 }
+            Castbar:ApplyState(cb)
+            assertEqual(channels(1), rgba(0.5, 0.6, 0.7, 0.8), "companion off: the stored uninterruptible")
+            assertEqual(channels(2), rgba(0.1, 0.2, 0.3, 0.4), "companion off: the stored interruptible")
+            assertEqual(s.name.last, rgba(0.1, 0.2, 0.3, 0.4), "and what an interruptible cast draws")
+            cb.current = { notInterruptible = true }
+            Castbar:ApplyState(cb)
+            assertEqual(s.name.last, rgba(0.5, 0.6, 0.7, 0.8), "and an uninterruptible one")
         end)
     end)
-    NS.GlowLib.Start = start
+    curve.EvaluateColorValueFromBoolean = eval
+    cb.current = nil
     if not ok then error(err, 0) end
+end)
+
+test("skin flip: each slot's glow reaches the driver in the skin's color through UpdateGlow", function()
+    -- red under: glowConfig not answering a slot's companion, or UpdateGlow not handing it to StartGlow:
+    -- the glow then draws the stored yellow on every skin, and the idempotency gate, comparing that same
+    -- yellow, leaves the old glow running through a switch
+    local inst = boot()
+    local NS = inst.NS
+    local T2 = lib(inst):ResolveSkin("obsidian")
+    local yellow = rgba(1, 1, 0, 1)
+    for slot, keys in pairs({
+        primary = { trigger = "primaryGlowTrigger", companion = "primaryGlowColorFromSkin" },
+        secondary = { trigger = "secondaryGlowTrigger", companion = "secondaryGlowColorFromSkin" },
+    }) do
+        local i, cfg = icon(inst)
+        i.cfg, i._isPrimary = cfg, slot == "primary"
+        i.glow = inst.mocks.CreateFrame("Frame")
+        cfg[keys.trigger] = "always"
+        onGlowSpy(NS, function(glow)
+            i:UpdateGlow({ ready = true })
+            assertEqual(glow.last, yellow, slot .. ": sanity, Ka0s Default's yellow")
+            local n = glow.n
+            i:UpdateGlow({ ready = true })
+            assertEqual(glow.n, n, slot .. ": the gate holds on a repeat")
+            onSkin(inst, "obsidian", function()
+                i:UpdateGlow({ ready = true })
+                assertTrue(glow.n > n, slot .. ": a skin switch restarts it")
+                assertEqual(glow.last, token(T2["glow.color"]), slot .. ": in the skin's color")
+                cfg[keys.companion] = false
+                i:UpdateGlow({ ready = true })
+                assertEqual(glow.last, yellow, slot .. ": the companion off draws the stored color")
+            end)
+        end)
+    end
 end)
 
 test("skin flip: the meaning colors do not move with the skin", function()
@@ -472,25 +554,28 @@ test("skin gloss: a glossy skin shines both states' fills; Ka0s Default does not
     assertEqual(gloss("interruptible"):IsShown(), false, "a switch away takes it off")
 end)
 
-test("skin gloss: a player's own texture stays plain, per state and through a replay", function()
-    -- red under: S.BarGloss called without the state's companion, which a replay would shine again
-    local inst, Castbar, cb, gloss = paintedBars()
-    local c = inst.NS.db.profile.units.target.castbar
-    onSkin(inst, "glass", function()
-        c.interruptible.statusBarTextureFromSkin = false
-        Castbar:Reskin(cb)
-        assertEqual(gloss("uninterruptible"):IsShown(), true, "the other state still follows")
-        local own = gloss("interruptible")
-        assertTrue(own == nil or own:IsShown() == false, "the player's own texture stays plain")
-        lib(inst):SetChoice(OWNER, "ka0s", "obsidian")
-        lib(inst):SetChoice(OWNER, "ka0s", "glass")
-        own = gloss("interruptible")
-        assertTrue(own == nil or own:IsShown() == false, "and through a skin switch's replay")
-        c.interruptible.statusBarTextureFromSkin = true
-        Castbar:Reskin(cb)
-        assertEqual(gloss("interruptible"):IsShown(), true, "the companion back on")
+for _, states in ipairs({ { "interruptible", "uninterruptible" }, { "uninterruptible", "interruptible" } }) do
+    local own, other = states[1], states[2]
+    test("skin gloss: a player's own " .. own .. " texture stays plain, through a replay", function()
+        -- red under: S.BarGloss called without this state's companion, which a replay would shine again
+        local inst, Castbar, cb, gloss = paintedBars()
+        local state = inst.NS.db.profile.units.target.castbar[own]
+        onSkin(inst, "glass", function()
+            state.statusBarTextureFromSkin = false
+            Castbar:Reskin(cb)
+            assertEqual(gloss(other):IsShown(), true, "the other state still follows")
+            local mine = gloss(own)
+            assertTrue(mine == nil or mine:IsShown() == false, "the player's own texture stays plain")
+            lib(inst):SetChoice(OWNER, "ka0s", "obsidian")
+            lib(inst):SetChoice(OWNER, "ka0s", "glass")
+            mine = gloss(own)
+            assertTrue(mine == nil or mine:IsShown() == false, "and through a skin switch's replay")
+            state.statusBarTextureFromSkin = true
+            Castbar:Reskin(cb)
+            assertEqual(gloss(own):IsShown(), true, "the companion back on")
+        end)
     end)
-end)
+end
 
 -- ── the Spells rows' status glyph (FS-KC-FIX, cause L6) ─────────────────────
 
@@ -523,6 +608,30 @@ test("skin marks: the known glyph is the Ka0s mark in its meaning's color, the c
         assertEqual(white, rgba(1, 1, 1, 1), "and its tint given back")
     end)
     NS.Skin.Mark, NS.SkinOnRelease, NS.SkinForget = mark, onRelease, forget
+    if not ok then error(err, 0) end
+end)
+
+test("skin marks: a built Spells row marks its known glyph", function()
+    -- red under: rowKnownGlyph not calling Spells.StatusGlyphMark, which leaves every row on the
+    -- client's art under every Scope
+    local inst = T.load(true, true)
+    local NS = inst.NS
+    local Rows = NS.Settings.SpellsPanel
+    local marks = {}
+    local mark, acquire = NS.Skin.Mark, Rows.Acquire
+    NS.Skin.Mark = function(_, opts) marks[#marks + 1] = opts end
+    -- The kit's AceGUI Icon has no texture; the real widget's `image` is what the mark paints.
+    Rows.Acquire = function(gui, kind)
+        local w = acquire(gui, kind)
+        if kind == "Icon" then w.image = w.image or {} end
+        return w
+    end
+    local ok, err = pcall(function()
+        Rows.BuildRow(inst.mocks.__aceGUI, { { spellID = 1766 } }, 1)
+        assertEqual(#marks, 1, "the row's one glyph")
+        assertTrue(marks[1].token == "sem.good" or marks[1].token == "sem.bad", "on a meaning token")
+    end)
+    NS.Skin.Mark, Rows.Acquire = mark, acquire
     if not ok then error(err, 0) end
 end)
 
@@ -675,8 +784,9 @@ test("no schema row walks the record, so a companion off survives another page's
     assertEqual(p.units.target.icons.cooldownTextFlags, "OUTLINE", "and the flag the player picked")
 end)
 
-test("the ladder's v8 -> v9 step moves the active profile, and a profile change moves another", function()
-    -- red under: the step left off migrations[8], Database:Init or Database:OnProfileChanged
+test("the v8 -> v9 upgrade moves the active profile, and a profile change moves another", function()
+    -- red under: the step left off Database:OnProfileChanged. Not under the ladder row or the Init
+    -- call alone: at stamp 8 each covers for the other, so each has a case of its own below.
     local saved = { global = { schemaVersion = 8 }, profiles = {
         Default = { skin = { hudReset = true, flagsReset = true, fontPicksKept = true },
             units = { target = { castbar = { textColorFromSkin = false, fontFlags = "THICKOUTLINE" } } } },
@@ -692,6 +802,35 @@ test("the ladder's v8 -> v9 step moves the active profile, and a profile change 
     NS.db:SetProfile("Alt")
     assertEqual(NS.db.profile.skin.fullSkinReset, true, "the profile not active at the upgrade")
     assertEqual(NS.db.profile.units.focus.icons.cooldownTextColorFromSkin, true)
+end)
+
+test("the ladder's v8 row runs the step", function()
+    -- red under: the step left off migrations[8]
+    local NS = boot().NS
+    local real = NS.Database.MigrateFullSkin
+    local calls = 0
+    NS.Database.MigrateFullSkin = function(self, db)
+        calls = calls + 1
+        return real(self, db)
+    end
+    NS.db.global.schemaVersion = 8
+    NS.Database:MigrateProfile()
+    NS.Database.MigrateFullSkin = real
+    assertEqual(calls, 1, "the ladder ran it")
+    assertEqual(NS.db.global.schemaVersion, 9)
+end)
+
+test("a stamp already at 9 still moves a login profile with no record", function()
+    -- red under: the step left off Database:Init: the ladder runs no step at this stamp, and the stamp is
+    -- per account where the record is per profile, so another character's profile can arrive here
+    local saved = { global = { schemaVersion = 9 }, profiles = {
+        Default = { skin = { hudReset = true, flagsReset = true, fontPicksKept = true },
+            units = { target = { castbar = { textColorFromSkin = false, fontFlags = "THICKOUTLINE" } } } },
+    } }
+    local NS = boot(saved).NS
+    assertEqual(NS.db.profile.skin.fullSkinReset, true, "the login profile")
+    assertEqual(NS.db.profile.units.target.castbar.textColorFromSkin, true)
+    assertEqual(NS.db.profile.units.target.castbar.fontFlags, "@skin", "the named flag")
 end)
 
 test("a player's picked face goes back on the skin, the pick kept, with the rulings of 2026-11-01", function()

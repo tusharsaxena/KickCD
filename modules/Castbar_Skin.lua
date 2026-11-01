@@ -173,9 +173,6 @@ end
 function Castbar.LabelFlags(c)
     return NS.SkinFontFlags(c.fontFlags)
 end
--- The border is the skin's ICON border family, style and thickness both (KC-A1, the owner's
--- ruling: bar.borderStyle is "None" on every skin, so the bar family would draw no edge), as
--- settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
 -- The shadow both texts draw, signed as S.HudFont will resolve it (the LibKa0s Options doc, section
 -- 5): S.HudShadow's answers beside the companion and the stored row. S.HudFont is not recorded, so a
 -- skin change reaches it only through this signature, and two skins alike in face, size and flags
@@ -185,6 +182,9 @@ function Castbar.ShadowKey(c)
     return table.concat({ tostring(c.fontShadow), tostring(c.fontShadowFromSkin), tostring(x), tostring(y),
         tostring(r), tostring(g), tostring(b), tostring(a) }, ",")
 end
+-- The border is the skin's ICON border family, style and thickness both (KC-A1, the owner's
+-- ruling: bar.borderStyle is "None" on every skin, so the bar family would draw no edge), as
+-- settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
 function Castbar.BorderStyle(sc)
     return NS.SkinResolve("icon.borderStyle", sc.borderTexture, sc.borderTextureFromSkin)
 end
