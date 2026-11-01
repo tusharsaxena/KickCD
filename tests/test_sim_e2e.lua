@@ -244,6 +244,10 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
             end
             assertTrue(kicked, "the kick's SPELL_STATE did not reach IconGrid:OnSpellState")
         end
+        c[nth(steps, "CastStart", 2)] = function()
+            assertTrue(ctx.bar("target").current ~= nil, "the target bar lost its cast")
+            assertTrue(ctx.bar("focus").current ~= nil, "the focus bar shows no cast beside the target's")
+        end
         c[nth(steps, "ChannelStart", 1)] = function()
             local cur = ctx.bar("focus").current
             assertTrue(cur ~= nil and cur.isChannel == true, "the focus bar shows no channel")
@@ -251,7 +255,7 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
         c[nth(steps, "PartyKick", 1)] = function()
             assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar running")
         end
-        c[nth(steps, "PartyKick", 2)] = function()
+        c[nth(steps, "PartyKick", 3)] = function()
             assertTrue(ctx.state(KICK).isActive, "your kick came back too soon")
             assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", NS.L["Jaina"], NS.L["Frost"],
                 NS.L["Shadowcaster"], (NS.Compat.GetSpellInfo(2139)))), "Jaina's line was not printed")

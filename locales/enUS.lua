@@ -259,6 +259,8 @@ L["Focus %s"] =
     "Focus %s"
 L["%s starts a cast"] =
     "%s starts a cast"
+L["%s starts a cast beside it"] =
+    "%s starts a cast beside it"
 L["%s starts a channel"] =
     "%s starts a channel"
 L["%s casts again while your kick cools"] =

@@ -10,7 +10,7 @@ local _, NS = ...
 -- lines and step labels; their kicks end an enemy cast through UNIT_SPELLCAST_INTERRUPTED (the
 -- PartyKick driver). Each #38 scenario maps onto the engine path it stresses:
 --
---   pull   the combat gate, target and focus, a cast and a channel on each bar, your kick's
+--   pull   the combat gate, target and focus casting at once, a channel on the focus, your kick's
 --          cooldown, the party's kicks, the CC's GCD on every other on-GCD spell, a death
 --   boss   your kick's two charges: the badge counts 2 -> 1 -> 0, the recharge swipe, the expiry
 --   miss   an uninterruptible cast, its shield breaking, a kick refused on cooldown, a cast that
@@ -109,7 +109,9 @@ function TIMELINES.pull()
         target(a),
         focus(b),
         cast(a, L["%s starts a cast"]:format(enemyName(a))),
+        cast(b, L["%s starts a cast beside it"]:format(enemyName(b))),
         kick(a),
+        partyKick("uther", b),
         cast(b, L["%s starts a channel"]:format(enemyName(b)), { channel = true }),
         partyKick("thrall", b),
         cast(a, L["%s casts again while your kick cools"]:format(enemyName(a))),
