@@ -402,8 +402,10 @@ test("skin flip: the shadow lands on a font object on all three texts", function
     rawset(_G, "CreateFont", function(name)
         local o = { name = name }
         for _, m in ipairs({ "SetFont", "SetShadowColor", "SetShadowOffset" }) do
-            o[m] = function(_, ...) o[m .. "Args"] = rgba(...) end
+            o[m] = function(_, ...) o[m .. "Args"] = rgba(...); if m == "SetFont" then o.face = { ... } end end
         end
+        -- A real font object answers its face (LibKa0s R3-DR-1L reads it back to hold the face).
+        o.GetFont = function() return unpack(o.face or {}) end
         objects[#objects + 1] = o
         return o
     end)
