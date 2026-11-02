@@ -225,9 +225,10 @@ test("RIGHT click opens the options menu: the label, then Enabled and Locked, no
     assertTrue(m.owner == OWNER, "anchored to the button that was clicked")
     assertEqual(m.titles[1], "Ka0s KickCD", "titled with the plain-text label")
     local texts = m:Texts()
-    assertEqual(#texts, 2, "exactly two entries: " .. table.concat(texts, " / "))
+    assertEqual(#texts, 3, "exactly three entries (Sim mode since Launcher minor 7): " .. table.concat(texts, " / "))
     assertEqual(texts[1], "Enabled")
     assertEqual(texts[2], "Locked")
+    assertEqual(texts[3], "Sim mode")
 end)
 
 test("the menu reads the state when it opens, every time", function()

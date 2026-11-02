@@ -164,6 +164,13 @@ NS.Launcher = Launcher:New({
     -- hint beside the library's is anti-pattern #89.
     --
     -- The TOC's `## Version`, through the one resolver `/kcd version` uses.
+    isSimMode = function() local s = NS.Sim; return type(s) == "table" and type(s.IsActive) == "function" and s:IsActive() == true end,
+    toggleSim = function()
+        local s = NS.Sim
+        if type(s) ~= "table" or type(s.RunVerb) ~= "function" then return end
+        -- The typed verb's own acts: stop a running sim, otherwise the bare verb (status and the sim panel).
+        s:RunVerb(s:IsActive() and "stop" or "")
+    end,
     version = function() return NS.Version and NS.Version() end,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,
