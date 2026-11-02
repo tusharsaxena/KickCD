@@ -416,6 +416,11 @@ local DEFAULT_PROFILE = {
         fullSkinReset = false,
     },
 
+    -- The simulator's pace (R3-SIM-KC): the seconds `/kcd sim` waits between two steps as it
+    -- plays, the same path, range and default as AbsorbTracker's and DpsRace's. The General page's
+    -- Simulator tab draws it; modules/Sim.lua reads it at each step.
+    sim = { stepDelay = 1 },
+
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live
     -- (NS.Units resolves the link). enabled/anchors/label.text stay per-unit

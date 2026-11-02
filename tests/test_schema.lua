@@ -38,6 +38,9 @@ local SECTIONS = {
     -- The skin's seven rows (settings/General.lua): a section no module reacts to, because the
     -- repaint is each row's onChange through LibKa0s-Skin-1.0 (core/SkinSetup.lua).
     skin = true,
+    -- The simulator's pace (R3-SIM-KC): a section no module reacts to, because modules/Sim.lua
+    -- reads sim.stepDelay at each step.
+    sim = true,
 }
 
 test("Settings.Schema is assembled from the settings/* files", function()
@@ -273,7 +276,7 @@ end)
 -- media block: Icons > Appearance and Annotations one each, Cast bar > Text one, each state two
 -- (the bar texture's and the border's), Text label > Font one.
 local STRIP = {
-    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 8 } },
+    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 8 }, { "Simulator", 1 } },
     icons   = {
         { "Size and layout", 10 }, { "Appearance", 12 }, { "Annotations", 14 },
         { "Ready glow", 36 },
@@ -949,6 +952,8 @@ local TAB_SINGLE_SUBJECT = {
         ["Appearance"] = "the skin this addon wears (skinning-§3). Every row is skipRender: the "
             .. "library's O.AppearanceTab draws the whole tab, its own headings included, so the "
             .. "rows carry no subgroup.",
+        ["Simulator"] = "the simulator's pace (R3-SIM-KC): one slider, sim.stepDelay, so the tab "
+            .. "label names it and no heading repeats it.",
     },
     castbar = {
         ["General"] = "what the bar IS: enabled, orientation, growth, spark. The size rows, the "

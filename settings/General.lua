@@ -331,6 +331,21 @@ skinRow{ path = "skin.pickerSeen", type = "bool", default = SK.pickerSeen,
          label = L["Skin picker seen"],
          desc = L["Whether the first-run skin picker was closed on this profile."] }
 
+-- The simulator's pace (R3-SIM-KC): the General page's last tab, Simulator, with the one slider.
+-- The same path, range, default and validator as AbsorbTracker's and DpsRace's. The validator and
+-- the range are modules/Sim.lua's, which loads before this file; Host.DelayAfter reads the stored
+-- value at each step, so a change lands from the next step and the row needs no onChange. Its own
+-- section, `sim`, which no module listens for: a pace change re-applies nothing.
+add{
+    panel    = "general", section = "sim", group = L["Simulator"],
+    path     = "sim.stepDelay", type = "number",
+    label    = L["Simulation step delay (seconds)"],
+    desc     = L["Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."],
+    default  = NS.DEFAULT_PROFILE.sim.stepDelay,
+    min = NS.SimHost.STEP_DELAY_MIN, max = NS.SimHost.STEP_DELAY_MAX, step = NS.SimHost.STEP_DELAY_STEP,
+    validate = function(v) return NS.SimHost.ValidStepDelay(v) end,
+}
+
 -- ---------------------------------------------------------------------
 -- Builder
 -- ---------------------------------------------------------------------
@@ -372,7 +387,7 @@ local function Build(mainCategory)
         -- disclosure: the three rows the Units page's band draws keep their
         -- `panel = "general"` stamp, so this button resets them (settings/Grid.lua
         -- carries the other half).
-        defaultsTooltip = L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."],
+        defaultsTooltip = L["Restore the Master controls and Simulator tabs to their defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."],
     })
     -- Parked, not wired: the Defaults button doesn't exist until the
     -- panel's first OnShow (H.EnsureDefaultsButton).

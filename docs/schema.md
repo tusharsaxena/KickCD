@@ -145,6 +145,15 @@ v5 → v6, v6 → v7, v7 → v8 and v8 → v9 migrations below). Adding the bloc
 moved no stored path and needed no step of its own: AceDB merges the declared defaults into every
 profile.
 
+## `sim.*` — the simulator's pace
+
+`sim.stepDelay` (R3-SIM-KC) is the seconds `/kcd sim` waits between two steps as it plays: 0.5 to 10
+in 0.5 s steps, default 1, the same path, range and default as AbsorbTracker's and DpsRace's. Its row
+is the General page's Simulator tab (`settings/General.lua`), with `modules/Sim.lua`'s validator, so
+`/kcd set sim.stepDelay` refuses a value the slider cannot make. `NS.SimHost.DelayAfter` reads it at each
+step, so a change lands from the next one. Its section, `sim`, is one no module reacts to. Adding it
+moved no stored path and needed no step: AceDB merges the declared default into every profile.
+
 ## Spell list lifecycle
 
 `spells` is seeded once on first profile creation by `Database:BuildSpells`, which deep-copies `NS.DefaultSpells` and appends the player's racial cast-stopper. Subsequent edits are user-owned; the seeder is idempotent on populated profiles.

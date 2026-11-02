@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| SIM-1 – 14 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together |
+| SIM-1 – 15 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 43 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz |
@@ -997,6 +997,14 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   beside it" puts a cast on the focus bar while the target bar still runs; your kick ends the target's
   cast, Uther's kick ends the focus's, and then the channel follows on the focus. Fail: the focus bar
   empty while the target casts, or the steps out of this order. Result: not run
+- **SIM-15. The Simulation step delay slider paces the run (R3-SIM-KC).** `/kcd config` → General →
+  the **Simulator** tab (after Skin) holds one slider, **Simulation step delay (seconds)**, at 1, from
+  0.5 to 10 in steps of 0.5, with a tooltip naming `/kcd sim` and the next step. Set it to 4, then
+  `/kcd sim start pull` → each step plays about 4 s after the one before. While it plays, drag the
+  slider to 1 → the step already waiting keeps its 4 s, and every step after it comes about 1 s apart.
+  `/kcd get sim.stepDelay` answers the slider's value; `/kcd set sim.stepDelay 0.3` is refused.
+  General's **Defaults** puts it back to 1. `/kcd sim stop`. Fail: no Simulator tab, a pace that does
+  not follow the slider, or a change that waits for a new session. Result: not run
 
 ## DIAG
 

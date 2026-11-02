@@ -13,6 +13,7 @@
 -- 2026-10-31 font pickers run) moved skin.outline's default from "all" to "hud" (ruling D-10).
 -- LibKa0s v1.85.0 (FS-KC-FLIP of the 2026-11-01 full skinning run) added the fifteen color and shadow
 -- companions per unit and moved the font and bar texture picks' defaults to the Ka0s picks.
+-- R3-SIM-KC (the 2026-11-02 smoke round 3) added sim.stepDelay, the simulator's step delay.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
@@ -52,6 +53,7 @@ local PIN = {
     "global.minimap.shown bool true nil nil nil",
     "locked bool false nil nil nil",
     "scale number 1 0.5 2 0.050000000000000003",
+    "sim.stepDelay number 1 0.5 10 0.5",
     "skin.font string \"\" nil nil nil",
     "skin.ignoreFonts bool false nil nil nil",
     "skin.ignorePanel bool true nil nil nil",

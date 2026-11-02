@@ -102,6 +102,10 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
+L["Simulator"] = "Simulator"
+L["Simulation step delay (seconds)"] = "Simulation step delay (seconds)"
+L["Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."] =
+    "Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."
 -- The CLI's refusal while a session runs (KC-06): unlock, toggle, the launcher's Locked entry and
 -- resetall (core/KickCD.lua).
 L["End the simulation first (/kcd sim stop)."] =
@@ -843,8 +847,8 @@ L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
 L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."] =
     "Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."
-L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
-    "Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."
+L["Restore the Master controls and Simulator tabs to their defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
+    "Restore the Master controls and Simulator tabs to their defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."
 
 -- The skin (core/SkinSetup.lua, settings/General.lua's Skin tab rows; skinning-§2, §3)
 L["Ka0s skins"]                  = "Ka0s skins"

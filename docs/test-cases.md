@@ -529,7 +529,7 @@ Total.
 - SimWorld.CanBuild: true with a duration constructor, false when NewDuration answers nil
 - SimWorld: the mutators are no-ops with no world installed
 
-### test_sim_session.lua (18)
+### test_sim_session.lua (21)
 
 - TOC: modules/Sim.lua loads straight after modules/SimDrivers.lua, under a LOAD-BEARING comment
 - Sim session: NS.Sim is the live instance bound to NS.SimSeam, not core/SimSetup.lua's stub
@@ -549,6 +549,9 @@ Total.
 - Sim panel: stepLabel names `your kick` by the real spell while running, the role word idle
 - Sim panel: stepTip names the events, the engine and, once played, the detail
 - Sim panel: anchorTo is the target grid while shown, else the focus grid, else nil
+- sim.stepDelay: a 0.5 to 10 s slider in 0.5 s steps, default 1, on the General page (R3-SIM-KC)
+- Host.DelayAfter reads the sim.stepDelay setting, else a step's wait, else 1 s (R3-SIM-KC)
+- Sim run: waits the sim.stepDelay setting between steps, and a change lands from the next step (R3-SIM-KC)
 
 ### test_sim_interference.lua (12)
 
@@ -1373,7 +1376,7 @@ Total.
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note is plain text naming the band's Link to Target
-- the General page draws Master controls and the Skin tab, with no empty Units tab
+- the General page draws Master controls, the Skin and Simulator tabs, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the band's acts carry each row's label and body, and the copy act its own
@@ -1972,7 +1975,7 @@ Total.
 | test_compat_units.lua | 27 |
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
-| test_sim_session.lua | 18 |
+| test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 9 |
@@ -2050,4 +2053,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1640** |
+| **Total** | **1643** |

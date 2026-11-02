@@ -37,16 +37,32 @@ local L = NS.L
 --- them at call time: { names = { ordered }, defs = { [name] = def } }.
 Host.SCENARIOS = Host.SCENARIOS or { names = {}, defs = {} }
 
--- ── the step delay (design D7) ───────────────────────────────────────────────────────────────
+-- ── the step delay (R3-SIM-KC) ───────────────────────────────────────────────────────────────
 --
--- A fixed host function, with NO settings row: the scenarios tell a timed story (a 3 s cast kicked
--- 1 s in, a kick that comes back), and their cast and cooldown timing is part of that story. A
--- slider would let a run break its own story. A step's own `wait` overrides the default.
-Host.STEP_DELAY = 1
+-- The pace of a playing run: the seconds between two steps, the `sim.stepDelay` setting (the
+-- General page's Simulator tab), read at each step, so a change lands from the next step. The same
+-- path, range and default as AbsorbTracker's and DpsRace's. It replaces design D7's fixed 1 s with
+-- no settings row, on the owner's ask (Ka0sAddonsCommonTasks docs/2026-11-02-SMOKE_ROUND3): the
+-- scenarios' casts and cooldowns run on the clock, so a slower pace lets them run further between
+-- two steps, which is the player's choice. A step's own `wait` is only the fallback when the stored
+-- value is not one the slider can make.
+Host.STEP_DELAY = NS.DEFAULT_PROFILE.sim.stepDelay
+Host.STEP_DELAY_MIN, Host.STEP_DELAY_MAX, Host.STEP_DELAY_STEP = 0.5, 10, 0.5
 
---- The descriptor's stepDelay: the pause after `step` before the run plays the next one.
+--- Whether `v` is a pace the setting takes.
+function Host.ValidStepDelay(v)
+    if type(v) ~= "number" or v ~= v or v < Host.STEP_DELAY_MIN or v > Host.STEP_DELAY_MAX then return false end
+    local n = v / Host.STEP_DELAY_STEP
+    return n == math.floor(n)
+end
+
+--- The descriptor's stepDelay: the pause after `step` before the run plays the next one; the
+--- stored setting, else the step's own wait, else the default.
 --- @return number
 function Host.DelayAfter(step)
+    local profile = NS.db and NS.db.profile
+    local v = profile and profile.sim and profile.sim.stepDelay
+    if Host.ValidStepDelay(v) then return v end
     return step and step.wait or Host.STEP_DELAY
 end
 
