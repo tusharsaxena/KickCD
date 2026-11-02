@@ -800,8 +800,8 @@ test("the v8 -> v9 upgrade moves the active profile, and a profile change moves 
             units = { focus = { icons = { cooldownTextColorFromSkin = false } } } },
     } }
     local NS = boot(saved).NS
-    assertEqual(NS.SCHEMA_VERSION, 9)
-    assertEqual(NS.db.global.schemaVersion, 9)
+    assertEqual(NS.SCHEMA_VERSION, 10)
+    assertEqual(NS.db.global.schemaVersion, 10)
     assertEqual(NS.db.profile.skin.fullSkinReset, true, "the active profile")
     assertEqual(NS.db.profile.units.target.castbar.textColorFromSkin, true)
     assertEqual(NS.db.profile.units.target.castbar.fontFlags, "@skin", "the named flag")
@@ -823,7 +823,7 @@ test("the ladder's v8 row runs the step", function()
     NS.Database:MigrateProfile()
     NS.Database.MigrateFullSkin = real
     assertEqual(calls, 1, "the ladder ran it")
-    assertEqual(NS.db.global.schemaVersion, 9)
+    assertEqual(NS.db.global.schemaVersion, 10)
 end)
 
 test("a stamp already at 9 still moves a login profile with no record", function()

@@ -331,8 +331,8 @@ collection's reference adopter, and every piece below copies its shape.
   the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4), as
   LibKa0s v1.83.0 left them (D-06): Prototype under Ka0s Default, Expressway under Obsidian, Open Sans
   Semibold under Azeroth, Avant Garde under Glass, Doris PP under High Contrast, Emblem under Ember,
-  Segoe UI Semibold under WoW Midnight, Fira Sans SemiBold under WoW Forever and the shipped Ka0s Friz
-  Quadrata TT under WoW Default;
+  Segoe UI Semibold under WoW Midnight, Fira Sans SemiBold under WoW Forever and the shipped Ka0s
+  Ubuntu under WoW Default (LibKa0s R3-L6; Ka0s Friz Quadrata TT before, which v10 moves a stored pick of);
   the charges badge, which has no setting, takes `hud.font`'s face at `NumberFontNormal`'s size. While
   the Scope's **Ignore fonts** is on, the library's `S.Resolve` answers each text's stored pick for
   `hud.font` whatever its box says (R-1), so every HUD text draws its own face and the badge, with no

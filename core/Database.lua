@@ -42,11 +42,13 @@ NS.Database = Database
 -- stored face is the player's own pick (ruling D-15), once per profile, recorded in
 -- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks). v9 is the one step onto the
 -- skin (the owner's rulings of 2026-11-01): every HUD companion and Font flags row, once per
--- profile, recorded in skin.fullSkinReset (migrations[8] / Database:MigrateFullSkin).
+-- profile, recorded in skin.fullSkinReset (migrations[8] / Database:MigrateFullSkin). v10 moves a
+-- stored Ka0s Friz Quadrata TT, which LibKa0s v1.85.0 deleted, to Ka0s Ubuntu in every stored profile
+-- (R3-FRIZ; migrations[9] / Database:RetireFonts).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 9
+NS.SCHEMA_VERSION = 10
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a

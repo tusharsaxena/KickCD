@@ -10,7 +10,7 @@ Alongside the profile store, AceDB carries a `db.global` scope (addon-wide, shar
 
 ```lua
 db.global = {
-    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 9).
+    schemaVersion = <int>,       -- addon-wide schema version (NS.SCHEMA_VERSION = 10).
                                  -- DECLARED DEFAULT 0 (savedvariables-§1): AceDB's
                                  -- removeDefaults strips a stored value equal to its
                                  -- default, and backfills a default onto a legacy
@@ -37,7 +37,8 @@ db.global = {
                                  -- the one-time HUD style reset below). v6 -> v7
                                  -- (migrations[6]) runs Database:MigrateFlagsFromSkin,
                                  -- v7 -> v8 (migrations[7]) Database:MigrateSkinFontPicks,
-                                 -- v8 -> v9 (migrations[8]) Database:MigrateFullSkin
+                                 -- v8 -> v9 (migrations[8]) Database:MigrateFullSkin,
+                                 -- v9 -> v10 (migrations[9]) Database:RetireFonts
                                  -- (see the three steps after the HUD style reset).
     minimap = {                  -- LibDBIcon-1.0's OWN table (launcher-§3). The
         hide = false,            -- `hide` boolean is the `Minimap button` row's;
@@ -481,3 +482,7 @@ The v5 → v6 HUD style reset put every "Use the skin's font" box on the skin an
 The owner's rulings of 2026-11-01 (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/00_PLAN.md`) reverse "HUD colors are the player's" and accept overwriting player choices: existing profiles follow the skin, not new profiles only. `Database:MigrateFullSkin(db)` is the v8→v9 step (`migrations[8]`), and it also runs from `Database:Init` and every `OnProfileChanged`, after the three steps above it, because the stamp is per account and following the skin leaves no shape to read.
 
 It calls `Skin.FollowOnce(profile, Database.FULL_SKIN_PATHS)`, which reads and writes the record `skin.fullSkinReset`: true moves nothing, anything else sets the listed keys and the record. The list is dotted from the profile's root, for target and focus: the eight companions of the v5 → v6 step, the fifteen color and shadow companions and the three Font flags keys, which take `"@skin"` whatever the player picked. A box the v7 → v8 step turned off goes back on. It names no stored color, pick or size, no class color or its toggle, not the cooldown tint or the cast bar's fills, and not `skin.ignorePanel` or `skin.ignoreFonts`, so a stored face or swatch draws again the moment its box is unticked. A companion unticked afterwards stays off for good. The record has no schema row, so no Defaults button walks it; a profile reset puts it back to false and the step then writes nothing a player can see. Without the library the same write runs by hand: a path through a missing table is skipped, and `skin` is the one table it may create.
+
+## Migration: the deleted Friz becomes Ka0s Ubuntu (v9 → v10)
+
+LibKa0s v1.85.0 deleted `Ka0s Friz Quadrata TT` (R3-L7) and WoW Default draws `Ka0s Ubuntu` in its place (R3-L6). `migrations[9]`, `Database:RetireFonts`, walks every stored profile (AceDB's raw `sv.profiles`, the inactive ones included) and moves every string naming the deleted face, at any depth (a HUD text's font, the skin's Font override), to `Ka0s Ubuntu` (R3-FRIZ). Blizzard's own `Friz Quadrata TT` is another key and stays. A second pass finds nothing to move.

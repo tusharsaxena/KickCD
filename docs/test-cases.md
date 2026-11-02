@@ -306,7 +306,7 @@ Total.
 - degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
 - degraded: Store.Set on any other composed path is refused
 
-### test_database.lua (26)
+### test_database.lua (27)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -334,6 +334,7 @@ Total.
 - the font-flag migration is idempotent and survives a half-built profile
 - a raising OnInitialize fails T.load instead of passing silently
 - allowInitError keeps the OnInitialize raise on the instance for the case to assert
+- the v9 -> v10 step moves a stored Ka0s Friz Quadrata TT to Ka0s Ubuntu in every profile (R3-FRIZ)
 
 ### test_color_shape.lua (28)
 
@@ -1824,6 +1825,10 @@ Total.
 - with LibKa0s absent the seam still answers, and the store still records the choice
 - the degraded stub carries every member the addon calls on the launcher
 
+### test_launcher_skin_entry.lua (1)
+
+- launcher descriptor passes openSkinPicker, which runs the skin verb
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -1958,7 +1963,7 @@ Total.
 | test_units.lua | 26 |
 | test_schema.lua | 42 |
 | test_schema_store.lua | 10 |
-| test_database.lua | 26 |
+| test_database.lua | 27 |
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
@@ -2032,6 +2037,7 @@ Total.
 | test_perfsetup.lua | 25 |
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
+| test_launcher_skin_entry.lua | 1 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 11 |
 | test_doc_structure.lua | 4 |
@@ -2044,4 +2050,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1638** |
+| **Total** | **1640** |

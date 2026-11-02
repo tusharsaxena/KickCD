@@ -580,6 +580,36 @@ function NS.Database:MigrateFullSkin(db)
     return true
 end
 
+-- v10 (R3-FRIZ): LibKa0s v1.85.0 deleted Ka0s Friz Quadrata TT (R3-L7) and WoW Default draws Ka0s
+-- Ubuntu in its place (R3-L6). Every stored string naming the deleted face, at any depth (a HUD text's
+-- font, the skin's Font override), moves to its successor. Blizzard's own "Friz Quadrata TT" is
+-- another key and stays.
+Database.RETIRED_FONTS = { ["Ka0s Friz Quadrata TT"] = "Ka0s Ubuntu" }
+
+--- Moves every string naming a retired face, at any depth of `t`, to its successor. Answers how many moved.
+function Database.RetireFontsIn(t)
+    local n = 0
+    for k, v in pairs(t) do
+        if type(v) == "table" then
+            n = n + Database.RetireFontsIn(v)
+        elseif Database.RETIRED_FONTS[v] then
+            t[k], n = Database.RETIRED_FONTS[v], n + 1
+        end
+    end
+    return n
+end
+
+--- Every stored profile (AceDB's raw sv.profiles, the inactive ones too), else the active one.
+function NS.Database:RetireFonts(db)
+    local store = type(db.sv) == "table" and type(db.sv.profiles) == "table" and db.sv.profiles
+    local n = 0
+    for _, p in pairs(store or { db.profile }) do
+        if type(p) == "table" then n = n + Database.RetireFontsIn(p) end
+    end
+    if n > 0 then migrateDebug("moved %d Ka0s Friz Quadrata TT pick(s) to Ka0s Ubuntu", n) end
+    return n
+end
+
 local migrations = {
     -- [from-version] = function(db) ... end: a pure step from `from` to
     -- `from + 1`. It writes NO stamp: MigrateProfile advances
@@ -592,6 +622,7 @@ local migrations = {
     [6] = function(db) NS.Database:MigrateFlagsFromSkin(db) end,
     [7] = function(db) NS.Database:MigrateSkinFontPicks(db) end,
     [8] = function(db) NS.Database:MigrateFullSkin(db) end,
+    [9] = function(db) NS.Database:RetireFonts(db) end,
 }
 
 -- A step that raised: one chat line the player sees, plus the gated trace.

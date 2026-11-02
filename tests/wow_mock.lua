@@ -245,6 +245,9 @@ local function build()
             -- `db.profile` is invisible to a suite that never switches, and a
             -- SetProfile no-op made the switch impossible to test (KICKCD-R-01).
             db.__profiles = stagedProfiles(saved)
+            -- AceDB-3.0's raw SavedVariables view: `sv.profiles` is every stored profile, the same
+            -- tables, which a migration walks to reach the inactive ones (R3-FRIZ).
+            db.sv = { profiles = db.__profiles }
             local merged = {}
             local function profileFor(key)
                 if not merged[key] then

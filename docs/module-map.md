@@ -62,7 +62,7 @@ KickCD (AceAddon)
 │                       MigrateFlagsFromSkin (skin.flagsReset) +
 │                       MigrateSkinFontPicks (skin.fontPicksKept) +
 │                       MigrateFullSkin (skin.fullSkinReset) +
-│                       db.global.schemaVersion (NS.SCHEMA_VERSION = 9)
+│                       db.global.schemaVersion (NS.SCHEMA_VERSION = 10)
 │                       / MigrateProfile scaffold — the migrators and the
 │                       ladder live in Database_Migrations.lua (#29)
 │   ├── Database_Migrations.lua — the five shape-driven migrators,

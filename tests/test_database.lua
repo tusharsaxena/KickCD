@@ -25,7 +25,7 @@ test("Schema version lives in db.global, not the profile (KCD-20)", function()
     assertTrue(NS.db.global ~= nil, "db.global must exist")
     -- The declared default is 0 (savedvariables-§1); the runner walks a fresh
     -- account through every step and stamps the current version, 8.
-    assertEqual(NS.db.global.schemaVersion, 9, "the runner must stamp the current version")
+    assertEqual(NS.db.global.schemaVersion, 10, "the runner must stamp the current version")
     assertEqual(NS.db.profile.dbVersion, nil, "profile must NOT carry a schema version")
 end)
 
@@ -35,7 +35,7 @@ test("NS.SCHEMA_VERSION is the migration target and a fresh install ends on it",
     -- savedvariables-§1 names the runner's target NS.SCHEMA_VERSION, the
     -- spelling every other Ka0s addon uses; no second alias survives.
     local ns = T.load(true).NS
-    assertEqual(ns.SCHEMA_VERSION, 9, "the target is published as NS.SCHEMA_VERSION")
+    assertEqual(ns.SCHEMA_VERSION, 10, "the target is published as NS.SCHEMA_VERSION")
     assertEqual(ns.db.global.schemaVersion, ns.SCHEMA_VERSION,
         "a fresh install is stamped with NS.SCHEMA_VERSION")
     assertEqual(ns.Database.CURRENT_DB_VERSION, nil, "the retired alias is gone")
@@ -56,7 +56,7 @@ test("MigrateProfile treats a missing version as v1 and walks forward to current
     -- NS.SCHEMA_VERSION is 8 (units fold, spec-key rekey, color reshape, font-flag
     -- token) — an unversioned account is treated as v1 and walked forward through
     -- every step.
-    assertEqual(ns.db.global.schemaVersion, 9, "migration must stamp v1 then walk to current")
+    assertEqual(ns.db.global.schemaVersion, 10, "migration must stamp v1 then walk to current")
 end)
 
 test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backfill (KCD-20)", function()
@@ -74,7 +74,7 @@ test("MigrateProfile adopts a legacy per-profile dbVersion even past AceDB backf
     -- NS.SCHEMA_VERSION is 8 — the adopted v1 account walks forward through
     -- migrations[1] (FoldLegacyUnits), [2] (MigrateSpecKeys), [3]
     -- (MigrateColorShape) and [4] (MigrateFontFlags) to the current version.
-    assertEqual(ns.db.global.schemaVersion, 9, "adopted version migrates forward to the current version")
+    assertEqual(ns.db.global.schemaVersion, 10, "adopted version migrates forward to the current version")
     assertEqual(ns.db.profile.dbVersion, nil, "orphaned per-profile field must be cleared")
 end)
 
@@ -293,7 +293,7 @@ test("a stored NONE font flag reads back as the empty string after migration", f
     ns.db.profile.skin.fullSkinReset = true
     ns.Database:MigrateProfile()
 
-    assertEqual(ns.db.global.schemaVersion, 9)
+    assertEqual(ns.db.global.schemaVersion, 10)
     for _, unit in ipairs({ "target", "focus" }) do
         local u = ns.db.profile.units[unit]
         assertEqual(u.icons.cooldownTextFlags, "", unit .. " icons")
@@ -345,4 +345,26 @@ test("allowInitError keeps the OnInitialize raise on the instance for the case t
     local inst = T.load(true, false, raisingAceDB, { allowInitError = true })
     assertTrue(type(inst.initError) == "string" and inst.initError:find("boom", 1, true) ~= nil,
         "inst.initError must carry the raise, got " .. tostring(inst.initError))
+end)
+
+-- R3-FRIZ: LibKa0s v1.85.0 deleted Ka0s Friz Quadrata TT (R3-L7); v10 moves a stored pick of it to
+-- Ka0s Ubuntu in every stored profile, at any depth. red under: no migrations[9], one that reaches
+-- only the active profile or only the top level, or one that rewrites Blizzard's own "Friz Quadrata TT".
+test("the v9 -> v10 step moves a stored Ka0s Friz Quadrata TT to Ka0s Ubuntu in every profile (R3-FRIZ)", function()
+    local FRIZ = "Ka0s Friz Quadrata TT"
+    local flags = { hudReset = true, flagsReset = true, fontPicksKept = true, fullSkinReset = true }
+    local function copy(t) local c = {} for k, v in pairs(t) do c[k] = v end return c end
+    local saved = { global = { schemaVersion = 9 }, profiles = {
+        Default = { skin = copy(flags), units = { target = { castbar = { font = FRIZ } } } },
+        Alt = { skin = copy(flags), units = { focus = { icons = { cooldownTextFont = FRIZ } } } },
+        Plain = { skin = copy(flags), units = { target = { castbar = { font = "Friz Quadrata TT" } } } },
+    } }
+    saved.profiles.Default.skin.font = FRIZ
+    local ns = T.load(true, true, function(m) m.KickCDDB = saved end).NS
+    assertEqual(ns.db.global.schemaVersion, 10)
+    assertEqual(saved.profiles.Default.units.target.castbar.font, "Ka0s Ubuntu", "the active profile's cast bar")
+    assertEqual(saved.profiles.Default.skin.font, "Ka0s Ubuntu", "the skin override")
+    assertEqual(saved.profiles.Alt.units.focus.icons.cooldownTextFont, "Ka0s Ubuntu", "a profile not active")
+    assertEqual(saved.profiles.Plain.units.target.castbar.font, "Friz Quadrata TT", "Blizzard's own Friz stays")
+    assertEqual(ns.Database.RetireFontsIn(saved.profiles.Alt), 0, "a second pass moves nothing")
 end)
