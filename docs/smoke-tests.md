@@ -384,7 +384,7 @@ you had before the update is still yours.
   one row on each tab, `/reload` → each value kept. (Amended by KC-05, 2026-10-29: the two `Use the
   skin's ...` boxes, SKIN-7. Amended by FS-KC-FLIP: Border ends with `Use the skin's color`, the font
   block with `Use the skin's color` and `Use the skin's shadow`, and each glow color pair with its own
-  `Use the skin's color`, SKIN-38.)
+  `Use the skin's color`, SKIN-38.) Result: Passed (owner, 2026-11-02)
 - **PANEL-34. Units > Cast bar after item 020.** Tabs `General | Size and position | Text |
   Interruptible | Non-interruptible`. General → `Enable cast bar` (tooltip *"Show this unit's cast
   bar."*), `Orientation` | `Growth direction`, `Show spark`. Size and position → `Size` (`Auto-size to
@@ -398,7 +398,7 @@ you had before the update is still yours.
   interrupt."* Change one row on each tab, `/reload` → each value kept. (Amended by KC-05, 2026-10-29:
   the five `Use the skin's ...` boxes, SKIN-7. Amended by FS-KC-FLIP: the Font block gains `Use the
   skin's color` and `Use the skin's shadow`, and each state's Background, Spell name and Border a `Use
-  the skin's color`, SKIN-38.)
+  the skin's color`, SKIN-38.) Result: Passed (owner, 2026-11-02)
 - **PANEL-35. Units > Text label after item 020.** The rail entry reads `Text label`; its Font tab
   ends in `Use the skin's font` (SKIN-7). Placement →
   `Position` (`Attach to` alone, `Attached widget anchor point` | `Label anchor point`, `X offset (px)`
@@ -601,7 +601,7 @@ you had before the update is still yours.
   the regression (the curves read the total length, not the remaining time). Result: pass (owner-marked 2026-10-10)
 - **GRID-10. Changes land mid-cooldown.** While it runs, change glow type, untick the slot's `Use the
   skin's color` and change the glow color, and toggle cooldown text and the charges badge → each
-  applies at once. Amended by FS-KC-FLIP: the glow color is the skin's until its box is unticked.
+  applies at once. Amended by FS-KC-FLIP: the glow color is the skin's until its box is unticked. Result: Passed (owner, 2026-11-02)
 - **GRID-11. Glow follows the target mid-cooldown.** With the spell still cooling and a
   `target_casting` or `target_casting_interruptible` trigger, the target starts and stops casting → the
   glow follows it. Result: pass (owner-marked 2026-10-10)
@@ -831,7 +831,7 @@ you had before the update is still yours.
   `45 deg`; neither shows an empty box where a degree sign used to be. Result: pass (owner-marked 2026-10-10)
 - **LABEL-7. Font.** Change Font, Font size and Font flags → the label redraws each time. Result: pass (owner-marked 2026-10-10)
 - **LABEL-8. Label color.** Untick `Use the skin's color`, pick a bright color → the text changes; switch
-  Attach to → the color stays. Amended by FS-KC-FLIP: the swatch is not read while the box is ticked.
+  Attach to → the color stays. Amended by FS-KC-FLIP: the swatch is not read while the box is ticked. Result: Passed (owner, 2026-11-02)
 - **LABEL-9. An unlinked Focus label.** Unlink Focus, set its text to "Kick this" and change its rotation
   (or its color, with `Use the skin's color` unticked) → Target's label is unaffected; both show their own text and style; positions are
   independent. Relink → Focus's style mirrors Target's again and its text stays "Kick this". Result: pass (owner-marked 2026-10-10)
@@ -962,7 +962,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `Simulation stopped: the grids were unlocked.` Result: pass (owner, 2026-10-23)
 - **SIM-8. `disable` stops a simulation first (KC-06, SM-KC-8).** During a simulation,
   `/kcd disable` → `Simulation stopped: the addon stood down.` comes first, then the addon stands down.
-  `/kcd enable` brings the grid back with your real cooldowns. Result: pass (owner, 2026-10-23)
+  `/kcd enable` brings the grid back with your real cooldowns. Result: Passed (owner, 2026-11-02)
 - **SIM-9. Targeting and casting are absorbed; diagnostics name the session (KC-06, SM-KC-9).**
   During a simulation, target a real mob and cast at it → the simulation keeps running, and the grid
   and the cast bar keep showing the simulated world. `/kcd diagnostics` has a `[Sim]` section naming
@@ -996,7 +996,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd sim start pull` and step through → after Shadowcaster's cast, the step "Bonecaller starts a cast
   beside it" puts a cast on the focus bar while the target bar still runs; your kick ends the target's
   cast, Uther's kick ends the focus's, and then the channel follows on the focus. Fail: the focus bar
-  empty while the target casts, or the steps out of this order. Result: not run
+  empty while the target casts, or the steps out of this order. Result: Passed (owner, 2026-11-02)
 - **SIM-15. The Simulation step delay slider paces the run (R3-SIM-KC).** `/kcd config` → General →
   the **Simulator** tab (after Skin) holds one slider, **Simulation step delay (seconds)**, at 1, from
   0.5 to 10 in steps of 0.5, with a tooltip naming `/kcd sim` and the next step. Set it to 4, then
@@ -1234,7 +1234,7 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   library, so they fall to the client's: GameFontNormal's face and `UI-StatusBar`, with the 2 px Blizzard
   Tooltip edges. No face, texture or border is missing, no Lua error, and no skin picker opens at
   login. A stored shadow does not draw here, which is accepted. `/kcd lock`. Reworded for FS-KC-FLIP:
-  the owner's 2026-10-30 pass was for Friz Quadrata and Blizzard Raid Bar.
+  the owner's 2026-10-30 pass was for Friz Quadrata and Blizzard Raid Bar. Result: Passed (owner, 2026-11-02)
 
 ## LAYER
 
@@ -1317,7 +1317,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   a reload or a profile switch, a stored pick lost, or a profile
   that was not active at the upgrade left off the skin. Re-opened for LibKa0s v1.82.0 (KC-01, KC-03):
   Ka0s Default's face is Prototype. Rewritten by FS-KC-FLIP: the v8 → v9 step ticks every box once, so
-  a picked face draws the skin's until its box is unticked.
+  a picked face draws the skin's until its box is unticked. Result: Passed (owner, 2026-11-02)
 - **SKIN-3. A new or reset profile follows the skin from the start (X3).** Create a profile `SkinNew`
   → every **Use the skin's ...** box on Units > Icons, Cast bar and Text label is ticked for both
   units, and the HUD looks as SKIN-1 describes. Untick one, then Profiles → Reset Profile → ticked
@@ -1340,7 +1340,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   the cooldown tint, the sizes and the positions never move. Back on Ka0s Default the HUD
   is exactly as SKIN-1 left it. Target a hostile caster under two skins → the live bar wears the skin
   in both states. Fail: a piece that keeps the old skin until `/reload`, or a meaning color that changed
-  with the skin. Amended by FS-KC-FLIP: the label, text, glow and shadow now follow.
+  with the skin. Amended by FS-KC-FLIP: the label, text, glow and shadow now follow. Result: Passed (owner, 2026-11-02)
 - **SKIN-6. What each skin draws on the HUD (KC-03; LibKa0s SkinDefs).** With every **Use the skin's
   ...** box ticked and no Font or Texture override: the HUD text reads in each skin's own HUD face (LibKa0s v1.83.0 moved six): Ka0s Default
   **Prototype**, Obsidian **Expressway**,
@@ -1365,7 +1365,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   each in turn → that one piece goes back to your own pick at once, the rest stay on the skin; tick
   it → back on the skin. Your sizes are never grayed and never move. Fail: a box that changes another
   piece, a picker that stays live while ticked, or a size that follows the skin. The color and shadow
-  boxes are SKIN-38. Amended by FS-KC-FLIP.
+  boxes are SKIN-38. Amended by FS-KC-FLIP. Result: Passed (owner, 2026-11-02)
 - **SKIN-8. A linked Focus and Copy from Target (KC-03).** Focus linked → it draws exactly what Target
   draws under every skin, and its entries are inert as before. Unlink, untick Target's **Use the skin's
   font** on the cast bar, then Units → Focus → **Copy from Target** → Focus's box is unticked too and its
@@ -1544,7 +1544,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   those two keep their faces and sizes; the others turn Expressway. `/reload` and switch profiles back
   and forth → both boxes stay unticked. A second profile `KeepB` with a picked face is changed the same
   way the first time it loads. Fail: a stored pick lost, a box unticked by the step, or a box you
-  unticked ticked again. Rewritten by FS-KC-FLIP: the 2026-10-31 pass was for the boxes staying off.
+  unticked ticked again. Rewritten by FS-KC-FLIP: the 2026-10-31 pass was for the boxes staying off. Result: Passed (owner, 2026-11-02)
 
 - **SKIN-37. The colors on each skin (FS-KC-FLIP; causes D2, D5).** `/kcd unlock`, both units, every box
   ticked. **Ka0s Default** → every pixel as before this build: white countdown, spell name and cast time,
@@ -1561,7 +1561,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   A real `bar.borderStyle` in a skin does not reach the cast bar, whose edge is the icon family's
   (KC-A1). The cast bar's yellow and red and the cooldown tint never move. Fail: any of those moving,
   a text left in another skin's color, or a glow, background or border left on another skin's value.
-  Rewritten for the re-cut of LibKa0s v1.85.0: each skin now states its own values.
+  Rewritten for the re-cut of LibKa0s v1.85.0: each skin now states its own values. Result: Failed (owner, 2026-11-02): re-opened as R3-L3
 - **SKIN-38. The new boxes (FS-KC-FLIP).** On **Azeroth**, Units > Icons → Border, Cooldown text and each
   glow color; Cast bar → Font (both texts) and each state's Background, Spell name and Border; Text
   label → Font: `Use the skin's color` beside each color, `Use the skin's shadow` beside each Font shadow,
@@ -1569,7 +1569,7 @@ after each check. Every check also fails on a Lua error or a taint warning.
   Set a swatch to a loud color, tick stays on → nothing changes; untick → that one piece draws your color
   at once. Tick `Use class color` beside a swatch → the class color wins whichever way the skin box
   is set. Copy from Target carries the boxes. `/reload` keeps them. Fail: a box that moves another piece,
-  a swatch grayed, or a skin color over a class color.
+  a swatch grayed, or a skin color over a class color. Result: Passed (owner, 2026-11-02)
 - **SKIN-39. The one step onto the skin (FS-KC-FLIP).** Before installing this build, on a profile
   `FlipA` turn a color to something loud (label color, countdown color), set a font flag to
   `THICKOUTLINE`, a Font shadow on, and on a second profile `FlipB` a different label color. Install, log
@@ -1579,25 +1579,25 @@ after each check. Every check also fails on a Lua error or a taint warning.
   and back → a box unticked on Cast bar stays unticked. Switch to `FlipB` → it is moved the first time it
   loads. `/kcd get skin.fullSkinReset` is not a setting and answers *Setting not found*. Fail: a stored
   color or pick lost, a box coming back on after a reload, a profile event or a Defaults on another
-  page, or the Skin tab's Ignore settings panel or Ignore fonts moved by the upgrade.
+  page, or the Skin tab's Ignore settings panel or Ignore fonts moved by the upgrade. Result: Passed (owner, 2026-11-02)
 - **SKIN-40. Shadows (FS-KC-FLIP; cause D6).** `/kcd unlock`, every shadow box ticked. Ka0s Default → no
   drop shadow on any HUD text. **Obsidian** → a black drop shadow on the countdown, spell name, cast time
   and label. Back to **Ka0s Default** → gone with no reload. On Ka0s Default untick `Use the skin's
   shadow` on the label and turn its Font shadow on → the label alone draws one, and keeps it under every
   skin. Turn the row off → gone. On the Skin tab tick **Ignore fonts** with a shadow skin worn → each text
   draws its stored shadow row and not the skin's. Fail: a shadow that stays after the skin or the row
-  says none, or no shadow drawn at all where one is due: the client draws only a font object's shadow.
+  says none, or no shadow drawn at all where one is due: the client draws only a font object's shadow. Result: Passed (owner, 2026-11-02)
 - **SKIN-41. Gloss (FS-KC-FIX; cause A3).** **Glass**, a hostile caster or `/kcd sim` for both cast states →
   the fill shows a soft shine over its top half that ends with the fill, in both states. Untick **Use the
   skin's texture** on Interruptible and pick another bar → that state goes plain, the other keeps the
   shine; another skin and back to Glass keeps it plain. Ka0s Default, Obsidian and the rest → no shine.
-  Fail: a shine past the fill's end, over the text, or on a player's own texture.
+  Fail: a shine past the fill's end, over the text, or on a player's own texture. Result: Passed (owner, 2026-11-02)
 - **SKIN-42. The Spells rows' status mark (FS-KC-FIX; cause L6).** Spells, with **Ignore settings panel**
   on → the Blizzard ready-check tick and cross, as ever. Untick it on **Azeroth** → the marks turn to the
   Ka0s tick in the skin's green and the Ka0s cross in its red, at once. Tick it again → the Blizzard
   art is back. Switch list and back, then open another addon's AceGUI icon list → its icons carry no
   tint. Fail: a blank mark, a tint left on another addon's icon, or a mark that reads known for a
-  spell the row calls not known.
+  spell the row calls not known. Result: Passed (owner, 2026-11-02)
 - **SKIN-43. A stored pick of the deleted Friz lands on Ka0s Ubuntu (R3-FRIZ, schema v10).** Before
   updating, set a unit's Cast bar → Text → Font (or the Skin tab's Font) to *Ka0s Friz Quadrata TT* in
   two profiles and log out. Update and fully restart the client (a new font file) → the cast bar text
@@ -1665,3 +1665,5 @@ The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, PANEL-39, GRID-22 a
 The 2026-11-01 full skinning run (FS-KC-RV to FS-KC-FIX of Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/`, LibKa0s v1.85.0) adds SKIN-37 – 42 and moves the expected result of SKIN-2, SKIN-5, SKIN-7, SKIN-36, GRID-10, LABEL-8, PANEL-33, PANEL-34 and DEGRADED-16, whose owner passes are withdrawn. Owed: all fifteen. The simulator's step panel also changes on the copy, for the owner to see on any run of it: its Steps title band is 30 high and an owned tooltip title takes `gtip.title`. KickCD hosts no library strip, so the strip's `icon.tint` does not reach it. The re-cut of LibKa0s v1.85.0 (FS-KC-GATE) rewrites SKIN-37, still owed, because each skin now states its own glow, bar background and icon border.
 
 The owner's third smoke round (R3-FRIZ of Ka0sAddonsCommonTasks `docs/2026-11-02-SMOKE_ROUND3/`, LibKa0s v1.85.0 re-cut) adds SKIN-43 and moves the expected result of SKIN-6 (WoW Default draws Ka0s Ubuntu), whose owner pass is withdrawn. Owed: both.
+
+On 2026-11-02 the owner reported that every check on the smoke lists of the full skinning run and its smoke feedback batch (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/` and `docs/2026-11-01-SMOKE_FEEDBACK/`) passed, apart from DpsRace's clock font, the skinned look of the AceGUI Dropdown and the Ka0sMedia_Font and Ka0sMedia_Statusbar pickers, FadeNineSlice and IconBorder (`docs/2026-11-02-SMOKE_ROUND3/`, R3-SMOKE). Passed, recorded on each `Result:` line as `Passed (owner, 2026-11-02)`: DEGRADED-16, GRID-10, LABEL-8, PANEL-33, PANEL-34, SIM-8, SIM-14, SKIN-2, SKIN-5, SKIN-7, SKIN-36, SKIN-38, SKIN-39, SKIN-40, SKIN-41 and SKIN-42. Failed, re-opened as R3-L3 (IconBorder's 1 px outline and zoom) and recorded as `Failed (owner, 2026-11-02): re-opened as R3-L3`: SKIN-37.
