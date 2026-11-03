@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1649%2F1649_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1661%2F1661_passing-green)
 
 KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -93,7 +93,7 @@ If you enable more spells than the grid can hold, the extras are left off and yo
 
 #### Skins (General > Skin)
 
-KickCD wears one of nine skins, Ka0s Default to start with. A skin changes the settings pages, the drag strips and the debug and simulator windows, and on the grids, cast bars and labels it changes the font, the cast bar's texture and the borders, the text and glow colors and the shadows, plus the outline and the text size that go with its font. The cast bar's fill colors and the cooldown tint carry a meaning, so they never follow, and your positions stay yours. Every font, texture, border and color picker the skin can change on the Units page has a **Use the skin's ...** box beside it, and so does each Font shadow. Untick one to keep your own pick for that piece. While a text uses the skin's font, its size is scaled so it reads as wide in every skin as it does in Ka0s Default; your stored size never changes. Each **Font flags** menu starts on **From skin**, which follows the Skin tab's **Font outline**: on HUD text only (the default), on all text, or off. Pick any other flag and it stays. The Skin tab can also lay one font or one bar texture over the skin's own, and each list shows its entries as they will look (choosing another skin puts both back to that skin's own), leave the settings panel in the game's look (the default), copy the skin to your other Ka0s addons, or hand the look to EllesmereUI. Each profile has its own skin, and a small window offers you one the first time each profile loads, with the same font, texture, outline and scope choices as the tab. `/kcd skin` opens that window again whenever you want it.
+KickCD wears one of nine skins, Ka0s Default to start with. A skin changes the settings pages, the drag strips and the debug and simulator windows, and on the grids, cast bars and labels it changes the font, the cast bar's texture and the borders, the text and glow colors and the shadows, plus the outline and the text size that go with its font. The cast bar's fill colors and the cooldown tint carry a meaning, so they never follow, and your positions stay yours. Every font, texture, border and color picker the skin can change on the Units page has a **Use the skin's ...** box beside it, and so does each Font shadow. Untick one to keep your own pick for that piece. While a text uses the skin's font, its size is scaled so it reads as wide in every skin as it does in Ka0s Default; your stored size never changes. Each **Font flags** menu starts on **From skin**, which follows the Skin tab's **Font outline**: on HUD text only (the default), on all text, or off. Pick any other flag and it stays. The Skin tab can also lay one font or one bar texture over the skin's own, and each list shows its entries as they will look (choosing another skin puts both back to that skin's own), leave the settings panel in the game's look (the default), copy the skin to your other Ka0s addons, or hand the look to EllesmereUI. Each profile has its own skin, and a small window offers you one the first time each profile loads, with the same font, texture, outline and scope choices as the tab. `/kcd skin` opens that window again whenever you want it. If your grids are locked when the window opens, it unlocks them so you can see the skin on them, and its eye button locks and unlocks them while you choose; closing the window puts the lock back the way it was. Unlocking is a saved setting, so a `/reload` with the window open leaves the grids unlocked until `/kcd lock`.
 
 ## FAQ
 
@@ -161,6 +161,6 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
 the debug console's close, copy and clear buttons, the simulator's done check, the
-skin picker's settings gear, and the small marks LibKa0s draws beside skinned controls.
+skin picker's settings gear and eye, and the small marks LibKa0s draws beside skinned controls.
 
 The icons ship inside the bundled payload under `libs/`, with their license text beside them.

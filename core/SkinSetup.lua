@@ -342,14 +342,26 @@ end
 -- `skin.pickerSeen`, through NS.Settings.Store.Set. A close this addon makes itself
 -- (NS.HideSkinPicker: the stand-down, a profile event) is not the player's and writes nothing.
 --
--- NO EYE (the rollout's X6). KickCD draws no window of its own. It has a simulator (`/kcd sim`,
--- modules/Sim.lua), but that is a scripted session, not a preview mode: it swaps the world the
--- HUD reads for a timed story, opens its own step panel, ends on combat, a loading
--- screen or a group, and refuses a start in combat, an instance, a group or while unlocked. Starting one from the picker would play
--- a story the player did not ask for. The other preview, unlocking the grid and the cast bars, is
--- a stored write (`locked`) and refuses a running simulation. So `onPreview` is absent and the
--- library hides the button; a pick still previews live on the HUD (OnLooksChanged), the drag
--- handles and the settings chrome, and a simulation the player started wears the pick too.
+-- THE EYE: UNLOCK MODE (R6-PV of Ka0sAddonsCommonTasks docs/2026-11-03-SMOKE_ROUND6, the lead's
+-- call 2; LibKa0s OptionsSkinPicker minor 11's spec.preview). KickCD has no test mode
+-- (options-ui-§15's exemption) and no window of its own, so its preview is unlocking: the grids and
+-- cast bars forced shown with their drag strips. `mode = "unlock"`; `isActive` and `isShown` both
+-- answer "unlocked", the state the launcher's isLocked reads (the HUD counts as shown only while
+-- unlocked, since the visibility modes hide it out of combat); `enter` and `exit` are NS.SetLocked,
+-- the one writer `/kcd unlock` / `/kcd lock`, the launcher's Locked entry and the `Lock frame`
+-- checkbox share (core/KickCD.lua), so its refusal (no unlock beside a running simulation) still
+-- applies and a refused enter leaves the library nothing to undo. So: a picker shown while the
+-- frames are locked unlocks them; the eye locks and unlocks; every close (Apply, the gear, the
+-- close control, Escape, NS.HideSkinPicker) puts the lock back as it was at open; frames already
+-- unlocked are left alone. The simulator (`/kcd sim`) is not the preview: it plays a scripted story
+-- the player did not ask for, opens its own step panel and refuses while unlocked.
+--
+-- Unlock is a STORED write (`locked`), so a /reload while the picker is up leaves the frames
+-- unlocked until `/kcd lock` (the lead's call 3; no new persistence). A profile switch takes the
+-- picker down on AceDB's OnProfileShutdown (core/Database.lua), while the old profile is still the
+-- one the Store writes, so the restore relocks the profile the picker unlocked and never the new
+-- one. A copy or a reset rewrites the profile in place, so the hide OnProfileChanged makes passes
+-- `dropPreview` and the restore writes nothing over the profile's new values.
 --
 -- PREVIEW. A pick only previews: the Skin major moves and the HUD repaints, but `set`
 -- (NS.WriteSkinChoice) runs only on Apply, the gear or Apply to all. The close control and Escape
@@ -363,6 +375,7 @@ end
 local PICKER_PATH = "skin.pickerSeen"
 local pickerTarget       -- the one-shot PLAYER_REGEN_ENABLED target, while a start is held
 local quietClose = false -- true while NS.HideSkinPicker takes the picker down
+local livePreview        -- the spec.preview table the last NS.SkinPickerSpec() carried
 
 --- The Options instance (settings/OptionsSetup.lua's NS.Settings.Helpers), read at call time: it
 --- loads after this file.
@@ -377,12 +390,30 @@ local function pickerClosed()
     Store.Set(PICKER_PATH, true)
 end
 
+--- Unlocked: the state the eye shows and the launcher's isLocked reads the other way round.
+local function unlocked()
+    local prof = NS.db and NS.db.profile
+    return prof ~= nil and not prof.locked
+end
+
+--- One showing's preview hook (THE EYE, above). `dropped` is set by a hide that must not restore
+--- (a profile copy or reset), so a restore the library parks past combat writes nothing either.
+local function newPreview()
+    local pv = { mode = "unlock", isActive = unlocked, isShown = unlocked }
+    local function lock(v) if not pv.dropped and NS.SetLocked then NS.SetLocked(v) end end
+    pv.enter = function() lock(false) end
+    pv.exit = function() lock(true) end
+    livePreview = pv
+    return pv
+end
+
 function NS.SkinPickerSpec()
     return {
         owner = addonName, get = NS.SkinChoice, set = NS.WriteSkinChoice,
         -- The gear's default: O.OpenOptionsPanel("general"), the key settings/General.lua gave
         -- RegisterOptionsPage, then O.SelectTab("general", "Appearance"), the Skin tab's key.
         page = "general", tab = "Appearance",
+        preview = newPreview(),
         onClose = pickerClosed,
     }
 end
@@ -401,8 +432,11 @@ local function pickerDue()
     return not (NS.IsDown and NS.IsDown())
 end
 
-function NS.HideSkinPicker()
+--- This addon's own close (the stand-down, a profile event): unmarked. `dropPreview` (a profile copy
+--- or reset) also leaves the lock as the profile now has it.
+function NS.HideSkinPicker(dropPreview)
     dropPickerDeferral()
+    if dropPreview and livePreview then livePreview.dropped = true end
     local O = options()
     if not (O and type(O.HideSkinPicker) == "function") then return end
     quietClose = true

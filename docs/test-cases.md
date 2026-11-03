@@ -58,7 +58,7 @@ Total.
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (10)
+### test_mediasetup.lua (11)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
@@ -69,6 +69,7 @@ Total.
 - MediaSetup: every declared mark is one the library's catalog carries
 - MediaSetup: every literal NS.Icon name in authored code is declared
 - MediaSetup: the library-drawn marks are declared, because the debug console is wired
+- MediaSetup: the skin picker's eye is declared, because the spec passes a preview
 - MediaSetup: with no library there is no art and no face, and that is not an error
 
 ### test_envsetup.lua (6)
@@ -1504,9 +1505,9 @@ Total.
 - the step creates the record's table on a raw profile with none
 - the step is the same write with the library absent
 
-### test_skin_picker.lua (16)
+### test_skin_picker.lua (27)
 
-- Skin picker: the spec names this owner, its seams, General's Skin tab, and no eye
+- Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye
 - Skin picker: the login showing happened on the unseen default profile
 - Skin picker: an unseen profile shows it; a seen one does not
 - Skin picker: it shows from NS:OnEnable
@@ -1515,13 +1516,24 @@ Total.
 - Skin picker: a held start is dropped by HideSkinPicker
 - Skin picker: never while the addon is switched off
 - Skin picker: a new profile and a reset profile show it again
-- Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye is hidden
+- Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye shows
 - Skin picker: the player's close marks it seen; this addon's own hide does not
 - Skin picker: a profile that has seen it takes a shown picker down, unmarked
 - Skin picker: the stand-down takes the picker down, unseen
 - Skin picker: a pick previews, unsaved; Apply saves it and marks the picker seen
 - Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
 - Skin picker: the gear saves the pick and opens General on its Skin tab
+- Skin picker eye: opened with the frames locked, the picker unlocks them through NS.SetLocked
+- Skin picker eye: the eye locks and unlocks, and the close puts back the opening state
+- Skin picker eye: the apply route relocks frames the picker unlocked
+- Skin picker eye: the close route relocks frames the picker unlocked
+- Skin picker eye: the escape route relocks frames the picker unlocked
+- Skin picker eye: the gear route relocks frames the picker unlocked
+- Skin picker eye: the hide route relocks frames the picker unlocked
+- Skin picker eye: frames already unlocked are left alone, and stay unlocked after an eye round trip
+- Skin picker eye: a lock the player made with /kcd lock while up is not undone
+- Skin picker eye: a profile switch relocks the profile the picker unlocked, not the new one
+- Skin picker eye: a profile reset while up leaves the reset profile's own lock
 
 ### test_grid.lua (12)
 
@@ -1961,7 +1973,7 @@ Total.
 |-------|------:|
 | test_util.lua | 15 |
 | test_coresetup.lua | 29 |
-| test_mediasetup.lua | 10 |
+| test_mediasetup.lua | 11 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 26 |
@@ -2027,7 +2039,7 @@ Total.
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_flip.lua | 32 |
-| test_skin_picker.lua | 16 |
+| test_skin_picker.lua | 27 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -2059,4 +2071,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1649** |
+| **Total** | **1661** |

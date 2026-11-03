@@ -653,6 +653,13 @@ local function traceProfileEvent(event, key, source)
     end
 end
 
+--- A switch is about to leave the current profile: the skin picker goes down quietly first, while
+--- the Store still writes the profile it opened on, so the eye's restore (core/SkinSetup.lua, R6-PV)
+--- relocks the profile it unlocked and never the one being switched to.
+function Database:OnProfileShutdown() -- luacheck: no unused args
+    if NS.HideSkinPicker then NS.HideSkinPicker() end
+end
+
 function Database:OnProfileChanged(event, db, arg)
     -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
     -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
@@ -661,8 +668,10 @@ function Database:OnProfileChanged(event, db, arg)
     -- profile it opened on, and taking it down puts back a pending preview (the stored skin,
     -- through the library's revert), so it lands before NS.ApplySkinChoice below and the new
     -- profile's whole pair, exceptions and overrides with it, is the last skin written. A new or
-    -- reset profile still shows it, fresh, further down.
-    if NS.HideSkinPicker then NS.HideSkinPicker() end
+    -- reset profile still shows it, fresh, further down. A switch already took it down on
+    -- OnProfileShutdown (above), relocking the OLD profile the eye unlocked; a copy or a reset
+    -- rewrote this profile in place, so `true` drops the eye's restore (R6-PV).
+    if NS.HideSkinPicker then NS.HideSkinPicker(true) end
     -- Then the new profile's skin (core/SkinSetup.lua), before anything below rebuilds:
     -- Skin:SetChoice repaints every frame recorded for this owner and fires OnLooksChanged, so a
     -- switch, a copy and a reset (back to Ka0s Default) all repaint live (skinning-§2). AceDB has
@@ -810,6 +819,7 @@ function Database:Init()
     db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
     db.RegisterCallback(self, "OnProfileCopied",  "OnProfileChanged")
     db.RegisterCallback(self, "OnProfileReset",   "OnProfileChanged")
+    db.RegisterCallback(self, "OnProfileShutdown", "OnProfileShutdown")
 end
 
 

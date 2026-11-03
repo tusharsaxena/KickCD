@@ -188,7 +188,7 @@ and nothing resolved while stood down (counted at `NS.SkinResolve`, since every 
 its title face, which the library's tool surfaces fetch), and the one-time reset running once per
 profile. `tests/test_skin_picker.lua` pins the first-run picker: its spec, the login and profile-event
 showings, the combat hold, the stand-down, and the real window's title (*Choose a skin*) and owner line
-(`frame.ownerLabel`, *Ka0s KickCD*), Apply, close and gear, with no eye. `tests/test_skin_fonts.lua`
+(`frame.ownerLabel`, *Ka0s KickCD*), Apply, close and gear, and the eye in unlock mode (R6-PV): a picker opened with the frames locked unlocks them through `NS.SetLocked`, the eye locks and unlocks, Apply, the close control, Escape, the gear and `NS.HideSkinPicker` each relock, frames already unlocked are left alone, a `/kcd lock` made while up is not undone, a profile switch relocks the old profile and not the new one, and a reset keeps the reset profile's lock. `tests/wow_mock.lua`'s AceDB fires `OnProfileShutdown` before a switch, as AceDB-3.0 does. `tests/test_skin_fonts.lua`
 pins what LibKa0s v1.82.0 asks of the seam: the Font outline (`skin.outline`, stored through the write
 seam and applied at load, on a profile event and on its row's write), `/kcd skin` (its row after
 `config`, the spec it hands `O.SkinVerb`, the library-absent line), From skin on every Font flags row

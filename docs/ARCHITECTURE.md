@@ -421,11 +421,20 @@ collection's reference adopter, and every piece below copies its shape.
   through `NS.WriteSkinChoice` (the gear opens General on its Skin tab), and the close control and
   Escape put the stored skin back. Since LibKa0s v1.83.0 (LK-A3) the window also carries the Skin tab's Font, Texture, Font outline and Scope rows under the same contract: a change previews and writes nothing, Apply and the gear write what moved, and a dismissal puts back what the window opened with. The library's `onClose`, by any of those routes, sets `pickerSeen`;
   `NS.HideSkinPicker` (the stand-down, and first on every profile event) takes it down without setting
-  it. **No eye** (X6): KickCD has no window of its own, and neither of its previews fits the eye. The
-  simulator (`/kcd sim`) is a scripted session, not a test mode: it plays a timed story with its own
-  step panel and refuses a start in combat, an instance, a group or while unlocked; unlocking
-  is a stored write. So `onPreview` is omitted; a pick still previews live on the HUD, and on a
-  simulation the player already started.
+  it. **The eye is unlock mode** (R6-PV, LibKa0s OptionsSkinPicker minor 11, the round 6 lead's call
+  2): the spec passes `spec.preview = { mode = "unlock", enter, exit, isActive, isShown }`, where
+  `isActive` and `isShown` answer "unlocked" and `enter` / `exit` are `NS.SetLocked(false)` /
+  `NS.SetLocked(true)`, the one writer `/kcd unlock` / `/kcd lock`, the launcher's *Locked* entry and
+  the *Lock frame* checkbox share, so its refusal (no unlock beside a running simulation) applies. A
+  picker shown with the frames locked unlocks them; the eye locks and unlocks them, lit while
+  unlocked; every close (Apply, the gear, the close control, Escape, `NS.HideSkinPicker`) puts the lock
+  back as it was at open, and frames already unlocked are left alone. Unlock is a stored write, so a
+  `/reload` with the picker up leaves the frames unlocked until `/kcd lock`. A profile switch takes the
+  picker down on AceDB's `OnProfileShutdown` (`Database:OnProfileShutdown`), while the old profile is
+  still current, so the restore relocks the profile the picker unlocked and never the new one; a copy
+  or a reset rewrites the profile in place, so `OnProfileChanged`'s hide passes `dropPreview` and the
+  restore writes nothing. The simulator (`/kcd sim`) is not the preview: it is a scripted session with
+  its own step panel that refuses a start while unlocked.
 - **The EllesmereUI provider.** The library's (`SkinEUI.lua`). The TOC lists EllesmereUI in
   `## OptionalDeps`, so it loads first and is offered the owner at file load. With source `eui` and its
   gate holding, the settings pages and tool windows take EllesmereUI's accent, panel color and font, and

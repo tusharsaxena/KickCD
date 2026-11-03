@@ -227,6 +227,14 @@ function NS.ToggleLock()
     setLocked(NS, not cur)
 end
 
+--- Lock (true) or unlock (false), through the same one writer: the handler `/kcd lock` and
+--- `/kcd unlock` run, published for the skin picker's eye (core/SkinSetup.lua's spec.preview,
+--- R6-PV), so the picker's enter and restore, the eye, the verbs, the launcher and the `Lock frame`
+--- checkbox are one write with one refusal (lockRefusal: no unlock beside a running simulation).
+function NS.SetLocked(value)
+    setLocked(NS, value and true or false)
+end
+
 -- Forward declarations so command tables and dispatchers can reference each
 -- other without ordering pain.
 local printHelp, runDebug, listSettings, getSetting, setSetting, runProfile
@@ -291,9 +299,9 @@ local COMMANDS = {
     {"disable",       "Disable KickCD — `/kcd enable` turns it back on",
         function() NS.SetMasterEnabled(false) end},
     {"lock",          "Lock the icon grid in place",
-        function() setLocked(NS, true) end},
+        function() NS.SetLocked(true) end},
     {"unlock",        "Unlock the icon grid for dragging",
-        function() setLocked(NS, false) end},
+        function() NS.SetLocked(false) end},
     {"toggle",        "Toggle the icon grid lock state",
         function() NS.ToggleLock() end},
     {"list",          "List every setting and its current value",

@@ -1,13 +1,15 @@
 -- tests/test_skin_picker.lua — the first-run skin picker on this addon's seam (KC-04;
--- core/SkinSetup.lua, LibKa0s OptionsSkinPicker 1, the rollout's O3 / X6).
+-- core/SkinSetup.lua, LibKa0s OptionsSkinPicker 1, the rollout's O3; the eye since OptionsSkinPicker 11, R6-PV).
 --
 -- What this addon owes the picker, and nothing the library pins itself: the spec it hands the
--- Options instance's SkinPicker (its owner, its two seams, General's Skin tab, no eye, the close);
+-- Options instance's SkinPicker (its owner, its two seams, General's Skin tab, the eye, the close);
 -- WHEN it shows (a profile whose `skin.pickerSeen` is false, at login and after every profile
 -- event, never while the addon stands down, held through combat); and that only the player's close
 -- marks it seen. The trigger cases spy on SkinPicker; the last cases drive the library's real
 -- window: Apply saving through NS.WriteSkinChoice, the close control saving nothing, the gear
--- opening General on its Skin tab, the eye absent, and the stand-down taking the window down unseen.
+-- opening General on its Skin tab, the stand-down taking the window down unseen, and the eye
+-- (R6-PV, spec.preview in unlock mode): a picker opened with the frames locked unlocks them, the eye
+-- locks and unlocks them, and every close puts the lock back as it was at open.
 --
 -- Modeled on LootHistory's tests/test_skin_picker.lua, the reference adopter. On its own instance,
 -- with the enable cascade run (so the login showing has happened and the panel is registered);
@@ -100,17 +102,23 @@ end
 
 -- ── the spec ─────────────────────────────────────────────────────────────────────────────────
 
-test("Skin picker: the spec names this owner, its seams, General's Skin tab, and no eye", function()
+test("Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye", function()
     -- red under: a set that is not the write seam (Apply would never reach the profile), a page key
-    -- RegisterOptionsPage was not given (the gear would open nothing), or an eye (X6: KickCD has no
-    -- window and no test mode to preview in; its preview is unlocking, a stored write).
+    -- RegisterOptionsPage was not given (the gear would open nothing), an old one-shot onPreview, or
+    -- a preview in any mode but unlock (R6-PV: KickCD has no test mode; unlocking is its preview).
     local spec = NS.SkinPickerSpec()
     assertEqual(spec.owner, OWNER)
     assertTrue(rawequal(spec.get, NS.SkinChoice), "get is the read seam")
     assertTrue(rawequal(spec.set, NS.WriteSkinChoice), "set is the write seam")
     assertEqual(spec.page, "general", "the key settings/General.lua gave RegisterOptionsPage")
     assertEqual(spec.tab, "Appearance", "the Skin tab's key")
-    assertEqual(spec.onPreview, nil, "no eye: this addon has no window or test mode to preview in")
+    assertEqual(spec.onPreview, nil, "no one-shot onPreview: spec.preview replaces it")
+    local pv = spec.preview
+    assertTrue(type(pv) == "table", "spec.preview is passed")
+    assertEqual(pv.mode, "unlock", "the lead's call 2: KickCD's preview is unlock mode")
+    for _, k in ipairs({ "enter", "exit", "isActive", "isShown" }) do
+        assertEqual(type(pv[k]), "function", "spec.preview." .. k)
+    end
     assertEqual(type(spec.onClose), "function")
 end)
 
@@ -242,7 +250,7 @@ local function pickRow(f, key)
     error("no row for " .. key, 0)
 end
 
-test("Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye is hidden",
+test("Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye shows",
     onWindow(function(f)
     -- The shared mock's FontString keeps no text, so the title and the owner line are read off
     -- their SetText: a repeat call while the window is up re-reads the spec and sets both again.
@@ -258,7 +266,7 @@ test("Skin picker: the title is Choose a skin, this addon's name is on its own l
     rawset(f.ownerLabel, "SetText", ownLabel)
     assertEqual(text, "Choose a skin")
     assertEqual(label, "Ka0s KickCD")
-    assertTrue(f.preview == nil or not f.preview:IsShown(), "no onPreview: the eye is hidden")
+    assertTrue(f.preview ~= nil and f.preview:IsShown(), "spec.preview: the eye shows")
 end))
 
 test("Skin picker: the player's close marks it seen; this addon's own hide does not", clean(function()
@@ -327,4 +335,148 @@ test("Skin picker: the gear saves the pick and opens General on its Skin tab", o
     end)
     O.OpenOptionsPanel, O.SelectTab = realOpen, realSelect
     if not ok then error(err, 0) end
+end))
+
+-- ── the eye: unlock mode (R6-PV; LibKa0s OptionsSkinPicker minor 11, spec.preview) ───────────
+
+local function locked() return NS.db.profile.locked and true or false end
+
+--- Run `fn` with NS.SetLocked recorded: each call's value, then the real write.
+local function lockCalls(fn)
+    local real = NS.SetLocked
+    local calls = {}
+    NS.SetLocked = function(v) calls[#calls + 1] = v; return real(v) end
+    local ok, err = pcall(fn, calls)
+    NS.SetLocked = real
+    if not ok then error(err, 0) end
+end
+
+--- Run `fn(f)` on the real picker opened with the frames locked (`lockedAtOpen`) or unlocked; the
+--- profile's `locked` goes back to its default (false) after.
+local function opened(lockedAtOpen, fn)
+    return clean(function()
+        quietly(function()
+            local ok, err = pcall(function()
+                Store.Set("locked", lockedAtOpen)
+                local f = NS.MaybeShowSkinPicker()
+                assertTrue(f ~= nil and f:IsShown(), "the library's picker did not show")
+                fn(f)
+            end)
+            NS.HideSkinPicker()
+            Store.Set("locked", false)
+            if not ok then error(err, 0) end
+        end)
+    end)
+end
+
+test("Skin picker eye: opened with the frames locked, the picker unlocks them through NS.SetLocked",
+    clean(function()
+    -- red under: no spec.preview (nothing enters at show), or an enter that writes `locked` around
+    -- the one writer (the verbs, the launcher and the checkbox would not be the same write).
+    quietly(function()
+        Store.Set("locked", true)
+        lockCalls(function(calls)
+            local f = NS.MaybeShowSkinPicker()
+            assertTrue(f ~= nil and f:IsShown(), "the picker shows")
+            assertEqual(locked(), false, "the hidden HUD enters unlock mode")
+            assertEqual(#calls, 1, "one write, through the lock seam")
+            assertEqual(calls[1], false)
+            assertTrue(f.preview.lit == true, "the eye is lit while unlocked")
+            NS.HideSkinPicker()
+        end)
+        assertEqual(locked(), true, "the close locks them again")
+        Store.Set("locked", false)
+    end)
+end))
+
+test("Skin picker eye: the eye locks and unlocks, and the close puts back the opening state",
+    opened(true, function(f)
+    -- red under: an enter-only eye (the anti-pattern), or a close that leaves the frames unlocked.
+    assertEqual(locked(), false, "unlocked at show")
+    f.preview:_run("OnClick")
+    assertEqual(locked(), true, "the eye locks")
+    assertTrue(not f.preview.lit, "and dims")
+    f.preview:_run("OnClick")
+    assertEqual(locked(), false, "the eye unlocks again")
+    assertTrue(f.preview.lit == true, "and lights")
+    f.close:_run("OnClick")
+    assertEqual(locked(), true, "the close control relocks")
+end))
+
+for _, route in ipairs({ "apply", "close", "escape", "gear", "hide" }) do
+    test("Skin picker eye: the " .. route .. " route relocks frames the picker unlocked", opened(true, function(f)
+        assertEqual(locked(), false, "unlocked at show")
+        if route == "apply" then f.apply:_run("OnClick")
+        elseif route == "close" then f.close:_run("OnClick")
+        elseif route == "escape" then f:Hide()
+        elseif route == "gear" then
+            local realOpen, realSelect = O.OpenOptionsPanel, O.SelectTab
+            O.OpenOptionsPanel = function() return true end
+            O.SelectTab = function() return true end
+            local ok, err = pcall(f.settings._run, f.settings, "OnClick")
+            O.OpenOptionsPanel, O.SelectTab = realOpen, realSelect
+            if not ok then error(err, 0) end
+        else NS.HideSkinPicker() end
+        assertTrue(not f:IsShown(), "the window closed")
+        assertEqual(locked(), true, "the frames are locked again")
+    end))
+end
+
+test("Skin picker eye: frames already unlocked are left alone, and stay unlocked after an eye round trip",
+    opened(false, function(f)
+    -- red under: a show that writes when the HUD is already up, or a close that locks frames the
+    -- player had unlocked.
+    lockCalls(function(calls)
+        assertTrue(rawequal(NS.MaybeShowSkinPicker(), f), "a repeat call answers the same window")
+        assertEqual(#calls, 0, "an unlocked HUD is not entered, and a repeat call enters nothing")
+        f.preview:_run("OnClick")
+        assertEqual(locked(), true, "the eye locks")
+        f.close:_run("OnClick")
+        assertEqual(locked(), false, "the close unlocks again, as it was at open")
+    end)
+end))
+
+test("Skin picker eye: a lock the player made with /kcd lock while up is not undone", opened(true, function(f)
+    assertEqual(locked(), false, "unlocked at show")
+    NS.SetLocked(true)
+    lockCalls(function(calls)
+        f.close:_run("OnClick")
+        assertEqual(#calls, 0, "nothing to undo: the mode is as it was at open")
+    end)
+    assertEqual(locked(), true)
+end))
+
+test("Skin picker eye: a profile switch relocks the profile the picker unlocked, not the new one",
+    clean(function()
+    -- red under: a restore at OnProfileChanged, which reads the NEW profile: it would lock a profile
+    -- the player keeps unlocked and leave the old one unlocked for good. The restore runs on AceDB's
+    -- OnProfileShutdown, while the old profile is still the one the Store writes.
+    local db = NS.db
+    quietly(function()
+        Store.Set("locked", true)
+        local f = NS.MaybeShowSkinPicker()
+        assertTrue(f ~= nil and f:IsShown(), "the picker shows")
+        assertEqual(locked(), false, "unlocked at show")
+        db:SetProfile("PreviewProbe")
+        assertEqual(db.sv.profiles.Default.locked, true, "the profile the picker unlocked is locked again")
+        assertEqual(locked(), false, "the new profile keeps its own (default, unlocked) lock")
+        NS.HideSkinPicker()
+        db:SetProfile("Default")
+        NS.HideSkinPicker()
+        Store.Set("locked", false)
+    end)
+    if db.DeleteProfile then pcall(db.DeleteProfile, db, "PreviewProbe", true) end
+end))
+
+test("Skin picker eye: a profile reset while up leaves the reset profile's own lock", clean(function()
+    -- red under: a restore at OnProfileReset, which would lock a profile just reset to unlocked.
+    quietly(function()
+        Store.Set("locked", true)
+        local f = NS.MaybeShowSkinPicker()
+        assertTrue(f ~= nil and f:IsShown(), "the picker shows")
+        assertEqual(locked(), false, "unlocked at show")
+        NS.db:ResetProfile()
+        NS.HideSkinPicker()
+        assertEqual(locked(), false, "the reset profile keeps its default lock (unlocked)")
+    end)
 end))

@@ -27,7 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 16 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story |
 | DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
-| SKIN-1 – 46 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged |
+| SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -1476,16 +1476,16 @@ after each check. Every check also fails on a Lua error or a taint warning.
   minimap button and an icon on the grid (Show tooltip on), and open General → Reset all settings → the
   button, its tooltip, the spell tooltip frame and the confirmation popup look as before this build.
   Result: pass (owner-marked 2026-10-30)
-- **SKIN-22. The first-run skin picker (KC-04; O3, X6).** On a character that never ran this build, log
+- **SKIN-22. The first-run skin picker (KC-04; O3; the eye since R6-PV).** On a character that never ran this build, log
   in → shortly after the world loads a small window titled **Choose a skin** opens about three quarters
   of the way up the screen, already in the profile's skin: **Ka0s KickCD** whole on its own line, then
   a dropdown showing the skin
-  worn now, a gear button beside it (and **no eye**: KickCD has no window, and its simulator is a scripted session, not a preview mode),
+  worn now, a gear button and the eye beside it (the eye is SKIN-47's),
   **Apply** under it and a close mark. Close it, `/reload` → it does not come back on that profile.
   Create a new profile → it opens again; reset that profile after closing it → again. Every existing
-  profile shows it once too. Fail: an eye button, a title that still names the addon, the name cut off
+  profile shows it once too. Fail: no eye button, a title that still names the addon, the name cut off
   or missing above the dropdown, no window on a new or reset profile, or one on a profile that already
-  closed it. Result: pass (owner-marked 2026-10-30)
+  closed it. Result:
 - **SKIN-23. A pick previews; Apply saves; a close puts it back (KC-04).** With `/kcd unlock` (so the HUD
   shows) and the picker up on a fresh profile, pick **Obsidian** in its dropdown → the HUD, the drag
   strips and the picker repaint in Obsidian with no reload, and nothing is saved (`/kcd get skin.skin`
@@ -1650,6 +1650,21 @@ after each check. Every check also fails on a Lua error or a taint warning.
   **Apply** and the close mark, with no Lua error. Close it with the close mark, open it again and
   close it with **Escape** → it goes cleanly both times, and `/kcd skin` opens it again. Fail: a Lua
   error at show or close, or a window that will not close. Result:
+- **SKIN-47. The picker's eye is unlock mode (R6-PV; LibKa0s R6-L1).** `/kcd lock`, then `/kcd skin`
+  with the frames locked → the frames unlock (the grids and cast bars show with their drag strips, and
+  chat says *icon grid unlocked*) and the picker stays in front of them; the eye beside the gear is lit,
+  and its tooltip says the frames are unlocked. Click the eye → the frames lock, the eye dims, and the
+  tooltip says they are locked; click it again → unlocked and lit. Close the picker with the close
+  mark → the frames are locked again. Repeat, closing once each with **Escape**, **Apply** and the gear
+  → locked again every time. Now `/kcd unlock` first and `/kcd skin` → nothing moves (already
+  unlocked); lock them with the eye and close → they are unlocked again, as before. With the picker
+  up after `/kcd lock`, `/kcd lock` by hand, then close → they stay locked. Start a simulation
+  (`/kcd sim start`) with the frames locked, then `/kcd skin` → the unlock is refused with the
+  *End the simulation first* line, and the close leaves the frames locked. Unlock is a stored
+  setting: a `/reload` while the picker is up leaves the frames unlocked until `/kcd lock`. Fail: frames
+  still locked when the picker opens over locked frames, an eye that only unlocks, a close that leaves
+  frames unlocked that were locked at open (or locks frames that were unlocked), or the picker behind
+  the grids. Result:
 
 ## Non-English client
 
@@ -1723,3 +1738,5 @@ The owner's fifth smoke round (R5-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-S
 The same round's R5-ICON adds SKIN-45 (the Spells page's icons cropped 0.07 a side and edged 1 px in `icon.outline` while the settings pages wear the skin; the spec picker's inline icons cropped). Owed: SKIN-45.
 
 The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND6/`, LibKa0s v1.85.0 fifth re-cut, OptionsSkinPicker minor 11) adds SKIN-46 (the picker copy opens and closes clean). Owed: SKIN-46.
+
+The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Owed: SKIN-22, SKIN-47.

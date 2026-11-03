@@ -319,10 +319,12 @@ local function build()
             end
 
             -- AceDB-3.0's SetProfile: a no-op onto the active name, otherwise
-            -- swap the key and the profile table, then
-            -- `self.callbacks:Fire("OnProfileChanged", self, name)`.
+            -- `self.callbacks:Fire("OnProfileShutdown", self)` while the OLD
+            -- profile is still current, then swap the key and the profile
+            -- table, then `self.callbacks:Fire("OnProfileChanged", self, name)`.
             db.SetProfile = function(_, key)
                 if key == db.keys.profile then return end
+                fire("OnProfileShutdown")
                 db.keys.profile = key
                 db.profile = profileFor(key)
                 fire("OnProfileChanged", key)
