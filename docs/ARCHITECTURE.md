@@ -293,7 +293,8 @@ collection's reference adopter, and every piece below copies its shape.
   token as a `|cffrrggbb` escape, byte-rounded, so markup keeps its bytes on Ka0s Default),
   `NS.SkinResolve` (a HUD media pick as drawn), `NS.OnSkinLooksChanged` (a HUD module's repaint) and
   `NS.SkinPaintAce` / `NS.SkinPaintAceTree` / `NS.SkinOnRelease` (the AceGUI widgets this addon acquires
-  itself). It registers **no owner tokens**: the M0 inventory found no color this addon draws that a
+  itself), and `NS.SkinPanelPainted` (whether the settings pages wear the skin, which gates the Spells
+  rows' icon edge). It registers **no owner tokens**: the M0 inventory found no color this addon draws that a
   library token does not hold exactly. Without the library its degraded arm answers every facade name
   (painting names are no-ops) from `NS.SKIN_FALLBACK`, the host copy of the Ka0s Default tokens it
   reads, which `tests/test_surface_parity.lua` holds to the live library key for key and value for

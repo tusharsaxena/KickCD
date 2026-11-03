@@ -63,13 +63,18 @@ local function classColorHex(classFile)
         math.floor((c.b or 1) * 255 + 0.5))
 end
 
+-- The icon rule's inline arm (R5-ICON; LibKa0s docs/api/README.md, "Icon art: the rule"): Blizzard
+-- icon art in |T markup is cropped to 5..59 of its 64 a side, the 0.078 the library's W.IconText
+-- writes. Markup takes no edge. The class atlas, when the client has one, is exempt.
+local ICON_CROP = ":64:64:5:59:5:59"
+
 local function classIconMarkup(classFile)
     if CreateAtlasMarkup then
         local atlas = "classicon-" .. classFile:lower()
         local ok, markup = pcall(CreateAtlasMarkup, atlas, 16, 16)
         if ok and markup then return markup end
     end
-    return ("|TInterface\\Icons\\ClassIcon_%s:16:16:0:0|t"):format(classFile:lower())
+    return ("|TInterface\\Icons\\ClassIcon_%s:16:16:0:0" .. ICON_CROP .. "|t"):format(classFile:lower())
 end
 
 -- [classFile] = { [specID] = iconFileID }. Built lazily from
@@ -104,7 +109,7 @@ local function specIconMarkup(classFile, specID)
     local byClass = specIconCache[classFile]
     local icon = byClass and byClass[specID]
     if icon then
-        return ("|T%s:16:16:0:0|t"):format(tostring(icon))
+        return ("|T%s:16:16:0:0" .. ICON_CROP .. "|t"):format(tostring(icon))
     end
     return ""
 end

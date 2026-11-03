@@ -27,7 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 16 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story |
 | DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
-| SKIN-1 – 44 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press |
+| SKIN-1 – 45 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -1637,6 +1637,14 @@ after each check. Every check also fails on a Lua error or a taint warning.
   pullout opens. Open the list from the Skin tab's picker in `/kcd config` → the same three presses
   close it. A second click on the skin list button still toggles it, and Escape still closes the whole
   window. Fail: a list that stays open after any of the three presses. Result:
+- **SKIN-45. The Spells page's icons (R5-ICON).** `/kcd config` → Spells, with the Skin tab's
+  **Ignore settings panel** unticked, on **Ka0s Default** → every row's spell icon shows no rough
+  Blizzard edge and carries a thin 1 px gray outline, like Loot History's item icons; the known glyph
+  and the Remove mark carry none. Switch to **Obsidian** → the outline follows the skin. Tick **Ignore
+  settings panel** and re-open the page → the icons stay cropped and lose the outline. Open the
+  **Class and specialization** dropdown → each spec icon in the list is cropped, with no rough edge.
+  The icon grids and cast bars are unchanged. Fail: a rough edge, an outline on a stock page, or an
+  outline left on a widget after closing the page. Result:
 
 ## Non-English client
 
@@ -1706,3 +1714,5 @@ On 2026-11-02 the owner reported that every check on the smoke lists of the full
 The owner's fourth smoke round (R4-SEP of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND4/`, LibKa0s v1.85.0 second re-cut) adds DIAG-46 and moves the expected result of DIAG-20 (a dark gold band and no line under the title), whose owner pass is withdrawn. Owed: both.
 
 The owner's fifth smoke round (R5-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND5/`, LibKa0s v1.85.0 fourth re-cut) adds DIAG-47 (the library windows' darker header band, flush inside the edge, its children centered) and SKIN-44 (the skin list closes on an outside press). Owed: both.
+
+The same round's R5-ICON adds SKIN-45 (the Spells page's icons cropped 0.07 a side and edged 1 px in `icon.outline` while the settings pages wear the skin; the spec picker's inline icons cropped). Owed: SKIN-45.

@@ -64,6 +64,9 @@ local addonName, NS = ...
 --                           (`Skin:OnRelease`), so it and the skin's restore both run.
 --   NS.SkinForget(frame)    a pooled region off the skin's replay (`Skin:Untrack`): AceGUI's pool is
 --                           every addon's, so a released widget must not stay ours to repaint.
+--   NS.SkinPanelPainted()   true while the settings pages wear the skin (the Scope's "Ignore settings
+--                           panel" off), the question the library's own chrome asks before it edges
+--                           an icon there (`Skin:__PanelSkinned`); false without the library.
 --   NS.MaybeShowSkinPicker() the first-run skin picker (LibKa0s OptionsSkinPicker 1, owner ruling
 --                           O3): the Options instance's SkinPicker while the profile's
 --                           `skin.pickerSeen` is false and the addon stands up; held to
@@ -592,6 +595,7 @@ if not Skin then
     function NS.SkinPaintAceTree() return 0 end
     NS.SkinOnRelease = releaseByCallback
     function NS.SkinForget() end
+    function NS.SkinPanelPainted() return false end
     return
 end
 
@@ -637,6 +641,13 @@ end
 
 function NS.SkinForget(frame)
     if type(Skin.Untrack) == "function" then Skin:Untrack(frame) end
+end
+
+-- The settings-panel scope, as the library's Options chrome reads it (OptionsIdList's icon edge).
+-- A copy without the question answers false: a stock page is the safe reading.
+function NS.SkinPanelPainted()
+    if type(Skin.__PanelSkinned) ~= "function" then return false end
+    return Skin:__PanelSkinned(addonName) == true
 end
 
 function NS.ApplySkinIgnore(panel, fonts)

@@ -598,7 +598,7 @@ Total.
 - SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
 - SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
 
-### test_sim_e2e.lua (9)
+### test_sim_e2e.lua (11)
 
 - SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
 - TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
@@ -609,6 +609,8 @@ Total.
 - Sim e2e miss: the shield refuses a kick, breaks, the kick lands, the next cast completes
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
+- Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
+- Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
 ### test_sim_marker.lua (7)
 
@@ -1399,7 +1401,7 @@ Total.
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 
-### test_skin_settings.lua (11)
+### test_skin_settings.lua (15)
 
 - skin settings: under a non-default skin the Spells rows and chrome block paint, past the proxy
 - skin settings: a release hands the Spells widgets back stock
@@ -1412,6 +1414,10 @@ Total.
 - skin settings: the host copy carries every token the settings pages read
 - skin settings: with Ignore settings panel on, the page's tokens stay Ka0s Default's
 - skin settings: the AceGUI-missing label is on the settings panel, so Ignore settings panel leaves it stock
+- icon rule: a row's spell icon is cropped 0.07 a side through SetImage, panel skinned or not
+- icon rule: on a skinned panel the spell icon is edged in icon.outline on KickCD's own frame
+- icon rule: with the settings panel left the client's the spell icon takes no edge
+- icon rule: the spec picker's inline spec and class icons are cropped 5..59 of 64
 
 ### test_skin_hud.lua (18)
 
@@ -1978,7 +1984,7 @@ Total.
 | test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
-| test_sim_e2e.lua | 9 |
+| test_sim_e2e.lua | 11 |
 | test_sim_marker.lua | 7 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
@@ -2017,7 +2023,7 @@ Total.
 | test_options_panel.lua | 32 |
 | test_options_panel_degraded.lua | 11 |
 | test_skinsetup.lua | 13 |
-| test_skin_settings.lua | 11 |
+| test_skin_settings.lua | 15 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_flip.lua | 32 |
@@ -2053,4 +2059,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1643** |
+| **Total** | **1649** |
