@@ -520,6 +520,9 @@ if not Skin then
         -- so the stored color draws; HudShadow's nil is "the stored shadow stands". BarGloss draws
         -- nothing: no skin, no gloss.
         "HudTextColor", "HudLabelColor", "BarFillColor", "HudShadow", "BarGloss",
+        -- LibKa0s v1.85.0 (Skin minor 16): with no library there is no header band, so Band answers
+        -- nil and Header places nothing. KickCD draws no window header of its own.
+        "Band", "Header",
     }) do S[name] = noop end
 
     S.Token = function(name) return NS.SKIN_FALLBACK[name] end
