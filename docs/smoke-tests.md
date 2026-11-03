@@ -1190,9 +1190,10 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd debug spells` (both are LibKa0s-Core's `NS.SECRET` now). Result: pass (owner-marked 2026-10-10)
 - **DIAG-46. No line under any window title (R4-SEP).** On **Ka0s Default**, `/kcd debug window` → the
   console's title band meets the log with no line between them, like the Skin Tester showroom's. Copy
-  → the copy window has none either; `/kcd perf` → nor has the step panel. Repeat under any other skin →
-  no line under any of the three titles. KickCD draws no window of its own (the icon
-  grids, cast bars and unit labels are HUD), so these are the library's windows: a line is
+  → the copy window has none either; `/kcd perf` → nor has the step panel; `/kcd skin` → nor has the
+  skin picker. Repeat under any other skin → no line under any of the four titles. KickCD draws no
+  window of its own (the icon grids, cast bars and unit labels are HUD), so these are the library's
+  windows: a line is
   `libs/LibKa0s` drifting from `../LibKa0s`. The settings pages keep their header rule. Result:
 
 ## DEGRADED
