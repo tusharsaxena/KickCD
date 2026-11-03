@@ -322,12 +322,12 @@ collection's reference adopter, and every piece below copies its shape.
   (`icon.borderStyle` and `icon.borderSize`, so the skin sets its thickness too): the icon border, and
   both cast-bar states' borders (KC-A1, the owner's ruling: they followed `bar.borderStyle`, which was
   `None` in every skin then, so the reset left the cast bar with no edge; now it keeps the skin's flat
-  icon-style edge, 2 px Solid on Ka0s Default). The panel and the HUD agree: the three `BorderGroup`s
+  icon-style edge, Solid 1 px in every skin since LibKa0s v1.85.0's R3-FIX). The panel and the HUD agree: the three `BorderGroup`s
   take `fromSkin = "icon"` and `Castbar.BorderStyle` / `Castbar.BorderSize` in
   `modules/Castbar_Skin.lua` resolve the same two tokens. That thickness is the one size that
   follows the skin, a departure taken with the library's icon-family contract
   (`O.BorderGroup{ fromSkin = "icon" }`, C13, which grays the thickness slider while the box is
-  ticked): a player who chose a 3 or 4 px border draws the skin's 1 or 2 px until they untick
+  ticked): a player who chose a 3 or 4 px border draws the skin's 1 px until they untick
   the box. The texts follow `hud.font`, each skin's own HUD face since LibKa0s v1.81.0 (R-4), as
   LibKa0s v1.83.0 left them (D-06): Prototype under Ka0s Default, Expressway under Obsidian, Open Sans
   Semibold under Azeroth, Avant Garde under Glass, Doris PP under High Contrast, Emblem under Ember,

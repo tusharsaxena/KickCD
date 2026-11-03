@@ -583,7 +583,7 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), not the bar family, whose
+    -- both (icon.borderStyle / icon.borderSize, Solid 1px in every skin), not the bar family, whose
     -- bar.borderStyle is "None" on Ka0s Default and most skins (KC-A1, the owner's ruling).
     -- borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
@@ -626,7 +626,7 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border": the ICON family (OptionsCompose minor 13), style and thickness
-    -- both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), not the bar family, whose
+    -- both (icon.borderStyle / icon.borderSize, Solid 1px in every skin), not the bar family, whose
     -- bar.borderStyle is "None" on Ka0s Default and most skins (KC-A1, the owner's ruling).
     -- borderTextureFromSkin, default true (X3). The color has a companion too.
     fromSkin = "icon",
