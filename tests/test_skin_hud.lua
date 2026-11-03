@@ -161,7 +161,7 @@ test("HUD skin: the icon border takes the skin's icon family, style and thicknes
     local cfg = NS.db.profile.units.target.icons
     icon:ApplyAppearance(cfg)
     assertEqual(bd.edgeFile, "Interface\\Buttons\\WHITE8X8", "Solid, Ka0s Default's icon border")
-    assertEqual(bd.edgeSize, 2, "icon.borderSize")
+    assertEqual(bd.edgeSize, 1, "icon.borderSize: 1 px in every skin since LibKa0s v1.85.0's R3-FIX")
     cfg.borderTextureFromSkin = false
     cfg.borderSize = 5
     icon:ApplyAppearance(cfg)
@@ -188,7 +188,7 @@ test("HUD skin: a following cast bar draws the skin's flat icon edge, style and 
         local bd = drawn[key]
         assertTrue(bd ~= nil, key .. " drew a backdrop")
         assertEqual(bd.edgeFile, "Interface\\Buttons\\WHITE8X8", key .. ": Solid, Ka0s Default's icon edge")
-        assertEqual(bd.edgeSize, 2, key .. ": icon.borderSize on Ka0s Default")
+        assertEqual(bd.edgeSize, 1, key .. ": icon.borderSize on Ka0s Default, 1 px (R3-FIX)")
     end
 
     -- Another skin: its own icon edge, through the same tokens.
