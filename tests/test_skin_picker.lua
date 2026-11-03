@@ -480,3 +480,46 @@ test("Skin picker eye: a profile reset while up leaves the reset profile's own l
         assertEqual(locked(), false, "the reset profile keeps its default lock (unlocked)")
     end)
 end))
+
+test("Skin picker eye: a /kcd skin refused in combat does not unhook a later reset's drop", clean(function()
+    -- red under: a drop marking only the preview the LAST NS.SkinPickerSpec() built. The refused
+    -- verb builds a spec the library never takes, so the shown picker's own hook kept its restore
+    -- and locked the profile the reset had just put back to its default (unlocked).
+    quietly(function()
+        Store.Set("locked", true)
+        local f = NS.MaybeShowSkinPicker()
+        assertTrue(f ~= nil and f:IsShown(), "the picker shows")
+        assertEqual(locked(), false, "unlocked at show")
+        inCombat(function(setCombat)
+            local _, why = NS.RunSkinVerb()
+            assertEqual(why, "combat", "the verb is refused in combat")
+            setCombat(false)
+        end)
+        NS.db:ResetProfile()
+        NS.HideSkinPicker()
+        assertEqual(locked(), false, "the reset profile keeps its default lock (unlocked)")
+    end)
+end))
+
+test("Skin picker eye: an unlock the simulation refuses leaves nothing to undo", clean(function()
+    -- red under: a host that writes `locked` around lockRefusal, or a restore that "relocks" frames
+    -- the picker never unlocked.
+    local realSim = NS.Sim
+    NS.Sim = setmetatable({ IsActive = function() return true end }, { __index = realSim })
+    local ok, err = pcall(quietly, function()
+        Store.Set("locked", true)
+        lockCalls(function(calls)
+            local f = NS.MaybeShowSkinPicker()
+            assertTrue(f ~= nil and f:IsShown(), "the picker shows")
+            assertEqual(#calls, 1, "the picker asks the lock seam to unlock")
+            assertEqual(locked(), true, "the running simulation refuses it")
+            assertTrue(not f.preview.lit, "the eye stays dimmed")
+            f.close:_run("OnClick")
+            assertEqual(#calls, 1, "the close has nothing to put back")
+        end)
+        assertEqual(locked(), true)
+    end)
+    NS.Sim = realSim
+    quietly(function() Store.Set("locked", false) end)
+    if not ok then error(err, 0) end
+end))

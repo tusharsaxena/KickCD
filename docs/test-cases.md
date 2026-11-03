@@ -1505,7 +1505,7 @@ Total.
 - the step creates the record's table on a raw profile with none
 - the step is the same write with the library absent
 
-### test_skin_picker.lua (27)
+### test_skin_picker.lua (29)
 
 - Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye
 - Skin picker: the login showing happened on the unseen default profile
@@ -1534,6 +1534,8 @@ Total.
 - Skin picker eye: a lock the player made with /kcd lock while up is not undone
 - Skin picker eye: a profile switch relocks the profile the picker unlocked, not the new one
 - Skin picker eye: a profile reset while up leaves the reset profile's own lock
+- Skin picker eye: a /kcd skin refused in combat does not unhook a later reset's drop
+- Skin picker eye: an unlock the simulation refuses leaves nothing to undo
 
 ### test_grid.lua (12)
 
@@ -2039,7 +2041,7 @@ Total.
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_flip.lua | 32 |
-| test_skin_picker.lua | 27 |
+| test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -2071,4 +2073,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1661** |
+| **Total** | **1663** |

@@ -1665,6 +1665,13 @@ after each check. Every check also fails on a Lua error or a taint warning.
   still locked when the picker opens over locked frames, an eye that only unlocks, a close that leaves
   frames unlocked that were locked at open (or locks frames that were unlocked), or the picker behind
   the grids. Result:
+- **SKIN-48. The unlock eye across a profile switch and a reset (R6-PV review).** On a profile with
+  the frames locked, `/kcd skin` (they unlock), then switch to another profile in Profiles → the picker
+  closes, and switching back shows the first profile locked again; the other profile keeps its own lock.
+  Again on a locked profile, `/kcd skin`, enter combat on a target dummy and type `/kcd skin` (it says
+  it cannot open in combat), leave combat, then reset the profile → the reset profile wears its default
+  lock (unlocked) and is not relocked by the picker closing. Fail: the first profile left unlocked after
+  the switch, the new profile locked by it, or the reset profile locked. Result:
 
 ## Non-English client
 
@@ -1739,4 +1746,4 @@ The same round's R5-ICON adds SKIN-45 (the Spells page's icons cropped 0.07 a si
 
 The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND6/`, LibKa0s v1.85.0 fifth re-cut, OptionsSkinPicker minor 11) adds SKIN-46 (the picker copy opens and closes clean). Owed: SKIN-46.
 
-The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Owed: SKIN-22, SKIN-47.
+The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Its review adds SKIN-48 (the eye across a profile switch and a reset, a /kcd skin refused in combat between). Owed: SKIN-22, SKIN-47, SKIN-48.

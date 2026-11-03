@@ -375,7 +375,7 @@ end
 local PICKER_PATH = "skin.pickerSeen"
 local pickerTarget       -- the one-shot PLAYER_REGEN_ENABLED target, while a start is held
 local quietClose = false -- true while NS.HideSkinPicker takes the picker down
-local livePreview        -- the spec.preview table the last NS.SkinPickerSpec() carried
+local previewEpoch = 0   -- bumped by a hide that drops the restore; a hook built before it writes nothing
 
 --- The Options instance (settings/OptionsSetup.lua's NS.Settings.Helpers), read at call time: it
 --- loads after this file.
@@ -396,14 +396,16 @@ local function unlocked()
     return prof ~= nil and not prof.locked
 end
 
---- One showing's preview hook (THE EYE, above). `dropped` is set by a hide that must not restore
---- (a profile copy or reset), so a restore the library parks past combat writes nothing either.
+--- One showing's preview hook (THE EYE, above). A hide that must not restore (a profile copy or
+--- reset) bumps previewEpoch, so every hook built before it writes nothing, a restore the library
+--- parks past combat included. Every hook, not only the last built: a spec the library never took
+--- (a /kcd skin refused in combat, a notice already seen) must not leave the shown one armed.
 local function newPreview()
+    local epoch = previewEpoch
     local pv = { mode = "unlock", isActive = unlocked, isShown = unlocked }
-    local function lock(v) if not pv.dropped and NS.SetLocked then NS.SetLocked(v) end end
+    local function lock(v) if epoch == previewEpoch and NS.SetLocked then NS.SetLocked(v) end end
     pv.enter = function() lock(false) end
     pv.exit = function() lock(true) end
-    livePreview = pv
     return pv
 end
 
@@ -436,7 +438,7 @@ end
 --- or reset) also leaves the lock as the profile now has it.
 function NS.HideSkinPicker(dropPreview)
     dropPickerDeferral()
-    if dropPreview and livePreview then livePreview.dropped = true end
+    if dropPreview then previewEpoch = previewEpoch + 1 end
     local O = options()
     if not (O and type(O.HideSkinPicker) == "function") then return end
     quietClose = true
