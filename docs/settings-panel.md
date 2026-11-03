@@ -23,10 +23,10 @@ A page with exactly **one** section draws a **one-tab** strip. That is the libra
 
 | Page | Tabs, in strip order (rows per tab) | Rows |
 |---|---|---|
-| **General** | Master controls (7) \| Skin (8: the group is the library tab's key, `Appearance`, and every row is `skipRender`, drawn by `O.AppearanceTab`) \| Simulator (1: `sim.stepDelay`, the simulator's step delay, R3-SIM-KC). The `Units` group's 3 rows (two enables and the Focus `link` row) are `skipRender` and drawn by the Units page's band, so they make no tab here (`untabbedSkipRender`) | 18 |
-| **Units > Icons** | Size and layout (10) \| Appearance (11) \| Annotations (12) \| Ready glow (34) | 67 per unit |
-| **Units > Cast bar** | General (4) \| Size and position (10) \| Text (16) \| Interruptible (15) \| Non-interruptible (15) | 60 per unit |
-| **Units > Text label** | General (2) \| Placement (8) \| Font (7) | 17 per unit |
+| **General** | Master controls (8) \| Skin (8: the group is the library tab's key, `Appearance`, and every row is `skipRender`, drawn by `O.AppearanceTab`) \| Simulator (1: `sim.stepDelay`, the simulator's step delay, R3-SIM-KC). The `Units` group's 3 rows (two enables and the Focus `link` row) are `skipRender` and drawn by the Units page's band, so they make no tab here (`untabbedSkipRender`) | 20 |
+| **Units > Icons** | Size and layout (10) \| Appearance (12) \| Annotations (14) \| Ready glow (36) | 72 per unit |
+| **Units > Cast bar** | General (4) \| Size and position (10) \| Text (18) \| Interruptible (18) \| Non-interruptible (18) | 68 per unit |
+| **Units > Text label** | General (2) \| Placement (8) \| Font (9) | 19 per unit |
 | **Spells** | Spell list (1 tab, hand-drawn — the page has no schema rows) | — |
 | **Profiles** | **no strip** — AceDBOptions draws the whole page, so it never reaches the flow engine | — |
 
@@ -262,7 +262,7 @@ A bulk copy or reset is logged as **one** `[Set] <act> <scope>: N rows` line, ne
 
 | Act | Lines logged |
 |---|---|
-| A page's **Defaults** (Cast bar, Icons, Text label, General walk 110, 130, 32 and 10 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
+| A page's **Defaults** (Cast bar, Icons, Text label, General walk 136, 144, 38 and 20 rows) | `[Set] reset <page>: N rows`, where `<page>` is the page key (`castbar`, `icons`, `label`, `general`) |
 | **Reset all settings** and `/kcd resetall`, live or with LibKa0s absent | `[Set] reset profile '<name>' to defaults (N rows)` alone, from `Database:OnProfileChanged` ([profiles.md](profiles.md#reacting-to-a-profile-change)). N is the profile rows not at their default just before the reset, counted by `Store.ResetCounted`; a profile already at its defaults logs `(0 rows)`. The bracket sees `info.profileReset` (and the handler's `Store.ConsumeResetCount` marks it too) and adds nothing. With LibKa0s absent the degraded Options stub drives the stub seam's bracket itself, which counts nothing, so the handler's line carries no count |
 | The Profiles page's **Reset Profile**, or `db:ResetProfile()` from `/run` | `[Set] reset profile '<name>' to defaults`, with no count, since nothing counted the rows before the reset |
 | **Copy from Target** | `[Set] copy target→focus: N rows`, from `Store.SetMany` with `act = "copy"` |
@@ -414,7 +414,7 @@ The schema-driven panels share a lazy AceGUI `ScrollFrame` patched to **always**
 
 ## Schema validation
 
-The Options descriptor's `validate` hook runs **`Store.Validate`** (`LibKa0s-Schema-1.0`) at panel-register time. It checks every row for a non-empty `path` (or an Options bound row's `get`/`set`), a known `type` (`bool` / `number` / `string` / `color`), a non-empty **`group`** (`options-ui-§13`; required on every row), and a duplicate `path`, and it resolves every stored path against `NS.DEFAULT_PROFILE`, so a typo'd path that reads and writes nothing is reported too. A row with its own `get` (the console, the minimap button) lives in no defaults tree and is skipped. The **panel** and **section** enums (`general` / `icons` / `castbar` / `label` / `spells` / `profiles`, and `general` / `icons` / `castbar` / `label` / `spells` / `units` / `debug`) are this addon's own vocabulary and are a test now — `tests/test_schema.lua`'s *every row's panel and section are known* — rather than a runtime print. The debug **capture** flag is still session-only and still not a schema row (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`). The console **window** is a schema row — `state.debugConsole`, `sessionOnly`, filed under section `general` — but it never reaches SavedVariables either: its own `get`/`set` answer it off `NS.DebugLog`, so the write never touches `db.profile`. Failures print a `schema error` line per offending row through `NS.Util.print` but don't refuse to load — a diagnostic guard rail for future contributors, not a hard gate.
+The Options descriptor's `validate` hook runs **`Store.Validate`** (`LibKa0s-Schema-1.0`) at panel-register time. It checks every row for a non-empty `path` (or an Options bound row's `get`/`set`), a known `type` (`bool` / `number` / `string` / `color`), a non-empty **`group`** (`options-ui-§13`; required on every row), and a duplicate `path`, and it resolves every stored path against `NS.DEFAULT_PROFILE`, so a typo'd path that reads and writes nothing is reported too. A row with its own `get` (the console, the Sim mode box, the minimap button) lives in no defaults tree and is skipped. The **panel** and **section** enums (`general` / `icons` / `castbar` / `label` / `spells` / `profiles`, and `general` / `icons` / `castbar` / `label` / `spells` / `units` / `debug`) are this addon's own vocabulary and are a test now — `tests/test_schema.lua`'s *every row's panel and section are known* — rather than a runtime print. The debug **capture** flag is still session-only and still not a schema row (`NS.State.debug`, toggled via the console header button or `/kcd debug on|off|toggle`). The console **window** is a schema row — `state.debugConsole`, `sessionOnly`, filed under section `general` — but it never reaches SavedVariables either: its own `get`/`set` answer it off `NS.DebugLog`, so the write never touches `db.profile`. Failures print a `schema error` line per offending row through `NS.Util.print` but don't refuse to load — a diagnostic guard rail for future contributors, not a hard gate.
 
 ## The write seam (`LibKa0s-Schema-1.0`)
 

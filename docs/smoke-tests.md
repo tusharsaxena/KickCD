@@ -923,7 +923,8 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   index lists `/kcd sim` with `Run a simulation of interrupts and cooldowns — try `/kcd sim``.
   `/kcd disable`, then `/kcd sim` → one tagged line, the library's disabled line naming `/kcd enable`,
   and nothing else. `/kcd enable`, then `/kcd sim` → it answers again (SIM-4). There is no launcher
-  entry and no key binding for it. Result: pass (owner, 2026-10-23)
+  entry and no key binding for it (as smoked; the launcher's *Sim mode* entry and the Master controls
+  *Sim mode* box came later, see SIM-17). Result: pass (owner, 2026-10-23)
 - **SIM-4. The panel, the usage and the auto-run (KC-05, SM-KC-4, SM-KC-15).** `/kcd set visibility
   always`, then `/kcd sim` → chat prints `Simulation: idle. Scenarios: pull, boss, miss, leave.` and the
   usage lines (`start <scenario>`, `run`, `step`, `pause`, `resume`, `restart`, `stop`, `status`,
