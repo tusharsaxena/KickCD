@@ -1,0 +1,1 @@
+OK R6-RV2 (independent review, 2026-11-04) — libs/LibKa0s is byte-identical to LibKa0s tag v1.85.0 (550ef68) LibKa0s/ apart from media/icons, which holds exactly the CLAUDE.md 'LibKa0s icons:' declaration's files, each identical to the tag's; tests/_kit identical to the tag's testkit/. Provenance line names v1.85.0. Gate fresh: 1669 passed / 0 failed / 1 skipped, luacheck 0/0.
