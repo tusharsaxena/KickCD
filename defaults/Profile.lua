@@ -67,7 +67,7 @@ local ICONS_DEFAULT = {
         borderTexture    = "Blizzard Tooltip",
         -- "Use the skin's border" (settings/Icons.lua's BorderGroup, `fromSkin = "icon"`): while
         -- true the border's style AND thickness are the skin's icon border (`icon.borderStyle`,
-        -- `icon.borderSize`; Ka0s Default's is Solid 2px), and the two pickers above keep the
+        -- `icon.borderSize`; Solid 1px in every skin), and the two pickers above keep the
         -- player's pick for when it is turned off. Every *FromSkin companion in this file defaults
         -- TRUE (Ka0sAddonsCommonTasks docs/2026-10-29-SKINNING_ROLLOUT DECISIONS X3), so a new or
         -- reset profile follows the skin exactly as an adopted one does after the one-time reset
@@ -297,7 +297,7 @@ local CASTBAR_DEFAULT = {
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
-            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1), and so the color is icon.border.
+            -- icon.borderSize, Solid 1px in every skin, KC-A1), and so the color is icon.border.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             borderColorFromSkin = true,        -- "Use the skin's color": icon.border
@@ -324,7 +324,7 @@ local CASTBAR_DEFAULT = {
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
-            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1), and so the color is icon.border.
+            -- icon.borderSize, Solid 1px in every skin, KC-A1), and so the color is icon.border.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
             borderColorFromSkin = true,        -- "Use the skin's color": icon.border

@@ -51,8 +51,12 @@ SC.ENEMIES = {
     boss    = { name = L["Hollow King"],  cast = 116858, channel = 234153 }, -- Chaos Bolt, Drain Life
 }
 
--- The story's timing (seconds): every cast, the `leave` cast, every channel.
-SC.CAST, SC.LEAVE_CAST, SC.CHANNEL = 3, 4, 5
+-- The story's timing (seconds) at one step a second: every cast, the `leave` cast, every channel.
+-- The drivers scale each by the step delay when its step plays (SimDrivers D.Pace, R3-FIX), so a
+-- slow pace keeps the story. The `leave` cast is 5, so the kick four steps after it meets it live,
+-- and the `miss` shielded cast 5, so the kick three steps after it meets it live; each ran out with
+-- the kick's own step at 4 and 3.
+SC.CAST, SC.LEAVE_CAST, SC.CHANNEL, SC.SHIELD_CAST = 3, 5, 5, 5
 
 --- One step: `kind` plus `fields` (copied, so a timeline never shares a table between calls).
 local function step(kind, fields)
@@ -152,7 +156,7 @@ function TIMELINES.miss()
     return {
         combat(true),
         target(a),
-        cast(a, L["%s starts an uninterruptible cast"]:format(n), { uninterruptible = true }),
+        cast(a, L["%s starts an uninterruptible cast"]:format(n), { uninterruptible = true, duration = SC.SHIELD_CAST }),
         kick(a),
         step("Interruptible", { enemy = a, label = L["%s's shield breaks"]:format(n) }),
         kick(a),

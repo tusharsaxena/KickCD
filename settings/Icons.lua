@@ -248,7 +248,7 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border" (OptionsCompose minor 13): the skin's ICON border family, style and
-    -- thickness both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px). The companion is
+    -- thickness both (icon.borderStyle / icon.borderSize, Solid 1px in every skin). The companion is
     -- `icons.borderTextureFromSkin`, defaulting true (X3); modules/IconGrid_Render.lua's
     -- ApplyAppearance resolves both through NS.Skin.Resolve. The color has a companion of its own.
     fromSkin = "icon",

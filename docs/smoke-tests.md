@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| SIM-1 – 15 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider |
+| SIM-1 – 16 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story |
 | DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 43 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz |
@@ -1005,6 +1005,13 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd get sim.stepDelay` answers the slider's value; `/kcd set sim.stepDelay 0.3` is refused.
   General's **Defaults** puts it back to 1. `/kcd sim stop`. Fail: no Simulator tab, a pace that does
   not follow the slider, or a change that waits for a new session. Result: not run
+- **SIM-16. A slow pace keeps the story (R3-FIX).** Set **Simulation step delay** to 4, then
+  `/kcd sim start pull` → the target's cast bar is still filling when "Interrupt Shadowcaster with your
+  kick" plays and the kick ends it; no bar sits full with nothing ending it; at "Shadowcaster casts again
+  while your kick cools" your kick's icon is still cooling. Then `/kcd sim start miss` → the third kick
+  is refused on cooldown, and a cast left to run ends by itself when its bar fills. Set the slider back
+  to 1. Fail: a kick that lands on a full bar, a bar left full, or the kick ready again where the story
+  says it cools. Result: not run
 
 ## DIAG
 
@@ -1294,14 +1301,15 @@ after each check. Every check also fails on a Lua error or a taint warning.
   in **Prototype** (a squared, technical face; Oxanium before LibKa0s v1.82.0) instead of Friz Quadrata (the badge's was the client's
   number font); both cast-bar states fill with the **Ka0s Default** bar texture (dim at the top, a
   highlight low on the bar and a short lip) instead of Blizzard Raid Bar, in the same yellow and red;
-  both cast-bar states and each icon draw a **flat 2 px edge** in the border color (black) where each
+  both cast-bar states and each icon draw a **flat 1 px edge** in the border color (black) where each
   drew the 2 px Blizzard Tooltip edge (the cast bar keeps an edge under every skin, KC-A1). Sizes, colors,
   opacity, the glow, the layout and every position are as before. The settings pages are as before
   (the Skin tab's **Ignore settings panel** is on). The debug console, perf panel and sim panel keep
   their edge and colors; their text reads in Prototype, the log lines in JetBrains Mono. Fail: any other
   changed color, size or position, a HUD string still in Friz Quadrata, a cast bar on Blizzard Raid
   Bar, or a cast bar with no border or still on the Blizzard Tooltip edge. Re-opened for LibKa0s
-  v1.82.0 (KC-01): Ka0s Default's face is Prototype. Result: Owner reported pass, 2026-10-31
+  v1.82.0 (KC-01): Ka0s Default's face is Prototype. Re-opened by R3-FIX (LibKa0s v1.85.0 re-cut): the
+  edge is 1 px, where it was 2. Result: not run
 - **SKIN-2. The reset runs once per profile and keeps your own picks (O2; KC-03).** Before installing
   this build, on a profile `SkinA` set Target's interruptible cast-bar texture to a bar that looks
   clearly different (Blizzard Raid Bar) and its cast-bar font to Arial Narrow, and give a second
@@ -1350,13 +1358,14 @@ after each check. Every check also fails on a Lua error or a taint warning.
   texture: Ka0s Default **Ka0s Default**; Obsidian **Ka0s Matte**; Azeroth **Ka0s Parchment**; Glass
   **Ka0s Glass Bar**; High Contrast **Ka0s Solid**; Ember **Ka0s Forge**; WoW Midnight **Ka0s Satin**;
   WoW Forever **Ka0s Classic**; WoW Default **Blizzard**. The icon border and both cast-bar states'
-  borders take the skin's icon edge (KC-A1): a flat 1 px edge under Obsidian, Glass and WoW Forever, a
-  flat 2 px edge under Ka0s Default, Azeroth, High Contrast, Ember and WoW Midnight, and the 2 px
-  Blizzard Tooltip edge under WoW Default. Fail: a bar on another skin's texture, a white or missing
+  borders take the skin's icon edge (KC-A1): a flat 1 px edge under every skin, WoW Default included
+  (R3-FIX; Ka0s Default, Azeroth, Ember and WoW Midnight drew 2 px and WoW Default the Blizzard
+  Tooltip edge before it). Fail: a bar on another skin's texture, a white or missing
   fill, a cast bar or icon with no border, an edge of the wrong thickness, HUD text in Friz Quadrata
   under any skin, or an empty square where a letter should be. Re-opened for LibKa0s
   v1.82.0 (KC-01): the Ka0s Default and Obsidian faces moved. Re-opened for LibKa0s v1.83.0 (KC-F01): six
-  more moved. Re-opened by R3-FRIZ: WoW Default's face is Ka0s Ubuntu. Result: not run
+  more moved. Re-opened by R3-FRIZ: WoW Default's face is Ka0s Ubuntu. Re-opened by R3-FIX: every icon
+  edge is 1 px. Result: not run
 - **SKIN-7. The "Use the skin's ..." boxes (KC-03).** On a non-default skin (Azeroth), Units > Icons
   → Appearance → Border and Annotations → Cooldown text, Cast bar → Text → Font (both texts) and each
   state's Bar and Border, and Text label → Font each carry one **Use the skin's ...** box (eight per
@@ -1665,5 +1674,7 @@ The 2026-10-31 findings remediation adds PANEL-37, PANEL-38, PANEL-39, GRID-22 a
 The 2026-11-01 full skinning run (FS-KC-RV to FS-KC-FIX of Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/`, LibKa0s v1.85.0) adds SKIN-37 – 42 and moves the expected result of SKIN-2, SKIN-5, SKIN-7, SKIN-36, GRID-10, LABEL-8, PANEL-33, PANEL-34 and DEGRADED-16, whose owner passes are withdrawn. Owed: all fifteen. The simulator's step panel also changes on the copy, for the owner to see on any run of it: its Steps title band is 30 high and an owned tooltip title takes `gtip.title`. KickCD hosts no library strip, so the strip's `icon.tint` does not reach it. The re-cut of LibKa0s v1.85.0 (FS-KC-GATE) rewrites SKIN-37, still owed, because each skin now states its own glow, bar background and icon border.
 
 The owner's third smoke round (R3-FRIZ of Ka0sAddonsCommonTasks `docs/2026-11-02-SMOKE_ROUND3/`, LibKa0s v1.85.0 re-cut) adds SKIN-43 and moves the expected result of SKIN-6 (WoW Default draws Ka0s Ubuntu), whose owner pass is withdrawn. Owed: both.
+
+The round's review (R3-FIX, the same bundle) adds SIM-16 (a slow pace keeps the story) and moves the expected result of SKIN-1 and SKIN-6 (every icon edge is 1 px), so SKIN-1's pass is withdrawn. Owed: SIM-16, SKIN-1, SKIN-6.
 
 On 2026-11-02 the owner reported that every check on the smoke lists of the full skinning run and its smoke feedback batch (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/` and `docs/2026-11-01-SMOKE_FEEDBACK/`) passed, apart from DpsRace's clock font, the skinned look of the AceGUI Dropdown and the Ka0sMedia_Font and Ka0sMedia_Statusbar pickers, FadeNineSlice and IconBorder (`docs/2026-11-02-SMOKE_ROUND3/`, R3-SMOKE). Passed, recorded on each `Result:` line as `Passed (owner, 2026-11-02)`: DEGRADED-16, GRID-10, LABEL-8, PANEL-33, PANEL-34, SIM-8, SIM-14, SKIN-2, SKIN-5, SKIN-7, SKIN-36, SKIN-38, SKIN-39, SKIN-40, SKIN-41 and SKIN-42. Failed, re-opened as R3-L3 (IconBorder's 1 px outline and zoom) and recorded as `Failed (owner, 2026-11-02): re-opened as R3-L3`: SKIN-37.

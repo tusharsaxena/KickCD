@@ -381,8 +381,9 @@ collection's reference adopter, and every piece below copies its shape.
   off: the stored faces, colors and picks are kept for a player who unticks the box again
   ([schema.md](schema.md#migration-the-one-step-onto-the-skin-v8--v9)).
 - **What Ka0s Default looks like.** As before skins, except two things. The HUD after the reset (X5):
-  Prototype on every HUD text (Oxanium before LibKa0s v1.82.0), the Ka0s Default bar texture on both cast-bar states, a flat 2 px icon
-  border and the same flat 2 px edge on both cast-bar states, each in `icon.border`, black. And
+  Prototype on every HUD text (Oxanium before LibKa0s v1.82.0), the Ka0s Default bar texture on both cast-bar states, a flat 1 px icon
+  border and the same flat 1 px edge on both cast-bar states, each in `icon.border`, black (2 px
+  until LibKa0s v1.85.0's R3-FIX made every skin's icon border Solid 1px). And
   the tool windows, now that the
   owner is registered: the debug console, its copy window, the perf panel and the sim panel keep their
   edge and colors but take Ka0s Default's faces (Prototype, the log lines JetBrains Mono), where before

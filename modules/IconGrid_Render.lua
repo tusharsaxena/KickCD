@@ -809,7 +809,7 @@ function Icon:ApplyAppearance(cfg)
     if show then
         -- "Use the skin's border" (settings/Icons.lua, OptionsCompose's icon family): while the
         -- companion is set, the style AND the thickness are the skin's icon border
-        -- (icon.borderStyle, icon.borderSize; Ka0s Default's Solid 2px), the stored picks kept for
+        -- (icon.borderStyle, icon.borderSize; Solid 1px in every skin), the stored picks kept for
         -- when it is off. Resolved here, in the layout pass, never per SPELL_STATE: the icon is
         -- pooled, so nothing is recorded on it (no S.IconBorder), it is re-resolved on every
         -- Layout and on the owner's OnLooksChanged (modules/IconGrid.lua).
