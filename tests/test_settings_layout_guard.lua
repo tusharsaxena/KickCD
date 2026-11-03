@@ -46,7 +46,8 @@ end
 
 -- Generated from the schema at 82bf009 (KC-RV2), before the first layout edit. Sorted by path.
 -- The seven skin.* rows joined with the skin seam (KC-01 of the 2026-10-29 skinning rollout), and
--- the sixteen HUD "Use the skin's ..." companions with the HUD (KC-03 of the same run).
+-- the sixteen HUD "Use the skin's ..." companions with the HUD (KC-03 of the same run), and the
+-- session-only Sim mode row with LibKa0s OptionsCompose minor 19 (R6-SIM of round 6).
 local PIN = {
     "alpha number 1 0 1 0.050000000000000003",
     "enabled bool true nil nil nil",
@@ -63,6 +64,7 @@ local PIN = {
     "skin.source string \"ka0s\" nil nil nil",
     "skin.texture string \"\" nil nil nil",
     "state.debugConsole bool false nil nil nil",
+    "state.sim bool false nil nil nil",
     "units.focus.castbar.anchorMode string \"PRIMARY\" nil nil nil",
     "units.focus.castbar.anchorOffsetX number 0 -200 200 1",
     "units.focus.castbar.anchorOffsetY number -1 -200 200 1",

@@ -155,6 +155,11 @@ NS.Launcher = Launcher:New({
     -- No isTestMode / toggleTestMode (no test mode: unlocking IS the preview) and
     -- no isWindowShown / toggleWindow (no primary window). A pair for a state
     -- nobody can find would be a menu entry that lies.
+    -- Sim mode (Launcher minor 7): the ONE pair core/SimSetup.lua defines, which the Master controls
+    -- Sim mode box takes too (settings/General.lua), so the entry, the box and `/kcd sim` are one act.
+    -- Both resolve NS.Sim at call time, so the live instance modules/Sim.lua builds is the one asked.
+    isSimMode = NS.IsSimMode,
+    toggleSim = NS.ToggleSim,
 
     -- ── THE STATUS TOOLTIP (launcher-§1; Launcher version 3) ─────────────────
     --
@@ -164,13 +169,6 @@ NS.Launcher = Launcher:New({
     -- hint beside the library's is anti-pattern #89.
     --
     -- The TOC's `## Version`, through the one resolver `/kcd version` uses.
-    isSimMode = function() local s = NS.Sim; return type(s) == "table" and type(s.IsActive) == "function" and s:IsActive() == true end,
-    toggleSim = function()
-        local s = NS.Sim
-        if type(s) ~= "table" or type(s.RunVerb) ~= "function" then return end
-        -- The typed verb's own acts: stop a running sim, otherwise the bare verb (status and the sim panel).
-        s:RunVerb(s:IsActive() and "stop" or "")
-    end,
     version = function() return NS.Version and NS.Version() end,
 
     print = function(line) if NS.Util and NS.Util.print then NS.Util.print(line) end end,

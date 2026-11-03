@@ -458,3 +458,15 @@ NS.Sim:OnStop(function(session, reason)
         NS.Sim:DeliverForCleanup("PLAYER_REGEN_ENABLED")
     end
 end)
+
+-- ── the Sim mode box follows the live sim (R6-SIM, LibKa0s OptionsCompose minor 19) ──────────
+--
+-- The Master controls Sim mode box reads NS.IsSimMode on every RefreshScalars, and the sim starts
+-- and stops outside the panel: `/kcd sim start`, the step panel, the launcher, a stand-down or a
+-- prepare that failed. The library notifies its listeners on start, ready and stop (the session is
+-- already gone at the stop's notify), so an open page repaints at once. Helpers is resolved at call
+-- time: settings/ loads after this file, and RefreshScalars is absent until a panel exists.
+NS.Sim:AddListener(function()
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.RefreshScalars then H.RefreshScalars() end
+end)

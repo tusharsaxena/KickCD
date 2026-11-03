@@ -8,13 +8,14 @@
 --
 -- The first tab is the collection's canonical Master controls block
 -- (options-ui-§15) and it is COMPOSED, not written out: H.MasterControls emits
--- SEVEN canonical rows from one declaration, and the afterGroup it returns draws
+-- EIGHT canonical rows from one declaration, and the afterGroup it returns draws
 -- the closing Reset position / Reset all settings button pair.
 --
--- SEVEN, not nine. options-ui-§15's canonical table's last line IS the button pair, so
+-- EIGHT, not ten. options-ui-§15's canonical table's last line IS the button pair, so
 -- counting "the canonical rows, plus the button-pair hook" counts those two
 -- twice. What the composer emits is `enabled`, `visibility`, `scale`, `alpha`,
--- `locked`, `state.debugConsole` and -- since compose minor 7 -- the minimap
+-- `locked`, -- since compose minor 19 -- the session-only Sim mode row
+-- `state.sim`, `state.debugConsole` and -- since compose minor 7 -- the minimap
 -- button's `global.minimap.shown`. The two resets are actions rather than
 -- settings -- an anchor is not a key=value the schema covers -- which is why
 -- they are a button pair and not rows.
@@ -23,9 +24,9 @@
 -- unlocking already shows the grids and the cast bar's placeholder, so Lock
 -- frame is the switch, and a Test mode checkbox would be a second switch for
 -- the same state. Hence no `testModePath` here and no `/kcd test` verb -- which
--- is also why the Minimap button row sits alone on its line rather than paired
--- with one: the composer drops its `startsLine` only when a test mode is there
--- to pair with.
+-- is also why Sim mode, the row the owner asked for "next to test", sits beside
+-- Lock frame instead (compose minor 19), and Debug console and Minimap button
+-- then share the line below it.
 --
 -- WHY ONE TAB. "Appearance" used to be a section of its own, holding master
 -- scale and master alpha. Two rows whose LABELS both say Master is not a second
@@ -52,8 +53,8 @@ local function add(t) Store.AddRows({ t }) end
 -- one order nine addons share:
 --     [Enable KickCD]   | [General visibility]
 --     [Master scale]    | [Master alpha]
---     [Lock frame]      | [Debug console]
---     [Minimap button]
+--     [Lock frame]      | [Sim mode]
+--     [Debug console]   | [Minimap button]
 -- and hands back the afterGroup that closes the tab with its button pair:
 --     [Reset position]  | [Reset all settings]
 --
@@ -95,6 +96,14 @@ local masterRows, masterTail = H.MasterControls{
     -- to the host is added only once KickCD's lock behavior in combat has been
     -- verified in game.
     lockIsPreview    = true,
+    -- Sim mode (compose minor 19, R6-SIM): the ONE sim pair core/SimSetup.lua defines and the
+    -- launcher's Sim mode entry takes too, so ticking the box runs the bare `/kcd sim` verb and
+    -- unticking runs `/kcd sim stop`. A session row at the library's default path `state.sim`, with
+    -- the pair as its own get / set: nothing is stored. No Test mode row here, so the composer puts
+    -- it beside Lock frame, Debug console then opening the next line with Minimap button beside it.
+    -- modules/Sim.lua's listener repaints an open page when the sim starts or ends elsewhere.
+    isSimMode        = NS.IsSimMode,
+    toggleSim        = NS.ToggleSim,
     onResetPosition  = function() H.ResetIconPosition() end,
     onResetAll       = function() StaticPopup_Show("KICKCD_RESET_ALL") end,
 }

@@ -623,6 +623,15 @@ Total.
 - sim marker: a stop gives the idle panel its close mark back
 - sim marker: a stop puts the panel back on UISpecialFrames, once
 
+### test_sim_checkbox.lua (6)
+
+- Sim mode is a session-only Master controls row at state.sim, beside Lock frame
+- the launcher and the box share NS.IsSimMode / NS.ToggleSim, the acts of `/kcd sim`
+- ticking runs the bare `/kcd sim` verb, unticking runs `/kcd sim stop`
+- the box reads the live sim: unticked idle, ticked while a scenario plays, unticked after
+- a sim that starts or stops elsewhere repaints the open panel (RefreshScalars)
+- Reset all settings stops a running sim and never starts an idle one
+
 ### test_debuglog.lua (13)
 
 - DebugLog module loaded with its public API
@@ -2000,6 +2009,7 @@ Total.
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 11 |
 | test_sim_marker.lua | 7 |
+| test_sim_checkbox.lua | 6 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -2073,4 +2083,4 @@ Total.
 | test_skin_values.lua | 3 |
 | test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1663** |
+| **Total** | **1669** |
