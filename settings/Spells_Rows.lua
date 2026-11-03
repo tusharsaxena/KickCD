@@ -32,7 +32,10 @@ local function categoryList() return deps().categoryList() end
 -- Status-glyph textures for the "known to the player?" indicator on each
 -- row. Matches the In-bags / Not-in-bags glyphs ConsumableMaster uses
 -- (Interface\RaidFrame\ReadyCheck-Ready / -NotReady) so the visual
--- vocabulary is consistent across the user's addons.
+-- vocabulary is consistent across the user's addons. That is the stock look:
+-- with the Scope's Ignore settings panel cleared the glyph is the Ka0s tick or
+-- cross in the skin's sem.good or sem.bad (Spells.StatusGlyphMark, cause L6). The
+-- color says known or not, so it keeps its meaning under every skin.
 local SPELL_KNOWN_ICON     = [[Interface\RaidFrame\ReadyCheck-Ready]]
 local SPELL_NOT_KNOWN_ICON = [[Interface\RaidFrame\ReadyCheck-NotReady]]
 
@@ -112,11 +115,52 @@ end
 -- order it renders — and AddChild ORDER *is* that column order, spacer
 -- included, so the sequence of calls at the bottom is the layout.
 
+-- THE ICON RULE (R5-ICON of Ka0sAddonsCommonTasks docs/2026-11-03-SMOKE_ROUND5; LibKa0s
+-- docs/api/README.md, "Icon art: the rule"). A spell icon on a settings page is cropped 0.07 a side
+-- and edged 1 px in the skin's icon.outline. The crop rides in SetImage's own texcoords, which
+-- AceGUI's Icon resets to 0..1 on its next SetImage, so the pooled widget needs no undo. The edge is
+-- NOT recorded on `icon.image`: AceGUI pools that Texture across every addon and never hides it, so
+-- an edge there would outlive the row. It hangs on a plain frame of this file's own, laid over the
+-- image while the row is drawn and handed back on the widget's release, as LibKa0s's O.IdList does.
+-- Only while the settings pages wear the skin: under "Ignore settings panel" the page stays stock.
+local SPELL_ICON_CROP = { 0.07, 0.93, 0.07, 0.93 }
+local SPELL_ICON_EDGE = { fromSkin = true, zoom = false }
+local iconEdges = {}
+
+local function spellIconEdgeBack(w)
+    local e = w.__kcdIconEdge
+    if not e then return end
+    w.__kcdIconEdge = nil
+    e:Hide()
+    e:ClearAllPoints()
+    iconEdges[#iconEdges + 1] = e
+end
+
+--- Lay this file's edge frame over a row icon's art. Answers the frame, or nil when the page is
+--- stock or the widget has no Texture to edge.
+function Spells.SpellIconEdge(icon)
+    local tex = icon.image
+    if type(tex) ~= "table" or type(tex.GetObjectType) ~= "function" then return nil end
+    if not NS.SkinPanelPainted() then return nil end
+    -- Popped by hand: the page's guard reads a table.remove here as a spell-list write.
+    local e = iconEdges[#iconEdges]
+    if e then iconEdges[#iconEdges] = nil else e = CreateFrame("Frame") end
+    e:SetParent(icon.frame)
+    e:ClearAllPoints()
+    e:SetAllPoints(tex)
+    e:Show()
+    NS.Skin.IconBorder(e, SPELL_ICON_EDGE)
+    icon.__kcdIconEdge = e
+    NS.SkinOnRelease(icon, spellIconEdgeBack)
+    return e
+end
+
 -- The spell icon, plus the two tooltip closures the name label reuses so
 -- hovering either one shows the same spell tooltip.
 local function rowSpellIcon(AceGUI, entry)
     local icon = Spells.Acquire(AceGUI, "Icon")
-    icon:SetImage(getSpellIcon(entry.spellID) or 134400)
+    icon:SetImage(getSpellIcon(entry.spellID) or 134400, unpack(SPELL_ICON_CROP))
+    Spells.SpellIconEdge(icon)
     alignIconArt(icon, 20)
     icon:SetImageSize(20, 20)
     icon:SetWidth(28)
@@ -186,11 +230,32 @@ end
 -- browsing another class's spec list, every spell will read as red,
 -- which is the correct fact ("you can't cast any of these"). The
 -- glyph is informational only; it doesn't gate enable/disable.
+---
+--- The mark lives on a texture of AceGUI's shared pool, so the release takes it off the skin's
+--- replay and gives the tint back. Answers true when a texture took it.
+function Spells.StatusGlyphMark(statusIcon, known)
+    local tex = statusIcon.image
+    if not tex then return false end
+    local stockArt = known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON
+    NS.Skin.Mark(tex, {
+        art   = NS.Icon and NS.Icon(known and "confirm" or "close") or nil,
+        token = known and "sem.good" or "sem.bad",
+        panel = true,
+        stock = function(t) t:SetTexture(stockArt) end,
+    })
+    NS.SkinOnRelease(statusIcon, function(w)
+        NS.SkinForget(tex)
+        if w.image and w.image.SetVertexColor then w.image:SetVertexColor(1, 1, 1, 1) end
+    end)
+    return true
+end
+
 local function rowKnownGlyph(AceGUI, entry)
     local known = Compat.IsSpellAvailable
         and Compat.IsSpellAvailable(entry.spellID) or false
     local statusIcon = Spells.Acquire(AceGUI, "Icon")
     statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
+    Spells.StatusGlyphMark(statusIcon, known)
     alignIconArt(statusIcon, 20)
     statusIcon:SetImageSize(20, 20)
     -- Box width hugs the 20 px image (1 px padding each side instead of 4).

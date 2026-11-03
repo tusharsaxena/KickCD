@@ -415,3 +415,71 @@ test("Sim panel: anchorTo is the target grid while shown, else the focus grid, e
     focus:Hide()
     assertNil(anchorTo())
 end)
+
+-- ── the step delay setting (R3-SIM-KC) ─────────────────────────────────────
+--
+-- The owner's ask: a Simulation step delay (seconds) slider, the same `sim.stepDelay` path, range,
+-- default and behavior as AbsorbTracker's and DpsRace's, and the sim follows it from the next step.
+
+test("sim.stepDelay: a 0.5 to 10 s slider in 0.5 s steps, default 1, on the General page (R3-SIM-KC)", function()
+    -- red under: no sim.stepDelay row (design D7's fixed 1 s had no settings row)
+    local env = ready()
+    local NS = env.NS
+    local Store = NS.Settings.Store
+    local row = Store.FindRow("sim.stepDelay")
+    assertTrue(row ~= nil, "no sim.stepDelay row")
+    assertEqual(row.type, "number")
+    assertEqual(row.default, 1)
+    assertEqual(row.min, 0.5)
+    assertEqual(row.max, 10)
+    assertEqual(row.step, 0.5)
+    assertEqual(row.panel, "general")
+    assertEqual(row.label, NS.L["Simulation step delay (seconds)"])
+    assertEqual(NS.db.profile.sim.stepDelay, 1, "the profile default")
+    assertTrue(Store.Set("sim.stepDelay", 4), "a pace the slider makes is stored")
+    assertEqual(NS.db.profile.sim.stepDelay, 4)
+    assertFalse(Store.Set("sim.stepDelay", 0.3), "a pace the slider cannot make is refused")
+    assertFalse(Store.Set("sim.stepDelay", 10.5), "past the top of the range is refused")
+    assertEqual(NS.db.profile.sim.stepDelay, 4, "a refused pace leaves the stored one")
+end)
+
+test("Host.DelayAfter reads the sim.stepDelay setting, else a step's wait, else 1 s (R3-SIM-KC)", function()
+    -- red under: DelayAfter answering the fixed STEP_DELAY whatever the setting
+    local env = ready()
+    local NS, Host = env.NS, env.NS.SimHost
+    assertEqual(Host.DelayAfter({}), 1, "the default")
+    NS.Settings.Store.Set("sim.stepDelay", 3.5)
+    assertEqual(Host.DelayAfter({}), 3.5, "the stored pace")
+    assertEqual(Host.DelayAfter({ wait = 2 }), 3.5, "the setting paces every step")
+    NS.db.profile.sim.stepDelay = 0.3
+    assertEqual(Host.DelayAfter({ wait = 2 }), 2, "a stored value the slider cannot make falls back to the step's wait")
+    assertEqual(Host.DelayAfter({}), Host.STEP_DELAY, "and else to the default")
+end)
+
+test("Sim run: waits the sim.stepDelay setting between steps, and a change lands from the next step (R3-SIM-KC)", function()
+    -- red under: a fixed 1 s pace, so no step is held back inside the setting's 4 s
+    local noop = { kind = "Noop", label = "Noop" }
+    local env = ready({ noop, noop, noop, noop })
+    local NS = env.NS
+    withNoopDriver(NS)
+    NS.Settings.Store.Set("sim.stepDelay", 4)
+    assertTrue((start(env)), "the test session did not start")
+    env.advance(0)
+    assertTrue(NS.Sim:Run(), "Run was refused")
+    env.advance(0.5)
+    local first = NS.Sim:Status().pos
+    assertTrue(first >= 1, "the first step plays at once")
+    env.advance(3)
+    assertEqual(NS.Sim:Status().pos, first, "no step inside the setting's 4 s")
+    env.advance(1)
+    assertEqual(NS.Sim:Status().pos, first + 1, "the next step after it")
+    -- The slider moves while the run waits: the step already scheduled keeps its 4 s, the one
+    -- after it waits the new 2 s.
+    NS.Settings.Store.Set("sim.stepDelay", 2)
+    env.advance(4)
+    assertEqual(NS.Sim:Status().pos, first + 2, "the scheduled step keeps the pace it was set with")
+    env.advance(2.1)
+    assertEqual(NS.Sim:Status().pos, first + 3, "the step after it follows the new pace")
+    NS.Sim:Stop()
+    env.advance(0)
+end)

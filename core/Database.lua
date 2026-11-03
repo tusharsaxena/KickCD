@@ -40,11 +40,15 @@ NS.Database = Database
 -- v1.82.0, ruling D-07), once per profile, recorded in skin.flagsReset (migrations[6] /
 -- Database:MigrateFlagsFromSkin). v8 turns "Use the skin's font" off on every HUD text whose
 -- stored face is the player's own pick (ruling D-15), once per profile, recorded in
--- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks).
+-- skin.fontPicksKept (migrations[7] / Database:MigrateSkinFontPicks). v9 is the one step onto the
+-- skin (the owner's rulings of 2026-11-01): every HUD companion and Font flags row, once per
+-- profile, recorded in skin.fullSkinReset (migrations[8] / Database:MigrateFullSkin). v10 moves a
+-- stored Ka0s Friz Quadrata TT, which LibKa0s v1.85.0 deleted, to Ka0s Ubuntu in every stored profile
+-- (R3-FRIZ; migrations[9] / Database:RetireFonts).
 -- The migration runner's target, under the name savedvariables-§1 gives it.
 -- core/Database_Migrations.lua walks the stamp up to it, and `/kcd
 -- diagnostics` prints it beside the stored db.global.schemaVersion.
-NS.SCHEMA_VERSION = 8
+NS.SCHEMA_VERSION = 10
 
 -- The one and only Ka0s_KickCD_ProfileChanged emitter (architecture-§4:
 -- one sender per message). Both paths that make the active profile a
@@ -649,6 +653,13 @@ local function traceProfileEvent(event, key, source)
     end
 end
 
+--- A switch is about to leave the current profile: the skin picker goes down quietly first, while
+--- the Store still writes the profile it opened on, so the eye's restore (core/SkinSetup.lua, R6-PV)
+--- relocks the profile it unlocked and never the one being switched to.
+function Database:OnProfileShutdown() -- luacheck: no unused args
+    if NS.HideSkinPicker then NS.HideSkinPicker() end
+end
+
 function Database:OnProfileChanged(event, db, arg)
     -- A simulation never outlives the profile it started on (KickCD#38, KC-06): stop it first, so
     -- its cleanup re-syncs the engine before anything below rebuilds from the new profile.
@@ -657,8 +668,10 @@ function Database:OnProfileChanged(event, db, arg)
     -- profile it opened on, and taking it down puts back a pending preview (the stored skin,
     -- through the library's revert), so it lands before NS.ApplySkinChoice below and the new
     -- profile's whole pair, exceptions and overrides with it, is the last skin written. A new or
-    -- reset profile still shows it, fresh, further down.
-    if NS.HideSkinPicker then NS.HideSkinPicker() end
+    -- reset profile still shows it, fresh, further down. A switch already took it down on
+    -- OnProfileShutdown (above), relocking the OLD profile the eye unlocked; a copy or a reset
+    -- rewrote this profile in place, so `true` drops the eye's restore (R6-PV).
+    if NS.HideSkinPicker then NS.HideSkinPicker(true) end
     -- Then the new profile's skin (core/SkinSetup.lua), before anything below rebuilds:
     -- Skin:SetChoice repaints every frame recorded for this owner and fires OnLooksChanged, so a
     -- switch, a copy and a reset (back to Ka0s Default) all repaint live (skinning-§2). AceDB has
@@ -696,6 +709,8 @@ function Database:OnProfileChanged(event, db, arg)
     -- face kept off the skin's font (skin.fontPicksKept), after the reset that put it on.
     self:MigrateFlagsFromSkin(self.db)
     self:MigrateSkinFontPicks(self.db)
+    -- The one step onto the skin, last of the four: its own record, skin.fullSkinReset.
+    self:MigrateFullSkin(self.db)
     self:BuildSpells()
     self:MigrateProfile()
 
@@ -787,6 +802,10 @@ function Database:Init()
     -- recorded per profile (skin.fontPicksKept); after MigrateHudSkin, which put it on.
     self:MigrateSkinFontPicks(db)
 
+    -- The one step onto the skin (FS-KC-FLIP), per profile and recorded per profile
+    -- (skin.fullSkinReset); last, so the box the step above turned off comes back on.
+    self:MigrateFullSkin(db)
+
     -- First-creation seeding. Database:BuildSpells() is a no-op for already
     -- populated profiles, so it's safe on every login. Profile changes
     -- re-trigger it via OnProfileChanged.
@@ -800,6 +819,7 @@ function Database:Init()
     db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
     db.RegisterCallback(self, "OnProfileCopied",  "OnProfileChanged")
     db.RegisterCallback(self, "OnProfileReset",   "OnProfileChanged")
+    db.RegisterCallback(self, "OnProfileShutdown", "OnProfileShutdown")
 end
 
 

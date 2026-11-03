@@ -546,6 +546,7 @@ test("the cast time text takes its own color, which it never had before", functi
     local inst = Castbar:GetInstance("target")
     local c = castbarCfg(NS)
     c.textColor = { r = 0.25, g = 0.5, b = 0.75, a = 0.6 }
+    c.textColorFromSkin = false
     c.useClassColorText = false
     Castbar:Reskin(inst)
     local r, g, b, a = inst.frame.timeText:GetTextColor()
@@ -557,6 +558,7 @@ test("the font shadow is applied, and CLEARED again", function()
     local NS, Castbar = enabled()
     local inst = Castbar:GetInstance("target")
     local c = castbarCfg(NS)
+    c.fontShadowFromSkin = false
     c.fontShadow = true
     Castbar:Reskin(inst, true)
     local x, y = inst.frame.nameText:GetShadowOffset()

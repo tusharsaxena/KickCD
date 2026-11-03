@@ -27,11 +27,13 @@ D.DRIVERS = D.DRIVERS or {}
 D.EVENTS = D.EVENTS or {}
 local DRIVERS, EVENTS = D.DRIVERS, D.EVENTS
 
--- The timing the scenarios' story is told in (seconds).
+-- The timing the scenarios' story is told in (seconds), at the story's own pace of one step a
+-- second (design D7's fixed 1 s, the setting's default).
 D.KICK_CD = 15     -- your kick's cooldown
 D.CC_CD = 30       -- your CC's cooldown
 D.GCD = 1.5        -- the global cooldown a CC triggers
 D.RECHARGE = 15    -- one charge's recharge
+D.STORY_PACE = 1   -- the step delay the times above are told at
 
 local W = NS.SimWorld
 local L = NS.L
@@ -103,10 +105,32 @@ local function unitsShowing(key)
     return out
 end
 
---- The live cast of enemy `key`, or nil.
-local function castOf(key)
+-- ── the pace (R3-FIX of Ka0sAddonsCommonTasks docs/2026-11-02-SMOKE_ROUND3) ──────────────────
+-- The step delay slider (R3-SIM-KC) slows the steps, and the story's casts and cooldowns run on the
+-- clock, so at a slow pace a kick met a cast that had run out and a cooldown was over before the step
+-- that leans on it. Every time the story tells (a cast's duration, a cooldown, a recharge) is scaled
+-- by the pace when its step plays: the step delay over D.STORY_PACE, never under 1. The GCD is the
+-- client's, not the story's, and stays 1.5 s.
+
+--- The factor the story's times run at now.
+function D.Pace()
+    local host = NS.SimHost
+    local delay = host and type(host.DelayAfter) == "function" and tonumber(host.DelayAfter(nil))
+    return math.max(1, (delay or D.STORY_PACE) / D.STORY_PACE)
+end
+
+--- Enemy `key`'s cast as the world holds it, run out or not.
+local function heldCast(key)
     local e = enemy(key)
     return e and not e.dead and e.cast or nil
+end
+
+--- The live cast of enemy `key`, or nil: a cast past its start + duration has ended, whatever the
+--- world still holds (its end timer, startCast's, fires the client's events for it).
+local function castOf(key)
+    local c = heldCast(key)
+    if c and c.duration > 0 and c.start + c.duration <= now() then return nil end
+    return c
 end
 
 --- Fire `event` (unit, castGUID, spellID) for every unit showing enemy `key`.
@@ -149,10 +173,10 @@ local function spend(id, cd)
     local w = world()
     local s = w and w.spells[id]
     if s and s.maxCharges then
-        W.UseCharge(id, D.RECHARGE)
+        W.UseCharge(id, D.RECHARGE * D.Pace())
         return true
     end
-    W.StartCooldown(id, cd)
+    W.StartCooldown(id, cd * D.Pace())
     return false
 end
 
@@ -196,16 +220,33 @@ function DRIVERS.Focus(step) return setUnit("focus", step.enemy) end
 
 -- ── an enemy cast begins or changes ───────────────────────────────────────────────────────────
 
---- Start step's cast (a channel when `isChannel`) on step.enemy and fire `event` per unit.
+--- A cast that runs its full time ends as the client ends one: SUCCEEDED and STOP for a cast,
+--- CHANNEL_STOP for a channel, on every unit showing it, unless a kick, a death or a completion
+--- ended it first (R3-FIX: the cast bar sat full with no STOP).
+local function endOnTime(key, cast)
+    local sim = NS.Sim
+    if not (sim and sim.After and cast.duration > 0) then return end
+    sim:After(cast.duration, function()
+        if heldCast(key) ~= cast then return end
+        W.EndCast(key)
+        if not cast.isChannel then fireCast("UNIT_SPELLCAST_SUCCEEDED", key, cast) end
+        fireCast(stopEvent(cast), key, cast)
+    end)
+end
+
+--- Start step's cast (a channel when `isChannel`) on step.enemy, its duration at the pace, and fire
+--- `event` per unit.
 local function startCast(step, isChannel, event, detailFmt)
     local key = step.enemy
     if not enemy(key) then return L["no enemy"] end
     local name, texture = NS.Compat.GetSpellInfo(step.spell)
     W.StartCast(key, {
-        spellID = step.spell, name = name, texture = texture, duration = step.duration,
+        spellID = step.spell, name = name, texture = texture, duration = (tonumber(step.duration) or 0) * D.Pace(),
         notInterruptible = step.uninterruptible, isChannel = isChannel, castGUID = newGuid(),
     })
-    fireCast(event, key, castOf(key))
+    local cast = heldCast(key)
+    fireCast(event, key, cast)
+    endOnTime(key, cast)
     return detailFmt:format(enemyName(key), spellName(step.spell))
 end
 
@@ -330,7 +371,7 @@ function DRIVERS.Cc(step)
         say(L["%s is on cooldown (%ds)."]:format(spellName(ccID), math.ceil(left)))
         return L["on cooldown"]
     end
-    W.StartCooldown(ccID, D.CC_CD)
+    W.StartCooldown(ccID, D.CC_CD * D.Pace())
     W.StartGcd(D.GCD)
     fire("UNIT_SPELLCAST_SUCCEEDED", "player", newGuid(), ccID)
     fire("SPELL_UPDATE_COOLDOWN")

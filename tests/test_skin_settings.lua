@@ -343,3 +343,140 @@ test("skin settings: the AceGUI-missing label is on the settings panel, so Ignor
         assertEqual(r, ar, "the panel skinned: Azeroth's accent, live"); assertEqual(g, ag); assertEqual(b, ab)
     end)
 end)
+
+-- ── the icon rule (R5-ICON; LibKa0s docs/api/README.md "Icon art: the rule") ───────────────────
+
+--- Texture-backed Icons whose SetImage keeps AceGUI's texcoord arm (four or eight numbers set the
+--- coords, none puts them back to 0..1), then render the page and answer every Icon it acquired.
+local function icons()
+    local g = mocks.__aceGUI
+    local create = g.Create
+    g.Create = function(self, wtype)
+        local w = create(self, wtype)
+        if wtype == "Icon" then
+            w.image = mocks.CreateFrame("Frame", nil, w.frame):CreateTexture()
+            function w.SetImage(widget, path, ...)
+                widget.image:SetTexture(path)
+                local n = select("#", ...)
+                widget.__coords = (n == 4 or n == 8) and { ... } or { 0, 1, 0, 1 }
+                return widget
+            end
+        end
+        return w
+    end
+    local ok, ws = pcall(spellsWidgets)
+    g.Create = create
+    if not ok then error(ws, 0) end
+    local out = {}
+    for _, w in ipairs(ws) do if w.type == "Icon" then out[#out + 1] = w end end
+    return out
+end
+
+--- The row's spell icon: the one Icon drawing the spell's own art (the mock's 12345).
+local function spellIcons(ws)
+    local out = {}
+    for _, w in ipairs(ws) do
+        if w.image and w.image.GetTexture and w.image:GetTexture() == 12345 then out[#out + 1] = w end
+    end
+    return out
+end
+
+--- Run fn with NS.Skin.IconBorder spied: each call's target and opts, the real one still painting.
+local function spyEdge(fn)
+    local S = NS.Skin
+    local real, calls = S.IconBorder, {}
+    S.IconBorder = function(target, opts)
+        calls[#calls + 1] = { target = target, opts = opts }
+        return real(target, opts)
+    end
+    local ok, err = pcall(fn, calls)
+    S.IconBorder = real
+    if not ok then error(err, 0) end
+end
+
+test("icon rule: a row's spell icon is cropped 0.07 a side through SetImage, panel skinned or not", function()
+    -- red under: icon:SetImage(art) with no texcoords, the Blizzard art's rough edge left showing
+    for _, ignorePanel in ipairs({ true, false }) do
+        onSkin("ka0s", ignorePanel, function()
+            local rows = spellIcons(icons())
+            assertTrue(#rows > 0, "the rows drew a spell icon")
+            for _, w in ipairs(rows) do
+                local c = w.__coords
+                assertEqual(#c, 4, "four texcoords")
+                assertEqual(c[1], 0.07); assertEqual(c[2], 0.93); assertEqual(c[3], 0.07); assertEqual(c[4], 0.93)
+            end
+        end)
+    end
+end)
+
+test("icon rule: on a skinned panel the spell icon is edged in icon.outline on KickCD's own frame", function()
+    -- red under: no S.IconBorder on the row icon (a bare art square in a window), and under an edge
+    -- recorded on the pooled AceGUI image, which another addon acquires next
+    onSkin("ka0s", false, function()
+        spyEdge(function(calls)
+            local all = icons()
+            local rows = spellIcons(all)
+            assertTrue(#rows > 0, "the rows drew a spell icon")
+            for _, w in ipairs(rows) do
+                local hit
+                for _, c in ipairs(calls) do
+                    if c.target == w.__kcdIconEdge then hit = c end
+                    assertTrue(c.target ~= w.image, "never an edge on the pooled image")
+                end
+                assertTrue(hit ~= nil, "the spell icon took one edge")
+                assertEqual(hit.opts.fromSkin, true, "the skin's 1 px outline")
+                assertTrue(not hit.opts.hud, "a settings page draws icon.outline, never the HUD's icon.border")
+                assertEqual(hit.opts.zoom, false, "the crop is SetImage's, so the edge zooms nothing")
+                assertTrue(hit.target:GetParent() == w.frame, "on a frame laid over the widget's own")
+                assertTrue(hit.target:IsShown(), "shown while the row is drawn")
+            end
+            -- Only the spell icon: the Remove mark and the known glyph are Ka0s catalog marks.
+            assertEqual(#calls, #rows, "one edge per spell icon and none on a catalog mark")
+            local w = rows[1]
+            local edge = w.__kcdIconEdge
+            mocks.__aceGUI:Release(w)
+            assertTrue(not edge:IsShown(), "the release hides the edge")
+            assertEqual(w.__kcdIconEdge, nil, "and takes it off the pooled widget")
+        end)
+    end)
+end)
+
+test("icon rule: with the settings panel left the client's the spell icon takes no edge", function()
+    -- red under: an edge drawn whatever the Scope says, on a page meant to stay stock
+    onSkin("obsidian", true, function()
+        spyEdge(function(calls)
+            local rows = spellIcons(icons())
+            assertTrue(#rows > 0, "the rows drew a spell icon")
+            assertEqual(#calls, 0, "no edge on a stock settings page")
+            for _, w in ipairs(rows) do assertEqual(w.__kcdIconEdge, nil) end
+        end)
+    end)
+end)
+
+test("icon rule: the spec picker's inline spec and class icons are cropped 5..59 of 64", function()
+    -- red under: |T<icon>:16:16:0:0|t, the full art with its rough edge
+    local function specLabels()
+        for _, w in ipairs(spellsWidgets()) do
+            if w.type == "Dropdown" and w.labelText == NS.L["Class and specialization"] then return w.list end
+        end
+    end
+    local list = specLabels()
+    assertTrue(type(list) == "table" and next(list) ~= nil, "the spec picker carries entries")
+    local cropped = 0
+    for _, label in pairs(list) do
+        if label:find("|T12345:16:16:0:0:64:64:5:59:5:59|t", 1, true) then cropped = cropped + 1 end
+        assertTrue(label:find(":16:16:0:0|t", 1, true) == nil, "no uncropped icon markup: " .. label)
+    end
+    -- The harness knows the specs of a few classes only; a spec it has no art for draws no icon.
+    assertTrue(cropped > 0, "a spec icon was drawn, cropped")
+    -- The ClassIcon_ art is the fallback where the client has no class atlas.
+    local atlas = mocks.CreateAtlasMarkup
+    mocks.CreateAtlasMarkup = nil
+    local ok, got = pcall(specLabels)
+    mocks.CreateAtlasMarkup = atlas
+    if not ok then error(got, 0) end
+    for _, label in pairs(got) do
+        assertTrue(label:find("^|TInterface\\Icons\\ClassIcon_%a+:16:16:0:0:64:64:5:59:5:59|t") ~= nil,
+            "the fallback class icon is cropped: " .. label)
+    end
+end)

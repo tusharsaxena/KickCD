@@ -145,6 +145,7 @@ NS.Launcher = Launcher:New({
     --
     -- Enabled: the Master-controls row's one reader, and the handler
     -- `/kcd enable` / `/kcd disable` run, handed the state to move TO.
+    openSkinPicker = function() if NS.RunSkinVerb then NS.RunSkinVerb() end end,
     isEnabled  = function() return NS.MasterEnabled == nil or NS.MasterEnabled() end,
     setEnabled = function(on) if NS.SetMasterEnabled then NS.SetMasterEnabled(on) end end,
     -- Locked: the path the `Lock frame` row writes, and the handler `/kcd toggle`
@@ -154,6 +155,11 @@ NS.Launcher = Launcher:New({
     -- No isTestMode / toggleTestMode (no test mode: unlocking IS the preview) and
     -- no isWindowShown / toggleWindow (no primary window). A pair for a state
     -- nobody can find would be a menu entry that lies.
+    -- Sim mode (Launcher minor 7): the ONE pair core/SimSetup.lua defines, which the Master controls
+    -- Sim mode box takes too (settings/General.lua), so the entry, the box and `/kcd sim` are one act.
+    -- Both resolve NS.Sim at call time, so the live instance modules/Sim.lua builds is the one asked.
+    isSimMode = NS.IsSimMode,
+    toggleSim = NS.ToggleSim,
 
     -- ── THE STATUS TOOLTIP (launcher-§1; Launcher version 3) ─────────────────
     --

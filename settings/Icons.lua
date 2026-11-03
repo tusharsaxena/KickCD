@@ -24,6 +24,9 @@ local Store  = NS.Settings.Store
 -- indexes the row the moment it lands.
 local function add(t) Store.AddRows({ t }) end
 
+-- A color's or a shadow's "Use the skin's ..." row (settings/SchemaSetup.lua), for a block's `extra`.
+local SkinRow = NS.Settings.SkinCompanionRow
+
 -- Per-unit row generation ---------------------------------------------
 -- Every row below is built once per unit in NS.Units.LIST (target,
 -- focus): the row's `path` is prefixed with "units.<unit>." and tagged
@@ -245,10 +248,11 @@ H.AddComposed(H.BorderGroup{
     show     = true,
     keys     = { borderStyle = "borderTexture" },
     -- "Use the skin's border" (OptionsCompose minor 13): the skin's ICON border family, style and
-    -- thickness both (icon.borderStyle / icon.borderSize, Ka0s Default Solid 2px), the color
-    -- staying the swatch's. The companion is `icons.borderTextureFromSkin`, defaulting true (X3);
-    -- modules/IconGrid_Render.lua's ApplyAppearance resolves both through NS.Skin.Resolve.
+    -- thickness both (icon.borderStyle / icon.borderSize, Solid 1px in every skin). The companion is
+    -- `icons.borderTextureFromSkin`, defaulting true (X3); modules/IconGrid_Render.lua's
+    -- ApplyAppearance resolves both through NS.Skin.Resolve. The color has a companion of its own.
     fromSkin = "icon",
+    extra = { SkinRow(PREFIX .. "borderColorFromSkin", L["Use the skin's color"], L["Border color"]) },
     defaults = {
         borderShow  = true,
         borderStyle = "Blizzard Tooltip",
@@ -306,16 +310,18 @@ H.AddComposed(H.FontGroup{
         fontShadow        = "cooldownTextShadow",
     },
     -- "Use the skin's font" (`icons.cooldownTextFontFromSkin`, default true, X3): the face only
-    -- (hud.font); size, flags, color and shadow stay the player's (X4).
+    -- (hud.font). The color and the shadow have a companion each (FS-KC-FLIP); the size stays stored.
     fromSkin = true,
+    extra = {
+        SkinRow(PREFIX .. "cooldownTextColorFromSkin", L["Use the skin's color"], L["Font color"]),
+        SkinRow(PREFIX .. "cooldownTextShadowFromSkin", L["Use the skin's shadow"], L["Font shadow"]),
+    },
     -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
     -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
     flagsFromSkin = true,
     defaults = {
-        font       = "Friz Quadrata TT",
         fontSize   = 14,
         fontColor  = { r = 1, g = 1, b = 1, a = 1 },
-        fontFlags  = "@skin",
         fontShadow = false,
         fontFromSkin = true,
     },
@@ -537,6 +543,7 @@ H.AddComposed(H.ColorPair{
     key        = "primaryGlowColor", label = L["Primary glow color"],
     defaults   = { primaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
     classColor = { source = "player" },
+    extra      = { SkinRow(PREFIX .. "primaryGlowColorFromSkin", L["Use the skin's color"], L["Primary glow color"]) },
 }, STAMP)
 H.AddComposed(H.ColorPair{
     prefix     = PREFIX, page = "icons", group = L["Ready glow"],
@@ -544,6 +551,7 @@ H.AddComposed(H.ColorPair{
     key        = "secondaryGlowColor", label = L["Secondary glow color"],
     defaults   = { secondaryGlowColor = { r = 1, g = 1, b = 0, a = 1 } },
     classColor = { source = "player" },
+    extra      = { SkinRow(PREFIX .. "secondaryGlowColorFromSkin", L["Use the skin's color"], L["Secondary glow color"]) },
 }, STAMP)
 
 -- Style knobs -----------------------------------------------------

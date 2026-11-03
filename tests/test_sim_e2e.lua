@@ -244,14 +244,22 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
             end
             assertTrue(kicked, "the kick's SPELL_STATE did not reach IconGrid:OnSpellState")
         end
+        c[nth(steps, "CastStart", 2)] = function()
+            assertTrue(ctx.bar("target").current ~= nil, "the target bar lost its cast")
+            assertTrue(ctx.bar("focus").current ~= nil, "the focus bar shows no cast beside the target's")
+        end
         c[nth(steps, "ChannelStart", 1)] = function()
             local cur = ctx.bar("focus").current
             assertTrue(cur ~= nil and cur.isChannel == true, "the focus bar shows no channel")
         end
         c[nth(steps, "PartyKick", 1)] = function()
-            assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar running")
+            assertTrue(ctx.bar("target").current == nil or ctx.bar("focus").current ~= nil,
+                "Uther's kick on the target cast took the focus bar's cast with it")
         end
         c[nth(steps, "PartyKick", 2)] = function()
+            assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar's channel running")
+        end
+        c[nth(steps, "PartyKick", 3)] = function()
             assertTrue(ctx.state(KICK).isActive, "your kick came back too soon")
             assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", NS.L["Jaina"], NS.L["Frost"],
                 NS.L["Shadowcaster"], (NS.Compat.GetSpellInfo(2139)))), "Jaina's line was not printed")
@@ -403,4 +411,59 @@ test("Sim e2e auto-run: `start pull` plays every step at the step delay, then FI
     env.advance(0)
     assertTrue(deepEqual(before, env.snapshotDB()), "the session changed KickCDDB")
     assertEqual(liveTimers(env), 0, "a timer outlived the session")
+end)
+
+-- ── a slow pace (R3-FIX: the scenario's clock scales with sim.stepDelay) ────
+
+--- Auto-run scenario `name` at a pace of `delay` seconds a step, recording each kick's branch with
+--- whether the cast it met had already run out: { branch, expired, label } per Kick step.
+local function runAtPace(name, delay)
+    local ctx = fresh({ sim = { stepDelay = delay } })
+    local NS, env = ctx.NS, ctx.env
+    local kicks = {}
+    local real = NS.SimDrivers.KickBranch
+    NS.SimDrivers.KickBranch = function(key, id)
+        local e = NS.SimHost.world and NS.SimHost.world.enemies[key]
+        local c = e and e.cast
+        local expired = c ~= nil and c.start + c.duration <= env.mocks.GetTime()
+        local branch, left = real(key, id)
+        kicks[#kicks + 1] = { branch = branch, expired = expired }
+        return branch, left
+    end
+    assertTrue(NS.Sim:RunVerb("start " .. name), "the typed start was refused")
+    local finished = finishedLine(ctx)
+    for _ = 1, 60 do
+        if ctx.said(finished) then break end
+        env.advance(delay)
+    end
+    assertTrue(ctx.said(finished), name .. " never finished at a pace of " .. delay)
+    NS.SimDrivers.KickBranch = real
+    return ctx, kicks
+end
+
+test("Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out", function()
+    -- red under: casts of a fixed 3 s and a 15 s kick cooldown, so at 4 s a step the pull's kick met
+    -- casterA's cast a second after it ended and still printed 'kicked' (the round's review, R3-FIX).
+    for _, name in ipairs({ "pull", "boss", "miss", "leave" }) do
+        local _, kicks = runAtPace(name, 4)
+        assertTrue(#kicks > 0, name .. ": no kick played")
+        for i, k in ipairs(kicks) do
+            assertFalse(k.branch == "land" and k.expired, ("%s: kick %d landed on an expired cast"):format(name, i))
+        end
+    end
+end)
+
+test("Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown", function()
+    -- red under: a 15 s kick cooldown that ran out between two 4 s steps, so 'casts again while your
+    -- kick cools' found it ready, and the miss scenario's third kick landed instead of being refused.
+    local ctx, kicks = runAtPace("pull", 4)
+    assertEqual(kicks[1].branch, "land", "the pull's kick")
+    assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", ctx.NS.L["Jaina"], ctx.NS.L["Frost"],
+        ctx.NS.L["Shadowcaster"], (ctx.NS.Compat.GetSpellInfo(2139)))), "Jaina had no cast to interrupt")
+    local _, miss = runAtPace("miss", 4)
+    assertEqual(miss[1].branch, "immune")
+    assertEqual(miss[2].branch, "land")
+    assertEqual(miss[3].branch, "cooldown", "the kick is still on cooldown at a slow pace")
+    local _, leave = runAtPace("leave", 1)
+    assertEqual(leave[1].branch, "land", "the leave scenario's kick meets its cast at the default pace")
 end)

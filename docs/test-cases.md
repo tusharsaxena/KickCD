@@ -58,7 +58,7 @@ Total.
 - CoreSetup: the close button is the library's, told which addon folder is asking
 - CoreSetup: nothing reaches the close-button seam around the wrapper
 
-### test_mediasetup.lua (10)
+### test_mediasetup.lua (11)
 
 - MediaSetup: NS.Icon answers the vendored path, extensionless
 - MediaSetup: an icon the library does not ship answers nil
@@ -69,6 +69,7 @@ Total.
 - MediaSetup: every declared mark is one the library's catalog carries
 - MediaSetup: every literal NS.Icon name in authored code is declared
 - MediaSetup: the library-drawn marks are declared, because the debug console is wired
+- MediaSetup: the skin picker's eye is declared, because the spec passes a preview
 - MediaSetup: with no library there is no art and no face, and that is not an error
 
 ### test_envsetup.lua (6)
@@ -306,7 +307,7 @@ Total.
 - degraded: Store.Set("enabled", false) writes through and takes the disabled hold, with no Lua error
 - degraded: Store.Set on any other composed path is refused
 
-### test_database.lua (26)
+### test_database.lua (27)
 
 - DEFAULT_PROFILE carries the expected top-level shape
 - OnInitialize built a live db with a merged profile
@@ -334,6 +335,7 @@ Total.
 - the font-flag migration is idempotent and survives a half-built profile
 - a raising OnInitialize fails T.load instead of passing silently
 - allowInitError keeps the OnInitialize raise on the instance for the case to assert
+- the v9 -> v10 step moves a stored Ka0s Friz Quadrata TT to Ka0s Ubuntu in every profile (R3-FRIZ)
 
 ### test_color_shape.lua (28)
 
@@ -528,7 +530,7 @@ Total.
 - SimWorld.CanBuild: true with a duration constructor, false when NewDuration answers nil
 - SimWorld: the mutators are no-ops with no world installed
 
-### test_sim_session.lua (18)
+### test_sim_session.lua (21)
 
 - TOC: modules/Sim.lua loads straight after modules/SimDrivers.lua, under a LOAD-BEARING comment
 - Sim session: NS.Sim is the live instance bound to NS.SimSeam, not core/SimSetup.lua's stub
@@ -548,6 +550,9 @@ Total.
 - Sim panel: stepLabel names `your kick` by the real spell while running, the role word idle
 - Sim panel: stepTip names the events, the engine and, once played, the detail
 - Sim panel: anchorTo is the target grid while shown, else the focus grid, else nil
+- sim.stepDelay: a 0.5 to 10 s slider in 0.5 s steps, default 1, on the General page (R3-SIM-KC)
+- Host.DelayAfter reads the sim.stepDelay setting, else a step's wait, else 1 s (R3-SIM-KC)
+- Sim run: waits the sim.stepDelay setting between steps, and a change lands from the next step (R3-SIM-KC)
 
 ### test_sim_interference.lua (12)
 
@@ -594,7 +599,7 @@ Total.
 - SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
 - SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
 
-### test_sim_e2e.lua (9)
+### test_sim_e2e.lua (11)
 
 - SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
 - TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
@@ -605,6 +610,8 @@ Total.
 - Sim e2e miss: the shield refuses a kick, breaks, the kick lands, the next cast completes
 - Sim e2e leave: the roster update reaches no handler; the target swap snaps onto the cast
 - Sim e2e auto-run: `start pull` plays every step at the step delay, then FINISHED
+- Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
+- Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
 ### test_sim_marker.lua (7)
 
@@ -615,6 +622,15 @@ Total.
 - sim marker: the panel stays up across the session's steps
 - sim marker: a stop gives the idle panel its close mark back
 - sim marker: a stop puts the panel back on UISpecialFrames, once
+
+### test_sim_checkbox.lua (6)
+
+- Sim mode is a session-only Master controls row at state.sim, beside Lock frame
+- the launcher and the box share NS.IsSimMode / NS.ToggleSim, the acts of `/kcd sim`
+- ticking runs the bare `/kcd sim` verb, unticking runs `/kcd sim stop`
+- the box reads the live sim: unticked idle, ticked while a scenario plays, unticked after
+- a sim that starts or stops elsewhere repaints the open panel (RefreshScalars)
+- Reset all settings stops a running sim and never starts an idle one
 
 ### test_debuglog.lua (13)
 
@@ -1372,7 +1388,7 @@ Total.
 - the degraded stub keeps the global reset real
 - the degraded stub opens no panel and says so once
 - the linked-Focus note is plain text naming the band's Link to Target
-- the General page draws Master controls and the Skin tab, with no empty Units tab
+- the General page draws Master controls, the Skin and Simulator tabs, with no empty Units tab
 - a linked Focus page draws the full strip and only the link note, plus its alwaysPerUnit rows
 - the Units band is one row: picker and enable, plus link and copy for Focus
 - the band's acts carry each row's label and body, and the copy act its own
@@ -1395,7 +1411,7 @@ Total.
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 
-### test_skin_settings.lua (11)
+### test_skin_settings.lua (15)
 
 - skin settings: under a non-default skin the Spells rows and chrome block paint, past the proxy
 - skin settings: a release hands the Spells widgets back stock
@@ -1408,6 +1424,10 @@ Total.
 - skin settings: the host copy carries every token the settings pages read
 - skin settings: with Ignore settings panel on, the page's tokens stay Ka0s Default's
 - skin settings: the AceGUI-missing label is on the settings panel, so Ignore settings panel leaves it stock
+- icon rule: a row's spell icon is cropped 0.07 a side through SetImage, panel skinned or not
+- icon rule: on a skinned panel the spell icon is edged in icon.outline on KickCD's own frame
+- icon rule: with the settings panel left the client's the spell icon takes no edge
+- icon rule: the spec picker's inline spec and class icons are cropped 5..59 of 64
 
 ### test_skin_hud.lua (18)
 
@@ -1459,9 +1479,44 @@ Total.
 - skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
 - skin font kept: without the library the step still keeps the picks
 
-### test_skin_picker.lua (16)
+### test_skin_flip.lua (32)
 
-- Skin picker: the spec names this owner, its seams, General's Skin tab, and no eye
+- skin flip: every color and shadow companion is a bool row defaulting on, in both places
+- skin flip: a meaning color has no companion, and no class toggle has one
+- skin flip: the picks' defaults moved to the Ka0s picks, in both places
+- skin flip: Ka0s Default keeps this addon's pixels, with no shadow
+- skin flip: a skin switch redraws every flipped surface with the skin's tokens
+- skin flip: a live cast's spell name follows the skin through the curve, per state
+- skin flip: each slot's glow reaches the driver in the skin's color through UpdateGlow
+- skin flip: the meaning colors do not move with the skin
+- skin flip: a companion off draws the stored swatch under every skin
+- skin flip: a class color comes first, whatever the companion says
+- skin flip: the shadow lands on a font object on all three texts
+- skin flip: Ignore fonts leaves the stored shadow standing
+- skin flip: a shadow alone moves the guarded half of the cast bar's re-skin
+- skin flip: the companion toggle moves the signature too
+- skin flip: with no library HudFont still draws and the stored colors stand
+- skin gloss: a glossy skin shines both states' fills; Ka0s Default does not
+- skin gloss: a player's own interruptible texture stays plain, through a replay
+- skin gloss: a player's own uninterruptible texture stays plain, through a replay
+- skin marks: the known glyph is the Ka0s mark in its meaning's color, the client's while ignored
+- skin marks: a built Spells row marks its known glyph
+- skin marks: the seam forgets a texture, with the library and without
+- the step: every listed key follows and every stored pick and color is byte-identical
+- the step holds the sentinel to the flags keys alone
+- the step names no size, meaning color, class toggle, Scope key, color or pick
+- a second run writes nothing, and a companion turned off afterwards stays off
+- no schema row walks the record, so a companion off survives another page's Defaults
+- the v8 -> v9 upgrade moves the active profile, and a profile change moves another
+- the ladder's v8 row runs the step
+- a stamp already at 9 still moves a login profile with no record
+- a player's picked face goes back on the skin, the pick kept, with the rulings of 2026-11-01
+- the step creates the record's table on a raw profile with none
+- the step is the same write with the library absent
+
+### test_skin_picker.lua (29)
+
+- Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye
 - Skin picker: the login showing happened on the unseen default profile
 - Skin picker: an unseen profile shows it; a seen one does not
 - Skin picker: it shows from NS:OnEnable
@@ -1470,13 +1525,26 @@ Total.
 - Skin picker: a held start is dropped by HideSkinPicker
 - Skin picker: never while the addon is switched off
 - Skin picker: a new profile and a reset profile show it again
-- Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye is hidden
+- Skin picker: the title is Choose a skin, this addon's name is on its own line, and the eye shows
 - Skin picker: the player's close marks it seen; this addon's own hide does not
 - Skin picker: a profile that has seen it takes a shown picker down, unmarked
 - Skin picker: the stand-down takes the picker down, unseen
 - Skin picker: a pick previews, unsaved; Apply saves it and marks the picker seen
 - Skin picker: the close control puts the old skin back, saves nothing, and marks it seen
 - Skin picker: the gear saves the pick and opens General on its Skin tab
+- Skin picker eye: opened with the frames locked, the picker unlocks them through NS.SetLocked
+- Skin picker eye: the eye locks and unlocks, and the close puts back the opening state
+- Skin picker eye: the apply route relocks frames the picker unlocked
+- Skin picker eye: the close route relocks frames the picker unlocked
+- Skin picker eye: the escape route relocks frames the picker unlocked
+- Skin picker eye: the gear route relocks frames the picker unlocked
+- Skin picker eye: the hide route relocks frames the picker unlocked
+- Skin picker eye: frames already unlocked are left alone, and stay unlocked after an eye round trip
+- Skin picker eye: a lock the player made with /kcd lock while up is not undone
+- Skin picker eye: a profile switch relocks the profile the picker unlocked, not the new one
+- Skin picker eye: a profile reset while up leaves the reset profile's own lock
+- Skin picker eye: a /kcd skin refused in combat does not unhook a later reset's drop
+- Skin picker eye: an unlock the simulation refuses leaves nothing to undo
 
 ### test_grid.lua (12)
 
@@ -1789,6 +1857,10 @@ Total.
 - with LibKa0s absent the seam still answers, and the store still records the choice
 - the degraded stub carries every member the addon calls on the launcher
 
+### test_launcher_skin_entry.lua (1)
+
+- launcher descriptor passes openSkinPicker, which runs the skin verb
+
 ### test_list_mode.lua (5)
 
 - --list emits a generated '# Test Cases' inventory header + regen note
@@ -1876,13 +1948,43 @@ Total.
 - lizard sighted: parity names every file whose counts differ, and only those
 - lizard sighted: lizard lists every function of a hazard fixture once it is sanitized
 
+### test_skin_values.lua (3)
+
+- skin values: every host row carries its file, substring, why and cause id
+- skin values: no typed value outside the kit's categories and the host's rows
+- skin values: the check is falsifiable, a planted value of each shape is reported
+
+### test_skin_switch.lua (21)
+
+- skin switch: the check is falsifiable, a surface that redraws a literal is reported
+- skin switch: an icon's border changes
+- skin switch: an icon's countdown changes
+- skin switch: an icon's charges badge changes
+- skin switch: an icon's charges badge changes with the Scope ignored
+- skin switch: the primary icon's ready glow changes
+- skin switch: a secondary icon's ready glow changes
+- skin switch: the cast time changes
+- skin switch: the spell name on a live cast changes
+- skin switch: the unit label changes
+- skin switch: a Spells row's known glyph changes
+- skin switch: a Spells row's Remove mark changes
+- skin switch: a Spells row's own tooltip hint changes
+- skin switch: the add box's not-tracked tag changes
+- skin switch: the Spells page's no-AceGUI line changes
+- skin switch: the interruptible background changes
+- skin switch: the interruptible border changes
+- skin switch: the interruptible fill's texture changes
+- skin switch: the uninterruptible background changes
+- skin switch: the uninterruptible border changes
+- skin switch: the uninterruptible fill's texture changes
+
 ## Totals
 
 | Suite | Cases |
 |-------|------:|
 | test_util.lua | 15 |
 | test_coresetup.lua | 29 |
-| test_mediasetup.lua | 10 |
+| test_mediasetup.lua | 11 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 26 |
@@ -1893,7 +1995,7 @@ Total.
 | test_units.lua | 26 |
 | test_schema.lua | 42 |
 | test_schema_store.lua | 10 |
-| test_database.lua | 26 |
+| test_database.lua | 27 |
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
@@ -1902,11 +2004,12 @@ Total.
 | test_compat_units.lua | 27 |
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
-| test_sim_session.lua | 18 |
+| test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
-| test_sim_e2e.lua | 9 |
+| test_sim_e2e.lua | 11 |
 | test_sim_marker.lua | 7 |
+| test_sim_checkbox.lua | 6 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
@@ -1944,10 +2047,11 @@ Total.
 | test_options_panel.lua | 32 |
 | test_options_panel_degraded.lua | 11 |
 | test_skinsetup.lua | 13 |
-| test_skin_settings.lua | 11 |
+| test_skin_settings.lua | 15 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
-| test_skin_picker.lua | 16 |
+| test_skin_flip.lua | 32 |
+| test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
 | test_settings_refreshers.lua | 5 |
@@ -1966,6 +2070,7 @@ Total.
 | test_perfsetup.lua | 25 |
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
+| test_launcher_skin_entry.lua | 1 |
 | test_list_mode.lua | 5 |
 | test_surface_parity.lua | 11 |
 | test_doc_structure.lua | 4 |
@@ -1975,5 +2080,7 @@ Total.
 | test_layout_cap.lua | 13 |
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
+| test_skin_values.lua | 3 |
+| test_skin_switch.lua | 21 |
 | Skipped | 1 |
-| **Total** | **1582** |
+| **Total** | **1669** |

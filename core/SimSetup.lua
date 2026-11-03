@@ -105,3 +105,23 @@ else
     NS.SimSeam = newSeamStub()
     NS.Sim = newSimStub(say)
 end
+
+-- ── the one sim pair (R6-SIM, LibKa0s OptionsCompose minor 19) ─────────────────────────────────
+--
+-- Whether the sim runs, and the act of the bare `/kcd sim` verb. The launcher's Sim mode entry
+-- (core/LauncherSetup.lua) and the Master controls Sim mode box (settings/General.lua) both take
+-- THESE two functions, so the box, the menu entry and the slash verb are one act and cannot drift.
+-- NS.Sim is resolved at call time: modules/Sim.lua replaces the stub above with the live instance.
+-- The toggle does what typing the verb does: stop a running sim, otherwise the bare verb (its
+-- status, its usage and the sim step panel, from which a scenario plays). It picks no scenario.
+
+function NS.IsSimMode()
+    local s = NS.Sim
+    return type(s) == "table" and type(s.IsActive) == "function" and s:IsActive() == true
+end
+
+function NS.ToggleSim()
+    local s = NS.Sim
+    if type(s) ~= "table" or type(s.RunVerb) ~= "function" then return end
+    s:RunVerb(s:IsActive() and "stop" or "")
+end

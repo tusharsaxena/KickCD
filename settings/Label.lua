@@ -23,6 +23,9 @@ local Store  = NS.Settings.Store
 -- indexes the row the moment it lands.
 local function add(t) Store.AddRows({ t }) end
 
+-- A color's or a shadow's "Use the skin's ..." row (settings/SchemaSetup.lua), for a block's `extra`.
+local SkinRow = NS.Settings.SkinCompanionRow
+
 local POINT_VALUES = {
     ["TOPLEFT"] = L["Top left"],
     ["TOP"] = L["Top"],
@@ -210,14 +213,17 @@ local function addUnitRows(unit)
         labels   = { fontColor = L["Label color"] },
         -- "Use the skin's font" (`label.style.fontFromSkin`, default true, X3): the face only.
         fromSkin = true,
+        -- The color (hud.label) and the shadow have a companion each (FS-KC-FLIP).
+        extra = {
+            SkinRow("units." .. unit .. ".label.style.colorFromSkin", L["Use the skin's color"], L["Label color"]),
+            SkinRow("units." .. unit .. ".label.style.shadowFromSkin", L["Use the skin's shadow"], L["Font shadow"]),
+        },
         -- "From skin" leads Font flags and is its default (flagsFromSkin, LibKa0s v1.82.0, D-07): the
         -- flags then follow the Skin tab's Font outline; a flag the player picks wins.
         flagsFromSkin = true,
         defaults = {
-            font       = "Friz Quadrata TT",
             fontSize   = 14,
             fontColor  = { r = 1, g = 0.82, b = 0, a = 1 },
-            fontFlags  = "@skin",
             fontShadow = false,
             fontFromSkin = true,
         },

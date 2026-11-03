@@ -38,6 +38,9 @@ local SECTIONS = {
     -- The skin's seven rows (settings/General.lua): a section no module reacts to, because the
     -- repaint is each row's onChange through LibKa0s-Skin-1.0 (core/SkinSetup.lua).
     skin = true,
+    -- The simulator's pace (R3-SIM-KC): a section no module reacts to, because modules/Sim.lua
+    -- reads sim.stepDelay at each step.
+    sim = true,
 }
 
 test("Settings.Schema is assembled from the settings/* files", function()
@@ -273,16 +276,16 @@ end)
 -- media block: Icons > Appearance and Annotations one each, Cast bar > Text one, each state two
 -- (the bar texture's and the border's), Text label > Font one.
 local STRIP = {
-    general = { { "Master controls", 7 }, { "Units", 3 }, { "Appearance", 8 } },
+    general = { { "Master controls", 8 }, { "Units", 3 }, { "Appearance", 8 }, { "Simulator", 1 } },
     icons   = {
-        { "Size and layout", 10 }, { "Appearance", 11 }, { "Annotations", 12 },
-        { "Ready glow", 34 },
+        { "Size and layout", 10 }, { "Appearance", 12 }, { "Annotations", 14 },
+        { "Ready glow", 36 },
     },
     castbar = {
-        { "General", 4 }, { "Size and position", 10 }, { "Text", 16 },
-        { "Interruptible", 15 }, { "Non-interruptible", 15 },
+        { "General", 4 }, { "Size and position", 10 }, { "Text", 18 },
+        { "Interruptible", 18 }, { "Non-interruptible", 18 },
     },
-    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 7 } },
+    label   = { { "General", 2 }, { "Placement", 8 }, { "Font", 9 } },
 }
 
 -- The filter each page renders with: nil is "every unit's rows", which is what
@@ -775,13 +778,16 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         { "scale",                "number" },
         { "alpha",                "number" },
         { "locked",               "bool"   },
+        -- Sim mode (compose minor 19, R6-SIM): beside Lock frame, as this addon has no Test mode
+        -- row; a session row whose get / set are NS.IsSimMode / NS.ToggleSim.
+        { "state.sim",            "bool"   },
         { "state.debugConsole",   "bool"   },
         -- The minimap button (launcher-§3), composed since compose minor 7. It
         -- is the FIRST column of the line below Lock frame / Debug console, and
         -- the asymmetry is the reason: every addon has a minimap button and only
         -- some have a test mode, so the always-present row takes column 1. This
-        -- addon has no test mode (options-ui-§15's preview exemption), so the row
-        -- sits alone on its line.
+        -- addon has no test mode (options-ui-§15's preview exemption), so Sim mode
+        -- takes Lock frame's second column and the row pairs beside Debug console.
         --
         -- The path is VERBATIM and points at db.GLOBAL, outside the block's
         -- profile prefix: it is LibDBIcon's own table. It reads in the row's
@@ -798,17 +804,19 @@ test("Master controls holds exactly the canonical rows, in canonical order", fun
         assertEqual(got[i].type, spec[2], "row #" .. i .. " type")
     end
     -- Two per line, and the pairing is not left to parity: the composer opens a
-    -- line at rows 1, 3 and 5, so nothing above the tab can split a pair.
+    -- line at rows 1, 3, 5 and 7, so nothing above the tab can split a pair.
     assertEqual(got[1].startsLine, true, "Enable must open its line")
     assertEqual(got[3].startsLine, true, "Master scale must open its line")
     assertEqual(got[5].startsLine, true, "Lock frame must open its line")
-    assertEqual(got[7].startsLine, true, "Minimap button must open its line")
+    assertTrue(not got[6].startsLine, "Sim mode pairs beside Lock frame")
+    assertEqual(got[7].startsLine, true, "Debug console must open its line")
+    assertTrue(not got[8].startsLine, "Minimap button pairs beside Debug console")
     -- STORED, never session-only, and that is what keeps `Reset all settings`
     -- off it: settings/OptionsSetup.lua's vetoedFromResetAll lets only the
     -- sessionOnly rows through, so a button the player hid stays hidden through
     -- a profile reset (launcher-§3).
-    assertEqual(got[7].sessionOnly, nil, "the minimap row must be STORED, not session-only")
-    assertEqual(got[7].default, true, "and default to SHOWN")
+    assertEqual(got[8].sessionOnly, nil, "the minimap row must be STORED, not session-only")
+    assertEqual(got[8].default, true, "and default to SHOWN")
 end)
 
 test("every canonical Master control is declared exactly ONCE in the repo", function()
@@ -949,6 +957,8 @@ local TAB_SINGLE_SUBJECT = {
         ["Appearance"] = "the skin this addon wears (skinning-§3). Every row is skipRender: the "
             .. "library's O.AppearanceTab draws the whole tab, its own headings included, so the "
             .. "rows carry no subgroup.",
+        ["Simulator"] = "the simulator's pace (R3-SIM-KC): one slider, sim.stepDelay, so the tab "
+            .. "label names it and no heading repeats it.",
     },
     castbar = {
         ["General"] = "what the bar IS: enabled, orientation, growth, spark. The size rows, the "

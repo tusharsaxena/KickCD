@@ -375,6 +375,7 @@ test("the user's spell-name color reaches the label, in the keyed storage shape"
     local cb = NS.db.profile.units.target.castbar
     cb.interruptible.nameTextColor   = { r = 1, g = 0, b = 0, a = 1 }
     cb.uninterruptible.nameTextColor = { r = 0, g = 0, b = 1, a = 0.5 }
+    cb.interruptible.nameTextColorFromSkin, cb.uninterruptible.nameTextColorFromSkin = false, false
     local inst = Castbar:GetInstance("target")
 
     -- Preview / no-cast path: the interruptible color, applied directly.

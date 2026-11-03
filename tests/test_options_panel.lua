@@ -601,13 +601,11 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     -- `LibKa0s icons:` line declares (library-stack-§7, the icon subset), and
     -- `info` is library-drawn only by an O.IdList help mark. KickCD draws no
     -- O.IdList (settings/Spells_Header.lua uses H.IdInput), so an IdList is not
-    -- why `info` is declared. The simulator's mode strip was (KC-03), until KC-02 of the
-    -- 2026-10-30 skin fonts run removed the strip (ruling D-13), so `info` is declared iff an
-    -- IdList is drawn, and otherwise neither declared nor shipped. The
-    -- declaration is read with the kit's own parser
+    -- why `info` is declared: kit revision 49 owes it on every consumer's line (LibKa0s v1.85.0).
+    -- The declaration is read with the kit's own parser
     -- (VendorSync.iconDeclaration), never a second one in this repo.
     -- red under: `local _, NS = ...` with no `addonName = addonName,` in the
-    -- descriptor, or adding an O.IdList call without declaring info.
+    -- descriptor, or dropping info from the `LibKa0s icons:` line.
     local fh = assert(io.open(T.root .. "/settings/OptionsSetup.lua", "r"))
     local src = fh:read("*a"); fh:close()
     src = src:gsub("%-%-[^\r\n]*", "")
@@ -640,15 +638,12 @@ test("OptionsSetup: the Options descriptor is told the FOLDER name, and `info` i
     for _, name in ipairs(decl.names) do declared[name] = true end
     local art = io.open(T.root .. "/libs/LibKa0s/media/icons/info.tga", "rb")
     if art then art:close() end
-    if #drawsIdList == 0 then
-        assertTrue(not declared.info,
-            "KickCD draws no O.IdList, so `info` must not be on the `LibKa0s icons:` line")
-        assertTrue(art == nil,
-            "libs/LibKa0s/media/icons/info.tga ships although `info` is not declared")
-    else
-        assertTrue(declared.info == true, "an IdList is drawn (" .. table.concat(drawsIdList, ", ")
-            .. ") but `info` is not on the `LibKa0s icons:` line, so its help mark draws blank")
-    end
+    -- LibKa0s v1.85.0's kit revision 49 owes `info` on every consumer's line (its releasing doc, Step
+    -- 8 for v1.85.0), whether or not this addon draws an id list, so an empty drawsIdList no longer
+    -- means it stays off the line.
+    assertTrue(declared.info == true, "`info` is not on the `LibKa0s icons:` line (drawn id lists: "
+        .. table.concat(drawsIdList, ", ") .. "), so its help mark draws blank")
+    assertTrue(art ~= nil, "libs/LibKa0s/media/icons/info.tga is missing although `info` is declared")
 end)
 
 -- The Reset all settings tooltip names Profiles → Reset Profile.

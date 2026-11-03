@@ -54,12 +54,19 @@ local addonName, NS = ...
 --   NS.SkinHudSize(n, f)    a HUD text's stored size as drawn (D-09): S.HudFontSize scales it to the
 --                           skin's HUD face while the text follows the skin's font (`f` not false),
 --                           so it is as wide in every skin; the stored value is never rewritten.
+--   NS.SkinHudColor(...)    a HUD color as drawn (FS-KC-FLIP): a class color first, then the skin's
+--                           while the row's companion is on, else the stored swatch.
 --   NS.OnSkinLooksChanged(fn) a HUD module's repaint, run after a skin, source or override change.
 --   NS.SkinPaintAce(w)      an AceGUI widget this addon acquired itself, painted for this owner:
 --   NS.SkinPaintAceTree(c)  `Skin:PaintAce` / `Skin:PaintAceTree` with the owner bound (the facade
 --                           carries neither). Release restores stock.
 --   NS.SkinOnRelease(w, fn) host release work chained onto the widget's own OnRelease
 --                           (`Skin:OnRelease`), so it and the skin's restore both run.
+--   NS.SkinForget(frame)    a pooled region off the skin's replay (`Skin:Untrack`): AceGUI's pool is
+--                           every addon's, so a released widget must not stay ours to repaint.
+--   NS.SkinPanelPainted()   true while the settings pages wear the skin (the Scope's "Ignore settings
+--                           panel" off), the question the library's own chrome asks before it edges
+--                           an icon there (`Skin:__PanelSkinned`); false without the library.
 --   NS.MaybeShowSkinPicker() the first-run skin picker (LibKa0s OptionsSkinPicker 1, owner ruling
 --                           O3): the Options instance's SkinPicker while the profile's
 --                           `skin.pickerSeen` is false and the addon stands up; held to
@@ -81,11 +88,13 @@ local addonName, NS = ...
 -- RegisterOwner calls `get` once, before AceDB exists, and it answers Ka0s Default; the profile's
 -- pair is applied by NS.ApplySkinChoice right after Database:Init (core/KickCD.lua).
 --
--- ── NO OWNER TOKENS ──────────────────────────────────────────────────────────────────────────
+-- ── ONE OWNER TOKEN ──────────────────────────────────────────────────────────────────────────
 --
--- The M0 inventory found no color KickCD draws that a library token does not hold exactly
--- (Ka0sAddonsCommonTasks docs/2026-10-29-SKINNING_ROLLOUT/inputs/inventory/KickCD.md §5: no
--- gaps), so RegisterOwner carries no `tokens` table (X1, X2, X12 have nothing to name here).
+-- `kc.glow`. Every other HUD color KickCD follows is a library token's exact value under Ka0s Default
+-- (hud.text white, hud.label gold, bar.bg, icon.border). The ready glow is not: it draws yellow, and
+-- glow.color is gold under Ka0s Default, so the owner token keeps yellow there and answers each
+-- skin's own glow.color everywhere else (FS-KC-FLIP, cause D5). NS.SKIN_FALLBACK does not carry it: without the
+-- library the stored swatch draws.
 --
 -- ── WHY A ROW'S onChange PASSES ONE HALF ─────────────────────────────────────────────────────
 --
@@ -202,6 +211,24 @@ function NS.SkinHudSize(size, fromSkin)
     return (n and n > 0) and n or 12
 end
 
+--- A HUD color as drawn (causes D2, D4 and D5). `useClass` first and left alone: while it is set the
+--- class color answers, whatever the companion says. Then the skin's, while the row's companion
+--- `fromSkin` is true: `read` is the facade member (HudTextColor, HudLabelColor, Color) and `token` its
+--- argument where it takes one. A degraded facade answers nothing, so the stored swatch `color` is
+--- the fallback. Four plain numbers, so a curve can switch between two of them on a secret bool.
+--- Read in the config paths and the per-cast paint, never in a ticker.
+function NS.SkinHudColor(color, useClass, unit, fromSkin, read, token)
+    if fromSkin == true and useClass ~= true then
+        local S = NS.Skin
+        local fn = S and S[read]
+        if fn then
+            local r, g, b, a = fn(token)
+            if r then return r, g, b, a end
+        end
+    end
+    return NS.ResolveColor(color, useClass, unit)
+end
+
 --- Subscribe a HUD module's repaint to the owner's looks (a skin switch, a source switch, a font
 --- or texture override): the listener runs after the library has resolved the new skin. Nothing
 --- without the library, whose skin never changes.
@@ -315,14 +342,26 @@ end
 -- `skin.pickerSeen`, through NS.Settings.Store.Set. A close this addon makes itself
 -- (NS.HideSkinPicker: the stand-down, a profile event) is not the player's and writes nothing.
 --
--- NO EYE (the rollout's X6). KickCD draws no window of its own. It has a simulator (`/kcd sim`,
--- modules/Sim.lua), but that is a scripted session, not a preview mode: it swaps the world the
--- HUD reads for a timed story, opens its own step panel, ends on combat, a loading
--- screen or a group, and refuses a start in combat, an instance, a group or while unlocked. Starting one from the picker would play
--- a story the player did not ask for. The other preview, unlocking the grid and the cast bars, is
--- a stored write (`locked`) and refuses a running simulation. So `onPreview` is absent and the
--- library hides the button; a pick still previews live on the HUD (OnLooksChanged), the drag
--- handles and the settings chrome, and a simulation the player started wears the pick too.
+-- THE EYE: UNLOCK MODE (R6-PV of Ka0sAddonsCommonTasks docs/2026-11-03-SMOKE_ROUND6, the lead's
+-- call 2; LibKa0s OptionsSkinPicker minor 11's spec.preview). KickCD has no test mode
+-- (options-ui-§15's exemption) and no window of its own, so its preview is unlocking: the grids and
+-- cast bars forced shown with their drag strips. `mode = "unlock"`; `isActive` and `isShown` both
+-- answer "unlocked", the state the launcher's isLocked reads (the HUD counts as shown only while
+-- unlocked, since the visibility modes hide it out of combat); `enter` and `exit` are NS.SetLocked,
+-- the one writer `/kcd unlock` / `/kcd lock`, the launcher's Locked entry and the `Lock frame`
+-- checkbox share (core/KickCD.lua), so its refusal (no unlock beside a running simulation) still
+-- applies and a refused enter leaves the library nothing to undo. So: a picker shown while the
+-- frames are locked unlocks them; the eye locks and unlocks; every close (Apply, the gear, the
+-- close control, Escape, NS.HideSkinPicker) puts the lock back as it was at open; frames already
+-- unlocked are left alone. The simulator (`/kcd sim`) is not the preview: it plays a scripted story
+-- the player did not ask for, opens its own step panel and refuses while unlocked.
+--
+-- Unlock is a STORED write (`locked`), so a /reload while the picker is up leaves the frames
+-- unlocked until `/kcd lock` (the lead's call 3; no new persistence). A profile switch takes the
+-- picker down on AceDB's OnProfileShutdown (core/Database.lua), while the old profile is still the
+-- one the Store writes, so the restore relocks the profile the picker unlocked and never the new
+-- one. A copy or a reset rewrites the profile in place, so the hide OnProfileChanged makes passes
+-- `dropPreview` and the restore writes nothing over the profile's new values.
 --
 -- PREVIEW. A pick only previews: the Skin major moves and the HUD repaints, but `set`
 -- (NS.WriteSkinChoice) runs only on Apply, the gear or Apply to all. The close control and Escape
@@ -336,6 +375,7 @@ end
 local PICKER_PATH = "skin.pickerSeen"
 local pickerTarget       -- the one-shot PLAYER_REGEN_ENABLED target, while a start is held
 local quietClose = false -- true while NS.HideSkinPicker takes the picker down
+local previewEpoch = 0   -- bumped by a hide that drops the restore; a hook built before it writes nothing
 
 --- The Options instance (settings/OptionsSetup.lua's NS.Settings.Helpers), read at call time: it
 --- loads after this file.
@@ -350,12 +390,32 @@ local function pickerClosed()
     Store.Set(PICKER_PATH, true)
 end
 
+--- Unlocked: the state the eye shows and the launcher's isLocked reads the other way round.
+local function unlocked()
+    local prof = NS.db and NS.db.profile
+    return prof ~= nil and not prof.locked
+end
+
+--- One showing's preview hook (THE EYE, above). A hide that must not restore (a profile copy or
+--- reset) bumps previewEpoch, so every hook built before it writes nothing, a restore the library
+--- parks past combat included. Every hook, not only the last built: a spec the library never took
+--- (a /kcd skin refused in combat, a notice already seen) must not leave the shown one armed.
+local function newPreview()
+    local epoch = previewEpoch
+    local pv = { mode = "unlock", isActive = unlocked, isShown = unlocked }
+    local function lock(v) if epoch == previewEpoch and NS.SetLocked then NS.SetLocked(v) end end
+    pv.enter = function() lock(false) end
+    pv.exit = function() lock(true) end
+    return pv
+end
+
 function NS.SkinPickerSpec()
     return {
         owner = addonName, get = NS.SkinChoice, set = NS.WriteSkinChoice,
         -- The gear's default: O.OpenOptionsPanel("general"), the key settings/General.lua gave
         -- RegisterOptionsPage, then O.SelectTab("general", "Appearance"), the Skin tab's key.
         page = "general", tab = "Appearance",
+        preview = newPreview(),
         onClose = pickerClosed,
     }
 end
@@ -374,8 +434,11 @@ local function pickerDue()
     return not (NS.IsDown and NS.IsDown())
 end
 
-function NS.HideSkinPicker()
+--- This addon's own close (the stand-down, a profile event): unmarked. `dropPreview` (a profile copy
+--- or reset) also leaves the lock as the profile now has it.
+function NS.HideSkinPicker(dropPreview)
     dropPickerDeferral()
+    if dropPreview then previewEpoch = previewEpoch + 1 end
     local O = options()
     if not (O and type(O.HideSkinPicker) == "function") then return end
     quietClose = true
@@ -404,6 +467,51 @@ function NS.MaybeShowSkinPicker()
         return nil
     end
     return O.SkinPicker(NS.SkinPickerSpec())
+end
+
+-- ── the one-time skin notice (LibKa0s OptionsSkinPicker minor 9, SG-L3) ────────────────────────
+-- A release that wants every account to learn skins exist raises lib.SKIN_NOTICE_VERSION. The first
+-- addon to ask in a session claims the notice and shows the picker; every other addon records the
+-- version and stays quiet. The record is `db.global.skinNotice`, a number: account-wide, so a profile
+-- switch never shows it twice. In combat nothing is claimed; it asks again every NOTICE_RETRY seconds until combat ends.
+local NOTICE_RETRY = 5   -- seconds between asks while the player is in combat
+local noticeWaiting = false
+
+local function noticeGlobal()
+    local d = NS.db or (NS.addon and NS.addon.db)
+    return d and d.global or nil
+end
+
+local noticeStore = {
+    get = function() local g = noticeGlobal(); return g and g.skinNotice or nil end,
+    set = function(v) local g = noticeGlobal(); if g then g.skinNotice = v end end,
+}
+
+function NS.MaybeShowSkinNotice()
+    local O = options()
+    if not (O and type(O.SkinNotice) == "function" and noticeGlobal()) then return nil, "unavailable" end
+    if NS.IsStoodDown and NS.IsStoodDown() then
+        -- A stood-down addon shows nothing, but a seen record still silences the rest (SG-L3).
+        O.SkinNotice(nil, noticeStore, true)
+        return nil, "standdown"
+    end
+    local spec = NS.SkinPickerSpec()
+    local frame, why = O.SkinNotice(spec, noticeStore)
+    if why == "combat" and not noticeWaiting and type(_G.C_Timer) == "table" and _G.C_Timer.After then
+        noticeWaiting = true
+        _G.C_Timer.After(NOTICE_RETRY, function()
+            noticeWaiting = false
+            NS.MaybeShowSkinNotice()
+        end)
+    end
+    return frame, why
+end
+
+local pickerFirstRun = NS.MaybeShowSkinPicker
+function NS.MaybeShowSkinPicker()
+    local frame, why = NS.MaybeShowSkinNotice()
+    if frame or why == "queued" then return frame, why end
+    return pickerFirstRun()
 end
 
 --- `/kcd skin` (the reserved verb, LibKa0s v1.82.0's O.SkinVerb, OptionsSkinPicker minor 3, ruling
@@ -446,7 +554,14 @@ if not Skin then
         "GetAccentColor", "GetPanelColor", "GetFont",
         "TitleBar", "Divider", "Footer", "Card", "Slider", "NavItem", "Drawer", "ListRow", "MenuFrame",
         "Tooltip", "Strip", "Cover", "Text", "ChartStyle", "BarStyle", "IconBorder", "GlowColor",
-        "BarTexture", "FontFlags", "HudFontSize",
+        "BarTexture", "FontFlags", "HudFontSize", "Mark", "HoverArt",
+        -- LibKa0s v1.85.0: nil is each getter's degraded answer. The three colors answer nothing,
+        -- so the stored color draws; HudShadow's nil is "the stored shadow stands". BarGloss draws
+        -- nothing: no skin, no gloss.
+        "HudTextColor", "HudLabelColor", "BarFillColor", "HudShadow", "BarGloss",
+        -- LibKa0s v1.85.0 (Skin minor 16): with no library there is no header band, so Band answers
+        -- nil and Header places nothing. KickCD draws no window header of its own.
+        "Band", "Header",
     }) do S[name] = noop end
 
     S.Token = function(name) return NS.SKIN_FALLBACK[name] end
@@ -469,6 +584,9 @@ if not Skin then
         if r and fs and fs.SetTextColor then fs:SetTextColor(r, g, b, a) end
     end
     S.GetFont = function() return _G.STANDARD_TEXT_FONT end
+    -- LibKa0s v1.85.0 (SkinPaintExtras minor 16): no skin, so the stored three stand. Never a no-op:
+    -- a host drawing on its answer would lose the player's border.
+    S.BarBorder = function(style, show, size) return style, show, size end
     S.ChartStyle = function() return {} end
     S.BarStyle = function() return {} end
     -- Never nil, as the live ones (a nil reads as "no flags" to SetFont, and SetFont refuses a nil
@@ -482,6 +600,26 @@ if not Skin then
         local n = tonumber(size)
         return (n and n > 0) and n or 12
     end
+    -- LibKa0s v1.85.0 (SkinPaintExtras minor 9): a string a caller concatenates, so never nil. The
+    -- same markup in the art's own color, there being no tint to read.
+    S.MarkText = function(path, size)
+        size = size or 14
+        return ("|T%s:%d:%d|t"):format(path, size, size)
+    end
+    -- LibKa0s v1.85.0 (SkinPaintExtras minor 14): the one member that must draw, or a HUD string has
+    -- no face. Flags through the real S.FontFlags above, so a stored "@skin" never reaches SetFont.
+    -- Both shadow arms are written, so turning a row off clears it. The Options doc's stub: with the
+    -- library absent a stored shadow does not draw on a 12.0.7 client, and that is accepted.
+    S.HudFont = function(fs, opts)
+        opts = type(opts) == "table" and opts or {}
+        local face = opts.face
+        if type(face) ~= "string" or face == "" then face = _G.STANDARD_TEXT_FONT end
+        if type(face) ~= "string" then return nil end
+        fs:SetFont(face, S.HudFontSize(opts.size), S.FontFlags(opts.flags))
+        local on = opts.shadow and true or false
+        fs:SetShadowColor(0, 0, 0, on and 1 or 0)
+        fs:SetShadowOffset(on and 1 or 0, on and -1 or 0)
+    end
 
     NS.Skin = S
     function NS.ApplySkinChoice() return false, false end
@@ -492,6 +630,8 @@ if not Skin then
     function NS.SkinPaintAce() return false end
     function NS.SkinPaintAceTree() return 0 end
     NS.SkinOnRelease = releaseByCallback
+    function NS.SkinForget() end
+    function NS.SkinPanelPainted() return false end
     return
 end
 
@@ -502,6 +642,11 @@ Skin:RegisterOwner(addonName, {
     label = L["Ka0s KickCD"],
     get = NS.SkinChoice,
     set = NS.WriteSkinChoice,
+    -- The ready glow's yellow under Ka0s Default; every other skin answers glow.color (this file's
+    -- header, "ONE OWNER TOKEN").
+    tokens = {
+        ["kc.glow"] = { default = { 1, 1, 0, 1 }, follow = "glow.color" },
+    },
 })
 
 -- The one line a reload request earns on the path that has no popup of its own (a profile event
@@ -528,6 +673,17 @@ end
 function NS.SkinOnRelease(widget, fn)
     if type(Skin.OnRelease) ~= "function" then return releaseByCallback(widget, fn) end
     return Skin:OnRelease(widget, fn)
+end
+
+function NS.SkinForget(frame)
+    if type(Skin.Untrack) == "function" then Skin:Untrack(frame) end
+end
+
+-- The settings-panel scope, as the library's Options chrome reads it (OptionsIdList's icon edge).
+-- A copy without the question answers false: a stock page is the safe reading.
+function NS.SkinPanelPainted()
+    if type(Skin.__PanelSkinned) ~= "function" then return false end
+    return Skin:__PanelSkinned(addonName) == true
 end
 
 function NS.ApplySkinIgnore(panel, fonts)

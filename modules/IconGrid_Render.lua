@@ -407,9 +407,12 @@ local LCG_KEY = "KickCD"
 -- THE PLAYER'S CLASS, hence the nil unit token. A ready glow fires on the
 -- PLAYER'S OWN interrupt coming off cooldown; that the setting is stored under
 -- `units.<unit>.` says nothing about whose class it means (options-ui-§17).
-local function unpackGlowColor(c, useClassColor)
-    if type(c) ~= "table" then return 0.95, 0.95, 0.32, 1 end
-    return NS.ResolveColor(c, useClassColor, nil)
+--
+-- `fromSkin` is the slot's "Use the skin's color": kc.glow, the swatch's yellow under Ka0s Default and
+-- glow.color in every other skin (core/SkinSetup.lua). A class color still comes first.
+local function unpackGlowColor(c, useClassColor, fromSkin)
+    if type(c) ~= "table" and fromSkin ~= true then return 0.95, 0.95, 0.32, 1 end
+    return NS.SkinHudColor(c, useClassColor, nil, fromSkin, "Color", "kc.glow")
 end
 
 function Icon:StopGlow()
@@ -471,14 +474,14 @@ end
 
 --- Start (or keep) this icon's glow. `cfg` and `isPrimary` pick the slot's
 --- knobs; both may be nil, and every knob then reads its default.
-function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary)
+function Icon:StartGlow(kind, color, useClassColor, cfg, isPrimary, fromSkin)
     local g = self.glow
     if not g then return end
     -- Resolved HERE rather than in glowConfig so nothing allocates a table on a
     -- path that re-enters on every SPELL_STATE: the idempotency gate below
     -- compares the four resolved numbers, so a class-color toggle restarts the
     -- glow exactly as a swatch edit does and a no-op change still costs nothing.
-    local r, gr, b, a = unpackGlowColor(color, useClassColor)
+    local r, gr, b, a = unpackGlowColor(color, useClassColor, fromSkin)
     -- The knobs ride the same gate: read into the icon's own table (made once),
     -- and a moved knob restarts the glow so a slider edit shows at once.
     local vals = self._glowKnobs
@@ -555,10 +558,12 @@ end
 local function glowConfig(cfg, isPrimary)
     if isPrimary then
         return cfg.primaryGlowTrigger,   cfg.primaryGlowType,
-               cfg.primaryGlowColor,     cfg.useClassColorPrimaryGlowColor
+               cfg.primaryGlowColor,     cfg.useClassColorPrimaryGlowColor,
+               cfg.primaryGlowColorFromSkin
     end
     return cfg.secondaryGlowTrigger, cfg.secondaryGlowType,
-           cfg.secondaryGlowColor,   cfg.useClassColorSecondaryGlowColor
+           cfg.secondaryGlowColor,   cfg.useClassColorSecondaryGlowColor,
+           cfg.secondaryGlowColorFromSkin
 end
 
 --- Per-cast interruptibility filter (alpha mask on the glow frame). Truthy
@@ -575,14 +580,14 @@ function Icon:UpdateGlow(state)
     local cfg = self.cfg or NS.Units.Icons(self.unit or "target")
     if not cfg then return self:StopGlow() end
 
-    local trigger, kind, color, useClassColor = glowConfig(cfg, self._isPrimary)
+    local trigger, kind, color, useClassColor, fromSkin = glowConfig(cfg, self._isPrimary)
 
     local ready = state and state.ready and true or false
     if not ready or not triggerSatisfied(trigger, self.instance) then
         self:StopGlow()
         return
     end
-    self:StartGlow(kind, color, useClassColor, cfg, self._isPrimary)
+    self:StartGlow(kind, color, useClassColor, cfg, self._isPrimary, fromSkin)
 
     if applyInterruptibleMask(self, trigger) then return end
     if self.glow then self.glow:SetAlpha(1) end
@@ -804,7 +809,7 @@ function Icon:ApplyAppearance(cfg)
     if show then
         -- "Use the skin's border" (settings/Icons.lua, OptionsCompose's icon family): while the
         -- companion is set, the style AND the thickness are the skin's icon border
-        -- (icon.borderStyle, icon.borderSize; Ka0s Default's Solid 2px), the stored picks kept for
+        -- (icon.borderStyle, icon.borderSize; Solid 1px in every skin), the stored picks kept for
         -- when it is off. Resolved here, in the layout pass, never per SPELL_STATE: the icon is
         -- pooled, so nothing is recorded on it (no S.IconBorder), it is re-resolved on every
         -- Layout and on the owner's OnLooksChanged (modules/IconGrid.lua).
@@ -822,8 +827,8 @@ function Icon:ApplyAppearance(cfg)
         -- Through NS.ResolveColor so the border's "Use class color" companion is
         -- honored. Player-scoped (nil unit): the border frames the player's own
         -- interrupt icon, on the Focus grid exactly as on the Target one.
-        self.border:SetBackdropBorderColor(
-            NS.ResolveColor(cfg.borderColor, cfg.useClassColorBorder, nil))
+        self.border:SetBackdropBorderColor(NS.SkinHudColor(cfg.borderColor, cfg.useClassColorBorder, nil,
+            cfg.borderColorFromSkin, "Color", "icon.border"))
         self.border:Show()
     else
         self.border:Hide()
@@ -868,6 +873,10 @@ local function applyChargesFont(icon, LSM)
     if face or base then
         icon.chargesText:SetFont(face or base, NS.SkinHudSize(size or 14, true), NS.SkinFontFlags(nil))
     end
+    -- The badge's color (cause D2). It has no row, as its face has none, so it simply follows; no
+    -- answer, with no skin to read, leaves the template's.
+    local r, g, b, a = NS.Skin.HudTextColor()
+    if r and icon.chargesText.SetTextColor then icon.chargesText:SetTextColor(r, g, b, a) end
 end
 
 --- Re-anchor the charges badge from this unit's configured inset.
@@ -878,6 +887,8 @@ function Icon:ApplyChargesAnchor(cfg)
         chargesOffset(cfg and cfg.chargesOffsetX, -2),
         chargesOffset(cfg and cfg.chargesOffsetY, 2))
 end
+
+local fontOpts = {}
 
 function Icon:ApplyTextConfig(cfg)
     cfg = cfg or NS.Units.Icons(self.unit or "target")
@@ -894,7 +905,7 @@ function Icon:ApplyTextConfig(cfg)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     if LSM then
         -- "Use the skin's font" (icons.cooldownTextFontFromSkin): the face is hud.font while it
-        -- is set; size, flags, color and shadow below stay the player's.
+        -- is set; the size stays stored, and flags, color and shadow have their own rows below.
         mediaFont = LSM:Fetch("font", NS.SkinResolve("hud.font", cfg.cooldownTextFont,
             cfg.cooldownTextFontFromSkin) or "")
     end
@@ -903,33 +914,30 @@ function Icon:ApplyTextConfig(cfg)
     if not fontPath then
         fontPath = self.cooldownText:GetFont()
     end
-    if fontPath then
-        -- NS.SkinFontFlags: "NONE", the PRE-v5 stored token core/Database.lua rewrites, is the
-        -- empty string the client's SetFont spells, for the frame or two before that migration
-        -- lands; From skin (the default since LibKa0s v1.82.0) follows the Font outline. The size
-        -- scales to the skin's HUD face while the face follows it (D-09).
-        self.cooldownText:SetFont(fontPath,
-            NS.SkinHudSize(cfg.cooldownTextSize or 14, cfg.cooldownTextFontFromSkin),
-            NS.SkinFontFlags(cfg.cooldownTextFlags))
-    end
+    -- NS.SkinFontFlags: "NONE", the PRE-v5 stored token core/Database.lua rewrites, is the
+    -- empty string the client's SetFont spells, for the frame or two before that migration
+    -- lands; From skin (the default since LibKa0s v1.82.0) follows the Font outline. The size
+    -- scales to the skin's HUD face while the face follows it (D-09).
+    --
+    -- The countdown's drop shadow goes with the face, through S.HudFont: a 12.0.7 client draws only
+    -- a font object's shadow, and every call sets or clears it, so a shadow turned off does not
+    -- keep drawing on the next spell to take this pooled string. S.HudShadow's answers are the
+    -- library's to apply while the companion is on. The table is refilled, never rebuilt.
+    fontOpts.face = fontPath
+    fontOpts.size = NS.SkinHudSize(cfg.cooldownTextSize or 14, cfg.cooldownTextFontFromSkin)
+    fontOpts.flags = NS.SkinFontFlags(cfg.cooldownTextFlags)
+    fontOpts.shadow = cfg.cooldownTextShadow
+    fontOpts.shadowFromSkin = cfg.cooldownTextShadowFromSkin == true
+    NS.Skin.HudFont(self.cooldownText, fontOpts)
 
-    -- The countdown's COLOR and its drop shadow — the two rows options-ui-§16's
-    -- font block brought to this tab. Both are applied unconditionally, never
-    -- "only when set": the FontString is pooled with its button, so a shadow
-    -- turned off would otherwise keep drawing on the next spell to take the slot.
+    -- The countdown's COLOR, after the font (S.HudFont's rule), applied unconditionally for the same
+    -- pooled string.
     --
     -- classColorSource is "player" and the path does NOT decide that: this text
     -- counts down the PLAYER'S OWN interrupt, so it is the player's class the
     -- swatch defers to on both units' grids. Hence nil for the unit token.
-    self.cooldownText:SetTextColor(
-        NS.ResolveColor(cfg.cooldownTextColor, cfg.useClassColorCooldownText, nil))
-    if cfg.cooldownTextShadow then
-        self.cooldownText:SetShadowOffset(1, -1)
-        self.cooldownText:SetShadowColor(0, 0, 0, 1)
-    else
-        self.cooldownText:SetShadowOffset(0, 0)
-        self.cooldownText:SetShadowColor(0, 0, 0, 0)
-    end
+    self.cooldownText:SetTextColor(NS.SkinHudColor(cfg.cooldownTextColor, cfg.useClassColorCooldownText,
+        nil, cfg.cooldownTextColorFromSkin, "HudTextColor"))
 
     -- Re-render so a showCooldownText toggle (or any other visual state
     -- change) flowing through Layout takes effect immediately on a

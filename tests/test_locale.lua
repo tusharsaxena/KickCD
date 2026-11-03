@@ -428,11 +428,7 @@ local RESIDUE = {
     -- settings/Icons.lua, settings/Castbar.lua, settings/Label.lua — the
     -- composed blocks' LSM defaults.
     {"settings/Icons.lua", "Blizzard Tooltip", "MEDIA KEY"},
-    {"settings/Icons.lua", "Friz Quadrata TT", "MEDIA KEY"},
-    {"settings/Castbar.lua", "Friz Quadrata TT", "MEDIA KEY"},
-    {"settings/Castbar.lua", "Blizzard Raid Bar", "MEDIA KEY"},
     {"settings/Castbar.lua", "Blizzard Tooltip", "MEDIA KEY"},
-    {"settings/Label.lua", "Friz Quadrata TT", "MEDIA KEY"},
     {"settings/Label.lua", "%d deg", "FORMAT SUFFIX"},
 
     -- settings/Spells.lua

@@ -30,7 +30,7 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 -- deliberately absent: it resolves through NS.SkinFontFlags, which reads the
 -- stored token (nil is From skin) rather than the field itself.
 local STYLE_DEFAULTS = {
-    font     = "Friz Quadrata TT",
+    font     = "Ka0s Prototype",
     size     = 14,
     justifyH = "CENTER",
     justifyV = "MIDDLE",
@@ -77,6 +77,8 @@ local function attachFrame(unit, attach)
     return m and m:GetCastbarFrame(unit) or nil
 end
 
+local fontOpts = {}
+
 --- Font face, size and outline flags. LSM is optional (the addon runs without
 --- it), and its Fetch can still miss, so the client's own font is the last
 --- resort.
@@ -89,37 +91,35 @@ local function applyLabelFont(fs, style)
         fontPath = LSM:Fetch("font", NS.SkinResolve("hud.font", sv(style, "font"), style.fontFromSkin), true)
     end
     -- The size scales to the skin's HUD face while the face follows it (LibKa0s v1.82.0, D-09); the
-    -- stored size is never rewritten.
-    fs:SetFont(fontPath or _G.STANDARD_TEXT_FONT, NS.SkinHudSize(sv(style, "size"), style.fontFromSkin),
-        NS.SkinFontFlags(style.flags))
-
-    -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED on every
-    -- apply: the FontString outlives a config change, so leaving the old offset
-    -- in place is how a shadow the user just turned off stays on screen.
-    if style.shadow then
-        fs:SetShadowOffset(1, -1)
-        fs:SetShadowColor(0, 0, 0, 1)
-    else
-        fs:SetShadowOffset(0, 0)
-        fs:SetShadowColor(0, 0, 0, 0)
-    end
+    -- stored size is never rewritten. Through S.HudFont, which puts the face and the drop shadow
+    -- (options-ui-§16's sixth font row) on the string's own font object, the only place a 12.0.7
+    -- client draws a shadow, and sets or clears it on every apply. The table is refilled and kept.
+    fontOpts.face = fontPath or _G.STANDARD_TEXT_FONT
+    fontOpts.size = NS.SkinHudSize(sv(style, "size"), style.fontFromSkin)
+    fontOpts.flags = NS.SkinFontFlags(style.flags)
+    fontOpts.shadow = style.shadow
+    fontOpts.shadowFromSkin = style.shadowFromSkin == true
+    NS.Skin.HudFont(fs, fontOpts)
 end
 
---- Text color, when the user picked one — otherwise the font template's own.
+--- Text color: a class color first, then the skin's label color while "Use the skin's color" is on
+--- (hud.label, gold under Ka0s Default), then the stored swatch, and with neither the font
+--- template's own.
 ---
---- Through NS.ResolveColor (LibKa0s-Core-1.0), so the "Use class color"
---- companion beside the swatch is honored here in the one place, with the
---- collection's rules: the stored ALPHA always applies, and an unresolvable
---- class falls through to the stored swatch rather than to a substitute hue.
+--- Through NS.SkinHudColor, then NS.ResolveColor (LibKa0s-Core-1.0), so the
+--- "Use class color" companion beside the swatch is honored here in the one
+--- place, with the collection's rules: the stored ALPHA always applies, and an
+--- unresolvable class falls through to the stored swatch rather than to a
+--- substitute hue.
 ---
 --- `unit` IS THE UNIT BEING DRAWN, not the unit the style table came from. A
 --- linked Focus reads Target's `label.style` (NS.Units.LabelStyle resolves the
 --- link) and still draws beside the FOCUS frame, so the class a reader expects
 --- to see is their focus's — options-ui-§17's "the unit the surface describes".
 local function applyLabelColor(fs, style, unit)
-    local c = style.color
-    if c then
-        fs:SetTextColor(NS.ResolveColor(c, style.useClassColor, unit))
+    if style.color or style.colorFromSkin == true then
+        fs:SetTextColor(NS.SkinHudColor(style.color, style.useClassColor, unit,
+            style.colorFromSkin, "HudLabelColor"))
     end
 end
 

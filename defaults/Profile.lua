@@ -67,18 +67,22 @@ local ICONS_DEFAULT = {
         borderTexture    = "Blizzard Tooltip",
         -- "Use the skin's border" (settings/Icons.lua's BorderGroup, `fromSkin = "icon"`): while
         -- true the border's style AND thickness are the skin's icon border (`icon.borderStyle`,
-        -- `icon.borderSize`; Ka0s Default's is Solid 2px), and the two pickers above keep the
+        -- `icon.borderSize`; Solid 1px in every skin), and the two pickers above keep the
         -- player's pick for when it is turned off. Every *FromSkin companion in this file defaults
         -- TRUE (Ka0sAddonsCommonTasks docs/2026-10-29-SKINNING_ROLLOUT DECISIONS X3), so a new or
         -- reset profile follows the skin exactly as an adopted one does after the one-time reset
-        -- (core/Database_Migrations.lua's MigrateHudSkin). Only the face, the texture and the
-        -- border follow (X4): every color, size, flag and shadow stays the player's.
+        -- (core/Database_Migrations.lua's MigrateHudSkin). The colors and the shadows follow too,
+        -- each with a companion of its own (FS-KC-FLIP, the owner's ruling of 2026-11-01, causes D2,
+        -- D4, D5 and D6; MigrateFullSkin moves stored profiles). Sizes stay stored, and so do the
+        -- cooldown tint and the cast bar's fill colors, which carry a meaning. Every swatch below is
+        -- kept for a player who turns its companion off.
         borderTextureFromSkin = true,
         borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+        borderColorFromSkin = true,        -- "Use the skin's color": icon.border
         useClassColorBorder = false,
         borderSize       = 2,
         showCooldownText = true,
-        cooldownTextFont = "Friz Quadrata TT",
+        cooldownTextFont = "Ka0s Prototype",   -- the Ka0s pick (LibKa0s v1.85.0, FS-D1), for a box turned off
         cooldownTextFontFromSkin = true,   -- "Use the skin's font": the HUD face, hud.font
         cooldownTextSize = 14,
         -- "@skin"|""|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"|"OUTLINE, MONOCHROME" -- the
@@ -90,11 +94,13 @@ local ICONS_DEFAULT = {
         -- MigrateFlagsFromSkin moves the old default, OUTLINE, onto it once per profile.
         cooldownTextFlags = "@skin",
         cooldownTextColor = { r = 1, g = 1, b = 1, a = 1 },
+        cooldownTextColorFromSkin = true,  -- "Use the skin's color": hud.text
         useClassColorCooldownText = false,
         -- A soft drop shadow behind the countdown, for legibility over bright
         -- icon art. modules/IconGrid_Render.lua's ApplyTextConfig sets or clears
         -- it; there is no half state.
         cooldownTextShadow = false,
+        cooldownTextShadowFromSkin = true, -- "Use the skin's shadow": hud.shadow
         showCharges      = true,
         -- The charges badge's inset from the icon's bottom-right corner, in
         -- pixels (positive X = right, positive Y = up). These two WERE the
@@ -145,10 +151,12 @@ local ICONS_DEFAULT = {
         primaryGlowTrigger   = "never",
         primaryGlowType      = "pixel",
         primaryGlowColor     = { r = 1, g = 1, b = 0, a = 1 },
+        primaryGlowColorFromSkin = true,   -- "Use the skin's color": kc.glow (core/SkinSetup.lua)
         useClassColorPrimaryGlowColor = false,
         secondaryGlowTrigger = "never",
         secondaryGlowType    = "pixel",
         secondaryGlowColor   = { r = 1, g = 1, b = 0, a = 1 },
+        secondaryGlowColorFromSkin = true, -- "Use the skin's color": kc.glow
         useClassColorSecondaryGlowColor = false,
 
         -- Each slot's per-style knobs (core/Constants.lua's Const.GLOW_KNOBS has
@@ -192,17 +200,19 @@ local CASTBAR_DEFAULT = {
         showSpark    = true,
         showName     = true,
         showTime     = true,
-        font         = "Friz Quadrata TT",
+        font         = "Ka0s Prototype",
         fontFromSkin = true,        -- "Use the skin's font" for both texts: hud.font
         fontSize     = 10,
         fontFlags    = "@skin",     -- From skin (LibKa0s v1.82.0, D-07); see icons.cooldownTextFlags
         fontShadow   = false,
+        fontShadowFromSkin = true,  -- "Use the skin's shadow" for both texts: hud.shadow
         -- The CAST TIME text's color. The spell name's is per-state and lives
         -- in the two tables below, because the interruptible flag that picks
         -- between them can be secret in combat and the switch is a curve
         -- evaluation -- a third writer over the same FontString would just lose
         -- to them. The cast time had no color at all before this.
         textColor         = { r = 1, g = 1, b = 1, a = 1 },
+        textColorFromSkin = true,   -- "Use the skin's color": hud.text
         useClassColorText = false,
 
         -- Anchoring. "FREE" = a free-floating frame the user drags around
@@ -268,7 +278,7 @@ local CASTBAR_DEFAULT = {
         -- Switched at render time via C_CurveUtil.EvaluateColorValueFromBoolean
         -- on the cast's secret notInterruptible bool — see modules/Castbar.lua.
         interruptible = {
-            statusBarTexture = "Blizzard Raid Bar",
+            statusBarTexture = "Ka0s Default",
             statusBarTextureFromSkin = true,   -- "Use the skin's texture": bar.texture
             barColor         = { r = 1, g = 0.85, b = 0.05, a = 1 },  -- yellow
             useClassColorBar = false,
@@ -279,20 +289,23 @@ local CASTBAR_DEFAULT = {
             -- multiplication would be arithmetic on a secret value.
             barAlpha         = 1,
             bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            bgColorFromSkin  = true,           -- "Use the skin's color": bar.bg
             useClassColorBgColor = false,
             nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
+            nameTextColorFromSkin = true,      -- "Use the skin's color": hud.text
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
-            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
+            -- icon.borderSize, Solid 1px in every skin, KC-A1), and so the color is icon.border.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+            borderColorFromSkin = true,        -- "Use the skin's color": icon.border
             useClassColorBorder = false,
             borderSize       = 2,
         },
         uninterruptible = {
-            statusBarTexture = "Blizzard Raid Bar",
+            statusBarTexture = "Ka0s Default",
             statusBarTextureFromSkin = true,   -- "Use the skin's texture": bar.texture
             barColor         = { r = 0.85, g = 0.10, b = 0.10, a = 1 },  -- red
             useClassColorBar = false,
@@ -303,15 +316,18 @@ local CASTBAR_DEFAULT = {
             -- multiplication would be arithmetic on a secret value.
             barAlpha         = 1,
             bgColor          = { r = 0, g = 0, b = 0, a = 0.5 },
+            bgColorFromSkin  = true,           -- "Use the skin's color": bar.bg
             useClassColorBgColor = false,
             nameTextColor    = { r = 1, g = 1, b = 1, a = 1 },
+            nameTextColorFromSkin = true,      -- "Use the skin's color": hud.text
             useClassColorNameTextColor = false,
             borderShow       = true,
             borderTexture    = "Blizzard Tooltip",
             -- "Use the skin's border": the icon family, style and thickness (icon.borderStyle /
-            -- icon.borderSize, Solid 2px on Ka0s Default, KC-A1); the color stays the player's.
+            -- icon.borderSize, Solid 1px in every skin, KC-A1), and so the color is icon.border.
             borderTextureFromSkin = true,
             borderColor      = { r = 0, g = 0, b = 0, a = 1 },
+            borderColorFromSkin = true,        -- "Use the skin's color": icon.border
             useClassColorBorder = false,
             borderSize       = 2,
         },
@@ -329,12 +345,14 @@ local LABELSTYLE_DEFAULT = {
         justifyH = "CENTER",      -- LEFT | CENTER | RIGHT
         justifyV = "MIDDLE",      -- TOP  | MIDDLE | BOTTOM
         rotation = 0,             -- degrees
-        font     = "Friz Quadrata TT",
+        font     = "Ka0s Prototype",
         fontFromSkin = true,      -- "Use the skin's font": hud.font
         size     = 14,
         flags    = "@skin",       -- "@skin" (From skin, D-07) | "" | OUTLINE | THICKOUTLINE | MONOCHROME | "OUTLINE, MONOCHROME"
         shadow   = false,
+        shadowFromSkin = true,    -- "Use the skin's shadow": hud.shadow
         color    = { r = 1, g = 0.82, b = 0, a = 1 }, -- Blizzard gold, matches GameFontNormal
+        colorFromSkin = true,     -- "Use the skin's color": hud.label
         -- Unit-scoped, unlike the icon grid's companions: a label NAMES the unit
         -- it is drawn beside, so its class is that unit's (options-ui-§17). A
         -- linked Focus reads Target's style table and still resolves on FOCUS --
@@ -391,7 +409,17 @@ local DEFAULT_PROFILE = {
         -- "Use the skin's font" off on every HUD text whose stored face is the player's pick. No
         -- schema row, as hudReset.
         fontPicksKept = false,
+        -- The one step onto the skin's record (FS-KC-FLIP, core/Database_Migrations.lua's
+        -- MigrateFullSkin, read and written by Skin.FollowOnce): false until the step has put this
+        -- profile's HUD colors, shadows, picks and flags on the skin. No schema row, as hudReset,
+        -- so no Defaults button walks it.
+        fullSkinReset = false,
     },
+
+    -- The simulator's pace (R3-SIM-KC): the seconds `/kcd sim` waits between two steps as it
+    -- plays, the same path, range and default as AbsorbTracker's and DpsRace's. The General page's
+    -- Simulator tab draws it; modules/Sim.lua reads it at each step.
+    sim = { stepDelay = 1 },
 
     -- Per-unit widgets. Appearance (icons/castbar) is duplicated per unit;
     -- Focus defaults to link=true so it mirrors Target's appearance live

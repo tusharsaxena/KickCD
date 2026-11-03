@@ -102,6 +102,10 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
+L["Simulator"] = "Simulator"
+L["Simulation step delay (seconds)"] = "Simulation step delay (seconds)"
+L["Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."] =
+    "Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."
 -- The CLI's refusal while a session runs (KC-06): unlock, toggle, the launcher's Locked entry and
 -- resetall (core/KickCD.lua).
 L["End the simulation first (/kcd sim stop)."] =
@@ -259,6 +263,8 @@ L["Focus %s"] =
     "Focus %s"
 L["%s starts a cast"] =
     "%s starts a cast"
+L["%s starts a cast beside it"] =
+    "%s starts a cast beside it"
 L["%s starts a channel"] =
     "%s starts a channel"
 L["%s casts again while your kick cools"] =
@@ -600,6 +606,12 @@ L["Draw a thin border around each icon."] =
     "Draw a thin border around each icon."
 L["Border thickness in pixels."] = "Border thickness in pixels."
 L["Border color"]                = "Border color"
+L["Font color"]                  = "Font color"
+L["Font shadow"]                 = "Font shadow"
+L["Use the skin's color"]        = "Use the skin's color"
+L["Use the skin's shadow"]       = "Use the skin's shadow"
+L["Draw this in the skin's look. %s is not read while this is on."] =
+    "Draw this in the skin's look. %s is not read while this is on."
 L["Border color (RGBA)."]        = "Border color (RGBA)."
 L["LibSharedMedia border texture (edge style) used to draw each icon's border."] =
     "LibSharedMedia border texture (edge style) used to draw each icon's border."
@@ -835,8 +847,8 @@ L["The unit's identity label: what it says, where it sits and its font."] =
     "The unit's identity label: what it says, where it sits and its font."
 L["Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."] =
     "Restore every tab of the entry selected on the left, for the unit in the band, to its defaults. The other unit keeps its own. The band's Enable this unit and Link to Target are reset by the General page's Defaults."
-L["Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
-    "Restore the Master controls tab to its defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."
+L["Restore the Master controls and Simulator tabs to their defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."] =
+    "Restore the Master controls and Simulator tabs to their defaults. It also resets both units' Enable this unit and Focus's Link to Target, which sit in the Units page's band."
 
 -- The skin (core/SkinSetup.lua, settings/General.lua's Skin tab rows; skinning-§2, §3)
 L["Ka0s skins"]                  = "Ka0s skins"

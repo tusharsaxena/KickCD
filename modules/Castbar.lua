@@ -365,7 +365,7 @@ end
 
 local function fetchFont(name)
     if LSM and LSM.Fetch then
-        local f = LSM:Fetch("font", name or "Friz Quadrata TT", true)
+        local f = LSM:Fetch("font", name or "Ka0s Prototype", true)
         if f then return f end
     end
     -- Fall back to whatever GameFontNormal points at — guaranteed to exist.
@@ -563,6 +563,12 @@ local function barAlpha(sc)
     return a
 end
 
+--- One state's spell name color as drawn: class, then the skin's, then the state's swatch.
+local function nameColor(sc, unit)
+    return NS.SkinHudColor(sc.nameTextColor, sc.useClassColorNameTextColor, unit,
+        sc.nameTextColorFromSkin, "HudTextColor")
+end
+
 --- Preview / no-cast: show interruptible visuals; the uninterruptible side is
 --- fully alpha=0. No curve involved — there is no flag to switch on yet.
 local function applyPreviewVisuals(frame, intCfg, intBorderShow, unit)
@@ -572,8 +578,7 @@ local function applyPreviewVisuals(frame, intCfg, intBorderShow, unit)
     frame.bar.uninterruptible:SetAlpha(0)
     frame.borderInterruptible:SetAlpha(intBorderShow)
     frame.borderUninterruptible:SetAlpha(0)
-    frame.nameText:SetTextColor(
-        NS.ResolveColor(intCfg.nameTextColor, intCfg.useClassColorNameTextColor, unit))
+    frame.nameText:SetTextColor(nameColor(intCfg, unit))
 end
 
 --- Active cast. `nint` may be plain or secret. Pass it (and the per-channel
@@ -587,10 +592,8 @@ local function applyLiveVisuals(frame, nint, intCfg, unintCfg, intBorderShow, un
     -- RESOLVED BEFORE THE CURVE, never inside it: NS.ResolveColor reads
     -- RAID_CLASS_COLORS and the companion flag, both of which are plain addon
     -- values, and the result is four plain numbers the curve can switch between.
-    local ur, ug, ub, ua =
-        NS.ResolveColor(unintCfg.nameTextColor, unintCfg.useClassColorNameTextColor, unit)
-    local ir, ig, ib, ia =
-        NS.ResolveColor(intCfg.nameTextColor, intCfg.useClassColorNameTextColor, unit)
+    local ur, ug, ub, ua = nameColor(unintCfg, unit)
+    local ir, ig, ib, ia = nameColor(intCfg, unit)
 
     frame.bgInterruptible:SetAlpha(
         _G.C_CurveUtil.EvaluateColorValueFromBoolean(nint, 0, 1))

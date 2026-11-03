@@ -10,7 +10,7 @@ local _, NS = ...
 -- lines and step labels; their kicks end an enemy cast through UNIT_SPELLCAST_INTERRUPTED (the
 -- PartyKick driver). Each #38 scenario maps onto the engine path it stresses:
 --
---   pull   the combat gate, target and focus, a cast and a channel on each bar, your kick's
+--   pull   the combat gate, target and focus casting at once, a channel on the focus, your kick's
 --          cooldown, the party's kicks, the CC's GCD on every other on-GCD spell, a death
 --   boss   your kick's two charges: the badge counts 2 -> 1 -> 0, the recharge swipe, the expiry
 --   miss   an uninterruptible cast, its shield breaking, a kick refused on cooldown, a cast that
@@ -51,8 +51,12 @@ SC.ENEMIES = {
     boss    = { name = L["Hollow King"],  cast = 116858, channel = 234153 }, -- Chaos Bolt, Drain Life
 }
 
--- The story's timing (seconds): every cast, the `leave` cast, every channel.
-SC.CAST, SC.LEAVE_CAST, SC.CHANNEL = 3, 4, 5
+-- The story's timing (seconds) at one step a second: every cast, the `leave` cast, every channel.
+-- The drivers scale each by the step delay when its step plays (SimDrivers D.Pace, R3-FIX), so a
+-- slow pace keeps the story. The `leave` cast is 5, so the kick four steps after it meets it live,
+-- and the `miss` shielded cast 5, so the kick three steps after it meets it live; each ran out with
+-- the kick's own step at 4 and 3.
+SC.CAST, SC.LEAVE_CAST, SC.CHANNEL, SC.SHIELD_CAST = 3, 5, 5, 5
 
 --- One step: `kind` plus `fields` (copied, so a timeline never shares a table between calls).
 local function step(kind, fields)
@@ -109,7 +113,9 @@ function TIMELINES.pull()
         target(a),
         focus(b),
         cast(a, L["%s starts a cast"]:format(enemyName(a))),
+        cast(b, L["%s starts a cast beside it"]:format(enemyName(b))),
         kick(a),
+        partyKick("uther", b),
         cast(b, L["%s starts a channel"]:format(enemyName(b)), { channel = true }),
         partyKick("thrall", b),
         cast(a, L["%s casts again while your kick cools"]:format(enemyName(a))),
@@ -150,7 +156,7 @@ function TIMELINES.miss()
     return {
         combat(true),
         target(a),
-        cast(a, L["%s starts an uninterruptible cast"]:format(n), { uninterruptible = true }),
+        cast(a, L["%s starts an uninterruptible cast"]:format(n), { uninterruptible = true, duration = SC.SHIELD_CAST }),
         kick(a),
         step("Interruptible", { enemy = a, label = L["%s's shield breaks"]:format(n) }),
         kick(a),

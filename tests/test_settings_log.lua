@@ -156,10 +156,10 @@ local function dirty(H, page)
 end
 
 -- The four schema pages whose Defaults button is LibKa0s' RestoreDefaults, and
--- the rows each one walks. General's 18 include the eight skin.* rows, which the walk passes
--- over (the seam's resetExempt, settings/SchemaSetup.lua). The three HUD pages count the sixteen
--- "Use the skin's ..." companions (KC-03): castbar 5 per unit, icons 2, label 1.
-for _, case in ipairs({ { "castbar", 120 }, { "icons", 134 }, { "label", 34 }, { "general", 18 } }) do
+-- the rows each one walks. General's 20 include sim.stepDelay (R3-SIM-KC), the session Sim mode row (R6-SIM) and the eight skin.* rows, which the walk passes
+-- over (the seam's resetExempt, settings/SchemaSetup.lua). The three HUD pages count the "Use the
+-- skin's ..." companions: castbar 13 per unit (5 KC-03, 8 FS-KC-FLIP), icons 7 (2, 5), label 3 (1, 2).
+for _, case in ipairs({ { "castbar", 136 }, { "icons", 144 }, { "label", 38 }, { "general", 20 } }) do
     local page, rows = case[1], case[2]
     test("the " .. page .. " page's Defaults logs ONE [Set] reset line counting the rows it changed",
     function()

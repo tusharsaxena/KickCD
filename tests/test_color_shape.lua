@@ -172,7 +172,7 @@ test("the migration bumps the stored schema version so it runs once", function()
     pcall(NS2.OnInitialize, NS2)
     -- The runner owns the stamp and advances it past each step that returned,
     -- so a v3 account ends at the current version, 8.
-    assertEqual(NS2.db.global.schemaVersion, 8)
+    assertEqual(NS2.db.global.schemaVersion, 10)
 end)
 
 test("an already-keyed color passes through the migration untouched", function()
@@ -238,7 +238,9 @@ end)
 
 test("a second stored profile has its 'NONE' font flags rewritten when it becomes active", function()
     -- red under: dropping MigrateFontFlags from Database:OnProfileChanged
-    local ns = loadTwoProfiles({ units = { target = { castbar = { fontFlags = "NONE" } } } })
+    -- The record: the one step onto the skin (v9) writes "@skin" to the same key.
+    local ns = loadTwoProfiles({ skin = { fullSkinReset = true },
+        units = { target = { castbar = { fontFlags = "NONE" } } } })
     ns.db:SetProfile("Alt")
     assertEqual(ns.db.profile.units.target.castbar.fontFlags, "",
         "a stored NONE must become the empty string, or the outline dropdown opens blank")
@@ -291,9 +293,9 @@ test("a fresh install ends at v6 with no step raising", function()
     local ns, lines = loadTwoProfiles({})
     ns.db.global.schemaVersion = 0
     ns.Database:MigrateProfile()
-    assertEqual(ns.db.global.schemaVersion, 8)
+    assertEqual(ns.db.global.schemaVersion, 10)
     local fresh = T.load(true).NS
-    assertEqual(fresh.db.global.schemaVersion, 8, "a fresh account walks 0 -> 8 on its first load")
+    assertEqual(fresh.db.global.schemaVersion, 10, "a fresh account walks 0 -> 10 on its first load")
     for _, l in ipairs(lines) do
         assertNil(l:find("migration", 1, true), "no step may fail; printed: " .. l)
     end

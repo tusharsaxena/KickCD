@@ -101,8 +101,8 @@ end
 --- out of (options-ui-§17). A linked Focus draws with Target's tables, and the
 --- class the reader is looking at is the one on their focus frame.
 local function applyBorderColor(borderFrame, sc, unit)
-    borderFrame:SetBackdropBorderColor(
-        NS.ResolveColor(sc.borderColor, sc.useClassColorBorder, unit))
+    borderFrame:SetBackdropBorderColor(NS.SkinHudColor(sc.borderColor, sc.useClassColorBorder, unit,
+        sc.borderColorFromSkin, "Color", "icon.border"))
 end
 
 --- Resolve the bar's long / thick axes from config, applying the auto-size
@@ -173,9 +173,18 @@ end
 function Castbar.LabelFlags(c)
     return NS.SkinFontFlags(c.fontFlags)
 end
+-- The shadow both texts draw, signed as S.HudFont will resolve it (the LibKa0s Options doc, section
+-- 5): S.HudShadow's answers beside the companion and the stored row. S.HudFont is not recorded, so a
+-- skin change reaches it only through this signature, and two skins alike in face, size and flags
+-- must still move it.
+function Castbar.ShadowKey(c)
+    local x, y, r, g, b, a = NS.Skin.HudShadow()
+    return table.concat({ tostring(c.fontShadow), tostring(c.fontShadowFromSkin), tostring(x), tostring(y),
+        tostring(r), tostring(g), tostring(b), tostring(a) }, ",")
+end
 -- The border is the skin's ICON border family, style and thickness both (KC-A1, the owner's
--- ruling: bar.borderStyle is "None" on every skin, so the bar family would draw no edge), as
--- settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
+-- ruling: bar.borderStyle is "None" on Ka0s Default and most skins, which would leave this bar's
+-- edge to the bar family's deferral), as settings/Castbar.lua's `fromSkin = "icon"` says in the panel.
 function Castbar.BorderStyle(sc)
     return NS.SkinResolve("icon.borderStyle", sc.borderTexture, sc.borderTextureFromSkin)
 end
@@ -193,7 +202,7 @@ local function structureSignature(c, intCfg, unintCfg, barLong, barThick)
         tostring(c.iconPosition), tostring(c.iconSize),
         tostring(c.showSpark),
         tostring(Castbar.LabelFont(c)), tostring(Castbar.LabelSize(c)), tostring(Castbar.LabelFlags(c)),
-        tostring(c.fontShadow),
+        Castbar.ShadowKey(c),
         tostring(c.namePosition), tostring(c.nameOffsetX), tostring(c.nameOffsetY),
         tostring(c.timePosition), tostring(c.timeOffsetX), tostring(c.timeOffsetY),
         tostring(c.showName), tostring(c.showTime),
@@ -319,24 +328,20 @@ end
 --- PRE-v5 token, which core/Database.lua rewrites, still reaching here on the first frame after
 --- login on a profile not yet migrated) is "", and From skin, the default since LibKa0s v1.82.0,
 --- follows the Font outline. The size is scaled to the skin's HUD face while the face follows it.
+---
+--- Through the library's one call, S.HudFont: a 12.0.7 client draws only a font object's shadow, so
+--- each string wears one of its own, and the drop shadow (options-ui-§16's sixth font row) is set or
+--- cleared with the face. The stored row and its companion go in as they are; S.HudShadow's answers
+--- are the library's to apply. One table, refilled: the library reads it and keeps nothing.
+local fontOpts = {}
+
 local function applyLabelFonts(frame, c)
-    local fontPath = Castbar.FetchFont(Castbar.LabelFont(c))
-    local fontSize = Castbar.LabelSize(c)
-    local fontFlags = Castbar.LabelFlags(c)
-
-    frame.nameText:SetFont(fontPath, fontSize, fontFlags)
-    frame.timeText:SetFont(fontPath, fontSize, fontFlags)
-
-    -- The drop shadow (options-ui-§16's sixth font row). SET OR CLEARED, never
-    -- left alone: these FontStrings are pooled with the frame, so a bar that had
-    -- the shadow on and then had it turned off would keep drawing one.
-    local ox, oy = 0, 0
-    local sa = 0
-    if c.fontShadow then ox, oy, sa = 1, -1, 1 end
-    for _, fs in ipairs({ frame.nameText, frame.timeText }) do
-        fs:SetShadowOffset(ox, oy)
-        fs:SetShadowColor(0, 0, 0, sa)
-    end
+    fontOpts.face, fontOpts.size, fontOpts.flags =
+        Castbar.FetchFont(Castbar.LabelFont(c)), Castbar.LabelSize(c), Castbar.LabelFlags(c)
+    fontOpts.shadow = c.fontShadow
+    fontOpts.shadowFromSkin = c.fontShadowFromSkin == true
+    NS.Skin.HudFont(frame.nameText, fontOpts)
+    NS.Skin.HudFont(frame.timeText, fontOpts)
 end
 
 --- Position labels per their independent anchor settings, and honor the two
@@ -423,10 +428,10 @@ local function ReskinColors(inst, intCfg, unintCfg)
     local unit  = inst.unit
 
     -- Per-state backgrounds (alpha-switched in ApplyState).
-    frame.bgInterruptible:SetColorTexture(
-        NS.ResolveColor(intCfg.bgColor, intCfg.useClassColorBgColor, unit))
-    frame.bgUninterruptible:SetColorTexture(
-        NS.ResolveColor(unintCfg.bgColor, unintCfg.useClassColorBgColor, unit))
+    frame.bgInterruptible:SetColorTexture(NS.SkinHudColor(intCfg.bgColor, intCfg.useClassColorBgColor,
+        unit, intCfg.bgColorFromSkin, "Color", "bar.bg"))
+    frame.bgUninterruptible:SetColorTexture(NS.SkinHudColor(unintCfg.bgColor, unintCfg.useClassColorBgColor,
+        unit, unintCfg.bgColorFromSkin, "Color", "bar.bg"))
 
     -- Per-state bar textures + colors. Both bars share size/anchors so
     -- the spark anchor (to the interruptible inner status texture) is
@@ -435,15 +440,20 @@ local function ReskinColors(inst, intCfg, unintCfg)
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(intCfg)))
     frame.bar.interruptible:SetStatusBarColor(
         NS.ResolveColor(intCfg.barColor, intCfg.useClassColorBar, unit))
+    -- The skin's gloss (cause A3), once the bar has its texture. It belongs to the skin's texture, so
+    -- a state on the player's own stays plain; a skin change reaches it with no call of ours.
+    NS.Skin.BarGloss(frame.bar.interruptible, intCfg.statusBarTextureFromSkin == true)
     frame.bar.uninterruptible:SetStatusBarTexture(
         Castbar.FetchStatusBarTexture(Castbar.BarTexture(unintCfg)))
     frame.bar.uninterruptible:SetStatusBarColor(
         NS.ResolveColor(unintCfg.barColor, unintCfg.useClassColorBar, unit))
+    NS.Skin.BarGloss(frame.bar.uninterruptible, unintCfg.statusBarTextureFromSkin == true)
 
     -- The CAST TIME text. Shared across the two states and hardcoded white until
     -- the Font tab grew a swatch for it (options-ui-§16); the spell name's color
     -- is per-state and stays in ApplyState, where the curve can switch it.
-    frame.timeText:SetTextColor(NS.ResolveColor(c.textColor, c.useClassColorText, unit))
+    frame.timeText:SetTextColor(NS.SkinHudColor(c.textColor, c.useClassColorText, unit,
+        c.textColorFromSkin, "HudTextColor"))
 
     applyBorderColor(frame.borderInterruptible,   intCfg,   unit)
     applyBorderColor(frame.borderUninterruptible, unintCfg, unit)

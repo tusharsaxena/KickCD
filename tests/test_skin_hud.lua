@@ -102,8 +102,8 @@ test("HUD skin: the icon border follows the ICON family, governing its thickness
     assertEqual(Store.FindRow("units.target.icons.borderTexture").disabledIf, companion)
     assertEqual(Store.FindRow("units.target.icons.borderSize").disabledIf, companion,
         "the icon family governs the thickness slider")
-    -- The cast bar's borders are the icon family too (KC-A1, the owner's ruling): every skin's
-    -- bar.borderStyle is "None", so the bar family would leave the cast bar with no edge.
+    -- The cast bar's borders are the icon family too (KC-A1, the owner's ruling), not the bar family,
+    -- whose bar.borderStyle is "None" on Ka0s Default and most skins.
     for _, state in ipairs({ "interruptible", "uninterruptible" }) do
         local cb = "units.target.castbar." .. state .. "."
         assertEqual(Store.FindRow(cb .. "borderTexture").disabledIf, cb .. "borderTextureFromSkin", state)
@@ -136,8 +136,9 @@ test("HUD skin: a companion turned off draws the player's stored pick again", fu
     local NS = inst.NS
     local Castbar = NS:GetModule("Castbar")
     local c = NS.db.profile.units.target.castbar
-    c.fontFromSkin = false
+    c.fontFromSkin, c.font = false, "Friz Quadrata TT"
     c.interruptible.statusBarTextureFromSkin = false
+    c.interruptible.statusBarTexture = "Blizzard Raid Bar"
     c.interruptible.borderTextureFromSkin = false
     clear(fetched)
     Castbar:Reskin(Castbar:GetInstance("target"), true)
@@ -160,7 +161,7 @@ test("HUD skin: the icon border takes the skin's icon family, style and thicknes
     local cfg = NS.db.profile.units.target.icons
     icon:ApplyAppearance(cfg)
     assertEqual(bd.edgeFile, "Interface\\Buttons\\WHITE8X8", "Solid, Ka0s Default's icon border")
-    assertEqual(bd.edgeSize, 2, "icon.borderSize")
+    assertEqual(bd.edgeSize, 1, "icon.borderSize: 1 px in every skin since LibKa0s v1.85.0's R3-FIX")
     cfg.borderTextureFromSkin = false
     cfg.borderSize = 5
     icon:ApplyAppearance(cfg)
@@ -168,7 +169,7 @@ test("HUD skin: the icon border takes the skin's icon family, style and thicknes
 end)
 
 test("HUD skin: a following cast bar draws the skin's flat icon edge, style and thickness", function()
-    -- red under: Castbar_Skin.lua resolving bar.borderStyle (None on every skin, so no edge) or
+    -- red under: Castbar_Skin.lua resolving bar.borderStyle (None on Ka0s Default and most skins) or
     -- drawing sc.borderSize while the companion is set (KC-A1)
     local inst, fetched = boot()
     local NS = inst.NS
@@ -187,7 +188,7 @@ test("HUD skin: a following cast bar draws the skin's flat icon edge, style and 
         local bd = drawn[key]
         assertTrue(bd ~= nil, key .. " drew a backdrop")
         assertEqual(bd.edgeFile, "Interface\\Buttons\\WHITE8X8", key .. ": Solid, Ka0s Default's icon edge")
-        assertEqual(bd.edgeSize, 2, key .. ": icon.borderSize on Ka0s Default")
+        assertEqual(bd.edgeSize, 1, key .. ": icon.borderSize on Ka0s Default, 1 px (R3-FIX)")
     end
 
     -- Another skin: its own icon edge, through the same tokens.
@@ -260,6 +261,9 @@ test("HUD skin: with Ignore fonts on, every HUD text draws its own pick and the 
         assertEqual(unit.castbar.fontFromSkin, true, "sanity: the cast bar follows the skin")
         assertEqual(unit.icons.cooldownTextFontFromSkin, true, "sanity: so does the countdown")
         assertEqual(unit.label.style.fontFromSkin, true, "sanity: and the label")
+        -- Picks of the player's own: the defaults moved to the Ka0s picks (FS-KC-FLIP).
+        unit.castbar.font, unit.icons.cooldownTextFont = "Friz Quadrata TT", "Friz Quadrata TT"
+        unit.label.style.font = "Friz Quadrata TT"
 
         clear(fetched)
         Castbar:Reskin(Castbar:GetInstance("target"), true)
@@ -292,6 +296,7 @@ test("HUD skin: the unit label follows hud.font, and a false companion is the pl
     UL:Apply(UL:GetInstance("target"))
     assertTrue(has(fetched, "font:Ka0s Prototype"))
     NS.db.profile.units.target.label.style.fontFromSkin = false
+    NS.db.profile.units.target.label.style.font = "Friz Quadrata TT"
     clear(fetched)
     UL:Apply(UL:GetInstance("target"))
     assertTrue(has(fetched, "font:Friz Quadrata TT"), "off: the stored face")
@@ -344,7 +349,8 @@ local function v5Saved(extraProfiles)
         units[unit] = { icons = {}, castbar = { interruptible = {}, uninterruptible = {} },
                         label = { style = {} } }
     end
-    local profile = { units = units }
+    -- The record: the one step onto the skin (v9) sets every one of these, and this file pins v6.
+    local profile = { units = units, skin = { fullSkinReset = true } }
     local rels = { "icons.borderTextureFromSkin", "icons.cooldownTextFontFromSkin",
         "castbar.fontFromSkin", "castbar.interruptible.statusBarTextureFromSkin",
         "castbar.interruptible.borderTextureFromSkin", "castbar.uninterruptible.statusBarTextureFromSkin",
@@ -394,7 +400,7 @@ test("HUD skin: a pick turned off after the reset is never reset again", functio
 
     -- And across a reload of the same SavedVariables (the record is stored, the companion too).
     local again = boot({ global = { schemaVersion = 6 }, profiles = { Default = {
-        skin = { hudReset = true },
+        skin = { hudReset = true, fullSkinReset = true },
         units = { target = { castbar = { fontFromSkin = false } } },
     } } }).NS
     assertEqual(again.db.profile.units.target.castbar.fontFromSkin, false, "kept across a reload")

@@ -245,6 +245,9 @@ local function build()
             -- `db.profile` is invisible to a suite that never switches, and a
             -- SetProfile no-op made the switch impossible to test (KICKCD-R-01).
             db.__profiles = stagedProfiles(saved)
+            -- AceDB-3.0's raw SavedVariables view: `sv.profiles` is every stored profile, the same
+            -- tables, which a migration walks to reach the inactive ones (R3-FRIZ).
+            db.sv = { profiles = db.__profiles }
             local merged = {}
             local function profileFor(key)
                 if not merged[key] then
@@ -316,10 +319,12 @@ local function build()
             end
 
             -- AceDB-3.0's SetProfile: a no-op onto the active name, otherwise
-            -- swap the key and the profile table, then
-            -- `self.callbacks:Fire("OnProfileChanged", self, name)`.
+            -- `self.callbacks:Fire("OnProfileShutdown", self)` while the OLD
+            -- profile is still current, then swap the key and the profile
+            -- table, then `self.callbacks:Fire("OnProfileChanged", self, name)`.
             db.SetProfile = function(_, key)
                 if key == db.keys.profile then return end
+                fire("OnProfileShutdown")
                 db.keys.profile = key
                 db.profile = profileFor(key)
                 fire("OnProfileChanged", key)

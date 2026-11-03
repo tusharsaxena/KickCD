@@ -162,6 +162,16 @@ test("MediaSetup: the library-drawn marks are declared, because the debug consol
     end
 end)
 
+test("MediaSetup: the skin picker's eye is declared, because the spec passes a preview", function()
+    -- The library draws the eye (Media icon `eye`) once spec.preview is passed (core/SkinSetup.lua,
+    -- R6-PV); no NS.Icon call here names it, so only the declaration keeps it shipped.
+    -- red under: dropping eye from the `LibKa0s icons:` line while the spec passes a preview.
+    assertTrue(type(NS.SkinPickerSpec().preview) == "table", "the spec passes no preview; revisit the eye")
+    local declared = {}
+    for _, name in ipairs(declaredIcons()) do declared[name] = true end
+    assertTrue(declared.eye == true, "the library draws 'eye' for this addon, but CLAUDE.md does not declare it")
+end)
+
 -- ── degraded ────────────────────────────────────────────────────────────────
 
 test("MediaSetup: with no library there is no art and no face, and that is not an error", function()
