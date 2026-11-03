@@ -25,7 +25,7 @@ and a retired one leaves its number unused.
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
 | SIM-1 – 16 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story |
-| DIAG-1 – 45 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel |
+| DIAG-1 – 46 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 43 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker (no eye) and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
@@ -1075,12 +1075,14 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
 - **DIAG-19. Inert when it fits.** After Clear → the scrollbar still shows, thumb parked, ignoring wheel
   and drag, and the right gutter keeps its width. Result: pass (owner-marked 2026-10-10)
 - **DIAG-20. The shared window edge.** On **Ka0s Default**, the console reads as a flat 1px black border
-  with a 1px light-gray highlight inside it, a gold "Ka0s KickCD — Debug" title and a gray divider.
-  Beside a second Ka0s addon's console on Ka0s Default → border, highlight, divider and title are
+  with a 1px light-gray highlight inside it and a gold "Ka0s KickCD — Debug" title on a dark gold band,
+  with no line under the title (DIAG-46). Beside a second Ka0s addon's console on Ka0s Default →
+  border, highlight, band and title are
   indistinguishable. A difference means a host passing `applySkin` again or `libs/LibKa0s` drifting
   from `../LibKa0s` (fix upstream and re-vendor, never in `libs/`). Under any other skin the console
   wears KickCD's skin (SKIN-11). (Amended by KC-05, 2026-10-29: the console paints for the skin owner,
-  its descriptor's `addonName`.) Result: pass (owner-marked 2026-10-30)
+  its descriptor's `addonName`.) Rewritten by R4-SEP (LibKa0s v1.85.0 round 4 re-cut): the band is the
+  dark gold gradient and the gray divider is gone. Result:
 - **DIAG-21. The title bar marks.** → copy, clear and close are three small white glyphs from
   `libs/LibKa0s/media/icons/`, with no tooltips. A `×`, or the words Copy and Clear, means
   `addonName = addonName` fell out of `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10)
@@ -1186,6 +1188,12 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   flags are secret and type `/kcd debug interrupt` → every secret-tainted position reads
   `isSecret=true  value=<secret>`, with no Lua error, the same spelling as `charges=<secret>` in
   `/kcd debug spells` (both are LibKa0s-Core's `NS.SECRET` now). Result: pass (owner-marked 2026-10-10)
+- **DIAG-46. No line under any window title (R4-SEP).** On **Ka0s Default**, `/kcd debug window` → the
+  console's title band meets the log with no line between them, like the Skin Tester showroom's. Copy
+  → the copy window has none either; `/kcd perf` → nor has the step panel. Repeat under any other skin →
+  no line under any of the three titles. KickCD draws no window of its own (the icon
+  grids, cast bars and unit labels are HUD), so these are the library's windows: a line is
+  `libs/LibKa0s` drifting from `../LibKa0s`. The settings pages keep their header rule. Result:
 
 ## DEGRADED
 
@@ -1678,3 +1686,5 @@ The owner's third smoke round (R3-FRIZ of Ka0sAddonsCommonTasks `docs/2026-11-02
 The round's review (R3-FIX, the same bundle) adds SIM-16 (a slow pace keeps the story) and moves the expected result of SKIN-1 and SKIN-6 (every icon edge is 1 px), so SKIN-1's pass is withdrawn. Owed: SIM-16, SKIN-1, SKIN-6.
 
 On 2026-11-02 the owner reported that every check on the smoke lists of the full skinning run and its smoke feedback batch (Ka0sAddonsCommonTasks `docs/2026-11-01-FULL_SKINNING/` and `docs/2026-11-01-SMOKE_FEEDBACK/`) passed, apart from DpsRace's clock font, the skinned look of the AceGUI Dropdown and the Ka0sMedia_Font and Ka0sMedia_Statusbar pickers, FadeNineSlice and IconBorder (`docs/2026-11-02-SMOKE_ROUND3/`, R3-SMOKE). Passed, recorded on each `Result:` line as `Passed (owner, 2026-11-02)`: DEGRADED-16, GRID-10, LABEL-8, PANEL-33, PANEL-34, SIM-8, SIM-14, SKIN-2, SKIN-5, SKIN-7, SKIN-36, SKIN-38, SKIN-39, SKIN-40, SKIN-41 and SKIN-42. Failed, re-opened as R3-L3 (IconBorder's 1 px outline and zoom) and recorded as `Failed (owner, 2026-11-02): re-opened as R3-L3`: SKIN-37.
+
+The owner's fourth smoke round (R4-SEP of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND4/`, LibKa0s v1.85.0 second re-cut) adds DIAG-46 and moves the expected result of DIAG-20 (a dark gold band and no line under the title), whose owner pass is withdrawn. Owed: both.
