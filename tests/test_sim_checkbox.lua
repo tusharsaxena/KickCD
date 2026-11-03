@@ -140,11 +140,21 @@ end)
 -- ── the reset walk ──────────────────────────────────────────────────────────
 
 test("Reset all settings stops a running sim and never starts an idle one", function()
+    -- red under: no Sim mode row (the session walk has nothing to stop the sim with)
     local _, NS = fresh()
     local H = NS.Settings.Helpers
     local calls, restore = fakeSim(NS, false)
     H.ResetAll()
     assertEqual(#calls, 0, "a reset with the sim idle must not start it")
+    restore()
+    -- The walk itself stops a running sim: the profile reset's own stop (core/Database.lua's
+    -- OnProfileChanged) would end a real sim with no Sim mode row at all, so the recorder answers
+    -- "running" to every ask and the row's `/kcd sim stop` is the only RunVerb it can hear.
+    calls, restore = fakeSim(NS, true)
+    NS.Sim.Stop = function() end
+    H.ResetAll()
+    assertEqual(calls[1], "stop", "the reset walk's Sim mode row must stop a running sim")
+    assertEqual(#calls, 1, "one stop, never a start")
     restore()
     NS.db.profile.locked = true   -- the reset unlocked the frames, and an unlocked addon refuses a start
     assertTrue(NS.Sim:RunVerb("start pull"), "the typed start was refused")
