@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
-| SIM-1 – 17 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box |
+| SIM-1 – 18 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
@@ -1013,17 +1013,30 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   is refused on cooldown, and a cast left to run ends by itself when its bar fills. Set the slider back
   to 1. Fail: a kick that lands on a full bar, a bar left full, or the kick ready again where the story
   says it cools. Result: not run
-- **SIM-17. The Master controls Sim mode box (R6-SIM, LibKa0s OptionsCompose minor 19).** `/kcd config`
+- **SIM-17. The Master controls Sim mode box (R6-SIM, LibKa0s OptionsCompose minor 19; R7-SIM).** `/kcd config`
   → General → Master controls → **Sim mode** sits beside **Lock frame**, unticked; **Debug console**
   opens the next line with **Minimap button** beside it. Tick it → exactly what a bare `/kcd sim`
-  does: the status and usage lines print and the sim step panel opens; the box stays unticked until a
-  scenario plays. Play `pull` from the panel → the box ticks. Untick it → the sim stops, as
-  `/kcd sim stop` does. With the page open, `/kcd sim start pull` → the box ticks at once; let it
-  finish or `/kcd sim stop` → it unticks. Close the page, start the sim again, reopen the page → the
-  box is ticked; the launcher's right-click **Sim mode** entry reads the same. Tick it in combat → it
-  stays unticked. With a sim running, **Reset all settings** → the sim stops. `/reload` → the box is
-  unticked. Fail: the box missing, beside the wrong row, a box that disagrees with the sim, a tick
-  that starts a scenario of its own, or a reset that starts a sim. Result:
+  does: the status and usage lines print and the sim step panel opens; the box stays ticked while the
+  panel is open, before any scenario plays (R7-SIM; round 6 left it unticked here). Play `pull` from
+  the panel → the box stays ticked. Untick it → the sim stops, as `/kcd sim stop` does, and the panel
+  closes. With the page open, `/kcd sim start pull` → the box ticks at once; let it finish → it stays
+  ticked while the idle panel is up, and closing the panel unticks it. Close the page, start the sim
+  again, reopen the page → the box is ticked; the launcher's right-click **Sim mode** entry reads the
+  same. In combat, tick it → the panel opens as `/kcd sim` does in combat and the box is ticked, but
+  playing a scenario from it is refused; untick it → the panel closes. With a sim running, **Reset all
+  settings** → the sim stops and the panel closes. `/reload` → the box is unticked. Fail: the box
+  missing, beside the wrong row, a box that disagrees with the panel and the sim, a tick that starts a
+  scenario of its own, a scenario that starts in combat, or a reset that starts a sim. Result:
+- **SIM-18. Sim mode is ticked while the step panel is open or a sim runs (R7-SIM).** With
+  `/kcd config` → General → Master controls open beside the game, `/kcd sim` → the step panel opens
+  idle and **Sim mode** ticks at once. Close the panel with its close mark → the box unticks; `/kcd sim`
+  again, then **Escape** → it unticks. Untick the box with the panel open and idle → the panel closes.
+  Tick it → the panel opens and the box stays ticked. Play `pull`, then `/kcd sim panel` to hide the
+  panel while it runs → the box stays ticked until the run ends (or `/kcd sim stop`), then unticks.
+  With the panel open and idle, right-click the minimap button → **Sim mode** is ticked; click it → the
+  panel closes, and the next right-click shows it unticked. Fail: a box or menu entry that disagrees
+  with "panel open or sim running", a panel left open by an untick, or a tick that closes at once.
+  Result:
 
 ## DIAG
 

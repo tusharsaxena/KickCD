@@ -365,6 +365,29 @@ function Host.UnpinPanel()
     return true
 end
 
+--- Repaint an open settings page whenever the step panel shows or hides (R7-SIM, Ka0sAddonsCommonTasks
+--- docs/2026-11-04-SMOKE_ROUND7, call 2). The Sim mode box reads NS.IsSimMode, which is "the panel
+--- is shown or a sim runs", and the panel opens and closes outside the settings page: `/kcd sim`,
+--- `/kcd sim panel`, the launcher, its own close mark and Escape. The library offers no show or
+--- hide callback, so this hooks the frame by its documented name, `<name>SimPanel`, once. It runs
+--- from the descriptor's `anchorTo` below, which the library asks on every ShowPanel after it built
+--- the frame and before it shows it, so even the first show is heard. Helpers is resolved at call
+--- time: settings/ loads after this file, and RefreshScalars is absent until a panel exists.
+local function refreshScalars()
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.RefreshScalars then H.RefreshScalars() end
+end
+
+function Host.WatchPanel()
+    local frame = _G[addonName .. "SimPanel"]
+    if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return false end
+    if Host.watchedPanel == frame then return true end
+    frame:HookScript("OnShow", refreshScalars)
+    frame:HookScript("OnHide", refreshScalars)
+    Host.watchedPanel = frame
+    return true
+end
+
 local PANEL = {
     stepLabel = function(step, i, steps) return Host.StepLabel(step, i, steps) end,
     stepTip = function(step, i) return Host.StepTip(step, i) end,
@@ -377,7 +400,10 @@ local PANEL = {
         { L["Ends"], L["the simulation"] },
         { L["Restores"], L["your real target, focus and cooldowns"] },
     },
-    anchorTo = function() return Host.PanelAnchor() end,
+    anchorTo = function()
+        Host.WatchPanel()
+        return Host.PanelAnchor()
+    end,
     check = NS.Icon and NS.Icon("confirm") or nil,
 }
 Host.PANEL = PANEL
@@ -466,7 +492,4 @@ end)
 -- prepare that failed. The library notifies its listeners on start, ready and stop (the session is
 -- already gone at the stop's notify), so an open page repaints at once. Helpers is resolved at call
 -- time: settings/ loads after this file, and RefreshScalars is absent until a panel exists.
-NS.Sim:AddListener(function()
-    local H = NS.Settings and NS.Settings.Helpers
-    if H and H.RefreshScalars then H.RefreshScalars() end
-end)
+NS.Sim:AddListener(refreshScalars)
