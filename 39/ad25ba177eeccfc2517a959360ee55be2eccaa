@@ -2,3 +2,5 @@ R7-RD independent review (2026-11-04, smoke round 7): PASS, no defects.
 - README Usage now names /kcd skin in one paragraph in the README's voice, no command table; the KickCD display name (R6-NAME) is unchanged.
 - True to the code: core/SkinSetup.lua passes spec.preview mode 'unlock' (enter/exit = NS.SetLocked); the picker unlocks locked frames at show, the eye locks/unlocks, every close restores the lock as at open, a pick only previews and Apply writes (NS.WriteSkinChoice), and the close control/Escape revert to the stored skin.
 - Fresh gate green (see the R7-SIM note).
+
+Second independent review (2026-11-04): concur, PASS. The sentence matches newPreview (mode unlock) and OptionsSkinPicker's enter-at-show, eye toggle and restore-at-close.
