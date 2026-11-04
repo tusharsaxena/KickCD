@@ -36,6 +36,8 @@ Setting it up takes four steps, in this order.
 
 The minimap button opens the settings on a left-click, and a right-click gives you a menu with **Enabled** and **Locked**. `/kcd disable` turns the addon off without opening anything, and `/kcd enable` turns it back on. `/kcd resetall` puts every page, position and spec's spell list back to defaults, so keep it for when you really want a fresh start. To see every setting and its value without clicking through the pages, run `/kcd list`.
 
+`/kcd skin` opens the skin picker. Hover over a skin or select it and the grids, cast bars and settings wear it at once; **Apply** keeps it, and closing the picker any other way puts your own skin back. The picker previews in unlock mode: locked grids are unlocked while it is open, the eye button locks and unlocks them, and closing it puts the lock back as it was. Skins below says what a skin changes.
+
 Everything else is on the addon's page under Settings → AddOns, and `/kcd` on its own opens it. `/kcd help` (or `/kickcd help`) lists every command.
 
 ### Simulator
