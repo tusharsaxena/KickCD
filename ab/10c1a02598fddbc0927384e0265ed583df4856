@@ -1,0 +1,6 @@
+R7-SIM independent review (2026-11-04, smoke round 7): PASS, no defects.
+- NS.IsSimMode = running or IsPanelShown; NS.ToggleSim from off = RunVerb('') (opens the panel via sim:ShowPanel), from on = stop if running then HidePanel. Matches 00_PLAN.md call 2 and LibKa0s releasing.md R7-L1 hosts-owe (1)-(3).
+- Refresh on every path: OnShow/OnHide hooked once from anchorTo; the library's place() asks anchorTo on every ShowPanel while P.point is nil, and the first show always precedes any drag, so the hook is laid before the first panel.Show(). Close mark, Escape (CloseSpecialWindows), /kcd sim panel, HidePanel and the stand-down's HidePanel all hide the frame, so OnHide fires; sim start/stop/end go through the listener (refreshScalars). Launcher re-reads on every open.
+- Combat: start still refused; a tick in combat opens the panel and reads ticked, which is the owner's rule. No Test mode in KickCD, so no exclusivity to keep. Reset all (default false) stops and closes.
+- Red first verified on a scratch copy with master's core/SimSetup.lua and modules/Sim.lua: the five R7-SIM cases fail; the hidden-window-running pin passes as claimed.
+- Fresh gate: 1675 passed, 0 failed, 1 skipped; luacheck 0/0 in 158 files; every touched file CRLF. SIM-17 revised, SIM-18 added, both Result blank.
