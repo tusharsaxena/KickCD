@@ -4,3 +4,5 @@ R7-SIM independent review (2026-11-04, smoke round 7): PASS, no defects.
 - Combat: start still refused; a tick in combat opens the panel and reads ticked, which is the owner's rule. No Test mode in KickCD, so no exclusivity to keep. Reset all (default false) stops and closes.
 - Red first verified on a scratch copy with master's core/SimSetup.lua and modules/Sim.lua: the five R7-SIM cases fail; the hidden-window-running pin passes as claimed.
 - Fresh gate: 1675 passed, 0 failed, 1 skipped; luacheck 0/0 in 158 files; every touched file CRLF. SIM-17 revised, SIM-18 added, both Result blank.
+
+Second independent review (2026-11-04): concur, PASS. Re-verified anchorTo-before-Show, the five red cases on a scratch copy, the fresh gate 1675/0/1 and luacheck 0/0. One stale comment found in settings/General.lua (still said unticking only runs /kcd sim stop and only the listener repaints); fixed in ba6b9ce under R7-SIM, comment only.
