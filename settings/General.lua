@@ -96,12 +96,14 @@ local masterRows, masterTail = H.MasterControls{
     -- to the host is added only once KickCD's lock behavior in combat has been
     -- verified in game.
     lockIsPreview    = true,
-    -- Sim mode (compose minor 19, R6-SIM): the ONE sim pair core/SimSetup.lua defines and the
-    -- launcher's Sim mode entry takes too, so ticking the box runs the bare `/kcd sim` verb and
-    -- unticking runs `/kcd sim stop`. A session row at the library's default path `state.sim`, with
-    -- the pair as its own get / set: nothing is stored. No Test mode row here, so the composer puts
-    -- it beside Lock frame, Debug console then opening the next line with Minimap button beside it.
-    -- modules/Sim.lua's listener repaints an open page when the sim starts or ends elsewhere.
+    -- Sim mode (compose minor 19, R6-SIM; R7-SIM): the ONE sim pair core/SimSetup.lua defines and
+    -- the launcher's Sim mode entry takes too. The box reads ticked while the sim step panel is shown
+    -- or a sim runs; ticking runs the bare `/kcd sim` verb (which opens the panel), and unticking
+    -- runs `/kcd sim stop` if a sim runs and hides the panel. A session row at the library's default
+    -- path `state.sim`, with the pair as its own get / set: nothing is stored. No Test mode row here,
+    -- so the composer puts it beside Lock frame, Debug console then opening the next line with
+    -- Minimap button beside it. modules/Sim.lua repaints an open page from the sim's listener and
+    -- from the step panel's OnShow and OnHide.
     isSimMode        = NS.IsSimMode,
     toggleSim        = NS.ToggleSim,
     onResetPosition  = function() H.ResetIconPosition() end,

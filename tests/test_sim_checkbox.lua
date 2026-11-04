@@ -137,6 +137,100 @@ test("a sim that starts or stops elsewhere repaints the open panel (RefreshScala
     H.RefreshScalars = real
 end)
 
+-- ── window shown or running (R7-SIM, the owner's round 7 rule) ──────────────
+--
+-- Ka0sAddonsCommonTasks docs/2026-11-04-SMOKE_ROUND7, call 2: the box (and the launcher's entry,
+-- which reads the same NS.IsSimMode) is ticked exactly while the sim step panel is shown or a sim
+-- runs. Ticking is the bare `/kcd sim` (it opens the panel, so the box stays ticked); unticking stops
+-- a running sim and hides the panel. The panel's OnShow and OnHide repaint an open settings page.
+
+local PANEL_NAME = "KickCDSimPanel"   -- the library's `<name>SimPanel`
+
+local function panelFrame(env)
+    for _, f in ipairs(env.mocks.__frames or {}) do
+        if f.GetName and f:GetName() == PANEL_NAME then return f end
+    end
+end
+
+test("R7-SIM: an open, idle sim window reads ticked, and closing it unticks the box", function()
+    -- red under: NS.IsSimMode answering only whether a sim runs
+    local _, NS = fresh()
+    local S2 = NS.Settings.Store
+    assertFalse(S2.Get("state.sim"), "idle with no window reads unticked")
+    NS.Sim:RunVerb("")
+    assertTrue(NS.Sim:IsPanelShown(), "the bare verb opens the sim window")
+    assertFalse(NS.Sim:IsActive(), "and starts nothing")
+    assertTrue(S2.Get("state.sim"), "the window open, idle, reads ticked")
+    NS.Sim:HidePanel()
+    assertFalse(S2.Get("state.sim"), "the window closed, idle, reads unticked")
+end)
+
+test("R7-SIM: ticking opens the sim window and the box stays ticked", function()
+    -- red under: a get that reads only the running sim, which re-reads the tick as unticked
+    local _, NS = fresh()
+    NS.Settings.Helpers.SetAndRefresh("state.sim", true)
+    assertTrue(NS.Sim:IsPanelShown(), "the tick opened the window, as `/kcd sim` does")
+    assertFalse(NS.Sim:IsActive(), "the tick picks no scenario")
+    assertTrue(NS.Settings.Store.Get("state.sim"), "the box stays ticked")
+    NS.Settings.Helpers.SetAndRefresh("state.sim", false)
+    assertFalse(NS.Sim:IsPanelShown(), "unticking an idle window closes it")
+    assertFalse(NS.Settings.Store.Get("state.sim"))
+end)
+
+test("R7-SIM: a sim running with its window hidden reads ticked", function()
+    local _, NS = fresh()
+    assertTrue(NS.Sim:RunVerb("start pull"), "the typed start was refused")
+    NS.Sim:RunVerb("panel")
+    assertFalse(NS.Sim:IsPanelShown(), "`/kcd sim panel` hid the window")
+    assertTrue(NS.Sim:IsActive())
+    assertTrue(NS.Settings.Store.Get("state.sim"), "running with the window hidden reads ticked")
+    NS.Sim:Stop()
+end)
+
+test("R7-SIM: unticking a running sim stops it and hides its window", function()
+    -- red under: an untick that runs `/kcd sim stop` alone, which leaves the idle window up
+    local env, NS = fresh()
+    assertTrue(NS.Sim:RunVerb("start pull"), "the typed start was refused")
+    assertTrue(NS.Sim:IsPanelShown(), "the start opened the window")
+    NS.Settings.Helpers.SetAndRefresh("state.sim", false)
+    env.flush()
+    assertFalse(NS.Sim:IsActive(), "the untick stopped the sim")
+    assertFalse(NS.Sim:IsPanelShown(), "the untick hid the window")
+    assertFalse(NS.Settings.Store.Get("state.sim"), "and the box reads unticked")
+end)
+
+test("R7-SIM: the sim window's OnShow and OnHide repaint the open settings page", function()
+    -- red under: no OnShow / OnHide hook on KickCDSimPanel calling Helpers.RefreshScalars
+    local env, NS = fresh()
+    local H = NS.Settings.Helpers
+    local n, real = 0, H.RefreshScalars
+    H.RefreshScalars = function(...) n = n + 1; return real(...) end
+    local function hooks()
+        return #(rawget(panelFrame(env), "__hooks") or {})
+    end
+    NS.Sim:RunVerb("")
+    assertTrue(panelFrame(env) ~= nil, "the window is " .. PANEL_NAME)
+    assertEqual(n, 1, "the window's first show repaints the page once")
+    local laid = hooks()
+    NS.Sim:HidePanel()
+    assertEqual(n, 2, "its hide (the close mark and Escape hide it the same way) repaints once")
+    NS.Sim:RunVerb("")
+    assertEqual(n, 3, "a reopened window repaints once")
+    assertEqual(hooks(), laid, "the hooks are laid once, not on every show")
+    H.RefreshScalars = real
+end)
+
+test("R7-SIM: the launcher's Sim mode entry reads the same rule", function()
+    -- the launcher descriptor carries NS.IsSimMode itself (the shared-pair case above), so its tick
+    -- is the box's: ticked with the window open and idle, unticked once it closes
+    local _, NS = fresh()
+    NS.ToggleSim()
+    assertTrue(NS.IsSimMode(), "one click from off opens the window and reads ticked")
+    NS.ToggleSim()
+    assertFalse(NS.Sim:IsPanelShown(), "the next click closes the idle window")
+    assertFalse(NS.IsSimMode(), "and reads unticked")
+end)
+
 -- ── the reset walk ──────────────────────────────────────────────────────────
 
 test("Reset all settings stops a running sim and never starts an idle one", function()

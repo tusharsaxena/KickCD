@@ -106,22 +106,42 @@ else
     NS.Sim = newSimStub(say)
 end
 
--- ── the one sim pair (R6-SIM, LibKa0s OptionsCompose minor 19) ─────────────────────────────────
+-- ── the one sim pair (R6-SIM, LibKa0s OptionsCompose minor 19; R7-SIM) ─────────────────────────
 --
--- Whether the sim runs, and the act of the bare `/kcd sim` verb. The launcher's Sim mode entry
+-- Whether Sim mode is on, and the act that flips it. The launcher's Sim mode entry
 -- (core/LauncherSetup.lua) and the Master controls Sim mode box (settings/General.lua) both take
 -- THESE two functions, so the box, the menu entry and the slash verb are one act and cannot drift.
 -- NS.Sim is resolved at call time: modules/Sim.lua replaces the stub above with the live instance.
--- The toggle does what typing the verb does: stop a running sim, otherwise the bare verb (its
--- status, its usage and the sim step panel, from which a scenario plays). It picks no scenario.
+--
+-- THE OWNER'S ROUND 7 RULE (R7-SIM, Ka0sAddonsCommonTasks docs/2026-11-04-SMOKE_ROUND7, call 2):
+-- Sim mode is on while the sim step panel is shown OR a sim runs, and off when neither. From off,
+-- the toggle is the bare `/kcd sim` verb (its status, its usage and the step panel, from which a
+-- scenario plays), so a tick opens the panel and stays ticked; it picks no scenario. From on, it
+-- stops a running sim (`/kcd sim stop`) and hides the panel, so one untick leaves both off.
+-- modules/Sim.lua repaints an open settings page from the panel's OnShow and OnHide as well as from
+-- the sim's listener; the launcher's menu asks NS.IsSimMode on every open.
+
+local function isRunning(s)
+    return type(s.IsActive) == "function" and s:IsActive() == true
+end
+
+local function isPanelShown(s)
+    return type(s.IsPanelShown) == "function" and s:IsPanelShown() == true
+end
 
 function NS.IsSimMode()
     local s = NS.Sim
-    return type(s) == "table" and type(s.IsActive) == "function" and s:IsActive() == true
+    if type(s) ~= "table" then return false end
+    return isRunning(s) or isPanelShown(s)
 end
 
 function NS.ToggleSim()
     local s = NS.Sim
     if type(s) ~= "table" or type(s.RunVerb) ~= "function" then return end
-    s:RunVerb(s:IsActive() and "stop" or "")
+    if not NS.IsSimMode() then
+        s:RunVerb("")
+        return
+    end
+    if isRunning(s) then s:RunVerb("stop") end
+    if type(s.HidePanel) == "function" then s:HidePanel() end
 end
