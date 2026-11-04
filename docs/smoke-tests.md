@@ -1026,7 +1026,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   playing a scenario from it is refused; untick it → the panel closes. With a sim running, **Reset all
   settings** → the sim stops and the panel closes. `/reload` → the box is unticked. Fail: the box
   missing, beside the wrong row, a box that disagrees with the panel and the sim, a tick that starts a
-  scenario of its own, a scenario that starts in combat, or a reset that starts a sim. Result:
+  scenario of its own, a scenario that starts in combat, or a reset that starts a sim. Result: pass (owner-marked 2026-11-04)
 - **SIM-18. Sim mode is ticked while the step panel is open or a sim runs (R7-SIM).** With
   `/kcd config` → General → Master controls open beside the game, `/kcd sim` → the step panel opens
   idle and **Sim mode** ticks at once. Close the panel with its close mark → the box unticks; `/kcd sim`
@@ -1036,7 +1036,7 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   With the panel open and idle, right-click the minimap button → **Sim mode** is ticked; click it → the
   panel closes, and the next right-click shows it unticked. Fail: a box or menu entry that disagrees
   with "panel open or sim running", a panel left open by an untick, or a tick that closes at once.
-  Result:
+  Result: pass (owner-marked 2026-11-04)
 
 ## DIAG
 
