@@ -16,9 +16,9 @@ Neither repeats the other (documentation-§7).
 **World of Warcraft (Retail). Nothing else.**
 
 - `KickCD.toc` declares **no** `## Dependencies` line, so no addon is required.
-- `KickCD.toc:8` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
+- `KickCD.toc` declares `## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0, LibSharedMedia-3.0,
   LibDataBroker-1.1, LibDBIcon-1.0, LibCustomGlow-1.0, EllesmereUI`.
-  Every one of those but EllesmereUI is **vendored** under `libs/` and committed (`KickCD.toc:19-36`,
+  Every one of those but EllesmereUI is **vendored** under `libs/` and committed (the `# Libraries` block of `KickCD.toc`,
   `libs/AceAddon-3.0/`, `libs/LibStub/`, `libs/CallbackHandler-1.0/`, `libs/LibSharedMedia-3.0/`,
   `libs/LibCustomGlow-1.0/`), so `OptionalDeps` only affects **load order** when the player happens
   to have a standalone copy — it is not an install instruction. `libs/LibKa0s/` is vendored the
@@ -29,7 +29,7 @@ Neither repeats the other (documentation-§7).
   loads first when the player has it, because the vendored `LibKa0s-Skin-1.0` offers it the owner
   at file load (`core/SkinSetup.lua`) and its skin provider reads it only when the Skin tab's
   source is set to it. Without it, every other skin still works.
-- Client version: `KickCD.toc:1` is `## Interface: 120105` — WoW 12.1.5 (Midnight).
+- Client version: `KickCD.toc`'s first line is `## Interface: 120105` — WoW 12.1.5 (Midnight).
 - The addon **MUST NOT** fetch a library at build time; vendoring is the rule (library-stack,
   packaging). Listing a library above does not license fetching it.
 
@@ -41,16 +41,16 @@ The whole contributor toolchain. There is no build step and no compiler.
 
 | Tool | Version | Why it is needed (evidence) |
 |---|---|---|
-| **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/_kit/loader.lua:72` calls `setfenv(chunk, makeEnv(mocks))` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
-| **`lua` on `PATH`** | same 5.1 binary | `tests/test_list_mode.lua:10` re-invokes the runner as a child process: `io.popen("lua " .. T.root .. "/tests/run.lua --list")`. The command is literally `lua`, so `lua5.1` alone on `PATH` is not enough. |
-| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, the `read_globals` list at `.luacheckrc:47-67`); `docs/testing.md:3` names `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
+| **Lua 5.1** | **5.1 exactly — not 5.2+** | `tests/_kit/loader.lua`'s `Loader.load` calls `setfenv(chunk, makeEnv(mocks))` to sandbox each source file. `setfenv` was **removed in Lua 5.2**, so the harness does not merely prefer 5.1, it will not run on anything newer. |
+| **`lua` on `PATH`** | same 5.1 binary | `tests/test_list_mode.lua`'s `listOutput` re-invokes the runner as a child process: `io.popen("lua " .. T.root .. "/tests/run.lua --list")`. The command is literally `lua`, so `lua5.1` alone on `PATH` is not enough. |
+| **luacheck** | any recent (1.2.0 here) | The lint gate. `.luacheckrc` is a full config for it (`std = "lua51"`, its `read_globals` list); `docs/testing.md`'s opening paragraph names `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` as half the green commit gate. Pinning a version would be false precision — the config uses no version-specific feature. |
 | **`ka0s-bounded`** | shipped with the dev-copilot plugin | `~/.claude/dev-copilot/bin/ka0s-bounded` bounds a command's time and memory (exit 124 time limit, 137 killed). The lint gate runs through it, because `luacheck` loads no kit and dev-copilot's bounded-runs hook refuses it bare; `lua tests/run.lua` is bounded by the kit itself. |
-| **git** | any recent | The repo, obviously — but also a **test dependency**, inside the green gate itself: three suites read the tracked file set with `git ls-files` (`tests/test_lintconfig.lua:219`, `tests/test_source_style.lua:142`, `tests/test_doc_structure.lua:100`) and fail rather than pass when they cannot. The vendored gate `tests/_kit/vendor_sync.lua` (driven by `tests/test_vendor_sync.lua`, four statements under its header) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
-| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua:238` and `tests/test_slash_style.lua:134` enumerate source files with `io.popen("ls ...")`, and `tests/test_doc_structure.lua:181` lists the audit bundles the same way; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
-| **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh:1` is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
-| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (`tests/run.lua:275`), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
+| **git** | any recent | The repo, obviously — but also a **test dependency**, inside the green gate itself: three suites read the tracked file set with `git ls-files` (`tests/test_lintconfig.lua`'s `trackedLua`, `tests/test_source_style.lua` (the case *no authored file falls back to the global print*), `tests/test_doc_structure.lua`'s `trackedMarkdown`) and fail rather than pass when they cannot. The vendored gate `tests/_kit/vendor_sync.lua` (driven by `tests/test_vendor_sync.lua`, four statements under its header) shells out with `git -C "%s" %s` to read the LibKa0s sibling checkout's tag — the tag named by the provenance line in **`CLAUDE.md`**, not `README.md` — and [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) documents the four `diff -r` vendored-copy checks. |
+| **POSIX `ls`, `diff`** | coreutils / diffutils, any recent | `tests/test_coresetup.lua` (the case *no addon file emits a bare "secret" sentinel of its own*) and `tests/test_slash_style.lua`'s `luaFiles` enumerate source files with `io.popen("ls ...")`, and `tests/test_doc_structure.lua`'s `bundleFiles` lists the audit bundles the same way; the vendored-copy gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) is four `diff -r` invocations. Both ship with Ubuntu — listed so a minimal container image is not a mystery failure. |
+| **bash** + `awk`, `sed`, `grep`, `tr`, `date` | any recent | `tests/_kit/run-automated-tests.sh`'s shebang is `#!/usr/bin/env bash` — the vendored consolidated runner that produces every `docs/automated-tests/<stamp>/` bundle. It drives the four suites and formats their output with those coreutils; it is **not** needed for the plain `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` / `lua tests/run.lua` gate. Never edit it — it is vendored from `../LibKa0s/testkit`. |
+| **lizard** | any recent (1.24.0 here) | Drives the `complexity` suite of the automated-test runner with the exact invocation the standard fixes (performance-§10). The harness also runs the kit's `test_lizard_sighted` (its row in `tests/run.lua`'s suite list), whose end-to-end case shells out to `lizard` and skips when it is not on `PATH`. **Optional** — absent `lizard` means the report is stale and one case skips, not that the addon is broken. |
 
-`file` is worth having for one documented troubleshooting path — `docs/testing.md:308` uses
+`file` is worth having for one documented troubleshooting path — `docs/testing.md`, *When these diffs are supposed to be non-empty*, uses
 `file -b <path>` to establish which side of a CRLF divergence drifted — but nothing requires it.
 
 ### Install (WSL2 / Ubuntu 24.04)
@@ -108,7 +108,7 @@ and open a PR with only the Development group installed.
 
 - **Packaging is a hosted service, not local software.** `.pkgmeta` is consumed by the
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
-  `ignore:` list (`.pkgmeta:1-34`) and declares **no externals**, because the libraries are
+  `ignore:` list and declares **no externals**, because the libraries are
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
   script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
   above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.

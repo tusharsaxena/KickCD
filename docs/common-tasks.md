@@ -48,13 +48,13 @@ so **do not** write a parallel mutator for a field that already has a row.
 
 ### Add a slash command
 
-1. Append an entry to the `COMMANDS` table in `core/KickCD.lua` (around `:156`), shaped
+1. Append an entry to the `COMMANDS` table in `core/KickCD.lua` (the file-scope `local COMMANDS = {`), shaped
    `{"verb", "One-line description", function(rest) … end}`.
 2. The handler takes **`(rest)` only** — everything after the verb, case and internal spacing
    preserved. It does **not** take `self`: `LibKa0s-Slash-1.0`'s dispatcher calls it with the
    remainder alone, and a handler still expecting `self` silently reads the rest of the line as its
    `self` and the argument as `nil`. `tests/test_slash.lua` covers exactly that mistake.
-3. Nothing else to plumb. `NS.COMMANDS` is published at `core/KickCD.lua:418` and is the single source
+3. Nothing else to plumb. `NS.COMMANDS` is published by `core/KickCD.lua` (`NS.COMMANDS = COMMANDS`) and is the single source
    for both `/kcd help` and the settings panel's command list, so a new verb surfaces in chat **and**
    in the UI.
 4. `perf` is a **reserved** verb across the collection (`slash-commands-§2`) and is already registered
@@ -194,11 +194,11 @@ argument, never pre-formatted, so a secret value prints `<secret>`. Add the sect
   [testing.md](testing.md#the-source-scan-guard).
 - **A chat sink threaded through helpers is a parameter named `emit`, never `print`.** A dump that
   splits across several local helpers passes the sink down rather than each helper reaching for
-  `NS.Util.print` again — `modules/Castbar_Debug.lua` does this eight times. Name that parameter
+  `NS.Util.print` again — `modules/Castbar_Debug.lua` does this in every one of its dump helpers and `NINT_REPORT` arms. Name that parameter
   `emit`, and name the local that resolves it `emit` too. Calling it `print` shadows the Lua global
   inside every one of those functions, so `print(...)` in the body no longer means what a reader
   scanning for `slash-commands-§4` violations assumes it means, and `tests/test_source_style.lua`
-  cannot tell the shadow from a bare global read either. `settings/Slash.lua:67`'s `out(line)` is the
+  cannot tell the shadow from a bare global read either. `settings/Slash.lua`'s `out(line)` is the
   same idea one level up, where the sink is a module-level local rather than an argument.
 
 ### 12.0 secret-value rule of thumb
@@ -256,11 +256,11 @@ Suppressions come in two forms, and the choice between them is about scope:
 
 - **One file → a `files[...]` stanza in `.luacheckrc`.** The key names the single `.lua` file that
   earns the code, and the entry names the code AND the variable, in luacheck's `<code>/<variable>`
-  form. Nine stanzas exist today, all `212/self`, all on files whose methods a calling convention
+  form. Every suppression stanza is a `212/self` on a file whose methods a calling convention
   reaches with the colon — the AceAddon modules, the AceEvent handler registered by name, the
   `LibKa0s-Slash-1.0` degradation stub — and each carries a comment naming the obligation that
-  forces the receiver. An argument that falls out of use under any other name, in those nine files
-  or in the other 88, still reports. `libs/`,
+  forces the receiver (`tests/mock_menu.lua` adds `432/self`, and its stanza says why). An argument
+  that falls out of use under any other name, in those files or in any other linted file, still reports. `libs/`,
   `tests/_kit/`, `_dev/`, `docs/audits/` and `docs/reviews/` are excluded from linting outright.
   **The rest of `tests/` is linted** — the suites, `run.lua`, `perf.lua`, `wow_mock.lua` and `wow_mock_frames.lua` are this
   addon's code and are held to the same gate as `core/`. `tests/_kit/` is the one carve-out inside

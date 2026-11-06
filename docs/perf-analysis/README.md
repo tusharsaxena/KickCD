@@ -131,9 +131,9 @@ emits `"failures": {}`, not `[]`. Non-empty lists encode as proper arrays.
 - **`interface`** is the **client's** build TOC number, from `GetBuildInfo`'s fourth return — not the
   addon's `## Interface` line. It used to read `0`: `GetAddOnMetadata` does not expose the `Interface`
   TOC field, so the old lookup returned nil and every record stamped 0. `LibKa0s-Perf-1.0` minor 5
-  fixed that, and `tests/test_perfsetup.lua:868` pins it, so an in-game record from the vendored copy
+  fixed that, and `tests/test_perfsetup.lua` pins it (*the record stamps a real client interface version, never 0*), so an in-game record from the vendored copy
   stamps a real build. **A capture reading `interface: 0` is either offline** (no client involved —
-  `tests/perf.lua:388` hardcodes 0) **or was taken against a lib older than Perf 5**, and that is
+  `tests/perf.lua`'s record hardcodes `interface = 0`) **or was taken against a lib older than Perf 5**, and that is
   worth saying in its `ANALYSIS.md`.
 - **Frame limiters are not recorded**, and a pinned client produces an unusable delta the record
   cannot flag. Judge that from the arms: two arms at the same frame time, or at a round one like
@@ -145,21 +145,21 @@ Worth knowing **before** you read a KickCD report, because it changes what its n
 
 Containment is supplied at the recording call — `Perf.Note(key, ms, parentKey)` — and the library
 only reports a parent as *observed* when that third argument was passed. KickCD declares eleven buckets
-(`core/PerfSetup.lua:103-114`). Four declare a parent, and all four pass one:
+(the `buckets` list of `core/PerfSetup.lua`'s `NS.Perf = lib:New` descriptor). Four declare a parent, and all four pass one:
 
 | Bucket | Declared within | Call site | Parent passed |
 |---|---|---|---|
-| `spellPoll` | — | `modules/Cooldowns.lua:586` | — |
-| `pollSpell` | `spellPoll` | `modules/Cooldowns.lua:225`, `:233` (both exits) | When the caller hands one: `Cooldowns:Refresh` polls with `"spellPoll"` (`modules/Cooldowns.lua:571`), the rebuild poll with none (`:347`) |
-| `stateEmit` | `spellPoll` | `modules/Cooldowns.lua:463` | Yes, `"spellPoll"` |
-| `spellState` | `stateEmit` | `modules/IconGrid.lua:816` | Yes: `"stateEmit"`, or `"rebuildEmit"` when the payload carries `rebuild = true` |
-| `iconApply` | `spellState` | `modules/IconGrid_Render.lua:714` | When the caller hands one: `IconGrid:OnSpellState` passes `"spellState"` (`modules/IconGrid.lua:810`); the other two callers (`modules/IconGrid.lua:330`, `modules/IconGrid_Render.lua:831`) run under no bracket and pass none |
-| `cdText` | — | `modules/IconGrid_Ticker.lua:195`, `:205` (both exits) | — |
-| `castEvent` | — | `modules/IconGrid_Visibility.lua:145` | — |
-| `glowGate` | — | `modules/IconGrid_Visibility.lua:283`, `:296` | — |
-| `visibility` | — | `modules/IconGrid_Visibility.lua:131` | — |
-| `castTick` | — | `modules/Castbar.lua:530`, `:551` (both exits) | — |
-| `rebuildEmit` | — | `modules/Cooldowns.lua:367` | — |
+| `spellPoll` | — | `modules/Cooldowns.lua`, `Cooldowns:Refresh` | — |
+| `pollSpell` | `spellPoll` | `modules/Cooldowns.lua`, `Cooldowns:PollSpell` (both exits) | When the caller hands one: `Cooldowns:Refresh` polls with `"spellPoll"`, the rebuild poll in `Cooldowns:Rebuild` with none |
+| `stateEmit` | `spellPoll` | `modules/Cooldowns.lua`, `emitState` | Yes, `"spellPoll"` |
+| `spellState` | `stateEmit` | `modules/IconGrid.lua`, `IconGrid:OnSpellState` | Yes: `"stateEmit"`, or `"rebuildEmit"` when the payload carries `rebuild = true` |
+| `iconApply` | `spellState` | `modules/IconGrid_Render.lua`, `Icon:Apply` | When the caller hands one: `IconGrid:OnSpellState` passes `"spellState"`; the other two callers (`seedIcon` in `modules/IconGrid.lua`, `Icon:ApplyTextConfig` in `modules/IconGrid_Render.lua`) run under no bracket and pass none |
+| `cdText` | — | `modules/IconGrid_Ticker.lua`, `_tickAllCdIcons` (both exits) | — |
+| `castEvent` | — | `modules/IconGrid_Visibility.lua`, `IconGrid:OnUnitCastEvent` | — |
+| `glowGate` | — | `modules/IconGrid_Visibility.lua`, `IconGrid:RefreshAllGlows` (both exits) | — |
+| `visibility` | — | `modules/IconGrid_Visibility.lua`, `IconGrid:RefreshVisibility` | — |
+| `castTick` | — | `modules/Castbar.lua`, `onUpdate` (both exits) | — |
+| `rebuildEmit` | — | `modules/Cooldowns.lua`, `Cooldowns:Rebuild` | — |
 
 So `observedWithin` is populated for `pollSpell`, `stateEmit`, `spellState` and `iconApply`.
 `spellState` names whichever publish it ran inside, so a capture that saw a `Cooldowns:Rebuild`
