@@ -485,7 +485,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 | Doc | Status | Trigger |
 |---|---|---|
 | `slash-dispatch.md` | Present | 21 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
-| `midnight-quirks.md` | Present | The 12.0 secret-value rules and the cast-info shims |
+| `midnight-quirks.md` | Present | Always: carries the vendored client-quirks catalog (client-quirks-§1), then the addon's own 12.0 secret-value rules and cast-info shims |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
