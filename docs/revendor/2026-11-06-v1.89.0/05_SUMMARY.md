@@ -1,0 +1,8 @@
+# Summary
+
+- **Tag:** v1.85.0 -> v1.89.0 (pushed, `0bd4839`), base from the provenance line, agreeing with the last payload commit. Kit 50 -> 51. Moved: Toast 3 -> 4, Widgets 22 -> 23, DebugLogDiagnostics 6 -> 7, and the new IconBrowser major's three files at 1 (table in `01_DELTA.md`). No cross-major skew. No span bundle (3h printed nothing), no base correction (Step 0 `ok`), no refresh.
+- **For free (class A):** kit 51's CallbackHandler unregister guard; the diagnostics report's `LibKa0s running:` line naming IconBrowser; Widgets 23 leaves the library's flat menus (Sim picker, test strip) as minor 22 drew them.
+- **Blockers:** none. No `W.ContextMenu` use site, no Toast lookup or stub, no `__Attach*` member moved, no Skin facade member owed (`docs/releasing.md` step 8), no whole-catalog test loop, no dead `__releaseChrome` mirror.
+- **Icons:** `LibKa0s icons:` line kept as it was (14 names, all Open Iconic). The tag's prune removed 5825 files (Open Iconic 210, Phosphor 1435, Game-icons 4180) and kept 15 (the 14 marks and the Open Iconic license); the shipped set is unchanged, so the README credits are unchanged. No provenance split.
+- **Adopted:** nothing; the plan names no KickCD adoption. **Declined:** nothing, no issue filed. IconBrowser settled (no chooser); cascading-menu fields and the Toast stack not applicable. See `03_DECISIONS.md`.
+- **Gate after the prune:** `ka0s-bounded luacheck .` 0 warnings / 0 errors in 158 files; `ka0s-bounded lua tests/run.lua` 1675 passed, 0 failed, 1 skipped (1676 total), `tests/test_vendor_sync.lua` among them. Largest authored file 1057 lines, under the 1500 cap.
