@@ -23,10 +23,10 @@ them, so a bare "gates? yes/no" column cannot be written honestly. Both are name
 
 | Suite | Command | Gates the run and the commit? | Gates the tag? |
 |---|---|---|---|
-| `lint` | `luacheck .` | **yes** | **yes** |
+| `lint` | `~/.claude/dev-copilot/bin/ka0s-bounded luacheck .` | **yes** | **yes** |
 | `tests` | `lua tests/run.lua` | **yes** | **yes** |
 | `perf` | `lua tests/perf.lua` | no — recorded only | **yes** |
-| `complexity` | `lizard -l lua -x "./libs/*" -x "./tests/_kit/*" .` | no — recorded only | **yes** |
+| `complexity` | `bash tests/_kit/run-automated-tests.sh --suite complexity` (lizard over the kit's sighted shadow, with function-count parity; raw `lizard` is blind in Lua) | no — recorded only | **yes** |
 
 `perf` and `complexity` are **measured, recorded and diffed — never used to fail a run and never
 used to block a commit.** A threshold that fails a run teaches everyone to reach for `--no-verify`,
