@@ -257,9 +257,9 @@ end
 -- ── the panel's presentation (Sim-1.0's `d.panel`; H7, H10) ──────────────────────────────────
 --
 -- The panel itself (its rows, states, controls, picker, click-ahead and placement) is the
--- library's. These fields say only what KickCD's steps are called and what their tooltips say. No
--- `title` (the library default, `KickCD - Simulation`: the panel's name, not a mode word on a host
--- window) and no `store`: the position is session-only, so nothing reaches SavedVariables.
+-- library's. These fields say only what KickCD's steps are called and what their tooltips say, and the
+-- window title (`KickCD - SIM`, the owner's 2026-11-07 ruling: the library default reads `Simulation`).
+-- No `store`: the position is session-only, so nothing reaches SavedVariables.
 
 -- The role words a scenario's step labels carry, and the host field each resolves to.
 local ROLES = { { word = L["your kick"], field = "kick" }, { word = L["your CC"], field = "cc" } }
@@ -389,6 +389,7 @@ function Host.WatchPanel()
 end
 
 local PANEL = {
+    title = "KickCD - SIM",
     stepLabel = function(step, i, steps) return Host.StepLabel(step, i, steps) end,
     stepTip = function(step, i) return Host.StepTip(step, i) end,
     startTip = {
