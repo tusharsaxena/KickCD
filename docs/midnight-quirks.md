@@ -2,7 +2,7 @@
 
 Catalog of WoW Midnight (Interface 12.0.x) behaviors that bite the addon. **Read this before touching cooldown, cast, or visibility code.** When something breaks at patch time, this is where to look first.
 
-<!-- BEGIN VENDORED: quirks catalog v2.102.2 (source: WowAddonStandards) -->
+<!-- BEGIN VENDORED: quirks catalog v2.103.1 (source: WowAddonStandards) -->
 > Part of the **[Ka0s WoW Addon Standard](https://github.com/tusharsaxena/WowAddonStandards/blob/master/standards/STANDARDS.md)** — the split standard. This section is vendored whole into every addon's `docs/midnight-quirks.md` (§1), so its links are absolute. Cross-references use the `filename-§N` form (see the index's section map).
 
 ## Client quirks
@@ -29,6 +29,7 @@ Every entry **MUST** carry:
 - **Measured:** the client build or date it was observed on, where any write-up recorded one. An entry with
   no measurement says *not measured*; that is a weaker entry, not a missing field.
 - **Cost:** what happened to an addon that did not know it.
+- **Client:** the client it was measured on, `Retail` or `Forever` (clients-§1). An entry that names none is a Retail entry, which is every entry written before v2.103.0; a Forever behavior is written with `Forever` and its build, and it is not assumed to hold on Retail.
 - **Do:** the workaround, as a rule an addon can follow.
 - **Source:** the deepest write-up — the repo and document that probed furthest — and the harvest that
   promoted it. Every version is quoted in that harvest's `03_EVIDENCE.md`.
@@ -219,6 +220,8 @@ mock enforces it. *Source:* MultiMeters `tests/mock_frame.lua`, the font-not-set
 ### 6. Open probes — contested behaviors (not rules)
 
 Each needs an in-game probe, recorded with the build, before any section of this standard changes.
+
+- **WoW Forever behaviors (none recorded yet).** The catalog was written on Retail. The Forever client (build 70790) has a missing-API surface, `SetDesaturation` among it, that LibKa0s tracks in LibKa0s#44, and no quirk entry yet meets this section's two-repo bar for it. Record a Forever behavior in the repo that meets it, with the build, and promote it by a harvest like any other.
 
 - **`string.format` on a secret.** events-frames-taint-§8 says it raises, with three repos; two say it
   works, one with a mid-combat observation. The likely difference is the specifier (`%s` against `%d` and
