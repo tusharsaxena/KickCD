@@ -25,6 +25,7 @@ Neither repeats the other (documentation-§7).
   same way and is deliberately absent from `OptionalDeps`, because no standalone copy of it exists
   to defer to. LibCustomGlow-1.0 is never called directly: `LibKa0s-Glow-1.0`
   (`core/GlowSetup.lua`) resolves it at call time.
+  Ace3: WoWUIDev/Ace3@ac3d1225 (untagged master; LibKa0s#76).
 - EllesmereUI is a separate addon, never vendored and never required: it is listed only so it
   loads first when the player has it, because the vendored `LibKa0s-Skin-1.0` offers it the owner
   at file load (`core/SkinSetup.lua`) and its skin provider reads it only when the Skin tab's

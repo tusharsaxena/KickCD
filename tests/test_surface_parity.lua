@@ -279,6 +279,8 @@ test("the Compat stub carries every LibKa0s-Compat-1.0 member the host wires", f
         -- A name reader. KickCD reads the name off GetSpellInfo's first return, which the host
         -- does route; no call site asks for the name alone.
         "GetSpellName",
+        -- LibKa0s v1.92.0 (Compat minor 2) added these four client helpers. No caller here until the Forever port.
+        "IsForever", "IsRetail", "ClientKey", "ForClient",
     })
 end)
 
