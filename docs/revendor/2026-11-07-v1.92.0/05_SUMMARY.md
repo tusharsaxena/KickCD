@@ -6,8 +6,8 @@
 - Contract blockers: none.
 - LibKa0s icons: line kept as written. Prune: prune-icons: /mnt/d/Profile/Users/Tushar/Documents/GIT/KickCD: 14 icon(s) declared; kept 15 file(s), removed 5825
 - README credits: unchanged (no icon set added or removed). Provenance split: none. Dead stub mirrors removed: ./settings/OptionsSetup.lua:501:    -- that helper. The ten that left before it -- __panels, __bannerBand, __layoutTabs, __releaseChrome (Li
-./settings/OptionsSetup.lua:502:    -- removed __releaseChrome from the library too), __scrollTopInset,.
-- Standards reference moved to v2.103.1: vendored quirks block in docs/midnight-quirks.md replaced and stamped v2.103.1; X-Standard URL ok=1, bare badge ok=1, linked badge=0, Standards compliance section=1. Notation sweep (`grep -rEn '§[0-9]+\.[0-9]' . --exclude-dir=.git --exclude-dir=libs --exclude-dir=_kit --exclude-dir=audits --exclude-dir=reviews --exclude-dir=automated-tests`): 6 hits. .gitattributes pin: * text=auto eol=crlf. The RESULTS.md lead-in is runner-generated and was not swept.
+./settings/OptionsSetup.lua:502:    -- removed __releaseChrome from the library too), __scrollTopInset,.
+- Standards reference moved to v2.103.1: vendored quirks block in docs/midnight-quirks.md replaced and stamped v2.103.1; X-Standard URL ok=1, bare badge ok=1, linked badge=0, Standards compliance section=1. Notation sweep (`grep -rEn '§[0-9]+\.[0-9]' . --exclude-dir=.git --exclude-dir=libs --exclude-dir=_kit --exclude-dir=audits --exclude-dir=reviews --exclude-dir=automated-tests`): 6 hits. .gitattributes pin: * text=auto eol=crlf. The RESULTS.md lead-in is runner-generated and was not swept.
 - README description now opens with the supported-clients sentence (documentation-§1 item 3, owner-controller ruling): "Retail only for now; WoW Forever support is planned."
 - Ace3 provenance recorded in DEPENDENCIES.md (WoWUIDev/Ace3@ac3d1225, LibKa0s#76).
 - Adopted: nothing. Declined: 3 candidates, "deferred to the addon's Forever port", no issues filed (owner ruling).
