@@ -1,0 +1,314 @@
+{
+  "DEATHKNIGHT:251:221562": {
+    "reason": "Asphyxiate's talent id on 12.1.5 (45 s stun), visible to every DK spec; it replaces 108194, which no spec learns, in the same slot Blood already fills with 221562",
+    "ruling": "accept"
+  },
+  "DEATHKNIGHT:252:221562": {
+    "reason": "Asphyxiate's talent id on 12.1.5 (45 s stun), visible to every DK spec; it replaces 108194, which no spec learns, in the same slot Blood already fills with 221562",
+    "ruling": "accept"
+  },
+  "DEATHKNIGHT:252:91797": {
+    "reason": "needs owner review: Monstrous Blow is the ghoul's stun in Dark Transformation, a pet ability the sheet did not list",
+    "ruling": "reject"
+  },
+  "DEATHKNIGHT:252:91800": {
+    "reason": "needs owner review: Gnaw is the ghoul's stun, a pet ability the sheet did not list",
+    "ruling": "reject"
+  },
+  "DEATHKNIGHT:252:91802": {
+    "reason": "needs owner review: Shambling Rush interrupts (effect 68 via 91807) but only on the ghoul's Dark Transformation form; Unholy's interrupt is Mind Freeze 47528",
+    "ruling": "reject"
+  },
+  "HUNTER:253:355589": {
+    "reason": "needs owner review: a class-line row alone (no talent node) is not proof a spec learns it; tied to the 392060 flag",
+    "ruling": "reject"
+  },
+  "HUNTER:254:355589": {
+    "reason": "needs owner review: a class-line row alone (no talent node) is not proof a spec learns it; tied to the 392060 flag",
+    "ruling": "reject"
+  },
+  "HUNTER:255:355589": {
+    "reason": "needs owner review: a class-line row alone (no talent node) is not proof a spec learns it; tied to the 392060 flag",
+    "ruling": "reject"
+  },
+  "MAGE:63:157980": {
+    "reason": "needs owner review: the Supernova node is visible to every mage spec on 12.1.5, but the list ships it for Arcane only (its comment says Arcane talent)",
+    "ruling": "reject"
+  },
+  "MAGE:64:157980": {
+    "reason": "needs owner review: the Supernova node is visible to every mage spec on 12.1.5, but the list ships it for Arcane only (its comment says Arcane talent)",
+    "ruling": "reject"
+  },
+  "MONK:268:324312": {
+    "reason": "Clash charges the monk and the target together; the knockback mechanic is a gap closer, not a cast-stopper the sheet lists",
+    "ruling": "reject"
+  },
+  "MONK:269:113656": {
+    "reason": "Fists of Fury is Windwalker's channeled damage ability; the stun is a triggered side effect (120086), not a cast-stopper cooldown",
+    "ruling": "reject"
+  },
+  "PALADIN:65:10326": {
+    "reason": "needs owner review: Turn Evil fears only undead, aberrations and demons; the sheet did not list it",
+    "ruling": "reject"
+  },
+  "PALADIN:65:115750": {
+    "reason": "Blinding Light's cast id (90 s cooldown) in place of 105421, the disorient it applies: the same ability the list already ships, now under the id IsPlayerSpell and GetSpellCooldown answer for",
+    "ruling": "accept"
+  },
+  "PALADIN:65:162056": {
+    "reason": "needs owner review: Jailer's Judgment has only a class-line row (no talent, spec spell or PvP talent), most likely a leftover",
+    "ruling": "reject"
+  },
+  "PALADIN:66:10326": {
+    "reason": "needs owner review: Turn Evil fears only undead, aberrations and demons; the sheet did not list it",
+    "ruling": "reject"
+  },
+  "PALADIN:66:115750": {
+    "reason": "Blinding Light's cast id (90 s cooldown) in place of 105421, the disorient it applies: the same ability the list already ships, now under the id IsPlayerSpell and GetSpellCooldown answer for",
+    "ruling": "accept"
+  },
+  "PALADIN:66:162056": {
+    "reason": "needs owner review: Jailer's Judgment has only a class-line row (no talent, spec spell or PvP talent), most likely a leftover",
+    "ruling": "reject"
+  },
+  "PALADIN:70:10326": {
+    "reason": "needs owner review: Turn Evil fears only undead, aberrations and demons; the sheet did not list it",
+    "ruling": "reject"
+  },
+  "PALADIN:70:115750": {
+    "reason": "Blinding Light's cast id (90 s cooldown) in place of 105421, the disorient it applies: the same ability the list already ships, now under the id IsPlayerSpell and GetSpellCooldown answer for",
+    "ruling": "accept"
+  },
+  "PALADIN:70:162056": {
+    "reason": "needs owner review: Jailer's Judgment has only a class-line row (no talent, spec spell or PvP talent), most likely a leftover",
+    "ruling": "reject"
+  },
+  "PRIEST:256:205364": {
+    "reason": "needs owner review: Dominate Mind is the talent form of Mind Control (605, shipped), a 30 s control the sheet did not list",
+    "ruling": "reject"
+  },
+  "PRIEST:256:73325": {
+    "reason": "Leap of Faith pulls an ally, never an enemy caster",
+    "ruling": "reject"
+  },
+  "PRIEST:257:205364": {
+    "reason": "needs owner review: Dominate Mind is the talent form of Mind Control (605, shipped), a 30 s control the sheet did not list",
+    "ruling": "reject"
+  },
+  "PRIEST:257:73325": {
+    "reason": "Leap of Faith pulls an ally, never an enemy caster",
+    "ruling": "reject"
+  },
+  "PRIEST:258:205364": {
+    "reason": "needs owner review: Dominate Mind is the talent form of Mind Control (605, shipped), a 30 s control the sheet did not list",
+    "ruling": "reject"
+  },
+  "PRIEST:258:73325": {
+    "reason": "Leap of Faith pulls an ally, never an enemy caster",
+    "ruling": "reject"
+  },
+  "ROGUE:259:1776": {
+    "reason": "needs owner review: Gouge is a 25 s incapacitate talent the sheet did not list for any rogue spec",
+    "ruling": "reject"
+  },
+  "ROGUE:260:1776": {
+    "reason": "needs owner review: Gouge is a 25 s incapacitate talent the sheet did not list for any rogue spec",
+    "ruling": "reject"
+  },
+  "ROGUE:261:1776": {
+    "reason": "needs owner review: Gouge is a 25 s incapacitate talent the sheet did not list for any rogue spec",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:210873": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:211004": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:211010": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:211015": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:269352": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:277778": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:277784": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:262:309328": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:210873": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:211004": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:211010": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:211015": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:269352": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:277778": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:277784": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:309328": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:263:51490": {
+    "reason": "needs owner review: the Thunderstorm node is visible to Enhancement on 12.1.5, but the list ships it for Elemental and Restoration only",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:210873": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:211004": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:211010": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:211015": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:269352": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:277778": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:277784": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "SHAMAN:264:309328": {
+    "reason": "a cosmetic variant of Hex 51514, which the list ships: one id per ability",
+    "ruling": "reject"
+  },
+  "WARLOCK:265:6358": {
+    "reason": "needs owner review: Seduction is the Sayaad's sleep; the lists track the Felhunter and Felguard only",
+    "ruling": "reject"
+  },
+  "WARLOCK:266:6358": {
+    "reason": "needs owner review: Seduction is the Sayaad's sleep; the lists track the Felhunter and Felguard only",
+    "ruling": "reject"
+  },
+  "WARLOCK:267:1122": {
+    "reason": "Summon Infernal is a 2 min damage cooldown; its landing stun (22703) is incidental, not a cast-stopper to track",
+    "ruling": "reject"
+  },
+  "WARLOCK:267:6358": {
+    "reason": "needs owner review: Seduction is the Sayaad's sleep; the lists track the Felhunter and Felguard only",
+    "ruling": "reject"
+  },
+  "shipped:category:MONK:268:198898": {
+    "reason": "needs owner review: DB2 gives Song of Chi-Ji's effect (198909) the asleep mechanic, which is an incapacitate, not a fear; the category is informational only (ARCHITECTURE, architecture-§5 row), so fear stands until the owner retags it",
+    "ruling": "keep"
+  },
+  "shipped:category:MONK:269:198898": {
+    "reason": "needs owner review: DB2 gives Song of Chi-Ji's effect (198909) the asleep mechanic, which is an incapacitate, not a fear; the category is informational only (ARCHITECTURE, architecture-§5 row), so fear stands until the owner retags it",
+    "ruling": "keep"
+  },
+  "shipped:category:MONK:270:198898": {
+    "reason": "needs owner review: DB2 gives Song of Chi-Ji's effect (198909) the asleep mechanic, which is an incapacitate, not a fear; the category is informational only (ARCHITECTURE, architecture-§5 row), so fear stands until the owner retags it",
+    "ruling": "keep"
+  },
+  "shipped:no-evidence:DEATHKNIGHT:251:279302": {
+    "reason": "the stun comes from the Absolute Zero talent through an area trigger (effect 179), which DB2 does not link to the cast; the comment records the curator's reason",
+    "ruling": "keep"
+  },
+  "shipped:no-evidence:RACE:HighmountainTauren:255654": {
+    "reason": "Bull Rush's knockdown carries no mechanic in DB2 (only auras with mechanic 0); NS.RaceCastStoppers ships by hand",
+    "ruling": "keep"
+  },
+  "shipped:no-evidence:RACE:Nightborne:260364": {
+    "reason": "needs owner review: DB2 shows Arcane Pulse as damage plus a triggered slow (260369), no cast-stopping effect; kept as the curator's racial pick",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:DEATHKNIGHT:251:108194": {
+    "reason": "no spec learns 108194 on 12.1.5 (no class line, spec spell, talent or PvP talent row); Asphyxiate's talent is 221562, which every DK spec sees and Blood already ships; 221562 is accepted in its place",
+    "ruling": "remove"
+  },
+  "shipped:unreachable:DEATHKNIGHT:252:108194": {
+    "reason": "no spec learns 108194 on 12.1.5 (no class line, spec spell, talent or PvP talent row); Asphyxiate's talent is 221562, which every DK spec sees and Blood already ships; 221562 is accepted in its place",
+    "ruling": "remove"
+  },
+  "shipped:unreachable:HUNTER:253:392060": {
+    "reason": "needs owner review: TraitDefinition 105592 and 105654 grant 392060 but sit on no talent node on 12.1.5; 355589 Wailing Arrow (class line, 60 s, silences) may be the live id, so check in game which one the Dark Ranger casts",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:HUNTER:254:392060": {
+    "reason": "needs owner review: TraitDefinition 105592 and 105654 grant 392060 but sit on no talent node on 12.1.5; 355589 Wailing Arrow (class line, 60 s, silences) may be the live id, so check in game which one the Dark Ranger casts",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PALADIN:65:105421": {
+    "reason": "105421 is the disorient Blinding Light applies (no cooldown, no learn row); the cast KickCD polls is 115750 (90 s), which every paladin spec's talent tree carries, accepted in its place",
+    "ruling": "remove"
+  },
+  "shipped:unreachable:PALADIN:65:20066": {
+    "reason": "needs owner review: 12.1.5 has no learn row for Repentance 20066 (no class line, spec spell, talent or PvP talent) and no other Repentance id a paladin reaches; KickCD hides a spell the player does not know, so keeping it is harmless until the owner confirms it left the game",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PALADIN:66:105421": {
+    "reason": "105421 is the disorient Blinding Light applies (no cooldown, no learn row); the cast KickCD polls is 115750 (90 s), which every paladin spec's talent tree carries, accepted in its place",
+    "ruling": "remove"
+  },
+  "shipped:unreachable:PALADIN:66:20066": {
+    "reason": "needs owner review: 12.1.5 has no learn row for Repentance 20066 (no class line, spec spell, talent or PvP talent) and no other Repentance id a paladin reaches; KickCD hides a spell the player does not know, so keeping it is harmless until the owner confirms it left the game",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PALADIN:70:105421": {
+    "reason": "105421 is the disorient Blinding Light applies (no cooldown, no learn row); the cast KickCD polls is 115750 (90 s), which every paladin spec's talent tree carries, accepted in its place",
+    "ruling": "remove"
+  },
+  "shipped:unreachable:PALADIN:70:20066": {
+    "reason": "needs owner review: 12.1.5 has no learn row for Repentance 20066 (no class line, spec spell, talent or PvP talent) and no other Repentance id a paladin reaches; KickCD hides a spell the player does not know, so keeping it is harmless until the owner confirms it left the game",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PRIEST:256:15487": {
+    "reason": "needs owner review: SpecializationSpells grants Silence 15487 to Shadow (258) only, and no talent node a Discipline priest sees carries it on 12.1.5",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PRIEST:256:64044": {
+    "reason": "needs owner review: TraitDefinition 108798 grants Psychic Horror 64044 but sits on no talent node on 12.1.5, and it is not a PvP talent; it may have left the tree",
+    "ruling": "keep"
+  },
+  "shipped:unreachable:PRIEST:258:64044": {
+    "reason": "needs owner review: TraitDefinition 108798 grants Psychic Horror 64044 but sits on no talent node on 12.1.5, and it is not a PvP talent; it may have left the tree",
+    "ruling": "keep"
+  }
+}

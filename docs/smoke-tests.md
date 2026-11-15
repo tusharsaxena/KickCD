@@ -23,7 +23,7 @@ and a retired one leaves its number unused.
 | CAST-1 – 19 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
-| SPELLS-1 – 16 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials |
+| SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
 | SIM-1 – 18 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
@@ -901,6 +901,14 @@ you had before the update is still yours.
 - **SPELLS-16. Racials survive a reset.** On a race with a racial cast-stopper, reset one of your own
   class's specs (Defaults or `/kcd spells reset`) → the racial is the last row. Reset another class's
   spec → no racial. Result: pass (owner-marked 2026-10-10)
+- **SPELLS-17. Asphyxiate on Frost and Unholy.** On a Frost or Unholy Death Knight with Asphyxiate
+  talented, `/kcd spells reset` → the list's third row is Asphyxiate (#221562), its
+  icon is on the grid, and casting Asphyxiate starts the icon's 45 s cooldown. Untalent it → the icon
+  leaves. Result: owed
+- **SPELLS-18. Blinding Light on every paladin spec.** On a Paladin with Blinding Light talented,
+  `/kcd spells reset` → the list carries Blinding Light (#115750) where #105421 was,
+  its icon is on the grid, and casting Blinding Light starts its 90 s cooldown. Repeat on a second
+  spec. Result: owed
 
 ## SIM
 
@@ -1772,3 +1780,5 @@ The same round's R5-ICON adds SKIN-45 (the Spells page's icons cropped 0.07 a si
 The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-SMOKE_ROUND6/`, LibKa0s v1.85.0 fifth re-cut, OptionsSkinPicker minor 11) adds SKIN-46 (the picker copy opens and closes clean). Owed: SKIN-46.
 
 The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Its review adds SKIN-48 (the eye across a profile switch and a reset, a /kcd skin refused in combat between). Owed: SKIN-22, SKIN-47, SKIN-48.
+
+The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.

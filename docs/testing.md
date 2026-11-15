@@ -320,6 +320,18 @@ that makes a fork nobody knows about, which the next re-vendor reverts silently.
 hypothetical: the bare single-diff gate this block used to publish produced a false accusation
 against the one consumer whose checkout was actually correct.
 
+## The seed check's own tests
+
+`tools/seeds/seeds.py` (the seed check, [validate-seeds.md](validate-seeds.md)) carries its own
+offline tests beside it: `python3 -m unittest discover -s tools/seeds -p 'test_*.py'`. They build a
+tiny DB2 fixture in a temporary directory, so they need no network and no cache, and they cover the
+seed parser, each reach source and spec gate, the evidence rules, every flag kind, both candidate
+groups, the rulings guard and the writer (layout, CRLF, the corrected-id slot, idempotence).
+`test_refuses_while_unruled` was mutation-checked on 2026-11-15: with `plan_apply`'s unruled guard
+disabled it goes red, and restored it passes. They are not part of `CLAUDE.md`'s green gate, which
+is Lua only; the contract's `## Gate` runs them beside it, and so should any change under
+`tools/seeds/`.
+
 ## Automated test records — the consolidated run
 
 All four out-of-game suites go through one vendored runner, and every run is recorded

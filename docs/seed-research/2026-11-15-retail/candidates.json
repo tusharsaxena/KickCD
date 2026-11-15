@@ -1,0 +1,1973 @@
+{
+ "build": "12.1.5.70783",
+ "candidates": [
+  {
+   "alias": "FROST_DK",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "cooldownMs": 45000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 221562,
+   "key": "DEATHKNIGHT:251:221562",
+   "name": "Asphyxiate",
+   "reach": [
+    "talent"
+   ],
+   "spec": 251
+  },
+  {
+   "alias": "UNHOLY",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "cooldownMs": 90000,
+   "evidence": {
+    "stun": [
+     "effect mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 91797,
+   "key": "DEATHKNIGHT:252:91797",
+   "name": "Monstrous Blow",
+   "reach": [
+    "pet (summon 46584)"
+   ],
+   "spec": 252
+  },
+  {
+   "alias": "UNHOLY",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "cooldownMs": 90000,
+   "evidence": {
+    "stun": [
+     "effect mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 91800,
+   "key": "DEATHKNIGHT:252:91800",
+   "name": "Gnaw",
+   "reach": [
+    "pet (summon 46584)"
+   ],
+   "spec": 252
+  },
+  {
+   "alias": "UNHOLY",
+   "category": "interrupt",
+   "class": "DEATHKNIGHT",
+   "cooldownMs": 30000,
+   "evidence": {
+    "interrupt": [
+     "effect 68 via 91807 Shambling Rush"
+    ],
+    "root": [
+     "effect mechanic rooted via 91807 Shambling Rush"
+    ]
+   },
+   "group": "interrupt",
+   "id": 91802,
+   "key": "DEATHKNIGHT:252:91802",
+   "name": "Shambling Rush",
+   "reach": [
+    "pet (summon 46584)"
+   ],
+   "spec": 252
+  },
+  {
+   "alias": "UNHOLY",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "cooldownMs": 45000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 221562,
+   "key": "DEATHKNIGHT:252:221562",
+   "name": "Asphyxiate",
+   "reach": [
+    "talent"
+   ],
+   "spec": 252
+  },
+  {
+   "alias": "BEASTMASTERY",
+   "category": "silence",
+   "class": "HUNTER",
+   "cooldownMs": 60000,
+   "evidence": {
+    "silence": [
+     "mechanic silenced via 355596 Wailing Arrow"
+    ]
+   },
+   "group": "cc",
+   "id": 355589,
+   "key": "HUNTER:253:355589",
+   "name": "Wailing Arrow",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 253
+  },
+  {
+   "alias": "MARKSMANSHIP",
+   "category": "silence",
+   "class": "HUNTER",
+   "cooldownMs": 60000,
+   "evidence": {
+    "silence": [
+     "mechanic silenced via 355596 Wailing Arrow"
+    ]
+   },
+   "group": "cc",
+   "id": 355589,
+   "key": "HUNTER:254:355589",
+   "name": "Wailing Arrow",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 254
+  },
+  {
+   "alias": "SURVIVAL",
+   "category": "silence",
+   "class": "HUNTER",
+   "cooldownMs": 60000,
+   "evidence": {
+    "silence": [
+     "mechanic silenced via 355596 Wailing Arrow"
+    ]
+   },
+   "group": "cc",
+   "id": 355589,
+   "key": "HUNTER:255:355589",
+   "name": "Wailing Arrow",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 255
+  },
+  {
+   "alias": "FIRE",
+   "category": "knockback",
+   "class": "MAGE",
+   "cooldownMs": 45000,
+   "evidence": {
+    "displace": [
+     "effect mechanic knockbacked"
+    ],
+    "knockback": [
+     "effect 144",
+     "effect mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 157980,
+   "key": "MAGE:63:157980",
+   "name": "Supernova",
+   "reach": [
+    "talent"
+   ],
+   "spec": 63
+  },
+  {
+   "alias": "FROST_MAGE",
+   "category": "knockback",
+   "class": "MAGE",
+   "cooldownMs": 45000,
+   "evidence": {
+    "displace": [
+     "effect mechanic knockbacked"
+    ],
+    "knockback": [
+     "effect 144",
+     "effect mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 157980,
+   "key": "MAGE:64:157980",
+   "name": "Supernova",
+   "reach": [
+    "talent"
+   ],
+   "spec": 64
+  },
+  {
+   "alias": "BREWMASTER",
+   "category": "knockback",
+   "class": "MONK",
+   "cooldownMs": 60000,
+   "evidence": {
+    "displace": [
+     "mechanic knockbacked"
+    ],
+    "knockback": [
+     "mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 324312,
+   "key": "MONK:268:324312",
+   "name": "Clash",
+   "reach": [
+    "talent"
+   ],
+   "spec": 268
+  },
+  {
+   "alias": "WINDWALKER",
+   "category": "stun",
+   "class": "MONK",
+   "cooldownMs": 24000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned via 120086 Fists of Fury"
+    ]
+   },
+   "group": "cc",
+   "id": 113656,
+   "key": "MONK:269:113656",
+   "name": "Fists of Fury",
+   "reach": [
+    "talent"
+   ],
+   "spec": 269
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "category": "fear",
+   "class": "PALADIN",
+   "cooldownMs": 15000,
+   "evidence": {
+    "fear": [
+     "mechanic turned"
+    ]
+   },
+   "group": "cc",
+   "id": 10326,
+   "key": "PALADIN:65:10326",
+   "name": "Turn Evil",
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 65
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "category": "stun",
+   "class": "PALADIN",
+   "cooldownMs": 180000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 162056,
+   "key": "PALADIN:65:162056",
+   "name": "Jailer's Judgment",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 65
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "Blinding Light's cast (90 s cooldown); the list ships 105421, the disorient it applies, which no spec learns"
+    ],
+    "incapacitate": [
+     "bridge 105421: effect mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 115750,
+   "key": "PALADIN:65:115750",
+   "name": "Blinding Light",
+   "reach": [
+    "talent"
+   ],
+   "spec": 65
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "category": "fear",
+   "class": "PALADIN",
+   "cooldownMs": 15000,
+   "evidence": {
+    "fear": [
+     "mechanic turned"
+    ]
+   },
+   "group": "cc",
+   "id": 10326,
+   "key": "PALADIN:66:10326",
+   "name": "Turn Evil",
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 66
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "category": "stun",
+   "class": "PALADIN",
+   "cooldownMs": 180000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 162056,
+   "key": "PALADIN:66:162056",
+   "name": "Jailer's Judgment",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 66
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "Blinding Light's cast (90 s cooldown); the list ships 105421, the disorient it applies, which no spec learns"
+    ],
+    "incapacitate": [
+     "bridge 105421: effect mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 115750,
+   "key": "PALADIN:66:115750",
+   "name": "Blinding Light",
+   "reach": [
+    "talent"
+   ],
+   "spec": 66
+  },
+  {
+   "alias": "RETRIBUTION",
+   "category": "fear",
+   "class": "PALADIN",
+   "cooldownMs": 15000,
+   "evidence": {
+    "fear": [
+     "mechanic turned"
+    ]
+   },
+   "group": "cc",
+   "id": 10326,
+   "key": "PALADIN:70:10326",
+   "name": "Turn Evil",
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 70
+  },
+  {
+   "alias": "RETRIBUTION",
+   "category": "stun",
+   "class": "PALADIN",
+   "cooldownMs": 180000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 162056,
+   "key": "PALADIN:70:162056",
+   "name": "Jailer's Judgment",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 70
+  },
+  {
+   "alias": "RETRIBUTION",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "Blinding Light's cast (90 s cooldown); the list ships 105421, the disorient it applies, which no spec learns"
+    ],
+    "incapacitate": [
+     "bridge 105421: effect mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 115750,
+   "key": "PALADIN:70:115750",
+   "name": "Blinding Light",
+   "reach": [
+    "talent"
+   ],
+   "spec": 70
+  },
+  {
+   "alias": "DISCIPLINE",
+   "category": "knockback",
+   "class": "PRIEST",
+   "cooldownMs": 90000,
+   "evidence": {
+    "displace": [
+     "mechanic knockbacked"
+    ],
+    "knockback": [
+     "mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 73325,
+   "key": "PRIEST:256:73325",
+   "name": "Leap of Faith",
+   "reach": [
+    "talent"
+   ],
+   "spec": 256
+  },
+  {
+   "alias": "DISCIPLINE",
+   "category": "incapacitate",
+   "class": "PRIEST",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic charmed"
+    ]
+   },
+   "group": "cc",
+   "id": 205364,
+   "key": "PRIEST:256:205364",
+   "name": "Dominate Mind",
+   "reach": [
+    "talent"
+   ],
+   "spec": 256
+  },
+  {
+   "alias": "HOLY_PRIEST",
+   "category": "knockback",
+   "class": "PRIEST",
+   "cooldownMs": 90000,
+   "evidence": {
+    "displace": [
+     "mechanic knockbacked"
+    ],
+    "knockback": [
+     "mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 73325,
+   "key": "PRIEST:257:73325",
+   "name": "Leap of Faith",
+   "reach": [
+    "talent"
+   ],
+   "spec": 257
+  },
+  {
+   "alias": "HOLY_PRIEST",
+   "category": "incapacitate",
+   "class": "PRIEST",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic charmed"
+    ]
+   },
+   "group": "cc",
+   "id": 205364,
+   "key": "PRIEST:257:205364",
+   "name": "Dominate Mind",
+   "reach": [
+    "talent"
+   ],
+   "spec": 257
+  },
+  {
+   "alias": "SHADOW",
+   "category": "knockback",
+   "class": "PRIEST",
+   "cooldownMs": 90000,
+   "evidence": {
+    "displace": [
+     "mechanic knockbacked"
+    ],
+    "knockback": [
+     "mechanic knockbacked"
+    ]
+   },
+   "group": "cc",
+   "id": 73325,
+   "key": "PRIEST:258:73325",
+   "name": "Leap of Faith",
+   "reach": [
+    "talent"
+   ],
+   "spec": 258
+  },
+  {
+   "alias": "SHADOW",
+   "category": "incapacitate",
+   "class": "PRIEST",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic charmed"
+    ]
+   },
+   "group": "cc",
+   "id": 205364,
+   "key": "PRIEST:258:205364",
+   "name": "Dominate Mind",
+   "reach": [
+    "talent"
+   ],
+   "spec": 258
+  },
+  {
+   "alias": "ASSASSINATION",
+   "category": "incapacitate",
+   "class": "ROGUE",
+   "cooldownMs": 25000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "group": "cc",
+   "id": 1776,
+   "key": "ROGUE:259:1776",
+   "name": "Gouge",
+   "reach": [
+    "talent"
+   ],
+   "spec": 259
+  },
+  {
+   "alias": "OUTLAW",
+   "category": "incapacitate",
+   "class": "ROGUE",
+   "cooldownMs": 25000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "group": "cc",
+   "id": 1776,
+   "key": "ROGUE:260:1776",
+   "name": "Gouge",
+   "reach": [
+    "talent"
+   ],
+   "spec": 260
+  },
+  {
+   "alias": "SUBTLETY",
+   "category": "incapacitate",
+   "class": "ROGUE",
+   "cooldownMs": 25000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "group": "cc",
+   "id": 1776,
+   "key": "ROGUE:261:1776",
+   "name": "Gouge",
+   "reach": [
+    "talent"
+   ],
+   "spec": 261
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 210873,
+   "key": "SHAMAN:262:210873",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211004,
+   "key": "SHAMAN:262:211004",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211010,
+   "key": "SHAMAN:262:211010",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211015,
+   "key": "SHAMAN:262:211015",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 269352,
+   "key": "SHAMAN:262:269352",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277778,
+   "key": "SHAMAN:262:277778",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277784,
+   "key": "SHAMAN:262:277784",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ELEMENTAL",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 309328,
+   "key": "SHAMAN:262:309328",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 262
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "knockback",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "knockback": [
+     "effect 98"
+    ]
+   },
+   "group": "cc",
+   "id": 51490,
+   "key": "SHAMAN:263:51490",
+   "name": "Thunderstorm",
+   "reach": [
+    "talent"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 210873,
+   "key": "SHAMAN:263:210873",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211004,
+   "key": "SHAMAN:263:211004",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211010,
+   "key": "SHAMAN:263:211010",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211015,
+   "key": "SHAMAN:263:211015",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 269352,
+   "key": "SHAMAN:263:269352",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277778,
+   "key": "SHAMAN:263:277778",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277784,
+   "key": "SHAMAN:263:277784",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 309328,
+   "key": "SHAMAN:263:309328",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 263
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 210873,
+   "key": "SHAMAN:264:210873",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211004,
+   "key": "SHAMAN:264:211004",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211010,
+   "key": "SHAMAN:264:211010",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 211015,
+   "key": "SHAMAN:264:211015",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 269352,
+   "key": "SHAMAN:264:269352",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277778,
+   "key": "SHAMAN:264:277778",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 277784,
+   "key": "SHAMAN:264:277784",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "category": "incapacitate",
+   "class": "SHAMAN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 309328,
+   "key": "SHAMAN:264:309328",
+   "name": "Hex",
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 264
+  },
+  {
+   "alias": "AFFLICTION",
+   "category": "incapacitate",
+   "class": "WARLOCK",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic asleep"
+    ]
+   },
+   "group": "cc",
+   "id": 6358,
+   "key": "WARLOCK:265:6358",
+   "name": "Seduction",
+   "reach": [
+    "pet (summon 366222)"
+   ],
+   "spec": 265
+  },
+  {
+   "alias": "DEMONOLOGY",
+   "category": "incapacitate",
+   "class": "WARLOCK",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic asleep"
+    ]
+   },
+   "group": "cc",
+   "id": 6358,
+   "key": "WARLOCK:266:6358",
+   "name": "Seduction",
+   "reach": [
+    "pet (summon 366222)"
+   ],
+   "spec": 266
+  },
+  {
+   "alias": "DESTRUCTION",
+   "category": "stun",
+   "class": "WARLOCK",
+   "cooldownMs": 120000,
+   "evidence": {
+    "stun": [
+     "effect mechanic stunned via 22703 Infernal Awakening"
+    ]
+   },
+   "group": "cc",
+   "id": 1122,
+   "key": "WARLOCK:267:1122",
+   "name": "Summon Infernal",
+   "reach": [
+    "talent"
+   ],
+   "spec": 267
+  },
+  {
+   "alias": "DESTRUCTION",
+   "category": "incapacitate",
+   "class": "WARLOCK",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic asleep"
+    ]
+   },
+   "group": "cc",
+   "id": 6358,
+   "key": "WARLOCK:267:6358",
+   "name": "Seduction",
+   "reach": [
+    "pet (summon 366222)"
+   ],
+   "spec": 267
+  }
+ ],
+ "client": "retail",
+ "date": "2026-11-15",
+ "flags": [
+  {
+   "alias": "FROST_DK",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "comment": "Asphyxiate (Frost/Unholy)",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "stun": [
+     "bridge 221562: mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "id": 108194,
+   "key": "shipped:unreachable:DEATHKNIGHT:251:108194",
+   "kind": "unreachable",
+   "name": "Asphyxiate",
+   "spec": 251
+  },
+  {
+   "alias": "FROST_DK",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "comment": "Frostwyrm's Fury (3s AoE stun w/ Absolute Zero)",
+   "detail": "no cast-stopping effect or mechanic in DB2",
+   "evidence": {},
+   "id": 279302,
+   "key": "shipped:no-evidence:DEATHKNIGHT:251:279302",
+   "kind": "no-evidence",
+   "name": "Frostwyrm's Fury",
+   "spec": 251
+  },
+  {
+   "alias": "UNHOLY",
+   "category": "stun",
+   "class": "DEATHKNIGHT",
+   "comment": "Asphyxiate (Frost/Unholy)",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "stun": [
+     "bridge 221562: mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "id": 108194,
+   "key": "shipped:unreachable:DEATHKNIGHT:252:108194",
+   "kind": "unreachable",
+   "name": "Asphyxiate",
+   "spec": 252
+  },
+  {
+   "alias": "BEASTMASTERY",
+   "category": "silence",
+   "class": "HUNTER",
+   "comment": "Wailing Arrow (Dark Ranger hero talent)",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "interrupt": [
+     "bridge 398388: effect 68"
+    ],
+    "silence": [
+     "bridge 354831: mechanic silenced via 355596 Wailing Arrow",
+     "bridge 355589: mechanic silenced via 355596 Wailing Arrow",
+     "bridge 355596: mechanic silenced",
+     "bridge 392061: mechanic silenced",
+     "mechanic silenced via 392061 Wailing Arrow"
+    ]
+   },
+   "id": 392060,
+   "key": "shipped:unreachable:HUNTER:253:392060",
+   "kind": "unreachable",
+   "name": "Wailing Arrow",
+   "spec": 253
+  },
+  {
+   "alias": "MARKSMANSHIP",
+   "category": "silence",
+   "class": "HUNTER",
+   "comment": "Wailing Arrow (Dark Ranger hero talent)",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "interrupt": [
+     "bridge 398388: effect 68"
+    ],
+    "silence": [
+     "bridge 354831: mechanic silenced via 355596 Wailing Arrow",
+     "bridge 355589: mechanic silenced via 355596 Wailing Arrow",
+     "bridge 355596: mechanic silenced",
+     "bridge 392061: mechanic silenced",
+     "mechanic silenced via 392061 Wailing Arrow"
+    ]
+   },
+   "id": 392060,
+   "key": "shipped:unreachable:HUNTER:254:392060",
+   "kind": "unreachable",
+   "name": "Wailing Arrow",
+   "spec": 254
+  },
+  {
+   "alias": "BREWMASTER",
+   "category": "fear",
+   "class": "MONK",
+   "comment": "Song of Chi-Ji (class talent)",
+   "detail": "DB2 shows incapacitate",
+   "evidence": {
+    "incapacitate": [
+     "bridge 198909: mechanic asleep"
+    ]
+   },
+   "id": 198898,
+   "key": "shipped:category:MONK:268:198898",
+   "kind": "category",
+   "name": "Song of Chi-Ji",
+   "spec": 268
+  },
+  {
+   "alias": "MISTWEAVER",
+   "category": "fear",
+   "class": "MONK",
+   "comment": "Song of Chi-Ji (class talent)",
+   "detail": "DB2 shows incapacitate",
+   "evidence": {
+    "incapacitate": [
+     "bridge 198909: mechanic asleep"
+    ]
+   },
+   "id": 198898,
+   "key": "shipped:category:MONK:270:198898",
+   "kind": "category",
+   "name": "Song of Chi-Ji",
+   "spec": 270
+  },
+  {
+   "alias": "WINDWALKER",
+   "category": "fear",
+   "class": "MONK",
+   "comment": "Song of Chi-Ji (class talent)",
+   "detail": "DB2 shows incapacitate",
+   "evidence": {
+    "incapacitate": [
+     "bridge 198909: mechanic asleep"
+    ]
+   },
+   "id": 198898,
+   "key": "shipped:category:MONK:269:198898",
+   "kind": "category",
+   "name": "Song of Chi-Ji",
+   "spec": 269
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Repentance",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "id": 20066,
+   "key": "shipped:unreachable:PALADIN:65:20066",
+   "kind": "unreachable",
+   "name": "Repentance",
+   "spec": 65
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Blinding Light",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "effect mechanic disoriented"
+    ]
+   },
+   "id": 105421,
+   "key": "shipped:unreachable:PALADIN:65:105421",
+   "kind": "unreachable",
+   "name": "Blinding Light",
+   "spec": 65
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Blinding Light",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "effect mechanic disoriented"
+    ]
+   },
+   "id": 105421,
+   "key": "shipped:unreachable:PALADIN:66:105421",
+   "kind": "unreachable",
+   "name": "Blinding Light",
+   "spec": 66
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Repentance",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "id": 20066,
+   "key": "shipped:unreachable:PALADIN:66:20066",
+   "kind": "unreachable",
+   "name": "Repentance",
+   "spec": 66
+  },
+  {
+   "alias": "RETRIBUTION",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Repentance",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "id": 20066,
+   "key": "shipped:unreachable:PALADIN:70:20066",
+   "kind": "unreachable",
+   "name": "Repentance",
+   "spec": 70
+  },
+  {
+   "alias": "RETRIBUTION",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "comment": "Blinding Light",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "incapacitate": [
+     "effect mechanic disoriented"
+    ]
+   },
+   "id": 105421,
+   "key": "shipped:unreachable:PALADIN:70:105421",
+   "kind": "unreachable",
+   "name": "Blinding Light",
+   "spec": 70
+  },
+  {
+   "alias": "DISCIPLINE",
+   "category": "silence",
+   "class": "PRIEST",
+   "comment": "Silence",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "silence": [
+     "bridge 215774: mechanic silenced",
+     "bridge 226452: mechanic silenced",
+     "mechanic silenced"
+    ]
+   },
+   "id": 15487,
+   "key": "shipped:unreachable:PRIEST:256:15487",
+   "kind": "unreachable",
+   "name": "Silence",
+   "spec": 256
+  },
+  {
+   "alias": "DISCIPLINE",
+   "category": "stun",
+   "class": "PRIEST",
+   "comment": "Psychic Horror",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "stun": [
+     "effect mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "id": 64044,
+   "key": "shipped:unreachable:PRIEST:256:64044",
+   "kind": "unreachable",
+   "name": "Psychic Horror",
+   "spec": 256
+  },
+  {
+   "alias": "SHADOW",
+   "category": "stun",
+   "class": "PRIEST",
+   "comment": "Psychic Horror",
+   "detail": "no class line, spec spell, visible talent or pet",
+   "evidence": {
+    "stun": [
+     "effect mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "id": 64044,
+   "key": "shipped:unreachable:PRIEST:258:64044",
+   "kind": "unreachable",
+   "name": "Psychic Horror",
+   "spec": 258
+  },
+  {
+   "alias": "HighmountainTauren",
+   "category": "racial",
+   "class": "RACE",
+   "comment": "Bull Rush",
+   "detail": "no cast-stopping effect or mechanic in DB2",
+   "evidence": {},
+   "id": 255654,
+   "key": "shipped:no-evidence:RACE:HighmountainTauren:255654",
+   "kind": "no-evidence",
+   "name": "Bull Rush",
+   "spec": "HighmountainTauren"
+  },
+  {
+   "alias": "Nightborne",
+   "category": "racial",
+   "class": "RACE",
+   "comment": "Arcane Pulse",
+   "detail": "no cast-stopping effect or mechanic in DB2",
+   "evidence": {},
+   "id": 260364,
+   "key": "shipped:no-evidence:RACE:Nightborne:260364",
+   "kind": "no-evidence",
+   "name": "Arcane Pulse",
+   "spec": "Nightborne"
+  }
+ ],
+ "handMissing": [],
+ "product": "wow",
+ "shippedEntries": 186,
+ "shippedIds": 79,
+ "specs": [
+  {
+   "alias": "BLOOD",
+   "candidates": 0,
+   "class": "DEATHKNIGHT",
+   "interrupts": [
+    47528
+   ],
+   "name": "Blood",
+   "reach": 174,
+   "shipped": 6,
+   "spec": 250
+  },
+  {
+   "alias": "FROST_DK",
+   "candidates": 1,
+   "class": "DEATHKNIGHT",
+   "interrupts": [
+    47528
+   ],
+   "name": "Frost",
+   "reach": 173,
+   "shipped": 5,
+   "spec": 251
+  },
+  {
+   "alias": "UNHOLY",
+   "candidates": 4,
+   "class": "DEATHKNIGHT",
+   "interrupts": [
+    47528,
+    91802
+   ],
+   "name": "Unholy",
+   "reach": 190,
+   "shipped": 4,
+   "spec": 252
+  },
+  {
+   "alias": "HAVOC",
+   "candidates": 0,
+   "class": "DEMONHUNTER",
+   "interrupts": [
+    183752
+   ],
+   "name": "Havoc",
+   "reach": 175,
+   "shipped": 4,
+   "spec": 577
+  },
+  {
+   "alias": "VENGEANCE",
+   "candidates": 0,
+   "class": "DEMONHUNTER",
+   "interrupts": [
+    183752
+   ],
+   "name": "Vengeance",
+   "reach": 181,
+   "shipped": 6,
+   "spec": 581
+  },
+  {
+   "alias": "DEVOURER",
+   "candidates": 0,
+   "class": "DEMONHUNTER",
+   "interrupts": [
+    183752
+   ],
+   "name": "Devourer",
+   "reach": 168,
+   "shipped": 4,
+   "spec": 1480
+  },
+  {
+   "alias": "BALANCE",
+   "candidates": 0,
+   "class": "DRUID",
+   "interrupts": [
+    78675
+   ],
+   "name": "Balance",
+   "reach": 231,
+   "shipped": 5,
+   "spec": 102
+  },
+  {
+   "alias": "FERAL",
+   "candidates": 0,
+   "class": "DRUID",
+   "interrupts": [],
+   "name": "Feral",
+   "reach": 227,
+   "shipped": 6,
+   "spec": 103
+  },
+  {
+   "alias": "GUARDIAN",
+   "candidates": 0,
+   "class": "DRUID",
+   "interrupts": [],
+   "name": "Guardian",
+   "reach": 230,
+   "shipped": 5,
+   "spec": 104
+  },
+  {
+   "alias": "RESTORATION_DRUID",
+   "candidates": 0,
+   "class": "DRUID",
+   "interrupts": [],
+   "name": "Restoration",
+   "reach": 231,
+   "shipped": 4,
+   "spec": 105
+  },
+  {
+   "alias": "DEVASTATION",
+   "candidates": 0,
+   "class": "EVOKER",
+   "interrupts": [
+    351338
+   ],
+   "name": "Devastation",
+   "reach": 162,
+   "shipped": 4,
+   "spec": 1467
+  },
+  {
+   "alias": "PRESERVATION",
+   "candidates": 0,
+   "class": "EVOKER",
+   "interrupts": [
+    351338
+   ],
+   "name": "Preservation",
+   "reach": 168,
+   "shipped": 4,
+   "spec": 1468
+  },
+  {
+   "alias": "AUGMENTATION",
+   "candidates": 0,
+   "class": "EVOKER",
+   "interrupts": [
+    351338
+   ],
+   "name": "Augmentation",
+   "reach": 130,
+   "shipped": 4,
+   "spec": 1473
+  },
+  {
+   "alias": "BEASTMASTERY",
+   "candidates": 1,
+   "class": "HUNTER",
+   "interrupts": [
+    147362
+   ],
+   "name": "Beast Mastery",
+   "reach": 201,
+   "shipped": 6,
+   "spec": 253
+  },
+  {
+   "alias": "MARKSMANSHIP",
+   "candidates": 1,
+   "class": "HUNTER",
+   "interrupts": [
+    147362
+   ],
+   "name": "Marksmanship",
+   "reach": 204,
+   "shipped": 5,
+   "spec": 254
+  },
+  {
+   "alias": "SURVIVAL",
+   "candidates": 1,
+   "class": "HUNTER",
+   "interrupts": [
+    187707
+   ],
+   "name": "Survival",
+   "reach": 202,
+   "shipped": 4,
+   "spec": 255
+  },
+  {
+   "alias": "ARCANE",
+   "candidates": 0,
+   "class": "MAGE",
+   "interrupts": [
+    2139
+   ],
+   "name": "Arcane",
+   "reach": 244,
+   "shipped": 6,
+   "spec": 62
+  },
+  {
+   "alias": "FIRE",
+   "candidates": 1,
+   "class": "MAGE",
+   "interrupts": [
+    2139
+   ],
+   "name": "Fire",
+   "reach": 243,
+   "shipped": 5,
+   "spec": 63
+  },
+  {
+   "alias": "FROST_MAGE",
+   "candidates": 1,
+   "class": "MAGE",
+   "interrupts": [
+    2139
+   ],
+   "name": "Frost",
+   "reach": 243,
+   "shipped": 5,
+   "spec": 64
+  },
+  {
+   "alias": "BREWMASTER",
+   "candidates": 1,
+   "class": "MONK",
+   "interrupts": [
+    116705
+   ],
+   "name": "Brewmaster",
+   "reach": 232,
+   "shipped": 5,
+   "spec": 268
+  },
+  {
+   "alias": "MISTWEAVER",
+   "candidates": 0,
+   "class": "MONK",
+   "interrupts": [
+    116705
+   ],
+   "name": "Mistweaver",
+   "reach": 243,
+   "shipped": 5,
+   "spec": 270
+  },
+  {
+   "alias": "WINDWALKER",
+   "candidates": 1,
+   "class": "MONK",
+   "interrupts": [
+    116705
+   ],
+   "name": "Windwalker",
+   "reach": 259,
+   "shipped": 5,
+   "spec": 269
+  },
+  {
+   "alias": "HOLY_PALADIN",
+   "candidates": 3,
+   "class": "PALADIN",
+   "interrupts": [],
+   "name": "Holy",
+   "reach": 232,
+   "shipped": 3,
+   "spec": 65
+  },
+  {
+   "alias": "PROTECTION_PALADIN",
+   "candidates": 3,
+   "class": "PALADIN",
+   "interrupts": [
+    31935,
+    96231
+   ],
+   "name": "Protection",
+   "reach": 226,
+   "shipped": 5,
+   "spec": 66
+  },
+  {
+   "alias": "RETRIBUTION",
+   "candidates": 3,
+   "class": "PALADIN",
+   "interrupts": [
+    96231
+   ],
+   "name": "Retribution",
+   "reach": 212,
+   "shipped": 4,
+   "spec": 70
+  },
+  {
+   "alias": "DISCIPLINE",
+   "candidates": 2,
+   "class": "PRIEST",
+   "interrupts": [],
+   "name": "Discipline",
+   "reach": 170,
+   "shipped": 4,
+   "spec": 256
+  },
+  {
+   "alias": "HOLY_PRIEST",
+   "candidates": 2,
+   "class": "PRIEST",
+   "interrupts": [],
+   "name": "Holy",
+   "reach": 172,
+   "shipped": 3,
+   "spec": 257
+  },
+  {
+   "alias": "SHADOW",
+   "candidates": 2,
+   "class": "PRIEST",
+   "interrupts": [],
+   "name": "Shadow",
+   "reach": 178,
+   "shipped": 4,
+   "spec": 258
+  },
+  {
+   "alias": "ASSASSINATION",
+   "candidates": 1,
+   "class": "ROGUE",
+   "interrupts": [
+    1766
+   ],
+   "name": "Assassination",
+   "reach": 186,
+   "shipped": 4,
+   "spec": 259
+  },
+  {
+   "alias": "OUTLAW",
+   "candidates": 1,
+   "class": "ROGUE",
+   "interrupts": [
+    1766
+   ],
+   "name": "Outlaw",
+   "reach": 186,
+   "shipped": 4,
+   "spec": 260
+  },
+  {
+   "alias": "SUBTLETY",
+   "candidates": 1,
+   "class": "ROGUE",
+   "interrupts": [
+    1766
+   ],
+   "name": "Subtlety",
+   "reach": 192,
+   "shipped": 4,
+   "spec": 261
+  },
+  {
+   "alias": "ELEMENTAL",
+   "candidates": 8,
+   "class": "SHAMAN",
+   "interrupts": [
+    57994
+   ],
+   "name": "Elemental",
+   "reach": 250,
+   "shipped": 4,
+   "spec": 262
+  },
+  {
+   "alias": "ENHANCEMENT",
+   "candidates": 9,
+   "class": "SHAMAN",
+   "interrupts": [
+    57994
+   ],
+   "name": "Enhancement",
+   "reach": 228,
+   "shipped": 3,
+   "spec": 263
+  },
+  {
+   "alias": "RESTORATION_SHAMAN",
+   "candidates": 8,
+   "class": "SHAMAN",
+   "interrupts": [
+    57994
+   ],
+   "name": "Restoration",
+   "reach": 238,
+   "shipped": 4,
+   "spec": 264
+  },
+  {
+   "alias": "AFFLICTION",
+   "candidates": 1,
+   "class": "WARLOCK",
+   "interrupts": [
+    19647
+   ],
+   "name": "Affliction",
+   "reach": 241,
+   "shipped": 5,
+   "spec": 265
+  },
+  {
+   "alias": "DEMONOLOGY",
+   "candidates": 1,
+   "class": "WARLOCK",
+   "interrupts": [
+    19647,
+    89766
+   ],
+   "name": "Demonology",
+   "reach": 261,
+   "shipped": 6,
+   "spec": 266
+  },
+  {
+   "alias": "DESTRUCTION",
+   "candidates": 2,
+   "class": "WARLOCK",
+   "interrupts": [
+    19647
+   ],
+   "name": "Destruction",
+   "reach": 242,
+   "shipped": 5,
+   "spec": 267
+  },
+  {
+   "alias": "ARMS",
+   "candidates": 0,
+   "class": "WARRIOR",
+   "interrupts": [
+    6552
+   ],
+   "name": "Arms",
+   "reach": 241,
+   "shipped": 3,
+   "spec": 71
+  },
+  {
+   "alias": "FURY",
+   "candidates": 0,
+   "class": "WARRIOR",
+   "interrupts": [
+    6552
+   ],
+   "name": "Fury",
+   "reach": 244,
+   "shipped": 3,
+   "spec": 72
+  },
+  {
+   "alias": "PROTECTION_WARRIOR",
+   "candidates": 0,
+   "class": "WARRIOR",
+   "interrupts": [
+    6552,
+    386071
+   ],
+   "name": "Protection",
+   "reach": 244,
+   "shipped": 6,
+   "spec": 73
+  }
+ ],
+ "tool": "tools/seeds/seeds.py derive"
+}
