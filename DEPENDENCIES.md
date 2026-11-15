@@ -111,8 +111,9 @@ and open a PR with only the Development group installed.
   **BigWigs packager** that CurseForge runs on tag push; it sets `package-as: KickCD` and the
   `ignore:` list and declares **no externals**, because the libraries are
   vendored. There is nothing to install and no packaging script to run locally — the repo's only
-  script of any kind is the vendored test runner `tests/_kit/run-automated-tests.sh` (Development,
-  above), and there is no `.py`, no `.ps1`, no `Makefile` and no CI workflow.
+  script it carries besides the seed check below is the vendored test runner
+  `tests/_kit/run-automated-tests.sh` (Development, above), and there is no `.ps1`, no `Makefile`
+  and no CI workflow.
 - **Asset tooling: Pillow, and only to REGENERATE one file.** `media/logos/` and
   `media/screenshots/` hold committed binaries, and they are **shipped assets, not build outputs** —
   nothing regenerates them during a build, a run or a test, so no image toolchain is a dependency of
@@ -137,8 +138,22 @@ and open a PR with only the Development group installed.
   inside the vendored LibKa0s payload at `libs/LibKa0s/media/`, with the OFL license beside the
   font, and the tool that produces them lives in the LibKa0s repo. One copy for the collection, one
   license to track — `media/fonts/` used to hold a duplicate here and no longer exists.
-- **No Node.** Stated positively so nobody goes looking. Python appears twice and both are optional:
-  `lizard` in Development above, and Pillow for the logo recipe just above.
+- **The seed check: Python 3.8+, the network, and wago.tools.** `tools/seeds/seeds.py` re-validates
+  `defaults/Spells.lua` against one pinned Retail build of the client's DB2 tables (KickCD#39,
+  `clients-§10`), driven by `/dev-copilot:validate-seeds KickCD retail` through
+  [docs/validate-seeds.md](docs/validate-seeds.md). Python **3.8** or newer, **standard library
+  only** (`argparse`, `csv`, `gzip`, `json`, `urllib`, …), so no `pip install` and no virtualenv;
+  3.8 is the floor because the file's `from __future__ import annotations` is what lets it write
+  `dict | None` annotations on an older interpreter. A run that is not `--replay` needs HTTPS to
+  **wago.tools** (a community site that extracts each build's tables; the tool sends the
+  `KickCD-seed-validation` User-Agent, because the site answers urllib's default with HTTP 403) and
+  caches about 75 MB a build in the git-ignored `tools/seeds/.cache/`. A frozen bundle under
+  `docs/seed-research/` replays offline. Its tests are `python3 -m unittest discover -s tools/seeds
+  -p 'test_*.py'`, offline. Not part of `CLAUDE.md`'s green gate, and not needed to build, run or
+  test the addon; `.pkgmeta` keeps `tools/` out of the package.
+- **No Node.** Stated positively so nobody goes looking. Python appears three times and all are
+  optional: `lizard` in Development above, Pillow for the logo recipe, and the seed check just
+  above.
 - **The LibKa0s sibling checkout** (`../LibKa0s`) is not software you install, but the vendored-copy
   gate in [docs/testing.md](docs/testing.md#verifying-the-vendored-copies) cannot run without it, and
   `tests/_kit/vendor_sync.lua` degrades to a skip when it is absent. Clone it next to this repo if you touch `libs/LibKa0s/`.

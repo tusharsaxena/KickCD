@@ -69,6 +69,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | The stand-down latch: one teardown, two named holds (`disabled`, `perf`) | `core/LifecycleSetup.lua`, each module's `Suspend` / `Resume` | [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
+| Seed validation: `defaults/Spells.lua` re-checked against one pinned Retail build's DB2 tables on wago.tools (`clients-§10`, KickCD#39), with rulings as data and a frozen bundle per run. Dev-only Python, never packaged | `tools/seeds/seeds.py`, `tools/seeds/rulings_retail.json`, `docs/seed-research/` | [validate-seeds.md](validate-seeds.md) |
 
 ## Namespace, naming, and the module publishing pattern
 
@@ -460,7 +461,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 ## Documentation map
 
 Every `.md` under `docs/` appears in exactly one table below (`documentation-§3`). Frozen and
-generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-analysis/`, `docs/revendor/`.
+generated directories are named once each and never enumerated per run: `docs/audits/`, `docs/reviews/`, `docs/automated-tests/`, `docs/superpowers/`, `docs/perf-analysis/`, `docs/revendor/`, `docs/seed-research/`.
 
 Those frozen bundles are history, not requirements. The older ones predate standard v2.17.0 and
 still name `docs/agent-context.md` or describe an earlier doc set; that file does not exist here and
@@ -509,6 +510,8 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|
 | `castbar.md` | The cast bar: skin, layout, and its debug dump |
 | `icon-grid.md` | The icon grid: layout, render, and the C-side alpha curves |
+| `validate-seeds.md` | The seed-validation contract `/dev-copilot:validate-seeds KickCD retail` runs: the tool, its files, the ruling precedent, the steps and the gate |
+| `seed-research/` | Frozen per-build bundles written by `tools/seeds/seeds.py` (`SOURCES.md`, `candidates.json`, `RULINGS.md`, a hand-written `ANALYSIS.md`, gzipped `raw/` tables); the dated bundles are not enumerated |
 
 ## Documented deviations
 

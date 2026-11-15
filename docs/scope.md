@@ -43,6 +43,8 @@ These have been considered and explicitly declined.
 
 When syncing the defaults to the sheet, only columns **Q, S, T, U, V, X** matter (Interrupt, Stuns ST, Stuns AoE, CC Hard, CC Soft AoE, CC Other). Skip column **R** (Dispels / Soothes — not cast-stoppers) and column **W** (CC AoE Slow — slows don't stop casts in the categories KickCD tracks).
 
+The sheet decides what belongs; the game's own data decides whether an id still exists, which spec can learn it and what it does. `tools/seeds/seeds.py` re-checks every list against one pinned Retail build on wago.tools and records each finding's ruling as data ([validate-seeds.md](validate-seeds.md), KickCD#39). Its first run (2026-11-15, build 12.1.5.70783) corrected two abilities shipped under an id the player never learns: Asphyxiate for Frost and Unholy, and Blinding Light for every paladin spec.
+
 ## Spell-list lifecycle and recovery
 
 `Database:BuildSpells` only re-seeds `db.profile.spells` when the WHOLE table is empty (i.e. on first profile creation or after `Database:ResetAllSpells`). Once any class entry exists, subsequent logins leave every spec list alone — including specs the user hasn't customized yet, since clearing every row in an active spec is a deliberate user choice that must survive a reload. This is intentional, not a missing re-seed pass.

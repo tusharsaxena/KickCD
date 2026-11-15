@@ -1,0 +1,6 @@
+# The DB2 CSV exports seeds.py caches: about 75 MB a build, re-downloadable at any time. Only the
+# gzipped copies inside a dated docs/seed-research/ bundle are committed.
+.cache/
+
+# Left behind when the tests import seeds.py as a module.
+__pycache__/

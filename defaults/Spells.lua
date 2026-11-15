@@ -22,6 +22,10 @@
 -- Stuns ST/AoE, CC Hard, CC Soft AoE, CC Other; columns R Dispels and W
 -- AoE Slow are intentionally excluded since neither category stops casts):
 -- https://docs.google.com/spreadsheets/d/1lXIRuETd3s3wxLHE8mOwhXtz0xm71ayhrlYxwi6herU/edit?gid=2092737897
+--
+-- Re-validated against wago.tools Retail build 12.1.5.70783 on 2026-11-15 by
+-- tools/seeds/seeds.py (docs/validate-seeds.md, KickCD#39), which writes its ruled changes here;
+-- the rulings are tools/seeds/rulings_retail.json, the evidence docs/seed-research/.
 
 local _, NS = ...
 
@@ -44,14 +48,14 @@ NS.DefaultSpells = {
         [SPEC.FROST_DK] = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
             { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
-            { spellID = 108194, category = "stun",         enabled = true }, -- Asphyxiate (Frost/Unholy)
+            { spellID = 221562, category = "stun",         enabled = true }, -- Asphyxiate (DB2 re-validation 2026-11-15)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet
             { spellID = 279302, category = "stun",         enabled = true }, -- Frostwyrm's Fury (3s AoE stun w/ Absolute Zero)
         },
         [SPEC.UNHOLY] = {
             { spellID = 47528,  category = "interrupt",    enabled = true }, -- Mind Freeze
             { spellID = 49576,  category = "displace",     enabled = true }, -- Death Grip
-            { spellID = 108194, category = "stun",         enabled = true }, -- Asphyxiate (Frost/Unholy)
+            { spellID = 221562, category = "stun",         enabled = true }, -- Asphyxiate (DB2 re-validation 2026-11-15)
             { spellID = 207167, category = "incapacitate", enabled = true }, -- Blinding Sleet
         },
     },
@@ -208,20 +212,20 @@ NS.DefaultSpells = {
         [SPEC.HOLY_PALADIN] = {
             { spellID = 853,    category = "stun",         enabled = true }, -- Hammer of Justice
             { spellID = 20066,  category = "incapacitate", enabled = true }, -- Repentance
-            { spellID = 105421, category = "incapacitate", enabled = true }, -- Blinding Light
+            { spellID = 115750, category = "incapacitate", enabled = true }, -- Blinding Light (DB2 re-validation 2026-11-15)
         },
         [SPEC.PROTECTION_PALADIN] = {
             { spellID = 96231,  category = "interrupt",    enabled = true }, -- Rebuke
             { spellID = 31935,  category = "silence",      enabled = true }, -- Avenger's Shield
             { spellID = 853,    category = "stun",         enabled = true }, -- Hammer of Justice
-            { spellID = 105421, category = "incapacitate", enabled = true }, -- Blinding Light
+            { spellID = 115750, category = "incapacitate", enabled = true }, -- Blinding Light (DB2 re-validation 2026-11-15)
             { spellID = 20066,  category = "incapacitate", enabled = true }, -- Repentance
         },
         [SPEC.RETRIBUTION] = {
             { spellID = 96231,  category = "interrupt",    enabled = true }, -- Rebuke
             { spellID = 853,    category = "stun",         enabled = true }, -- Hammer of Justice
             { spellID = 20066,  category = "incapacitate", enabled = true }, -- Repentance
-            { spellID = 105421, category = "incapacitate", enabled = true }, -- Blinding Light
+            { spellID = 115750, category = "incapacitate", enabled = true }, -- Blinding Light (DB2 re-validation 2026-11-15)
         },
     },
 

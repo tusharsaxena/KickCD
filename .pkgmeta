@@ -9,6 +9,7 @@ ignore:
   - docs
   - tests
   - _dev
+  - tools            # dev-only: the seed check (tools/seeds/), never loaded in game
   - .pkgmeta         # packager configuration: consumed before the zip is built, of no use inside it
   - "*.bak"
   # Agent tooling, and untracked -- .gitignore names .superpowers/ at :29 and
