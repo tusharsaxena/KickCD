@@ -408,6 +408,9 @@ if not lib then
         -- NavRail, new at LibKa0s v1.61.0 (OptionsNav minor 1): drawn only by the Units page's
         -- render (settings/Grid.lua), which never runs here, so the same inert no-op applies.
         "NavRail",
+        -- SideTabs, new at LibKa0s v1.100.0 (OptionsNav minor 7): this addon draws no side tabs,
+        -- and the member is reached only while a page renders, so the same inert no-op applies.
+        "SideTabs",
         -- Drawer, new at LibKa0s v1.73.0 (OptionsDrawer minor 1): this addon draws no drawer, so the
         -- same inert no-op applies.
         "Drawer",

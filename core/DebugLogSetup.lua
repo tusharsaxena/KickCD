@@ -118,6 +118,24 @@ if not lib then
         BuildDiagnostics = function()
             return { lines = {}, dropped = 0, capped = false, capsHit = false }
         end,
+        -- The report seam and its serializer (DebugLog 23, DebugLogDiagnostics 11,
+        -- LibKa0s#79). With no console the report streams to chat with no pointer
+        -- line, the library-absent arm of the 2026-11-08 ruling, and answers the
+        -- line count; a serialize answers one line. Shape from the DebugLog
+        -- version-23.11.1.5 API document's "What a host owes at its re-vendor".
+        Report          = function(_, _, _, fn)
+            local n = 0
+            if type(fn) == "function" then
+                fn(function(line)
+                    n = n + 1
+                    if NS.Util and NS.Util.print then NS.Util.print(NS.SafeToString(line)) end
+                end)
+            end
+            return n
+        end,
+        Serialize       = function(_, v)
+            return { NS.SafeToString(type(v) == "table" and "<table>" or v) }
+        end,
         -- The library's routing of the `debug` words: `diagnostics`, `on` and
         -- `off` answer true, anything else false so the caller keeps its own
         -- fallback.

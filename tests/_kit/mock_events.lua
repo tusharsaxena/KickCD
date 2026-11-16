@@ -1,4 +1,5 @@
--- testkit/mock_events.lua — the client's event surfaces beyond AceEvent (revision 26).
+-- testkit/mock_events.lua — the client's event surfaces beyond AceEvent (revision 26; the hold,
+-- revision 57).
 --
 -- Three things the kit did not model, each of which let a consumer suite pass over a case the
 -- client fails:
@@ -20,6 +21,17 @@
 --
 -- `M.__badEvents` is read at CALL time on every path, so a test that swaps the table is heard.
 --
+-- Revision 57 (LibKa0s#75): a frame is HELD while it has a raw registration. The client never frees a
+-- frame, so a frame an addon registered and then dropped keeps hearing its events. The kit's only
+-- other reference to such a frame is `mock_base.lua`'s weak `frameSet`, so through revision 56 the
+-- next collection freed it and `M.__fire` silently stopped reaching it. The hold is a strong set PER
+-- BUILD, on `M` and never in this module: a module-level one would outlive every build and keep each
+-- one alive through the frames' closures, the revision 22 leak `tests/test_mock_base.lua` pins. It
+-- lets go when the frame's last raw and per-unit registration is gone, through `UnregisterEvent`,
+-- `UnregisterAllEvents`, or `mock_ace.lua`'s embedded-frame `UnregisterAllEvents`, which replaces the
+-- frame's own and calls `M.__releaseFrame`. A frame that never registers is not held, so `frameSet`
+-- still lets go of a frame nobody holds. `M.__heldFrame(f)` answers whether `f` is held.
+--
 -- Loaded by `mock_base.lua` from its own folder, like `mock_record.lua`, and for the same reason it
 -- is a file of its own: `mock_base.lua` sits near `layout-§1`'s 1500-line cap. It answers two
 -- functions: `decorateFrame(M, f)`, which every tracked frame passes through as it is made, and
@@ -37,17 +49,55 @@ local function unknownEvent(event)
   return "Attempt to register unknown event \"" .. tostring(event) .. "\""
 end
 
+-- The build's hold: [frame] = true while the frame has a raw registration. Made on first use, on
+-- `M`, so it lives and dies with the build.
+local function heldOf(M)
+  local held = rawget(M, "__kitHeldFrames")
+  if not held then
+    held = {}
+    M.__kitHeldFrames = held
+    M.__heldFrame = function(f) return held[f] == true end
+    -- Drop the hold once nothing raw is registered. Safe on a frame never held or never tracked.
+    M.__releaseFrame = function(f)
+      local frameEvents, unitEvents = rawget(f, "__frameEvents"), rawget(f, "__unitEvents")
+      if (type(frameEvents) ~= "table" or next(frameEvents) == nil)
+        and (type(unitEvents) ~= "table" or next(unitEvents) == nil) then
+        held[f] = nil
+      end
+    end
+  end
+  return held
+end
+
 --- Wrap one frame's RegisterEvent and RegisterUnitEvent so an unknown name raises before anything is
---- recorded. The frame stub's own recording functions run unchanged for every other name.
+--- recorded, and so a registration holds the frame (revision 57). The frame stub's own recording
+--- functions run unchanged for every other name. UnregisterEvent and UnregisterAllEvents are wrapped
+--- to release the hold once the last registration is gone.
 function Events.decorateFrame(M, f)
+  local held = heldOf(M)
   local register, registerUnit = f.RegisterEvent, f.RegisterUnitEvent
+  local unregister, unregisterAll = f.UnregisterEvent, f.UnregisterAllEvents
   function f.RegisterEvent(self, event, ...)
     if isBad(M, event) then error(unknownEvent(event), 2) end
-    return register(self, event, ...)
+    local out = register(self, event, ...)
+    held[self] = true
+    return out
   end
   function f.RegisterUnitEvent(self, event, ...)
     if isBad(M, event) then error(unknownEvent(event), 2) end
-    return registerUnit(self, event, ...)
+    local out = registerUnit(self, event, ...)
+    held[self] = true
+    return out
+  end
+  function f.UnregisterEvent(self, ...)
+    local out = unregister(self, ...)
+    M.__releaseFrame(self)
+    return out
+  end
+  function f.UnregisterAllEvents(self, ...)
+    local out = unregisterAll(self, ...)
+    M.__releaseFrame(self)
+    return out
   end
   return f
 end

@@ -281,6 +281,10 @@ test("the Compat stub carries every LibKa0s-Compat-1.0 member the host wires", f
         "GetSpellName",
         -- LibKa0s v1.92.0 (Compat minor 2) added these four client helpers. No caller here until the Forever port.
         "IsForever", "IsRetail", "ClientKey", "ForClient",
+        -- LibKa0s v1.94.0 (Compat minor 4) added these four character-identity readers. KickCD keys
+        -- no saved data by character or realm, and its one unit-name read (a unit label) goes
+        -- through its own reader in core/Compat.lua, so it wires none of them: no call site asks.
+        "CharacterKey", "RealmKey", "RegionalNames", "UnitCharacterName",
     })
 end)
 
