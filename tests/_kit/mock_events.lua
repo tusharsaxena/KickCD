@@ -49,55 +49,42 @@ local function unknownEvent(event)
   return "Attempt to register unknown event \"" .. tostring(event) .. "\""
 end
 
--- The build's hold: [frame] = true while the frame has a raw registration. Made on first use, on
--- `M`, so it lives and dies with the build.
-local function heldOf(M)
-  local held = rawget(M, "__kitHeldFrames")
-  if not held then
-    held = {}
-    M.__kitHeldFrames = held
-    M.__heldFrame = function(f) return held[f] == true end
-    -- Drop the hold once nothing raw is registered. Safe on a frame never held or never tracked.
-    M.__releaseFrame = function(f)
-      local frameEvents, unitEvents = rawget(f, "__frameEvents"), rawget(f, "__unitEvents")
-      if (type(frameEvents) ~= "table" or next(frameEvents) == nil)
-        and (type(unitEvents) ~= "table" or next(unitEvents) == nil) then
-        held[f] = nil
-      end
+-- The build's hold: [frame] = true while the frame has a raw registration. Made once per build, on
+-- `M`, so it lives and dies with the build. `mock_base.lua`'s frame stub calls `hold` and `release`
+-- from its own Register/Unregister methods, so the hold costs no closure per frame: an earlier cut
+-- wrapped UnregisterEvent and UnregisterAllEvents on every frame, and a consumer suite that makes
+-- about 26,000 frames paid about 6 MB for it (LootHistory's leak gate, 2026-11-16).
+function Events.frameHooks(M)
+  local hooks = rawget(M, "__kitFrameHooks")
+  if hooks then return hooks end
+  local held = {}
+  M.__kitHeldFrames = held
+  M.__heldFrame = function(f) return held[f] == true end
+  -- Drop the hold once nothing raw is registered. Safe on a frame never held or never tracked.
+  M.__releaseFrame = function(f)
+    local frameEvents, unitEvents = rawget(f, "__frameEvents"), rawget(f, "__unitEvents")
+    if (type(frameEvents) ~= "table" or next(frameEvents) == nil)
+      and (type(unitEvents) ~= "table" or next(unitEvents) == nil) then
+      held[f] = nil
     end
   end
-  return held
+  hooks = { hold = function(f) held[f] = true end, release = M.__releaseFrame }
+  M.__kitFrameHooks = hooks
+  return hooks
 end
 
 --- Wrap one frame's RegisterEvent and RegisterUnitEvent so an unknown name raises before anything is
---- recorded, and so a registration holds the frame (revision 57). The frame stub's own recording
---- functions run unchanged for every other name. UnregisterEvent and UnregisterAllEvents are wrapped
---- to release the hold once the last registration is gone.
+--- recorded. The frame stub's own recording functions run unchanged for every other name, and they
+--- hold and release the frame themselves (revision 57, `Events.frameHooks`).
 function Events.decorateFrame(M, f)
-  local held = heldOf(M)
   local register, registerUnit = f.RegisterEvent, f.RegisterUnitEvent
-  local unregister, unregisterAll = f.UnregisterEvent, f.UnregisterAllEvents
   function f.RegisterEvent(self, event, ...)
     if isBad(M, event) then error(unknownEvent(event), 2) end
-    local out = register(self, event, ...)
-    held[self] = true
-    return out
+    return register(self, event, ...)
   end
   function f.RegisterUnitEvent(self, event, ...)
     if isBad(M, event) then error(unknownEvent(event), 2) end
-    local out = registerUnit(self, event, ...)
-    held[self] = true
-    return out
-  end
-  function f.UnregisterEvent(self, ...)
-    local out = unregister(self, ...)
-    M.__releaseFrame(self)
-    return out
-  end
-  function f.UnregisterAllEvents(self, ...)
-    local out = unregisterAll(self, ...)
-    M.__releaseFrame(self)
-    return out
+    return registerUnit(self, event, ...)
   end
   return f
 end
