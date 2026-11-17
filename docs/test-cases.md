@@ -787,7 +787,7 @@ Total.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (37)
+### test_icongrid_render.lua (41)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -822,6 +822,10 @@ Total.
 - an icon's tooltip opens left of the display when the right side would leave the screen
 - an anchored cast bar is part of the display: the tooltip clears the bar, not just the grid
 - the display group lists the grid first and only the members that show
+- the drag strip is never a member: it shows only unlocked, when no icon takes the mouse
+- a shown sim strip is part of the display: the tooltip clears the strip
+- the unit label's text is part of the display while shown on the grid
+- a tooltip that grows after it is placed is placed again, re-clamped to the screen
 - with no room on either side the icon's tooltip is attached above the icon
 - an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor
 - an icon shows no tooltip while the tooltip option is off
@@ -2058,7 +2062,7 @@ Total.
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 37 |
+| test_icongrid_render.lua | 41 |
 | test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
@@ -2125,4 +2129,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1707** |
+| **Total** | **1711** |

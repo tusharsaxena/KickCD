@@ -379,7 +379,11 @@ local function tipWorld(sw, gl, gw)
     if bar then bar:Hide() end
     local tip, owners = m.GameTooltip, {}
     geom(tip, nil, nil, 250, 100)
-    tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
+    tip.SetOwner = function(self, owner, anchor)
+        owners[#owners + 1] = { owner, anchor }
+        rawset(self, "__owner", owner)
+    end
+    tip.GetOwner = function(self) return rawget(self, "__owner") end
     return { NS = tNS, m = m, IG = IG, scr = scr, inst = tInst, btn = btn, tip = tip, owners = owners }
 end
 
@@ -459,6 +463,92 @@ test("the display group lists the grid first and only the members that show", fu
     for _, f in ipairs(frames) do
         assertFalse(rawequal(f, w.inst.handle), "so the hidden drag strip is not a member")
     end
+    w.scr.restore()
+end)
+
+test("the drag strip is never a member: it shows only unlocked, when no icon takes the mouse", function()
+    -- The review of AD-92-KC: an icon takes the mouse only while locked and the strip shows only
+    -- while unlocked, so a strip member was dead logic. Pinned so it does not come back; red under
+    -- a tipGroup that adds inst.handle when shown.
+    local w = tipWorld(1920, 600, 200)
+    assertTrue(w.inst.handle ~= nil, "the grid has a drag strip")
+    local mouse
+    rawset(w.btn, "EnableMouse", function(_, on) mouse = on end)
+    w.inst.ordered[#w.inst.ordered + 1] = w.btn
+    w.NS.db.profile.locked = false
+    w.IG:ApplyLock(w.inst)
+    w.inst.ordered[#w.inst.ordered] = nil
+    assertTrue(w.inst.handle:IsShown(), "unlocked, the strip shows")
+    assertEqual(mouse, false, "and no icon takes the mouse, so no icon tooltip fires")
+    for _, f in ipairs(w.IG.TipGroup("target")) do
+        assertFalse(rawequal(f, w.inst.handle), "the strip is not a member even while shown")
+    end
+    w.scr.restore()
+end)
+
+test("a shown sim strip is part of the display: the tooltip clears the strip", function()
+    -- red under: a group without the docked sim strip, which would open at 802.
+    local w = tipWorld(1920, 600, 200)
+    local strip = w.m.CreateFrame("Frame", nil, w.inst.grid)
+    geom(strip, 600, 444, 420, 16)
+    strip:Show()
+    w.NS.SimStrip.__strips["target:icons"] = strip
+    w.btn:_run("OnEnter")
+    local point, _, _, x = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 1022, "the sim strip's right edge (1020) plus the gap")
+    strip:Hide()
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xHidden = pointOf(w.tip)
+    assertEqual(xHidden, 802, "a hidden sim strip drops out")
+    w.NS.SimStrip.__strips["target:icons"] = nil
+    w.scr.restore()
+end)
+
+test("the unit label's text is part of the display while shown on the grid", function()
+    -- red under: a group without the label, which would open at 802.
+    local w = tipWorld(1920, 600, 200)
+    local lbl = w.NS:GetModule("UnitLabel"):PeekInstance("target")
+    assertTrue(lbl and lbl.frame and lbl.text, "the target label exists")
+    w.NS.Units.LabelStyle("target").attach = "icons"
+    lbl.frame:Show()
+    geom(lbl.text, 600, 442, 350, 12)
+    w.btn:_run("OnEnter")
+    local point, _, _, x = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 952, "the label text's right edge (950) plus the gap")
+    lbl.frame:Hide()
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xHidden = pointOf(w.tip)
+    assertEqual(xHidden, 802, "a hidden label drops out")
+    w.scr.restore()
+end)
+
+test("a tooltip that grows after it is placed is placed again, re-clamped to the screen", function()
+    -- SetSpellByID on uncached data: the client fills the tooltip later and it grows. Placed for
+    -- 100 px tall, its top sits level with the icon's (440); grown to 500 px it would run 60 px off
+    -- the screen's bottom, so the size hook re-runs the placement (Tooltip.Replace) and the top
+    -- clamps to 500. Red under a placement made once, right after Show.
+    local w = tipWorld(1920, 600, 200)
+    w.btn:_run("OnEnter")
+    local _, _, _, _, y = pointOf(w.tip)
+    assertEqual(y, 440)
+    geom(w.tip, nil, nil, 250, 500)
+    w.tip:_run("OnSizeChanged", 250, 500)
+    local point, _, _, x, yGrown = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 802, "still beside the display")
+    assertEqual(yGrown, 500, "re-clamped so the grown tooltip stays on screen")
+    -- Once the pointer leaves, or another frame owns the tooltip, a resize moves nothing.
+    w.btn:_run("OnLeave")
+    w.tip:SetOwner(w.m.UIParent, "ANCHOR_NONE")
+    w.tip:Show()
+    geom(w.tip, nil, nil, 250, 600)
+    w.tip:_run("OnSizeChanged", 250, 600)
+    local _, _, _, _, yAfter = pointOf(w.tip)
+    assertEqual(yAfter, 500, "a tooltip no icon of ours owns is left where it is")
     w.scr.restore()
 end)
 

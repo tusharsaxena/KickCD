@@ -51,13 +51,22 @@ local EMPTY_CURVES = {}
 -- when it fits, else left, its top level with the hovered icon's, through LibKa0s-Tooltip-1.0's
 -- PlaceBeside. Never at the cursor and never off a corner of the icon (the ANCHOR_RIGHT it had).
 --
--- THE DISPLAY is the unit's grid plus what moves with it: the drag strip and the docked sim strip
--- while shown, the cast bar while it is anchored to the grid (anchorMode PRIMARY; a FREE bar is a
--- display of its own, as modules/SimStrip.lua says), and the unit label's text while it is shown
--- on the grid or on that anchored bar. Re-read on every hover, so a hidden member drops out.
+-- THE DISPLAY is the unit's grid plus what moves with it: the docked sim strip while shown, the
+-- cast bar while it is anchored to the grid (anchorMode PRIMARY; a FREE bar is a display of its own,
+-- as modules/SimStrip.lua says), and the unit label's text while it is shown on the grid or on that
+-- anchored bar. Re-read on every hover, so a hidden member drops out. The drag strip is NOT a
+-- member: an icon takes the mouse only while the grid is locked, and the strip shows only while it
+-- is unlocked (modules/IconGrid_Handle.lua's ApplyLock), so the two never coexist.
+--
+-- LATE GROWTH. SetSpellByID on a spell whose data is not cached yet shows a short tooltip that
+-- the client fills, and resizes, when the data arrives. The placement was clamped for the smaller
+-- height, so the tooltip's OnSizeChanged runs the library's Replace while an icon of ours still
+-- owns it: the same placer, the same group, re-clamped for the new height.
 
 local TIP_MAJOR = "LibKa0s-Tooltip-1.0"
-local TIP_GAP   = 2   -- the standard's gap; the library publishes the same figure as TIP_GAP
+-- The standard's gap, for the no-library fallback only; with the major present it is read off
+-- the library's published TIP_GAP, the one source.
+local TIP_GAP_FALLBACK = 2
 
 local function shownMember(list, f)
     if f and f.IsShown and f:IsShown() then list[#list + 1] = f end
@@ -68,8 +77,6 @@ local function tipGroup(unit)
     local grid = IconGrid:GetGridFrame(unit)
     if not grid then return nil end
     local frames = { grid }
-    local inst = IconGrid:PeekInstance(unit)
-    shownMember(frames, inst and inst.handle)
     local strips = NS.SimStrip and NS.SimStrip.__strips
     shownMember(frames, strips and strips[unit .. ":icons"])
     local anchored = (NS.Units.Castbar(unit).anchorMode or "PRIMARY") == "PRIMARY"
@@ -87,18 +94,48 @@ local function tipGroup(unit)
     return frames
 end
 
+-- The icon whose tooltip was last placed, cleared on its OnLeave; the size hook re-places only
+-- while that icon still owns the tooltip, so another addon's tooltip is never moved.
+local placedIcon
+local sizeHooked = setmetatable({}, { __mode = "k" })
+local replacing = false
+
+local function onTipSizeChanged(tip)
+    if replacing or not placedIcon then return end
+    if not (tip.IsShown and tip:IsShown()) then return end
+    if not (tip.GetOwner and rawequal(tip:GetOwner(), placedIcon)) then return end
+    local Tip = LibStub and LibStub(TIP_MAJOR, true)
+    if not (Tip and Tip.Replace) then return end
+    replacing = true
+    Tip.Replace(tip)
+    replacing = false
+end
+
+local function hookTipSize(tip)
+    if sizeHooked[tip] or not tip.HookScript then return end
+    sizeHooked[tip] = true
+    tip:HookScript("OnSizeChanged", onTipSizeChanged)
+end
+
 --- Place the shown spell tooltip of icon `btn`: beside its display (PlaceBeside, which falls back
 --- to above the icon when neither side fits), else attached above the icon (PlaceAttached), else
 --- -- unreadable geometry, or no Tooltip major -- by a relative point above it. Never the cursor.
 local function placeIconTip(tip, btn)
     local Tip = LibStub and LibStub(TIP_MAJOR, true)
+    placedIcon = btn
+    hookTipSize(tip)
     if Tip then
         local unit = btn.unit or "target"
         if Tip.PlaceBeside(tip, btn, function() return tipGroup(unit) or btn end) then return end
         if Tip.PlaceAttached(tip, btn) then return end
     end
     tip:ClearAllPoints()
-    tip:SetPoint("BOTTOM", btn, "TOP", 0, TIP_GAP)
+    tip:SetPoint("BOTTOM", btn, "TOP", 0, (Tip and Tip.TIP_GAP) or TIP_GAP_FALLBACK)
+end
+
+--- The icon's OnLeave: stop re-placing for it.
+local function releaseIconTip(btn)
+    if rawequal(placedIcon, btn) then placedIcon = nil end
 end
 
 local function safeUnpackColor(c, fr, fg, fb, fa)
@@ -371,7 +408,8 @@ local function CreateIconWidget(parent)
     -- IconGrid:ApplyLock toggles based on (locked AND icons.showTooltip).
     -- While unlocked, EnableMouse(false) so the grid frame retains the
     -- mouse for dragging. Owned at ANCHOR_NONE and placed beside the unit's
-    -- display by placeIconTip (AD-92-KC; was ANCHOR_RIGHT, a corner offset).
+    -- display by placeIconTip (AD-92-KC; was ANCHOR_RIGHT, a corner offset), and
+    -- re-placed by the size hook if the spell's data arrives late and the tooltip grows.
     btn:SetScript("OnEnter", function(self)
         local cfg = NS.Units.Icons(self.unit or "target")
         if not (cfg and cfg.showTooltip and self.spellID) then return end
@@ -388,6 +426,7 @@ local function CreateIconWidget(parent)
         -- moved the mouse from this icon onto another addon's frame
         -- that owns the tooltip, indiscriminately calling :Hide()
         -- would dismiss someone else's hover.
+        releaseIconTip(self)
         if GameTooltip and GameTooltip:GetOwner() == self then
             GameTooltip:Hide()
         end

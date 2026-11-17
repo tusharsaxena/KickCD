@@ -703,7 +703,10 @@ you had before the update is still yours.
   only to that icon's top. Drag the grid (unlock, then lock again) until the display's right edge is
   within a tooltip's width of the screen's right edge, hover → the tooltip opens LEFT of the display
   instead. Set `anchorMode FREE` with a cast on the bar → the free bar no longer counts: a tooltip from
-  an icon opens right of the grid and label only. Fail: a tooltip at the icon's top-right corner (the
+  an icon opens right of the grid and label only. Move the grid near the screen's bottom edge and hover
+  an icon whose spell you have not looked at this session (its data loads late, so the tooltip grows a
+  moment after it opens) → once it grows it still sits wholly on screen, its bottom clear of the
+  screen's bottom edge (review fix: the size hook re-places it). Fail: a tooltip at the icon's top-right corner (the
   old `ANCHOR_RIGHT`), at the cursor, or over any part of the display. Repeat on Focus. Result: pending
 
 ## CAST
@@ -1865,3 +1868,5 @@ The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) a
 The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
 
 The same run's AD-86-KC (LibKa0s#86) gives both drag strips a settings mark: it adds GRID-23 and CAST-20 and amends GRID-14. Its review moves the expected result of DIAG-21, DIAG-22 and DIAG-23 (the library windows' settings marks and tooltips, from the v1.105.0 re-vendor), whose owner passes are withdrawn, and of SKIN-22, SKIN-46 and SKIN-47 (the picker's gear in its title bar), and adds DIAG-48 (each library window's gear opens KickCD's panel). Owed: GRID-14, GRID-23, CAST-20, DIAG-21, DIAG-22, DIAG-23, DIAG-48, SKIN-22, SKIN-46, SKIN-47.
+
+The same run's AD-92-KC (LibKa0s#92) moves every HUD tooltip onto the Tooltip placers: an icon's spell tooltip opens beside its whole display (body), both drag strips' tooltips attach above the strip (chrome). It adds GRID-24 and amends GRID-17, CAST-10, CAST-15, GRID-23, CAST-20 and LAYER-9 (each amended check owes a fresh pass); its review adds the late-growth step to GRID-24. Owed: GRID-17, GRID-23, GRID-24, CAST-10, CAST-15, CAST-20, LAYER-9.
