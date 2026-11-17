@@ -90,10 +90,12 @@ end
 --- frameName, UIParent) with no template, so the widget's own `tonumber` fallback and its own four
 --- 1px strips are the right defaults rather than a gap.
 ---
---- THE TOOLTIP SITS BESIDE THE STRIP (TP-KC-01, LibKa0s v1.68.0), the same placement as the cast
---- bar's strip: `tooltipPlace` is NS.Util.PlaceTooltipBeside -- right of the strip, or left of it
---- when that would leave the screen. Above the strip (the old ANCHOR_TOP owner) is where the unit
---- label and the Focus grid stack, so a tooltip opening upward covered them.
+--- THE TOOLTIP IS THE LIBRARY'S CHROME PLACEMENT (AD-92-KC, LibKa0s#92): the strip is the HUD
+--- display's title bar, so its tooltip (and its marks') is attached and centered ABOVE the strip,
+--- flipping below only without room above (LibKa0s-Tooltip-1.0's PlaceAttached, through the
+--- widget's own default; standalone-windows, *Tooltip placement*, the chrome rule). There is no
+--- `tooltipPlace` hook any more: TP-KC-01's beside-the-strip placement (NS.Util.PlaceTooltipBeside)
+--- is retired with it, because the standard rules a chrome tooltip above its control.
 --- @return table|nil
 --- Hang the strip above the unit LABEL when there is one above this grid, else above the
 --- grid itself.
@@ -151,7 +153,6 @@ local function buildHandle(inst, grid)
         -- above the grid's icons and glow AND above this unit's cast bar, which
         -- can sit on the grid's TOP edge where this strip hangs (KIC-Z07, S06, S12).
         level        = HUD_LEVEL.HANDLE - HUD_LEVEL.GRID,
-        tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = label,
             body  = { NS.L["Drag to move. Right-click for settings."] },

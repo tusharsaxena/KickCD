@@ -114,12 +114,12 @@ Total.
 - a bad EMPOWER name is rejected and the other routes still arm
 - /kcd resetposition restores the focus grid too
 - /kcd resetposition: the target grid is still restored
-- PlaceTooltipBeside puts the tooltip to the strip's right when it fits
-- PlaceTooltipBeside flips to the strip's left when the right side would leave the screen
-- PlaceTooltipBeside anchors to the STRIP when the hovered frame is its ? mark
-- PlaceTooltipBeside compares in screen pixels, so a scaled strip flips when it should
-- PlaceTooltipBeside answers non-true and anchors nothing when a read is secret
-- PlaceTooltipBeside answers non-true and anchors nothing when a read is nil
+- a drag strip's tooltip is attached centered above the strip when there is room
+- a drag strip's tooltip flips below the strip when the screen has no room above
+- a drag strip's ? mark places its tooltip against the STRIP, not the mark
+- a drag strip's tooltip is measured in screen units, so a scaled strip centers true
+- a secret strip read attaches the tooltip above the strip by a relative point, never the cursor
+- a nil strip read attaches the tooltip above the strip by a relative point, never the cursor
 
 ### test_constants.lua (26)
 
@@ -787,7 +787,7 @@ Total.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (28)
+### test_icongrid_render.lua (37)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -817,6 +817,15 @@ Total.
 - a finished swipe on a still-active spell is re-armed on the next tick
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
+- an icon's tooltip is owned at ANCHOR_NONE, never at a corner or the cursor
+- an icon's tooltip opens right of the display, top level with the icon, when it fits
+- an icon's tooltip opens left of the display when the right side would leave the screen
+- an anchored cast bar is part of the display: the tooltip clears the bar, not just the grid
+- the display group lists the grid first and only the members that show
+- with no room on either side the icon's tooltip is attached above the icon
+- an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor
+- an icon shows no tooltip while the tooltip option is off
+- no HUD file anchors a tooltip at the cursor or a corner, nor hooks the strips' placement
 
 ### test_layers.lua (14)
 
@@ -937,12 +946,12 @@ Total.
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
-- hovering the grid's strip puts its tooltip beside the strip, not above it
+- hovering the grid's strip attaches its tooltip centered above the strip
 - ApplyLock shows the strip when it registers the drag and hides it when it clears it
 - the strip is sized to its label plus the widget's reserve
 - the grid's strip carries the settings mark beside its help mark
-- a left click on the grid strip's settings mark opens this addon's settings
 - the grid strip's settings mark says what its click does
+- a left click on the grid strip's settings mark opens this addon's settings
 - dragging the strip moves the GRID and saves its anchor
 - the strip refuses to move a LOCKED grid
 - the strip hangs above the unit LABEL when one is parked on the grid
@@ -1086,10 +1095,10 @@ Total.
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 - EnsureFrame builds the library's drag strip in place of the hint text
-- hovering the strip puts its tooltip beside the strip, not above it
+- hovering the strip attaches its tooltip centered above the strip, the mark's too
 - the cast bar's strip carries the settings mark beside its help mark
-- a left click on the cast bar strip's settings mark opens this addon's settings
 - the cast bar strip's settings mark says what its click does
+- a left click on the cast bar strip's settings mark opens this addon's settings
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
@@ -2049,7 +2058,7 @@ Total.
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 28 |
+| test_icongrid_render.lua | 37 |
 | test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
@@ -2116,4 +2125,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1698** |
+| **Total** | **1707** |

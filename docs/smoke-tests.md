@@ -19,8 +19,8 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 23 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| GRID-1 – 24 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
@@ -626,13 +626,19 @@ you had before the update is still yours.
   cooldown and stand still → one `[Cooldowns]` line when it starts and one when it ends, none repeating
   in between. Then `/kcd perf` through a short fight → `iconApply` is close to 0 calls/sec while
   spells sit on cooldown, and the cost shows under `cdText`. Result: pass (owner, 2026-10-02)
-- **GRID-17. The grid strip's tooltip sits beside the strip (TP-KC-01).** `/kcd unlock`, hover the
+- **GRID-17. The grid strip's tooltip sits beside the strip (TP-KC-01; amended by AD-92-KC below).** `/kcd unlock`, hover the
   Target grid's strip, then its `?` → each time the tooltip opens to the strip's RIGHT, its top level with
   the strip's top, not above the strip and not at the cursor; it covers neither the unit label nor the
   Focus grid above. Drag the grid until its strip nearly touches the right edge of the screen and hover
   again → the tooltip opens to the strip's LEFT instead. `/kcd set scale 1.5` and repeat both → the same
   two sides, fully on screen (the grid strip takes the master scale, so the flip is judged in screen
-  pixels). Result: pass (owner-marked 2026-10-10)
+  pixels). Result: pass (owner-marked 2026-10-10). Amended 2026-11-18 (AD-92-KC, LibKa0s#92): the
+  standard's chrome rule replaces TP-KC-01's beside-the-strip placement. `/kcd unlock`, hover the Target
+  grid's strip, then its `?`, then its gear → each time the tooltip is attached centered ABOVE the strip,
+  2 px clear of it, in the same place for the strip and its `?` (the gear's *Open settings* centered on
+  the gear), never at the cursor and never beside the strip. Drag the grid until its strip nearly
+  touches the top of the screen and hover again → the tooltip opens BELOW the strip instead, fully on
+  screen. `/kcd set scale 1.5` and repeat → still centered on the strip. Result: pending
 - **GRID-18. `target_casting` glows on a friendly cast too (KC-03).** `/kcd set visibility always`,
   `/kcd set units.target.icons.primaryGlowTrigger target_casting`, an interrupt off cooldown. Target a
   friendly player and have them hard-cast (a heal, a hearthstone) → the primary icon starts glowing
@@ -682,11 +688,23 @@ you had before the update is still yours.
 - **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86).** `/kcd unlock` → each grid strip
   (Target and Focus) shows a gear left of its `?`, both in the skin's gray mark tint, and the label is
   not clipped by either mark. Hover the gear → it brightens and its own *Open settings* tooltip opens
-  beside the strip (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*);
+  above the gear (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*; GRID-17);
   leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
   the panel opens too (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
   it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
   takes the new skin's tint. Result:
+- **GRID-24. An icon's tooltip opens beside the whole display (AD-92-KC, LibKa0s#92).** `/kcd lock`,
+  Units → Icons → Annotations → *Show tooltip on hover* on, `/kcd set visibility always`, the cast bar
+  anchored (`anchorMode PRIMARY`) and the unit label on. Hover an icon in the middle of the Target grid
+  → the spell tooltip opens to the RIGHT of the whole display, 2 px clear of its right outer edge (the
+  grid, the anchored cast bar, the label, whichever reaches furthest), its top level with the hovered
+  icon's top. It covers no icon, not the bar, not the label, and it does not follow the pointer as you
+  move across the icon. Hover a second icon → the tooltip stays outside the display, its top moving
+  only to that icon's top. Drag the grid (unlock, then lock again) until the display's right edge is
+  within a tooltip's width of the screen's right edge, hover → the tooltip opens LEFT of the display
+  instead. Set `anchorMode FREE` with a cast on the bar → the free bar no longer counts: a tooltip from
+  an icon opens right of the grid and label only. Fail: a tooltip at the icon's top-right corner (the
+  old `ANCHOR_RIGHT`), at the cursor, or over any part of the display. Repeat on Focus. Result: pending
 
 ## CAST
 
@@ -717,7 +735,8 @@ you had before the update is still yours.
 - **CAST-9. The `?` mark drags too.** Drag the `?` on the strip → the bar moves. Result: pass (owner-marked 2026-10-10)
 - **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows the same tooltip, titled
   `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key), in the
-  same place beside the strip (CAST-15); the `?` brightens under the cursor. Result: pass (owner-marked 2026-10-10)
+  same place beside the strip (CAST-15); the `?` brightens under the cursor. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-18 (AD-92-KC): the same place is now attached centered above the strip (CAST-15). Result: pending
 - **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
   opens. Result: pass (owner-marked 2026-10-10)
 - **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
@@ -732,11 +751,16 @@ you had before the update is still yours.
   them start Fire Breath or Eternity Surge → the bar shows the empower, the `*_casting` visibility and glow follow
   it at once, and the bar clears on its release. A blank bar or a late glow means the
   `UNIT_SPELLCAST_EMPOWER_*` routes are missing ([midnight-quirks.md](midnight-quirks.md)). Result: pass (owner-marked 2026-10-10)
-- **CAST-15. The cast bar strip's tooltip sits beside the strip, and flips at the edge (TP-KC-01).**
+- **CAST-15. The cast bar strip's tooltip sits beside the strip, and flips at the edge (TP-KC-01; amended by AD-92-KC below).**
   `anchorMode FREE`, `/kcd unlock`, a cast bar on screen. Hover its strip → the tooltip opens to the
   strip's RIGHT, top edges level, not at the cursor. Drag the bar until the strip's right end is within a
   tooltip's width of the screen's right edge and hover again → the tooltip opens to the strip's LEFT, fully
-  on screen. Result: pass (owner-marked 2026-10-10)
+  on screen. Result: pass (owner-marked 2026-10-10). Amended 2026-11-18 (AD-92-KC, LibKa0s#92): the
+  strip is chrome, so its tooltip is attached above it. `anchorMode FREE`, `/kcd unlock`, a cast bar on
+  screen. Hover its strip, then its `?` → the tooltip is centered ABOVE the strip, 2 px clear, in the
+  same place for both, never at the cursor and never beside the strip; hover the gear → *Open
+  settings* centered above the gear. Drag the bar until its strip nearly touches the top of the screen
+  and hover again → the tooltip opens BELOW the strip, fully on screen. Result: pending
 - **CAST-16. An empty grid hands the primary anchor to the grid frame (KC-01).** `anchorMode PRIMARY`,
   `/kcd set visibility always`, `/kcd lock`. Disable every spell on the current spec's list
   (`/kcd spells disable <id>` for each) → the grid draws no icons. Target a hostile caster → the bar
@@ -753,7 +777,7 @@ you had before the update is still yours.
 - **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86).** `anchorMode FREE`,
   `/kcd unlock`, a cast bar on screen → its strip shows a gear left of the `?` and the label
   (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and its own
-  *Open settings* tooltip opens beside the strip (the strip and the `?` keep theirs). Left-click it out of combat → the settings panel opens; right-click →
+  *Open settings* tooltip opens above the gear (the strip and the `?` keep theirs; CAST-15). Left-click it out of combat → the settings panel opens; right-click →
   the panel opens too; drag it → the bar moves. In combat, left-click → the gray refusal line and no
   panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
 
@@ -1386,7 +1410,8 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   `/kcd debug window` → the confirmation stays above the console. Result: pass (owner, 2026-10-24)
 - **LAYER-9. The icon hover tooltip still works (KIC-Z01).** `/kcd lock`, icons Show tooltip on, hover
   an icon → the spell tooltip opens; the text overlay does not take the hover.
-  Result: pass (owner, 2026-10-24)
+  Result: pass (owner, 2026-10-24). Amended 2026-11-18 (AD-92-KC): the tooltip now opens beside the
+  display, not off the icon's corner (GRID-24); it still draws over every HUD frame. Result: pending
 
 ## SKIN
 

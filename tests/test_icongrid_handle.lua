@@ -57,23 +57,35 @@ test("the strip's label names the addon and which grid it moves", function()
     assertEqual(inst.handle.__label, NS.L["Ka0s KickCD"] .. " — " .. NS.L["Target"])
 end)
 
-test("hovering the grid's strip puts its tooltip beside the strip, not above it", function()
-    -- LibKa0s WidgetsDragHandle minor 4's tooltipPlace (TP-KC-01). red under: a spec without the
-    -- hook (owned by the strip at ANCHOR_TOP). A strip near the right edge flips to its left.
+test("hovering the grid's strip attaches its tooltip centered above the strip", function()
+    -- RE-PINNED (AD-92-KC, LibKa0s#92): this case pinned TP-KC-01's beside-the-strip hook
+    -- (`tooltipPlace = NS.Util.PlaceTooltipBeside`, the tooltip right or left of the strip). The
+    -- standard's chrome rule (standalone-windows, *Tooltip placement*) puts a drag strip's tooltip
+    -- attached and centered ABOVE it, which is the widget's own default (LibKa0s-Tooltip-1.0's
+    -- PlaceAttached), so the hook is gone. red under: the hook, which answers true with the
+    -- tooltip's TOPRIGHT on the strip's TOPLEFT.
     local NS, IconGrid, inst, mocks = fresh()
     setLocked(NS, IconGrid, inst, false)
+    local scr = dofile(T.root .. "/tests/_kit/mock_screen.lua")(mocks, { width = 1000, height = 800 })
     local strip, tip, owners = inst.handle, mocks.GameTooltip, {}
-    mocks.UIParent.GetRight = function() return 1000 end
-    strip.GetRight = function() return 900 end
-    tip:SetWidth(200)
+    for k, v in pairs({ GetLeft = 700, GetBottom = 500, GetRight = 900, GetTop = 520,
+                        GetEffectiveScale = 1 }) do
+        rawset(strip, k, function() return v end)
+    end
+    rawset(tip, "GetWidth", function() return 200 end)
+    rawset(tip, "GetHeight", function() return 60 end)
+    rawset(tip, "GetEffectiveScale", function() return 1 end)
     tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
     strip:_run("OnEnter")
     assertEqual(#owners, 1)
     assertEqual(owners[1][2], "ANCHOR_NONE")
-    local point, rel, relPoint = tip:GetPoint(1)
-    assertEqual(point, "TOPRIGHT")
-    assertTrue(rawequal(rel, strip), "beside the strip")
-    assertEqual(relPoint, "TOPLEFT", "900 + 200 leaves a 1000 px screen, so the left side")
+    local point, rel, relPoint, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, mocks.UIParent), "an absolute point, not one beside the strip")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 800, "centered on the strip")
+    assertEqual(y, 522, "2 px above the strip's top")
+    scr.restore()
 end)
 
 test("ApplyLock shows the strip when it registers the drag and hides it when it clears it", function()

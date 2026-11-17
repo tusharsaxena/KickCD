@@ -42,6 +42,65 @@ local gcdSuppressCurve
 -- read `.alpha` / `.tint` unguarded. Shared and never written to.
 local EMPTY_CURVES = {}
 
+-- ---------------------------------------------------------------------------
+-- Icon tooltip placement (AD-92-KC, LibKa0s#92)
+-- ---------------------------------------------------------------------------
+--
+-- An icon is a BODY element of a HUD display (WowAddonStandards standalone-windows, *Tooltip
+-- placement*), so its spell tooltip opens beside the WHOLE display, outside its outer edge: right
+-- when it fits, else left, its top level with the hovered icon's, through LibKa0s-Tooltip-1.0's
+-- PlaceBeside. Never at the cursor and never off a corner of the icon (the ANCHOR_RIGHT it had).
+--
+-- THE DISPLAY is the unit's grid plus what moves with it: the drag strip and the docked sim strip
+-- while shown, the cast bar while it is anchored to the grid (anchorMode PRIMARY; a FREE bar is a
+-- display of its own, as modules/SimStrip.lua says), and the unit label's text while it is shown
+-- on the grid or on that anchored bar. Re-read on every hover, so a hidden member drops out.
+
+local TIP_MAJOR = "LibKa0s-Tooltip-1.0"
+local TIP_GAP   = 2   -- the standard's gap; the library publishes the same figure as TIP_GAP
+
+local function shownMember(list, f)
+    if f and f.IsShown and f:IsShown() then list[#list + 1] = f end
+end
+
+--- The frames of `unit`'s icon display, the grid first, or nil before the grid exists.
+local function tipGroup(unit)
+    local grid = IconGrid:GetGridFrame(unit)
+    if not grid then return nil end
+    local frames = { grid }
+    local inst = IconGrid:PeekInstance(unit)
+    shownMember(frames, inst and inst.handle)
+    local strips = NS.SimStrip and NS.SimStrip.__strips
+    shownMember(frames, strips and strips[unit .. ":icons"])
+    local anchored = (NS.Units.Castbar(unit).anchorMode or "PRIMARY") == "PRIMARY"
+    local Castbar = NS:GetModule("Castbar", true)
+    if anchored and Castbar and Castbar.GetCastbarFrame then
+        shownMember(frames, Castbar:GetCastbarFrame(unit))
+    end
+    local UnitLabel = NS:GetModule("UnitLabel", true)
+    local lbl = UnitLabel and UnitLabel.PeekInstance and UnitLabel:PeekInstance(unit)
+    local attach = NS.Units.LabelStyle and NS.Units.LabelStyle(unit).attach
+    if lbl and lbl.frame and lbl.frame:IsShown()
+        and (attach == "icons" or (attach == "castbar" and anchored)) then
+        frames[#frames + 1] = lbl.text or lbl.frame
+    end
+    return frames
+end
+
+--- Place the shown spell tooltip of icon `btn`: beside its display (PlaceBeside, which falls back
+--- to above the icon when neither side fits), else attached above the icon (PlaceAttached), else
+--- -- unreadable geometry, or no Tooltip major -- by a relative point above it. Never the cursor.
+local function placeIconTip(tip, btn)
+    local Tip = LibStub and LibStub(TIP_MAJOR, true)
+    if Tip then
+        local unit = btn.unit or "target"
+        if Tip.PlaceBeside(tip, btn, function() return tipGroup(unit) or btn end) then return end
+        if Tip.PlaceAttached(tip, btn) then return end
+    end
+    tip:ClearAllPoints()
+    tip:SetPoint("BOTTOM", btn, "TOP", 0, TIP_GAP)
+end
+
 local function safeUnpackColor(c, fr, fg, fb, fa)
     -- Util.Unpack handles nil with sane defaults but we want module-specific
     -- fallbacks for the cooldown tint, so wrap it.
@@ -311,16 +370,18 @@ local function CreateIconWidget(parent)
     -- Hover tooltip. Only fires when EnableMouse(true) on the icon, which
     -- IconGrid:ApplyLock toggles based on (locked AND icons.showTooltip).
     -- While unlocked, EnableMouse(false) so the grid frame retains the
-    -- mouse for dragging.
+    -- mouse for dragging. Owned at ANCHOR_NONE and placed beside the unit's
+    -- display by placeIconTip (AD-92-KC; was ANCHOR_RIGHT, a corner offset).
     btn:SetScript("OnEnter", function(self)
         local cfg = NS.Units.Icons(self.unit or "target")
         if not (cfg and cfg.showTooltip and self.spellID) then return end
         if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetOwner(self, "ANCHOR_NONE")
         if GameTooltip.SetSpellByID then
             GameTooltip:SetSpellByID(self.spellID)
         end
         GameTooltip:Show()
+        placeIconTip(GameTooltip, self)
     end)
     btn:SetScript("OnLeave", function(self)
         -- Only dismiss the tooltip if it's the one WE set. If the user
@@ -978,3 +1039,6 @@ IconGrid.PlainStateMoved  = plainStateMoved
 IconGrid.EvaluateByTotal         = evaluateByTotal
 IconGrid.ApplyGcdSuppressionAlpha = applyGcdSuppressionAlpha
 IconGrid.FetchBorderTexture = fetchBorderTexture
+-- The icon tooltip's display group and placement (AD-92-KC).
+IconGrid.TipGroup     = tipGroup
+IconGrid.PlaceIconTip = placeIconTip

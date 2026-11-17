@@ -566,29 +566,41 @@ test("EnsureFrame builds the library's drag strip in place of the hint text", fu
         "the label names the unit -- two unlocked bars would otherwise read alike")
 end)
 
-test("hovering the strip puts its tooltip beside the strip, not above it", function()
-    -- LibKa0s WidgetsDragHandle minor 4's tooltipPlace (TP-KC-01). red under: a spec without the
-    -- hook, which owns the tooltip by the strip at ANCHOR_TOP and anchors nothing beside it.
+test("hovering the strip attaches its tooltip centered above the strip, the mark's too", function()
+    -- RE-PINNED (AD-92-KC, LibKa0s#92): this case pinned TP-KC-01's beside-the-strip hook
+    -- (`tooltipPlace = NS.Util.PlaceTooltipBeside`). The standard's chrome rule puts the strip's
+    -- tooltip attached and centered ABOVE it, the widget's own default (LibKa0s-Tooltip-1.0's
+    -- PlaceAttached), so the hook is gone. red under: the hook, whose TOPLEFT sits on the strip's
+    -- TOPRIGHT.
     local _, mocks, Castbar = enabled()
     local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    local scr = dofile(T.root .. "/tests/_kit/mock_screen.lua")(mocks, { width = 1000, height = 800 })
     local strip, tip, owners = frame.dragHandle, mocks.GameTooltip, {}
-    mocks.UIParent.GetRight = function() return 1000 end
-    strip.GetRight = function() return 500 end
-    tip:SetWidth(200)
+    for k, v in pairs({ GetLeft = 300, GetBottom = 500, GetRight = 500, GetTop = 520,
+                        GetEffectiveScale = 1 }) do
+        rawset(strip, k, function() return v end)
+    end
+    rawset(tip, "GetWidth", function() return 200 end)
+    rawset(tip, "GetHeight", function() return 60 end)
+    rawset(tip, "GetEffectiveScale", function() return 1 end)
     tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
     strip:_run("OnEnter")
-    assertEqual(#owners, 1, "placed on the first try, so owned once")
-    assertTrue(rawequal(owners[1][1], mocks.UIParent), "owned by UIParent, as the hook requires")
+    assertEqual(#owners, 1, "owned once")
+    assertTrue(rawequal(owners[1][1], mocks.UIParent), "owned by UIParent, as the widget does")
     assertEqual(owners[1][2], "ANCHOR_NONE")
-    local point, rel, relPoint = tip:GetPoint(1)
-    assertEqual(point, "TOPLEFT")
-    assertTrue(rawequal(rel, strip), "beside the strip")
-    assertEqual(relPoint, "TOPRIGHT")
-    -- The ? mark shows the same tooltip in the same place: anchored to the strip, not the mark.
+    local point, rel, relPoint, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, mocks.UIParent), "an absolute point, not one beside the strip")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 400, "centered on the strip")
+    assertEqual(y, 522, "2 px above the strip's top")
+    -- The ? mark shows the same tooltip in the same place: placed by the strip, not the mark.
     tip:ClearAllPoints()
     strip.help:_run("OnEnter")
-    local _, relMark = tip:GetPoint(1)
-    assertTrue(rawequal(relMark, strip), "the mark's tooltip sits beside the strip too")
+    local _, _, _, xMark, yMark = tip:GetPoint(1)
+    assertEqual(xMark, 400, "the mark's tooltip is centered on the strip too")
+    assertEqual(yMark, 522)
+    scr.restore()
 end)
 
 -- The settings mark (AD-86-KC, LibKa0s#86: DragHandle minor 14, opt-in).
