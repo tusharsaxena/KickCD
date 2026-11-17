@@ -13,7 +13,7 @@
 -- One strip per icon grid, and one per cast bar the player positions on its own (`anchorMode`
 -- FREE). A cast bar anchored to its grid's primary icon is part of that grid's display, so the
 -- grid's strip marks both, and stacks clear of the bar (the dock's `clear`) where no label sits
--- above the grid.
+-- above the grid, or clear of a label above the bar when one sits there.
 --
 -- These cases drive the addon's own NS.Sim on the `test` scenario tests/sim_support.lua injects,
 -- with the host's real Prepare (`host = true`), which opens the panel and shows the strips.
@@ -150,6 +150,32 @@ test("sim marker: with no label above the grid, an anchored cast bar is what the
     start(ctx)
     local NS = ctx.NS
     assertEqual(NS.Units.Castbar("target").anchorMode or "PRIMARY", "PRIMARY", "sanity: the default bar is anchored")
+    assertEqual(NS.SimStrip.__strips["target:icons"].__dock.clear, barOf(NS, "target"))
+    stop(ctx)
+end)
+
+-- A label attached to an anchored cast bar's TOP sits beyond the bar: clearing the bar alone would
+-- lay the grid's strip over the label (preview-mode: the strip covers nothing).
+test("sim marker: with the label above an anchored cast bar, the grid's strip stacks clear of that label", function()
+    local ctx = ready(function(p) p.units.target.label.style.attach = "castbar" end)
+    start(ctx)
+    local NS = ctx.NS
+    assertNil(NS:GetModule("UnitLabel"):FrameAbove("target", "icons"), "sanity: no label above the grid")
+    local above = NS:GetModule("UnitLabel"):FrameAbove("target", "castbar")
+    assertTrue(above ~= nil, "sanity: the label sits above the cast bar")
+    assertEqual(NS.Units.Castbar("target").anchorMode or "PRIMARY", "PRIMARY", "sanity: the default bar is anchored")
+    assertEqual(NS.SimStrip.__strips["target:icons"].__dock.clear, above)
+    stop(ctx)
+end)
+
+test("sim marker: with the label on an anchored cast bar but not above it, the bar is what the strip clears", function()
+    local ctx = ready(function(p)
+        p.units.target.label.style.attach = "castbar"
+        p.units.target.label.style.relPoint = "CENTER"
+    end)
+    start(ctx)
+    local NS = ctx.NS
+    assertNil(NS:GetModule("UnitLabel"):FrameAbove("target", "castbar"), "sanity: the label is not above the bar")
     assertEqual(NS.SimStrip.__strips["target:icons"].__dock.clear, barOf(NS, "target"))
     stop(ctx)
 end)

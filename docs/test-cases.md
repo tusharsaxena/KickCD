@@ -613,7 +613,7 @@ Total.
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
-### test_sim_marker.lua (19)
+### test_sim_marker.lua (21)
 
 - sim marker: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
 - sim marker: the strip's line is in the locale
@@ -621,6 +621,8 @@ Total.
 - sim marker: a start shows a cyan strip docked on each enabled grid's top edge, parented to it
 - sim marker: with the label above the grid, the grid's strip stacks clear of the label
 - sim marker: with no label above the grid, an anchored cast bar is what the strip clears
+- sim marker: with the label above an anchored cast bar, the grid's strip stacks clear of that label
+- sim marker: with the label on an anchored cast bar but not above it, the bar is what the strip clears
 - sim marker: a cast bar anchored to its grid carries no strip of its own
 - sim marker: a free cast bar carries its own strip, docked on it and parented to it
 - sim marker: a CONFIG_CHANGED mid-session re-docks: a bar set free gains its strip
@@ -2032,7 +2034,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 11 |
-| test_sim_marker.lua | 19 |
+| test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
@@ -2108,4 +2110,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1690** |
+| **Total** | **1692** |

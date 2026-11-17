@@ -20,8 +20,9 @@ local addonName, NS = ...
 -- FREE is a display of its own and carries its own (`<unit>:castbar`); one anchored to its grid's
 -- primary icon (PRIMARY, the default) is part of the grid's display, so the grid's strip marks both.
 -- THE CLEAR FRAME. A grid's strip stacks beyond the unit's label when the label sits above the grid
--- (UnitLabel:FrameAbove, the default), else beyond an anchored cast bar, which may sit above it; a
--- free bar's strip stacks beyond a label above the bar. The drag handles never show during a
+-- (UnitLabel:FrameAbove, the default), else beyond a label above an anchored cast bar, else beyond
+-- the anchored bar itself, which may sit above the grid; a free bar's strip stacks beyond a label
+-- above the bar. The drag handles never show during a
 -- session (modules/Sim.lua refuses a sim unlocked and stops one on unlock), so no strip meets one.
 --
 -- BUILT LAZILY, on the first start: an idle addon holds no strip frame and no bus registration
@@ -74,7 +75,10 @@ local function displaysOf(unit)
     local bar = Castbar and Castbar.GetCastbarFrame and Castbar:GetCastbarFrame(unit) or nil
     local rows = {}
     if grid then
-        local clear = labelAbove(unit, "icons") or (anchored(unit) and bar) or nil
+        -- Beyond the outermost thing above the grid: its own label, else an anchored bar's label
+        -- (which sits beyond the bar), else the anchored bar.
+        local clear = labelAbove(unit, "icons")
+            or (anchored(unit) and (labelAbove(unit, "castbar") or bar)) or nil
         rows[#rows + 1] = { key = unit .. ":icons", frame = grid, clear = clear }
     end
     if bar and not anchored(unit) then

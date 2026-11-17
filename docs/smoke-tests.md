@@ -1340,7 +1340,8 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   takes the drag and its tooltip, and the `?` mark is not hidden under its strip.
   Result: pass (owner, 2026-10-24)
 - **LAYER-7. Retired 2026-10-30: the sim strip it layered was removed** (KC-02 of the skin fonts run,
-  ruling D-13; SIM-12 checks that no strip draws, SIM-13 that the step panel stays up).
+  ruling D-13; AD-88-KC brought the strip back docked on its display: SIM-12 checks the strip on the
+  grids, SIM-19 its stacking and the free cast bar, SIM-13 that the step panel stays up).
 - **LAYER-8. Tool windows raise on click and never bury a confirmation (KIC-Z10, LibKa0s LK-01).**
   Open the debug console (`/kcd debug window`), the perf panel (`/kcd perf`) and the sim panel
   (`/kcd sim`) together → clicking each raises it over the other two. General → Reset all settings
