@@ -613,10 +613,22 @@ Total.
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
-### test_sim_marker.lua (7)
+### test_sim_marker.lua (19)
 
-- sim marker: the floating strip is gone: no module, no TOC line, no strip at a start
-- sim marker: the scenario's strip line is out of the locale
+- sim marker: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
+- sim marker: the strip's line is in the locale
+- sim marker: idle, no strip is built and no bus target is held
+- sim marker: a start shows a cyan strip docked on each enabled grid's top edge, parented to it
+- sim marker: with the label above the grid, the grid's strip stacks clear of the label
+- sim marker: with no label above the grid, an anchored cast bar is what the strip clears
+- sim marker: a cast bar anchored to its grid carries no strip of its own
+- sim marker: a free cast bar carries its own strip, docked on it and parented to it
+- sim marker: a CONFIG_CHANGED mid-session re-docks: a bar set free gains its strip
+- sim marker: a grid hidden between casts hides its strip with it, and the panel stays
+- sim marker: a disabled unit's grid carries no shown strip
+- sim marker: the strip's level is the library's (display + 5): no HUD.MARKER slot
+- sim marker: a stop hides every strip and releases the bus
+- sim marker: without the library's strip, no error, and the panel marks the session
 - sim marker: a start opens the step panel with no close mark
 - sim marker: Escape does not take the panel down while a session runs
 - sim marker: the panel stays up across the session's steps
@@ -2020,7 +2032,7 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 27 |
 | test_sim_e2e.lua | 11 |
-| test_sim_marker.lua | 7 |
+| test_sim_marker.lua | 19 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
@@ -2096,4 +2108,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1678** |
+| **Total** | **1690** |

@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
-| SIM-1 – 18 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
+| SIM-1 – 19 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
@@ -985,15 +985,18 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
   `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
   the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
-- **SIM-12. The `leave` scenario, and no strip over the grids (KC-08; KC-02 of the 2026-10-30 skin
-  fonts run, D-13).** `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the
-  target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
-  `/kcd set visibility target_casting` and `/kcd sim start pull` → **no** cyan strip appears over
-  either grid or label, before, between or during casts (image-46's "Simulation: Mythic+ pull, ..."
-  bars are gone); the step panel beside the grid is the only sign a simulation runs. Untick Target,
-  then Focus, in the settings → still no floating strip; no Lua error. Re-tick both, `/kcd sim stop`
-  (`/kcd reset visibility` after). Re-opened: the strip was removed. Result: Owner reported pass, 2026-10-31
-- **SIM-13. The step panel stays up for the whole session (KC-02, D-13).** `/kcd sim start pull` → the
+- **SIM-12. The `leave` scenario, and the docked strip on the grids (KC-08; AD-88-KC, LibKa0s#88,
+  reversing D-13).** `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the
+  target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. While it runs, a cyan
+  strip reading *Simulation: <scenario> - /kcd sim stop ends it.* sits along the **top edge of each
+  grid**, just above its label, as wide as the grid, and the step panel stays up beside the grid.
+  `/kcd sim stop` → both strips go. Then `/kcd set visibility target_casting` and
+  `/kcd sim start pull` → each strip shows only while its grid shows, and goes with the grid between
+  casts (no cyan bar over nothing, image-46); the panel stays up throughout. Untick Target in the
+  settings → its strip goes with its grid, the Focus strip stays; no Lua error. Re-tick it,
+  `/kcd sim stop` (`/kcd reset visibility` after). Re-opened by AD-88-KC: the strip is back, docked.
+  Result: not run (AD-88-KC)
+- **SIM-13. The step panel stays up for the whole session (KC-02; kept by AD-88-KC).** `/kcd sim start pull` → the
   step panel opens beside the grid with **no close mark** at its top right. Press **Escape** → the
   panel stays. Let the steps run → it stays up throughout. Its Stop row (or `/kcd sim stop`) ends the
   session. `/kcd sim panel` still hides and shows it on purpose. After the stop the panel shows its
@@ -1045,6 +1048,17 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   panel closes, and the next right-click shows it unticked. Fail: a box or menu entry that disagrees
   with "panel open or sim running", a panel left open by an untick, or a tick that closes at once.
   Result: pass (owner-marked 2026-11-04)
+
+- **SIM-19. The strip on a free cast bar, and at the screen's top edge (AD-88-KC, LibKa0s#88).**
+  Cast bar → Size and position → **Anchor mode** → *Free*, drag the bar clear of the grid while
+  unlocked, `/kcd lock`, then `/kcd sim start miss` → during each cast the bar carries its **own** cyan
+  strip on its top edge (above its label if the label sits there), and the grid keeps its own. Set the
+  mode back to *Anchored to primary icon* mid-session → the bar's strip goes and the grid's stays,
+  clear of the bar and the label. Stop, `/kcd unlock`, drag the grid to the very top of the screen,
+  `/kcd lock`, `/kcd sim start pull` → the grid's strip sits **under** the grid instead. No strip
+  takes a click (click through it at the world) and none covers an icon, the label or the bar.
+  Fail: a strip floating where no grid shows, a strip over the icons, or a bar anchored to the grid
+  with a second strip. Result: not run (AD-88-KC)
 
 ## DIAG
 
@@ -1782,3 +1796,5 @@ The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-S
 The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Its review adds SKIN-48 (the eye across a profile switch and a reset, a /kcd skin refused in combat between). Owed: SKIN-22, SKIN-47, SKIN-48.
 
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
+
+The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.

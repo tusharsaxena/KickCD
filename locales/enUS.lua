@@ -102,6 +102,9 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
+-- The simulation strip on each HUD display (modules/SimStrip.lua, AD-88-KC); %s is the scenario label.
+L["Simulation: %s - /kcd sim stop ends it."] =
+    "Simulation: %s - /kcd sim stop ends it."
 L["Simulator"] = "Simulator"
 L["Simulation step delay (seconds)"] = "Simulation step delay (seconds)"
 L["Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."] =

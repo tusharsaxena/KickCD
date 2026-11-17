@@ -236,8 +236,11 @@ function Host.Prepare(_, _, _, ready)
     -- The watched set re-polls through the seam, so every icon answers from the world: ready.
     local Cooldowns = module("Cooldowns")
     if Cooldowns then Cooldowns:Rebuild() end
-    -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo), and it is
-    -- the session's on-screen sign (ruling D-13): pinned up for the whole session.
+    -- The sim strip docked on each HUD display the session plays on (modules/SimStrip.lua,
+    -- AD-88-KC). Guarded: the TOC loads it, but a partial headless load may not.
+    if NS.SimStrip then NS.SimStrip:Refresh() end
+    -- The step panel opens beside the grid (Sim-1.0 docks it to the panel's anchorTo), and it stays
+    -- up for the whole session beside the strips (preview-mode: the strip does not replace it).
     if NS.Sim and NS.Sim.ShowPanel and NS.Sim:ShowPanel() then Host.PinPanel() end
     -- The real world's interference: combat, a loading screen and a group now stop the session.
     Host.ArmWatch()
@@ -319,8 +322,9 @@ function Host.PanelAnchor()
 end
 
 --- Keep the step panel up while a session runs (ruling D-13 of Ka0sAddonsCommonTasks
---- docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK, image-46). The floating sim strip KC-09 hung over each
---- grid is gone, so the panel is the session's on-screen sign (the preview-mode MUST) and must not
+--- docs/2026-10-30-SKIN_FONTS_AND_FEEDBACK, image-46, which AD-88-KC kept when it brought the docked
+--- strips back: preview-mode's simulator stays on screen beside them). The panel is the session's
+--- sign while no display shows (a docked strip hides with its grid between casts), so it must not
 --- be closed by accident: its close mark is hidden, and its frame comes off UISpecialFrames, so
 --- Escape leaves it. Its Stop row and `/kcd sim stop` end the session; `/kcd sim panel` still
 --- toggles it on purpose. Host.UnpinPanel reverses it at the stop.
@@ -458,6 +462,11 @@ end
 -- (a) The world and the spells.
 NS.Sim:OnStop(function()
     Host.world, Host.kick, Host.cc = nil, nil, nil
+end)
+
+-- (a0) The strips (AD-88-KC): hidden, and the bus released.
+NS.Sim:OnStop(function()
+    if NS.SimStrip then NS.SimStrip:Hide() end
 end)
 
 -- (a1) The step panel is an ordinary window again: its close mark and Escape come back.

@@ -263,6 +263,10 @@ end
 --          a handle is never under the other display of its unit; the help mark rides at + 1.
 --   The Target and Focus bands are equal; the two units are placed apart by default.
 --
+--   The sim strip on a grid or a free cast bar (modules/SimStrip.lua, AD-88-KC) is the library's
+--   HUD dock: its strata is its display's and its level the display's + 5 (LibKa0s Widgets minor
+--   27), set by the library, so there is no MARKER slot here.
+--
 --   Library- and Blizzard-owned, relied on and never set here (frame-layering-§6): the debug
 --   console, perf panel and sim panel DIALOG and toplevel (raised on click, re-raising a shown
 --   StaticPopup); the console's copy window FULLSCREEN; the library menu, autocomplete, AceGUI
