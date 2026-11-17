@@ -120,10 +120,30 @@ end)
 
 test("the grid's strip carries the settings mark beside its help mark", function()
     -- red under: a spec without `settings`, which builds no mark (handle.settings nil).
-    local _, _, inst = fresh()
+    local _, _, inst, mocks = fresh()
     assertTrue(inst.handle.settings ~= nil, "the strip must carry the drag-handle settings mark")
     assertTrue(inst.handle.help ~= nil, "the help mark stays")
     assertTrue(inst.handle.close == nil, "still no X on a grid strip (owner ruling X-03)")
+    -- Left to right the strip reads settings, then "?" (the header marks rule): the gear's RIGHT
+    -- edge hangs off the help mark's LEFT, one CLOSE_GAP clear (AD-86-KC review).
+    local point, rel, relPoint, x = inst.handle.settings:GetPoint(1)
+    assertEqual(point, "RIGHT")
+    assertTrue(rawequal(rel, inst.handle.help), "the gear is anchored to the help mark, so it sits left of it")
+    assertEqual(relPoint, "LEFT")
+    assertEqual(x, -mocks.LibStub(WIDGETS, true).DRAG_HANDLE.CLOSE_GAP, "one CLOSE_GAP between the gear and the ?")
+end)
+
+test("the grid strip's settings mark says what its click does", function()
+    -- AD-86-KC review: red under a spec without `settingsTooltip`, where the gear fell back to the
+    -- strip's own tooltip (its label and "Drag to move. Right-click for settings.").
+    local NS, IconGrid, inst, mocks = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local tip, titles = mocks.GameTooltip, {}
+    tip.SetText = function(_, s) titles[#titles + 1] = s end
+    inst.handle.settings:_run("OnEnter")
+    assertEqual(titles[#titles], "Open settings", "the gear's tooltip names its click, as the library windows' gears do")
+    inst.handle:_run("OnEnter")
+    assertEqual(titles[#titles], inst.handle.label:GetText(), "the strip keeps its own tooltip")
 end)
 
 test("a left click on the grid strip's settings mark opens this addon's settings", function()

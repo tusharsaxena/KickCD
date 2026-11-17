@@ -142,8 +142,10 @@ local function buildHandle(inst, grid)
         onDragStop   = function() onDragStop(inst, grid) end,
         onRightClick = function() NS:OpenSettings() end,
         -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC),
-        -- the same open as the right-click; see modules/Castbar_Handle.lua.
+        -- the same open as the right-click, with its own "Open settings" tooltip; see
+        -- modules/Castbar_Handle.lua.
         settings     = function() NS:OpenSettings() end,
+        settingsTooltip = { title = NS.L["Open settings"] },
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the grid so its help mark is born above it:
         -- above the grid's icons and glow AND above this unit's cast bar, which

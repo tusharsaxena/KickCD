@@ -25,7 +25,7 @@ and a retired one leaves its number unused.
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
 | SIM-1 – 19 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
-| DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
+| DIAG-1 – 48 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
@@ -100,7 +100,8 @@ Which checks to run for a partial change:
   wrapper, the DebugLog descriptor): DIAG-21 – 25 and PANEL-25, then DIAG-16 – 20. The tests pin what
   is passed; these are the only look at what is drawn.
 - **Launcher, logo or `## IconTexture`** (and a re-vendor that moves `Launcher.lua`): INSTALL-10 – 14,
-  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13. A wrong TGA format draws nothing and
+  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13, DIAG-48 (the library windows' gears open
+  the opener the launcher registers). A wrong TGA format draws nothing and
   raises nothing, so no gate reports it.
 - **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
   PANEL-1 – 13, PANEL-17, PANEL-29, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
@@ -680,8 +681,9 @@ you had before the update is still yours.
   a hidden knob still answers. Repeat on Focus, unlinked. Result:
 - **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86).** `/kcd unlock` → each grid strip
   (Target and Focus) shows a gear left of its `?`, both in the skin's gray mark tint, and the label is
-  not clipped by either mark. Hover the gear → it brightens and the strip's tooltip opens beside the
-  strip; leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
+  not clipped by either mark. Hover the gear → it brightens and its own *Open settings* tooltip opens
+  beside the strip (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*);
+  leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
   the panel opens too (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
   it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
   takes the new skin's tint. Result:
@@ -750,8 +752,8 @@ you had before the update is still yours.
   did. Result:
 - **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86).** `anchorMode FREE`,
   `/kcd unlock`, a cast bar on screen → its strip shows a gear left of the `?` and the label
-  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and the strip's
-  tooltip opens beside the strip. Left-click it out of combat → the settings panel opens; right-click →
+  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and its own
+  *Open settings* tooltip opens beside the strip (the strip and the `?` keep theirs). Left-click it out of combat → the settings panel opens; right-click →
   the panel opens too; drag it → the bar moves. In combat, left-click → the gray refusal line and no
   panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
 
@@ -1144,14 +1146,23 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   wears KickCD's skin (SKIN-11). (Amended by KC-05, 2026-10-29: the console paints for the skin owner,
   its descriptor's `addonName`.) Rewritten by R4-SEP (LibKa0s v1.85.0 round 4 re-cut): the band is the
   dark gold gradient and the gray divider is gone. Result:
-- **DIAG-21. The title bar marks.** → copy, clear and close are three small white glyphs from
-  `libs/LibKa0s/media/icons/`, with no tooltips. A `×`, or the words Copy and Clear, means
-  `addonName = addonName` fell out of `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10)
+- **DIAG-21. The title bar marks.** → left to right Copy, Clear, settings and close: four small glyphs
+  from `libs/LibKa0s/media/icons/`, one size and one pitch, in the skin's mark tint. Hover each → it
+  brightens and a tooltip opens above it: *Copy the log*, *Clear the log*, *Open settings* and *Close*.
+  A `×`, a `*`, or the words Copy and Clear, means `addonName = addonName` fell out of
+  `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10). Amended 2026-11-17
+  (AD-86-KC review): LibKa0s v1.105.0 (DebugLogWindow minor 5, LibKa0s#86, SR-L2) builds the marks
+  through HeaderButtons, adds the settings mark and gives every mark a tooltip; the settings mark's
+  click is DIAG-48. Result: pending
 - **DIAG-22. The copy window's close.** Click copy → `KickCDDebugCopyWindow` opens with a read-only box,
-  and its close is the same mark. Result: pass (owner-marked 2026-10-10)
+  and its close is the same mark. Result: pass (owner-marked 2026-10-10). Amended 2026-11-17 (AD-86-KC
+  review): a settings gear now sits left of that close (WidgetsCopyWindow minor 6, LibKa0s#86), the
+  console's gear pixel for pixel; its click is DIAG-48. Result: pending
 - **DIAG-23. The perf panel's close.** `/kcd perf start` → the step panel has exactly one close control,
   top right, level with the title about 6 px in: the same `close` mark as the console's, pixel for pixel
-  side by side. A `×` means `addonName` stopped reaching the library's `PerfPanel`. Result: pass (owner-marked 2026-10-10)
+  side by side. A `×` means `addonName` stopped reaching the library's `PerfPanel`. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-17 (AD-86-KC review): still one close, now with a settings gear left of it (PerfPanel
+  minor 14, LibKa0s#86), the console's gear pixel for pixel; its click is DIAG-48. Result: pending
 - **DIAG-24. The perf close only hides.** Click it → the panel hides, the run is not canceled, and
   `/kcd perf report` still has the capture. Result: pass (owner-marked 2026-10-10)
 - **DIAG-25. The console face is monospace.** → timestamps and `[tags]` line up in a column. A
@@ -1265,6 +1276,18 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   on it. Fail: a body-color strip above or beside the band, two bands, a title or close sitting high
   or low on the band, or a window with no band. KickCD draws no window of its own, so a miss is
   `libs/LibKa0s` drifting from `../LibKa0s`. Result:
+- **DIAG-48. Each library window's settings mark opens KickCD's settings (AD-86-KC review; LibKa0s#86).**
+  Out of combat, with the settings panel closed: `/kcd debug window` → click the console's gear (left
+  of its close) → KickCD's settings panel opens, the console stays up. Copy → click the copy window's
+  gear → the copy window closes and KickCD's panel opens. `/kcd perf start` → click the step panel's
+  gear → KickCD's panel opens and the run goes on (`/kcd perf report` still has it). `/kcd sim start` →
+  click the step panel's gear → KickCD's panel opens. Each gear's tooltip says *Open settings*. Beside
+  a second Ka0s addon's console (DIAG-20), its gear opens that addon's panel and KickCD's opens KickCD's.
+  In combat, click the console's gear → the gray refusal line and no panel. The library's gears open
+  the opener the launcher registered under the addon's name (Core's registry), so this passes only
+  while `core/LauncherSetup.lua`'s `name` is `addonName`, the folder name every one of these windows
+  is owned by: another addon's panel, or nothing at all, means the two have parted. The skin picker's
+  gear is SKIN-24's. Result:
 
 ## DEGRADED
 
@@ -1542,10 +1565,11 @@ after each check. Every check also fails on a Lua error or a taint warning.
   in → shortly after the world loads a small window titled **Choose a skin** opens about three quarters
   of the way up the screen, already in the profile's skin: **Ka0s KickCD** whole on its own line, then
   a dropdown showing the skin
-  worn now, a gear button and the eye beside it (the eye is SKIN-47's),
-  **Apply** under it and a close mark. Close it, `/reload` → it does not come back on that profile.
+  worn now with the eye beside it (the eye is SKIN-47's), **Apply** under it, and in the title bar a
+  settings gear left of the close mark (OptionsSkinPicker minor 12, LibKa0s#86, moved the gear there
+  from beside the dropdown). Close it, `/reload` → it does not come back on that profile.
   Create a new profile → it opens again; reset that profile after closing it → again. Every existing
-  profile shows it once too. Fail: no eye button, a title that still names the addon, the name cut off
+  profile shows it once too. Fail: no eye button, a gear still beside the dropdown, a title that still names the addon, the name cut off
   or missing above the dropdown, no window on a new or reset profile, or one on a profile that already
   closed it. Result:
 - **SKIN-23. A pick previews; Apply saves; a close puts it back (KC-04).** With `/kcd unlock` (so the HUD
@@ -1708,17 +1732,18 @@ after each check. Every check also fails on a Lua error or a taint warning.
   The icon grids and cast bars are unchanged. Fail: a rough edge, an outline on a stock page, or an
   outline left on a widget after closing the page. Result:
 - **SKIN-46. The round 6 picker copy (R6-RV; LibKa0s R6-L1, OptionsSkinPicker minor 11).** `/kcd skin` →
-  the picker opens as before: title, **Ka0s KickCD** on its own line, the skin dropdown, the gear,
-  **Apply** and the close mark, with no Lua error. Close it with the close mark, open it again and
+  the picker opens as before: title, **Ka0s KickCD** on its own line, the skin dropdown with its eye,
+  **Apply**, and the gear and the close mark in the title bar (the gear there since OptionsSkinPicker
+  minor 12, LibKa0s#86), with no Lua error. Close it with the close mark, open it again and
   close it with **Escape** → it goes cleanly both times, and `/kcd skin` opens it again. Fail: a Lua
   error at show or close, or a window that will not close. Result:
 - **SKIN-47. The picker's eye is unlock mode (R6-PV; LibKa0s R6-L1).** `/kcd lock`, then `/kcd skin`
   with the frames locked → the frames unlock (the grids and cast bars show with their drag strips, and
-  chat says *icon grid unlocked*) and the picker stays in front of them; the eye beside the gear is lit,
+  chat says *icon grid unlocked*) and the picker stays in front of them; the eye beside the dropdown is lit,
   and its tooltip says the frames are unlocked. Click the eye → the frames lock, the eye dims, and the
   tooltip says they are locked; click it again → unlocked and lit. Close the picker with the close
   mark → the frames are locked again. Repeat, closing once each with **Escape**, **Apply** and the gear
-  → locked again every time. Now `/kcd unlock` first and `/kcd skin` → nothing moves (already
+  (in the title bar, left of the close) → locked again every time. Now `/kcd unlock` first and `/kcd skin` → nothing moves (already
   unlocked); lock them with the eye and close → they are unlocked again, as before. With the picker
   up after `/kcd lock`, `/kcd lock` by hand, then close → they stay locked. Start a simulation
   (`/kcd sim start`) with the frames locked, then `/kcd skin` → the unlock is refused with the
@@ -1813,3 +1838,5 @@ The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker o
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
 
 The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
+
+The same run's AD-86-KC (LibKa0s#86) gives both drag strips a settings mark: it adds GRID-23 and CAST-20 and amends GRID-14. Its review moves the expected result of DIAG-21, DIAG-22 and DIAG-23 (the library windows' settings marks and tooltips, from the v1.105.0 re-vendor), whose owner passes are withdrawn, and of SKIN-22, SKIN-46 and SKIN-47 (the picker's gear in its title bar), and adds DIAG-48 (each library window's gear opens KickCD's panel). Owed: GRID-14, GRID-23, CAST-20, DIAG-21, DIAG-22, DIAG-23, DIAG-48, SKIN-22, SKIN-46, SKIN-47.

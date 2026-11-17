@@ -105,9 +105,12 @@ local function buildHandle(inst, frame)
         onRightClick = function() NS:OpenSettings() end,
         -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC):
         -- left of the "?", a left click opening the same panel through the same
-        -- NS:OpenSettings (so the combat refusal is the same one). Its tooltip is the
-        -- strip's own (the widget's fallback when no settingsTooltip is given).
+        -- NS:OpenSettings (so the combat refusal is the same one). Its tooltip is its
+        -- own, "Open settings" as on the library windows' gears: without
+        -- settingsTooltip the widget falls back to the strip's, whose "Drag to move"
+        -- misreads a mark whose left click opens settings (AD-86-KC review).
         settings     = function() NS:OpenSettings() end,
+        settingsTooltip = { title = L["Open settings"] },
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the cast bar, so the strip and its help mark
         -- clear the grid of the same unit as well as the bar (KIC-Z07, S06).

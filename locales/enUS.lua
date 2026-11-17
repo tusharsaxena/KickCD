@@ -772,6 +772,9 @@ L["Target castbar"]              = "Target castbar"
 L["Focus castbar"]               = "Focus castbar"
 L["Drag to move. Right-click for settings."] =
     "Drag to move. Right-click for settings."
+-- The drag strips' settings mark (AD-86-KC review): its own tooltip, the words the library
+-- windows' gears show, so a mark whose left click opens settings does not read "Drag to move".
+L["Open settings"]               = "Open settings"
 
 -- Text label entry. Its first tab is "General" (already keyed above), not
 -- "Label": on an entry called Text label the word was the entry's, not the tab's.

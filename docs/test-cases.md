@@ -933,7 +933,7 @@ Total.
 - Anchor mode draws the anchor rows only while the bar is anchored
 - a switched row stays reachable while hidden
 
-### test_icongrid_handle.lua (15)
+### test_icongrid_handle.lua (16)
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
@@ -942,6 +942,7 @@ Total.
 - the strip is sized to its label plus the widget's reserve
 - the grid's strip carries the settings mark beside its help mark
 - a left click on the grid strip's settings mark opens this addon's settings
+- the grid strip's settings mark says what its click does
 - dragging the strip moves the GRID and saves its anchor
 - the strip refuses to move a LOCKED grid
 - the strip hangs above the unit LABEL when one is parked on the grid
@@ -1044,7 +1045,7 @@ Total.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (48)
+### test_castbar_frame.lua (49)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -1088,6 +1089,7 @@ Total.
 - hovering the strip puts its tooltip beside the strip, not above it
 - the cast bar's strip carries the settings mark beside its help mark
 - a left click on the cast bar strip's settings mark opens this addon's settings
+- the cast bar strip's settings mark says what its click does
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
@@ -2056,13 +2058,13 @@ Total.
 | test_icongrid_glowgate.lua | 10 |
 | test_icongrid_glow_knobs.lua | 13 |
 | test_switched_sections.lua | 4 |
-| test_icongrid_handle.lua | 15 |
+| test_icongrid_handle.lua | 16 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 33 |
-| test_castbar_frame.lua | 48 |
+| test_castbar_frame.lua | 49 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -2114,4 +2116,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1696** |
+| **Total** | **1698** |
