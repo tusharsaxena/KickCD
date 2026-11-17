@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1692%2F1692_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1696%2F1696_passing-green)
 
 Retail only for now; WoW Forever support is planned. KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -162,7 +162,7 @@ If you've found a bug or want a feature, file it at [https://github.com/tusharsa
 
 The icons come from [Open Iconic](https://github.com/iconic/open-iconic) by Waybury, MIT: the **?**
 on the icon grid's and cast bar's drag strips, the drag handles and remove marks on the Spells page,
-the debug console's close, copy and clear buttons, the simulator's done check, the
-skin picker's settings gear and eye, and the small marks LibKa0s draws beside skinned controls.
+the settings gear on those strips, the debug console's close, copy and clear buttons, the
+simulator's done check, the skin picker's settings gear and eye, and the small marks LibKa0s draws beside skinned controls.
 
 The icons ship inside the bundled payload under `libs/`, with their license text beside them.

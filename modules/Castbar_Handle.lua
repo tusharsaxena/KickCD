@@ -103,6 +103,11 @@ local function buildHandle(inst, frame)
         -- (core/LauncherSetup.lua:137, core/KickCD.lua:264). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
+        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC):
+        -- left of the "?", a left click opening the same panel through the same
+        -- NS:OpenSettings (so the combat refusal is the same one). Its tooltip is the
+        -- strip's own (the widget's fallback when no settingsTooltip is given).
+        settings     = function() NS:OpenSettings() end,
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the cast bar, so the strip and its help mark
         -- clear the grid of the same unit as well as the bar (KIC-Z07, S06).

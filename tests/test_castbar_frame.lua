@@ -591,6 +591,26 @@ test("hovering the strip puts its tooltip beside the strip, not above it", funct
     assertTrue(rawequal(relMark, strip), "the mark's tooltip sits beside the strip too")
 end)
 
+-- The settings mark (AD-86-KC, LibKa0s#86: DragHandle minor 14, opt-in).
+test("the cast bar's strip carries the settings mark beside its help mark", function()
+    -- red under: a spec without `settings`, which builds no mark (handle.settings nil).
+    local _, _, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    assertTrue(frame.dragHandle.settings ~= nil, "the strip must carry the drag-handle settings mark")
+    assertTrue(frame.dragHandle.close == nil, "still no X on a cast bar strip (owner ruling X-03)")
+end)
+
+test("a left click on the cast bar strip's settings mark opens this addon's settings", function()
+    local NS, _, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    local opened = 0
+    NS.OpenSettings = function() opened = opened + 1 end
+    frame.dragHandle.settings:_run("OnClick", "LeftButton")
+    assertEqual(opened, 1, "the mark must open the panel through NS:OpenSettings, the launcher's open")
+    frame.dragHandle.settings:_run("OnClick", "RightButton")
+    assertEqual(opened, 2, "a right-click on the mark is the strip's right-click")
+end)
+
 test("the focus bar's strip is labeled for ITS unit", function()
     local _, _, Castbar = enabled()
     local frame = Castbar:EnsureFrame(Castbar:GetInstance("focus"))

@@ -19,8 +19,8 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 22 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 19 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| GRID-1 – 23 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
@@ -613,7 +613,8 @@ you had before the update is still yours.
   Result: pass (owner-marked 2026-10-10)
 - **GRID-14. Grid strips carry no close mark.** `/kcd unlock` → the grid strips and cast bar strips
   have the `?` mark and no X (KickCD does not adopt the strip's close option, owner ruling X-03).
-  Result: pass (owner-marked 2026-10-10)
+  Result: pass (owner-marked 2026-10-10). Amended 2026-11-17 (AD-86-KC): each strip now also carries a
+  settings gear left of the `?` (GRID-23, CAST-20); still no X. Result: pending
 - **GRID-15. Cooldown text off: the icon still dims, tints and brightens on time (KickCD#9).**
   Annotations → Show cooldown text off. Put Pummel on cooldown → the icon dims and tints for the whole
   cooldown and brightens when it is castable again, with no countdown drawn. Then, mid-rotation, press
@@ -677,6 +678,13 @@ you had before the update is still yours.
   (rotating rays)` → *Pixel border* goes, *Offset* stays. Set the secondary to Button too → *Offset* goes
   and the Button group shows once. Both triggers `never` → the picked group stays, dimmed. `/kcd get` on
   a hidden knob still answers. Repeat on Focus, unlinked. Result:
+- **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86).** `/kcd unlock` → each grid strip
+  (Target and Focus) shows a gear left of its `?`, both in the skin's gray mark tint, and the label is
+  not clipped by either mark. Hover the gear → it brightens and the strip's tooltip opens beside the
+  strip; leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
+  the panel opens too (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
+  it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
+  takes the new skin's tint. Result:
 
 ## CAST
 
@@ -740,6 +748,12 @@ you had before the update is still yours.
   `Free (drag to move)` → those four go on the next frame, *Anchor mode* and the Spell icon section stay,
   and the bar still drags. Back to Anchored → they return with their values and the bar anchors where it
   did. Result:
+- **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86).** `anchorMode FREE`,
+  `/kcd unlock`, a cast bar on screen → its strip shows a gear left of the `?` and the label
+  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and the strip's
+  tooltip opens beside the strip. Left-click it out of combat → the settings panel opens; right-click →
+  the panel opens too; drag it → the bar moves. In combat, left-click → the gray refusal line and no
+  panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
 
 ## FOCUS
 

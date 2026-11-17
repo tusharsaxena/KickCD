@@ -105,11 +105,36 @@ test("the strip is sized to its label plus the widget's reserve", function()
     -- rather than typed here, because a copy is a second number to keep in step.
     -- FIT_SLACK (WidgetsDragHandle minor 8, LibKa0s v1.82.0) is the 2 px Measure() adds to the
     -- label, so an exact fit never truncates; read off the widget for the same reason.
+    -- RE-PINNED (AD-86-KC, LibKa0s#86): the strip now carries the settings mark (DragHandle minor
+    -- 14), and each side of the label keeps that mark's frame and gap clear as well, so the reserve
+    -- per side is RESERVE + HELP_HIT + CLOSE_GAP (the widget's dhReserve), all read off the widget.
     local DH = mocks.LibStub(WIDGETS, true).DRAG_HANDLE
     local RESERVE, SLACK = DH.RESERVE, DH.FIT_SLACK
+    local SIDE = RESERVE + DH.HELP_HIT + DH.CLOSE_GAP
     assertEqual(SLACK, 2, "the widget's slack")
-    assertEqual(inst.handle:GetWidth(), 100 + SLACK + RESERVE * 2,
-        "the strip is its label, its slack and what it keeps clear on each side")
+    assertEqual(inst.handle:GetWidth(), 100 + SLACK + SIDE * 2,
+        "the strip is its label, its slack and what it keeps clear on each side, settings mark included")
+end)
+
+-- ── The settings mark (AD-86-KC, LibKa0s#86: DragHandle minor 14, opt-in) ───
+
+test("the grid's strip carries the settings mark beside its help mark", function()
+    -- red under: a spec without `settings`, which builds no mark (handle.settings nil).
+    local _, _, inst = fresh()
+    assertTrue(inst.handle.settings ~= nil, "the strip must carry the drag-handle settings mark")
+    assertTrue(inst.handle.help ~= nil, "the help mark stays")
+    assertTrue(inst.handle.close == nil, "still no X on a grid strip (owner ruling X-03)")
+end)
+
+test("a left click on the grid strip's settings mark opens this addon's settings", function()
+    local NS, _, inst = fresh()
+    local opened = 0
+    NS.OpenSettings = function() opened = opened + 1 end
+    inst.handle.settings:_run("OnClick", "LeftButton")
+    assertEqual(opened, 1, "the mark must open the panel through NS:OpenSettings, the launcher's open")
+    -- The right-click passes through to the strip's own right-click, which opens the same panel.
+    inst.handle.settings:_run("OnClick", "RightButton")
+    assertEqual(opened, 2, "a right-click on the mark is the strip's right-click")
 end)
 
 test("dragging the strip moves the GRID and saves its anchor", function()
