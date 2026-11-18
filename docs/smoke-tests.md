@@ -1901,4 +1901,6 @@ The same run's AD-86-KC (LibKa0s#86) gives both drag strips a settings mark: it 
 
 The same run's AD-92-KC (LibKa0s#92) moves every HUD tooltip onto the Tooltip placers: an icon's spell tooltip opens beside its whole display (body), both drag strips' tooltips attach above the strip (chrome). It adds GRID-24 and amends GRID-17, CAST-10, CAST-15, GRID-23, CAST-20 and LAYER-9 (each amended check owes a fresh pass); its review adds the late-growth step to GRID-24. Owed: GRID-17, GRID-23, GRID-24, CAST-10, CAST-15, CAST-20, LAYER-9.
 
+The same run's AD-79-KC (LibKa0s#79) moves the report verbs onto the debug console (`/kcd spells list` and `/kcd debug spells|castbar|interrupt|events`, one chat pointer each): it adds DIAG-49 and DEGRADED-17 and amends DIAG-1, DIAG-2, DIAG-5 and DEGRADED-15. Owed: DIAG-1, DIAG-2, DIAG-49, DEGRADED-17.
+
 The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collection's sample characters, read from `Sim.Sample()`: it adds SIM-20 and amends SIM-10, SIM-12 and SIM-14. Owed: SIM-14, SIM-20 (SIM-10 and SIM-12 were already owed).
