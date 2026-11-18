@@ -25,8 +25,8 @@ and a retired one leaves its number unused.
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
 | SIM-1 – 19 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
-| DIAG-1 – 48 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
-| DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
+| DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
+| DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
@@ -1107,20 +1107,26 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
 
 - **DIAG-1. `/kcd debug spells`.** → `Cooldowns: class=<CLASS> spec=<SPEC> (<specID>)`, then one line
   per watched spell: `[<id>] <name> ready=… active=… cdObj=yes|nil chargeCdObj=yes|nil charges=…`,
-  charges maybe `<secret>` in combat, and no remaining-time field. Result: pass (owner-marked 2026-10-10)
+  charges maybe `<secret>` in combat, and no remaining-time field. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-18 (AD-79-KC, LibKa0s#79): the same lines now land in the debug console under a
+  `/kcd debug spells` header, not in chat (DIAG-49). Result: pending
 - **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
   cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
   `live SetStatusBarColor values` for both states. With no cast the dump stops at
   `no active cast tracked (current = nil)`. Set a hostile caster as focus: `/kcd debug castbar focus` →
   `castbar state (focus)`, and `/kcd debug interrupt focus` dumps the focus unit's cast info; a bare
   `/kcd debug castbar` still reports the target. `/kcd debug castbar bogus` → `unknown unit 'bogus',
-  expected target or focus` and no dump. Result: pass (owner-marked 2026-10-10)
+  expected target or focus` and no dump. Result: pass (owner-marked 2026-10-10). Amended 2026-11-18
+  (AD-79-KC, LibKa0s#79): each dump now lands in the debug console under its `/kcd debug castbar` or
+  `/kcd debug interrupt` header, with one chat pointer (DIAG-49); the `unknown unit` refusal is still a
+  chat line and writes nothing to the console. Result: pending
 - **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
   trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
   it. `/reload` → off again; no saved setting holds it. Result: pass (owner-marked 2026-10-10)
 - **DIAG-4. `/kcd debug window`.** → the console opens and closes; logging keeps its state either way.
   Result: pass (owner-marked 2026-10-10)
-- **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client. `/kcd debug on`, `/reload`,
+- **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client, in chat (a one-line
+  answer; a non-empty list is a report in the console, AD-79-KC, tested headless). `/kcd debug on`, `/reload`,
   turn it on again → the `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause.
   Result: pass (owner-marked 2026-10-10)
 - **DIAG-6. Bare `/kcd debug`.** → the console toggles and the debug subcommand list prints. Result: pass (owner-marked 2026-10-10)
@@ -1315,6 +1321,16 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   while `core/LauncherSetup.lua`'s `name` is `addonName`, the folder name every one of these windows
   is owned by: another addon's panel, or nothing at all, means the two have parted. The skin picker's
   gear is SKIN-24's. Result:
+- **DIAG-49. Reports go to the console with one chat pointer (AD-79-KC, LibKa0s#79).** Debug logging
+  off (`/kcd debug off`), the console closed. Run `/kcd spells list`, then `/kcd debug spells`,
+  `/kcd debug castbar` and `/kcd debug interrupt focus` in turn → each time the console opens if it was
+  closed, the read-out lands there under a `/kcd <verb>` header (`/kcd spells list`, `/kcd debug spells`,
+  ...) even though logging is off, the console's Debug label still reads OFF, and chat prints exactly
+  ONE line: `<verb>: N lines written to the debug console. Use Copy to share it.` Copy → the report
+  pastes as plain text. `/kcd spells list WARRIOR nosuch` → `Could not determine class+spec ...` in
+  chat and nothing new in the console. `/kcd debug events` on a live client → `no rejected events` in
+  chat and nothing in the console. `/kcd list` still prints the settings in chat. Fail: a report's lines
+  in chat, a second chat line, logging turned on, or a refusal written to the console. Result: pending
 
 ## DEGRADED
 
@@ -1362,7 +1378,7 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   DEGRADED-5's help rows, and no Lua error. `/kcd debug events` still answers. Result: pass (owner-marked 2026-10-10)
 - **DEGRADED-15. The interrupt dump still says `<secret>`.** Run this before DEGRADED-13's restore. In
   combat, target a hostile caster whose cast flags are secret, `/kcd debug interrupt` → the dump prints,
-  every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
+  every line tagged `[KCD]` (in chat: with the library absent a report streams there, DEGRADED-17), and every secret-tainted position reads `value=<secret>` (the stub's
   `NS.SECRET`), with no Lua error. Result: pass (owner-marked 2026-10-10)
 - **DEGRADED-16. The HUD on its stored picks (KC-03).** Run this before DEGRADED-13's restore.
   `/kcd unlock` → the grids, cast bar and labels draw what each profile stores, with no skin engine to
@@ -1371,6 +1387,9 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   Tooltip edges. No face, texture or border is missing, no Lua error, and no skin picker opens at
   login. A stored shadow does not draw here, which is accepted. `/kcd lock`. Reworded for FS-KC-FLIP:
   the owner's 2026-10-30 pass was for Friz Quadrata and Blizzard Raid Bar. Result: Passed (owner, 2026-11-02)
+- **DEGRADED-17. The reports print in chat (AD-79-KC).** Run this before DEGRADED-13's restore.
+  `/kcd spells list` and `/kcd debug spells` → each read-out prints in chat, every line tagged `[KCD]`,
+  with no `lines written to the debug console` pointer and no Lua error. Result: pending
 
 ## LAYER
 

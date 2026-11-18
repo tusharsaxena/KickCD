@@ -96,21 +96,33 @@ end)
 
 -- ── Diagnostic dumps ────────────────────────────────────────────────────────
 --
--- `/kcd debug <spells|castbar|interrupt>` print to chat like everything else,
--- so the rule applies to them too. Under the mock `UnitExists` is false, so
--- these drive only the early-return branches — the deep section headers are
--- covered by the source scan below.
+-- `/kcd debug <spells|castbar|interrupt>` are reports (AD-79-KC, debug-logging-§15):
+-- their lines go to the debug console and chat carries one pointer. Re-pinned at
+-- that adoption to check BOTH, the pointer and the console lines the verb added,
+-- so the rule still covers the dump lines a player reads and copies. Under the
+-- mock `UnitExists` is false, so these drive only the early-return branches —
+-- the deep section headers are covered by the source scan below.
+
+--- The chat lines and the console lines one verb produced, as one list.
+local function runReportVerb(input)
+    local D = NS.DebugLog
+    local before = #D.buffer
+    local lines = runVerb(input)
+    assertTrue(#D.buffer > before, input .. " wrote no report to the console")
+    for i = before + 1, #D.buffer do lines[#lines + 1] = D.buffer[i] end
+    return lines
+end
 
 test("/kcd debug spells emits no line ending in ':'", function()
-    assertNoTrailingColon(runVerb("debug spells"), "/kcd debug spells")
+    assertNoTrailingColon(runReportVerb("debug spells"), "/kcd debug spells")
 end)
 
 test("/kcd debug castbar emits no line ending in ':'", function()
-    assertNoTrailingColon(runVerb("debug castbar"), "/kcd debug castbar")
+    assertNoTrailingColon(runReportVerb("debug castbar"), "/kcd debug castbar")
 end)
 
 test("/kcd debug interrupt emits no line ending in ':'", function()
-    assertNoTrailingColon(runVerb("debug interrupt"), "/kcd debug interrupt")
+    assertNoTrailingColon(runReportVerb("debug interrupt"), "/kcd debug interrupt")
 end)
 
 -- ── Source scan ─────────────────────────────────────────────────────────────

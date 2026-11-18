@@ -81,10 +81,14 @@ test("one bad name does not stop the block without LibKa0s (the stub bodies)", f
 end)
 
 test("/kcd debug events names the rejected event", function()
+    -- Re-pinned at AD-79-KC: a non-empty list is a report (debug-logging-§15), so the name is
+    -- read from the debug console and chat carries the one pointer line. The empty answer is a
+    -- one-line answer and stays in chat. The report's shape is tests/test_reports.lua's.
     local inst = T.load(true, true, markBad)
-    local out = table.concat(runVerb(inst, "debug events"), "\n")
-    assertTrue(out:find(BAD, 1, true) ~= nil, "expected the rejected name, got: " .. out)
-    assertTrue(out:find("no rejected events", 1, true) == nil, "must not claim an empty list: " .. out)
+    local chat = table.concat(runVerb(inst, "debug events"), "\n")
+    local line = inst.NS.DebugLog:FindLine("rejected event: " .. BAD)
+    assertTrue(line ~= nil, "expected the rejected name in the console, chat: " .. chat)
+    assertTrue(chat:find("no rejected events", 1, true) == nil, "must not claim an empty list: " .. chat)
 
     local clean = table.concat(runVerb(T.load(true, true), "debug events"), "\n")
     assertTrue(clean:find("no rejected events", 1, true) ~= nil, "expected the empty answer, got: " .. clean)
