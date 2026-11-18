@@ -569,7 +569,7 @@ Total.
 - Sim interference: the watch target registers only while a session runs
 - Sim diagnostics: the sim section says idle, then names the running session
 
-### test_sim_drivers.lua (27)
+### test_sim_drivers.lua (28)
 
 - SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per driver
 - TOC: modules/SimDrivers.lua loads between modules/SimWorld.lua and modules/Sim.lua
@@ -590,6 +590,7 @@ Total.
 - SimDrivers Kick: with no kick resolved it narrates and fires nothing
 - SimDrivers PartyKick: narrates the member, spec, enemy and spell, then fires INTERRUPTED
 - SimDrivers PartyKick: with no cast only narrates
+- SimDrivers PartyKick: a member with a specID names its spec in the client's own words
 - SimDrivers Complete: fires SUCCEEDED then STOP for each unit and ends the cast
 - SimDrivers Cc: starts the 30 s CC cooldown and a 1.5 s GCD, fires SUCCEEDED and the cooldown update
 - SimDrivers Cc: no CC resolved narrates only; a CC still cooling refuses truthfully
@@ -599,9 +600,11 @@ Total.
 - SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
 - SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
 
-### test_sim_e2e.lua (11)
+### test_sim_e2e.lua (13)
 
 - SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
+- SimScenario: each party member is a library sample character, its name never localized
+- SimScenario: without LibKa0s the party is a copy of the library's rows
 - TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
 - SimScenario: every timeline is pure: two calls answer equal steps and fire nothing
 - SimScenario: the panel's idle preview lists exactly the first scenario's step labels
@@ -2062,8 +2065,8 @@ Total.
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
-| test_sim_drivers.lua | 27 |
-| test_sim_e2e.lua | 11 |
+| test_sim_drivers.lua | 28 |
+| test_sim_e2e.lua | 13 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
@@ -2141,4 +2144,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1719** |
+| **Total** | **1722** |

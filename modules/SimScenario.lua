@@ -23,7 +23,8 @@ local _, NS = ...
 -- Every `timeline(def, opts)` builds literal step tables and reads nothing else: the library calls
 -- it while idle to preview the step list in the panel. A step names its role ("your kick", the
 -- spell field "kick" / "cc") and the drivers (modules/SimDrivers.lua) resolve the real spell when
--- the step plays. Enemy and member names resolve here, at load, through NS.L.
+-- the step plays. Enemy names resolve here, at load, through NS.L; member names are the
+-- library's sample characters and are never localized (below).
 --
 -- LOAD ORDER: this file FILLS NS.SimHost.SCENARIOS in place, which modules/Sim.lua creates and
 -- hands to Sim:New, so it loads after modules/Sim.lua (the TOC says so under a LOAD-BEARING
@@ -34,14 +35,53 @@ local L = NS.L
 NS.SimScenario = NS.SimScenario or {}
 local SC = NS.SimScenario
 
---- The made-up party (narrative only, design D1). `spell` is the member's kick: its name is read
---- live through NS.Compat.GetSpellInfo when a line shows it.
-SC.PARTY = {
-    thrall  = { name = L["Thrall"],  spec = L["Enhancement"], class = "SHAMAN",  spell = 57994 },  -- Wind Shear
-    jaina   = { name = L["Jaina"],   spec = L["Frost"],       class = "MAGE",    spell = 2139 },   -- Counterspell
-    uther   = { name = L["Uther"],   spec = L["Protection"],  class = "PALADIN", spell = 96231 },  -- Rebuke
-    valeera = { name = L["Valeera"], spec = L["Subtlety"],    class = "ROGUE",   spell = 1766 },   -- Kick
+-- ── THE PARTY IS THE COLLECTION'S SAMPLE CHARACTERS (AD-87-KC, LibKa0s#87) ────────────────────
+--
+-- preview-mode, *Sample characters* (owner ruling Q4 of 2026-11-16): a simulator's made-up people
+-- are LibKa0s-Sim-1.0's sample set, read for the running client through `Sim.Sample()`, named
+-- Sample/Mock and never passed through NS.L. Four of the five have a kick; the fifth, the Holy
+-- priest, has none and sits the story out. `spell` is the member's kick, its name read live through
+-- NS.Compat.GetSpellInfo when a line shows it. `spec` is the data's English label, for docs and
+-- tests; the drivers name the spec in the client's own words from `specID`
+-- (NS.Util.SpecDisplayName). Keyed by the sample's name, lowercased.
+--
+-- FALLBACK. Without the library the sim cannot run (core/SimSetup.lua's stub refuses it), but the
+-- table is still built at load, so it is built from a copy of the library's rows (Sim
+-- version-3.3.11.4 docs, *The data*). tests/test_sim_e2e.lua holds the copy to the library's set.
+local KICKS = {
+    HUNTER  = 147362, -- Counter Shot
+    PALADIN = 96231,  -- Rebuke
+    MAGE    = 2139,   -- Counterspell
+    WARRIOR = 6552,   -- Pummel
 }
+local SAMPLE_COPY = {
+    { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
+    { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
+    { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
+    { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
+    { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
+}
+
+--- The sample rows for the running client: the library's copy, or ours without it.
+local function sampleRows()
+    local Sim = LibStub and LibStub("LibKa0s-Sim-1.0", true)
+    if Sim and Sim.Sample then return Sim.Sample() end
+    return SAMPLE_COPY
+end
+
+--- The made-up party (narrative only, design D1): every sample character whose class has a kick.
+local function buildParty()
+    local party = {}
+    for _, row in ipairs(sampleRows()) do
+        local kick = KICKS[row.classFile]
+        if kick then
+            party[row.name:lower()] = { name = row.name, spec = row.spec, specID = row.specID,
+                class = row.classFile, spell = kick }
+        end
+    end
+    return party
+end
+SC.PARTY = buildParty()
 
 --- The enemies, with the spellIDs of the casts each makes (real spells, read for their names and
 --- textures through NS.Compat.GetSpellInfo when the cast starts).
@@ -115,11 +155,11 @@ function TIMELINES.pull()
         cast(a, L["%s starts a cast"]:format(enemyName(a))),
         cast(b, L["%s starts a cast beside it"]:format(enemyName(b))),
         kick(a),
-        partyKick("uther", b),
+        partyKick("sampleblade", b),
         cast(b, L["%s starts a channel"]:format(enemyName(b)), { channel = true }),
-        partyKick("thrall", b),
+        partyKick("samplehunter", b),
         cast(a, L["%s casts again while your kick cools"]:format(enemyName(a))),
-        partyKick("jaina", a),
+        partyKick("mockflame", a),
         step("Cc", { enemy = a, label = L["Stop %s with your CC"]:format(enemyName(a)) }),
         step("Die", { enemy = a, label = L["%s dies"]:format(enemyName(a)) }),
         combat(false),
@@ -135,11 +175,11 @@ function TIMELINES.boss()
         combat(true),
         target(k),
         cast(k, L["%s: cast 1"]:format(n)),
-        partyKick("uther", k),
+        partyKick("sampleblade", k),
         cast(k, L["%s: cast 2"]:format(n)),
         kick(k),
         cast(k, L["%s: cast 3, a channel"]:format(n), { channel = true }),
-        partyKick("valeera", k),
+        partyKick("mockshield", k),
         cast(k, L["%s: cast 4"]:format(n)),
         kick(k),
         step("Expire", { spell = "kick", label = L["Your kick's charges come back"] }),
@@ -175,9 +215,9 @@ function TIMELINES.leave()
         combat(true),
         target(a),
         focus(b),
-        cast(b, L["%s starts a cast %s is assigned to"]:format(enemyName(b), memberName("valeera")),
+        cast(b, L["%s starts a cast %s is assigned to"]:format(enemyName(b), memberName("mockshield")),
             { duration = SC.LEAVE_CAST }),
-        step("Leave", { member = "valeera", label = L["%s leaves the party"]:format(memberName("valeera")) }),
+        step("Leave", { member = "mockshield", label = L["%s leaves the party"]:format(memberName("mockshield")) }),
         focus(nil, L["Clear your focus"]),
         target(b, L["Target %s mid-cast"]:format(enemyName(b))),
         kick(b),

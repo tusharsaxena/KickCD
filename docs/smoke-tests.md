@@ -24,7 +24,7 @@ and a retired one leaves its number unused.
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
-| SIM-1 – 19 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
+| SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
@@ -1022,14 +1022,14 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   Result: pass (owner, 2026-10-23)
 - **SIM-10. The `pull` scenario plays on the real grid (KC-08, SM-KC-10).** `/kcd set visibility
   target_casting`, then `/kcd sim start pull` → the grid appears as Shadowcaster starts its cast, your
-  kick's swipe starts when you kick, Thrall's and Jaina's `[sim]` lines print, the CC step dims the
-  other spells for a GCD, and when combat ends the grid returns to its idle state. Since SF-KC-1 the focus also casts beside the target, and Uther's kick ends it before the channel. Result: not run (SF-KC-1 changed the steps)
+  kick's swipe starts when you kick, Samplehunter's and Mockflame's `[sim]` lines print (renamed from Thrall and Jaina by AD-87-KC), the CC step dims the
+  other spells for a GCD, and when combat ends the grid returns to its idle state. Since SF-KC-1 the focus also casts beside the target, and Sampleblade's (Uther's before AD-87-KC) kick ends it before the channel. Result: not run (SF-KC-1 changed the steps)
 - **SIM-11. The `boss` and `miss` scenarios (KC-08, SM-KC-11).** `/kcd sim start boss` → a 2-charge
   badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
   `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
   the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
 - **SIM-12. The `leave` scenario, and the docked strip on the grids (KC-08; AD-88-KC, LibKa0s#88,
-  reversing D-13).** `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the
+  reversing D-13).** `/kcd sim start leave` → after Mockshield (Valeera before AD-87-KC) leaves, the focus bar clears and the
   target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. While it runs, a cyan
   strip reading *Simulation: <scenario> - /kcd sim stop ends it.* sits along the **top edge of each
   grid**, just above its label, as wide as the grid, and the step panel stays up beside the grid.
@@ -1051,7 +1051,9 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd sim start pull` and step through → after Shadowcaster's cast, the step "Bonecaller starts a cast
   beside it" puts a cast on the focus bar while the target bar still runs; your kick ends the target's
   cast, Uther's kick ends the focus's, and then the channel follows on the focus. Fail: the focus bar
-  empty while the target casts, or the steps out of this order. Result: Passed (owner, 2026-11-02)
+  empty while the target casts, or the steps out of this order. Result: Passed (owner, 2026-11-02).
+  Amended 2026-11-18 (AD-87-KC, LibKa0s#87): the focus's kick is now Sampleblade's (SIM-20).
+  Result: pending
 - **SIM-15. The Simulation step delay slider paces the run (R3-SIM-KC).** `/kcd config` → General →
   the **Simulator** tab (after Skin) holds one slider, **Simulation step delay (seconds)**, at 1, from
   0.5 to 10 in steps of 0.5, with a tooltip naming `/kcd sim` and the next step. Set it to 4, then
@@ -1102,6 +1104,15 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   takes a click (click through it at the world) and none covers an icon, the label or the bar.
   Fail: a strip floating where no grid shows, a strip over the icons, or a bar anchored to the grid
   with a second strip. Result: not run (AD-88-KC)
+- **SIM-20. The party is the collection's sample characters (AD-87-KC, LibKa0s#87).**
+  `/kcd sim` → the step panel's step list names the party as **Samplehunter**, **Sampleblade**,
+  **Mockflame** and **Mockshield** (never Thrall, Jaina, Uther or Valeera). `/kcd sim start pull` and
+  step through → the `[sim]` lines read `Sampleblade (Retribution) interrupts ... with Rebuke.`,
+  `Samplehunter (Beast Mastery) interrupts ... with Counter Shot.` and `Mockflame (Fire) interrupts
+  ... with Counterspell.`, each spec named in the client's language. `/kcd sim stop`,
+  `/kcd sim start boss` → Mockshield's kick is Pummel; `/kcd sim start leave` → `Mockshield
+  (Protection) leaves the party.` Fail: a lore name, a spec in English on a non-English client, or a
+  member with no spell name. Result: pending
 
 ## DIAG
 
@@ -1889,3 +1900,5 @@ The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-
 The same run's AD-86-KC (LibKa0s#86) gives both drag strips a settings mark: it adds GRID-23 and CAST-20 and amends GRID-14. Its review moves the expected result of DIAG-21, DIAG-22 and DIAG-23 (the library windows' settings marks and tooltips, from the v1.105.0 re-vendor), whose owner passes are withdrawn, and of SKIN-22, SKIN-46 and SKIN-47 (the picker's gear in its title bar), and adds DIAG-48 (each library window's gear opens KickCD's panel). Owed: GRID-14, GRID-23, CAST-20, DIAG-21, DIAG-22, DIAG-23, DIAG-48, SKIN-22, SKIN-46, SKIN-47.
 
 The same run's AD-92-KC (LibKa0s#92) moves every HUD tooltip onto the Tooltip placers: an icon's spell tooltip opens beside its whole display (body), both drag strips' tooltips attach above the strip (chrome). It adds GRID-24 and amends GRID-17, CAST-10, CAST-15, GRID-23, CAST-20 and LAYER-9 (each amended check owes a fresh pass); its review adds the late-growth step to GRID-24. Owed: GRID-17, GRID-23, GRID-24, CAST-10, CAST-15, CAST-20, LAYER-9.
+
+The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collection's sample characters, read from `Sim.Sample()`: it adds SIM-20 and amends SIM-10, SIM-12 and SIM-14. Owed: SIM-14, SIM-20 (SIM-10 and SIM-12 were already owed).

@@ -219,25 +219,11 @@ L["%s ready"] =
     "%s ready"
 L["%s: %d charges"] =
     "%s: %d charges"
--- The scenarios (modules/SimScenario.lua, KC-08): the made-up party, the enemies, each scenario's
--- label and every step label. The role words "your kick" and "your CC" stay literal in a label:
--- modules/Sim.lua's StepLabel names the real spell while a session runs.
-L["Thrall"] =
-    "Thrall"
-L["Jaina"] =
-    "Jaina"
-L["Uther"] =
-    "Uther"
-L["Valeera"] =
-    "Valeera"
-L["Enhancement"] =
-    "Enhancement"
-L["Frost"] =
-    "Frost"
-L["Protection"] =
-    "Protection"
-L["Subtlety"] =
-    "Subtlety"
+-- The scenarios (modules/SimScenario.lua, KC-08): the enemies, each scenario's label and every
+-- step label. The party is the library's sample characters, whose names are data and never a
+-- locale key (preview-mode, Sample characters; AD-87-KC). The role words "your kick" and
+-- "your CC" stay literal in a label: modules/Sim.lua's StepLabel names the real spell while a
+-- session runs.
 L["Shadowcaster"] =
     "Shadowcaster"
 L["Bonecaller"] =

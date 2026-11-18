@@ -339,20 +339,22 @@ end)
 
 -- ── a party member's kick, a completed cast, crowd control ──────────────────
 
-local PARTY = { thrall = { name = "Thrall", spec = "Enhancement", spell = 57994 } }
+-- Sample characters (AD-87-KC, preview-mode): the fixture is a library sample's name. With no
+-- specID the row's English `spec` is the label; with one, the client names it (case below).
+local PARTY = { samplehunter = { name = "Samplehunter", spec = "Beast Mastery", spell = 147362 } }
 
 test("SimDrivers PartyKick: narrates the member, spec, enemy and spell, then fires INTERRUPTED", function()
     inSession(function(ctx)
         local NS = ctx.NS
         NS.SimScenario = { PARTY = PARTY, ENEMIES = { a = { name = "Shadowcaster" } } }
         casting(ctx, "a", { "target" })
-        local detail = ctx.play({ kind = "PartyKick", member = "thrall", enemy = "a" })
+        local detail = ctx.play({ kind = "PartyKick", member = "samplehunter", enemy = "a" })
         assertEqual(ctx.names(), "UNIT_SPELLCAST_INTERRUPTED")
         assertEqual(table.concat(ctx.lines, "\n"),
-            simLine(NS, "%s (%s) interrupts %s with %s.", "Thrall", "Enhancement", "Shadowcaster",
-                spellName(NS, 57994)))
+            simLine(NS, "%s (%s) interrupts %s with %s.", "Samplehunter", "Beast Mastery", "Shadowcaster",
+                spellName(NS, 147362)))
         assertNil(ctx.world.enemies.a.cast)
-        assertEqual(detail, NS.L["%s interrupts"]:format("Thrall"))
+        assertEqual(detail, NS.L["%s interrupts"]:format("Samplehunter"))
         assertNil(ctx.world.spells[KICK].start, "a party kick never touches your cooldowns")
     end)
 end)
@@ -363,10 +365,27 @@ test("SimDrivers PartyKick: with no cast only narrates", function()
         NS.SimScenario = { PARTY = PARTY, ENEMIES = {} }
         ctx.play({ kind = "Target", enemy = "a" })
         ctx.reset()
-        assertEqual(ctx.play({ kind = "PartyKick", member = "thrall", enemy = "a" }), NS.L["no cast"])
+        assertEqual(ctx.play({ kind = "PartyKick", member = "samplehunter", enemy = "a" }), NS.L["no cast"])
         assertEqual(ctx.names(), "")
         assertEqual(table.concat(ctx.lines, "\n"),
-            simLine(NS, "%s (%s) has nothing to interrupt on %s.", "Thrall", "Enhancement", "a"))
+            simLine(NS, "%s (%s) has nothing to interrupt on %s.", "Samplehunter", "Beast Mastery", "a"))
+    end)
+end)
+
+test("SimDrivers PartyKick: a member with a specID names its spec in the client's own words", function()
+    -- preview-mode rule 5: the data's spec label is English, for docs and tests; a host that draws
+    -- a spec name asks the client. red under: narrating row.spec when the row carries a specID.
+    inSession(function(ctx)
+        local NS = ctx.NS
+        local realName = NS.Util.SpecDisplayName
+        NS.Util.SpecDisplayName = function(id) return id == 63 and "Feu" or realName(id) end
+        NS.SimScenario = { PARTY = { mockflame = { name = "Mockflame", spec = "Fire", specID = 63, spell = 2139 } },
+            ENEMIES = {} }
+        local ok, err = pcall(ctx.play, { kind = "PartyKick", member = "mockflame", enemy = "a" })
+        NS.Util.SpecDisplayName = realName
+        assert(ok, err)
+        assertEqual(table.concat(ctx.lines, "\n"),
+            simLine(NS, "%s (%s) has nothing to interrupt on %s.", "Mockflame", "Feu", "a"))
     end)
 end)
 
@@ -449,12 +468,13 @@ end)
 test("SimDrivers Leave: narrates, then fires GROUP_ROSTER_UPDATE to no handler without raising", function()
     inSession(function(ctx)
         local NS = ctx.NS
-        NS.SimScenario = { PARTY = { valeera = { name = "Valeera", spec = "Subtlety", spell = 1766 } } }
-        local detail = ctx.play({ kind = "Leave", member = "valeera" })
+        NS.SimScenario = { PARTY = { mockshield = { name = "Mockshield", spec = "Protection", spell = 6552 } } }
+        local detail = ctx.play({ kind = "Leave", member = "mockshield" })
         assertEqual(ctx.names(), "GROUP_ROSTER_UPDATE")
-        assertEqual(table.concat(ctx.lines, "\n"), simLine(NS, "%s (%s) leaves the party.", "Valeera", "Subtlety"))
+        assertEqual(table.concat(ctx.lines, "\n"),
+            simLine(NS, "%s (%s) leaves the party.", "Mockshield", "Protection"))
         assertEqual(NS.Sim:Fire("GROUP_ROSTER_UPDATE"), 0)
-        assertEqual(detail, NS.L["%s left"]:format("Valeera"))
+        assertEqual(detail, NS.L["%s left"]:format("Mockshield"))
         assertTrue(NS.Sim:IsActive(), "a simulated roster update never stops the session")
     end)
 end)
