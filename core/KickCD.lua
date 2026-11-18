@@ -453,6 +453,15 @@ local function debugUnit(self, sub, rest)
         "unknown unit '" .. word .. "', expected target or focus", word)
 end
 
+-- The unit dumps' bail as a short answer (AD-79-KC review): with no such unit the dump would
+-- be one line, and a one-line answer stays in chat rather than becoming a report. Raw
+-- _G.UnitExists, the same read both dumps make (they inspect the REAL client).
+local function noUnit(self, unit)
+    if _G.UnitExists and _G.UnitExists(unit) then return false end
+    p(self, "no " .. unit)
+    return true
+end
+
 local DEBUG_COMMANDS = {
     -- First, so the bare `/kcd debug` list shows the report before the topic
     -- dumps. runDebug tests the word before this table is consulted at all
@@ -460,7 +469,8 @@ local DEBUG_COMMANDS = {
     {"diagnostics", NS.L["Write the full diagnostic report (same as /kcd diagnostics)"],
         function(self) self.DebugLog:RunDiagnostics() end},
     -- The four topic dumps are reports: their lines go to the console (report above), and only a
-    -- refusal (module missing, an unknown unit word) is said in chat.
+    -- refusal (module missing, an unknown unit word) or a short answer (`no target` from the unit
+    -- dumps, `no rejected events`) is said in chat.
     {"spells", "Write the watched spell list with cooldown state to the debug console",
         function(self)
             local m = self:GetModule("Cooldowns", true)
@@ -473,6 +483,7 @@ local DEBUG_COMMANDS = {
             if not unit then return end
             local m = self:GetModule("Castbar", true)
             if m and m.DebugDump then
+                if noUnit(self, unit) then return end
                 report(self, "Debug", "debug castbar", function(out) m:DebugDump(unit, out) end)
             else refuse(self, "Debug", "debug", "castbar", "Castbar module not loaded", "Castbar module not loaded") end
         end},
@@ -482,6 +493,7 @@ local DEBUG_COMMANDS = {
             if not unit then return end
             if NS.Compat and NS.Compat.DebugInterrupt then
                 local Compat = NS.Compat
+                if noUnit(self, unit) then return end
                 report(self, "Debug", "debug interrupt", function(out) Compat.DebugInterrupt(unit, out) end)
             else
                 refuse(self, "Debug", "debug", "interrupt", "Compat.DebugInterrupt unavailable",

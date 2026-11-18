@@ -216,15 +216,20 @@ test("an unknown debug word leaves the debug console as it was (KC-R-03)", funct
 end)
 
 --- Run `input` with Castbar:DebugDump and Compat.DebugInterrupt replaced by
---- spies; returns the units each was called with and the chat lines.
+--- spies; returns the units each was called with and the chat lines. The unit
+--- exists for the run: with none, the verb answers `no <unit>` in chat and runs
+--- neither dump (re-pinned at the AD-79-KC review; tests/test_reports.lua pins that).
 local function spyDebugDumps(input)
     local castbar = NS:GetModule("Castbar")
     local origDump, origInterrupt = castbar.DebugDump, NS.Compat.DebugInterrupt
     local dumped, interrupted = {}, {}
     castbar.DebugDump = function(_, unit) dumped[#dumped + 1] = unit end
     NS.Compat.DebugInterrupt = function(unit) interrupted[#interrupted + 1] = unit end
+    local origExists = mocks.UnitExists
+    mocks.UnitExists = function() return true end
     local ok, lines = pcall(runVerb, input)
     castbar.DebugDump, NS.Compat.DebugInterrupt = origDump, origInterrupt
+    mocks.UnitExists = origExists
     assert(ok, lines)
     return dumped, interrupted, lines
 end

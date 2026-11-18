@@ -269,8 +269,9 @@ LibKa0s#79). Each goes through the one helper `report` in `core/KickCD.lua`, whi
   `<title>: N lines written to the debug console. Use Copy to share it.`
 - A refusal or usage line (`unknown unit 'x', expected target or focus`, `Could not determine
   class+spec ...`, `Cooldowns module not loaded`) is printed in chat by the verb before the report,
-  and writes nothing to the console. A one-line answer stays in chat too: `no rejected events` and
-  `no spells tracked for <CLASS>/<SPEC>`.
+  and writes nothing to the console. A one-line answer stays in chat too: `no rejected events`,
+  `no spells tracked for <CLASS>/<SPEC>`, and `no target` / `no focus` when `castbar` or `interrupt`
+  names a unit that does not exist (the dump would be its one-line bail, so no report is written).
 - Without LibKa0s, `core/DebugLogSetup.lua`'s stub streams the report to chat, each line tagged
   `[KCD]`, with no pointer.
 

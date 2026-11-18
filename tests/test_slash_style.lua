@@ -23,7 +23,7 @@
 --      too.
 local T = _G.KICKCD_TEST
 local test, assertTrue = T.test, T.assertTrue
-local NS = T.NS
+local NS, mocks = T.NS, T.mocks
 
 --- Drive a slash verb on the shared instance and capture every chat line
 --- NS.Util.print emits (it routes through DEFAULT_CHAT_FRAME:AddMessage).
@@ -99,15 +99,21 @@ end)
 -- `/kcd debug <spells|castbar|interrupt>` are reports (AD-79-KC, debug-logging-§15):
 -- their lines go to the debug console and chat carries one pointer. Re-pinned at
 -- that adoption to check BOTH, the pointer and the console lines the verb added,
--- so the rule still covers the dump lines a player reads and copies. Under the
--- mock `UnitExists` is false, so these drive only the early-return branches —
--- the deep section headers are covered by the source scan below.
+-- so the rule still covers the dump lines a player reads and copies. With no such
+-- unit, castbar and interrupt answer `no target` in chat and write no report (the
+-- AD-79-KC review), so re-pinned then to run with the unit existing: the dumps
+-- reach their unit header and the no-cast arms; the deep section headers are
+-- still covered by the source scan below.
 
 --- The chat lines and the console lines one verb produced, as one list.
 local function runReportVerb(input)
     local D = NS.DebugLog
     local before = #D.buffer
-    local lines = runVerb(input)
+    local origExists = mocks.UnitExists
+    mocks.UnitExists = function() return true end
+    local ok, lines = pcall(runVerb, input)
+    mocks.UnitExists = origExists
+    assert(ok, lines)
     assertTrue(#D.buffer > before, input .. " wrote no report to the console")
     for i = before + 1, #D.buffer do lines[#lines + 1] = D.buffer[i] end
     return lines

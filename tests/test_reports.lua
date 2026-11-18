@@ -10,7 +10,7 @@
 -- dumps. `/kcd debug window`, `on`, `off` and `toggle` are acknowledgments, not reports; `/kcd list`
 -- is the reserved schema list, which the ruling keeps in chat; `/kcd diagnostics` and `/kcd perf`
 -- write their reports through their own library helpers. A one-line answer (`no rejected events`,
--- `no spells tracked for ...`) is a short answer and stays in chat.
+-- `no spells tracked for ...`, `no target` from a unit dump) is a short answer and stays in chat.
 
 local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue = T.test, T.assertEqual, T.assertTrue
@@ -85,14 +85,25 @@ test("/kcd debug spells is a report: console, ungated, one chat pointer", functi
     assertReport(fresh(), "debug spells", "debug spells", "Cooldowns: class=")
 end)
 
+--- A fresh instance whose tracked units exist, so the unit dumps run their real body, not the bail.
+local function withUnits()
+    local inst = fresh()
+    inst.mocks.UnitExists = function() return true end
+    inst.mocks.UnitName = function() return "Boss" end
+    inst.mocks.UnitCanAttack = function() return true end
+    return inst
+end
+
 test("/kcd debug castbar is a report, on target or the named unit", function()
-    assertReport(fresh(), "debug castbar", "debug castbar", "castbar state (target)")
-    assertReport(fresh(), "debug castbar focus", "debug castbar", "castbar state (focus)")
+    -- re-pinned (AD-79-KC review): the body is the real dump of an existing unit, not the no-unit bail
+    assertReport(withUnits(), "debug castbar", "debug castbar", "  target = Boss")
+    assertReport(withUnits(), "debug castbar focus", "debug castbar", "  focus = Boss")
 end)
 
 test("/kcd debug interrupt is a report, on target or the named unit", function()
-    assertReport(fresh(), "debug interrupt", "debug interrupt", "unit 'target'")
-    assertReport(fresh(), "debug interrupt FOCUS", "debug interrupt", "unit 'focus'")
+    -- re-pinned (AD-79-KC review): the body is the real dump of an existing unit, not the no-unit bail
+    assertReport(withUnits(), "debug interrupt", "debug interrupt", 'unit=target name="Boss"')
+    assertReport(withUnits(), "debug interrupt FOCUS", "debug interrupt", 'unit=focus name="Boss"')
 end)
 
 test("/kcd debug events is a report when the client refused a name", function()
@@ -109,6 +120,23 @@ test("/kcd debug events answers an empty list in one chat line and writes nothin
     assertEqual(#chat, 1)
     assertTrue(chat[1]:find("no rejected events", 1, true) ~= nil, chat[1])
     assertEqual(inst.NS.DebugLog:IsShown(), false)
+end)
+
+test("/kcd debug castbar|interrupt with no such unit answer in one chat line and write nothing", function()
+    -- red under: running the dump's one-line bail through the report (header, pointer, console shown)
+    for _, case in ipairs({
+        { "debug castbar", "no target" }, { "debug castbar focus", "no focus" },
+        { "debug interrupt", "no target" }, { "debug interrupt focus", "no focus" },
+    }) do
+        local inst = fresh()
+        inst.mocks.UnitExists = function() return false end
+        local chat, added = run(inst, case[1])
+        assertEqual(#added, 0, case[1] .. ": nothing in the console, got: " .. joined(added))
+        assertEqual(#chat, 1, case[1] .. ": one chat line, got: " .. joined(chat))
+        assertTrue(chat[1]:find(case[2], 1, true) ~= nil, case[1] .. ": got: " .. chat[1])
+        assertTrue(chat[1]:find(POINTER, 1, true) == nil, case[1] .. ": no pointer")
+        assertEqual(inst.NS.DebugLog:IsShown(), false, case[1] .. ": the console stays hidden")
+    end
 end)
 
 test("a refused report verb writes nothing to the console and stays in chat", function()

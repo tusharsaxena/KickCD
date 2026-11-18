@@ -724,7 +724,7 @@ Total.
 - `/kcd diagnostics` turns logging on, then writes one chat line naming the count and Copy
 - with LibKa0s absent both forms print the library-absent line and raise nothing
 
-### test_reports.lua (8)
+### test_reports.lua (9)
 
 - /kcd spells list is a report: console, ungated, one chat pointer
 - /kcd debug spells is a report: console, ungated, one chat pointer
@@ -732,6 +732,7 @@ Total.
 - /kcd debug interrupt is a report, on target or the named unit
 - /kcd debug events is a report when the client refused a name
 - /kcd debug events answers an empty list in one chat line and writes nothing
+- /kcd debug castbar|interrupt with no such unit answer in one chat line and write nothing
 - a refused report verb writes nothing to the console and stays in chat
 - without LibKa0s a report streams to chat with no pointer
 
@@ -2072,7 +2073,7 @@ Total.
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
-| test_reports.lua | 8 |
+| test_reports.lua | 9 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
@@ -2144,4 +2145,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1722** |
+| **Total** | **1723** |

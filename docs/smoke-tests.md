@@ -1130,7 +1130,9 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   expected target or focus` and no dump. Result: pass (owner-marked 2026-10-10). Amended 2026-11-18
   (AD-79-KC, LibKa0s#79): each dump now lands in the debug console under its `/kcd debug castbar` or
   `/kcd debug interrupt` header, with one chat pointer (DIAG-49); the `unknown unit` refusal is still a
-  chat line and writes nothing to the console. Result: pending
+  chat line and writes nothing to the console. Amended 2026-11-18 (AD-79-KC review): with no target,
+  `/kcd debug castbar` and `/kcd debug interrupt` each print the one chat line `no target` (and
+  `... focus` with no focus, `no focus`), with no pointer and nothing in the console. Result: pending
 - **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
   trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
   it. `/reload` → off again; no saved setting holds it. Result: pass (owner-marked 2026-10-10)
@@ -1340,7 +1342,8 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   ONE line: `<verb>: N lines written to the debug console. Use Copy to share it.` Copy → the report
   pastes as plain text. `/kcd spells list WARRIOR nosuch` → `Could not determine class+spec ...` in
   chat and nothing new in the console. `/kcd debug events` on a live client → `no rejected events` in
-  chat and nothing in the console. `/kcd list` still prints the settings in chat. Fail: a report's lines
+  chat and nothing in the console. Clear your target, `/kcd debug castbar` → `no target` in chat, no
+  pointer, and nothing in the console (the same for `/kcd debug interrupt`). `/kcd list` still prints the settings in chat. Fail: a report's lines
   in chat, a second chat line, logging turned on, or a refusal written to the console. Result: pending
 
 ## DEGRADED
