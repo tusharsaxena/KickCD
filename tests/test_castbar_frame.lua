@@ -611,7 +611,16 @@ test("the cast bar's strip carries the settings mark beside its help mark", func
     local strip = frame.dragHandle
     assertTrue(strip.settings ~= nil, "the strip must carry the drag-handle settings mark")
     assertTrue(strip.help ~= nil, "the help mark stays")
-    assertTrue(strip.close == nil, "still no X on a cast bar strip (owner ruling X-03)")
+    -- AF-STRIP-KC (the owner's ruling: all three marks on every strip, reversing X-03): the X sits
+    -- in the corner and the gear left of it, so the strip reads [?][settings][close].
+    local DH = mocks.LibStub("LibKa0s-Widgets-1.0", true).DRAG_HANDLE
+    assertTrue(strip.close ~= nil, "the cast bar strip carries the X")
+    local cp, crel, crp, cx = strip.close:GetPoint(1)
+    assertEqual(cp, "RIGHT"); assertTrue(rawequal(crel, strip), "the X sits in the strip's corner")
+    assertEqual(crp, "RIGHT"); assertEqual(cx, -DH.HELP_INSET)
+    local sp, srel, srp, sx = strip.settings:GetPoint(1)
+    assertEqual(sp, "RIGHT"); assertTrue(rawequal(srel, strip.close), "the gear sits left of the X")
+    assertEqual(srp, "LEFT"); assertEqual(sx, -DH.CLOSE_GAP)
     -- RE-PINNED (AF-RV-KC, LibKa0s v1.107.0, DragHandle minor 15): left to right the strip reads
     -- "?", then settings (the window header's order): the help mark's RIGHT edge hangs off the
     -- gear's LEFT, one CLOSE_GAP clear. Through minor 14 the gear sat left of the "?".
@@ -639,12 +648,76 @@ end)
 test("a left click on the cast bar strip's settings mark opens this addon's settings", function()
     local NS, _, Castbar = enabled()
     local frame = Castbar:EnsureFrame(Castbar:GetInstance("target"))
-    local opened = 0
+    -- RE-PINNED (AF-STRIP-KC): the left click opens this unit's Cast bar entry
+    -- (NS:OpenUnitSettings); the right-click is still the strip's, the parent page.
+    local opened, entry = 0, 0
     NS.OpenSettings = function() opened = opened + 1 end
+    NS.OpenUnitSettings = function() entry = entry + 1 end
     frame.dragHandle.settings:_run("OnClick", "LeftButton")
-    assertEqual(opened, 1, "the mark must open the panel through NS:OpenSettings, the launcher's open")
+    assertEqual(entry, 1, "the mark opens the bar's own entry")
+    assertEqual(opened, 0)
     frame.dragHandle.settings:_run("OnClick", "RightButton")
-    assertEqual(opened, 2, "a right-click on the mark is the strip's right-click")
+    assertEqual(opened, 1, "a right-click on the mark is the strip's right-click")
+end)
+
+-- ── The X and the gear's page (AF-STRIP-KC, LibKa0s v1.107.0: DragHandle minor 15) ─────────
+
+test("the cast bar strip's gear opens the Units page on THIS unit's Cast bar entry", function()
+    -- red under: the gear opening NS:OpenSettings, the addon's parent page.
+    local NS, _, Castbar = enabled()
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("focus"))
+    local seen
+    NS.OpenUnitSettings = function(_, unit, entry) seen = { unit, entry } end
+    frame.dragHandle.settings:_run("OnClick", "LeftButton")
+    assertTrue(seen ~= nil, "the gear goes through NS:OpenUnitSettings")
+    assertEqual(seen[1], "focus"); assertEqual(seen[2], "castbar")
+end)
+
+test("the cast bar strip's X turns this unit's cast bar off and keeps its settings", function()
+    -- red under: no onClose (no X).
+    local NS, _, Castbar = enabled()
+    local inst = Castbar:GetInstance("target")
+    local frame = Castbar:EnsureFrame(inst)
+    local cb = NS.db.profile.units.target.castbar
+    cb.width = 333
+    frame.dragHandle.close:_run("OnClick", "LeftButton")
+    assertEqual(cb.enabled, false, "the X writes the unit's Enable cast bar")
+    assertEqual(cb.width, 333, "its settings are kept")
+    assertTrue(NS.db.profile.units.target.enabled ~= false, "the unit itself stays on (its grid stays)")
+    assertFalse(frame:IsShown(), "the bar is hidden")
+    NS.Settings.Store.Set("units.target.castbar.enabled", true)
+    assertEqual(cb.enabled, true, "the switch the X wrote is the one the page and /kcd set write back")
+end)
+
+test("a linked Focus's cast bar X writes Target's switch, the one that governs it", function()
+    -- A linked Focus reads Target's cast bar settings (core/Units.lua's sourceUnit), so its own
+    -- castbar.enabled is never read: writing it would close nothing.
+    local NS, _, Castbar = enabled()
+    assertTrue(NS.Units.IsLinked("focus"), "Focus is linked by default")
+    local frame = Castbar:EnsureFrame(Castbar:GetInstance("focus"))
+    frame.dragHandle.close:_run("OnClick", "LeftButton")
+    assertEqual(NS.db.profile.units.target.castbar.enabled, false)
+end)
+
+test("the cast bar strip's X says what it hides and how to bring it back", function()
+    -- red under: no closeTooltip, where the X fell back to the strip's own tooltip.
+    local NS, mocks, Castbar = enabled()
+    local frameT = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    local frameF = Castbar:EnsureFrame(Castbar:GetInstance("focus"))
+    local tip, title, lines = mocks.GameTooltip, nil, {}
+    tip.SetText = function(_, s) title = s; lines = {} end
+    tip.AddLine = function(_, s) lines[#lines + 1] = s end
+    frameT.dragHandle.close:_run("OnEnter")
+    assertEqual(title, NS.L["Hide this display"])
+    local all = table.concat(lines, "\n")
+    assertTrue(all:find(NS.L["Enable cast bar"], 1, true) ~= nil, "it names the switch: " .. all)
+    assertTrue(all:find("/kcd set units.target.castbar.enabled true", 1, true) ~= nil, "and the verb: " .. all)
+    assertTrue(all:find(NS.L["Focus follows Target's cast bar, so this hides both cast bars."], 1, true) == nil)
+    frameF.dragHandle.close:_run("OnEnter")
+    all = table.concat(lines, "\n")
+    assertTrue(all:find(NS.L["Focus follows Target's cast bar, so this hides both cast bars."], 1, true) ~= nil,
+        "a linked Focus says the X reaches Target's bar too: " .. all)
+    assertTrue(all:find("/kcd set units.target.castbar.enabled true", 1, true) ~= nil, "Target's path: " .. all)
 end)
 
 test("the focus bar's strip is labeled for ITS unit", function()

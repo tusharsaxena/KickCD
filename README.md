@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/1530802)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 ![Standard](https://img.shields.io/badge/Ka0s-WoW_Addon_Standard-yellow)
-![Tests](https://img.shields.io/badge/Tests-1723%2F1723_passing-green)
+![Tests](https://img.shields.io/badge/Tests-1732%2F1732_passing-green)
 
 Retail only for now; WoW Forever support is planned. KickCD answers one question: is this cast worth a kick? It watches two enemy units, your target and your focus. Each one gets a grid of your own interrupts and cast-stopping crowd control, and every icon runs its cooldown timer and looks clearly ready or not ready. Each one also gets a cast bar showing what that unit is casting (the spell's icon, its name and the time left), colored by whether the cast can be interrupted at all. The grid comes already filled in for your class and spec, so it's useful before you've opened a single settings page.
 
@@ -29,7 +29,7 @@ A fresh install puts an icon grid and a placeholder cast bar on screen for your 
 
 Setting it up takes four steps, in this order.
 
-- Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Units > Cast bar > Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back.
+- Place the sets. While unlocked, drag each icon grid where you want it. The cast bar is anchored to its grid's primary icon and moves with it. To drag the bar on its own, set **Anchor mode** to *Free (drag to move)* on Units > Cast bar > Size and position. If a grid ends up off the edge, `/kcd resetposition` brings both grids back. Each drag strip ends in three marks: `?` explains the strip, the gear opens that grid's or bar's own settings, and the X turns it off. The X on a grid turns off the whole unit (grid, cast bar and label), the X on a cast bar turns off that bar, and your settings are kept. Its tooltip says how to bring it back: tick the switch again on the Units page, or use the `/kcd set` line it shows.
 - Check your spells. The grid starts from a list for your class and spec, and it only shows what you can cast right now, so it changes when you respec. The Spells page is where you add to that list, disable rows you never use, or drag a row by its handle to reorder the icons. Enable more than the grid has room for and the extras are left off, with one warning in chat.
 - Pick when it shows. Once you lock, a set only appears while its unit is casting something you can interrupt. **General visibility** on General > Master controls changes that to always, in combat only, or any cast. The ready glow has its own trigger on Units > Icons > Ready glow.
 - Make it look right. The Units page's rail holds Icons, Cast bar and Text label, and the band across the top picks which unit you're editing. Beside the picker are **Enable this unit**, which turns that unit off, and, for Focus, **Link to Target** and **Copy from Target**. Focus copies your target's look until you untick **Link to Target**. Text label renames, restyles or hides the "Target" and "Focus" tags beside each grid.

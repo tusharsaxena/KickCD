@@ -761,6 +761,18 @@ L["Drag to move. Right-click for settings."] =
 -- The drag strips' settings mark (AD-86-KC review): its own tooltip, the words the library
 -- windows' gears show, so a mark whose left click opens settings does not read "Drag to move".
 L["Open settings"]               = "Open settings"
+-- The drag strips' close mark (AF-STRIP-KC): the X turns the display off through its own switch and
+-- keeps its settings, and its tooltip says which switch and how to bring the display back. The
+-- second %s is a `/kcd set` line, which is code, not prose.
+L["Hide this display"]           = "Hide this display"
+L["Turns off this unit's icon grid, cast bar and label (Enable this unit). Their settings are kept."] =
+    "Turns off this unit's icon grid, cast bar and label (Enable this unit). Their settings are kept."
+L["Turns off this unit's cast bar (Enable cast bar). Its settings are kept."] =
+    "Turns off this unit's cast bar (Enable cast bar). Its settings are kept."
+L["Focus follows Target's cast bar, so this hides both cast bars."] =
+    "Focus follows Target's cast bar, so this hides both cast bars."
+L["Bring it back on the Units page (%s) or with %s."] =
+    "Bring it back on the Units page (%s) or with %s."
 
 -- Text label entry. Its first tab is "General" (already keyed above), not
 -- "Label": on an entry called Text label the word was the entry's, not the tab's.

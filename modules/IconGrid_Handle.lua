@@ -129,6 +129,31 @@ local function anchorHandle(inst, grid, handle)
     handle.__anchorTo = above or grid
 end
 
+--- The X's click (AF-STRIP-KC, the owner's ruling on the adoption smoke: every strip carries
+--- [?][settings][close]). The grid has no switch of its own: the unit's Enable this unit
+--- (`units.<unit>.enabled`) is the one that takes it down, and it takes the unit's cast bar and
+--- label with it, which the X's tooltip says. Written through Helpers.SetAndRefresh, the Units
+--- band's own path, so the switch the X turns off is the one the page and `/kcd set` turn back
+--- on, the row's announce runs ReconcileUnits, and every setting under the unit is kept.
+local function closeUnit(inst)
+    local H = NS.Settings and NS.Settings.Helpers
+    local path = "units." .. inst.unit .. ".enabled"
+    if H and H.SetAndRefresh then return H.SetAndRefresh(path, false) end
+    local S = NS.Settings and NS.Settings.Store
+    if S and S.Set then return S.Set(path, false) end
+end
+
+--- The X's tooltip: what it turns off, and how to bring it back (page and verb), per unit.
+local function closeTooltip(inst)
+    local L = NS.L
+    return {
+        title = L["Hide this display"],
+        body  = { L["Turns off this unit's icon grid, cast bar and label (Enable this unit). Their settings are kept."] },
+        footer = { L["Bring it back on the Units page (%s) or with %s."]:format(
+            L["Enable this unit"], "/kcd set units." .. inst.unit .. ".enabled true") },
+    }
+end
+
 local function buildHandle(inst, grid)
     if not (KW and KW.DragHandle) then return nil end
     local label = handleText(inst.unit)
@@ -143,11 +168,15 @@ local function buildHandle(inst, grid)
         end,
         onDragStop   = function() onDragStop(inst, grid) end,
         onRightClick = function() NS:OpenSettings() end,
-        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC),
-        -- the same open as the right-click, with its own "Open settings" tooltip; see
-        -- modules/Castbar_Handle.lua.
-        settings     = function() NS:OpenSettings() end,
+        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC; standard
+        -- from minor 15), with its own "Open settings" tooltip. From AF-STRIP-KC it opens THIS
+        -- unit's Icons entry on the Units page (NS:OpenUnitSettings), where the right-click still
+        -- opens the parent page; see modules/Castbar_Handle.lua.
+        settings     = function() NS:OpenUnitSettings(inst.unit, "icons") end,
         settingsTooltip = { title = NS.L["Open settings"] },
+        -- The X (AF-STRIP-KC): turns this unit off and keeps its settings (closeUnit above).
+        onClose      = function() closeUnit(inst) end,
+        closeTooltip = closeTooltip(inst),
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the grid so its help mark is born above it:
         -- above the grid's icons and glow AND above this unit's cast bar, which

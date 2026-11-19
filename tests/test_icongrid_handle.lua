@@ -120,22 +120,31 @@ test("the strip is sized to its label plus the widget's reserve", function()
     -- RE-PINNED (AD-86-KC, LibKa0s#86): the strip now carries the settings mark (DragHandle minor
     -- 14), and each side of the label keeps that mark's frame and gap clear as well, so the reserve
     -- per side is RESERVE + HELP_HIT + CLOSE_GAP (the widget's dhReserve), all read off the widget.
+    -- RE-PINNED again (AF-STRIP-KC): the X joins (onClose), one more HELP_HIT + CLOSE_GAP per side.
     local DH = mocks.LibStub(WIDGETS, true).DRAG_HANDLE
     local RESERVE, SLACK = DH.RESERVE, DH.FIT_SLACK
-    local SIDE = RESERVE + DH.HELP_HIT + DH.CLOSE_GAP
+    local SIDE = RESERVE + 2 * (DH.HELP_HIT + DH.CLOSE_GAP)
     assertEqual(SLACK, 2, "the widget's slack")
     assertEqual(inst.handle:GetWidth(), 100 + SLACK + SIDE * 2,
-        "the strip is its label, its slack and what it keeps clear on each side, settings mark included")
+        "the strip is its label, its slack and what it keeps clear on each side, gear and X included")
 end)
 
 -- ── The settings mark (AD-86-KC, LibKa0s#86: DragHandle minor 14, opt-in) ───
 
-test("the grid's strip carries the settings mark beside its help mark", function()
-    -- red under: a spec without `settings`, which builds no mark (handle.settings nil).
+test("the grid's strip reads [?][settings][close]", function()
+    -- AF-STRIP-KC (the owner's ruling on the adoption smoke: all three marks on every strip,
+    -- reversing X-03). red under: a spec without `onClose`, which builds no X (handle.close nil).
     local _, _, inst, mocks = fresh()
     assertTrue(inst.handle.settings ~= nil, "the strip must carry the drag-handle settings mark")
     assertTrue(inst.handle.help ~= nil, "the help mark stays")
-    assertTrue(inst.handle.close == nil, "still no X on a grid strip (owner ruling X-03)")
+    assertTrue(inst.handle.close ~= nil, "the strip carries the X")
+    local DH = mocks.LibStub(WIDGETS, true).DRAG_HANDLE
+    local cp, crel, crp, cx = inst.handle.close:GetPoint(1)
+    assertEqual(cp, "RIGHT"); assertTrue(rawequal(crel, inst.handle), "the X sits in the strip's corner")
+    assertEqual(crp, "RIGHT"); assertEqual(cx, -DH.HELP_INSET)
+    local sp, srel, srp, sx = inst.handle.settings:GetPoint(1)
+    assertEqual(sp, "RIGHT"); assertTrue(rawequal(srel, inst.handle.close), "the gear sits left of the X")
+    assertEqual(srp, "LEFT"); assertEqual(sx, -DH.CLOSE_GAP)
     -- RE-PINNED (AF-RV-KC, LibKa0s v1.107.0, DragHandle minor 15): left to right the strip reads
     -- "?", then settings (the window header's order): the help mark's RIGHT edge hangs off the
     -- gear's LEFT, one CLOSE_GAP clear. Through minor 14 the gear sat left of the "?".
@@ -160,14 +169,62 @@ test("the grid strip's settings mark says what its click does", function()
 end)
 
 test("a left click on the grid strip's settings mark opens this addon's settings", function()
+    -- RE-PINNED (AF-STRIP-KC): the left click opens this unit's entry (NS:OpenUnitSettings, next
+    -- cases); the right-click is still the strip's, the parent page through NS:OpenSettings.
     local NS, _, inst = fresh()
-    local opened = 0
+    local opened, entry = 0, 0
     NS.OpenSettings = function() opened = opened + 1 end
+    NS.OpenUnitSettings = function() entry = entry + 1 end
     inst.handle.settings:_run("OnClick", "LeftButton")
-    assertEqual(opened, 1, "the mark must open the panel through NS:OpenSettings, the launcher's open")
-    -- The right-click passes through to the strip's own right-click, which opens the same panel.
+    assertEqual(entry, 1, "the mark opens the grid's own entry")
+    assertEqual(opened, 0)
+    -- The right-click passes through to the strip's own right-click.
     inst.handle.settings:_run("OnClick", "RightButton")
-    assertEqual(opened, 2, "a right-click on the mark is the strip's right-click")
+    assertEqual(opened, 1, "a right-click on the mark is the strip's right-click")
+end)
+
+-- ── The X and the gear's page (AF-STRIP-KC, LibKa0s v1.107.0: DragHandle minor 15) ─────────
+
+test("the grid strip's gear opens the Units page on THIS unit's Icons entry", function()
+    -- red under: the gear opening NS:OpenSettings, the addon's parent page.
+    local NS = fresh()
+    local seen
+    NS.OpenUnitSettings = function(_, unit, entry) seen = { unit, entry } end
+    local IconGrid = NS:GetModule("IconGrid")
+    IconGrid:GetInstance("focus").handle.settings:_run("OnClick", "LeftButton")
+    assertTrue(seen ~= nil, "the gear goes through NS:OpenUnitSettings")
+    assertEqual(seen[1], "focus"); assertEqual(seen[2], "icons")
+end)
+
+test("the grid strip's X turns this unit off and keeps its settings", function()
+    -- red under: no onClose (no X), or an X that only hides the frame (the next layout brings it back).
+    local NS, IconGrid, inst = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local icons = NS.db.profile.units.target.icons
+    icons.size = 41
+    inst.handle.close:_run("OnClick", "LeftButton")
+    assertEqual(NS.db.profile.units.target.enabled, false, "the X writes the unit's own enable")
+    assertFalse(inst.enabled, "the grid went down")
+    assertFalse(inst.grid:IsShown(), "and is hidden")
+    assertTrue(NS.db.profile.units.target.icons == icons and icons.size == 41, "its settings are kept")
+    assertTrue(NS.db.profile.units.focus.enabled ~= false, "the other unit is untouched")
+    -- Restorable: the switch the X wrote is the one the Units page and `/kcd set` write back.
+    NS.Settings.Store.Set("units.target.enabled", true)
+    assertTrue(inst.enabled, "turning the unit back on brings the grid back")
+end)
+
+test("the grid strip's X says what it hides and how to bring it back", function()
+    -- red under: no closeTooltip, where the X fell back to the strip's own tooltip (its label).
+    local NS, IconGrid, inst, mocks = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local tip, title, lines = mocks.GameTooltip, nil, {}
+    tip.SetText = function(_, s) title = s; lines = {} end
+    tip.AddLine = function(_, s) lines[#lines + 1] = s end
+    inst.handle.close:_run("OnEnter")
+    assertEqual(title, NS.L["Hide this display"])
+    local all = table.concat(lines, "\n")
+    assertTrue(all:find(NS.L["Enable this unit"], 1, true) ~= nil, "it names the switch: " .. all)
+    assertTrue(all:find("/kcd set units.target.enabled true", 1, true) ~= nil, "and the verb: " .. all)
 end)
 
 test("dragging the strip moves the GRID and saves its anchor", function()

@@ -685,12 +685,13 @@ you had before the update is still yours.
   (rotating rays)` → *Pixel border* goes, *Offset* stays. Set the secondary to Button too → *Offset* goes
   and the Button group shows once. Both triggers `never` → the picked group stays, dimmed. `/kcd get` on
   a hidden knob still answers. Repeat on Focus, unlinked. Result:
-- **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86).** `/kcd unlock` → each grid strip
-  (Target and Focus) shows a gear left of its `?`, both in the skin's gray mark tint, and the label is
-  not clipped by either mark. Hover the gear → it brightens and its own *Open settings* tooltip opens
-  above the gear (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*; GRID-17);
-  leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
-  the panel opens too (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
+- **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86; amended by AF-STRIP-KC).** `/kcd unlock` → each grid strip
+  (Target and Focus) shows a gear right of its `?` and left of the X, all in the skin's gray mark tint, and the label is
+  not clipped by any mark. Hover the gear → it lights in the link color and its own *Open settings* tooltip opens
+  above the strip (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*; GRID-17);
+  leave → it dims back. Left-click it out of combat → the settings panel opens on the Units page, the
+  band on that strip's unit (Target or Focus) and the rail on Icons. Right-click it →
+  the panel opens on its parent page (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
   it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
   takes the new skin's tint. Result:
 - **GRID-24. An icon's tooltip opens beside the whole display (AD-92-KC, LibKa0s#92).** `/kcd lock`,
@@ -708,6 +709,18 @@ you had before the update is still yours.
   moment after it opens) → once it grows it still sits wholly on screen, its bottom clear of the
   screen's bottom edge (review fix: the size hook re-places it). Fail: a tooltip at the icon's top-right corner (the
   old `ANCHOR_RIGHT`), at the cursor, or over any part of the display. Repeat on Focus. Result: pending
+- **GRID-25. The grid strip reads [?][settings][close], and its X turns the unit off (AF-STRIP-KC, LibKa0s v1.107.0).**
+  `/kcd unlock` → each grid strip ends in `?`, gear, X, left to right, the X in the strip's right
+  corner and the three marks closer together than before. At rest all three wear the skin's gray mark
+  tint, the same as a library window's header marks (open `/kcd debug` beside it to compare); hover the
+  `?` or the gear → the link color; hover the X → it reddens, as a window's close does. Hover the X →
+  a tooltip above the strip titled *Hide this display*, saying it turns off this unit's icon grid, cast
+  bar and label (Enable this unit) and keeps their settings, with the footer *Bring it back on the Units
+  page (Enable this unit) or with /kcd set units.target.enabled true* (`units.focus` on the Focus
+  strip). Change one icon setting on Target first (say the icon size), then click the Target strip's X
+  → Target's grid, cast bar and label disappear; Focus's stay. Units page, Target in the band →
+  *Enable this unit* is unticked; tick it → the grid comes back with the icon size you set. Repeat with
+  `/kcd set units.focus.enabled true` after closing the Focus strip. Result: pending
 
 ## CAST
 
@@ -777,12 +790,23 @@ you had before the update is still yours.
   `Free (drag to move)` → those four go on the next frame, *Anchor mode* and the Spell icon section stay,
   and the bar still drags. Back to Anchored → they return with their values and the bar anchors where it
   did. Result:
-- **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86).** `anchorMode FREE`,
-  `/kcd unlock`, a cast bar on screen → its strip shows a gear left of the `?` and the label
-  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and its own
-  *Open settings* tooltip opens above the gear (the strip and the `?` keep theirs; CAST-15). Left-click it out of combat → the settings panel opens; right-click →
-  the panel opens too; drag it → the bar moves. In combat, left-click → the gray refusal line and no
+- **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86; amended by AF-STRIP-KC).** `anchorMode FREE`,
+  `/kcd unlock`, a cast bar on screen → its strip shows a gear right of the `?` and left of the X, and the label
+  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it lights in the link color and its own
+  *Open settings* tooltip opens above the strip (the strip and the `?` keep theirs; CAST-15). Left-click it out of combat → the settings panel opens on the Units page,
+  the band on that bar's unit and the rail on Cast bar; right-click → the panel opens on its parent page; drag it → the bar moves. In combat, left-click → the gray refusal line and no
   panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
+- **CAST-21. The cast bar strip's X turns that cast bar off (AF-STRIP-KC, LibKa0s v1.107.0).** `anchorMode FREE`
+  on Target and on an unlinked Focus, `/kcd unlock` → each strip ends in `?`, gear, X, the X in the
+  corner, reddening under the pointer. Hover the Target X → *Hide this display*, saying it turns off this
+  unit's cast bar (Enable cast bar) and keeps its settings, and the footer *Bring it back on the Units page
+  (Enable cast bar) or with /kcd set units.target.castbar.enabled true*. Set the Target bar's width
+  first, then click its X → the Target bar goes; its grid, its label and the Focus bar stay. Units →
+  Cast bar, Target in the band → *Enable cast bar* is unticked; tick it → the bar returns at the width
+  you set. Now tick *Link to Target* for Focus and hover the Focus bar's X → the tooltip adds *Focus
+  follows Target's cast bar, so this hides both cast bars.* and its footer names
+  `units.target.castbar.enabled`; click it → both bars go; `/kcd set units.target.castbar.enabled true`
+  → both return. Result: pending
 
 ## FOCUS
 
@@ -1907,3 +1931,5 @@ The same run's AD-92-KC (LibKa0s#92) moves every HUD tooltip onto the Tooltip pl
 The same run's AD-79-KC (LibKa0s#79) moves the report verbs onto the debug console (`/kcd spells list` and `/kcd debug spells|castbar|interrupt|events`, one chat pointer each): it adds DIAG-49 and DEGRADED-17 and amends DIAG-1, DIAG-2, DIAG-5 and DEGRADED-15. Owed: DIAG-1, DIAG-2, DIAG-49, DEGRADED-17.
 
 The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collection's sample characters, read from `Sim.Sample()`: it adds SIM-20 and amends SIM-10, SIM-12 and SIM-14. Owed: SIM-14, SIM-20 (SIM-10 and SIM-12 were already owed).
+
+The adoption feedback run (AF-RV-KC and AF-STRIP-KC of Ka0sAddonsCommonTasks `docs/2026-11-19-ADOPTION_FEEDBACK/`, LibKa0s v1.107.0, the owner's ruling: all three marks on every strip) gives both drag strips the X and points each gear at its own display's entry: it adds GRID-25 and CAST-21 and amends GRID-23 and CAST-20 (the marks' order, tints and the gear's page). Owed: GRID-23, GRID-25, CAST-20, CAST-21.
