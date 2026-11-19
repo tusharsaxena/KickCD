@@ -699,6 +699,20 @@ test("a linked Focus's cast bar X writes Target's switch, the one that governs i
     assertEqual(NS.db.profile.units.target.castbar.enabled, false)
 end)
 
+test("the Target cast bar X hides a linked Focus's bar too, and only Target's when unlinked", function()
+    -- A linked Focus reads Units.Castbar through Target, so Target's switch governs both bars.
+    local NS, _, Castbar = enabled()
+    assertTrue(NS.Units.IsLinked("focus"), "Focus is linked by default")
+    local frameT = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    frameT.dragHandle.close:_run("OnClick", "LeftButton")
+    assertEqual(NS.Units.Castbar("focus").enabled, false, "the linked Focus bar's governing switch is off")
+    NS.Settings.Store.Set("units.target.castbar.enabled", true)
+    NS.db.profile.units.focus.link = false
+    frameT.dragHandle.close:_run("OnClick", "LeftButton")
+    assertEqual(NS.db.profile.units.target.castbar.enabled, false)
+    assertTrue(NS.Units.Castbar("focus").enabled ~= false, "an unlinked Focus keeps its bar")
+end)
+
 test("the cast bar strip's X says what it hides and how to bring it back", function()
     -- red under: no closeTooltip, where the X fell back to the strip's own tooltip.
     local NS, mocks, Castbar = enabled()
@@ -713,6 +727,18 @@ test("the cast bar strip's X says what it hides and how to bring it back", funct
     assertTrue(all:find(NS.L["Enable cast bar"], 1, true) ~= nil, "it names the switch: " .. all)
     assertTrue(all:find("/kcd set units.target.castbar.enabled true", 1, true) ~= nil, "and the verb: " .. all)
     assertTrue(all:find(NS.L["Focus follows Target's cast bar, so this hides both cast bars."], 1, true) == nil)
+    -- Focus is linked by default and reads Target's cast bar settings, so the Target X hides
+    -- the Focus bar too, and says so (AF-STRIP-KC review). red under: the Target strip's
+    -- tooltip carrying only "Turns off this unit's cast bar".
+    assertTrue(NS.Units.IsLinked("focus"), "Focus is linked by default")
+    assertTrue(all:find(NS.L["Focus follows this cast bar, so this hides Focus's cast bar too."], 1, true) ~= nil,
+        "a linked Focus: the Target X says it reaches Focus's bar: " .. all)
+    NS.db.profile.units.focus.link = false
+    frameT.dragHandle.close:_run("OnEnter")
+    all = table.concat(lines, "\n")
+    assertTrue(all:find(NS.L["Focus follows this cast bar, so this hides Focus's cast bar too."], 1, true) == nil,
+        "an unlinked Focus: the Target X hides only Target's bar: " .. all)
+    NS.db.profile.units.focus.link = true
     frameF.dragHandle.close:_run("OnEnter")
     all = table.concat(lines, "\n")
     assertTrue(all:find(NS.L["Focus follows Target's cast bar, so this hides both cast bars."], 1, true) ~= nil,

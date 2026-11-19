@@ -1076,7 +1076,7 @@ Total.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (53)
+### test_castbar_frame.lua (54)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -1124,6 +1124,7 @@ Total.
 - the cast bar strip's gear opens the Units page on THIS unit's Cast bar entry
 - the cast bar strip's X turns this unit's cast bar off and keeps its settings
 - a linked Focus's cast bar X writes Target's switch, the one that governs it
+- the Target cast bar X hides a linked Focus's bar too, and only Target's when unlinked
 - the cast bar strip's X says what it hides and how to bring it back
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
@@ -2102,7 +2103,7 @@ Total.
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 33 |
-| test_castbar_frame.lua | 53 |
+| test_castbar_frame.lua | 54 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -2154,4 +2155,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1732** |
+| **Total** | **1733** |

@@ -771,6 +771,8 @@ L["Turns off this unit's cast bar (Enable cast bar). Its settings are kept."] =
     "Turns off this unit's cast bar (Enable cast bar). Its settings are kept."
 L["Focus follows Target's cast bar, so this hides both cast bars."] =
     "Focus follows Target's cast bar, so this hides both cast bars."
+L["Focus follows this cast bar, so this hides Focus's cast bar too."] =
+    "Focus follows this cast bar, so this hides Focus's cast bar too."
 L["Bring it back on the Units page (%s) or with %s."] =
     "Bring it back on the Units page (%s) or with %s."
 

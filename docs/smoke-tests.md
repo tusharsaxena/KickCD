@@ -799,14 +799,16 @@ you had before the update is still yours.
 - **CAST-21. The cast bar strip's X turns that cast bar off (AF-STRIP-KC, LibKa0s v1.107.0).** `anchorMode FREE`
   on Target and on an unlinked Focus, `/kcd unlock` → each strip ends in `?`, gear, X, the X in the
   corner, reddening under the pointer. Hover the Target X → *Hide this display*, saying it turns off this
-  unit's cast bar (Enable cast bar) and keeps its settings, and the footer *Bring it back on the Units page
+  unit's cast bar (Enable cast bar) and keeps its settings, with no line about Focus, and the footer *Bring it back on the Units page
   (Enable cast bar) or with /kcd set units.target.castbar.enabled true*. Set the Target bar's width
   first, then click its X → the Target bar goes; its grid, its label and the Focus bar stay. Units →
   Cast bar, Target in the band → *Enable cast bar* is unticked; tick it → the bar returns at the width
   you set. Now tick *Link to Target* for Focus and hover the Focus bar's X → the tooltip adds *Focus
   follows Target's cast bar, so this hides both cast bars.* and its footer names
   `units.target.castbar.enabled`; click it → both bars go; `/kcd set units.target.castbar.enabled true`
-  → both return. Result: pending
+  → both return. With Focus still linked, hover the Target bar's X → it adds *Focus follows this cast bar,
+  so this hides Focus's cast bar too.*; click it → the Target and Focus bars both go; tick *Enable cast
+  bar* for Target → both return. Result: pending
 
 ## FOCUS
 
