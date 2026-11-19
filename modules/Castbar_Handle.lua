@@ -59,6 +59,52 @@ local function handleLabel(unit)
     return (unit == "focus") and L["Focus castbar"] or L["Target castbar"]
 end
 
+--- The unit whose cast bar settings govern this bar: Target's for a linked Focus (core/Units.lua's
+--- sourceUnit, which Units.Castbar reads through), else the bar's own.
+local function castbarSource(unit)
+    return NS.Units.IsLinked(unit) and "target" or unit
+end
+
+--- The X's click (AF-STRIP-KC, the owner's ruling on the adoption smoke: every strip carries
+--- [?][settings][close]): Enable cast bar off for the unit that governs this bar, through
+--- Helpers.SetAndRefresh, the page's own write, so every other cast bar setting is kept and the
+--- page's tick and `/kcd set` turn it back on. A linked Focus's own castbar.enabled is never read
+--- while it is linked, so writing it would close nothing: the X writes Target's, and its tooltip
+--- says that hides both bars. The Target X hides a linked Focus's bar for the same reason, and
+--- its tooltip says so too.
+local function closeBar(inst)
+    local path = "units." .. castbarSource(inst.unit) .. ".castbar.enabled"
+    local H = NS.Settings and NS.Settings.Helpers
+    if H and H.SetAndRefresh then return H.SetAndRefresh(path, false) end
+    local S = NS.Settings and NS.Settings.Store
+    if S and S.Set then return S.Set(path, false) end
+end
+
+--- The X's tooltip: what it turns off and how to bring it back, read on each hover because the
+--- Focus link can move while the strip lives.
+local function closeTooltip(inst)
+    return {
+        title = L["Hide this display"],
+        body  = {
+            L["Turns off this unit's cast bar (Enable cast bar). Its settings are kept."],
+            function()
+                if castbarSource(inst.unit) ~= inst.unit then
+                    return L["Focus follows Target's cast bar, so this hides both cast bars."]
+                end
+                -- The Target strip: a linked, enabled Focus reads this bar's settings, so
+                -- the same switch hides Focus's bar too (AF-STRIP-KC review).
+                if inst.unit == "target" and NS.Units.IsLinked("focus") and NS.Units.IsEnabled("focus") then
+                    return L["Focus follows this cast bar, so this hides Focus's cast bar too."]
+                end
+            end,
+        },
+        footer = { function()
+            return L["Bring it back on the Units page (%s) or with %s."]:format(L["Enable cast bar"],
+                "/kcd set units." .. castbarSource(inst.unit) .. ".castbar.enabled true")
+        end },
+    }
+end
+
 --- Build the strip a player drags the bar by: LibKa0s-Widgets-1.0's handle,
 --- wearing this addon's strings and callbacks. Parented to the BAR, so it hides,
 --- restrata's and dies with it and no teardown path has to learn a new frame.
@@ -103,14 +149,17 @@ local function buildHandle(inst, frame)
         -- (core/LauncherSetup.lua:137, core/KickCD.lua:264). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
-        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC):
-        -- left of the "?", a left click opening the same panel through the same
-        -- NS:OpenSettings (so the combat refusal is the same one). Its tooltip is its
-        -- own, "Open settings" as on the library windows' gears: without
-        -- settingsTooltip the widget falls back to the strip's, whose "Drag to move"
-        -- misreads a mark whose left click opens settings (AD-86-KC review).
-        settings     = function() NS:OpenSettings() end,
+        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC; standard
+        -- from minor 15, right of the "?" and left of the X). From AF-STRIP-KC a left click
+        -- opens THIS unit's Cast bar entry on the Units page (NS:OpenUnitSettings, whose combat
+        -- refusal is OpenSettings'). Its tooltip is its own, "Open settings" as on the library
+        -- windows' gears: without settingsTooltip the widget falls back to the strip's, whose
+        -- "Drag to move" misreads a mark whose left click opens settings (AD-86-KC review).
+        settings     = function() NS:OpenUnitSettings(inst.unit, "castbar") end,
         settingsTooltip = { title = L["Open settings"] },
+        -- The X (AF-STRIP-KC): Enable cast bar off, settings kept (closeBar above).
+        onClose      = function() closeBar(inst) end,
+        closeTooltip = closeTooltip(inst),
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the cast bar, so the strip and its help mark
         -- clear the grid of the same unit as well as the bar (KIC-Z07, S06).

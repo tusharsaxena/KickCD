@@ -109,3 +109,32 @@ test("with LibKa0s absent the open says so instead of touching the category API"
     assertTrue(lines[1]:lower():find("unavailable", 1, true) ~= nil,
         "the degraded stub must say the panel is unavailable; got: " .. tostring(lines[1]))
 end)
+
+-- ── NS:OpenUnitSettings (AF-STRIP-KC): a drag strip's gear opens ITS display's entry ─────────
+
+test("OpenUnitSettings opens the Units page on that unit and entry", function()
+    -- red under: no NS:OpenUnitSettings, or one that opens the parent page (no page key).
+    local inst, _, opened = harness()
+    local NS, H = inst.NS, inst.NS.Settings.Helpers
+    local selected, page
+    local realSelect, realOpen = H.SelectSection, H.OpenOptionsPanel
+    H.SelectSection = function(key, ...) selected = key; return realSelect(key, ...) end
+    H.OpenOptionsPanel = function(key, ...) page = key; return realOpen(key, ...) end
+    NS:OpenUnitSettings("focus", "castbar")
+    assertEqual(H.ViewedUnit(), "focus", "the band moves to the strip's unit")
+    assertEqual(selected, "castbar", "the rail moves to the strip's entry")
+    assertEqual(page, "grid", "the Units page opens")
+    assertEqual(#opened, 1, "one category opened")
+end)
+
+test("OpenUnitSettings refuses in combat like OpenSettings, and moves nothing", function()
+    local inst, lines, opened = harness()
+    local NS, H = inst.NS, inst.NS.Settings.Helpers
+    H.SetViewedUnit("target")
+    NS.State.inCombat = true
+    NS:OpenUnitSettings("focus", "castbar")
+    NS.State.inCombat = false
+    assertEqual(#opened, 0)
+    assertEqual(#lines, 1, "the one localized refusal")
+    assertEqual(H.ViewedUnit(), "target", "the band did not move")
+end)

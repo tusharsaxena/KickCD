@@ -1026,3 +1026,22 @@ function NS:OpenSettings()
     if NS.State and NS.State.debug then NS.Debug("Open", "settings panel") end
     NS.OpenOptionsPanel()
 end
+
+--- Open the Units page on `unit`'s `entry` ("icons", "castbar" or "label"): what a drag strip's
+--- settings mark opens (AF-STRIP-KC), so the gear on Focus's cast bar lands on Focus's Cast bar
+--- entry, not on the parent page. The band and the rail move through the page's own seams
+--- (Helpers.SetViewedUnit, Helpers.SelectSection, which marks a hidden page owed a render), then
+--- the library opens the `grid` page. Every refusal is OpenSettings', reached by falling through to
+--- it: combat (checked FIRST, so nothing moves), and a settings layer that never loaded.
+function NS:OpenUnitSettings(unit, entry)
+    local H = self.Settings and self.Settings.Helpers
+    if inCombat(self) or not (H and H.SetViewedUnit and H.SelectSection and H.OpenOptionsPanel) then
+        return self:OpenSettings()
+    end
+    if unit then H.SetViewedUnit(unit) end
+    if entry then H.SelectSection(entry) end
+    if NS.State and NS.State.debug then
+        NS.Debug("Open", "settings panel: %s %s", tostring(unit), tostring(entry))
+    end
+    H.OpenOptionsPanel("grid")
+end

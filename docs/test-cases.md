@@ -961,16 +961,19 @@ Total.
 - Anchor mode draws the anchor rows only while the bar is anchored
 - a switched row stays reachable while hidden
 
-### test_icongrid_handle.lua (16)
+### test_icongrid_handle.lua (19)
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
 - hovering the grid's strip attaches its tooltip centered above the strip
 - ApplyLock shows the strip when it registers the drag and hides it when it clears it
 - the strip is sized to its label plus the widget's reserve
-- the grid's strip carries the settings mark beside its help mark
+- the grid's strip reads [?][settings][close]
 - the grid strip's settings mark says what its click does
 - a left click on the grid strip's settings mark opens this addon's settings
+- the grid strip's gear opens the Units page on THIS unit's Icons entry
+- the grid strip's X turns this unit off and keeps its settings
+- the grid strip's X says what it hides and how to bring it back
 - dragging the strip moves the GRID and saves its anchor
 - the strip refuses to move a LOCKED grid
 - the strip hangs above the unit LABEL when one is parked on the grid
@@ -1073,7 +1076,7 @@ Total.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (49)
+### test_castbar_frame.lua (54)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -1118,6 +1121,11 @@ Total.
 - the cast bar's strip carries the settings mark beside its help mark
 - the cast bar strip's settings mark says what its click does
 - a left click on the cast bar strip's settings mark opens this addon's settings
+- the cast bar strip's gear opens the Units page on THIS unit's Cast bar entry
+- the cast bar strip's X turns this unit's cast bar off and keeps its settings
+- a linked Focus's cast bar X writes Target's switch, the one that governs it
+- the Target cast bar X hides a linked Focus's bar too, and only Target's when unlinked
+- the cast bar strip's X says what it hides and how to bring it back
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
@@ -1821,7 +1829,7 @@ Total.
 - DEGRADED: `/kcd disable` writes enabled = false, stands down, confirms, raises nothing
 - DEGRADED: `/kcd enable` brings it back up
 
-### test_opensettings.lua (6)
+### test_opensettings.lua (8)
 
 - OpenSettings refuses in combat
 - OpenSettings also reads combat off InCombatLockdown
@@ -1829,6 +1837,8 @@ Total.
 - OpenSettings opens through the library forwarder, not a private copy
 - OpenSettings prints the plain notice when the settings layer never loaded
 - with LibKa0s absent the open says so instead of touching the category API
+- OpenUnitSettings opens the Units page on that unit and entry
+- OpenUnitSettings refuses in combat like OpenSettings, and moves nothing
 
 ### test_perfsetup.lua (25)
 
@@ -2087,13 +2097,13 @@ Total.
 | test_icongrid_glowgate.lua | 10 |
 | test_icongrid_glow_knobs.lua | 13 |
 | test_switched_sections.lua | 4 |
-| test_icongrid_handle.lua | 16 |
+| test_icongrid_handle.lua | 19 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 33 |
-| test_castbar_frame.lua | 49 |
+| test_castbar_frame.lua | 54 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -2127,7 +2137,7 @@ Total.
 | test_slash_degraded.lua | 21 |
 | test_slash_profile.lua | 14 |
 | test_disabled.lua | 20 |
-| test_opensettings.lua | 6 |
+| test_opensettings.lua | 8 |
 | test_perfsetup.lua | 25 |
 | test_perfsetup_latch.lua | 7 |
 | test_launcher.lua | 40 |
@@ -2145,4 +2155,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1723** |
+| **Total** | **1733** |
