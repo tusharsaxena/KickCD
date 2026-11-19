@@ -136,13 +136,14 @@ test("the grid's strip carries the settings mark beside its help mark", function
     assertTrue(inst.handle.settings ~= nil, "the strip must carry the drag-handle settings mark")
     assertTrue(inst.handle.help ~= nil, "the help mark stays")
     assertTrue(inst.handle.close == nil, "still no X on a grid strip (owner ruling X-03)")
-    -- Left to right the strip reads settings, then "?" (the header marks rule): the gear's RIGHT
-    -- edge hangs off the help mark's LEFT, one CLOSE_GAP clear (AD-86-KC review).
-    local point, rel, relPoint, x = inst.handle.settings:GetPoint(1)
+    -- RE-PINNED (AF-RV-KC, LibKa0s v1.107.0, DragHandle minor 15): left to right the strip reads
+    -- "?", then settings (the window header's order): the help mark's RIGHT edge hangs off the
+    -- gear's LEFT, one CLOSE_GAP clear. Through minor 14 the gear sat left of the "?".
+    local point, rel, relPoint, x = inst.handle.help:GetPoint(1)
     assertEqual(point, "RIGHT")
-    assertTrue(rawequal(rel, inst.handle.help), "the gear is anchored to the help mark, so it sits left of it")
+    assertTrue(rawequal(rel, inst.handle.settings), "the ? is anchored to the gear, so it sits left of it")
     assertEqual(relPoint, "LEFT")
-    assertEqual(x, -mocks.LibStub(WIDGETS, true).DRAG_HANDLE.CLOSE_GAP, "one CLOSE_GAP between the gear and the ?")
+    assertEqual(x, -mocks.LibStub(WIDGETS, true).DRAG_HANDLE.CLOSE_GAP, "one CLOSE_GAP between the ? and the gear")
 end)
 
 test("the grid strip's settings mark says what its click does", function()
