@@ -391,85 +391,116 @@ test("/kcd resetposition: the target grid is still restored", function()
     assertGridAtDefault(dragGridsAndReset(), "target")
 end)
 
--- ── PlaceTooltipBeside (the drag strips' tooltipPlace, LibKa0s WidgetsDragHandle minor 4) ──
+-- ── The drag strips' tooltip: the chrome rule (AD-92-KC, LibKa0s#92) ──
 --
--- Both strips (the cast bar's, the grid's) hand the library this one placement. The owner's rule:
--- the tooltip sits to the strip's RIGHT, or to its LEFT when the strip's right edge plus the
--- tooltip's width would leave the screen. Only a literal `true` means placed; anything else makes
--- the widget fall back to the cursor, so a read that cannot be trusted must answer non-true and
--- leave the tooltip unanchored rather than guess.
+-- RE-PINNED. These six cases pinned NS.Util.PlaceTooltipBeside, the drag strips' `tooltipPlace`
+-- hook (TP-KC-01): the tooltip to the strip's RIGHT, or its LEFT at the screen's edge. WowAddonStandards
+-- standalone-windows, *Tooltip placement*, rules a HUD drag strip chrome, whose tooltip is attached
+-- and centered ABOVE it, flipping BELOW only without room above, and never at the cursor. That is
+-- LibKa0s-Widgets-1.0's own default (PlaceAttached through LibKa0s-Tooltip-1.0), so the hook and the
+-- Util function are gone, and each case now drives the same scenario through a real KickCD strip:
+-- room on the usual side, the edge flip, the ? mark, a scaled strip, and a secret or nil read.
 
---- A fresh load whose screen is `screenRight` px wide, a strip whose right edge reads `right`
---- (through `read`, so a case can hand back a secret or a nil), and a tooltip `width` wide. Fresh
---- per case: the screen width is set on THIS instance's UIParent, and a shared one would carry it
---- into the next case.
-local function placeBench(screenRight, right, width, read)
-    local i      = T.load(true)
-    local m      = i.mocks
-    m.UIParent.GetRight = function() return screenRight end
-    local strip  = m.CreateFrame("Button")
-    strip.help   = m.CreateFrame("Button", nil, strip)  -- what marks a frame as the widget's strip
-    strip.GetRight = read or function() return right end
-    local tip    = m.CreateFrame("GameTooltip")
-    tip:SetWidth(width)
-    return i.NS.Util, strip, tip, m
+--- A fresh enabled addon, unlocked, on a 1000 x 800 screen: the target grid's strip with its rect
+--- `l, b, w, h` in its own units at effective scale `s` (through `read`, so a case can hand back a
+--- secret or a nil), and a 200 x 60 GameTooltip. Fresh per case: the screen is installed on THIS
+--- instance's UIParent.
+local function placeBench(l, b, w, h, s, read)
+    local i  = T.load(true, true)
+    local m  = i.mocks
+    local IG = i.NS:GetModule("IconGrid")
+    local gi = IG:GetInstance("target")
+    i.NS.db.profile.locked = false
+    IG:ApplyLock(gi)
+    local scr   = dofile(T.root .. "/tests/_kit/mock_screen.lua")(m, { width = 1000, height = 800 })
+    local strip = gi.handle
+    local fig = { GetLeft = l, GetBottom = b, GetRight = l and l + w, GetTop = b and b + h,
+                  GetEffectiveScale = s or 1 }
+    -- Every read named, not `pairs(fig)`: a nil edge leaves no key in `fig`, and a skipped read
+    -- would keep the mock's default 0 rather than hand back the case's secret or nil.
+    for _, k in ipairs({ "GetLeft", "GetBottom", "GetRight", "GetTop", "GetEffectiveScale" }) do
+        local v = fig[k]
+        rawset(strip, k, read or function() return v end)
+    end
+    local tip, owners = m.GameTooltip, {}
+    rawset(tip, "GetWidth", function() return 200 end)
+    rawset(tip, "GetHeight", function() return 60 end)
+    rawset(tip, "GetEffectiveScale", function() return 1 end)
+    tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
+    return strip, tip, m, scr, owners
 end
 
-test("PlaceTooltipBeside puts the tooltip to the strip's right when it fits", function()
-    local U, strip, tip = placeBench(1000, 500, 200)
-    assertEqual(U.PlaceTooltipBeside(tip, strip), true, "a placement it made answers true")
+test("a drag strip's tooltip is attached centered above the strip when there is room", function()
+    local strip, tip, m, scr = placeBench(400, 500, 200, 20)
+    strip:_run("OnEnter")
     assertEqual(tip:GetNumPoints(), 1)
     local point, rel, relPoint, x, y = tip:GetPoint(1)
-    assertEqual(point, "TOPLEFT")
-    assertTrue(rawequal(rel, strip), "anchored to the strip itself")
-    assertEqual(relPoint, "TOPRIGHT")
-    assertTrue(x > 0, "a gap clear of the strip's edge")
-    assertEqual(y, 0)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, m.UIParent), "an absolute point, written by the library")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 500, "centered on the strip")
+    assertEqual(y, 522, "2 px above the strip's top")
+    scr.restore()
 end)
 
-test("PlaceTooltipBeside flips to the strip's left when the right side would leave the screen", function()
-    -- red under: a placement that always anchors right (900 + 200 runs 100 px off a 1000 px screen)
-    local U, strip, tip = placeBench(1000, 900, 200)
-    assertEqual(U.PlaceTooltipBeside(tip, strip), true)
-    local point, rel, relPoint, x = tip:GetPoint(1)
-    assertEqual(point, "TOPRIGHT")
-    assertTrue(rawequal(rel, strip))
-    assertEqual(relPoint, "TOPLEFT")
-    assertTrue(x < 0, "a gap clear of the strip's left edge")
+test("a drag strip's tooltip flips below the strip when the screen has no room above", function()
+    -- red under: a placement that always anchors above (780 + 2 + 60 runs off an 800 px screen)
+    local strip, tip, _, scr = placeBench(400, 760, 200, 20)
+    strip:_run("OnEnter")
+    local point, _, _, x, y = tip:GetPoint(1)
+    assertEqual(point, "TOP")
+    assertEqual(x, 500)
+    assertEqual(y, 758, "2 px under the strip's bottom")
+    scr.restore()
 end)
 
-test("PlaceTooltipBeside anchors to the STRIP when the hovered frame is its ? mark", function()
-    -- The widget hands the hook the frame hovered; for the mark that is the mark, whose parent is the
-    -- strip. One position for the strip and its mark, not two.
-    local U, strip, tip = placeBench(1000, 500, 200)
-    assertEqual(U.PlaceTooltipBeside(tip, strip.help), true)
-    local _, rel, relPoint = tip:GetPoint(1)
-    assertTrue(rawequal(rel, strip), "the mark resolves to its strip")
-    assertEqual(relPoint, "TOPRIGHT")
+test("a drag strip's ? mark places its tooltip against the STRIP, not the mark", function()
+    -- One position for the strip and its mark, not two. The mark's own geometry is never set here,
+    -- so a placement against the mark could read nothing and would land elsewhere.
+    local strip, tip, _, scr = placeBench(400, 500, 200, 20)
+    strip.help:_run("OnEnter")
+    local point, _, _, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertEqual(x, 500, "centered on the strip")
+    assertEqual(y, 522)
+    scr.restore()
 end)
 
-test("PlaceTooltipBeside compares in screen pixels, so a scaled strip flips when it should", function()
-    -- red under: comparing the strip's raw GetRight (450, in its own scaled units) with the screen.
-    -- At scale 2 its right edge is 900 screen px, and 900 + 200 does not fit in 1000.
-    local U, strip, tip, m = placeBench(1000, 450, 200)
-    local grid = m.CreateFrame("Frame")
-    grid:SetScale(2)
-    strip.__parent = grid
-    assertEqual(U.PlaceTooltipBeside(tip, strip), true)
-    assertEqual((tip:GetPoint(1)), "TOPRIGHT")
+test("a drag strip's tooltip is measured in screen units, so a scaled strip centers true", function()
+    -- At scale 2 the strip's own rect 200..300 x 250..260 is 400..600 x 500..520 on screen.
+    local strip, tip, _, scr = placeBench(200, 250, 100, 10, 2)
+    strip:_run("OnEnter")
+    local point, _, _, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertEqual(x, 500)
+    assertEqual(y, 522)
+    scr.restore()
 end)
 
-test("PlaceTooltipBeside answers non-true and anchors nothing when a read is secret", function()
+test("a secret strip read attaches the tooltip above the strip by a relative point, never the cursor", function()
     local secret = {}
-    local U, strip, tip, m = placeBench(1000, nil, 200, function() return secret end)
+    local strip, tip, m, scr, owners = placeBench(nil, nil, nil, nil, nil, function() return secret end)
     m.issecretvalue = function(v) return rawequal(v, secret) end
-    assertTrue(U.PlaceTooltipBeside(tip, strip) ~= true, "the widget must fall back to the cursor")
-    assertEqual(tip:GetNumPoints(), 0, "nothing anchored on a guess")
+    strip:_run("OnEnter")
+    for _, o in ipairs(owners) do
+        assertEqual(o[2], "ANCHOR_NONE", "owned at no anchor, never the cursor's")
+    end
+    local point, rel, relPoint, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, strip), "attached to the strip, the library's fallback")
+    assertEqual(relPoint, "TOP")
+    assertEqual(x, 0); assertEqual(y, 2)
+    scr.restore()
 end)
 
-test("PlaceTooltipBeside answers non-true and anchors nothing when a read is nil", function()
+test("a nil strip read attaches the tooltip above the strip by a relative point, never the cursor", function()
     -- A strip not yet laid out answers nil for its edges in the client.
-    local U, strip, tip = placeBench(1000, nil, 200, function() return nil end)
-    assertTrue(U.PlaceTooltipBeside(tip, strip) ~= true)
-    assertEqual(tip:GetNumPoints(), 0)
+    local strip, tip, _, scr, owners = placeBench(nil, nil, nil, nil, nil, function() return nil end)
+    strip:_run("OnEnter")
+    for _, o in ipairs(owners) do assertEqual(o[2], "ANCHOR_NONE") end
+    local point, rel, relPoint = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, strip))
+    assertEqual(relPoint, "TOP")
+    scr.restore()
 end)

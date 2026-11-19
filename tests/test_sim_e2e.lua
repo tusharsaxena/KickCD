@@ -165,13 +165,62 @@ test("SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, ea
     assertEqual(sc.defs.boss.label, NS.L["Boss kick rotation"])
     assertEqual(sc.defs.miss.label, NS.L["Kick on cooldown, uninterruptible cast"])
     assertEqual(sc.defs.leave.label, NS.L["Party member leaves mid-pull"])
+    -- Re-pinned at AD-87-KC: the party is four of the library's sample characters (below), each
+    -- with its class's kick.
     local P = NS.SimScenario.PARTY
-    assertEqual(P.thrall.spell, 57994); assertEqual(P.jaina.spell, 2139)
-    assertEqual(P.uther.spell, 96231); assertEqual(P.valeera.spell, 1766)
-    assertEqual(P.jaina.name, NS.L["Jaina"]); assertEqual(P.jaina.spec, NS.L["Frost"])
+    assertEqual(P.samplehunter.spell, 147362); assertEqual(P.mockflame.spell, 2139)
+    assertEqual(P.sampleblade.spell, 96231); assertEqual(P.mockshield.spell, 6552)
     for _, key in ipairs({ "casterA", "casterB", "boss" }) do
         local e = NS.SimScenario.ENEMIES[key]
         assertTrue(type(e.name) == "string" and type(e.cast) == "number" and type(e.channel) == "number", key)
+    end
+end)
+
+-- ── the party is the collection's sample characters (AD-87-KC, LibKa0s#87) ──────────────────
+--
+-- preview-mode, *Sample characters*: a simulator's made-up people follow the naming convention
+-- (Sample/Mock names, never localized) and are read from LibKa0s-Sim-1.0's Sim.Sample(client), with
+-- a copy of the library's rows as the fallback when the library is absent.
+
+local PARTY_KEYS = { "samplehunter", "sampleblade", "mockflame", "mockshield" }
+
+--- The library's sample row named `name` for the running client, read on `ctx`'s instance.
+local function sampleRow(ctx, name)
+    for _, row in ipairs(ctx.env.mocks.LibStub("LibKa0s-Sim-1.0").Sample()) do
+        if row.name == name then return row end
+    end
+end
+
+test("SimScenario: each party member is a library sample character, its name never localized", function()
+    -- red under: the lore party (Thrall, Jaina, Uther, Valeera) through NS.L
+    local ctx = fresh()
+    local NS = ctx.NS
+    local P = NS.SimScenario.PARTY
+    local n = 0
+    for key, row in pairs(P) do
+        n = n + 1
+        local sample = sampleRow(ctx, row.name)
+        assertTrue(sample ~= nil, key .. ": " .. tostring(row.name) .. " is not one of Sim.Sample()'s characters")
+        assertEqual(key, row.name:lower(), key .. ": the key is the sample's name")
+        assertEqual(row.class, sample.classFile, key .. " class")
+        assertEqual(row.specID, sample.specID, key .. " specID")
+        assertEqual(row.spec, sample.spec, key .. " spec (English data)")
+        assertTrue(row.name:match("^Sample%l+$") or row.name:match("^Mock%l+$"), key .. ": " .. row.name)
+        assertNil(rawget(NS.L, row.name), key .. ": a sample name must not be a locale key")
+    end
+    assertEqual(n, #PARTY_KEYS)
+end)
+
+test("SimScenario: without LibKa0s the party is a copy of the library's rows", function()
+    -- red under: a fallback that drifts from Sim.SAMPLE, or none (the party empty on that load)
+    local live = fresh().NS.SimScenario.PARTY
+    local inst = T.load(true, true, nil, { libFiles = {} })
+    local P = inst.NS.SimScenario.PARTY
+    for _, key in ipairs(PARTY_KEYS) do
+        assertTrue(P[key] ~= nil, key .. " missing on the library-absent load")
+        for _, field in ipairs({ "name", "class", "specID", "spec", "spell" }) do
+            assertEqual(P[key][field], live[key][field], key .. "." .. field)
+        end
     end
 end)
 
@@ -254,15 +303,17 @@ test("Sim e2e pull: combat, both bars, your kick, the party's kicks, the CC's GC
         end
         c[nth(steps, "PartyKick", 1)] = function()
             assertTrue(ctx.bar("target").current == nil or ctx.bar("focus").current ~= nil,
-                "Uther's kick on the target cast took the focus bar's cast with it")
+                "Sampleblade's kick on the target cast took the focus bar's cast with it")
         end
         c[nth(steps, "PartyKick", 2)] = function()
-            assertNil(ctx.bar("focus").current, "Thrall's kick left the focus bar's channel running")
+            assertNil(ctx.bar("focus").current, "Samplehunter's kick left the focus bar's channel running")
         end
         c[nth(steps, "PartyKick", 3)] = function()
             assertTrue(ctx.state(KICK).isActive, "your kick came back too soon")
-            assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", NS.L["Jaina"], NS.L["Frost"],
-                NS.L["Shadowcaster"], (NS.Compat.GetSpellInfo(2139)))), "Jaina's line was not printed")
+            -- Re-pinned at AD-87-KC: the sample's name, and its spec named by the client.
+            assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", "Mockflame",
+                NS.Util.SpecDisplayName(63), NS.L["Shadowcaster"], (NS.Compat.GetSpellInfo(2139)))),
+                "Mockflame's line was not printed")
         end
         c[nth(steps, "Cc")] = function()
             assertTrue(ctx.state(CC).isActive, "the CC is not cooling")
@@ -369,7 +420,7 @@ test("Sim e2e leave: the roster update reaches no handler; the target swap snaps
             local e = ctx.delivered("GROUP_ROSTER_UPDATE", nil, from)
             assertTrue(e ~= nil, "GROUP_ROSTER_UPDATE was not delivered")
             assertEqual(e.handlers, 0)
-            assertEqual(played.detail, NS.L["%s left"]:format(NS.L["Valeera"]))
+            assertEqual(played.detail, NS.L["%s left"]:format("Mockshield"))
             assertTrue(NS.Sim:IsActive(), "the simulated roster update stopped the session")
         end
         c[nth(steps, "Focus", 2)] = function()
@@ -458,8 +509,9 @@ test("Sim pace: at 4 s the story holds: the pull's kick lands and is still cooli
     -- kick cools' found it ready, and the miss scenario's third kick landed instead of being refused.
     local ctx, kicks = runAtPace("pull", 4)
     assertEqual(kicks[1].branch, "land", "the pull's kick")
-    assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", ctx.NS.L["Jaina"], ctx.NS.L["Frost"],
-        ctx.NS.L["Shadowcaster"], (ctx.NS.Compat.GetSpellInfo(2139)))), "Jaina had no cast to interrupt")
+    assertTrue(ctx.said(ctx.simLine("%s (%s) interrupts %s with %s.", "Mockflame",
+        ctx.NS.Util.SpecDisplayName(63), ctx.NS.L["Shadowcaster"], (ctx.NS.Compat.GetSpellInfo(2139)))),
+        "Mockflame had no cast to interrupt")
     local _, miss = runAtPace("miss", 4)
     assertEqual(miss[1].branch, "immune")
     assertEqual(miss[2].branch, "land")

@@ -57,23 +57,35 @@ test("the strip's label names the addon and which grid it moves", function()
     assertEqual(inst.handle.__label, NS.L["Ka0s KickCD"] .. " — " .. NS.L["Target"])
 end)
 
-test("hovering the grid's strip puts its tooltip beside the strip, not above it", function()
-    -- LibKa0s WidgetsDragHandle minor 4's tooltipPlace (TP-KC-01). red under: a spec without the
-    -- hook (owned by the strip at ANCHOR_TOP). A strip near the right edge flips to its left.
+test("hovering the grid's strip attaches its tooltip centered above the strip", function()
+    -- RE-PINNED (AD-92-KC, LibKa0s#92): this case pinned TP-KC-01's beside-the-strip hook
+    -- (`tooltipPlace = NS.Util.PlaceTooltipBeside`, the tooltip right or left of the strip). The
+    -- standard's chrome rule (standalone-windows, *Tooltip placement*) puts a drag strip's tooltip
+    -- attached and centered ABOVE it, which is the widget's own default (LibKa0s-Tooltip-1.0's
+    -- PlaceAttached), so the hook is gone. red under: the hook, which answers true with the
+    -- tooltip's TOPRIGHT on the strip's TOPLEFT.
     local NS, IconGrid, inst, mocks = fresh()
     setLocked(NS, IconGrid, inst, false)
+    local scr = dofile(T.root .. "/tests/_kit/mock_screen.lua")(mocks, { width = 1000, height = 800 })
     local strip, tip, owners = inst.handle, mocks.GameTooltip, {}
-    mocks.UIParent.GetRight = function() return 1000 end
-    strip.GetRight = function() return 900 end
-    tip:SetWidth(200)
+    for k, v in pairs({ GetLeft = 700, GetBottom = 500, GetRight = 900, GetTop = 520,
+                        GetEffectiveScale = 1 }) do
+        rawset(strip, k, function() return v end)
+    end
+    rawset(tip, "GetWidth", function() return 200 end)
+    rawset(tip, "GetHeight", function() return 60 end)
+    rawset(tip, "GetEffectiveScale", function() return 1 end)
     tip.SetOwner = function(_, owner, anchor) owners[#owners + 1] = { owner, anchor } end
     strip:_run("OnEnter")
     assertEqual(#owners, 1)
     assertEqual(owners[1][2], "ANCHOR_NONE")
-    local point, rel, relPoint = tip:GetPoint(1)
-    assertEqual(point, "TOPRIGHT")
-    assertTrue(rawequal(rel, strip), "beside the strip")
-    assertEqual(relPoint, "TOPLEFT", "900 + 200 leaves a 1000 px screen, so the left side")
+    local point, rel, relPoint, x, y = tip:GetPoint(1)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, mocks.UIParent), "an absolute point, not one beside the strip")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 800, "centered on the strip")
+    assertEqual(y, 522, "2 px above the strip's top")
+    scr.restore()
 end)
 
 test("ApplyLock shows the strip when it registers the drag and hides it when it clears it", function()
@@ -105,11 +117,56 @@ test("the strip is sized to its label plus the widget's reserve", function()
     -- rather than typed here, because a copy is a second number to keep in step.
     -- FIT_SLACK (WidgetsDragHandle minor 8, LibKa0s v1.82.0) is the 2 px Measure() adds to the
     -- label, so an exact fit never truncates; read off the widget for the same reason.
+    -- RE-PINNED (AD-86-KC, LibKa0s#86): the strip now carries the settings mark (DragHandle minor
+    -- 14), and each side of the label keeps that mark's frame and gap clear as well, so the reserve
+    -- per side is RESERVE + HELP_HIT + CLOSE_GAP (the widget's dhReserve), all read off the widget.
     local DH = mocks.LibStub(WIDGETS, true).DRAG_HANDLE
     local RESERVE, SLACK = DH.RESERVE, DH.FIT_SLACK
+    local SIDE = RESERVE + DH.HELP_HIT + DH.CLOSE_GAP
     assertEqual(SLACK, 2, "the widget's slack")
-    assertEqual(inst.handle:GetWidth(), 100 + SLACK + RESERVE * 2,
-        "the strip is its label, its slack and what it keeps clear on each side")
+    assertEqual(inst.handle:GetWidth(), 100 + SLACK + SIDE * 2,
+        "the strip is its label, its slack and what it keeps clear on each side, settings mark included")
+end)
+
+-- ── The settings mark (AD-86-KC, LibKa0s#86: DragHandle minor 14, opt-in) ───
+
+test("the grid's strip carries the settings mark beside its help mark", function()
+    -- red under: a spec without `settings`, which builds no mark (handle.settings nil).
+    local _, _, inst, mocks = fresh()
+    assertTrue(inst.handle.settings ~= nil, "the strip must carry the drag-handle settings mark")
+    assertTrue(inst.handle.help ~= nil, "the help mark stays")
+    assertTrue(inst.handle.close == nil, "still no X on a grid strip (owner ruling X-03)")
+    -- Left to right the strip reads settings, then "?" (the header marks rule): the gear's RIGHT
+    -- edge hangs off the help mark's LEFT, one CLOSE_GAP clear (AD-86-KC review).
+    local point, rel, relPoint, x = inst.handle.settings:GetPoint(1)
+    assertEqual(point, "RIGHT")
+    assertTrue(rawequal(rel, inst.handle.help), "the gear is anchored to the help mark, so it sits left of it")
+    assertEqual(relPoint, "LEFT")
+    assertEqual(x, -mocks.LibStub(WIDGETS, true).DRAG_HANDLE.CLOSE_GAP, "one CLOSE_GAP between the gear and the ?")
+end)
+
+test("the grid strip's settings mark says what its click does", function()
+    -- AD-86-KC review: red under a spec without `settingsTooltip`, where the gear fell back to the
+    -- strip's own tooltip (its label and "Drag to move. Right-click for settings.").
+    local NS, IconGrid, inst, mocks = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local tip, titles = mocks.GameTooltip, {}
+    tip.SetText = function(_, s) titles[#titles + 1] = s end
+    inst.handle.settings:_run("OnEnter")
+    assertEqual(titles[#titles], "Open settings", "the gear's tooltip names its click, as the library windows' gears do")
+    inst.handle:_run("OnEnter")
+    assertEqual(titles[#titles], inst.handle.label:GetText(), "the strip keeps its own tooltip")
+end)
+
+test("a left click on the grid strip's settings mark opens this addon's settings", function()
+    local NS, _, inst = fresh()
+    local opened = 0
+    NS.OpenSettings = function() opened = opened + 1 end
+    inst.handle.settings:_run("OnClick", "LeftButton")
+    assertEqual(opened, 1, "the mark must open the panel through NS:OpenSettings, the launcher's open")
+    -- The right-click passes through to the strip's own right-click, which opens the same panel.
+    inst.handle.settings:_run("OnClick", "RightButton")
+    assertEqual(opened, 2, "a right-click on the mark is the strip's right-click")
 end)
 
 test("dragging the strip moves the GRID and saves its anchor", function()

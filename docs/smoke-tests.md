@@ -19,14 +19,14 @@ and a retired one leaves its number unused.
 | PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 22 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip beside it, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 19 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip flipping at the screen edge, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| GRID-1 – 24 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
-| SIM-1 – 18 | Simulator | `/kcd sim`: the duration probe, refusals, the four scenarios, no strip over the grids, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
-| DIAG-1 – 47 | Debug and diagnostics | `/kcd debug` subcommands, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band |
-| DEGRADED-1 – 16 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks |
+| SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
+| DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
+| DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
 | SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
@@ -100,7 +100,8 @@ Which checks to run for a partial change:
   wrapper, the DebugLog descriptor): DIAG-21 – 25 and PANEL-25, then DIAG-16 – 20. The tests pin what
   is passed; these are the only look at what is drawn.
 - **Launcher, logo or `## IconTexture`** (and a re-vendor that moves `Launcher.lua`): INSTALL-10 – 14,
-  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13. A wrong TGA format draws nothing and
+  STATE-5, STATE-9, PANEL-26 – 27, PROFILE-8, SLASH-12 – 13, DIAG-48 (the library windows' gears open
+  the opener the launcher registers). A wrong TGA format draws nothing and
   raises nothing, so no gate reports it.
 - **The Grid page** (`settings/Grid.lua`, `settings/Panel_Render.lua`, the three entry files):
   PANEL-1 – 13, PANEL-17, PANEL-29, FOCUS-6 – 7, COMBAT-4 and SLASH-9.
@@ -613,7 +614,8 @@ you had before the update is still yours.
   Result: pass (owner-marked 2026-10-10)
 - **GRID-14. Grid strips carry no close mark.** `/kcd unlock` → the grid strips and cast bar strips
   have the `?` mark and no X (KickCD does not adopt the strip's close option, owner ruling X-03).
-  Result: pass (owner-marked 2026-10-10)
+  Result: pass (owner-marked 2026-10-10). Amended 2026-11-17 (AD-86-KC): each strip now also carries a
+  settings gear left of the `?` (GRID-23, CAST-20); still no X. Result: pending
 - **GRID-15. Cooldown text off: the icon still dims, tints and brightens on time (KickCD#9).**
   Annotations → Show cooldown text off. Put Pummel on cooldown → the icon dims and tints for the whole
   cooldown and brightens when it is castable again, with no countdown drawn. Then, mid-rotation, press
@@ -624,13 +626,19 @@ you had before the update is still yours.
   cooldown and stand still → one `[Cooldowns]` line when it starts and one when it ends, none repeating
   in between. Then `/kcd perf` through a short fight → `iconApply` is close to 0 calls/sec while
   spells sit on cooldown, and the cost shows under `cdText`. Result: pass (owner, 2026-10-02)
-- **GRID-17. The grid strip's tooltip sits beside the strip (TP-KC-01).** `/kcd unlock`, hover the
+- **GRID-17. The grid strip's tooltip sits beside the strip (TP-KC-01; amended by AD-92-KC below).** `/kcd unlock`, hover the
   Target grid's strip, then its `?` → each time the tooltip opens to the strip's RIGHT, its top level with
   the strip's top, not above the strip and not at the cursor; it covers neither the unit label nor the
   Focus grid above. Drag the grid until its strip nearly touches the right edge of the screen and hover
   again → the tooltip opens to the strip's LEFT instead. `/kcd set scale 1.5` and repeat both → the same
   two sides, fully on screen (the grid strip takes the master scale, so the flip is judged in screen
-  pixels). Result: pass (owner-marked 2026-10-10)
+  pixels). Result: pass (owner-marked 2026-10-10). Amended 2026-11-18 (AD-92-KC, LibKa0s#92): the
+  standard's chrome rule replaces TP-KC-01's beside-the-strip placement. `/kcd unlock`, hover the Target
+  grid's strip, then its `?`, then its gear → each time the tooltip is attached centered ABOVE the strip,
+  2 px clear of it, in the same place for the strip and its `?` (the gear's *Open settings* centered on
+  the gear), never at the cursor and never beside the strip. Drag the grid until its strip nearly
+  touches the top of the screen and hover again → the tooltip opens BELOW the strip instead, fully on
+  screen. `/kcd set scale 1.5` and repeat → still centered on the strip. Result: pending
 - **GRID-18. `target_casting` glows on a friendly cast too (KC-03).** `/kcd set visibility always`,
   `/kcd set units.target.icons.primaryGlowTrigger target_casting`, an interrupt off cooldown. Target a
   friendly player and have them hard-cast (a heal, a hearthstone) → the primary icon starts glowing
@@ -677,6 +685,29 @@ you had before the update is still yours.
   (rotating rays)` → *Pixel border* goes, *Offset* stays. Set the secondary to Button too → *Offset* goes
   and the Button group shows once. Both triggers `never` → the picked group stays, dimmed. `/kcd get` on
   a hidden knob still answers. Repeat on Focus, unlinked. Result:
+- **GRID-23. The grid strip's settings mark (AD-86-KC, LibKa0s#86).** `/kcd unlock` → each grid strip
+  (Target and Focus) shows a gear left of its `?`, both in the skin's gray mark tint, and the label is
+  not clipped by either mark. Hover the gear → it brightens and its own *Open settings* tooltip opens
+  above the gear (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*; GRID-17);
+  leave → it dims back. Left-click it out of combat → the settings panel opens. Right-click it →
+  the panel opens too (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
+  it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
+  takes the new skin's tint. Result:
+- **GRID-24. An icon's tooltip opens beside the whole display (AD-92-KC, LibKa0s#92).** `/kcd lock`,
+  Units → Icons → Annotations → *Show tooltip on hover* on, `/kcd set visibility always`, the cast bar
+  anchored (`anchorMode PRIMARY`) and the unit label on. Hover an icon in the middle of the Target grid
+  → the spell tooltip opens to the RIGHT of the whole display, 2 px clear of its right outer edge (the
+  grid, the anchored cast bar, the label, whichever reaches furthest), its top level with the hovered
+  icon's top. It covers no icon, not the bar, not the label, and it does not follow the pointer as you
+  move across the icon. Hover a second icon → the tooltip stays outside the display, its top moving
+  only to that icon's top. Drag the grid (unlock, then lock again) until the display's right edge is
+  within a tooltip's width of the screen's right edge, hover → the tooltip opens LEFT of the display
+  instead. Set `anchorMode FREE` with a cast on the bar → the free bar no longer counts: a tooltip from
+  an icon opens right of the grid and label only. Move the grid near the screen's bottom edge and hover
+  an icon whose spell you have not looked at this session (its data loads late, so the tooltip grows a
+  moment after it opens) → once it grows it still sits wholly on screen, its bottom clear of the
+  screen's bottom edge (review fix: the size hook re-places it). Fail: a tooltip at the icon's top-right corner (the
+  old `ANCHOR_RIGHT`), at the cursor, or over any part of the display. Repeat on Focus. Result: pending
 
 ## CAST
 
@@ -707,7 +738,8 @@ you had before the update is still yours.
 - **CAST-9. The `?` mark drags too.** Drag the `?` on the strip → the bar moves. Result: pass (owner-marked 2026-10-10)
 - **CAST-10. Strip tooltips.** Hover the strip, then the `?` → each shows the same tooltip, titled
   `KickCD castbar` and reading `Drag to move. Right-click for settings.` (prose, no locale key), in the
-  same place beside the strip (CAST-15); the `?` brightens under the cursor. Result: pass (owner-marked 2026-10-10)
+  same place beside the strip (CAST-15); the `?` brightens under the cursor. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-18 (AD-92-KC): the same place is now attached centered above the strip (CAST-15). Result: pending
 - **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
   opens. Result: pass (owner-marked 2026-10-10)
 - **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
@@ -722,11 +754,16 @@ you had before the update is still yours.
   them start Fire Breath or Eternity Surge → the bar shows the empower, the `*_casting` visibility and glow follow
   it at once, and the bar clears on its release. A blank bar or a late glow means the
   `UNIT_SPELLCAST_EMPOWER_*` routes are missing ([midnight-quirks.md](midnight-quirks.md)). Result: pass (owner-marked 2026-10-10)
-- **CAST-15. The cast bar strip's tooltip sits beside the strip, and flips at the edge (TP-KC-01).**
+- **CAST-15. The cast bar strip's tooltip sits beside the strip, and flips at the edge (TP-KC-01; amended by AD-92-KC below).**
   `anchorMode FREE`, `/kcd unlock`, a cast bar on screen. Hover its strip → the tooltip opens to the
   strip's RIGHT, top edges level, not at the cursor. Drag the bar until the strip's right end is within a
   tooltip's width of the screen's right edge and hover again → the tooltip opens to the strip's LEFT, fully
-  on screen. Result: pass (owner-marked 2026-10-10)
+  on screen. Result: pass (owner-marked 2026-10-10). Amended 2026-11-18 (AD-92-KC, LibKa0s#92): the
+  strip is chrome, so its tooltip is attached above it. `anchorMode FREE`, `/kcd unlock`, a cast bar on
+  screen. Hover its strip, then its `?` → the tooltip is centered ABOVE the strip, 2 px clear, in the
+  same place for both, never at the cursor and never beside the strip; hover the gear → *Open
+  settings* centered above the gear. Drag the bar until its strip nearly touches the top of the screen
+  and hover again → the tooltip opens BELOW the strip, fully on screen. Result: pending
 - **CAST-16. An empty grid hands the primary anchor to the grid frame (KC-01).** `anchorMode PRIMARY`,
   `/kcd set visibility always`, `/kcd lock`. Disable every spell on the current spec's list
   (`/kcd spells disable <id>` for each) → the grid draws no icons. Target a hostile caster → the bar
@@ -740,6 +777,12 @@ you had before the update is still yours.
   `Free (drag to move)` → those four go on the next frame, *Anchor mode* and the Spell icon section stay,
   and the bar still drags. Back to Anchored → they return with their values and the bar anchors where it
   did. Result:
+- **CAST-20. The cast bar strip's settings mark (AD-86-KC, LibKa0s#86).** `anchorMode FREE`,
+  `/kcd unlock`, a cast bar on screen → its strip shows a gear left of the `?` and the label
+  (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it brightens and its own
+  *Open settings* tooltip opens above the gear (the strip and the `?` keep theirs; CAST-15). Left-click it out of combat → the settings panel opens; right-click →
+  the panel opens too; drag it → the bar moves. In combat, left-click → the gray refusal line and no
+  panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
 
 ## FOCUS
 
@@ -979,21 +1022,24 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   Result: pass (owner, 2026-10-23)
 - **SIM-10. The `pull` scenario plays on the real grid (KC-08, SM-KC-10).** `/kcd set visibility
   target_casting`, then `/kcd sim start pull` → the grid appears as Shadowcaster starts its cast, your
-  kick's swipe starts when you kick, Thrall's and Jaina's `[sim]` lines print, the CC step dims the
-  other spells for a GCD, and when combat ends the grid returns to its idle state. Since SF-KC-1 the focus also casts beside the target, and Uther's kick ends it before the channel. Result: not run (SF-KC-1 changed the steps)
+  kick's swipe starts when you kick, Samplehunter's and Mockflame's `[sim]` lines print (renamed from Thrall and Jaina by AD-87-KC), the CC step dims the
+  other spells for a GCD, and when combat ends the grid returns to its idle state. Since SF-KC-1 the focus also casts beside the target, and Sampleblade's (Uther's before AD-87-KC) kick ends it before the channel. Result: not run (SF-KC-1 changed the steps)
 - **SIM-11. The `boss` and `miss` scenarios (KC-08, SM-KC-11).** `/kcd sim start boss` → a 2-charge
   badge on your kick, counting 2 -> 1 -> 0 with the recharge swipe, and back to 2 on the expire step.
   `/kcd sim stop`, then `/kcd sim start miss` → the cast bar shows the uninterruptible cast colors, then
   the interruptible ones after the shield breaks. Result: pass (owner, 2026-10-23)
-- **SIM-12. The `leave` scenario, and no strip over the grids (KC-08; KC-02 of the 2026-10-30 skin
-  fonts run, D-13).** `/kcd sim start leave` → after Valeera leaves, the focus bar clears and the
-  target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. `/kcd sim stop`. Then
-  `/kcd set visibility target_casting` and `/kcd sim start pull` → **no** cyan strip appears over
-  either grid or label, before, between or during casts (image-46's "Simulation: Mythic+ pull, ..."
-  bars are gone); the step panel beside the grid is the only sign a simulation runs. Untick Target,
-  then Focus, in the settings → still no floating strip; no Lua error. Re-tick both, `/kcd sim stop`
-  (`/kcd reset visibility` after). Re-opened: the strip was removed. Result: Owner reported pass, 2026-10-31
-- **SIM-13. The step panel stays up for the whole session (KC-02, D-13).** `/kcd sim start pull` → the
+- **SIM-12. The `leave` scenario, and the docked strip on the grids (KC-08; AD-88-KC, LibKa0s#88,
+  reversing D-13).** `/kcd sim start leave` → after Mockshield (Valeera before AD-87-KC) leaves, the focus bar clears and the
+  target bar picks up Bonecaller's cast mid-way, and your kick interrupts it. While it runs, a cyan
+  strip reading *Simulation: <scenario> - /kcd sim stop ends it.* sits along the **top edge of each
+  grid**, just above its label, as wide as the grid, and the step panel stays up beside the grid.
+  `/kcd sim stop` → both strips go. Then `/kcd set visibility target_casting` and
+  `/kcd sim start pull` → each strip shows only while its grid shows, and goes with the grid between
+  casts (no cyan bar over nothing, image-46); the panel stays up throughout. Untick Target in the
+  settings → its strip goes with its grid, the Focus strip stays; no Lua error. Re-tick it,
+  `/kcd sim stop` (`/kcd reset visibility` after). Re-opened by AD-88-KC: the strip is back, docked.
+  Result: not run (AD-88-KC)
+- **SIM-13. The step panel stays up for the whole session (KC-02; kept by AD-88-KC).** `/kcd sim start pull` → the
   step panel opens beside the grid with **no close mark** at its top right. Press **Escape** → the
   panel stays. Let the steps run → it stays up throughout. Its Stop row (or `/kcd sim stop`) ends the
   session. `/kcd sim panel` still hides and shows it on purpose. After the stop the panel shows its
@@ -1005,7 +1051,9 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   `/kcd sim start pull` and step through → after Shadowcaster's cast, the step "Bonecaller starts a cast
   beside it" puts a cast on the focus bar while the target bar still runs; your kick ends the target's
   cast, Uther's kick ends the focus's, and then the channel follows on the focus. Fail: the focus bar
-  empty while the target casts, or the steps out of this order. Result: Passed (owner, 2026-11-02)
+  empty while the target casts, or the steps out of this order. Result: Passed (owner, 2026-11-02).
+  Amended 2026-11-18 (AD-87-KC, LibKa0s#87): the focus's kick is now Sampleblade's (SIM-20).
+  Result: pending
 - **SIM-15. The Simulation step delay slider paces the run (R3-SIM-KC).** `/kcd config` → General →
   the **Simulator** tab (after Skin) holds one slider, **Simulation step delay (seconds)**, at 1, from
   0.5 to 10 in steps of 0.5, with a tooltip naming `/kcd sim` and the next step. Set it to 4, then
@@ -1046,24 +1094,52 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   with "panel open or sim running", a panel left open by an untick, or a tick that closes at once.
   Result: pass (owner-marked 2026-11-04)
 
+- **SIM-19. The strip on a free cast bar, and at the screen's top edge (AD-88-KC, LibKa0s#88).**
+  Cast bar → Size and position → **Anchor mode** → *Free*, drag the bar clear of the grid while
+  unlocked, `/kcd lock`, then `/kcd sim start miss` → during each cast the bar carries its **own** cyan
+  strip on its top edge (above its label if the label sits there), and the grid keeps its own. Set the
+  mode back to *Anchored to primary icon* mid-session → the bar's strip goes and the grid's stays,
+  clear of the bar and the label. Stop, `/kcd unlock`, drag the grid to the very top of the screen,
+  `/kcd lock`, `/kcd sim start pull` → the grid's strip sits **under** the grid instead. No strip
+  takes a click (click through it at the world) and none covers an icon, the label or the bar.
+  Fail: a strip floating where no grid shows, a strip over the icons, or a bar anchored to the grid
+  with a second strip. Result: not run (AD-88-KC)
+- **SIM-20. The party is the collection's sample characters (AD-87-KC, LibKa0s#87).**
+  `/kcd sim` → the step panel's step list names the party as **Samplehunter**, **Sampleblade**,
+  **Mockflame** and **Mockshield** (never Thrall, Jaina, Uther or Valeera). `/kcd sim start pull` and
+  step through → the `[sim]` lines read `Sampleblade (Retribution) interrupts ... with Rebuke.`,
+  `Samplehunter (Beast Mastery) interrupts ... with Counter Shot.` and `Mockflame (Fire) interrupts
+  ... with Counterspell.`, each spec named in the client's language. `/kcd sim stop`,
+  `/kcd sim start boss` → Mockshield's kick is Pummel; `/kcd sim start leave` → `Mockshield
+  (Protection) leaves the party.` Fail: a lore name, a spec in English on a non-English client, or a
+  member with no spell name. Result: pending
+
 ## DIAG
 
 - **DIAG-1. `/kcd debug spells`.** → `Cooldowns: class=<CLASS> spec=<SPEC> (<specID>)`, then one line
   per watched spell: `[<id>] <name> ready=… active=… cdObj=yes|nil chargeCdObj=yes|nil charges=…`,
-  charges maybe `<secret>` in combat, and no remaining-time field. Result: pass (owner-marked 2026-10-10)
+  charges maybe `<secret>` in combat, and no remaining-time field. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-18 (AD-79-KC, LibKa0s#79): the same lines now land in the debug console under a
+  `/kcd debug spells` header, not in chat (DIAG-49). Result: pending
 - **DIAG-2. `/kcd debug castbar`.** Target a hostile caster mid-cast → `castbar state (target)`, the
   cast record with `current.notInterruptible: type=…, isSecret=…`, then `configured colors` and
   `live SetStatusBarColor values` for both states. With no cast the dump stops at
   `no active cast tracked (current = nil)`. Set a hostile caster as focus: `/kcd debug castbar focus` →
   `castbar state (focus)`, and `/kcd debug interrupt focus` dumps the focus unit's cast info; a bare
   `/kcd debug castbar` still reports the target. `/kcd debug castbar bogus` → `unknown unit 'bogus',
-  expected target or focus` and no dump. Result: pass (owner-marked 2026-10-10)
+  expected target or focus` and no dump. Result: pass (owner-marked 2026-10-10). Amended 2026-11-18
+  (AD-79-KC, LibKa0s#79): each dump now lands in the debug console under its `/kcd debug castbar` or
+  `/kcd debug interrupt` header, with one chat pointer (DIAG-49); the `unknown unit` refusal is still a
+  chat line and writes nothing to the console. Amended 2026-11-18 (AD-79-KC review): with no target,
+  `/kcd debug castbar` and `/kcd debug interrupt` each print the one chat line `no target` (and
+  `... focus` with no focus, `no focus`), with no pointer and nothing in the console. Result: pending
 - **DIAG-3. Logging is session-only.** `/kcd debug on` → chat says `debug logging ON` and the `[Tag] …`
   trace lines go to the console, not chat; `off` → `debug logging OFF` and they stop; `toggle` flips
   it. `/reload` → off again; no saved setting holds it. Result: pass (owner-marked 2026-10-10)
 - **DIAG-4. `/kcd debug window`.** → the console opens and closes; logging keeps its state either way.
   Result: pass (owner-marked 2026-10-10)
-- **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client. `/kcd debug on`, `/reload`,
+- **DIAG-5. `/kcd debug events`.** → `no rejected events` on a live client, in chat (a one-line
+  answer; a non-empty list is a report in the console, AD-79-KC, tested headless). `/kcd debug on`, `/reload`,
   turn it on again → the `[Init]` line ends at `profile '<name>'` with no `rejected event(s)` clause.
   Result: pass (owner-marked 2026-10-10)
 - **DIAG-6. Bare `/kcd debug`.** → the console toggles and the debug subcommand list prints. Result: pass (owner-marked 2026-10-10)
@@ -1116,14 +1192,23 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   wears KickCD's skin (SKIN-11). (Amended by KC-05, 2026-10-29: the console paints for the skin owner,
   its descriptor's `addonName`.) Rewritten by R4-SEP (LibKa0s v1.85.0 round 4 re-cut): the band is the
   dark gold gradient and the gray divider is gone. Result:
-- **DIAG-21. The title bar marks.** → copy, clear and close are three small white glyphs from
-  `libs/LibKa0s/media/icons/`, with no tooltips. A `×`, or the words Copy and Clear, means
-  `addonName = addonName` fell out of `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10)
+- **DIAG-21. The title bar marks.** → left to right Copy, Clear, settings and close: four small glyphs
+  from `libs/LibKa0s/media/icons/`, one size and one pitch, in the skin's mark tint. Hover each → it
+  brightens and a tooltip opens above it: *Copy the log*, *Clear the log*, *Open settings* and *Close*.
+  A `×`, a `*`, or the words Copy and Clear, means `addonName = addonName` fell out of
+  `core/DebugLogSetup.lua`'s descriptor. Result: pass (owner-marked 2026-10-10). Amended 2026-11-17
+  (AD-86-KC review): LibKa0s v1.105.0 (DebugLogWindow minor 5, LibKa0s#86, SR-L2) builds the marks
+  through HeaderButtons, adds the settings mark and gives every mark a tooltip; the settings mark's
+  click is DIAG-48. Result: pending
 - **DIAG-22. The copy window's close.** Click copy → `KickCDDebugCopyWindow` opens with a read-only box,
-  and its close is the same mark. Result: pass (owner-marked 2026-10-10)
+  and its close is the same mark. Result: pass (owner-marked 2026-10-10). Amended 2026-11-17 (AD-86-KC
+  review): a settings gear now sits left of that close (WidgetsCopyWindow minor 6, LibKa0s#86), the
+  console's gear pixel for pixel; its click is DIAG-48. Result: pending
 - **DIAG-23. The perf panel's close.** `/kcd perf start` → the step panel has exactly one close control,
   top right, level with the title about 6 px in: the same `close` mark as the console's, pixel for pixel
-  side by side. A `×` means `addonName` stopped reaching the library's `PerfPanel`. Result: pass (owner-marked 2026-10-10)
+  side by side. A `×` means `addonName` stopped reaching the library's `PerfPanel`. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-17 (AD-86-KC review): still one close, now with a settings gear left of it (PerfPanel
+  minor 14, LibKa0s#86), the console's gear pixel for pixel; its click is DIAG-48. Result: pending
 - **DIAG-24. The perf close only hides.** Click it → the panel hides, the run is not canceled, and
   `/kcd perf report` still has the capture. Result: pass (owner-marked 2026-10-10)
 - **DIAG-25. The console face is monospace.** → timestamps and `[tags]` line up in a column. A
@@ -1237,6 +1322,29 @@ checks, `/kcd sim stop`. A simulation casts, sends and saves nothing; if any che
   on it. Fail: a body-color strip above or beside the band, two bands, a title or close sitting high
   or low on the band, or a window with no band. KickCD draws no window of its own, so a miss is
   `libs/LibKa0s` drifting from `../LibKa0s`. Result:
+- **DIAG-48. Each library window's settings mark opens KickCD's settings (AD-86-KC review; LibKa0s#86).**
+  Out of combat, with the settings panel closed: `/kcd debug window` → click the console's gear (left
+  of its close) → KickCD's settings panel opens, the console stays up. Copy → click the copy window's
+  gear → the copy window closes and KickCD's panel opens. `/kcd perf start` → click the step panel's
+  gear → KickCD's panel opens and the run goes on (`/kcd perf report` still has it). `/kcd sim start` →
+  click the step panel's gear → KickCD's panel opens. Each gear's tooltip says *Open settings*. Beside
+  a second Ka0s addon's console (DIAG-20), its gear opens that addon's panel and KickCD's opens KickCD's.
+  In combat, click the console's gear → the gray refusal line and no panel. The library's gears open
+  the opener the launcher registered under the addon's name (Core's registry), so this passes only
+  while `core/LauncherSetup.lua`'s `name` is `addonName`, the folder name every one of these windows
+  is owned by: another addon's panel, or nothing at all, means the two have parted. The skin picker's
+  gear is SKIN-24's. Result:
+- **DIAG-49. Reports go to the console with one chat pointer (AD-79-KC, LibKa0s#79).** Debug logging
+  off (`/kcd debug off`), the console closed. Run `/kcd spells list`, then `/kcd debug spells`,
+  `/kcd debug castbar` and `/kcd debug interrupt focus` in turn → each time the console opens if it was
+  closed, the read-out lands there under a `/kcd <verb>` header (`/kcd spells list`, `/kcd debug spells`,
+  ...) even though logging is off, the console's Debug label still reads OFF, and chat prints exactly
+  ONE line: `<verb>: N lines written to the debug console. Use Copy to share it.` Copy → the report
+  pastes as plain text. `/kcd spells list WARRIOR nosuch` → `Could not determine class+spec ...` in
+  chat and nothing new in the console. `/kcd debug events` on a live client → `no rejected events` in
+  chat and nothing in the console. Clear your target, `/kcd debug castbar` → `no target` in chat, no
+  pointer, and nothing in the console (the same for `/kcd debug interrupt`). `/kcd list` still prints the settings in chat. Fail: a report's lines
+  in chat, a second chat line, logging turned on, or a refusal written to the console. Result: pending
 
 ## DEGRADED
 
@@ -1284,7 +1392,7 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   DEGRADED-5's help rows, and no Lua error. `/kcd debug events` still answers. Result: pass (owner-marked 2026-10-10)
 - **DEGRADED-15. The interrupt dump still says `<secret>`.** Run this before DEGRADED-13's restore. In
   combat, target a hostile caster whose cast flags are secret, `/kcd debug interrupt` → the dump prints,
-  every line tagged `[KCD]`, and every secret-tainted position reads `value=<secret>` (the stub's
+  every line tagged `[KCD]` (in chat: with the library absent a report streams there, DEGRADED-17), and every secret-tainted position reads `value=<secret>` (the stub's
   `NS.SECRET`), with no Lua error. Result: pass (owner-marked 2026-10-10)
 - **DEGRADED-16. The HUD on its stored picks (KC-03).** Run this before DEGRADED-13's restore.
   `/kcd unlock` → the grids, cast bar and labels draw what each profile stores, with no skin engine to
@@ -1293,6 +1401,9 @@ cannot be changed afterwards; an earlier reset puts it back to Primary. Then ren
   Tooltip edges. No face, texture or border is missing, no Lua error, and no skin picker opens at
   login. A stored shadow does not draw here, which is accepted. `/kcd lock`. Reworded for FS-KC-FLIP:
   the owner's 2026-10-30 pass was for Friz Quadrata and Blizzard Raid Bar. Result: Passed (owner, 2026-11-02)
+- **DEGRADED-17. The reports print in chat (AD-79-KC).** Run this before DEGRADED-13's restore.
+  `/kcd spells list` and `/kcd debug spells` → each read-out prints in chat, every line tagged `[KCD]`,
+  with no `lines written to the debug console` pointer and no Lua error. Result: pending
 
 ## LAYER
 
@@ -1326,7 +1437,8 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   takes the drag and its tooltip, and the `?` mark is not hidden under its strip.
   Result: pass (owner, 2026-10-24)
 - **LAYER-7. Retired 2026-10-30: the sim strip it layered was removed** (KC-02 of the skin fonts run,
-  ruling D-13; SIM-12 checks that no strip draws, SIM-13 that the step panel stays up).
+  ruling D-13; AD-88-KC brought the strip back docked on its display: SIM-12 checks the strip on the
+  grids, SIM-19 its stacking and the free cast bar, SIM-13 that the step panel stays up).
 - **LAYER-8. Tool windows raise on click and never bury a confirmation (KIC-Z10, LibKa0s LK-01).**
   Open the debug console (`/kcd debug window`), the perf panel (`/kcd perf`) and the sim panel
   (`/kcd sim`) together → clicking each raises it over the other two. General → Reset all settings
@@ -1334,7 +1446,8 @@ Frame layering (item 030, KC-ZS): the order the HUD's pieces draw in, from `NS.C
   `/kcd debug window` → the confirmation stays above the console. Result: pass (owner, 2026-10-24)
 - **LAYER-9. The icon hover tooltip still works (KIC-Z01).** `/kcd lock`, icons Show tooltip on, hover
   an icon → the spell tooltip opens; the text overlay does not take the hover.
-  Result: pass (owner, 2026-10-24)
+  Result: pass (owner, 2026-10-24). Amended 2026-11-18 (AD-92-KC): the tooltip now opens beside the
+  display, not off the icon's corner (GRID-24); it still draws over every HUD frame. Result: pending
 
 ## SKIN
 
@@ -1513,10 +1626,11 @@ after each check. Every check also fails on a Lua error or a taint warning.
   in → shortly after the world loads a small window titled **Choose a skin** opens about three quarters
   of the way up the screen, already in the profile's skin: **Ka0s KickCD** whole on its own line, then
   a dropdown showing the skin
-  worn now, a gear button and the eye beside it (the eye is SKIN-47's),
-  **Apply** under it and a close mark. Close it, `/reload` → it does not come back on that profile.
+  worn now with the eye beside it (the eye is SKIN-47's), **Apply** under it, and in the title bar a
+  settings gear left of the close mark (OptionsSkinPicker minor 12, LibKa0s#86, moved the gear there
+  from beside the dropdown). Close it, `/reload` → it does not come back on that profile.
   Create a new profile → it opens again; reset that profile after closing it → again. Every existing
-  profile shows it once too. Fail: no eye button, a title that still names the addon, the name cut off
+  profile shows it once too. Fail: no eye button, a gear still beside the dropdown, a title that still names the addon, the name cut off
   or missing above the dropdown, no window on a new or reset profile, or one on a profile that already
   closed it. Result:
 - **SKIN-23. A pick previews; Apply saves; a close puts it back (KC-04).** With `/kcd unlock` (so the HUD
@@ -1679,17 +1793,18 @@ after each check. Every check also fails on a Lua error or a taint warning.
   The icon grids and cast bars are unchanged. Fail: a rough edge, an outline on a stock page, or an
   outline left on a widget after closing the page. Result:
 - **SKIN-46. The round 6 picker copy (R6-RV; LibKa0s R6-L1, OptionsSkinPicker minor 11).** `/kcd skin` →
-  the picker opens as before: title, **Ka0s KickCD** on its own line, the skin dropdown, the gear,
-  **Apply** and the close mark, with no Lua error. Close it with the close mark, open it again and
+  the picker opens as before: title, **Ka0s KickCD** on its own line, the skin dropdown with its eye,
+  **Apply**, and the gear and the close mark in the title bar (the gear there since OptionsSkinPicker
+  minor 12, LibKa0s#86), with no Lua error. Close it with the close mark, open it again and
   close it with **Escape** → it goes cleanly both times, and `/kcd skin` opens it again. Fail: a Lua
   error at show or close, or a window that will not close. Result:
 - **SKIN-47. The picker's eye is unlock mode (R6-PV; LibKa0s R6-L1).** `/kcd lock`, then `/kcd skin`
   with the frames locked → the frames unlock (the grids and cast bars show with their drag strips, and
-  chat says *icon grid unlocked*) and the picker stays in front of them; the eye beside the gear is lit,
+  chat says *icon grid unlocked*) and the picker stays in front of them; the eye beside the dropdown is lit,
   and its tooltip says the frames are unlocked. Click the eye → the frames lock, the eye dims, and the
   tooltip says they are locked; click it again → unlocked and lit. Close the picker with the close
   mark → the frames are locked again. Repeat, closing once each with **Escape**, **Apply** and the gear
-  → locked again every time. Now `/kcd unlock` first and `/kcd skin` → nothing moves (already
+  (in the title bar, left of the close) → locked again every time. Now `/kcd unlock` first and `/kcd skin` → nothing moves (already
   unlocked); lock them with the eye and close → they are unlocked again, as before. With the picker
   up after `/kcd lock`, `/kcd lock` by hand, then close → they stay locked. Start a simulation
   (`/kcd sim start`) with the frames locked, then `/kcd skin` → the unlock is refused with the
@@ -1782,3 +1897,13 @@ The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-S
 The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Its review adds SKIN-48 (the eye across a profile switch and a reset, a /kcd skin refused in combat between). Owed: SKIN-22, SKIN-47, SKIN-48.
 
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
+
+The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
+
+The same run's AD-86-KC (LibKa0s#86) gives both drag strips a settings mark: it adds GRID-23 and CAST-20 and amends GRID-14. Its review moves the expected result of DIAG-21, DIAG-22 and DIAG-23 (the library windows' settings marks and tooltips, from the v1.105.0 re-vendor), whose owner passes are withdrawn, and of SKIN-22, SKIN-46 and SKIN-47 (the picker's gear in its title bar), and adds DIAG-48 (each library window's gear opens KickCD's panel). Owed: GRID-14, GRID-23, CAST-20, DIAG-21, DIAG-22, DIAG-23, DIAG-48, SKIN-22, SKIN-46, SKIN-47.
+
+The same run's AD-92-KC (LibKa0s#92) moves every HUD tooltip onto the Tooltip placers: an icon's spell tooltip opens beside its whole display (body), both drag strips' tooltips attach above the strip (chrome). It adds GRID-24 and amends GRID-17, CAST-10, CAST-15, GRID-23, CAST-20 and LAYER-9 (each amended check owes a fresh pass); its review adds the late-growth step to GRID-24. Owed: GRID-17, GRID-23, GRID-24, CAST-10, CAST-15, CAST-20, LAYER-9.
+
+The same run's AD-79-KC (LibKa0s#79) moves the report verbs onto the debug console (`/kcd spells list` and `/kcd debug spells|castbar|interrupt|events`, one chat pointer each): it adds DIAG-49 and DEGRADED-17 and amends DIAG-1, DIAG-2, DIAG-5 and DEGRADED-15. Owed: DIAG-1, DIAG-2, DIAG-49, DEGRADED-17.
+
+The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collection's sample characters, read from `Sim.Sample()`: it adds SIM-20 and amends SIM-10, SIM-12 and SIM-14. Owed: SIM-14, SIM-20 (SIM-10 and SIM-12 were already owed).

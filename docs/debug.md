@@ -7,10 +7,12 @@ KickCD has three kinds of debug output:
 - **The diagnostics report**, `/kcd diagnostics`, is one structured snapshot of the addon's state,
   appended to the same console after whatever trace is already there. It is what a bug report
   carries (`debug-logging-§14`). Running it turns debug logging on for the session.
-- **The four debug topics** (`/kcd debug spells`, `castbar`, `interrupt`, `events`) are narrower
-  one-shot snapshots printed to the chat frame through `NS.Util.print`, each on the cyan `[KCD]`
-  banner. They run whether the debug flag is on or off. The first three are also sections of the
-  report.
+- **The report verbs** (`/kcd spells list` and the four debug topics, `/kcd debug spells`,
+  `castbar`, `interrupt`, `events`) are narrower one-shot read-outs. Each is written into the
+  console through `LibKa0s-DebugLog-1.0`'s `D:Report` (`debug-logging-§15`, AD-79-KC): ungated, so
+  it lands whether the debug flag is on or off and never changes it, under a `/kcd <verb>` header,
+  the console revealed, and exactly one chat line pointing at it. The first three topics are also
+  sections of the report.
 
 The report and the topics are why this page exists (`documentation-§3`, Tier 2: debug surfaces
 beyond the LibKa0s default console). The console and the report's frame are the library's, and
@@ -254,10 +256,33 @@ the one chat line is the library's.
 it to `X.Sections()` in report order, add its row to the table above, and cover it in
 `tests/test_diagnostics.lua` (the section-order case names every section).
 
+## The report verbs (`debug-logging-§15`)
+
+`/kcd spells list` and the four topics below are **reports** (the owner's ruling of 2026-11-08,
+LibKa0s#79). Each goes through the one helper `report` in `core/KickCD.lua`, which is
+`NS.DebugLog:Report(tag, title, body)`:
+
+- The body is written into the console under a `/kcd <title>` header (tag `Debug` for the topics,
+  `Spells` for `spells list`) through the library's ungated append, so it lands with logging off and
+  leaves the flag as it was.
+- A hidden console is shown, and chat prints exactly one pointer:
+  `<title>: N lines written to the debug console. Use Copy to share it.`
+- A refusal or usage line (`unknown unit 'x', expected target or focus`, `Could not determine
+  class+spec ...`, `Cooldowns module not loaded`) is printed in chat by the verb before the report,
+  and writes nothing to the console. A one-line answer stays in chat too: `no rejected events`,
+  `no spells tracked for <CLASS>/<SPEC>`, and `no target` / `no focus` when `castbar` or `interrupt`
+  names a unit that does not exist (the dump would be its one-line bail, so no report is written).
+- Without LibKa0s, `core/DebugLogSetup.lua`'s stub streams the report to chat, each line tagged
+  `[KCD]`, with no pointer.
+
+Not reports: `/kcd list` (the reserved schema list, kept in chat by the ruling), the `/kcd debug`
+and `/kcd spells` sub-verb lists (help), `/kcd debug window|on|off|toggle` (acknowledgments) and
+`/kcd profile` (the library's). `/kcd diagnostics` and the perf report write to the console through
+their own library helpers. `tests/test_reports.lua` pins the shape per verb.
+
 ## The debug topics
 
-Each topic prints to chat whether or not the console is on, and none of them writes to the console.
-None of them `tostring`s or formats a value that may be secret in combat: they print a value's
+Each topic writes to the console as a report (above), whether or not logging is on. None of them `tostring`s or formats a value that may be secret in combat: they print a value's
 `type()`, its secret flag, or the shared `<secret>` placeholder (`NS.SafeToString`) instead. See
 [midnight-quirks.md](midnight-quirks.md) for why that matters. For a bug report, run the report
 instead: it carries the first three topics for both units, and everything around them.
@@ -321,5 +346,5 @@ chat-output checks for all four topics (sub-header color, the `[KCD]` banner) ar
 order, budget, read-only and stood-down behavior), the kit's shared `test_diagnostics_contract.lua`
 run against `/kcd`'s own dispatcher, `tests/test_disabled.lua` (both forms while disabled),
 `tests/test_debuglog.lua`, `tests/test_debuglogsetup.lua`, `tests/test_castbar_debug.lua`,
-`tests/test_compat_debug.lua` and `tests/test_events.lua`. The in-game checks are DIAG-27 – 33,
-DIAG-39 – 40, DIAG-17, COMBAT-11, GRID-14 and DEGRADED-9 of [smoke-tests.md](smoke-tests.md).
+`tests/test_compat_debug.lua`, `tests/test_events.lua` and `tests/test_reports.lua` (the report verbs). The in-game checks are DIAG-27 – 33,
+DIAG-39 – 40, DIAG-17, DIAG-49, COMBAT-11, GRID-14, DEGRADED-9 and DEGRADED-17 of [smoke-tests.md](smoke-tests.md).

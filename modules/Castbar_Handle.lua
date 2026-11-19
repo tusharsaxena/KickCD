@@ -80,12 +80,12 @@ end
 --- width or level read comes back secret and the widget's own tonumber guard is
 --- the right one. Contrast AuraMaster, which must pass both.
 ---
---- THE TOOLTIP SITS BESIDE THE STRIP (TP-KC-01, LibKa0s v1.68.0): `tooltipPlace` is
---- NS.Util.PlaceTooltipBeside, which anchors it to the strip's right, or its left
---- when that would leave the screen -- the owner's rule for every Ka0s strip. Until
---- then it was owned by the hovered frame at ANCHOR_TOP, which opened it over
---- whatever is stacked above the bar. A read the placement cannot trust falls back
---- to the cursor, the widget's own fallback.
+--- THE TOOLTIP IS THE LIBRARY'S CHROME PLACEMENT (AD-92-KC, LibKa0s#92): the
+--- strip is the bar's title bar, so the widget's default attaches its tooltip (and
+--- its marks') centered ABOVE the strip, flipping below only without room above
+--- (LibKa0s-Tooltip-1.0's PlaceAttached; never the cursor). TP-KC-01's
+--- `tooltipPlace = NS.Util.PlaceTooltipBeside` (right or left of the strip) is
+--- retired: the standard rules a chrome tooltip above its control.
 ---
 --- @return table|nil  nil without LibKa0s-Widgets-1.0, and in a client that
 ---                    cannot make the frame -- ApplyLock guards on the field.
@@ -103,11 +103,18 @@ local function buildHandle(inst, frame)
         -- (core/LauncherSetup.lua:137, core/KickCD.lua:264). It refuses itself
         -- in combat with options-ui-§2's gray line, so nothing is gated here.
         onRightClick = function() NS:OpenSettings() end,
+        -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC):
+        -- left of the "?", a left click opening the same panel through the same
+        -- NS:OpenSettings (so the combat refusal is the same one). Its tooltip is its
+        -- own, "Open settings" as on the library windows' gears: without
+        -- settingsTooltip the widget falls back to the strip's, whose "Drag to move"
+        -- misreads a mark whose left click opens settings (AD-86-KC review).
+        settings     = function() NS:OpenSettings() end,
+        settingsTooltip = { title = L["Open settings"] },
         -- The top of the unit's HUD band (HUD.HANDLE over UIParent), written as
         -- the widget's offset over the cast bar, so the strip and its help mark
         -- clear the grid of the same unit as well as the bar (KIC-Z07, S06).
         level        = HUD_LEVEL.HANDLE - HUD_LEVEL.CASTBAR,
-        tooltipPlace = NS.Util.PlaceTooltipBeside,
         tooltip      = {
             title = L["KickCD castbar"],
             body  = { L["Drag to move. Right-click for settings."] },

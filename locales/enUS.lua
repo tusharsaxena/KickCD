@@ -102,6 +102,9 @@ L["Simulation stopped: the grids were unlocked."] =
     "Simulation stopped: the grids were unlocked."
 L["Simulation stopped: the addon stood down."] =
     "Simulation stopped: the addon stood down."
+-- The simulation strip on each HUD display (modules/SimStrip.lua, AD-88-KC); %s is the scenario label.
+L["Simulation: %s - /kcd sim stop ends it."] =
+    "Simulation: %s - /kcd sim stop ends it."
 L["Simulator"] = "Simulator"
 L["Simulation step delay (seconds)"] = "Simulation step delay (seconds)"
 L["Paces /kcd sim: how many seconds the simulator waits between steps as it plays. A change takes effect from the next step."] =
@@ -216,25 +219,11 @@ L["%s ready"] =
     "%s ready"
 L["%s: %d charges"] =
     "%s: %d charges"
--- The scenarios (modules/SimScenario.lua, KC-08): the made-up party, the enemies, each scenario's
--- label and every step label. The role words "your kick" and "your CC" stay literal in a label:
--- modules/Sim.lua's StepLabel names the real spell while a session runs.
-L["Thrall"] =
-    "Thrall"
-L["Jaina"] =
-    "Jaina"
-L["Uther"] =
-    "Uther"
-L["Valeera"] =
-    "Valeera"
-L["Enhancement"] =
-    "Enhancement"
-L["Frost"] =
-    "Frost"
-L["Protection"] =
-    "Protection"
-L["Subtlety"] =
-    "Subtlety"
+-- The scenarios (modules/SimScenario.lua, KC-08): the enemies, each scenario's label and every
+-- step label. The party is the library's sample characters, whose names are data and never a
+-- locale key (preview-mode, Sample characters; AD-87-KC). The role words "your kick" and
+-- "your CC" stay literal in a label: modules/Sim.lua's StepLabel names the real spell while a
+-- session runs.
 L["Shadowcaster"] =
     "Shadowcaster"
 L["Bonecaller"] =
@@ -769,6 +758,9 @@ L["Target castbar"]              = "Target castbar"
 L["Focus castbar"]               = "Focus castbar"
 L["Drag to move. Right-click for settings."] =
     "Drag to move. Right-click for settings."
+-- The drag strips' settings mark (AD-86-KC review): its own tooltip, the words the library
+-- windows' gears show, so a mark whose left click opens settings does not read "Drag to move".
+L["Open settings"]               = "Open settings"
 
 -- Text label entry. Its first tab is "General" (already keyed above), not
 -- "Label": on an entry called Text label the word was the entry's, not the tab's.

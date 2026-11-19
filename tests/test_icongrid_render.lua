@@ -331,3 +331,278 @@ test("the ticker never compares a duration getter in Lua", function()
     icon.cooldownText.SetFormattedText = function() end   -- the C side accepts a secret
     ti.mocks.__flushTimers()
 end)
+
+-- ── The icon tooltip: the body rule (AD-92-KC, LibKa0s#92) ──────────────────
+--
+-- An icon is a body element of its unit's HUD display (WowAddonStandards standalone-windows,
+-- *Tooltip placement*): its spell tooltip opens BESIDE THE WHOLE DISPLAY (grid, drag strip, sim
+-- strip, an anchored cast bar, the unit label), right when it fits, else left, its top level with
+-- the icon's, 2 px off the display's outer edge, through LibKa0s-Tooltip-1.0's PlaceBeside. It was
+-- `SetOwner(self, "ANCHOR_RIGHT")`, a corner offset off the icon, which every case here is red under.
+
+local SCREEN_KIT = "/tests/_kit/mock_screen.lua"
+
+--- Rawset a frame's geometry in its own units, as mock_screen's frames answer it.
+local function geom(f, l, b, w, h, s)
+    rawset(f, "GetLeft",   function() return l end)
+    rawset(f, "GetBottom", function() return b end)
+    rawset(f, "GetRight",  function() return l and l + w end)
+    rawset(f, "GetTop",    function() return b and b + h end)
+    rawset(f, "GetWidth",  function() return w end)
+    rawset(f, "GetHeight", function() return h end)
+    rawset(f, "GetEffectiveScale", function() return s or 1 end)
+end
+
+--- A fresh enabled addon on a `sw` x `sh` screen, its target grid at (gl, 400) `gw` x 40 and
+--- locked, one icon at (640, 400) 40 x 40 with tooltips on, and a 250 x 100 GameTooltip that
+--- records its owner.
+local function tipWorld(sw, gl, gw)
+    local ti       = T.load(true, true)
+    local tNS, m    = ti.NS, ti.mocks
+    local IG       = tNS:GetModule("IconGrid")
+    local scr      = dofile(T.root .. SCREEN_KIT)(m, { width = sw, height = 800 })
+    tNS.db.profile.locked = true
+    local tInst     = IG:GetInstance("target")
+    IG:ApplyLock(tInst)
+    geom(tInst.grid, gl, 400, gw, 40)
+    tNS.Units.Icons("target").showTooltip = true
+    local btn = IG.CreateIconWidget(tInst.grid)
+    btn.unit, btn.spellID = "target", 1766
+    geom(btn, 640, 400, 40, 40)
+    -- The rest of the display, laid out where the client puts it: the unit label's text on the
+    -- grid's top edge, inside the grid's span, and the cast bar hidden (it shows only while a cast
+    -- plays; the cast-bar case below shows and places it). Left at the mock's 0,0 they would
+    -- stretch the display to the screen's left edge.
+    local lbl = tNS:GetModule("UnitLabel"):PeekInstance("target")
+    if lbl and lbl.text then geom(lbl.text, gl, 442, 60, 12) end
+    local bar = tNS:GetModule("Castbar"):GetCastbarFrame("target")
+    if bar then bar:Hide() end
+    local tip, owners = m.GameTooltip, {}
+    geom(tip, nil, nil, 250, 100)
+    tip.SetOwner = function(self, owner, anchor)
+        owners[#owners + 1] = { owner, anchor }
+        rawset(self, "__owner", owner)
+    end
+    tip.GetOwner = function(self) return rawget(self, "__owner") end
+    return { NS = tNS, m = m, IG = IG, scr = scr, inst = tInst, btn = btn, tip = tip, owners = owners }
+end
+
+--- The tooltip's one point as (point, relativeTo, relativePoint, x, y).
+local function pointOf(tip)
+    assertEqual(tip:GetNumPoints(), 1, "the tooltip is placed by one point")
+    return tip:GetPoint(1)
+end
+
+test("an icon's tooltip is owned at ANCHOR_NONE, never at a corner or the cursor", function()
+    local w = tipWorld(1920, 600, 200)
+    w.btn:_run("OnEnter")
+    assertEqual(#w.owners, 1)
+    assertTrue(rawequal(w.owners[1][1], w.btn), "owned by the icon hovered")
+    assertEqual(w.owners[1][2], "ANCHOR_NONE", "red under the old ANCHOR_RIGHT corner offset")
+    w.scr.restore()
+end)
+
+test("an icon's tooltip opens right of the display, top level with the icon, when it fits", function()
+    local w = tipWorld(1920, 600, 200)
+    w.btn:_run("OnEnter")
+    local point, rel, relPoint, x, y = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertTrue(rawequal(rel, w.m.UIParent), "an absolute point on UIParent")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 802, "the grid's right edge (800) plus the 2 px gap")
+    assertEqual(y, 440, "level with the icon's top")
+    w.scr.restore()
+end)
+
+test("an icon's tooltip opens left of the display when the right side would leave the screen", function()
+    -- 800 + 2 + 250 runs past a 1000 px screen, so the left: TOPRIGHT at 600 - 2.
+    local w = tipWorld(1000, 600, 200)
+    w.btn:_run("OnEnter")
+    local point, _, _, x, y = pointOf(w.tip)
+    assertEqual(point, "TOPRIGHT")
+    assertEqual(x, 598)
+    assertEqual(y, 440)
+    w.scr.restore()
+end)
+
+test("an anchored cast bar is part of the display: the tooltip clears the bar, not just the grid", function()
+    -- red under: a group of the icon alone (or the grid alone), which would open at 682 or 802.
+    local w = tipWorld(1920, 600, 200)
+    local Castbar = w.NS:GetModule("Castbar")
+    local bar = Castbar:EnsureFrame(Castbar:GetInstance("target"))
+    bar:Show()
+    geom(bar, 550, 445, 400, 20)
+    w.btn:_run("OnEnter")
+    local point, _, _, x = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 952, "the anchored bar's right edge (950) plus the gap")
+    -- A FREE bar is a display of its own: it drops out of the icon's group.
+    w.NS.Units.Castbar("target").anchorMode = "FREE"
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xFree = pointOf(w.tip)
+    assertEqual(xFree, 802, "a free bar does not widen the grid's display")
+    -- A hidden bar drops out too.
+    w.NS.Units.Castbar("target").anchorMode = "PRIMARY"
+    bar:Hide()
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xHidden = pointOf(w.tip)
+    assertEqual(xHidden, 802, "a hidden bar is no part of what the player sees")
+    w.scr.restore()
+end)
+
+test("the display group lists the grid first and only the members that show", function()
+    local w = tipWorld(1920, 600, 200)
+    local frames = w.IG.TipGroup("target")
+    assertTrue(rawequal(frames[1], w.inst.grid), "the grid is the group's main frame")
+    for i = 2, #frames do
+        assertTrue(frames[i]:IsShown(), "member " .. i .. " is shown")
+    end
+    assertFalse(w.inst.handle and w.inst.handle:IsShown(), "a locked grid's strip is hidden")
+    for _, f in ipairs(frames) do
+        assertFalse(rawequal(f, w.inst.handle), "so the hidden drag strip is not a member")
+    end
+    w.scr.restore()
+end)
+
+test("the drag strip is never a member: it shows only unlocked, when no icon takes the mouse", function()
+    -- The review of AD-92-KC: an icon takes the mouse only while locked and the strip shows only
+    -- while unlocked, so a strip member was dead logic. Pinned so it does not come back; red under
+    -- a tipGroup that adds inst.handle when shown.
+    local w = tipWorld(1920, 600, 200)
+    assertTrue(w.inst.handle ~= nil, "the grid has a drag strip")
+    local mouse
+    rawset(w.btn, "EnableMouse", function(_, on) mouse = on end)
+    w.inst.ordered[#w.inst.ordered + 1] = w.btn
+    w.NS.db.profile.locked = false
+    w.IG:ApplyLock(w.inst)
+    w.inst.ordered[#w.inst.ordered] = nil
+    assertTrue(w.inst.handle:IsShown(), "unlocked, the strip shows")
+    assertEqual(mouse, false, "and no icon takes the mouse, so no icon tooltip fires")
+    for _, f in ipairs(w.IG.TipGroup("target")) do
+        assertFalse(rawequal(f, w.inst.handle), "the strip is not a member even while shown")
+    end
+    w.scr.restore()
+end)
+
+test("a shown sim strip is part of the display: the tooltip clears the strip", function()
+    -- red under: a group without the docked sim strip, which would open at 802.
+    local w = tipWorld(1920, 600, 200)
+    local strip = w.m.CreateFrame("Frame", nil, w.inst.grid)
+    geom(strip, 600, 444, 420, 16)
+    strip:Show()
+    w.NS.SimStrip.__strips["target:icons"] = strip
+    w.btn:_run("OnEnter")
+    local point, _, _, x = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 1022, "the sim strip's right edge (1020) plus the gap")
+    strip:Hide()
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xHidden = pointOf(w.tip)
+    assertEqual(xHidden, 802, "a hidden sim strip drops out")
+    w.NS.SimStrip.__strips["target:icons"] = nil
+    w.scr.restore()
+end)
+
+test("the unit label's text is part of the display while shown on the grid", function()
+    -- red under: a group without the label, which would open at 802.
+    local w = tipWorld(1920, 600, 200)
+    local lbl = w.NS:GetModule("UnitLabel"):PeekInstance("target")
+    assertTrue(lbl and lbl.frame and lbl.text, "the target label exists")
+    w.NS.Units.LabelStyle("target").attach = "icons"
+    lbl.frame:Show()
+    geom(lbl.text, 600, 442, 350, 12)
+    w.btn:_run("OnEnter")
+    local point, _, _, x = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 952, "the label text's right edge (950) plus the gap")
+    lbl.frame:Hide()
+    w.tip:ClearAllPoints()
+    w.btn:_run("OnEnter")
+    local _, _, _, xHidden = pointOf(w.tip)
+    assertEqual(xHidden, 802, "a hidden label drops out")
+    w.scr.restore()
+end)
+
+test("a tooltip that grows after it is placed is placed again, re-clamped to the screen", function()
+    -- SetSpellByID on uncached data: the client fills the tooltip later and it grows. Placed for
+    -- 100 px tall, its top sits level with the icon's (440); grown to 500 px it would run 60 px off
+    -- the screen's bottom, so the size hook re-runs the placement (Tooltip.Replace) and the top
+    -- clamps to 500. Red under a placement made once, right after Show.
+    local w = tipWorld(1920, 600, 200)
+    w.btn:_run("OnEnter")
+    local _, _, _, _, y = pointOf(w.tip)
+    assertEqual(y, 440)
+    geom(w.tip, nil, nil, 250, 500)
+    w.tip:_run("OnSizeChanged", 250, 500)
+    local point, _, _, x, yGrown = pointOf(w.tip)
+    assertEqual(point, "TOPLEFT")
+    assertEqual(x, 802, "still beside the display")
+    assertEqual(yGrown, 500, "re-clamped so the grown tooltip stays on screen")
+    -- Once the pointer leaves, or another frame owns the tooltip, a resize moves nothing.
+    w.btn:_run("OnLeave")
+    w.tip:SetOwner(w.m.UIParent, "ANCHOR_NONE")
+    w.tip:Show()
+    geom(w.tip, nil, nil, 250, 600)
+    w.tip:_run("OnSizeChanged", 250, 600)
+    local _, _, _, _, yAfter = pointOf(w.tip)
+    assertEqual(yAfter, 500, "a tooltip no icon of ours owns is left where it is")
+    w.scr.restore()
+end)
+
+test("with no room on either side the icon's tooltip is attached above the icon", function()
+    -- The display spans 50..950 of a 1000 px screen: neither side holds 250 px (body rule 4).
+    local w = tipWorld(1000, 50, 900)
+    w.btn:_run("OnEnter")
+    local point, rel, _, x, y = pointOf(w.tip)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, w.m.UIParent))
+    assertEqual(x, 660, "centered on the icon")
+    assertEqual(y, 442, "2 px above the icon's top")
+    w.scr.restore()
+end)
+
+test("an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor", function()
+    local w = tipWorld(1920, 600, 200)
+    geom(w.btn, nil, nil, nil, nil)
+    w.btn:_run("OnEnter")
+    local point, rel, relPoint, x, y = pointOf(w.tip)
+    assertEqual(point, "BOTTOM")
+    assertTrue(rawequal(rel, w.btn), "a relative point on the icon")
+    assertEqual(relPoint, "TOP")
+    assertEqual(x, 0); assertEqual(y, 2)
+    w.scr.restore()
+end)
+
+test("an icon shows no tooltip while the tooltip option is off", function()
+    local w = tipWorld(1920, 600, 200)
+    w.NS.Units.Icons("target").showTooltip = false
+    w.btn:_run("OnEnter")
+    assertEqual(#w.owners, 0)
+    w.scr.restore()
+end)
+
+test("no HUD file anchors a tooltip at the cursor or a corner, nor hooks the strips' placement", function()
+    -- The HUD's own tooltips go through LibKa0s-Tooltip-1.0 (AD-92-KC). settings/ is left out: the
+    -- Settings canvas is out of the rule's scope (standalone-windows, *What it does not bind*).
+    local bad = {}
+    for _, rel in ipairs(T.tocFiles) do
+        if rel:match("^core/") or rel:match("^modules/") then
+            local fh = assert(io.open(T.root .. "/" .. rel, "r"))
+            local n = 0
+            for line in fh:lines() do
+                n = n + 1
+                local code = line:gsub("%-%-.*$", "")
+                local anchor = code:match('SetOwner%s*%b()') and code:match('"(ANCHOR_[%u_]+)"')
+                if (anchor and anchor ~= "ANCHOR_NONE") or code:find("GetCursorPosition", 1, true)
+                    or code:find("tooltipPlace", 1, true) then
+                    bad[#bad + 1] = rel .. ":" .. n
+                end
+            end
+            fh:close()
+        end
+    end
+    assertEqual(#bad, 0, "cursor or corner tooltip anchors: " .. table.concat(bad, ", "))
+end)

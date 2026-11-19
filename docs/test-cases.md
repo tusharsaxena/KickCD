@@ -114,12 +114,12 @@ Total.
 - a bad EMPOWER name is rejected and the other routes still arm
 - /kcd resetposition restores the focus grid too
 - /kcd resetposition: the target grid is still restored
-- PlaceTooltipBeside puts the tooltip to the strip's right when it fits
-- PlaceTooltipBeside flips to the strip's left when the right side would leave the screen
-- PlaceTooltipBeside anchors to the STRIP when the hovered frame is its ? mark
-- PlaceTooltipBeside compares in screen pixels, so a scaled strip flips when it should
-- PlaceTooltipBeside answers non-true and anchors nothing when a read is secret
-- PlaceTooltipBeside answers non-true and anchors nothing when a read is nil
+- a drag strip's tooltip is attached centered above the strip when there is room
+- a drag strip's tooltip flips below the strip when the screen has no room above
+- a drag strip's ? mark places its tooltip against the STRIP, not the mark
+- a drag strip's tooltip is measured in screen units, so a scaled strip centers true
+- a secret strip read attaches the tooltip above the strip by a relative point, never the cursor
+- a nil strip read attaches the tooltip above the strip by a relative point, never the cursor
 
 ### test_constants.lua (26)
 
@@ -569,7 +569,7 @@ Total.
 - Sim interference: the watch target registers only while a session runs
 - Sim diagnostics: the sim section says idle, then names the running session
 
-### test_sim_drivers.lua (27)
+### test_sim_drivers.lua (28)
 
 - SimDrivers: the module publishes DRIVERS and EVENTS, one EVENTS row per driver
 - TOC: modules/SimDrivers.lua loads between modules/SimWorld.lua and modules/Sim.lua
@@ -590,6 +590,7 @@ Total.
 - SimDrivers Kick: with no kick resolved it narrates and fires nothing
 - SimDrivers PartyKick: narrates the member, spec, enemy and spell, then fires INTERRUPTED
 - SimDrivers PartyKick: with no cast only narrates
+- SimDrivers PartyKick: a member with a specID names its spec in the client's own words
 - SimDrivers Complete: fires SUCCEEDED then STOP for each unit and ends the cast
 - SimDrivers Cc: starts the 30 s CC cooldown and a 1.5 s GCD, fires SUCCEEDED and the cooldown update
 - SimDrivers Cc: no CC resolved narrates only; a CC still cooling refuses truthfully
@@ -599,9 +600,11 @@ Total.
 - SimDrivers Expire: kick: cancels the timer, clears the cooldown and fires SPELL_UPDATE_COOLDOWN
 - SimDrivers Expire: a charge spell is back to full and fires CHARGES then COOLDOWN; cc resolves too
 
-### test_sim_e2e.lua (11)
+### test_sim_e2e.lua (13)
 
 - SimScenario: the four #38 scenarios fill NS.SimHost.SCENARIOS in order, each labeled
+- SimScenario: each party member is a library sample character, its name never localized
+- SimScenario: without LibKa0s the party is a copy of the library's rows
 - TOC: modules/SimScenario.lua loads straight after modules/Sim.lua, under a LOAD-BEARING comment
 - SimScenario: every timeline is pure: two calls answer equal steps and fire nothing
 - SimScenario: the panel's idle preview lists exactly the first scenario's step labels
@@ -613,10 +616,24 @@ Total.
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
-### test_sim_marker.lua (7)
+### test_sim_marker.lua (21)
 
-- sim marker: the floating strip is gone: no module, no TOC line, no strip at a start
-- sim marker: the scenario's strip line is out of the locale
+- sim marker: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
+- sim marker: the strip's line is in the locale
+- sim marker: idle, no strip is built and no bus target is held
+- sim marker: a start shows a cyan strip docked on each enabled grid's top edge, parented to it
+- sim marker: with the label above the grid, the grid's strip stacks clear of the label
+- sim marker: with no label above the grid, an anchored cast bar is what the strip clears
+- sim marker: with the label above an anchored cast bar, the grid's strip stacks clear of that label
+- sim marker: with the label on an anchored cast bar but not above it, the bar is what the strip clears
+- sim marker: a cast bar anchored to its grid carries no strip of its own
+- sim marker: a free cast bar carries its own strip, docked on it and parented to it
+- sim marker: a CONFIG_CHANGED mid-session re-docks: a bar set free gains its strip
+- sim marker: a grid hidden between casts hides its strip with it, and the panel stays
+- sim marker: a disabled unit's grid carries no shown strip
+- sim marker: the strip's level is the library's (display + 5): no HUD.MARKER slot
+- sim marker: a stop hides every strip and releases the bus
+- sim marker: without the library's strip, no error, and the panel marks the session
 - sim marker: a start opens the step panel with no close mark
 - sim marker: Escape does not take the panel down while a session runs
 - sim marker: the panel stays up across the session's steps
@@ -707,6 +724,18 @@ Total.
 - `/kcd diagnostics` turns logging on, then writes one chat line naming the count and Copy
 - with LibKa0s absent both forms print the library-absent line and raise nothing
 
+### test_reports.lua (9)
+
+- /kcd spells list is a report: console, ungated, one chat pointer
+- /kcd debug spells is a report: console, ungated, one chat pointer
+- /kcd debug castbar is a report, on target or the named unit
+- /kcd debug interrupt is a report, on target or the named unit
+- /kcd debug events is a report when the client refused a name
+- /kcd debug events answers an empty list in one chat line and writes nothing
+- /kcd debug castbar|interrupt with no such unit answer in one chat line and write nothing
+- a refused report verb writes nothing to the console and stays in chat
+- without LibKa0s a report streams to chat with no pointer
+
 ### test_icongrid_layout.lua (8)
 
 - Layout math is published on the IconGrid module
@@ -773,7 +802,7 @@ Total.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (28)
+### test_icongrid_render.lua (41)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -803,6 +832,19 @@ Total.
 - a finished swipe on a still-active spell is re-armed on the next tick
 - a charge-recharge tick never touches the icon body
 - the ticker never compares a duration getter in Lua
+- an icon's tooltip is owned at ANCHOR_NONE, never at a corner or the cursor
+- an icon's tooltip opens right of the display, top level with the icon, when it fits
+- an icon's tooltip opens left of the display when the right side would leave the screen
+- an anchored cast bar is part of the display: the tooltip clears the bar, not just the grid
+- the display group lists the grid first and only the members that show
+- the drag strip is never a member: it shows only unlocked, when no icon takes the mouse
+- a shown sim strip is part of the display: the tooltip clears the strip
+- the unit label's text is part of the display while shown on the grid
+- a tooltip that grows after it is placed is placed again, re-clamped to the screen
+- with no room on either side the icon's tooltip is attached above the icon
+- an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor
+- an icon shows no tooltip while the tooltip option is off
+- no HUD file anchors a tooltip at the cursor or a corner, nor hooks the strips' placement
 
 ### test_layers.lua (14)
 
@@ -919,13 +961,16 @@ Total.
 - Anchor mode draws the anchor rows only while the bar is anchored
 - a switched row stays reachable while hidden
 
-### test_icongrid_handle.lua (13)
+### test_icongrid_handle.lua (16)
 
 - the grid carries a drag strip once its frame exists
 - the strip's label names the addon and which grid it moves
-- hovering the grid's strip puts its tooltip beside the strip, not above it
+- hovering the grid's strip attaches its tooltip centered above the strip
 - ApplyLock shows the strip when it registers the drag and hides it when it clears it
 - the strip is sized to its label plus the widget's reserve
+- the grid's strip carries the settings mark beside its help mark
+- the grid strip's settings mark says what its click does
+- a left click on the grid strip's settings mark opens this addon's settings
 - dragging the strip moves the GRID and saves its anchor
 - the strip refuses to move a LOCKED grid
 - the strip hangs above the unit LABEL when one is parked on the grid
@@ -1028,7 +1073,7 @@ Total.
 - AutoSizeLong matches on-screen extents for frames at different scales
 - AutoSizeLong accounts for scale INHERITED from a parent frame
 
-### test_castbar_frame.lua (46)
+### test_castbar_frame.lua (49)
 
 - EnsureFrame builds the full widget stack once and reuses it
 - EnsureFrame creates BOTH state bars and both backgrounds
@@ -1069,7 +1114,10 @@ Total.
 - ApplyAnchor in FREE mode restores the saved anchor against UIParent
 - re-anchoring never stacks a second point on the frame
 - EnsureFrame builds the library's drag strip in place of the hint text
-- hovering the strip puts its tooltip beside the strip, not above it
+- hovering the strip attaches its tooltip centered above the strip, the mark's too
+- the cast bar's strip carries the settings mark beside its help mark
+- the cast bar strip's settings mark says what its click does
+- a left click on the cast bar strip's settings mark opens this addon's settings
 - the focus bar's strip is labeled for ITS unit
 - ApplyLock shows the strip exactly where a drag would move the bar
 - a drag finished on the strip persists the bar's new position
@@ -2018,18 +2066,19 @@ Total.
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 21 |
 | test_sim_interference.lua | 12 |
-| test_sim_drivers.lua | 27 |
-| test_sim_e2e.lua | 11 |
-| test_sim_marker.lua | 7 |
+| test_sim_drivers.lua | 28 |
+| test_sim_e2e.lua | 13 |
+| test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
 | test_debuglogsetup.lua | 24 |
 | test_diagnostics.lua | 23 |
+| test_reports.lua | 9 |
 | test_icongrid_layout.lua | 8 |
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 28 |
+| test_icongrid_render.lua | 41 |
 | test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
@@ -2038,13 +2087,13 @@ Total.
 | test_icongrid_glowgate.lua | 10 |
 | test_icongrid_glow_knobs.lua | 13 |
 | test_switched_sections.lua | 4 |
-| test_icongrid_handle.lua | 13 |
+| test_icongrid_handle.lua | 16 |
 | test_lifecycle.lua | 7 |
 | test_unitlabel.lua | 4 |
 | test_unitlabel_apply.lua | 26 |
 | test_castbar.lua | 8 |
 | test_castbar_helpers.lua | 33 |
-| test_castbar_frame.lua | 46 |
+| test_castbar_frame.lua | 49 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
 | test_cooldowns.lua | 22 |
@@ -2096,4 +2145,4 @@ Total.
 | test_skin_switch.lua | 21 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1678** |
+| **Total** | **1723** |

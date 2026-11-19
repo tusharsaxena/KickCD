@@ -159,6 +159,17 @@ local function refuse(self, tag, verb, sub, guard, msg, detail)
     return p(self, msg)
 end
 
+-- A REPORT verb's read-out (debug-logging-§15, slash-commands-§4's "Chat or the console", the
+-- owner's ruling of 2026-11-08, LibKa0s#79): `body(out)` writes the lines, and LibKa0s-DebugLog's
+-- `D:Report` puts them in the debug console under a `/kcd <title>` header through the UNGATED
+-- append (so they land with logging off, and the flag is never touched), reveals a hidden console
+-- and prints exactly one chat pointer. A verb's usage or refusal line is printed by the verb BEFORE
+-- it gets here, in chat, and writes no report. Without LibKa0s, core/DebugLogSetup.lua's stub
+-- streams the same lines to chat with no pointer. tests/test_reports.lua pins the shape per verb.
+local function report(self, tag, title, body)
+    return self.DebugLog:Report(tag, title, body)
+end
+
 -- (The `version` verb reads NS.Version(), the core/EnvSetup.lua seam. The
 -- six-line C_AddOns ladder that used to sit here was one of THREE inline copies
 -- in this addon and one of eleven across the collection; it lives in
@@ -442,32 +453,48 @@ local function debugUnit(self, sub, rest)
         "unknown unit '" .. word .. "', expected target or focus", word)
 end
 
+-- The unit dumps' bail as a short answer (AD-79-KC review): with no such unit the dump would
+-- be one line, and a one-line answer stays in chat rather than becoming a report. Raw
+-- _G.UnitExists, the same read both dumps make (they inspect the REAL client).
+local function noUnit(self, unit)
+    if _G.UnitExists and _G.UnitExists(unit) then return false end
+    p(self, "no " .. unit)
+    return true
+end
+
 local DEBUG_COMMANDS = {
     -- First, so the bare `/kcd debug` list shows the report before the topic
     -- dumps. runDebug tests the word before this table is consulted at all
     -- (debug-logging-§14); the row is here for that list.
     {"diagnostics", NS.L["Write the full diagnostic report (same as /kcd diagnostics)"],
         function(self) self.DebugLog:RunDiagnostics() end},
-    {"spells", "Print the watched spell list with cooldown state",
+    -- The four topic dumps are reports: their lines go to the console (report above), and only a
+    -- refusal (module missing, an unknown unit word) or a short answer (`no target` from the unit
+    -- dumps, `no rejected events`) is said in chat.
+    {"spells", "Write the watched spell list with cooldown state to the debug console",
         function(self)
             local m = self:GetModule("Cooldowns", true)
-            if m and m.DebugDump then m:DebugDump()
+            if m and m.DebugDump then report(self, "Debug", "debug spells", function(out) m:DebugDump(out) end)
             else refuse(self, "Debug", "debug", "spells", "Cooldowns module not loaded", "Cooldowns module not loaded") end
         end},
-    {"castbar", "Print a unit's cast bar state (target by default, or focus)",
+    {"castbar", "Write a unit's cast bar state to the debug console (target by default, or focus)",
         function(self, rest)
             local unit = debugUnit(self, "castbar", rest)
             if not unit then return end
             local m = self:GetModule("Castbar", true)
-            if m and m.DebugDump then m:DebugDump(unit)
+            if m and m.DebugDump then
+                if noUnit(self, unit) then return end
+                report(self, "Debug", "debug castbar", function(out) m:DebugDump(unit, out) end)
             else refuse(self, "Debug", "debug", "castbar", "Castbar module not loaded", "Castbar module not loaded") end
         end},
-    {"interrupt", "Dump the UnitCastingInfo / UnitChannelInfo positions of [target|focus] (target by default) with each type + secret-tainted flag, plus what the visibility logic decides — use to diagnose 12.0 secret-value handling",
+    {"interrupt", "Write the UnitCastingInfo / UnitChannelInfo positions of [target|focus] (target by default) with each type + secret-tainted flag, plus what the visibility logic decides — use to diagnose 12.0 secret-value handling (to the debug console)",
         function(self, rest)
             local unit = debugUnit(self, "interrupt", rest)
             if not unit then return end
             if NS.Compat and NS.Compat.DebugInterrupt then
-                NS.Compat.DebugInterrupt(unit)
+                local Compat = NS.Compat
+                if noUnit(self, unit) then return end
+                report(self, "Debug", "debug interrupt", function(out) Compat.DebugInterrupt(unit, out) end)
             else
                 refuse(self, "Debug", "debug", "interrupt", "Compat.DebugInterrupt unavailable",
                     "Compat.DebugInterrupt unavailable")
@@ -496,11 +523,14 @@ local DEBUG_COMMANDS = {
         end},
     -- events-frames-taint-§1: the names NS.RegisterEventList recorded because
     -- this client raised on them. Session-only, like the list it reads.
-    {"events", "List event names this client refused to register",
+    -- An empty list is a one-line answer and stays in chat; a list is a report.
+    {"events", "List event names this client refused to register (to the debug console)",
         function(self)
             local rejected = self.State and self.State.rejectedEvents or {}
             if #rejected == 0 then return p(self, "no rejected events") end
-            for _, name in ipairs(rejected) do p(self, "rejected event: " .. name) end
+            report(self, "Debug", "debug events", function(out)
+                for _, name in ipairs(rejected) do out("rejected event: " .. name) end
+            end)
         end},
 }
 
@@ -764,15 +794,19 @@ local function spellsList(self, rest)
         return p(self, ("no spells tracked for %s/%s")
                   :format(class, sd(spec)))
     end
-    p(self, ("spells for %s/%s"):format(class, sd(spec)))
+    -- A report (debug-logging-§15): the list goes to the debug console with one chat pointer. The
+    -- refusal and the empty answer above are chat lines and write no report.
     local Compat = self.Compat or {}
-    for i, e in ipairs(list) do
-        local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(e.spellID))
-                     or "?"
-        local flag = e.enabled == false and " (disabled)" or ""
-        p(self, ("  %2d. #%-7d %s [%s]%s"):format(
-            i, e.spellID, name, e.category or "other", flag))
-    end
+    report(self, "Spells", "spells list", function(out)
+        out(("spells for %s/%s"):format(class, sd(spec)))
+        for i, e in ipairs(list) do
+            local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(e.spellID))
+                         or "?"
+            local flag = e.enabled == false and " (disabled)" or ""
+            out(("  %2d. #%-7d %s [%s]%s"):format(
+                i, e.spellID, name, e.category or "other", flag))
+        end
+    end)
 end
 
 -- The spell and its [CLASS SPEC] go through core/SpellInput.lua, the resolver
@@ -887,7 +921,7 @@ local function spellsReset(self, rest)
 end
 
 local SPELLS_COMMANDS = {
-    {"list",     "List spells — `... list [CLASS SPEC]`",
+    {"list",     "List spells to the debug console — `... list [CLASS SPEC]`",
         function(self, rest) spellsList(self, rest) end},
     {"add",      "Add a spell — `... add <id|name> [CLASS SPEC]`",
         function(self, rest) spellsAdd(self, rest) end},

@@ -195,6 +195,7 @@ local SUITES = {
     "test_debuglog",
     "test_debuglogsetup",
     "test_diagnostics",
+    "test_reports",
     "test_icongrid_layout",
     "test_icongrid_layout_pass",
     "test_icongrid_apply",

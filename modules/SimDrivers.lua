@@ -327,10 +327,13 @@ end
 
 -- ── a party member's kick, a completed cast, crowd control ────────────────────────────────────
 
---- Party member `key`'s name, spec word and kick spell (scenario data; the key when absent).
+--- Party member `key`'s name, spec word and kick spell (scenario data; the key when absent). The
+--- spec is named by the client from the row's specID (preview-mode, *Sample characters*, rule 5),
+--- and the row's English `spec` stands in for a row without one.
 local function member(key)
     local row = scenarioRow("PARTY", key) or {}
-    return row.name or tostring(key), row.spec or "?", row.spell or row.kick
+    local spec = row.specID and NS.Util.SpecDisplayName(row.specID) or row.spec
+    return row.name or tostring(key), spec or "?", row.spell or row.kick
 end
 
 EVENTS.PartyKick = { "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_STOP" }
