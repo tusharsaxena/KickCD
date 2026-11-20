@@ -964,6 +964,12 @@ end
 --- and so does no face at all: while the Scope's Ignore fonts is on, the skin answers nil for
 --- hud.font (LibKa0s v1.81.0, R-1) and the badge, having no pick of its own, draws the client's
 --- number face. Nothing is fetched then, so no LibSharedMedia default can stand in for it.
+---
+--- The shadow is the skin's `hud.shadow` (SD-SK-KC.1, cause D6), through S.HudFont as the countdown's
+--- is: a raw SetFont kept the template's shadow under every skin, where Ka0s Default states none. The
+--- badge has no shadow row, so its stored shadow is false and the companion is always on.
+local chargesOpts = { shadow = false, shadowFromSkin = true }
+
 local function applyChargesFont(icon, LSM)
     local fobj = _G.NumberFontNormal
     if not (fobj and fobj.GetFont and icon.chargesText and icon.chargesText.SetFont) then return end
@@ -971,7 +977,10 @@ local function applyChargesFont(icon, LSM)
     local key = NS.SkinResolve("hud.font", nil, true)
     local face = key and LSM and LSM.Fetch and LSM:Fetch("font", key, true)
     if face or base then
-        icon.chargesText:SetFont(face or base, NS.SkinHudSize(size or 14, true), NS.SkinFontFlags(nil))
+        chargesOpts.face = face or base
+        chargesOpts.size = NS.SkinHudSize(size or 14, true)
+        chargesOpts.flags = NS.SkinFontFlags(nil)
+        NS.Skin.HudFont(icon.chargesText, chargesOpts)
     end
     -- The badge's color (cause D2). It has no row, as its face has none, so it simply follows; no
     -- answer, with no skin to read, leaves the template's.

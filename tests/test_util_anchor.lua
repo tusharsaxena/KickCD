@@ -477,30 +477,54 @@ test("a drag strip's tooltip is measured in screen units, so a scaled strip cent
     scr.restore()
 end)
 
-test("a secret strip read attaches the tooltip above the strip by a relative point, never the cursor", function()
+--- A stand-in parent for a strip whose own rect does not read: its edges answer `read`, or the
+--- rect l, b, w, h, and its own parent is UIParent, so the library's walk stops there.
+local function standInParent(m, strip, l, b, w, h, read)
+    local p = m.CreateFrame("Frame")
+    local fig = { GetLeft = l, GetBottom = b, GetRight = l and l + w, GetTop = b and b + h,
+                  GetEffectiveScale = 1 }
+    for _, k in ipairs({ "GetLeft", "GetBottom", "GetRight", "GetTop", "GetEffectiveScale" }) do
+        local v = fig[k]
+        rawset(p, k, read or function() return v end)
+    end
+    rawset(p, "GetParent", function() return m.UIParent end)
+    rawset(strip, "GetParent", function() return p end)
+    return p
+end
+
+test("a secret strip read attaches the tooltip above the strip's nearest readable ancestor, never the cursor", function()
+    -- LibKa0s#99 (WidgetsDragHandleTip minor 3, the owner's R-3): red under minor 2, which pinned
+    -- the tooltip to the strip by a relative point the restricted tree refuses.
     local secret = {}
     local strip, tip, m, scr, owners = placeBench(nil, nil, nil, nil, nil, function() return secret end)
     m.issecretvalue = function(v) return rawequal(v, secret) end
+    local parent = standInParent(m, strip, 300, 400, 400, 100)
     strip:_run("OnEnter")
     for _, o in ipairs(owners) do
         assertEqual(o[2], "ANCHOR_NONE", "owned at no anchor, never the cursor's")
     end
     local point, rel, relPoint, x, y = tip:GetPoint(1)
     assertEqual(point, "BOTTOM")
-    assertTrue(rawequal(rel, strip), "attached to the strip, the library's fallback")
-    assertEqual(relPoint, "TOP")
-    assertEqual(x, 0); assertEqual(y, 2)
+    assertFalse(rawequal(rel, strip), "never a point into the strip")
+    assertFalse(rawequal(rel, parent), "an absolute point, not one into the ancestor")
+    assertEqual(relPoint, "BOTTOMLEFT")
+    assertEqual(x, 500, "centered on the ancestor")
+    assertEqual(y, 502, "2 px above the ancestor's top")
     scr.restore()
 end)
 
-test("a nil strip read attaches the tooltip above the strip by a relative point, never the cursor", function()
-    -- A strip not yet laid out answers nil for its edges in the client.
-    local strip, tip, _, scr, owners = placeBench(nil, nil, nil, nil, nil, function() return nil end)
+test("a strip whose rect and every ancestor's read nil shows no tooltip, and raises nothing", function()
+    -- A strip not yet laid out answers nil for its edges in the client; with no ancestor that
+    -- reads either, the library hides the tooltip (minor 3) rather than point into the strip.
+    local strip, tip, m, scr, owners = placeBench(nil, nil, nil, nil, nil, function() return nil end)
+    standInParent(m, strip, nil, nil, nil, nil, function() return nil end)
+    local hidden = 0
+    local hide = tip.Hide
+    tip.Hide = function(self, ...) hidden = hidden + 1; return hide(self, ...) end
     strip:_run("OnEnter")
     for _, o in ipairs(owners) do assertEqual(o[2], "ANCHOR_NONE") end
-    local point, rel, relPoint = tip:GetPoint(1)
-    assertEqual(point, "BOTTOM")
-    assertTrue(rawequal(rel, strip))
-    assertEqual(relPoint, "TOP")
+    assertNil(tip:GetPoint(1), "no point left on the tooltip")
+    assertTrue(hidden > 0, "the tooltip is hidden")
+    tip.Hide = hide
     scr.restore()
 end)

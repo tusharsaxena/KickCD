@@ -221,6 +221,9 @@ H.AddComposed(H.ColorPair{
     key        = "cooldownTint", label = L["Cooldown tint"],
     defaults   = { cooldownTint = { r = 1, g = 0.4, b = 0.4, a = 1 } },
     classColor = { source = "player" },
+    -- A warning tint no skin moves (owner D5 "leave warning tints", docs/2026-11-01-FULL_SKINNING
+    -- 00_PLAN.md:12; skinning-§9 meaning colors), so no cooldownTintFromSkin (OptionsCompose minor 20).
+    colorFromSkin = false,
 }, STAMP)
 add{
     panel = "icons", section = "icons", unit = unit, group = L["Appearance"],

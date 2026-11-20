@@ -118,8 +118,8 @@ Total.
 - a drag strip's tooltip flips below the strip when the screen has no room above
 - a drag strip's ? mark places its tooltip against the STRIP, not the mark
 - a drag strip's tooltip is measured in screen units, so a scaled strip centers true
-- a secret strip read attaches the tooltip above the strip by a relative point, never the cursor
-- a nil strip read attaches the tooltip above the strip by a relative point, never the cursor
+- a secret strip read attaches the tooltip above the strip's nearest readable ancestor, never the cursor
+- a strip whose rect and every ancestor's read nil shows no tooltip, and raises nothing
 
 ### test_constants.lua (26)
 
@@ -1457,7 +1457,7 @@ Total.
 - clicking the band's Copy from Target copies Target onto Focus and unlinks
 - the degraded stub carries no widget maker or layout constant
 
-### test_skinsetup.lua (13)
+### test_skinsetup.lua (14)
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
@@ -1472,6 +1472,7 @@ Total.
 - Skin seam: a profile reset takes the skin back to Ka0s Default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
+- the profile default and the pre-store fallback name the library's DefaultSkin, never a literal
 
 ### test_skin_settings.lua (15)
 
@@ -1541,7 +1542,7 @@ Total.
 - skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
 - skin font kept: without the library the step still keeps the picks
 
-### test_skin_flip.lua (32)
+### test_skin_flip.lua (33)
 
 - skin flip: every color and shadow companion is a bool row defaulting on, in both places
 - skin flip: a meaning color has no companion, and no class toggle has one
@@ -1554,6 +1555,7 @@ Total.
 - skin flip: a companion off draws the stored swatch under every skin
 - skin flip: a class color comes first, whatever the companion says
 - skin flip: the shadow lands on a font object on all three texts
+- skin flip: the charges badge draws the skin's HUD shadow, as the countdown beside it does
 - skin flip: Ignore fonts leaves the stored shadow standing
 - skin flip: a shadow alone moves the guarded half of the cast bar's re-skin
 - skin flip: the companion toggle moves the signature too
@@ -2014,17 +2016,19 @@ Total.
 
 ### test_skin_values.lua (3)
 
-- skin values: every host row carries its file, substring, why and cause id
+- skin values: every host row carries its file, substring, why and a cause id or kit row category
 - skin values: no typed value outside the kit's categories and the host's rows
 - skin values: the check is falsifiable, a planted value of each shape is reported
 
-### test_skin_switch.lua (21)
+### test_skin_switch.lua (23)
 
 - skin switch: the check is falsifiable, a surface that redraws a literal is reported
+- skin switch: the check is falsifiable, a bar whose texture never moves is reported
 - skin switch: an icon's border changes
 - skin switch: an icon's countdown changes
 - skin switch: an icon's charges badge changes
 - skin switch: an icon's charges badge changes with the Scope ignored
+- skin switch: an icon's charges badge's shadow changes
 - skin switch: the primary icon's ready glow changes
 - skin switch: a secondary icon's ready glow changes
 - skin switch: the cast time changes
@@ -2117,11 +2121,11 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 32 |
 | test_options_panel_degraded.lua | 11 |
-| test_skinsetup.lua | 13 |
+| test_skinsetup.lua | 14 |
 | test_skin_settings.lua | 15 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
-| test_skin_flip.lua | 32 |
+| test_skin_flip.lua | 33 |
 | test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
@@ -2152,7 +2156,7 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | test_skin_values.lua | 3 |
-| test_skin_switch.lua | 21 |
+| test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1733** |
+| **Total** | **1737** |

@@ -8,7 +8,10 @@ local addonName, NS = ...
 --                           (Shell, Button, Text, IconBorder, ...) and Token / Color / Resolve /
 --                           OnLooksChanged. Every surface that draws reads its look here.
 --   NS.SkinChoice()         the stored (source, skin) pair, read through NS.Settings.Store.Get;
---                           "ka0s", "ka0s" before Database:Init has built the profile store.
+--                           "ka0s", NS.DEFAULT_SKIN before Database:Init has built the store.
+--   NS.DEFAULT_SKIN         the client's default skin, `Skin:DefaultSkin()` read once at load
+--                           ("ka0s" with the library absent): defaults/Profile.lua's skin.skin and
+--                           the pre-store fallback (skinning-§2, SD-SK-KC.2). Ka0s Default on Retail.
 --   NS.WriteSkinChoice(s,k,i,m) the write seam: every half through NS.Settings.Store.Set, the one
 --                           seam `/kcd set` and the panel already write through (architecture-§5);
 --                           `i`, the Scope's `{ panel, fonts }`, writes the two exceptions, and
@@ -117,6 +120,11 @@ local PANEL_PATH, FONTS_PATH = "skin.ignorePanel", "skin.ignoreFonts"
 local FONT_PATH, TEXTURE_PATH = "skin.font", "skin.texture"
 local OUTLINE_PATH = "skin.outline"
 local DEFAULT, OUTLINE_DEFAULT = "ka0s", "hud"
+
+-- The default skin CHOICE is the library's per client (skinning-§2: a profile default and every
+-- fallback name Skin:DefaultSkin(), never the literal; SD-SK-KC.2). DEFAULT stays Ka0s Default's key,
+-- the one skin a degraded install draws and the source's name.
+NS.DEFAULT_SKIN = (Skin and Skin.DefaultSkin and Skin:DefaultSkin()) or DEFAULT
 
 -- Every stored skin path, for settings/General.lua's rows and the seam's resetExempt
 -- (settings/SchemaSetup.lua): the General page's Defaults restores Master controls, never the skin.
@@ -263,7 +271,7 @@ end
 
 --- The stored pair, lazily and nil-safely: Ka0s Default until the profile store exists.
 function NS.SkinChoice()
-    return stored(SOURCE_PATH) or DEFAULT, stored(SKIN_PATH) or DEFAULT
+    return stored(SOURCE_PATH) or DEFAULT, stored(SKIN_PATH) or NS.DEFAULT_SKIN
 end
 
 --- A stored override as the profile keeps it: the LSM key, or "" for the skin's own (false, nil, "").

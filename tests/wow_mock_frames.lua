@@ -269,7 +269,12 @@ function FRAME_METHODS.SetStatusBarTexture(self, t)
     end
     return self
 end
+--- Only a StatusBar answers a fill. Every mock object shares FRAME_METHODS, so a Texture asked for
+--- one used to make a Texture, which made another when asked in turn: kit revision 58's skin-switch
+--- spy walks GetStatusBarTexture on everything it watches, and that chain ran to a stack overflow
+--- per surface, about 60 MB retained each, until the heap budget stopped the run.
 function FRAME_METHODS.GetStatusBarTexture(self)
+    if self.__objectType ~= "StatusBar" then return nil end
     self.__barTextureObj = self.__barTextureObj or makeFrame("Texture", self)
     return self.__barTextureObj
 end

@@ -222,3 +222,26 @@ test("Skin seam: the debug console, its copy window and the perf panel take the 
             site[1] .. ": the descriptor does not carry addonName = addonName")
     end
 end)
+
+test("the profile default and the pre-store fallback name the library's DefaultSkin, never a literal", function()
+    -- SD-SK-KC.2 (skinning-§2): red under `skin = "ka0s"` in defaults/Profile.lua and a literal
+    -- DEFAULT in core/SkinSetup.lua. The client's default skin is the library's answer (WoW Forever's
+    -- on that client), read once at load; the source stays "ka0s", which is a source and not a skin.
+    local m
+    local probe = T.load(false, false, function(built) m = built end, { afterFile = {
+        -- After the libraries, before core/SkinSetup.lua reads the answer.
+        ["core/CoreSetup.lua"] = function()
+            m.LibStub("LibKa0s-Skin-1.0").DefaultSkin = function() return "forever" end
+        end,
+    } })
+    local pNS = probe.NS
+    assertEqual(pNS.DEFAULT_SKIN, "forever", "NS.DEFAULT_SKIN is the library's answer")
+    assertEqual(pNS.DEFAULT_PROFILE.skin.skin, "forever", "the profile default")
+    assertEqual(pNS.DEFAULT_PROFILE.skin.source, "ka0s", "the source is not a skin")
+    local source, skin = pNS.SkinChoice()
+    assertEqual(source, "ka0s")
+    assertEqual(skin, "forever", "the pre-store fallback")
+    -- On Retail, as this addon ships, the answer is Ka0s Default, so nothing a player sees moves.
+    assertEqual(NS.DEFAULT_SKIN, "ka0s")
+    assertEqual(NS.DEFAULT_PROFILE.skin.skin, "ka0s")
+end)

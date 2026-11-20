@@ -13,8 +13,9 @@
 -- colors, and a glow the driver holds.
 --
 -- THE CAST BAR'S FILL COLORS AND THE COOLDOWN TINT ARE NOT HERE. They carry a meaning (MC), so no
--- skin moves them. The bar's fill TEXTURE is here, per state. Both cast-bar borders are the icon
--- family (KC-A1), so S.BarBorder and the bar family's None and real-style arms have no reader here.
+-- skin moves them. The bar's fill TEXTURE is here, per state, its color held (kit revision 58).
+-- Both cast-bar borders are the icon family (KC-A1), so S.BarBorder and the bar family's None and
+-- real-style arms have no reader here.
 
 local loadInstance = ...
 
@@ -84,7 +85,9 @@ local function glowProxy()
 end
 
 local surfaces = {
-    { name = "an icon's border",
+    -- The edge is skin art (icon.borderStyle through the backdrop), so its texture must move too
+    -- (kit revision 58's `expect`), not only its color.
+    { name = "an icon's border", expect = "texture",
       companion = rows("icons.borderColorFromSkin", "icons.borderTextureFromSkin"),
       build = function() return liveIcon().border end },
     { name = "an icon's countdown",
@@ -92,6 +95,12 @@ local surfaces = {
           "icons.cooldownTextFontFromSkin"),
       build = function() return liveIcon().cooldownText end },
     { name = "an icon's charges badge", build = function() return liveIcon().chargesText end },
+    -- The badge's shadow probe (SD-SK-KC.1, cause D6): it draws the skin's hud.shadow through
+    -- S.HudFont, so a raw SetFont that leaves the template's shadow draws no shadow family and fails
+    -- `expect`. Ignore fonts stands the stored shadow (none, the badge has no row), so the probe is
+    -- scoped to fonts and the surface above keeps the Scope-ignored pass.
+    { name = "an icon's charges badge's shadow", scope = "fonts", expect = "shadow",
+      build = function() return liveIcon().chargesText end },
     { name = "the primary icon's ready glow",
       companion = rows("icons.primaryGlowColorFromSkin"),
       build = function()
@@ -176,15 +185,19 @@ for _, state in ipairs({ "interruptible", "uninterruptible" }) do
         end,
     }
     surfaces[#surfaces + 1] = {
-        name = "the " .. state .. " border",
+        name = "the " .. state .. " border", expect = "texture",   -- the icon family's edge art
         companion = rows(rel .. "borderColorFromSkin", rel .. "borderTextureFromSkin"),
         build = function()
             local _, cb = castbar()
             return cb.frame["border" .. caps]
         end,
     }
+    -- Kit revision 58: the fill is a data fill, so its texture is expected to move; its color is a
+    -- cast state, held (MC, owner "Meaning colors stay", docs/2026-11-01-FULL_SKINNING/00_PLAN.md:10),
+    -- so the colors the skin's gloss draws under the probe cannot pass it for the fill.
     surfaces[#surfaces + 1] = {
         name = "the " .. state .. " fill's texture",
+        expect = "texture", hold = "color",
         companion = rows(rel .. "statusBarTextureFromSkin"),
         build = function()
             local _, cb = castbar()
@@ -203,6 +216,54 @@ return {
               why = "the cooldown tint curve's ready half: white leaves the spell icon its own colors, "
                   .. "and the tint is a meaning no skin moves",
               cause = "MC" },
+            -- Kit revision 58 (LibKa0s v1.108.0) reads keyed { r, g, b } tables and return
+            -- triples. The composers' typed defaults below mirror defaults/Profile.lua, which the
+            -- kit's "defaults swatch" category already takes: each is the stored swatch, drawn only
+            -- while its FromSkin companion is off (skinning-§9, R-2), or a meaning color.
+            { file = "settings/Castbar.lua", substring = "fontColor  = { r = 1, g = 1, b = 1, a = 1 }",
+              why = "the cast time swatch's default, drawn only while castbar.textColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Castbar.lua", substring = "bgColor = { r = 0, g = 0, b = 0, a = 0.5 }",
+              why = "each state's background swatch default, drawn only while its bgColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Castbar.lua", substring = "nameTextColor = { r = 1, g = 1, b = 1, a = 1 }",
+              why = "each state's spell name swatch default, drawn only while its nameTextColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Castbar.lua", substring = "borderColor = { r = 0, g = 0, b = 0, a = 1 }",
+              why = "each state's border swatch default, drawn only while its borderColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Castbar.lua", substring = "barColor = { r = 1, g = 0.85, b = 0.05, a = 1 }",
+              why = "the interruptible cast's fill color, a cast state no skin moves (the block passes "
+                  .. "colorFromSkin = false)",
+              cause = "MC" },
+            { file = "settings/Castbar.lua", substring = "barColor = { r = 0.85, g = 0.10, b = 0.10, a = 1 }",
+              why = "the uninterruptible cast's fill color, a cast state no skin moves (the block passes "
+                  .. "colorFromSkin = false)",
+              cause = "MC" },
+            { file = "settings/Icons.lua", substring = "cooldownTint = { r = 1, g = 0.4, b = 0.4, a = 1 }",
+              why = "the cooldown tint, a warning tint no skin moves (the block passes colorFromSkin = false)",
+              cause = "D5" },
+            { file = "settings/Icons.lua", substring = "borderColor = { r = 0, g = 0, b = 0, a = 1 }",
+              why = "the icon border swatch's default, drawn only while icons.borderColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Icons.lua", substring = "fontColor  = { r = 1, g = 1, b = 1, a = 1 }",
+              why = "the countdown swatch's default, drawn only while icons.cooldownTextColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Icons.lua", substring = "GlowColor = { r = 1, g = 1, b = 0, a = 1 }",
+              why = "each ready glow swatch's default, drawn only while its GlowColorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "settings/Label.lua", substring = "fontColor  = { r = 1, g = 0.82, b = 0, a = 1 }",
+              why = "the unit label swatch's default, drawn only while label.style.colorFromSkin is off",
+              cause = "FS-KC-FLIP" },
+            { file = "core/Util.lua", substring = "if not c then return 1, 1, 1, 1 end",
+              why = "Util.Unpack's answer for a nil color: every stored color has an AceDB default",
+              category = "unreachable default" },
+            { file = "modules/IconGrid_Render.lua", substring = "return 0.95, 0.95, 0.32, 1",
+              why = "a glow color that is no table with its companion off: AceDB always seeds the swatch",
+              category = "unreachable default" },
+            { file = "settings/Spells_Rows.lua", substring = "local WHITE = { 1, 1, 1 }",
+              why = "the white the Spells row buttons hand as tint to catalog marks that carry no color",
+              category = "white base for tinting" },
         },
     },
     switch = {

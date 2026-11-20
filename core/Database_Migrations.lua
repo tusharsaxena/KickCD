@@ -488,7 +488,7 @@ local function wornHudFace(p)
     local Skin = LibStub and LibStub("LibKa0s-Skin-1.0", true)
     local key = type(p.skin) == "table" and p.skin.skin or nil
     if Skin and type(Skin.ResolveSkin) == "function" then
-        local tokens = Skin:ResolveSkin(type(key) == "string" and key or "ka0s")
+        local tokens = Skin:ResolveSkin(type(key) == "string" and key or NS.DEFAULT_SKIN or "ka0s")
         if type(tokens) == "table" and type(tokens["hud.font"]) == "string" then return tokens["hud.font"] end
     end
     return KA0S_DEFAULT_FACE

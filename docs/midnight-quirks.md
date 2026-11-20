@@ -2,7 +2,7 @@
 
 Catalog of WoW Midnight (Interface 12.0.x) behaviors that bite the addon. **Read this before touching cooldown, cast, or visibility code.** When something breaks at patch time, this is where to look first.
 
-<!-- BEGIN VENDORED: quirks catalog v2.115.0 (source: WowAddonStandards) -->
+<!-- BEGIN VENDORED: quirks catalog v2.116.0 (source: WowAddonStandards) -->
 > Part of the **[Ka0s WoW Addon Standard](https://github.com/tusharsaxena/WowAddonStandards/blob/master/standards/STANDARDS.md)** — the split standard. This section is vendored whole into every addon's `docs/midnight-quirks.md` (§1), so its links are absolute. Cross-references use the `filename-§N` form (see the index's section map).
 
 ## Client quirks

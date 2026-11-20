@@ -86,7 +86,7 @@ Profile shape (see `defaults/Profile.lua` `DEFAULT_PROFILE`, published as `NS.C`
     -- core/SkinSetup.lua). See "skin.*" below.
     skin = {
         source      = "ka0s",        -- "ka0s" | "eui" (EllesmereUI)
-        skin        = "ka0s",        -- a registered skin key; "ka0s" is Ka0s Default
+        skin        = NS.DEFAULT_SKIN, -- a registered skin key: Skin:DefaultSkin(), "ka0s" (Ka0s Default) on Retail
         ignorePanel = true,          -- the Scope: the settings pages stay the client's
         ignoreFonts = false,         -- the Scope: every string keeps its own face, HUD too
         font        = "",            -- an LSM font key over the skin's, "" = the skin's own
@@ -136,8 +136,10 @@ dropdown, because a media pack may register its keys after the settings files lo
 three modes, `hud` by default (`all` before LibKa0s v1.83.0, ruling D-10: a stored mode stays, nothing migrates); every Font flags row left at From skin follows it, and the write
 seam stores it from `media.outline` (the tab's dropdown and another addon's copy). Each row's
 `onChange` moves only its own half of the applied skin through `LibKa0s-Skin-1.0`
-([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves,
-so a profile that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
+([ARCHITECTURE.md → Skins](ARCHITECTURE.md#skins)). The defaults are Ka0s Default from both halves on Retail:
+the skin is `NS.DEFAULT_SKIN`, the library's `Skin:DefaultSkin()` read once at load (`core/SkinSetup.lua`,
+skinning-§2, SD-SK-KC.2), which is the pre-store fallback too, and the source stays `"ka0s"`. A profile
+that never opened the Skin tab wears Ka0s Default; `pickerSeen` is false on every profile,
 old and new (owner ruling O3), so the first-run skin picker shows once on each. `skin.hudReset` is the
 one-time HUD style reset's record, `skin.flagsReset` the Font flags step's, `skin.fontPicksKept`
 the picked-face step's and `skin.fullSkinReset` the one step onto the skin's, none with a row (see the

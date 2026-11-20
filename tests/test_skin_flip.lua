@@ -168,9 +168,15 @@ test("skin flip: every color and shadow companion is a bool row defaulting on, i
             assertEqual(row.default, true, path .. " on the row")
             assertEqual(at(NS.DEFAULT_PROFILE, path), true, path .. " in AceDB's defaults")
             assertTrue(row.desc:find("not read while this is on", 1, true) ~= nil, path .. "'s tooltip")
-            -- A swatch stays live and keeps its value (options-ui-§17).
+            -- A swatch stays live and keeps its value (options-ui-§17). Font shadow is the one row a
+            -- companion disables, from OptionsCompose minor 20 (LibKa0s v1.108.0): it reads the
+            -- skin's shadow while its companion is on.
             local swatch = NS.Settings.Store.FindRow("units." .. unit .. "." .. governed)
-            assertEqual(swatch.disabledIf, nil, governed .. " carries no disabledIf")
+            if governed:lower():find("shadow$") then
+                assertEqual(swatch.disabledIf, path, governed .. " is disabled while " .. path .. " is on")
+            else
+                assertEqual(swatch.disabledIf, nil, governed .. " carries no disabledIf")
+            end
         end
     end
 end)
@@ -444,6 +450,33 @@ test("skin flip: the shadow lands on a font object on all three texts", function
     rawset(_G, "CreateFont", saved)
     assertTrue(#objects >= 2, "a font object per look")
     if not ok then error(err, 0) end
+end)
+
+test("skin flip: the charges badge draws the skin's HUD shadow, as the countdown beside it does", function()
+    -- SD-SK-KC.1 (Ka0sAddonsCommonTasks docs/2026-11-20-SKIN_DEFAULTS_AUDIT, cause D6). Red under a
+    -- badge painted with a raw SetFont, which keeps the NumberFontNormal template's shadow under
+    -- every skin: Ka0s Default states no HUD shadow, Obsidian a black one and High Contrast 2, -2.
+    local inst = boot()
+    local i, cfg = icon(inst)
+    local badge = i.chargesText
+    local function shadow()
+        local x, y = badge:GetShadowOffset()
+        local _, _, _, a = badge:GetShadowColor()
+        return rgba(x, y, a)
+    end
+    badge:SetShadowOffset(1, -1); badge:SetShadowColor(0, 0, 0, 1)   -- the template's shadow
+    i:ApplyTextConfig(cfg)
+    assertEqual(shadow(), rgba(0, 0, 0), "Ka0s Default: no shadow on the badge")
+    onSkin(inst, "obsidian", function()
+        i:ApplyTextConfig(cfg)
+        assertEqual(shadow(), rgba(1, -1, 1), "Obsidian: the skin's black drop shadow")
+    end)
+    onSkin(inst, "contrast", function()
+        i:ApplyTextConfig(cfg)
+        assertEqual(shadow(), rgba(2, -2, 1), "High Contrast: its 2, -2 offset")
+    end)
+    i:ApplyTextConfig(cfg)
+    assertEqual(shadow(), rgba(0, 0, 0), "back on Ka0s Default, gone again")
 end)
 
 test("skin flip: Ignore fonts leaves the stored shadow standing", function()
