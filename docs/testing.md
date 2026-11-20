@@ -203,7 +203,10 @@ status mark. The kit's two gates (revision 50, `skinning-§1`) take this addon's
 or cause-naming row takes, and `tests/_kit/test_skin_switch.lua` flips a probe skin, whose every token
 has a value of its own, and fails a declared surface that draws the same. The surfaces run on one
 enabled instance, so the real `OnSkinLooksChanged` listeners do the redraw. Coverage is that list: a
-surface left out of it is not tested.
+surface left out of it is not tested. From kit revision 58 (LibKa0s v1.108.0) each setter family
+moves on its own: the borders and the cast bar fills declare `expect = "texture"`, the fills hold their
+color (a cast state, MC), and the charges badge carries a shadow probe (`expect = "shadow"`, SD-SK-KC.1).
+`tests/wow_mock_frames.lua` answers `GetStatusBarTexture` only on a StatusBar, since the kit's spy walks it.
 `tests/test_surface_parity.lua` holds the degraded Skin facade to the live one key for key and the
 host copy `NS.SKIN_FALLBACK` to the library's Ka0s Default values. What a skin looks like in the client
 is [smoke-tests.md](smoke-tests.md)'s SKIN checks.

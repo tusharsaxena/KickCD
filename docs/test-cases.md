@@ -1541,7 +1541,7 @@ Total.
 - skin font kept: a profile that was not active at the upgrade is stepped when it becomes active
 - skin font kept: without the library the step still keeps the picks
 
-### test_skin_flip.lua (32)
+### test_skin_flip.lua (33)
 
 - skin flip: every color and shadow companion is a bool row defaulting on, in both places
 - skin flip: a meaning color has no companion, and no class toggle has one
@@ -1554,6 +1554,7 @@ Total.
 - skin flip: a companion off draws the stored swatch under every skin
 - skin flip: a class color comes first, whatever the companion says
 - skin flip: the shadow lands on a font object on all three texts
+- skin flip: the charges badge draws the skin's HUD shadow, as the countdown beside it does
 - skin flip: Ignore fonts leaves the stored shadow standing
 - skin flip: a shadow alone moves the guarded half of the cast bar's re-skin
 - skin flip: the companion toggle moves the signature too
@@ -2018,7 +2019,7 @@ Total.
 - skin values: no typed value outside the kit's categories and the host's rows
 - skin values: the check is falsifiable, a planted value of each shape is reported
 
-### test_skin_switch.lua (22)
+### test_skin_switch.lua (23)
 
 - skin switch: the check is falsifiable, a surface that redraws a literal is reported
 - skin switch: the check is falsifiable, a bar whose texture never moves is reported
@@ -2026,6 +2027,7 @@ Total.
 - skin switch: an icon's countdown changes
 - skin switch: an icon's charges badge changes
 - skin switch: an icon's charges badge changes with the Scope ignored
+- skin switch: an icon's charges badge's shadow changes
 - skin switch: the primary icon's ready glow changes
 - skin switch: a secondary icon's ready glow changes
 - skin switch: the cast time changes
@@ -2122,7 +2124,7 @@ Total.
 | test_skin_settings.lua | 15 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
-| test_skin_flip.lua | 32 |
+| test_skin_flip.lua | 33 |
 | test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
@@ -2153,7 +2155,7 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | test_skin_values.lua | 3 |
-| test_skin_switch.lua | 22 |
+| test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1734** |
+| **Total** | **1736** |

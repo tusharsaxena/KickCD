@@ -452,6 +452,33 @@ test("skin flip: the shadow lands on a font object on all three texts", function
     if not ok then error(err, 0) end
 end)
 
+test("skin flip: the charges badge draws the skin's HUD shadow, as the countdown beside it does", function()
+    -- SD-SK-KC.1 (Ka0sAddonsCommonTasks docs/2026-11-20-SKIN_DEFAULTS_AUDIT, cause D6). Red under a
+    -- badge painted with a raw SetFont, which keeps the NumberFontNormal template's shadow under
+    -- every skin: Ka0s Default states no HUD shadow, Obsidian a black one and High Contrast 2, -2.
+    local inst = boot()
+    local i, cfg = icon(inst)
+    local badge = i.chargesText
+    local function shadow()
+        local x, y = badge:GetShadowOffset()
+        local _, _, _, a = badge:GetShadowColor()
+        return rgba(x, y, a)
+    end
+    badge:SetShadowOffset(1, -1); badge:SetShadowColor(0, 0, 0, 1)   -- the template's shadow
+    i:ApplyTextConfig(cfg)
+    assertEqual(shadow(), rgba(0, 0, 0), "Ka0s Default: no shadow on the badge")
+    onSkin(inst, "obsidian", function()
+        i:ApplyTextConfig(cfg)
+        assertEqual(shadow(), rgba(1, -1, 1), "Obsidian: the skin's black drop shadow")
+    end)
+    onSkin(inst, "contrast", function()
+        i:ApplyTextConfig(cfg)
+        assertEqual(shadow(), rgba(2, -2, 1), "High Contrast: its 2, -2 offset")
+    end)
+    i:ApplyTextConfig(cfg)
+    assertEqual(shadow(), rgba(0, 0, 0), "back on Ka0s Default, gone again")
+end)
+
 test("skin flip: Ignore fonts leaves the stored shadow standing", function()
     -- red under: S.HudShadow's nil read as no shadow
     local inst = boot()

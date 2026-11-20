@@ -375,7 +375,9 @@ collection's reference adopter, and every piece below copies its shape.
   From skin per profile ([schema.md](schema.md)). A text on the skin's face draws its stored size
   through `NS.SkinHudSize` (`S.HudFontSize`), scaled to the skin's HUD face so it is as wide in
   every skin as in Ka0s Default; on its own face, or under Ignore fonts, it draws the stored size.
-  The charges badge takes the Font outline's flags and the scaled `NumberFontNormal` size. The
+  The charges badge takes the Font outline's flags and the scaled `NumberFontNormal` size, and the
+  skin's `hud.shadow` through `S.HudFont` like the countdown beside it (SD-SK-KC.1, cause D6), where
+  a raw `SetFont` had kept the template's shadow under every skin. The
   cast bar's signature signs the resolved size and flags too. `/kcd skin` (a feature verb, refused
   while disabled) opens the picker through `O.SkinVerb` (`NS.RunSkinVerb`).
 - **The one-time HUD style reset (owner ruling O2).** Adopting skins put every companion on the skin

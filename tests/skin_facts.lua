@@ -13,8 +13,9 @@
 -- colors, and a glow the driver holds.
 --
 -- THE CAST BAR'S FILL COLORS AND THE COOLDOWN TINT ARE NOT HERE. They carry a meaning (MC), so no
--- skin moves them. The bar's fill TEXTURE is here, per state. Both cast-bar borders are the icon
--- family (KC-A1), so S.BarBorder and the bar family's None and real-style arms have no reader here.
+-- skin moves them. The bar's fill TEXTURE is here, per state, its color held (kit revision 58).
+-- Both cast-bar borders are the icon family (KC-A1), so S.BarBorder and the bar family's None and
+-- real-style arms have no reader here.
 
 local loadInstance = ...
 
@@ -84,7 +85,9 @@ local function glowProxy()
 end
 
 local surfaces = {
-    { name = "an icon's border",
+    -- The edge is skin art (icon.borderStyle through the backdrop), so its texture must move too
+    -- (kit revision 58's `expect`), not only its color.
+    { name = "an icon's border", expect = "texture",
       companion = rows("icons.borderColorFromSkin", "icons.borderTextureFromSkin"),
       build = function() return liveIcon().border end },
     { name = "an icon's countdown",
@@ -92,6 +95,12 @@ local surfaces = {
           "icons.cooldownTextFontFromSkin"),
       build = function() return liveIcon().cooldownText end },
     { name = "an icon's charges badge", build = function() return liveIcon().chargesText end },
+    -- The badge's shadow probe (SD-SK-KC.1, cause D6): it draws the skin's hud.shadow through
+    -- S.HudFont, so a raw SetFont that leaves the template's shadow draws no shadow family and fails
+    -- `expect`. Ignore fonts stands the stored shadow (none, the badge has no row), so the probe is
+    -- scoped to fonts and the surface above keeps the Scope-ignored pass.
+    { name = "an icon's charges badge's shadow", scope = "fonts", expect = "shadow",
+      build = function() return liveIcon().chargesText end },
     { name = "the primary icon's ready glow",
       companion = rows("icons.primaryGlowColorFromSkin"),
       build = function()
@@ -176,15 +185,19 @@ for _, state in ipairs({ "interruptible", "uninterruptible" }) do
         end,
     }
     surfaces[#surfaces + 1] = {
-        name = "the " .. state .. " border",
+        name = "the " .. state .. " border", expect = "texture",   -- the icon family's edge art
         companion = rows(rel .. "borderColorFromSkin", rel .. "borderTextureFromSkin"),
         build = function()
             local _, cb = castbar()
             return cb.frame["border" .. caps]
         end,
     }
+    -- Kit revision 58: the fill is a data fill, so its texture is expected to move; its color is a
+    -- cast state, held (MC, owner "Meaning colors stay", docs/2026-11-01-FULL_SKINNING/00_PLAN.md:10),
+    -- so the colors the skin's gloss draws under the probe cannot pass it for the fill.
     surfaces[#surfaces + 1] = {
         name = "the " .. state .. " fill's texture",
+        expect = "texture", hold = "color",
         companion = rows(rel .. "statusBarTextureFromSkin"),
         build = function()
             local _, cb = castbar()
