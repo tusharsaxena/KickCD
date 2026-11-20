@@ -27,7 +27,7 @@ and a retired one leaves its number unused.
 | SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
-| SKIN-1 – 47 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye |
+| SKIN-1 – 49 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye, the Font shadow row following its skin box |
 | LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
 | LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
 
@@ -1846,6 +1846,16 @@ after each check. Every check also fails on a Lua error or a taint warning.
   it cannot open in combat), leave combat, then reset the profile → the reset profile wears its default
   lock (unlocked) and is not relocked by the picker closing. Fail: the first profile left unlocked after
   the switch, the new profile locked by it, or the reset profile locked. Result:
+- **SKIN-49. Font shadow follows its skin box (SD-RV-KC; LibKa0s v1.108.0, OptionsCompose minor 20).**
+  `/kcd config` → Units → Icons → Annotations → Cooldown text, then Cast bar → Text → Font (both texts),
+  then Text label → Font, each with `Use the skin's shadow` ticked → the Font shadow box is grayed out.
+  On **Obsidian** it reads ticked, on **Ka0s Default** unticked, as each skin draws or leaves off the
+  shadow. Untick `Use the skin's shadow` → Font shadow comes live and shows your own stored value, and
+  the HUD text draws that under every skin. On Cast bar → Interruptible and Non-interruptible → Bar,
+  and Icons → Appearance → States, there is no `Use the skin's color` box beside Bar color or Cooldown
+  tint: those colors are meanings and never move with the skin. Fail: a Font shadow box live while
+  its skin box is ticked, a skin box beside Bar color or Cooldown tint, or a HUD shadow that disagrees
+  with the rows. Result:
 
 ## Non-English client
 
@@ -1935,3 +1945,5 @@ The same run's AD-79-KC (LibKa0s#79) moves the report verbs onto the debug conso
 The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collection's sample characters, read from `Sim.Sample()`: it adds SIM-20 and amends SIM-10, SIM-12 and SIM-14. Owed: SIM-14, SIM-20 (SIM-10 and SIM-12 were already owed).
 
 The adoption feedback run (AF-RV-KC and AF-STRIP-KC of Ka0sAddonsCommonTasks `docs/2026-11-19-ADOPTION_FEEDBACK/`, LibKa0s v1.107.0, the owner's ruling: all three marks on every strip) gives both drag strips the X and points each gear at its own display's entry: it adds GRID-25 and CAST-21 and amends GRID-23 and CAST-20 (the marks' order, tints and the gear's page). Owed: GRID-23, GRID-25, CAST-20, CAST-21.
+
+The skin-defaults run (SD-RV-KC of Ka0sAddonsCommonTasks `docs/2026-11-20-LIBKA0S_94_97_99_100/`, LibKa0s v1.108.0) adds SKIN-49: every Font shadow row is disabled while its `Use the skin's shadow` box is ticked, and the cast bar's fill colors and the cooldown tint keep no skin box. A drag strip whose rect reads secret now shows its tooltip above its nearest readable ancestor (LibKa0s#99); KickCD's strips sit on readable frames, so GRID-17 and CAST-10 do not move. Owed: SKIN-49.

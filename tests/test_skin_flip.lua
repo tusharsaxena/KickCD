@@ -168,9 +168,15 @@ test("skin flip: every color and shadow companion is a bool row defaulting on, i
             assertEqual(row.default, true, path .. " on the row")
             assertEqual(at(NS.DEFAULT_PROFILE, path), true, path .. " in AceDB's defaults")
             assertTrue(row.desc:find("not read while this is on", 1, true) ~= nil, path .. "'s tooltip")
-            -- A swatch stays live and keeps its value (options-ui-§17).
+            -- A swatch stays live and keeps its value (options-ui-§17). Font shadow is the one row a
+            -- companion disables, from OptionsCompose minor 20 (LibKa0s v1.108.0): it reads the
+            -- skin's shadow while its companion is on.
             local swatch = NS.Settings.Store.FindRow("units." .. unit .. "." .. governed)
-            assertEqual(swatch.disabledIf, nil, governed .. " carries no disabledIf")
+            if governed:lower():find("shadow$") then
+                assertEqual(swatch.disabledIf, path, governed .. " is disabled while " .. path .. " is on")
+            else
+                assertEqual(swatch.disabledIf, nil, governed .. " carries no disabledIf")
+            end
         end
     end
 end)

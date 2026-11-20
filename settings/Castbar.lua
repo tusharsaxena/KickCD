@@ -557,6 +557,9 @@ H.AddComposed(H.BarGroup{
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
     fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
+    -- The fill COLOR is a cast state, a meaning color no skin moves (skinning-§9; owner "Meaning
+    -- colors stay", MC), so the block takes no barColorFromSkin (OptionsCompose minor 20's opt-out).
+    colorFromSkin = false,
     defaults = { barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 1, g = 0.85, b = 0.05, a = 1 } },
     classColor = { source = "unit", unit = unit },
@@ -600,6 +603,7 @@ H.AddComposed(H.BarGroup{
     subgroup = L["Bar"],
     keys     = { barTexture = "statusBarTexture" },
     fromSkin = true,   -- "Use the skin's texture": statusBarTextureFromSkin, default true (X3)
+    colorFromSkin = false,   -- a cast state (MC), as the interruptible block says
     defaults = { barAlpha = 1, barTextureFromSkin = true,
                  barColor = { r = 0.85, g = 0.10, b = 0.10, a = 1 } },
     classColor = { source = "unit", unit = unit },

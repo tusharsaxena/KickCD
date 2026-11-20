@@ -118,8 +118,8 @@ Total.
 - a drag strip's tooltip flips below the strip when the screen has no room above
 - a drag strip's ? mark places its tooltip against the STRIP, not the mark
 - a drag strip's tooltip is measured in screen units, so a scaled strip centers true
-- a secret strip read attaches the tooltip above the strip by a relative point, never the cursor
-- a nil strip read attaches the tooltip above the strip by a relative point, never the cursor
+- a secret strip read attaches the tooltip above the strip's nearest readable ancestor, never the cursor
+- a strip whose rect and every ancestor's read nil shows no tooltip, and raises nothing
 
 ### test_constants.lua (26)
 
@@ -2014,13 +2014,14 @@ Total.
 
 ### test_skin_values.lua (3)
 
-- skin values: every host row carries its file, substring, why and cause id
+- skin values: every host row carries its file, substring, why and a cause id or kit row category
 - skin values: no typed value outside the kit's categories and the host's rows
 - skin values: the check is falsifiable, a planted value of each shape is reported
 
-### test_skin_switch.lua (21)
+### test_skin_switch.lua (22)
 
 - skin switch: the check is falsifiable, a surface that redraws a literal is reported
+- skin switch: the check is falsifiable, a bar whose texture never moves is reported
 - skin switch: an icon's border changes
 - skin switch: an icon's countdown changes
 - skin switch: an icon's charges badge changes
@@ -2152,7 +2153,7 @@ Total.
 | test_diagnostics_contract.lua | 8 |
 | test_lizard_sighted.lua | 8 |
 | test_skin_values.lua | 3 |
-| test_skin_switch.lua | 21 |
+| test_skin_switch.lua | 22 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1733** |
+| **Total** | **1734** |
