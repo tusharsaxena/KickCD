@@ -1457,7 +1457,7 @@ Total.
 - clicking the band's Copy from Target copies Target onto Focus and unlinks
 - the degraded stub carries no widget maker or layout constant
 
-### test_skinsetup.lua (13)
+### test_skinsetup.lua (14)
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
 - Skin seam: the read answers Ka0s Default before the profile store exists
@@ -1472,6 +1472,7 @@ Total.
 - Skin seam: a profile reset takes the skin back to Ka0s Default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
+- the profile default and the pre-store fallback name the library's DefaultSkin, never a literal
 
 ### test_skin_settings.lua (15)
 
@@ -2120,7 +2121,7 @@ Total.
 | test_settings_widgets.lua | 20 |
 | test_options_panel.lua | 32 |
 | test_options_panel_degraded.lua | 11 |
-| test_skinsetup.lua | 13 |
+| test_skinsetup.lua | 14 |
 | test_skin_settings.lua | 15 |
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
@@ -2158,4 +2159,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1736** |
+| **Total** | **1737** |

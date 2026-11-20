@@ -381,7 +381,9 @@ local DEFAULT_PROFILE = {
     -- false on every profile, old and new (owner ruling O3): the first-run picker shows once each.
     skin = {
         source      = "ka0s",
-        skin        = "ka0s",
+        -- The client's default skin (Skin:DefaultSkin(), core/SkinSetup.lua; skinning-§2): Ka0s
+        -- Default on Retail. The source is a source, not a skin, and stays "ka0s".
+        skin        = NS.DEFAULT_SKIN or "ka0s",
         ignorePanel = true,
         ignoreFonts = false,
         font        = "",
