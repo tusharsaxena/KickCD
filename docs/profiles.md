@@ -114,6 +114,12 @@ degradation stub counts nothing, so the handler's line goes out without a count.
 Profiles page's own Reset Profile button and a `/run` call `db:ResetProfile()` directly, so nothing
 is stashed, and the line goes out without a count rather than with a wrong one.
 
+The handler also repaints the open options panel, through `NS.RefreshOptionsPanel` (the library's
+structural `RefreshAllPanels`): a page on screen re-renders from the new profile and a hidden one
+repaints on its next show, after the migrations and the spell re-seed so it paints the profile as
+it now stands. Without it an open page kept the old profile's values on screen (FU-DX-KC);
+`tests/test_slash_profile.lua` pins it for `/kcd profile`, a switch straight at the db, and a reset.
+
 ## Profiles and per-unit appearance
 
 Per-unit appearance (`icons` / `castbar`) is read through `NS.Units.Icons(unit)` /

@@ -557,7 +557,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
     -- sections peeled out of OptionsWidgets) fifteen, and OptionsMedia.lua (v1.83.0, the media
     -- pickers) sixteen, and the four peels of v1.84.0 (OptionsFlow, OptionsIdSuggest, OptionsTabbed,
     -- OptionsSkinPickerRows) twenty, and OptionsHeader (v1.93.0, the header block out of OptionsTabs) twenty-one,
-    -- and OptionsSkinPickerQueue (v1.105.0, the picker's apply queue) twenty-two: the
+    -- and OptionsSkinPickerQueue (v1.105.0, the picker's apply queue) twenty-two, and
+    -- OptionsComposeMaster (v1.109.0, the Master controls composers out of OptionsCompose) twenty-three: the
     -- count below moved, and the derived scan already covered it.
     local lib = T.mocks.LibStub("LibKa0s-Options-1.0", true)
     assertTrue(type(rawget(lib, "STRINGS")) == "table",
@@ -578,8 +579,8 @@ test("libs/LibKa0s/Options.lua takes no locale override, so none can be mis-pass
             scanned = scanned + 1
         end
     end
-    assertEqual(scanned, 22,
-        "the major is twenty-two files at LibKa0s v1.105.0 (OptionsSkinPickerQueue joined OptionsHeader of v1.93.0) -- a count that moved means a file "
+    assertEqual(scanned, 23,
+        "the major is twenty-three files at LibKa0s v1.109.0 (OptionsComposeMaster joined OptionsSkinPickerQueue of v1.105.0) -- a count that moved means a file "
         .. "joined or left it, and this case is where that is noticed")
 
     -- ...and the descriptor this addon passes must not pretend otherwise.

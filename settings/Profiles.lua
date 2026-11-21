@@ -69,10 +69,10 @@ local function Build(mainCategory)
     -- published way to say "this page's contents changed" (a host that
     -- guessed at the private flag instead is the failure that member was
     -- added for), and the OnHide below arms it. Declaring a renderer does
-    -- put this page on H.RefreshAllPanels' fan-out for the first time, but
-    -- nothing fires that on a profile switch -- Database:OnProfileChanged
-    -- publishes the message bus and stops -- so the OnHide is what actually
-    -- keeps the promise in the paragraph above.
+    -- put this page on H.RefreshAllPanels' fan-out, which Database:OnProfileChanged
+    -- now sets off (NS.RefreshOptionsPanel, FU-DX-KC) on every switch, copy and
+    -- reset. The OnHide still keeps the promise in the paragraph above on its
+    -- own: a reopen re-renders whether or not a profile event came between.
     H.SetRenderer(ctx, function()
         -- SHOWN EXPLICITLY, every render. AceGUI:Release hides a frame before
         -- pooling it, and neither AceGUI:Create nor AceConfigDialog:Open shows

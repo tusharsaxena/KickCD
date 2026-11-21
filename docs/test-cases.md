@@ -1791,7 +1791,7 @@ Total.
 - degraded `/kcd lock` writes locked, and confirms
 - degraded `/kcd lock` while disabled prints the DisabledLine and does not act
 
-### test_slash_profile.lua (14)
+### test_slash_profile.lua (15)
 
 - COMMANDS carries `profile` beside the settings verbs, in a pinned order
 - the `profile` description is the locale's, and names the <name> form
@@ -1803,6 +1803,7 @@ Total.
 - a name that differs only in case is refused with a did-you-mean
 - the current profile answers `Already on`, and switches nothing
 - in combat the switch is refused, and the profile does not move
+- a profile switch repaints the open options panel, from the verb and from AceDB
 - `profile` is on the addon's own live verbs, not the library's reserved list
 - while disabled `/kcd profile <name>` still switches, with no refusal line
 - with LibKa0s absent `/kcd profile` prints the library-absent line and switches nothing
@@ -2139,7 +2140,7 @@ Total.
 | test_slash_style.lua | 10 |
 | test_slash.lua | 53 |
 | test_slash_degraded.lua | 21 |
-| test_slash_profile.lua | 14 |
+| test_slash_profile.lua | 15 |
 | test_disabled.lua | 20 |
 | test_opensettings.lua | 8 |
 | test_perfsetup.lua | 25 |
@@ -2159,4 +2160,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1737** |
+| **Total** | **1738** |

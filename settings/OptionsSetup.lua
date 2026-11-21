@@ -556,6 +556,10 @@ end
 NS.CreateOptionsPanel  = function() Helpers.CreateOptionsPanel() end
 NS.OpenOptionsPanel    = function() Helpers.OpenOptionsPanel() end
 
--- AceDB profile changes call this so any open page re-reads its values, and so
--- do `/kcd set`, `/kcd reset` and `/kcd resetall` through SetAndRefresh.
+-- The STRUCTURAL sweep a profile event owes the panel: core/Database.lua's
+-- Database:OnProfileChanged calls it on every switch, copy and reset, so a shown
+-- page re-renders from the new profile and a hidden one repaints on its next
+-- show. A single-setting write (`/kcd set`, `/kcd reset`, a widget) does NOT come
+-- here: Helpers.SetAndRefresh ends in the scalar RefreshScalars, and `/kcd
+-- resetall` is the library's RestoreAllDefaults, which sweeps on its own.
 NS.RefreshOptionsPanel = function() Helpers.RefreshAllPanels() end
