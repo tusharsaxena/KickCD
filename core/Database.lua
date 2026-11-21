@@ -736,6 +736,13 @@ function Database:OnProfileChanged(event, db, arg)
     -- switch, so a profile with the addon switched off shows nothing.
     if NS.MaybeShowSkinPicker then NS.MaybeShowSkinPicker() end
 
+    -- The open options panel, STRUCTURALLY (settings/OptionsSetup.lua's NS.RefreshOptionsPanel, the
+    -- library's RefreshAllPanels): a switch, a copy or a reset can change every value a page shows
+    -- and which rows it draws (a linked Focus), so a shown page re-renders and a hidden one repaints
+    -- on its next show. After the migrations and the re-seed above, so it paints the profile as it
+    -- now stands. The degraded load's stub is a no-op.
+    if NS.RefreshOptionsPanel then NS.RefreshOptionsPanel() end
+
     -- Fire the closed internal message — see docs/message-bus.md, through
     -- the file's single fireProfileChanged emitter.
     fireProfileChanged(key)

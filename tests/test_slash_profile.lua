@@ -186,6 +186,40 @@ test("in combat the switch is refused, and the profile does not move", function(
     assertEqual(inst.NS.db:GetCurrentProfile(), "Default")
 end)
 
+-- ── the open panel follows the switch ───────────────────────────────────────
+
+--- How many structural sweeps `fn` sets off on `inst`'s options instance.
+local function sweeps(inst, fn)
+    local H = inst.NS.Settings.Helpers
+    local n, real = 0, H.RefreshAllPanels
+    H.RefreshAllPanels = function(...) n = n + 1; return real(...) end
+    local ok, err = pcall(fn)
+    H.RefreshAllPanels = real
+    if not ok then error(err, 0) end
+    return n
+end
+
+test("a profile switch repaints the open options panel, from the verb and from AceDB", function()
+    -- FU-DX-KC. A switch can change every value a page shows, and which rows it draws (a linked
+    -- Focus), so an open page owes a STRUCTURAL refresh -- NS.RefreshOptionsPanel, the library's
+    -- RefreshAllPanels, which re-renders a shown page and marks a hidden one dirty for its next
+    -- show. Nothing called it: the panel kept the old profile's values on screen.
+    -- red under: Database:OnProfileChanged not reaching NS.RefreshOptionsPanel
+    local inst = loadProfiles()
+    local NS = inst.NS
+    local H = NS.Settings.Helpers
+    local ctx = H.__panelFor("general")
+    ctx.panel:Show()
+    H.RefreshPanel(ctx, true)
+    assertEqual(sweeps(inst, function() run(inst, "profile Alt") end), 1,
+        "`/kcd profile Alt` must repaint the open panel once")
+    assertEqual(NS.db:GetCurrentProfile(), "Alt")
+    assertEqual(sweeps(inst, function() NS.db:SetProfile("My Raid") end), 1,
+        "a switch made outside the verb (the Profiles page, AceDB) must repaint it too")
+    assertEqual(sweeps(inst, function() NS.db:ResetProfile() end) >= 1, true,
+        "a reset rewrites the active profile in place, and repaints it")
+end)
+
 -- ── while disabled ──────────────────────────────────────────────────────────
 
 test("`profile` is on the addon's own live verbs, not the library's reserved list", function()
