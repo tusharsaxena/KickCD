@@ -750,6 +750,59 @@ Total.
 - Sim pace: at a step delay of 4 s no kick lands on a cast that has already run out
 - Sim pace: at 4 s the story holds: the pull's kick lands and is still cooling; miss refuses on cooldown
 
+### test_sim_clients.lua (19)
+
+- Sim (Forever): the party is the samples with a Forever kick, Counterspell and Shield Bash
+- Sim (Forever): a party member is named whole, First Surname (forever-quirks-§4)
+- Sim (Forever): without LibKa0s the party is the same copy of the library's rows
+- Sim (Retail): the party stays the four Retail kickers, by first name
+- Sim (Forever): every enemy casts a spell WoW Forever has
+- Sim (Retail): the enemies keep Retail's casts
+- Sim (Forever): the boss story has no charge step, and its expiry is the kick's cooldown
+- Sim (Retail): the boss story keeps its two charges
+- Sim (Forever): every party step of every story names a member of the Forever party
+- Sim (Forever): the pull is a dungeon pull; Retail keeps Mythic+
+- Sim (Forever): only Counterspell and the bear Feral Charge are off the global cooldown
+- Sim (Retail): every kick stays off the global cooldown
+- Sim (Forever): the prepare leaves an on-GCD kick on the global cooldown
+- Sim (Forever): all four stories play to their end for a Mage and a Warrior
+- Sim (Forever): the pull narrates the whole names and Counterspell
+- Sim (Forever): with no usable spell the refusal speaks of the class
+- Cast routes (Retail): both filters route the empowered cast
+- Cast routes (Forever): the empowered cast is absent by declaration, the rest kept
+- Util.AddClientRoutes: adds the routes only on a client the declaration names
+
+### test_probe.lua (18)
+
+- Probe: a bare probe and `status` answer one line, stopped and empty before a start
+- Probe: start stamps the client, its build and the addon, and writes a start entry
+- Probe: the start entry records each rank's answers and the rank the resolver picks
+- Probe: the start entry says whether the global cooldown spell answers
+- Probe: stop unregisters every event and stamps the record; start again resumes it
+- Probe: clear drops the record; while running a fresh, stamped one goes on
+- Probe: an unknown word prints the usage line
+- Probe: the `/kcd debug` list names the probe
+- Probe: a target's cast records whether its flag is nil, plain or secret
+- Probe: a cast on a unit the addon does not track is not recorded
+- Probe: a form change records the form and Feral Charge's override (U16)
+- Probe: a spellbook change is recorded only when its answers changed (U17)
+- Probe: combat start records the tracked kick's cooldown secrecy (U20)
+- Probe: past the cap the oldest entry that is not a start goes, and is counted
+- Probe: a long string is cut, and a table or function is stored as its type
+- Probe: a handler that raises is recorded as an error entry, never thrown
+- Probe: nothing is recorded while a simulation runs, and the start refuses during one
+- Probe: Retail records the same start entry, stamped retail
+
+### test_client_shape.lua (7)
+
+- Client shape: the TOC carries the Retail and WoW Forever numbers and no load-gating line
+- Client shape: the Forever number arms the kit's missing-globals scan for both clients
+- Client shape: the README opens on the dual-client WoW badge and the supported-clients sentence
+- Client shape: the CLAUDE.md gate, DEPENDENCIES.md and docs/testing.md name both suite runs
+- Client shape: docs/forever-quirks.md carries the vendored Forever catalog, then its own section
+- Client shape: the ARCHITECTURE per-client table names every declared feature
+- Client shape: each per-client feature's answer is the running client's
+
 ### test_sim_marker.lua (21)
 
 - sim marker: modules/SimStrip.lua loads straight after modules/SimScenario.lua, before Diagnostics
@@ -2237,6 +2290,9 @@ Total.
 | test_sim_interference.lua | 12 |
 | test_sim_drivers.lua | 28 |
 | test_sim_e2e.lua | 13 |
+| test_sim_clients.lua | 19 |
+| test_probe.lua | 18 |
+| test_client_shape.lua | 7 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
@@ -2315,4 +2371,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1853** |
+| **Total** | **1897** |

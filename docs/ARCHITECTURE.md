@@ -1,6 +1,6 @@
 # Architecture
 
-Orient-yourself map for **Ka0s KickCD**. Tracks the player's interrupt and CC cooldowns and surfaces them on a movable icon grid, with a sibling cast bar — for both the player's target and focus unit — driven from the same drag lock and visibility mode. Target client: WoW 12.1.5 (Midnight). 12.0-aware throughout — the cast bar was originally removed at commit `59fb5c0` and re-added with explicit secret-value gating; see [scope.md](scope.md#cast-bar-removal-history).
+Orient-yourself map for **Ka0s KickCD**. Tracks the player's interrupt and CC cooldowns and surfaces them on a movable icon grid, with a sibling cast bar — for both the player's target and focus unit — driven from the same drag lock and visibility mode. Target clients: WoW 12.1.5 (Midnight) and WoW Forever 1.60.1, from one codebase ([Per-client features](#per-client-features-clients-4)). 12.0-aware throughout — the cast bar was originally removed at commit `59fb5c0` and re-added with explicit secret-value gating; see [scope.md](scope.md#cast-bar-removal-history).
 
 This file is the high-level index; topic detail lives in `docs/`.
 
@@ -18,6 +18,43 @@ Both widgets honor the master enable, **plus their own unit's per-unit `enabled`
 Each unit can also show a single configurable identity label (`units.<unit>.label`), rendered by `modules/UnitLabel.lua` — a per-unit instance manager, mirroring `IconGrid`/`Castbar`'s pattern, that owns one `FontString` per unit in a holder frame parented to `UIParent` (`KickCDUnitLabelTarget` / `KickCDUnitLabelFocus`) and `SetPoint`-anchors it to that unit's chosen widget (`label.style.attach`: cast bar or icon grid). Only `text` stays per-unit while linked (`NS.Units.Label`); both `show` (`NS.Units.LabelShow`) and `label.style` (position, font, justify, rotation, color — `NS.Units.LabelStyle`) follow the Focus link like `icons`/`castbar` do. See [schema.md](schema.md#unitsunitlabelstyle-shape).
 
 An on-screen debug console (`LibKa0s-DebugLog-1.0`, wired in `core/DebugLogSetup.lua`, toggled with `/kcd debug`) surfaces internal state. Debug logging is gated on the session-only `NS.State.debug` flag — it is never persisted and resets on every `/reload`. The console and the `/kcd perf` step panel are the **library's** windows, painted for this addon's skin owner (their descriptors' `addonName`): under Ka0s Default they wear the **shared Ka0s window edge** (a flat 1px black outer border, a 1px light-gray highlight synthesized inside it, a gold title on a dark gold gradient band, and no line under the title since the LibKa0s v1.85.0 round 4 re-cut), and under any other skin they wear that skin. This addon passes neither `applySkin` nor `makeCloseButton`, so both track the library and stay identical to their counterparts in the sibling Ka0s addons on the same skin. The addon's own on-screen widgets — the icon grids, cast bars and unit labels in `modules/` — are not windows and carry no Ka0s edge; their look is profile-driven (`modules/Castbar_Skin.lua`, `modules/IconGrid_Render.lua`), and each media pick follows the skin while its "Use the skin's ..." companion is set ([Skins](#skins)). Don't reach for `Core.SKIN` there.
+
+### Per-client features (clients-§4)
+
+Ka0s KickCD serves Retail and WoW Forever from one codebase (the roster's `Retail · Forever`,
+`## Interface: 120105, 16001`, no load-gating line). The table names each feature that serves one
+client, or that both clients have in a shape of their own; every feature it does not name serves
+both. The Client column takes the standard's tokens alone: `retail`, `forever` or `both`. A feature
+both clients have in their own shape is two rows, one `retail` and one `forever`, its two tables
+picked once by `NS.Compat.ClientKey()` (clients-§5), never a filtered Retail list. A `both` row is a
+change the WoW Forever port made on both clients (ruling R8 of 2026-11-22, a fix the Forever client
+forced), listed so the port's surface is in one place. A presence is declared through
+`NS.Compat.ForClient` (clients-§4), never detected; the client is asked only in
+`core/CompatClient.lua` (clients-§3). The rulings (R1 to R8) are Ka0sAddonsCommonTasks
+`docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/00_DESIGN.md`; what the Forever client does that
+these rows work around is [forever-quirks.md](forever-quirks.md), and the probes that check their safe
+defaults are [forever-probes.md](forever-probes.md). `tests/test_client_shape.lua` checks this table
+names every feature and that each one is present where declared and absent elsewhere, on each kit
+profile (clients-§6).
+
+| Feature | Client | Gated in |
+|---|---|---|
+| The Blizzard Cooldown Manager add gate (owner ruling R8): its set, the Spells page's "not tracked" tag, its invalidator on `TRAIT_CONFIG_UPDATED` / `PLAYER_SPECIALIZATION_CHANGED`, and the diagnostics `cmcache` section (`SpellInput.CooldownManagerGated`, `ForClient { "retail" }`) | `retail` | `core/SpellInput.lua`, `settings/Spells.lua`, `modules/Diagnostics.lua` |
+| Adding a spell to the live pair: anything the player or the pet knows, any rank of a family, plus KickCD's own Forever list for the class (`SpellInput.KnownOrListed`, R8); another class's list takes any spell, as on Retail | `forever` | `core/SpellInput.lua` |
+| The default lists: `defaults/Spells.lua` (`NS.DefaultSpells`, one list per spec) and `NS.RaceCastStoppers`; seeded once into an empty profile | `retail` | `core/Database.lua` (`Database.DefaultSpells`, `Database.RaceCastStoppers`) |
+| The default lists: `defaults/Spells_Forever.lua` (`NS.DefaultSpellsForever`, nine lists, one per class at its `Const.SPEC_FOREVER` id, Pummel first, R6 and R7) and `NS.RaceCastStoppersForever` (War Stomp 20549, in the Warrior, Hunter, Shaman and Druid lists); `BuildSpells` seeds each absent class key and never re-seeds a key the profile holds | `forever` | `core/Database.lua`, `core/Constants.lua` (`Const.SPEC_FOREVER`) |
+| Ranks: `core/SpellRanks.lua` resolves a stored row (its family's rank-1 id, `defaults/SpellRanks_Forever.lua`) to the highest rank the player or pet knows, usable when any known rank is (critic C3); on Retail every answer is the id itself | `forever` | `core/SpellRanks.lua`, `defaults/SpellRanks_Forever.lua` |
+| Feral Charge follows its form override (`NS.SpellOverridesForever`: the bear charge 16979, the cat leap 414924 never usable), re-read on `UPDATE_SHAPESHIFT_FORM`, which `Cooldowns` (`Rebuild`) and `IconGrid` (`OnSpellsChanged`) register by `ForClient { "forever" }` | `forever` | `core/SpellRanks.lua`, `modules/Cooldowns.lua`, `modules/IconGrid.lua` (`FOREVER_EVENTS`) |
+| One spec per class (`Util.OneSpecPerClass`): the Spells page's `Class` picker and one row per class, `/kcd spells` speaking of `[CLASS]` (`Util.SpellsWords`), a spec's token its class's, a Retail token or class refused, the class's spec as the fallback for an early nil spec, the class ids through `Compat.ClassIDs` | `forever` | `core/Util.lua`, `core/Compat.lua`, `core/Database.lua`, `settings/Spells.lua`, `settings/Spells_Header.lua`, `core/SpellInput.lua`, `core/KickCD.lua` |
+| The customized-list count reads the running client's pairs only, so a leftover Retail pair is neither stored nor customized on WoW Forever | `both` | `core/Database.lua` (`CountCustomizedSpellLists`) |
+| An Evoker's empowered cast: the three `UNIT_SPELLCAST_EMPOWER_*` routes of the icon grid's and the cast bar's filters, joined by `Util.AddClientRoutes` (`{ "retail" }`; the critic's L2) | `retail` | `core/Util.lua`, `modules/IconGrid.lua` (`ICON_CAST_ROUTES`), `modules/Castbar.lua` (`CASTBAR_CAST_ROUTES`) |
+| The simulator's story: four kickers (Counter Shot, Rebuke, Counterspell, Pummel), Chaos Bolt and Drain Life 234153, the boss's two charges, a Mythic+ pull, every kick off the global cooldown | `retail` | `modules/SimScenario.lua` (`KICKS_BY_CLIENT`, `ENEMIES_BY_CLIENT`, `KICKERS_BY_CLIENT`), `modules/Sim.lua` (`Host.KickOffGcd`) |
+| The simulator's story: Mockflame (Counterspell) and Mockshield (Shield Bash), named whole; Fireball 133 and Drain Life 689; no charge step; a dungeon pull; only Counterspell and the bear Feral Charge off the global cooldown (`Host.OFF_GCD_FOREVER`); the no-spell refusal speaks of a class | `forever` | `modules/SimScenario.lua`, `modules/Sim.lua` |
+| Spell availability reads `C_SpellBook` (`IsSpellKnown`, then `IsSpellInSpellBook` on the player's and the pet's bank), never the deprecated shims (MKF-KC-03) | `both` | `core/Compat.lua` |
+| The spec count reads `C_SpecializationInfo.GetNumSpecializationsForClassID`, never the bare global, and a spec id of 0 is no spec (MKF-KC-04) | `both` | `core/Compat.lua`, `core/Util.lua` |
+| A plain nil `notInterruptible` reads false (`Compat.InterruptFlag`, MKF-KC-05); both cast dumps test a secret before its type and name the unit whole (MKF-KC-06) | `both` | `core/Compat.lua`, `modules/Castbar_Debug.lua` |
+| The default skin is the running client's (`Skin:DefaultSkin()`: Ka0s Default on Retail, the WoW Forever skin there; skinning-§2) | `both` | `core/SkinSetup.lua` |
+| The probe verbs: `/kcd debug probe start`, `stop`, `status`, `clear` record client facts into `db.global.probe` (MKF-KC-16; the 2026-11-22 rulings R3 and R4) | `both` | `modules/Probe.lua`, `core/KickCD.lua` |
 
 ## Module map
 
@@ -464,7 +501,7 @@ Under 12.0, `C_Spell.GetSpellCooldown` timing returns and `UnitCastingInfo` / `U
 ## Known limitations
 
 - English (`enUS`) only.
-- Retail / Midnight only — a single `## Interface` line, no Classic support.
+- Retail and WoW Forever only — `## Interface: 120105, 16001`, no Classic support. On WoW Forever the facts the port could not settle from source ship with safe defaults until the owner's probe session reports ([forever-probes.md](forever-probes.md)).
 - No automated in-client tests — headless unit tests plus manual in-game smoke tests only (see [smoke-tests.md](smoke-tests.md)).
 - Debug logging is session-only (`NS.State.debug`) and resets on every `/reload`.
 - The simulator's party only narrates. KickCD tracks the player's own cooldowns and has no party tracking, so a scenario's party kicks are `[sim]` chat lines and step labels, never icons (`/kcd sim`, KickCD#38).
@@ -498,7 +535,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|---|
 | `slash-dispatch.md` | Present | 21 verbs in `NS.COMMANDS`, with `debug` and `spells` subcommand trees and the `sim` verb's grammar |
 | `midnight-quirks.md` | Present | Always: carries the vendored client-quirks catalog (client-quirks-§1), then the addon's own 12.0 secret-value rules and cast-info shims |
-| `forever-quirks.md` | Not applicable | Clients is `Retail (port pending)`; the Forever catalog is carried only where Clients includes Forever (documentation-§3, forever-quirks-§1) |
+| `forever-quirks.md` | Present | Clients is `Retail · Forever`: carries the vendored Forever catalog (forever-quirks-§1), then the addon's own WoW Forever quirks |
 | `compat-layer.md` | Present | `core/Compat.lua` publishes 16 shims beyond LibKa0s by the `documentation-§3` count (`grep -cE '^\s*function\s+[A-Za-z_][A-Za-z0-9_]*\.' core/Compat.lua`), over the trigger of three |
 | `message-bus.md` | Present by choice | 5 messages in `NS.MSG`, under the more-than-ten trigger, which has not fired; kept because the closed contract is cited from each module’s header |
 | `profiles.md` | Present | AceDB profiles are user-visible — the Profiles settings page |
