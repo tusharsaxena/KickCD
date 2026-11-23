@@ -23,7 +23,7 @@ and a retired one leaves its number unused.
 | CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
-| SPELLS-1 – 20 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists and its ranks as one row |
+| SPELLS-1 – 21 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row and Feral Charge's forms |
 | SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
@@ -997,6 +997,14 @@ you had before the update is still yours.
   lights off cooldown, because rank 1 is castable. `/kcd diagnostics` names the live rank
   (`8042 Earth Shock rank 10414`). Then on Retail, the grid and the Spells page are unchanged.
   Result:
+- **SPELLS-21. Feral Charge follows the form.** On WoW Forever, on a Druid with Feral Charge
+  (#1238122) talented: in Bear or Dire Bear Form the icon is the bear charge's (Feral Charge (Bear),
+  #16979), and charging an enemy starts its 15 s cooldown on the icon. Shift to Cat Form → the icon
+  stays, now the cat leap's, and with the ready glow turned on it never lights in cat form (the leap
+  does not interrupt); leaping starts the leap's cooldown on the icon. Shift back to bear → the bear
+  charge's icon and cooldown return without a /reload. In caster form the icon stays. Before
+  checking, record `/dump C_Spell.GetOverrideSpell(1238122)` in each form (expected 16979 in bear,
+  414924 in cat, 1238122 in caster form). Result:
 
 ## SIM
 
@@ -1959,7 +1967,7 @@ The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker o
 
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
 
-The 2026-11-23 WoW Forever seed run (MKF-KC-07 and MKF-KC-08 of Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`, `docs/seed-research/2026-11-23-forever/`) adds SPELLS-19 for the nine new Forever lists in `defaults/Spells_Forever.lua`. Owed: SPELLS-19. Its rank resolver (MKF-KC-09, `core/SpellRanks.lua`) adds SPELLS-20. Owed: SPELLS-20.
+The 2026-11-23 WoW Forever seed run (MKF-KC-07 and MKF-KC-08 of Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`, `docs/seed-research/2026-11-23-forever/`) adds SPELLS-19 for the nine new Forever lists in `defaults/Spells_Forever.lua`. Owed: SPELLS-19. Its rank resolver (MKF-KC-09, `core/SpellRanks.lua`) adds SPELLS-20. Owed: SPELLS-20. Feral Charge's form override (MKF-KC-10) adds SPELLS-21. Owed: SPELLS-21.
 
 The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
 

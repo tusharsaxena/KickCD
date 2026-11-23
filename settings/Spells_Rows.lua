@@ -250,12 +250,12 @@ function Spells.StatusGlyphMark(statusIcon, known)
     return true
 end
 
---- Whether the row's spell is known: the RESOLVED id's availability (core/SpellRanks.lua,
---- MKF-KC-09), so on WoW Forever a row whose rank 2 alone is known reads known.
+--- Whether the row's spell is known: the resolver's availability (core/SpellRanks.lua, MKF-KC-09),
+--- so on WoW Forever a row whose rank 2 alone is known reads known, and Feral Charge reads known in
+--- every form.
 --- @return boolean
 function Spells.RowKnown(entry)
-    return Compat.IsSpellAvailable
-        and Compat.IsSpellAvailable(NS.SpellRanks.Resolve(entry.spellID)) or false
+    return Compat.IsSpellAvailable ~= nil and NS.SpellRanks.IsAvailable(entry.spellID) or false
 end
 
 local function rowKnownGlyph(AceGUI, entry)

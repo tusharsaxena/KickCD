@@ -13,6 +13,15 @@
 -- exist: Kick 1775 and 3467 are not Kick ranks), and Polymorph's Turtle and Pig variants are not
 -- ranks. tests/test_spell_ranks.lua holds this table to candidates.json id for id.
 --
+-- THE OVERRIDES (MKF-KC-10, critic C4, factcheck A). NS.SpellOverridesForever names the families
+-- whose spell a form aura replaces, so core/SpellRanks.lua asks C_Spell.GetOverrideSpell for them
+-- and for no other spell. Feral Charge 1238122 (the stored id, the one the spellbook knows) is
+-- replaced by 16979 Feral Charge (Bear) in the bear forms, which interrupts through 19675, and by
+-- 414924 Feral Charge (Cat) in cat form, a leap with no interrupt effect (DB2 71037: the passive
+-- auras 1238124 and 414925, aura type 332). `notInterrupt` lists the replacements that never count
+-- as usable, so the ready glow stays off while the leap is up; the cooldown and the icon are still
+-- the override's, and brightness follows the cooldown only (owner ruling R5).
+--
 -- WHO READS THIS. core/SpellRanks.lua, and only on WoW Forever. Retail never consults it.
 
 local _, NS = ...
@@ -50,4 +59,8 @@ NS.SpellRanksForever = {
     [2637]  = { 2637, 18657, 18658 },                                -- Hibernate
     [5211]  = { 5211, 6798, 8983 },                                  -- Bash
     [9005]  = { 9005, 9823, 9827 },                                  -- Pounce
+}
+
+NS.SpellOverridesForever = {
+    [1238122] = { notInterrupt = { [414924] = true } },              -- Feral Charge: (Bear) 16979, (Cat) 414924
 }

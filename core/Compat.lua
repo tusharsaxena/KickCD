@@ -169,6 +169,20 @@ Compat.GetSpellTexture = CompatLib and CompatLib.GetSpellTexture
 Compat.GetSpellInfo = CompatLib and CompatLib.GetSpellInfo
     or function() return nil end
 
+--- The spell an aura or a form currently puts in `spellID`'s place, or nil when the client answers
+--- none (the WoW Forever port, MKF-KC-10). C_Spell.GetOverrideSpell answers the id itself when
+--- nothing overrides it; a secret or non-numeric answer reads as none. core/SpellRanks.lua asks it,
+--- on WoW Forever only, for the families defaults/SpellRanks_Forever.lua declares (Feral Charge).
+-- @param spellID number
+-- @return number|nil
+function Compat.GetOverrideSpell(spellID)
+    local spell = _G.C_Spell
+    if not (spell and spell.GetOverrideSpell) or type(spellID) ~= "number" then return nil end
+    local id = spell.GetOverrideSpell(spellID)
+    if id == nil or Compat.IsSecret(id) or type(id) ~= "number" or id <= 0 then return nil end
+    return id
+end
+
 --- Charge info for a spell that has charges (Mind Freeze talents etc.).
 -- @param spellID number
 -- @return currentCharges, maxCharges, cooldownStartTime, cooldownDuration

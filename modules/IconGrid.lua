@@ -274,9 +274,10 @@ end
 --- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
 --- their pet is summoned.
 local function isRenderable(spellID)
-    spellID = Ranks.Resolve(spellID)
-    local name      = NS.Compat.GetSpellInfo(spellID)
-    local available = NS.Compat.IsSpellAvailable(spellID)
+    -- The name is the resolved id's; availability is the resolver's, of the base rank the
+    -- spellbook holds, so a form's override (Feral Charge, MKF-KC-10) keeps the slot.
+    local name      = NS.Compat.GetSpellInfo(Ranks.Resolve(spellID))
+    local available = Ranks.IsAvailable(spellID)
     return name and available
 end
 
@@ -777,8 +778,15 @@ local LIFECYCLE_EVENTS = {
 --- enable path (rebuilding curves, re-subscribing to messages it never dropped).
 --- Registration is idempotent — AceEvent keys on (event, target) — so calling
 --- this twice is harmless.
+-- WoW Forever's own rows, registered only there (clients-§4, by declaration): a form change swaps
+-- Feral Charge's spell and icon (core/SpellRanks.lua, MKF-KC-10, critic C4).
+local FOREVER_EVENTS = {
+    { "UPDATE_SHAPESHIFT_FORM",        "OnSpellsChanged" },
+}
+
 function IconGrid:RegisterLifecycleEvents()
     NS.RegisterEventList(self, LIFECYCLE_EVENTS)
+    if NS.Compat.ForClient({ "forever" }) then NS.RegisterEventList(self, FOREVER_EVENTS) end
 end
 
 function IconGrid:OnEnable()

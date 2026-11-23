@@ -321,3 +321,107 @@ test("Ranks (Retail): every consumer asks the client the stored id", function()
             "nothing but the stored id (and the GCD spell) is asked: " .. k)
     end
 end)
+
+-- ── Feral Charge: the form override (MKF-KC-10; critic C4, factcheck A) ─────
+--
+-- 1238122 is the stored id. A passive form aura replaces it: 16979 Feral Charge (Bear) in the bear
+-- forms, which interrupts, and 414924 Feral Charge (Cat) in cat form, a leap that does not. The
+-- slot stays in every form (the base id is what the spellbook knows); the cooldown, the icon and
+-- the tooltip are the override's, and the cat leap is never "usable" as an interrupt, so the ready
+-- glow stays off in cat. The override is re-read on UPDATE_SHAPESHIFT_FORM, registered on WoW
+-- Forever only.
+
+local FERAL, BEAR, CAT = 1238122, 16979, 414924
+
+--- A Forever Druid knowing Feral Charge, in `form` ("bear", "cat" or nil), with the list `{ FERAL }`.
+local function druid(form, enable)
+    local inst = forever("DRUID", { FERAL }, { FERAL }, enable)
+    local m = inst.mocks
+    m.__form = form
+    m.C_Spell.GetOverrideSpell = function(id)
+        if id ~= FERAL then return id end
+        if m.__form == "bear" then return BEAR end
+        if m.__form == "cat" then return CAT end
+        return FERAL
+    end
+    return inst
+end
+
+test("Feral Charge (Forever): the bear form's override carries the cooldown and the icon", function()
+    local inst = druid("bear", true)
+    local NS, m = inst.NS, inst.mocks
+    m.spellCooldowns[BEAR] = { isEnabled = true, startTime = 1, duration = 15, isActive = true }
+    local painted = {}
+    m.C_Spell.GetSpellTexture = function(id) painted[#painted + 1] = id; return 1 end
+    assertEqual(NS.SpellRanks.Resolve(FERAL), BEAR)
+    local Cooldowns = NS:GetModule("Cooldowns")
+    Cooldowns:Rebuild()
+    assertTrue(Cooldowns:StateFor(FERAL) ~= nil, "watched under the stored id, though 16979 is not in the book")
+    assertTrue(Cooldowns:StateFor(FERAL).isActive, "the bear charge's cooldown")
+    local IconGrid = NS:GetModule("IconGrid")
+    local gi = IconGrid:GetInstance("target")
+    IconGrid:BuildActiveList(gi)
+    assertEqual(idsOf(gi), tostring(FERAL), "the slot stays")
+    assertEqual(painted[1], BEAR, "the bear charge's icon")
+end)
+
+test("Feral Charge (Forever): in cat form the slot stays and is never ready (no interrupt)", function()
+    local inst = druid("cat", true)
+    local NS = inst.NS
+    assertEqual(NS.SpellRanks.Resolve(FERAL), CAT)
+    assertTrue(NS.SpellRanks.IsAvailable(FERAL), "the base id is known in every form")
+    assertFalse(NS.SpellRanks.IsUsable(FERAL), "the leap does not interrupt")
+    local Cooldowns = NS:GetModule("Cooldowns")
+    Cooldowns:Rebuild()
+    local s = Cooldowns:StateFor(FERAL)
+    assertTrue(s ~= nil, "the slot is still watched in cat form")
+    assertFalse(s.ready, "so the ready glow stays off")
+    local IconGrid = NS:GetModule("IconGrid")
+    local gi = IconGrid:GetInstance("target")
+    IconGrid:BuildActiveList(gi)
+    assertEqual(idsOf(gi), tostring(FERAL), "the slot stays in cat form")
+end)
+
+test("Feral Charge (Forever): with no form aura the base id is asked", function()
+    local NS = druid(nil).NS
+    assertEqual(NS.SpellRanks.Resolve(FERAL), FERAL)
+end)
+
+test("Feral Charge (Forever): a form change re-reads the override on UPDATE_SHAPESHIFT_FORM", function()
+    local inst = druid("bear", true)
+    local NS, m = inst.NS, inst.mocks
+    m.spellCooldowns[CAT] = { isEnabled = true, startTime = 1, duration = 30, isActive = true }
+    local Cooldowns = NS:GetModule("Cooldowns")
+    Cooldowns:Rebuild()
+    assertFalse(Cooldowns:StateFor(FERAL).isActive, "bear: no cooldown")
+    local painted = {}
+    m.C_Spell.GetSpellTexture = function(id) painted[#painted + 1] = id; return 1 end
+    m.__form = "cat"
+    m.__fireEvent("UPDATE_SHAPESHIFT_FORM")
+    assertTrue(Cooldowns:StateFor(FERAL).isActive, "cat: the leap's cooldown, read after the form change")
+    local sawCat = false
+    for _, id in ipairs(painted) do if id == CAT then sawCat = true end end
+    assertTrue(sawCat, "the grid repainted the icon with the cat spell's")
+end)
+
+test("Feral Charge (Retail): UPDATE_SHAPESHIFT_FORM is not registered and no override is read", function()
+    local inst = T.load(true, true, function(m)
+        retailClient(m)
+        m.C_Spell.GetOverrideSpell = function() error("override read on Retail") end
+    end)
+    local NS = inst.NS
+    local Cooldowns, IconGrid = NS:GetModule("Cooldowns"), NS:GetModule("IconGrid")
+    local rebuilds = 0
+    local realC, realG = Cooldowns.Rebuild, IconGrid.OnSpellsChanged
+    Cooldowns.Rebuild = function(self) rebuilds = rebuilds + 1; return realC(self) end
+    IconGrid.OnSpellsChanged = function(self) rebuilds = rebuilds + 1; return realG(self) end
+    inst.mocks.__fireEvent("UPDATE_SHAPESHIFT_FORM")
+    assertEqual(rebuilds, 0, "a form change rebuilds nothing on Retail")
+    assertEqual(NS.SpellRanks.Resolve(FERAL), FERAL)
+    assertEqual(NS.DeliverEvent("UPDATE_SHAPESHIFT_FORM"), 0, "no route on Retail")
+end)
+
+test("Feral Charge (Forever): UPDATE_SHAPESHIFT_FORM routes to both rebuilds", function()
+    local inst = druid("bear", true)
+    assertEqual(inst.NS.DeliverEvent("UPDATE_SHAPESHIFT_FORM"), 2, "Cooldowns and IconGrid")
+end)

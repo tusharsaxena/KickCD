@@ -164,7 +164,7 @@ Total.
 - Retail lists: the Forever file touches neither Retail table, and every Forever list is a SPEC_FOREVER key
 - Forever lists: the TOC loads defaults/Spells_Forever.lua straight after defaults/Spells.lua
 
-### test_spell_ranks.lua (20)
+### test_spell_ranks.lua (26)
 
 - Ranks: the Forever rank table is the frozen seed run's rank families, id for id
 - Ranks: every family's first rank is its key, and no rank sits in two families
@@ -186,6 +186,12 @@ Total.
 - Ranks (Retail): IsUsable is Compat.IsSpellUsable's first value
 - Ranks (Retail): two rank ids stay two rows, two icons and two stored entries
 - Ranks (Retail): every consumer asks the client the stored id
+- Feral Charge (Forever): the bear form's override carries the cooldown and the icon
+- Feral Charge (Forever): in cat form the slot stays and is never ready (no interrupt)
+- Feral Charge (Forever): with no form aura the base id is asked
+- Feral Charge (Forever): a form change re-reads the override on UPDATE_SHAPESHIFT_FORM
+- Feral Charge (Retail): UPDATE_SHAPESHIFT_FORM is not registered and no override is read
+- Feral Charge (Forever): UPDATE_SHAPESHIFT_FORM routes to both rebuilds
 
 ### test_state.lua (25)
 
@@ -2161,7 +2167,7 @@ Total.
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 28 |
 | test_spells_forever.lua | 9 |
-| test_spell_ranks.lua | 20 |
+| test_spell_ranks.lua | 26 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2264,4 +2270,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1814** |
+| **Total** | **1820** |

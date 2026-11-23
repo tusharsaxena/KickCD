@@ -144,7 +144,9 @@ local function entryText(e)
     local text = tostring(id) .. " " .. NS.SafeToString(Compat.GetSpellInfo and Compat.GetSpellInfo(live) or "?")
     if live ~= id then text = text .. " rank " .. tostring(live) end
     if e.enabled == false then text = text .. " off" end
-    if Compat.IsSpellAvailable and not Compat.IsSpellAvailable(live) then text = text .. " unlearned" end
+    local known = NS.SpellRanks and NS.SpellRanks.IsAvailable(id)
+    if known == nil and Compat.IsSpellAvailable then known = Compat.IsSpellAvailable(id) end
+    if known == false then text = text .. " unlearned" end
     return text
 end
 

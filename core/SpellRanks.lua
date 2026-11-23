@@ -9,9 +9,10 @@
 -- known mark (settings/Spells_Rows.lua), the diagnostics list (modules/Diagnostics.lua), and the
 -- writer, which stores any rank as its family (core/Database.lua AddSpell).
 --
--- RETAIL: identity. Resolve(id) and Family(id) answer `id`, and IsUsable(id) is
--- Compat.IsSpellUsable(id)'s first value: exactly what each consumer asked before this file, so
--- Retail behaves byte for byte as it did (tests/test_spell_ranks.lua).
+-- RETAIL: identity. Resolve(id) and Family(id) answer `id`, IsAvailable(id) is
+-- Compat.IsSpellAvailable(id) and IsUsable(id) is Compat.IsSpellUsable(id)'s first value: exactly
+-- what each consumer asked before this file, so Retail behaves byte for byte as it did
+-- (tests/test_spell_ranks.lua).
 --
 -- WOW FOREVER: every rank is its own spell id (defaults/SpellRanks_Forever.lua). A row stores the
 -- family's rank-1 id; Resolve answers the HIGHEST rank the player or pet knows, which carries the
@@ -19,6 +20,13 @@
 -- reads unavailable, as it always did). IsUsable answers whether ANY known rank is usable (critic
 -- C3): a Shaman at 100 mana cannot cast Earth Shock rank 7 (450 mana) but rank 1 (30 mana) still
 -- interrupts, and every rank shares the cooldown.
+--
+-- FORMS (MKF-KC-10, critic C4). For a family defaults/SpellRanks_Forever.lua declares in
+-- NS.SpellOverridesForever (Feral Charge), Resolve answers the spell the player's form puts in the
+-- base rank's place (C_Spell.GetOverrideSpell): the bear charge 16979 or the cat leap 414924. The
+-- slot's availability stays the base rank's (IsAvailable), which the spellbook holds in every form,
+-- and a replacement that never interrupts is never usable. The cache is re-read on
+-- UPDATE_SHAPESHIFT_FORM, which Cooldowns and IconGrid register on WoW Forever only.
 --
 -- THE CACHE. The known set is read once per family and kept until Invalidate, because the poll and
 -- the 0.1 s ticker ask on every pass. Every rebuild path invalidates first (Cooldowns:Rebuild,
@@ -34,7 +42,8 @@ local _, NS = ...
 local Ranks = {}
 NS.SpellRanks = Ranks
 
--- [family] = { live = id, known = { rank ids the player knows, highest first } }
+-- [family] = { base = the highest known rank (or the family), live = base or its form's override,
+--              inert = the override never interrupts, known = { known rank ids, highest first } }
 local cache = {}
 -- [rank id] = family; built from NS.SpellRanksForever on first use.
 local byRank
@@ -76,11 +85,23 @@ local function knownRanks(family)
     return known
 end
 
+--- The spell a form puts in `base`'s place, for a family NS.SpellOverridesForever declares (Feral
+--- Charge, MKF-KC-10), else `base`; and whether that replacement never interrupts.
+local function overrideOf(family, base)
+    local decl = type(NS.SpellOverridesForever) == "table" and NS.SpellOverridesForever[family]
+    if not decl then return base, false end
+    local id = NS.Compat.GetOverrideSpell and NS.Compat.GetOverrideSpell(base) or nil
+    if not id then return base, false end
+    return id, decl.notInterrupt ~= nil and decl.notInterrupt[id] == true
+end
+
 local function entryFor(family)
     local e = cache[family]
     if e then return e end
     local known = knownRanks(family)
-    e = { live = known[1] or family, known = known }
+    local base = known[1] or family
+    local live, inert = overrideOf(family, base)
+    e = { base = base, live = live, inert = inert, known = known }
     cache[family] = e
     return e
 end
@@ -94,8 +115,9 @@ function Ranks.Family(id)
     return familyOf(id)
 end
 
---- The spell id to ask the client about for a stored row: the highest known rank on WoW Forever
---- (the stored id when none is known), the id itself on Retail.
+--- The spell id to ask the client about for a stored row's cooldown, icon and tooltip: on WoW Forever
+--- the highest known rank (the stored id when none is known), or the spell a form puts in its place
+--- (Feral Charge); the id itself on Retail.
 --- @param id any
 --- @return any
 function Ranks.Resolve(id)
@@ -103,14 +125,28 @@ function Ranks.Resolve(id)
     return entryFor(familyOf(id)).live
 end
 
---- Whether the row's spell is usable: on WoW Forever, when ANY known rank is (critic C3); on
---- Retail, Compat.IsSpellUsable's first value, as before.
+--- Whether the row's spell is available to the player right now: Compat.IsSpellAvailable of the
+--- highest known rank on WoW Forever, asked live (a dismissed pet drops its spell mid-fight), and
+--- of the BASE rank, never a form's override, which the spellbook does not hold (critic C4: the
+--- slot stays in cat form); Compat.IsSpellAvailable(id) on Retail.
+--- @param id any
+--- @return boolean
+function Ranks.IsAvailable(id)
+    local Compat = NS.Compat
+    if type(id) ~= "number" or not forever() then return Compat.IsSpellAvailable(id) end
+    return Compat.IsSpellAvailable(entryFor(familyOf(id)).base)
+end
+
+--- Whether the row's spell is usable: on WoW Forever, when ANY known rank is (critic C3), and never
+--- while a form puts a spell that does not interrupt in its place (cat Feral Charge); on Retail,
+--- Compat.IsSpellUsable's first value, as before.
 --- @param id any
 --- @return boolean
 function Ranks.IsUsable(id)
     local Compat = NS.Compat
     if type(id) ~= "number" or not forever() then return (Compat.IsSpellUsable(id)) end
     local e = entryFor(familyOf(id))
+    if e.inert then return false end
     if #e.known == 0 then return (Compat.IsSpellUsable(e.live)) end
     for _, rank in ipairs(e.known) do
         if Compat.IsSpellUsable(rank) then return true end

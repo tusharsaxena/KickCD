@@ -107,6 +107,7 @@ end
 local function isPollable(spellID)
     -- Reject obviously-bad IDs early.
     if not spellID or type(spellID) ~= "number" then return false end
+    local stored = spellID
     spellID = Ranks.Resolve(spellID)
 
     -- A spell that doesn't return GetSpellInfo at all is definitely not in
@@ -119,8 +120,9 @@ local function isPollable(spellID)
     -- "can the player actually cast this right now" check — needed to hide
     -- the unpicked branch of a talent choice node (e.g. Blood DK's
     -- Gorefiend's Grasp ↔ Abomination Limb) and pet spells whose pet isn't
-    -- currently summoned.
-    return NS.Compat.IsSpellAvailable(spellID)
+    -- currently summoned. Asked of the stored row through the resolver: on WoW Forever the
+    -- base rank the spellbook holds, never a form's override (MKF-KC-10).
+    return Ranks.IsAvailable(stored)
 end
 
 --- Charges may come back secret on guarded spells. If so, conservatively
@@ -621,12 +623,19 @@ local LIFECYCLE_EVENTS = {
     { "TRAIT_CONFIG_UPDATED",          "Rebuild" },
 }
 
+-- WoW Forever's own rows, registered only there (clients-§4, by declaration): a form change swaps
+-- Feral Charge's spell (core/SpellRanks.lua, MKF-KC-10, critic C4), so the watched set re-resolves.
+local FOREVER_EVENTS = {
+    { "UPDATE_SHAPESHIFT_FORM",        "Rebuild" },
+}
+
 --- The module's GAME-event registrations, split out of OnEnable so a perf
 --- Resume can re-arm the same set without re-running the rest of the enable path
 --- (rebuilding the watched table, re-subscribing to messages it never dropped).
 --- Idempotent: AceEvent keys on (event, target).
 function Cooldowns:RegisterLifecycleEvents()
     NS.RegisterEventList(self, LIFECYCLE_EVENTS)
+    if NS.Compat.ForClient({ "forever" }) then NS.RegisterEventList(self, FOREVER_EVENTS) end
 end
 
 --- ONE WAY UP, and OnEnable is not it — Resume is (slash-commands-§7).

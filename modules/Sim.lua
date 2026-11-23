@@ -89,8 +89,7 @@ end
 local function usable(entry)
     local id = type(entry) == "table" and entry.spellID
     if type(id) ~= "number" or entry.enabled == false then return false end
-    id = NS.SpellRanks.Resolve(id)
-    return NS.Compat.IsSpellAvailable(id) and NS.Compat.GetSpellInfo(id) ~= nil
+    return NS.SpellRanks.IsAvailable(id) and NS.Compat.GetSpellInfo(NS.SpellRanks.Resolve(id)) ~= nil
 end
 
 --- "Your kick" and "your CC": the first kept entry of category `interrupt` (else the first kept
