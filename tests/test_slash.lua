@@ -824,7 +824,7 @@ test("the CLI refuses a spell the Cooldown Manager does not track for the live s
     -- The gate admits what the Cooldown Manager does track.
     say(inst, function() inst.NS:OnSlashCommand("spells add Wind Shear") end)
     assertTrue(hasSpell(inst, "SHAMAN", 262, WIND_SHEAR), "a tracked spell is admitted")
-end)
+end, T.RETAIL_ONLY)
 
 test("the CLI gate is dropped for a pair other than the player's live one, as on the page", function()
     -- C_CooldownViewer answers only for the logged-in spec, so another spec's

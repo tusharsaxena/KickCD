@@ -341,9 +341,14 @@ local function editorIsActiveSpec()
     if NS.State and NS.State.debug then
         local playerClass  = playerClassFile()
         local playerSpecID = NS.Util.PlayerSpecID()
-        NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.",
-            tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec),
-            tostring(playerClass), NS.Util.SpecDisplay(playerSpecID))
+        -- The gate's own name: the Cooldown Manager's is Retail-only (MKF-KC-12).
+        local sc, ss = tostring(selectedClass), NS.Util.SpecDisplay(selectedSpec)
+        local pc, ps = tostring(playerClass), NS.Util.SpecDisplay(playerSpecID)
+        if SpellInput.CooldownManagerGated() then
+            NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping cooldown-manager gate.", sc, ss, pc, ps)
+        else
+            NS.Debug("Spells", "Editing %s/%s ≠ player %s/%s; skipping known-spell gate.", sc, ss, pc, ps)
+        end
     end
     return false
 end

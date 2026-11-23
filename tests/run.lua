@@ -217,6 +217,7 @@ local SUITES = {
     "test_spells_forever",
     "test_spell_ranks",
     "test_seed_clients",
+    "test_admission_clients",
     "test_state",
     "test_events",
     "test_event_routes",
@@ -470,7 +471,18 @@ local function ka0sDefault(opts)
     return out
 end
 
+-- `RETAIL_ONLY` is the declared-skip reason (the kit's `test(name, fn, reason)`) for a case of a
+-- Retail-only feature on the forever profile, where the feature is absent and its own per-client case
+-- asserts the absence (clients-§6; LootHistory's and DropWatcher's tests/run.lua precedent). The
+-- Blizzard Cooldown Manager gate is the one so far (the WoW Forever port, MKF-KC-12,
+-- tests/test_admission_clients.lua). Nil on Retail, which runs the case.
+local FOREVER = shared.mocks.WOW_PROJECT_CAMELOT ~= nil
+    and shared.mocks.WOW_PROJECT_ID == shared.mocks.WOW_PROJECT_CAMELOT
+local RETAIL_ONLY = FOREVER and "Retail-only feature (the WoW Forever port, R8): the Cooldown Manager gate "
+    .. "is absent on WoW Forever, which tests/test_admission_clients.lua asserts" or nil
+
 _G.KICKCD_TEST = Kit.expose{
+    RETAIL_ONLY = RETAIL_ONLY,
     root = root,
     -- shared instance
     NS = shared.NS,

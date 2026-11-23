@@ -592,7 +592,7 @@ test("the CM cache is invalidated by TRAIT_CONFIG_UPDATED even when the Spells p
     inst.mocks.__fireEvent("TRAIT_CONFIG_UPDATED")
     assertEqual(SI.Admissible(51514, "SHAMAN", ELEMENTAL), true,
         "the talent change must have dropped the cached set")
-end)
+end, T.RETAIL_ONLY)
 
 test("SpellInput.Admissible has no opinion off the live pair or without the viewer API", function()
     local SI = inputInstance().NS.SpellInput

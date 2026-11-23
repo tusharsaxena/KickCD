@@ -252,7 +252,7 @@ test("the Cooldown Manager walk logs one build line, with the calls that raised"
     assertTrue(NS.DebugLog:FindLine("refused: not in the cooldown-manager set"))
     inst.mocks.C_CooldownViewer = nil
     NS.DebugLog:SetEnabled(false)
-end)
+end, T.RETAIL_ONLY)
 
 test("a refused spell-list write names its guard, once, from the writer or the verb", function()
     -- debug-logging-§8 diagnosis: a command refused or a write rejected names the guard. The

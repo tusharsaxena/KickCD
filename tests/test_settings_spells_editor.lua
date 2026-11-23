@@ -341,7 +341,7 @@ test("a spell the Cooldown Manager does not track is tagged before the click", f
     local untracked = tag(12345)
     assertTrue(untracked ~= nil and untracked:find("not tracked", 1, true) ~= nil,
         "one it does not track is marked: " .. tostring(untracked))
-end)
+end, T.RETAIL_ONLY)
 
 test("a spell the Cooldown Manager does not track for the player's own spec is refused", function()
     local inst = editorInstance()
@@ -353,7 +353,7 @@ test("a spell the Cooldown Manager does not track for the player's own spec is r
     assertTrue(found(lines,
         "Spell Spell12345 (#12345) is not tracked by the Blizzard Cooldown Manager for this specialization."),
         "the refusal message is a user-facing contract")
-end)
+end, T.RETAIL_ONLY)
 
 test("a spell the Cooldown Manager does track passes the gate", function()
     local inst = editorInstance()
@@ -403,7 +403,7 @@ test("an API that answers nothing is remembered as empty and never re-walked", f
     addSpell(inst, "12346")
     assertEqual(#list, before + 2, "an empty result must not gate anything")
     assertEqual(callCount(), 1, "the walk must happen once, not once per add")
-end)
+end, T.RETAIL_ONLY)
 
 test("a category the client throws on is survived rather than aborting the walk", function()
     -- Both pcalls are load-bearing: C_CooldownViewer throws on some category

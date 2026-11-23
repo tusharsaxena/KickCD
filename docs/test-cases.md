@@ -206,6 +206,19 @@ Total.
 - Seed (Retail): the Retail lists are seeded and the Forever tables are never read
 - Seed (Retail): a populated profile is never re-seeded, as before
 
+### test_admission_clients.lua (10)
+
+- Admission (Forever): a spell the player knows is admitted on the live pair
+- Admission (Forever): any rank of a known family is admitted
+- Admission (Forever): a spell the pet knows is admitted
+- Admission (Forever): an unlearned spell on the class's Forever list is admitted
+- Admission (Forever): an unlearned spell outside the list is refused, naming no Cooldown Manager
+- Admission (Forever): another class's list takes any spell
+- Admission (Forever): /kcd spells add refuses an unlearned spell off the list and adds nothing
+- Admission (Forever): the Cooldown Manager gate, its tag, invalidator and section are absent
+- Admission (Retail): the Cooldown Manager gate still refuses an untracked spell on the live pair
+- Admission (Retail): the tag, the invalidator and the cmcache section are still there
+
 ### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
@@ -2182,6 +2195,7 @@ Total.
 | test_spells_forever.lua | 9 |
 | test_spell_ranks.lua | 26 |
 | test_seed_clients.lua | 10 |
+| test_admission_clients.lua | 10 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2284,4 +2298,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1830** |
+| **Total** | **1840** |

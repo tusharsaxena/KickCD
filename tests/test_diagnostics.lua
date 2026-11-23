@@ -119,8 +119,11 @@ test("the addon hands the library its sections with the lifecycle first", functi
         assertEqual(type(s[2]), "function", "section " .. tostring(s[1]) .. " has a body")
         names[i] = s[1]
     end
+    -- `cmcache` is Retail-only (MKF-KC-12): the Cooldown Manager gate it reports on is absent on
+    -- WoW Forever, and so is the section.
+    local cm = T.NS.Compat.ForClient({ "retail" }) and "cmcache," or ""
     assertEqual(table.concat(names, ","),
-        "state,settings,units,spells,cooldowns,cmcache,icongrid,castbar,interrupt,unitlabel,events,perf,sim")
+        "state,settings,units,spells,cooldowns," .. cm .. "icongrid,castbar,interrupt,unitlabel,events,perf,sim")
 end)
 
 test("the report runs every section and none of them fails on a live load", function()
@@ -264,7 +267,7 @@ test("the CM cache line reads the memo and never forces the walk", function()
     assertEqual(walks, 0, "the report walked C_CooldownViewer")
     assertTrue(find(lines, "[CMCache] cooldown manager cache: unbuilt") ~= nil, joined(lines))
     assertEqual(inst.NS.SpellInput.CooldownManagerCacheState(), "unbuilt", "and left it unbuilt")
-end)
+end, T.RETAIL_ONLY)
 
 test("the CM cache accessor names the three states without walking", function()
     local inst = fresh()
@@ -284,7 +287,7 @@ test("the CM cache accessor names the three states without walking", function()
     local state, n = SI.CooldownManagerCacheState()
     assertEqual(state, "built")
     assertEqual(n, 2)
-end)
+end, T.RETAIL_ONLY)
 
 -- ── units, events, perf ─────────────────────────────────────────────────────
 
@@ -352,7 +355,8 @@ test("a raising section costs exactly one line and the next section still runs",
     local failed = all(lines, "failed:")
     assertEqual(#failed, 1, joined(failed))
     assertTrue(failed[1]:find("section cooldowns failed:", 1, true) ~= nil, failed[1])
-    assertTrue(find(lines, "[CMCache] ") ~= nil, "the section after it ran")
+    local nextTag = inst.NS.Compat.ForClient({ "retail" }) and "[CMCache] " or "[IconGrid] "
+    assertTrue(find(lines, nextTag) ~= nil, "the section after it ran")
 end)
 
 test("a raising interrupt dump for one unit costs one line and the other unit still reports", function()

@@ -279,8 +279,10 @@ end
 
 --- The section list the console descriptor hands the library, in report order. Built on each
 --- call so a test (or a later module) sees the live functions.
+--- `cmcache` is Retail-only, as the Cooldown Manager gate it reports on is (MKF-KC-12): on WoW
+--- Forever the section is absent, never an "unavailable" line.
 function X.Sections()
-    return {
+    local out = {
         { "state",     X.State },
         { "settings",  X.Settings },
         { "units",     X.Units },
@@ -295,4 +297,6 @@ function X.Sections()
         { "perf",      X.Perf },
         { "sim",       X.Sim },
     }
+    if not NS.Compat.ForClient({ "retail" }) then table.remove(out, 6) end
+    return out
 end

@@ -257,7 +257,7 @@ test("skin settings: the not-tracked tag is sem.warn, ff8000 on Ka0s Default", f
     end)
     S.Color = color
     if not ok then error(err, 0) end
-end)
+end, T.RETAIL_ONLY)
 
 test("skin settings: a row's own tooltip hint is titled in gtip.title", function()
     -- red under: GameTooltip:SetText(text) with no color, which no skin can reach.

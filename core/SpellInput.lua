@@ -12,7 +12,14 @@
 --   * Resolve(input)          an id or a spell name -> spellID, name
 --   * ParseTail(tokens)       `<id|name words...> [CLASS SPEC]` -> id, name, class, spec
 --   * IsLivePair(class, spec) is this the logged-in player's own class + active spec
---   * Admissible(id, c, s)    the Blizzard Cooldown Manager gate, live pair only
+--   * Admissible(id, c, s)    the add gate, live pair only: the Blizzard Cooldown Manager on
+--                             Retail; on WoW Forever anything the player or the pet knows plus
+--                             KickCD's own Forever list for the class (owner ruling R8)
+--
+-- THE COOLDOWN MANAGER GATE IS RETAIL-ONLY (the WoW Forever port, MKF-KC-12; clients-§4): its set,
+-- the "not tracked" tag the Spells page reads from it, the invalidator and the `cmcache` diagnostics
+-- section are declared for `{ "retail" }` and are absent on WoW Forever, where Blizzard's sets hold
+-- rank 1 alone and no pet spell, so they would refuse spells a player knows.
 --
 -- The Cooldown Manager set is memoized here too, and so is the listener that
 -- drops it on a talent or spec change. That listener is an AceEvent target made
@@ -26,6 +33,12 @@ local SpellInput = {}
 NS.SpellInput = SpellInput
 
 local function debugOn() return NS.State and NS.State.debug end
+
+--- Whether the Cooldown Manager gate exists on this client (by declaration, clients-§4).
+--- @return boolean
+function SpellInput.CooldownManagerGated()
+    return NS.Compat.ForClient({ "retail" })
+end
 
 -- ---------------------------------------------------------------------------
 -- Resolve
@@ -227,6 +240,7 @@ end
 --- The Cooldown Manager's spell set for the active spec, or nil when the client
 --- cannot answer (no opinion, never a rejection).
 function SpellInput.CooldownManagerSet()
+    if not SpellInput.CooldownManagerGated() then return nil end
     if _cmCache == _CM_EMPTY then return nil end
     if _cmCache then return _cmCache end
 
@@ -284,6 +298,7 @@ end
 -- @return boolean, string|nil reason
 function SpellInput.Admissible(id, class, spec)
     if not SpellInput.IsLivePair(class, spec) then return true end
+    if not SpellInput.CooldownManagerGated() then return SpellInput.KnownOrListed(id, class, spec) end
     local cmSet = SpellInput.CooldownManagerSet()
     if not cmSet then
         if debugOn() then
@@ -301,6 +316,41 @@ function SpellInput.Admissible(id, class, spec)
     local Compat = NS.Compat or {}
     local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(id)) or tostring(id)
     return false, ("Spell %s (#%d) is not tracked by the Blizzard Cooldown Manager for this specialization."):format(name, id)
+end
+
+-- ---------------------------------------------------------------------------
+-- WoW Forever's gate (owner ruling R8)
+-- ---------------------------------------------------------------------------
+
+-- Is `id`'s family on KickCD's own default list for (class, spec)? The running client's list,
+-- through Database.DefaultSpells (defaults/Spells_Forever.lua on WoW Forever).
+local function onDefaultList(id, class, spec)
+    local source = NS.Database and NS.Database.DefaultSpells and NS.Database.DefaultSpells()
+    local list = type(source) == "table" and type(source[class]) == "table" and source[class][spec]
+    if type(list) ~= "table" then return false end
+    local family = NS.SpellRanks.Family(id)
+    for _, e in ipairs(list) do
+        if (e.spellID or e[1]) == family then return true end
+    end
+    return false
+end
+
+--- WoW Forever's add gate on the live pair (owner ruling R8): anything the player or the pet knows,
+--- any rank of a family, or a spell on KickCD's own Forever list for the class, so an unlearned
+--- talent on that list can be put back. Anything else is refused: it would save a row that never
+--- draws. The known set is read afresh, because nothing may have rebuilt since the last learn.
+-- @return boolean, string|nil reason
+function SpellInput.KnownOrListed(id, class, spec)
+    local R = NS.SpellRanks
+    R.Invalidate()
+    if R.IsAvailable(id) or onDefaultList(id, class, spec) then return true end
+    if debugOn() then
+        NS.Debug("Spells", "add %s to %s/%s refused: not known, not on the class's list", id,
+            tostring(class), NS.Util.SpecDisplay(spec))
+    end
+    local Compat = NS.Compat or {}
+    local name = (Compat.GetSpellInfo and Compat.GetSpellInfo(id)) or tostring(id)
+    return false, ("Spell %s (#%d) is not known to you or your pet, and is not on KickCD's list for your class."):format(name, id)
 end
 
 -- ---------------------------------------------------------------------------
@@ -324,9 +374,10 @@ local INVALIDATE_EVENTS = {
     { "PLAYER_SPECIALIZATION_CHANGED", invalidate },
 }
 
---- Arm the cache invalidator. Idempotent: AceEvent keys on (event, target).
+--- Arm the cache invalidator, on Retail only: the gate it serves is absent on WoW Forever
+--- (MKF-KC-12). Idempotent: AceEvent keys on (event, target).
 function SpellInput.Arm()
-    if ev then NS.RegisterEventList(ev, INVALIDATE_EVENTS) end
+    if ev and SpellInput.CooldownManagerGated() then NS.RegisterEventList(ev, INVALIDATE_EVENTS) end
 end
 
 --- Release it. Called by core/LifecycleSetup.lua's standDown (slash-commands-§7).
