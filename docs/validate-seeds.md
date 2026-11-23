@@ -18,10 +18,14 @@ module docstring, `tools/seeds/seeds.py`. The first run is `docs/seed-research/2
 | Flavor | Source | Seed files | Tools |
 | --- | --- | --- | --- |
 | `retail` | wago.tools product `wow` (Retail live) | `defaults/Spells.lua` (hand-curated, tool-checked) | `tools/seeds/seeds.py` |
+| `forever` | wago.tools product `wowf` (WoW Forever) | `defaults/Spells_Forever.lua` (tool-written, hand-ordered) | `tools/seeds/seeds.py --flavor forever` (`tools/seeds/forever.py`) |
 
-KickCD's roster row is `Retail (port pending)`, so there is no `forever` flavor. When the port lands,
-a Forever list is derived from product `wowf` on its own, never by filtering Retail's (`clients-§5`),
-and gets its own `## Flavor: forever` section here.
+The Forever lists are derived from product `wowf` on their own, never by filtering Retail's
+(`clients-§5`): id 99 is Demoralizing Roar on Forever, 23920 is unlearnable and 19647 is only rank 2
+of Spell Lock. Each flavor has its own rulings file (`tools/seeds/rulings_<flavor>.json`) and its
+own bundles (`docs/seed-research/<date>-<flavor>/`), and every command takes `--flavor`
+(`retail` by default). The first Forever run is `docs/seed-research/2026-11-23-forever/` (the
+Forever port, MKF-KC-07).
 
 ## Rules
 
@@ -36,13 +40,13 @@ and gets its own `## Flavor: forever` section here.
   `docs/common-tasks.md` (*Add a tracked spell*), and the next run checks what it added. A run may
   also fix by hand a comment the `renamed` flag shows is stale, and the re-validation note in the
   file's header (below).
-- **Rulings are data.** They live in `tools/seeds/rulings_retail.json`, written only by
-  `seeds.py rule`. A candidate is keyed `<CLASS>:<specID>:<id>`, a flag
+- **Rulings are data.** They live in `tools/seeds/rulings_<flavor>.json` (`rulings_retail.json`,
+  `rulings_forever.json`), written only by `seeds.py rule`. A candidate is keyed `<CLASS>:<specID>:<id>`, a flag
   `shipped:<kind>:<CLASS>:<specID>:<id>` (a racial: `shipped:<kind>:RACE:<Race>:<id>`), never by
   build. A ruling holds until the thing it ruled on stops being proposed, and stays in the file as
   provenance after.
 - **Precedent, in this order, never re-litigated:**
-  1. a ruling already in `tools/seeds/rulings_retail.json`;
+  1. a ruling already in the flavor's rulings file;
   2. the header of `defaults/Spells.lua`: index 1 is the primary interrupt (or, where the class has
      no kick, the spec's best cast-stopping CC); indices 2..N are **PvE-biased** secondary
      cast-stoppers in priority order; the categories are the closed set; the source is the sheet's
@@ -154,6 +158,80 @@ is unruled and keeps the file's CRLF endings and column layout. A second `apply`
 `docs/smoke-tests.md`, plus any `tools/seeds/` or citation edits. Commit message:
 `Seeds (retail): re-validated against <build> (<date>)`.
 
+## Flavor: forever
+
+The seed is `defaults/Spells_Forever.lua`: `NS.DefaultSpellsForever[CLASS][Const.SPEC_FOREVER.<CLASS>]`,
+the same entry shape and closed categories as `defaults/Spells.lua`, and
+`NS.RaceCastStoppersForever`. Forever reports one specialization per class (1482, 1484-1491), so
+there is one list per class (owner ruling R6 of 2026-11-23), and the `Const.SPEC_FOREVER` alias is
+the class token (`[SPEC.WARRIOR]`). The reach model, the rank folding and the hand candidates are
+`tools/seeds/forever.py`'s module docstring. What differs from Retail:
+
+- **Reach is per class.** wago.tools serves no `SpecializationSpells`, `SpecSetMember`,
+  `TraitNodeXTraitCond`, `TraitTreeLoadout` or `PvpTalent` rows for `wowf`. A class reaches a spell
+  on a talent-tree skill line `SkillRaceClassInfo` gives it alone, through a `SkillLineAbility` row
+  whose `AcquireMethod` is not 3 (never learned: the rune grants and same-name clones), through its
+  trait tree (`SkillLineXTraitTree`), or through a pet in `forever.PET_LINES`.
+- **One candidate per rank family.** Every rank is its own id. A spec's candidates fold by name
+  into one, keyed by its `Rank 1` id, carrying `ranks`; a family any rank of which the list ships
+  is not proposed. Ship the rank-1 id, one entry per ability.
+- **Hand candidates** are `forever.HAND_CANDIDATES`: the core spells with no cooldown, Freezing
+  Trap, War Stomp in each class a Tauren plays, and the owner-optional spells no rule proposes, so
+  each owner call is a ruling on record. A `racial` hand candidate is reached as a shipped racial is.
+- **Order is by hand.** `apply` puts interrupts first, then CC, each in id order. The priority
+  order (Pummel first for Warriors, R6) is a reorder by hand after the apply, with no id added or
+  removed.
+
+### Status
+
+```sh
+python3 tools/seeds/seeds.py status --flavor forever
+```
+
+### Freeze and derive
+
+```sh
+python3 tools/seeds/seeds.py derive --flavor forever --bundle docs/seed-research/<date>-forever --date <date> --build <build>
+```
+
+It reads the 17 tables `forever.TABLES` names (about 20 MB, cached in `tools/seeds/.cache/`) and
+freezes them gzipped into `raw/` (about 1.5 MB). It stops when a class has no talent-tree line, or
+when a `Const.SPEC_FOREVER` id is not that class's specialization on the build. `--replay`
+re-derives from `raw/` alone.
+
+### Rule
+
+```sh
+python3 tools/seeds/seeds.py check --flavor forever --bundle docs/seed-research/<date>-forever
+python3 tools/seeds/seeds.py rule --flavor forever --tsv <scratchpad>/rulings.tsv --bundle docs/seed-research/<date>-forever
+```
+
+The candidate and flag kinds, and what accept, reject, keep and remove mean, are Retail's. The
+precedent adds, after a ruling already in `rulings_forever.json`: the owner's rulings R6 and R7 of
+2026-11-23 (one list per class, Pummel first; the core lists plus Gouge and Intercept) and the
+research they rest on (Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`).
+
+### Apply
+
+```sh
+python3 tools/seeds/seeds.py report --flavor forever --bundle docs/seed-research/<date>-forever --date <date>
+python3 tools/seeds/seeds.py apply  --flavor forever --bundle docs/seed-research/<date>-forever --date <date>
+```
+
+An applied entry's comment reads `<name> (DB2 seed <date>)`. Then reorder by hand (above).
+
+### After
+
+- Roll the `Seeded against` note in the header of `defaults/Spells_Forever.lua` to the build and
+  date, and write the bundle's `ANALYSIS.md` in the 2026-11-23 bundle's shape.
+- Add a check per changed list to `docs/smoke-tests.md`'s SPELLS section.
+
+### Stage
+
+`defaults/Spells_Forever.lua`, `tools/seeds/rulings_forever.json`,
+`docs/seed-research/<date>-forever`, `docs/smoke-tests.md`, plus any `tools/seeds/` edits. Commit
+message: `Seeds (forever): re-validated against <build> (<date>)`.
+
 ## Gate
 
 ```sh
@@ -163,8 +241,9 @@ python3 -m unittest discover -s tools/seeds -p 'test_*.py'
 ```
 
 The first two are `CLAUDE.md`'s green gate: luacheck reports 0 warnings and 0 errors, and the
-headless suite 0 failed. The third is the tool's own tests (no network). KickCD is Retail-only, so
-there is no `KA0S_KIT_CLIENT=forever` run.
+headless suite 0 failed. The third is the tool's own tests (no network), both flavors' among them
+(`test_seeds.py`, `test_forever.py`). A Forever seed run also runs the suite under the kit's forever
+profile: `KA0S_KIT_CLIENT=forever ~/.claude/dev-copilot/bin/ka0s-bounded lua tests/run.lua`.
 
 ## Notes
 
@@ -181,5 +260,7 @@ there is no `KA0S_KIT_CLIENT=forever` run.
 - **What DB2 cannot see.** A server script, an area trigger or a summoned totem is not linked from
   the cast's `SpellEffect` rows. The family bridge (the same name in the same `SpellClassSet`)
   recovers most of them for a shipped id; the rest are `no-evidence` flags, ruled once.
+- **Forever's racial lines** are named both `Racial - <race>` and `<race> Racial` (`Tauren
+  Racial`); the forever flavor reads both.
 - **The shared helper.** The fetch, cache, bundle and rulings shape is copied from AuraMaster's
   `tools/spell-research/`, not imported. Whether it becomes one shared helper is LibKa0s#91.

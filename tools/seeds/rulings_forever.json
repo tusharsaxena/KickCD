@@ -1,0 +1,166 @@
+{
+  "DRUID:1484:1238122": {
+    "reason": "Feral Charge (Feral talent; the interrupt is the triggered 19675, bear forms only) replaces Retail's Skull Bash; index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "DRUID:1484:20549": {
+    "reason": "War Stomp for a Tauren druid (critic L1); the known filter hides it otherwise",
+    "ruling": "accept"
+  },
+  "DRUID:1484:2637": {
+    "reason": "Hibernate: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; beasts and dragonkin, no cooldown",
+    "ruling": "reject"
+  },
+  "DRUID:1484:5211": {
+    "reason": "Bash, the id Retail ships as Mighty Bash (stun, bear forms, 60 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "DRUID:1484:9005": {
+    "reason": "Pounce: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; Cat Form from Prowl, no cooldown",
+    "ruling": "reject"
+  },
+  "HUNTER:1485:1499": {
+    "reason": "Freezing Trap (replaces Retail's 187650); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "HUNTER:1485:1513": {
+    "reason": "Scare Beast: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; beasts only, 1.5 s cast",
+    "ruling": "reject"
+  },
+  "HUNTER:1485:19503": {
+    "reason": "Scatter Shot (Marksmanship talent, replaces Retail's 213691), index 1: hunters have no interrupt on Forever, pets included; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "HUNTER:1485:19577": {
+    "reason": "Intimidation, the same id as Retail's (Beast Mastery talent; the pet stuns on its next hit); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "HUNTER:1485:20549": {
+    "reason": "War Stomp for a Tauren hunter (critic L1); the known filter hides it otherwise",
+    "ruling": "accept"
+  },
+  "MAGE:1482:118": {
+    "reason": "Polymorph, the same id as Retail's (no cooldown); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "MAGE:1482:11958": {
+    "reason": "Ice Block freezes the mage, not the caster: its mechanic is on the player",
+    "ruling": "reject"
+  },
+  "MAGE:1482:2139": {
+    "reason": "Counterspell, the same id as Retail's (effect 68, 30 s, off the GCD); index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "PALADIN:1486:20066": {
+    "reason": "Repentance, the same id as Retail's (Retribution talent); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "PALADIN:1486:2812": {
+    "reason": "Holy Wrath: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; undead and demons only, 2 s cast",
+    "ruling": "reject"
+  },
+  "PALADIN:1486:2878": {
+    "reason": "Turn Undead: one creature type, like Shackle Undead and Banish (excluded as hard CC by the research)",
+    "ruling": "reject"
+  },
+  "PALADIN:1486:853": {
+    "reason": "Hammer of Justice, the same id as Retail's; index 1 because no paladin interrupt is learnable on Forever (Rebuke 425609 is a rune grant); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "PRIEST:1487:1277455": {
+    "reason": "Confounding Flash: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; a Gnome priest's spell",
+    "ruling": "reject"
+  },
+  "PRIEST:1487:15487": {
+    "reason": "Silence, the same id as Retail's (Shadow talent; 5 s silence plus a 3 s lockout 1241057 a server script links); index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "PRIEST:1487:605": {
+    "reason": "Mind Control, the same id as Retail's (no cooldown, 3 s cast); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "PRIEST:1487:8122": {
+    "reason": "Psychic Scream, the same id as Retail's (fear, 30 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "ROGUE:1488:1766": {
+    "reason": "Kick, the same id as Retail's (effect 68, 10 s); index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "ROGUE:1488:1776": {
+    "reason": "Gouge (incapacitate, 10 s); added by name in owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "ROGUE:1488:1833": {
+    "reason": "Cheap Shot, the same id as Retail's (no cooldown, from Stealth); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "ROGUE:1488:2094": {
+    "reason": "Blind, the same id as Retail's (300 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "ROGUE:1488:408": {
+    "reason": "Kidney Shot, the same id as Retail's; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "SHAMAN:1489:20549": {
+    "reason": "War Stomp for a Tauren shaman (critic L1); the known filter hides it otherwise",
+    "ruling": "accept"
+  },
+  "SHAMAN:1489:8042": {
+    "reason": "Earth Shock (effect 68, 2 s lockout, 6 s shared with Flame and Frost Shock) replaces Retail's Wind Shear; index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "SHAMAN:1489:8177": {
+    "reason": "Grounding Totem: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; it redirects one spell rather than stopping a cast",
+    "ruling": "reject"
+  },
+  "WARLOCK:1490:19244": {
+    "reason": "Spell Lock rank 1 (the Felhunter, effect 68, 30 s); Retail ships 19647, only rank 2 here; index 1; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARLOCK:1490:5484": {
+    "reason": "Howl of Terror, the same id as Retail's (fear, 40 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARLOCK:1490:5782": {
+    "reason": "Fear, the same id as Retail's (no cooldown, 1.5 s cast); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARLOCK:1490:6358": {
+    "reason": "Seduction: owner-optional, not in owner ruling R7 (2026-11-23): core plus Gouge and Intercept; the Succubus, no cooldown",
+    "ruling": "reject"
+  },
+  "WARLOCK:1490:6789": {
+    "reason": "Death Coil, the id Retail ships as Mortal Coil (horror, 120 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:100": {
+    "reason": "Charge cannot be cast in combat (SpellMisc attribute), so it never stops a cast in a fight",
+    "ruling": "reject"
+  },
+  "WARRIOR:1491:12809": {
+    "reason": "Concussion Blow, the warrior talent stun (Protection, 20 points) that replaces Retail's Storm Bolt; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:20252": {
+    "reason": "Intercept (Berserker Stance; the stun is the triggered 20253/20614/20615, 30 s); added by name in owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:20549": {
+    "reason": "War Stomp for a Tauren warrior (critic L1: a shared profile appends the racial for its creator's class only); the known filter hides it otherwise",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:5246": {
+    "reason": "Intimidating Shout, the same id as Retail's (fear, 180 s); core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:6552": {
+    "reason": "interrupt (effect 68, 10 s, Berserker Stance); index 1 by owner ruling R6 (2026-11-23): one list per class, Pummel first for Warriors",
+    "ruling": "accept"
+  },
+  "WARRIOR:1491:72": {
+    "reason": "interrupt (effect 68, 12 s, needs a shield, Battle or Defensive Stance); shares category 88 with Pummel; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
+    "ruling": "accept"
+  }
+}

@@ -69,7 +69,7 @@ IconGrid instances[unit]:Layout ─▶             Ka0s_KickCD_GridLayout { unit
 | The stand-down latch: one teardown, two named holds (`disabled`, `perf`) | `core/LifecycleSetup.lua`, each module's `Suspend` / `Resume` | [slash-dispatch.md → The disabled state](slash-dispatch.md#the-disabled-state) |
 | Code style, saved-variable boundary, `_G.X` vs bare X | every module | [common-tasks.md](common-tasks.md) |
 | Scope, defaults source (Baratus sheet), cast-bar removal history | — | [scope.md](scope.md) |
-| Seed validation: `defaults/Spells.lua` re-checked against one pinned Retail build's DB2 tables on wago.tools (`clients-§10`, KickCD#39), with rulings as data and a frozen bundle per run. Dev-only Python, never packaged | `tools/seeds/seeds.py`, `tools/seeds/rulings_retail.json`, `docs/seed-research/` | [validate-seeds.md](validate-seeds.md) |
+| Seed validation: `defaults/Spells.lua` re-checked against one pinned Retail build's DB2 tables on wago.tools (`clients-§10`, KickCD#39), and `defaults/Spells_Forever.lua` derived from one pinned WoW Forever build's (product `wowf`, the `forever` flavor), with rulings as data and a frozen bundle per run. Dev-only Python, never packaged | `tools/seeds/seeds.py`, `tools/seeds/forever.py`, `tools/seeds/rulings_retail.json`, `tools/seeds/rulings_forever.json`, `docs/seed-research/` | [validate-seeds.md](validate-seeds.md) |
 
 ## Namespace, naming, and the module publishing pattern
 

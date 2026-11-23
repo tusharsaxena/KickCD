@@ -251,6 +251,33 @@ test("Constants: SPEC covers all thirteen player classes at three specs each", f
     assertEqual(n, 40, "expected 40 player specs across the 13 classes")
 end)
 
+-- ── Const.SPEC_FOREVER (MKF-KC-07) ─────────────────────────────────────────
+
+test("Constants: SPEC_FOREVER keys each Forever class's one spec id by its class token", function()
+    -- WoW Forever reports ONE specialization per class (ChrSpecialization 1.60.1.71037: 1482 and
+    -- 1484-1491; 1493 is the pet spec). The token is the class file token, so no Retail spec name
+    -- and no underscore (Const.SPEC_TOKEN strips a trailing _WORD).
+    local want = { WARRIOR = 1491, PALADIN = 1486, HUNTER = 1485, ROGUE = 1488, PRIEST = 1487,
+                   SHAMAN = 1489, MAGE = 1482, WARLOCK = 1490, DRUID = 1484 }
+    local n = 0
+    for token, id in pairs(Const.SPEC_FOREVER) do
+        n = n + 1
+        assertEqual(id, want[token], "SPEC_FOREVER." .. token)
+        assertTrue(token:match("^[A-Z]+$") ~= nil, token .. " must be a bare class token")
+    end
+    assertEqual(n, 9, "nine Forever classes")
+end)
+
+test("Constants: no SPEC_FOREVER id collides with a Retail spec id", function()
+    -- Both tables key db.profile.spells[CLASS][specID]; a shared number would let one client's
+    -- list answer for the other's spec.
+    local retail = {}
+    for _, id in pairs(Const.SPEC) do retail[id] = true end
+    for token, id in pairs(Const.SPEC_FOREVER) do
+        assertTrue(not retail[id], token .. " (" .. id .. ") is also a Retail spec id")
+    end
+end)
+
 -- ── Const.SPEC_TOKEN (the derived reverse map) ──────────────────────────────
 
 test("Constants: every spec ID has a reverse token", function()

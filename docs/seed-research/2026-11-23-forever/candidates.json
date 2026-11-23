@@ -1,0 +1,1163 @@
+{
+ "build": "1.60.1.71037",
+ "candidates": [
+  {
+   "alias": "WARRIOR",
+   "category": "interrupt",
+   "class": "WARRIOR",
+   "cooldownMs": 12000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ]
+   },
+   "group": "interrupt",
+   "id": 72,
+   "key": "WARRIOR:1491:72",
+   "name": "Shield Bash",
+   "ranks": [
+    72,
+    1671,
+    1672
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "stun",
+   "class": "WARRIOR",
+   "cooldownMs": 15000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned via 7922 Charge Stun"
+    ]
+   },
+   "group": "cc",
+   "id": 100,
+   "key": "WARRIOR:1491:100",
+   "name": "Charge",
+   "ranks": [
+    100,
+    6178,
+    11578
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "fear",
+   "class": "WARRIOR",
+   "cooldownMs": 180000,
+   "evidence": {
+    "fear": [
+     "mechanic fleeing",
+     "mechanic fleeing via 20511 Intimidating Shout"
+    ]
+   },
+   "group": "cc",
+   "id": 5246,
+   "key": "WARRIOR:1491:5246",
+   "name": "Intimidating Shout",
+   "ranks": [
+    5246
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "interrupt",
+   "class": "WARRIOR",
+   "cooldownMs": 10000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ]
+   },
+   "group": "interrupt",
+   "id": 6552,
+   "key": "WARRIOR:1491:6552",
+   "name": "Pummel",
+   "ranks": [
+    6552,
+    6554
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "stun",
+   "class": "WARRIOR",
+   "cooldownMs": 45000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 12809,
+   "key": "WARRIOR:1491:12809",
+   "name": "Concussion Blow",
+   "ranks": [
+    12809
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "stun",
+   "class": "WARRIOR",
+   "cooldownMs": 30000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned via 20253 Intercept Stun"
+    ]
+   },
+   "group": "cc",
+   "id": 20252,
+   "key": "WARRIOR:1491:20252",
+   "name": "Intercept",
+   "ranks": [
+    20252,
+    20616,
+    20617
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "WARRIOR",
+   "category": "racial",
+   "class": "WARRIOR",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "War Stomp, the Tauren racial, in every class a Tauren plays (critic L1: a shared profile appends the racial for its creator's class only); hidden when not known"
+    ],
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 20549,
+   "key": "WARRIOR:1491:20549",
+   "name": "War Stomp",
+   "ranks": [
+    20549
+   ],
+   "reach": [
+    "racial (tauren)"
+   ],
+   "spec": 1491
+  },
+  {
+   "alias": "PALADIN",
+   "category": "stun",
+   "class": "PALADIN",
+   "cooldownMs": 60000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 853,
+   "key": "PALADIN:1486:853",
+   "name": "Hammer of Justice",
+   "ranks": [
+    853,
+    5588,
+    5589,
+    10308
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1486
+  },
+  {
+   "alias": "PALADIN",
+   "category": "stun",
+   "class": "PALADIN",
+   "cooldownMs": 60000,
+   "evidence": {
+    "hand": [
+     "Holy Wrath (its stun 429147 is linked by a server script): in the research's owner-optional column (inputs/research/forever-interrupt-data.md 7); proposed so the owner's ruling R7 (core plus Gouge and Intercept only) is on record"
+    ]
+   },
+   "group": "cc",
+   "id": 2812,
+   "key": "PALADIN:1486:2812",
+   "name": "Holy Wrath",
+   "ranks": [
+    2812,
+    10318
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1486
+  },
+  {
+   "alias": "PALADIN",
+   "category": "fear",
+   "class": "PALADIN",
+   "cooldownMs": 30000,
+   "evidence": {
+    "fear": [
+     "mechanic turned"
+    ]
+   },
+   "group": "cc",
+   "id": 2878,
+   "key": "PALADIN:1486:2878",
+   "name": "Turn Undead",
+   "ranks": [
+    2878,
+    5627,
+    10326
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1486
+  },
+  {
+   "alias": "PALADIN",
+   "category": "incapacitate",
+   "class": "PALADIN",
+   "cooldownMs": 60000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "group": "cc",
+   "id": 20066,
+   "key": "PALADIN:1486:20066",
+   "name": "Repentance",
+   "ranks": [
+    20066
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1486
+  },
+  {
+   "alias": "HUNTER",
+   "category": "incapacitate",
+   "class": "HUNTER",
+   "cooldownMs": 30000,
+   "evidence": {
+    "hand": [
+     "Freezing Trap: the freeze is the trap's own 3355/14308/14309, which DB2 reaches through a game object, not the cast's effects; core by the owner's ruling R7 (2026-11-23)"
+    ],
+    "incapacitate": [
+     "bridge 14308: mechanic frozen",
+     "bridge 14309: mechanic frozen",
+     "bridge 3355: mechanic frozen"
+    ],
+    "root": [
+     "bridge 14308: mechanic frozen",
+     "bridge 14309: mechanic frozen",
+     "bridge 3355: mechanic frozen"
+    ]
+   },
+   "group": "cc",
+   "id": 1499,
+   "key": "HUNTER:1485:1499",
+   "name": "Freezing Trap",
+   "ranks": [
+    1499,
+    14310,
+    14311
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1485
+  },
+  {
+   "alias": "HUNTER",
+   "category": "fear",
+   "class": "HUNTER",
+   "cooldownMs": 30000,
+   "evidence": {
+    "fear": [
+     "mechanic fleeing"
+    ]
+   },
+   "group": "cc",
+   "id": 1513,
+   "key": "HUNTER:1485:1513",
+   "name": "Scare Beast",
+   "ranks": [
+    1513,
+    14326,
+    14327
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1485
+  },
+  {
+   "alias": "HUNTER",
+   "category": "incapacitate",
+   "class": "HUNTER",
+   "cooldownMs": 30000,
+   "evidence": {
+    "incapacitate": [
+     "effect mechanic disoriented",
+     "mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 19503,
+   "key": "HUNTER:1485:19503",
+   "name": "Scatter Shot",
+   "ranks": [
+    19503
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1485
+  },
+  {
+   "alias": "HUNTER",
+   "category": "stun",
+   "class": "HUNTER",
+   "cooldownMs": 60000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned via 24394 Intimidation"
+    ]
+   },
+   "group": "cc",
+   "id": 19577,
+   "key": "HUNTER:1485:19577",
+   "name": "Intimidation",
+   "ranks": [
+    19577
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1485
+  },
+  {
+   "alias": "HUNTER",
+   "category": "racial",
+   "class": "HUNTER",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "War Stomp, the Tauren racial, in every class a Tauren plays (critic L1: a shared profile appends the racial for its creator's class only); hidden when not known"
+    ],
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 20549,
+   "key": "HUNTER:1485:20549",
+   "name": "War Stomp",
+   "ranks": [
+    20549
+   ],
+   "reach": [
+    "racial (tauren)"
+   ],
+   "spec": 1485
+  },
+  {
+   "alias": "ROGUE",
+   "category": "stun",
+   "class": "ROGUE",
+   "cooldownMs": 20000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 408,
+   "key": "ROGUE:1488:408",
+   "name": "Kidney Shot",
+   "ranks": [
+    408,
+    8643
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1488
+  },
+  {
+   "alias": "ROGUE",
+   "category": "interrupt",
+   "class": "ROGUE",
+   "cooldownMs": 10000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ]
+   },
+   "group": "interrupt",
+   "id": 1766,
+   "key": "ROGUE:1488:1766",
+   "name": "Kick",
+   "ranks": [
+    1766,
+    1767,
+    1768,
+    1769
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1488
+  },
+  {
+   "alias": "ROGUE",
+   "category": "incapacitate",
+   "class": "ROGUE",
+   "cooldownMs": 10000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic incapacitated"
+    ]
+   },
+   "group": "cc",
+   "id": 1776,
+   "key": "ROGUE:1488:1776",
+   "name": "Gouge",
+   "ranks": [
+    1776,
+    1777,
+    8629,
+    11285,
+    11286
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1488
+  },
+  {
+   "alias": "ROGUE",
+   "category": "stun",
+   "class": "ROGUE",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Cheap Shot: no cooldown, so no rule proposes it; core by the owner's ruling R7 (2026-11-23)"
+    ],
+    "stun": [
+     "bridge 14902: mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 1833,
+   "key": "ROGUE:1488:1833",
+   "name": "Cheap Shot",
+   "ranks": [
+    1833
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1488
+  },
+  {
+   "alias": "ROGUE",
+   "category": "incapacitate",
+   "class": "ROGUE",
+   "cooldownMs": 300000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 2094,
+   "key": "ROGUE:1488:2094",
+   "name": "Blind",
+   "ranks": [
+    2094
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1488
+  },
+  {
+   "alias": "PRIEST",
+   "category": "incapacitate",
+   "class": "PRIEST",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Mind Control: no cooldown, so no rule proposes it; core by the owner's ruling R7 (2026-11-23)"
+    ],
+    "incapacitate": [
+     "bridge 10911: mechanic charmed",
+     "bridge 10912: mechanic charmed",
+     "mechanic charmed"
+    ]
+   },
+   "group": "cc",
+   "id": 605,
+   "key": "PRIEST:1487:605",
+   "name": "Mind Control",
+   "ranks": [
+    605,
+    10911,
+    10912
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1487
+  },
+  {
+   "alias": "PRIEST",
+   "category": "fear",
+   "class": "PRIEST",
+   "cooldownMs": 30000,
+   "evidence": {
+    "fear": [
+     "mechanic fleeing"
+    ]
+   },
+   "group": "cc",
+   "id": 8122,
+   "key": "PRIEST:1487:8122",
+   "name": "Psychic Scream",
+   "ranks": [
+    8122,
+    8124,
+    10888,
+    10890
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1487
+  },
+  {
+   "alias": "PRIEST",
+   "category": "silence",
+   "class": "PRIEST",
+   "cooldownMs": 45000,
+   "evidence": {
+    "silence": [
+     "mechanic silenced"
+    ]
+   },
+   "group": "cc",
+   "id": 15487,
+   "key": "PRIEST:1487:15487",
+   "name": "Silence",
+   "ranks": [
+    15487
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1487
+  },
+  {
+   "alias": "PRIEST",
+   "category": "incapacitate",
+   "class": "PRIEST",
+   "cooldownMs": 120000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic disoriented"
+    ]
+   },
+   "group": "cc",
+   "id": 1277455,
+   "key": "PRIEST:1487:1277455",
+   "name": "Confounding Flash",
+   "ranks": [
+    1277455
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1487
+  },
+  {
+   "alias": "SHAMAN",
+   "category": "interrupt",
+   "class": "SHAMAN",
+   "cooldownMs": 6000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ]
+   },
+   "group": "interrupt",
+   "id": 8042,
+   "key": "SHAMAN:1489:8042",
+   "name": "Earth Shock",
+   "ranks": [
+    8042,
+    8044,
+    8045,
+    8046,
+    10412,
+    10413,
+    10414
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1489
+  },
+  {
+   "alias": "SHAMAN",
+   "category": "other",
+   "class": "SHAMAN",
+   "cooldownMs": 15000,
+   "evidence": {
+    "hand": [
+     "Grounding Totem (a totem redirects one spell): in the research's owner-optional column (inputs/research/forever-interrupt-data.md 7); proposed so the owner's ruling R7 (core plus Gouge and Intercept only) is on record"
+    ]
+   },
+   "group": "cc",
+   "id": 8177,
+   "key": "SHAMAN:1489:8177",
+   "name": "Grounding Totem",
+   "ranks": [
+    8177
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1489
+  },
+  {
+   "alias": "SHAMAN",
+   "category": "racial",
+   "class": "SHAMAN",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "War Stomp, the Tauren racial, in every class a Tauren plays (critic L1: a shared profile appends the racial for its creator's class only); hidden when not known"
+    ],
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 20549,
+   "key": "SHAMAN:1489:20549",
+   "name": "War Stomp",
+   "ranks": [
+    20549
+   ],
+   "reach": [
+    "racial (tauren)"
+   ],
+   "spec": 1489
+  },
+  {
+   "alias": "MAGE",
+   "category": "incapacitate",
+   "class": "MAGE",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Polymorph: no cooldown, so no rule proposes it; core by the owner's ruling R7 (2026-11-23)"
+    ],
+    "incapacitate": [
+     "bridge 12824: mechanic polymorphed",
+     "bridge 12825: mechanic polymorphed",
+     "bridge 12826: mechanic polymorphed",
+     "bridge 28271: mechanic polymorphed",
+     "bridge 28272: mechanic polymorphed",
+     "mechanic polymorphed"
+    ]
+   },
+   "group": "cc",
+   "id": 118,
+   "key": "MAGE:1482:118",
+   "name": "Polymorph",
+   "ranks": [
+    118,
+    12824,
+    12825,
+    12826
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1482
+  },
+  {
+   "alias": "MAGE",
+   "category": "interrupt",
+   "class": "MAGE",
+   "cooldownMs": 30000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ]
+   },
+   "group": "interrupt",
+   "id": 2139,
+   "key": "MAGE:1482:2139",
+   "name": "Counterspell",
+   "ranks": [
+    2139
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1482
+  },
+  {
+   "alias": "MAGE",
+   "category": "incapacitate",
+   "class": "MAGE",
+   "cooldownMs": 300000,
+   "evidence": {
+    "incapacitate": [
+     "mechanic frozen"
+    ],
+    "root": [
+     "mechanic frozen"
+    ]
+   },
+   "group": "cc",
+   "id": 11958,
+   "key": "MAGE:1482:11958",
+   "name": "Ice Block",
+   "ranks": [
+    11958
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1482
+  },
+  {
+   "alias": "WARLOCK",
+   "category": "fear",
+   "class": "WARLOCK",
+   "cooldownMs": 40000,
+   "evidence": {
+    "fear": [
+     "mechanic fleeing"
+    ]
+   },
+   "group": "cc",
+   "id": 5484,
+   "key": "WARLOCK:1490:5484",
+   "name": "Howl of Terror",
+   "ranks": [
+    5484,
+    17928
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1490
+  },
+  {
+   "alias": "WARLOCK",
+   "category": "fear",
+   "class": "WARLOCK",
+   "cooldownMs": 0,
+   "evidence": {
+    "fear": [
+     "bridge 6213: mechanic fleeing",
+     "bridge 6215: mechanic fleeing",
+     "mechanic fleeing"
+    ],
+    "hand": [
+     "Fear: no cooldown, so no rule proposes it; core by the owner's ruling R7 (2026-11-23)"
+    ]
+   },
+   "group": "cc",
+   "id": 5782,
+   "key": "WARLOCK:1490:5782",
+   "name": "Fear",
+   "ranks": [
+    5782,
+    6213,
+    6215
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1490
+  },
+  {
+   "alias": "WARLOCK",
+   "category": "incapacitate",
+   "class": "WARLOCK",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Seduction (the Succubus; no cooldown): in the research's owner-optional column (inputs/research/forever-interrupt-data.md 7); proposed so the owner's ruling R7 (core plus Gouge and Intercept only) is on record"
+    ],
+    "incapacitate": [
+     "mechanic charmed"
+    ]
+   },
+   "group": "cc",
+   "id": 6358,
+   "key": "WARLOCK:1490:6358",
+   "name": "Seduction",
+   "ranks": [
+    6358
+   ],
+   "reach": [
+    "pet (summon 712)"
+   ],
+   "spec": 1490
+  },
+  {
+   "alias": "WARLOCK",
+   "category": "incapacitate",
+   "class": "WARLOCK",
+   "cooldownMs": 120000,
+   "evidence": {
+    "fear": [
+     "effect mechanic horrified"
+    ],
+    "incapacitate": [
+     "effect mechanic horrified"
+    ]
+   },
+   "group": "cc",
+   "id": 6789,
+   "key": "WARLOCK:1490:6789",
+   "name": "Death Coil",
+   "ranks": [
+    6789,
+    17925,
+    17926
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1490
+  },
+  {
+   "alias": "WARLOCK",
+   "category": "interrupt",
+   "class": "WARLOCK",
+   "cooldownMs": 30000,
+   "evidence": {
+    "interrupt": [
+     "effect 68"
+    ],
+    "silence": [
+     "effect mechanic silenced",
+     "mechanic silenced via 24259 Spell Lock"
+    ]
+   },
+   "group": "interrupt",
+   "id": 19244,
+   "key": "WARLOCK:1490:19244",
+   "name": "Spell Lock",
+   "ranks": [
+    19244,
+    19647
+   ],
+   "reach": [
+    "pet (summon 691)"
+   ],
+   "spec": 1490
+  },
+  {
+   "alias": "DRUID",
+   "category": "incapacitate",
+   "class": "DRUID",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Hibernate (no cooldown): in the research's owner-optional column (inputs/research/forever-interrupt-data.md 7); proposed so the owner's ruling R7 (core plus Gouge and Intercept only) is on record"
+    ],
+    "incapacitate": [
+     "bridge 18657: mechanic asleep",
+     "bridge 18658: mechanic asleep",
+     "mechanic asleep"
+    ]
+   },
+   "group": "cc",
+   "id": 2637,
+   "key": "DRUID:1484:2637",
+   "name": "Hibernate",
+   "ranks": [
+    2637,
+    18657,
+    18658
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1484
+  },
+  {
+   "alias": "DRUID",
+   "category": "stun",
+   "class": "DRUID",
+   "cooldownMs": 60000,
+   "evidence": {
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 5211,
+   "key": "DRUID:1484:5211",
+   "name": "Bash",
+   "ranks": [
+    5211,
+    6798,
+    8983
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1484
+  },
+  {
+   "alias": "DRUID",
+   "category": "stun",
+   "class": "DRUID",
+   "cooldownMs": 0,
+   "evidence": {
+    "hand": [
+     "Pounce (no cooldown): in the research's owner-optional column (inputs/research/forever-interrupt-data.md 7); proposed so the owner's ruling R7 (core plus Gouge and Intercept only) is on record"
+    ],
+    "stun": [
+     "bridge 9823: mechanic stunned",
+     "bridge 9827: mechanic stunned",
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 9005,
+   "key": "DRUID:1484:9005",
+   "name": "Pounce",
+   "ranks": [
+    9005,
+    9823,
+    9827
+   ],
+   "reach": [
+    "class skill line"
+   ],
+   "spec": 1484
+  },
+  {
+   "alias": "DRUID",
+   "category": "racial",
+   "class": "DRUID",
+   "cooldownMs": 90000,
+   "evidence": {
+    "hand": [
+     "War Stomp, the Tauren racial, in every class a Tauren plays (critic L1: a shared profile appends the racial for its creator's class only); hidden when not known"
+    ],
+    "stun": [
+     "mechanic stunned"
+    ]
+   },
+   "group": "cc",
+   "id": 20549,
+   "key": "DRUID:1484:20549",
+   "name": "War Stomp",
+   "ranks": [
+    20549
+   ],
+   "reach": [
+    "racial (tauren)"
+   ],
+   "spec": 1484
+  },
+  {
+   "alias": "DRUID",
+   "category": "interrupt",
+   "class": "DRUID",
+   "cooldownMs": 15000,
+   "evidence": {
+    "interrupt": [
+     "effect 68 via 19675 Feral Charge"
+    ],
+    "root": [
+     "effect mechanic rooted via 19675 Feral Charge"
+    ]
+   },
+   "group": "interrupt",
+   "id": 1238122,
+   "key": "DRUID:1484:1238122",
+   "name": "Feral Charge",
+   "ranks": [
+    1238122
+   ],
+   "reach": [
+    "class skill line",
+    "talent"
+   ],
+   "spec": 1484
+  }
+ ],
+ "client": "forever",
+ "date": "2026-11-23",
+ "flags": [],
+ "handMissing": [],
+ "product": "wowf",
+ "shippedEntries": 1,
+ "shippedIds": 1,
+ "specs": [
+  {
+   "alias": "WARRIOR",
+   "candidates": 7,
+   "class": "WARRIOR",
+   "interrupts": [
+    72,
+    1671,
+    1672,
+    6552,
+    6554
+   ],
+   "name": "Warrior",
+   "reach": 309,
+   "shipped": 0,
+   "spec": 1491
+  },
+  {
+   "alias": "PALADIN",
+   "candidates": 4,
+   "class": "PALADIN",
+   "interrupts": [],
+   "name": "Paladin",
+   "reach": 341,
+   "shipped": 0,
+   "spec": 1486
+  },
+  {
+   "alias": "HUNTER",
+   "candidates": 5,
+   "class": "HUNTER",
+   "interrupts": [],
+   "name": "Hunter",
+   "reach": 493,
+   "shipped": 0,
+   "spec": 1485
+  },
+  {
+   "alias": "ROGUE",
+   "candidates": 5,
+   "class": "ROGUE",
+   "interrupts": [
+    1766,
+    1767,
+    1768,
+    1769
+   ],
+   "name": "Rogue",
+   "reach": 269,
+   "shipped": 0,
+   "spec": 1488
+  },
+  {
+   "alias": "PRIEST",
+   "candidates": 4,
+   "class": "PRIEST",
+   "interrupts": [],
+   "name": "Priest",
+   "reach": 411,
+   "shipped": 0,
+   "spec": 1487
+  },
+  {
+   "alias": "SHAMAN",
+   "candidates": 3,
+   "class": "SHAMAN",
+   "interrupts": [
+    8042,
+    8044,
+    8045,
+    8046,
+    10412,
+    10413,
+    10414
+   ],
+   "name": "Shaman",
+   "reach": 350,
+   "shipped": 0,
+   "spec": 1489
+  },
+  {
+   "alias": "MAGE",
+   "candidates": 3,
+   "class": "MAGE",
+   "interrupts": [
+    2139
+   ],
+   "name": "Mage",
+   "reach": 348,
+   "shipped": 0,
+   "spec": 1482
+  },
+  {
+   "alias": "WARLOCK",
+   "candidates": 5,
+   "class": "WARLOCK",
+   "interrupts": [
+    19244,
+    19647
+   ],
+   "name": "Warlock",
+   "reach": 446,
+   "shipped": 0,
+   "spec": 1490
+  },
+  {
+   "alias": "DRUID",
+   "candidates": 5,
+   "class": "DRUID",
+   "interrupts": [
+    1238122
+   ],
+   "name": "Druid",
+   "reach": 388,
+   "shipped": 0,
+   "spec": 1484
+  }
+ ],
+ "tool": "tools/seeds/seeds.py derive"
+}

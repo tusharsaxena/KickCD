@@ -342,6 +342,15 @@ disabled it goes red, and restored it passes. They are not part of `CLAUDE.md`'s
 is Lua only; the contract's `## Gate` runs them beside it, and so should any change under
 `tools/seeds/`.
 
+`tools/seeds/test_forever.py` covers the `forever` flavor (`tools/seeds/forever.py`, MKF-KC-07) on
+a tiny WoW Forever fixture: the flavor's files and product, the per-class reach (a tree line by its
+`SkillRaceClassInfo` mask, never-learned rows and shared rune lines kept out, a talent through
+`SkillLineXTraitTree`, a pet gated on its summon, both racial-line names), one candidate per rank
+family at its `Rank 1` id (a same-name variant is no rank, a shipped rank suppresses the family),
+the hand candidates (a racial reached as a racial), a first apply into empty lists (interrupts
+first, the default layout), the bundle-flavor guard, the reports' names, and that the committed
+`docs/seed-research/*-forever` bundle is fully ruled.
+
 ## Automated test records — the consolidated run
 
 All four out-of-game suites go through one vendored runner, and every run is recorded

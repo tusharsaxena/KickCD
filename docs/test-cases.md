@@ -121,7 +121,7 @@ Total.
 - a secret strip read attaches the tooltip above the strip's nearest readable ancestor, never the cursor
 - a strip whose rect and every ancestor's read nil shows no tooltip, and raises nothing
 
-### test_constants.lua (26)
+### test_constants.lua (28)
 
 - Constants: the chat prefix is the cyan [KCD] tag and closes its color code
 - Constants: the notice gray is an opener with no closer (callers add |r)
@@ -140,6 +140,8 @@ Total.
 - Constants: no two spec tokens share a spec ID
 - Constants: the three Midnight-era spec IDs are present and correct
 - Constants: SPEC covers all thirteen player classes at three specs each
+- Constants: SPEC_FOREVER keys each Forever class's one spec id by its class token
+- Constants: no SPEC_FOREVER id collides with a Retail spec id
 - Constants: every spec ID has a reverse token
 - Constants: the reverse map is exactly as large as the forward map
 - Constants: the reverse map strips the disambiguating class suffix
@@ -2122,7 +2124,7 @@ Total.
 | test_mediasetup.lua | 11 |
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
-| test_constants.lua | 26 |
+| test_constants.lua | 28 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2225,4 +2227,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1783** |
+| **Total** | **1785** |
