@@ -144,3 +144,56 @@ test("Client shape: each per-client feature's answer is the running client's", f
     assertEqual(NS.SimHost.KickOffGcd(6552), retail, "a kick off the GCD in the simulator on " .. CLIENT)
     assertEqual(NS.SimScenario.CLIENT, CLIENT, "the simulator's story is the running client's")
 end)
+
+-- ── The smoke file (clients-§6) ─────────────────────────────────────────────
+
+-- The words the WoW Forever theme's absence checks must name, one per Retail-only feature.
+local ABSENT_WORDS = { "Cooldown Manager", "empower", "charges", "Mythic+" }
+
+test("Client shape: docs/smoke-tests.md names each theme's client and carries the WoW Forever theme", function()
+    -- clients-§6 (MKF-KC-18): every check names the client it runs on; a feature absent on a client
+    -- gets a check that it is not there, and one that it still works on the other. red under: no
+    -- Client column in the Index, no WoW Forever theme, a FOREVER check with no Client tag, an
+    -- absence the checks forget, or no Retail regression check for an R8 fix
+    local body = read("docs/smoke-tests.md")
+    local index = body:match("\n## Index\n(.-)\n## ")
+    assertTrue(index ~= nil, "docs/smoke-tests.md has its Index")
+    assertTrue(index:find("\n| ID range | Theme | Client | What it covers |\n", 1, true) ~= nil,
+        "the Index carries a Client column")
+    local rows = 0
+    for line in index:gmatch("\n(|[^\n]*)") do
+        if not line:find("^| ID range") and not line:find("^|%-") then
+            rows = rows + 1
+            local client = line:match("^| [^|]-| [^|]-| ([^|]-) |")
+            assertTrue(client == "both" or client == "Retail" or client == "WoW Forever",
+                "an Index row's Client cell is both, Retail or WoW Forever, not " .. tostring(client)
+                .. " (" .. line:sub(1, 40) .. ")")
+        end
+    end
+    assertTrue(rows >= 18, "the Index carries its theme rows (" .. rows .. ")")
+    assertTrue(index:find("| [WoW Forever](#wow-forever) |", 1, true) ~= nil, "the Index lists the WoW Forever theme")
+
+    local forever = body:match("\n## WoW Forever\n(.-)\n## Pending sign%-off\n")
+    assertTrue(forever ~= nil, "a `## WoW Forever` theme just before Pending sign-off")
+    local tagged, n = 0, 0
+    for _ in forever:gmatch("\n%*%*FOREVER%-%d+%.") do n = n + 1 end
+    for id, client in forever:gmatch("\n%*%*FOREVER%-(%d+)%.[^\n]-%*%* Client: ([%a ]-)%.") do
+        tagged = tagged + 1
+        assertEqual(tonumber(id), tagged, "FOREVER checks are numbered in order")
+        assertTrue(client == "both" or client == "Retail" or client == "WoW Forever",
+            "FOREVER-" .. id .. " names its client, not " .. client)
+    end
+    assertTrue(n >= 10 and tagged == n, "every FOREVER check names its client (" .. tagged .. " of " .. n .. ")")
+    for _, word in ipairs(ABSENT_WORDS) do
+        assertTrue(forever:find(word, 1, true) ~= nil, "the WoW Forever theme has an absence check naming " .. word)
+    end
+    for empty in forever:gmatch("\n%*%*FOREVER%-%d+%.[^\n]*Result:([^\n]*)") do
+        assertEqual(empty, "", "a FOREVER check's Result line is the owner's, left empty")
+    end
+    local r8 = forever:match("\n### Retail regression checks %(ruling R8%)\n(.*)$")
+    assertTrue(r8 ~= nil, "a `### Retail regression checks (ruling R8)` subsection closes the theme")
+    assertTrue(r8:find("%*%* Client: Retail%.") ~= nil, "the R8 subsection holds Retail checks")
+    for _, fix in ipairs({ "C_SpellBook", "GetNumSpecializationsForClassID", "notInterruptible", "debug castbar" }) do
+        assertTrue(r8:find(fix, 1, true) ~= nil, "the R8 subsection checks " .. fix .. " on Retail")
+    end
+end)

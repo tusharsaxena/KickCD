@@ -793,7 +793,7 @@ Total.
 - Probe: nothing is recorded while a simulation runs, and the start refuses during one
 - Probe: Retail records the same start entry, stamped retail
 
-### test_client_shape.lua (7)
+### test_client_shape.lua (8)
 
 - Client shape: the TOC carries the Retail and WoW Forever numbers and no load-gating line
 - Client shape: the Forever number arms the kit's missing-globals scan for both clients
@@ -802,6 +802,7 @@ Total.
 - Client shape: docs/forever-quirks.md carries the vendored Forever catalog, then its own section
 - Client shape: the ARCHITECTURE per-client table names every declared feature
 - Client shape: each per-client feature's answer is the running client's
+- Client shape: docs/smoke-tests.md names each theme's client and carries the WoW Forever theme
 
 ### test_sim_marker.lua (21)
 
@@ -2292,7 +2293,7 @@ Total.
 | test_sim_e2e.lua | 13 |
 | test_sim_clients.lua | 19 |
 | test_probe.lua | 18 |
-| test_client_shape.lua | 7 |
+| test_client_shape.lua | 8 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
@@ -2371,4 +2372,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1897** |
+| **Total** | **1898** |

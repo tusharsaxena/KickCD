@@ -11,25 +11,34 @@ and a retired one leaves its number unused.
 
 ## Index
 
-| ID range | Theme | What it covers |
-|---|---|---|
-| INSTALL-1 – 14 | Install, load and the launcher | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
-| SLASH-1 – 14 | Slash commands | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows (15 – 24 retired into SIM) |
-| PANEL-1 – 39 | Settings panel | The tree, the Units page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name, item 020's layout on every page (31 – 36) |
-| PROFILE-1 – 14 | Profiles | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
-| STATE-1 – 15 | Enable, lock and visibility | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
-| COMBAT-1 – 11 | Combat | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 24 | Icon grid | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
-| FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
-| LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
-| SPELLS-1 – 24 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row, Feral Charge's forms an existing Forever profile's seed, the Forever add gate and the Forever Spells page and words |
-| SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
-| DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
-| DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
-| SKIN-1 – 50 | Skins | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye, the Font shadow row following its skin box, the charges badge's shadow |
-| LAYER-1 – 9 | Frame layering | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
-| LOC-1 – 7 | Non-English client | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
+**Which client.** KickCD ships on Retail and WoW Forever from one codebase (the WoW Forever port,
+Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`). The Index's **Client**
+column names the client each theme runs on: `both` means run its checks on each client and record
+each client's result on its own `Result:` line, and `WoW Forever` means that client alone. A check of
+a Retail-only feature inside a `both` theme is listed in FOREVER-12 and runs on Retail only; every
+check in the WoW Forever theme names its client (`Client: Retail.`, `Client: WoW Forever.` or
+`Client: both.`). The checks written before the port were run on Retail.
+
+| ID range | Theme | Client | What it covers |
+|---|---|---|---|
+| INSTALL-1 – 14 | Install, load and the launcher | both | First login, the store on disk, `/reload`, the schema validator, the two shape migrations, the minimap button and broker plugin |
+| SLASH-1 – 14 | Slash commands | both | Bare `/kcd`, help, `list` / `get` / `set` / `reset` / `resetall`, value gates and clamps, verbs while disabled, the `debug` and `spells` sub-help rows (15 – 24 retired into SIM) |
+| PANEL-1 – 39 | Settings panel | both | The tree, the Units page's band, rail and tabs, panel and slash sync, Defaults and Reset all, media dropdowns, the minimap checkbox, raw locale keys, the descriptor's folder name, item 020's layout on every page (31 – 36) |
+| PROFILE-1 – 14 | Profiles | both | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
+| STATE-1 – 15 | Enable, lock and visibility | both | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
+| COMBAT-1 – 11 | Combat | both | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
+| GRID-1 – 24 | Icon grid | both | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 20 | Cast bar | both | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| FOCUS-1 – 19 | Focus tracking | both | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
+| LABEL-1 – 15 | Text label | both | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
+| SPELLS-1 – 24 | Spell lists | both | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row, Feral Charge's forms an existing Forever profile's seed, the Forever add gate and the Forever Spells page and words |
+| SIM-1 – 20 | Simulator | both | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
+| DIAG-1 – 49 | Debug and diagnostics | both | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
+| DEGRADED-1 – 17 | Library-absent install | both | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
+| SKIN-1 – 50 | Skins | both | The skinning rollout: Ka0s Default's one HUD change (O2), the one-time reset per profile, the Skin tab, each skin live on the HUD, the "Use the skin's ..." boxes, the settings pages and tool surfaces on the skin, the font and texture overrides, Ignore fonts (the HUD included), EllesmereUI on and off, the copy, profiles, combat, the first-run skin picker and its preview, Apply, gear, stand-down, combat and cross-addon queue, then LibKa0s v1.82.0: the Font outline, From skin flags and their one-time step, `/kcd skin`, HUD and window width parity, picked HUD fonts kept off the skin, a stored pick of the deleted Friz, the skin list closing on an outside press, the Spells page's icons cropped and edged, the round 6 picker copy and its unlock eye, the Font shadow row following its skin box, the charges badge's shadow |
+| LAYER-1 – 9 | Frame layering | both | Icon text over the swipe, border and glow, the cast bar's spark and text over its border, the cast bar over its grid, the label over the bar it is attached to, the drag strips on top (7 retired with the sim strip), the tool windows raising on click, the icon tooltip |
+| LOC-1 – 7 | Non-English client | both | Spec seeding and resolution on a non-English client, the spec-key upgrade, the cast-bar name cap counted in characters |
+| FOREVER-1 – 16 | [WoW Forever](#wow-forever) | WoW Forever | The port on the WoW Forever client: the install and its listing, the class lists, casts and the interrupt flag, focus, ranks and Feral Charge, the global cooldown, the absences (the Cooldown Manager gate, empowered casts, charges, Mythic+), the simulator, the probe session, the `both` checks on Forever, then the Retail regression checks (ruling R8) and the Retail-only features still present |
 
 ## Before you start
 
@@ -1938,6 +1947,53 @@ reproduces it exactly.
   no broken glyph or box at the cut; a name of four characters or fewer shows whole, with no `…`.
   `/kcd reset units.target.castbar.nameTruncate` → the full name again. Result: pass (owner-marked 2026-10-10)
 
+## WoW Forever
+
+The WoW Forever port (MKF-KC-01 to MKF-KC-18, Ka0sAddonsCommonTasks
+`docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`, owner rulings R1 to R8) on the WoW Forever
+client, then its Retail regression checks. The probes each check leans on are in
+[`forever-probes.md`](forever-probes.md); run `/kcd debug probe start` before a check that names one,
+and leave the probe's `Result:` lines to the lead, who reads them from the SavedVariables file. Back
+up the Forever `KickCDDB` SavedVariables first. You need a Warrior, a Rogue, a Mage, a Druid with
+Feral Charge and a Warlock with a Felhunter (any you have; a check that needs one you lack is
+skipped and says so), and a hostile caster as in *Before you start*. A check fails on any Lua error.
+
+**FOREVER-1. The install and its listing (MKF-KC-17; probe P12).** Client: WoW Forever. Link the repo folder as `<WoW>\_forever_\Interface\AddOns\KickCD` and start the Forever client fresh. At character select the AddOns list shows **Ka0s KickCD** enabled and not out of date (the TOC's `## Interface: 120105, 16001`, with no load-gating line). Log in, then `/reload` → no Lua error and no extra chat line. `/kcd version` answers and the minimap button shows. `/kcd diagnostics` opens with no error line, and `/kcd debug events` reads `no rejected events`. On a fresh profile the HUD and the settings wear the **WoW Forever** skin. Fail: the addon listed out of date or missing, a rejected event, a fresh profile on Ka0s Default. Result:
+
+**FOREVER-2. Each class's list (rulings R6 and R7, MKF-KC-08, MKF-KC-11).** Client: WoW Forever. SPELLS-19 on each character you have: the Target grid fills with your class's list before you open a settings page, a Warrior's with Pummel first, a Rogue's with Kick, a Mage's with Counterspell; a Hunter's and a Paladin's open on a control spell (no Forever interrupt). Spells you have not learned are not drawn, and War Stomp shows only on a Tauren. Fail: an empty grid, a Retail spell (Wind Shear, Counter Shot, Rebuke, Skull Bash), or War Stomp on a non-Tauren. Result:
+
+**FOREVER-3. Enemy casts and the interrupt flag (MKF-KC-05; probe P1).** Client: WoW Forever. `/kcd debug probe start`. With the default visibility (`target_casting_interruptible`), target a hostile caster → the grid shows while it casts an interruptible spell and the cast bar fills in its interruptible colors; a cast it cannot be interrupted out of (an immune mob, a shielded cast) shows the bar in its uninterruptible colors and hides the grid. `/kcd debug interrupt` during each cast → the flag reads false for the first and true for the second (or secret), never an error. Fail: the grid never shows for an interruptible cast (P1 then decides whether the flag is unreadable), or a Lua error. Result:
+
+**FOREVER-4. Focus (probe P9).** Client: WoW Forever. `/focus` a second hostile caster → the Focus grid and cast bar follow its casts exactly as the Target pair does for the target (FOCUS-3 on Forever). Clear the focus → the Focus pair hides. Fail: no focus pair, or one that never follows the focus. Result:
+
+**FOREVER-5. Ranks and Feral Charge (MKF-KC-09, MKF-KC-10; probes P4 and P6).** Client: WoW Forever. SPELLS-20 and SPELLS-21: one icon per ability at the highest rank you know (its tooltip names that rank), and on a Druid the Feral Charge icon follows bear and cat form without a `/reload`. Fail: two icons for one ability, a lower rank's tooltip, or an icon that goes stale on a form change. Result:
+
+**FOREVER-6. The global cooldown (ruling R5; probes P2 and P3).** Client: WoW Forever. On a Warrior with Pummel ready, press an on-GCD ability → Pummel shows no cooldown swipe for the GCD (GCD suppression, GRID-5 on Forever), and its brightness follows the cooldown alone. With the ready glow on, it may drop during the GCD and comes back when the GCD ends. Kick something with Pummel → its 10 s cooldown runs on the icon. A Mage's Counterspell is off the GCD: an instant leaves it untouched. Fail: a GCD swipe drawn as a cooldown, or a cooldown that never ends. Result:
+
+**FOREVER-7. No Cooldown Manager gate (ruling R8, MKF-KC-12).** Client: WoW Forever. SPELLS-23: a spell you know is added to your own list, an unlearned spell that is not on KickCD's list for your class is refused in words that name no Cooldown Manager, the add box tags no suggestion `not tracked`, and `/kcd diagnostics` has no `[CMCache]` section. Fail: the words Cooldown Manager anywhere on Forever, or a known spell refused. Result:
+
+**FOREVER-8. No empowered casts, no charges, no Mythic+ (MKF-KC-15, critic L2).** Client: WoW Forever. CAST-14 is Retail's (there is no Evoker): `/kcd debug events` reads `no rejected events`, and no `empower` route is registered (nothing to see; the probe's `rejected` list is empty). No icon draws a charges badge (no Forever kick has charges, probe P8). `/kcd sim` → its picker labels the first scenario **Dungeon pull, several kickers**, never Mythic+. Fail: a charges badge, a Mythic+ label, or a rejected event. Result:
+
+**FOREVER-9. The simulator (MKF-KC-15).** Client: WoW Forever. Solo, out of combat, the grids locked. `/kcd sim start pull` on a Mage → the party lines name **Mockflame Samplewick** (Counterspell) and **Mockshield Sampleforge** (Shield Bash) whole, never Samplehunter or Sampleblade, and the enemies cast Shadow Bolt, Mind Flay, Fear and Drain Life. `/kcd sim start boss` → no "Your kick gets two charges" step; the second kick finds your kick on cooldown and the expire step reads "Your kick comes back". On a Warrior, `/kcd sim start pull` → after the CC step, Pummel shows the global cooldown; on a Mage, Counterspell does not. With no usable spell on your list, `/kcd sim start pull` is refused with `Your class tracks no spell you can use: ...`. Then `/kcd sim stop` and `/reload`: your lists and settings are as they were (a simulation saves nothing). Fail: a Retail sample, a charges step, a Lua error, or a changed profile. Result:
+
+**FOREVER-10. The Spells page and the words (MKF-KC-13).** Client: WoW Forever. SPELLS-22 and SPELLS-24: the picker is captioned `Class` with the nine classes, `/kcd spells` speaks of `[CLASS]`, an existing Forever profile gains its lists and an emptied list stays empty. Fail: a spec name or a Retail class on Forever. Result:
+
+**FOREVER-11. The probe session (the 2026-11-22 rulings R3 and R4, MKF-KC-16).** Client: both. On WoW Forever, run the session [`forever-probes.md`](forever-probes.md) describes: `/kcd debug probe start`, a target and a focus caster (interruptible and not), an instant then your kick at once, a pull, the Druid's forms, the Felhunter summoned and dismissed, a dungeon zone-in, then `/kcd debug probe stop` and log out. `/kcd debug probe status` before the stop reads `probe: running, N entries (cap 500), forever 1.60.1 <build>`. Then once on Retail: start, a target caster, stop, log out. Fail: a Lua error, a status line that never counts up, or an entry recorded during a simulation. Result:
+
+**FOREVER-12. Running the `both` checks on Forever.** Client: WoW Forever. Every check in a theme whose Index row reads `both` runs on Forever too: record its Forever result on its own `Result:` line in that check, not here. Skip the checks of a Retail-only feature, which FOREVER-7 and FOREVER-8 cover by their absence: SPELLS-5 (the Cooldown Manager gate), CAST-14 (an empowered cast), GRID-12 and GRID-13 (charges), SIM-11's two charges, and the checks naming a Retail spell (read your class's Forever list instead). SPELLS-19 to SPELLS-24 are WoW Forever's own. Fail: any check of a `both` theme that fails on Forever for a reason other than a Retail-only feature. Result:
+
+### Retail regression checks (ruling R8)
+
+R8 of 2026-11-22 changed four things on both clients, each in its own commit and test: spell availability reads `C_SpellBook` (MKF-KC-03), the spec count reads `C_SpecializationInfo.GetNumSpecializationsForClassID` and a spec id of 0 is no spec (MKF-KC-04), a plain nil `notInterruptible` reads false (MKF-KC-05), and both cast dumps test a secret before its type and name the unit whole (MKF-KC-06). These checks prove Retail still behaves as before.
+
+**FOREVER-13. Availability through C_SpellBook (R8, MKF-KC-03).** Client: Retail. SPELLS-2 and SPELLS-4 again: swap a talent choice node → the grid swaps the spell without a `/reload`; a Hunter's pet interrupt appears with the pet and goes when it is dismissed; an unlearned talent is not drawn. Fail: a known spell missing, or an unlearned one drawn. Result:
+
+**FOREVER-14. The spec count and the spec id (R8, MKF-KC-04).** Client: Retail. The Spells page's picker lists every class with all its specs in Blizzard's order (`GetNumSpecializationsForClassID` through `C_SpecializationInfo`), and a character below level 10 still gets its class's list. Fail: a class with no specs listed, or an empty grid on a new character. Result:
+
+**FOREVER-15. The interrupt flag and the two cast dumps (R8, MKF-KC-05, MKF-KC-06).** Client: Retail. In combat, target a hostile caster: an interruptible cast shows the grid and the interruptible colors, a shielded one the uninterruptible colors (CAST-4, CAST-5). `/kcd debug castbar` and `/kcd debug interrupt` in combat → `notInterruptible` reads secret (never a plain-value line with a secret in it), and the unit is named without a realm on your realm. Fail: a Lua error in either dump, a `<secret>` inside a plain-value line, or a wrong color. Result:
+
+**FOREVER-16. Everything Forever lacks is still on Retail (clients-§6).** Client: Retail. The presence side of FOREVER-7 to FOREVER-9: SPELLS-5's Cooldown Manager gate refuses an untracked spell and the add box tags `not tracked`, `/kcd diagnostics` has its `[CMCache]` section; CAST-14's empowered cast fills the bar; a talented Mind Freeze draws its charges badge (GRID-12); `/kcd sim` labels the first scenario **Mythic+ pull, several kickers**, the boss story opens with "Your kick gets two charges", the party has four kickers by first name, and your kick never shows the global cooldown. Fail: any of them missing on Retail. Result:
+
 ## Pending sign-off
 
 On 2026-10-10 the owner marked every check in this file as passed, recorded on its `Result:` line as
@@ -1990,6 +2046,8 @@ The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker o
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
 
 The 2026-11-23 WoW Forever seed run (MKF-KC-07 and MKF-KC-08 of Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`, `docs/seed-research/2026-11-23-forever/`) adds SPELLS-19 for the nine new Forever lists in `defaults/Spells_Forever.lua`. Owed: SPELLS-19. Its rank resolver (MKF-KC-09, `core/SpellRanks.lua`) adds SPELLS-20. Owed: SPELLS-20. Feral Charge's form override (MKF-KC-10) adds SPELLS-21. Owed: SPELLS-21. The per-client seeding (MKF-KC-11) adds SPELLS-22. Owed: SPELLS-22. The Forever add gate (MKF-KC-12) adds SPELLS-23. Owed: SPELLS-23. The per-client Spells page and `/kcd spells` words (MKF-KC-13) add SPELLS-24. Owed: SPELLS-24.
+
+The rest of the WoW Forever port (MKF-KC-14 to MKF-KC-18 of the same bundle) adds the [WoW Forever](#wow-forever) theme, FOREVER-1 to FOREVER-16, and the Index's Client column. Owed: FOREVER-1 to FOREVER-16.
 
 The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
 
