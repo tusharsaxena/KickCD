@@ -281,8 +281,13 @@ end
 --- call so a test (or a later module) sees the live functions.
 --- `cmcache` is Retail-only, as the Cooldown Manager gate it reports on is (MKF-KC-12): on WoW
 --- Forever the section is absent, never an "unavailable" line.
+--- The row is left out BY NAME as the list is built (KC-REV-5), so reordering the list can never
+--- drop a different section on Forever.
 function X.Sections()
-    local out = {
+    local retailOnly = { cmcache = true }
+    local onRetail = NS.Compat.ForClient({ "retail" })
+    local out = {}
+    for _, row in ipairs({
         { "state",     X.State },
         { "settings",  X.Settings },
         { "units",     X.Units },
@@ -296,7 +301,8 @@ function X.Sections()
         { "events",    X.Events },
         { "perf",      X.Perf },
         { "sim",       X.Sim },
-    }
-    if not NS.Compat.ForClient({ "retail" }) then table.remove(out, 6) end
+    }) do
+        if onRetail or not retailOnly[row[1]] then out[#out + 1] = row end
+    end
     return out
 end

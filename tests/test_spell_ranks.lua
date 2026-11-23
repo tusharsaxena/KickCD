@@ -260,6 +260,26 @@ test("Ranks (Forever): adding any rank stores the family's rank-1 id", function(
     assertEqual(paladin[#paladin].spellID, 2812, "Holy Wrath rank 2 stored as rank 1")
 end)
 
+test("Ranks (Forever): disable, category and remove find the row by any rank's id (KC-REV-3)", function()
+    local inst = forever("WARRIOR", { 6552, 6554 }, { 6552 })
+    local NS = inst.NS
+    local DB = NS.Database
+    local list = DB:GetSpellList("WARRIOR", WARRIOR)
+    assertTrue(DB:SetSpellEnabled("WARRIOR", WARRIOR, 6554, false), "rank 2 names the Pummel row")
+    assertFalse(list[1].enabled)
+    assertTrue(DB:SetSpellCategory("WARRIOR", WARRIOR, 6554, "stun"))
+    assertEqual(list[1].category, "stun")
+    assertTrue(DB:RemoveSpell("WARRIOR", WARRIOR, 6554))
+    assertEqual(#list, 0)
+end)
+
+test("Ranks (Forever): a row stored under a rank's own id is still found by that id", function()
+    local inst = forever("WARRIOR", { 6552, 6554 }, { 6554 })
+    local DB = inst.NS.Database
+    assertTrue(DB:SetSpellEnabled("WARRIOR", WARRIOR, 6554, false), "the exact id first")
+    assertTrue(DB:RemoveSpell("WARRIOR", WARRIOR, 6554))
+end)
+
 -- ── Retail: identity, byte for byte ─────────────────────────────────────────
 
 test("Ranks (Retail): every answer is the id itself and the Forever table is never read", function()

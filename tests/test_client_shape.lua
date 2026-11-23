@@ -80,6 +80,16 @@ test("Client shape: the CLAUDE.md gate, DEPENDENCIES.md and docs/testing.md name
     assertTrue(deps:find("World of Warcraft (Retail). Nothing else.", 1, true) == nil, "no Retail-only runtime line")
 end)
 
+test("Client shape: docs/testing.md names the hybrid default instance as a known limitation (KC-REV-2)", function()
+    -- The default instance under the forever profile is Forever's constants over the Retail mock and
+    -- the Retail seed (tests/run.lua retailShapedSeed); only the `world = "forever"` cases run real
+    -- Forever behavior. Until the default world flips, the doc says so. red under a doc that does not.
+    local body = read("docs/testing.md")
+    assertTrue(body:find("**Known limitation: the hybrid default instance**", 1, true) ~= nil,
+        "the limitation is named")
+    assertTrue(body:find("retailShapedSeed", 1, true) ~= nil, "and its seam")
+end)
+
 -- ── The Forever docs ────────────────────────────────────────────────────────
 
 test("Client shape: docs/forever-quirks.md carries the vendored Forever catalog, then its own section", function()

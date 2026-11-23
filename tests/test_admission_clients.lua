@@ -111,6 +111,25 @@ test("Admission (Forever): the Cooldown Manager gate, its tag, invalidator and s
     end
 end)
 
+test("Admission (Forever): the section list is Retail's in order with cmcache alone dropped (KC-REV-5)", function()
+    local function names(inst)
+        local out = {}
+        for _, s in ipairs(inst.NS.Diagnostics.Sections()) do
+            if s[1] ~= "cmcache" then out[#out + 1] = s[1] end
+        end
+        return table.concat(out, ",")
+    end
+    local fv = forever("WARRIOR", nil, nil, true)
+    local rt = retail(147362, true)
+    local fvAll = {}
+    for _, s in ipairs(fv.NS.Diagnostics.Sections()) do fvAll[#fvAll + 1] = s[1] end
+    assertEqual(table.concat(fvAll, ","), names(rt), "the Forever list is Retail's minus cmcache")
+    local fh = assert(io.open(T.root .. "/modules/Diagnostics.lua", "rb"))
+    local src = fh:read("*a")
+    fh:close()
+    assertNil(src:find("table.remove(out,", 1, true), "cmcache is never dropped by position")
+end)
+
 -- ── Retail: unchanged ───────────────────────────────────────────────────────
 
 test("Admission (Retail): the Cooldown Manager gate still refuses an untracked spell on the live pair", function()

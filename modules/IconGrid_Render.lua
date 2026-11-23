@@ -72,6 +72,25 @@ local function shownMember(list, f)
     if f and f.IsShown and f:IsShown() then list[#list + 1] = f end
 end
 
+--- `unit`'s cast bar, when anchored to the grid (a free bar is a display of its own).
+local function anchoredCastbar(frames, unit)
+    local Castbar = NS:GetModule("Castbar", true)
+    if Castbar and Castbar.GetCastbarFrame then
+        shownMember(frames, Castbar:GetCastbarFrame(unit))
+    end
+end
+
+--- `unit`'s label, while shown and attached to the icons, or to a cast bar that is anchored.
+local function labelMember(frames, unit, anchored)
+    local UnitLabel = NS:GetModule("UnitLabel", true)
+    local lbl = UnitLabel and UnitLabel.PeekInstance and UnitLabel:PeekInstance(unit)
+    if not (lbl and lbl.frame and lbl.frame:IsShown()) then return end
+    local attach = NS.Units.LabelStyle and NS.Units.LabelStyle(unit).attach
+    if attach == "icons" or (attach == "castbar" and anchored) then
+        frames[#frames + 1] = lbl.text or lbl.frame
+    end
+end
+
 --- The frames of `unit`'s icon display, the grid first, or nil before the grid exists.
 local function tipGroup(unit)
     local grid = IconGrid:GetGridFrame(unit)
@@ -80,17 +99,8 @@ local function tipGroup(unit)
     local strips = NS.SimStrip and NS.SimStrip.__strips
     shownMember(frames, strips and strips[unit .. ":icons"])
     local anchored = (NS.Units.Castbar(unit).anchorMode or "PRIMARY") == "PRIMARY"
-    local Castbar = NS:GetModule("Castbar", true)
-    if anchored and Castbar and Castbar.GetCastbarFrame then
-        shownMember(frames, Castbar:GetCastbarFrame(unit))
-    end
-    local UnitLabel = NS:GetModule("UnitLabel", true)
-    local lbl = UnitLabel and UnitLabel.PeekInstance and UnitLabel:PeekInstance(unit)
-    local attach = NS.Units.LabelStyle and NS.Units.LabelStyle(unit).attach
-    if lbl and lbl.frame and lbl.frame:IsShown()
-        and (attach == "icons" or (attach == "castbar" and anchored)) then
-        frames[#frames + 1] = lbl.text or lbl.frame
-    end
+    if anchored then anchoredCastbar(frames, unit) end
+    labelMember(frames, unit, anchored)
     return frames
 end
 

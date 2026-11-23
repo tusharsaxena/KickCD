@@ -777,17 +777,17 @@ local LIFECYCLE_EVENTS = {
     { "PLAYER_FOCUS_CHANGED",          "OnFocusChanged" },
 }
 
---- The module's GAME-event registrations, split out of OnEnable so a perf
---- Resume can re-arm exactly the same set without re-running the rest of the
---- enable path (rebuilding curves, re-subscribing to messages it never dropped).
---- Registration is idempotent — AceEvent keys on (event, target) — so calling
---- this twice is harmless.
 -- WoW Forever's own rows, registered only there (clients-§4, by declaration): a form change swaps
 -- Feral Charge's spell and icon (core/SpellRanks.lua, MKF-KC-10, critic C4).
 local FOREVER_EVENTS = {
     { "UPDATE_SHAPESHIFT_FORM",        "OnSpellsChanged" },
 }
 
+--- The module's GAME-event registrations, split out of OnEnable so a perf
+--- Resume can re-arm exactly the same set without re-running the rest of the
+--- enable path (rebuilding curves, re-subscribing to messages it never dropped).
+--- Registration is idempotent — AceEvent keys on (event, target) — so calling
+--- this twice is harmless.
 function IconGrid:RegisterLifecycleEvents()
     NS.RegisterEventList(self, LIFECYCLE_EVENTS)
     if NS.Compat.ForClient({ "forever" }) then NS.RegisterEventList(self, FOREVER_EVENTS) end

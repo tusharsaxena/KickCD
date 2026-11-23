@@ -512,6 +512,18 @@ local function findEntry(list, spellID)
     end
 end
 
+--- The row a player TYPED an id for: the exact id first, else its rank family's (KC-REV-3). On WoW
+--- Forever AddSpell stores any rank as its family and the player sees the resolved rank, so
+--- `/kcd spells disable 6554` names the 6552 row; on Retail Family is identity and this is
+--- findEntry.
+local function findTyped(list, spellID)
+    local e, i = findEntry(list, spellID)
+    if e or not (NS.SpellRanks and spellID) then return e, i end
+    local family = NS.SpellRanks.Family(spellID)
+    if family == spellID then return nil end
+    return findEntry(list, family)
+end
+
 --- Is `class` a class file token this addon can key a list by? A key of the
 --- shipped defaults, or a token the client's own class list reports. Anything
 --- else ("WARLORD", a typo) would lazy-create an orphan list in SavedVariables
@@ -578,7 +590,7 @@ end
 -- @return true if an entry was removed
 function Database:RemoveSpell(class, spec, spellID)
     local list = self:GetSpellList(class, spec)
-    local _, index = findEntry(list, spellID)
+    local _, index = findTyped(list, spellID)
     if not index then
         refused("remove", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false
@@ -631,7 +643,7 @@ end
 -- @return true if the entry exists
 function Database:SetSpellEnabled(class, spec, spellID, enabled)
     local list = self:GetSpellList(class, spec)
-    local entry = findEntry(list, spellID)
+    local entry = findTyped(list, spellID)
     if not entry then
         refused(enabled and "enable" or "disable", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false
@@ -648,7 +660,7 @@ end
 -- @return true if the entry exists
 function Database:SetSpellCategory(class, spec, spellID, category)
     local list = self:GetSpellList(class, spec)
-    local entry = findEntry(list, spellID)
+    local entry = findTyped(list, spellID)
     if not entry then
         refused("category", class, spec, list and "not in the list" or NO_LIST, spellID)
         return false

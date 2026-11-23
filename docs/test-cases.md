@@ -164,7 +164,7 @@ Total.
 - Retail lists: the Forever file touches neither Retail table, and every Forever list is a SPEC_FOREVER key
 - Forever lists: the TOC loads defaults/Spells_Forever.lua straight after defaults/Spells.lua
 
-### test_spell_ranks.lua (26)
+### test_spell_ranks.lua (28)
 
 - Ranks: the Forever rank table is the frozen seed run's rank families, id for id
 - Ranks: every family's first rank is its key, and no rank sits in two families
@@ -182,6 +182,8 @@ Total.
 - Ranks (Forever): the diagnostics list calls a known higher rank learned, and names it
 - Ranks (Forever): the Spells page's name, icon and known mark follow the live rank
 - Ranks (Forever): adding any rank stores the family's rank-1 id
+- Ranks (Forever): disable, category and remove find the row by any rank's id (KC-REV-3)
+- Ranks (Forever): a row stored under a rank's own id is still found by that id
 - Ranks (Retail): every answer is the id itself and the Forever table is never read
 - Ranks (Retail): IsUsable is Compat.IsSpellUsable's first value
 - Ranks (Retail): two rank ids stay two rows, two icons and two stored entries
@@ -206,7 +208,7 @@ Total.
 - Seed (Retail): the Retail lists are seeded and the Forever tables are never read
 - Seed (Retail): a populated profile is never re-seeded, as before
 
-### test_admission_clients.lua (10)
+### test_admission_clients.lua (11)
 
 - Admission (Forever): a spell the player knows is admitted on the live pair
 - Admission (Forever): any rank of a known family is admitted
@@ -216,6 +218,7 @@ Total.
 - Admission (Forever): another class's list takes any spell
 - Admission (Forever): /kcd spells add refuses an unlearned spell off the list and adds nothing
 - Admission (Forever): the Cooldown Manager gate, its tag, invalidator and section are absent
+- Admission (Forever): the section list is Retail's in order with cmcache alone dropped (KC-REV-5)
 - Admission (Retail): the Cooldown Manager gate still refuses an untracked spell on the live pair
 - Admission (Retail): the tag, the invalidator and the cmcache section are still there
 
@@ -272,7 +275,7 @@ Total.
 - the [Init] line is unchanged when nothing was rejected
 - a frame RegisterEvent honors __badEvents
 
-### test_event_routes.lua (12)
+### test_event_routes.lua (13)
 
 - DeliverEvent: SPELL_UPDATE_COOLDOWN runs Cooldowns' OnCooldownEvent once and answers 1
 - DeliverEvent: PLAYER_TARGET_CHANGED runs every module that registered it, and counts them
@@ -286,6 +289,7 @@ Total.
 - EventRoutes: a registration made through NS.SafeRegisterEvent directly is not a route
 - EventRoutes: a target is recorded once, and a filter once per (module, unit)
 - DeliverEvent: an unreadable AceEvent registry answers 0 and says so once
+- each module's RegisterLifecycleEvents sits directly under its own doc block (KC-REV-6)
 
 ### test_locale.lua (15)
 
@@ -793,12 +797,13 @@ Total.
 - Probe: nothing is recorded while a simulation runs, and the start refuses during one
 - Probe: Retail records the same start entry, stamped retail
 
-### test_client_shape.lua (8)
+### test_client_shape.lua (9)
 
 - Client shape: the TOC carries the Retail and WoW Forever numbers and no load-gating line
 - Client shape: the Forever number arms the kit's missing-globals scan for both clients
 - Client shape: the README opens on the dual-client WoW badge and the supported-clients sentence
 - Client shape: the CLAUDE.md gate, DEPENDENCIES.md and docs/testing.md name both suite runs
+- Client shape: docs/testing.md names the hybrid default instance as a known limitation (KC-REV-2)
 - Client shape: docs/forever-quirks.md carries the vendored Forever catalog, then its own section
 - Client shape: the ARCHITECTURE per-client table names every declared feature
 - Client shape: each per-client feature's answer is the running client's
@@ -990,7 +995,7 @@ Total.
 - instanceCasting is false for a unit that doesn't exist
 - an empower start re-evaluates target_casting visibility
 
-### test_icongrid_render.lua (41)
+### test_icongrid_render.lua (42)
 
 - the render helpers are published for testing
 - SafeUnpackColor reads both the array and hash color shapes
@@ -1028,6 +1033,7 @@ Total.
 - the drag strip is never a member: it shows only unlocked, when no icon takes the mouse
 - a shown sim strip is part of the display: the tooltip clears the strip
 - the unit label's text is part of the display while shown on the grid
+- a label attached to the cast bar is a member only while the bar is anchored (KC-REV-1)
 - a tooltip that grows after it is placed is placed again, re-clamped to the screen
 - with no room on either side the icon's tooltip is attached above the icon
 - an icon whose geometry cannot be read gets its tooltip above the icon, never at the cursor
@@ -2263,13 +2269,13 @@ Total.
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 28 |
 | test_spells_forever.lua | 9 |
-| test_spell_ranks.lua | 26 |
+| test_spell_ranks.lua | 28 |
 | test_seed_clients.lua | 10 |
-| test_admission_clients.lua | 10 |
+| test_admission_clients.lua | 11 |
 | test_spells_page_clients.lua | 13 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
-| test_event_routes.lua | 12 |
+| test_event_routes.lua | 13 |
 | test_locale.lua | 15 |
 | test_units.lua | 26 |
 | test_schema.lua | 42 |
@@ -2293,7 +2299,7 @@ Total.
 | test_sim_e2e.lua | 13 |
 | test_sim_clients.lua | 19 |
 | test_probe.lua | 18 |
-| test_client_shape.lua | 8 |
+| test_client_shape.lua | 9 |
 | test_sim_marker.lua | 21 |
 | test_sim_checkbox.lua | 12 |
 | test_debuglog.lua | 13 |
@@ -2304,7 +2310,7 @@ Total.
 | test_icongrid_layout_pass.lua | 9 |
 | test_icongrid_apply.lua | 14 |
 | test_icongrid_visibility.lua | 23 |
-| test_icongrid_render.lua | 41 |
+| test_icongrid_render.lua | 42 |
 | test_layers.lua | 14 |
 | test_icongrid_curves.lua | 13 |
 | test_icongrid_curve_link.lua | 6 |
@@ -2372,4 +2378,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1898** |
+| **Total** | **1904** |
