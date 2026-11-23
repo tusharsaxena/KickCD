@@ -395,6 +395,19 @@ Total.
 - with LibKa0s absent, every routed reader answers the major's absent value
 - with LibKa0s absent, the IsSecret guard answers what the library answers
 
+### test_compat_client.lua (10)
+
+- compat client: the six members are functions on NS.Compat on both arms
+- compat client: ClientKey, IsForever and IsRetail answer the kit profile on both arms
+- compat client: ForClient(nil) is true, a declared client only on that client, an unknown token raises
+- compat client: a client that is neither answers nil and serves undeclared features only
+- compat client: RegionalNames follows RegionalUniqueNamesEnabled, false where it is absent
+- compat client: UnitCharacterName is the whole name with regional names, name and realm without
+- compat client: UnitCharacterName never joins a secret part
+- compat client: no shipped file but core/CompatClient.lua reads a project id or the regional-names switch
+- compat client: the boundary check is falsifiable, a planted read is found
+- compat client: core/CompatClient.lua loads straight after core/Compat.lua and before core/SimSetup.lua
+
 ### test_compat_api.lua (54)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
@@ -504,7 +517,7 @@ Total.
 - Sim seam: Unwrapped() is EMPTY after the whole addon loads (host contract H2)
 - Sim seam: Keys() carries every read the simulator answers, and no PURE member
 - Sim seam: idle, a wrapped member answers exactly what the client answers
-- TOC: core/SimSetup.lua loads straight after core/Compat.lua, under a LOAD-BEARING comment
+- TOC: core/SimSetup.lua loads straight after the compat family, under a LOAD-BEARING comment
 - Sim stubs: surface parity with a live instance and the live seam, both ways
 - Sim absent: NS.Sim:RunVerb prints the needs-library line once and answers absent
 - LibKa0s absent: `/kcd sim` reaches the stub through the degraded dispatcher
@@ -2074,6 +2087,7 @@ Total.
 | test_color_shape.lua | 28 |
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
+| test_compat_client.lua | 10 |
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
@@ -2160,4 +2174,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1738** |
+| **Total** | **1748** |

@@ -181,6 +181,7 @@ local SUITES = {
     "test_color_shape",
     "test_bus",
     "test_compat",
+    "test_compat_client",
     "test_compat_api",
     "test_compat_debug",
     "test_compat_units",
