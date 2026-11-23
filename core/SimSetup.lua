@@ -12,12 +12,12 @@ local addonName, NS = ...
 -- replaced by assignment, escapes the wrap; the seam's Unwrapped() lists it, and
 -- tests/test_sim_seam.lua asserts that list is empty after the whole addon loads.
 --
--- PURE. IsSecret is the secret-value guard and _firstReturn a multi-return helper: both answer for
--- nobody. NewDuration is a constructor over C_DurationUtil, and the simulator builds its own
+-- PURE. IsSecret is the secret-value guard, InterruptFlag a cast flag's nil-to-false reading and
+-- _firstReturn a multi-return helper: all three answer for nobody. NewDuration is a constructor over C_DurationUtil, and the simulator builds its own
 -- durations through it. DebugInterrupt dumps the REAL client for `/kcd debug interrupt` on purpose
 -- (core/Compat.lua says why). So are core/CompatClient.lua's six: which client this is (IsForever,
 -- IsRetail, ClientKey, ForClient) and how it spells a name (RegionalNames, UnitCharacterName) are
--- facts of the install, not of the simulated world. None of the ten is ever wrapped.
+-- facts of the install, not of the simulated world. None of the eleven is ever wrapped.
 --
 -- GUARDED: none. KickCD sends nothing, casts nothing and acts on nothing in the world (design D6):
 -- every Compat member is a read, so there is no outward action for a session to intercept.
@@ -40,7 +40,7 @@ NS.SimHost = NS.SimHost or {}
 
 -- The members that answer for nobody. Never wrapped.
 local PURE = {
-    IsSecret = true, _firstReturn = true, NewDuration = true, DebugInterrupt = true,
+    IsSecret = true, _firstReturn = true, NewDuration = true, DebugInterrupt = true, InterruptFlag = true,
     IsForever = true, IsRetail = true, ClientKey = true, ForClient = true,
     RegionalNames = true, UnitCharacterName = true,
 }

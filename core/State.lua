@@ -133,8 +133,9 @@ function State.ApplyInterruptibleAlpha(frame, unit, alpha)
     end
     if not hasCast then return false end
 
-    -- C-side: accepts secret notInterruptible without arithmetic in Lua.
-    frame:SetAlphaFromBoolean(notInterruptible, 0, alpha or 1)
+    -- C-side: accepts secret notInterruptible without arithmetic in Lua. A plain nil reads false
+    -- (interruptible), because the setter takes a non-nil bool (MKF-KC-05); a secret passes as is.
+    frame:SetAlphaFromBoolean(Compat.InterruptFlag(notInterruptible), 0, alpha or 1)
     return true
 end
 

@@ -403,6 +403,20 @@ end
 --   { name, texture, spellID, notInterruptible, isChannel,
 --     duration }                         -- CastingDuration object
 
+--- A cast's notInterruptible as the sinks take it (MKF-KC-05): a PLAIN nil reads false, so the
+--- cast is interruptible, and anything else passes through untouched. The flag is documented
+--- `Nilable = true` on both clients while Frame:SetAlphaFromBoolean and
+--- C_CurveUtil.EvaluateColorValueFromBoolean take a non-nil bool; Retail never hands nil for a live
+--- cast, WoW Forever might. A secret is tested FIRST, before anything compares it, and comes back as
+--- it came. PURE to the simulator's seam: it reads nothing.
+--- @param flag any
+--- @return any
+function Compat.InterruptFlag(flag)
+    if Compat.IsSecret(flag) then return flag end
+    if flag == nil then return false end
+    return flag
+end
+
 local function buildCastRecord(name, texture, notInterruptible, spellID,
                                isChannel, duration)
     return {
@@ -435,7 +449,7 @@ local function effectiveNotInterruptible(unit, raw)
     if unit and not Compat.UnitCanAttack(unit) then
         return true
     end
-    return raw
+    return Compat.InterruptFlag(raw)
 end
 
 --- Casting info for a unit, secret-value safe. Reads Compat.UnitCastingInfo /

@@ -539,6 +539,14 @@ Total.
 - spec names on WoW Forever come from the namespaced count: Warrior is 1491
 - spec names on Retail keep Blizzard's order and localized names
 
+### test_interrupt_flag.lua (5)
+
+- GetCastingInfo: a plain nil notInterruptible reads false, on both clients
+- GetChannelInfo: a plain nil notInterruptible reads false, on both clients
+- the cast record keeps a plain flag, and a secret one untouched
+- ApplyInterruptibleAlpha hands SetAlphaFromBoolean false for a plain nil, on both clients
+- ApplyInterruptibleAlpha passes a secret flag through untouched
+
 ### test_sim_seam.lua (9)
 
 - Sim seam: NS.SimSeam is the library's seam and NS.SimHost the host's own table
@@ -2121,6 +2129,7 @@ Total.
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
 | test_spec_reads.lua | 8 |
+| test_interrupt_flag.lua | 5 |
 | test_sim_seam.lua | 9 |
 | test_sim_world.lua | 17 |
 | test_sim_session.lua | 21 |
@@ -2204,4 +2213,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1770** |
+| **Total** | **1775** |

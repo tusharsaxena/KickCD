@@ -200,6 +200,7 @@ local SUITES = {
     "test_compat_debug",
     "test_compat_units",
     "test_spec_reads",
+    "test_interrupt_flag",
     "test_sim_seam",
     "test_sim_world",
     "test_sim_session",

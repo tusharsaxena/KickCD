@@ -22,10 +22,10 @@ local MUST_WRAP = {
     "UnitCastingDuration", "UnitChannelDuration",
     "GetSpellCooldown", "GetSpellCooldownDuration", "GetSpellCharges", "IsSpellUsable",
 }
--- The four pure members of core/Compat.lua, then core/CompatClient.lua's six (the client and how
+-- The five pure members of core/Compat.lua, then core/CompatClient.lua's six (the client and how
 -- it spells a name), all facts of the install.
 local PURE = {
-    "IsSecret", "_firstReturn", "NewDuration", "DebugInterrupt",
+    "IsSecret", "_firstReturn", "NewDuration", "DebugInterrupt", "InterruptFlag",
     "IsForever", "IsRetail", "ClientKey", "ForClient", "RegionalNames", "UnitCharacterName",
 }
 
