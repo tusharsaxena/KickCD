@@ -582,10 +582,14 @@ function Compat.DebugInterrupt(unit, emit)
         return
     end
 
-    local rawName  = _G.UnitName and _G.UnitName(unit)
-    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", unit) or false
+    -- The whole character name (First Surname on WoW Forever; forever-quirks-§4) through
+    -- Compat.UnitCharacterName, which is PURE to the seam and so reads the real client too. canAttack
+    -- is tested for a secret before it is branched on (MKF-KC-06).
+    local rawName  = Compat.UnitCharacterName(unit)
+    local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", unit)
+    local attackText = Compat.IsSecret(canAttack) and NS.SECRET or tostring(canAttack and true or false)
     out(("DebugInterrupt: unit=%s name=%s canAttack=%s"):format(
-        unit, safeRender(rawName), tostring(canAttack)))
+        unit, safeRender(rawName), attackText))
 
     if _G.UnitCastingInfo then
         dumpPositions(out, "UnitCastingInfo", "not casting", CASTING_FIELDS,

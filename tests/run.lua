@@ -235,6 +235,7 @@ local SUITES = {
     "test_castbar_frame",
     "test_castbar_skin",
     "test_castbar_debug",
+    "test_debug_secrets",
     "test_cooldowns",
     "test_cooldowns_gates",
     "test_cooldowns_refresh",

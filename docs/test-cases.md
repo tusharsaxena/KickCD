@@ -1256,6 +1256,17 @@ Total.
 - DebugDump says (no widget) before the frame has ever been built
 - DebugDump writes every line through a caller's emit sink, and nothing to chat
 
+### test_debug_secrets.lua (8)
+
+- castbar dump: a secret notInterruptible is reported secret, never as a plain value
+- castbar dump: a plain flag still reports its value
+- castbar dump: a secret unit name is rendered secret, never joined
+- castbar dump: a secret UnitIsUnit or UnitCanAttack is reported secret, never branched on
+- castbar dump: the unit is named in full, First Surname on WoW Forever
+- interrupt dump: the header names the unit in full, First Surname on WoW Forever
+- interrupt dump: a secret canAttack is rendered secret, never branched on
+- interrupt dump: a typed secret flag at position 8 is described as secret
+
 ### test_cooldowns.lua (22)
 
 - SPELL_UPDATE_* burst coalesces to one Refresh per frame
@@ -2164,6 +2175,7 @@ Total.
 | test_castbar_frame.lua | 54 |
 | test_castbar_skin.lua | 49 |
 | test_castbar_debug.lua | 19 |
+| test_debug_secrets.lua | 8 |
 | test_cooldowns.lua | 22 |
 | test_cooldowns_gates.lua | 23 |
 | test_cooldowns_refresh.lua | 10 |
@@ -2213,4 +2225,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1775** |
+| **Total** | **1783** |

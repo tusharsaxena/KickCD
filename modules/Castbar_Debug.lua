@@ -58,18 +58,35 @@ local function reportSecretNint(emit)
     emit("    secret-tainted; " .. via)
 end
 
---- Who the unit is and whether we can attack it.
+--- A unit's name for the header: NS.SECRET for a secret, "?" for none, else the name.
+local function nameText(name)
+    if NS.Compat.IsSecret(name) then return NS.SECRET end
+    if name == nil or name == "" then return "?" end
+    return name
+end
+
+--- A client boolean for the header: NS.SECRET for a secret, which is never branched on (a secret
+--- boolean raises at its first test), else `yes` or `no`.
+local function flagText(v, yes, no)
+    if NS.Compat.IsSecret(v) then return NS.SECRET end
+    return v and yes or no
+end
+
+--- Who the unit is and whether we can attack it. The name is the WHOLE character name
+--- (NS.Compat.UnitCharacterName, First Surname on WoW Forever; forever-quirks-§4), and every value
+--- is tested for a secret before it is joined or branched on (MKF-KC-06).
 --- @return boolean true when the unit exists and the dump should continue
 local function dumpUnitHeader(emit, inst)
-    -- Raw _G.Unit* reads on purpose, not NS.Compat: this dumps the REAL client.
+    -- Raw _G.Unit* reads on purpose, not the seam's wrapped readers: this dumps the REAL client.
+    -- UnitCharacterName is PURE to the seam, so it reads the real client too.
     if not _G.UnitExists(inst.unit) then
         emit("  no " .. inst.unit)
         return false
     end
     local canAttack = _G.UnitCanAttack and _G.UnitCanAttack("player", inst.unit)
-    emit("  " .. inst.unit .. " = " .. (_G.UnitName(inst.unit) or "?")
-        .. ", isUnit="    .. (UnitIsUnit(inst.unit, "player") and "self" or "other")
-        .. ", canAttack=" .. tostring(canAttack and true or false))
+    emit("  " .. inst.unit .. " = " .. nameText((NS.Compat.UnitCharacterName(inst.unit)))
+        .. ", isUnit="    .. flagText(UnitIsUnit(inst.unit, "player"), "self", "other")
+        .. ", canAttack=" .. flagText(canAttack, "true", "false"))
     return true
 end
 
@@ -86,16 +103,20 @@ end
 
 --- The tracked cast record. Don't tostring/format secret values: use type()
 --- and a boolean branch to safely report the state without arithmetic on a
---- secret.
+--- secret. The secret test comes FIRST (MKF-KC-06): a client secret keeps its
+--- underlying type, so a secret boolean's type() is "boolean", and dispatching
+--- on the type alone sent it to the plain-value arm.
 local function dumpCastRecord(emit, inst)
     local current = inst.current
     emit("  current.isChannel = " .. tostring(current.isChannel))
 
-    local nintType = type(current.notInterruptible)
+    local nint = current.notInterruptible
+    local secret = NS.Compat.IsSecret(nint)
+    local nintType = type(nint)
     emit("  current.notInterruptible: type=" .. nintType
-        .. ", isSecret=" .. tostring(NS.Compat.IsSecret(current.notInterruptible)))
-    local report = NINT_REPORT[nintType] or reportSecretNint
-    report(emit, current.notInterruptible)
+        .. ", isSecret=" .. tostring(secret))
+    local report = (not secret and NINT_REPORT[nintType]) or reportSecretNint
+    report(emit, nint)
 
     emit("  duration: " .. (current.duration and "present" or "nil"))
     emit("  texture:  type=" .. type(current.texture))
