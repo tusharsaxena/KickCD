@@ -283,6 +283,10 @@ test("the Compat stub carries every LibKa0s-Compat-1.0 member the host wires", f
         -- data by character or realm, so it wires neither. The four client helpers and the other two
         -- name readers are wired by core/CompatClient.lua (the Forever port).
         "CharacterKey", "RealmKey",
+        -- LibKa0s v1.110.0's container and bank readers and their pattern table (Compat minor 6,
+        -- LibKa0s#101). KickCD reads no bag or bank, so it wires none of them.
+        "BankerKind", "CONTAINER_PATTERNS_BY_CLIENT", "CanViewCharacterBank", "ContainerGroups",
+        "NumPurchasedBankTabs", "UnreadyBankContainers",
     })
 end)
 

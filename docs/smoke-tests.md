@@ -27,8 +27,8 @@ check in the WoW Forever theme names its client (`Client: Retail.`, `Client: WoW
 | PROFILE-1 – 14 | Profiles | both | The Profiles page, switches, copies and resets, their debug lines, the `/kcd profile` verb |
 | STATE-1 – 15 | Enable, lock and visibility | both | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | both | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
-| GRID-1 – 24 | Icon grid | both | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 20 | Cast bar | both | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| GRID-1 – 26 | Icon grid | both | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
+| CAST-1 – 22 | Cast bar | both | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | both | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | both | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
 | SPELLS-1 – 24 | Spell lists | both | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row, Feral Charge's forms an existing Forever profile's seed, the Forever add gate and the Forever Spells page and words |
@@ -700,7 +700,7 @@ you had before the update is still yours.
   above the strip (the strip and the `?` keep theirs, *Drag to move. Right-click for settings.*; GRID-17);
   leave → it dims back. Left-click it out of combat → the settings panel opens on the Units page, the
   band on that strip's unit (Target or Focus) and the rail on Icons. Right-click it →
-  the panel opens on its parent page (the strip's own right-click). Drag the gear → the grid moves. In combat, left-click
+  the same page (the strip's own right-click opens what the gear opens, GRID-26). Drag the gear → the grid moves. In combat, left-click
   it → the gray refusal line and no panel. Switch skins on the Skin tab → the gear keeps its place and
   takes the new skin's tint. Result:
 - **GRID-24. An icon's tooltip opens beside the whole display (AD-92-KC, LibKa0s#92).** `/kcd lock`,
@@ -730,6 +730,12 @@ you had before the update is still yours.
   → Target's grid, cast bar and label disappear; Focus's stay. Units page, Target in the band →
   *Enable this unit* is unticked; tick it → the grid comes back with the icon size you set. Repeat with
   `/kcd set units.focus.enabled true` after closing the Focus strip. Result: pending
+- **GRID-26. A right-click anywhere on the grid strip opens what its gear opens (SRC-KC-02, LibKa0s v1.111.0; Ka0sAddonsCommonTasks SRC-S5).**
+  `/kcd unlock`, out of combat, the panel closed. Right-click the Target grid strip's band (the label)
+  → the settings panel opens on the Units page, the band on Target and the rail on Icons, exactly where
+  a left click on its gear lands. Close the panel and right-click the `?`, then the gear, then the X →
+  each opens the same page, and the X's right-click turns nothing off. Repeat on the Focus strip → the
+  band on Focus. Fail: any right-click that opens the panel's parent page, or opens nothing. Result:
 
 ## CAST
 
@@ -763,7 +769,9 @@ you had before the update is still yours.
   same place beside the strip (CAST-15); the `?` brightens under the cursor. Result: pass (owner-marked 2026-10-10).
   Amended 2026-11-18 (AD-92-KC): the same place is now attached centered above the strip (CAST-15). Result: pending
 - **CAST-11. Right-click opens settings.** Out of combat, right-click the strip → the settings panel
-  opens. Result: pass (owner-marked 2026-10-10)
+  opens. Result: pass (owner-marked 2026-10-10).
+  Amended 2026-11-23 (SRC-KC-02): the panel opens on the Units page, the band on the bar's unit and the
+  rail on Cast bar, the page the gear opens (CAST-22). Result:
 - **CAST-12. Back to Free without leaving the panel.** From PRIMARY set Free again in the panel → the strip
   comes back (`ApplyLock` does not run on every route that changes `anchorMode`). Result: pass (owner-marked 2026-10-10)
 - **CAST-13. Two bars at once.** `units.target.castbar.enabled` and `units.focus.castbar.enabled` true,
@@ -803,7 +811,7 @@ you had before the update is still yours.
   `/kcd unlock`, a cast bar on screen → its strip shows a gear right of the `?` and left of the X, and the label
   (**Target castbar** / **Focus castbar**) is not clipped. Hover it → it lights in the link color and its own
   *Open settings* tooltip opens above the strip (the strip and the `?` keep theirs; CAST-15). Left-click it out of combat → the settings panel opens on the Units page,
-  the band on that bar's unit and the rail on Cast bar; right-click → the panel opens on its parent page; drag it → the bar moves. In combat, left-click → the gray refusal line and no
+  the band on that bar's unit and the rail on Cast bar; right-click → the same page (CAST-22); drag it → the bar moves. In combat, left-click → the gray refusal line and no
   panel. `anchorMode PRIMARY` → no strip and so no gear. Result:
 - **CAST-21. The cast bar strip's X turns that cast bar off (AF-STRIP-KC, LibKa0s v1.107.0).** `anchorMode FREE`
   on Target and on an unlinked Focus, `/kcd unlock` → each strip ends in `?`, gear, X, the X in the
@@ -818,6 +826,13 @@ you had before the update is still yours.
   → both return. With Focus still linked, hover the Target bar's X → it adds *Focus follows this cast bar,
   so this hides Focus's cast bar too.*; click it → the Target and Focus bars both go; tick *Enable cast
   bar* for Target → both return. Result: pending
+- **CAST-22. A right-click anywhere on the cast bar strip opens what its gear opens (SRC-KC-02, LibKa0s v1.111.0; Ka0sAddonsCommonTasks SRC-S5).**
+  `anchorMode FREE` on Target and on an unlinked Focus, `/kcd unlock`, out of combat, the panel closed.
+  Right-click the Target bar's strip band (*Target castbar*) → the settings panel opens on the Units
+  page, the band on Target and the rail on Cast bar, exactly where a left click on its gear lands. Close
+  the panel and right-click the `?`, then the gear, then the X → each opens the same page, and the X's
+  right-click turns nothing off. Repeat on the Focus bar's strip → the band on Focus. Fail: any
+  right-click that opens the panel's parent page, or opens nothing. Result:
 
 ## FOCUS
 
@@ -2062,3 +2077,5 @@ The same run's AD-87-KC (LibKa0s#87) renames the simulator's party to the collec
 The adoption feedback run (AF-RV-KC and AF-STRIP-KC of Ka0sAddonsCommonTasks `docs/2026-11-19-ADOPTION_FEEDBACK/`, LibKa0s v1.107.0, the owner's ruling: all three marks on every strip) gives both drag strips the X and points each gear at its own display's entry: it adds GRID-25 and CAST-21 and amends GRID-23 and CAST-20 (the marks' order, tints and the gear's page). Owed: GRID-23, GRID-25, CAST-20, CAST-21.
 
 The skin-defaults run (SD-RV-KC of Ka0sAddonsCommonTasks `docs/2026-11-20-LIBKA0S_94_97_99_100/`, LibKa0s v1.108.0) adds SKIN-49 and SD-SK-KC.1 adds SKIN-50: every Font shadow row is disabled while its `Use the skin's shadow` box is ticked, and the cast bar's fill colors and the cooldown tint keep no skin box; the charges badge draws the skin's HUD shadow. A drag strip whose rect reads secret now shows its tooltip above its nearest readable ancestor (LibKa0s#99); KickCD's strips sit on readable frames, so GRID-17 and CAST-10 do not move. Owed: SKIN-49, SKIN-50.
+
+The strip right-click run (SRC-KC-01 and SRC-KC-02 of Ka0sAddonsCommonTasks `docs/2026-11-23-STRIP_RIGHT_CLICK/`, LibKa0s v1.111.0, standard v2.118.0's *A right-click opens what the gear opens*) drops both strips' `onRightClick`, so a right-click on either strip or any of its marks opens the gear's page, this display's entry on the Units page, instead of the parent page: it adds GRID-26 and CAST-22 and amends GRID-23, CAST-11 and CAST-20. Owed: GRID-23, GRID-26, CAST-11, CAST-20, CAST-22.

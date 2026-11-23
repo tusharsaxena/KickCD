@@ -145,10 +145,10 @@ local function buildHandle(inst, frame)
         helpIcon     = NS.Icon and NS.Icon("help") or nil,
         canDrag      = function() return Castbar.DragAllowed(inst) end,
         onDragStop   = function() Castbar.SaveAnchor(inst, frame) end,
-        -- The same open the launcher's left button and `/kcd config` reach
-        -- (core/LauncherSetup.lua:137, core/KickCD.lua:264). It refuses itself
-        -- in combat with options-ui-§2's gray line, so nothing is gated here.
-        onRightClick = function() NS:OpenSettings() end,
+        -- NO onRightClick (SRC-KC-02; standalone-windows, *A right-click opens what the gear
+        -- opens*, standard v2.118.0): DragHandle minor 17 answers a right-click on the strip and
+        -- every mark with `settings` below, so the right-click opens this unit's Cast bar entry
+        -- as the gear does. Through SRC-KC-01 it opened the parent page (NS:OpenSettings).
         -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC; standard
         -- from minor 15, right of the "?" and left of the X). From AF-STRIP-KC a left click
         -- opens THIS unit's Cast bar entry on the Units page (NS:OpenUnitSettings, whose combat

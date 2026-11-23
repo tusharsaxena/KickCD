@@ -170,7 +170,7 @@ end)
 
 test("a left click on the grid strip's settings mark opens this addon's settings", function()
     -- RE-PINNED (AF-STRIP-KC): the left click opens this unit's entry (NS:OpenUnitSettings, next
-    -- cases); the right-click is still the strip's, the parent page through NS:OpenSettings.
+    -- cases). SRC-KC-02: the right-click is the gear's too (next case).
     local NS, _, inst = fresh()
     local opened, entry = 0, 0
     NS.OpenSettings = function() opened = opened + 1 end
@@ -178,9 +178,28 @@ test("a left click on the grid strip's settings mark opens this addon's settings
     inst.handle.settings:_run("OnClick", "LeftButton")
     assertEqual(entry, 1, "the mark opens the grid's own entry")
     assertEqual(opened, 0)
-    -- The right-click passes through to the strip's own right-click.
-    inst.handle.settings:_run("OnClick", "RightButton")
-    assertEqual(opened, 1, "a right-click on the mark is the strip's right-click")
+end)
+
+test("a right-click anywhere on the grid strip opens what its gear opens", function()
+    -- SRC-KC-02 (standalone-windows, *A right-click opens what the gear opens*, standard v2.118.0):
+    -- red under the spec's old `onRightClick = NS:OpenSettings()`, which opened the parent page
+    -- while the gear opened this unit's Icons entry. With no onRightClick, DragHandle minor 17
+    -- answers a right-click on the band and on every mark with the gear's own action.
+    local NS, IconGrid, inst = fresh()
+    setLocked(NS, IconGrid, inst, false)
+    local h = inst.handle
+    local opened, seen = 0, {}
+    NS.OpenSettings = function() opened = opened + 1 end
+    NS.OpenUnitSettings = function(_, unit, entry) seen[#seen + 1] = unit .. "/" .. entry end
+    h:_run("OnClick", "RightButton")
+    h.help:_run("OnClick", "RightButton")
+    h.settings:_run("OnClick", "RightButton")
+    h.close:_run("OnClick", "RightButton")
+    assertEqual(#seen, 4, "the band, the ?, the gear and the X each answer the right-click")
+    for i = 1, 4 do
+        assertEqual(seen[i], inst.unit .. "/icons", "right-click " .. i .. " opens the gear's entry")
+    end
+    assertEqual(opened, 0, "no right-click opens the parent page")
 end)
 
 -- ── The X and the gear's page (AF-STRIP-KC, LibKa0s v1.107.0: DragHandle minor 15) ─────────
