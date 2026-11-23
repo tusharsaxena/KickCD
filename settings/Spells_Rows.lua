@@ -172,7 +172,7 @@ local function rowSpellIcon(AceGUI, entry)
     local function showSpellTooltip(widget)
         if not entry.spellID then return end
         GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")
-        GameTooltip:SetSpellByID(entry.spellID)
+        GameTooltip:SetSpellByID(NS.SpellRanks.Resolve(entry.spellID))
         GameTooltip:Show()
     end
     local function hideSpellTooltip() GameTooltip:Hide() end
@@ -250,9 +250,16 @@ function Spells.StatusGlyphMark(statusIcon, known)
     return true
 end
 
+--- Whether the row's spell is known: the RESOLVED id's availability (core/SpellRanks.lua,
+--- MKF-KC-09), so on WoW Forever a row whose rank 2 alone is known reads known.
+--- @return boolean
+function Spells.RowKnown(entry)
+    return Compat.IsSpellAvailable
+        and Compat.IsSpellAvailable(NS.SpellRanks.Resolve(entry.spellID)) or false
+end
+
 local function rowKnownGlyph(AceGUI, entry)
-    local known = Compat.IsSpellAvailable
-        and Compat.IsSpellAvailable(entry.spellID) or false
+    local known = Spells.RowKnown(entry)
     local statusIcon = Spells.Acquire(AceGUI, "Icon")
     statusIcon:SetImage(known and SPELL_KNOWN_ICON or SPELL_NOT_KNOWN_ICON)
     Spells.StatusGlyphMark(statusIcon, known)

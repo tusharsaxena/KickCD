@@ -84,17 +84,28 @@ local function classSpec()
     return NS.Util.NormalizeClassToken(classFile), NS.Util.PlayerSpecID()
 end
 
---- Whether a spell-list entry is one the simulation can use: enabled, available and known.
+--- Whether a spell-list entry is one the simulation can use: enabled, available and known. Asked
+--- about the resolved id (core/SpellRanks.lua, MKF-KC-09): the rank the grid draws.
 local function usable(entry)
     local id = type(entry) == "table" and entry.spellID
     if type(id) ~= "number" or entry.enabled == false then return false end
+    id = NS.SpellRanks.Resolve(id)
     return NS.Compat.IsSpellAvailable(id) and NS.Compat.GetSpellInfo(id) ~= nil
 end
 
 --- "Your kick" and "your CC": the first kept entry of category `interrupt` (else the first kept
---- entry), and the first other kept entry that is not the kick. Read-only on the spell list.
+--- entry), and the first other kept entry that is not the kick. Read-only on the spell list. Each is
+--- the RESOLVED id, the one the grid asks the client about, so the world's cooldown lands on it.
 --- @return number|nil kick, number|nil cc
 function Host.ResolveSpells()
+    local kick, cc = Host.ResolveStoredSpells()
+    local R = NS.SpellRanks
+    return kick and R.Resolve(kick), cc and R.Resolve(cc)
+end
+
+--- The two rows' STORED ids (Host.ResolveSpells, before the resolver).
+--- @return number|nil kick, number|nil cc
+function Host.ResolveStoredSpells()
     local class, spec = classSpec()
     local list = class and spec and NS.Database and NS.Database:GetSpellList(class, spec)
     local kept = {}

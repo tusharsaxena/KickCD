@@ -467,6 +467,10 @@ end
 --- the list is the render order, and a second entry for one spellID would give
 --- the icon grid two buttons for one cooldown. Lazy-creates the list -- but only
 --- for a class Database.IsKnownClass accepts.
+---
+--- Any rank is stored as its FAMILY (core/SpellRanks.lua, MKF-KC-09): on WoW Forever a typed Pummel
+--- rank 2 (6554) stores 6552 and re-enables the row already there; on Retail the id is stored as
+--- given.
 -- @return "added" | "enabled"; or nil when there is nowhere to write, plus
 --   "unknown class" when the class token is the reason
 function Database:AddSpell(class, spec, spellID)
@@ -474,6 +478,7 @@ function Database:AddSpell(class, spec, spellID)
         refused("add", class, spec, "no spellID", spellID)
         return nil
     end
+    if NS.SpellRanks then spellID = NS.SpellRanks.Family(spellID) end
     if class ~= nil and not Database.IsKnownClass(class) then
         refused("add", class, spec, "unknown class", spellID)
         return nil, "unknown class"

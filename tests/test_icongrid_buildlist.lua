@@ -322,7 +322,10 @@ test("an icon rebuilt after Cooldowns already emitted keeps its cooldown", funct
     -- red under: seedIcon painting every rebuilt icon ready regardless of
     -- what Cooldowns already knows.
     local gi, IconGrid, NS, mocks = withList({ entry(1766) })
-    mocks.spellCooldowns[1766] = { isEnabled = true, isActive = true, startTime = 100, duration = 15 }
+    -- On the resolved id (core/SpellRanks.lua): under the kit's forever profile the mock knows every
+    -- rank, so Kick resolves to its rank 4; on Retail it is 1766 itself.
+    mocks.spellCooldowns[NS.SpellRanks.Resolve(1766)] =
+        { isEnabled = true, isActive = true, startTime = 100, duration = 15 }
     local Cooldowns = NS:GetModule("Cooldowns")
     Cooldowns:Rebuild()               -- the losing order: Cooldowns first
     assertEqual(Cooldowns:StateFor(1766) and Cooldowns:StateFor(1766).ready, false,

@@ -164,6 +164,29 @@ Total.
 - Retail lists: the Forever file touches neither Retail table, and every Forever list is a SPEC_FOREVER key
 - Forever lists: the TOC loads defaults/Spells_Forever.lua straight after defaults/Spells.lua
 
+### test_spell_ranks.lua (20)
+
+- Ranks: the Forever rank table is the frozen seed run's rank families, id for id
+- Ranks: every family's first rank is its key, and no rank sits in two families
+- Ranks (Forever): a row resolves to the highest rank the player knows
+- Ranks (Forever): a pet's ranks resolve on the pet's bank
+- Ranks (Forever): usable when ANY known rank is (critic C3)
+- Ranks (Forever): the known set is cached until Invalidate
+- Ranks (Forever): Cooldowns polls the live rank under the stored row's id
+- Ranks (Forever): the ready flag uses any known rank's usability
+- Ranks (Forever): a poll reads the cache, never the spellbook's rank walk
+- Ranks (Forever): the grid draws the live rank's icon, deduped on the live id
+- Ranks (Forever): the ticker reads the live rank's cooldown
+- Ranks (Forever): the icon tooltip shows the live rank
+- Ranks (Forever): the simulator's kick is the live rank
+- Ranks (Forever): the diagnostics list calls a known higher rank learned, and names it
+- Ranks (Forever): the Spells page's name, icon and known mark follow the live rank
+- Ranks (Forever): adding any rank stores the family's rank-1 id
+- Ranks (Retail): every answer is the id itself and the Forever table is never read
+- Ranks (Retail): IsUsable is Compat.IsSpellUsable's first value
+- Ranks (Retail): two rank ids stay two rows, two icons and two stored entries
+- Ranks (Retail): every consumer asks the client the stored id
+
 ### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
@@ -2138,6 +2161,7 @@ Total.
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 28 |
 | test_spells_forever.lua | 9 |
+| test_spell_ranks.lua | 20 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2240,4 +2264,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1794** |
+| **Total** | **1814** |

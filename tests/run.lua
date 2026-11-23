@@ -184,6 +184,7 @@ local SUITES = {
     "test_util_anchor",
     "test_constants",
     "test_spells_forever",
+    "test_spell_ranks",
     "test_state",
     "test_events",
     "test_event_routes",

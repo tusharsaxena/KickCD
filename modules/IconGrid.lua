@@ -59,6 +59,9 @@ local IconGrid = NS:NewModule("IconGrid", "AceEvent-3.0")
 -- file load, never through an NS lookup on the hot path. core/PerfSetup.lua
 -- loads before modules/, so this is always the real instance or its stub.
 local Perf = NS.Perf
+-- The one rank resolver (core/SpellRanks.lua, MKF-KC-09). An icon is keyed by its stored row's id;
+-- its texture, tooltip and cooldown are the resolved id's, and the dedupe is on the resolved id.
+local Ranks = NS.SpellRanks
 
 -- ---------------------------------------------------------------------------
 -- Per-unit instances
@@ -271,6 +274,7 @@ end
 --- Pet spells (Counter Shot, Spell Lock) are likewise hidden until
 --- their pet is summoned.
 local function isRenderable(spellID)
+    spellID = Ranks.Resolve(spellID)
     local name      = NS.Compat.GetSpellInfo(spellID)
     local available = NS.Compat.IsSpellAvailable(spellID)
     return name and available
@@ -302,7 +306,7 @@ end
 --- them from tainted execution — so skip the call and leave the icon blank
 --- rather than erroring out of BuildActiveList partway.
 local function applySpellTexture(btn, spellID)
-    local tex = NS.Compat.GetSpellTexture(spellID)
+    local tex = NS.Compat.GetSpellTexture(Ranks.Resolve(spellID))
     local texSecret = tex ~= nil and NS.Compat.IsSecret(tex)
     if tex and not texSecret then btn.icon:SetTexture(tex) end
 end
@@ -333,17 +337,19 @@ local function seedIcon(grid, inst, spellID)
     table.insert(inst.ordered, btn)
 end
 
---- Walk the list into the pool, deduped by spellID. With `trace` (debug on)
---- the skipped IDs are collected for logActiveList's one summary line, in
---- place of the per-duplicate line this used to write (debug-logging-§9).
+--- Walk the list into the pool, deduped by the RESOLVED spellID (on WoW Forever two ranks of one
+--- family are one cooldown, so one icon; on Retail the resolved id is the id). With `trace` (debug
+--- on) the skipped IDs are collected for logActiveList's one summary line, in place of the
+--- per-duplicate line this used to write (debug-logging-§9).
 local function seedList(grid, inst, list, trace)
     local seen = {}
     for _, entry in ipairs(list) do
         local spellID = eligibleSpellID(entry)
-        if spellID and seen[spellID] then
+        local live = spellID and Ranks.Resolve(spellID)
+        if spellID and seen[live] then
             if trace then trace.dup[#trace.dup + 1] = spellID end
         elseif spellID then
-            seen[spellID] = true
+            seen[live] = true
             -- Hide entries the player can't see in their own spellbook.
             if isRenderable(spellID) then
                 seedIcon(grid, inst, spellID)
@@ -356,6 +362,8 @@ end
 
 function IconGrid:BuildActiveList(inst)
     self:ReleaseAll(inst)
+    -- A build reads the known ranks afresh (it runs on the spellbook and talent events too).
+    Ranks.Invalidate()
 
     if not (NS.db and NS.db.profile) then return end
 

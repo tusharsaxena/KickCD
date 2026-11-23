@@ -416,7 +416,7 @@ local function CreateIconWidget(parent)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_NONE")
         if GameTooltip.SetSpellByID then
-            GameTooltip:SetSpellByID(self.spellID)
+            GameTooltip:SetSpellByID(NS.SpellRanks.Resolve(self.spellID))
         end
         GameTooltip:Show()
         placeIconTip(GameTooltip, self)

@@ -247,10 +247,12 @@ local function writer(verb, ...)
     return NS.Database[verb](NS.Database, selectedClass, selectedSpec, ...)
 end
 
+-- The name and the icon are the RESOLVED id's (core/SpellRanks.lua, MKF-KC-09): the rank the grid
+-- draws on WoW Forever, the id itself on Retail.
 local function getSpellName(id)
     if not id then return nil end
     if Compat.GetSpellInfo then
-        local name = Compat.GetSpellInfo(id)
+        local name = Compat.GetSpellInfo(NS.SpellRanks.Resolve(id))
         if name then return name end
     end
     return nil
@@ -258,7 +260,7 @@ end
 
 local function getSpellIcon(id)
     if not id then return nil end
-    if Compat.GetSpellTexture then return Compat.GetSpellTexture(id) end
+    if Compat.GetSpellTexture then return Compat.GetSpellTexture(NS.SpellRanks.Resolve(id)) end
     return nil
 end
 
@@ -716,6 +718,8 @@ local function renderRows()
         showAceGUIMissing()
         return
     end
+    -- The rows read the known ranks afresh: the page re-renders on the spellbook events.
+    NS.SpellRanks.Invalidate()
     fillRows(AceGUI, container, getActiveList())
     if container.DoLayout then container:DoLayout() end
 end

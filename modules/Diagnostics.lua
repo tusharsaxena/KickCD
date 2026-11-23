@@ -135,13 +135,16 @@ end
 -- ── spells ───────────────────────────────────────────────────────────────────────────────────
 
 --- One list entry: `id name` plus `off` for a disabled row and `unlearned` for a spell the
---- player does not know.
+--- player does not know. Asked about the resolved id (core/SpellRanks.lua, MKF-KC-09); when that is
+--- another rank than the stored one (WoW Forever), `rank <id>` names it.
 local function entryText(e)
     local Compat = NS.Compat or {}
     local id = e.spellID
-    local text = tostring(id) .. " " .. NS.SafeToString(Compat.GetSpellInfo and Compat.GetSpellInfo(id) or "?")
+    local live = NS.SpellRanks and NS.SpellRanks.Resolve(id) or id
+    local text = tostring(id) .. " " .. NS.SafeToString(Compat.GetSpellInfo and Compat.GetSpellInfo(live) or "?")
+    if live ~= id then text = text .. " rank " .. tostring(live) end
     if e.enabled == false then text = text .. " off" end
-    if Compat.IsSpellAvailable and not Compat.IsSpellAvailable(id) then text = text .. " unlearned" end
+    if Compat.IsSpellAvailable and not Compat.IsSpellAvailable(live) then text = text .. " unlearned" end
     return text
 end
 
