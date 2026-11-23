@@ -1,0 +1,38 @@
+MKF-KC-REV review record (KickCD, 6 findings; 5 fixed, 1 left for the owner)
+
+KC-REV-1 (medium, tipGroup CCN 18): CONFIRMED. Fixed: tipGroup split into
+anchoredCastbar + labelMember; characterization test "a label attached to the
+cast bar is a member only while the bar is anchored" written first (green before
+and after). Proof: tests/_kit/run-automated-tests.sh --no-bundle --suite complexity
+-> 0 warnings, max CCN 15 (was 1 warning, max 18).
+
+KC-REV-2 (medium, hybrid default instance under KA0S_KIT_CLIENT=forever): CONFIRMED.
+Fixed by the finding's second option: docs/testing.md "Known limitation: the
+hybrid default instance" names retailShapedSeed, says real Forever behavior is
+covered only by world="forever" cases, and states the follow-up (flip the default
+world, pin ~195 Retail-only cases). Pinned by a test in test_client_shape.lua
+(red first). Not fixed in code: flipping the default world is a follow-up item
+for the lead to add to the run record / items.tsv.
+
+KC-REV-3 (low, writers miss a rank-2 id on Forever): CONFIRMED. Fixed: findTyped
+(exact id first, else SpellRanks.Family) in RemoveSpell, SetSpellEnabled,
+SetSpellCategory. Exact-first keeps any row stored under a rank's own id
+findable. Tests (red first): Forever-world disable/category/remove by 6554 on the
+6552 row; a 6554-stored row still found by 6554. Retail unchanged (Family is identity).
+
+KC-REV-4 (low, R8 plural vs strict reading): CONFIRMED as an interpretation, no code
+change. The live pair admits only the live class's own Forever list; another
+class's list still takes any spell. Owner to confirm the strict reading; if the
+plural reading is wanted, onDefaultList scans every class in
+Database.DefaultSpells(). Lead to record it in RESUME.md / the run record.
+
+KC-REV-5 (low, cmcache removed by index): CONFIRMED. Fixed: Sections builds the list
+and skips Retail-only rows by name. Test (red first): Forever list == Retail list
+minus cmcache, in order, and the source has no table.remove(out, ...).
+
+KC-REV-6 (low, doc block split): CONFIRMED. Fixed: FOREVER_EVENTS moved above the
+RegisterLifecycleEvents doc block. Test (red first): the line above each module's
+RegisterLifecycleEvents is a --- doc line (IconGrid, Cooldowns).
+
+Gates at this commit: Retail 1904 passed / 0 failed / 1 skipped; Forever 1894 / 0 / 11;
+luacheck 0/0 in 179 files; docs/test-cases.md regenerated, README badge 1904/1904.
