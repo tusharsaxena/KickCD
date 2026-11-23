@@ -23,7 +23,7 @@ and a retired one leaves its number unused.
 | CAST-1 – 20 | Cast bar | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
 | FOCUS-1 – 19 | Focus tracking | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
 | LABEL-1 – 15 | Text label | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
-| SPELLS-1 – 18 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected |
+| SPELLS-1 – 19 | Spell lists | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists |
 | SIM-1 – 20 | Simulator | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 49 | Debug and diagnostics | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
 | DEGRADED-1 – 17 | Library-absent install | `libs/LibKa0s` renamed aside: fallbacks, refusals, the shared cause clause, restore, plain sub-help rows, the interrupt dump's sentinel, the HUD on its stored picks, the reports in chat |
@@ -978,6 +978,16 @@ you had before the update is still yours.
   `/kcd spells reset` → the list carries Blinding Light (#115750) where #105421 was,
   its icon is on the grid, and casting Blinding Light starts its 90 s cooldown. Repeat on a second
   spec. Result: owed
+- **SPELLS-19. WoW Forever's default lists.** On WoW Forever, once the per-client seeding is in
+  (the Forever port's MKF-KC-11), `/kcd spells reset` on a character of each class you have → its
+  list is `defaults/Spells_Forever.lua`'s for that class, in that order: a Warrior's starts with
+  Pummel (#6552) then Shield Bash (#72) and ends with Intercept (#20252) and War Stomp (#20549); a
+  Rogue's ends with Gouge (#1776); a Shaman's is Earth Shock (#8042) and War Stomp. Only spells the
+  character knows draw on the grid, so War Stomp shows for a Tauren alone, and a talent (Concussion
+  Blow, Silence, Feral Charge, Repentance, Scatter Shot, Intimidation) only once learned. Cast the
+  first icon's spell at the highest rank you know → its cooldown starts on the icon. Then on Retail,
+  `/kcd spells reset` on any spec → the list is the same as before the port (the Retail file is
+  unchanged). Result:
 
 ## SIM
 
@@ -1939,6 +1949,8 @@ The owner's sixth smoke round (R6-RV of Ka0sAddonsCommonTasks `docs/2026-11-03-S
 The same round's R6-PV adds SKIN-47 (the picker's eye in unlock mode: a picker opened over locked frames unlocks them, the eye toggles the lock, every close puts it back) and moves the expected result of SKIN-22 (the picker now carries the eye), whose owner pass is withdrawn. Its review adds SKIN-48 (the eye across a profile switch and a reset, a /kcd skin refused in combat between). Owed: SKIN-22, SKIN-47, SKIN-48.
 
 The 2026-11-15 seed check (KickCD#39, `docs/seed-research/2026-11-15-retail/`) adds SPELLS-17 and SPELLS-18 for the two ids it corrected in `defaults/Spells.lua`. Owed: both.
+
+The 2026-11-23 WoW Forever seed run (MKF-KC-07 and MKF-KC-08 of Ka0sAddonsCommonTasks `docs/2026-11-23-MULTIMETERS_KICKCD_FOREVER_PORT/`, `docs/seed-research/2026-11-23-forever/`) adds SPELLS-19 for the nine new Forever lists in `defaults/Spells_Forever.lua`. Owed: SPELLS-19.
 
 The LibKa0s v1.105.0 adoption run (AD-88-KC of Ka0sAddonsCommonTasks `docs/2026-11-17-LIBKA0S_V1_105_ADOPTION/`, LibKa0s#88, ruling 2) brings the sim strip back, docked on each grid and free cast bar, reversing D-13: it rewrites SIM-12, whose owner pass is withdrawn, and adds SIM-19. LAYER-7 stays retired; SIM-19 covers the strip's stacking. Owed: SIM-12, SIM-19.
 

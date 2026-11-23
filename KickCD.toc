@@ -119,6 +119,7 @@ core\PerfSetup.lua
 # free within the block.
 defaults\Profile.lua
 defaults\Spells.lua
+defaults\Spells_Forever.lua
 
 # Modules
 # Conventional position: the four parent modules (Cooldowns, IconGrid, Castbar,

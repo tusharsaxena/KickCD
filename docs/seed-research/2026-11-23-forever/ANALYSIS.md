@@ -101,6 +101,14 @@ Intercept, then War Stomp last. The categories stay what the tool proposed excep
 research's proposal names another in the closed set (`category` is informational only, the
 `architecture-§5` row).
 
+After the apply and the reorder, a verification derive (`--replay`, into a scratch bundle, not
+committed) against the filled file raised no `renamed`, `unnamed`, `unreachable`, `no-evidence` or
+`primary` flag, proposed only the ten rejected candidates again, and raised one `category` flag per
+War Stomp entry (DB2 shows its stun, the list says `racial`, the category `Database`'s racial
+append gives it). Those four are ruled `keep` in `rulings_forever.json` ahead of the next run. Death
+Coil ships as `fear` (the research's and Retail's category) where the tool proposed `incapacitate`
+from its horror mechanic, which DB2 also files under fear.
+
 ## What a later run should re-check
 
 - **In game.** None of these ids has been cast on Forever by KickCD. The port's smoke sheet carries

@@ -152,6 +152,18 @@ Total.
 - Constants: every spec ID in Const.SPEC has a shipped default list
 - Constants: defaults ship one class table per class, all UPPER-case tokens
 
+### test_spells_forever.lua (9)
+
+- Forever lists: one list per Forever class, at its SPEC_FOREVER id and nowhere else
+- Forever lists: each list is the ruled membership in the ruled order
+- Forever lists: Pummel leads the Warrior list, and every list leads with an interrupt where its class has one
+- Forever lists: every entry is the stored shape, in the closed category set, enabled
+- Forever lists: War Stomp is in the four classes a Tauren plays, as a racial, and the racial table names it
+- Forever lists: every shipped entry is an accepted ruling, and every accepted ruling is shipped
+- Retail lists: defaults/Spells.lua is byte-identical to the port's base (333cd49)
+- Retail lists: the Forever file touches neither Retail table, and every Forever list is a SPEC_FOREVER key
+- Forever lists: the TOC loads defaults/Spells_Forever.lua straight after defaults/Spells.lua
+
 ### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
@@ -2125,6 +2137,7 @@ Total.
 | test_envsetup.lua | 6 |
 | test_util_anchor.lua | 37 |
 | test_constants.lua | 28 |
+| test_spells_forever.lua | 9 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2227,4 +2240,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1785** |
+| **Total** | **1794** |

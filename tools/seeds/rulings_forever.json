@@ -162,5 +162,21 @@
   "WARRIOR:1491:72": {
     "reason": "interrupt (effect 68, 12 s, needs a shield, Battle or Defensive Stance); shares category 88 with Pummel; core by owner ruling R7 (2026-11-23): core plus Gouge and Intercept",
     "ruling": "accept"
+  },
+  "shipped:category:DRUID:1484:20549": {
+    "reason": "War Stomp ships as racial, the category Database's appendRacial gives the racial; DB2's stun is the same spell (category is informational, architecture-5)",
+    "ruling": "keep"
+  },
+  "shipped:category:HUNTER:1485:20549": {
+    "reason": "War Stomp ships as racial, the category Database's appendRacial gives the racial; DB2's stun is the same spell (category is informational, architecture-5)",
+    "ruling": "keep"
+  },
+  "shipped:category:SHAMAN:1489:20549": {
+    "reason": "War Stomp ships as racial, the category Database's appendRacial gives the racial; DB2's stun is the same spell (category is informational, architecture-5)",
+    "ruling": "keep"
+  },
+  "shipped:category:WARRIOR:1491:20549": {
+    "reason": "War Stomp ships as racial, the category Database's appendRacial gives the racial; DB2's stun is the same spell (category is informational, architecture-5)",
+    "ruling": "keep"
   }
 }
