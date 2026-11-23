@@ -511,6 +511,7 @@ when in doubt, which fetches the living standard and writes a fresh one.
 |---|---|
 | `testing.md` | How to run the harness and lint; the green commit gate |
 | `smoke-tests.md` | The in-game smoke-test suite |
+| `forever-probes.md` | The WoW Forever port's in-game probes: the `/kcd debug probe` verbs, what each recorded kind holds, and the probe sheet with each safe default and an empty `Result:` line |
 | `test-cases.md` | The generated case inventory (authoritative pass count) |
 | `performance.md` | The addon performance page |
 | `automated-tests/README.md` | What the automated-test record is and how to produce it |

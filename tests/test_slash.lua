@@ -135,7 +135,7 @@ end)
 -- CommandRows (NS.Slash.CommandRows), split through SplitVerb and look up through
 -- FindCommand, so the bytes are pinned exactly, uppercase hex included.
 
-local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "window",
+local DEBUG_VERBS  = { "diagnostics", "spells", "castbar", "interrupt", "probe", "window",
                        "on", "off", "toggle", "events" }
 local SPELLS_VERBS = { "list", "add", "remove", "enable", "disable", "category",
                        "reset", "resetall" }

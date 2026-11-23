@@ -337,6 +337,17 @@ LibKa0s-Core's `SafeRegisterEvent`. A refused name costs only its own row of a r
 **Use it when** the `[Init]` line reports rejected events, or when a feature goes quiet after a
 client patch that may have retired an event it listens to.
 
+### `/kcd debug probe start|stop|status|clear`
+
+The `probe` row in `core/KickCD.lua`, answered by `modules/Probe.lua` (the WoW Forever port,
+MKF-KC-16). It is not a report: it records client facts into `db.global.probe` inside `KickCDDB`
+while started, on a private frame that no simulated event reaches, and each verb answers one chat
+line (`probe: running, 12 entries (cap 500), forever 1.60.1 71037`). The kinds it records and the
+probes they answer are in [forever-probes.md](forever-probes.md).
+
+**Use it when** a WoW Forever fact the port shipped a safe default for needs its answer from the
+live client.
+
 ## Where else this is pinned
 
 The command rows are in [slash-dispatch.md](slash-dispatch.md#kcd-debug-subcmd), and the

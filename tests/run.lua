@@ -251,6 +251,7 @@ local SUITES = {
     "test_sim_drivers",
     "test_sim_e2e",
     "test_sim_clients",
+    "test_probe",
     "test_sim_marker",
     "test_sim_checkbox",
     "test_debuglog",

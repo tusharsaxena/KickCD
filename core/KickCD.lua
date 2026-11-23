@@ -500,6 +500,10 @@ local DEBUG_COMMANDS = {
                     "Compat.DebugInterrupt unavailable")
             end
         end},
+    -- The WoW Forever port's probe (MKF-KC-16, modules/Probe.lua): records client facts into
+    -- db.global.probe until stopped. Its own one-line answers stay in chat.
+    {"probe", "Record client facts for the WoW Forever port: probe start, stop, status or clear",
+        function(_, rest) NS.Probe.OnVerb(rest) end},
     {"window", "Toggle the debug console window",
         function(self)
             if self.DebugLog then self.DebugLog:Toggle()

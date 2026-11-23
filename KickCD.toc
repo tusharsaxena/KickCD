@@ -173,6 +173,10 @@ modules\SimStrip.lua
 # convention only: every module it reads it resolves at CALL time, when the
 # report runs, and core\DebugLogSetup.lua asks it for its sections the same way.
 modules\Diagnostics.lua
+# The WoW Forever port's probe verbs (MKF-KC-16): `/kcd debug probe` records client facts into
+# db.global.probe. Conventional position: NS.SimHost, NS.SpellRanks, NS.Database and NS.Sim are read
+# at call time, when the probe starts or an event reaches its private frame.
+modules\Probe.lua
 
 # Settings (last — depend on everything else being initialized)
 # LOAD-BEARING POSITION: creates NS.Settings.Schema (the rows array) and NS.Settings.Store, which both descriptors and every page file's add/AddComposed reach at load
