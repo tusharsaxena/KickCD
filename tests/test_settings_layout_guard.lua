@@ -60,7 +60,8 @@ local PIN = {
     "skin.ignorePanel bool true nil nil nil",
     "skin.outline string \"hud\" nil nil nil",
     "skin.pickerSeen bool false nil nil nil",
-    "skin.skin string \"ka0s\" nil nil nil",
+    -- The client's default skin (skinning-§2): Ka0s Default on Retail, the WoW Forever skin there.
+    ("skin.skin string \"%s\" nil nil nil"):format(os.getenv("KA0S_KIT_CLIENT") == "forever" and "forever" or "ka0s"),
     "skin.source string \"ka0s\" nil nil nil",
     "skin.texture string \"\" nil nil nil",
     "state.debugConsole bool false nil nil nil",

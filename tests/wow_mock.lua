@@ -708,6 +708,13 @@ local function build()
     mocks.IsPlayerSpell = function() return true end
     mocks.IsSpellKnown = function() return true end
     mocks.IsSpellKnownOrOverridesKnown = function() return true end
+    -- The spellbook namespace both clients carry (the shims above are its deprecation fallbacks,
+    -- loaded only while the CVar loadDeprecationFallbacks is on). Every spell known, as the shims
+    -- answer here; tests/wow_mock_forever.lua replaces it with ranked known sets.
+    mocks.C_SpellBook = {
+        IsSpellKnown = function() return true end,
+        IsSpellInSpellBook = function() return true end,
+    }
     mocks.IsLoggedIn = function() return true end
     mocks.InCombatLockdown = function() return false end
     mocks.issecretvalue = function() return false end
@@ -733,6 +740,9 @@ local function build()
     mocks.CreateAtlasMarkup = function() return "" end
     mocks.C_CooldownViewer = nil
     mocks.Enum = setmetatable({}, { __index = function() return setmetatable({}, { __index = function() return 0 end }) end })
+    -- Real values where an answer of 0 for every member would hide a mistake: Pet must not read as
+    -- the player's bank.
+    mocks.Enum.SpellBookSpellBank = { Player = 0, Pet = 1 }
     mocks.StaticPopupDialogs = {}
     mocks.StaticPopup_Show = function() end
 

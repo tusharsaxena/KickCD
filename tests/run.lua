@@ -24,6 +24,8 @@ local Loader  = dofile(root .. "/tests/_kit/loader.lua")
 -- loadfile-and-call rather than dofile, so the mock builder is handed `root` and can resolve
 -- tests/_kit/mock_base.lua — the base it layers over — without assuming the process's CWD.
 local mockmod = assert(loadfile(root .. "/tests/wow_mock.lua"))(root)
+-- The WoW Forever world (MKF-KC-02): applied to an instance's mocks when its opts ask for it.
+local foreverWorld = assert(loadfile(root .. "/tests/wow_mock_forever.lua"))()
 
 -- Every addon chunk is called as chunk("KickCD", NS), reproducing the client's
 -- `local addonName, NS = ...` header. Library chunks ignore the varargs.
@@ -104,6 +106,10 @@ end
 ---        before the next one does -- the seam a case needs to hand later files
 ---        a non-identity locale string, since enUS's own `L` returns the key. A
 ---        key that names no TOC file raises rather than silently never firing.
+---        `{ world = "forever" }` stamps the kit's forever profile on this instance's mocks
+---        whatever KA0S_KIT_CLIENT says and applies tests/wow_mock_forever.lua's world, both
+---        BEFORE `mutate`, so a case written against WoW Forever runs the same on both kit
+---        profiles.
 --- @return table inst  { NS, mocks, initError }
 ---
 --- Isolation is per-instance and comes from the mock, not from the environment: the kit's loader
@@ -113,6 +119,13 @@ end
 --- instances.
 local function loadInstance(initDB, enable, mutate, opts)
     local mocks = mockmod.build()
+    if opts and opts.world ~= nil then
+        if opts.world ~= "forever" then error("opts.world: unknown world " .. tostring(opts.world), 2) end
+        -- makeEnv stamps the running profile once per mock set; stamping forever after it sticks.
+        Loader.makeEnv(mocks)
+        Loader.MockClient.apply(mocks, "forever")
+        foreverWorld.apply(mocks, Kit)
+    end
     if mutate then mutate(mocks) end
     -- `_G` must resolve to a table that answers from THIS instance's mocks. Nearly every WoW-API
     -- read in this addon is written `_G.C_SpecializationInfo`, `_G.InCombatLockdown`, `_G.UnitGUID`
@@ -182,6 +195,7 @@ local SUITES = {
     "test_bus",
     "test_compat",
     "test_compat_client",
+    "test_forever_world",
     "test_compat_api",
     "test_compat_debug",
     "test_compat_units",
@@ -394,6 +408,31 @@ local function withViewedUnit(fn)
     if not ok then error(err, 0) end
 end
 
+-- ---------------------------------------------------------------------------
+-- Ka0s Default by name (MKF-KC-02; the WoW Forever port design 3.2)
+-- ---------------------------------------------------------------------------
+--
+-- A case that measures Ka0s Default's pixels selects that skin by NAME rather than leaning on the
+-- client's default, which is the WoW Forever skin under `KA0S_KIT_CLIENT=forever` (skinning-§2).
+-- It pins NS.DEFAULT_SKIN straight after core/SkinSetup.lua reads it from the library, so the
+-- profile default (defaults/Profile.lua), the pre-store fallback and the migrations all name
+-- "ka0s" on both kit profiles. Merged into the case's own `opts`, which it may already carry.
+
+--- `opts` (or a fresh table) with an afterFile hook that pins Ka0s Default as the default skin.
+local function ka0sDefault(opts)
+    local out = {}
+    for k, v in pairs(opts or {}) do out[k] = v end
+    local hooks = {}
+    for k, v in pairs(out.afterFile or {}) do hooks[k] = v end
+    local prior = hooks["core/SkinSetup.lua"]
+    hooks["core/SkinSetup.lua"] = function(NS)
+        if prior then prior(NS) end
+        NS.DEFAULT_SKIN = "ka0s"
+    end
+    out.afterFile = hooks
+    return out
+end
+
 _G.KICKCD_TEST = Kit.expose{
     root = root,
     -- shared instance
@@ -410,6 +449,16 @@ _G.KICKCD_TEST = Kit.expose{
     -- Guaranteed-run fixture wrappers; see the block above.
     withFocusLink  = withFocusLink,
     withViewedUnit = withViewedUnit,
+    -- Ka0s Default by name; see the block above.
+    ka0sDefault = ka0sDefault,
+    -- The WoW Forever world (tests/wow_mock_forever.lua) and typed secrets (MKF-KC-02). A case
+    -- loads the world with `T.load(init, enable, mutate, { world = "forever" })`; typedSecrets
+    -- installs the secrets alone, on a mock set of either client, from a mutate hook.
+    foreverWorld = foreverWorld,
+    typedSecrets = function(mocks) foreverWorld.typedSecrets(mocks, Kit) end,
+    secret = Kit.secret,
+    isSecret = Kit.isSecret,
+    reveal = Kit.reveal,
 }
 
 -- ---------------------------------------------------------------------------

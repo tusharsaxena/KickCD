@@ -47,7 +47,9 @@ local SC = NS.SimScenario
 --
 -- FALLBACK. Without the library the sim cannot run (core/SimSetup.lua's stub refuses it), but the
 -- table is still built at load, so it is built from a copy of the library's rows (Sim
--- version-3.3.11.4 docs, *The data*). tests/test_sim_e2e.lua holds the copy to the library's set.
+-- version-3.3.11.4 docs, *The data*), one set per client as the library keeps them: Retail's carry a
+-- specID, WoW Forever's a surname and a talent tree instead (preview-mode; forever-quirks-§4).
+-- tests/test_sim_e2e.lua holds the copy to the library's set on both kit profiles.
 local KICKS = {
     HUNTER  = 147362, -- Counter Shot
     PALADIN = 96231,  -- Rebuke
@@ -55,18 +57,30 @@ local KICKS = {
     WARRIOR = 6552,   -- Pummel
 }
 local SAMPLE_COPY = {
-    { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
-    { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
-    { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
-    { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
-    { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
+    retail = {
+        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", specID = 253 },
+        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   specID = 70 },
+        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          specID = 63 },
+        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          specID = 257 },
+        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    specID = 73 },
+    },
+    forever = {
+        { name = "Samplehunter", classFile = "HUNTER",  spec = "Beast Mastery", surname = "Mockstride", tree = 1 },
+        { name = "Sampleblade",  classFile = "PALADIN", spec = "Retribution",   surname = "Mockvale", tree = 3 },
+        { name = "Mockflame",    classFile = "MAGE",    spec = "Fire",          surname = "Samplewick", tree = 2 },
+        { name = "Samplemender", classFile = "PRIEST",  spec = "Holy",          surname = "Mockbrook", tree = 2 },
+        { name = "Mockshield",   classFile = "WARRIOR", spec = "Protection",    surname = "Sampleforge", tree = 3 },
+    },
 }
 
---- The sample rows for the running client: the library's copy, or ours without it.
+--- The sample rows for the running client: the library's copy, or ours without it, picked by the
+--- client key as the library picks its own (Retail's set on a client that is neither).
 local function sampleRows()
     local Sim = LibStub and LibStub("LibKa0s-Sim-1.0", true)
     if Sim and Sim.Sample then return Sim.Sample() end
-    return SAMPLE_COPY
+    local Compat = NS.Compat
+    local key = Compat and Compat.ClientKey and Compat.ClientKey()
+    return SAMPLE_COPY[key == "forever" and "forever" or "retail"]
 end
 
 --- The made-up party (narrative only, design D1): every sample character whose class has a kick.

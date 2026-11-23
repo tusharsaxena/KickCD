@@ -14,8 +14,9 @@ local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse =
     T.test, T.assertEqual, T.assertTrue, T.assertFalse
 
+-- Ka0s Default by name: the sizes below are its own, and the WoW Forever skin scales HUD text.
 local function enabled()
-    local inst = T.load(true, true)
+    local inst = T.load(true, true, nil, T.ka0sDefault())
     return inst.NS, inst.NS:GetModule("UnitLabel")
 end
 

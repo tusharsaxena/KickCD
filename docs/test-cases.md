@@ -408,6 +408,20 @@ Total.
 - compat client: the boundary check is falsifiable, a planted read is found
 - compat client: core/CompatClient.lua loads straight after core/Compat.lua and before core/SimSetup.lua
 
+### test_forever_world.lua (11)
+
+- Forever world: the instance is a WoW Forever client on both kit profiles
+- Forever world: nine classes at their real ids, and a 1..GetNumClasses loop loses Druid
+- Forever world: one spec per class at its real id, named for the class
+- Forever world: the player is a Hunter at 1485 until a case makes it another class
+- Forever world: the spec count is the namespaced member only; the bare spec globals are absent
+- Forever world: C_SpellBook knows each rank only once it is taught, per bank
+- Forever world: the deprecated spellbook shims are absent
+- Forever world: there is no global cooldown spell 61304
+- Forever world: a character is First Surname
+- Forever world: a typed secret answers its underlying type and reads secret
+- typed secrets install alone on a mock set of either client
+
 ### test_compat_api.lua (54)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
@@ -1473,8 +1487,8 @@ Total.
 ### test_skinsetup.lua (14)
 
 - Skin seam: the owner is the folder name, and NS.Skin is its facade
-- Skin seam: the read answers Ka0s Default before the profile store exists
-- Skin seam: the eight skin keys default to Ka0s Default, today's Scope and HUD text only
+- Skin seam: the read answers the client's default skin before the profile store exists
+- Skin seam: the eight skin keys default to the client's skin, today's Scope and HUD text only
 - Skin seam: every skin key is a skipRender row of the General page's Skin tab
 - Skin seam: the skin row's values are every registered skin, in the library's order
 - Skin seam: /kcd set refuses an unregistered skin and applies a registered one
@@ -1482,7 +1496,7 @@ Total.
 - Skin seam: /kcd set reaches an exception, and only its own half
 - Skin seam: /kcd set reaches an override, and an empty one is the skin's own
 - Skin seam: a profile switch applies the new profile's skin, Scope and overrides
-- Skin seam: a profile reset takes the skin back to Ka0s Default
+- Skin seam: a profile reset takes the skin back to the client's default
 - Skin seam: every LibKa0s-Widgets factory call names the owner
 - Skin seam: the debug console, its copy window and the perf panel take the owner from addonName
 - the profile default and the pre-store fallback name the library's DefaultSkin, never a literal
@@ -2088,6 +2102,7 @@ Total.
 | test_bus.lua | 13 |
 | test_compat.lua | 8 |
 | test_compat_client.lua | 10 |
+| test_forever_world.lua | 11 |
 | test_compat_api.lua | 54 |
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
@@ -2174,4 +2189,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1748** |
+| **Total** | **1759** |
