@@ -455,7 +455,8 @@ end)
 test("skin flip: the charges badge draws the skin's HUD shadow, as the countdown beside it does", function()
     -- SD-SK-KC.1 (Ka0sAddonsCommonTasks docs/2026-11-20-SKIN_DEFAULTS_AUDIT, cause D6). Red under a
     -- badge painted with a raw SetFont, which keeps the NumberFontNormal template's shadow under
-    -- every skin: Ka0s Default states no HUD shadow, Obsidian a black one and High Contrast 2, -2.
+    -- every skin: Ka0s Default states no HUD shadow, Obsidian a black one and High Contrast 1, -1
+    -- (LibKa0s v1.112.0, SkinDefsOthers minor 11, dropped its 2, -2).
     local inst = boot(nil, T.ka0sDefault())
     local i, cfg = icon(inst)
     local badge = i.chargesText
@@ -473,7 +474,7 @@ test("skin flip: the charges badge draws the skin's HUD shadow, as the countdown
     end)
     onSkin(inst, "contrast", function()
         i:ApplyTextConfig(cfg)
-        assertEqual(shadow(), rgba(2, -2, 1), "High Contrast: its 2, -2 offset")
+        assertEqual(shadow(), rgba(1, -1, 1), "High Contrast: 1, -1 like every skin (v1.112.0)")
     end)
     i:ApplyTextConfig(cfg)
     assertEqual(shadow(), rgba(0, 0, 0), "back on Ka0s Default, gone again")
