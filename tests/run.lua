@@ -84,6 +84,37 @@ local function loadTocFiles(NS, mocks, afterFile)
 end
 
 -- ---------------------------------------------------------------------------
+-- The Retail-shaped world's seed under WoW Forever's constants (MKF-KC-11)
+-- ---------------------------------------------------------------------------
+--
+-- An instance loaded with no `world` is tests/wow_mock.lua's world: a Retail Hunter at Retail spec
+-- ids. Under `KA0S_KIT_CLIENT=forever` its project constants say WoW Forever, so the addon takes
+-- every Forever branch -- and seeds from defaults/Spells_Forever.lua, keyed by Forever's spec ids,
+-- which that world's player never has. So for such an instance, and only on Forever constants, the
+-- seed accessors (Database.DefaultSpells, Database.RaceCastStoppers) answer the Retail tables, the
+-- seed keyed by the world's own spec ids: every Forever code path (the absent-key seed, the Forever
+-- resetall, the per-client count) still runs, over data the world can use. A case that loads the
+-- WoW Forever world (`{ world = "forever" }`) gets the real Forever seed on both profiles, and
+-- tests/test_seed_clients.lua pins it there. The hook is merged into the case's own afterFile.
+local function foreverConstants(mocks)
+    return mocks.WOW_PROJECT_CAMELOT ~= nil and mocks.WOW_PROJECT_ID == mocks.WOW_PROJECT_CAMELOT
+end
+
+local function retailShapedSeed(mocks, opts)
+    local afterFile = opts and opts.afterFile
+    if (opts and opts.world) or not foreverConstants(mocks) then return afterFile end
+    local hooks = {}
+    for k, v in pairs(afterFile or {}) do hooks[k] = v end
+    local prior = hooks["core/Database.lua"]
+    hooks["core/Database.lua"] = function(NS)
+        if prior then prior(NS) end
+        NS.Database.DefaultSpells = function() return NS.DefaultSpells end
+        NS.Database.RaceCastStoppers = function() return NS.RaceCastStoppers end
+    end
+    return hooks
+end
+
+-- ---------------------------------------------------------------------------
 -- Instance factory: a fully-loaded, isolated addon environment
 -- ---------------------------------------------------------------------------
 --- Load a fresh isolated addon instance under its own mock.
@@ -139,7 +170,7 @@ local function loadInstance(initDB, enable, mutate, opts)
     mocks._G = Loader.makeEnv(mocks)
     local NS = {}
     Loader.loadAll((opts and opts.libFiles) or LIB_FILES, NS, mocks)
-    loadTocFiles(NS, mocks, opts and opts.afterFile)
+    loadTocFiles(NS, mocks, retailShapedSeed(mocks, opts))
     -- OnInitialize is pcall'd only so the raise can be KEPT, never dropped (KICKCD-R-11). It used
     -- to be pcall'd and discarded, so a load whose init raised came back looking exactly like one
     -- that built a db: every case on it measured a half-initialized addon, and the shared instance
@@ -185,6 +216,7 @@ local SUITES = {
     "test_constants",
     "test_spells_forever",
     "test_spell_ranks",
+    "test_seed_clients",
     "test_state",
     "test_events",
     "test_event_routes",

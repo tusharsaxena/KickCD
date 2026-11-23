@@ -193,6 +193,19 @@ Total.
 - Feral Charge (Retail): UPDATE_SHAPESHIFT_FORM is not registered and no override is read
 - Feral Charge (Forever): UPDATE_SHAPESHIFT_FORM routes to both rebuilds
 
+### test_seed_clients.lua (10)
+
+- Seed (Forever): a fresh profile holds the nine Forever lists and no Retail pair
+- Seed (Forever): a profile an out-of-date run left gains the absent lists and keeps its Retail pairs
+- Seed (Forever): a list the player emptied keeps its key and is never re-seeded
+- Seed (Forever): a Tauren Warrior's War Stomp appears once
+- Seed (Forever): the racial comes from Forever's table
+- Seed (Forever): the customized count reads Forever's pairs only
+- Seed (Forever): a one-list reset restores Forever's list
+- Seed (Forever): resetall gives back Forever's nine lists and nothing else
+- Seed (Retail): the Retail lists are seeded and the Forever tables are never read
+- Seed (Retail): a populated profile is never re-seeded, as before
+
 ### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
@@ -2168,6 +2181,7 @@ Total.
 | test_constants.lua | 28 |
 | test_spells_forever.lua | 9 |
 | test_spell_ranks.lua | 26 |
+| test_seed_clients.lua | 10 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2270,4 +2284,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1820** |
+| **Total** | **1830** |

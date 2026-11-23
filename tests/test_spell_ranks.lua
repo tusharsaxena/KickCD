@@ -11,7 +11,7 @@ local T = _G.KICKCD_TEST
 local test, assertEqual, assertTrue, assertFalse, assertNil =
     T.test, T.assertEqual, T.assertTrue, T.assertFalse, T.assertNil
 
-local WARRIOR, SHAMAN = 1491, 1489
+local WARRIOR, PALADIN = 1491, 1486
 
 --- A Forever instance whose player is `classFile`, knowing `ids` on the player's bank, with its
 --- class list replaced by `entries` (spell ids). Enabled when `enable`.
@@ -255,8 +255,9 @@ test("Ranks (Forever): adding any rank stores the family's rank-1 id", function(
     assertEqual(list[1].spellID, 6552)
     assertEqual(NS.Database:AddSpell("WARRIOR", WARRIOR, 6552), "enabled", "the family is already there")
     assertEqual(#list, 1)
-    assertEqual(NS.Database:AddSpell("SHAMAN", SHAMAN, 10414), "added", "another class's list too")
-    assertEqual(NS.Database:GetSpellList("SHAMAN", SHAMAN)[1].spellID, 8042)
+    assertEqual(NS.Database:AddSpell("PALADIN", PALADIN, 10318), "added", "another class's list too")
+    local paladin = NS.Database:GetSpellList("PALADIN", PALADIN)
+    assertEqual(paladin[#paladin].spellID, 2812, "Holy Wrath rank 2 stored as rank 1")
 end)
 
 -- ── Retail: identity, byte for byte ─────────────────────────────────────────
@@ -335,15 +336,20 @@ local FERAL, BEAR, CAT = 1238122, 16979, 414924
 
 --- A Forever Druid knowing Feral Charge, in `form` ("bear", "cat" or nil), with the list `{ FERAL }`.
 local function druid(form, enable)
-    local inst = forever("DRUID", { FERAL }, { FERAL }, enable)
-    local m = inst.mocks
-    m.__form = form
-    m.C_Spell.GetOverrideSpell = function(id)
-        if id ~= FERAL then return id end
-        if m.__form == "bear" then return BEAR end
-        if m.__form == "cat" then return CAT end
-        return FERAL
-    end
+    local inst = T.load(true, enable, function(m)
+        m.__setForeverClass("DRUID")
+        m.__learn({ FERAL })
+        m.__form = form
+        m.C_Spell.GetOverrideSpell = function(id)
+            if id ~= FERAL then return id end
+            if m.__form == "bear" then return BEAR end
+            if m.__form == "cat" then return CAT end
+            return FERAL
+        end
+    end, { world = "forever" })
+    local NS = inst.NS
+    NS.db.profile.spells.DRUID[NS.Const.SPEC_FOREVER.DRUID] = { { spellID = FERAL, category = "interrupt", enabled = true } }
+    NS.SpellRanks.Invalidate()
     return inst
 end
 
