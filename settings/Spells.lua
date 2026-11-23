@@ -114,6 +114,13 @@ local freshOpen = true
 -- Helpers
 -- ---------------------------------------------------------------------------
 
+-- The running client's default lists (core/Database.lua, MKF-KC-11/13): defaults/Spells.lua's on
+-- Retail, defaults/Spells_Forever.lua's on WoW Forever. The picker, the default selection and the
+-- spec order all read the one table the seed reads.
+local function defaults()
+    return NS.Database and NS.Database.DefaultSpells and NS.Database.DefaultSpells() or nil
+end
+
 local function sortedKeys(t)
     local keys = {}
     if type(t) == "table" then
@@ -131,7 +138,8 @@ end
 -- actually ships so the editor never offers a spec it can't render.
 -- Falls back to sorted numeric keys when the client can't be queried.
 local function specOrder(classFile)
-    local specs = NS.DefaultSpells and NS.DefaultSpells[classFile]
+    local source = defaults()
+    local specs = source and source[classFile]
     if type(specs) ~= "table" then return {} end
     local blizzOrder = NS.Util and NS.Util.SpecOrderForClass
         and NS.Util.SpecOrderForClass(classFile)
@@ -167,12 +175,12 @@ local function getPlayerClassSpec()
         local _, cf = _G.UnitClass("player")
         classFile = cf
     end
-    if not (classFile and NS.DefaultSpells
-            and NS.DefaultSpells[classFile]) then
+    local source = defaults()
+    if not (classFile and source and source[classFile]) then
         return nil, nil
     end
     local specID = NS.Util and NS.Util.PlayerSpecID and NS.Util.PlayerSpecID()
-    if specID and not NS.DefaultSpells[classFile][specID] then
+    if specID and not source[classFile][specID] then
         specID = nil
     end
     return classFile, specID
@@ -433,8 +441,12 @@ local function addFromBox(id)
     addOrEnableSpell(id)
 end
 
+-- WoW Forever's lists are a class's (MKF-KC-13): its words, read once at load, a fact of the install.
+local ONE_SPEC = NS.Util.OneSpecPerClass()
+
 StaticPopupDialogs["KICKCD_RESET_SPELLS"] = {
-    text         = L["Reset all spells for this spec to addon defaults?"],
+    text         = ONE_SPEC and L["Reset all spells for this class to addon defaults?"]
+                   or L["Reset all spells for this spec to addon defaults?"],
     button1      = L["Yes"],
     button2      = L["No"],
     timeout      = 0,
@@ -557,9 +569,10 @@ end
 -- Prefers the player's own class when the defaults ship it, falling back to the
 -- first sorted class otherwise.
 local function ensureSelection(classes)
-    if not selectedClass or not (NS.DefaultSpells and NS.DefaultSpells[selectedClass]) then
+    local source = defaults()
+    if not selectedClass or not (source and source[selectedClass]) then
         local _, classFile = _G.UnitClass("player")
-        if classFile and NS.DefaultSpells and NS.DefaultSpells[classFile] then
+        if classFile and source and source[classFile] then
             selectedClass = classFile
         else
             selectedClass = classes[1]
@@ -689,7 +702,7 @@ local function renderRows()
     -- widget tree per refresh.
     releaseAceGUITree()
 
-    ensureSelection(sortedKeys(NS.DefaultSpells))
+    ensureSelection(sortedKeys(defaults()))
 
     local H = NS.Settings and NS.Settings.Helpers
 
@@ -713,7 +726,9 @@ local function renderRows()
     -- there is only ever one value to select, so onSelect has nothing to do.
     H.TabStrip(ctx, {
         tabs  = { { key = "list", label = L["Spell list"],
-                    tooltip = L["The tracked spells for the selected specialization, in priority order."] } },
+                    tooltip = NS.Util.OneSpecPerClass()
+                        and L["The tracked spells for the selected class, in priority order."]
+                        or L["The tracked spells for the selected specialization, in priority order."] } },
         value = "list",
         onSelect = function() end,
     })

@@ -86,7 +86,7 @@ function SpellInput.IsLivePair(class, spec)
 end
 
 -- Does `spec` belong to `class`? The client's own spec list when it can answer,
--- else the shipped defaults (defaults/Spells.lua keys every spec of every class).
+-- else the running client's shipped defaults (they key every spec of every class).
 local function specBelongs(class, spec)
     local order = NS.Util.SpecOrderForClass(class)
     if order then
@@ -95,7 +95,8 @@ local function specBelongs(class, spec)
         end
         return false
     end
-    local byClass = NS.DefaultSpells and NS.DefaultSpells[class]
+    local source = NS.Database.DefaultSpells()
+    local byClass = source and source[class]
     return type(byClass) == "table" and byClass[spec] ~= nil
 end
 
@@ -106,6 +107,9 @@ local function parseOneToken(token, pClass, pSpec)
     local class = NS.Util.NormalizeClassToken(token)
     if NS.Database.IsKnownClass(class) then
         if pSpec and specBelongs(class, pSpec) then return class, pSpec end
+        -- WoW Forever: a class has one list, so the CLASS alone names it (MKF-KC-13).
+        local one = NS.Util.OneSpecPerClass() and NS.Const.SPEC_FOREVER[class]
+        if one then return class, one end
         return nil, "Specify a spec for " .. class
     end
     local spec = pClass and NS.Util.ResolveSpecID(token, pClass)
@@ -123,7 +127,7 @@ local function parseClassSpec(tail)
     end
     if #tail == 1 then return parseOneToken(tail[1], pClass, pSpec) end
     if #tail > 2 then
-        return nil, "Usage: /kcd spells add <id|name> [CLASS SPEC]"
+        return nil, NS.Util.SpellsWords("Usage: /kcd spells add <id|name> [CLASS SPEC]")
     end
     local class = NS.Util.NormalizeClassToken(tail[1])
     if not NS.Database.IsKnownClass(class) then
@@ -146,7 +150,7 @@ end
 -- @param tokens string[]
 -- @return number|nil spellID (or nil), string name (or the error line), class, spec
 function SpellInput.ParseTail(tokens)
-    if not tokens[1] then return nil, "Usage: /kcd spells add <id|name> [CLASS SPEC]" end
+    if not tokens[1] then return nil, NS.Util.SpellsWords("Usage: /kcd spells add <id|name> [CLASS SPEC]") end
     for n = #tokens, 1, -1 do
         local id, name = SpellInput.Resolve(table.concat(tokens, " ", 1, n))
         if id then

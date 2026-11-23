@@ -302,6 +302,28 @@ function Compat.GetNumSpecializationsForClassID(classID)
     return fn(classID) or 0
 end
 
+--- The playable class ids, in the client's order (MKF-KC-13, factcheck E). On WoW Forever,
+--- C_SpecializationInfo.GetAllClassIDs (Forever's alone): its nine ids are 1-5, 7, 8, 9 and 11, so a
+--- 1..GetNumClasses loop would never reach Druid. Elsewhere, and on a Forever client without that
+--- member, 1..GetNumClasses as before. A fresh array per call; empty when neither answers.
+-- @return number[]
+function Compat.ClassIDs()
+    local info = _G.C_SpecializationInfo
+    if Compat.IsForever and Compat.IsForever() and info and info.GetAllClassIDs then
+        local ids = info.GetAllClassIDs()
+        if type(ids) == "table" then
+            local out = {}
+            for i, id in ipairs(ids) do out[i] = id end
+            return out
+        end
+    end
+    local out = {}
+    if _G.GetNumClasses then
+        for classID = 1, _G.GetNumClasses() do out[classID] = classID end
+    end
+    return out
+end
+
 --- A class's spec by index: the client global on both clients (there is no namespaced form).
 --- Multi-return passthrough (specID, localizedName, description, iconID, role, ...). Absent: nil.
 -- @param classID number

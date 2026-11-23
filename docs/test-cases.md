@@ -219,6 +219,22 @@ Total.
 - Admission (Retail): the Cooldown Manager gate still refuses an untracked spell on the live pair
 - Admission (Retail): the tag, the invalidator and the cmcache section are still there
 
+### test_spells_page_clients.lua (13)
+
+- Spells page (Forever): the spec maps reach Druid, the class a 1..GetNumClasses loop loses
+- Spells page (Forever): a spec's token is its class's, and a Retail token is refused
+- Spells page (Forever): an early nil spec answer falls back to the class's one spec
+- Spells page (Forever): a class the Forever lists do not carry is unknown
+- Spells page (Forever): reset refuses a Retail spec token and writes no orphan list
+- Spells page (Forever): reset refuses a Retail-only class
+- Spells page (Forever): a CLASS alone names that class's one list, for every verb
+- Spells page (Forever): the command words say [CLASS], never [CLASS SPEC]
+- Spells page (Forever): the picker reads Class, one row per Forever class with one name
+- Spells page (Forever): the page opens on the player's own class list
+- Spells page (Retail): the picker, the tokens, the classes and the words are as before
+- Spells page (Retail): reset still takes what it is given, as before
+- Spells page (Forever): the Defaults popup and the list tab speak of a class
+
 ### test_state.lua (25)
 
 - State: the combat flag starts false and holds `debug` session-only
@@ -599,7 +615,7 @@ Total.
 
 ### test_spec_reads.lua (8)
 
-- PlayerSpecID: a spec id of 0 is no spec, on both clients
+- PlayerSpecID: a spec id of 0 is no spec; on WoW Forever the class's one spec stands in
 - PlayerSpecID: a negative spec id is no spec either
 - PlayerSpecID: a real spec id still answers, on both clients
 - spec count: NS.Compat reads the namespaced member, never the deprecated global
@@ -2196,6 +2212,7 @@ Total.
 | test_spell_ranks.lua | 26 |
 | test_seed_clients.lua | 10 |
 | test_admission_clients.lua | 10 |
+| test_spells_page_clients.lua | 13 |
 | test_state.lua | 25 |
 | test_events.lua | 6 |
 | test_event_routes.lua | 12 |
@@ -2298,4 +2315,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1840** |
+| **Total** | **1853** |

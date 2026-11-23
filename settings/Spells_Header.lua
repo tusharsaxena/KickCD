@@ -90,7 +90,8 @@ local function buildSpecIconCache()
     if not (GetNumClasses and GetClassInfo and Compat) then
         return cache
     end
-    for classID = 1, GetNumClasses() do
+    -- Compat.ClassIDs (MKF-KC-13): the count loop on Retail, GetAllClassIDs on WoW Forever.
+    for _, classID in ipairs(Compat.ClassIDs()) do
         local _, classFile = GetClassInfo(classID)
         if classFile then
             cache[classFile] = {}
@@ -116,22 +117,35 @@ local function specIconMarkup(classFile, specID)
     return ""
 end
 
+-- WoW Forever has one spec per class, named for the class and carrying no icon, so a picker row
+-- there is the class alone: its icon and its name, once (MKF-KC-13). Retail's rows are as before.
+local function onForever()
+    return NS.Util.OneSpecPerClass()
+end
+
+local function entryLabel(classFile, specID, cIcon, hex, className)
+    if onForever() then return ("%s |c%s%s|r"):format(cIcon, hex, className) end
+    -- The dropdown VALUE carries the numeric specID (locale-free);
+    -- the LABEL is the spec's name in the player's own language, so
+    -- a French user reads "Élémentaire" while the key stays 262.
+    local specName = NS.Util.SpecDisplayName(specID)
+    local sIcon    = specIconMarkup(classFile, specID)
+    return ("%s %s |c%s%s %s|r"):format(cIcon, sIcon, hex, className, specName)
+end
+
 local function buildSpecEntries()
     local entries = {}
-    if type(NS.DefaultSpells) ~= "table" then return entries end
+    -- The running client's lists (core/Database.lua): Forever's nine on WoW Forever.
+    local source = NS.Database.DefaultSpells()
+    if type(source) ~= "table" then return entries end
 
-    local classOrder = sortedKeys(NS.DefaultSpells)
+    local classOrder = sortedKeys(source)
     for _, classFile in ipairs(classOrder) do
         local hex       = classColorHex(classFile)
         local cIcon     = classIconMarkup(classFile)
         local className = classDisplayName(classFile)
         for _, specID in ipairs(specOrder(classFile)) do
-            -- The dropdown VALUE carries the numeric specID (locale-free);
-            -- the LABEL is the spec's name in the player's own language, so
-            -- a French user reads "Élémentaire" while the key stays 262.
-            local specName = NS.Util.SpecDisplayName(specID)
-            local sIcon    = specIconMarkup(classFile, specID)
-            local label    = ("%s %s |c%s%s %s|r"):format(cIcon, sIcon, hex, className, specName)
+            local label = entryLabel(classFile, specID, cIcon, hex, className)
             entries[#entries + 1] = {
                 value     = classFile .. "/" .. specID,
                 label     = label,
@@ -165,7 +179,7 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     end
 
     local specDD = Spells.Acquire(AceGUI, "Dropdown")
-    specDD:SetLabel(L["Class and specialization"])
+    specDD:SetLabel(Spells.PickerLabel())
     specDD:SetList(items, order)
     if selectedClass and selectedSpec then
         specDD:SetValue(selectedClass .. "/" .. selectedSpec)
@@ -256,6 +270,14 @@ local function buildSpellsHeader(AceGUI, headerCtx, parent)
     })
 end
 
+--- The picker's caption: "Class" on WoW Forever, where a class has one list (MKF-KC-13), "Class and
+--- specialization" everywhere else.
+function Spells.PickerLabel()
+    if onForever() then return L["Class"] end
+    return L["Class and specialization"]
+end
+
 Spells.BuildHeader       = buildSpellsHeader
+Spells.SpecEntries       = buildSpecEntries
 Spells.TitleCaseToken    = titleCaseToken
 Spells.ClassDisplayName  = classDisplayName

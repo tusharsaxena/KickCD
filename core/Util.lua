@@ -211,14 +211,68 @@ end
 -- @return number|nil specID
 function Util.PlayerSpecID()
     local Compat = NS.Compat
-    if not (Compat and Compat.GetSpecialization) then return nil end
+    if not (Compat and Compat.GetSpecialization) then return Util.ForeverClassSpec() end
     local idx = Compat.GetSpecialization()
-    if not idx then return nil end
+    if not idx then return Util.ForeverClassSpec() end
     -- FIRST return is the numeric ID; the second is the LOCALIZED name and
     -- must never be used as a key.
     local specID = Compat.GetSpecializationInfo(idx)
-    if type(specID) ~= "number" or specID <= 0 then return nil end
+    if type(specID) ~= "number" or specID <= 0 then return Util.ForeverClassSpec() end
     return specID
+end
+
+--- Whether the running client keys its lists by CLASS, one spec each (WoW Forever, MKF-KC-13): the
+--- one question every per-client spec rule asks -- the spec tokens, the Retail tokens refused, the
+--- one-spec fallback, a CLASS alone naming its list, the picker's rows and the `/kcd spells` words.
+--- Compat.IsForever() in the client; the harness's Retail-shaped world answers false under the
+--- kit's forever profile (tests/run.lua), because its spec ids are Retail's.
+-- @return boolean
+function Util.OneSpecPerClass()
+    local Compat = NS.Compat
+    return Compat ~= nil and Compat.IsForever ~= nil and Compat.IsForever() == true
+end
+
+--- WoW Forever's one spec for the player's class (Const.SPEC_FOREVER), or nil -- always nil on
+--- Retail. PlayerSpecID's fallback when the client has no answer yet (MKF-KC-13, the synthesis 3.4
+--- "Spec"), so an early nil cannot empty the grid: a Forever class has exactly one spec.
+-- @return number|nil
+function Util.ForeverClassSpec()
+    if not Util.OneSpecPerClass() then return nil end
+    if not _G.UnitClass then return nil end
+    local _, classFile = _G.UnitClass("player")
+    local byClass = NS.Const and NS.Const.SPEC_FOREVER
+    return classFile and byClass and byClass[classFile] or nil
+end
+
+-- WoW Forever's spec tokens: a spec is named for its class, so its token is the class's
+-- (Const.SPEC_FOREVER inverted). Read only on WoW Forever, where Const.SPEC's Retail tokens mean
+-- nothing (MKF-KC-13).
+local function onForever() return Util.OneSpecPerClass() end
+
+-- The `/kcd spells` words WoW Forever reads differently: a list there is a class's, never a spec's.
+local FOREVER_WORDS = {
+    { "%[CLASS SPEC%]", "[CLASS]" },
+    { "<CLASS> <SPEC>", "<CLASS>" },
+    { "class%+spec", "class" },
+    { "Reset one spec to defaults", "Reset one class's list to defaults" },
+    { "EVERY spec's list", "EVERY class's list" },
+}
+
+--- A `/kcd spells` usage, help or refusal line in the running client's words (MKF-KC-13): on WoW
+--- Forever `[CLASS SPEC]` reads `[CLASS]` and a spec's list a class's; the line itself on Retail.
+-- @param line string
+-- @return string
+function Util.SpellsWords(line)
+    if type(line) ~= "string" or not onForever() then return line end
+    for _, w in ipairs(FOREVER_WORDS) do line = (line:gsub(w[1], w[2])) end
+    return line
+end
+
+local function foreverToken(specID)
+    for token, id in pairs(NS.Const and NS.Const.SPEC_FOREVER or {}) do
+        if id == specID then return token end
+    end
+    return nil
 end
 
 --- English display token for a specID ("ELEMENTAL"), or nil if unknown.
@@ -227,6 +281,7 @@ end
 -- @return string|nil
 function Util.SpecTokenForID(specID)
     if type(specID) ~= "number" then return nil end
+    if onForever() then return foreverToken(specID) end
     return NS.Const and NS.Const.SPEC_TOKEN and NS.Const.SPEC_TOKEN[specID] or nil
 end
 
@@ -278,7 +333,9 @@ local function buildSpecNameMaps()
     if not (GetNumClasses and GetClassInfo and Compat) then
         return false
     end
-    for classID = 1, GetNumClasses() do
+    -- The class ids are Compat.ClassIDs (MKF-KC-13): 1..GetNumClasses on Retail, as before, and
+    -- GetAllClassIDs on WoW Forever, whose ids skip 6 and 10 and so lost Druid to the count loop.
+    for _, classID in ipairs(Compat.ClassIDs()) do
         local _, classFile = GetClassInfo(classID)
         if classFile then
             local byClass, order = {}, {}
@@ -331,9 +388,11 @@ local function resolveByClass(classFile, token, input, folded)
     return byClass[token] or byClass[input] or byClass[folded]
 end
 
--- The English token from Const.SPEC.
+-- The English token from Const.SPEC; on WoW Forever from Const.SPEC_FOREVER, whose tokens are the
+-- class tokens, so a Retail token (ARMS) resolves to nothing there (MKF-KC-13).
 local function resolveByConstToken(token)
     local Const = NS.Const
+    if onForever() then return Const and Const.SPEC_FOREVER and Const.SPEC_FOREVER[token] or nil end
     if not (Const and Const.SPEC) then return nil end
     return Const.SPEC[token]
 end

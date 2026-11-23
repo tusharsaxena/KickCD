@@ -16,17 +16,25 @@ local test, assertEqual, assertTrue, assertNil = T.test, T.assertEqual, T.assert
 
 -- ── the spec id ─────────────────────────────────────────────────────────────────────────────────
 
-test("PlayerSpecID: a spec id of 0 is no spec, on both clients", function()
-    for _, opts in ipairs({ {}, { world = "forever" } }) do
-        local inst = T.load(false, false, function(m)
-            m.C_SpecializationInfo.GetSpecializationInfo = function() return 0, "", "", nil, "NONE" end
-        end, opts)
-        assertNil(inst.NS.Util.PlayerSpecID(), tostring(opts.world or "retail") .. ": the documented default 0")
-    end
+-- The Retail client whatever KA0S_KIT_CLIENT says (the stamp the loader would make, then Retail's).
+local function retailClient(m)
+    T.Loader.makeEnv(m)
+    T.Loader.MockClient.apply(m, "retail")
+end
+
+test("PlayerSpecID: a spec id of 0 is no spec; on WoW Forever the class's one spec stands in", function()
+    -- MKF-KC-13 (the synthesis 3.4 "Spec"): a Forever class has exactly one spec, so an early or
+    -- default answer falls back to it rather than emptying the grid; Retail has no such fallback.
+    local function zero(m) m.C_SpecializationInfo.GetSpecializationInfo = function() return 0, "", "", nil, "NONE" end end
+    local retail = T.load(false, false, function(m) retailClient(m); zero(m) end)
+    assertNil(retail.NS.Util.PlayerSpecID(), "retail: the documented default 0")
+    local forever = T.load(false, false, zero, { world = "forever" })
+    assertEqual(forever.NS.Util.PlayerSpecID(), 1485, "forever: the Hunter's one spec")
 end)
 
 test("PlayerSpecID: a negative spec id is no spec either", function()
     local inst = T.load(false, false, function(m)
+        retailClient(m)
         m.C_SpecializationInfo.GetSpecializationInfo = function() return -1 end
     end)
     assertNil(inst.NS.Util.PlayerSpecID())

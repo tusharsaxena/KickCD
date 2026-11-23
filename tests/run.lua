@@ -92,7 +92,8 @@ end
 -- every Forever branch -- and seeds from defaults/Spells_Forever.lua, keyed by Forever's spec ids,
 -- which that world's player never has. So for such an instance, and only on Forever constants, the
 -- seed accessors (Database.DefaultSpells, Database.RaceCastStoppers) answer the Retail tables, the
--- seed keyed by the world's own spec ids: every Forever code path (the absent-key seed, the Forever
+-- seed keyed by the world's own spec ids, and Util.OneSpecPerClass answers false (MKF-KC-13):
+-- every Forever code path (the absent-key seed, the Forever
 -- resetall, the per-client count) still runs, over data the world can use. A case that loads the
 -- WoW Forever world (`{ world = "forever" }`) gets the real Forever seed on both profiles, and
 -- tests/test_seed_clients.lua pins it there. The hook is merged into the case's own afterFile.
@@ -110,6 +111,12 @@ local function retailShapedSeed(mocks, opts)
         if prior then prior(NS) end
         NS.Database.DefaultSpells = function() return NS.DefaultSpells end
         NS.Database.RaceCastStoppers = function() return NS.RaceCastStoppers end
+    end
+    -- Its spec ids are Retail's, so it keys lists by spec, not by class (MKF-KC-13).
+    local priorUtil = hooks["core/Util.lua"]
+    hooks["core/Util.lua"] = function(NS)
+        if priorUtil then priorUtil(NS) end
+        NS.Util.OneSpecPerClass = function() return false end
     end
     return hooks
 end
@@ -218,6 +225,7 @@ local SUITES = {
     "test_spell_ranks",
     "test_seed_clients",
     "test_admission_clients",
+    "test_spells_page_clients",
     "test_state",
     "test_events",
     "test_event_routes",

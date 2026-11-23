@@ -518,9 +518,14 @@ end
 --- that no character ever reads (KICKCD-R-18).
 -- @param class string|nil
 -- @return boolean
+---
+--- On WoW Forever the running client's defaults alone decide (MKF-KC-13): the nine Forever classes,
+--- so a Retail-only token (DEATHKNIGHT) is unknown there.
 function Database.IsKnownClass(class)
     if type(class) ~= "string" or class == "" then return false end
-    if NS.DefaultSpells and NS.DefaultSpells[class] then return true end
+    local source = Database.DefaultSpells()
+    if source and source[class] then return true end
+    if onForever() then return false end
     if not (_G.GetNumClasses and _G.GetClassInfo) then return false end
     for classID = 1, _G.GetNumClasses() do
         local _, classFile = _G.GetClassInfo(classID)

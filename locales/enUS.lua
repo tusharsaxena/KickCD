@@ -507,6 +507,7 @@ L["Cannot open settings during combat."] = "cannot open settings during combat â
 
 -- Spells editor
 L["Class and specialization"]    = "Class and specialization"
+L["Class"]                       = "Class"
 L["Add a spell"] = "Add a spell"
 L["Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."] = "Names work for spells in your spellbook and ones this list knows; otherwise use the id or shift-click a link."
 L["not tracked"] = "not tracked"
@@ -525,6 +526,8 @@ L["Spell ID or name"]            = "Spell ID or name"
 L["Invalid spell"]               = "Invalid spell"
 L["Reset all spells for this spec to addon defaults?"] =
     "Reset all spells for this spec to addon defaults?"
+L["Reset all spells for this class to addon defaults?"] =
+    "Reset all spells for this class to addon defaults?"
 
 -- Categories (closed set; matches CATEGORIES in settings/Spells.lua)
 L["interrupt"]                   = "Interrupt"
@@ -840,6 +843,8 @@ L["Charges"]                     = "Charges"
 L["Spell list"]                  = "Spell list"
 L["The tracked spells for the selected specialization, in priority order."] =
     "The tracked spells for the selected specialization, in priority order."
+L["The tracked spells for the selected class, in priority order."] =
+    "The tracked spells for the selected class, in priority order."
 L["Drag to reorder"]             = "Drag to reorder"
 L["Cast time color"]             = "Cast time color"
 L["Font (both texts)"]           = "Font (both texts)"
