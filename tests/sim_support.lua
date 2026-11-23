@@ -14,7 +14,7 @@
 --
 -- THE CLIENT IT MODELS. An enUS Enhancement Shaman whose default spell list (defaults/Spells.lua)
 -- carries Wind Shear (57994, `interrupt`) and Capacitor Totem (192058, `stun`) — and Hex (51514),
--- which the default list carries too — every one known (`IsPlayerSpell` true). The kit's clock
+-- which the default list carries too — every one known (the base mock's `C_SpellBook` answers true). The kit's clock
 -- (`mocks.__now`) drives `GetTime`, which this addon's mock otherwise pins at 0, and
 -- `C_DurationUtil.CreateDuration` answers a Lua duration fake read off that same clock, so
 -- core/Compat.lua's NewDuration builds a duration whose remaining time really runs down.
@@ -142,7 +142,6 @@ function S.load(opts)
         mocks.C_DurationUtil = { CreateDuration = function() return newDuration(mocks) end }
         mocks.UnitClass = function() return "Shaman", "SHAMAN", S.SHAMAN_CLASS_ID end
         mocks.__setPlayerSpec(S.SHAMAN_CLASS_ID, S.ENHANCEMENT_INDEX)
-        mocks.IsPlayerSpell = function() return true end
         if opts.mutate then opts.mutate(mocks) end
     end, opts.loadOpts)
     local env = { NS = inst.NS, mocks = inst.mocks, inst = inst }

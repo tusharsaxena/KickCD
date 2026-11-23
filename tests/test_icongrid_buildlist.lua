@@ -114,8 +114,8 @@ test("a spell the player cannot currently cast is not rendered", function()
     -- The choice-node case: both siblings ship in the defaults, only the
     -- picked one may appear.
     local gi, IconGrid, _, mocks = withList({ entry(108199), entry(1263569) })
-    mocks.IsPlayerSpell = function(id) return id == 108199 end
-    mocks.IsSpellKnown = function() return false end
+    mocks.C_SpellBook = { IsSpellKnown = function(id) return id == 108199 end,
+                          IsSpellInSpellBook = function() return false end }
     IconGrid:BuildActiveList(gi)
     local ids = idsOf(gi)
     assertEqual(#ids, 1)
@@ -137,12 +137,13 @@ end)
 test("a pet spell appears only while its pet is out", function()
     -- Counter Shot / Spell Lock come and go with the pet; the grid follows.
     local gi, IconGrid, _, mocks = withList({ entry(147362) })
-    mocks.IsPlayerSpell = function() return false end
-    mocks.IsSpellKnown = function() return false end
+    -- The pet's bank is Enum.SpellBookSpellBank.Pet, 1.
+    mocks.C_SpellBook = { IsSpellKnown = function() return false end,
+                          IsSpellInSpellBook = function() return false end }
     IconGrid:BuildActiveList(gi)
     assertEqual(#gi.ordered, 0)
 
-    mocks.IsSpellKnown = function(_, pet) return pet == true end
+    mocks.C_SpellBook.IsSpellInSpellBook = function(_, bank) return bank == 1 end
     IconGrid:BuildActiveList(gi)
     assertEqual(#gi.ordered, 1)
 end)

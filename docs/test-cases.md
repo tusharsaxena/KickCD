@@ -422,7 +422,7 @@ Total.
 - Forever world: a typed secret answers its underlying type and reads secret
 - typed secrets install alone on a mock set of either client
 
-### test_compat_api.lua (54)
+### test_compat_api.lua (57)
 
 - Compat._firstReturn tolerates a nil API (pre-12.0 client)
 - Compat._firstReturn collapses a multi-return to position 1
@@ -457,10 +457,13 @@ Total.
 - GetSpellCharges passes a SECRET charge count through untouched
 - GetSpellCharges falls back to the deprecated global
 - IsSpellAvailable rejects a non-number spell ID outright
-- IsSpellAvailable is true when IsPlayerSpell says so
-- IsSpellAvailable falls back to the spellbook for racials and professions
-- IsSpellAvailable catches PET spells via the IsSpellKnown pet flag
+- IsSpellAvailable is true when C_SpellBook knows it on the player's bank
+- IsSpellAvailable falls back to the player's spellbook for racials and professions
+- IsSpellAvailable catches PET spells on the pet's bank
 - IsSpellAvailable is false for an unpicked talent choice-node sibling
+- IsSpellAvailable never asks the deprecated shims, which a client may not load
+- IsSpellAvailable answers false with C_SpellBook absent, never raising
+- IsSpellAvailable on WoW Forever: a taught rank, a pet's Spell Lock, nothing untaught
 - IsSpellUsable reads the SpellUsabilityInfo table form
 - IsSpellUsable reads the two-boolean form some Midnight builds return
 - IsSpellUsable normalizes the legacy API's 1/nil into real booleans
@@ -2103,7 +2106,7 @@ Total.
 | test_compat.lua | 8 |
 | test_compat_client.lua | 10 |
 | test_forever_world.lua | 11 |
-| test_compat_api.lua | 54 |
+| test_compat_api.lua | 57 |
 | test_compat_debug.lua | 13 |
 | test_compat_units.lua | 27 |
 | test_sim_seam.lua | 9 |
@@ -2189,4 +2192,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1759** |
+| **Total** | **1762** |

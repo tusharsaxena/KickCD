@@ -26,8 +26,8 @@ and gets its own `## Flavor: forever` section here.
 ## Rules
 
 - **What KickCD needs is the cast's id.** KickCD tracks the cooldown of a spell the player (or the
-  player's pet) casts: `core/Compat.lua`'s `IsSpellAvailable` asks `IsPlayerSpell` and
-  `IsSpellKnown(id[, true])` about the seeded id, and `modules/Cooldowns.lua` polls
+  player's pet) casts: `core/Compat.lua`'s `IsSpellAvailable` asks `C_SpellBook` (the player's
+  bank, then the pet's) about the seeded id, and `modules/Cooldowns.lua` polls
   `C_Spell.GetSpellCooldown` on it. So an aura id, or the id of a spell a cast triggers, is wrong
   in this file even when it names the right ability. This is the opposite of an aura tracker.
 - **The tool writes what a run rules; curation stays by hand.** In a run, only `seeds.py apply`

@@ -188,30 +188,47 @@ function Compat.GetSpellCharges(spellID)
     return nil
 end
 
+-- The spellbook banks (Enum.SpellBookSpellBank), with the documented values where the enum is
+-- missing. Read at call time.
+local BANK_PLAYER, BANK_PET = 0, 1
+
+local function spellBank(name, fallback)
+    local banks = _G.Enum and _G.Enum.SpellBookSpellBank
+    local v = banks and banks[name]
+    if type(v) == "number" then return v end
+    return fallback
+end
+
 --- Whether the spell is actually accessible to the player right now.
 -- Distinguishes "known to the spell DB" (which `GetSpellInfo` answers) from
 -- "the player can currently cast this" (which is what we want for the icon
 -- grid — choice-node siblings like Gorefiend's Grasp / Abomination Limb
 -- must NOT both render when only one is picked).
 --
--- IsPlayerSpell covers the vast majority of cases including talent choice
--- nodes (only the chosen branch returns true). IsSpellKnown(id) is checked
--- as a fallback for spells that show up in the player's spellbook but not
--- via IsPlayerSpell (some racials, profession spells). IsSpellKnown(id, true)
--- catches pet spells used as default cast-stoppers — Counter Shot (147362),
--- Spell Lock (19647), Optical Blast (119910) — which only appear when the
--- right pet is summoned. That last branch correctly hides pet spells while
--- the relevant pet isn't out, which matches "show only what's available
--- right now."
+-- Three rungs of C_SpellBook, the namespace both clients carry (MKF-KC-03, the WoW Forever port).
+-- They are exactly what the deprecated IsPlayerSpell / IsSpellKnown shims called
+-- (Blizzard_DeprecatedSpellBook/Deprecated_SpellBook.lua, identical on both clients), and those
+-- shims load only while the CVar loadDeprecationFallbacks is on, so a client that drops them would
+-- have made every spell unavailable.
+--   1. IsSpellKnown(id, Player) -- IsPlayerSpell's body: the vast majority of cases, including
+--      talent choice nodes (only the chosen branch answers true).
+--   2. IsSpellInSpellBook(id, Player, false) -- IsSpellKnown(id)'s body: spells in the player's
+--      spellbook that rung 1 misses (some racials, profession spells).
+--   3. IsSpellInSpellBook(id, Pet, false) -- IsSpellKnown(id, true)'s body: pet spells used as
+--      cast-stoppers, Counter Shot (147362), Spell Lock (19647; 19244 and 19647 on WoW Forever),
+--      Optical Blast (119910), which appear only while the right pet is summoned. So a pet spell
+--      hides while its pet is away, which matches "show only what's available right now."
+-- On WoW Forever each rank is its own spell id, and a rank answers for itself only.
 -- @param spellID number
 -- @return bool
 function Compat.IsSpellAvailable(spellID)
     if type(spellID) ~= "number" then return false end
-    if _G.IsPlayerSpell and _G.IsPlayerSpell(spellID) then return true end
-    if _G.IsSpellKnown then
-        if _G.IsSpellKnown(spellID) then return true end
-        if _G.IsSpellKnown(spellID, true) then return true end
-    end
+    local book = _G.C_SpellBook
+    if not (book and book.IsSpellKnown and book.IsSpellInSpellBook) then return false end
+    local player, pet = spellBank("Player", BANK_PLAYER), spellBank("Pet", BANK_PET)
+    if book.IsSpellKnown(spellID, player) then return true end
+    if book.IsSpellInSpellBook(spellID, player, false) then return true end
+    if book.IsSpellInSpellBook(spellID, pet, false) then return true end
     return false
 end
 
