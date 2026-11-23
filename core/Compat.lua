@@ -275,6 +275,29 @@ Compat.GetSpecialization = CompatLib and CompatLib.GetSpecialization
 Compat.GetSpecializationInfo = CompatLib and CompatLib.GetSpecializationInfo
     or function() return nil end
 
+--- How many specs a class has. The namespaced C_SpecializationInfo member on both clients
+--- (MKF-KC-04): the bare GetNumSpecializationsForClassID is Blizzard_DeprecatedSpecialization's
+--- alias of it, loaded on Retail only while the CVar loadDeprecationFallbacks is on and not at all
+--- on WoW Forever, where a class has one spec. Absent member: 0.
+-- @param classID number
+-- @return number
+function Compat.GetNumSpecializationsForClassID(classID)
+    local info = _G.C_SpecializationInfo
+    local fn = info and info.GetNumSpecializationsForClassID
+    if not fn then return 0 end
+    return fn(classID) or 0
+end
+
+--- A class's spec by index: the client global on both clients (there is no namespaced form).
+--- Multi-return passthrough (specID, localizedName, description, iconID, role, ...). Absent: nil.
+-- @param classID number
+-- @param index number
+function Compat.GetSpecializationInfoForClassID(classID, index)
+    local fn = _G.GetSpecializationInfoForClassID
+    if not fn then return nil end
+    return fn(classID, index)
+end
+
 -- ---------------------------------------------------------------------------
 -- Unit and cast readers (the simulator's seam answers these; docs/compat-layer.md)
 -- ---------------------------------------------------------------------------

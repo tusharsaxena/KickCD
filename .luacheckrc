@@ -54,7 +54,6 @@ read_globals = {
   "C_AddOns",
   -- units / specs
   "UnitClass", "UnitIsUnit", "UnitRace",
-  "GetSpecializationInfoForClassID", "GetNumSpecializationsForClassID",
   -- settings panel
   "Settings", "SettingsPanel", "DEFAULT_CHAT_FRAME",
   -- color / mixins

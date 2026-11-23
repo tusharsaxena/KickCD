@@ -681,6 +681,11 @@ local function build()
         GetSpecializationInfo = function(index)
             return specInfoFor(player.classID, index or player.specIndex)
         end,
+        -- The namespaced count both clients carry; the bare global below is its deprecated alias.
+        GetNumSpecializationsForClassID = function(classID)
+            local entry = classSpecs[classID]
+            return entry and #entry[2] or 0
+        end,
     }
     mocks.GetSpecialization = function() return player.specIndex end
     mocks.GetSpecializationInfo = function(index)

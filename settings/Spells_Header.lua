@@ -79,22 +79,24 @@ end
 
 -- [classFile] = { [specID] = iconFileID }. Built lazily from
 -- GetSpecializationInfoForClassID, which hands back the specID directly --
--- no name round-trip, so nothing here depends on the client's locale.
+-- no name round-trip, so nothing here depends on the client's locale. Both
+-- spec reads go through NS.Compat (MKF-KC-04): the bare count global is a
+-- deprecated alias WoW Forever does not load.
 local specIconCache
 
 local function buildSpecIconCache()
     local cache = {}
-    if not (GetNumClasses and GetClassInfo
-            and GetNumSpecializationsForClassID and GetSpecializationInfoForClassID) then
+    local Compat = NS.Compat
+    if not (GetNumClasses and GetClassInfo and Compat) then
         return cache
     end
     for classID = 1, GetNumClasses() do
         local _, classFile = GetClassInfo(classID)
         if classFile then
             cache[classFile] = {}
-            local nSpecs = GetNumSpecializationsForClassID(classID) or 0
+            local nSpecs = Compat.GetNumSpecializationsForClassID(classID)
             for i = 1, nSpecs do
-                local specID, _, _, icon = GetSpecializationInfoForClassID(classID, i)
+                local specID, _, _, icon = Compat.GetSpecializationInfoForClassID(classID, i)
                 if specID and icon then
                     cache[classFile][specID] = icon
                 end

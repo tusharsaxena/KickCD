@@ -205,7 +205,9 @@ end
 -- Never derive a storage key from a localized name again (issue #8).
 
 --- The player's current specID, or nil when the API isn't available yet
---- (e.g. very early login, or a character below the spec-unlock level).
+--- (e.g. very early login, or a character below the spec-unlock level). An id of 0 or less is no
+--- spec either: 0 is GetSpecializationInfo's documented default (MKF-KC-04), and as a storage key it
+--- would seed and read a list nobody has.
 -- @return number|nil specID
 function Util.PlayerSpecID()
     local Compat = NS.Compat
@@ -215,7 +217,7 @@ function Util.PlayerSpecID()
     -- FIRST return is the numeric ID; the second is the LOCALIZED name and
     -- must never be used as a key.
     local specID = Compat.GetSpecializationInfo(idx)
-    if type(specID) ~= "number" then return nil end
+    if type(specID) ~= "number" or specID <= 0 then return nil end
     return specID
 end
 
@@ -270,8 +272,10 @@ local specMapsReady
 local function buildSpecNameMaps()
     specNameMap, specNameMapByClass = {}, {}
     specDisplayName, specOrderByClass = {}, {}
-    if not (GetNumClasses and GetClassInfo and GetNumSpecializationsForClassID
-            and GetSpecializationInfoForClassID) then
+    -- The spec count and the per-class spec read are NS.Compat's (MKF-KC-04): the bare count global
+    -- is a deprecated alias that WoW Forever does not load, so this gate emptied every map there.
+    local Compat = NS.Compat
+    if not (GetNumClasses and GetClassInfo and Compat) then
         return false
     end
     for classID = 1, GetNumClasses() do
@@ -280,8 +284,8 @@ local function buildSpecNameMaps()
             local byClass, order = {}, {}
             specNameMapByClass[classFile] = byClass
             specOrderByClass[classFile] = order
-            for i = 1, (GetNumSpecializationsForClassID(classID) or 0) do
-                local specID, specName = GetSpecializationInfoForClassID(classID, i)
+            for i = 1, Compat.GetNumSpecializationsForClassID(classID) do
+                local specID, specName = Compat.GetSpecializationInfoForClassID(classID, i)
                 if specID and specName then
                     specDisplayName[specID] = specName
                     order[#order + 1] = specID
