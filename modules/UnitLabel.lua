@@ -271,11 +271,23 @@ function UnitLabel:OnSkinLooksChanged()
 end
 if NS.OnSkinLooksChanged then NS.OnSkinLooksChanged(function() UnitLabel:OnSkinLooksChanged() end) end
 
--- The module's one GAME event, as a `{ event, method }` row for
+-- A target or focus swap moves the class a "Use class color" label reads (FB-KC-01): repaint that
+-- unit's color alone. Plain SetTextColor on a non-secure string, so legal in combat.
+function UnitLabel:RepaintColor(unit)
+    local inst = instances[unit]
+    if not (inst and inst.text) then return end
+    applyLabelColor(inst.text, NS.Units.LabelStyle(unit), unit)
+end
+function UnitLabel:OnTargetChanged() self:RepaintColor("target") end
+function UnitLabel:OnFocusChanged() self:RepaintColor("focus") end
+
+-- The module's GAME events, as `{ event, method }` rows for
 -- NS.RegisterEventList: FILE SCOPE so a stand-up allocates nothing (anti-patterns
 -- #43), and a refused name is recorded rather than raised (events-frames-taint-§1).
 local LIFECYCLE_EVENTS = {
     { "PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld" },
+    { "PLAYER_TARGET_CHANGED", "OnTargetChanged" },
+    { "PLAYER_FOCUS_CHANGED",  "OnFocusChanged" },
 }
 
 --- ONE WAY UP, and OnEnable is not it -- this is (slash-commands-§7). The
@@ -291,7 +303,7 @@ function UnitLabel:Resume()
 end
 
 --- Stand this module down. It owns no timer and no per-unit dispatch frame, so
---- this is the whole of it: three message subscriptions, one game event, and the
+--- this is the whole of it: three message subscriptions, three game events, and the
 --- label frames hidden.
 ---
 --- Hiding here rather than through a show ladder is the one place this addon

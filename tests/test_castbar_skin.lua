@@ -500,6 +500,9 @@ local function classy()
     local inst = T.load(true, true, function(mocks)
         mocks.RAID_CLASS_COLORS = { PRIEST = { r = 1, g = 1, b = 1 },
                                     SHAMAN = { r = 0, g = 0.44, b = 0.87 } }
+        -- The tracked unit EXISTS: with none, the default (unlocked) profile is KickCD's preview,
+        -- which resolves the player stand-in instead (FB-KC-01).
+        mocks.UnitExists = function() return true end
         mocks.UnitClass = function(unit)
             if unit == "player" then return "Priest", "PRIEST", 5 end
             return "Shaman", "SHAMAN", 7
@@ -658,6 +661,9 @@ function()
     local inst = T.load(true, true, function(mocks)
         mocks.RAID_CLASS_COLORS = { SHAMAN = { r = 0, g = 0.44, b = 0.87 },
                                     ROGUE  = { r = 1, g = 0.96, b = 0.41 } }
+        -- The tracked unit EXISTS: with none, the default (unlocked) profile is KickCD's preview,
+        -- which resolves the player stand-in instead (FB-KC-01).
+        mocks.UnitExists = function() return true end
         mocks.UnitClass = function(unit)
             if unit == "focus" then return "Rogue", "ROGUE", 4 end
             return "Shaman", "SHAMAN", 7

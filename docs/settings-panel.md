@@ -139,7 +139,7 @@ The cast bar's new color governs the **cast time** text, and is labeled *Cast ti
 
 **Every color picker carries a `Use class color` checkbox immediately to its right**, and the composers set `startsLine` on the swatch so an odd number of widgets above the pair can never split it across two lines. Thirty swatches, fifteen per unit, every one of them paired.
 
-Resolution goes through **one** resolver — `NS.ResolveColor` (`core/CoreSetup.lua`, handed over from `LibKa0s-Core-1.0`) — which owns the three rules a host would otherwise re-decide per surface: the stored **alpha** always applies, an **unresolvable class falls through to the stored swatch** (never to white, never to a substitute hue), and the swatch is therefore **never disabled**. `disabledIf` on a color row is forbidden (anti-pattern #74) and the rule is said in the swatch's tooltip instead.
+Resolution goes through **one** resolver — `NS.ResolveColor` (`core/CoreSetup.lua`, handed over from `LibKa0s-Core-1.0`) — which owns the three rules a host would otherwise re-decide per surface: the stored **alpha** always applies, an **unresolvable class falls through to the stored swatch** (never to white, never to a substitute hue), and the swatch is therefore **never disabled**. A row that also has a `Use the skin's color` companion goes through `NS.SkinHudColor` (LibKa0s `FollowColor`): an unresolved class falls to the skin's color while that box is ticked, and to the swatch only when it is not; a preview (unlocked, Sim mode) resolves the player when the unit is absent (FB-KC-01). `disabledIf` on a color row is forbidden (anti-pattern #74) and the rule is said in the swatch's tooltip instead.
 
 **Which class — and the path does not decide it:**
 

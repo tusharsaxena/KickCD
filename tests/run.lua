@@ -299,6 +299,9 @@ local SUITES = {
     "test_skin_fonts",
     -- The colors and shadows on the skin, and the one step that moves stored profiles (FS-KC-FLIP).
     "test_skin_flip",
+    -- "Use class color" as it draws: class, then skin, then swatch; the preview stand-in; the
+    -- target and focus repaint (FB-KC-01).
+    "test_class_color_follow",
     -- The first-run skin picker (KC-04): its spec, when it shows (login, the profile events, never
     -- stood down, held through combat), what marks it seen, the real window. Its own instance.
     "test_skin_picker",

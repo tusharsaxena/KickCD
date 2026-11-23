@@ -202,7 +202,11 @@ picked HUD face off the skin's font (D-15). `tests/test_skin_flip.lua` pins the 
 the skin (FS-KC-FLIP): the fifteen companions, Ka0s Default's pixels, a skin switch through spies on the
 drawing setters, the shadow's font object and cache, the v8 → v9 step on stored partial profiles, gloss
 on the kit's paint recorder (`tests/_kit/mock_paint.lua`, or it passes vacuously) and the Spells rows'
-status mark. The kit's two gates (revision 50, `skinning-§1`) take this addon's facts from
+status mark. `tests/test_class_color_follow.lua` pins "Use class color" as it draws (FB-KC-01,
+options-ui-§17): a class that resolved first, then the skin's color while its companion is on, then the
+swatch (`NS.SkinHudColor` over LibKa0s `FollowColor`); the player stand-in while unlocked or in Sim mode
+(`NS.ClassStandIn`) on the labels and the cast bar's fill, background and time text; and the label and
+cast-bar repaint on PLAYER_TARGET_CHANGED and PLAYER_FOCUS_CHANGED. The kit's two gates (revision 50, `skinning-§1`) take this addon's facts from
 `tests/skin_facts.lua`: `tests/_kit/test_skin_values.lua` fails a typed color or texture no kit category
 or cause-naming row takes, and `tests/_kit/test_skin_switch.lua` flips a probe skin, whose every token
 has a value of its own, and fails a declared surface that draws the same. The surfaces run on one

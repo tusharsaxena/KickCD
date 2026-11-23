@@ -57,8 +57,10 @@ local addonName, NS = ...
 --   NS.SkinHudSize(n, f)    a HUD text's stored size as drawn (D-09): S.HudFontSize scales it to the
 --                           skin's HUD face while the text follows the skin's font (`f` not false),
 --                           so it is as wide in every skin; the stored value is never rewritten.
---   NS.SkinHudColor(...)    a HUD color as drawn (FS-KC-FLIP): a class color first, then the skin's
---                           while the row's companion is on, else the stored swatch.
+--   NS.SkinHudColor(...)    a HUD color as drawn (FS-KC-FLIP, FB-KC-01): a class color that resolved,
+--                           then the skin's while the row's companion is on, else the stored swatch.
+--   NS.ClassStandIn()       the unit a preview resolves a class on: the player while unlocked or in
+--                           Sim mode, else nil (FB-KC-01).
 --   NS.OnSkinLooksChanged(fn) a HUD module's repaint, run after a skin, source or override change.
 --   NS.SkinPaintAce(w)      an AceGUI widget this addon acquired itself, painted for this owner:
 --   NS.SkinPaintAceTree(c)  `Skin:PaintAce` / `Skin:PaintAceTree` with the owner bound (the facade
@@ -219,22 +221,31 @@ function NS.SkinHudSize(size, fromSkin)
     return (n and n > 0) and n or 12
 end
 
---- A HUD color as drawn (causes D2, D4 and D5). `useClass` first and left alone: while it is set the
---- class color answers, whatever the companion says. Then the skin's, while the row's companion
---- `fromSkin` is true: `read` is the facade member (HudTextColor, HudLabelColor, Color) and `token` its
---- argument where it takes one. A degraded facade answers nothing, so the stored swatch `color` is
---- the fallback. Four plain numbers, so a curve can switch between two of them on a secret bool.
---- Read in the config paths and the per-cast paint, never in a ticker.
+--- The stand-in a preview resolves a class on (options-ui-§17, standard v2.119.0: "A preview shows a
+--- class"). Unlocking is KickCD's preview and Sim mode its other one; in either, a Target or Focus
+--- label or cast bar with no such unit would otherwise resolve no class at all. The library uses it
+--- only while the described unit does not exist (Core minor 20), so a real target still wins.
+function NS.ClassStandIn()
+    local p = NS.db and NS.db.profile
+    if p and p.locked == false then return "player" end
+    if NS.IsSimMode and NS.IsSimMode() then return "player" end
+    return nil
+end
+
+--- A HUD color as drawn (causes D2, D4 and D5; FB-KC-01). The collection's ladder, LibKa0s
+--- FollowColor: 1. a class color that RESOLVED while `useClass` is on, stored alpha kept; 2. else
+--- the skin's while the row's companion `fromSkin` is true, `read` the facade member (HudTextColor,
+--- HudLabelColor, Color) and `token` its argument where it takes one; 3. else the stored swatch
+--- `color`. An unresolved class (an NPC, no target) falls to the skin, never past it to the swatch:
+--- skipping the skin whenever the class toggle was on is what drew the owner's gold label on a
+--- hunter. A preview resolves the player (NS.ClassStandIn). Four plain numbers, so a curve can switch
+--- between two of them on a secret bool. Read in the config paths and the per-cast paint, never in
+--- a ticker.
 function NS.SkinHudColor(color, useClass, unit, fromSkin, read, token)
-    if fromSkin == true and useClass ~= true then
-        local S = NS.Skin
-        local fn = S and S[read]
-        if fn then
-            local r, g, b, a = fn(token)
-            if r then return r, g, b, a end
-        end
-    end
-    return NS.ResolveColor(color, useClass, unit)
+    local S = NS.Skin
+    local r, g, b, a = NS.FollowColor(color, useClass == true, unit, fromSkin == true,
+        S and S[read], token, NS.ClassStandIn())
+    return r, g, b, a
 end
 
 --- Subscribe a HUD module's repaint to the owner's looks (a skin switch, a source switch, a font

@@ -1785,6 +1785,19 @@ Total.
 - the step creates the record's table on a raw profile with none
 - the step is the same write with the library absent
 
+### test_class_color_follow.lua (10)
+
+- class follow: an unresolved class falls to the skin's color while its companion is on
+- class follow: a class that resolved still comes first, skin companion on or off
+- class follow: the ladder answers four numbers, never the rung's name
+- class follow: unlocked with no target, the Target and Focus labels draw the player's class
+- class follow: locked with no target there is no stand-in; the skin, then the swatch
+- class follow: NS.ClassStandIn is the player while unlocked or in Sim mode, else nil
+- class follow: unlocked with no target, the cast bar's fill, background and time text draw the player's class
+- class follow: a target swap repaints the Target label's class color
+- class follow: a focus swap repaints the Focus label's class color
+- class follow: a target swap reruns the cast bar's colors
+
 ### test_skin_picker.lua (29)
 
 - Skin picker: the spec names this owner, its seams, General's Skin tab, and the unlock eye
@@ -2347,6 +2360,7 @@ Total.
 | test_skin_hud.lua | 18 |
 | test_skin_fonts.lua | 26 |
 | test_skin_flip.lua | 33 |
+| test_class_color_follow.lua | 10 |
 | test_skin_picker.lua | 29 |
 | test_grid.lua | 12 |
 | test_settings_layout_guard.lua | 1 |
@@ -2380,4 +2394,4 @@ Total.
 | test_skin_switch.lua | 23 |
 | test_client_globals.lua | 3 |
 | Skipped | 1 |
-| **Total** | **1906** |
+| **Total** | **1916** |

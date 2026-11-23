@@ -28,9 +28,9 @@ check in the WoW Forever theme names its client (`Client: Retail.`, `Client: WoW
 | STATE-1 – 15 | Enable, lock and visibility | both | The master switch and stand-down, lock and drag, `resetposition`, the four visibility modes |
 | COMBAT-1 – 11 | Combat | both | Settings refusals and the combat cover, debug dumps and diagnostics in combat, the protected-interrupt taint pass |
 | GRID-1 – 26 | Icon grid | both | Layout, cooldown swipe and text, GCD suppression, ready glow, render gating, the charges badge, the ticker owning time, the strip's tooltip above it, the icon tooltip beside the display, the any-cast glow on a friendly caster, the per-style glow knobs and their clamp, the glow through LibKa0s-Glow-1.0 |
-| CAST-1 – 22 | Cast bar | both | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM) |
+| CAST-1 – 23 | Cast bar | both | A cast on the bar, auto-size, per-state colors, anchor modes, the drag strip, two bars at once, empowered casts, the strip's tooltip above it, flipping below at the screen's top, the primary anchor on an empty grid (17 – 18 retired into SIM), the class colors in the preview and after a swap |
 | FOCUS-1 – 19 | Focus tracking | both | The second instance, independent gating, link, unlink, copy styling, per-unit alpha and tint |
-| LABEL-1 – 15 | Text label | both | Every label control, visibility follow, the drag strip clearing the label, rapid changes |
+| LABEL-1 – 17 | Text label | both | Every label control, visibility follow, the drag strip clearing the label, rapid changes, the class color in the preview and after a target or focus swap |
 | SPELLS-1 – 24 | Spell lists | both | Spec, talent and pet rebuilds, the Spells page and `/kcd spells`, resets, racials, the two ids the 2026-11-15 seed check corrected, WoW Forever's default lists, its ranks as one row, Feral Charge's forms an existing Forever profile's seed, the Forever add gate and the Forever Spells page and words |
 | SIM-1 – 20 | Simulator | both | `/kcd sim`: the duration probe, the party of sample characters, refusals, the four scenarios, the docked sim strip on the grids and a free cast bar, auto-stops, destructive refusals, stand-down, diagnostics, the step panel pinned up for the session, target and focus casting together, the step delay slider, a slow pace keeping the story, the Master controls Sim mode box, the box ticked while the step panel is open or a sim runs |
 | DIAG-1 – 49 | Debug and diagnostics | both | `/kcd debug` subcommands, the report verbs in the console with one chat pointer, the traces, the console and its chrome, the perf panel, `/kcd diagnostics`, resizing the console, copy window and perf panel, the console's Diagnostics link, diagnostics turning logging on, the library's own Slash and Lifecycle lines, state lines at enable, Clear re-arming the gates, the interrupt dump's secret sentinel, no line under any window title, the library windows' header band, their settings marks opening KickCD's panel |
@@ -833,6 +833,13 @@ you had before the update is still yours.
   the panel and right-click the `?`, then the gear, then the X → each opens the same page, and the X's
   right-click turns nothing off. Repeat on the Focus bar's strip → the band on Focus. Fail: any
   right-click that opens the panel's parent page, or opens nothing. Result:
+- **CAST-23. The cast bar's class colors in the preview and after a swap (FB-KC-01; Ka0sAddonsCommonTasks
+  S-K1, S-K2).** On a hunter, `/kcd unlock` with no target, Units → Target → Cast bar: tick `Use class
+  color` on the interruptible fill, its background and the Font tab's time text → the placeholder bar
+  draws hunter green on each, with the background's `Use the skin's color` ticked or not. `/kcd lock`,
+  target a player of one class while they cast, then retarget a player of another class → the fill,
+  background and time text follow the new target's class without a /reload. Fail: the stored swatch on
+  the preview, or the previous target's class after the swap. Result:
 
 ## FOCUS
 
@@ -950,6 +957,15 @@ you had before the update is still yours.
   quickly several times; then cycle `/kcd set visibility` through `always`, `in_combat`,
   `target_casting` and `target_casting_interruptible` back to back → no Lua error at any point, and the
   label ends where the final values put it. Result: pass (owner-marked 2026-10-10)
+- **LABEL-16. The label's class color in the preview (FB-KC-01; Ka0sAddonsCommonTasks S-K1).** On a
+  hunter, `/kcd unlock` with no target and no focus, Units → Target → Text label: tick `Use class color`
+  → the Target label draws hunter green, with `Use the skin's color` ticked and unticked; unlink Focus
+  and do the same → the Focus label too. Fail: the gold label color, or the skin's. Result:
+- **LABEL-17. The label follows the target's and focus's class (FB-KC-01; Ka0sAddonsCommonTasks S-K2).**
+  `/kcd lock`, `Use class color` on, target a player of another class → the Target label draws that
+  class; retarget a third class → it follows at once, no /reload. Target an NPC with `Use the skin's
+  color` ticked → the skin's label color, not the gold swatch; unticked → the swatch. Focus a player →
+  the Focus label follows the focus's class the same way. Result:
 
 ## SPELLS
 
@@ -1932,7 +1948,8 @@ after each check. Every check also fails on a Lua error or a taint warning.
 - **SKIN-50. The charges badge's shadow follows the skin (SD-SK-KC.1; cause D6).** Track a spell with
   charges, `/kcd unlock`. On **Ka0s Default** the number in the icon's bottom-right
   corner has no drop shadow, like the countdown beside it. **Obsidian** → both draw a black drop
-  shadow; **High Contrast** → both draw it further out (2 px right, 2 px down). Back to **Ka0s Default**
+  shadow; **High Contrast** → both draw the same 1 px shadow as Obsidian (amended by FB-KC-01: LibKa0s
+  v1.112.0 dropped High Contrast's 2 px offset). Back to **Ka0s Default**
   → gone on both with no reload. Fail: the badge keeping a shadow on Ka0s Default, or a badge and
   countdown that disagree under any skin. Result:
 
@@ -2079,3 +2096,5 @@ The adoption feedback run (AF-RV-KC and AF-STRIP-KC of Ka0sAddonsCommonTasks `do
 The skin-defaults run (SD-RV-KC of Ka0sAddonsCommonTasks `docs/2026-11-20-LIBKA0S_94_97_99_100/`, LibKa0s v1.108.0) adds SKIN-49 and SD-SK-KC.1 adds SKIN-50: every Font shadow row is disabled while its `Use the skin's shadow` box is ticked, and the cast bar's fill colors and the cooldown tint keep no skin box; the charges badge draws the skin's HUD shadow. A drag strip whose rect reads secret now shows its tooltip above its nearest readable ancestor (LibKa0s#99); KickCD's strips sit on readable frames, so GRID-17 and CAST-10 do not move. Owed: SKIN-49, SKIN-50.
 
 The strip right-click run (SRC-KC-01 and SRC-KC-02 of Ka0sAddonsCommonTasks `docs/2026-11-23-STRIP_RIGHT_CLICK/`, LibKa0s v1.111.0, standard v2.118.0's *A right-click opens what the gear opens*) drops both strips' `onRightClick`, so a right-click on either strip or any of its marks opens the gear's page, this display's entry on the Units page, instead of the parent page: it adds GRID-26 and CAST-22 and amends GRID-23, CAST-11 and CAST-20. Owed: GRID-23, GRID-26, CAST-11, CAST-20, CAST-22.
+
+The feedback batch (FB-KC-01 of Ka0sAddonsCommonTasks `docs/2026-11-24-FEEDBACK_BATCH/`, LibKa0s v1.112.0, standard v2.119.0's options-ui-§17 ladder and preview stand-in) makes every "Use class color" HUD color follow a class that resolved, then the skin's color, then the swatch, resolves the player while unlocked or in Sim mode, and repaints the label and the cast bar's colors on a target or focus swap: it adds LABEL-16, LABEL-17 and CAST-23. The re-vendor drops High Contrast's HUD shadow to 1, -1, so SKIN-50's High Contrast step now reads a 1 px shadow, and turns the library copy window into a companion with the close alone (DIAG copy-window checks see no gear on it). Owed: LABEL-16, LABEL-17, CAST-23, SKIN-50.
