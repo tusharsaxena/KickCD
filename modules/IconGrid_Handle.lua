@@ -167,11 +167,11 @@ local function buildHandle(inst, grid)
             return not (NS.db and NS.db.profile and NS.db.profile.locked)
         end,
         onDragStop   = function() onDragStop(inst, grid) end,
-        onRightClick = function() NS:OpenSettings() end,
+        -- NO onRightClick (SRC-KC-02, as modules/Castbar_Handle.lua): the right-click is the
+        -- gear's own action (DragHandle minor 17), this unit's Icons entry.
         -- The drag-handle settings mark (DragHandle minor 14, LibKa0s#86, AD-86-KC; standard
         -- from minor 15), with its own "Open settings" tooltip. From AF-STRIP-KC it opens THIS
-        -- unit's Icons entry on the Units page (NS:OpenUnitSettings), where the right-click still
-        -- opens the parent page; see modules/Castbar_Handle.lua.
+        -- unit's Icons entry on the Units page (NS:OpenUnitSettings).
         settings     = function() NS:OpenUnitSettings(inst.unit, "icons") end,
         settingsTooltip = { title = NS.L["Open settings"] },
         -- The X (AF-STRIP-KC): turns this unit off and keeps its settings (closeUnit above).
